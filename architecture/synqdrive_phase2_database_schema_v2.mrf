@@ -1,0 +1,213 @@
+SYNQDRIVE PHASE 2 DATABASE SCHEMA
+
+Goal:
+Design production‑ready PostgreSQL schema.
+
+Principles:
+- multi tenant
+- organization isolation
+- product licensing aware
+- operational vehicle intelligence
+
+------------------------------------------------
+CORE TABLE GROUPS
+------------------------------------------------
+
+Organizations
+Organization Memberships
+Users
+Stations
+Products
+Organization Products
+Vehicles
+DIMO Mirrored Vehicles
+Vehicle Battery Specs
+Vehicle Tire Setups
+Vehicle Tire Measurements
+Vehicle Brake Reference Specs
+Vehicle Service Events
+Vehicle Enrichment Jobs
+Integrations
+Organization Integrations
+Billing
+Prospects
+Customers
+Bookings
+
+------------------------------------------------
+ORGANIZATIONS
+------------------------------------------------
+
+organizations
+
+Fields:
+id
+company_name
+business_type
+address
+city
+country
+status
+created_at
+updated_at
+
+------------------------------------------------
+MEMBERSHIPS
+------------------------------------------------
+
+organization_memberships
+
+Fields:
+user_id
+organization_id
+role
+station_scope
+status
+
+------------------------------------------------
+PRODUCT LICENSING
+------------------------------------------------
+
+products
+
+- rental
+- fleet
+- taxi
+
+organization_products
+
+organization_id
+product_id
+status
+plan
+activated_at
+
+------------------------------------------------
+VEHICLES
+------------------------------------------------
+
+vehicles
+
+organization_id
+station_id
+vin
+make
+model
+year
+fuel_type
+transmission
+vehicle_type
+status
+
+------------------------------------------------
+DIMO MIRROR TABLE
+------------------------------------------------
+
+dimo_vehicles
+
+external_id
+vin
+make
+model
+year
+fuel_type
+odometer
+last_signal
+connection_status
+
+------------------------------------------------
+BATTERY DATA
+------------------------------------------------
+
+vehicle_battery_specs
+
+vehicle_id
+battery_type
+battery_ampere
+battery_volt
+source_type
+source_confidence
+
+------------------------------------------------
+TIRE DATA
+------------------------------------------------
+
+vehicle_tire_setups
+
+vehicle_id
+front_dimension
+rear_dimension
+brand_model_front
+brand_model_rear
+tire_season
+installed_at
+removed_at
+
+vehicle_tire_tread_measurements
+
+vehicle_id
+tire_setup_id
+front_left_mm
+front_right_mm
+rear_left_mm
+rear_right_mm
+measured_at
+
+------------------------------------------------
+BRAKE DATA
+------------------------------------------------
+
+vehicle_brake_reference_specs
+
+vehicle_id
+front_rotor_diameter
+front_rotor_width
+front_pad_thickness
+rear_rotor_diameter
+rear_rotor_width
+rear_pad_thickness
+
+------------------------------------------------
+SERVICE HISTORY
+------------------------------------------------
+
+vehicle_service_events
+
+vehicle_id
+event_type
+event_date
+odometer_km
+notes
+
+------------------------------------------------
+PROSPECTS
+------------------------------------------------
+
+prospects
+
+company_name
+business_type
+website
+phone
+email
+city
+country
+fleet_size_estimate
+status
+priority
+
+------------------------------------------------
+RENTAL FOUNDATION
+------------------------------------------------
+
+customers
+bookings
+
+customers belong to organizations.
+
+bookings reference:
+customer_id
+vehicle_id
+start_date
+end_date
+status

@@ -1,0 +1,3981 @@
+// ------------------------------------------------
+// SynqDrive Prisma Schema
+// Aligned with Phase 2 Database Design
+// ------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------
+// ENUMS
+// ------------------------------------------------
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING
+  ARCHIVED
+}
+
+enum BusinessType {
+  RENTAL
+  FLEET
+  TAXI
+  LOGISTICS
+  OTHER
+}
+
+enum MembershipRole {
+  ORG_ADMIN
+  SUB_ADMIN
+  WORKER
+  DRIVER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+  REMOVED
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum UserPlatformRole {
+  MASTER_ADMIN
+  USER
+}
+
+enum StationStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ProductSlug {
+  RENTAL
+  FLEET
+  TAXI
+}
+
+enum OrgProductStatus {
+  ACTIVE
+  TRIAL
+  SUSPENDED
+  CANCELLED
+}
+
+enum OrgProductPlan {
+  STARTER
+  BUSINESS
+  PROFESSIONAL
+  ENTERPRISE
+  CUSTOM
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  RENTED
+  IN_SERVICE
+  OUT_OF_SERVICE
+  RESERVED
+}
+
+enum FuelType {
+  GASOLINE
+  DIESEL
+  ELECTRIC
+  HYBRID
+  PLUGIN_HYBRID
+  OTHER
+}
+
+enum TransmissionType {
+  AUTOMATIC
+  MANUAL
+}
+
+enum VehicleType {
+  SEDAN
+  SUV
+  HATCHBACK
+  WAGON
+  COUPE
+  CONVERTIBLE
+  VAN
+  TRUCK
+  MINIVAN
+  OTHER
+}
+
+enum DriveType {
+  FWD
+  RWD
+  AWD
+  FOUR_WD
+}
+
+enum DimoConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+  PENDING
+  ERROR
+}
+
+enum BatterySourceType {
+  DIMO
+  MANUAL
+  VIN_DECODE
+  ENRICHMENT
+}
+
+enum TireSeason {
+  SUMMER
+  WINTER
+  ALL_SEASON
+  TRACK
+  OTHER
+}
+
+enum TireSetupStatus {
+  ACTIVE
+  STORED
+  DISCARDED
+  SOLD
+}
+
+enum TireSetupCondition {
+  NEW_INSTALLED
+  ALREADY_MOUNTED
+  UNKNOWN
+}
+
+enum TireHealthStatus {
+  EXCELLENT
+  GOOD
+  MODERATE
+  POOR
+  REPLACE_NOW
+}
+
+enum TireChangeType {
+  INSTALL
+  ROTATE
+  REPLACE
+  REMOVE
+  CORRECTION
+}
+
+enum TireEventType {
+  ROTATION
+  TIRE_CHANGE
+  MEASUREMENT
+  RECALCULATION
+  ALERT
+  INSTALL
+  REMOVE
+}
+
+enum ServiceEventType {
+  OIL_CHANGE
+  TIRE_ROTATION
+  BRAKE_SERVICE
+  BATTERY_REPLACEMENT
+  GENERAL_INSPECTION
+  TUV_INSPECTION
+  BOKRAFT_INSPECTION
+  FULL_SERVICE
+  REPAIR
+  OTHER
+}
+
+enum DocumentExtractionStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+enum DocumentExtractionType {
+  SERVICE
+  OIL_CHANGE
+  TIRE
+  BRAKE
+  BATTERY
+  VEHICLE_CONDITION
+  TUV_REPORT
+  BOKRAFT_REPORT
+  INVOICE
+  ACCIDENT
+  DAMAGE
+  FINE
+  OTHER
+}
+
+enum EnrichmentJobType {
+  BATTERY
+  BRAKE
+  TIRE
+  GENERAL
+  AI_SPEC
+}
+
+enum EnrichmentJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum IntegrationType {
+  DIMO
+  STRIPE
+  WOOCOMMERCE
+  SHOPIFY
+}
+
+enum IntegrationScope {
+  PLATFORM
+  ORGANIZATION
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  INACTIVE
+  ERROR
+}
+
+enum BillingStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  TRIALING
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  VOID
+  UNCOLLECTIBLE
+}
+
+enum ProspectStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  NEGOTIATION
+  CONVERTED
+  LOST
+}
+
+enum ProspectPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum InsightType {
+  TIGHT_HANDOVER
+  RETURN_NEEDS_INSPECTION
+  STATION_SHORTAGE
+  LOW_UTILIZATION
+  SERVICE_WINDOW
+  SERVICE_BEFORE_BOOKING
+}
+
+enum InsightSeverity {
+  CRITICAL
+  WARNING
+  OPPORTUNITY
+  INFO
+}
+
+enum InsightEntityScope {
+  VEHICLE
+  STATION
+  VEHICLE_GROUP
+  FLEET
+}
+
+enum DimoPollJobType {
+  SNAPSHOT
+  LIVE_MAP
+  ANALYTICS
+  VEHICLE_SYNC
+  DTC_POLL
+  DRIVING_EVENTS
+  TRIP_TRACKING
+}
+
+enum TripDetectionState {
+  RESTING
+  POSSIBLE_START
+  ACTIVE_TRIP
+  IDLE_WITHIN_TRIP
+  POSSIBLE_END
+  ENDED
+}
+
+enum VehicleDetectionProfile {
+  ICE
+  EV
+  HYBRID
+  UNKNOWN
+}
+
+enum DetectionConfidence {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TripTrackingRunType {
+  POSSIBLE_START_VALIDATION
+  ACTIVE_TRACKING
+  POSSIBLE_END_CHECK
+  END_VALIDATION
+  FINALIZATION_CHECK
+}
+
+enum DimoPollStatus {
+  SUCCESS
+  FAILURE
+  TIMEOUT
+  SKIPPED
+}
+
+enum ActivityAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  CONNECT
+  DISCONNECT
+  REGISTER
+  IMPORT
+  CONVERT
+  SYNC
+  CANCEL
+}
+
+enum ActivityEntity {
+  ORGANIZATION
+  USER
+  VEHICLE
+  BOOKING
+  CUSTOMER
+  PROSPECT
+  INTEGRATION
+  SUBSCRIPTION
+  STATION
+  PRODUCT
+  DIMO_VEHICLE
+  SUPPORT_TICKET
+}
+
+enum DrivingEventType {
+  HARSH_BRAKING
+  EXTREME_BRAKING
+  HARSH_ACCELERATION
+  HARSH_CORNERING
+  SPEEDING
+  IDLE_EXCESSIVE
+}
+
+// ── V3 Hardware types ────────────────────────────────────────────────────────
+// LTE_R1: DIMO LTE dongle — reports native driving events via Telemetry API.
+//         Driving Events are sourced from DIMO Telemetry API Events.
+// SMART5: SynqDrive SMART5 hardware — Driving Events derived from local HF
+//         time-series reconstruction.
+// UNKNOWN: default for existing vehicles not yet classified.
+enum HardwareType {
+  LTE_R1
+  SMART5
+  UNKNOWN
+}
+
+// ── Driving Event source ─────────────────────────────────────────────────────
+// TELEMETRY_EVENTS: event ingested from DIMO Telemetry API (LTE_R1 path).
+// HF_DERIVED:       event reconstructed from local HF time-series (SMART5 path).
+enum DrivingEventSource {
+  TELEMETRY_EVENTS
+  HF_DERIVED
+}
+
+enum DamageType {
+  SCRATCH
+  DENT
+  CRACK
+  BROKEN_PART
+  PAINT_DAMAGE
+  GLASS_DAMAGE
+  TIRE_DAMAGE
+  INTERIOR_DAMAGE
+  OTHER
+}
+
+enum DamageSeverity {
+  MINOR
+  MODERATE
+  MAJOR
+  CRITICAL
+}
+
+enum DtcSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum TirePosition {
+  FRONT_LEFT
+  FRONT_RIGHT
+  REAR_LEFT
+  REAR_RIGHT
+}
+
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum CleaningStatus {
+  CLEAN
+  NEEDS_CLEANING
+}
+
+enum HealthStatus {
+  GOOD
+  WARNING
+  CRITICAL
+}
+
+// ------------------------------------------------
+// ORGANIZATIONS
+// ------------------------------------------------
+
+model Organization {
+  id          String             @id @default(uuid())
+  companyName String             @map("company_name")
+  shortCode   String?            @unique @map("short_code")
+  businessType BusinessType      @map("business_type")
+  address     String?
+  city        String?
+  country     String?
+  phone       String?
+  email       String?
+  website     String?
+  logoUrl     String?            @map("logo_url")
+  status      OrganizationStatus @default(ACTIVE)
+  lastActiveAt DateTime?         @map("last_active_at")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  memberships          OrganizationMembership[]
+  organizationProducts OrganizationProduct[]
+  stations             Station[]
+  vehicles             Vehicle[]
+  vehicleComplaints    VehicleComplaint[]
+  orgIntegrations      OrganizationIntegration[]
+  subscriptions        BillingSubscription[]
+  customers                 Customer[]
+  bookings                  Booking[]
+  activityLogs              ActivityLog[]
+  rentalDrivingAnalyses     RentalDrivingAnalysis[]
+  vendors                   Vendor[]
+  chatAgent                 OrganizationChatAgent?
+  chatMessages              ChatMessage[]
+  whatsappConfig            OrgWhatsAppConfig?
+  whatsappConversations     WhatsAppConversation[]
+  whatsappMessages          WhatsAppMessage[]
+  voiceAssistant            VoiceAssistant?
+  voiceConversations        VoiceConversation[]
+  insightPolicy             TenantInsightPolicy?
+  insightRuns               DashboardInsightRun[]
+  insights                  DashboardInsight[]
+  servicePartnerAssignments TenantServicePartnerAssignment[]
+  partnerDataAuthorizations PartnerDataAuthorization[]
+  partnerServiceCases       PartnerServiceCase[]
+
+  @@index([status])
+  @@map("organizations")
+}
+
+// ------------------------------------------------
+// USERS
+// ------------------------------------------------
+
+model User {
+  id                  String          @id @default(uuid())
+  email               String          @unique
+  name                String?
+  firstName           String?         @map("first_name")
+  lastName            String?         @map("last_name")
+  passwordHash        String?         @map("password_hash")
+  avatarUrl           String?         @map("avatar_url")
+  authProviderId      String?         @unique @map("auth_provider_id")
+  platformRole        UserPlatformRole @default(USER) @map("platform_role")
+  status              UserStatus      @default(ACTIVE)
+  phone               String?
+  mobile              String?
+  address             String?
+  language            String?         @default("de")
+  timezone            String?         @default("Europe/Berlin")
+  dateFormat          String?         @default("DD.MM.YYYY") @map("date_format")
+  mustChangePassword  Boolean         @default(false) @map("must_change_password")
+  lastLoginAt         DateTime?       @map("last_login_at")
+  lastLoginIp         String?         @map("last_login_ip")
+  lastLoginDevice     String?         @map("last_login_device")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  memberships  OrganizationMembership[]
+  activityLogs ActivityLog[]
+
+  @@map("users")
+}
+
+// ------------------------------------------------
+// ORGANIZATION MEMBERSHIPS
+// ------------------------------------------------
+
+model OrganizationMembership {
+  id               String           @id @default(uuid())
+  userId           String           @map("user_id")
+  organizationId   String           @map("organization_id")
+  role             MembershipRole
+  roleLabel        String?          @map("role_label")
+  stationScope     String?          @map("station_scope")
+  department       String?
+  position         String?
+  permissions      Json?
+  fieldAgentAccess Boolean          @default(false) @map("field_agent_access")
+  status           MembershipStatus @default(ACTIVE)
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@index([userId])
+  @@map("organization_memberships")
+}
+
+// ------------------------------------------------
+// STATIONS
+// ------------------------------------------------
+
+model Station {
+  id             String        @id @default(uuid())
+  organizationId String        @map("organization_id")
+  name           String
+  address        String?
+  city           String?
+  country        String?
+  latitude       Float?
+  longitude      Float?
+  status         StationStatus @default(ACTIVE)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicles     Vehicle[]
+
+  @@index([organizationId])
+  @@map("stations")
+}
+
+// ------------------------------------------------
+// PRODUCTS & LICENSING
+// ------------------------------------------------
+
+model Product {
+  id          String      @id @default(uuid())
+  slug        ProductSlug @unique
+  name        String
+  description String?
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  organizationProducts OrganizationProduct[]
+
+  @@map("products")
+}
+
+model OrganizationProduct {
+  id             String           @id @default(uuid())
+  organizationId String           @map("organization_id")
+  productId      String           @map("product_id")
+  status         OrgProductStatus @default(ACTIVE)
+  plan           OrgProductPlan   @default(STARTER)
+  activatedAt    DateTime?        @map("activated_at")
+  expiresAt      DateTime?        @map("expires_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id])
+
+  @@unique([organizationId, productId])
+  @@index([organizationId])
+  @@map("organization_products")
+}
+
+// ------------------------------------------------
+// VEHICLES (registered SynqDrive vehicles)
+// ------------------------------------------------
+
+model Vehicle {
+  id              String           @id @default(uuid())
+  organizationId  String           @map("organization_id")
+  stationId       String?          @map("station_id")
+  dimoVehicleId   String?          @map("dimo_vehicle_id")
+  vin             String
+  make            String
+  model           String
+  year            Int
+  vehicleName     String?          @map("vehicle_name")
+  fuelType        FuelType         @map("fuel_type")
+  transmission    TransmissionType?
+  driveType       DriveType?       @map("drive_type")
+  vehicleType     VehicleType?     @map("vehicle_type")
+  color           String?
+  licensePlate    String?          @map("license_plate")
+  mileageKm       Int?             @map("mileage_km")
+  dailyRateEur    Float?           @map("daily_rate_eur")
+  weeklyRateEur   Float?           @map("weekly_rate_eur")
+  monthlyRateEur  Float?           @map("monthly_rate_eur")
+  extraKmPrice    Float?           @map("extra_km_price")
+  imageUrl        String?          @map("image_url")
+  status          VehicleStatus    @default(AVAILABLE)
+  cleaningStatus  CleaningStatus   @default(CLEAN) @map("cleaning_status")
+  healthStatus    HealthStatus     @default(GOOD) @map("health_status")
+  notes           String?
+  leasingRateCents  Int?           @map("leasing_rate_cents")
+  insuranceCostCents Int?          @map("insurance_cost_cents")
+  taxCostCents    Int?             @map("tax_cost_cents")
+  curbWeightKg    Float?           @map("curb_weight_kg")
+  frontWeightDistributionPct Float? @map("front_weight_distribution_pct")
+  idleRpm         Int?             @map("idle_rpm")
+  maxRpm          Int?             @map("max_rpm")
+  serviceIntervalKm Int?           @map("service_interval_km")
+  serviceIntervalMonths Int?       @map("service_interval_months")
+  brakeForceFrontPercent Float?    @map("brake_force_front_percent")
+  lastServiceDate     DateTime?    @map("last_service_date")
+  lastServiceOdometerKm Int?       @map("last_service_odometer_km")
+  nextServiceDueDate  DateTime?    @map("next_service_due_date")
+  serviceIntervalManufacturerKm Int? @map("service_interval_manufacturer_km")
+  serviceIntervalManufacturerMonths Int? @map("service_interval_manufacturer_months")
+  lastOilChangeDate   DateTime?    @map("last_oil_change_date")
+  lastOilChangeOdometerKm Int?     @map("last_oil_change_odometer_km")
+  oilChangeIntervalKm Int?         @map("oil_change_interval_km")
+  oilChangeIntervalMonths Int?     @map("oil_change_interval_months")
+  hvBatteryCapacityKwh Float?     @map("hv_battery_capacity_kwh")
+  tankCapacityLiters   Float?     @map("tank_capacity_liters")
+
+  // ── V3 Hardware type ───────────────────────────────────────────────────────
+  // Drives the source split for Driving Events (LTE_R1 → Telemetry API Events,
+  // SMART5 → HF time-series reconstruction). Defaults to UNKNOWN for all
+  // existing vehicles; eligible vehicles can be backfilled to LTE_R1 via the
+  // admin backfill endpoint.
+  hardwareType        HardwareType @default(UNKNOWN) @map("hardware_type")
+
+  lastTuvDate         DateTime?    @map("last_tuv_date")
+  nextTuvDate         DateTime?    @map("next_tuv_date")
+  lastBokraftDate     DateTime?    @map("last_bokraft_date")
+  nextBokraftDate     DateTime?    @map("next_bokraft_date")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  organization          Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  station               Station?                   @relation(fields: [stationId], references: [id], onDelete: SetNull)
+  dimoVehicle           DimoVehicle?               @relation(fields: [dimoVehicleId], references: [id], onDelete: SetNull)
+  batterySpecs          VehicleBatterySpec[]
+  tireSetups            VehicleTireSetup[]
+  tires                 Tire[]
+  tirePositionHistory   TirePositionHistory[]
+  tireEvents            TireEvent[]
+  tireHealthSnapshots   TireHealthSnapshot[]
+  tireWearDataPoints    TireWearDataPoint[]
+  brakeSpecs            VehicleBrakeReferenceSpec[]
+  serviceEvents         VehicleServiceEvent[]
+  enrichmentJobs        VehicleEnrichmentJob[]
+  latestState           VehicleLatestState?
+  positionUpdates       VehiclePositionUpdate[]
+  analyticsCacheEntries AnalyticsCache[]
+  pollLogs              DimoPollLog[]
+  bookings              Booking[]
+  drivingEvents         DrivingEvent[]
+  batterySnapshots      BatteryHealthSnapshot[]
+  hvBatterySnapshots    HvBatteryHealthSnapshot[]
+  hvBatteryHealthCurrent  HvBatteryHealthCurrent?
+  batteryFeatures         BatteryFeatures?
+  brakeTripMetrics        BrakeTripMetric[]
+  brakeHealthCurrent      BrakeHealthCurrent?
+  dtcEvents               VehicleDtcEvent[]
+  tripDrivingImpacts      TripDrivingImpact[]
+  drivingImpactCurrent    VehicleDrivingImpactCurrent?
+  damages               VehicleDamage[]
+  rentalDrivingAnalyses RentalDrivingAnalysis[]
+  trips                 VehicleTrip[]
+  tripDetectionState    VehicleTripDetectionState?
+  tripTrackingRuns      VehicleTripTrackingRun[]
+  tripBehaviorEvents    TripBehaviorEvent[]
+  logbookConfig         VehicleLogbookConfig?
+  documentExtractions   VehicleDocumentExtraction[]
+  vendorVehicles        VendorVehicle[]
+  complaints            VehicleComplaint[]
+  partnerServiceCases   PartnerServiceCase[]
+
+  @@unique([vin, organizationId])
+  @@index([organizationId])
+  @@index([stationId])
+  @@index([status])
+  @@map("vehicles")
+}
+
+enum ComplaintUrgency {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ComplaintLifecycleStatus {
+  ACTIVE
+  RESOLVED
+}
+
+enum ComplaintSource {
+  FIELD_AGENT
+  MANUAL
+}
+
+model VehicleComplaint {
+  id              String                   @id @default(uuid())
+  organizationId  String                   @map("organization_id")
+  vehicleId       String                   @map("vehicle_id")
+  createdByUserId String?                  @map("created_by_user_id")
+  description     String
+  urgency         ComplaintUrgency         @default(MEDIUM)
+  region          String?
+  status          ComplaintLifecycleStatus @default(ACTIVE)
+  source          ComplaintSource          @default(MANUAL)
+  resolvedAt      DateTime?                @map("resolved_at")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([organizationId])
+  @@map("vehicle_complaints")
+}
+
+// ------------------------------------------------
+// DIMO MIRRORED VEHICLES
+// ------------------------------------------------
+
+model DimoVehicle {
+  id               String               @id @default(uuid())
+  externalId       String               @unique @map("external_id")
+  tokenId          Int?                 @unique @map("token_id")
+  vin              String?
+  make             String?
+  model            String?
+  year             Int?
+  fuelType         String?              @map("fuel_type")
+  powertrainType   String?              @map("powertrain_type")
+  odometerKm       Float?               @map("odometer_km")
+  batteryPercent   Float?               @map("battery_percent")
+  fuelPercent      Float?               @map("fuel_percent")
+  lastSignal       DateTime?            @map("last_signal")
+  connectionStatus DimoConnectionStatus @default(PENDING) @map("connection_status")
+  rawJson          Json?                @map("raw_json")
+  syncedAt         DateTime?            @map("synced_at")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+
+  registeredVehicles Vehicle[]
+
+  @@index([vin])
+  @@index([connectionStatus])
+  @@map("dimo_vehicles")
+}
+
+// ------------------------------------------------
+// VEHICLE INTELLIGENCE — BATTERY
+// ------------------------------------------------
+
+model VehicleBatterySpec {
+  id               String            @id @default(uuid())
+  vehicleId        String            @map("vehicle_id")
+  batteryType      String?           @map("battery_type")
+  batteryAmpere    Float?            @map("battery_ampere")
+  batteryVolt      Float?            @map("battery_volt")
+  sourceType       BatterySourceType @default(MANUAL) @map("source_type")
+  sourceConfidence Float?            @map("source_confidence")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_battery_specs")
+}
+
+// ------------------------------------------------
+// VEHICLE INTELLIGENCE — TIRES
+// ------------------------------------------------
+
+model VehicleTireSetup {
+  id                  String           @id @default(uuid())
+  organizationId      String?          @map("organization_id")
+  vehicleId           String           @map("vehicle_id")
+  name                String?
+  frontDimension      String?          @map("front_dimension")
+  rearDimension       String?          @map("rear_dimension")
+  brandModelFront     String?          @map("brand_model_front")
+  brandModelRear      String?          @map("brand_model_rear")
+  tireSeason          TireSeason       @default(ALL_SEASON) @map("tire_season")
+  expectedLifeKm      Int?             @map("expected_life_km")
+  initialTreadDepthMm Float?           @map("initial_tread_depth_mm")
+  isStaggered         Boolean          @default(false) @map("is_staggered")
+  kFactorFront            Float            @default(1.0) @map("k_factor_front")
+  kFactorRear             Float            @default(1.0) @map("k_factor_rear")
+  kFactorCalibrationCount Int              @default(0) @map("k_factor_calibration_count")
+  regenBrakingFactor      Float            @default(1.0) @map("regen_braking_factor")
+  regenBrakingFactorFront Float?           @map("regen_braking_factor_front")
+  regenBrakingFactorRear  Float?           @map("regen_braking_factor_rear")
+  initialTreadFrontMm     Float?           @map("initial_tread_front_mm")
+  initialTreadRearMm      Float?           @map("initial_tread_rear_mm")
+  expectedLifeKmFront     Int?             @map("expected_life_km_front")
+  expectedLifeKmRear      Int?             @map("expected_life_km_rear")
+  frontTireWidthMm        Int?             @map("front_tire_width_mm")
+  rearTireWidthMm         Int?             @map("rear_tire_width_mm")
+  installedAt         DateTime?        @map("installed_at")
+  removedAt           DateTime?        @map("removed_at")
+  installedOdometerKm Float?           @map("installed_odometer_km")
+  removedOdometerKm   Float?           @map("removed_odometer_km")
+  status              TireSetupStatus  @default(ACTIVE)
+  notes               String?
+  createdBy           String?          @map("created_by")
+  updatedBy           String?          @map("updated_by")
+
+  totalKmOnSet        Float            @default(0) @map("total_km_on_set")
+  cityKm              Float            @default(0) @map("city_km")
+  highwayKm           Float            @default(0) @map("highway_km")
+  ruralKm             Float            @default(0) @map("rural_km")
+  harshAccelEvents    Int              @default(0) @map("harsh_accel_events")
+  harshBrakeEvents    Int              @default(0) @map("harsh_brake_events")
+  harshCornerEvents   Int              @default(0) @map("harsh_corner_events")
+  burnoutEvents       Int              @default(0) @map("burnout_events")
+
+  overallHealthPercent   Float?        @map("overall_health_percent")
+  overallRemainingKm     Int?          @map("overall_remaining_km")
+  healthStatus           TireHealthStatus @default(EXCELLENT) @map("health_status")
+  confidenceScore        Float?        @map("confidence_score")
+  confidenceLabel        String?       @map("confidence_label")
+  lastRecalculatedAt     DateTime?     @map("last_recalculated_at")
+  wearRateMmPer1000km    Float?        @map("wear_rate_mm_per_1000km")
+
+  // ── Load / Speed index per axle ──────────────────────────────────────────────
+  loadIndexFront          String?        @map("load_index_front")
+  speedIndexFront         String?        @map("speed_index_front")
+  loadIndexRear           String?        @map("load_index_rear")
+  speedIndexRear          String?        @map("speed_index_rear")
+  dotCodeFront            String?        @map("dot_code_front")
+  dotCodeRear             String?        @map("dot_code_rear")
+
+  // ── Tire condition at setup ─────────────────────────────────────────────────
+  tireCondition           TireSetupCondition @default(UNKNOWN) @map("tire_condition")
+
+  // ── AI tire spec (structured JSON blob) ─────────────────────────────────────
+  aiTireSpec              Json?          @map("ai_tire_spec")
+
+  // ── Reference / threshold fields resolved from spec + manual ────────────────
+  referenceNewTreadMm     Float?         @map("reference_new_tread_mm")
+  legalMinimumMm          Float?         @map("legal_minimum_mm")
+  recommendedReplacementMm Float?        @map("recommended_replacement_mm")
+  operationalReplacementMm Float?        @map("operational_replacement_mm")
+
+  // ── Source tracking ─────────────────────────────────────────────────────────
+  initialTreadSource      String?        @map("initial_tread_source")
+  referenceNewTreadSource String?        @map("reference_new_tread_source")
+  replacementThresholdSource String?     @map("replacement_threshold_source")
+
+  // ── Multi-dimensional confidence ────────────────────────────────────────────
+  tireSpecConfidence      Float?         @map("tire_spec_confidence")
+  dataCompletenessConfidence Float?      @map("data_completeness_confidence")
+  modelConfidence         Float?         @map("model_confidence")
+
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  vehicle          Vehicle                      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  measurements     VehicleTireTreadMeasurement[]
+  tires            Tire[]
+  positionHistory  TirePositionHistory[]
+  events           TireEvent[]
+  snapshots        TireHealthSnapshot[]
+  wearDataPoints   TireWearDataPoint[]
+
+  @@index([vehicleId])
+  @@index([organizationId, vehicleId])
+  @@index([status])
+  @@map("vehicle_tire_setups")
+}
+
+model VehicleTireTreadMeasurement {
+  id                  String   @id @default(uuid())
+  vehicleId           String   @map("vehicle_id")
+  tireSetupId         String   @map("tire_setup_id")
+  frontLeftMm         Float?   @map("front_left_mm")
+  frontRightMm        Float?   @map("front_right_mm")
+  rearLeftMm          Float?   @map("rear_left_mm")
+  rearRightMm         Float?   @map("rear_right_mm")
+  odometerAtMeasurement Float? @map("odometer_at_measurement")
+  source              String   @default("manual") @map("source")
+  workshopName        String?  @map("workshop_name")
+  isCalibrationPoint  Boolean  @default(false) @map("is_calibration_point")
+  measuredAt          DateTime @map("measured_at")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  tireSetup VehicleTireSetup @relation(fields: [tireSetupId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([tireSetupId])
+  @@map("vehicle_tire_tread_measurements")
+}
+
+// ------------------------------------------------
+// VEHICLE INTELLIGENCE — INDIVIDUAL TIRES
+// ------------------------------------------------
+
+model Tire {
+  id                    String           @id @default(uuid())
+  organizationId        String           @map("organization_id")
+  vehicleId             String           @map("vehicle_id")
+  tireSetId             String?          @map("tire_set_id")
+  brand                 String?
+  tireModel             String?          @map("tire_model")
+  width                 Int?
+  aspectRatio           Int?             @map("aspect_ratio")
+  rimDiameter           Int?             @map("rim_diameter")
+  loadIndex             String?          @map("load_index")
+  speedIndex            String?          @map("speed_index")
+  seasonType            TireSeason       @default(ALL_SEASON) @map("season_type")
+  runflat               Boolean          @default(false)
+  reinforced            Boolean          @default(false)
+  dotCode               String?          @map("dot_code")
+  productionWeek        Int?             @map("production_week")
+  productionYear        Int?             @map("production_year")
+  installedPosition     TirePosition     @map("installed_position")
+  currentPosition       TirePosition     @map("current_position")
+  initialTreadDepthMm   Float            @map("initial_tread_depth_mm")
+  legalMinTreadMm       Float            @default(1.6) @map("legal_min_tread_mm")
+  targetReplaceTreadMm  Float            @default(3.0) @map("target_replace_tread_mm")
+  estimatedTreadMm      Float?           @map("estimated_tread_mm")
+  estimatedWearPercent  Float?           @map("estimated_wear_percent")
+  estimatedRemainingKm  Int?             @map("estimated_remaining_km")
+  wearRateMmPer1000km   Float?           @map("wear_rate_mm_per_1000km")
+  healthStatus          TireHealthStatus @default(EXCELLENT) @map("health_status")
+  confidenceScore       Float?           @map("confidence_score")
+  confidenceLabel       String?          @map("confidence_label")
+  totalKmOnTire         Float            @default(0) @map("total_km_on_tire")
+  cityKm                Float            @default(0) @map("city_km")
+  highwayKm             Float            @default(0) @map("highway_km")
+  ruralKm               Float            @default(0) @map("rural_km")
+  harshAccelEvents      Int              @default(0) @map("harsh_accel_events")
+  harshBrakeEvents      Int              @default(0) @map("harsh_brake_events")
+  highLateralEvents     Int              @default(0) @map("high_lateral_events")
+  burnoutEvents         Int              @default(0) @map("burnout_events")
+  lastRecalculatedAt    DateTime?        @map("last_recalculated_at")
+  active                Boolean          @default(true)
+  createdAt             DateTime         @default(now()) @map("created_at")
+  updatedAt             DateTime         @updatedAt @map("updated_at")
+
+  vehicle         Vehicle            @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  tireSet         VehicleTireSetup?  @relation(fields: [tireSetId], references: [id], onDelete: SetNull)
+  positionHistory TirePositionHistory[]
+  events          TireEvent[]
+  snapshots       TireHealthSnapshot[]
+  measurements    TireMeasurement[]
+
+  @@index([organizationId, vehicleId])
+  @@index([vehicleId, active])
+  @@index([tireSetId])
+  @@map("tires")
+}
+
+model TirePositionHistory {
+  id               String         @id @default(uuid())
+  organizationId   String         @map("organization_id")
+  vehicleId        String         @map("vehicle_id")
+  tireSetId        String?        @map("tire_set_id")
+  tireId           String?        @map("tire_id")
+  fromPosition     TirePosition?  @map("from_position")
+  toPosition       TirePosition   @map("to_position")
+  changedAt        DateTime       @map("changed_at")
+  odometerKm       Float?         @map("odometer_km")
+  changeType       TireChangeType @map("change_type")
+  rotationTemplate String?        @map("rotation_template")
+  notes            String?
+  createdBy        String?        @map("created_by")
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  vehicle  Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  tireSet  VehicleTireSetup? @relation(fields: [tireSetId], references: [id], onDelete: SetNull)
+  tire     Tire?             @relation(fields: [tireId], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId])
+  @@index([tireSetId])
+  @@index([tireId, changedAt])
+  @@map("tire_position_history")
+}
+
+model TireMeasurement {
+  id                  String   @id @default(uuid())
+  organizationId      String   @map("organization_id")
+  vehicleId           String   @map("vehicle_id")
+  tireId              String   @map("tire_id")
+  measuredTreadMm     Float    @map("measured_tread_mm")
+  measuredAt          DateTime @map("measured_at")
+  odometerKm          Float?   @map("odometer_km")
+  measuredBy          String?  @map("measured_by")
+  source              String   @default("manual")
+  notes               String?
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  tire Tire @relation(fields: [tireId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([tireId, measuredAt])
+  @@map("tire_measurements")
+}
+
+model TireEvent {
+  id             String        @id @default(uuid())
+  organizationId String        @map("organization_id")
+  vehicleId      String        @map("vehicle_id")
+  tireId         String?       @map("tire_id")
+  tireSetId      String?       @map("tire_set_id")
+  type           TireEventType
+  payload        Json?
+  createdBy      String?       @map("created_by")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  vehicle Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  tire    Tire?              @relation(fields: [tireId], references: [id], onDelete: SetNull)
+  tireSet VehicleTireSetup?  @relation(fields: [tireSetId], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId])
+  @@index([tireSetId])
+  @@index([tireId])
+  @@map("tire_events")
+}
+
+model TireHealthSnapshot {
+  id                    String   @id @default(uuid())
+  organizationId        String   @map("organization_id")
+  vehicleId             String   @map("vehicle_id")
+  tireId                String?  @map("tire_id")
+  tireSetId             String?  @map("tire_set_id")
+  snapshotDate          DateTime @map("snapshot_date")
+  odometerKm            Float?   @map("odometer_km")
+  estimatedTreadMm      Float?   @map("estimated_tread_mm")
+  estimatedWearPercent  Float?   @map("estimated_wear_percent")
+  estimatedRemainingKm  Int?     @map("estimated_remaining_km")
+  citySharePercent      Float?   @map("city_share_percent")
+  highwaySharePercent   Float?   @map("highway_share_percent")
+  ruralSharePercent     Float?   @map("rural_share_percent")
+  confidenceScore       Float?   @map("confidence_score")
+  wearRateMmPer1000km   Float?   @map("wear_rate_mm_per_1000km")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  vehicle Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  tire    Tire?              @relation(fields: [tireId], references: [id], onDelete: SetNull)
+  tireSet VehicleTireSetup?  @relation(fields: [tireSetId], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId, snapshotDate])
+  @@index([tireId, snapshotDate])
+  @@index([tireSetId])
+  @@map("tire_health_snapshots")
+}
+
+model TireWearDataPoint {
+  id                  String   @id @default(uuid())
+  organizationId      String   @map("organization_id")
+  vehicleId           String   @map("vehicle_id")
+  tireSetId           String?  @map("tire_set_id")
+  axle                String
+  distanceKm          Float    @map("distance_km")
+  predictedTreadMm    Float    @map("predicted_tread_mm")
+  actualTreadMm       Float    @map("actual_tread_mm")
+  initialTreadMm      Float    @map("initial_tread_mm")
+  climateFactor       Float    @default(1.0) @map("climate_factor")
+  roadSurfaceFactor   Float    @default(1.0) @map("road_surface_factor")
+  roadTypeFactor      Float    @default(1.0) @map("road_type_factor")
+  drivingStyleFactor  Float    @default(1.0) @map("driving_style_factor")
+  regenFactor         Float    @default(1.0) @map("regen_factor")
+  curbWeightKg        Float?   @map("curb_weight_kg")
+  tireWidthMm         Int?     @map("tire_width_mm")
+  tireSeason          String?  @map("tire_season")
+  residualError       Float?   @map("residual_error")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  vehicle  Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  tireSet  VehicleTireSetup? @relation(fields: [tireSetId], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId])
+  @@index([tireSetId])
+  @@index([organizationId])
+  @@map("tire_wear_data_points")
+}
+
+// ------------------------------------------------
+// VEHICLE INTELLIGENCE — BRAKES
+// ------------------------------------------------
+
+model VehicleBrakeReferenceSpec {
+  id                 String   @id @default(uuid())
+  vehicleId          String   @map("vehicle_id")
+  frontRotorDiameter Float?   @map("front_rotor_diameter")
+  frontRotorWidth    Float?   @map("front_rotor_width")
+  frontPadThickness  Float?   @map("front_pad_thickness")
+  rearRotorDiameter  Float?   @map("rear_rotor_diameter")
+  rearRotorWidth     Float?   @map("rear_rotor_width")
+  rearPadThickness   Float?   @map("rear_pad_thickness")
+  sourceType         String?  @map("source_type")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_brake_reference_specs")
+}
+
+// ------------------------------------------------
+// VEHICLE INTELLIGENCE — SERVICE EVENTS
+// ------------------------------------------------
+
+model VehicleServiceEvent {
+  id            String           @id @default(uuid())
+  vehicleId     String           @map("vehicle_id")
+  eventType     ServiceEventType @map("event_type")
+  eventDate     DateTime         @map("event_date")
+  odometerKm    Int?             @map("odometer_km")
+  notes         String?
+  workshopName  String?          @map("workshop_name")
+  costCents     Int?             @map("cost_cents")
+  provider      String?
+  documentUrl   String?          @map("document_url")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([eventDate])
+  @@map("vehicle_service_events")
+}
+
+// ------------------------------------------------
+// VEHICLE DOCUMENT EXTRACTION (AI Upload)
+// ------------------------------------------------
+
+model VehicleDocumentExtraction {
+  id                String                    @id @default(uuid())
+  vehicleId         String                    @map("vehicle_id")
+  organizationId    String?                   @map("organization_id")
+  documentType      DocumentExtractionType    @map("document_type")
+  status            DocumentExtractionStatus  @default(PENDING) @map("status")
+  sourceFileName    String?                   @map("source_file_name")
+  sourceFileUrl     String?                   @map("source_file_url")
+  extractedData     Json?                     @map("extracted_data")
+  confirmedData     Json?                     @map("confirmed_data")
+  appliedAt         DateTime?                 @map("applied_at")
+  serviceEventId    String?                   @map("service_event_id")
+  createdAt         DateTime                  @default(now()) @map("created_at")
+  updatedAt         DateTime                  @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([status])
+  @@map("vehicle_document_extractions")
+}
+
+// ------------------------------------------------
+// VEHICLE ENRICHMENT JOBS
+// ------------------------------------------------
+
+model VehicleEnrichmentJob {
+  id           String              @id @default(uuid())
+  vehicleId    String?             @map("vehicle_id")
+  jobType      EnrichmentJobType   @map("job_type")
+  status       EnrichmentJobStatus @default(PENDING)
+  attempts     Int                 @default(0)
+  resultJson   Json?               @map("result_json")
+  errorMessage String?             @map("error_message")
+  startedAt    DateTime?           @map("started_at")
+  completedAt  DateTime?           @map("completed_at")
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([status])
+  @@index([jobType])
+  @@map("vehicle_enrichment_jobs")
+}
+
+// ------------------------------------------------
+// DIMO TELEMETRY — LATEST STATE
+// ------------------------------------------------
+
+model VehicleLatestState {
+  id                String   @id @default(uuid())
+  vehicleId         String   @unique @map("vehicle_id")
+  dimoTokenId       Int?     @map("dimo_token_id")
+  source            String   @default("dimo")
+  lastSeenAt        DateTime? @map("last_seen_at")
+  online            Boolean  @default(false)
+  latitude          Float?
+  longitude         Float?
+  speedKmh          Float?   @map("speed_kmh")
+  odometerKm        Float?   @map("odometer_km")
+  oilLevelRelative  Float?   @map("oil_level_relative")
+  defLevel          Float?   @map("def_level")
+  rangeKm           Float?   @map("range_km")
+  tirePressureFl    Float?   @map("tire_pressure_fl")
+  tirePressureFr    Float?   @map("tire_pressure_fr")
+  tirePressureRl    Float?   @map("tire_pressure_rl")
+  tirePressureRr    Float?   @map("tire_pressure_rr")
+  tireHealthPercent Float?   @map("tire_health_percent")
+  evSoc             Float?   @map("ev_soc")
+  /// Traction battery power (kW). DIMO: powertrainTractionBatteryCurrentPower in W → /1000. Positive = into battery (charge/regen); negative = out (motoring).
+  tractionBatteryPowerKw Float? @map("traction_battery_power_kw")
+  isIgnitionOn      Boolean? @map("is_ignition_on")
+  engineLoad        Float?   @map("engine_load")
+  lvBatteryVoltage  Float?   @map("lv_battery_voltage")
+  fuelLevelRelative Float?   @map("fuel_level_relative")
+  fuelLevelAbsolute Float?   @map("fuel_level_absolute")
+  coolantTempC      Float?   @map("coolant_temp_c")
+  brakePadPercent   Float?   @map("brake_pad_percent")
+  engineOilPercent  Float?   @map("engine_oil_percent")
+  obdDtcList                 Json?     @map("obd_dtc_list")
+  lastDtcPollAt              DateTime? @map("last_dtc_poll_at")
+  lastDtcSuccessfulCheckAt   DateTime? @map("last_dtc_successful_check_at")
+  dtcPollStatus              String?   @map("dtc_poll_status")
+  dtcPollError               String?   @map("dtc_poll_error")
+  rawPayloadJson    Json?    @map("raw_payload_json")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("vehicle_latest_states")
+}
+
+// ------------------------------------------------
+// DIMO TELEMETRY — POSITION UPDATES
+// ------------------------------------------------
+
+model VehiclePositionUpdate {
+  id        String   @id @default(uuid())
+  vehicleId String   @map("vehicle_id")
+  latitude  Float
+  longitude Float
+  source    String   @default("dimo")
+  recordedAt DateTime @map("recorded_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, recordedAt])
+  @@map("vehicle_position_updates")
+}
+
+// ------------------------------------------------
+// DIMO TELEMETRY — ANALYTICS CACHE
+// ------------------------------------------------
+
+model AnalyticsCache {
+  id          String   @id @default(uuid())
+  vehicleId   String   @map("vehicle_id")
+  chartType   String   @map("chart_type")
+  rangeFrom   DateTime @map("range_from")
+  rangeTo     DateTime @map("range_to")
+  interval    String?
+  source      String   @default("dimo")
+  cacheKey    String   @unique @map("cache_key")
+  payloadJson Json     @map("payload_json")
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([cacheKey])
+  @@index([expiresAt])
+  @@map("analytics_cache")
+}
+
+// ------------------------------------------------
+// DIMO TELEMETRY — POLL LOGS
+// ------------------------------------------------
+
+model DimoPollLog {
+  id             String         @id @default(uuid())
+  vehicleId      String?        @map("vehicle_id")
+  jobType        DimoPollJobType @map("job_type")
+  status         DimoPollStatus
+  startedAt      DateTime       @map("started_at")
+  finishedAt     DateTime?      @map("finished_at")
+  durationMs     Int?           @map("duration_ms")
+  tokenRefreshed Boolean        @default(false) @map("token_refreshed")
+  errorMessage   String?        @map("error_message")
+  errorCode      String?        @map("error_code")
+  retryCount     Int            @default(0) @map("retry_count")
+  metaJson       Json?          @map("meta_json")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId])
+  @@index([jobType])
+  @@index([createdAt])
+  @@map("dimo_poll_logs")
+}
+
+// ------------------------------------------------
+// INTEGRATIONS
+// ------------------------------------------------
+
+model Integration {
+  id          String           @id @default(uuid())
+  type        IntegrationType
+  scope       IntegrationScope
+  name        String
+  description String?
+  configSchema Json?           @map("config_schema")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  orgIntegrations OrganizationIntegration[]
+
+  @@unique([type, scope])
+  @@map("integrations")
+}
+
+model OrganizationIntegration {
+  id             String            @id @default(uuid())
+  organizationId String            @map("organization_id")
+  integrationId  String            @map("integration_id")
+  status         IntegrationStatus @default(INACTIVE)
+  credentials    Json?
+  configJson     Json?             @map("config_json")
+  lastSyncAt     DateTime?         @map("last_sync_at")
+  errorMessage   String?           @map("error_message")
+  connectedAt    DateTime?         @map("connected_at")
+  disconnectedAt DateTime?         @map("disconnected_at")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  integration  Integration  @relation(fields: [integrationId], references: [id])
+
+  @@unique([organizationId, integrationId])
+  @@index([organizationId])
+  @@map("organization_integrations")
+}
+
+// ------------------------------------------------
+// BILLING
+// ------------------------------------------------
+
+model BillingSubscription {
+  id                    String        @id @default(uuid())
+  organizationId        String        @map("organization_id")
+  stripeSubscriptionId  String?       @unique @map("stripe_subscription_id")
+  stripeCustomerId      String?       @map("stripe_customer_id")
+  status                BillingStatus @default(ACTIVE)
+  currentPeriodStart    DateTime?     @map("current_period_start")
+  currentPeriodEnd      DateTime?     @map("current_period_end")
+  cancelAtPeriodEnd     Boolean       @default(false) @map("cancel_at_period_end")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoices     BillingInvoice[]
+
+  @@index([organizationId])
+  @@map("billing_subscriptions")
+}
+
+model BillingInvoice {
+  id               String        @id @default(uuid())
+  subscriptionId   String        @map("subscription_id")
+  stripeInvoiceId  String?       @unique @map("stripe_invoice_id")
+  amountCents      Int           @map("amount_cents")
+  currency         String        @default("eur")
+  status           InvoiceStatus @default(DRAFT)
+  invoiceDate      DateTime      @map("invoice_date")
+  dueDate          DateTime?     @map("due_date")
+  paidAt           DateTime?     @map("paid_at")
+  invoicePdfUrl    String?       @map("invoice_pdf_url")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  subscription BillingSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@map("billing_invoices")
+}
+
+// ------------------------------------------------
+// PROSPECTS
+// ------------------------------------------------
+
+model Prospect {
+  id                String          @id @default(uuid())
+  companyName       String          @map("company_name")
+  businessType      BusinessType    @map("business_type")
+  website           String?
+  phone             String?
+  email             String?
+  contactName       String?         @map("contact_name")
+  city              String?
+  country           String?
+  fleetSizeEstimate Int?            @map("fleet_size_estimate")
+  status            ProspectStatus  @default(NEW)
+  priority          ProspectPriority @default(MEDIUM)
+  notes             String?
+  lastContactedAt   DateTime?       @map("last_contacted_at")
+  convertedOrgId    String?         @map("converted_org_id")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([priority])
+  @@index([businessType])
+  @@map("prospects")
+}
+
+// ------------------------------------------------
+// CUSTOMERS (rental/org-scoped)
+// ------------------------------------------------
+
+model Customer {
+  id             String         @id @default(uuid())
+  organizationId String         @map("organization_id")
+  firstName      String         @map("first_name")
+  lastName       String         @map("last_name")
+  email          String?
+  phone          String?
+  licenseNumber  String?        @map("license_number")
+  dateOfBirth    DateTime?      @map("date_of_birth")
+  address        String?
+  city           String?
+  country        String?
+  status         CustomerStatus @default(ACTIVE)
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  organization           Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookings               Booking[]
+  rentalDrivingAnalyses  RentalDrivingAnalysis[]
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("customers")
+}
+
+// ------------------------------------------------
+// BOOKINGS
+// ------------------------------------------------
+
+model Booking {
+  id               String        @id @default(uuid())
+  organizationId   String        @map("organization_id")
+  customerId       String        @map("customer_id")
+  vehicleId        String        @map("vehicle_id")
+  pickupStationId  String?       @map("pickup_station_id")
+  returnStationId  String?       @map("return_station_id")
+  startDate        DateTime      @map("start_date")
+  endDate          DateTime      @map("end_date")
+  dailyRateCents   Int?          @map("daily_rate_cents")
+  totalPriceCents  Int?          @map("total_price_cents")
+  kmIncluded       Int?          @map("km_included")
+  kmDriven         Int?          @map("km_driven")
+  insuranceOptions Json?         @map("insurance_options")
+  extrasJson       Json?         @map("extras_json")
+  currency         String        @default("eur")
+  status           BookingStatus @default(PENDING)
+  notes            String?
+  cancelledAt      DateTime?     @map("cancelled_at")
+  completedAt      DateTime?     @map("completed_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  organization           Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer               Customer     @relation(fields: [customerId], references: [id])
+  vehicle                Vehicle      @relation(fields: [vehicleId], references: [id])
+  rentalDrivingAnalysis  RentalDrivingAnalysis?
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([status])
+  @@index([startDate, endDate])
+  @@map("bookings")
+}
+
+// ------------------------------------------------
+// RENTAL DRIVING ANALYSIS (stored per completed rental period)
+// ------------------------------------------------
+
+model RentalDrivingAnalysis {
+  id                    String   @id @default(uuid())
+  organizationId        String   @map("organization_id")
+  bookingId             String   @unique @map("booking_id")
+  vehicleId             String   @map("vehicle_id")
+  driverId              String   @map("driver_id")
+  periodStart           DateTime @map("period_start")
+  periodEnd             DateTime @map("period_end")
+  payload               Json     @map("payload")
+  overallLevel          String   @map("overall_level")
+  driverStyleCategory   String   @map("driver_style_category")
+  riskLevel             String   @map("risk_level")
+  drivingScore          Float?   @map("driving_score")
+  drivingEventsCount    Int?     @map("driving_events_count")
+  abuseDetectionCount   Int?     @map("abuse_detection_count")
+  wearImpact            String?  @map("wear_impact")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  driver       Customer     @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([periodStart, periodEnd])
+  @@map("rental_driving_analyses")
+}
+
+// ------------------------------------------------
+// ACTIVITY LOG
+// ------------------------------------------------
+
+model ActivityLog {
+  id             String         @id @default(uuid())
+  organizationId String?        @map("organization_id")
+  userId         String?        @map("user_id")
+  action         ActivityAction
+  entity         ActivityEntity
+  entityId       String?        @map("entity_id")
+  description    String
+  metaJson       Json?          @map("meta_json")
+  ipAddress      String?        @map("ip_address")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([entity, action])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+// ------------------------------------------------
+// SUPPORT TICKETS
+// ------------------------------------------------
+
+model SupportTicket {
+  id              String         @id @default(uuid())
+  ticketNumber    Int            @unique @default(autoincrement()) @map("ticket_number")
+  organizationId  String?        @map("organization_id")
+  createdByUserId String?        @map("created_by_user_id")
+  reporterEmail   String         @map("reporter_email")
+  reporterName    String?        @map("reporter_name")
+  subject         String
+  description     String
+  status          TicketStatus   @default(OPEN)
+  priority        TicketPriority @default(MEDIUM)
+  assignedTo      String?        @map("assigned_to")
+  lastActivityAt  DateTime       @default(now()) @map("last_activity_at")
+  resolvedAt      DateTime?      @map("resolved_at")
+  closedAt        DateTime?      @map("closed_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  messages SupportMessage[]
+
+  @@index([status])
+  @@index([priority])
+  @@index([organizationId])
+  @@index([createdAt])
+  @@index([ticketNumber])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id        String   @id @default(uuid())
+  ticketId  String   @map("ticket_id")
+  senderId  String?  @map("sender_id")
+  senderName String  @map("sender_name")
+  senderRole String  @default("user") @map("sender_role")
+  content   String
+  imageUrl  String?  @map("image_url")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+  @@map("support_messages")
+}
+
+// ------------------------------------------------
+// FINES / PENALTIES
+// ------------------------------------------------
+
+enum FineStatus {
+  NEW
+  UNDER_REVIEW
+  MATCHED
+  FORWARDED
+  PENDING_RESPONSE
+  RESOLVED
+  CLOSED
+}
+
+model Fine {
+  id               String     @id @default(uuid())
+  organizationId   String     @map("organization_id")
+  vehicleId        String?    @map("vehicle_id")
+  bookingId        String?    @map("booking_id")
+  customerId       String?    @map("customer_id")
+  fineNumber       String?    @map("fine_number")
+  title            String
+  description      String?
+  offenseType      String?    @map("offense_type")
+  issuingAuthority String?    @map("issuing_authority")
+  offenseDate      DateTime?  @map("offense_date")
+  receivedDate     DateTime?  @map("received_date")
+  location         String?
+  amountCents      Int        @map("amount_cents")
+  currency         String     @default("EUR")
+  dueDate          DateTime?  @map("due_date")
+  status           FineStatus @default(NEW)
+  imageUrl         String?    @map("image_url")
+  extractedData    Json?      @map("extracted_data")
+  notes            String?
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+
+  tasks OrgTask[]
+
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([customerId])
+  @@index([status])
+  @@index([offenseDate])
+  @@map("fines")
+}
+
+// ------------------------------------------------
+// TASKS
+// ------------------------------------------------
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model OrgTask {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  title          String
+  description    String?
+  category       String?
+  status         TaskStatus   @default(OPEN)
+  priority       TaskPriority @default(MEDIUM)
+  vehicleId      String?      @map("vehicle_id")
+  fineId         String?      @map("fine_id")
+  invoiceId      String?      @map("invoice_id")
+  assignedTo     String?      @map("assigned_to")
+  dueDate        DateTime?    @map("due_date")
+  completedAt    DateTime?    @map("completed_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  fine    Fine?       @relation(fields: [fineId], references: [id], onDelete: SetNull)
+  invoice OrgInvoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([fineId])
+  @@index([invoiceId])
+  @@map("org_tasks")
+}
+
+// ------------------------------------------------
+// ORG INVOICES
+// ------------------------------------------------
+
+enum OrgInvoiceType {
+  OUTGOING_BOOKING
+  OUTGOING_MANUAL
+  INCOMING_VENDOR
+  INCOMING_UPLOADED
+}
+
+enum OrgInvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model OrgInvoice {
+  id             String           @id @default(uuid())
+  invoiceNumber  Int              @unique @default(autoincrement()) @map("invoice_number")
+  organizationId String           @map("organization_id")
+  type           OrgInvoiceType
+  customerId     String?          @map("customer_id")
+  vendorName     String?          @map("vendor_name")
+  bookingId      String?          @map("booking_id")
+  vehicleId      String?          @map("vehicle_id")
+  title          String
+  description    String?
+  lineItems      Json?            @map("line_items")
+  subtotalCents  Int              @default(0) @map("subtotal_cents")
+  taxCents       Int              @default(0) @map("tax_cents")
+  totalCents     Int              @map("total_cents")
+  currency       String           @default("EUR")
+  invoiceDate    DateTime         @default(now()) @map("invoice_date")
+  dueDate        DateTime?        @map("due_date")
+  status         OrgInvoiceStatus @default(DRAFT)
+  templateId     String?          @map("template_id")
+  imageUrl       String?          @map("image_url")
+  extractedData  Json?            @map("extracted_data")
+  notes          String?
+  paidAt         DateTime?        @map("paid_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  tasks OrgTask[]
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@index([bookingId])
+  @@index([status])
+  @@index([type])
+  @@index([invoiceDate])
+  @@map("org_invoices")
+}
+
+// ------------------------------------------------
+// DRIVING EVENTS
+// ------------------------------------------------
+
+model DrivingEvent {
+  id              String               @id @default(uuid())
+  vehicleId       String               @map("vehicle_id")
+  organizationId  String?              @map("organization_id")
+  eventType       DrivingEventType     @map("event_type")
+  // V3: which hardware/pipeline produced this event
+  source          DrivingEventSource   @default(TELEMETRY_EVENTS) @map("source")
+  severity        Float                @default(0)
+  latitude        Float?
+  longitude       Float?
+  speedKmh        Float?               @map("speed_kmh")
+  deltaKmh        Float?               @map("delta_kmh")
+  durationMs      Int?                 @map("duration_ms")
+  driverName      String?              @map("driver_name")
+  tripId          String?              @map("trip_id")
+  // V3: contextual enrichment (e.g. coldEngine badge from HF context on LTE_R1)
+  metadataJson    Json?                @map("metadata_json")
+  recordedAt      DateTime             @map("recorded_at")
+  createdAt       DateTime             @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip    VehicleTrip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId])
+  @@index([recordedAt])
+  @@index([eventType])
+  @@index([tripId])
+  @@index([source])
+  @@map("driving_events")
+}
+
+// ------------------------------------------------
+// BATTERY HEALTH SNAPSHOTS
+// ------------------------------------------------
+
+model BatteryHealthSnapshot {
+  id                 String   @id @default(uuid())
+  vehicleId          String   @map("vehicle_id")
+  voltageV           Float    @map("voltage_v")
+  sohPercent         Float?   @map("soh_percent")
+  restingVoltage     Float?   @map("resting_voltage")
+  crankingVoltage    Float?   @map("cranking_voltage")
+  chargingVoltage    Float?   @map("charging_voltage")
+  engineRunning      Boolean  @default(false) @map("engine_running")
+  temperatureC       Float?   @map("temperature_c")
+  estimatedCca       Int?     @map("estimated_cca")
+  rawPayload         Json?    @map("raw_payload")
+  recordedAt         DateTime @map("recorded_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([recordedAt])
+  @@map("battery_health_snapshots")
+}
+
+enum SohPublicationState {
+  INITIAL_CALIBRATION
+  STABILIZING
+  STABLE
+}
+
+/// Per-vehicle battery feature store for V2 health scoring.
+/// One row per vehicle, updated in-place (upsert pattern).
+model BatteryFeatures {
+  id                   String    @id @default(uuid())
+  vehicleId            String    @unique @map("vehicle_id")
+
+  // Rest-window tracking
+  restWindowStartedAt  DateTime? @map("rest_window_started_at")
+  rest60mCapturedAt    DateTime? @map("rest_60m_captured_at")
+  rest6hCapturedAt     DateTime? @map("rest_6h_captured_at")
+  vOff60m              Float?    @map("v_off_60m")
+  vOff6h               Float?    @map("v_off_6h")
+  deltaVRest           Float?    @map("delta_v_rest")
+
+  // Crank features (populated on trip start)
+  crankTripId          String?   @map("crank_trip_id")
+  crankAt              DateTime? @map("crank_at")
+  vPreCrank            Float?    @map("v_pre_crank")
+  vMinCrank            Float?    @map("v_min_crank")
+  crankDrop            Float?    @map("crank_drop")
+  vRecovery5s          Float?    @map("v_recovery_5s")
+  vRecovery30s         Float?    @map("v_recovery_30s")
+
+  // Computed health (refreshed after each feature update)
+  estimatedSocPct      Float?    @map("estimated_soc_pct")
+  estimatedSohPct      Float?    @map("estimated_soh_pct")
+  confidence           String?   @map("confidence")
+  badge                String?   @map("badge")
+  scoredAt             DateTime? @map("scored_at")
+
+  // Three-layer SOH publication model
+  rawSohPct                Float?               @map("raw_soh_pct")
+  stabilizedSohPct         Float?               @map("stabilized_soh_pct")
+  publishedSohPct          Float?               @map("published_soh_pct")
+  publicationState         SohPublicationState  @default(INITIAL_CALIBRATION) @map("publication_state")
+  maturityConfidence       String?              @map("maturity_confidence")
+  qualifiedEventCount      Int                  @default(0) @map("qualified_event_count")
+  restObservationCount     Int                  @default(0) @map("rest_observation_count")
+  crankObservationCount    Int                  @default(0) @map("crank_observation_count")
+  firstUsableMeasurementAt DateTime?            @map("first_usable_measurement_at")
+  lastPublishedAt          DateTime?            @map("last_published_at")
+  outlierSuppressedCount   Int                  @default(0) @map("outlier_suppressed_count")
+  ewmaAlpha                Float                @default(0.25) @map("ewma_alpha")
+
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  vehicle              Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("battery_features")
+}
+
+// ------------------------------------------------
+// HV BATTERY HEALTH SNAPSHOTS (EV traction battery)
+// ------------------------------------------------
+
+model HvBatteryHealthSnapshot {
+  id                 String   @id @default(uuid())
+  vehicleId          String   @map("vehicle_id")
+  socPercent         Float    @map("soc_percent")
+  energyUsedKwh      Float?   @map("energy_used_kwh")
+  estimatedCapacityKwh Float? @map("estimated_capacity_kwh")
+  sohPercent         Float?   @map("soh_percent")
+  rangeKm            Float?   @map("range_km")
+  chargingPowerKw    Float?   @map("charging_power_kw")
+  isCharging         Boolean  @default(false) @map("is_charging")
+  odometerKm         Float?   @map("odometer_km")
+  temperatureC       Float?   @map("temperature_c")
+  recordedAt         DateTime @map("recorded_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([recordedAt])
+  @@map("hv_battery_health_snapshots")
+}
+
+/// Per-vehicle HV (traction) battery publication state.
+/// One row per vehicle, updated in-place.
+model HvBatteryHealthCurrent {
+  id                       String              @id @default(uuid())
+  vehicleId                String              @unique @map("vehicle_id")
+  rawSohPct                Float?              @map("raw_soh_pct")
+  stabilizedSohPct         Float?              @map("stabilized_soh_pct")
+  publishedSohPct          Float?              @map("published_soh_pct")
+  publicationState         SohPublicationState @default(INITIAL_CALIBRATION) @map("publication_state")
+  publicationMethod        String?             @map("publication_method")
+  maturityConfidence       String?             @map("maturity_confidence")
+  signalConfidence         String?             @map("signal_confidence")
+  validEstimateCount       Int                 @default(0) @map("valid_estimate_count")
+  firstUsableMeasurementAt DateTime?           @map("first_usable_measurement_at")
+  lastPublishedAt          DateTime?           @map("last_published_at")
+  outlierSuppressedCount   Int                 @default(0) @map("outlier_suppressed_count")
+  ewmaAlpha                Float               @default(0.20) @map("ewma_alpha")
+  updatedAt                DateTime            @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("hv_battery_health_current")
+}
+
+// ------------------------------------------------
+// BRAKE TRIP METRICS
+// ------------------------------------------------
+
+model BrakeTripMetric {
+  id                    String   @id @default(uuid())
+  vehicleId             String   @map("vehicle_id")
+  tripId                String?  @map("trip_id")
+  brakeEnergyKj         Float?   @map("brake_energy_kj")
+  hardBrakeCount        Int      @default(0) @map("hard_brake_count")
+  avgDecelerationMs2    Float?   @map("avg_deceleration_ms2")
+  maxDecelerationMs2    Float?   @map("max_deceleration_ms2")
+  brakeDurationSec      Int?     @map("brake_duration_sec")
+  distanceKm            Float?   @map("distance_km")
+  recordedAt            DateTime @map("recorded_at")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([recordedAt])
+  @@map("brake_trip_metrics")
+}
+
+// ── Brake Health V2 ────────────────────────────────────────────────────────────
+//
+// Achsweise (front/rear) pad + disc state per vehicle.
+// Only populated AFTER a valid brake service anchor exists.
+
+model BrakeHealthCurrent {
+  vehicleId          String  @id @map("vehicle_id")
+  organizationId     String? @map("organization_id")
+
+  isInitialized      Boolean @default(false) @map("is_initialized")
+
+  // Anchor data
+  anchorServiceDate  DateTime? @map("anchor_service_date")
+  anchorOdometerKm   Float?    @map("anchor_odometer_km")
+
+  // Front pads
+  frontPadAnchorMm       Float?  @map("front_pad_anchor_mm")
+  frontPadEstimatedMm    Float?  @map("front_pad_estimated_mm")
+  frontPadHealthPct      Float?  @map("front_pad_health_pct")
+  frontPadRemainingKm    Float?  @map("front_pad_remaining_km")
+  frontPadWearRateMmPerKm Float? @map("front_pad_wear_rate_mm_per_km")
+  frontPadKFactor        Float   @default(1.0) @map("front_pad_k_factor")
+
+  // Rear pads
+  rearPadAnchorMm        Float?  @map("rear_pad_anchor_mm")
+  rearPadEstimatedMm     Float?  @map("rear_pad_estimated_mm")
+  rearPadHealthPct       Float?  @map("rear_pad_health_pct")
+  rearPadRemainingKm     Float?  @map("rear_pad_remaining_km")
+  rearPadWearRateMmPerKm Float?  @map("rear_pad_wear_rate_mm_per_km")
+  rearPadKFactor         Float   @default(1.0) @map("rear_pad_k_factor")
+
+  // Front discs
+  frontDiscAnchorMm       Float?  @map("front_disc_anchor_mm")
+  frontDiscEstimatedMm    Float?  @map("front_disc_estimated_mm")
+  frontDiscHealthPct      Float?  @map("front_disc_health_pct")
+  frontDiscRemainingKm    Float?  @map("front_disc_remaining_km")
+  frontDiscWearRateMmPerKm Float? @map("front_disc_wear_rate_mm_per_km")
+  frontDiscKFactor        Float   @default(1.0) @map("front_disc_k_factor")
+
+  // Rear discs
+  rearDiscAnchorMm        Float?  @map("rear_disc_anchor_mm")
+  rearDiscEstimatedMm     Float?  @map("rear_disc_estimated_mm")
+  rearDiscHealthPct       Float?  @map("rear_disc_health_pct")
+  rearDiscRemainingKm     Float?  @map("rear_disc_remaining_km")
+  rearDiscWearRateMmPerKm Float?  @map("rear_disc_wear_rate_mm_per_km")
+  rearDiscKFactor         Float   @default(1.0) @map("rear_disc_k_factor")
+
+  // Set-level
+  padsHealthPct          Float? @map("pads_health_pct")
+  padsRemainingKm        Float? @map("pads_remaining_km")
+  discsHealthPct         Float? @map("discs_health_pct")
+  discsRemainingKm       Float? @map("discs_remaining_km")
+
+  confidenceScore        Float?  @map("confidence_score")
+  confidenceLabel        String? @map("confidence_label")
+  hasAlert               Boolean @default(false) @map("has_alert")
+
+  distanceSinceAnchorKm  Float?  @map("distance_since_anchor_km")
+  calibrationCount       Int     @default(0) @map("calibration_count")
+  modelVersion           String  @default("1.0.0") @map("model_version")
+
+  lastRecalculatedAt     DateTime? @map("last_recalculated_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, vehicleId])
+  @@map("brake_health_current")
+}
+
+// ------------------------------------------------
+// VEHICLE DTC EVENTS (Error Codes)
+// ------------------------------------------------
+
+model VehicleDtcEvent {
+  id           String      @id @default(uuid())
+  vehicleId    String      @map("vehicle_id")
+  dtcCode      String      @map("dtc_code")
+  description  String?
+  severity     DtcSeverity @default(WARNING)
+  isActive        Boolean     @default(true)  @map("is_active")
+  firstSeenAt     DateTime                    @map("first_seen_at")
+  lastSeenAt      DateTime                    @map("last_seen_at")
+  clearedAt       DateTime?                   @map("cleared_at")
+  occurrenceCount Int         @default(1)     @map("occurrence_count")
+  rawPayload   Json?       @map("raw_payload")
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([dtcCode])
+  @@index([isActive])
+  @@index([firstSeenAt])
+  @@map("vehicle_dtc_events")
+}
+
+// ------------------------------------------------
+// VEHICLE DAMAGES
+// ------------------------------------------------
+
+model VehicleDamage {
+  id             String         @id @default(uuid())
+  vehicleId      String         @map("vehicle_id")
+  damageType     DamageType     @map("damage_type")
+  severity       DamageSeverity @default(MINOR)
+  description    String?
+  locationX      Float?         @map("location_x")
+  locationY      Float?         @map("location_y")
+  locationLabel  String?        @map("location_label")
+  estimatedCostCents Int?       @map("estimated_cost_cents")
+  reportedBy     String?        @map("reported_by")
+  repairedAt     DateTime?      @map("repaired_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  vehicle Vehicle        @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  images  VehicleDamageImage[]
+
+  @@index([vehicleId])
+  @@index([damageType])
+  @@map("vehicle_damages")
+}
+
+model VehicleDamageImage {
+  id        String   @id @default(uuid())
+  damageId  String   @map("damage_id")
+  imageData String   @map("image_data")
+  caption   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  damage VehicleDamage @relation(fields: [damageId], references: [id], onDelete: Cascade)
+
+  @@index([damageId])
+  @@map("vehicle_damage_images")
+}
+
+// ------------------------------------------------
+// VEHICLE TRIPS
+// ------------------------------------------------
+
+enum TripStatus {
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+model VehicleTrip {
+  id                  String     @id @default(uuid())
+  vehicleId           String     @map("vehicle_id")
+  dimoSegmentId       String?    @unique @map("dimo_segment_id")
+  tripStatus          TripStatus @default(ONGOING) @map("trip_status")
+  driverName          String?    @map("driver_name")
+  startTime           DateTime   @map("start_time")
+  endTime             DateTime?  @map("end_time")
+  startLatitude       Float?     @map("start_latitude")
+  startLongitude      Float?     @map("start_longitude")
+  endLatitude         Float?     @map("end_latitude")
+  endLongitude        Float?     @map("end_longitude")
+  distanceKm          Float?     @map("distance_km")
+  durationMinutes     Float?     @map("duration_minutes")
+  avgSpeedKmh         Float?     @map("avg_speed_kmh")
+  maxSpeedKmh         Float?     @map("max_speed_kmh")
+  drivingScore        Float?     @map("driving_score")
+
+  fuelUsedLiters              Float?  @map("fuel_used_liters")
+  avgConsumptionLPer100Km     Float?  @map("avg_consumption_l_per_100km")
+  fuelConfidence              String? @map("fuel_confidence")
+
+  energyUsedKwh               Float?  @map("energy_used_kwh")
+  avgConsumptionKwhPer100Km   Float?  @map("avg_consumption_kwh_per_100km")
+  energyConfidence            String? @map("energy_confidence")
+
+  citySharePercent    Float?   @map("city_share_percent")
+  highwaySharePercent Float?   @map("highway_share_percent")
+  countrySharePercent Float?   @map("country_share_percent")
+
+  outsideTemperatureStartC Float? @map("outside_temperature_start_c")
+  engineTempStartC         Float? @map("engine_temp_start_c")
+  engineTempEndC           Float? @map("engine_temp_end_c")
+  avgRpm                   Float? @map("avg_rpm")
+  avgThrottlePosition      Float? @map("avg_throttle_position")
+  avgEngineLoad            Float? @map("avg_engine_load")
+
+  speedingPercent     Float?   @map("speeding_percent")
+  maxOverSpeedKmh     Float?   @map("max_over_speed_kmh")
+  speedingSegments    Int?     @map("speeding_segments")
+
+  speedingSectionsJson    Json?    @map("speeding_sections_json")
+  speedingSectionCount    Int?     @map("speeding_section_count")
+  speedingDistanceM       Int?     @map("speeding_distance_m")
+  speedingDurationS       Int?     @map("speeding_duration_s")
+  speedingExposurePct     Float?   @map("speeding_exposure_pct")
+  avgOverSpeedKmh         Float?   @map("avg_over_speed_kmh")
+
+  harshBrakeCount     Int      @default(0) @map("harsh_brake_count")
+  harshAccelCount     Int      @default(0) @map("harsh_accel_count")
+  harshCornerCount    Int      @default(0) @map("harsh_corner_count")
+
+  accelerationEventCount Int   @default(0) @map("acceleration_event_count")
+  brakingEventCount      Int   @default(0) @map("braking_event_count")
+  abuseEventCount        Int   @default(0) @map("abuse_event_count")
+  hardAccelerationCount  Int   @default(0) @map("hard_acceleration_count")
+  hardBrakingCount       Int   @default(0) @map("hard_braking_count")
+  fullBrakingCount       Int   @default(0) @map("full_braking_count")
+  possibleImpactCount    Int   @default(0) @map("possible_impact_count")
+  kickdownCount          Int   @default(0) @map("kickdown_count")
+  coldEngineAbuseCount   Int   @default(0) @map("cold_engine_abuse_count")
+  longIdleCount          Int   @default(0) @map("long_idle_count")
+  abuseScore             Float? @map("abuse_score")
+  behaviorSummaryJson    Json?  @map("behavior_summary_json")
+  behaviorEnrichedAt     DateTime? @map("behavior_enriched_at")
+
+  // ── Enrichment status tracking ──────────────────────────────────────────
+  // Values: PENDING | IN_PROGRESS | COMPLETED | SKIPPED_NO_HF_DATA | FAILED_TRANSIENT | FAILED_PERMANENT
+  // String (not enum) to avoid costly ALTER TYPE migrations and allow extensibility.
+  behaviorEnrichmentStatus     String?   @map("behavior_enrichment_status")
+  behaviorEnrichmentAttempts   Int       @default(0) @map("behavior_enrichment_attempts")
+  behaviorEnrichmentError      String?   @map("behavior_enrichment_error")
+  behaviorEnrichmentStartedAt  DateTime? @map("behavior_enrichment_started_at")
+  drivingImpactComputedAt      DateTime? @map("driving_impact_computed_at")
+
+  detectionProfile         VehicleDetectionProfile? @map("detection_profile")
+  startDetectionMode       String?    @map("start_detection_mode")
+  endDetectionMode         String?    @map("end_detection_mode")
+  startConfidence          DetectionConfidence? @map("start_confidence")
+  endConfidence            DetectionConfidence? @map("end_confidence")
+  possibleStartAt          DateTime?  @map("possible_start_at")
+  possibleEndAt            DateTime?  @map("possible_end_at")
+  firstActivityAt          DateTime?  @map("first_activity_at")
+  lastActivityAt           DateTime?  @map("last_activity_at")
+  routeTrackingStartedAt   DateTime?  @map("route_tracking_started_at")
+  drivingTrackingStartedAt DateTime?  @map("driving_tracking_started_at")
+  rawDetectionMeta         Json?      @map("raw_detection_meta")
+
+  gapEnded            Boolean  @default(false) @map("gap_ended")
+  enrichedAt          DateTime? @map("enriched_at")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  vehicle        Vehicle               @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  waypoints      VehicleTripWaypoint[]
+  events         DrivingEvent[]
+  behaviorEvents TripBehaviorEvent[]
+
+  @@index([vehicleId])
+  @@index([startTime])
+  @@index([tripStatus])
+  @@index([behaviorEnrichmentStatus])
+  @@map("vehicle_trips")
+}
+
+model VehicleTripWaypoint {
+  id         String   @id @default(uuid())
+  tripId     String   @map("trip_id")
+  latitude   Float
+  longitude  Float
+  speedKmh   Float?   @map("speed_kmh")
+  heading    Float?
+  recordedAt DateTime @map("recorded_at")
+
+  trip VehicleTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@index([recordedAt])
+  @@map("vehicle_trip_waypoints")
+}
+
+// ── Trip Behavior Events (post-trip HF enrichment) ──
+
+enum BehaviorEventCategory {
+  ACCELERATION
+  BRAKING
+  ABUSE
+}
+
+enum BehaviorEventClassification {
+  LIGHT
+  MODERATE
+  HARD
+  EXTREME
+  WARNING
+  SEVERE
+  CRITICAL
+}
+
+model TripBehaviorEvent {
+  id               String                      @id @default(uuid())
+  organizationId   String?                     @map("organization_id")
+  vehicleId        String                      @map("vehicle_id")
+  tripId           String                      @map("trip_id")
+  eventCategory    BehaviorEventCategory       @map("event_category")
+  eventType        String                      @map("event_type")
+  classification   BehaviorEventClassification @map("classification")
+  startedAt        DateTime                    @map("started_at")
+  endedAt          DateTime?                   @map("ended_at")
+  durationMs       Int?                        @map("duration_ms")
+  startSpeedKmh    Float?                      @map("start_speed_kmh")
+  endSpeedKmh      Float?                      @map("end_speed_kmh")
+  peakValue        Float?                      @map("peak_value")
+  peakValueUnit    String?                     @map("peak_value_unit")
+  peakG            Float?                      @map("peak_g")
+  maxThrottlePos   Float?                      @map("max_throttle_pos")
+  maxEngineRpm     Float?                      @map("max_engine_rpm")
+  maxCoolantTemp   Float?                      @map("max_coolant_temp")
+  metadataJson     Json?                       @map("metadata_json")
+  createdAt        DateTime                    @default(now()) @map("created_at")
+
+  vehicle Vehicle     @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip    VehicleTrip  @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@index([vehicleId])
+  @@index([eventCategory])
+  @@index([startedAt])
+  @@map("trip_behavior_events")
+}
+
+// ------------------------------------------------
+// VENDORS / SERVICE PARTNERS
+// ------------------------------------------------
+
+enum VendorCategory {
+  WORKSHOP
+  SERVICE_PARTNER
+  PAINT_SHOP
+  BODY_REPAIR
+  AUTO_GLASS
+  TIRE_DEALER
+  PARTS_DEALER
+  DETAILING
+  TUV_STATION
+  ONLINE_SUPPLIER
+  OTHER
+}
+
+enum VendorSourceType {
+  LOCAL_BUSINESS
+  ONLINE_VENDOR
+}
+
+model Vendor {
+  id               String           @id @default(uuid())
+  organizationId   String           @map("organization_id")
+  name             String
+  category         VendorCategory   @default(WORKSHOP)
+  sourceType       VendorSourceType @default(LOCAL_BUSINESS) @map("source_type")
+  street           String?
+  city             String?
+  postalCode       String?          @map("postal_code")
+  country          String?
+  latitude         Float?
+  longitude        Float?
+  website          String?
+  phone            String?
+  email            String?
+  notes            String?
+  serviceAreas     String[]         @default([]) @map("service_areas")
+  contactName      String?          @map("contact_name")
+  contactRole      String?          @map("contact_role")
+  contactPhone     String?          @map("contact_phone")
+  contactEmail     String?          @map("contact_email")
+  contactNotes     String?          @map("contact_notes")
+  isActive         Boolean          @default(true) @map("is_active")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vendorVehicles VendorVehicle[]
+
+  @@index([organizationId])
+  @@index([category])
+  @@map("vendors")
+}
+
+model VendorVehicle {
+  id        String   @id @default(uuid())
+  vendorId  String   @map("vendor_id")
+  vehicleId String   @map("vehicle_id")
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  vendor  Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, vehicleId])
+  @@index([vendorId])
+  @@index([vehicleId])
+  @@map("vendor_vehicles")
+}
+
+// ------------------------------------------------
+// AI CHAT AGENT
+// ------------------------------------------------
+
+model OrganizationChatAgent {
+  id               String   @id @default(uuid())
+  organizationId   String   @unique @map("organization_id")
+  agentName        String   @map("agent_name")
+  dimoAgentId      String   @map("dimo_agent_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("organization_chat_agents")
+}
+
+model ChatMessage {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  role             String
+  content          String
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@map("chat_messages")
+}
+
+// ------------------------------------------------
+// DATA AUTHORIZATION
+// ------------------------------------------------
+
+enum DataAuthorizationStatus {
+  PENDING
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum DataAuthorizationScope {
+  ORGANIZATION
+  VEHICLE
+}
+
+enum DataAuthorizationAccessPattern {
+  ONE_TIME
+  ONGOING
+  RECURRING
+  EVENT_DRIVEN
+}
+
+model OrgDataAuthorization {
+  id                 String                        @id @default(uuid())
+  organizationId     String                        @map("organization_id")
+  requestingEntity   String                        @map("requesting_entity")
+  moduleOrigin       String                        @map("module_origin")
+  purpose            String
+  scope              DataAuthorizationScope        @default(ORGANIZATION)
+  dataCategories     Json                          @map("data_categories")
+  destination        String
+  vehicleIds         Json?                         @map("vehicle_ids")
+  accessPattern      DataAuthorizationAccessPattern @default(ONGOING) @map("access_pattern")
+  status             DataAuthorizationStatus       @default(PENDING)
+  grantedById        String?                       @map("granted_by_id")
+  grantedByName      String?                       @map("granted_by_name")
+  grantedAt          DateTime?                     @map("granted_at")
+  revokedById        String?                       @map("revoked_by_id")
+  revokedByName      String?                       @map("revoked_by_name")
+  revokedAt          DateTime?                     @map("revoked_at")
+  expiresAt          DateTime?                     @map("expires_at")
+  notes              String?
+  createdAt          DateTime                      @default(now()) @map("created_at")
+  updatedAt          DateTime                      @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([moduleOrigin])
+  @@index([requestingEntity])
+  @@map("org_data_authorizations")
+}
+
+// ─── Workflow Automation ──────────────────────────
+
+enum WorkflowStatus {
+  ACTIVE
+  DRAFT
+  DISABLED
+}
+
+model OrgWorkflow {
+  id             String         @id @default(uuid())
+  organizationId String         @map("organization_id")
+  name           String
+  description    String?
+  category       String
+  trigger        Json
+  conditions     Json           @default("[]")
+  actions        Json
+  scope          Json           @default("{\"type\":\"organization\"}")
+  status         WorkflowStatus @default(DRAFT)
+  createdById    String?        @map("created_by_id")
+  createdByName  String?        @map("created_by_name")
+  updatedById    String?        @map("updated_by_id")
+  updatedByName  String?        @map("updated_by_name")
+  lastTriggeredAt DateTime?     @map("last_triggered_at")
+  triggerCount   Int            @default(0) @map("trigger_count")
+  isTemplate     Boolean        @default(false) @map("is_template")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([category])
+  @@map("org_workflows")
+}
+
+// ------------------------------------------------
+// WHATSAPP BUSINESS INTEGRATION
+// ------------------------------------------------
+
+enum WhatsAppAiMode {
+  OFF
+  SUGGEST_ONLY
+  AUTO_SIMPLE
+  FULL
+}
+
+model OrgWhatsAppConfig {
+  id                  String         @id @default(uuid())
+  organizationId      String         @unique @map("organization_id")
+  isConnected         Boolean        @default(false) @map("is_connected")
+  isActive            Boolean        @default(false) @map("is_active")
+  phoneNumber         String?        @map("phone_number")
+  businessName        String?        @map("business_name")
+  aiMode              WhatsAppAiMode @default(SUGGEST_ONLY) @map("ai_mode")
+  aiCanCreateTasks    Boolean        @default(false) @map("ai_can_create_tasks")
+  aiCanCreateSupport  Boolean        @default(false) @map("ai_can_create_support")
+  aiCanUseBookings    Boolean        @default(true)  @map("ai_can_use_bookings")
+  aiCanContactVendors Boolean        @default(false) @map("ai_can_contact_vendors")
+  aiEscalationEnabled Boolean        @default(true)  @map("ai_escalation_enabled")
+  connectedAt         DateTime?      @map("connected_at")
+  connectedByName     String?        @map("connected_by_name")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("org_whatsapp_configs")
+}
+
+model WhatsAppConversation {
+  id                String    @id @default(uuid())
+  organizationId    String    @map("organization_id")
+  contactPhone      String    @map("contact_phone")
+  contactName       String?   @map("contact_name")
+  lastMessageAt     DateTime? @map("last_message_at")
+  lastMessagePreview String?  @map("last_message_preview")
+  unreadCount       Int       @default(0) @map("unread_count")
+  status            String    @default("open")
+  assignedTo        String?   @map("assigned_to")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  messages     WhatsAppMessage[]
+
+  @@unique([organizationId, contactPhone])
+  @@index([organizationId])
+  @@index([lastMessageAt])
+  @@map("whatsapp_conversations")
+}
+
+model WhatsAppMessage {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  conversationId   String   @map("conversation_id")
+  direction        String
+  senderType       String   @map("sender_type")
+  senderName       String?  @map("sender_name")
+  content          String
+  aiGenerated      Boolean  @default(false) @map("ai_generated")
+  aiSuggested      Boolean  @default(false) @map("ai_suggested")
+  status           String   @default("sent")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversation   WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([organizationId])
+  @@map("whatsapp_messages")
+}
+
+// ------------------------------------------------
+// PARTS & ACCESSORIES
+// ------------------------------------------------
+
+enum PartsProviderIntegrationType {
+  API
+  MARKETPLACE
+  AFFILIATE
+  EMBEDDED_CHECKOUT
+  REDIRECT
+}
+
+enum PartsProviderEnvironment {
+  SANDBOX
+  PRODUCTION
+}
+
+enum PartsProviderHealthStatus {
+  HEALTHY
+  DEGRADED
+  DOWN
+  UNKNOWN
+}
+
+enum PartsCategory {
+  TIRES
+  PARTS
+  ACCESSORIES
+}
+
+enum PartsSearchStatus {
+  PENDING
+  SUCCESS
+  FAILURE
+  TIMEOUT
+}
+
+model PartsProvider {
+  id                String                        @id @default(uuid())
+  key               String                        @unique
+  displayName       String                        @map("display_name")
+  description       String?
+  isEnabled         Boolean                       @default(false) @map("is_enabled")
+  integrationType   PartsProviderIntegrationType  @map("integration_type")
+  environmentMode   PartsProviderEnvironment      @default(SANDBOX) @map("environment_mode")
+  supportedCategories PartsCategory[]             @map("supported_categories")
+  configJson        Json?                         @map("config_json")
+  credentialsJson   Json?                         @map("credentials_json")
+  capabilitiesJson  Json?                         @map("capabilities_json")
+  healthStatus      PartsProviderHealthStatus     @default(UNKNOWN) @map("health_status")
+  lastTestedAt      DateTime?                     @map("last_tested_at")
+  lastSuccessAt     DateTime?                     @map("last_success_at")
+  lastFailureAt     DateTime?                     @map("last_failure_at")
+  lastFailureReason String?                       @map("last_failure_reason")
+  rankingWeight     Int                           @default(100) @map("ranking_weight")
+  timeoutMs         Int                           @default(15000) @map("timeout_ms")
+  maxRetries        Int                           @default(2) @map("max_retries")
+  rateLimitPerMin   Int                           @default(60) @map("rate_limit_per_min")
+  createdAt         DateTime                      @default(now()) @map("created_at")
+  updatedAt         DateTime                      @updatedAt @map("updated_at")
+
+  orgAccess         PartsProviderOrgAccess[]
+  disclosures       PartsDisclosureTemplate[]
+
+  @@index([isEnabled])
+  @@map("parts_providers")
+}
+
+model PartsProviderOrgAccess {
+  id             String   @id @default(uuid())
+  providerId     String   @map("provider_id")
+  organizationId String   @map("organization_id")
+  isEnabled      Boolean  @default(true) @map("is_enabled")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  provider PartsProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, organizationId])
+  @@index([organizationId])
+  @@map("parts_provider_org_access")
+}
+
+model PartsDisclosureTemplate {
+  id            String         @id @default(uuid())
+  providerId    String?        @map("provider_id")
+  providerKey   String?        @map("provider_key")
+  category      PartsCategory?
+  version       Int            @default(1)
+  title         String
+  body          String
+  isActive      Boolean        @default(true) @map("is_active")
+  effectiveFrom DateTime       @default(now()) @map("effective_from")
+  createdById   String?        @map("created_by_id")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  provider PartsProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+
+  @@index([providerKey])
+  @@index([isActive])
+  @@map("parts_disclosure_templates")
+}
+
+model PartsAuthorizationLog {
+  id                   String   @id @default(uuid())
+  organizationId       String   @map("organization_id")
+  userId               String   @map("user_id")
+  vehicleId            String   @map("vehicle_id")
+  providerKey          String   @map("provider_key")
+  providerDisplayName  String   @map("provider_display_name")
+  category             String
+  disclosedFieldsJson  Json     @map("disclosed_fields_json")
+  noticeVersion        Int      @map("notice_version")
+  noticeTitleSnapshot  String   @map("notice_title_snapshot")
+  noticeBodySnapshot   String   @map("notice_body_snapshot")
+  confirmedAt          DateTime @map("confirmed_at")
+  correlationId        String   @map("correlation_id")
+  sessionId            String?  @map("session_id")
+  ipAddress            String?  @map("ip_address")
+  userAgent            String?  @map("user_agent")
+  requestMetadataJson  Json?    @map("request_metadata_json")
+  executionStatus      String   @default("PENDING") @map("execution_status")
+  executionFailureReason String? @map("execution_failure_reason")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([vehicleId])
+  @@index([providerKey])
+  @@index([correlationId])
+  @@index([confirmedAt])
+  @@map("parts_authorization_logs")
+}
+
+model PartsSearchRequest {
+  id                    String   @id @default(uuid())
+  organizationId        String   @map("organization_id")
+  userId                String   @map("user_id")
+  vehicleId             String   @map("vehicle_id")
+  providerKey           String   @map("provider_key")
+  category              String
+  correlationId         String   @map("correlation_id")
+  normalizedRequestJson Json     @map("normalized_request_json")
+  responseSummaryJson   Json?    @map("response_summary_json")
+  resultCount           Int?     @map("result_count")
+  status                PartsSearchStatus @default(PENDING)
+  durationMs            Int?     @map("duration_ms")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  @@index([organizationId])
+  @@index([correlationId])
+  @@index([providerKey])
+  @@map("parts_search_requests")
+}
+
+// ════════════════════════════════════════════════════════
+// INSURANCE MODULE
+// ════════════════════════════════════════════════════════
+
+enum InsuranceCommunicationChannel {
+  EMAIL
+  API
+  WEBHOOK
+  MANUAL
+}
+
+enum InsurerHealthStatus {
+  HEALTHY
+  DEGRADED
+  DOWN
+  UNKNOWN
+}
+
+enum InsurerEnvironment {
+  SANDBOX
+  PRODUCTION
+}
+
+enum VehicleInsuranceStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+  MISSING
+  PENDING_INQUIRY
+}
+
+enum InsuranceInquiryStatus {
+  DRAFT
+  SUBMITTED
+  PARTIALLY_SENT
+  FAILED
+  AWAITING_RESPONSE
+  RESPONDED
+  CLOSED
+}
+
+enum InquiryRecipientDeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  BOUNCED
+}
+
+enum InquiryRecipientResponseStatus {
+  AWAITING
+  RECEIVED
+  DECLINED
+  NO_RESPONSE
+}
+
+enum LiveSharingStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  REVOKED
+  EXPIRED
+}
+
+model InsurancePartner {
+  id                         String                       @id @default(uuid())
+  key                        String                       @unique
+  displayName                String                       @map("display_name")
+  description                String?
+  isEnabled                  Boolean                      @default(false) @map("is_enabled")
+  countryScope               String[]                     @default([]) @map("country_scope")
+  supportedInquiryTypes      String[]                     @default([]) @map("supported_inquiry_types")
+  supportedInsuranceModels   String[]                     @default([]) @map("supported_insurance_models")
+  acceptedHistoricalData     String[]                     @default([]) @map("accepted_historical_data")
+  acceptedLiveData           String[]                     @default([]) @map("accepted_live_data")
+  communicationChannel       InsuranceCommunicationChannel @default(EMAIL) @map("communication_channel")
+  configJson                 Json?                        @map("config_json")
+  credentialsJson            Json?                        @map("credentials_json")
+  healthStatus               InsurerHealthStatus          @default(UNKNOWN) @map("health_status")
+  environment                InsurerEnvironment           @default(SANDBOX)
+  lastTestedAt               DateTime?                    @map("last_tested_at")
+  lastSuccessAt              DateTime?                    @map("last_success_at")
+  lastFailureAt              DateTime?                    @map("last_failure_at")
+  lastFailureReason          String?                      @map("last_failure_reason")
+  slaInfo                    String?                      @map("sla_info")
+  maxLookbackDays            Int?                         @map("max_lookback_days")
+  supportsDynamicInsurance   Boolean                      @default(false) @map("supports_dynamic_insurance")
+  supportsUsageBased         Boolean                      @default(false) @map("supports_usage_based")
+  supportsKilometerBased     Boolean                      @default(false) @map("supports_kilometer_based")
+  supportsDrivingScoreBased  Boolean                      @default(false) @map("supports_driving_score_based")
+  rankingWeight              Int                          @default(100) @map("ranking_weight")
+  createdAt                  DateTime                     @default(now()) @map("created_at")
+  updatedAt                  DateTime                     @updatedAt @map("updated_at")
+
+  contacts                   InsurancePartnerContact[]
+  orgAccess                  InsurancePartnerOrgAccess[]
+  disclosureTemplates        InsuranceDisclosureTemplate[]
+  inquiryTemplates           InsuranceInquiryTemplate[]
+  inquiryRecipients          InsuranceInquiryRecipient[]
+  authorizationLogs          InsuranceDataAuthorizationLog[]
+  liveSharingPermissions     InsuranceLiveSharingPermission[]
+
+  @@index([isEnabled])
+  @@map("insurance_partners")
+}
+
+model InsurancePartnerContact {
+  id                String   @id @default(uuid())
+  insurancePartnerId String  @map("insurance_partner_id")
+  fullName          String   @map("full_name")
+  roleTitle         String?  @map("role_title")
+  department        String?
+  email             String?
+  phone             String?
+  isPrimary         Boolean  @default(false) @map("is_primary")
+  notes             String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  partner InsurancePartner @relation(fields: [insurancePartnerId], references: [id], onDelete: Cascade)
+
+  @@index([insurancePartnerId])
+  @@map("insurance_partner_contacts")
+}
+
+model InsurancePartnerOrgAccess {
+  id                String   @id @default(uuid())
+  insurancePartnerId String  @map("insurance_partner_id")
+  organizationId    String   @map("organization_id")
+  isEnabled         Boolean  @default(true) @map("is_enabled")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  partner InsurancePartner @relation(fields: [insurancePartnerId], references: [id], onDelete: Cascade)
+
+  @@unique([insurancePartnerId, organizationId])
+  @@index([organizationId])
+  @@map("insurance_partner_org_access")
+}
+
+model InsuranceDisclosureTemplate {
+  id                String   @id @default(uuid())
+  insurerKey        String?  @map("insurer_key")
+  inquiryType       String?  @map("inquiry_type")
+  version           Int      @default(1)
+  title             String
+  body              String
+  isActive          Boolean  @default(true) @map("is_active")
+  effectiveFrom     DateTime @default(now()) @map("effective_from")
+  createdById       String?  @map("created_by_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  partner           InsurancePartner? @relation(fields: [insurerKey], references: [key], onDelete: SetNull)
+
+  @@index([insurerKey])
+  @@index([isActive])
+  @@map("insurance_disclosure_templates")
+}
+
+model InsuranceInquiryTemplate {
+  id                String   @id @default(uuid())
+  insurerKey        String?  @map("insurer_key")
+  inquiryType       String?  @map("inquiry_type")
+  version           Int      @default(1)
+  subjectTemplate   String   @map("subject_template")
+  bodyTemplate      String   @map("body_template")
+  isActive          Boolean  @default(true) @map("is_active")
+  effectiveFrom     DateTime @default(now()) @map("effective_from")
+  createdById       String?  @map("created_by_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  partner           InsurancePartner? @relation(fields: [insurerKey], references: [key], onDelete: SetNull)
+
+  @@index([insurerKey])
+  @@index([isActive])
+  @@map("insurance_inquiry_templates")
+}
+
+model VehicleInsuranceRecord {
+  id                String                @id @default(uuid())
+  organizationId    String                @map("organization_id")
+  vehicleId         String                @map("vehicle_id")
+  insurerName       String?               @map("insurer_name")
+  policyNumber      String?               @map("policy_number")
+  insuranceType     String?               @map("insurance_type")
+  validFrom         DateTime?             @map("valid_from")
+  validUntil        DateTime?             @map("valid_until")
+  status            VehicleInsuranceStatus @default(MISSING)
+  linkedDocumentIds String[]              @default([]) @map("linked_document_ids")
+  notes             String?
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([status])
+  @@map("vehicle_insurance_records")
+}
+
+model InsuranceInquiry {
+  id                        String                  @id @default(uuid())
+  organizationId            String                  @map("organization_id")
+  userId                    String                  @map("user_id")
+  vehicleId                 String                  @map("vehicle_id")
+  inquiryType               String                  @map("inquiry_type")
+  selectedHistoricalData    Json                    @map("selected_historical_data")
+  selectedLiveData          Json                    @map("selected_live_data")
+  selectedTimeRange         Json                    @map("selected_time_range")
+  selectedInsuranceModels   String[]                @default([]) @map("selected_insurance_models")
+  reviewSnapshotJson        Json?                   @map("review_snapshot_json")
+  status                    InsuranceInquiryStatus  @default(DRAFT)
+  correlationId             String                  @default(uuid()) @map("correlation_id")
+  createdAt                 DateTime                @default(now()) @map("created_at")
+  updatedAt                 DateTime                @updatedAt @map("updated_at")
+
+  recipients                InsuranceInquiryRecipient[]
+  authorizationLogs         InsuranceDataAuthorizationLog[]
+  liveSharingPermissions    InsuranceLiveSharingPermission[]
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([vehicleId])
+  @@index([status])
+  @@index([correlationId])
+  @@map("insurance_inquiries")
+}
+
+model InsuranceInquiryRecipient {
+  id                  String                          @id @default(uuid())
+  inquiryId           String                          @map("inquiry_id")
+  insurerId           String                          @map("insurer_id")
+  channelType         InsuranceCommunicationChannel   @map("channel_type")
+  deliveryStatus      InquiryRecipientDeliveryStatus  @default(PENDING) @map("delivery_status")
+  sentAt              DateTime?                       @map("sent_at")
+  responseStatus      InquiryRecipientResponseStatus  @default(AWAITING) @map("response_status")
+  responseReceivedAt  DateTime?                       @map("response_received_at")
+  failureReason       String?                         @map("failure_reason")
+  externalReference   String?                         @map("external_reference")
+  payloadSnapshotJson Json?                           @map("payload_snapshot_json")
+  createdAt           DateTime                        @default(now()) @map("created_at")
+  updatedAt           DateTime                        @updatedAt @map("updated_at")
+
+  inquiry InsuranceInquiry  @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  insurer InsurancePartner  @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+
+  @@index([inquiryId])
+  @@index([insurerId])
+  @@index([deliveryStatus])
+  @@map("insurance_inquiry_recipients")
+}
+
+model InsuranceDataAuthorizationLog {
+  id                        String   @id @default(uuid())
+  organizationId            String   @map("organization_id")
+  userId                    String   @map("user_id")
+  vehicleId                 String   @map("vehicle_id")
+  insurerId                 String   @map("insurer_id")
+  inquiryId                 String?  @map("inquiry_id")
+  disclosedHistoricalData   Json     @map("disclosed_historical_data")
+  authorizedLiveData        Json     @map("authorized_live_data")
+  selectedTimeRange         Json     @map("selected_time_range")
+  aggregationSettings       Json?    @map("aggregation_settings")
+  purpose                   String
+  noticeVersion             Int      @map("notice_version")
+  noticeTitleSnapshot       String   @map("notice_title_snapshot")
+  noticeBodySnapshot        String   @map("notice_body_snapshot")
+  confirmedAt               DateTime @map("confirmed_at")
+  correlationId             String   @map("correlation_id")
+  sessionId                 String?  @map("session_id")
+  ipAddress                 String?  @map("ip_address")
+  userAgent                 String?  @map("user_agent")
+  transmissionChannel       String?  @map("transmission_channel")
+  transmissionResult        String?  @map("transmission_result")
+  failureReason             String?  @map("failure_reason")
+  createdAt                 DateTime @default(now()) @map("created_at")
+
+  insurer  InsurancePartner   @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+  inquiry  InsuranceInquiry?  @relation(fields: [inquiryId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([vehicleId])
+  @@index([insurerId])
+  @@index([inquiryId])
+  @@index([correlationId])
+  @@index([confirmedAt])
+  @@map("insurance_data_authorization_logs")
+}
+
+model InsuranceLiveSharingPermission {
+  id                      String            @id @default(uuid())
+  organizationId          String            @map("organization_id")
+  vehicleId               String            @map("vehicle_id")
+  insurerId               String            @map("insurer_id")
+  inquiryId               String?           @map("inquiry_id")
+  enabledDataCategories   Json              @map("enabled_data_categories")
+  aggregationSettings     Json?             @map("aggregation_settings")
+  reportingFrequency      String?           @map("reporting_frequency")
+  status                  LiveSharingStatus @default(DRAFT)
+  validFrom               DateTime          @default(now()) @map("valid_from")
+  validUntil              DateTime?         @map("valid_until")
+  revokedAt               DateTime?         @map("revoked_at")
+  revokedBy               String?           @map("revoked_by")
+  revokeReason            String?           @map("revoke_reason")
+  createdBy               String            @map("created_by")
+  createdAt               DateTime          @default(now()) @map("created_at")
+  updatedAt               DateTime          @updatedAt @map("updated_at")
+
+  insurer  InsurancePartner   @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+  inquiry  InsuranceInquiry?  @relation(fields: [inquiryId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([insurerId])
+  @@index([status])
+  @@map("insurance_live_sharing_permissions")
+}
+
+// ════════════════════════════════════════════════════════
+// PLATFORM CHANGELOG
+// ════════════════════════════════════════════════════════
+
+model PlatformChangelog {
+  id          String   @id @default(uuid())
+  version     String
+  title       String
+  summary     String[]
+  reason      String?
+  previousBehavior String? @map("previous_behavior")
+  details     String?
+  affectsArchitecture Boolean @default(false) @map("affects_architecture")
+  module      String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([module])
+  @@map("platform_changelogs")
+}
+
+// ════════════════════════════════════════════════════════
+// AI VOICE ASSISTANT (ElevenLabs Conversational AI)
+// ════════════════════════════════════════════════════════
+
+enum VoiceAssistantStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+}
+
+model VoiceAssistant {
+  id               String               @id @default(uuid())
+  organizationId   String               @unique @map("organization_id")
+  organization     Organization         @relation(fields: [organizationId], references: [id])
+
+  name             String               @default("AI Assistant")
+  role             String?
+  personality      String?
+  language         String               @default("en")
+  voiceId          String?              @map("voice_id")
+  voiceName        String?              @map("voice_name")
+  greetingMessage  String?              @map("greeting_message")
+
+  systemPrompt     String?              @map("system_prompt") @db.Text
+  companyContext    String?              @map("company_context") @db.Text
+  businessRules    String?              @map("business_rules") @db.Text
+  forbiddenActions String?              @map("forbidden_actions") @db.Text
+  knowledgeSnippets String?             @map("knowledge_snippets") @db.Text
+
+  elevenLabsAgentId String?             @map("elevenlabs_agent_id")
+  phoneNumberId     String?             @map("phone_number_id")
+  phoneNumber       String?             @map("phone_number")
+  telephonyEnabled  Boolean             @default(false) @map("telephony_enabled")
+  inboundEnabled    Boolean             @default(true) @map("inbound_enabled")
+  outboundEnabled   Boolean             @default(false) @map("outbound_enabled")
+
+  permAnswerQuestions    Boolean         @default(true) @map("perm_answer_questions")
+  permManageBookings     Boolean         @default(false) @map("perm_manage_bookings")
+  permWorkshopHandling   Boolean         @default(false) @map("perm_workshop_handling")
+  permBreakdownSupport   Boolean         @default(false) @map("perm_breakdown_support")
+  permContactCustomers   Boolean         @default(false) @map("perm_contact_customers")
+  permContactVendors     Boolean         @default(false) @map("perm_contact_vendors")
+  permCreateActions      Boolean         @default(false) @map("perm_create_actions")
+
+  escalationPhone      String?          @map("escalation_phone")
+  escalationUserId     String?          @map("escalation_user_id")
+  escalationDepartment String?          @map("escalation_department")
+  escalateOnLowConf    Boolean          @default(true) @map("escalate_on_low_conf")
+  escalateOnSensitive  Boolean          @default(true) @map("escalate_on_sensitive")
+  escalateOnRequest    Boolean          @default(true) @map("escalate_on_request")
+  fallbackMessage      String?          @map("fallback_message")
+
+  businessHoursStart   String?          @map("business_hours_start")
+  businessHoursEnd     String?          @map("business_hours_end")
+  businessHoursTimezone String?         @map("business_hours_timezone")
+  afterHoursMessage    String?          @map("after_hours_message")
+
+  status           VoiceAssistantStatus @default(DRAFT)
+
+  totalCalls       Int                  @default(0) @map("total_calls")
+  answeredCalls    Int                  @default(0) @map("answered_calls")
+  missedCalls      Int                  @default(0) @map("missed_calls")
+  escalatedCalls   Int                  @default(0) @map("escalated_calls")
+  totalTalkMinutes Float                @default(0) @map("total_talk_minutes")
+
+  conversations    VoiceConversation[]
+
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("voice_assistants")
+}
+
+enum VoiceConversationOutcome {
+  RESOLVED
+  ESCALATED
+  FAILED
+  ABANDONED
+}
+
+model VoiceConversation {
+  id                String                    @id @default(uuid())
+  organizationId    String                    @map("organization_id")
+  organization      Organization              @relation(fields: [organizationId], references: [id])
+  voiceAssistantId  String                    @map("voice_assistant_id")
+  voiceAssistant    VoiceAssistant            @relation(fields: [voiceAssistantId], references: [id])
+
+  elevenLabsConvId  String?                   @map("elevenlabs_conv_id")
+  callerNumber      String?                   @map("caller_number")
+  direction         String                    @default("inbound")
+  durationSeconds   Int?                      @map("duration_seconds")
+  outcome           VoiceConversationOutcome  @default(RESOLVED)
+  transcript        String?                   @db.Text
+  summary           String?
+  escalationReason  String?                   @map("escalation_reason")
+  actionsPerformed  String[]                  @map("actions_performed")
+  errorMessage      String?                   @map("error_message")
+
+  startedAt         DateTime                  @default(now()) @map("started_at")
+  endedAt           DateTime?                 @map("ended_at")
+  createdAt         DateTime                  @default(now()) @map("created_at")
+
+  @@index([organizationId, startedAt])
+  @@index([voiceAssistantId])
+  @@index([outcome])
+  @@map("voice_conversations")
+}
+
+// ── V2 Trip Detection State Machine ──
+
+model VehicleTripDetectionState {
+  id                     String                  @id @default(uuid())
+  vehicleId              String                  @unique @map("vehicle_id")
+  organizationId         String?                 @map("organization_id")
+
+  state                  TripDetectionState      @default(RESTING)
+  detectionProfile       VehicleDetectionProfile @default(UNKNOWN) @map("detection_profile")
+
+  activeTripId           String?                 @map("active_trip_id")
+  possibleStartAt        DateTime?               @map("possible_start_at")
+  possibleEndAt          DateTime?               @map("possible_end_at")
+  lastActivityAt         DateTime?               @map("last_activity_at")
+  lastSnapshotEvidenceAt DateTime?               @map("last_snapshot_evidence_at")
+
+  lastCoreProcessedAt    DateTime?               @map("last_core_processed_at")
+  lastRouteProcessedAt   DateTime?               @map("last_route_processed_at")
+  lastDrivingProcessedAt DateTime?               @map("last_driving_processed_at")
+
+  workerLockedUntil      DateTime?               @map("worker_locked_until")
+  workerRunToken         String?                 @map("worker_run_token")
+
+  startDetectionMode     String?                 @map("start_detection_mode")
+  startConfidence        DetectionConfidence?     @map("start_confidence")
+  endDetectionMode       String?                 @map("end_detection_mode")
+  endConfidence          DetectionConfidence?     @map("end_confidence")
+
+  lastEvidenceSummary    Json?                   @map("last_evidence_summary")
+
+  startOdometerKm        Float?                  @map("start_odometer_km")
+  startFuelLevel         Float?                  @map("start_fuel_level")
+  startEvSoc             Float?                  @map("start_ev_soc")
+
+  // ── V2 Trip End — improved end detection fields ──
+  lastMeaningfulMovementAt  DateTime?             @map("last_meaningful_movement_at")
+  endValidationAttempts     Int                   @default(0) @map("end_validation_attempts")
+  cusumValidatedAt          DateTime?             @map("cusum_validated_at")
+  cusumSegmentStart         DateTime?             @map("cusum_segment_start")
+  cusumSegmentEnd           DateTime?             @map("cusum_segment_end")
+
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @updatedAt @map("updated_at")
+
+  vehicle                Vehicle                 @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([state])
+  @@index([organizationId])
+  @@index([workerLockedUntil])
+  @@map("vehicle_trip_detection_states")
+}
+
+/// Per-vehicle logbook activation config for the Master Admin debugging tool.
+model VehicleLogbookConfig {
+  id          String    @id @default(uuid())
+  vehicleId   String    @unique @map("vehicle_id")
+  enabled     Boolean   @default(false)
+  enabledAt   DateTime? @map("enabled_at")
+  expiresAt   DateTime? @map("expires_at")
+  enabledBy   String?   @map("enabled_by")
+  notes       String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@map("vehicle_logbook_configs")
+}
+
+model VehicleTripTrackingRun {
+  id                  String               @id @default(uuid())
+  vehicleId           String               @map("vehicle_id")
+  organizationId      String?              @map("organization_id")
+  tripId              String?              @map("trip_id")
+
+  stateAtRun          TripDetectionState   @map("state_at_run")
+  runType             TripTrackingRunType  @map("run_type")
+
+  requestedFrom       DateTime?            @map("requested_from")
+  requestedTo         DateTime?            @map("requested_to")
+  corePointsCount     Int?                 @map("core_points_count")
+  routePointsCount    Int?                 @map("route_points_count")
+  drivingPointsCount  Int?                 @map("driving_points_count")
+
+  resultState         TripDetectionState?  @map("result_state")
+  resultSummary       Json?                @map("result_summary")
+  errorMessage        String?              @map("error_message")
+  durationMs          Int?                 @map("duration_ms")
+
+  createdAt           DateTime             @default(now()) @map("created_at")
+
+  vehicle             Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([tripId])
+  @@index([runType])
+  @@index([createdAt])
+  @@map("vehicle_trip_tracking_runs")
+}
+
+// ── Driving Impact Engine V1 ──────────────────────────────────────────────────
+//
+// These two models form the shared normalization layer between
+// HF post-trip enrichment and the Tire Health / Brake Health modules.
+// Neither Tire nor Brake stores driving aggressiveness on their own tables;
+// they read from these shared structures instead.
+
+/// One row per finalized trip. Computed after HF enrichment, never overwritten.
+model TripDrivingImpact {
+  id              String    @id @default(uuid())
+  organizationId  String?   @map("organization_id")
+  vehicleId       String    @map("vehicle_id")
+  tripId          String    @unique @map("trip_id")
+  tripStartedAt   DateTime  @map("trip_started_at")
+  tripEndedAt     DateTime? @map("trip_ended_at")
+  distanceKm      Float     @map("distance_km")
+
+  // Usage split (from VehicleTrip city/highway/country percent fields)
+  citySharePct        Float? @map("city_share_pct")
+  highwaySharePct     Float? @map("highway_share_pct")
+  countryRoadSharePct Float? @map("country_road_share_pct")
+
+  // Normalized per-100 km event rates
+  hardAccelPer100Km    Float? @map("hard_accel_per_100km")
+  extremeAccelPer100Km Float? @map("extreme_accel_per_100km")
+  hardBrakePer100Km    Float? @map("hard_brake_per_100km")
+  extremeBrakePer100Km Float? @map("extreme_brake_per_100km")
+  fullBrakingPer100Km  Float? @map("full_braking_per_100km")
+  kickdownPer100Km     Float? @map("kickdown_per_100km")
+  launchLikePer100Km   Float? @map("launch_like_per_100km")
+
+  // Braking behavior metrics (derived from TripBehaviorEvent rows)
+  brakesPer100Km       Float? @map("brakes_per_100km")
+  stopDensity          Float? @map("stop_density")
+  highSpeedBrakeShare  Float? @map("high_speed_brake_share")
+  meanBrakeEnergyPerKm Float? @map("mean_brake_energy_per_km")
+  p95NegativeDecel     Float? @map("p95_negative_decel")
+
+  // Normalized stress scores 0–100
+  longitudinalStressScore Float? @map("longitudinal_stress_score")
+  brakingStressScore      Float? @map("braking_stress_score")
+  stopGoStressScore       Float? @map("stop_go_stress_score")
+  highSpeedStressScore    Float? @map("high_speed_stress_score")
+  thermalBrakeStressScore Float? @map("thermal_brake_stress_score")
+  drivingStyleScore       Float? @map("driving_style_score")
+
+  // Traceability
+  modelVersion      String @map("model_version")
+  sourceSummaryJson Json?  @map("source_summary_json")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, tripStartedAt])
+  @@index([organizationId, vehicleId])
+  @@map("trip_driving_impact")
+}
+
+/// Rolling 30-day aggregate per vehicle. One row, upserted after each trip impact row.
+/// Read by Tire Health and Brake Health to get current driving behavior context.
+model VehicleDrivingImpactCurrent {
+  vehicleId      String  @id @map("vehicle_id")
+  organizationId String? @map("organization_id")
+
+  windowDays       Int      @default(30) @map("window_days")
+  windowStartedAt  DateTime? @map("window_started_at")
+  windowEndedAt    DateTime? @map("window_ended_at")
+  distanceKmWindow Float?    @map("distance_km_window")
+
+  // Rolling usage split
+  citySharePct        Float? @map("city_share_pct")
+  highwaySharePct     Float? @map("highway_share_pct")
+  countryRoadSharePct Float? @map("country_road_share_pct")
+
+  // Rolling per-100 km rates (distance-weighted)
+  hardAccelPer100Km    Float? @map("hard_accel_per_100km")
+  extremeAccelPer100Km Float? @map("extreme_accel_per_100km")
+  hardBrakePer100Km    Float? @map("hard_brake_per_100km")
+  extremeBrakePer100Km Float? @map("extreme_brake_per_100km")
+  fullBrakingPer100Km  Float? @map("full_braking_per_100km")
+  kickdownPer100Km     Float? @map("kickdown_per_100km")
+  launchLikePer100Km   Float? @map("launch_like_per_100km")
+
+  // Rolling behavior metrics
+  brakesPer100Km       Float? @map("brakes_per_100km")
+  stopDensity          Float? @map("stop_density")
+  highSpeedBrakeShare  Float? @map("high_speed_brake_share")
+  meanBrakeEnergyPerKm Float? @map("mean_brake_energy_per_km")
+  p95NegativeDecel     Float? @map("p95_negative_decel")
+
+  // Rolling stress scores (distance-weighted)
+  longitudinalStressScore Float? @map("longitudinal_stress_score")
+  brakingStressScore      Float? @map("braking_stress_score")
+  stopGoStressScore       Float? @map("stop_go_stress_score")
+  highSpeedStressScore    Float? @map("high_speed_stress_score")
+  thermalBrakeStressScore Float? @map("thermal_brake_stress_score")
+  drivingStyleScore       Float? @map("driving_style_score")
+
+  modelVersion String   @map("model_version")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, vehicleId])
+  @@map("vehicle_driving_impact_current")
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// BUSINESS INSIGHTS
+// ────────────────────────────────────────────────────────────────────────────
+
+model TenantInsightPolicy {
+  id                    String   @id @default(uuid())
+  organizationId        String   @unique @map("organization_id")
+  enabled               Boolean  @default(true)
+  refreshIntervalMin    Int      @default(30)  @map("refresh_interval_min")
+  maxVisibleInsights    Int      @default(4)   @map("max_visible_insights")
+  enabledTypes          Json?    @map("enabled_types")
+  policyOverrides       Json?    @map("policy_overrides")
+  useLlmFormatting      Boolean  @default(false) @map("use_llm_formatting")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_insight_policies")
+}
+
+model DashboardInsightRun {
+  id                String   @id @default(uuid())
+  organizationId    String   @map("organization_id")
+  trigger           String
+  startedAt         DateTime @map("started_at")
+  finishedAt        DateTime? @map("finished_at")
+  durationMs        Int?     @map("duration_ms")
+  candidateCount    Int      @default(0) @map("candidate_count")
+  publishedCount    Int      @default(0) @map("published_count")
+  errorMessage      String?  @map("error_message")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  insights     DashboardInsight[]
+
+  @@index([organizationId])
+  @@index([createdAt])
+  @@map("dashboard_insight_runs")
+}
+
+model DashboardInsight {
+  id             String             @id @default(uuid())
+  organizationId String             @map("organization_id")
+  runId          String             @map("run_id")
+  type           InsightType
+  severity       InsightSeverity
+  priority       Int                @default(0)
+  title          String
+  message        String
+  actionLabel    String?            @map("action_label")
+  actionType     String?            @map("action_type")
+  entityScope    InsightEntityScope @map("entity_scope")
+  entityIds      Json?              @map("entity_ids")
+  timeContext    Json?              @map("time_context")
+  metrics        Json?
+  reasons        Json?
+  confidence     Float              @default(1.0)
+  dedupeKey      String             @map("dedupe_key")
+  groupKey       String?            @map("group_key")
+  isGrouped      Boolean            @default(false) @map("is_grouped")
+  groupCount     Int                @default(1) @map("group_count")
+  isActive       Boolean            @default(true) @map("is_active")
+  expiresAt      DateTime?          @map("expires_at")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  run          DashboardInsightRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, isActive])
+  @@index([runId])
+  @@index([dedupeKey])
+  @@index([type])
+  @@map("dashboard_insights")
+}
+
+// ------------------------------------------------
+// SERVICE & MAINTENANCE PARTNERS
+// ------------------------------------------------
+
+enum ServicePartnerProvider {
+  EUROMASTER
+  ADAC
+}
+
+enum ServicePartnerCategory {
+  SERVICE_MAINTENANCE
+}
+
+enum ServicePartnerGlobalStatus {
+  ACTIVE
+  PREPARED
+  INACTIVE
+}
+
+enum PartnerAssignmentMode {
+  MANUAL_ONLY
+  PREPARED
+  ACTIVE
+  READ_ONLY
+  FULL_ACCESS
+}
+
+enum PartnerAssignmentStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum PartnerDataAuthStatus {
+  GRANTED
+  REVOKED
+  PENDING
+}
+
+enum ServiceCaseType {
+  MAINTENANCE
+  TIRE_SERVICE
+  INSPECTION
+  ASSISTANCE
+  BREAKDOWN
+  OTHER
+}
+
+enum ServiceCaseStatus {
+  DRAFT
+  REQUESTED
+  BOOKED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model ServicePartner {
+  id              String                    @id @default(uuid())
+  provider        ServicePartnerProvider    @unique
+  name            String
+  category        ServicePartnerCategory    @default(SERVICE_MAINTENANCE)
+  globalStatus    ServicePartnerGlobalStatus @default(PREPARED) @map("global_status")
+  description     String?
+  logoUrl         String?                   @map("logo_url")
+  websiteUrl      String?                   @map("website_url")
+  capabilities    Json?
+  configSchema    Json?                     @map("config_schema")
+  apiBaseUrl      String?                   @map("api_base_url")
+  createdAt       DateTime                  @default(now()) @map("created_at")
+  updatedAt       DateTime                  @updatedAt @map("updated_at")
+
+  assignments     TenantServicePartnerAssignment[]
+  dataAuthorizations PartnerDataAuthorization[]
+  serviceCases    PartnerServiceCase[]
+
+  @@map("service_partners")
+}
+
+model TenantServicePartnerAssignment {
+  id              String                  @id @default(uuid())
+  organizationId  String                  @map("organization_id")
+  partnerId       String                  @map("partner_id")
+  status          PartnerAssignmentStatus @default(INACTIVE)
+  mode            PartnerAssignmentMode   @default(MANUAL_ONLY)
+  enabledFeatures Json?                   @map("enabled_features")
+  configJson      Json?                   @map("config_json")
+  credentials     Json?
+  connectedAt     DateTime?               @map("connected_at")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  partner      ServicePartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, partnerId])
+  @@index([organizationId])
+  @@map("tenant_service_partner_assignments")
+}
+
+model PartnerDataAuthorization {
+  id              String              @id @default(uuid())
+  organizationId  String              @map("organization_id")
+  partnerId       String              @map("partner_id")
+  status          PartnerDataAuthStatus @default(PENDING)
+  grantedScopes   Json                @map("granted_scopes")
+  grantedBy       String?             @map("granted_by")
+  grantedAt       DateTime?           @map("granted_at")
+  revokedAt       DateTime?           @map("revoked_at")
+  notes           String?
+  consentReference String?            @map("consent_reference")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  partner      ServicePartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, partnerId])
+  @@index([organizationId])
+  @@map("partner_data_authorizations")
+}
+
+model PartnerServiceCase {
+  id                String           @id @default(uuid())
+  organizationId    String           @map("organization_id")
+  partnerId         String           @map("partner_id")
+  vehicleId         String?          @map("vehicle_id")
+  type              ServiceCaseType  @default(MAINTENANCE)
+  status            ServiceCaseStatus @default(DRAFT)
+  title             String
+  description       String?
+  externalReference String?          @map("external_reference")
+  metadata          Json?
+  scheduledAt       DateTime?        @map("scheduled_at")
+  completedAt       DateTime?        @map("completed_at")
+  createdBy         String?          @map("created_by")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  partner      ServicePartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle?       @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  events       PartnerServiceCaseEvent[]
+
+  @@index([organizationId])
+  @@index([partnerId])
+  @@index([vehicleId])
+  @@index([status])
+  @@map("partner_service_cases")
+}
+
+model PartnerServiceCaseEvent {
+  id        String   @id @default(uuid())
+  caseId    String   @map("case_id")
+  type      String
+  payload   Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  serviceCase PartnerServiceCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@map("partner_service_case_events")
+}
+
+// ── AI Tire Spec Job (persisted job lifecycle for AI tire intelligence fetch) ──
+
+model AiTireSpecJob {
+  id                String    @id @default(uuid())
+  vehicleId         String?   @map("vehicle_id")
+  tireSetupId       String?   @map("tire_setup_id")
+
+  brand             String
+  model             String
+  year              Int
+  tireSize          String    @map("tire_size")
+  loadIndex         String    @map("load_index")
+  speedIndex        String    @map("speed_index")
+
+  status            String    @default("queued")
+  rawResponse       String?   @map("raw_response")
+  normalizedResult  Json?     @map("normalized_result")
+  confidenceScore   Float?    @map("confidence_score")
+  errorMessage      String?   @map("error_message")
+
+  appliedAt         DateTime? @map("applied_at")
+  appliedToSetupId  String?   @map("applied_to_setup_id")
+
+  createdAt         DateTime  @default(now()) @map("created_at")
+  startedAt         DateTime? @map("started_at")
+  completedAt       DateTime? @map("completed_at")
+
+  @@index([vehicleId])
+  @@index([status])
+  @@map("ai_tire_spec_jobs")
+}
+
+// ============================================================
+// HIGH MOBILITY — Phase 1 Integration
+// ============================================================
+
+enum HmPackageType {
+  HEALTH
+  FULL_TELEMETRY
+}
+
+enum HmSourceMode {
+  DIMO_PLUS_HM
+  HM_ONLY
+}
+
+enum HmEligibilityStatus {
+  UNKNOWN
+  PENDING
+  ELIGIBLE
+  INELIGIBLE
+  ERROR
+}
+
+enum HmDeliveryMode {
+  PULL
+  PUSH
+  BOTH
+}
+
+enum HmClearanceStatus {
+  DRAFT
+  CLEARANCE_PENDING
+  APPROVED
+  REJECTED
+  ERROR
+  REVOKING
+  REVOKED
+  CANCELED
+}
+
+enum HmSyncType {
+  MANUAL
+  SCHEDULED
+  POST_APPROVAL_INITIAL
+}
+
+enum HmSyncStatus {
+  SUCCESS
+  FAILED
+  PARTIAL
+}
+
+// Primary managed vehicle record for High Mobility
+model HighMobilityVehicle {
+  id                      String              @id @default(uuid())
+  // null = Master Admin global scope (not tied to a specific org)
+  organizationId          String?             @map("organization_id")
+  // null until linked to a SynqDrive registered vehicle
+  synqdriveVehicleId      String?             @map("synqdrive_vehicle_id")
+
+  vin                     String
+  brand                   String
+
+  packageType             HmPackageType       @map("package_type")
+  sourceMode              HmSourceMode        @default(DIMO_PLUS_HM) @map("source_mode")
+
+  eligibilityStatus       HmEligibilityStatus @default(UNKNOWN) @map("eligibility_status")
+  eligibilityDeliveryMode HmDeliveryMode?     @map("eligibility_delivery_mode")
+  eligibilityCheckedAt    DateTime?           @map("eligibility_checked_at")
+
+  clearanceStatus         HmClearanceStatus   @default(DRAFT) @map("clearance_status")
+  clearanceRequestedAt    DateTime?           @map("clearance_requested_at")
+  clearanceApprovedAt     DateTime?           @map("clearance_approved_at")
+  clearanceLastCheckedAt  DateTime?           @map("clearance_last_checked_at")
+
+  // Identifier returned by the High Mobility provider (e.g. internal HM fleet vehicle ID)
+  hmVehicleReference      String?             @map("hm_vehicle_reference")
+  // Raw provider payload (eligibility + clearance responses)
+  providerPayloadJson     Json?               @map("provider_payload_json")
+
+  isLinked                Boolean             @default(false) @map("is_linked")
+  linkedAt                DateTime?           @map("linked_at")
+  isActive                Boolean             @default(true) @map("is_active")
+
+  // Phase 2 — registration and streaming state
+  registrationState       HmRegistrationState @default(NOT_REGISTERED) @map("registration_state")
+  registeredAt            DateTime?           @map("registered_at")
+  streamingState          HmStreamingState    @default(NOT_CONFIGURED) @map("streaming_state")
+  // Provider-returned mode identifier (e.g. "fleet", "personal", etc.)
+  providerMode            String?             @map("provider_mode")
+  // Telemetry/streaming readiness metadata (MQTT topic, subscription state, etc.)
+  telemetryReadinessJson  Json?               @map("telemetry_readiness_json")
+
+  createdAt               DateTime            @default(now()) @map("created_at")
+  updatedAt               DateTime            @updatedAt @map("updated_at")
+
+  statusHistory           HighMobilityStatusHistory[]
+  syncLogs                HighMobilityHealthSyncLog[]
+  dataSourceLinks         VehicleDataSourceLink[]
+  streamSyncLogs          HighMobilityStreamSyncLog[]
+  signalGroupStates       HmSignalGroupState[]
+
+  // Unique: only one active clearance record per VIN + package + source mode
+  @@unique([vin, packageType, sourceMode, isActive], name: "uq_hm_vehicle_active")
+  @@index([vin])
+  @@index([clearanceStatus])
+  @@index([packageType])
+  @@index([sourceMode])
+  @@index([organizationId])
+  @@index([synqdriveVehicleId])
+  @@map("high_mobility_vehicles")
+}
+
+// Status change history for audit trail
+model HighMobilityStatusHistory {
+  id                    String   @id @default(uuid())
+  highMobilityVehicleId String   @map("high_mobility_vehicle_id")
+  eventType             String   @map("event_type")
+  oldStatus             String?  @map("old_status")
+  newStatus             String?  @map("new_status")
+  payloadJson           Json?    @map("payload_json")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  vehicle HighMobilityVehicle @relation(fields: [highMobilityVehicleId], references: [id], onDelete: Cascade)
+
+  @@index([highMobilityVehicleId])
+  @@index([createdAt])
+  @@map("high_mobility_status_history")
+}
+
+// Per-sync log for HEALTH data fetches
+model HighMobilityHealthSyncLog {
+  id                    String      @id @default(uuid())
+  highMobilityVehicleId String      @map("high_mobility_vehicle_id")
+  syncType              HmSyncType  @map("sync_type")
+  syncStatus            HmSyncStatus @map("sync_status")
+  requestedAt           DateTime    @map("requested_at")
+  completedAt           DateTime?   @map("completed_at")
+  errorMessage          String?     @map("error_message")
+  payloadJson           Json?       @map("payload_json")
+
+  vehicle HighMobilityVehicle @relation(fields: [highMobilityVehicleId], references: [id], onDelete: Cascade)
+
+  @@index([highMobilityVehicleId])
+  @@index([requestedAt])
+  @@map("high_mobility_health_sync_logs")
+}
+
+// ── Phase 2 enums ──────────────────────────────────────────────────────────
+
+enum HmRegistrationState {
+  NOT_REGISTERED
+  REGISTRATION_PENDING
+  REGISTERED
+  REGISTRATION_FAILED
+}
+
+enum HmStreamingState {
+  NOT_CONFIGURED
+  CONFIGURED
+  CONNECTING
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+enum HmIngestStatus {
+  RECEIVED
+  PARSED
+  STORED
+  FAILED
+  DEDUPLICATED
+}
+
+enum HmMqttConnectionState {
+  DISCONNECTED
+  CONNECTING
+  CONNECTED
+  ERROR
+  DISABLED
+}
+
+// Extensible vehicle data source link table
+// Supports HIGH_MOBILITY now, extendable for future sources
+model VehicleDataSourceLink {
+  id                    String   @id @default(uuid())
+  vehicleId             String   @map("vehicle_id")
+  sourceType            String   @map("source_type")
+  sourceSubtype         String?  @map("source_subtype")
+  sourceReferenceId     String   @map("source_reference_id")
+  isActive              Boolean  @default(true) @map("is_active")
+  activatedAt           DateTime @default(now()) @map("activated_at")
+  deactivatedAt         DateTime? @map("deactivated_at")
+  metadata              Json?    @map("metadata")
+
+  hmVehicle HighMobilityVehicle? @relation(fields: [sourceReferenceId], references: [id])
+
+  // Only one active link per vehicle + source type + subtype
+  @@unique([vehicleId, sourceType, sourceSubtype, isActive], name: "uq_data_source_link_active")
+  @@index([vehicleId])
+  @@index([sourceType])
+  @@index([sourceReferenceId])
+  @@map("vehicle_data_source_links")
+}
+
+// Phase 2 — raw MQTT stream message log
+model HighMobilityStreamSyncLog {
+  id                    String         @id @default(uuid())
+  // null for messages received before vehicle linkage is complete
+  highMobilityVehicleId String?        @map("high_mobility_vehicle_id")
+  vin                   String?
+  messageId             String         @map("message_id")
+  topic                 String
+  messageTimestamp      DateTime?      @map("message_timestamp")
+  ingestStatus          HmIngestStatus @default(RECEIVED) @map("ingest_status")
+  // true if message_id was seen before (deduplicated)
+  isDuplicate           Boolean        @default(false) @map("is_duplicate")
+  payloadJson           Json?          @map("payload_json")
+  // Extracted normalized summary (source-agnostic fields)
+  normalizedSummaryJson Json?          @map("normalized_summary_json")
+  errorMessage          String?        @map("error_message")
+  createdAt             DateTime       @default(now()) @map("created_at")
+
+  vehicle HighMobilityVehicle? @relation(fields: [highMobilityVehicleId], references: [id], onDelete: SetNull)
+
+  @@unique([messageId], name: "uq_hm_stream_message_id")
+  @@index([highMobilityVehicleId])
+  @@index([vin])
+  @@index([topic])
+  @@index([createdAt])
+  @@index([ingestStatus])
+  @@map("high_mobility_stream_sync_logs")
+}
+
+// Phase 3 — Signal group fetch state (cache + freshness tracking per vehicle per group)
+enum HmSignalGroup {
+  SERVICE
+  TIRE_PRESSURE
+  AI_HEALTH_CARE
+}
+
+model HmSignalGroupState {
+  id                String         @id @default(uuid())
+  vehicleId         String         @map("vehicle_id")       // SynqDrive vehicle ID
+  hmVehicleId       String         @map("hm_vehicle_id")    // FK to high_mobility_vehicles
+  signalGroup       HmSignalGroup  @map("signal_group")
+  lastFetchedAt     DateTime?      @map("last_fetched_at")
+  lastSuccessAt     DateTime?      @map("last_success_at")
+  lastErrorAt       DateTime?      @map("last_error_at")
+  lastErrorMessage  String?        @map("last_error_message")
+  dataJson          Json?          @map("data_json")        // Normalized cached signal payload
+  fetchCount        Int            @default(0) @map("fetch_count")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+
+  hmVehicle HighMobilityVehicle @relation(fields: [hmVehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, signalGroup], name: "uq_signal_group_vehicle")
+  @@index([vehicleId])
+  @@index([hmVehicleId])
+  @@index([signalGroup])
+  @@map("hm_signal_group_states")
+}
+
+// Phase 2 — MQTT consumer connection state (singleton-ish per environment)
+model HighMobilityStreamConsumerState {
+  id                String               @id @default(uuid())
+  environment       String               // "sandbox" | "live"
+  applicationId     String               @map("application_id")
+  consumerGroup     String               @map("consumer_group")
+  connectionState   HmMqttConnectionState @default(DISCONNECTED) @map("connection_state")
+  lastConnectedAt   DateTime?            @map("last_connected_at")
+  lastMessageAt     DateTime?            @map("last_message_at")
+  lastErrorAt       DateTime?            @map("last_error_at")
+  lastErrorMessage  String?              @map("last_error_message")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  @@unique([environment, applicationId, consumerGroup], name: "uq_hm_consumer_state")
+  @@index([environment])
+  @@map("high_mobility_stream_consumer_states")
+}

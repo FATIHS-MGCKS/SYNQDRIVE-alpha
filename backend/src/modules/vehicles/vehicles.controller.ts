@@ -1,0 +1,246 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { VehiclesService } from './vehicles.service';
+import { RolesGuard } from '@shared/auth/roles.guard';
+import { Roles } from '@shared/decorators/roles.decorator';
+import { PaginationParams } from '@shared/utils/pagination';
+import {
+  Prisma,
+  CleaningStatus,
+  HealthStatus,
+  VehicleStatus,
+  VehicleType,
+  FuelType,
+} from '@prisma/client';
+
+@Controller()
+@UseGuards(RolesGuard)
+export class VehiclesController {
+  constructor(private readonly vehiclesService: VehiclesService) {}
+
+  // ── Admin (platform-wide) ─────────────────────────────────────────
+
+  @Get('admin/vehicles')
+  @Roles('MASTER_ADMIN')
+  async findAllPlatform(@Query() query: PaginationParams) {
+    return this.vehiclesService.findAllPlatform(query);
+  }
+
+  @Get('admin/vehicles/:vehicleId')
+  @Roles('MASTER_ADMIN')
+  async findOneAdmin(@Param('vehicleId') vehicleId: string) {
+    return this.vehiclesService.findById(vehicleId);
+  }
+
+  // ── Organizations/:orgId/vehicles (org-scoped CRUD) ───────────────
+
+  @Get('organizations/:orgId/vehicles')
+  async findAllByOrg(
+    @Param('orgId') orgId: string,
+    @Query() query: PaginationParams,
+  ) {
+    return this.vehiclesService.findByOrganization(orgId, query);
+  }
+
+  @Get('organizations/:orgId/vehicles/:vehicleId')
+  async findOneByOrg(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+  ) {
+    return this.vehiclesService.findOne(orgId, vehicleId);
+  }
+
+  @Get('organizations/:orgId/vehicles/:vehicleId/telemetry')
+  async getVehicleTelemetry(
+    @Param('orgId') _orgId: string,
+    @Param('vehicleId') vehicleId: string,
+  ) {
+    return this.vehiclesService.getVehicleWithTelemetry(vehicleId);
+  }
+
+  @Get('organizations/:orgId/vehicles/:vehicleId/live-gps')
+  async getLiveGps(
+    @Param('orgId') _orgId: string,
+    @Param('vehicleId') vehicleId: string,
+  ) {
+    return this.vehiclesService.getLiveGps(vehicleId);
+  }
+
+  @Post('organizations/:orgId/vehicles')
+  async createByOrg(
+    @Param('orgId') orgId: string,
+    @Body() body: Omit<Prisma.VehicleCreateInput, 'organization'>,
+  ) {
+    return this.vehiclesService.create(orgId, body);
+  }
+
+  @Post('organizations/:orgId/vehicles/register-from-dimo')
+  async registerFromDimo(
+    @Param('orgId') orgId: string,
+    @Body()
+    body: {
+      dimoVehicleId: string;
+      stationId?: string;
+      /** Core vehicle fields (Prisma-safe subset + string enums from client) */
+      extraData?: Partial<Prisma.VehicleCreateInput> & {
+        fuelType?: FuelType | string;
+        vehicleType?: VehicleType | string;
+      };
+      /** Optional manual intelligence rows created after the vehicle */
+      manualSpecs?: {
+        battery?: {
+          batteryType?: string | null;
+          batteryAmpere?: number | null;
+          batteryVolt?: number | null;
+        };
+        brakes?: {
+          frontRotorDiameter?: number | null;
+          frontRotorWidth?: number | null;
+          frontPadThickness?: number | null;
+          rearRotorDiameter?: number | null;
+          rearRotorWidth?: number | null;
+          rearPadThickness?: number | null;
+        };
+        tires?: {
+          frontDimension?: string | null;
+          rearDimension?: string | null;
+          brandModelFront?: string | null;
+          brandModelRear?: string | null;
+          tireSeason?: string | null;
+          initialTreadFrontMm?: number | null;
+          initialTreadRearMm?: number | null;
+          treadFL?: number | null;
+          treadFR?: number | null;
+          treadBL?: number | null;
+          treadBR?: number | null;
+        };
+      };
+    },
+  ) {
+    return this.vehiclesService.registerFromDimo(
+      orgId,
+      body.stationId ?? null,
+      body.dimoVehicleId,
+      body.extraData,
+      body.manualSpecs,
+    );
+  }
+
+  @Patch('organizations/:orgId/vehicles/:vehicleId')
+  async updateByOrg(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: Prisma.VehicleUpdateInput,
+  ) {
+    return this.vehiclesService.update(vehicleId, body, orgId);
+  }
+
+  @Put('organizations/:orgId/vehicles/:vehicleId/tires')
+  async upsertTireData(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: {
+      frontDimension?: string | null;
+      rearDimension?: string | null;
+      brandModelFront?: string | null;
+      brandModelRear?: string | null;
+      tireSeason?: string | null;
+      treadFL?: number | null;
+      treadFR?: number | null;
+      treadBL?: number | null;
+      treadBR?: number | null;
+    },
+  ) {
+    return this.vehiclesService.upsertTireData(vehicleId, orgId, body);
+  }
+
+  @Patch('organizations/:orgId/vehicles/:vehicleId/status')
+  async updateVehicleStatus(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Body()
+    body: {
+      status?: VehicleStatus;
+      cleaningStatus?: CleaningStatus;
+      healthStatus?: HealthStatus;
+    },
+  ) {
+    const data: Prisma.VehicleUpdateInput = {};
+    if (body.status) data.status = body.status;
+    if (body.cleaningStatus) data.cleaningStatus = body.cleaningStatus;
+    if (body.healthStatus) data.healthStatus = body.healthStatus;
+    return this.vehiclesService.update(vehicleId, data, orgId);
+  }
+
+  @Get('organizations/:orgId/fleet-connectivity')
+  async getFleetConnectivity(@Param('orgId') orgId: string) {
+    return this.vehiclesService.getFleetConnectivity(orgId);
+  }
+
+  @Get('organizations/:orgId/vehicles/:vehicleId/complaints')
+  async listVehicleComplaints(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+  ) {
+    return this.vehiclesService.listVehicleComplaints(orgId, vehicleId);
+  }
+
+  @Post('organizations/:orgId/vehicles/:vehicleId/complaints')
+  async createVehicleComplaint(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: { description: string; urgency?: string; region?: string | null },
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.vehiclesService.createVehicleComplaint(
+      orgId,
+      vehicleId,
+      req.user?.id,
+      body,
+    );
+  }
+
+  @Delete('organizations/:orgId/vehicles/:vehicleId')
+  async deleteByOrg(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+  ) {
+    return this.vehiclesService.delete(vehicleId, orgId);
+  }
+
+  @Post('admin/vehicles/:vehicleId/deregister')
+  async deregisterVehicle(@Param('vehicleId') vehicleId: string) {
+    return this.vehiclesService.deregister(vehicleId);
+  }
+
+  // ── vehicles/:vehicleId (direct access) ───────────────────────────
+
+  @Get('vehicles/:vehicleId')
+  async findOne(@Param('vehicleId') vehicleId: string) {
+    return this.vehiclesService.findById(vehicleId);
+  }
+
+  @Patch('vehicles/:vehicleId')
+  async update(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: Prisma.VehicleUpdateInput,
+  ) {
+    return this.vehiclesService.update(vehicleId, body);
+  }
+
+  @Delete('vehicles/:vehicleId')
+  async delete(@Param('vehicleId') vehicleId: string) {
+    return this.vehiclesService.delete(vehicleId);
+  }
+}

@@ -1,0 +1,24 @@
+---
+alwaysApply: true
+---
+
+---
+description: DIMO integration rules
+globs:
+  - "**/*dimo*"
+  - "**/*telemetry*"
+  - "**/*segments*"
+  - "**/*webhook*"
+  - "**/*trigger*"
+  - "**/*agent*"
+---
+
+When working on DIMO-related code:
+
+- Use the DIMO MCP server for guidance and verification.
+- Inspect existing DIMO auth, telemetry, segments, event, DTC, worker, and webhook logic before changing anything.
+- DIMO Segments are the source of truth for trip boundaries where that architecture applies.
+- Historical signals may reconstruct route geometry inside segment time windows, not redefine canonical trip boundaries.
+- Do not invent local fallback logic when the intended DIMO integration path exists.
+- Verify request/response shape, auth, vehicle access, and trigger registration before implementing changes.
+- Preserve shared DIMO service/client architecture.

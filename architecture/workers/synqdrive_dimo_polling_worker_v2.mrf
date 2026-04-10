@@ -1,0 +1,394 @@
+You are helping me build the production-ready DIMO telemetry worker architecture for SynqDrive in Node.js + TypeScript using NestJS, BullMQ, Redis, Prisma, and PostgreSQL.
+
+Context:
+SynqDrive is a modular multi-tenant SaaS platform for Rental, Fleet, and Taxi operations.
+DIMO is the first telematics provider.
+This worker is ONLY responsible for telemetry polling / telemetry fetch orchestration / telemetry normalization / telemetry persistence.
+It is NOT responsible for vehicle registration, product licensing, auth/RBAC, battery reference enrichment, brake reference enrichment, or tire manual data flows.
+
+------------------------------------------------
+CURRENT SYNQDRIVE RULES
+------------------------------------------------
+
+1. DIMO is already the trusted source for:
+- VIN
+- Make
+- Model
+- Year
+- Fuel Type
+
+These identity fields do NOT need VIN decoding in this worker.
+
+2. Vehicle registration and DIMO mirrored vehicle onboarding are separate backend domains.
+This worker assumes vehicles and DIMO token references already exist.
+
+3. Vehicle reference/service intelligence is a separate domain:
+- battery reference specs
+- brake reference specs
+- tire setups
+- tread measurements
+- service events
+
+Do NOT mix those into telemetry polling.
+
+------------------------------------------------
+PRIMARY OBJECTIVE
+------------------------------------------------
+
+Implement a polling-first DIMO telemetry worker system for SynqDrive MVP.
+
+Telemetry behavior:
+
+A) Full latest snapshot polling
+- poll every 30 seconds
+- only for active connected registered vehicles
+- use DIMO latest-signal query style
+- fetch a normalized latest state snapshot
+
+B) Live-map polling
+- poll every 5 seconds
+- only for vehicles currently in an active live tracking session
+- fetch only minimal location signals
+- keep payloads lightweight
+
+C) Historical analytics fetching
+- NEVER continuously poll historical series
+- only fetch on demand when analytics tabs/views are opened
+- use DIMO historical/range query style
+- cache results briefly
+
+------------------------------------------------
+OUT OF SCOPE
+------------------------------------------------
+
+Do NOT implement here:
+- VIN decoding
+- battery reference enrichment
+- brake reference enrichment
+- tire specs enrichment
+- product licensing
+- Master Admin CRUD
+- vehicle registration forms
+- prospect logic
+
+------------------------------------------------
+DIMO QUERY MODEL
+------------------------------------------------
+
+Use a GraphQL-based DIMO telemetry access pattern.
+
+Use latest/current signal queries for:
+- latest snapshot polling
+- live-map polling
+
+Use historical signal queries for:
+- chart data
+- trends
+- analytics views
+
+Vehicle data access requires a Vehicle JWT.
+Vehicle JWT acquisition and refresh must happen server-side only.
+
+------------------------------------------------
+LATEST SNAPSHOT SIGNALS
+------------------------------------------------
+
+For the 30-second full snapshot poll, fetch and normalize fields such as:
+
+- lastSeen
+- currentLocationCoordinates
+- powertrainTransmissionTravelledDistance
+- powertrainCombustionEngineEngineOilRelativeLevel
+- powertrainCombustionEngineDieselExhaustFluidLevel
+- powertrainRange
+- chassisAxleRow1WheelLeftTirePressure
+- chassisAxleRow1WheelRightTirePressure
+- chassisAxleRow2WheelLeftTirePressure
+- chassisAxleRow2WheelRightTirePressure
+- powertrainTractionBatteryStateOfChargeCurrent
+- obdEngineLoad
+- lowVoltageBatteryCurrentVoltage
+- powertrainFuelSystemRelativeLevel
+- powertrainFuelSystemAbsoluteLevel
+
+The exact signal set may evolve, but the worker must support a normalized latest-state model.
+
+------------------------------------------------
+LIVE MAP SIGNALS
+------------------------------------------------
+
+For 5-second live-map polling, fetch only:
+
+- lastSeen
+- currentLocationCoordinates
+
+Do not fetch heavy snapshot data in the live-map worker.
+
+------------------------------------------------
+ANALYTICS FETCH BEHAVIOR
+------------------------------------------------
+
+Historical analytics queries are created on demand by the backend API layer when a user opens analytics views.
+
+Example chart categories:
+- speed trends
+- travelled distance
+- tire pressure history
+- location history / map paths
+- battery SOC trends
+- fuel level trends
+
+The worker should:
+- fetch the requested series
+- normalize it into chart-ready output
+- cache it with deterministic cache keys
+
+------------------------------------------------
+ARCHITECTURE REQUIREMENTS
+------------------------------------------------
+
+Use clear separation between:
+
+1. scheduling
+2. queueing
+3. processing
+4. DIMO auth / token management
+5. telemetry query execution
+6. normalization
+7. persistence
+8. logging / observability
+
+API controllers must NOT directly call DIMO for heavy polling work.
+The API should enqueue work and read SynqDrive-owned persisted data or cached analytics.
+
+------------------------------------------------
+REQUIRED QUEUES
+------------------------------------------------
+
+Use BullMQ queues for:
+
+- dimo.snapshot.poll
+- dimo.live-map.poll
+- dimo.analytics.fetch
+- dimo.vehicle.sync   (optional but recommended for syncing mirrored DIMO fleet metadata)
+
+------------------------------------------------
+REQUIRED SCHEDULERS
+------------------------------------------------
+
+1. Snapshot scheduler
+- every 30 seconds
+- enqueue snapshot jobs for active connected registered vehicles
+
+2. Live-map scheduler
+- every 5 seconds
+- enqueue jobs only for vehicles with active live tracking sessions
+
+3. Analytics fetch
+- no global scheduler
+- enqueue only on demand
+
+4. Optional DIMO vehicle mirror sync scheduler
+- periodic sync of mirrored DIMO fleet metadata
+- this is separate from telemetry polling
+
+------------------------------------------------
+PROCESSING BEHAVIOR
+------------------------------------------------
+
+Snapshot worker:
+- receives vehicleId, dimoTokenId, optional source
+- gets valid Vehicle JWT
+- executes latest snapshot query
+- normalizes payload
+- upserts telemetry latest-state table
+- writes polling log
+- retries transient failures
+- uses safe backoff
+
+Live-map worker:
+- receives vehicleId, dimoTokenId, optional source
+- gets valid Vehicle JWT
+- executes location-only query
+- writes lightweight position update and/or emits websocket/pubsub event placeholder
+- avoids duplicate excessive writes
+
+Analytics worker:
+- receives vehicleId, dimoTokenId, from, to, interval, chartType, optional source
+- gets valid Vehicle JWT
+- executes historical query
+- normalizes series
+- writes analytics cache
+- returns or makes cached result available
+
+Optional DIMO vehicle mirror sync worker:
+- syncs DIMO source vehicles into a mirror table
+- supports Non Registered Vehicles flow
+- does NOT register vehicles automatically into SynqDrive
+
+------------------------------------------------
+DIMO AUTH REQUIREMENTS
+------------------------------------------------
+
+Implement a dedicated DimoAuthService with:
+
+- getDeveloperJwt()
+- getVehicleJwt(tokenId: number)
+- getCachedVehicleJwt(tokenId: number)
+- refreshVehicleJwt(tokenId: number)
+
+Requirements:
+- Redis cache
+- expiry-aware refresh
+- safety margin before expiry
+- per-token lock/deduplication
+- server-side only
+
+------------------------------------------------
+PERSISTENCE TABLES / MODELS
+------------------------------------------------
+
+Propose Prisma models or SQL designs for at least:
+
+1. VehicleLatestState
+One row per registered vehicle with the latest normalized telemetry snapshot.
+
+Suggested fields:
+- id
+- vehicleId
+- dimoTokenId
+- source
+- lastSeenAt
+- latitude
+- longitude
+- odometerKm
+- oilLevelRelative
+- defLevel
+- rangeKm
+- tirePressureFl
+- tirePressureFr
+- tirePressureRl
+- tirePressureRr
+- evSoc
+- engineLoad
+- lvBatteryVoltage
+- fuelLevelRelative
+- fuelLevelAbsolute
+- rawPayloadJson
+- updatedAt
+
+2. DimoPollLog
+Used for diagnostics and operational observability.
+
+Suggested fields:
+- id
+- vehicleId
+- jobType
+- status
+- startedAt
+- finishedAt
+- durationMs
+- tokenRefreshed
+- errorMessage
+- errorCode
+- retryCount
+- metaJson
+
+3. VehiclePositionUpdate
+Optional short-lived recent position updates table.
+Useful for live map or short retention history.
+
+4. AnalyticsCache
+Suggested fields:
+- id
+- vehicleId
+- chartType
+- rangeFrom
+- rangeTo
+- interval
+- source
+- cacheKey
+- payloadJson
+- expiresAt
+- createdAt
+
+5. Optional DimoVehicleMirror
+If mirrored DIMO fleet sync is implemented.
+
+------------------------------------------------
+FOLDER STRUCTURE
+------------------------------------------------
+
+Use a production-style structure like:
+
+src/
+  modules/
+    dimo/
+      dimo.module.ts
+      dimo-auth.service.ts
+      dimo-telemetry.service.ts
+      dimo-query-builder.ts
+      dimo-vehicle-sync.service.ts
+      queries/
+        latest-vehicle-snapshot.query.ts
+        last-seen-location.query.ts
+        analytics/
+          vehicle-location.query.ts
+          performance-timeseries.query.ts
+          vehicle-speed.query.ts
+          travelled-distance.query.ts
+          tire-pressure.query.ts
+
+    jobs/
+      jobs.module.ts
+      queues/
+        dimo-snapshot.queue.ts
+        dimo-live-map.queue.ts
+        dimo-analytics.queue.ts
+        dimo-vehicle-sync.queue.ts
+      processors/
+        dimo-snapshot.processor.ts
+        dimo-live-map.processor.ts
+        dimo-analytics.processor.ts
+        dimo-vehicle-sync.processor.ts
+      schedulers/
+        dimo-snapshot.scheduler.ts
+        dimo-live-map.scheduler.ts
+        dimo-vehicle-sync.scheduler.ts
+
+    telemetry/
+      telemetry.module.ts
+      telemetry-normalizer.service.ts
+      telemetry-persistence.service.ts
+      vehicle-latest-state.service.ts
+      analytics-cache.service.ts
+      polling-log.service.ts
+
+    vehicles/
+      vehicles.module.ts
+      vehicle.service.ts
+      vehicle-tracking-session.service.ts
+
+  shared/
+    redis/
+      redis.module.ts
+      redis.service.ts
+    db/
+      prisma.service.ts
+    logging/
+      app-logger.service.ts
+
+------------------------------------------------
+IMPLEMENTATION STYLE
+------------------------------------------------
+
+- TypeScript only
+- NestJS-style modules/services/providers
+- BullMQ queues and processors
+- Prisma persistence
+- env-based configuration
+- production-oriented naming
+- modular monolith compatible
+
+Final goal:
+Design the DIMO telemetry worker architecture for SynqDrive in a way that is correct for the current SynqDrive platform architecture and remains cleanly separated from vehicle onboarding, product licensing, and vehicle reference/service intelligence.

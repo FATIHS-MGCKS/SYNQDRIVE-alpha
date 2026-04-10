@@ -1,0 +1,67 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { isAuthenticated, getStoredUser } from './lib/auth';
+import MasterApp from './master/App';
+import RentalApp from './rental/App';
+import LoginPage from './pages/LoginPage';
+
+function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string }) {
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" replace />;
+  }
+  if (requiredRole) {
+    const user = getStoredUser();
+    if (user && user.platformRole !== requiredRole) {
+      return <Navigate to="/rental" replace />;
+    }
+  }
+  return <>{children}</>;
+}
+
+function LoginRoute() {
+  if (isAuthenticated()) {
+    const user = getStoredUser();
+    if (user?.platformRole === 'MASTER_ADMIN') {
+      return <Navigate to="/master" replace />;
+    }
+    return <Navigate to="/rental" replace />;
+  }
+  return <LoginPage />;
+}
+
+function DefaultRedirect() {
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" replace />;
+  }
+  const user = getStoredUser();
+  if (user?.platformRole === 'MASTER_ADMIN') {
+    return <Navigate to="/master" replace />;
+  }
+  return <Navigate to="/rental" replace />;
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginRoute />} />
+        <Route
+          path="/master"
+          element={
+            <ProtectedRoute requiredRole="MASTER_ADMIN">
+              <MasterApp />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/rental"
+          element={
+            <ProtectedRoute>
+              <RentalApp />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<DefaultRedirect />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}

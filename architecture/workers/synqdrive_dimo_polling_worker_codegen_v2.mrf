@@ -1,0 +1,179 @@
+You already have the architecture for the SynqDrive DIMO telemetry worker system.
+
+Now generate the actual NestJS + TypeScript implementation skeleton as real code files ready to paste into a project.
+
+Important:
+- Follow the existing SynqDrive architecture files as source of truth.
+- Keep the DIMO telemetry worker focused on telemetry polling and telemetry persistence only.
+- Do NOT mix in vehicle battery/brake enrichment logic.
+- Do NOT redesign the architecture.
+- Generate implementation-oriented code, not high-level summaries.
+
+Tech stack:
+- NestJS
+- TypeScript
+- BullMQ
+- Redis
+- Prisma
+- PostgreSQL
+- Axios or fetch for GraphQL HTTP requests
+- Environment-based config
+
+System scope to implement:
+1. DimoAuthService
+2. DimoTelemetryService
+3. DIMO query files
+4. BullMQ queue registration
+5. Schedulers
+6. Worker processors
+7. TelemetryNormalizationService
+8. TelemetryPersistenceService
+9. PollingLogService
+10. AnalyticsCacheService
+11. Optional DimoVehicleSyncService and processor
+12. Prisma schema models
+13. Example environment config
+14. Module registration
+
+Implementation requirements:
+
+A) DimoAuthService
+Methods:
+- getDeveloperJwt()
+- getVehicleJwt(tokenId: number)
+- getCachedVehicleJwt(tokenId: number)
+- refreshVehicleJwt(tokenId: number)
+
+Behavior:
+- read DIMO credentials from env
+- cache vehicle JWTs in Redis
+- refresh before expiry
+- prevent duplicate refresh storms for the same tokenId using locking
+- keep token exchange server-side only
+
+B) DimoTelemetryService
+Methods:
+- fetchLatestVehicleSnapshot(...)
+- fetchLastSeenLocation(...)
+- fetchAnalyticsSeries(...)
+
+Behavior:
+- accept vehicle JWT
+- execute GraphQL calls
+- use query builder files
+- return typed DTO-like objects
+- use request timeout and normalized error handling
+
+C) Query files
+Generate dedicated files for:
+- latest full snapshot query
+- last seen + location query
+- one example analytics query
+- optional mirrored vehicles sync query if applicable
+
+D) BullMQ queues
+Register:
+- dimo.snapshot.poll
+- dimo.live-map.poll
+- dimo.analytics.fetch
+- dimo.vehicle.sync
+
+E) Schedulers
+1. DimoSnapshotScheduler
+- runs every 30 seconds
+- loads active connected registered vehicles
+- enqueues one snapshot job per vehicle
+
+2. DimoLiveMapScheduler
+- runs every 5 seconds
+- loads only vehicles with active live tracking sessions
+- enqueues one live-map job per vehicle
+
+3. Optional DimoVehicleSyncScheduler
+- periodically syncs DIMO mirrored source vehicles
+
+F) Processors
+1. DimoSnapshotProcessor
+- gets Vehicle JWT
+- fetches latest snapshot
+- normalizes
+- upserts VehicleLatestState
+- writes poll log
+
+2. DimoLiveMapProcessor
+- gets Vehicle JWT
+- fetches location-only data
+- writes lightweight position update or emits placeholder event
+- writes poll log
+
+3. DimoAnalyticsProcessor
+- gets Vehicle JWT
+- fetches historical data
+- normalizes
+- writes AnalyticsCache
+- writes poll log
+
+4. Optional DimoVehicleSyncProcessor
+- fetches mirrored DIMO vehicles metadata
+- syncs mirror records only
+- does not create registered vehicles automatically
+
+G) TelemetryNormalizationService
+Normalize:
+- latest snapshot
+- location update
+- analytics series
+
+Support safe parsing of null/missing signals.
+
+H) TelemetryPersistenceService
+Methods such as:
+- upsertVehicleLatestState(...)
+- createVehiclePositionUpdate(...)
+- writeAnalyticsCache(...)
+- upsertDimoVehicleMirror(...)
+
+I) PollingLogService
+Methods for:
+- start log context
+- mark success
+- mark failure
+- include duration and retry count
+
+J) Prisma schema
+Generate Prisma models for:
+- VehicleLatestState
+- DimoPollLog
+- VehiclePositionUpdate
+- AnalyticsCache
+- optional DimoVehicleMirror
+
+Include indexes and unique constraints.
+
+K) Module wiring
+Generate:
+- dimo.module.ts
+- jobs.module.ts
+- telemetry.module.ts
+- redis module
+- example app module imports
+
+L) Config
+Generate example env variables for:
+- DIMO credentials
+- Redis
+- Database
+- polling intervals
+- queue concurrency
+- request timeout settings
+
+Output requirements:
+- Output file-by-file code
+- Use headings like:
+  // FILE: src/modules/dimo/dimo-auth.service.ts
+- Then the code for that file
+- Continue through all relevant files
+- Prefer coherent usable skeletons over pseudo snippets
+
+Do not summarize.
+Go directly into code generation.

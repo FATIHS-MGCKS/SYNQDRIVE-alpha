@@ -1,0 +1,381 @@
+@custom-variant dark (&:is(.dark *));
+
+/* ═══════════════════════════════════════════════════════
+   SynqDrive Design System — Token Layer
+   ═══════════════════════════════════════════════════════ */
+
+:root {
+  --font-size: 14px;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: 'Manrope', var(--font-sans);
+
+  /* Semantic palette — light */
+  --background: #f8f8fa;
+  --foreground: #111118;
+  --card: #ffffff;
+  --card-foreground: #111118;
+  --popover: #ffffff;
+  --popover-foreground: #111118;
+  --primary: #111118;
+  --primary-foreground: #ffffff;
+  --secondary: #f0f0f4;
+  --secondary-foreground: #111118;
+  --muted: #ededf1;
+  --muted-foreground: #6b6b80;
+  --accent: #e8eaef;
+  --accent-foreground: #111118;
+  --destructive: #d4183d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(0, 0, 0, 0.08);
+  --input: transparent;
+  --input-background: #f3f3f6;
+  --switch-background: #cccdd4;
+  --ring: rgba(0, 0, 0, 0.12);
+
+  /* Indigo accent for interactive states */
+  --accent-indigo: #6366f1;
+  --accent-indigo-soft: rgba(99, 102, 241, 0.08);
+  --accent-indigo-glow: rgba(99, 102, 241, 0.18);
+
+  /* Elevation shadows — light */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.03);
+  --shadow-overlay: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+
+  /* Glass surfaces — light (very subtle) */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-blur: 16px;
+
+  /* Radius system */
+  --radius: 0.5rem;
+
+  /* Font weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Charts */
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+
+  /* Sidebar — light */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #111118;
+  --sidebar-primary: #111118;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f4f4f7;
+  --sidebar-accent-foreground: #111118;
+  --sidebar-border: rgba(0, 0, 0, 0.06);
+  --sidebar-ring: rgba(0, 0, 0, 0.08);
+}
+
+.dark {
+  --background: #0c0c10;
+  --foreground: #e8e8ed;
+  --card: #141418;
+  --card-foreground: #e8e8ed;
+  --popover: #18181e;
+  --popover-foreground: #e8e8ed;
+  --primary: #e8e8ed;
+  --primary-foreground: #111118;
+  --secondary: #1e1e24;
+  --secondary-foreground: #e8e8ed;
+  --muted: #1e1e24;
+  --muted-foreground: #7a7a90;
+  --accent: #242430;
+  --accent-foreground: #e8e8ed;
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: rgba(255, 255, 255, 0.07);
+  --input: rgba(255, 255, 255, 0.06);
+  --ring: rgba(255, 255, 255, 0.1);
+
+  --accent-indigo: #818cf8;
+  --accent-indigo-soft: rgba(129, 140, 248, 0.1);
+  --accent-indigo-glow: rgba(129, 140, 248, 0.22);
+
+  /* Elevation shadows — dark */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.15);
+  --shadow-overlay: 0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
+
+  /* Glass surfaces — dark (more expressive) */
+  --glass-bg: rgba(20, 20, 28, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-blur: 20px;
+
+  /* Sidebar — dark */
+  --sidebar: #0e0e14;
+  --sidebar-foreground: #e8e8ed;
+  --sidebar-primary: #818cf8;
+  --sidebar-primary-foreground: #e8e8ed;
+  --sidebar-accent: #1a1a22;
+  --sidebar-accent-foreground: #e8e8ed;
+  --sidebar-border: rgba(255, 255, 255, 0.05);
+  --sidebar-ring: rgba(255, 255, 255, 0.08);
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   Tailwind v4 Theme Bridge
+   ═══════════════════════════════════════════════════════ */
+
+@theme inline {
+  --font-family-sans: var(--font-sans);
+  --font-family-display: var(--font-display);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   Base Layer
+   ═══════════════════════════════════════════════════════ */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
+
+  html {
+    font-size: var(--font-size);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  /* Typography scale */
+  h1 { font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; line-height: 1.4; letter-spacing: -0.01em; }
+  h2 { font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; line-height: 1.4; letter-spacing: -0.005em; }
+  h3 { font-size: 0.95rem; font-weight: 600; line-height: 1.4; }
+  h4 { font-size: 0.875rem; font-weight: 600; line-height: 1.4; }
+  label { font-size: 0.8125rem; font-weight: 500; line-height: 1.4; }
+  button { font-size: 0.8125rem; font-weight: 500; line-height: 1.4; }
+  input { font-size: 0.8125rem; font-weight: 400; line-height: 1.4; }
+
+  /* Subtle page background gradient */
+  body {
+    background-color: var(--background);
+    background-image:
+      radial-gradient(at 85% 5%, rgba(99,102,241,0.04), transparent 50%),
+      radial-gradient(at 15% 95%, rgba(56,189,248,0.03), transparent 50%);
+    background-attachment: fixed;
+  }
+  .dark body {
+    background-image:
+      radial-gradient(at 85% 5%, rgba(99,102,241,0.08), transparent 50%),
+      radial-gradient(at 15% 95%, rgba(56,189,248,0.06), transparent 50%);
+  }
+
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(160, 163, 175, 0.35); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(140, 143, 155, 0.5); }
+  .dark ::-webkit-scrollbar-thumb { background: rgba(100, 103, 115, 0.3); }
+  .dark ::-webkit-scrollbar-thumb:hover { background: rgba(120, 123, 135, 0.45); }
+
+
+  /* ── Utility animations ── */
+  @keyframes online-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6); }
+    50% { opacity: 0.85; transform: scale(1.04); box-shadow: 0 0 0 4px rgba(34, 197, 94, 0); }
+  }
+  .animate-online-pulse { animation: online-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+  @keyframes live-glow {
+    0%, 100% { box-shadow: 0 0 0 0 var(--accent-indigo-glow); }
+    50% { box-shadow: 0 0 0 3px var(--accent-indigo-glow); }
+  }
+  .animate-live-glow { animation: live-glow 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+  @keyframes value-flash {
+    0% { background-color: var(--accent-indigo-soft); }
+    100% { background-color: transparent; }
+  }
+  .animate-value-flash { animation: value-flash 1.2s ease-out; }
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   SynqDrive Surface System (utility classes)
+   ═══════════════════════════════════════════════════════ */
+
+/* Solid card — primary surface for tables, forms, config, detail panels */
+.sq-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 2px);
+  box-shadow: var(--shadow-xs);
+}
+
+/* Elevated card — dashboard KPIs, stat highlights, interactive cards */
+.sq-card-elevated {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 2px);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.sq-card-elevated:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Glass surface — map overlays, floating bars, sidebars, overlays */
+.sq-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: calc(var(--radius) + 2px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Overlay surface — modals, drawers, command palette */
+.sq-overlay {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow: var(--shadow-overlay);
+}
+
+/* Overlay backdrop */
+.sq-backdrop {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.dark .sq-backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* Inset surface — nested panels, grouped controls, pressed states */
+.sq-inset {
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* Tab bar container */
+.sq-tab-bar {
+  background: var(--muted);
+  border-radius: var(--radius);
+  padding: 3px;
+  display: inline-flex;
+  gap: 2px;
+}
+.sq-tab-bar button {
+  border-radius: calc(var(--radius) - 1px);
+  padding: 5px 14px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  transition: all 0.15s ease;
+}
+.sq-tab-bar button:hover {
+  color: var(--foreground);
+  background: var(--accent);
+}
+.sq-tab-bar button[data-active="true"],
+.sq-tab-bar button.active {
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: var(--shadow-xs);
+  font-weight: 600;
+}
+
+/* Section label */
+.sq-section-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-foreground);
+}
+
+/* Live-light accent — selective glow for active/live states */
+.sq-live-ring {
+  box-shadow: 0 0 0 1px var(--accent-indigo), 0 0 8px var(--accent-indigo-glow);
+}
+
+/* Tactile press */
+.sq-press:active {
+  transform: scale(0.98);
+  transition: transform 0.08s ease;
+}
+
+/* ── Legacy compatibility aliases ── */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: calc(var(--radius) + 2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow: var(--shadow-lg);
+}

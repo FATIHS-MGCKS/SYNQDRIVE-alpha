@@ -1,0 +1,96 @@
+You are refining an existing SynqDrive DIMO telemetry worker implementation that was already generated from prior architecture and code-generation prompts.
+
+Context:
+- The high-level architecture already exists.
+- NestJS, BullMQ, Redis, Prisma, schedulers, processors, DimoAuthService, and DimoTelemetryService already exist.
+- The worker is part of the SynqDrive modular monolith.
+- The worker is responsible for DIMO telemetry polling and DIMO mirror synchronization only.
+- Vehicle reference/service intelligence (battery reference, brake reference, tire manual data, service events) is a separate domain and must remain separate.
+
+Primary objective:
+Harden the current DIMO worker implementation for correctness, resilience, maintainability, and operational safety while preserving the same architecture.
+
+Important constraints:
+- Do NOT redesign from scratch.
+- Do NOT switch away from polling-first for this worker.
+- Do NOT move heavy polling into controllers.
+- Do NOT replace BullMQ / Redis / Prisma / NestJS.
+- Keep queue names and module boundaries aligned with the existing design.
+
+Improve these areas first:
+
+1. Retry and backoff
+- use sane retry defaults
+- differentiate transient vs permanent failures where possible
+- use exponential or controlled backoff
+- make failed jobs observable
+
+2. Token refresh safety
+- improve Vehicle JWT caching
+- add per-token locking/deduplication
+- refresh before expiry using safety margin
+- prevent token refresh storms
+
+3. Idempotency
+- latest snapshot upserts must be safe
+- live-map writes should avoid noisy duplicates
+- analytics cache keys must be deterministic
+- mirror sync upserts must be safe
+
+4. Observability
+- structured log context
+- useful poll log entries
+- include duration, retry count, token refresh status, error category
+- recommend future metrics:
+  - queue depth
+  - job latency
+  - DIMO error rate
+  - token refresh count
+  - analytics cache hit ratio
+
+5. Concurrency and load control
+- set sane concurrency per queue
+- avoid overwhelming DIMO
+- recommend per-queue concurrency and rate limiting
+- keep the existing architecture intact
+
+6. Code quality
+- improve naming consistency
+- tighten TypeScript typing
+- reduce repetition
+- separate transport / normalization / persistence concerns cleanly
+
+7. Database robustness
+- add useful indexes
+- add unique constraints for safe upserts
+- deterministic analytics cache key
+- suggest retention/cleanup policies for logs, recent positions, and analytics cache
+
+8. Operational readiness
+- env/config validation
+- outbound request timeouts
+- graceful handling of temporary Redis or DIMO outages
+- notes for health/readiness checks
+
+What to do:
+1. Briefly identify key MVP weaknesses.
+2. Provide a concrete refinement plan.
+3. Output improved code/file snippets for the most critical files first:
+   - DimoAuthService
+   - DimoTelemetryService
+   - Snapshot processor
+   - Live-map processor
+   - Analytics processor
+   - Optional vehicle sync processor
+   - PollingLogService
+   - Prisma schema / indexes / constraints
+   - Queue registration settings
+4. Clearly mark what changed and why.
+5. Keep the output practical and implementation-oriented.
+
+Output format:
+- Start with: Key MVP weaknesses to fix first
+- Then: Refinement plan
+- Then improved file/code snippets
+- For each major file, explain the refinement in 1–3 sentences
+- Proceed without asking clarifying questions

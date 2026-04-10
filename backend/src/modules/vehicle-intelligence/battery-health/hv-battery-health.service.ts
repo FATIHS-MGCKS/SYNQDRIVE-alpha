@@ -1,0 +1,444 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '@shared/database/prisma.service';
+import {
+  stabilize,
+  shouldPublish,
+  determineHvMaturity,
+  daysBetween,
+  type PublicationState,
+} from './soh-publication';
+
+/**
+ * HV (High-Voltage) Battery Health Service for EV traction batteries.
+ *
+ * SOH Calculation (industry-standard capacity-based approach):
+ *   SOH (%) = (Estimated Current Capacity / Nominal Capacity) × 100
+ *
+ * Current capacity is estimated from energy throughput between SoC readings:
+ *   ΔEnergy = energy consumed/charged between two observations
+ *   ΔSoC = change in state of charge
+ *   Estimated Capacity = ΔEnergy / (|ΔSoC| / 100)
+ *
+ * When direct energy measurement is unavailable, a conservative
+ * age+mileage degradation model is applied as fallback.
+ */
+@Injectable()
+export class HvBatteryHealthService {
+  private readonly logger = new Logger(HvBatteryHealthService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getHvBatteryStatus(vehicleId: string) {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: {
+        fuelType: true,
+        hvBatteryCapacityKwh: true,
+        year: true,
+        mileageKm: true,
+      },
+    });
+
+    if (!vehicle) return null;
+
+    const isEv = vehicle.fuelType === 'ELECTRIC' || vehicle.fuelType === 'PLUGIN_HYBRID';
+    if (!isEv) return null;
+
+    const nominalCapacity = vehicle.hvBatteryCapacityKwh;
+    const latestState = await this.prisma.vehicleLatestState.findUnique({
+      where: { vehicleId },
+      select: { evSoc: true, odometerKm: true, rangeKm: true },
+    });
+
+    const snapshots = await this.prisma.hvBatteryHealthSnapshot.findMany({
+      where: { vehicleId },
+      orderBy: { recordedAt: 'desc' },
+      take: 100,
+    });
+
+    const sohResult = this.calculateSoh(nominalCapacity, snapshots, vehicle.year, latestState?.odometerKm ?? vehicle.mileageKm);
+
+    const chargingSessions = this.deriveChargingSessions(snapshots);
+
+    const recentTrend = snapshots
+      .filter((s) => s.sohPercent != null)
+      .slice(0, 30)
+      .reverse()
+      .map((s) => ({
+        date: s.recordedAt.toISOString(),
+        sohPercent: s.sohPercent,
+        socPercent: s.socPercent,
+        estimatedCapacityKwh: s.estimatedCapacityKwh,
+      }));
+
+    // Publication pipeline: read or compute current publication state
+    const pubCurrent = await this.prisma.hvBatteryHealthCurrent.findUnique({
+      where: { vehicleId },
+    });
+
+    const publishedSoh = pubCurrent?.publishedSohPct ?? null;
+    const publicationState = pubCurrent?.publicationState ?? 'INITIAL_CALIBRATION';
+    const publicationMethod = pubCurrent?.publicationMethod ?? sohResult.method;
+    const maturityConfidence = pubCurrent?.maturityConfidence ?? 'none';
+
+    // User-facing SOH: published when maturity allows, otherwise null
+    const userFacingSoh = publicationState === 'INITIAL_CALIBRATION' ? null : publishedSoh;
+
+    return {
+      isEv: true,
+      nominalCapacityKwh: nominalCapacity,
+      currentSocPercent: latestState?.evSoc ?? snapshots[0]?.socPercent ?? null,
+      estimatedRangeKm: latestState?.rangeKm ?? snapshots[0]?.rangeKm ?? null,
+      sohPercent: userFacingSoh ?? sohResult.sohPercent,
+      rawSohPercent: sohResult.sohPercent,
+      publishedSohPercent: publishedSoh,
+      sohMethod: sohResult.method,
+      publicationState,
+      publicationMethod,
+      maturityConfidence,
+      validEstimateCount: pubCurrent?.validEstimateCount ?? 0,
+      sohInterpretation: this.interpretSoh(publicationState !== 'INITIAL_CALIBRATION' ? (publishedSoh ?? sohResult.sohPercent) : null),
+      estimatedCurrentCapacityKwh: sohResult.estimatedCapacity,
+      snapshotCount: snapshots.length,
+      chargingSessions,
+      recentTrend,
+      lastRecordedAt: snapshots[0]?.recordedAt?.toISOString() ?? null,
+    };
+  }
+
+  private calculateSoh(
+    nominalCapacity: number | null,
+    snapshots: { socPercent: number; energyUsedKwh: number | null; estimatedCapacityKwh: number | null; odometerKm: number | null; recordedAt: Date }[],
+    vehicleYear: number | null,
+    currentOdometerKm: number | null,
+  ): { sohPercent: number | null; estimatedCapacity: number | null; method: string } {
+    // Method 1: Use stored estimated capacity values from snapshots
+    const capacityEstimates = snapshots
+      .filter((s) => s.estimatedCapacityKwh != null && s.estimatedCapacityKwh > 0)
+      .map((s) => s.estimatedCapacityKwh!);
+
+    if (nominalCapacity && nominalCapacity > 0 && capacityEstimates.length >= 3) {
+      const avgRecent = capacityEstimates.slice(0, 10).reduce((a, b) => a + b, 0) / Math.min(capacityEstimates.length, 10);
+      const soh = Math.max(0, Math.min(100, Math.round((avgRecent / nominalCapacity) * 100)));
+      return { sohPercent: soh, estimatedCapacity: Math.round(avgRecent * 10) / 10, method: 'capacity_measurement' };
+    }
+
+    // Method 2: Derive from consecutive SoC readings with energy data
+    if (nominalCapacity && nominalCapacity > 0 && snapshots.length >= 2) {
+      const derivedCapacities: number[] = [];
+      for (let i = 0; i < snapshots.length - 1; i++) {
+        const current = snapshots[i];
+        const previous = snapshots[i + 1];
+        if (current.energyUsedKwh != null && previous.energyUsedKwh != null) {
+          const deltaSoc = Math.abs(current.socPercent - previous.socPercent);
+          const deltaEnergy = Math.abs(current.energyUsedKwh - previous.energyUsedKwh);
+          if (deltaSoc >= 5 && deltaEnergy > 0) {
+            const estimated = (deltaEnergy / deltaSoc) * 100;
+            if (estimated > nominalCapacity * 0.5 && estimated < nominalCapacity * 1.2) {
+              derivedCapacities.push(estimated);
+            }
+          }
+        }
+      }
+      if (derivedCapacities.length >= 2) {
+        const avg = derivedCapacities.reduce((a, b) => a + b, 0) / derivedCapacities.length;
+        const soh = Math.max(0, Math.min(100, Math.round((avg / nominalCapacity) * 100)));
+        return { sohPercent: soh, estimatedCapacity: Math.round(avg * 10) / 10, method: 'energy_throughput' };
+      }
+    }
+
+    // Method 3: Conservative degradation model (fallback)
+    if (nominalCapacity && nominalCapacity > 0) {
+      const ageYears = vehicleYear ? new Date().getFullYear() - vehicleYear : 0;
+      const mileageK = (currentOdometerKm ?? 0) / 1000;
+      // ~2% degradation per year + ~0.5% per 10,000 km (conservative EV assumption)
+      const ageDegradation = ageYears * 2;
+      const mileageDegradation = (mileageK / 10) * 0.5;
+      const totalDegradation = Math.min(40, ageDegradation + mileageDegradation);
+      const soh = Math.max(60, Math.round(100 - totalDegradation));
+      const estimated = Math.round((nominalCapacity * soh) / 100 * 10) / 10;
+      return { sohPercent: soh, estimatedCapacity: estimated, method: 'degradation_model' };
+    }
+
+    return { sohPercent: null, estimatedCapacity: null, method: 'insufficient_data' };
+  }
+
+  private interpretSoh(soh: number | null): { label: string; color: string; description: string } {
+    if (soh == null) return { label: 'Unknown', color: 'gray', description: 'Insufficient data to determine battery health.' };
+    if (soh >= 90) return { label: 'Excellent', color: 'green', description: 'Battery in excellent condition. Minimal degradation detected.' };
+    if (soh >= 80) return { label: 'Good', color: 'green', description: 'Battery in good condition. Normal age-related degradation.' };
+    if (soh >= 70) return { label: 'Fair', color: 'amber', description: 'Battery showing moderate degradation. Monitor capacity trends.' };
+    if (soh >= 60) return { label: 'Degraded', color: 'orange', description: 'Noticeable capacity loss. Consider battery assessment.' };
+    return { label: 'Critical', color: 'red', description: 'Significant capacity loss. Battery replacement may be needed.' };
+  }
+
+  private deriveChargingSessions(
+    snapshots: { socPercent: number; chargingPowerKw: number | null; isCharging: boolean; energyUsedKwh: number | null; rangeKm: number | null; odometerKm: number | null; recordedAt: Date }[],
+  ) {
+    const sessions: {
+      startTime: string;
+      endTime: string;
+      startSoc: number;
+      endSoc: number;
+      energyChargedKwh: number | null;
+      maxChargingPowerKw: number | null;
+      durationMinutes: number;
+      rangeGainedKm: number | null;
+    }[] = [];
+
+    let sessionStart: typeof snapshots[0] | null = null;
+    let maxPower = 0;
+
+    for (let i = snapshots.length - 1; i >= 0; i--) {
+      const s = snapshots[i];
+      if (s.isCharging && !sessionStart) {
+        sessionStart = s;
+        maxPower = s.chargingPowerKw ?? 0;
+      } else if (s.isCharging && sessionStart) {
+        maxPower = Math.max(maxPower, s.chargingPowerKw ?? 0);
+      } else if (!s.isCharging && sessionStart) {
+        const prev = snapshots[i + 1] || s;
+        const durationMs = prev.recordedAt.getTime() - sessionStart.recordedAt.getTime();
+        sessions.push({
+          startTime: sessionStart.recordedAt.toISOString(),
+          endTime: prev.recordedAt.toISOString(),
+          startSoc: sessionStart.socPercent,
+          endSoc: prev.socPercent,
+          energyChargedKwh: prev.energyUsedKwh != null && sessionStart.energyUsedKwh != null
+            ? Math.abs(prev.energyUsedKwh - sessionStart.energyUsedKwh) : null,
+          maxChargingPowerKw: maxPower > 0 ? Math.round(maxPower * 10) / 10 : null,
+          durationMinutes: Math.round(durationMs / 60000),
+          rangeGainedKm: prev.rangeKm != null && sessionStart.rangeKm != null
+            ? Math.round(prev.rangeKm - sessionStart.rangeKm) : null,
+        });
+        sessionStart = null;
+        maxPower = 0;
+      }
+    }
+
+    // Fallback: derive pseudo-sessions from SoC increases when no isCharging flag
+    if (sessions.length === 0 && snapshots.length >= 2) {
+      for (let i = 0; i < snapshots.length - 1; i++) {
+        const current = snapshots[i];
+        const next = snapshots[i + 1];
+        const socGain = current.socPercent - next.socPercent;
+        if (socGain >= 5) {
+          const durationMs = current.recordedAt.getTime() - next.recordedAt.getTime();
+          sessions.push({
+            startTime: next.recordedAt.toISOString(),
+            endTime: current.recordedAt.toISOString(),
+            startSoc: next.socPercent,
+            endSoc: current.socPercent,
+            energyChargedKwh: null,
+            maxChargingPowerKw: null,
+            durationMinutes: Math.round(durationMs / 60000),
+            rangeGainedKm: current.rangeKm != null && next.rangeKm != null
+              ? Math.round(current.rangeKm - next.rangeKm) : null,
+          });
+        }
+      }
+    }
+
+    return sessions.slice(0, 20);
+  }
+
+  /**
+   * Upsert the HV publication state after any new data arrives.
+   * Runs the three-layer pipeline: raw → stabilized → published.
+   */
+  private async upsertPublicationState(vehicleId: string): Promise<void> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { hvBatteryCapacityKwh: true, year: true, mileageKm: true },
+    });
+    if (!vehicle) return;
+
+    const snapshots = await this.prisma.hvBatteryHealthSnapshot.findMany({
+      where: { vehicleId },
+      orderBy: { recordedAt: 'desc' },
+      take: 100,
+    });
+
+    const latestState = await this.prisma.vehicleLatestState.findUnique({
+      where: { vehicleId },
+      select: { odometerKm: true },
+    });
+
+    const sohResult = this.calculateSoh(
+      vehicle.hvBatteryCapacityKwh,
+      snapshots,
+      vehicle.year,
+      latestState?.odometerKm ?? vehicle.mileageKm,
+    );
+
+    const rawSoh = sohResult.sohPercent;
+    if (rawSoh == null) return;
+
+    const now = new Date();
+    const current = await this.prisma.hvBatteryHealthCurrent.findUnique({
+      where: { vehicleId },
+    });
+
+    // Count valid estimates for maturity
+    const capacityEstimates = snapshots.filter(
+      (s) => s.estimatedCapacityKwh != null && s.estimatedCapacityKwh > 0,
+    ).length;
+    const energyPairCount = this.countEnergyThroughputPairs(snapshots, vehicle.hvBatteryCapacityKwh);
+    const validEstimateCount = Math.max(capacityEstimates, energyPairCount);
+
+    const firstSnapshot = snapshots.length > 0
+      ? snapshots[snapshots.length - 1].recordedAt
+      : null;
+    const firstUsable = current?.firstUsableMeasurementAt ?? firstSnapshot;
+
+    // Layer 2: Stabilize
+    const alpha = current?.ewmaAlpha ?? 0.20;
+    const { stabilized, wasOutlier } = stabilize(
+      current?.stabilizedSohPct ?? null,
+      rawSoh,
+      alpha,
+    );
+
+    // Layer 3: Maturity
+    const days = daysBetween(firstUsable, now);
+    const pubState: PublicationState = determineHvMaturity({
+      validEstimateCount,
+      daysSinceFirstMeasurement: days,
+      method: sohResult.method,
+    });
+
+    // Signal confidence based on method
+    const signalConf = sohResult.method === 'capacity_measurement' ? 'high'
+      : sohResult.method === 'energy_throughput' ? 'medium'
+      : 'low';
+
+    const maturityConf = pubState === 'STABLE' ? 'high'
+      : pubState === 'STABILIZING' ? 'medium'
+      : 'low';
+
+    // Publication hysteresis
+    let publishedSoh = current?.publishedSohPct ?? null;
+    let lastPublishedAt = current?.lastPublishedAt ?? null;
+
+    if (pubState !== 'INITIAL_CALIBRATION') {
+      const rounded = Math.round(stabilized);
+      const stateChanged = current ? pubState !== current.publicationState : true;
+      if (stateChanged || shouldPublish(rounded, publishedSoh)) {
+        publishedSoh = rounded;
+        lastPublishedAt = now;
+      }
+    }
+
+    await this.prisma.hvBatteryHealthCurrent.upsert({
+      where: { vehicleId },
+      create: {
+        vehicleId,
+        rawSohPct: rawSoh,
+        stabilizedSohPct: stabilized,
+        publishedSohPct: publishedSoh,
+        publicationState: pubState,
+        publicationMethod: sohResult.method,
+        maturityConfidence: maturityConf,
+        signalConfidence: signalConf,
+        validEstimateCount,
+        firstUsableMeasurementAt: firstUsable,
+        lastPublishedAt: lastPublishedAt,
+        outlierSuppressedCount: wasOutlier ? 1 : 0,
+        ewmaAlpha: alpha,
+      },
+      update: {
+        rawSohPct: rawSoh,
+        stabilizedSohPct: stabilized,
+        publishedSohPct: publishedSoh,
+        publicationState: pubState,
+        publicationMethod: sohResult.method,
+        maturityConfidence: maturityConf,
+        signalConfidence: signalConf,
+        validEstimateCount,
+        firstUsableMeasurementAt: firstUsable,
+        lastPublishedAt: lastPublishedAt,
+        outlierSuppressedCount: (current?.outlierSuppressedCount ?? 0) + (wasOutlier ? 1 : 0),
+      },
+    });
+  }
+
+  private countEnergyThroughputPairs(
+    snapshots: { socPercent: number; energyUsedKwh: number | null }[],
+    nominalCapacity: number | null,
+  ): number {
+    if (!nominalCapacity || nominalCapacity <= 0) return 0;
+    let count = 0;
+    for (let i = 0; i < snapshots.length - 1; i++) {
+      const c = snapshots[i];
+      const p = snapshots[i + 1];
+      if (c.energyUsedKwh != null && p.energyUsedKwh != null) {
+        const deltaSoc = Math.abs(c.socPercent - p.socPercent);
+        const deltaEnergy = Math.abs(c.energyUsedKwh - p.energyUsedKwh);
+        if (deltaSoc >= 5 && deltaEnergy > 0) {
+          const estimated = (deltaEnergy / deltaSoc) * 100;
+          if (estimated > nominalCapacity * 0.5 && estimated < nominalCapacity * 1.2) {
+            count++;
+          }
+        }
+      }
+    }
+    return count;
+  }
+
+  async recordSnapshot(data: {
+    vehicleId: string;
+    socPercent: number;
+    energyUsedKwh?: number;
+    rangeKm?: number;
+    chargingPowerKw?: number;
+    isCharging?: boolean;
+    odometerKm?: number;
+    temperatureC?: number;
+    nominalCapacityKwh?: number;
+  }) {
+    let estimatedCapacity: number | null = null;
+    let soh: number | null = null;
+
+    if (data.nominalCapacityKwh && data.energyUsedKwh != null) {
+      const previous = await this.prisma.hvBatteryHealthSnapshot.findFirst({
+        where: { vehicleId: data.vehicleId },
+        orderBy: { recordedAt: 'desc' },
+      });
+      if (previous && previous.energyUsedKwh != null) {
+        const deltaSoc = Math.abs(data.socPercent - previous.socPercent);
+        const deltaEnergy = Math.abs(data.energyUsedKwh - previous.energyUsedKwh);
+        if (deltaSoc >= 5 && deltaEnergy > 0) {
+          estimatedCapacity = Math.round(((deltaEnergy / deltaSoc) * 100) * 10) / 10;
+          if (estimatedCapacity > data.nominalCapacityKwh * 0.5 && estimatedCapacity < data.nominalCapacityKwh * 1.2) {
+            soh = Math.max(0, Math.min(100, Math.round((estimatedCapacity / data.nominalCapacityKwh) * 100)));
+          } else {
+            estimatedCapacity = null;
+          }
+        }
+      }
+    }
+
+    const snapshot = await this.prisma.hvBatteryHealthSnapshot.create({
+      data: {
+        vehicle: { connect: { id: data.vehicleId } },
+        socPercent: data.socPercent,
+        energyUsedKwh: data.energyUsedKwh ?? null,
+        estimatedCapacityKwh: estimatedCapacity,
+        sohPercent: soh,
+        rangeKm: data.rangeKm ?? null,
+        chargingPowerKw: data.chargingPowerKw ?? null,
+        isCharging: data.isCharging ?? false,
+        odometerKm: data.odometerKm ?? null,
+        temperatureC: data.temperatureC ?? null,
+        recordedAt: new Date(),
+      },
+    });
+
+    // Update publication pipeline after new data
+    this.upsertPublicationState(data.vehicleId).catch((err) =>
+      this.logger.warn(`HV publication state update failed for ${data.vehicleId}: ${err instanceof Error ? err.message : err}`),
+    );
+
+    return snapshot;
+  }
+}

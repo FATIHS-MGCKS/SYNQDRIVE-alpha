@@ -1,0 +1,180 @@
+SYNQDRIVE MASTER PROJECT CONTEXT
+
+Product: SynqDrive
+Type: Multi‑tenant SaaS platform for mobility and vehicle operations.
+
+Main product modules:
+- Rental Solution
+- Fleet Solution
+- Taxi Dispatch
+
+Platform goals:
+Provide companies with operational control, vehicle visibility,
+service intelligence, automation and integrations.
+
+------------------------------------------------
+MULTI‑TENANT MODEL
+------------------------------------------------
+Organizations are tenants.
+Each organization has isolated data.
+
+Platform structure:
+
+Platform (Master Admin)
+ └ Organizations
+     └ Users
+     └ Stations
+     └ Vehicles
+     └ Customers
+     └ Bookings
+     └ Integrations
+     └ Billing
+
+Tenant isolation must always be enforced.
+
+------------------------------------------------
+CORE ROLES
+------------------------------------------------
+Master Admin
+Org Admin
+Sub Admin
+Worker
+Driver
+Customer
+
+Master Admin controls:
+- organizations
+- platform settings
+- product licensing
+- billing overview
+- prospects database
+- integrations (DIMO, Stripe)
+
+------------------------------------------------
+PRODUCT LICENSING
+------------------------------------------------
+Organizations may enable products:
+
+- Rental Solution
+- Fleet Solution
+- Taxi Dispatch
+
+Enabled products determine:
+- available modules
+- permissions
+- billing
+
+------------------------------------------------
+DIMO VEHICLE SOURCE
+------------------------------------------------
+Vehicles originate from DIMO telemetry.
+
+DIMO provides:
+VIN
+Make
+Model
+Year
+Fuel Type
+
+These are trusted identity fields.
+
+Vehicles appear first as:
+
+Non Registered Vehicles (mirrored from DIMO)
+
+Then they can be registered into SynqDrive
+and assigned to an organization.
+
+------------------------------------------------
+VEHICLE INTELLIGENCE MODEL
+------------------------------------------------
+
+SynqDrive stores reference data needed for
+estimating component condition.
+
+Domains:
+
+Battery reference data
+Tire setups and tread measurements
+Brake reference specifications
+Service events
+
+These combine with telematics data
+to estimate vehicle health later.
+
+------------------------------------------------
+INTEGRATIONS
+------------------------------------------------
+
+Platform level integrations:
+- DIMO
+- Stripe
+
+Organization level integrations:
+- WooCommerce
+- Shopify
+
+Purpose:
+sync bookings
+sync payments
+external website integration
+
+------------------------------------------------
+PROSPECT DATABASE
+------------------------------------------------
+
+Master Admin maintains a database of potential partners:
+
+Taxi companies
+Rental companies
+Fleet operators
+Logistics companies
+
+Prospects may later convert into organizations.
+
+------------------------------------------------
+INTERNATIONALIZATION
+------------------------------------------------
+
+SynqDrive must support multiple languages:
+
+English
+German
+French
+Dutch
+Spanish
+Italian
+Polish
+Czech
+
+All UI text should use translation keys.
+
+------------------------------------------------
+TECH STACK DIRECTION
+------------------------------------------------
+
+Frontend:
+Next.js
+
+Backend:
+NestJS
+
+Database:
+PostgreSQL
+
+ORM:
+Prisma
+
+Workers:
+Redis + BullMQ
+
+Architecture:
+Modular monolith
+
+------------------------------------------------
+SOURCE OF TRUTH
+------------------------------------------------
+
+Figma defines UI layout.
+
+Backend must implement behavior behind it.

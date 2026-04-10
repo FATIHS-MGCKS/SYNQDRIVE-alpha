@@ -1,0 +1,11 @@
+{
+  "type": "driver_agent_v1",
+  "personality": "fleet_manager_pro",
+  "secrets": {
+    "DIMO_API_KEY": "c7856b98dd91534909058e1ce998e61bdc65cd4ab321fbafeb80e7cab763f573"
+  },
+  "variables": {
+    "USER_WALLET": "0xF7F2E739a87d9a660787ec722eC89f84bb0e0627",
+    "VEHICLE_IDS": "[190497]"
+  }
+}

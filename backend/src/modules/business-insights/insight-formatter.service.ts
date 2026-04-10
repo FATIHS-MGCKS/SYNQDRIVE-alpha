@@ -1,0 +1,40 @@
+import { Injectable } from '@nestjs/common';
+import { InsightCandidate, InsightType } from './insight.types';
+
+const TITLE_TEMPLATES: Record<InsightType, string> = {
+  [InsightType.TIGHT_HANDOVER]: 'Tight Handover',
+  [InsightType.RETURN_NEEDS_INSPECTION]: 'Return Needs Attention',
+  [InsightType.STATION_SHORTAGE]: 'Station Shortage',
+  [InsightType.LOW_UTILIZATION]: 'Low Utilization',
+  [InsightType.SERVICE_WINDOW]: 'Service Window Available',
+  [InsightType.SERVICE_BEFORE_BOOKING]: 'Check Before Rental',
+};
+
+const ACTION_LABELS: Record<InsightType, string> = {
+  [InsightType.TIGHT_HANDOVER]: 'View bookings',
+  [InsightType.RETURN_NEEDS_INSPECTION]: 'Review return',
+  [InsightType.STATION_SHORTAGE]: 'View station',
+  [InsightType.LOW_UTILIZATION]: 'Review vehicle',
+  [InsightType.SERVICE_WINDOW]: 'Schedule service',
+  [InsightType.SERVICE_BEFORE_BOOKING]: 'Review vehicle',
+};
+
+const MAX_TITLE = 40;
+const MAX_MESSAGE = 160;
+const MAX_ACTION = 24;
+
+@Injectable()
+export class InsightFormatterService {
+  format(candidates: InsightCandidate[], _useLlm = false): InsightCandidate[] {
+    return candidates.map((c) => ({
+      ...c,
+      title: this.truncate(TITLE_TEMPLATES[c.type] ?? c.title, MAX_TITLE),
+      message: this.truncate(c.message, MAX_MESSAGE),
+      actionLabel: this.truncate(c.actionLabel ?? ACTION_LABELS[c.type] ?? 'View', MAX_ACTION),
+    }));
+  }
+
+  private truncate(s: string, max: number): string {
+    return s.length > max ? s.slice(0, max - 1) + '…' : s;
+  }
+}

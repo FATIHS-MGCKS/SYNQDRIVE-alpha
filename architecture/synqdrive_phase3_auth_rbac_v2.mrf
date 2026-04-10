@@ -1,0 +1,112 @@
+SYNQDRIVE PHASE 3 AUTH & RBAC
+
+Purpose:
+Design authentication and authorization model.
+
+------------------------------------------------
+AUTHENTICATION
+------------------------------------------------
+
+Authentication confirms identity.
+
+Possible providers:
+- Clerk
+- custom auth
+
+Users table stores:
+
+id
+email
+name
+auth_provider_id
+status
+
+------------------------------------------------
+AUTHORIZATION MODEL
+------------------------------------------------
+
+Access is determined by:
+
+1 identity
+2 organization membership
+3 role
+4 product licensing
+5 optional station scope
+
+------------------------------------------------
+ROLES
+------------------------------------------------
+
+Master Admin
+Org Admin
+Sub Admin
+Worker
+Driver
+Customer
+
+------------------------------------------------
+MASTER ADMIN
+------------------------------------------------
+
+Platform level access.
+
+Capabilities:
+- manage organizations
+- manage users
+- configure DIMO
+- configure Stripe
+- manage product licensing
+- access prospects database
+
+------------------------------------------------
+ORG ADMIN
+------------------------------------------------
+
+Full control inside an organization.
+
+Capabilities:
+- manage users
+- manage stations
+- manage vehicles
+- manage integrations
+- manage customers and bookings
+
+------------------------------------------------
+SUB ADMIN
+------------------------------------------------
+
+Delegated admin.
+
+Can be restricted by station scope.
+
+------------------------------------------------
+WORKER
+------------------------------------------------
+
+Operational staff.
+
+Permissions limited to operational modules.
+
+------------------------------------------------
+PRODUCT LICENSING INTERACTION
+------------------------------------------------
+
+Even if role allows access,
+module access requires product enabled.
+
+Example:
+
+Org Admin
++ Rental enabled
+= Rental access
+
+------------------------------------------------
+ACCESS EVALUATION ORDER
+------------------------------------------------
+
+1 authenticated
+2 user active
+3 resolve membership
+4 check product enabled
+5 check role permission
+6 check station scope

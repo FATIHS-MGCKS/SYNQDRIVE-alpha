@@ -1,0 +1,646 @@
+import { Moon, Sun, Bell, Home, Search, Settings, Grid3X3, Car, Users, FileText, ListTodo, BarChart3, Calendar, MapPin, Tag, AlertCircle, Briefcase, X, ArrowRight, Zap, CreditCard, Building2, UserCog, Wifi, Lock, LogOut, User, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { VehicleData, fleetVehicles } from '../data/vehicles';
+import { useLanguage, type Locale } from '../i18n/LanguageContext';
+
+const languages = [
+  { code: 'en' as Locale, name: 'English', flag: '🇺🇸' },
+  { code: 'de' as Locale, name: 'Deutsch', flag: '🇩🇪' },
+  { code: 'fr' as Locale, name: 'Français', flag: '🇫🇷' },
+  { code: 'nl' as Locale, name: 'Nederlands', flag: '🇳🇱' },
+  { code: 'es' as Locale, name: 'Español', flag: '🇪🇸' },
+  { code: 'it' as Locale, name: 'Italiano', flag: '🇮🇹' },
+  { code: 'pl' as Locale, name: 'Polski', flag: '🇵🇱' },
+  { code: 'cs' as Locale, name: 'Čeština', flag: '🇨🇿' },
+];
+
+type ViewType = 'overview' | 'trips' | 'dashboard' | 'bookings' | 'driving-insights' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-management' | 'invoices' | 'fines' | 'price-tariffs' | 'analytics' | 'fleet-condition' | 'settings' | 'new-booking' | 'stations' | 'document-upload' | 'ai-assistant' | 'support';
+type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization';
+
+interface TopBarProps {
+  isDarkMode: boolean;
+  setIsDarkMode: (value: boolean) => void;
+  currentView?: ViewType;
+  settingsTab?: SettingsTab;
+  selectedVehicle?: VehicleData | null;
+  activeBookingRef?: string | null;
+  detailCustomerId?: string | null;
+  onViewChange?: (view: any) => void;
+  onVehicleSelect?: (vehicle: VehicleData) => void;
+  onSettingsTabChange?: (tab: SettingsTab) => void;
+  onFinanceTabChange?: (tab: string) => void;
+  onTasksTabChange?: (tab: string) => void;
+}
+
+import type { TranslationKey } from '../i18n/translations/en';
+
+const viewLabelKeys: Record<ViewType, TranslationKey> = {
+  'overview': 'view.overview',
+  'trips': 'view.trips',
+  'dashboard': 'view.dashboard',
+  'bookings': 'view.bookings',
+  'driving-insights': 'view.drivingInsights',
+  'health-errors': 'view.healthErrors',
+  'fleet': 'view.fleet',
+  'damages': 'view.damages',
+  'documents': 'view.documents',
+  'customers': 'view.customers',
+  'customer-detail': 'view.customerDetail',
+  'tasks': 'view.tasks',
+  'vendor-management': 'view.vendorManagement',
+  'invoices': 'view.invoices',
+  'fines': 'view.fines',
+  'price-tariffs': 'view.priceTariffs',
+  'analytics': 'view.analytics',
+  'fleet-condition': 'view.fleetCondition',
+  'settings': 'view.settings',
+  'new-booking': 'view.newBooking',
+  'stations': 'view.stations',
+  'document-upload': 'view.documentUpload',
+  'ai-assistant': 'view.aiAssistant',
+  'support': 'view.support',
+};
+
+const viewCategoryKeys: Record<ViewType, TranslationKey> = {
+  'overview': 'category.operations',
+  'trips': 'category.operations',
+  'driving-insights': 'category.operations',
+  'health-errors': 'category.operations',
+  'damages': 'category.operations',
+  'documents': 'category.operations',
+  'dashboard': 'category.operations',
+  'bookings': 'category.operations',
+  'fleet': 'category.operations',
+  'customers': 'category.operations',
+  'customer-detail': 'category.operations',
+  'tasks': 'category.tasks',
+  'vendor-management': 'category.tasks',
+  'invoices': 'category.finance',
+  'fines': 'category.finance',
+  'price-tariffs': 'category.finance',
+  'analytics': 'category.insights',
+  'fleet-condition': 'category.insights',
+  'settings': 'category.administration',
+  'new-booking': 'category.operations',
+  'stations': 'category.operations',
+  'document-upload': 'category.operations',
+  'ai-assistant': 'category.operations',
+  'support': 'category.support',
+};
+
+const settingsTabKeys: Record<SettingsTab, TranslationKey> = {
+  'account': 'settingsTab.account',
+  'company': 'settingsTab.company',
+  'fleet-connection': 'settingsTab.fleetConnection',
+  'users': 'settingsTab.users',
+  'billing': 'settingsTab.billing',
+  'data-authorization': 'settingsTab.dataAuthorization',
+};
+
+export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', settingsTab, selectedVehicle, activeBookingRef, detailCustomerId, onViewChange, onVehicleSelect, onSettingsTabChange, onFinanceTabChange, onTasksTabChange }: TopBarProps) {
+  const { locale, setLocale, t } = useLanguage();
+  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState(() => languages.find(l => l.code === locale) || languages[0]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  // Mock searchable data
+  const mockCustomers = [
+    { id: 'c1', name: 'Alexander Schmidt', email: 'a.schmidt@email.de', license: 'B-AS-1234' },
+    { id: 'c2', name: 'Maria Weber', email: 'm.weber@email.de', license: 'M-MW-5678' },
+    { id: 'c3', name: 'Thomas Müller', email: 't.mueller@email.de', license: 'HH-TM-9012' },
+    { id: 'c4', name: 'Sophie Fischer', email: 's.fischer@email.de', license: 'K-SF-3456' },
+    { id: 'c5', name: 'Lukas Becker', email: 'l.becker@email.de', license: 'S-LB-7890' },
+  ];
+
+  const mockBookings = [
+    { id: 'BK-2026-001', customer: 'Alexander Schmidt', vehicle: 'Mercedes AMG GT', status: 'Active' },
+    { id: 'BK-2026-002', customer: 'Maria Weber', vehicle: 'VW Touareg', status: 'Reserved' },
+    { id: 'BK-2026-003', customer: 'Thomas Müller', vehicle: 'Tesla Model S', status: 'Completed' },
+    { id: 'BK-2026-004', customer: 'Sophie Fischer', vehicle: 'Hyundai Tucson', status: 'Active' },
+  ];
+
+  const mockInvoices = [
+    { id: 'INV-2026-0041', customer: 'Alexander Schmidt', amount: '€1,240.00', status: 'Paid' },
+    { id: 'INV-2026-0042', customer: 'Maria Weber', amount: '€890.50', status: 'Open' },
+    { id: 'INV-2026-0043', customer: 'Thomas Müller', amount: '€2,150.00', status: 'Overdue' },
+  ];
+
+  const mockTasks = [
+    { id: 'TSK-001', title: 'Oil Change — Mercedes AMG GT', priority: 'High', status: 'Open' },
+    { id: 'TSK-002', title: 'Tire Rotation — VW Touareg', priority: 'Medium', status: 'In Progress' },
+    { id: 'TSK-003', title: 'Interior Cleaning — Tesla Model S', priority: 'Low', status: 'Open' },
+    { id: 'TSK-004', title: 'Brake Inspection — Hyundai Tucson', priority: 'High', status: 'Overdue' },
+  ];
+
+  const mockFines = [
+    { id: 'FINE-001', vehicle: 'Mercedes AMG GT', amount: '€35.00', reason: 'Parking violation' },
+    { id: 'FINE-002', vehicle: 'VW Touareg', amount: '€120.00', reason: 'Speed limit exceeded' },
+  ];
+
+  const navigationItems = [
+    { view: 'dashboard' as ViewType, label: 'Dashboard', icon: Home, category: 'Operations' },
+    { view: 'bookings' as ViewType, label: 'Bookings', icon: Calendar, category: 'Operations' },
+    { view: 'fleet' as ViewType, label: 'Fleet', icon: Car, category: 'Operations' },
+    { view: 'customers' as ViewType, label: 'Customers', icon: Users, category: 'Operations' },
+    { view: 'stations' as ViewType, label: 'Stations', icon: MapPin, category: 'Operations' },
+    { view: 'analytics' as ViewType, label: 'Analytics', icon: BarChart3, category: 'Insights' },
+    { view: 'invoices' as ViewType, label: 'Invoices', icon: FileText, category: 'Finance' },
+    { view: 'fines' as ViewType, label: 'Fines & OCR', icon: AlertCircle, category: 'Finance' },
+    { view: 'price-tariffs' as ViewType, label: 'Pricing & Tariffs', icon: Tag, category: 'Finance' },
+    { view: 'tasks' as ViewType, label: 'Task Management', icon: ListTodo, category: 'Tasks' },
+    { view: 'vendor-management' as ViewType, label: 'Vendor Management', icon: Briefcase, category: 'Tasks' },
+    { view: 'settings' as ViewType, label: 'Settings', icon: Settings, category: 'Administration' },
+  ];
+
+  // Build search results
+  type SearchResult = { type: 'vehicle' | 'customer' | 'booking' | 'invoice' | 'task' | 'fine' | 'page'; id: string; title: string; subtitle: string; category: string; data?: any };
+
+  const getSearchResults = useCallback((): SearchResult[] => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase();
+    const results: SearchResult[] = [];
+
+    // Vehicles
+    fleetVehicles.forEach(v => {
+      if (v.model.toLowerCase().includes(q) || v.license.toLowerCase().includes(q) || v.station.toLowerCase().includes(q)) {
+        results.push({ type: 'vehicle', id: v.id, title: v.model, subtitle: `${v.license} · ${v.status} · ${v.station}`, category: 'Vehicles', data: v });
+      }
+    });
+
+    // Customers
+    mockCustomers.forEach(c => {
+      if (c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.license.toLowerCase().includes(q)) {
+        results.push({ type: 'customer', id: c.id, title: c.name, subtitle: `${c.email} · ${c.license}`, category: 'Customers' });
+      }
+    });
+
+    // Bookings
+    mockBookings.forEach(b => {
+      if (b.id.toLowerCase().includes(q) || b.customer.toLowerCase().includes(q) || b.vehicle.toLowerCase().includes(q)) {
+        results.push({ type: 'booking', id: b.id, title: b.id, subtitle: `${b.customer} · ${b.vehicle} · ${b.status}`, category: 'Bookings' });
+      }
+    });
+
+    // Invoices
+    mockInvoices.forEach(inv => {
+      if (inv.id.toLowerCase().includes(q) || inv.customer.toLowerCase().includes(q) || inv.amount.toLowerCase().includes(q)) {
+        results.push({ type: 'invoice', id: inv.id, title: inv.id, subtitle: `${inv.customer} · ${inv.amount} · ${inv.status}`, category: 'Invoices' });
+      }
+    });
+
+    // Tasks
+    mockTasks.forEach(t => {
+      if (t.title.toLowerCase().includes(q) || t.id.toLowerCase().includes(q)) {
+        results.push({ type: 'task', id: t.id, title: t.title, subtitle: `${t.priority} · ${t.status}`, category: 'Tasks' });
+      }
+    });
+
+    // Fines
+    mockFines.forEach(f => {
+      if (f.vehicle.toLowerCase().includes(q) || f.id.toLowerCase().includes(q) || f.reason.toLowerCase().includes(q)) {
+        results.push({ type: 'fine', id: f.id, title: f.reason, subtitle: `${f.vehicle} · ${f.amount}`, category: 'Fines' });
+      }
+    });
+
+    // Pages/Navigation
+    navigationItems.forEach(nav => {
+      if (nav.label.toLowerCase().includes(q) || nav.category.toLowerCase().includes(q)) {
+        results.push({ type: 'page', id: nav.view, title: nav.label, subtitle: nav.category, category: 'Pages' });
+      }
+    });
+
+    return results.slice(0, 12);
+  }, [searchQuery]);
+
+  const searchResults = getSearchResults();
+
+  // Reset selection when results change
+  useEffect(() => { setSelectedIndex(0); }, [searchQuery]);
+
+  // Close on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setIsSearchOpen(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // ⌘K shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setIsSearchOpen(true);
+      }
+      if (e.key === 'Escape') {
+        setIsSearchOpen(false);
+        setSearchQuery('');
+        inputRef.current?.blur();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleSelectResult = (result: SearchResult) => {
+    setSearchQuery('');
+    setIsSearchOpen(false);
+    switch (result.type) {
+      case 'vehicle':
+        if (result.data && onVehicleSelect) onVehicleSelect(result.data);
+        onViewChange?.('overview');
+        break;
+      case 'customer':
+        onViewChange?.('customers');
+        break;
+      case 'booking':
+        onViewChange?.('bookings');
+        break;
+      case 'invoice':
+        onFinanceTabChange?.('invoices');
+        onViewChange?.('invoices');
+        break;
+      case 'task':
+        onTasksTabChange?.('tasks');
+        onViewChange?.('tasks');
+        break;
+      case 'fine':
+        onFinanceTabChange?.('fines');
+        onViewChange?.('fines');
+        break;
+      case 'page':
+        onViewChange?.(result.id);
+        break;
+    }
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (!isSearchOpen || searchResults.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex(prev => Math.min(prev + 1, searchResults.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex(prev => Math.max(prev - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSelectResult(searchResults[selectedIndex]);
+    }
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'vehicle': return Car;
+      case 'customer': return Users;
+      case 'booking': return Calendar;
+      case 'invoice': return FileText;
+      case 'task': return ListTodo;
+      case 'fine': return AlertCircle;
+      case 'page': return ArrowRight;
+      default: return Search;
+    }
+  };
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'vehicle': return isDarkMode ? 'text-blue-400 bg-blue-500/15' : 'text-blue-600 bg-blue-100';
+      case 'customer': return isDarkMode ? 'text-purple-400 bg-purple-500/15' : 'text-purple-600 bg-purple-100';
+      case 'booking': return isDarkMode ? 'text-emerald-400 bg-emerald-500/15' : 'text-emerald-600 bg-emerald-100';
+      case 'invoice': return isDarkMode ? 'text-amber-400 bg-amber-500/15' : 'text-amber-600 bg-amber-100';
+      case 'task': return isDarkMode ? 'text-orange-400 bg-orange-500/15' : 'text-orange-600 bg-orange-100';
+      case 'fine': return isDarkMode ? 'text-red-400 bg-red-500/15' : 'text-red-600 bg-red-100';
+      case 'page': return isDarkMode ? 'text-gray-400 bg-neutral-700' : 'text-gray-600 bg-gray-100';
+      default: return isDarkMode ? 'text-gray-400 bg-neutral-700' : 'text-gray-500 bg-gray-100';
+    }
+  };
+
+  return (
+    <div className={`flex items-center justify-between mb-8 z-10 relative`}>
+      {/* Left Section - Breadcrumb Navigation */}
+      <div className="flex items-center gap-1.5 lg:gap-2 text-[13px] min-w-0 overflow-hidden">
+        <Home className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+        <span className={`hidden sm:inline ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>/</span>
+        <span className={`hidden sm:inline ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t(viewCategoryKeys[currentView])}</span>
+        <span className={`hidden sm:inline ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`}>/</span>
+        {currentView === 'settings' && settingsTab ? (
+          <>
+            <span className={`hidden md:inline ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('view.settings')}</span>
+            <span className={`hidden md:inline ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`}>/</span>
+            <span className={`font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t(settingsTabKeys[settingsTab])}</span>
+          </>
+        ) : ['invoices', 'fines', 'price-tariffs'].includes(currentView) ? (
+          <>
+            <span className={`hidden md:inline ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('category.finance')}</span>
+            <span className={`hidden md:inline ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`}>/</span>
+            <span className={`font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t(viewLabelKeys[currentView])}</span>
+          </>
+        ) : ['tasks', 'vendor-management'].includes(currentView) ? (
+          <>
+            <span className={`hidden md:inline ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('category.tasks')}</span>
+            <span className={`hidden md:inline ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`}>/</span>
+            <span className={`font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t(viewLabelKeys[currentView])}</span>
+          </>
+        ) : ['analytics', 'fleet-condition'].includes(currentView) ? (
+          <>
+            <span className={`hidden md:inline ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('category.insights')}</span>
+            <span className={`hidden md:inline ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`}>/</span>
+            <span className={`font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t(viewLabelKeys[currentView])}</span>
+          </>
+        ) : currentView === 'new-booking' ? (
+          <>
+            <span className={`hidden md:inline ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('view.bookings')}</span>
+            <span className={`hidden md:inline ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`}>/</span>
+            <span className={`font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('view.newBooking')}</span>
+          </>
+        ) : currentView === 'customer-detail' && detailCustomerId ? (
+          <>
+            <span className={`hidden md:inline ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('view.customers')}</span>
+            <span className={`hidden md:inline ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`}>/</span>
+            <span className={`font-semibold font-mono truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{detailCustomerId}</span>
+          </>
+        ) : currentView === 'bookings' && activeBookingRef ? (
+          <>
+            <span className={`hidden md:inline ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('view.bookings')}</span>
+            <span className={`hidden md:inline ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`}>/</span>
+            <span className={`font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{activeBookingRef}</span>
+          </>
+        ) : ['overview', 'trips', 'driving-insights', 'health-errors', 'damages', 'documents'].includes(currentView) && selectedVehicle ? (
+          <>
+            <span className={`hidden md:inline ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t(viewLabelKeys[currentView])}</span>
+            <span className={`hidden md:inline ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`}>/</span>
+            <span className={`font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{selectedVehicle.model}</span>
+          </>
+        ) : (
+          <span className={`font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t(viewLabelKeys[currentView])}</span>
+        )}
+      </div>
+
+      {/* Center Section - Search */}
+      <div className="hidden md:flex flex-1 max-w-md mx-8" ref={searchRef}>
+        <div className="relative w-full">
+          <div className={`flex items-center gap-2 w-full px-4 py-2 rounded-full border transition-colors ${
+            isDarkMode 
+              ? 'bg-neutral-800 border-neutral-700 focus-within:border-neutral-600' 
+              : 'bg-gray-50 border-gray-200 focus-within:border-gray-300'
+          }`}>
+            <Search className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder={t('topbar.searchPlaceholder')}
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setIsSearchOpen(true); }}
+              onFocus={() => { if (searchQuery.trim()) setIsSearchOpen(true); }}
+              onKeyDown={handleSearchKeyDown}
+              className={`flex-1 bg-transparent outline-none text-[13px] placeholder:text-gray-400 ${
+                isDarkMode ? 'text-gray-200' : 'text-gray-700'
+              }`}
+            />
+            {searchQuery ? (
+              <button onClick={() => { setSearchQuery(''); setIsSearchOpen(false); inputRef.current?.focus(); }} className={`p-0.5 rounded transition-colors ${isDarkMode ? 'hover:bg-neutral-700 text-gray-500' : 'hover:bg-gray-200 text-gray-400'}`}>
+                <X className="w-3 h-3" />
+              </button>
+            ) : (
+              <div className={`flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                isDarkMode ? 'bg-neutral-700 text-gray-500' : 'bg-gray-200 text-gray-400'
+              }`}>
+                <span>⌘</span><span>K</span>
+              </div>
+            )}
+          </div>
+
+          {/* Search Results Dropdown */}
+          {isSearchOpen && searchQuery.trim() && (
+            <div className={`absolute top-full mt-2 left-0 right-0 z-[9999] rounded-xl border shadow-2xl overflow-hidden backdrop-blur-xl ${
+              isDarkMode
+                ? 'bg-neutral-900/95 border-neutral-700/60 shadow-black/40'
+                : 'bg-white/95 border-gray-200/60 shadow-gray-200/60'
+            }`}>
+              {searchResults.length === 0 ? (
+                <div className="px-4 py-8 text-center">
+                  <Search className={`w-8 h-8 mx-auto mb-2 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                  <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No results for "{searchQuery}"</p>
+                  <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>Try searching for vehicles, customers, bookings...</p>
+                </div>
+              ) : (
+                <div className="max-h-[380px] overflow-y-auto">
+                  {/* Group results by category */}
+                  {(() => {
+                    const grouped: Record<string, typeof searchResults> = {};
+                    searchResults.forEach(r => {
+                      if (!grouped[r.category]) grouped[r.category] = [];
+                      grouped[r.category].push(r);
+                    });
+                    let globalIndex = 0;
+                    return Object.entries(grouped).map(([category, items]) => (
+                      <div key={category}>
+                        <div className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-gray-600 bg-neutral-800/50' : 'text-gray-400 bg-gray-50/80'}`}>
+                          {category}
+                        </div>
+                        {items.map((result) => {
+                          const idx = globalIndex++;
+                          const isSelected = selectedIndex === idx;
+                          const Icon = getTypeIcon(result.type);
+                          const colorClass = getTypeColor(result.type);
+                          return (
+                            <button
+                              key={`${result.type}-${result.id}`}
+                              onClick={() => handleSelectResult(result)}
+                              onMouseEnter={() => setSelectedIndex(idx)}
+                              className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+                                isSelected
+                                  ? isDarkMode ? 'bg-neutral-800/80' : 'bg-indigo-50/80'
+                                  : isDarkMode ? 'hover:bg-neutral-800/40' : 'hover:bg-gray-50'
+                              }`}
+                            >
+                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${colorClass}`}>
+                                <Icon className="w-3.5 h-3.5" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className={`text-[13px] font-medium truncate ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{result.title}</div>
+                                <div className={`text-[11px] truncate ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{result.subtitle}</div>
+                              </div>
+                              {isSelected && (
+                                <div className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${isDarkMode ? 'bg-neutral-700 text-gray-500' : 'bg-gray-200 text-gray-400'}`}>
+                                  ↵
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ));
+                  })()}
+                  {/* Footer */}
+                  <div className={`flex items-center justify-between px-3 py-2 border-t ${isDarkMode ? 'border-neutral-800 bg-neutral-900/60' : 'border-gray-100 bg-gray-50/60'}`}>
+                    <span className={`text-[10px] ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>{searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</span>
+                    <div className={`flex items-center gap-2 text-[10px] ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>
+                      <span className={`px-1 py-0.5 rounded ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-200'}`}>↑↓</span>
+                      <span>navigate</span>
+                      <span className={`px-1 py-0.5 rounded ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-200'}`}>↵</span>
+                      <span>select</span>
+                      <span className={`px-1 py-0.5 rounded ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-200'}`}>esc</span>
+                      <span>close</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right Section - Actions */}
+      <div className="flex items-center gap-1 lg:gap-1.5 shrink-0">
+        {/* Dark Mode Toggle */}
+        <button
+          onClick={() => setIsDarkMode(!isDarkMode)}
+          className={`p-2 rounded-lg transition-colors ${
+            isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'
+          }`}
+        >
+          {isDarkMode ? (
+            <Sun className="w-4 h-4" />
+          ) : (
+            <Moon className="w-4 h-4" />
+          )}
+        </button>
+
+        {/* Language Selector */}
+        <div className="relative hidden sm:block">
+          <button 
+            onClick={() => setIsLanguageOpen(!isLanguageOpen)}
+            className={`flex items-center gap-1.5 p-2 rounded-lg transition-colors ${
+              isDarkMode ? 'hover:bg-neutral-800' : 'hover:bg-gray-100'
+            }`}
+          >
+            <span className="text-sm leading-none">{selectedLanguage.flag}</span>
+          </button>
+
+          {/* Language Dropdown */}
+          {isLanguageOpen && (
+            <div className={`absolute right-0 top-full mt-1 w-44 rounded-xl shadow-lg border overflow-hidden z-[9999] ${
+              isDarkMode 
+                ? 'bg-neutral-900 border-neutral-700' 
+                : 'bg-white border-gray-200'
+            }`}>
+              {languages.map((lang) => (
+                <button
+                  key={lang.code}
+                  onClick={() => {
+                    setSelectedLanguage(lang);
+                    setLocale(lang.code);
+                    setIsLanguageOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-[13px] ${
+                    isDarkMode 
+                      ? 'hover:bg-neutral-800' 
+                      : 'hover:bg-gray-50'
+                  } ${
+                    selectedLanguage.code === lang.code 
+                      ? (isDarkMode ? 'bg-neutral-800' : 'bg-gray-50') 
+                      : ''
+                  }`}
+                >
+                  <span className="text-base">{lang.flag}</span>
+                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>{lang.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Notifications with Badge */}
+        <button className={`relative p-2 rounded-lg transition-colors ${
+          isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'
+        }`}>
+          <Bell className="w-4 h-4" />
+          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+        </button>
+
+        {/* Divider */}
+        <div className={`hidden sm:block w-px h-6 mx-1 ${isDarkMode ? 'bg-neutral-700' : 'bg-gray-200'}`} />
+
+        {/* User Avatar */}
+        <div className="relative" ref={profileRef}>
+          <button
+            onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+            className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs shadow-sm"
+          >
+            MM
+          </button>
+
+          {/* Profile Dropdown */}
+          {isProfileMenuOpen && (
+            <div className={`absolute right-0 top-full mt-2 w-64 rounded-xl shadow-2xl border overflow-hidden z-[9999] backdrop-blur-xl ${
+              isDarkMode
+                ? 'bg-neutral-900/95 border-neutral-700/60'
+                : 'bg-white/95 border-gray-200/60'
+            }`}>
+              {/* User Info Header */}
+              <div className={`px-4 py-3.5 border-b ${isDarkMode ? 'border-neutral-700/40' : 'border-gray-100'}`}>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs shadow-sm">
+                    MH
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-[13px] font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Michael Hartmann</p>
+                    <p className={`text-[11px] truncate ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>michael.hartmann@synqdrive.de</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Menu Items */}
+              <div className="py-1">
+                <button
+                  onClick={() => {
+                    setIsProfileMenuOpen(false);
+                    onSettingsTabChange?.('account');
+                    onViewChange?.('settings');
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-[13px] ${
+                    isDarkMode
+                      ? 'hover:bg-neutral-800 text-gray-300'
+                      : 'hover:bg-gray-50 text-gray-700'
+                  }`}
+                >
+                  <User className={`w-4 h-4 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                  <span>{t('topbar.accountSettings')}</span>
+                  <ChevronRight className={`w-3.5 h-3.5 ml-auto ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                </button>
+              </div>
+
+              {/* Logout */}
+              <div className={`border-t py-1 ${isDarkMode ? 'border-neutral-700/40' : 'border-gray-100'}`}>
+                <button
+                  onClick={() => setIsProfileMenuOpen(false)}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-[13px] ${
+                    isDarkMode
+                      ? 'hover:bg-red-500/10 text-red-400'
+                      : 'hover:bg-red-50 text-red-600'
+                  }`}
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>{t('topbar.logOut')}</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

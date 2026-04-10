@@ -1,0 +1,249 @@
+---
+alwaysApply: true
+---
+
+---
+description: SynqDrive project-wide engineering and architecture rules
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+You are working inside the SynqDrive codebase.
+
+SynqDrive is a multi-tenant SaaS platform for fleet, rental, telematics, vehicle health, maintenance, AI-assisted analysis, and operations management.
+
+You must follow these rules strictly.
+
+## 1) Core engineering behavior
+
+- Always inspect existing code before implementing changes.
+- Extend and refactor existing modules instead of rebuilding them from scratch whenever possible.
+- Do not create duplicate pages, duplicate services, duplicate components, duplicate API routes, duplicate workers, or duplicate feature flows.
+- Do not invent unrelated architecture, fallback systems, or speculative modules unless explicitly requested.
+- Preserve working functionality, backend wiring, and current business logic unless the task explicitly requires changing them.
+- Prefer surgical changes over broad rewrites.
+- For medium or large tasks, work in this order:
+  1. inspect
+  2. summarize
+  3. plan
+  4. implement
+  5. report
+- If the current codebase contains partial implementations, recovery leftovers, or duplicated logic, identify that first before adding more code.
+- Do not silently replace an intended architecture path with a shortcut or fallback implementation.
+
+## 2) Source of truth rules
+
+- The codebase is the source of truth for functionality, logic, routing, data flow, and backend integrations.
+- Figma is the source of truth for visual design, layout direction, spacing, hierarchy, styling, visual consistency, and UX intent.
+- Do not remove functional UI additions that exist in code but are not present in Figma.
+- If an element exists in code but not in Figma, keep it and visually harmonize it to the current design language.
+- If a design mismatch exists between code and Figma, adapt the visual layer while preserving working functionality.
+
+## 3) SynqDrive product architecture to preserve
+
+Treat these as core product pillars and preserve their architecture:
+
+### A. Multi-tenant SaaS foundation
+- organizations / tenants
+- users and roles
+- strict tenant/org scoping
+- no hardcoded orgId, userId, vehicleId, driverId, or fallback "first record" assumptions
+- preserve tenant isolation in frontend, backend, and DB access
+
+### B. Vehicle-centric operational architecture
+- vehicles are core operational entities
+- vehicle detail pages are central system anchors
+- maintain strong vehicle-level views for:
+  - overview
+  - health
+  - trips
+  - damages
+  - documents
+  - tasks / work orders
+  - insights
+
+### C. Health architecture
+Preserve and extend these modules as first-class health systems:
+- Brakes
+- Tires
+- Error Codes
+- Service Info
+- Oil Change
+- Battery
+- AI Health Care Summary
+
+Each health system may include:
+- small summary box
+- detailed popup/detail view
+- backend calculations
+- history
+- document/AI upload integration where relevant
+- telemetry/event/signal integration where relevant
+
+Do not flatten or merge distinct health modules into a generic placeholder.
+
+### D. Trips architecture
+- DIMO Segments are the canonical source of truth for trip boundaries where applicable
+- historical signals are used to reconstruct route geometry inside those trip boundaries
+- do not derive canonical trips from ad-hoc raw signal segmentation if DIMO Segments is the intended architecture
+- trips may be enriched with:
+  - driving score
+  - driving events
+  - abuse detection count
+  - road distribution
+  - temperature/climate
+  - acceleration behavior
+  - braking behavior
+  - error code context
+
+### E. Damages architecture
+- damages are visually managed and linked to vehicle views
+- keep damage records structured and operationally useful
+- preserve image/view + pin-based logic where applicable
+
+### F. AI Upload shared ingestion architecture
+- AI Upload is a shared upload → extraction → review/confirmation → apply flow
+- never auto-apply unconfirmed OCR/extraction results
+- confirmed uploads may update tires, brakes, battery, oil change, service, TÜV, BOKraft, damages, invoices, etc.
+- preserve it as a shared ingestion architecture, not fragmented per module unless explicitly needed
+
+### G. AI analysis / summary architecture
+- AI summaries must be grounded in real tracked data
+- prefer structured request/response contracts
+- prefer JSON-like structured outputs over free-form text blobs where analysis drives UI rendering
+- support graceful degradation for partial data
+- do not fabricate unavailable facts
+
+## 4) DIMO architecture rules
+
+DIMO is a critical external integration. Treat it carefully.
+
+- Do not invent fake fallback logic if an intended DIMO integration path already exists.
+- Do not replace DIMO-based architecture with local approximations unless explicitly requested.
+- If working on DIMO-related features, inspect the existing DIMO integration first:
+  - auth/token handling
+  - telemetry
+  - segments
+  - events
+  - DTC
+  - snapshots/polling
+  - workers
+  - webhooks / vehicle triggers
+  - agent API
+- Preserve architectural correctness over quick hacks.
+- If DIMO integration appears broken, identify whether the problem is:
+  - auth
+  - payload/schema
+  - vehicle access
+  - API wiring
+  - worker/polling logic
+  - webhook registration
+  - MCP failure
+  - crash-recovery inconsistency
+
+### Mandatory DIMO MCP rule
+When working on DIMO-related features, integrations, queries, triggers, agents, or architecture:
+- use the DIMO MCP server for guidance and verification
+- inspect intended API usage through the MCP server instead of guessing
+- verify payloads, query paths, and trigger architecture through MCP where possible
+
+## 5) Figma implementation rules
+
+- When working on visual redesign, adaptation, or design alignment, use the Figma MCP server.
+- Inspect the relevant Figma files first before implementing UI changes.
+- Match Figma as closely as realistically possible in:
+  - spacing
+  - hierarchy
+  - layout
+  - sidebars
+  - topbars
+  - cards
+  - tables
+  - modals
+  - forms
+  - tabs
+  - dark mode
+  - light mode
+  - responsiveness
+- Do not rebuild pages from scratch if visual refactoring is enough.
+- Do not delete functional UI elements just because they are not present in Figma.
+- Make all code-only elements visually consistent with the active Figma design language.
+
+### Mandatory Figma MCP rule
+When working on UI/UX/design tasks:
+- use the Figma MCP server for guidance and inspection
+- do not guess current design intent if the Figma source is available
+- inspect design changes first, then adapt existing code carefully
+
+## 6) Frontend rules
+
+The primary frontend stack is:
+- TypeScript
+- Node.js
+- Next.js App Router
+- React
+- shadcn/ui
+- Radix UI
+- Tailwind CSS
+
+You should work at an expert level in this stack.
+
+Frontend implementation rules:
+- preserve the current routing and layout architecture unless explicitly asked to change it
+- prefer composable reusable UI patterns
+- do not introduce inconsistent ad-hoc component styles
+- preserve dark/light theme consistency
+- maintain responsiveness across major screen sizes
+- fix layout overflow, spacing, clipping, and broken hierarchy issues cleanly
+- do not leave mixed design language or unfinished surfaces
+
+## 7) Backend and data flow rules
+
+- Preserve clean separation between frontend UI, backend services, data model, and external integrations.
+- Reuse existing services, repositories, and patterns where possible.
+- Avoid putting business logic directly in UI components when a service/domain layer exists or should exist.
+- If adding schema changes, keep them minimal, normalized, and aligned with existing naming conventions.
+- Do not create parallel backend flows for the same business action.
+
+## 8) Audit / recovery / cleanup behavior
+
+Because this codebase may contain recovery leftovers from previous crashes or partial implementations, follow these rules:
+
+- If a feature behaves inconsistently, inspect first for:
+  - duplicate implementations
+  - dead code
+  - stale fallback logic
+  - hardcoded IDs
+  - tenant-mixing
+  - broken route bindings
+  - old template/demo assumptions
+- For recovery work:
+  - first audit
+  - then classify issues
+  - then repair
+  - then clean up
+- Do not remove code until you are confident it is dead, stale, duplicate, or architecturally invalid.
+- Safe cleanup is preferred over leaving behind multiple competing implementations.
+
+## 9) Reporting rules
+
+For medium and large tasks, after implementation report clearly:
+- what was inspected
+- what was changed
+- which files were changed
+- what architecture was reused
+- what was fixed
+- what dead/duplicate logic was removed, if any
+- any remaining blockers only if truly necessary
+
+## 10) Non-negotiable rules
+
+- Do not rebuild whole modules when targeted changes are enough.
+- Do not create duplicate competing architectures.
+- Do not silently ignore the intended DIMO architecture.
+- Do not ignore Figma when working on design/UI tasks.
+- Do not use hardcoded tenant/account/entity assumptions.
+- Do not invent unrelated features.
+- Do not break working backend bindings.
+- Always preserve the SynqDrive product architecture and design language.

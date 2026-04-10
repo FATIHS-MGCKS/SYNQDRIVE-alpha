@@ -1,0 +1,21 @@
+---
+alwaysApply: true
+---
+
+---
+description: Figma-based UI alignment rules
+globs:
+  - "app/**/*.tsx"
+  - "components/**/*.tsx"
+  - "src/**/*.tsx"
+---
+
+When working on UI, design, layout, or frontend visual refinement:
+
+- Use the Figma MCP server first.
+- Treat Figma as the source of truth for visual design.
+- Treat the codebase as the source of truth for functionality.
+- Do not remove code-only functional UI additions just because they are not present in Figma.
+- Visually adapt code-only elements to match the active design language.
+- Preserve responsiveness, dark mode, light mode, sidebar/topbar behavior, and component consistency.
+- Refactor existing pages/components instead of regenerating entire screens whenever possible.

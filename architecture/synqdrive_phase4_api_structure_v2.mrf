@@ -1,0 +1,100 @@
+SYNQDRIVE PHASE 4 API STRUCTURE
+
+Goal:
+Design REST API structure.
+
+Principles:
+- multi tenant aware
+- platform vs organization scope
+- backend controls external integrations
+
+------------------------------------------------
+ROUTE GROUPS
+------------------------------------------------
+
+Platform routes:
+
+/admin/organizations
+/admin/users
+/admin/products
+/admin/prospects
+/admin/integrations
+/admin/billing
+/admin/settings
+/admin/dimo
+
+------------------------------------------------
+ORGANIZATION ROUTES
+------------------------------------------------
+
+/organizations/:orgId/stations
+/organizations/:orgId/users
+/organizations/:orgId/vehicles
+/organizations/:orgId/customers
+/organizations/:orgId/bookings
+/organizations/:orgId/integrations
+
+------------------------------------------------
+VEHICLE ROUTES
+------------------------------------------------
+
+/vehicles
+/vehicles/:vehicleId
+/vehicles/:vehicleId/battery
+/vehicles/:vehicleId/tires
+/vehicles/:vehicleId/brakes
+/vehicles/:vehicleId/service-events
+/vehicles/:vehicleId/enrichment-jobs
+
+------------------------------------------------
+DIMO MIRROR ROUTES
+------------------------------------------------
+
+/admin/dimo/vehicles
+/admin/dimo/non-registered
+/admin/dimo/sync
+
+------------------------------------------------
+VEHICLE REGISTRATION FLOW
+------------------------------------------------
+
+1 fetch mirrored vehicle
+2 prefill DIMO fields
+3 add SynqDrive fields
+4 create registered vehicle
+
+------------------------------------------------
+INTEGRATION ROUTES
+------------------------------------------------
+
+/integrations
+/organizations/:orgId/integrations
+/organizations/:orgId/integrations/connect
+/organizations/:orgId/integrations/disconnect
+/organizations/:orgId/integrations/logs
+
+------------------------------------------------
+BILLING ROUTES
+------------------------------------------------
+
+/billing/subscriptions
+/billing/invoices
+/billing/payments
+
+------------------------------------------------
+PROSPECT ROUTES
+------------------------------------------------
+
+/prospects
+/prospects/import
+/prospects/:id
+/prospects/:id/activity
+/prospects/:id/contacts
+
+------------------------------------------------
+RENTAL ROUTES
+------------------------------------------------
+
+/customers
+/bookings
+/bookings/:id

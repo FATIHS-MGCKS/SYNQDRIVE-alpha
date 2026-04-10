@@ -1,0 +1,8 @@
+---
+alwaysApply: true
+---
+
+After every meaningful implementation change:
+- add/update an entry in Synqdrive Code → Changes
+- if architecture, signal flow, polling/snapshot logic, workers/jobs, calculations, module structure, routing, integrations, or frontend/backend data flow changed, update Synqdrive Code → Architektur accordingly
+- at the end of the task, explicitly state whether Changes and Architektur were updated
