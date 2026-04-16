@@ -137,10 +137,51 @@ export class CanonicalBatteryHealthService {
     const lvIsCalibrating = lvPubState === SohPublicationState.INITIAL_CALIBRATION;
     const lvIsStabilizing = lvPubState === SohPublicationState.STABILIZING;
 
-    const lvVoltage =
-      parseNum(latestLvSnapshot?.voltageV) ??
-      parseNum(latestState?.lvBatteryVoltage) ??
-      null;
+    // LV voltage truth: prefer the fresher carrier between the legacy resting
+    // snapshot (written only during qualified rest windows) and the live
+    // VehicleLatestState (written on every DIMO snapshot).
+    //
+    // The previous implementation always picked the legacy snapshot first,
+    // which caused a stale 12 V resting value to mask a fresh live 14 V
+    // reading while the engine was running or the 12 V battery was being
+    // charged by the alternator / DC-DC converter.
+    const snapshotVoltage = parseNum(latestLvSnapshot?.voltageV);
+    const stateVoltage = parseNum(latestState?.lvBatteryVoltage);
+    const snapshotAt: Date | null = latestLvSnapshot?.recordedAt ?? null;
+    const stateAt: Date | null = latestState?.lastSeenAt ?? null;
+
+    let lvVoltage: number | null;
+    let lvVoltageAt: Date | null;
+    let lvVoltageSource: 'resting_snapshot' | 'live_telemetry' | null;
+
+    if (snapshotVoltage != null && stateVoltage != null) {
+      const snapshotNewer =
+        snapshotAt && stateAt
+          ? snapshotAt.getTime() >= stateAt.getTime()
+          : snapshotAt != null;
+      if (snapshotNewer) {
+        lvVoltage = snapshotVoltage;
+        lvVoltageAt = snapshotAt;
+        lvVoltageSource = 'resting_snapshot';
+      } else {
+        lvVoltage = stateVoltage;
+        lvVoltageAt = stateAt;
+        lvVoltageSource = 'live_telemetry';
+      }
+    } else if (snapshotVoltage != null) {
+      lvVoltage = snapshotVoltage;
+      lvVoltageAt = snapshotAt;
+      lvVoltageSource = 'resting_snapshot';
+    } else if (stateVoltage != null) {
+      lvVoltage = stateVoltage;
+      lvVoltageAt = stateAt;
+      lvVoltageSource = 'live_telemetry';
+    } else {
+      lvVoltage = null;
+      lvVoltageAt = null;
+      lvVoltageSource = null;
+    }
+
     const lvPublishedSoh = parseNum(v2?.publishedSohPct);
     const lvLegacySoh = parseNum(latestLvSnapshot?.sohPercent);
     const lvHealthPercent = lvIsCalibrating
@@ -152,9 +193,14 @@ export class CanonicalBatteryHealthService {
         parseNum(v2?.estimatedSohPct)
       : null;
 
+    // Freshness is anchored on the carrier that produced the displayed voltage,
+    // not on the older of the two.  This keeps the "no_recent_data" label
+    // honest when live telemetry is flowing but legacy snapshots are stale.
     const lvLastChecked =
-      latestLvSnapshot?.recordedAt ??
-      (latestState?.lastSeenAt ?? null);
+      lvVoltageAt ??
+      stateAt ??
+      snapshotAt ??
+      null;
     const lvFreshness = freshnessFromDate(lvLastChecked, 48 * 60 * 60 * 1000);
 
     let lvCondition: BatteryCondition = 'unknown';
@@ -344,10 +390,15 @@ export class CanonicalBatteryHealthService {
         publicationState: lvPubState,
         telemetry: {
           voltageV: lvVoltage,
+          // Provenance of the displayed voltage so the UI can label it as
+          // "at rest" (OCV-relevant) vs "live" (may be charging / loaded).
+          voltageSource: lvVoltageSource,
+          voltageObservedAt: lvVoltageAt?.toISOString() ?? null,
           restingVoltage: parseNum(latestLvSnapshot?.restingVoltage),
           crankingVoltage: parseNum(latestLvSnapshot?.crankingVoltage),
           chargingVoltage: parseNum(latestLvSnapshot?.chargingVoltage),
           temperatureC: parseNum(latestLvSnapshot?.temperatureC),
+          engineRunning: latestLvSnapshot?.engineRunning ?? null,
         },
         calibrationProgress: {
           ...lvCalibrationProgress,
@@ -528,17 +579,32 @@ export class CanonicalBatteryHealthService {
     trend30: Array<{ sohPercent: number | null; voltageV: number | null }>,
   ): 'stable' | 'declining' | 'improving' | 'unknown' {
     if (!Array.isArray(trend30) || trend30.length < 3) return 'unknown';
-    const first = trend30.slice(0, Math.ceil(trend30.length / 3));
-    const last = trend30.slice(-Math.ceil(trend30.length / 3));
-    const avgFirst =
-      first.reduce((s, d) => s + (d.sohPercent ?? d.voltageV ?? 0), 0) /
-      first.length;
-    const avgLast =
-      last.reduce((s, d) => s + (d.sohPercent ?? d.voltageV ?? 0), 0) /
-      last.length;
+
+    // Never mix scales: SOH (0–100 %) and Voltage (~11–14 V) have different
+    // magnitudes and thresholds.  Prefer SOH when we have enough samples,
+    // otherwise fall back to voltage alone.  A single series with its own
+    // threshold — no cross-scale averaging.
+    const sohPoints = trend30
+      .map((d) => d.sohPercent)
+      .filter((v): v is number => v != null && Number.isFinite(v));
+    const voltagePoints = trend30
+      .map((d) => d.voltageV)
+      .filter((v): v is number => v != null && Number.isFinite(v));
+
+    const usingSoh = sohPoints.length >= 3;
+    const points = usingSoh ? sohPoints : voltagePoints;
+    if (points.length < 3) return 'unknown';
+
+    const thirdSize = Math.max(1, Math.ceil(points.length / 3));
+    const first = points.slice(0, thirdSize);
+    const last = points.slice(-thirdSize);
+    const avgFirst = first.reduce((s, v) => s + v, 0) / first.length;
+    const avgLast = last.reduce((s, v) => s + v, 0) / last.length;
     const delta = avgLast - avgFirst;
-    if (Math.abs(delta) < 2) return 'stable';
-    if (delta > 0) return 'improving';
-    return 'declining';
+
+    // 2 % step is meaningful for SOH; 0.1 V step is meaningful for voltage.
+    const threshold = usingSoh ? 2 : 0.1;
+    if (Math.abs(delta) < threshold) return 'stable';
+    return delta > 0 ? 'improving' : 'declining';
   }
 }

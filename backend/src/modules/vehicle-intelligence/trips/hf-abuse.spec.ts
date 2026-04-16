@@ -946,7 +946,13 @@ describe('computeAbuseScore', () => {
 describe('assessSignalAvailability', () => {
   it('returns all false for empty segments', () => {
     const result = assessSignalAvailability([]);
-    expect(result).toEqual({ coolantAvailable: false, rpmAvailable: false, throttleAvailable: false, loadAvailable: false });
+    expect(result).toEqual({
+      coolantAvailable: false,
+      rpmAvailable: false,
+      throttleAvailable: false,
+      loadAvailable: false,
+      tractionBatteryPowerAvailable: false,
+    });
   });
 
   it('detects available coolant signal', () => {

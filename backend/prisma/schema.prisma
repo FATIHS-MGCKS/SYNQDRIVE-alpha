@@ -2218,6 +2218,7 @@ model BatteryEvidence {
   documentExtraction VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
   serviceEvent VehicleServiceEvent? @relation(fields: [serviceEventId], references: [id], onDelete: SetNull)
 
+  @@unique([vehicleId, scope, valueType, sourceType, observedAt], name: "battery_evidence_dedup_key", map: "battery_evidence_dedup_key")
   @@index([vehicleId, scope, valueType, observedAt])
   @@index([sourceType, observedAt])
   @@index([documentExtractionId])

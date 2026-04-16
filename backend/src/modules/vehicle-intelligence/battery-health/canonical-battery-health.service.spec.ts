@@ -153,19 +153,112 @@ describe('CanonicalBatteryHealthService', () => {
     expect(summary?.hv.method).toBe('capacity_measurement');
   });
 
-  it('marks LV health as no_recent_data when latest evidence is stale', async () => {
+  it('marks LV health as no_recent_data when both legacy snapshot and live state are stale', async () => {
     const { svc, batteryHealthService } = buildService();
+    const staleDate = new Date('2026-04-01T10:00:00.000Z');
     batteryHealthService.getLatest.mockResolvedValue({
       voltageV: 12.3,
       sohPercent: 77,
-      recordedAt: new Date('2026-04-01T10:00:00.000Z'),
+      recordedAt: staleDate,
       restingVoltage: 12.3,
       crankingVoltage: 10.9,
       chargingVoltage: 14.0,
       temperatureC: 16,
     });
 
+    const prisma = (svc as any).prisma;
+    prisma.vehicleLatestState.findUnique.mockResolvedValue({
+      lastSeenAt: staleDate,
+      lvBatteryVoltage: 12.4,
+      evSoc: 66,
+      rangeKm: 278,
+      tractionBatterySohPercent: 82,
+      tractionBatteryTemperatureC: 24,
+      tractionBatteryChargingPowerKw: 11,
+      tractionBatteryIsCharging: true,
+      tractionBatteryChargingCableConnected: true,
+      tractionBatteryCurrentVoltage: 351,
+      tractionBatteryGrossCapacityKwh: 76,
+      tractionBatteryCurrentEnergyKwh: 50,
+      tractionBatteryAddedEnergyKwh: 6,
+    });
+
     const summary = await svc.getSummary('veh-1');
     expect(summary?.lv.status).toBe('no_recent_data');
+  });
+
+  it('prefers fresher live LV voltage over a stale legacy resting snapshot', async () => {
+    // Regression guard for the BMW X6 stale-first bug: a legacy resting
+    // snapshot at 12.4 V from a previous rest window must not mask a fresh
+    // 14.1 V live telemetry reading while the engine is running / the 12 V
+    // battery is being charged.
+    const { svc, batteryHealthService } = buildService();
+    batteryHealthService.getLatest.mockResolvedValue({
+      voltageV: 12.4,
+      sohPercent: 79,
+      recordedAt: new Date('2026-04-01T10:00:00.000Z'),
+      restingVoltage: 12.4,
+      crankingVoltage: null,
+      chargingVoltage: null,
+      temperatureC: 18,
+      engineRunning: false,
+    });
+
+    const prisma = (svc as any).prisma;
+    prisma.vehicleLatestState.findUnique.mockResolvedValue({
+      lastSeenAt: now,
+      lvBatteryVoltage: 14.1,
+      evSoc: null,
+      rangeKm: null,
+      tractionBatterySohPercent: null,
+      tractionBatteryTemperatureC: null,
+      tractionBatteryChargingPowerKw: null,
+      tractionBatteryIsCharging: null,
+      tractionBatteryChargingCableConnected: null,
+      tractionBatteryCurrentVoltage: null,
+      tractionBatteryGrossCapacityKwh: null,
+      tractionBatteryCurrentEnergyKwh: null,
+      tractionBatteryAddedEnergyKwh: null,
+    });
+
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.lv.telemetry.voltageV).toBe(14.1);
+    expect(summary?.lv.telemetry.voltageSource).toBe('live_telemetry');
+    expect(summary?.lv.status).toBe('ready');
+  });
+
+  it('uses the legacy resting snapshot when the live state is older', async () => {
+    const { svc, batteryHealthService } = buildService();
+    batteryHealthService.getLatest.mockResolvedValue({
+      voltageV: 12.6,
+      sohPercent: 82,
+      recordedAt: now,
+      restingVoltage: 12.6,
+      crankingVoltage: null,
+      chargingVoltage: null,
+      temperatureC: 18,
+      engineRunning: false,
+    });
+
+    const prisma = (svc as any).prisma;
+    prisma.vehicleLatestState.findUnique.mockResolvedValue({
+      lastSeenAt: new Date('2026-04-10T10:00:00.000Z'),
+      lvBatteryVoltage: 12.1,
+      evSoc: null,
+      rangeKm: null,
+      tractionBatterySohPercent: null,
+      tractionBatteryTemperatureC: null,
+      tractionBatteryChargingPowerKw: null,
+      tractionBatteryIsCharging: null,
+      tractionBatteryChargingCableConnected: null,
+      tractionBatteryCurrentVoltage: null,
+      tractionBatteryGrossCapacityKwh: null,
+      tractionBatteryCurrentEnergyKwh: null,
+      tractionBatteryAddedEnergyKwh: null,
+    });
+
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.lv.telemetry.voltageV).toBe(12.6);
+    expect(summary?.lv.telemetry.voltageSource).toBe('resting_snapshot');
   });
 });

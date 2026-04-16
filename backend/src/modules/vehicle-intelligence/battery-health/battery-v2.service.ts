@@ -218,7 +218,12 @@ export class BatteryV2Service {
       },
     );
 
-    // Record a formal BatteryHealthSnapshot so existing trend/history APIs stay populated
+    // Record a formal BatteryHealthSnapshot so existing trend/history APIs
+    // stay populated.  BatteryHealthService.recordSnapshot already emits the
+    // corresponding VOLTAGE_V / RESTING_VOLTAGE_V evidence rows — emitting
+    // them again here would create deterministic duplicates on every rest
+    // capture (one per observedAt), which pollutes the evidence stream and
+    // inflates trend counts.
     await this.batteryHealth.recordSnapshot({
       vehicleId,
       voltageV: lvBatteryVoltage,
@@ -226,28 +231,6 @@ export class BatteryV2Service {
       engineRunning: false,
       observedAt: sampleAt,
     });
-    await this.batteryEvidence.recordMany([
-      {
-        vehicleId,
-        scope: BatteryEvidenceScope.LV,
-        sourceType: BatteryEvidenceSourceType.TELEMETRY_DERIVED,
-        valueType: BatteryEvidenceValueType.VOLTAGE_V,
-        numericValue: lvBatteryVoltage,
-        unit: 'V',
-        observedAt: sampleAt,
-        provider: 'DIMO',
-      },
-      {
-        vehicleId,
-        scope: BatteryEvidenceScope.LV,
-        sourceType: BatteryEvidenceSourceType.TELEMETRY_DERIVED,
-        valueType: BatteryEvidenceValueType.RESTING_VOLTAGE_V,
-        numericValue: lvBatteryVoltage,
-        unit: 'V',
-        observedAt: sampleAt,
-        provider: 'DIMO',
-      },
-    ]);
   }
 
   // ══════════════════════════════════════════════════════════
@@ -356,11 +339,16 @@ export class BatteryV2Service {
     let scoreSum = 0;
     let weightSum = 0;
 
-    // 35 % — Resting voltage (normalized 11.0 V → 0, 12.73 V → 100)
+    // 35 % — Resting voltage, derived from the same VOLTAGE_SOC lookup table
+    // that produces the displayed SOC.  Using a single curve keeps SOC and
+    // the SOH rest-component semantically consistent (a 12.10 V resting
+    // reading no longer yields 50 % SOC and 63 % rest-score simultaneously).
     if (restV != null) {
-      const s = Math.min(100, Math.max(0, ((restV - 11.0) / (12.73 - 11.0)) * 100));
-      scoreSum += s * 0.35;
-      weightSum += 0.35;
+      const rest = voltageToSoc(restV);
+      if (rest != null) {
+        scoreSum += rest * 0.35;
+        weightSum += 0.35;
+      }
     }
 
     // 35 % — Crank drop (0.3 V → 100, ≥ 2.5 V → 0)

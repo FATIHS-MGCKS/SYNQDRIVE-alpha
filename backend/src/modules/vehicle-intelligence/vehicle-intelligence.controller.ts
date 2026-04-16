@@ -30,7 +30,10 @@ import { BatteryHealthService } from './battery-health/battery-health.service';
 import { HvBatteryHealthService } from './battery-health/hv-battery-health.service';
 import { BatteryV2Service } from './battery-health/battery-v2.service';
 import { CanonicalBatteryHealthService } from './battery-health/canonical-battery-health.service';
-import { BatteryEvidenceService } from './battery-health/battery-evidence.service';
+import {
+  BatteryEvidenceService,
+  BatteryEvidenceWriteInput,
+} from './battery-health/battery-evidence.service';
 import { normalizeBatteryDocumentConfirm } from './battery-health/battery-document-confirmation.util';
 import { HealthSummaryService } from './health-summary/health-summary.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
@@ -1674,7 +1677,8 @@ export class VehicleIntelligenceController {
       const chargingVoltage = normalized.chargingVoltage;
       const temperatureC = normalized.temperatureC;
 
-      await this.batteryEvidenceService.recordMany([
+      const isLv = scope === BatteryEvidenceScope.LV;
+      const evidenceEntries: BatteryEvidenceWriteInput[] = [
         {
           vehicleId,
           scope,
@@ -1691,7 +1695,7 @@ export class VehicleIntelligenceController {
         },
         {
           vehicleId,
-          scope: BatteryEvidenceScope.LV,
+          scope,
           sourceType,
           valueType: BatteryEvidenceValueType.VOLTAGE_V,
           numericValue: voltageV,
@@ -1705,49 +1709,7 @@ export class VehicleIntelligenceController {
         },
         {
           vehicleId,
-          scope: BatteryEvidenceScope.LV,
-          sourceType,
-          valueType: BatteryEvidenceValueType.RESTING_VOLTAGE_V,
-          numericValue: restingVoltage,
-          unit: 'V',
-          observedAt,
-          provider: 'document_confirmed',
-          confidence: 'document_confirmed',
-          quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
-          documentExtractionId: extraction.id,
-          serviceEventId,
-        },
-        {
-          vehicleId,
-          scope: BatteryEvidenceScope.LV,
-          sourceType,
-          valueType: BatteryEvidenceValueType.CRANKING_VOLTAGE_V,
-          numericValue: crankingVoltage,
-          unit: 'V',
-          observedAt,
-          provider: 'document_confirmed',
-          confidence: 'document_confirmed',
-          quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
-          documentExtractionId: extraction.id,
-          serviceEventId,
-        },
-        {
-          vehicleId,
-          scope: BatteryEvidenceScope.LV,
-          sourceType,
-          valueType: BatteryEvidenceValueType.CHARGING_VOLTAGE_V,
-          numericValue: chargingVoltage,
-          unit: 'V',
-          observedAt,
-          provider: 'document_confirmed',
-          confidence: 'document_confirmed',
-          quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
-          documentExtractionId: extraction.id,
-          serviceEventId,
-        },
-        {
-          vehicleId,
-          scope: BatteryEvidenceScope.LV,
+          scope,
           sourceType,
           valueType: BatteryEvidenceValueType.BATTERY_TEMPERATURE_C,
           numericValue: temperatureC,
@@ -1759,21 +1721,66 @@ export class VehicleIntelligenceController {
           documentExtractionId: extraction.id,
           serviceEventId,
         },
-      ]);
+      ];
+
+      // Resting/cranking/charging voltages are LV-only concepts.
+      // Only record them when the document actually describes the LV battery.
+      if (isLv) {
+        evidenceEntries.push(
+          {
+            vehicleId,
+            scope,
+            sourceType,
+            valueType: BatteryEvidenceValueType.RESTING_VOLTAGE_V,
+            numericValue: restingVoltage,
+            unit: 'V',
+            observedAt,
+            provider: 'document_confirmed',
+            confidence: 'document_confirmed',
+            quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
+            documentExtractionId: extraction.id,
+            serviceEventId,
+          },
+          {
+            vehicleId,
+            scope,
+            sourceType,
+            valueType: BatteryEvidenceValueType.CRANKING_VOLTAGE_V,
+            numericValue: crankingVoltage,
+            unit: 'V',
+            observedAt,
+            provider: 'document_confirmed',
+            confidence: 'document_confirmed',
+            quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
+            documentExtractionId: extraction.id,
+            serviceEventId,
+          },
+          {
+            vehicleId,
+            scope,
+            sourceType,
+            valueType: BatteryEvidenceValueType.CHARGING_VOLTAGE_V,
+            numericValue: chargingVoltage,
+            unit: 'V',
+            observedAt,
+            provider: 'document_confirmed',
+            confidence: 'document_confirmed',
+            quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
+            documentExtractionId: extraction.id,
+            serviceEventId,
+          },
+        );
+      }
+
+      await this.batteryEvidenceService.recordMany(evidenceEntries);
 
       // Keep legacy LV history only when the document actually contains LV voltage evidence.
-      if (
-        scope === BatteryEvidenceScope.LV &&
-        (voltageV != null ||
-          restingVoltage != null ||
-          crankingVoltage != null ||
-          chargingVoltage != null)
-      ) {
-        const lvReferenceVoltage =
-          voltageV ??
-          restingVoltage ??
-          crankingVoltage ??
-          chargingVoltage;
+      //
+      // Only RESTING / generic VOLTAGE are valid inputs to the voltage→SOH estimator.
+      // Cranking voltage (typically ~9–11 V) and charging voltage (typically ~13.8–14.4 V)
+      // do NOT represent OCV and would produce misleading 0 % / 100 % SOH values.
+      if (isLv && (voltageV != null || restingVoltage != null)) {
+        const lvReferenceVoltage = restingVoltage ?? voltageV;
         if (lvReferenceVoltage != null) {
           await this.batteryHealthService.recordSnapshot({
             vehicleId,
