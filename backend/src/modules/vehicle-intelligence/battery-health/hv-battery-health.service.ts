@@ -1,4 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import {
+  BatteryEvidenceScope,
+  BatteryEvidenceSourceType,
+  BatteryEvidenceValueType,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   stabilize,
@@ -7,6 +12,7 @@ import {
   daysBetween,
   type PublicationState,
 } from './soh-publication';
+import { BatteryEvidenceService } from './battery-evidence.service';
 
 /**
  * HV (High-Voltage) Battery Health Service for EV traction batteries.
@@ -26,7 +32,10 @@ import {
 export class HvBatteryHealthService {
   private readonly logger = new Logger(HvBatteryHealthService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly batteryEvidence: BatteryEvidenceService,
+  ) {}
 
   async getHvBatteryStatus(vehicleId: string) {
     const vehicle = await this.prisma.vehicle.findUnique({
@@ -47,7 +56,22 @@ export class HvBatteryHealthService {
     const nominalCapacity = vehicle.hvBatteryCapacityKwh;
     const latestState = await this.prisma.vehicleLatestState.findUnique({
       where: { vehicleId },
-      select: { evSoc: true, odometerKm: true, rangeKm: true },
+      select: {
+        evSoc: true,
+        odometerKm: true,
+        rangeKm: true,
+        tractionBatteryPowerKw: true,
+        tractionBatterySohPercent: true,
+        tractionBatteryTemperatureC: true,
+        tractionBatteryChargingPowerKw: true,
+        tractionBatteryIsCharging: true,
+        tractionBatteryChargingCableConnected: true,
+        tractionBatteryCurrentVoltage: true,
+        tractionBatteryGrossCapacityKwh: true,
+        tractionBatteryCurrentEnergyKwh: true,
+        tractionBatteryAddedEnergyKwh: true,
+        lastSeenAt: true,
+      },
     });
 
     const snapshots = await this.prisma.hvBatteryHealthSnapshot.findMany({
@@ -81,28 +105,80 @@ export class HvBatteryHealthService {
     const publicationMethod = pubCurrent?.publicationMethod ?? sohResult.method;
     const maturityConfidence = pubCurrent?.maturityConfidence ?? 'none';
 
+    const latestProviderSohEvidence = await this.batteryEvidence.getLatest(
+      vehicleId,
+      {
+        scope: BatteryEvidenceScope.HV,
+        valueType: BatteryEvidenceValueType.SOH_PERCENT,
+        sourceType: BatteryEvidenceSourceType.PROVIDER_REPORTED,
+      },
+    );
+    const providerSohValue = latestProviderSohEvidence?.numericValue
+      ?? latestState?.tractionBatterySohPercent
+      ?? null;
+    const providerSohObservedAt = latestProviderSohEvidence?.observedAt
+      ?? latestState?.lastSeenAt
+      ?? null;
+    const providerSohAgeMs = providerSohObservedAt
+      ? Math.max(0, Date.now() - providerSohObservedAt.getTime())
+      : null;
+    const providerSohIsFresh = providerSohAgeMs != null && providerSohAgeMs <= 45 * 24 * 60 * 60 * 1000;
+
     // User-facing SOH: published when maturity allows, otherwise null
     const userFacingSoh = publicationState === 'INITIAL_CALIBRATION' ? null : publishedSoh;
+    const resolvedSoh =
+      providerSohIsFresh && providerSohValue != null
+        ? providerSohValue
+        : userFacingSoh ?? sohResult.sohPercent;
+    const resolvedMethod =
+      providerSohIsFresh && providerSohValue != null
+        ? 'provider_reported_soh'
+        : sohResult.method;
+    const sohSourceType =
+      providerSohIsFresh && providerSohValue != null
+        ? 'provider_reported'
+        : sohResult.method === 'degradation_model'
+          ? 'model_derived'
+          : 'telemetry_derived';
 
     return {
       isEv: true,
       nominalCapacityKwh: nominalCapacity,
+      providerNominalCapacityKwh: latestState?.tractionBatteryGrossCapacityKwh ?? null,
       currentSocPercent: latestState?.evSoc ?? snapshots[0]?.socPercent ?? null,
       estimatedRangeKm: latestState?.rangeKm ?? snapshots[0]?.rangeKm ?? null,
-      sohPercent: userFacingSoh ?? sohResult.sohPercent,
+      sohPercent: resolvedSoh,
       rawSohPercent: sohResult.sohPercent,
+      providerReportedSohPercent: providerSohValue,
       publishedSohPercent: publishedSoh,
-      sohMethod: sohResult.method,
+      sohMethod: resolvedMethod,
+      sohSourceType,
       publicationState,
       publicationMethod,
       maturityConfidence,
       validEstimateCount: pubCurrent?.validEstimateCount ?? 0,
-      sohInterpretation: this.interpretSoh(publicationState !== 'INITIAL_CALIBRATION' ? (publishedSoh ?? sohResult.sohPercent) : null),
+      sohInterpretation: this.interpretSoh(
+        publicationState !== 'INITIAL_CALIBRATION' ? resolvedSoh : null,
+      ),
       estimatedCurrentCapacityKwh: sohResult.estimatedCapacity,
       snapshotCount: snapshots.length,
       chargingSessions,
       recentTrend,
       lastRecordedAt: snapshots[0]?.recordedAt?.toISOString() ?? null,
+      telemetry: {
+        temperatureC: latestState?.tractionBatteryTemperatureC ?? null,
+        chargingPowerKw:
+          latestState?.tractionBatteryChargingPowerKw
+          ?? latestState?.tractionBatteryPowerKw
+          ?? null,
+        isCharging: latestState?.tractionBatteryIsCharging ?? null,
+        chargingCableConnected:
+          latestState?.tractionBatteryChargingCableConnected ?? null,
+        currentVoltageV: latestState?.tractionBatteryCurrentVoltage ?? null,
+        currentEnergyKwh: latestState?.tractionBatteryCurrentEnergyKwh ?? null,
+        addedEnergyKwh: latestState?.tractionBatteryAddedEnergyKwh ?? null,
+      },
+      providerSohObservedAt: providerSohObservedAt?.toISOString() ?? null,
     };
   }
 
@@ -395,6 +471,9 @@ export class HvBatteryHealthService {
     odometerKm?: number;
     temperatureC?: number;
     nominalCapacityKwh?: number;
+    providerReportedSohPercent?: number;
+    providerSource?: string;
+    observedAt?: Date;
   }) {
     let estimatedCapacity: number | null = null;
     let soh: number | null = null;
@@ -430,9 +509,84 @@ export class HvBatteryHealthService {
         isCharging: data.isCharging ?? false,
         odometerKm: data.odometerKm ?? null,
         temperatureC: data.temperatureC ?? null,
-        recordedAt: new Date(),
+        recordedAt: data.observedAt ?? new Date(),
       },
     });
+
+    const observedAt = data.observedAt ?? new Date();
+    await this.batteryEvidence.recordMany([
+      {
+        vehicleId: data.vehicleId,
+        scope: BatteryEvidenceScope.HV,
+        sourceType: BatteryEvidenceSourceType.TELEMETRY_DERIVED,
+        valueType: BatteryEvidenceValueType.SOC_PERCENT,
+        numericValue: data.socPercent,
+        unit: 'percent',
+        observedAt,
+        provider: data.providerSource ?? 'DIMO',
+      },
+      {
+        vehicleId: data.vehicleId,
+        scope: BatteryEvidenceScope.HV,
+        sourceType: BatteryEvidenceSourceType.TELEMETRY_DERIVED,
+        valueType: BatteryEvidenceValueType.RANGE_KM,
+        numericValue: data.rangeKm,
+        unit: 'km',
+        observedAt,
+        provider: data.providerSource ?? 'DIMO',
+      },
+      {
+        vehicleId: data.vehicleId,
+        scope: BatteryEvidenceScope.HV,
+        sourceType: BatteryEvidenceSourceType.TELEMETRY_DERIVED,
+        valueType: BatteryEvidenceValueType.BATTERY_TEMPERATURE_C,
+        numericValue: data.temperatureC,
+        unit: 'celsius',
+        observedAt,
+        provider: data.providerSource ?? 'DIMO',
+      },
+      {
+        vehicleId: data.vehicleId,
+        scope: BatteryEvidenceScope.HV,
+        sourceType: BatteryEvidenceSourceType.TELEMETRY_DERIVED,
+        valueType: BatteryEvidenceValueType.CHARGING_POWER_KW,
+        numericValue: data.chargingPowerKw,
+        unit: 'kW',
+        observedAt,
+        provider: data.providerSource ?? 'DIMO',
+      },
+      {
+        vehicleId: data.vehicleId,
+        scope: BatteryEvidenceScope.HV,
+        sourceType: BatteryEvidenceSourceType.TELEMETRY_DERIVED,
+        valueType: BatteryEvidenceValueType.CURRENT_ENERGY_KWH,
+        numericValue: data.energyUsedKwh,
+        unit: 'kWh',
+        observedAt,
+        provider: data.providerSource ?? 'DIMO',
+      },
+      {
+        vehicleId: data.vehicleId,
+        scope: BatteryEvidenceScope.HV,
+        sourceType: BatteryEvidenceSourceType.MODEL_DERIVED,
+        valueType: BatteryEvidenceValueType.SOH_PERCENT,
+        numericValue: soh,
+        unit: 'percent',
+        observedAt,
+        provider: 'SynqDrive',
+        confidence: soh == null ? null : 'derived_from_energy',
+      },
+      {
+        vehicleId: data.vehicleId,
+        scope: BatteryEvidenceScope.HV,
+        sourceType: BatteryEvidenceSourceType.PROVIDER_REPORTED,
+        valueType: BatteryEvidenceValueType.SOH_PERCENT,
+        numericValue: data.providerReportedSohPercent,
+        unit: 'percent',
+        observedAt,
+        provider: data.providerSource ?? 'DIMO',
+      },
+    ]);
 
     // Update publication pipeline after new data
     this.upsertPublicationState(data.vehicleId).catch((err) =>

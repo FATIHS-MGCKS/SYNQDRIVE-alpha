@@ -7,6 +7,7 @@ import {
   validateAiTireSpec,
   buildPersistedAiTireSpec,
 } from '../vehicle-intelligence/tires/ai-tire-spec-normalizer';
+import { TireSetupStatus } from '@prisma/client';
 
 // ── Input DTO ─────────────────────────────────────────────────────────────────
 export interface StartAiTireSpecJobInput {
@@ -134,7 +135,7 @@ export class AiTireSpecJobService {
     }
 
     const setup = await this.prisma.vehicleTireSetup.findFirst({
-      where: { vehicleId, removedAt: null },
+      where: { vehicleId, removedAt: null, status: TireSetupStatus.ACTIVE },
       orderBy: { createdAt: 'desc' },
     });
     if (!setup) {

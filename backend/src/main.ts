@@ -9,11 +9,16 @@ import { join } from 'path';
 import { AppModule } from './app.module';
 import { SpaFallbackController } from './spa-fallback.controller';
 import { GlobalExceptionFilter } from '@shared/filters/global-exception.filter';
+import { RequestLoggingInterceptor } from '@shared/interceptors/request-logging.interceptor';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const appModule = await AppModule.forRootAsync();
-  const app = await NestFactory.create<NestExpressApplication>(appModule);
+
+  // Enable raw body for reliable webhook HMAC signature verification
+  const app = await NestFactory.create<NestExpressApplication>(appModule, {
+    rawBody: true,
+  });
   app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads/' });
 
   const configService = app.get(ConfigService);
@@ -28,9 +33,21 @@ async function bootstrap() {
   app.use(helmet());
   app.use(compression());
 
+  // CORS: explicit allowlist from config — no wildcard origin
+  const allowedOrigins = configService.get<string[]>('app.corsOrigins', []);
   app.enableCors({
-    origin: true,
+    origin: (origin, callback) => {
+      // Allow server-to-server requests (no Origin header) and allowlisted origins
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        logger.warn(`CORS blocked request from: ${origin}`);
+        callback(new Error(`Origin ${origin} not allowed by CORS policy`), false);
+      }
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-seed-token', 'x-hm-signature', 'x-dimo-signature'],
   });
 
   app.useGlobalPipes(
@@ -43,6 +60,7 @@ async function bootstrap() {
   );
 
   app.useGlobalFilters(new GlobalExceptionFilter());
+  app.useGlobalInterceptors(new RequestLoggingInterceptor());
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('SynqDrive API')

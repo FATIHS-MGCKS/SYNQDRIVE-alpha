@@ -543,9 +543,10 @@ function BrakeHealthSection({ d }: { d: boolean }) {
         <h2 className={h2}>Data Flow</h2>
         <ol className="list-decimal list-inside space-y-1 mb-3">
           <li className={li}>Trip finalized → HF enrichment → Driving Impact Engine V1 computes trip impact</li>
-          <li className={li}>Vehicle-level rolling 30-day aggregate updated in <code className={code}>VehicleDrivingImpactCurrent</code></li>
-          <li className={li}>Brake Health reads rolling metrics via <code className={code}>getVehicleImpactForBrake()</code></li>
-          <li className={li}>Recalculation computes per-axle pad mm, disc mm, health %, remaining km</li>
+          <li className={li}>Trip-level rows are persisted in <code className={code}>TripDrivingImpact</code>; rolling aggregate remains in <code className={code}>VehicleDrivingImpactCurrent</code></li>
+          <li className={li}>Brake Health V2 accumulates wear per trip since anchor (canonical path)</li>
+          <li className={li}>Rolling aggregate is used only for uncovered odometer gap fallback, never retroactively for full anchor distance</li>
+          <li className={li}>Recalculation computes per-axle pad mm, disc mm, health %, remaining km + modeled coverage metadata</li>
           <li className={li}>Results persisted in <code className={code}>BrakeHealthCurrent</code> (one row per vehicle)</li>
         </ol>
       </div>
@@ -627,7 +628,9 @@ function BrakeHealthSection({ d }: { d: boolean }) {
             ['Odometer available', '+10'], ['Measurement exists', '+8'], ['Calibration stabilized', '+5'],
           ].map(([c, pts]) => <tr key={c}><td className={td}>{c}</td><td className={td}>{pts}</td></tr>)}
         </tbody></table>
-        <p className={p}>Labels: ≥ 80 → High · 55–79 → Medium · &lt; 55 → Low</p>
+        <p className={p}>
+          Labels: ≥ 80 → High · 55–79 → Medium · &lt; 55 → Low. Coverage quality (trip coverage ratio + modeled trip count) can add or subtract confidence; rolling-gap-only estimates are explicitly downgraded.
+        </p>
       </div>
 
       {/* Set-Level Health */}
@@ -655,7 +658,8 @@ function BrakeHealthSection({ d }: { d: boolean }) {
       <div className={CARD(d) + ' p-6'}>
         <h2 className={h2}>Driving Impact Engine V1 Integration</h2>
         <p className={p}>
-          Brake Health consumes the following from <code className={code}>VehicleDrivingImpactCurrent</code>:
+          Brake Health consumes trip-level metrics from <code className={code}>TripDrivingImpact</code> since anchor. The rolling aggregate
+          <code className={code}>VehicleDrivingImpactCurrent</code> is only a controlled fallback for uncovered distance.
         </p>
         <ul className="list-disc list-inside space-y-1 mb-3">
           <li className={li}><code className={code}>brakingStressScore</code> — general braking stress score</li>
@@ -676,6 +680,7 @@ function BrakeHealthSection({ d }: { d: boolean }) {
           <li className={li}>No estimation without brake service anchor — by design</li>
           <li className={li}>Disc thickness is rotor WIDTH, not diameter</li>
           <li className={li}>Pre-anchor braking data is intentionally ignored for wear calculation</li>
+          <li className={li}>Low trip-impact coverage reduces confidence and can require rolling-gap fallback warnings</li>
         </ul>
       </div>
     </div>
@@ -696,13 +701,16 @@ function TireHealthSection({ d }: { d: boolean }) {
       <div className={`${CARD(d)} p-6`}>
         <h2 className={h2}>Tire Health Tracking Module V2</h2>
         <p className={p}>
-          Production-ready, deterministic, rule-based tire wear model. Uses the <strong>Driving Impact Engine V1</strong> as
-          the primary normalized behavior and usage source. Supports multiple tire sets, per-tire tracking, staggered setups,
-          season-aware thresholds, and adaptive k-factor calibration from workshop measurements.
+          Production-ready, deterministic, rule-based tire wear model with a canonical lifecycle/write pipeline.
+          Uses the <strong>Driving Impact Engine V1</strong> as the normalized behavior and usage source, supports
+          multiple tire sets, per-tire tracking, staggered setups, season-aware thresholds, and adaptive k-factor
+          calibration from measurements.
         </p>
         <p className={p}>
-          This module does NOT duplicate telemetry polling, trip detection, or behavior normalization — it consumes
-          these from V2 trips and the Driving Impact Engine, and only adds tire-specific wear modeling.
+          The module does NOT duplicate telemetry polling, trip detection, or DI normalization. It consumes those shared
+          layers, applies tire-specific wear math, and exposes an operational read model
+          ({code('remaining%')}, {code('remainingKm')}, {code('actionState')}, {code('measurementState')},
+          {code('pressureContext')}, {code('dataQualityWarnings')}).
         </p>
       </div>
 
@@ -710,11 +718,11 @@ function TireHealthSection({ d }: { d: boolean }) {
         <h3 className={h3}>Data Flow</h3>
         <div className="space-y-1">
           {[
-            'Trip finalized → HF enrichment → DrivingImpactService computes trip impact',
-            '→ VehicleDrivingImpactCurrent rolling aggregate updated (30-day window)',
-            '→ TireWearModelService.computeWearAnalysis() reads VehicleImpactForTire',
-            '→ Computes: axleFactor × usageFactor × behaviorFactor × tempFactor × kFactor',
-            '→ Estimated tread per wheel → Set-level health → Alerts → Summary/Detail DTOs',
+            'Lifecycle command (install / rotate / replace / activate-stored / record-measurement) enters TireLifecycleService',
+            '→ Canonical write path persists setup/measurement/event/history and triggers recalculate',
+            '→ TireWearModelService.computeWearAnalysis() reads ACTIVE setup + DI + telemetry pressure freshness',
+            '→ Effective wear computed with model factors (axle/usage/behavior/temp/pressure/load/season/regen/k/interaction)',
+            '→ Read model adds actionState + measurementState + confidence overlay + pressure/data warnings',
           ].map((step, i) => (
             <div key={i} className={`flex items-start gap-2 ${p}`}>
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${d ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700'}`}>{i + 1}</span>
@@ -728,7 +736,7 @@ function TireHealthSection({ d }: { d: boolean }) {
         <h3 className={h3}>Wear Formula (spec §15)</h3>
         <div className={`${d ? 'bg-neutral-800' : 'bg-gray-50'} rounded-lg p-4 text-xs font-mono leading-relaxed space-y-1`}>
           <div className={d ? 'text-amber-400' : 'text-amber-700'}>base_wear_mm_per_km = usable_tread / expected_life_km</div>
-          <div className={d ? 'text-amber-400' : 'text-amber-700'}>effective_wear = base × axleFactor × usageFactor × behaviorFactor × tempFactor × kFactor × regenFactor</div>
+          <div className={d ? 'text-amber-400' : 'text-amber-700'}>effective_wear = base × axleFactor × usageFactor × behaviorFactor × temperatureFactor × pressureFactor × loadFactor × seasonMismatchFactor × regenFactor × kFactor × interactionPenalty</div>
           <div className={d ? 'text-amber-400' : 'text-amber-700'}>estimated_tread = anchor_tread - (distance_since_anchor × effective_wear)</div>
           <div className={d ? 'text-amber-400' : 'text-amber-700'}>health% = (estimated_tread - replaceThreshold) / (initial_tread - replaceThreshold) × 100</div>
           <div className={d ? 'text-amber-400' : 'text-amber-700'}>set_health = 0.55 × min(tire%) + 0.45 × avg(tire%)</div>
@@ -755,14 +763,14 @@ function TireHealthSection({ d }: { d: boolean }) {
       </div>
 
       <div className={`${CARD(d)} p-6`}>
-        <h3 className={h3}>Confidence Scoring (point-based, 0–100)</h3>
+        <h3 className={h3}>Confidence Scoring (base points + pressure freshness overlay)</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
           {[
             ['Initial tread exists', '+20'], ['Tire size complete', '+10'], ['Brand/model exists', '+8'],
             ['Load/speed index', '+6'], ['DOT exists', '+4'], ['Odometer consistent', '+12'],
             ['DI usage split', '+10'], ['DI behavior data', '+10'], ['≥500 km observed', '+5'],
             ['≥2000 km observed', '+5'], ['≥1 measurement', '+5'], ['≥2 measurements', '+5'],
-            ['k-factor stabilized', '+5'], ['Tire pressure', '+3'],
+            ['k-factor stabilized', '+5'], ['Pressure freshness/completeness', '+3'],
           ].map(([label, pts]) => (
             <div key={label} className={`flex justify-between ${d ? 'bg-neutral-800' : 'bg-gray-50'} rounded px-2 py-1`}>
               <span className={d ? 'text-neutral-400' : 'text-gray-600'}>{label}</span>
@@ -849,7 +857,7 @@ function TireHealthSection({ d }: { d: boolean }) {
         <div className="space-y-1 text-xs">
           {[
             'No cornering stress score yet (requires lateral telemetry not available from DIMO)',
-            'Tire pressure integration is optional — only if reliable data is already available',
+            'Pressure signals are used conservatively: stale/incomplete pressure falls back to neutral wear factor',
             'Temperature factor uses trip-start temp only (no mid-trip temperature tracking)',
             'Regression model requires ≥8 data points — most vehicles will use formula-only initially',
             'ML-ready: anchor + factor architecture makes it straightforward to replace factors with learned models',

@@ -1,8 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { TripDetectionState } from '@prisma/client';
+import {
+  BatteryEvidenceScope,
+  BatteryEvidenceSourceType,
+  BatteryEvidenceValueType,
+  TripDetectionState,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoSegmentsService } from '../../dimo/dimo-segments.service';
 import { BatteryHealthService } from './battery-health.service';
+import { BatteryEvidenceService } from './battery-evidence.service';
 import {
   stabilize,
   shouldPublish,
@@ -20,7 +26,7 @@ const VOLTAGE_SOC: [number, number][] = [
   [11.66, 20], [11.51, 10], [11.30, 0],
 ];
 
-function voltageToSoc(v: number): number {
+function voltageToSoc(v: number): number | null {
   if (v >= 12.73) return 100;
   if (v <= 11.30) return 0;
   for (let i = 0; i < VOLTAGE_SOC.length - 1; i++) {
@@ -31,7 +37,7 @@ function voltageToSoc(v: number): number {
       return Math.round(s2 + ratio * (s1 - s2));
     }
   }
-  return 50;
+  return null;
 }
 
 // Thresholds — configurable via env without code changes
@@ -43,6 +49,11 @@ const REST_6H_MS = parseInt(
   process.env.BATTERY_REST_6H_MS ?? String(6 * 60 * 60_000),
   10,
 );
+const BATTERY_MAX_SAMPLE_AGE_MS = parseInt(
+  process.env.BATTERY_MAX_SAMPLE_AGE_MS ?? String(5 * 60_000),
+  10,
+);
+const BATTERY_MAX_FUTURE_SKEW_MS = 60_000;
 // Tolerance for matching "same rest window" — 2 minutes
 const REST_WINDOW_TOLERANCE_MS = 2 * 60_000;
 
@@ -76,6 +87,7 @@ export class BatteryV2Service {
     private readonly prisma: PrismaService,
     private readonly segments: DimoSegmentsService,
     private readonly batteryHealth: BatteryHealthService,
+    private readonly batteryEvidence: BatteryEvidenceService,
   ) {}
 
   // ══════════════════════════════════════════════════════════
@@ -85,8 +97,26 @@ export class BatteryV2Service {
   async onSnapshot(
     vehicleId: string,
     lvBatteryVoltage: number | null,
+    observedAt: Date | null = null,
   ): Promise<void> {
     if (!isPlausibleVoltage(lvBatteryVoltage)) return;
+    const now = new Date();
+    const sampleAt = observedAt ?? now;
+    if (Number.isNaN(sampleAt.getTime())) return;
+
+    const sampleAgeMs = now.getTime() - sampleAt.getTime();
+    if (sampleAt.getTime() - now.getTime() > BATTERY_MAX_FUTURE_SKEW_MS) {
+      this.logger.debug(
+        `Skipping LV sample with future timestamp: vehicle=${vehicleId} sampleAt=${sampleAt.toISOString()}`,
+      );
+      return;
+    }
+    if (sampleAgeMs > BATTERY_MAX_SAMPLE_AGE_MS) {
+      this.logger.debug(
+        `Skipping stale LV sample: vehicle=${vehicleId} ageMs=${sampleAgeMs}`,
+      );
+      return;
+    }
 
     // Load current V2 detection state to check rest window
     const detState = await this.prisma.vehicleTripDetectionState.findUnique({
@@ -103,9 +133,8 @@ export class BatteryV2Service {
       return;
     }
 
-    const now = new Date();
     const restDurationMs =
-      now.getTime() - detState.lastActivityAt.getTime();
+      sampleAt.getTime() - detState.lastActivityAt.getTime();
 
     // Short-circuit: below first threshold
     if (restDurationMs < REST_60M_MS) return;
@@ -140,6 +169,13 @@ export class BatteryV2Service {
       return;
     }
 
+    // Ignore duplicate/out-of-order samples for already processed windows.
+    const latestCapturedAt =
+      (features?.rest6hCapturedAt ?? features?.rest60mCapturedAt) ?? null;
+    if (latestCapturedAt && sampleAt.getTime() <= latestCapturedAt.getTime()) {
+      return;
+    }
+
     const needs60m =
       restDurationMs >= REST_60M_MS && !features?.rest60mCapturedAt;
     const needs6h =
@@ -151,14 +187,14 @@ export class BatteryV2Service {
 
     if (needs60m) {
       updates.vOff60m = lvBatteryVoltage;
-      updates.rest60mCapturedAt = now;
+      updates.rest60mCapturedAt = sampleAt;
       this.logger.log(
         `Battery 60m rest captured: vehicle=${vehicleId} v=${lvBatteryVoltage}V`,
       );
     }
     if (needs6h) {
       updates.vOff6h = lvBatteryVoltage;
-      updates.rest6hCapturedAt = now;
+      updates.rest6hCapturedAt = sampleAt;
       const v60m = features?.vOff60m;
       if (v60m != null) {
         updates.deltaVRest = lvBatteryVoltage - v60m;
@@ -173,7 +209,14 @@ export class BatteryV2Service {
       data: updates,
     });
 
-    await this.recomputeHealth(vehicleId, updated as BatteryFeaturesLike);
+    await this.recomputeHealth(
+      vehicleId,
+      updated as BatteryFeaturesLike,
+      {
+        newRestObservation: needs60m || needs6h,
+        observedAt: sampleAt,
+      },
+    );
 
     // Record a formal BatteryHealthSnapshot so existing trend/history APIs stay populated
     await this.batteryHealth.recordSnapshot({
@@ -181,7 +224,30 @@ export class BatteryV2Service {
       voltageV: lvBatteryVoltage,
       restingVoltage: lvBatteryVoltage,
       engineRunning: false,
+      observedAt: sampleAt,
     });
+    await this.batteryEvidence.recordMany([
+      {
+        vehicleId,
+        scope: BatteryEvidenceScope.LV,
+        sourceType: BatteryEvidenceSourceType.TELEMETRY_DERIVED,
+        valueType: BatteryEvidenceValueType.VOLTAGE_V,
+        numericValue: lvBatteryVoltage,
+        unit: 'V',
+        observedAt: sampleAt,
+        provider: 'DIMO',
+      },
+      {
+        vehicleId,
+        scope: BatteryEvidenceScope.LV,
+        sourceType: BatteryEvidenceSourceType.TELEMETRY_DERIVED,
+        valueType: BatteryEvidenceValueType.RESTING_VOLTAGE_V,
+        numericValue: lvBatteryVoltage,
+        unit: 'V',
+        observedAt: sampleAt,
+        provider: 'DIMO',
+      },
+    ]);
   }
 
   // ══════════════════════════════════════════════════════════
@@ -263,7 +329,14 @@ export class BatteryV2Service {
       update: crankUpdate,
     });
 
-    await this.recomputeHealth(vehicleId, updated as BatteryFeaturesLike);
+    await this.recomputeHealth(
+      vehicleId,
+      updated as BatteryFeaturesLike,
+      {
+        newCrankObservation: crankUpdate.crankDrop != null,
+        observedAt: tripStartAt,
+      },
+    );
 
     this.logger.log(
       `Crank features captured: vehicle=${vehicleId} trip=${tripId}` +
@@ -339,6 +412,11 @@ export class BatteryV2Service {
   private async recomputeHealth(
     vehicleId: string,
     features: BatteryFeaturesLike,
+    observation?: {
+      newRestObservation?: boolean;
+      newCrankObservation?: boolean;
+      observedAt?: Date;
+    },
   ): Promise<void> {
     const result = this.computeHealth(features);
     const now = new Date();
@@ -350,41 +428,22 @@ export class BatteryV2Service {
 
     const rawSoh = result.soh;
 
-    // Determine whether this is a rest-based or crank-based observation
-    const hasRestComponent = features.vOff60m != null || features.vOff6h != null;
-    const hasCrankComponent = features.crankDrop != null;
-
     let qualifiedEventCount = current.qualifiedEventCount;
     let restObservationCount = current.restObservationCount;
     let crankObservationCount = current.crankObservationCount;
     let firstUsable = current.firstUsableMeasurementAt;
+    const hasNewRestObservation = observation?.newRestObservation === true;
+    const hasNewCrankObservation = observation?.newCrankObservation === true;
+    const hasNewQualifiedObservation =
+      hasNewRestObservation || hasNewCrankObservation;
 
-    if (rawSoh != null) {
+    if (rawSoh != null && hasNewQualifiedObservation) {
       qualifiedEventCount += 1;
-      if (hasRestComponent && !current.rest60mCapturedAt?.getTime() ||
-          (current.rest60mCapturedAt && features.vOff60m != null)) {
-        restObservationCount = Math.max(restObservationCount, hasRestComponent ? restObservationCount + 1 : restObservationCount);
-      }
-      if (hasCrankComponent) {
-        crankObservationCount += 1;
-      }
+      if (hasNewRestObservation) restObservationCount += 1;
+      if (hasNewCrankObservation) crankObservationCount += 1;
       if (!firstUsable) {
-        firstUsable = now;
+        firstUsable = observation?.observedAt ?? now;
       }
-    }
-
-    // Recalculate observation counts more accurately:
-    // rest observations = number of times a rest voltage was successfully captured
-    // Since the BatteryFeatures row is overwritten, we track cumulatively
-    if (rawSoh != null && hasRestComponent) {
-      restObservationCount = current.restObservationCount + 1;
-    } else {
-      restObservationCount = current.restObservationCount;
-    }
-    if (rawSoh != null && hasCrankComponent) {
-      crankObservationCount = current.crankObservationCount + 1;
-    } else {
-      crankObservationCount = current.crankObservationCount;
     }
 
     // Layer 2: Stabilize via EWMA with outlier guard
@@ -459,6 +518,32 @@ export class BatteryV2Service {
         outlierSuppressedCount: outlierSuppressed,
       },
     });
+
+    const observedAt = observation?.observedAt ?? now;
+    await this.batteryEvidence.recordMany([
+      {
+        vehicleId,
+        scope: BatteryEvidenceScope.LV,
+        sourceType: BatteryEvidenceSourceType.MODEL_DERIVED,
+        valueType: BatteryEvidenceValueType.SOH_PERCENT,
+        numericValue: rawSoh,
+        unit: 'percent',
+        observedAt,
+        provider: 'SynqDrive',
+        confidence: result.confidence,
+      },
+      {
+        vehicleId,
+        scope: BatteryEvidenceScope.LV,
+        sourceType: BatteryEvidenceSourceType.TELEMETRY_DERIVED,
+        valueType: BatteryEvidenceValueType.SOH_PERCENT,
+        numericValue: publishedSoh,
+        unit: 'percent',
+        observedAt,
+        provider: 'SynqDrive',
+        confidence: matConf,
+      },
+    ]);
   }
 
   // ══════════════════════════════════════════════════════════

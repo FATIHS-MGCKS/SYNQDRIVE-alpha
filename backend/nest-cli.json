@@ -4,7 +4,7 @@
   "sourceRoot": "src",
   "compilerOptions": {
     "deleteOutDir": true,
-    "assets": [],
-    "watchAssets": false
+    "assets": ["modules/clickhouse/migrations/*.sql"],
+    "watchAssets": true
   }
 }

@@ -1,0 +1,964 @@
+import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  TireChangeType,
+  TireEventType,
+  TireSeason,
+  TireSetupStatus,
+  TireSetupCondition,
+} from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
+import { TireWearModelService } from './tire-wear-model.service';
+import { TireHealthService } from './tire-health.service';
+import { isStaggeredSetup } from './tire-health.config';
+
+export type TireMeasurementSource =
+  | 'manual'
+  | 'workshop'
+  | 'ai_confirmed'
+  | 'calibration';
+
+export type TireReplacementScope = 'single' | 'axle' | 'full_set';
+
+type WheelPos = 'FL' | 'FR' | 'RL' | 'RR';
+
+export interface RecordTireMeasurementCommand {
+  vehicleId: string;
+  tireSetupId?: string;
+  frontLeftMm?: number;
+  frontRightMm?: number;
+  rearLeftMm?: number;
+  rearRightMm?: number;
+  odometerKm?: number;
+  measuredAt?: Date | string;
+  source?: string;
+  workshopName?: string;
+  userId?: string;
+  linkedExtractionId?: string;
+  linkedDocumentUrl?: string;
+  notes?: string;
+  quality?: 'measured' | 'estimated' | 'mixed';
+  shouldCalibrate?: boolean;
+  triggerRecalculate?: boolean;
+}
+
+export interface ReplaceTiresCommand {
+  vehicleId: string;
+  scope: TireReplacementScope;
+  positions?: string[];
+  odometerKm?: number;
+  notes?: string;
+  userId?: string;
+  workshopName?: string;
+  newSetup?: {
+    name?: string;
+    brandModelFront?: string;
+    brandModelRear?: string;
+    frontDimension?: string;
+    rearDimension?: string;
+    tireSeason?: string;
+    initialTreadDepthMm?: number;
+    initialTreadFrontMm?: number;
+    initialTreadRearMm?: number;
+    tireCondition?: string;
+  };
+}
+
+export interface ActivateStoredSetCommand {
+  vehicleId: string;
+  storedSetupId?: string;
+  odometerKm?: number;
+  notes?: string;
+  userId?: string;
+}
+
+export interface UpsertVehicleTireInput {
+  vehicleId: string;
+  organizationId: string;
+  frontDimension?: string | null;
+  rearDimension?: string | null;
+  brandModelFront?: string | null;
+  brandModelRear?: string | null;
+  tireSeason?: string | null;
+  loadIndexFront?: string | null;
+  speedIndexFront?: string | null;
+  loadIndexRear?: string | null;
+  speedIndexRear?: string | null;
+  dotCodeFront?: string | null;
+  dotCodeRear?: string | null;
+  treadFL?: number | null;
+  treadFR?: number | null;
+  treadBL?: number | null;
+  treadBR?: number | null;
+  tireCondition?: string | null;
+  source?: string;
+}
+
+const SOURCE_MAP: Record<string, TireMeasurementSource> = {
+  manual: 'manual',
+  manual_edit: 'manual',
+  manual_registration: 'manual',
+  workshop: 'workshop',
+  ai_upload: 'ai_confirmed',
+  ai_confirmed: 'ai_confirmed',
+  calibration: 'calibration',
+};
+
+function trimOrNull(value: string | null | undefined): string | null {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+export function normalizeMeasurementSource(source?: string | null): TireMeasurementSource {
+  const key = String(source ?? 'manual').trim().toLowerCase();
+  return SOURCE_MAP[key] ?? 'manual';
+}
+
+export function normalizeWheelPosition(pos?: string | null): WheelPos | null {
+  if (!pos) return null;
+  const key = String(pos).trim().toUpperCase();
+  if (key === 'FL' || key === 'FR' || key === 'RL' || key === 'RR') return key as WheelPos;
+  if (key === 'FRONT_LEFT') return 'FL';
+  if (key === 'FRONT_RIGHT') return 'FR';
+  if (key === 'REAR_LEFT' || key === 'BACK_LEFT') return 'RL';
+  if (key === 'REAR_RIGHT' || key === 'BACK_RIGHT') return 'RR';
+  return null;
+}
+
+export function resolveReplacementPositions(
+  scope: TireReplacementScope,
+  positions?: string[],
+): WheelPos[] {
+  if (scope === 'full_set') return ['FL', 'FR', 'RL', 'RR'];
+
+  const normalized = (positions ?? [])
+    .map((p) => normalizeWheelPosition(p))
+    .filter((p): p is WheelPos => p != null);
+
+  if (scope === 'single') {
+    if (normalized.length !== 1) {
+      throw new BadRequestException('Single tire replacement requires exactly one wheel position.');
+    }
+    return normalized;
+  }
+
+  // axle replacement
+  const raw = (positions ?? []).map((p) => String(p).trim().toUpperCase());
+  if (raw.includes('FRONT') || raw.includes('FRONT_AXLE')) return ['FL', 'FR'];
+  if (raw.includes('REAR') || raw.includes('REAR_AXLE')) return ['RL', 'RR'];
+
+  const unique = Array.from(new Set(normalized));
+  if (unique.length === 2 && unique.every((p) => p.startsWith('F'))) return ['FL', 'FR'];
+  if (unique.length === 2 && unique.every((p) => p.startsWith('R'))) return ['RL', 'RR'];
+
+  throw new BadRequestException(
+    'Axle replacement requires FRONT_AXLE/REAR_AXLE or two wheel positions on the same axle.',
+  );
+}
+
+function toDbPosition(pos: WheelPos): 'FRONT_LEFT' | 'FRONT_RIGHT' | 'REAR_LEFT' | 'REAR_RIGHT' {
+  if (pos === 'FL') return 'FRONT_LEFT';
+  if (pos === 'FR') return 'FRONT_RIGHT';
+  if (pos === 'RL') return 'REAR_LEFT';
+  return 'REAR_RIGHT';
+}
+
+function fromDbPosition(pos: string): WheelPos {
+  if (pos === 'FRONT_LEFT') return 'FL';
+  if (pos === 'FRONT_RIGHT') return 'FR';
+  if (pos === 'REAR_LEFT') return 'RL';
+  return 'RR';
+}
+
+@Injectable()
+export class TireLifecycleService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly wearModel: TireWearModelService,
+    private readonly tireHealthService: TireHealthService,
+  ) {}
+
+  async recordMeasurement(command: RecordTireMeasurementCommand) {
+    const setup = await this.resolveSetupForMeasurement(command.vehicleId, command.tireSetupId);
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: command.vehicleId },
+      select: { organizationId: true },
+    });
+    if (!vehicle) throw new BadRequestException('Vehicle not found.');
+
+    const values = this.extractMeasurementValues(command);
+    if (values.count === 0) {
+      throw new BadRequestException('At least one wheel measurement is required.');
+    }
+
+    const source = normalizeMeasurementSource(command.source);
+    const measuredAt = command.measuredAt ? new Date(command.measuredAt) : new Date();
+    const resolvedOdometer = await this.resolveOdometer(command.vehicleId, command.odometerKm);
+    const shouldCalibrate = command.shouldCalibrate ?? true;
+    const triggerRecalculate = command.triggerRecalculate ?? true;
+
+    const measurement = await this.prisma.vehicleTireTreadMeasurement.create({
+      data: {
+        vehicleId: command.vehicleId,
+        tireSetupId: setup.id,
+        frontLeftMm: values.frontLeftMm,
+        frontRightMm: values.frontRightMm,
+        rearLeftMm: values.rearLeftMm,
+        rearRightMm: values.rearRightMm,
+        odometerAtMeasurement: resolvedOdometer,
+        source,
+        workshopName: command.workshopName ?? null,
+        isCalibrationPoint: shouldCalibrate,
+        measuredAt,
+      },
+    });
+
+    const kFactors = shouldCalibrate
+      ? await this.wearModel.calibrateFromMeasurement(setup.id, {
+          frontLeftMm: values.frontLeftMm ?? undefined,
+          frontRightMm: values.frontRightMm ?? undefined,
+          rearLeftMm: values.rearLeftMm ?? undefined,
+          rearRightMm: values.rearRightMm ?? undefined,
+        })
+      : null;
+
+    await this.prisma.tireEvent.create({
+      data: {
+        organizationId: vehicle.organizationId,
+        vehicleId: command.vehicleId,
+        tireSetId: setup.id,
+        type: TireEventType.MEASUREMENT,
+        payload: {
+          command: 'recordMeasurement',
+          source,
+          quality: command.quality ?? (source === 'calibration' ? 'mixed' : 'measured'),
+          measuredAt: measuredAt.toISOString(),
+          odometerKm: resolvedOdometer,
+          values: {
+            FL: values.frontLeftMm,
+            FR: values.frontRightMm,
+            RL: values.rearLeftMm,
+            RR: values.rearRightMm,
+          },
+          workshopName: command.workshopName ?? null,
+          linkedExtractionId: command.linkedExtractionId ?? null,
+          linkedDocumentUrl: command.linkedDocumentUrl ?? null,
+          notes: command.notes ?? null,
+          calibrationApplied: shouldCalibrate,
+          kFactors,
+        },
+        createdBy: command.userId ?? null,
+      },
+    });
+
+    if (triggerRecalculate) {
+      await this.tireHealthService.recalculate(command.vehicleId);
+    }
+
+    return { measurement, kFactors, source };
+  }
+
+  async installTireSet(
+    vehicleId: string,
+    data: ReplaceTiresCommand['newSetup'] & {
+      odometerKm?: number;
+      notes?: string;
+      userId?: string;
+      archiveCurrent?: boolean;
+      archiveStatus?: TireSetupStatus;
+    },
+  ) {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { id: true, organizationId: true, fuelType: true, driveType: true },
+    });
+    if (!vehicle) throw new BadRequestException('Vehicle not found.');
+
+    const currentSetup = await this.getActiveSetup(vehicleId);
+    const resolvedOdometer = await this.resolveOdometer(vehicleId, data.odometerKm);
+
+    if (data.archiveCurrent !== false && currentSetup) {
+      await this.prisma.vehicleTireSetup.update({
+        where: { id: currentSetup.id },
+        data: {
+          removedAt: new Date(),
+          removedOdometerKm: resolvedOdometer,
+          status: data.archiveStatus ?? TireSetupStatus.STORED,
+          updatedBy: data.userId ?? null,
+        },
+      });
+    }
+
+    const fallback = currentSetup ?? null;
+    const frontDimension = trimOrNull(data.frontDimension) ?? fallback?.frontDimension ?? null;
+    const rearDimension = trimOrNull(data.rearDimension) ?? fallback?.rearDimension ?? frontDimension;
+    const staggered = isStaggeredSetup({ frontDimension, rearDimension });
+    const regen = this.wearModel.computePositionalRegenFactors(
+      vehicle.fuelType ?? null,
+      vehicle.driveType ?? null,
+    );
+
+    const newSetup = await this.prisma.vehicleTireSetup.create({
+      data: {
+        organizationId: vehicle.organizationId,
+        vehicleId,
+        name: trimOrNull(data.name) ?? fallback?.name ?? null,
+        brandModelFront: trimOrNull(data.brandModelFront) ?? fallback?.brandModelFront ?? null,
+        brandModelRear: trimOrNull(data.brandModelRear) ?? fallback?.brandModelRear ?? null,
+        frontDimension,
+        rearDimension,
+        tireSeason: this.parseSeason(data.tireSeason, fallback?.tireSeason ?? TireSeason.ALL_SEASON),
+        initialTreadDepthMm: data.initialTreadDepthMm ?? fallback?.initialTreadDepthMm ?? null,
+        initialTreadFrontMm: data.initialTreadFrontMm ?? fallback?.initialTreadFrontMm ?? null,
+        initialTreadRearMm: data.initialTreadRearMm ?? fallback?.initialTreadRearMm ?? null,
+        isStaggered: staggered,
+        regenBrakingFactor: regen.overall,
+        regenBrakingFactorFront: regen.front,
+        regenBrakingFactorRear: regen.rear,
+        frontTireWidthMm: this.parseTireWidth(frontDimension),
+        rearTireWidthMm: this.parseTireWidth(rearDimension),
+        installedAt: new Date(),
+        installedOdometerKm: resolvedOdometer,
+        status: TireSetupStatus.ACTIVE,
+        createdBy: data.userId ?? null,
+        tireCondition: this.parseCondition(data.tireCondition, fallback?.tireCondition ?? TireSetupCondition.UNKNOWN),
+        loadIndexFront: fallback?.loadIndexFront ?? null,
+        speedIndexFront: fallback?.speedIndexFront ?? null,
+        loadIndexRear: fallback?.loadIndexRear ?? null,
+        speedIndexRear: fallback?.speedIndexRear ?? null,
+        dotCodeFront: fallback?.dotCodeFront ?? null,
+        dotCodeRear: fallback?.dotCodeRear ?? null,
+        aiTireSpec: fallback?.aiTireSpec ?? undefined,
+      },
+    });
+
+    await this.prisma.tireEvent.create({
+      data: {
+        organizationId: vehicle.organizationId,
+        vehicleId,
+        tireSetId: newSetup.id,
+        type: TireEventType.INSTALL,
+        payload: {
+          command: 'installTireSet',
+          odometerKm: resolvedOdometer,
+          notes: data.notes ?? null,
+          archivedSetId: currentSetup?.id ?? null,
+        },
+        createdBy: data.userId ?? null,
+      },
+    });
+
+    await this.tireHealthService.recalculate(vehicleId);
+    return { setup: newSetup, archivedSetupId: currentSetup?.id ?? null };
+  }
+
+  async rotateTires(
+    vehicleId: string,
+    data: { template: string; odometerKm?: number; notes?: string; userId?: string },
+  ) {
+    const setup = await this.getActiveSetup(vehicleId);
+    if (!setup) throw new BadRequestException('No active tire setup.');
+
+    if (isStaggeredSetup(setup) && !this.wearModel.isRotationAllowedForStaggered(data.template)) {
+      throw new BadRequestException(
+        `Rotation template "${data.template}" is not allowed for staggered tire setups.`,
+      );
+    }
+
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    if (!vehicle) throw new BadRequestException('Vehicle not found.');
+
+    const moveMap = this.getRotationMoves(data.template);
+    if (Object.keys(moveMap).length === 0) {
+      throw new BadRequestException(`Unknown rotation template: ${data.template}`);
+    }
+
+    const now = new Date();
+    const resolvedOdometer = await this.resolveOdometer(vehicleId, data.odometerKm);
+    const wear = await this.wearModel.computeWearAnalysis(vehicleId);
+
+    await this.prisma.$transaction([
+      ...Object.entries(moveMap).map(([fromPos, toPos]) =>
+        this.prisma.tirePositionHistory.create({
+          data: {
+            organizationId: vehicle.organizationId,
+            vehicleId,
+            tireSetId: setup.id,
+            fromPosition: fromPos as any,
+            toPosition: toPos as any,
+            changedAt: now,
+            odometerKm: resolvedOdometer,
+            changeType: TireChangeType.ROTATE,
+            rotationTemplate: data.template,
+            notes: data.notes ?? null,
+            createdBy: data.userId ?? null,
+          },
+        }),
+      ),
+      this.prisma.tireEvent.create({
+        data: {
+          organizationId: vehicle.organizationId,
+          vehicleId,
+          tireSetId: setup.id,
+          type: TireEventType.ROTATION,
+          payload: {
+            command: 'rotateTires',
+            template: data.template,
+            odometerKm: resolvedOdometer,
+            notes: data.notes ?? null,
+            moves: moveMap,
+          },
+          createdBy: data.userId ?? null,
+        },
+      }),
+    ]);
+
+    if (wear) {
+      const oldByPos: Record<WheelPos, number> = {
+        FL: wear.frontLeftMm,
+        FR: wear.frontRightMm,
+        RL: wear.rearLeftMm,
+        RR: wear.rearRightMm,
+      };
+      const rotated: Record<WheelPos, number> = { ...oldByPos };
+      for (const [fromPos, toPos] of Object.entries(moveMap)) {
+        const from = fromDbPosition(fromPos);
+        const to = fromDbPosition(toPos);
+        rotated[to] = oldByPos[from];
+      }
+
+      await this.recordMeasurement({
+        vehicleId,
+        tireSetupId: setup.id,
+        frontLeftMm: rotated.FL,
+        frontRightMm: rotated.FR,
+        rearLeftMm: rotated.RL,
+        rearRightMm: rotated.RR,
+        odometerKm: resolvedOdometer ?? undefined,
+        measuredAt: now,
+        source: 'calibration',
+        notes: `Rotation anchor (${data.template})`,
+        quality: 'mixed',
+        shouldCalibrate: false,
+        triggerRecalculate: false,
+        userId: data.userId,
+      });
+    }
+
+    await this.tireHealthService.recalculate(vehicleId);
+    return { success: true, template: data.template, scope: 'rotation' };
+  }
+
+  async replaceTires(command: ReplaceTiresCommand) {
+    if (command.scope === 'full_set') {
+      const installed = await this.installTireSet(command.vehicleId, {
+        ...(command.newSetup ?? {}),
+        odometerKm: command.odometerKm,
+        notes: command.notes,
+        userId: command.userId,
+        archiveCurrent: true,
+        archiveStatus: TireSetupStatus.STORED,
+      });
+      await this.prisma.tireEvent.create({
+        data: {
+          organizationId: installed.setup.organizationId as string,
+          vehicleId: command.vehicleId,
+          tireSetId: installed.setup.id,
+          type: TireEventType.TIRE_CHANGE,
+          payload: {
+            command: 'replaceTires',
+            scope: 'full_set',
+            archivedSetupId: installed.archivedSetupId,
+            odometerKm: command.odometerKm ?? null,
+            notes: command.notes ?? null,
+          },
+          createdBy: command.userId ?? null,
+        },
+      });
+      return {
+        success: true,
+        scope: 'full_set',
+        newSetupId: installed.setup.id,
+        archivedSetupId: installed.archivedSetupId,
+      };
+    }
+
+    const setup = await this.getActiveSetup(command.vehicleId);
+    if (!setup) throw new BadRequestException('No active tire setup.');
+
+    const positions = resolveReplacementPositions(command.scope, command.positions);
+    const wear = await this.wearModel.computeWearAnalysis(command.vehicleId);
+    if (!wear) {
+      throw new BadRequestException(
+        'Tire wear estimate unavailable. Please record a measurement before partial replacement.',
+      );
+    }
+
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: command.vehicleId },
+      select: { organizationId: true },
+    });
+    if (!vehicle) throw new BadRequestException('Vehicle not found.');
+
+    const now = new Date();
+    const resolvedOdometer = await this.resolveOdometer(command.vehicleId, command.odometerKm);
+
+    const values: Record<WheelPos, number> = {
+      FL: wear.frontLeftMm,
+      FR: wear.frontRightMm,
+      RL: wear.rearLeftMm,
+      RR: wear.rearRightMm,
+    };
+
+    for (const pos of positions) {
+      const replacementMm = pos.startsWith('F')
+        ? wear.referenceNewTreadFront
+        : wear.referenceNewTreadRear;
+      values[pos] = replacementMm;
+    }
+
+    const setupPatch = this.buildPartialSetupPatch(command, positions, setup);
+    if (Object.keys(setupPatch).length > 0) {
+      await this.prisma.vehicleTireSetup.update({
+        where: { id: setup.id },
+        data: setupPatch,
+      });
+    }
+
+    await this.prisma.$transaction([
+      ...positions.map((pos) =>
+        this.prisma.tirePositionHistory.create({
+          data: {
+            organizationId: vehicle.organizationId,
+            vehicleId: command.vehicleId,
+            tireSetId: setup.id,
+            fromPosition: toDbPosition(pos) as any,
+            toPosition: toDbPosition(pos) as any,
+            changedAt: now,
+            odometerKm: resolvedOdometer,
+            changeType: TireChangeType.REPLACE,
+            notes: command.notes ?? null,
+            createdBy: command.userId ?? null,
+          },
+        }),
+      ),
+      this.prisma.tireEvent.create({
+        data: {
+          organizationId: vehicle.organizationId,
+          vehicleId: command.vehicleId,
+          tireSetId: setup.id,
+          type: TireEventType.TIRE_CHANGE,
+          payload: {
+            command: 'replaceTires',
+            scope: command.scope,
+            positions,
+            odometerKm: resolvedOdometer,
+            notes: command.notes ?? null,
+          },
+          createdBy: command.userId ?? null,
+        },
+      }),
+    ]);
+
+    await this.recordMeasurement({
+      vehicleId: command.vehicleId,
+      tireSetupId: setup.id,
+      frontLeftMm: values.FL,
+      frontRightMm: values.FR,
+      rearLeftMm: values.RL,
+      rearRightMm: values.RR,
+      odometerKm: resolvedOdometer ?? undefined,
+      measuredAt: now,
+      source: command.workshopName ? 'workshop' : 'calibration',
+      workshopName: command.workshopName,
+      notes: command.notes ?? undefined,
+      quality: 'mixed',
+      shouldCalibrate: false,
+      triggerRecalculate: false,
+      userId: command.userId,
+    });
+
+    await this.tireHealthService.recalculate(command.vehicleId);
+
+    return {
+      success: true,
+      scope: command.scope,
+      positions,
+      activeSetupId: setup.id,
+    };
+  }
+
+  async activateStoredSet(command: ActivateStoredSetCommand) {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: command.vehicleId },
+      select: { organizationId: true },
+    });
+    if (!vehicle) throw new BadRequestException('Vehicle not found.');
+
+    const target = command.storedSetupId
+      ? await this.prisma.vehicleTireSetup.findFirst({
+          where: {
+            id: command.storedSetupId,
+            vehicleId: command.vehicleId,
+            status: TireSetupStatus.STORED,
+          },
+        })
+      : await this.prisma.vehicleTireSetup.findFirst({
+          where: {
+            vehicleId: command.vehicleId,
+            status: TireSetupStatus.STORED,
+          },
+          orderBy: { updatedAt: 'desc' },
+        });
+
+    if (!target) {
+      throw new BadRequestException('No stored tire set available for activation.');
+    }
+
+    const active = await this.getActiveSetup(command.vehicleId);
+    if (active?.id === target.id) {
+      return { success: true, activeSetupId: target.id, alreadyActive: true };
+    }
+
+    const now = new Date();
+    const resolvedOdometer = await this.resolveOdometer(command.vehicleId, command.odometerKm);
+
+    await this.prisma.$transaction([
+      ...(active
+        ? [
+            this.prisma.vehicleTireSetup.update({
+              where: { id: active.id },
+              data: {
+                status: TireSetupStatus.STORED,
+                removedAt: now,
+                removedOdometerKm: resolvedOdometer,
+                updatedBy: command.userId ?? null,
+              },
+            }),
+          ]
+        : []),
+      this.prisma.vehicleTireSetup.update({
+        where: { id: target.id },
+        data: {
+          status: TireSetupStatus.ACTIVE,
+          removedAt: null,
+          removedOdometerKm: null,
+          installedAt: now,
+          installedOdometerKm: resolvedOdometer,
+          updatedBy: command.userId ?? null,
+        },
+      }),
+      this.prisma.tireEvent.create({
+        data: {
+          organizationId: vehicle.organizationId,
+          vehicleId: command.vehicleId,
+          tireSetId: target.id,
+          type: TireEventType.INSTALL,
+          payload: {
+            command: 'activateStoredSet',
+            previousActiveSetId: active?.id ?? null,
+            activatedStoredSetId: target.id,
+            odometerKm: resolvedOdometer,
+            notes: command.notes ?? null,
+          },
+          createdBy: command.userId ?? null,
+        },
+      }),
+    ]);
+
+    await this.tireHealthService.recalculate(command.vehicleId);
+
+    return {
+      success: true,
+      activeSetupId: target.id,
+      previousActiveSetId: active?.id ?? null,
+    };
+  }
+
+  async upsertSetupAndMeasurement(input: UpsertVehicleTireInput) {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: input.vehicleId, organizationId: input.organizationId },
+      include: {
+        tireSetups: {
+          where: { status: TireSetupStatus.ACTIVE, removedAt: null },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+    if (!vehicle) throw new BadRequestException('Vehicle not found');
+
+    const hasSetupData = [
+      input.frontDimension,
+      input.rearDimension,
+      input.brandModelFront,
+      input.brandModelRear,
+      input.tireSeason,
+      input.loadIndexFront,
+      input.speedIndexFront,
+      input.loadIndexRear,
+      input.speedIndexRear,
+      input.dotCodeFront,
+      input.dotCodeRear,
+      input.tireCondition,
+    ].some((v) => v != null && String(v).trim() !== '');
+
+    const hasMeasurement =
+      input.treadFL != null ||
+      input.treadFR != null ||
+      input.treadBL != null ||
+      input.treadBR != null;
+
+    if (!hasSetupData && !hasMeasurement) {
+      return { setup: null, measurement: null };
+    }
+
+    let setup = vehicle.tireSetups[0] ?? null;
+    const frontAvg =
+      input.treadFL != null && input.treadFR != null
+        ? (input.treadFL + input.treadFR) / 2
+        : (input.treadFL ?? input.treadFR ?? null);
+    const rearAvg =
+      input.treadBL != null && input.treadBR != null
+        ? (input.treadBL + input.treadBR) / 2
+        : (input.treadBL ?? input.treadBR ?? null);
+    const overallAvg =
+      frontAvg != null && rearAvg != null
+        ? (frontAvg + rearAvg) / 2
+        : (frontAvg ?? rearAvg ?? null);
+
+    if (!setup) {
+      const installed = await this.installTireSet(input.vehicleId, {
+        name: null as any,
+        brandModelFront: input.brandModelFront ?? undefined,
+        brandModelRear: input.brandModelRear ?? undefined,
+        frontDimension: input.frontDimension ?? undefined,
+        rearDimension: input.rearDimension ?? undefined,
+        tireSeason: input.tireSeason ?? undefined,
+        initialTreadDepthMm: overallAvg ?? undefined,
+        initialTreadFrontMm: frontAvg ?? undefined,
+        initialTreadRearMm: rearAvg ?? undefined,
+        tireCondition: input.tireCondition ?? undefined,
+        archiveCurrent: false,
+        userId: undefined,
+      });
+      setup = installed.setup;
+      await this.prisma.vehicleTireSetup.update({
+        where: { id: setup.id },
+        data: {
+          loadIndexFront: trimOrNull(input.loadIndexFront) ?? null,
+          speedIndexFront: trimOrNull(input.speedIndexFront) ?? null,
+          loadIndexRear: trimOrNull(input.loadIndexRear) ?? null,
+          speedIndexRear: trimOrNull(input.speedIndexRear) ?? null,
+          dotCodeFront: trimOrNull(input.dotCodeFront) ?? null,
+          dotCodeRear: trimOrNull(input.dotCodeRear) ?? null,
+        },
+      });
+      setup =
+        (await this.prisma.vehicleTireSetup.findUnique({
+          where: { id: setup.id },
+        })) ?? setup;
+    } else {
+      const patch: Record<string, any> = {};
+      if (trimOrNull(input.frontDimension) != null) patch.frontDimension = trimOrNull(input.frontDimension);
+      if (trimOrNull(input.rearDimension) != null) patch.rearDimension = trimOrNull(input.rearDimension);
+      if (trimOrNull(input.brandModelFront) != null) patch.brandModelFront = trimOrNull(input.brandModelFront);
+      if (trimOrNull(input.brandModelRear) != null) patch.brandModelRear = trimOrNull(input.brandModelRear);
+      if (input.tireSeason != null) patch.tireSeason = this.parseSeason(input.tireSeason, setup.tireSeason);
+      if (input.loadIndexFront != null) patch.loadIndexFront = trimOrNull(input.loadIndexFront);
+      if (input.speedIndexFront != null) patch.speedIndexFront = trimOrNull(input.speedIndexFront);
+      if (input.loadIndexRear != null) patch.loadIndexRear = trimOrNull(input.loadIndexRear);
+      if (input.speedIndexRear != null) patch.speedIndexRear = trimOrNull(input.speedIndexRear);
+      if (input.dotCodeFront != null) patch.dotCodeFront = trimOrNull(input.dotCodeFront);
+      if (input.dotCodeRear != null) patch.dotCodeRear = trimOrNull(input.dotCodeRear);
+      if (input.tireCondition != null) patch.tireCondition = this.parseCondition(input.tireCondition, setup.tireCondition);
+      if (setup.initialTreadFrontMm == null && frontAvg != null) patch.initialTreadFrontMm = frontAvg;
+      if (setup.initialTreadRearMm == null && rearAvg != null) patch.initialTreadRearMm = rearAvg;
+      if (setup.initialTreadDepthMm == null && overallAvg != null) patch.initialTreadDepthMm = overallAvg;
+      if (Object.keys(patch).length > 0) {
+        await this.prisma.vehicleTireSetup.update({
+          where: { id: setup.id },
+          data: patch,
+        });
+      }
+      setup =
+        (await this.prisma.vehicleTireSetup.findUnique({
+          where: { id: setup.id },
+        })) ?? setup;
+    }
+
+    let measurement: any = null;
+    if (hasMeasurement && setup) {
+      const measured = await this.recordMeasurement({
+        vehicleId: input.vehicleId,
+        tireSetupId: setup.id,
+        frontLeftMm: input.treadFL ?? undefined,
+        frontRightMm: input.treadFR ?? undefined,
+        rearLeftMm: input.treadBL ?? undefined,
+        rearRightMm: input.treadBR ?? undefined,
+        source: input.source ?? 'manual',
+        quality: 'measured',
+        shouldCalibrate: true,
+        triggerRecalculate: true,
+      });
+      measurement = measured.measurement;
+    } else if (setup) {
+      await this.tireHealthService.recalculate(input.vehicleId);
+    }
+
+    return { setup, measurement };
+  }
+
+  private async resolveSetupForMeasurement(vehicleId: string, tireSetupId?: string) {
+    if (tireSetupId) {
+      const setup = await this.prisma.vehicleTireSetup.findUnique({
+        where: { id: tireSetupId },
+      });
+      if (!setup || setup.vehicleId !== vehicleId) {
+        throw new BadRequestException('Tire setup does not belong to this vehicle.');
+      }
+      return setup;
+    }
+    const active = await this.getActiveSetup(vehicleId);
+    if (!active) throw new BadRequestException('No active tire setup found.');
+    return active;
+  }
+
+  private async getActiveSetup(vehicleId: string) {
+    return this.prisma.vehicleTireSetup.findFirst({
+      where: {
+        vehicleId,
+        status: TireSetupStatus.ACTIVE,
+        removedAt: null,
+      },
+      orderBy: { createdAt: 'desc' },
+      include: { measurements: { orderBy: { measuredAt: 'desc' }, take: 5 } },
+    });
+  }
+
+  private async resolveOdometer(vehicleId: string, odometerKm?: number) {
+    if (odometerKm != null && Number.isFinite(odometerKm)) return odometerKm;
+    const latestState = await this.prisma.vehicleLatestState.findUnique({
+      where: { vehicleId },
+      select: { odometerKm: true },
+    });
+    return latestState?.odometerKm ?? null;
+  }
+
+  private parseSeason(input: string | null | undefined, fallback: TireSeason): TireSeason {
+    if (!input) return fallback;
+    const key = String(input).toUpperCase().replace(/[^A-Z]/g, '_');
+    if (key === 'SUMMER') return TireSeason.SUMMER;
+    if (key === 'WINTER') return TireSeason.WINTER;
+    if (key === 'ALL_SEASON' || key === 'ALL__SEASON') return TireSeason.ALL_SEASON;
+    if (key === 'TRACK') return TireSeason.TRACK;
+    return fallback;
+  }
+
+  private parseCondition(
+    input: string | null | undefined,
+    fallback: TireSetupCondition,
+  ): TireSetupCondition {
+    if (!input) return fallback;
+    const key = String(input).toUpperCase().trim();
+    if (key === 'NEW_INSTALLED') return TireSetupCondition.NEW_INSTALLED;
+    if (key === 'ALREADY_MOUNTED') return TireSetupCondition.ALREADY_MOUNTED;
+    return TireSetupCondition.UNKNOWN;
+  }
+
+  private parseTireWidth(dimension: string | null): number | null {
+    if (!dimension) return null;
+    const match = dimension.match(/^(\d{3})\//);
+    if (match) return parseInt(match[1], 10);
+    const fallback = dimension.match(/(\d{3})/);
+    return fallback ? parseInt(fallback[1], 10) : null;
+  }
+
+  private extractMeasurementValues(command: RecordTireMeasurementCommand) {
+    const frontLeftMm = command.frontLeftMm ?? null;
+    const frontRightMm = command.frontRightMm ?? null;
+    const rearLeftMm = command.rearLeftMm ?? null;
+    const rearRightMm = command.rearRightMm ?? null;
+    const count = [frontLeftMm, frontRightMm, rearLeftMm, rearRightMm].filter(
+      (v) => v != null,
+    ).length;
+    return { frontLeftMm, frontRightMm, rearLeftMm, rearRightMm, count };
+  }
+
+  private getRotationMoves(template: string): Record<string, string> {
+    switch (template) {
+      case 'front_to_rear':
+        return {
+          FRONT_LEFT: 'REAR_LEFT',
+          FRONT_RIGHT: 'REAR_RIGHT',
+          REAR_LEFT: 'FRONT_LEFT',
+          REAR_RIGHT: 'FRONT_RIGHT',
+        };
+      case 'cross':
+        return {
+          FRONT_LEFT: 'REAR_RIGHT',
+          FRONT_RIGHT: 'REAR_LEFT',
+          REAR_LEFT: 'FRONT_RIGHT',
+          REAR_RIGHT: 'FRONT_LEFT',
+        };
+      case 'side_swap':
+      case 'side_swap_only':
+      case 'same_axle_swap':
+        return {
+          FRONT_LEFT: 'FRONT_RIGHT',
+          FRONT_RIGHT: 'FRONT_LEFT',
+          REAR_LEFT: 'REAR_RIGHT',
+          REAR_RIGHT: 'REAR_LEFT',
+        };
+      case 'full_rotation':
+        return {
+          FRONT_LEFT: 'REAR_RIGHT',
+          REAR_RIGHT: 'REAR_LEFT',
+          REAR_LEFT: 'FRONT_RIGHT',
+          FRONT_RIGHT: 'FRONT_LEFT',
+        };
+      default:
+        return {};
+    }
+  }
+
+  private buildPartialSetupPatch(
+    command: ReplaceTiresCommand,
+    positions: WheelPos[],
+    currentSetup: any,
+  ): Record<string, any> {
+    const patch: Record<string, any> = {};
+    const touchesFront = positions.some((p) => p.startsWith('F'));
+    const touchesRear = positions.some((p) => p.startsWith('R'));
+    const ns = command.newSetup;
+    if (!ns) return patch;
+
+    if (touchesFront) {
+      if (trimOrNull(ns.brandModelFront) != null) patch.brandModelFront = trimOrNull(ns.brandModelFront);
+      if (trimOrNull(ns.frontDimension) != null) patch.frontDimension = trimOrNull(ns.frontDimension);
+      if (ns.initialTreadFrontMm != null) patch.initialTreadFrontMm = ns.initialTreadFrontMm;
+    }
+    if (touchesRear) {
+      if (trimOrNull(ns.brandModelRear) != null) patch.brandModelRear = trimOrNull(ns.brandModelRear);
+      if (trimOrNull(ns.rearDimension) != null) patch.rearDimension = trimOrNull(ns.rearDimension);
+      if (ns.initialTreadRearMm != null) patch.initialTreadRearMm = ns.initialTreadRearMm;
+    }
+    if (ns.initialTreadDepthMm != null) patch.initialTreadDepthMm = ns.initialTreadDepthMm;
+    if (ns.tireCondition != null) patch.tireCondition = this.parseCondition(ns.tireCondition, currentSetup.tireCondition);
+    if (ns.tireSeason != null) patch.tireSeason = this.parseSeason(ns.tireSeason, currentSetup.tireSeason);
+
+    if (patch.frontDimension != null || patch.rearDimension != null) {
+      patch.isStaggered = isStaggeredSetup({
+        frontDimension: patch.frontDimension ?? currentSetup.frontDimension,
+        rearDimension: patch.rearDimension ?? currentSetup.rearDimension,
+      });
+      patch.frontTireWidthMm = this.parseTireWidth(patch.frontDimension ?? currentSetup.frontDimension);
+      patch.rearTireWidthMm = this.parseTireWidth(patch.rearDimension ?? currentSetup.rearDimension);
+    }
+
+    return patch;
+  }
+}

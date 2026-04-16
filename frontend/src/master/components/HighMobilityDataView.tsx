@@ -201,13 +201,15 @@ function VehicleRow({
           <span className={`text-xs ${mutedFg}`}>Not linked</span>
         )}
 
-        {/* Source mode */}
+        {/* Source mode / app container domain */}
         <span className={`text-[11px] font-medium px-2 py-0.5 rounded ${
           vehicle.sourceMode === 'HM_ONLY'
             ? isDarkMode ? 'bg-violet-900/40 text-violet-400' : 'bg-violet-100 text-violet-700'
             : isDarkMode ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500'
         }`}>
-          {vehicle.sourceMode === 'DIMO_PLUS_HM' ? 'DIMO + HM' : 'HM Only'}
+          {vehicle.sourceMode === 'DIMO_PLUS_HM'
+            ? (vehicle.packageType === 'HEALTH' ? 'DIMO + HMH' : 'DIMO + HM')
+            : (vehicle.packageType === 'FULL_TELEMETRY' ? 'HM Telemetry' : 'HM Health')}
         </span>
 
         {/* Phase 2: Registration state (HM_ONLY) */}
@@ -549,7 +551,8 @@ function EligibilityTab({
       const res = await api.highMobility.checkEligibility(vin.trim().toUpperCase(), brand.trim());
       setResult(res);
       if (res.eligibilityStatus === 'ELIGIBLE') toast.success(`${vin.trim().toUpperCase()} is eligible for High Mobility`);
-      else if (res.eligibilityStatus === 'INELIGIBLE') toast.error(`${vin.trim().toUpperCase()} is not eligible`);
+      else if ((res as any).eligibilityStatus === 'NOT_APPLICABLE') toast.info(`${brand.trim()} uses direct fleet clearance — eligibility check not applicable`);
+      else if (res.eligibilityStatus === 'INELIGIBLE') toast.warning(`${vin.trim().toUpperCase()} is not eligible`);
       else toast.info(`Eligibility check complete: ${res.eligibilityStatus}`);
     } catch (e: any) {
       toast.error(e?.message || 'Eligibility check failed');
@@ -605,11 +608,13 @@ function EligibilityTab({
         <div className={`${cardCls} overflow-hidden`}>
           {/* Header */}
           <div className={`px-5 py-4 flex items-start gap-4 border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
-            <div className={`p-2 rounded-lg ${result.eligibilityStatus === 'ELIGIBLE' ? 'bg-emerald-100 dark:bg-emerald-900/30' : result.eligibilityStatus === 'INELIGIBLE' ? 'bg-red-100 dark:bg-red-900/30' : 'bg-gray-100 dark:bg-neutral-800'}`}>
+            <div className={`p-2 rounded-lg ${result.eligibilityStatus === 'ELIGIBLE' ? 'bg-emerald-100 dark:bg-emerald-900/30' : result.eligibilityStatus === 'INELIGIBLE' ? 'bg-red-100 dark:bg-red-900/30' : (result as any).eligibilityStatus === 'NOT_APPLICABLE' ? 'bg-violet-100 dark:bg-violet-900/30' : 'bg-gray-100 dark:bg-neutral-800'}`}>
               {result.eligibilityStatus === 'ELIGIBLE'
                 ? <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 : result.eligibilityStatus === 'INELIGIBLE'
                 ? <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                : (result as any).eligibilityStatus === 'NOT_APPLICABLE'
+                ? <Shield className="w-5 h-5 text-violet-600 dark:text-violet-400" />
                 : <AlertTriangle className="w-5 h-5 text-orange-500" />
               }
             </div>
@@ -640,6 +645,22 @@ function EligibilityTab({
             </div>
           )}
 
+          {/* Routing note for VW Group / Porsche */}
+          {(result as any).routingNote && (
+            <div className={`px-5 py-3 border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
+              <div className={`flex items-start gap-2 px-3 py-2 rounded-lg text-xs ${isDarkMode ? 'bg-violet-900/20 border border-violet-800/40 text-violet-300' : 'bg-violet-50 border border-violet-200 text-violet-700'}`}>
+                <Shield className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <div>
+                  <span className="font-semibold">OEM routing: </span>
+                  {(result as any).routingNote}
+                  {(result as any).canRequestDirectClearance && (
+                    <span className="block mt-1 font-medium">Use the Vehicle List to add this vehicle directly and request fleet clearance.</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="px-5 py-3 flex items-center gap-3 flex-wrap">
             {result.eligibilityStatus === 'ELIGIBLE' && (
@@ -649,6 +670,15 @@ function EligibilityTab({
               >
                 <Plus className="w-3.5 h-3.5" />
                 Add to Vehicle List
+              </button>
+            )}
+            {(result as any).canRequestDirectClearance && (
+              <button
+                onClick={() => onAddToList(result.vin, result.brand)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-violet-600 text-white hover:bg-violet-700 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add to Fleet (Direct Clearance)
               </button>
             )}
             <button
@@ -813,7 +843,7 @@ function VehicleListTab({
       ) : (
         <div className="space-y-6">
           <VehicleSection
-            title="Health Vehicles"
+            title="HM Health-APP Vehicles"
             icon={Activity}
             vehicles={data?.health ?? []}
             isDarkMode={isDarkMode}
@@ -823,12 +853,12 @@ function VehicleListTab({
             onViewHistory={setHistoryVehicle}
             badge={
               <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-400">
-                Phase 1 — Active
+                HEALTH package · DIMO add-on
               </span>
             }
           />
           <VehicleSection
-            title="Full Telemetry Vehicles"
+            title="HM Telemetry-APP Vehicles"
             icon={Zap}
             vehicles={data?.fullTelemetry ?? []}
             isDarkMode={isDarkMode}
@@ -837,8 +867,8 @@ function VehicleListTab({
             onFetchHealth={handleFetchHealth}
             onViewHistory={setHistoryVehicle}
             badge={
-              <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-gray-100 text-gray-500 dark:bg-neutral-800 dark:text-neutral-500">
-                Phase 2 — Prepared
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400">
+                FULL_TELEMETRY · own lifecycle
               </span>
             }
           />
@@ -865,7 +895,157 @@ function VehicleListTab({
   );
 }
 
-// ── Phase 2: Streaming Tab ──────────────────────────────────────────────────
+// ── Dual-App MQTT Diagnostics Tab ────────────────────────────────────────────
+
+function DualAppStreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
+  const [activeApp, setActiveApp] = useState<'health' | 'telemetry'>('health');
+  const [healthStatus, setHealthStatus] = useState<any>(null);
+  const [telemetryStatus, setTelemetryStatus] = useState<any>(null);
+  const [healthLogs, setHealthLogs] = useState<HmStreamSyncLogDto[]>([]);
+  const [telemetryLogs, setTelemetryLogs] = useState<HmStreamSyncLogDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedLog, setExpandedLog] = useState<string | null>(null);
+
+  const cardCls = `rounded-xl border ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'}`;
+  const mutedFg = isDarkMode ? 'text-neutral-500' : 'text-gray-400';
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [hStatus, tStatus, hLogs, tLogs] = await Promise.allSettled([
+        api.highMobility.getHealthAppMqttStatus?.() ?? Promise.resolve(null),
+        api.highMobility.getTelemetryAppMqttStatus?.() ?? Promise.resolve(null),
+        api.highMobility.getHealthAppStreamLogs?.({ limit: 20 }) ?? Promise.resolve({ data: [], total: 0 }),
+        api.highMobility.getTelemetryAppStreamLogs?.({ limit: 20 }) ?? Promise.resolve({ data: [], total: 0 }),
+      ]);
+      if (hStatus.status === 'fulfilled' && hStatus.value) setHealthStatus(hStatus.value);
+      if (tStatus.status === 'fulfilled' && tStatus.value) setTelemetryStatus(tStatus.value);
+      if (hLogs.status === 'fulfilled') setHealthLogs((hLogs.value as any)?.data ?? []);
+      if (tLogs.status === 'fulfilled') setTelemetryLogs((tLogs.value as any)?.data ?? []);
+    } catch {
+      toast.error('Failed to load MQTT diagnostics');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const tabBg = isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-100 border-gray-200';
+  const tabActive = isDarkMode ? 'bg-neutral-700 text-white' : 'bg-white text-gray-900 shadow-sm';
+  const tabInactive = isDarkMode ? 'text-neutral-400 hover:text-neutral-200' : 'text-gray-500 hover:text-gray-700';
+
+  const statusData = activeApp === 'health' ? healthStatus : telemetryStatus;
+  const logs = activeApp === 'health' ? healthLogs : telemetryLogs;
+  const appLabel = activeApp === 'health' ? 'HM Health-APP' : 'HM Telemetry-APP';
+  const appColor = activeApp === 'health' ? 'teal' : 'indigo';
+
+  return (
+    <div className="space-y-4">
+      {/* App selector */}
+      <div className="flex items-center gap-3">
+        <div className={`inline-flex items-center gap-1 p-1 rounded-lg border ${tabBg}`}>
+          <button
+            onClick={() => setActiveApp('health')}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors ${activeApp === 'health' ? tabActive : tabInactive}`}
+          >
+            <Activity className="w-3 h-3" />
+            HM Health-APP
+          </button>
+          <button
+            onClick={() => setActiveApp('telemetry')}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors ${activeApp === 'telemetry' ? tabActive : tabInactive}`}
+          >
+            <Zap className="w-3 h-3" />
+            HM Telemetry-APP
+          </button>
+        </div>
+        <button
+          onClick={load}
+          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}
+        >
+          {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+      ) : (
+        <div className="space-y-4">
+          {/* Status card */}
+          <div className={`${cardCls} p-4`}>
+            <div className="flex items-center gap-2 mb-3">
+              <div className={`w-2 h-2 rounded-full ${statusData?.connectionState === 'CONNECTED' ? 'bg-emerald-500 animate-pulse' : statusData?.connectionState === 'CONNECTING' ? 'bg-yellow-500 animate-pulse' : 'bg-gray-400'}`} />
+              <span className="text-sm font-semibold">{appLabel} — MQTT Status</span>
+              {statusData?.connectionState && (
+                <MqttStateBadge state={statusData.connectionState as HmMqttConnectionState} />
+              )}
+            </div>
+            {statusData ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                <div><div className={`font-medium mb-0.5 ${mutedFg}`}>MQTT Enabled</div>{statusData.mqttEnabled ? '✓ Yes' : '✗ No'}</div>
+                <div><div className={`font-medium mb-0.5 ${mutedFg}`}>OAuth Enabled</div>{statusData.oauthEnabled ? '✓ Yes' : '✗ No'}</div>
+                <div><div className={`font-medium mb-0.5 ${mutedFg}`}>Host</div><span className="font-mono">{statusData.config?.host ?? '—'}</span></div>
+                <div><div className={`font-medium mb-0.5 ${mutedFg}`}>Topic</div><span className="font-mono text-[11px] break-all">{statusData.config?.topic ?? '—'}</span></div>
+                <div><div className={`font-medium mb-0.5 ${mutedFg}`}>Client ID</div><span className="font-mono text-[11px]">{statusData.config?.clientId ?? '—'}</span></div>
+                <div><div className={`font-medium mb-0.5 ${mutedFg}`}>Consumer Group</div><span className="font-mono text-[11px]">{statusData.config?.consumerGroup ?? '—'}</span></div>
+                {statusData.consumerDbState && (
+                  <>
+                    <div><div className={`font-medium mb-0.5 ${mutedFg}`}>Last Connected</div>{statusData.consumerDbState.lastConnectedAt ? new Date(statusData.consumerDbState.lastConnectedAt).toLocaleString('de-DE') : '—'}</div>
+                    <div><div className={`font-medium mb-0.5 ${mutedFg}`}>Last Message</div>{statusData.consumerDbState.lastMessageAt ? new Date(statusData.consumerDbState.lastMessageAt).toLocaleString('de-DE') : '—'}</div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className={`text-xs ${mutedFg}`}>Status not available — check .env config for {appLabel}</div>
+            )}
+          </div>
+
+          {/* Stream logs */}
+          <div className={cardCls}>
+            <div className={`flex items-center gap-2 px-4 py-3 border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
+              <Database className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs font-semibold">Recent Stream Logs</span>
+              <span className={`ml-auto text-[10px] ${mutedFg}`}>{logs.length} entries</span>
+            </div>
+            <div className="divide-y divide-border">
+              {logs.length === 0 ? (
+                <div className={`flex flex-col items-center justify-center py-8 text-xs ${mutedFg}`}>
+                  <Terminal className="w-5 h-5 mb-2 opacity-40" />
+                  No messages received yet
+                </div>
+              ) : (
+                logs.map(log => (
+                  <div key={log.id} className={`px-4 py-2.5 ${isDarkMode ? 'hover:bg-neutral-800/50' : 'hover:bg-gray-50'} cursor-pointer transition-colors`} onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${log.ingestStatus === 'STORED' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : log.ingestStatus === 'FAILED' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400'}`}>
+                        {log.ingestStatus}
+                      </span>
+                      {log.isDuplicate && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400">DUP</span>}
+                      <span className="text-xs font-mono text-muted-foreground">{log.vin ?? '—'}</span>
+                      <span className={`text-[10px] truncate max-w-[200px] ${mutedFg}`}>{log.topic}</span>
+                      <span className={`ml-auto text-[10px] ${mutedFg}`}>{log.createdAt ? new Date(log.createdAt).toLocaleTimeString('de-DE') : '—'}</span>
+                    </div>
+                    {expandedLog === log.id && log.normalizedSummaryJson && (
+                      <pre className={`mt-2 text-[10px] p-2 rounded overflow-auto max-h-32 ${isDarkMode ? 'bg-neutral-950 text-neutral-400' : 'bg-gray-50 text-gray-600'}`}>
+                        {JSON.stringify(log.normalizedSummaryJson, null, 2)}
+                      </pre>
+                    )}
+                    {expandedLog === log.id && log.errorMessage && (
+                      <p className="mt-1 text-[10px] text-red-500">{log.errorMessage}</p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Legacy Streaming Tab (retained for backward compat, not shown in tabs) ───
 
 function StreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
   const [consumerStatus, setConsumerStatus] = useState<HmMqttConsumerStatusDto | null>(null);
@@ -1106,27 +1286,27 @@ export function HighMobilityDataView({ isDarkMode }: Props) {
         <div className="flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-lg font-bold">High Mobility</h1>
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-blue-900/40 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
-              Phase 1 — Health Data
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-teal-900/40 text-teal-400' : 'bg-teal-100 text-teal-700'}`}>
+              HM Health-APP
             </span>
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-indigo-900/40 text-indigo-400' : 'bg-indigo-100 text-indigo-700'}`}>
-              Phase 2 — Full Telemetry Groundwork
+              HM Telemetry-APP
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            OEM fleet clearance, eligibility, HM_ONLY vehicle management, and MQTT V2 streaming infrastructure
+            Dual-app MQTT V2 architecture — separate credentials, topics, consumers, and routing per app container
           </p>
         </div>
       </div>
 
-      {/* Phase notice */}
+      {/* Domain rules notice */}
       <div className={`flex items-start gap-2.5 px-4 py-3 rounded-xl border text-xs ${isDarkMode ? 'bg-blue-900/20 border-blue-800/40 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
         <Shield className="w-4 h-4 mt-0.5 shrink-0" />
         <div>
-          <span className="font-semibold">Domain rules: </span>
-          HEALTH signals remain informational OEM data only. FULL_TELEMETRY ingestion is structurally prepared
-          (MQTT V2, ingestion, staging) but not yet activated for scoring/trips/calculations.
-          HM_ONLY vehicles are first-class records without hardware dependency.
+          <span className="font-semibold">App container rules: </span>
+          HM Health-APP signals are informational/display-grade only (oil, tires, brakes, service). 
+          HM Telemetry-APP owns the full telemetry lifecycle with separate OAuth credentials, MQTT certs, and topic routing.
+          Never mix app container credentials, state, or routing.
         </div>
       </div>
 
@@ -1149,7 +1329,7 @@ export function HighMobilityDataView({ isDarkMode }: Props) {
           className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === 'streaming' ? tabActive : tabInactive}`}
         >
           <Signal className="w-3 h-3" />
-          Streaming
+          MQTT Diagnostics
         </button>
       </div>
 
@@ -1157,7 +1337,7 @@ export function HighMobilityDataView({ isDarkMode }: Props) {
       <div className="flex-1 min-h-0 overflow-y-auto">
         {tab === 'vehicles' && <VehicleListTab isDarkMode={isDarkMode} />}
         {tab === 'eligibility' && <EligibilityTab isDarkMode={isDarkMode} onAddToList={openAddFromEligibility} />}
-        {tab === 'streaming' && <StreamingTab isDarkMode={isDarkMode} />}
+        {tab === 'streaming' && <DualAppStreamingTab isDarkMode={isDarkMode} />}
       </div>
 
       {/* Add modal from eligibility redirect */}

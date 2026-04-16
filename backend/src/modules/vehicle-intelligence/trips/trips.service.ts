@@ -1,15 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   DimoSegmentsService,
-  DetectedTrip,
   RoutePoint,
   PerformanceReading,
   TemperatureReading,
 } from '../../dimo/dimo-segments.service';
 import { MapboxService } from './mapbox.service';
-import { TripEnrichmentOrchestratorService } from './trip-enrichment-orchestrator.service';
-import { TripStatus } from '@prisma/client';
+import { ROUTE_MAP_MATCHER, RouteMapMatcher } from './route-map-matcher.port';
 
 export interface TripEnrichmentResult {
   citySharePercent: number;
@@ -46,9 +44,6 @@ export interface TripEnrichmentResult {
   enrichedAt: string;
 }
 
-const GAP_TIMEOUT_MS = 20 * 60 * 1000;
-const OVERLAP_TOLERANCE_MS = 5 * 60 * 1000;
-
 @Injectable()
 export class TripsService {
   private readonly logger = new Logger(TripsService.name);
@@ -56,8 +51,9 @@ export class TripsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly segments: DimoSegmentsService,
+    @Inject(ROUTE_MAP_MATCHER)
+    private readonly routeMapMatcher: RouteMapMatcher,
     private readonly mapbox: MapboxService,
-    private readonly enrichmentOrchestrator: TripEnrichmentOrchestratorService,
   ) {}
 
   // ────────────────────────────────────────────────────────
@@ -128,191 +124,51 @@ export class TripsService {
   }
 
   async getStats(vehicleId: string) {
-    const [totalTrips, totalDistance, avgScore] = await Promise.all([
+    const [totalTrips, tripAgg, impactAgg] = await Promise.all([
       this.prisma.vehicleTrip.count({ where: { vehicleId } }),
       this.prisma.vehicleTrip.aggregate({
         where: { vehicleId },
-        _sum: { distanceKm: true },
+        _sum: {
+          distanceKm: true,
+          totalAccelerationEvents: true,
+          hardAccelerationEvents: true,
+          totalBrakingEvents: true,
+          hardBrakingEvents: true,
+          abuseEvents: true,
+          speedingEvents: true,
+        },
       }),
-      this.prisma.vehicleTrip.aggregate({
+      this.prisma.tripDrivingImpact.aggregate({
         where: { vehicleId },
-        _avg: { drivingScore: true },
+        _avg: { drivingStyleScore: true, safetyScore: true },
       }),
     ]);
+
+    const avgDrivingStyleScore = impactAgg._avg.drivingStyleScore ?? 0;
+    const avgSafetyScore = impactAgg._avg.safetyScore ?? 0;
+
     return {
       totalTrips,
-      totalDistanceKm: totalDistance._sum.distanceKm ?? 0,
-      avgDrivingScore: avgScore._avg.drivingScore ?? 0,
+      totalDistanceKm: tripAgg._sum.distanceKm ?? 0,
+      // Compatibility alias for older consumers; canonical source is TripDrivingImpact.drivingStyleScore.
+      avgDrivingScore: avgDrivingStyleScore,
+      avgDrivingStyleScore,
+      avgSafetyScore,
+      totalAccelerationEvents: tripAgg._sum.totalAccelerationEvents ?? 0,
+      totalHardAccelerationEvents: tripAgg._sum.hardAccelerationEvents ?? 0,
+      totalBrakingEvents: tripAgg._sum.totalBrakingEvents ?? 0,
+      totalHardBrakingEvents: tripAgg._sum.hardBrakingEvents ?? 0,
+      totalAbuseEvents: tripAgg._sum.abuseEvents ?? 0,
+      totalSpeedingEvents: tripAgg._sum.speedingEvents ?? 0,
     };
   }
 
-  // ────────────────────────────────────────────────────────
-  // ⚠️  LEGACY V1 TRIP SYNC — DEPRECATED
-  //
-  // syncTripsFromSegments calls the V1 DimoSegmentsService.fetchAndDetectTrips()
-  // method which uses a simple ignition-based heuristic.  This is NOT the live
-  // V2 trip engine.  It is retained only for manual admin back-fill via
-  // POST /vehicles/:id/trips/sync.
-  //
-  // Do NOT use this for live trip detection.
-  // ────────────────────────────────────────────────────────
-
-  /**
-   * @deprecated V1 legacy path — uses ignition-based segment detection.
-   *   Use the V2 live orchestration engine for all real-time trip tracking.
-   *   This method is only callable via the manual admin endpoint
-   *   POST /vehicles/:id/trips/sync and should not be used in production flows.
-   */
-  async syncTripsFromSegments(
-    vehicleId: string,
-    tokenId: number,
-    from: Date,
-    to: Date,
-  ): Promise<number> {
-    const detected = await this.segments.fetchAndDetectTrips(
-      tokenId,
-      from,
-      to,
-    );
-    if (!detected.length) return 0;
-
-    const vehicleRow = await this.prisma.vehicle.findUnique({
-      where: { id: vehicleId },
-      select: { organizationId: true, tankCapacityLiters: true },
-    });
-    const tankCap = vehicleRow?.tankCapacityLiters ?? null;
-    const organizationId = vehicleRow?.organizationId ?? null;
-
-    let created = 0;
-
-    for (const trip of detected) {
-      const segmentId = this.segments.buildSegmentId(
-        tokenId,
-        trip.startTime,
-      );
-
-      const existingById = await this.prisma.vehicleTrip.findUnique({
-        where: { dimoSegmentId: segmentId },
-      });
-
-      if (existingById) {
-        if (
-          existingById.tripStatus === TripStatus.ONGOING &&
-          !trip.isOngoing
-        ) {
-          await this.completeTrip(existingById.id, trip, vehicleId, organizationId);
-        }
-        continue;
-      }
-
-      const newStart = new Date(trip.startTime);
-      const newEnd = trip.endTime ? new Date(trip.endTime) : null;
-
-      const overlapping = await this.prisma.vehicleTrip.findFirst({
-        where: {
-          vehicleId,
-          startTime: {
-            lt: new Date(
-              (newEnd?.getTime() ?? newStart.getTime() + 3600000) +
-                OVERLAP_TOLERANCE_MS,
-            ),
-          },
-          endTime: {
-            gt: new Date(newStart.getTime() - OVERLAP_TOLERANCE_MS),
-          },
-        },
-      });
-      if (overlapping) continue;
-
-      const distanceKm = this.computeOdometerDistance(trip);
-      const fuelResult = this.computeFuelConsumption(trip, distanceKm, tankCap);
-      const energyResult = this.computeEnergyConsumption(trip, distanceKm);
-
-      const tripStatus = trip.isOngoing ? TripStatus.ONGOING : TripStatus.COMPLETED;
-
-      const newTrip = await this.prisma.vehicleTrip.create({
-        data: {
-          vehicle: { connect: { id: vehicleId } },
-          dimoSegmentId: segmentId,
-          tripStatus,
-          startTime: newStart,
-          endTime: newEnd,
-          startLatitude: trip.startLatitude,
-          startLongitude: trip.startLongitude,
-          endLatitude: trip.endLatitude,
-          endLongitude: trip.endLongitude,
-          distanceKm,
-          durationMinutes: trip.durationSeconds / 60,
-          avgSpeedKmh: trip.avgSpeed,
-          maxSpeedKmh: trip.maxSpeed,
-          fuelUsedLiters: fuelResult.fuelUsedLiters,
-          avgConsumptionLPer100Km: fuelResult.avgConsumptionLPer100Km,
-          fuelConfidence: fuelResult.confidence,
-          energyUsedKwh: energyResult.energyUsedKwh,
-          avgConsumptionKwhPer100Km: energyResult.avgConsumptionKwhPer100Km,
-          energyConfidence: energyResult.confidence,
-          drivingScore: this.computeDrivingScore(trip),
-        },
-        select: { id: true },
-      });
-
-      created++;
-
-      // V1 sync: enqueue behavior enrichment for completed trips via canonical pipeline
-      if (tripStatus === TripStatus.COMPLETED) {
-        this.logger.log(`V1 sync: trip ${newTrip.id} created as COMPLETED — enqueuing behavior enrichment`);
-        this.enrichmentOrchestrator
-          .enqueueBehaviorEnrichment(newTrip.id, vehicleId, organizationId)
-          .catch((e) => this.logger.warn(`V1 sync: failed to enqueue enrichment for ${newTrip.id}: ${e}`));
-      }
-    }
-
-    this.logger.log(
-      `Synced ${created} new trips from ${detected.length} detected segments for vehicle ${vehicleId}`,
-    );
-    return created;
-  }
-
-  /**
-   * Finalize ongoing trips that have had no new data for 20 minutes.
-   */
-  async finalizeStaleOngoingTrips(): Promise<number> {
-    const cutoff = new Date(Date.now() - GAP_TIMEOUT_MS);
-    const staleTrips = await this.prisma.vehicleTrip.findMany({
-      where: {
-        tripStatus: TripStatus.ONGOING,
-        startTime: { lt: cutoff },
-      },
-    });
-
-    let finalized = 0;
-    for (const trip of staleTrips) {
-      const lastWaypoint = await this.prisma.vehicleTripWaypoint.findFirst({
-        where: { tripId: trip.id },
-        orderBy: { recordedAt: 'desc' },
-      });
-
-      const endTime =
-        lastWaypoint?.recordedAt ?? new Date(cutoff.getTime());
-
-      await this.prisma.vehicleTrip.update({
-        where: { id: trip.id },
-        data: {
-          tripStatus: TripStatus.COMPLETED,
-          endTime,
-          gapEnded: true,
-        },
-      });
-      finalized++;
-    }
-
-    if (finalized > 0) {
-      this.logger.log(
-        `Finalized ${finalized} stale ongoing trips (gap timeout)`,
-      );
-    }
-    return finalized;
-  }
+  // V1 syncTripsFromSegments, finalizeStaleOngoingTrips, deduplicateTrips,
+  // computeDrivingScore, and completeTrip have been removed.
+  // Reconciliation and repair are now handled by TripReconciliationService
+  // (see reconciliation/trip-reconciliation.service.ts).
+  // Manual "Sync Trips" triggers TripReconciliationService.triggerManualReconciliation()
+  // via the controller's POST /trips/reconcile endpoint.
 
   // ────────────────────────────────────────────────────────
   // ⚠️  LEGACY ROUTE-BASED ENRICHMENT — DEPRECATED
@@ -384,7 +240,7 @@ export class TripsService {
 
     const matchResult =
       routePoints.length >= 2
-        ? await this.mapbox.mapMatchRoute(
+        ? await this.routeMapMatcher.matchRoute(
             routePoints.map((p) => ({
               longitude: p.longitude,
               latitude: p.latitude,
@@ -456,6 +312,7 @@ export class TripsService {
         speedingDurationS: speedingAnalysis?.speedingDurationSeconds ?? null,
         speedingExposurePct: speedingAnalysis?.speedingExposurePercent ?? null,
         avgOverSpeedKmh: speedingAnalysis?.avgOverSpeedKmh ?? null,
+        speedingEvents: speedingAnalysis?.speedingSectionCount ?? 0,
         ...(distanceKm != null ? { distanceKm } : {}),
         enrichedAt: new Date(),
       },
@@ -496,222 +353,8 @@ export class TripsService {
   }
 
   // ────────────────────────────────────────────────────────
-  // DEDUPLICATION
-  // ────────────────────────────────────────────────────────
-
-  async deduplicateTrips(vehicleId?: string): Promise<number> {
-    const where = vehicleId ? { id: vehicleId } : {};
-    const vehicles = await this.prisma.vehicle.findMany({
-      where,
-      select: { id: true },
-    });
-
-    let totalRemoved = 0;
-
-    for (const { id: vId } of vehicles) {
-      const trips = await this.prisma.vehicleTrip.findMany({
-        where: { vehicleId: vId },
-        orderBy: { startTime: 'asc' },
-        select: {
-          id: true,
-          startTime: true,
-          endTime: true,
-          createdAt: true,
-        },
-      });
-
-      const toDelete = new Set<string>();
-
-      for (let i = 0; i < trips.length; i++) {
-        if (toDelete.has(trips[i].id)) continue;
-        const a = trips[i];
-        const aEnd = a.endTime?.getTime() ?? a.startTime.getTime();
-
-        for (let j = i + 1; j < trips.length; j++) {
-          if (toDelete.has(trips[j].id)) continue;
-          const b = trips[j];
-          const bStart = b.startTime.getTime();
-          if (bStart > aEnd + OVERLAP_TOLERANCE_MS) break;
-          toDelete.add(b.id);
-        }
-      }
-
-      if (toDelete.size > 0) {
-        const ids = [...toDelete];
-        await this.prisma.drivingEvent.updateMany({
-          where: { tripId: { in: ids } },
-          data: { tripId: null },
-        });
-        await this.prisma.vehicleTrip.deleteMany({
-          where: { id: { in: ids } },
-        });
-        totalRemoved += ids.length;
-      }
-    }
-
-    if (totalRemoved > 0) {
-      this.logger.log(
-        `Deduplication: removed ${totalRemoved} trips across ${vehicles.length} vehicles`,
-      );
-    }
-    return totalRemoved;
-  }
-
-  // ────────────────────────────────────────────────────────
   // PRIVATE: signal-based calculations
   // ────────────────────────────────────────────────────────
-
-  private async completeTrip(
-    tripId: string,
-    detected: DetectedTrip,
-    vehicleId: string,
-    organizationId: string | null,
-  ): Promise<void> {
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: vehicleId },
-      select: { tankCapacityLiters: true },
-    });
-    const distanceKm = this.computeOdometerDistance(detected);
-    const fuelResult = this.computeFuelConsumption(detected, distanceKm, vehicle?.tankCapacityLiters);
-    const energyResult = this.computeEnergyConsumption(detected, distanceKm);
-
-    await this.prisma.vehicleTrip.update({
-      where: { id: tripId },
-      data: {
-        tripStatus: TripStatus.COMPLETED,
-        endTime: detected.endTime ? new Date(detected.endTime) : new Date(),
-        distanceKm,
-        durationMinutes: detected.durationSeconds / 60,
-        avgSpeedKmh: detected.avgSpeed,
-        maxSpeedKmh: detected.maxSpeed,
-        fuelUsedLiters: fuelResult.fuelUsedLiters,
-        avgConsumptionLPer100Km: fuelResult.avgConsumptionLPer100Km,
-        fuelConfidence: fuelResult.confidence,
-        energyUsedKwh: energyResult.energyUsedKwh,
-        avgConsumptionKwhPer100Km: energyResult.avgConsumptionKwhPer100Km,
-        energyConfidence: energyResult.confidence,
-      },
-    });
-
-    // Enqueue behavior enrichment via canonical pipeline
-    this.logger.log(`V1 sync: trip ${tripId} completed — enqueuing behavior enrichment`);
-    this.enrichmentOrchestrator
-      .enqueueBehaviorEnrichment(tripId, vehicleId, organizationId)
-      .catch((e) => this.logger.warn(`V1 sync: failed to enqueue enrichment for ${tripId}: ${e}`));
-  }
-
-  private computeOdometerDistance(trip: DetectedTrip): number | null {
-    if (trip.startOdometer == null || trip.endOdometer == null) return null;
-    const delta = trip.endOdometer - trip.startOdometer;
-    if (delta < 0 || delta > 2000) return null;
-    return Math.round(delta * 10) / 10;
-  }
-
-  private computeFuelConsumption(
-    trip: DetectedTrip,
-    distanceKm: number | null,
-    tankCapacityLiters?: number | null,
-  ): {
-    fuelUsedLiters: number | null;
-    avgConsumptionLPer100Km: number | null;
-    confidence: string | null;
-  } {
-    if (trip.startFuelLevel == null || trip.endFuelLevel == null) {
-      return {
-        fuelUsedLiters: null,
-        avgConsumptionLPer100Km: null,
-        confidence: null,
-      };
-    }
-
-    const maxTank = tankCapacityLiters ?? 120;
-
-    if (
-      trip.startFuelLevel > maxTank * 1.1 ||
-      trip.endFuelLevel > maxTank * 1.1
-    ) {
-      return {
-        fuelUsedLiters: null,
-        avgConsumptionLPer100Km: null,
-        confidence: 'invalid',
-      };
-    }
-
-    const delta = trip.startFuelLevel - trip.endFuelLevel;
-    if (delta < 0 || delta > maxTank) {
-      return {
-        fuelUsedLiters: null,
-        avgConsumptionLPer100Km: null,
-        confidence: 'invalid',
-      };
-    }
-
-    const fuelUsedLiters = Math.round(delta * 100) / 100;
-    let avgConsumptionLPer100Km: number | null = null;
-    let confidence = 'high';
-
-    if (distanceKm != null && distanceKm > 0) {
-      avgConsumptionLPer100Km =
-        Math.round((fuelUsedLiters / distanceKm) * 100 * 10) / 10;
-      if (avgConsumptionLPer100Km > 30 || avgConsumptionLPer100Km < 1) {
-        confidence = 'low';
-      }
-    } else {
-      confidence = 'low';
-    }
-
-    const durationHours = trip.durationSeconds / 3600;
-    if (durationHours > 0 && fuelUsedLiters / durationHours > 25) {
-      confidence = 'low';
-    }
-
-    return { fuelUsedLiters, avgConsumptionLPer100Km, confidence };
-  }
-
-  private computeEnergyConsumption(
-    trip: DetectedTrip,
-    distanceKm: number | null,
-  ): {
-    energyUsedKwh: number | null;
-    avgConsumptionKwhPer100Km: number | null;
-    confidence: string | null;
-  } {
-    if (trip.startBatteryEnergy == null || trip.endBatteryEnergy == null) {
-      return {
-        energyUsedKwh: null,
-        avgConsumptionKwhPer100Km: null,
-        confidence: null,
-      };
-    }
-
-    const delta = trip.startBatteryEnergy - trip.endBatteryEnergy;
-    if (delta < 0 || delta > 200) {
-      return {
-        energyUsedKwh: null,
-        avgConsumptionKwhPer100Km: null,
-        confidence: 'invalid',
-      };
-    }
-
-    const energyUsedKwh = Math.round(delta * 100) / 100;
-    let avgConsumptionKwhPer100Km: number | null = null;
-    let confidence = 'high';
-
-    if (distanceKm != null && distanceKm > 0) {
-      avgConsumptionKwhPer100Km =
-        Math.round((energyUsedKwh / distanceKm) * 100 * 10) / 10;
-      if (
-        avgConsumptionKwhPer100Km > 80 ||
-        avgConsumptionKwhPer100Km < 3
-      ) {
-        confidence = 'low';
-      }
-    } else {
-      confidence = 'low';
-    }
-
-    return { energyUsedKwh, avgConsumptionKwhPer100Km, confidence };
-  }
 
   private findClosestTemperature(
     readings: TemperatureReading[],
@@ -791,15 +434,6 @@ export class TripsService {
             ) / 10
           : null,
     };
-  }
-
-  private computeDrivingScore(trip: DetectedTrip): number {
-    let score = 100;
-    if (trip.maxSpeed != null) {
-      if (trip.maxSpeed > 200) score -= 15;
-      else if (trip.maxSpeed > 160) score -= 10;
-    }
-    return Math.max(Math.round(score), 0);
   }
 
   // ────────────────────────────────────────────────────────

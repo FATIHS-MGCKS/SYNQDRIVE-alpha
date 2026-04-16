@@ -1,8 +1,12 @@
-import type { TripCoreDataPoint } from '../../dimo/dimo-segments.service';
-import type { PerformanceReading } from '../../dimo/dimo-segments.service';
+import type {
+  TripCoreDataPoint,
+  PerformanceReading,
+  RoutePoint,
+} from '../../dimo/dimo-segments.service';
 import { VehicleDetectionProfile } from '@prisma/client';
 import { START_DETECTION_MODES, END_DETECTION_MODES } from './trip-detection.types';
 import type { SnapshotEvidenceSignals, StartDetectionMode } from './trip-detection.types';
+import type { DetectorFinding } from './detectors/detector.interfaces';
 
 // ═══════════════════════════════════════════════════════════════
 //  INTERFACES
@@ -76,6 +80,28 @@ export interface SnapshotStartEvidence {
   reasons: string[];
   mode: StartDetectionMode;
   confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+}
+
+export interface RefinedTripStartBoundary {
+  startAt: Date;
+  source: 'SNAPSHOT_CANDIDATE' | 'ROUTE_ACTIVITY' | 'CORE_ACTIVITY';
+  startLatitude: number | null;
+  startLongitude: number | null;
+  adjustedMs: number;
+}
+
+export interface AnalyticsAssistedStartDecision {
+  confirmed: boolean;
+  confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+  mode: string;
+  evidencePath: 'DIMO_ONLY' | 'DIMO_PLUS_CLICKHOUSE' | 'CLICKHOUSE_ASSISTED';
+  summary: Record<string, unknown>;
+}
+
+export interface ClickHouseContinuityGuard {
+  keepTripOpen: boolean;
+  evidencePath: 'DIMO_ONLY' | 'CLICKHOUSE_GUARD';
+  summary: Record<string, unknown>;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -348,6 +374,165 @@ export function evaluateSnapshotEvidence(
     strong >= 3 ? 'HIGH' : strong >= 2 ? 'MEDIUM' : 'LOW';
 
   return { triggered, strong, weak, hasMovement, reasons, mode, confidence };
+}
+
+export function refineTripStartBoundary(
+  candidateStartAt: Date,
+  corePoints: TripCoreDataPoint[],
+  routePoints: RoutePoint[],
+  profile: string = 'UNKNOWN',
+): RefinedTripStartBoundary {
+  const t = getProfileThresholds(profile);
+  const earliestCoreAt = findEarliestCoreActivityAt(corePoints, t.odometerMinDeltaKm, t.speedMotionKmh);
+  const earliestRouteAt = findEarliestRouteActivityAt(routePoints, t.speedMotionKmh);
+
+  const chosenSource =
+    earliestRouteAt != null
+      ? 'ROUTE_ACTIVITY'
+      : earliestCoreAt != null
+        ? 'CORE_ACTIVITY'
+        : 'SNAPSHOT_CANDIDATE';
+
+  const startAt =
+    chosenSource === 'ROUTE_ACTIVITY'
+      ? earliestRouteAt!
+      : chosenSource === 'CORE_ACTIVITY'
+        ? earliestCoreAt!
+        : candidateStartAt;
+
+  const closestRoutePoint = findClosestRoutePoint(routePoints, startAt);
+
+  return {
+    startAt,
+    source: chosenSource,
+    startLatitude: closestRoutePoint?.latitude ?? null,
+    startLongitude: closestRoutePoint?.longitude ?? null,
+    adjustedMs: startAt.getTime() - candidateStartAt.getTime(),
+  };
+}
+
+export function resolveAnalyticsAssistedStartDecision(input: {
+  startConfirmation?: DetectorFinding;
+  activityWindow?: DetectorFinding;
+  ignitionSegment?: DetectorFinding;
+  currentTelemetry: {
+    isIgnitionOn: boolean | null;
+    speedKmh: number | null;
+    engineLoad: number | null;
+  } | null;
+}): AnalyticsAssistedStartDecision {
+  const startConfirmation = input.startConfirmation;
+  const activityWindow = input.activityWindow;
+  const ignitionSegment = input.ignitionSegment;
+  const currentTelemetryActive =
+    (input.currentTelemetry?.speedKmh ?? 0) > 0.5 ||
+    input.currentTelemetry?.engineLoad != null && input.currentTelemetry.engineLoad > 15 ||
+    (input.currentTelemetry?.isIgnitionOn === true &&
+      (input.currentTelemetry?.speedKmh ?? 0) > 0);
+  const activityTriggered = activityWindow?.verdict === 'TRIGGERED';
+  const ignitionTriggered = ignitionSegment?.verdict === 'TRIGGERED';
+  const analyticsCorroborated = activityTriggered || ignitionTriggered;
+
+  if (startConfirmation?.verdict === 'TRIGGERED') {
+    return {
+      confirmed: true,
+      confidence: startConfirmation.confidence,
+      mode:
+        (startConfirmation.evidence?.mode as string) ??
+        START_DETECTION_MODES.COMPOSITE_MULTI_SIGNAL,
+      evidencePath: analyticsCorroborated
+        ? 'DIMO_PLUS_CLICKHOUSE'
+        : 'DIMO_ONLY',
+      summary: {
+        startConfirmationConfidence: startConfirmation.confidence,
+        clickhouseActivityTriggered: activityTriggered,
+        clickhouseIgnitionTriggered: ignitionTriggered,
+      },
+    };
+  }
+
+  const activityPointCount =
+    typeof activityWindow?.evidence?.pointCount === 'number'
+      ? (activityWindow.evidence.pointCount as number)
+      : 0;
+  const activitySpeed =
+    typeof activityWindow?.evidence?.maxSpeedKmh === 'number'
+      ? (activityWindow.evidence.maxSpeedKmh as number)
+      : 0;
+  const activityOdometerDelta =
+    typeof activityWindow?.evidence?.odometerDeltaKm === 'number'
+      ? (activityWindow.evidence.odometerDeltaKm as number)
+      : 0;
+  const strongActivityWindow =
+    activityTriggered &&
+    (activityPointCount >= 3 || activitySpeed > 5 || activityOdometerDelta > 0.05);
+
+  if (currentTelemetryActive && strongActivityWindow && ignitionTriggered) {
+    return {
+      confirmed: true,
+      confidence:
+        activityWindow?.confidence === 'HIGH' || ignitionSegment?.confidence === 'HIGH'
+          ? 'HIGH'
+          : 'MEDIUM',
+      mode: START_DETECTION_MODES.COMPOSITE_MULTI_SIGNAL,
+      evidencePath: 'CLICKHOUSE_ASSISTED',
+      summary: {
+        currentTelemetryActive,
+        clickhouseActivityTriggered: activityTriggered,
+        clickhouseIgnitionTriggered: ignitionTriggered,
+        pointCount: activityPointCount,
+        maxSpeedKmh: activitySpeed,
+        odometerDeltaKm: activityOdometerDelta,
+      },
+    };
+  }
+
+  return {
+    confirmed: false,
+    confidence: 'LOW',
+    mode: START_DETECTION_MODES.COMPOSITE_MULTI_SIGNAL,
+    evidencePath: analyticsCorroborated ? 'DIMO_PLUS_CLICKHOUSE' : 'DIMO_ONLY',
+    summary: {
+      currentTelemetryActive,
+      clickhouseActivityTriggered: activityTriggered,
+      clickhouseIgnitionTriggered: ignitionTriggered,
+      pointCount: activityPointCount,
+      maxSpeedKmh: activitySpeed,
+      odometerDeltaKm: activityOdometerDelta,
+    },
+  };
+}
+
+export function resolveClickHouseContinuityGuard(
+  activityWindow?: DetectorFinding,
+): ClickHouseContinuityGuard {
+  const activityTriggered = activityWindow?.verdict === 'TRIGGERED';
+  const pointCount =
+    typeof activityWindow?.evidence?.pointCount === 'number'
+      ? (activityWindow.evidence.pointCount as number)
+      : 0;
+  const maxSpeedKmh =
+    typeof activityWindow?.evidence?.maxSpeedKmh === 'number'
+      ? (activityWindow.evidence.maxSpeedKmh as number)
+      : 0;
+  const odometerDeltaKm =
+    typeof activityWindow?.evidence?.odometerDeltaKm === 'number'
+      ? (activityWindow.evidence.odometerDeltaKm as number)
+      : 0;
+  const keepTripOpen =
+    activityTriggered &&
+    (pointCount >= 3 || maxSpeedKmh > 5 || odometerDeltaKm > 0.05);
+
+  return {
+    keepTripOpen,
+    evidencePath: keepTripOpen ? 'CLICKHOUSE_GUARD' : 'DIMO_ONLY',
+    summary: {
+      clickhouseActivityTriggered: activityTriggered,
+      pointCount,
+      maxSpeedKmh,
+      odometerDeltaKm,
+    },
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -931,4 +1116,81 @@ export function haversineM(
       Math.cos((lat2 * Math.PI) / 180) *
       Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function findEarliestCoreActivityAt(
+  points: TripCoreDataPoint[],
+  odometerMinDeltaKm: number,
+  speedMotionKmh: number,
+): Date | null {
+  let previousDistance: number | null = null;
+
+  for (const point of points) {
+    const hasSpeedMotion =
+      point.speed != null && point.speed > speedMotionKmh;
+    const hasOdometerProgress =
+      previousDistance != null &&
+      point.travelledDistance != null &&
+      point.travelledDistance > previousDistance + odometerMinDeltaKm;
+
+    if (hasSpeedMotion || hasOdometerProgress) {
+      return new Date(point.timestamp);
+    }
+
+    if (point.travelledDistance != null) {
+      previousDistance = point.travelledDistance;
+    }
+  }
+
+  return null;
+}
+
+function findEarliestRouteActivityAt(
+  points: RoutePoint[],
+  speedMotionKmh: number,
+): Date | null {
+  const ROUTE_MOVEMENT_MIN_METERS = 25;
+
+  for (let index = 0; index < points.length; index++) {
+    const point = points[index];
+    const previous = index > 0 ? points[index - 1] : null;
+    const hasSpeedMotion =
+      point.speedKmh != null && point.speedKmh > speedMotionKmh;
+    const hasCoordinateJump =
+      previous != null &&
+      haversineM(
+        previous.latitude,
+        previous.longitude,
+        point.latitude,
+        point.longitude,
+      ) > ROUTE_MOVEMENT_MIN_METERS;
+
+    if (hasSpeedMotion || hasCoordinateJump) {
+      return new Date(point.timestamp);
+    }
+  }
+
+  return null;
+}
+
+function findClosestRoutePoint(
+  points: RoutePoint[],
+  targetAt: Date,
+): RoutePoint | null {
+  if (points.length === 0) return null;
+
+  let closest: RoutePoint | null = null;
+  let closestDeltaMs = Number.POSITIVE_INFINITY;
+
+  for (const point of points) {
+    const deltaMs = Math.abs(
+      new Date(point.timestamp).getTime() - targetAt.getTime(),
+    );
+    if (deltaMs < closestDeltaMs) {
+      closest = point;
+      closestDeltaMs = deltaMs;
+    }
+  }
+
+  return closest;
 }

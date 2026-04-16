@@ -2,7 +2,7 @@ import { CheckCircle, AlertTriangle, Battery, Wrench, Calendar, Disc, Circle as 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { XAxis, YAxis, ResponsiveContainer, Tooltip, Line, LineChart, ReferenceArea } from 'recharts';
-import { api, streamAiTireSpecs, type AgentStep, type AiTireSpecsStreamEvent, type HealthSummaryResponse, type TireWearAnalysis, type ServiceInfoStatus, type BatteryHealthSummary, type BrakeStatus, type BrakeHealthSummary as BrakeHealthSummaryType, type BrakeHealthDetail, type BrakeAlert, type TripProfile, type TireHealthSummaryResponse, type TireHealthDetailResponse, type TireAlert, type VehicleComplaint } from '../../lib/api';
+import { api, streamAiTireSpecs, type AgentStep, type AiTireSpecsStreamEvent, type HealthSummaryResponse, type TireWearAnalysis, type ServiceInfoStatus, type BatteryHealthSummary, type BatteryHealthDetail, type HvBatteryStatus, type BrakeHealthSummary as BrakeHealthSummaryType, type BrakeHealthDetail, type BrakeAlert, type TripProfile, type TireHealthSummaryResponse, type TireHealthDetailResponse, type TireAlert, type VehicleComplaint } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
 import { EuromasterServiceRequestModal } from './euromaster/EuromasterServiceRequestModal';
 import { useEuromasterIntegration } from './euromaster/useEuromasterIntegration';
@@ -11,6 +11,11 @@ interface HealthErrorsViewProps {
   isDarkMode: boolean;
   vehicleId?: string;
   fuelType?: string;
+}
+
+function formatEnumLabel(value: unknown, fallback = '—'): string {
+  if (typeof value !== 'string' || value.length === 0) return fallback;
+  return value.replace(/_/g, ' ');
 }
 
 
@@ -48,8 +53,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
   const [batteryLatest, setBatteryLatest] = useState<any>(null);
   const [batteryTrend, setBatteryTrend] = useState<any[]>([]);
   const [batterySummary, setBatterySummary] = useState<BatteryHealthSummary | null>(null);
+  const [batteryDetail, setBatteryDetail] = useState<BatteryHealthDetail | null>(null);
   const [brakesData, setBrakesData] = useState<any>(null);
-  const [brakeStatus, setBrakeStatus] = useState<BrakeStatus | null>(null);
   const [brakeHealthSummary, setBrakeHealthSummary] = useState<BrakeHealthSummaryType | null>(null);
   const [brakeHealthDetail, setBrakeHealthDetail] = useState<BrakeHealthDetail | null>(null);
   const [showBrakeEntry, setShowBrakeEntry] = useState(false);
@@ -72,6 +77,13 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
   const [rotationNotes, setRotationNotes] = useState('');
   const [submittingRotation, setSubmittingRotation] = useState(false);
   const [showTireChange, setShowTireChange] = useState(false);
+  const [tireChangeScope, setTireChangeScope] = useState<'single' | 'axle' | 'full_set'>('full_set');
+  const [tireChangePositions, setTireChangePositions] = useState<string[]>([]);
+  const [tireChangeOdometer, setTireChangeOdometer] = useState('');
+  const [tireChangeNotes, setTireChangeNotes] = useState('');
+  const [submittingTireChange, setSubmittingTireChange] = useState(false);
+  const [activatingStoredSetId, setActivatingStoredSetId] = useState<string | null>(null);
+  const [storedActivationOdometer, setStoredActivationOdometer] = useState('');
   const [tireModalTab, setTireModalTab] = useState<'overview' | 'history' | 'factors'>('overview');
   const [showEditSetup, setShowEditSetup] = useState(false);
   const [editSetupForm, setEditSetupForm] = useState({ frontDimension: '', rearDimension: '', brandModelFront: '', brandModelRear: '', tireSeason: '', treadFL: '', treadFR: '', treadBL: '', treadBR: '', tireCondition: '' as '' | 'NEW_INSTALLED' | 'ALREADY_MOUNTED', loadIndex: '', speedIndex: '' });
@@ -93,7 +105,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
   const [serviceInfo, setServiceInfo] = useState<ServiceInfoStatus | null>(null);
   const [hmTirePressure, setHmTirePressure] = useState<import('../../lib/api').HmTirePressureSignals | null>(null);
 
-  const [hvBatteryStatus, setHvBatteryStatus] = useState<any>(null);
+  const [hvBatteryStatus, setHvBatteryStatus] = useState<HvBatteryStatus | null>(null);
 
   useEffect(() => {
     if (!vehicleId) return;
@@ -110,12 +122,76 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
       if (s?.lastChecked) setLastDtcChecked(s.lastChecked);
     }).catch(() => null);
     api.vehicleIntelligence.dtcSummary(vehicleId).then(setDtcSummary).catch(() => null);
-    api.vehicleIntelligence.batteryHealthLatest(vehicleId).then(setBatteryLatest).catch(() => null);
-    api.vehicleIntelligence.batteryHealthTrend(vehicleId, 7).then(d => setBatteryTrend(Array.isArray(d) ? d : [])).catch(() => []);
-    api.vehicleIntelligence.batteryHealthSummary(vehicleId).then(setBatterySummary).catch(() => null);
+    api.vehicleIntelligence.batteryHealthDetail(vehicleId).then((detail) => {
+      if (!detail) {
+        setBatteryDetail(null);
+        setBatterySummary(null);
+        setBatteryLatest(null);
+        setBatteryTrend([]);
+        setHvBatteryStatus(null);
+        return;
+      }
+
+      setBatteryDetail(detail);
+      setBatterySummary(detail);
+      setBatteryLatest(detail.currentState ?? null);
+      const trendSeed = batteryChartTab === 'monat' ? detail.trend30 : detail.trend7;
+      setBatteryTrend(
+        Array.isArray(trendSeed)
+          ? trendSeed.map((t) => ({
+              recordedAt: t.date,
+              voltageV: t.voltage,
+              sohPercent: t.soh,
+            }))
+          : [],
+      );
+
+      if (detail.support?.hv && isEv) {
+        setHvBatteryStatus({
+          isEv: true,
+          nominalCapacityKwh: detail.hv?.telemetry?.grossCapacityKwh ?? null,
+          currentSocPercent: detail.hv?.telemetry?.socPercent ?? null,
+          estimatedRangeKm: detail.hv?.telemetry?.rangeKm ?? null,
+          sohPercent: detail.hv?.healthPercent ?? null,
+          rawSohPercent: detail.hv?.healthPercent ?? null,
+          publishedSohPercent: detail.hv?.healthPercent ?? null,
+          providerReportedSohPercent: detail.hv?.telemetry?.providerSohPercent ?? null,
+          sohMethod: detail.hv?.method ?? 'estimate_unavailable',
+          sohSourceType: detail.hv?.evidenceType ?? null,
+          publicationState: detail.hv?.publicationState ?? 'INITIAL_CALIBRATION',
+          publicationMethod: detail.hv?.method ?? 'estimate_unavailable',
+          maturityConfidence: detail.hv?.confidence ?? 'none',
+          validEstimateCount: 0,
+          sohInterpretation: detail.hv?.interpretation ?? {
+            label: 'Unknown',
+            color: 'gray',
+            description: 'Insufficient data.',
+          },
+          estimatedCurrentCapacityKwh: null,
+          snapshotCount: detail.hv?.snapshotCount ?? 0,
+          chargingSessions: detail.detail?.hv?.chargingSessions ?? [],
+          recentTrend: detail.detail?.hv?.recentTrend ?? [],
+          lastRecordedAt: detail.hv?.freshness?.observedAt ?? null,
+          telemetry: {
+            temperatureC: detail.hv?.telemetry?.temperatureC ?? null,
+            chargingPowerKw: detail.hv?.telemetry?.chargingPowerKw ?? null,
+            isCharging: detail.hv?.telemetry?.isCharging ?? null,
+            chargingCableConnected: detail.hv?.telemetry?.chargingCableConnected ?? null,
+            currentVoltageV: detail.hv?.telemetry?.currentVoltageV ?? null,
+            currentEnergyKwh: detail.hv?.telemetry?.currentEnergyKwh ?? null,
+            addedEnergyKwh: detail.hv?.telemetry?.addedEnergyKwh ?? null,
+          },
+          providerSohObservedAt: detail.hv?.freshness?.observedAt ?? null,
+          canonical: detail.hv,
+          currentTelemetry: detail.currentTelemetry,
+        });
+      } else {
+        setHvBatteryStatus(null);
+      }
+    }).catch(() => null);
     api.vehicleIntelligence.brakes(vehicleId).then(setBrakesData).catch(() => null);
-    api.vehicleIntelligence.brakeStatus(vehicleId).then(setBrakeStatus).catch(() => null);
     api.vehicleIntelligence.brakeHealthSummary(vehicleId).then(setBrakeHealthSummary).catch(() => null);
+    api.vehicleIntelligence.brakeHealthDetail(vehicleId).then(setBrakeHealthDetail).catch(() => null);
     api.vehicleIntelligence.tires(vehicleId).then(setTiresData).catch(() => null);
     api.vehicleIntelligence.tireWearAnalysis(vehicleId).then(setTireWear).catch(() => null);
     api.vehicleIntelligence.tireHealthSummary(vehicleId).then(setTireHealth).catch(() => null);
@@ -124,13 +200,27 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
       if (d?.tirePressure) setHmTirePressure(d.tirePressure);
     }).catch(() => null);
     api.vehicleIntelligence.tripProfile(vehicleId).then(setTripProfile).catch(() => null);
-    if (isEv) {
-      api.vehicleIntelligence.hvBatteryStatus(vehicleId).then(setHvBatteryStatus).catch(() => null);
-    }
     api.vehicles.get(vehicleId).then((v: any) => {
       if (v?.year) setVehicleYear(v.year);
     }).catch(() => null);
   }, [vehicleId, isEv]);
+
+  useEffect(() => {
+    if (!batteryDetail) {
+      setBatteryTrend([]);
+      return;
+    }
+    const source = batteryChartTab === 'monat' ? batteryDetail.trend30 : batteryDetail.trend7;
+    setBatteryTrend(
+      Array.isArray(source)
+        ? source.map((t) => ({
+            recordedAt: t.date,
+            voltageV: t.voltage,
+            sohPercent: t.soh,
+          }))
+        : [],
+    );
+  }, [batteryDetail, batteryChartTab]);
 
   useEffect(() => {
     if (!vehicleId || !orgId) {
@@ -181,6 +271,17 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
       .finally(() => setTireDetailLoading(false));
   }, [vehicleId]);
 
+  const resolveActiveSetup = useCallback((setupsRaw: any): any | null => {
+    const setups = Array.isArray(setupsRaw) ? setupsRaw : [];
+    return (
+      setups.find((s: any) => s?.status === 'ACTIVE' && !s?.removedAt) ??
+      setups.find((s: any) => s?.status === 'ACTIVE') ??
+      setups.find((s: any) => !s?.removedAt) ??
+      setups[0] ??
+      null
+    );
+  }, []);
+
   const handleRotateTires = async () => {
     if (!vehicleId) return;
     setTireActionError(null);
@@ -202,6 +303,71 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
     }
     setSubmittingRotation(false);
   };
+
+  const toggleTireChangePosition = useCallback((position: string) => {
+    setTireChangePositions((prev) =>
+      prev.includes(position)
+        ? prev.filter((p) => p !== position)
+        : [...prev, position],
+    );
+  }, []);
+
+  const handleConfirmTireChange = useCallback(async () => {
+    if (!vehicleId) return;
+    setTireActionError(null);
+    setSubmittingTireChange(true);
+    try {
+      await api.vehicleIntelligence.changeTires(vehicleId, {
+        scope: tireChangeScope,
+        positions: tireChangeScope === 'full_set' ? undefined : tireChangePositions,
+        odometerKm: tireChangeOdometer ? parseFloat(tireChangeOdometer) : undefined,
+        notes: tireChangeNotes || undefined,
+      });
+      setShowTireChange(false);
+      setTireChangeScope('full_set');
+      setTireChangePositions([]);
+      setTireChangeOdometer('');
+      setTireChangeNotes('');
+      refreshTireWear();
+      loadTireDetail();
+    } catch (err: any) {
+      setTireActionError(err?.message || 'Failed to change tires.');
+    }
+    setSubmittingTireChange(false);
+  }, [
+    vehicleId,
+    tireChangeScope,
+    tireChangePositions,
+    tireChangeOdometer,
+    tireChangeNotes,
+    refreshTireWear,
+    loadTireDetail,
+  ]);
+
+  const handleActivateStoredSet = useCallback(async () => {
+    if (!vehicleId || !activatingStoredSetId) return;
+    setTireActionError(null);
+    setSubmittingTireChange(true);
+    try {
+      await api.vehicleIntelligence.activateStoredTireSet(vehicleId, {
+        storedSetupId: activatingStoredSetId,
+        odometerKm: storedActivationOdometer ? parseFloat(storedActivationOdometer) : undefined,
+      });
+      setActivatingStoredSetId(null);
+      setStoredActivationOdometer('');
+      refreshTireWear();
+      loadTireDetail();
+    } catch (err: any) {
+      setTireActionError(err?.message || 'Failed to activate stored tire set.');
+    }
+    setSubmittingTireChange(false);
+  }, [
+    vehicleId,
+    activatingStoredSetId,
+    storedActivationOdometer,
+    refreshTireWear,
+    loadTireDetail,
+  ]);
 
   const submitComplaint = useCallback(async () => {
     if (!vehicleId || !orgId || !complaintForm.description.trim()) return;
@@ -226,8 +392,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
   const handleSubmitMeasurement = async () => {
     if (!vehicleId) return;
     setTireActionError(null);
-    const setups = Array.isArray(tiresData) ? tiresData : [];
-    const activeSetup = setups.find((s: any) => !s.removedAt) ?? setups[0];
+    const activeSetup = resolveActiveSetup(tiresData);
     if (!activeSetup) {
       setTireActionError('No active tire setup found. Please add tire information first.');
       return;
@@ -239,12 +404,12 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
     }
     setSubmittingMeasurement(true);
     try {
-      await api.vehicleIntelligence.tireCalibrationMeasurement(vehicleId, activeSetup.id, {
+      await api.vehicleIntelligence.addTireHealthMeasurement(vehicleId, {
         frontLeftMm: manualMeasurement.fl ? parseFloat(manualMeasurement.fl) : undefined,
         frontRightMm: manualMeasurement.fr ? parseFloat(manualMeasurement.fr) : undefined,
         rearLeftMm: manualMeasurement.rl ? parseFloat(manualMeasurement.rl) : undefined,
         rearRightMm: manualMeasurement.rr ? parseFloat(manualMeasurement.rr) : undefined,
-        odometerAtMeasurement: manualMeasurement.odometer ? parseFloat(manualMeasurement.odometer) : undefined,
+        odometerKm: manualMeasurement.odometer ? parseFloat(manualMeasurement.odometer) : undefined,
         source: 'manual',
         workshopName: manualMeasurement.workshop || undefined,
       });
@@ -260,8 +425,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
   };
 
   const handleOpenEditSetup = useCallback(() => {
-    const setups = Array.isArray(tiresData) ? tiresData : [];
-    const active = setups.find((s: any) => !s.removedAt) ?? setups[0];
+    const active = resolveActiveSetup(tiresData);
     setEditSetupForm({
       frontDimension: active?.frontDimension ?? '',
       rearDimension: active?.rearDimension ?? '',
@@ -275,7 +439,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
     });
     handleDiscardAiTireSpec();
     setShowEditSetup(true);
-  }, [tiresData]);
+  }, [tiresData, resolveActiveSetup]);
 
   const handleSaveEditSetup = async () => {
     if (!vehicleId || !orgId) return;
@@ -289,6 +453,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         brandModelFront: editSetupForm.brandModelFront.trim() || undefined,
         brandModelRear: editSetupForm.brandModelRear.trim() || undefined,
         tireSeason: editSetupForm.tireSeason || undefined,
+        loadIndexFront: editSetupForm.loadIndex.trim() || undefined,
+        speedIndexFront: editSetupForm.speedIndex.trim() || undefined,
+        tireCondition: editSetupForm.tireCondition || undefined,
         treadFL: parseOpt(editSetupForm.treadFL),
         treadFR: parseOpt(editSetupForm.treadFR),
         treadBL: parseOpt(editSetupForm.treadBL),
@@ -410,35 +577,35 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
     setAiTireLiveStep('');
   };
 
-  const refreshBrakeStatus = useCallback(() => {
+  const refreshBrakeHealth = useCallback(() => {
     if (!vehicleId) return;
-    api.vehicleIntelligence.brakeStatus(vehicleId).then(setBrakeStatus).catch(() => null);
     api.vehicleIntelligence.brakeHealthSummary(vehicleId).then(setBrakeHealthSummary).catch(() => null);
+    api.vehicleIntelligence.brakeHealthDetail(vehicleId).then(setBrakeHealthDetail).catch(() => null);
   }, [vehicleId]);
 
   const handleLogBrakeChange = async () => {
     if (!vehicleId || !brakeForm.date) return;
     setSubmittingBrake(true);
     try {
-      await api.vehicleIntelligence.createServiceEvent(vehicleId, {
-        eventType: 'BRAKE_SERVICE',
-        eventDate: new Date(brakeForm.date).toISOString(),
+      await api.vehicleIntelligence.recordBrakeService(vehicleId, {
+        serviceDate: new Date(brakeForm.date).toISOString(),
         odometerKm: brakeForm.odometerKm ? parseInt(brakeForm.odometerKm, 10) : undefined,
         workshopName: brakeForm.workshopName || undefined,
         notes: brakeForm.notes || undefined,
+        source: 'manual',
+        kind: 'full_brake_service',
+        measured: {
+          frontPadMm: brakeForm.frontPadMm ? parseFloat(brakeForm.frontPadMm) : undefined,
+          rearPadMm: brakeForm.rearPadMm ? parseFloat(brakeForm.rearPadMm) : undefined,
+          frontDiscMm: brakeForm.frontRotorWidthMm ? parseFloat(brakeForm.frontRotorWidthMm) : undefined,
+          rearDiscMm: brakeForm.rearRotorWidthMm ? parseFloat(brakeForm.rearRotorWidthMm) : undefined,
+        },
+        initializeIfPossible: true,
       });
-      await api.vehicleIntelligence.brakeHealthInitialize(vehicleId, {
-        serviceDate: new Date(brakeForm.date).toISOString(),
-        odometerKm: brakeForm.odometerKm ? parseInt(brakeForm.odometerKm, 10) : undefined,
-        frontPadMm: brakeForm.frontPadMm ? parseFloat(brakeForm.frontPadMm) : undefined,
-        rearPadMm: brakeForm.rearPadMm ? parseFloat(brakeForm.rearPadMm) : undefined,
-        frontRotorWidthMm: brakeForm.frontRotorWidthMm ? parseFloat(brakeForm.frontRotorWidthMm) : undefined,
-        rearRotorWidthMm: brakeForm.rearRotorWidthMm ? parseFloat(brakeForm.rearRotorWidthMm) : undefined,
-      }).catch(() => null);
       setShowBrakeEntry(false);
       setBrakeEntryMode(null);
       setBrakeForm({ date: '', odometerKm: '', workshopName: '', notes: '', frontPadMm: '', rearPadMm: '', frontRotorWidthMm: '', rearRotorWidthMm: '' });
-      refreshBrakeStatus();
+      refreshBrakeHealth();
     } catch { /* error */ }
     setSubmittingBrake(false);
   };
@@ -501,16 +668,41 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
     : [];
 
   const bSummary = batterySummary;
-  const lvPubState = bSummary?.currentState?.publicationState ?? 'INITIAL_CALIBRATION';
-  const lvIsCalibrating = lvPubState === 'INITIAL_CALIBRATION';
-  const lvIsStabilizing = lvPubState === 'STABILIZING';
-  const voltageDisplay = bSummary?.currentState.voltageV?.toFixed(2) ?? batteryLatest?.voltageV?.toFixed(2) ?? '—';
-  const capacityPct = lvIsCalibrating ? null : (bSummary?.currentState.publishedSohPct ?? bSummary?.currentState.sohPercent ?? batteryLatest?.sohPercent ?? null);
-  const batteryCondition = bSummary?.condition ?? 'good';
-  const batteryConditionColor = batteryCondition === 'calibrating' ? 'bg-blue-500' : batteryCondition === 'good' ? 'bg-green-500' : batteryCondition === 'watch' ? 'bg-amber-500' : 'bg-red-500';
-  const batteryConditionGlow = batteryCondition === 'calibrating' ? 'shadow-[0_0_8px_rgba(59,130,246,0.6)]' : batteryCondition === 'good' ? 'shadow-[0_0_8px_rgba(34,197,94,0.6)]' : batteryCondition === 'watch' ? 'shadow-[0_0_8px_rgba(245,158,11,0.6)]' : 'shadow-[0_0_8px_rgba(239,68,68,0.6)]';
+  const lvPubState = bSummary?.lv?.publicationState ?? bSummary?.currentState?.publicationState ?? 'INITIAL_CALIBRATION';
+  const lvStatus = bSummary?.lv?.status ?? (lvPubState === 'INITIAL_CALIBRATION' ? 'calibrating' : lvPubState === 'STABILIZING' ? 'stabilizing' : 'ready');
+  const lvIsCalibrating = lvStatus === 'calibrating' || lvPubState === 'INITIAL_CALIBRATION';
+  const lvIsStabilizing = lvStatus === 'stabilizing' || lvPubState === 'STABILIZING';
+  const voltageDisplay = bSummary?.lv?.telemetry?.voltageV?.toFixed(2) ?? bSummary?.currentState?.voltageV?.toFixed(2) ?? batteryLatest?.voltageV?.toFixed(2) ?? '—';
+  const capacityPct = lvIsCalibrating
+    ? null
+    : (bSummary?.lv?.healthPercent ?? bSummary?.currentState?.publishedSohPct ?? bSummary?.currentState?.sohPercent ?? batteryLatest?.sohPercent ?? null);
+  // During calibration: show V2 estimated SOH with soft "estimate" indicator
+  const calibrationEstimate: number | null = lvIsCalibrating
+    ? (bSummary?.lv?.estimatedHealthPercent ?? bSummary?.currentState?.estimatedSohPct ?? null)
+    : null;
+  const batteryCondition = bSummary?.lv?.condition ?? bSummary?.condition ?? 'good';
+  const batteryConditionColor =
+    batteryCondition === 'calibrating'
+      ? 'bg-blue-500'
+      : batteryCondition === 'good'
+        ? 'bg-green-500'
+        : batteryCondition === 'watch'
+          ? 'bg-amber-500'
+          : batteryCondition === 'attention'
+            ? 'bg-red-500'
+            : 'bg-gray-400';
+  const batteryConditionGlow =
+    batteryCondition === 'calibrating'
+      ? 'shadow-[0_0_8px_rgba(59,130,246,0.6)]'
+      : batteryCondition === 'good'
+        ? 'shadow-[0_0_8px_rgba(34,197,94,0.6)]'
+        : batteryCondition === 'watch'
+          ? 'shadow-[0_0_8px_rgba(245,158,11,0.6)]'
+          : batteryCondition === 'attention'
+            ? 'shadow-[0_0_8px_rgba(239,68,68,0.6)]'
+            : '';
   const batteryLastCheckedAgo = (() => {
-    const lc = bSummary?.currentState.lastChecked;
+    const lc = bSummary?.lv?.freshness?.observedAt ?? bSummary?.currentState?.lastChecked;
     if (!lc) return null;
     const ms = Date.now() - new Date(lc).getTime();
     if (ms < 60000) return 'just now';
@@ -518,9 +710,60 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
     if (ms < 86400000) return `${Math.floor(ms / 3600000)} h ago`;
     return `${Math.floor(ms / 86400000)} d ago`;
   })();
+  const lvCalibration = bSummary?.lv?.calibrationProgress ?? bSummary?.currentState?.calibrationProgress ?? null;
+  const formatCalibrationDays = (days: number) => (days >= 1 ? `${Math.floor(days)}` : '<1');
+  const calibrationPathLabel = lvCalibration?.measurementPath === 'rest_and_crank' ? 'Ruhe + Start' : 'Nur Ruhe';
+  const calibrationStatusText = (() => {
+    if (!lvIsCalibrating || !lvCalibration) return 'Ruhespannungsmessungen laufen';
+    if (lvCalibration.daysRemainingForStabilizing > 0) {
+      return `Wartet auf Mindestzeit: ${formatCalibrationDays(lvCalibration.daysSinceFirstMeasurement)}/${lvCalibration.minimumDaysForStabilizing} Tage`;
+    }
+
+    const blockers: string[] = [];
+    if (lvCalibration.blockers.includes('qualified_events')) {
+      blockers.push(`${lvCalibration.qualifiedEventCount}/${lvCalibration.minimumQualifiedEventsForStabilizing} Messereignisse`);
+    }
+    if (lvCalibration.blockers.includes('rest_observations')) {
+      blockers.push(`${lvCalibration.restObservationCount}/${lvCalibration.minimumRestObservationsForStabilizing} Ruhespannungen`);
+    }
+    if (lvCalibration.blockers.includes('crank_observations') && lvCalibration.minimumCrankObservationsForStabilizing > 0) {
+      blockers.push(`${lvCalibration.crankObservationCount}/${lvCalibration.minimumCrankObservationsForStabilizing} Startzyklen`);
+    }
+    if (blockers.length > 0) {
+      return `5 Tage erreicht, aber noch zu wenig Daten: ${blockers.join(' · ')}`;
+    }
+    return 'Messwerte werden gerade verifiziert';
+  })();
+  const calibrationMetricsText = lvCalibration
+    ? [
+        `Pfad: ${calibrationPathLabel}`,
+        `${lvCalibration.qualifiedEventCount}/${lvCalibration.minimumQualifiedEventsForStabilizing} Events`,
+        `${lvCalibration.restObservationCount}/${lvCalibration.minimumRestObservationsForStabilizing} Ruhe`,
+        ...(lvCalibration.minimumCrankObservationsForStabilizing > 0
+          ? [`${lvCalibration.crankObservationCount}/${lvCalibration.minimumCrankObservationsForStabilizing} Starts`]
+          : []),
+      ].join(' · ')
+    : null;
+  const calibrationFreshnessText = (() => {
+    if (!lvIsCalibrating) return null;
+    if ((lvCalibration?.lastMeasurementAgeMs ?? null) != null && (lvCalibration?.lastMeasurementAgeMs ?? 0) >= 86400000 && batteryLastCheckedAgo) {
+      return `Letzter frischer Messwert: ${batteryLastCheckedAgo}. Aktuell fehlen neue Messwerte.`;
+    }
+    if (voltageDisplay !== '—') {
+      return `Spannung: ${voltageDisplay} V`;
+    }
+    return null;
+  })();
   const batteryChartData = batteryTrend.length > 0
     ? batteryTrend.map((d: any, i: number) => ({
-        day: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][i % 7],
+        day: d.recordedAt
+          ? new Date(d.recordedAt).toLocaleDateString(
+              'de-DE',
+              batteryChartTab === 'monat'
+                ? { day: '2-digit', month: '2-digit' }
+                : { weekday: 'short' },
+            )
+          : (batteryChartTab === 'monat' ? `${i + 1}` : ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][i % 7]),
         volt: d.voltageV ?? 0,
         time: d.recordedAt ? new Date(d.recordedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '',
       }))
@@ -554,90 +797,143 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             </button>
           </div>
           <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar">
-            {/* Overall Status */}
-            <div className={`p-4 rounded-xl ${(hs?.overallStatus?.level ?? 'good') === 'good' ? isDarkMode ? 'bg-green-500/10' : 'bg-green-50' : (hs?.overallStatus?.level ?? 'good') === 'watch' ? isDarkMode ? 'bg-yellow-500/10' : 'bg-yellow-50' : isDarkMode ? 'bg-orange-500/10' : 'bg-orange-50'}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="relative flex items-center justify-center w-4 h-4">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-25 animate-ping"></span>
-                  <div className="relative w-2.5 h-2.5 rounded-full bg-green-500" />
+
+            {/* ── Overall Status ─────────────────────────────────────────── */}
+            {(() => {
+              const status = aiHealthCare?.aiStatus ?? (
+                (hs?.overallStatus?.level === 'good') ? 'GOOD' :
+                (hs?.overallStatus?.level === 'watch') ? 'ATTENTION_NEEDED' : 'ATTENTION_NEEDED'
+              );
+              const cfg = {
+                EXCELLENT:        { bg: isDarkMode ? 'bg-green-500/10' : 'bg-green-50', dot: 'bg-green-500', ping: 'bg-green-400', text: isDarkMode ? 'text-green-300' : 'text-green-800', sub: isDarkMode ? 'text-green-200/70' : 'text-green-700/80', label: 'Sehr gut' },
+                GOOD:             { bg: isDarkMode ? 'bg-green-500/8' : 'bg-green-50/60', dot: 'bg-green-400', ping: 'bg-green-300', text: isDarkMode ? 'text-green-300' : 'text-green-800', sub: isDarkMode ? 'text-green-200/70' : 'text-green-700/80', label: 'Gut' },
+                ATTENTION_NEEDED: { bg: isDarkMode ? 'bg-amber-500/10' : 'bg-amber-50', dot: 'bg-amber-500', ping: 'bg-amber-400', text: isDarkMode ? 'text-amber-300' : 'text-amber-800', sub: isDarkMode ? 'text-amber-200/70' : 'text-amber-700/80', label: 'Prüfen' },
+                CRITICAL:         { bg: isDarkMode ? 'bg-red-500/10' : 'bg-red-50', dot: 'bg-red-500', ping: 'bg-red-400', text: isDarkMode ? 'text-red-300' : 'text-red-800', sub: isDarkMode ? 'text-red-200/70' : 'text-red-700/80', label: 'Kritisch' },
+                NO_RECENT_DATA:   { bg: isDarkMode ? 'bg-neutral-800/60' : 'bg-gray-50', dot: 'bg-gray-400', ping: 'bg-gray-300', text: isDarkMode ? 'text-gray-400' : 'text-gray-600', sub: isDarkMode ? 'text-gray-400/70' : 'text-gray-500/80', label: 'Keine Daten' },
+              }[status] ?? { bg: isDarkMode ? 'bg-neutral-800/60' : 'bg-gray-50', dot: 'bg-gray-400', ping: 'bg-gray-300', text: 'text-muted-foreground', sub: 'text-muted-foreground', label: '—' };
+
+              const summaryText = aiHealthCare?.summaryText ?? hs?.overallStatus?.shortSummary ?? 'Keine Analyse verfügbar.';
+              const reasons = aiHealthCare?.reasons ?? (hs?.watchpoints ?? []);
+
+              return (
+                <div className={`p-4 rounded-xl ${cfg.bg}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="relative flex items-center justify-center w-4 h-4 shrink-0">
+                      <span className={`absolute inline-flex h-full w-full rounded-full ${cfg.ping} opacity-25 ${status !== 'NO_RECENT_DATA' ? 'animate-ping' : ''}`} />
+                      <div className={`relative w-2.5 h-2.5 rounded-full ${cfg.dot}`} />
+                    </div>
+                    <span className={`font-semibold text-sm ${cfg.text}`}>{cfg.label}</span>
+                    <span className={`ml-auto text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                      status === 'EXCELLENT' || status === 'GOOD' ? 'border-green-500/20 text-green-600 dark:text-green-400' :
+                      status === 'CRITICAL' ? 'border-red-500/20 text-red-600 dark:text-red-400' :
+                      status === 'ATTENTION_NEEDED' ? 'border-amber-500/20 text-amber-600 dark:text-amber-400' :
+                      'border-border text-muted-foreground'
+                    }`}>{status.replace(/_/g, ' ')}</span>
+                  </div>
+                  <p className={`text-xs ml-6 leading-relaxed ${cfg.sub}`}>{summaryText}</p>
+                  {reasons.length > 0 && (
+                    <ul className={`mt-2 ml-6 space-y-1`}>
+                      {reasons.slice(0, 3).map((r, i) => (
+                        <li key={i} className={`flex items-start gap-1.5 text-[11px] ${cfg.sub}`}>
+                          <span className={`shrink-0 mt-0.5 w-1 h-1 rounded-full ${cfg.dot}`} />
+                          {r}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-                <span className={`font-semibold text-sm ${isDarkMode ? 'text-green-300' : 'text-green-800'}`}>
-                  {hs?.overallStatus?.title ?? 'Overall Status: Excellent'}
-                </span>
-              </div>
-              <p className={`text-xs ml-6 leading-relaxed ${isDarkMode ? 'text-green-200/70' : 'text-green-700/80'}`}>
-                {hs?.overallStatus?.shortSummary ?? 'No AI health analysis available yet.'}
-              </p>
-            </div>
+              );
+            })()}
 
-            {/* Predictive Maintenance */}
-            <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50'}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                <span className={`font-semibold text-sm ${isDarkMode ? 'text-blue-300' : 'text-blue-800'}`}>Predictive Maintenance</span>
+            {/* ── Predictive Maintenance ──────────────────────────────────── */}
+            {((hs?.futureOutlook?.summary) || (hs?.futureOutlook?.items ?? []).length > 0) && (
+              <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                  <span className={`font-semibold text-sm ${isDarkMode ? 'text-blue-300' : 'text-blue-800'}`}>Vorausschauende Wartung</span>
+                </div>
+                {hs?.futureOutlook?.summary && (
+                  <p className={`text-xs mb-2 leading-relaxed ${isDarkMode ? 'text-blue-200/70' : 'text-blue-700/80'}`}>
+                    {hs.futureOutlook.summary}
+                  </p>
+                )}
+                <ul className={`space-y-1.5 text-xs ${isDarkMode ? 'text-blue-200/70' : 'text-blue-700/80'}`}>
+                  {(hs?.futureOutlook?.items ?? []).map((item, i) => (
+                    <li key={i} className="flex items-center gap-2">
+                      <div className={`w-1 h-1 rounded-full shrink-0 ${isDarkMode ? 'bg-blue-400' : 'bg-blue-600'}`} />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <p className={`text-xs mb-3 leading-relaxed ${isDarkMode ? 'text-blue-200/70' : 'text-blue-700/80'}`}>
-                {hs?.futureOutlook?.summary ?? 'Predictive data will appear once more vehicle data is available.'}
-              </p>
-              <ul className={`space-y-2 text-xs ${isDarkMode ? 'text-blue-200/70' : 'text-blue-700/80'}`}>
-                {(hs?.futureOutlook?.items ?? []).map((item, i) => (
-                  <li key={i} className="flex items-center gap-2">
-                    <div className={`w-1 h-1 rounded-full ${isDarkMode ? 'bg-blue-400' : 'bg-blue-600'}`} />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            )}
 
-            {/* Attention Required */}
-            <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-orange-500/10' : 'bg-orange-50'}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className={`w-4 h-4 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} />
-                <span className={`font-semibold text-sm ${isDarkMode ? 'text-orange-300' : 'text-orange-800'}`}>Attention Required</span>
-              </div>
-              <p className={`text-xs mb-3 leading-relaxed ${isDarkMode ? 'text-orange-200/70' : 'text-orange-800/80'}`}>
-                {hs?.watchpoints?.[0] ?? 'No watchpoints identified yet.'}
-              </p>
-              <button className={`w-full py-2 rounded-lg text-xs font-semibold transition-colors ${isDarkMode ? 'border border-orange-500/30 text-orange-300 hover:bg-orange-500/10' : 'bg-white border border-orange-200 text-orange-700 hover:bg-orange-100'}`}>
-                Schedule Service
-              </button>
-            </div>
-
-            {/* HM Vehicle Health Indicators */}
+            {/* ── HM Live Vehicle Health ──────────────────────────────────── */}
             {aiHealthCare?.hmHealthActive && (
-              <div className={`p-4 rounded-xl border ${isDarkMode ? 'bg-purple-500/5 border-purple-500/15' : 'bg-purple-50/60 border-purple-100'}`}>
+              <div className={`p-4 rounded-xl border ${
+                aiHealthCare.hmFreshnessStatus === 'stale'
+                  ? isDarkMode ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50/60 border-amber-100'
+                  : isDarkMode ? 'bg-purple-500/5 border-purple-500/15' : 'bg-purple-50/60 border-purple-100'
+              }`}>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400">HM</span>
                   <span className={`text-xs font-semibold ${isDarkMode ? 'text-purple-300' : 'text-purple-800'}`}>Live Vehicle Health</span>
+                  {aiHealthCare.hmFreshnessStatus === 'stale' && (
+                    <span className="flex items-center gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                      <AlertTriangle className="w-2.5 h-2.5" />
+                      Daten veraltet
+                    </span>
+                  )}
+                  {aiHealthCare.hmFreshnessStatus === 'aging' && (
+                    <span className="text-[10px] font-medium text-amber-500 dark:text-amber-500">
+                      Daten altern
+                    </span>
+                  )}
                   {aiHealthCare.lastHmUpdate && (
-                    <span className="ml-auto text-[10px] text-muted-foreground">
+                    <span className={`ml-auto text-[10px] ${
+                      aiHealthCare.hmFreshnessStatus === 'stale' ? 'text-amber-500' :
+                      aiHealthCare.hmFreshnessStatus === 'aging' ? 'text-amber-400' :
+                      'text-muted-foreground'
+                    }`}>
                       {(() => {
                         const ms = Date.now() - new Date(aiHealthCare.lastHmUpdate!).getTime();
                         const h = Math.floor(ms / 3600000);
+                        const d = Math.floor(h / 24);
+                        if (d >= 1) return `vor ${d}d`;
                         return `vor ${h < 1 ? '<1h' : `${h}h`}`;
                       })()}
                     </span>
                   )}
                 </div>
+                {aiHealthCare.hmLastErrorMessage && (
+                  <div className={`mb-3 rounded-lg px-3 py-2 text-[10px] border ${
+                    isDarkMode ? 'bg-red-500/10 border-red-500/20 text-red-300' : 'bg-red-50 border-red-200 text-red-700'
+                  }`}>
+                    Letzter HM-Abruf fehlgeschlagen: {aiHealthCare.hmLastErrorMessage}
+                  </div>
+                )}
                 <div className="space-y-2.5">
-                  {/* Oil Level */}
+                  {/* Oil Level — uses new oilLevelDisplay from backend */}
                   {(() => {
-                    const oil = aiHealthCare.hmIndicators?.oilLevel;
-                    const isLow = oil?.status === 'LOW';
-                    const hasData = oil != null;
+                    const oil = aiHealthCare.oilLevelDisplay;
+                    const hasData = oil && oil.mode !== 'no_data';
+                    const isLow = aiHealthCare.hmIndicators?.oilLevel?.status === 'LOW';
                     return (
                       <div className="flex items-center gap-3">
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isLow ? (isDarkMode ? 'bg-amber-500/20' : 'bg-amber-50') : (isDarkMode ? 'bg-muted' : 'bg-gray-100')}`}>
                           <Droplets className={`w-4 h-4 ${isLow ? 'text-amber-500' : hasData ? (isDarkMode ? 'text-gray-400' : 'text-gray-500') : 'text-gray-300 dark:text-gray-600'}`} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-semibold text-muted-foreground">Oil Level</p>
+                          <p className="text-[10px] font-semibold text-muted-foreground">Motoröl</p>
                           {hasData ? (
                             <>
                               <div className="w-full h-1.5 rounded-full bg-muted mt-0.5 overflow-hidden">
-                                <div className={`h-full rounded-full transition-all ${oil!.status === 'LOW' ? 'bg-amber-500 w-[25%]' : oil!.status === 'HIGH' ? 'bg-blue-500 w-full' : 'bg-green-500 w-[70%]'}`} />
+                                <div
+                                  className={`h-full rounded-full transition-all ${isLow ? 'bg-amber-500' : oil!.value != null && oil!.value >= 0.9 ? 'bg-blue-500' : 'bg-green-500'}`}
+                                  style={{ width: `${Math.round((oil!.value ?? 0.5) * 100)}%` }}
+                                />
                               </div>
-                              <p className={`text-[10px] mt-0.5 ${isLow ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>{oil!.status === 'LOW' ? 'Niedrig' : oil!.status === 'OK' ? 'OK' : oil!.status === 'HIGH' ? 'Hoch' : 'Unbekannt'}</p>
+                              <p className={`text-[10px] mt-0.5 ${isLow ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>{oil!.label}</p>
                             </>
                           ) : <p className="text-[10px] text-muted-foreground/50">keine Daten</p>}
                         </div>
@@ -645,19 +941,19 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     );
                   })()}
 
-                  {/* Limp Mode */}
+                  {/* Limp Mode — uses indicators.limpMode */}
                   {(() => {
-                    const limpMode = aiHealthCare.hmIndicators?.limpMode;
-                    const active = limpMode?.active === true;
+                    const active = aiHealthCare.indicators?.limpMode === true;
+                    const hasData = aiHealthCare.indicators?.limpMode !== null;
                     return (
                       <div className="flex items-center gap-3">
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${active ? (isDarkMode ? 'bg-amber-500/20' : 'bg-amber-50') : (isDarkMode ? 'bg-muted' : 'bg-gray-100')}`}>
-                          <AlertOctagon className={`w-4 h-4 ${active ? 'text-amber-500' : limpMode != null ? (isDarkMode ? 'text-gray-400' : 'text-gray-500') : 'text-gray-300 dark:text-gray-600'}`} />
+                          <AlertOctagon className={`w-4 h-4 ${active ? 'text-amber-500' : hasData ? (isDarkMode ? 'text-gray-400' : 'text-gray-500') : 'text-gray-300 dark:text-gray-600'}`} />
                         </div>
                         <div className="flex-1">
                           <p className="text-[10px] font-semibold text-muted-foreground">Limp Mode</p>
                           <p className={`text-[10px] ${active ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-muted-foreground'}`}>
-                            {limpMode != null ? (active ? 'Aktiv — Werkstatt aufsuchen' : 'Inaktiv') : 'keine Daten'}
+                            {hasData ? (active ? 'Aktiv — Werkstatt aufsuchen' : 'Inaktiv') : 'keine Daten'}
                           </p>
                         </div>
                         <div className={`w-2 h-2 rounded-full shrink-0 ${active ? 'bg-amber-500 animate-pulse' : 'bg-gray-300 dark:bg-gray-600'}`} />
@@ -665,19 +961,19 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     );
                   })()}
 
-                  {/* Brake Lining Pre-Warning */}
+                  {/* Brake Lining Pre-Warning — uses indicators.brakeWarning */}
                   {(() => {
-                    const brake = aiHealthCare.hmIndicators?.brakeLiningPreWarning;
-                    const active = brake?.active === true;
+                    const active = aiHealthCare.indicators?.brakeWarning === true;
+                    const hasData = aiHealthCare.indicators?.brakeWarning !== null;
                     return (
                       <div className="flex items-center gap-3">
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${active ? (isDarkMode ? 'bg-amber-500/20' : 'bg-amber-50') : (isDarkMode ? 'bg-muted' : 'bg-gray-100')}`}>
-                          <DiscAlbum className={`w-4 h-4 ${active ? 'text-amber-500' : brake != null ? (isDarkMode ? 'text-gray-400' : 'text-gray-500') : 'text-gray-300 dark:text-gray-600'}`} />
+                          <DiscAlbum className={`w-4 h-4 ${active ? 'text-amber-500' : hasData ? (isDarkMode ? 'text-gray-400' : 'text-gray-500') : 'text-gray-300 dark:text-gray-600'}`} />
                         </div>
                         <div className="flex-1">
                           <p className="text-[10px] font-semibold text-muted-foreground">Bremsbelag Vorwarnung</p>
                           <p className={`text-[10px] ${active ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-muted-foreground'}`}>
-                            {brake != null ? (active ? 'Warnung aktiv' : 'Kein Warnung') : 'keine Daten'}
+                            {hasData ? (active ? 'Warnung aktiv' : 'Kein Warnung') : 'keine Daten'}
                           </p>
                         </div>
                         <div className={`w-2 h-2 rounded-full shrink-0 ${active ? 'bg-amber-500 animate-pulse' : 'bg-gray-300 dark:bg-gray-600'}`} />
@@ -685,19 +981,19 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     );
                   })()}
 
-                  {/* Tire Pressure Warning */}
+                  {/* Tire Pressure Warning — uses indicators.tirePressureWarning */}
                   {(() => {
-                    const tire = aiHealthCare.hmIndicators?.tirePressureWarning;
-                    const active = tire?.active === true;
+                    const active = aiHealthCare.indicators?.tirePressureWarning === true;
+                    const hasData = aiHealthCare.indicators?.tirePressureWarning !== null;
                     return (
                       <div className="flex items-center gap-3">
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${active ? (isDarkMode ? 'bg-amber-500/20' : 'bg-amber-50') : (isDarkMode ? 'bg-muted' : 'bg-gray-100')}`}>
-                          <Gauge className={`w-4 h-4 ${active ? 'text-amber-500' : tire != null ? (isDarkMode ? 'text-gray-400' : 'text-gray-500') : 'text-gray-300 dark:text-gray-600'}`} />
+                          <Gauge className={`w-4 h-4 ${active ? 'text-amber-500' : hasData ? (isDarkMode ? 'text-gray-400' : 'text-gray-500') : 'text-gray-300 dark:text-gray-600'}`} />
                         </div>
                         <div className="flex-1">
                           <p className="text-[10px] font-semibold text-muted-foreground">Reifendruck Warnung</p>
                           <p className={`text-[10px] ${active ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-muted-foreground'}`}>
-                            {tire != null ? (active ? 'Druckwarnung aktiv' : 'OK') : 'keine Daten'}
+                            {hasData ? (active ? 'Druckwarnung aktiv' : 'OK') : 'keine Daten'}
                           </p>
                         </div>
                         <div className={`w-2 h-2 rounded-full shrink-0 ${active ? 'bg-amber-500 animate-pulse' : 'bg-gray-300 dark:bg-gray-600'}`} />
@@ -767,22 +1063,34 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
           <div className="flex-1 flex flex-col justify-center">
             {lvIsCalibrating ? (
               <>
-                <div className="mb-1 flex items-center gap-1.5">
-                  <span className={`text-sm font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
-                    Initial calibration in progress
+                <div className="mb-1.5 flex items-center gap-1.5">
+                  <span className={`text-xs font-medium ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                    Sammelt Messwerte
                   </span>
                   <span className="inline-flex">
-                    {[0, 1, 2].map(i => <span key={i} className={`inline-block w-1.5 h-1.5 rounded-full mx-0.5 ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}
+                    {[0, 1, 2].map(i => <span key={i} className={`inline-block w-1 h-1 rounded-full mx-0.5 ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}
                   </span>
                 </div>
-                <p className={`text-[10px] text-muted-foreground`}>
-                  Collecting rest and start-cycle measurements
+                {calibrationEstimate != null ? (
+                  <>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className={`text-sm font-bold tracking-tight ${isDarkMode ? 'text-foreground/70' : 'text-foreground/60'}`}>
+                        ~{calibrationEstimate}% SOH
+                      </span>
+                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${isDarkMode ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-200'}`}>
+                        Schätzung
+                      </span>
+                    </div>
+                    <div className={`w-full h-1 rounded-full overflow-hidden mb-1.5 ${isDarkMode ? 'bg-white/10' : 'bg-black/5'}`}>
+                      <div className={`h-full rounded-full ${isDarkMode ? 'bg-blue-400/40' : 'bg-blue-300'}`} style={{ width: `${calibrationEstimate}%` }} />
+                    </div>
+                  </>
+                ) : null}
+                <p className={`text-[10px] text-muted-foreground/70`}>
+                  {calibrationStatusText}
                 </p>
-                {voltageDisplay !== '—' && (
-                  <p className={`text-[10px] mt-1 text-muted-foreground/70`}>
-                    Current Voltage: <span className={`font-semibold text-foreground/80`}>{voltageDisplay} V</span>
-                  </p>
-                )}
+                {calibrationMetricsText && <p className={`text-[10px] mt-1 text-muted-foreground/60`}>{calibrationMetricsText}</p>}
+                {calibrationFreshnessText && <p className={`text-[10px] mt-1 text-muted-foreground/60`}>{calibrationFreshnessText}</p>}
               </>
             ) : (
               <>
@@ -916,8 +1224,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
           const barColor = pct != null ? (pct >= 50 ? 'bg-green-500' : pct >= 25 ? 'bg-amber-500' : 'bg-red-500') : 'bg-gray-300';
           const conf = th?.confidenceLabel ?? null;
           const hasAlerts = (th?.alerts?.length ?? 0) > 0;
-          const setups = Array.isArray(tiresData) ? tiresData : [];
-          const activeSetup = setups.find((s: any) => !s.removedAt) ?? setups[0] ?? null;
+          const activeSetup = resolveActiveSetup(tiresData);
           return (
             <div onClick={() => { setTireActionError(null); openModal(setShowTires); loadTireDetail(); }} className={`${cardClass} cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] ${!hasTireData ? 'opacity-60' : ''}`}>
               <div className="flex items-center justify-between mb-2">
@@ -937,10 +1244,20 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   <p className={`text-[10px] text-muted-foreground`}>
                     Estimated Lifetime in {remKm != null ? `${Math.floor(remKm).toLocaleString('de-DE')} km` : '—'}
                   </p>
+                  {th?.actionState && (
+                    <p className={`text-[9px] mt-1 font-semibold ${th.actionState === 'REPLACE' ? 'text-red-500' : th.actionState === 'PLAN_SERVICE' ? 'text-amber-500' : 'text-blue-500'}`}>
+                      Action: {formatEnumLabel(th.actionState)}
+                    </p>
+                  )}
                   {conf && conf !== 'High' && (
                     <p className={`text-[9px] mt-1 flex items-center gap-1 ${isDarkMode ? 'text-amber-500/70' : 'text-amber-600/70'}`}>
                       <AlertTriangle className="w-2.5 h-2.5" />
                       Estimate quality: {conf}
+                    </p>
+                  )}
+                  {th?.measurementState && (
+                    <p className={`text-[9px] mt-1 text-muted-foreground`}>
+                      Source: {th.measurementState}
                     </p>
                   )}
                 </div>
@@ -988,7 +1305,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
           const hvPubState = hvBatteryStatus?.publicationState ?? 'INITIAL_CALIBRATION';
           const hvCalibrating = hvPubState === 'INITIAL_CALIBRATION';
           const hvStabilizing = hvPubState === 'STABILIZING';
-          const soh = hvCalibrating ? null : (hvBatteryStatus?.publishedSohPercent ?? hvBatteryStatus?.sohPercent ?? null);
+          const soh = hvCalibrating
+            ? (hvBatteryStatus?.rawSohPercent != null ? Math.round(hvBatteryStatus.rawSohPercent) : null)
+            : Math.round(hvBatteryStatus?.publishedSohPercent ?? hvBatteryStatus?.sohPercent ?? 0) || null;
           const interp = hvBatteryStatus?.sohInterpretation;
           const barColor = soh == null ? 'bg-gray-400' : soh >= 80 ? 'bg-green-500' : soh >= 60 ? 'bg-amber-500' : 'bg-red-500';
           return (
@@ -1004,11 +1323,18 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 {hvCalibrating ? (
                   <>
                     <div className="flex items-center gap-1.5 mb-1">
-                      <span className={`text-sm font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>Initial calibration in progress</span>
-                      <span className="inline-flex">
-                        {[0, 1, 2].map(i => <span key={i} className={`inline-block w-1.5 h-1.5 rounded-full mx-0.5 ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}
-                      </span>
+                      {soh != null ? (
+                        <span className={`text-sm font-bold tracking-tight text-foreground`}>~{soh}% SOH</span>
+                      ) : (
+                        <span className={`text-sm font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>Calibrating</span>
+                      )}
+                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${isDarkMode ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>Schätzung</span>
                     </div>
+                    {soh != null && (
+                      <div className={`w-full h-1.5 rounded-full overflow-hidden mb-1 bg-muted`}>
+                        <div className={`h-full bg-blue-400/60 rounded-full transition-all`} style={{ width: `${soh}%` }} />
+                      </div>
+                    )}
                     <p className={`text-[10px] text-muted-foreground`}>Collecting charge and discharge data</p>
                   </>
                 ) : (
@@ -1415,6 +1741,53 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               </div>
             </div>
 
+            {(bSummary?.currentTelemetry?.socPercent != null ||
+              bSummary?.currentTelemetry?.rangeKm != null ||
+              bSummary?.currentTelemetry?.chargingPowerKw != null ||
+              bSummary?.currentTelemetry?.chargingState != null) && (
+              <div className={`rounded-lg p-4 mb-5 ${isDarkMode ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-emerald-50 border border-emerald-100'}`}>
+                <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`}>
+                  Current Battery State (Not Health)
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <p className="text-[9px] uppercase tracking-wider text-muted-foreground">SoC</p>
+                    <p className="text-sm font-bold text-foreground">
+                      {bSummary?.currentTelemetry?.socPercent != null
+                        ? `${Math.round(bSummary.currentTelemetry.socPercent)}%`
+                        : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Range</p>
+                    <p className="text-sm font-bold text-foreground">
+                      {bSummary?.currentTelemetry?.rangeKm != null
+                        ? `${Math.round(bSummary.currentTelemetry.rangeKm)} km`
+                        : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Charging</p>
+                    <p className="text-sm font-bold text-foreground">
+                      {bSummary?.currentTelemetry?.chargingState === 'charging'
+                        ? 'Charging'
+                        : bSummary?.currentTelemetry?.chargingState === 'not_charging'
+                          ? 'Not charging'
+                          : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Charge Power</p>
+                    <p className="text-sm font-bold text-foreground">
+                      {bSummary?.currentTelemetry?.chargingPowerKw != null
+                        ? `${Math.round(bSummary.currentTelemetry.chargingPowerKw * 10) / 10} kW`
+                        : '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* SOH gauge */}
             {(() => {
               const soh = capacityPct;
@@ -1428,7 +1801,31 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                         <span className="inline-flex">{[0,1,2].map(i => <span key={i} className={`inline-block w-1.5 h-1.5 rounded-full mx-0.5 ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}</span>
                       </div>
                     </div>
-                    <p className={`text-[10px] ${isDarkMode ? 'text-blue-400/60' : 'text-blue-500/60'}`}>Collecting rest and start-cycle measurements for accurate SOH estimation</p>
+                    <p className={`text-[10px] ${isDarkMode ? 'text-blue-400/70' : 'text-blue-700/80'}`}>{calibrationStatusText}</p>
+                    {calibrationMetricsText && <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-blue-400/60' : 'text-blue-600/70'}`}>{calibrationMetricsText}</p>}
+                    {calibrationFreshnessText && <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-amber-300/80' : 'text-amber-700/80'}`}>{calibrationFreshnessText}</p>}
+                    {lvCalibration && (
+                      <div className="grid grid-cols-2 gap-3 mt-3">
+                        <div className={`rounded-lg px-3 py-2 ${isDarkMode ? 'bg-blue-500/10' : 'bg-white/70'}`}>
+                          <p className="text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">Tage</p>
+                          <p className="text-sm font-bold text-foreground">{formatCalibrationDays(lvCalibration.daysSinceFirstMeasurement)}/{lvCalibration.minimumDaysForStabilizing}</p>
+                        </div>
+                        <div className={`rounded-lg px-3 py-2 ${isDarkMode ? 'bg-blue-500/10' : 'bg-white/70'}`}>
+                          <p className="text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">Events</p>
+                          <p className="text-sm font-bold text-foreground">{lvCalibration.qualifiedEventCount}/{lvCalibration.minimumQualifiedEventsForStabilizing}</p>
+                        </div>
+                        <div className={`rounded-lg px-3 py-2 ${isDarkMode ? 'bg-blue-500/10' : 'bg-white/70'}`}>
+                          <p className="text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">Ruhe</p>
+                          <p className="text-sm font-bold text-foreground">{lvCalibration.restObservationCount}/{lvCalibration.minimumRestObservationsForStabilizing}</p>
+                        </div>
+                        {lvCalibration.minimumCrankObservationsForStabilizing > 0 && (
+                          <div className={`rounded-lg px-3 py-2 ${isDarkMode ? 'bg-blue-500/10' : 'bg-white/70'}`}>
+                            <p className="text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">Starts</p>
+                            <p className="text-sm font-bold text-foreground">{lvCalibration.crankObservationCount}/{lvCalibration.minimumCrankObservationsForStabilizing}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               }
@@ -1717,8 +2114,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             {(() => {
               const bhs = brakeHealthSummary;
               const bhd = brakeHealthDetail;
-              const bs = brakeStatus;
-              const v2 = bhs?.isInitialized === true;
+              const stateClass = bhs?.stateClass ?? 'NO_BASELINE';
+              const v2 = stateClass === 'MEASURED' || stateClass === 'ESTIMATED';
               const d = isDarkMode;
               const cardBg = 'bg-muted';
               const hSec = 'text-xs font-bold uppercase tracking-wider mb-3 text-muted-foreground';
@@ -1731,12 +2128,30 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 return <div className={`w-full h-1.5 rounded-full overflow-hidden mt-1.5 ${d ? 'bg-neutral-700' : 'bg-gray-100'}`}><div className={`h-full rounded-full transition-all ${c}`} style={{ width: `${Math.min(pct, 100)}%` }} /></div>;
               };
 
-              const statusBadgeCls = v2
-                ? (bhs?.status === 'healthy' ? (d ? 'bg-green-500/10 text-green-400' : 'bg-green-100 text-green-700')
-                  : bhs?.status === 'attention' ? (d ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-100 text-amber-700')
-                  : (d ? 'bg-red-500/10 text-red-400' : 'bg-red-100 text-red-700'))
-                : '';
-              const statusLabel = v2 ? (bhs?.status === 'healthy' ? 'Healthy' : bhs?.status === 'attention' ? 'Attention' : 'Critical') : '';
+              const statusBadgeCls =
+                stateClass === 'MEASURED'
+                  ? d
+                    ? 'bg-green-500/10 text-green-400'
+                    : 'bg-green-100 text-green-700'
+                  : stateClass === 'ESTIMATED'
+                    ? d
+                      ? 'bg-blue-500/10 text-blue-400'
+                      : 'bg-blue-100 text-blue-700'
+                    : stateClass === 'WARNING_ONLY'
+                      ? d
+                        ? 'bg-amber-500/10 text-amber-400'
+                        : 'bg-amber-100 text-amber-700'
+                      : d
+                        ? 'bg-gray-500/10 text-gray-400'
+                        : 'bg-gray-100 text-gray-600';
+              const statusLabel =
+                stateClass === 'MEASURED'
+                  ? 'Measured'
+                  : stateClass === 'ESTIMATED'
+                    ? 'Estimated'
+                    : stateClass === 'WARNING_ONLY'
+                      ? 'Warning only'
+                      : 'No baseline';
 
               const axleCard = (label: string, est: BrakeAxleEstimate | null | undefined) => {
                 if (!est) return null;
@@ -1763,8 +2178,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   {/* ── A) Header ── */}
                   <div className="flex items-center gap-3 mb-1">
                     <h2 className={`text-sm font-semibold tracking-tight text-foreground`}>Brake Health</h2>
-                    {v2 && <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusBadgeCls}`}>{statusLabel}</span>}
-                    {v2 && bhs?.confidence && (
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusBadgeCls}`}>{statusLabel}</span>
+                    {bhs?.confidence && (
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                         bhs.confidence.label === 'High' ? (d ? 'bg-green-500/10 text-green-400' : 'bg-green-50 text-green-600')
                         : bhs.confidence.label === 'Medium' ? (d ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600')
@@ -1772,7 +2187,13 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                       }`}>{bhs.confidence.label} confidence ({bhs.confidence.score})</span>
                     )}
                   </div>
-                  <p className={`text-[10px] mb-4 text-muted-foreground/70`}>{v2 ? 'Anchor-based achsweise (front/rear) wear model powered by Driving Impact Engine V1' : 'Brake wear estimation starts after a documented brake service'}</p>
+                  <p className={`text-[10px] mb-4 text-muted-foreground/70`}>
+                    {v2
+                      ? 'Canonical V2 anchor-based brake wear model (pads + discs, limiting component aware).'
+                      : stateClass === 'WARNING_ONLY'
+                        ? 'No modeled baseline yet. Warning telemetry is shown as warning-only context.'
+                        : 'Brake wear estimation starts after a documented baseline with odometer and thickness anchor.'}
+                  </p>
 
                   {/* ── NOT INITIALIZED STATE ── */}
                   {!v2 && (
@@ -1782,6 +2203,13 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                         <p className={`text-xs leading-relaxed mb-3 ${d ? 'text-amber-400/80' : 'text-amber-700'}`}>
                           Brake wear estimation starts after a documented brake service or confirmed workshop report. Without a known starting pad/disc thickness, no reliable estimation is possible. Pre-anchor driving data is being collected but will NOT be used retroactively — tracking starts clean from the service anchor odometer.
                         </p>
+                        {(bhs?.baselineWarnings?.length ?? 0) > 0 && (
+                          <div className="mb-3 space-y-1">
+                            {bhs?.baselineWarnings?.slice(0, 3).map((w, idx) => (
+                              <p key={idx} className={`text-[10px] ${d ? 'text-amber-300' : 'text-amber-800'}`}>- {w}</p>
+                            ))}
+                          </div>
+                        )}
                         <div className="flex gap-2">
                           <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('manual'); }} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${d ? 'bg-violet-500/15 text-violet-400 hover:bg-violet-500/25' : 'bg-violet-50 text-violet-700 hover:bg-violet-100'}`}><Plus className="w-3.5 h-3.5" /> Add Brake Service</button>
                           <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('upload'); }} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${d ? 'bg-blue-500/15 text-blue-400 hover:bg-blue-500/25' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}><Upload className="w-3.5 h-3.5" /> AI Upload Report</button>
@@ -1826,7 +2254,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   )}
 
                   {/* ── C) Brake System Information ── */}
-                  {(bs?.specs || bhd?.brakeBiasInfo) && (
+                  {(bhd?.specs || bhd?.brakeBiasInfo) && (
                     <div className="mb-4">
                       <h3 className={hSec}>Brake System Information</h3>
                       <div className="grid grid-cols-2 gap-3">
@@ -1834,9 +2262,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                           <p className={`${lbl} mb-2.5`}>Front Axle</p>
                           <div className="space-y-2">
                             {[
-                              { l: 'Rotor Diameter', v: bs?.specs?.frontRotorDiameter },
-                              { l: 'Rotor Width (NEW)', v: bs?.specs?.frontRotorWidth },
-                              { l: 'Pad Thickness', v: bs?.specs?.frontPadThickness },
+                              { l: 'Rotor Diameter', v: bhd?.specs?.frontRotorDiameter },
+                              { l: 'Rotor Width (NEW)', v: bhd?.specs?.frontRotorWidth },
+                              { l: 'Pad Thickness', v: bhd?.specs?.frontPadThickness },
                             ].map(r => (
                               <div key={r.l} className="flex items-center justify-between">
                                 <span className={`text-xs text-muted-foreground`}>{r.l}</span>
@@ -1849,9 +2277,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                           <p className={`${lbl} mb-2.5`}>Rear Axle</p>
                           <div className="space-y-2">
                             {[
-                              { l: 'Rotor Diameter', v: bs?.specs?.rearRotorDiameter },
-                              { l: 'Rotor Width (NEW)', v: bs?.specs?.rearRotorWidth },
-                              { l: 'Pad Thickness', v: bs?.specs?.rearPadThickness },
+                              { l: 'Rotor Diameter', v: bhd?.specs?.rearRotorDiameter },
+                              { l: 'Rotor Width (NEW)', v: bhd?.specs?.rearRotorWidth },
+                              { l: 'Pad Thickness', v: bhd?.specs?.rearPadThickness },
                             ].map(r => (
                               <div key={r.l} className="flex items-center justify-between">
                                 <span className={`text-xs text-muted-foreground`}>{r.l}</span>
@@ -1876,15 +2304,15 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   {/* ── D) Brake History ── */}
                   <div className="mb-4">
                     <h3 className={hSec}>Brake History</h3>
-                    {(bhd?.history ?? bs?.history ?? []).length > 0 ? (
+                    {(bhd?.history ?? []).length > 0 ? (
                       <div className={`rounded-xl overflow-hidden ${d ? 'bg-neutral-800/40' : 'bg-white'}`}>
-                        {(bhd?.history ?? bs?.history ?? []).map((item: any, i: number, arr: any[]) => (
+                        {(bhd?.history ?? []).map((item: any, i: number, arr: any[]) => (
                           <div key={item.id} className={`flex items-center px-4 py-3 ${i < arr.length - 1 ? d ? 'border-b border-neutral-700/50' : 'border-b border-gray-100' : ''}`}>
                             <div className={`w-7 h-7 rounded-full flex items-center justify-center mr-3 shrink-0 ${d ? 'bg-green-500/10' : 'bg-green-50'}`}>
                               <Wrench className={`w-3 h-3 ${d ? 'text-green-400' : 'text-green-600'}`} />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className={`text-xs font-semibold text-foreground`}>Brake Service</p>
+                              <p className={`text-xs font-semibold text-foreground`}>{item.serviceKind ? String(item.serviceKind).replace(/_/g, ' ') : 'Brake Service'}</p>
                               <p className={`text-[10px] text-muted-foreground`}>{new Date(item.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}{item.workshopName ? ` · ${item.workshopName}` : ''}</p>
                               {item.notes && <p className={`text-[9px] mt-0.5 ${d ? 'text-gray-600' : 'text-gray-300'}`}>{item.notes}</p>}
                             </div>
@@ -2062,6 +2490,33 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               </div>
             )}
 
+            {tireHealth?.actionState && (
+              <div className={`rounded-xl px-4 py-3 mb-5 ${isDarkMode ? 'bg-neutral-800/50 border border-neutral-700/60' : 'bg-gray-50 border border-gray-200'}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Operational Action</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                    tireHealth.actionState === 'REPLACE'
+                      ? isDarkMode ? 'bg-red-500/20 text-red-300' : 'bg-red-100 text-red-700'
+                      : tireHealth.actionState === 'PLAN_SERVICE'
+                      ? isDarkMode ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700'
+                      : tireHealth.actionState === 'CHECK_SOON'
+                      ? isDarkMode ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-700'
+                      : isDarkMode ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700'
+                  }`}>
+                    {formatEnumLabel(tireHealth.actionState)}
+                  </span>
+                </div>
+                {(tireHealth.actionReasons ?? []).length > 0 && (
+                  <p className="text-[11px] mt-2 text-muted-foreground">{tireHealth.actionReasons?.[0]}</p>
+                )}
+                {(tireHealth.dataQualityWarnings ?? []).length > 0 && (
+                  <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-amber-400/80' : 'text-amber-700/80'}`}>
+                    Data warning: {tireHealth.dataQualityWarnings?.[0]}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Euromaster Tire Service CTA */}
             <div className={`flex items-center justify-between rounded-xl px-4 py-3 mb-5 ${isDarkMode ? 'bg-red-500/5 border border-red-500/10' : 'bg-red-50/50 border border-red-100'}`}>
               <div className="flex items-center gap-2">
@@ -2097,8 +2552,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               <>
                 {/* Tire Setup Info */}
                 {(() => {
-                  const setups = Array.isArray(tiresData) ? tiresData : [];
-                  const active = setups.find((s: any) => !s.removedAt) ?? setups[0];
+                  const active = resolveActiveSetup(tiresData);
                   const hasIncomplete = active && (!active.brandModelFront || !active.frontDimension || !active.tireSeason);
                   if (!active) return (
                     <div className={`rounded-lg p-4 text-center mb-5 border-2 border-dashed ${isDarkMode ? 'bg-neutral-800/40 border-amber-500/20' : 'bg-amber-50/50 border-amber-200'}`}>
@@ -2483,11 +2937,11 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   {showMeasurement && measurementMode === 'upload' && (
                     <div className={`text-center py-6 border-2 border-dashed rounded-xl ${isDarkMode ? 'border-neutral-600' : 'border-gray-200'}`}>
                       <Upload className={`w-8 h-8 mx-auto mb-2 text-muted-foreground`} />
-                      <p className={`text-xs font-semibold mb-1 text-foreground`}>Upload Workshop Document</p>
-                      <p className={`text-[10px] mb-3 text-muted-foreground`}>AI will extract tread measurements</p>
+                      <p className={`text-xs font-semibold mb-1 text-foreground`}>Use Document Upload for AI extraction</p>
+                      <p className={`text-[10px] mb-3 text-muted-foreground`}>This tire modal no longer performs direct file upload.</p>
                       <div className="flex gap-2 justify-center">
                         <button onClick={() => { setShowMeasurement(false); setMeasurementMode(null); }} className={`px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground`}>Cancel</button>
-                        <label className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-purple-500 hover:bg-purple-600 text-white cursor-pointer">Select File<input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png" /></label>
+                        <button onClick={() => setMeasurementMode('manual')} className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-purple-500 hover:bg-purple-600 text-white">Back to Manual</button>
                       </div>
                     </div>
                   )}
@@ -2525,12 +2979,166 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 {/* Tire Change Dialog */}
                 {showTireChange && (
                   <div className={`rounded-lg p-5 mb-5 border-2 ${isDarkMode ? 'bg-neutral-800/60 border-red-500/30' : 'bg-white border-red-200'}`}>
-                    <h3 className={`text-xs font-semibold uppercase tracking-wider mb-4 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>Tire Change</h3>
-                    <p className={`text-xs mb-4 text-muted-foreground`}>Replace the full tire set. The current set will be marked as stored.</p>
-                    <div className="flex gap-2 justify-end">
-                      <button onClick={() => setShowTireChange(false)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${isDarkMode ? 'text-gray-400 hover:bg-neutral-800' : 'text-gray-500 hover:bg-gray-100'}`}>Cancel</button>
-                      <button onClick={async () => { if (!vehicleId) return; setTireActionError(null); try { await api.vehicleIntelligence.changeTires(vehicleId, { scope: 'full_set' }); setShowTireChange(false); refreshTireWear(); loadTireDetail(); } catch (err: any) { setTireActionError(err?.message || 'Failed to change tires.'); } }} className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-red-500 hover:bg-red-600 text-white">Confirm Full Change</button>
+                    <h3 className={`text-xs font-semibold uppercase tracking-wider mb-4 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>Tire Replacement & Stored Sets</h3>
+
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                      {([
+                        { key: 'single', label: 'Single', desc: 'One wheel' },
+                        { key: 'axle', label: 'Axle', desc: 'Front or rear' },
+                        { key: 'full_set', label: 'Full set', desc: 'All wheels' },
+                      ] as const).map((opt) => (
+                        <button
+                          key={opt.key}
+                          onClick={() => {
+                            setTireChangeScope(opt.key);
+                            setTireChangePositions([]);
+                          }}
+                          className={`p-2 rounded-lg border text-left ${
+                            tireChangeScope === opt.key
+                              ? isDarkMode
+                                ? 'border-red-400 bg-red-500/10'
+                                : 'border-red-400 bg-red-50'
+                              : isDarkMode
+                              ? 'border-neutral-700 hover:border-neutral-600'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <p className="text-[11px] font-semibold text-foreground">{opt.label}</p>
+                          <p className="text-[10px] text-muted-foreground">{opt.desc}</p>
+                        </button>
+                      ))}
                     </div>
+
+                    {tireChangeScope === 'single' && (
+                      <div className="grid grid-cols-2 gap-2 mb-4">
+                        {['FL', 'FR', 'RL', 'RR'].map((pos) => (
+                          <button
+                            key={pos}
+                            onClick={() => {
+                              setTireChangePositions([pos]);
+                            }}
+                            className={`px-3 py-2 rounded-lg text-xs font-semibold border ${
+                              tireChangePositions.includes(pos)
+                                ? isDarkMode
+                                  ? 'border-red-400 bg-red-500/10 text-red-300'
+                                  : 'border-red-400 bg-red-50 text-red-700'
+                                : isDarkMode
+                                ? 'border-neutral-700 text-gray-300'
+                                : 'border-gray-200 text-gray-700'
+                            }`}
+                          >
+                            {pos}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {tireChangeScope === 'axle' && (
+                      <div className="grid grid-cols-2 gap-2 mb-4">
+                        <button
+                          onClick={() => setTireChangePositions(['FRONT_AXLE'])}
+                          className={`px-3 py-2 rounded-lg text-xs font-semibold border ${
+                            tireChangePositions.includes('FRONT_AXLE')
+                              ? isDarkMode
+                                ? 'border-red-400 bg-red-500/10 text-red-300'
+                                : 'border-red-400 bg-red-50 text-red-700'
+                              : isDarkMode
+                              ? 'border-neutral-700 text-gray-300'
+                              : 'border-gray-200 text-gray-700'
+                          }`}
+                        >
+                          Front axle
+                        </button>
+                        <button
+                          onClick={() => setTireChangePositions(['REAR_AXLE'])}
+                          className={`px-3 py-2 rounded-lg text-xs font-semibold border ${
+                            tireChangePositions.includes('REAR_AXLE')
+                              ? isDarkMode
+                                ? 'border-red-400 bg-red-500/10 text-red-300'
+                                : 'border-red-400 bg-red-50 text-red-700'
+                              : isDarkMode
+                              ? 'border-neutral-700 text-gray-300'
+                              : 'border-gray-200 text-gray-700'
+                          }`}
+                        >
+                          Rear axle
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div>
+                        <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Odometer (km)</label>
+                        <input type="number" value={tireChangeOdometer} onChange={e => setTireChangeOdometer(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs border ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'} outline-none`} placeholder="Current odometer" />
+                      </div>
+                      <div>
+                        <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Notes</label>
+                        <input type="text" value={tireChangeNotes} onChange={e => setTireChangeNotes(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs border ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'} outline-none`} placeholder="Optional workshop notes" />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 justify-end mb-5">
+                      <button onClick={() => setShowTireChange(false)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${isDarkMode ? 'text-gray-400 hover:bg-neutral-800' : 'text-gray-500 hover:bg-gray-100'}`}>Cancel</button>
+                      <button
+                        onClick={handleConfirmTireChange}
+                        disabled={
+                          submittingTireChange ||
+                          (tireChangeScope === 'single' && tireChangePositions.length !== 1) ||
+                          (tireChangeScope === 'axle' && tireChangePositions.length !== 1)
+                        }
+                        className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 flex items-center gap-1.5"
+                      >
+                        {submittingTireChange && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                        Confirm Replacement
+                      </button>
+                    </div>
+
+                    {(() => {
+                      const setups = Array.isArray(tiresData) ? tiresData : [];
+                      const storedSetups = setups.filter((s: any) => s?.status === 'STORED');
+                      if (storedSetups.length === 0) return null;
+                      return (
+                        <div className={`pt-4 border-t ${isDarkMode ? 'border-neutral-700' : 'border-gray-200'}`}>
+                          <p className="text-[10px] uppercase tracking-wider font-semibold mb-2 text-muted-foreground">Activate Stored Set</p>
+                          <div className="space-y-2 mb-3">
+                            {storedSetups.map((s: any) => (
+                              <button
+                                key={s.id}
+                                onClick={() => setActivatingStoredSetId(s.id)}
+                                className={`w-full text-left px-3 py-2 rounded-lg border text-xs ${
+                                  activatingStoredSetId === s.id
+                                    ? isDarkMode
+                                      ? 'border-blue-400 bg-blue-500/10'
+                                      : 'border-blue-400 bg-blue-50'
+                                    : isDarkMode
+                                    ? 'border-neutral-700'
+                                    : 'border-gray-200'
+                                }`}
+                              >
+                                <p className="font-semibold text-foreground">{s.name ?? s.brandModelFront ?? 'Stored set'}</p>
+                                <p className="text-[10px] text-muted-foreground">{s.tireSeason ?? 'Season n/a'} · {s.removedAt ? `stored since ${new Date(s.removedAt).toLocaleDateString('de-DE')}` : 'stored'}</p>
+                              </button>
+                            ))}
+                          </div>
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              value={storedActivationOdometer}
+                              onChange={(e) => setStoredActivationOdometer(e.target.value)}
+                              className={`flex-1 px-3 py-2 rounded-lg text-xs border ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'} outline-none`}
+                              placeholder="Odometer for activation"
+                            />
+                            <button
+                              onClick={handleActivateStoredSet}
+                              disabled={!activatingStoredSetId || submittingTireChange}
+                              className="px-4 py-2 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50"
+                            >
+                              Activate
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </>

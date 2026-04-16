@@ -1,10 +1,11 @@
 import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { DashboardInsightsRepository } from './dashboard-insights.repository';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
 
 @Controller('organizations/:orgId/dashboard-insights')
-@UseGuards(RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard)
 export class DashboardInsightsController {
   constructor(
     private readonly repo: DashboardInsightsRepository,

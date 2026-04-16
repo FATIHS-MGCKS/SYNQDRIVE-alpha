@@ -1,41 +1,59 @@
-import { Controller, Post, Body, Headers, Logger, Get, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, Req, RawBodyRequest, Headers, Logger, Get, HttpCode } from '@nestjs/common';
+import type { Request } from 'express';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
-import { createHmac } from 'crypto';
-
-const DIMO_WEBHOOK_SECRET = process.env.DIMO_WEBHOOK_SECRET;
+import { createHmac, timingSafeEqual } from 'crypto';
 
 @Controller('webhooks/dimo')
 export class DimoWebhookController {
   private readonly logger = new Logger(DimoWebhookController.name);
+  private readonly isProduction = process.env.NODE_ENV === 'production';
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly dtcService: DtcService,
-  ) {}
+  ) {
+    const secret = process.env.DIMO_WEBHOOK_SECRET;
+    if (this.isProduction && !secret) {
+      this.logger.error(
+        'DIMO_WEBHOOK_SECRET is not set in production. All inbound DIMO webhooks will be rejected until this is fixed.',
+      );
+    }
+  }
 
   @Post()
   @HttpCode(200)
   async handleWebhook(
+    @Req() req: RawBodyRequest<Request>,
     @Body() body: any,
     @Headers('x-dimo-signature') signature?: string,
   ) {
-    if (DIMO_WEBHOOK_SECRET) {
+    const secret = process.env.DIMO_WEBHOOK_SECRET;
+
+    if (!secret) {
+      if (this.isProduction) {
+        this.logger.warn('DIMO webhook rejected: DIMO_WEBHOOK_SECRET not configured in production');
+        return { status: 'rejected', reason: 'webhook_not_configured' };
+      }
+      this.logger.debug('DIMO webhook received without signature check (DIMO_WEBHOOK_SECRET not set, dev mode)');
+    } else {
       if (!signature) {
         this.logger.warn('DIMO webhook rejected: missing x-dimo-signature header');
         return { status: 'rejected', reason: 'missing_signature' };
       }
-      // NOTE: Uses JSON.stringify(parsed body) — if DIMO signs over raw bytes,
-      // enable raw body middleware and use req.rawBody instead.
-      const expected = createHmac('sha256', DIMO_WEBHOOK_SECRET)
-        .update(JSON.stringify(body))
-        .digest('hex');
-      if (signature !== expected && signature !== `sha256=${expected}`) {
+      // Prefer raw body for accurate HMAC; fall back to serialised parsed body.
+      const toSign: Buffer | string = req.rawBody ?? JSON.stringify(body);
+      const expected = createHmac('sha256', secret).update(toSign).digest('hex');
+      const expectedPrefixed = `sha256=${expected}`;
+
+      const sigBuf = Buffer.from(signature);
+      const rawMatch = sigBuf.length === expected.length && timingSafeEqual(sigBuf, Buffer.from(expected));
+      const prefixedMatch = sigBuf.length === expectedPrefixed.length && timingSafeEqual(sigBuf, Buffer.from(expectedPrefixed));
+
+      if (!rawMatch && !prefixedMatch) {
         this.logger.warn('DIMO webhook rejected: invalid signature');
         return { status: 'rejected', reason: 'invalid_signature' };
       }
-    } else if (!signature) {
-      this.logger.debug('DIMO webhook received without signature (DIMO_WEBHOOK_SECRET not configured)');
     }
 
     this.logger.log(`Received DIMO webhook: type=${body?.type}, tokenId=${body?.tokenId}`);

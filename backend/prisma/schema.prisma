@@ -198,6 +198,20 @@ enum ServiceEventType {
   OTHER
 }
 
+enum BrakeServiceKind {
+  INSPECTION_ONLY
+  PADS_SERVICE
+  DISCS_SERVICE
+  BRAKE_FLUID_SERVICE
+  FULL_BRAKE_SERVICE
+}
+
+enum BrakeServiceSource {
+  MANUAL
+  AI_DOCUMENT
+  API
+}
+
 enum DocumentExtractionStatus {
   PENDING
   CONFIRMED
@@ -382,6 +396,20 @@ enum ActivityAction {
   CONVERT
   SYNC
   CANCEL
+  // Extended — trust/audit layer
+  GRANT           // provider access / consent granted
+  REVOKE          // provider access / consent revoked
+  REJECT          // provider access / consent rejected
+  AUTH_FAIL       // authentication attempt failed
+  ADMIN_OVERRIDE  // platform admin mutation
+  PRUNE           // destructive admin prune
+  BACKFILL        // admin data backfill
+  LINK            // entity linked to provider/binding
+  UNLINK          // entity unlinked from provider/binding
+  APPROVE         // clearance/consent approved
+  RESET           // admin reset action
+  REFRESH         // token refreshed
+  REVOKE_ALL      // all sessions/tokens revoked
 }
 
 enum ActivityEntity {
@@ -397,6 +425,17 @@ enum ActivityEntity {
   PRODUCT
   DIMO_VEHICLE
   SUPPORT_TICKET
+  // Extended — trust/audit layer
+  SESSION             // auth session/token
+  PROVIDER_CONSENT    // VehicleProviderConsent record
+  PROVIDER_BINDING    // VehicleDataSourceLink
+  AUTH_EVENT          // login/logout/refresh event
+  ADMIN_OPERATION     // platform admin action
+  REFRESH_TOKEN       // refresh token lifecycle
+  SUPPORT_MESSAGE     // support ticket message
+  TASK                // org task
+  INVOICE             // org invoice
+  FINE                // fine record
 }
 
 enum DrivingEventType {
@@ -533,6 +572,7 @@ model Organization {
   servicePartnerAssignments TenantServicePartnerAssignment[]
   partnerDataAuthorizations PartnerDataAuthorization[]
   partnerServiceCases       PartnerServiceCase[]
+  providerConsents          VehicleProviderConsent[]
 
   @@index([status])
   @@map("organizations")
@@ -566,10 +606,34 @@ model User {
   createdAt           DateTime        @default(now()) @map("created_at")
   updatedAt           DateTime        @updatedAt @map("updated_at")
 
-  memberships  OrganizationMembership[]
-  activityLogs ActivityLog[]
+  memberships   OrganizationMembership[]
+  activityLogs  ActivityLog[]
+  refreshTokens RefreshToken[]
 
   @@map("users")
+}
+
+// ------------------------------------------------
+// REFRESH TOKENS
+// ------------------------------------------------
+
+model RefreshToken {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  tokenHash   String    @unique @map("token_hash")    // bcrypt hash of the actual token
+  family      String    @map("family")                // rotation family — revoke all on reuse detection
+  expiresAt   DateTime  @map("expires_at")
+  revokedAt   DateTime? @map("revoked_at")
+  replacedBy  String?   @map("replaced_by")          // id of the next token in chain
+  userAgent   String?   @map("user_agent")
+  ipAddress   String?   @map("ip_address")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([family])
+  @@map("refresh_tokens")
 }
 
 // ------------------------------------------------
@@ -722,6 +786,8 @@ model Vehicle {
   nextTuvDate         DateTime?    @map("next_tuv_date")
   lastBokraftDate     DateTime?    @map("last_bokraft_date")
   nextBokraftDate     DateTime?    @map("next_bokraft_date")
+  createdByUserId     String?      @map("created_by_user_id")
+  updatedByUserId     String?      @map("updated_by_user_id")
   createdAt       DateTime         @default(now()) @map("created_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
 
@@ -748,6 +814,7 @@ model Vehicle {
   hvBatterySnapshots    HvBatteryHealthSnapshot[]
   hvBatteryHealthCurrent  HvBatteryHealthCurrent?
   batteryFeatures         BatteryFeatures?
+  batteryEvidence         BatteryEvidence[]
   brakeTripMetrics        BrakeTripMetric[]
   brakeHealthCurrent      BrakeHealthCurrent?
   dtcEvents               VehicleDtcEvent[]
@@ -759,11 +826,15 @@ model Vehicle {
   tripDetectionState    VehicleTripDetectionState?
   tripTrackingRuns      VehicleTripTrackingRun[]
   tripBehaviorEvents    TripBehaviorEvent[]
+  tripRepairs           TripRepair[]
   logbookConfig         VehicleLogbookConfig?
   documentExtractions   VehicleDocumentExtraction[]
   vendorVehicles        VendorVehicle[]
   complaints            VehicleComplaint[]
   partnerServiceCases   PartnerServiceCase[]
+  dataSourceLinks       VehicleDataSourceLink[]
+  hmSignalGroupStates   HmSignalGroupState[]
+  providerConsents      VehicleProviderConsent[]
 
   @@unique([vin, organizationId])
   @@index([organizationId])
@@ -840,6 +911,60 @@ model DimoVehicle {
   @@index([vin])
   @@index([connectionStatus])
   @@map("dimo_vehicles")
+}
+
+// ------------------------------------------------
+// VEHICLE PROVIDER CONSENT / ACCESS GRANTS
+// ------------------------------------------------
+// Canonical ledger of every provider access grant for a vehicle.
+// Records who granted access, via which mechanism, and current status.
+// One row per grant event — revocation creates a new row or updates status.
+
+enum VehicleProviderConsentStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+  REJECTED
+  PENDING
+}
+
+enum VehicleProviderConsentGrantType {
+  DIMO_OAUTH            // DIMO vehicle linked via OAuth token flow
+  DIMO_DIRECT           // DIMO vehicle linked directly by admin
+  HM_FLEET_CLEARANCE    // High Mobility fleet clearance (webhook-approved)
+  HM_MANUAL             // High Mobility manually approved by admin
+  MANUAL                // manually recorded by platform admin
+}
+
+model VehicleProviderConsent {
+  id                       String                          @id @default(uuid())
+  vehicleId                String                          @map("vehicle_id")
+  organizationId           String                          @map("organization_id")
+  provider                 String                          @map("provider")                 // DIMO | HIGH_MOBILITY | ...
+  grantType                VehicleProviderConsentGrantType @map("grant_type")
+  status                   VehicleProviderConsentStatus    @default(ACTIVE) @map("status")
+  scopes                   String[]                        @map("scopes")                   // list of accessible signals/permissions
+  grantedByUserId          String?                         @map("granted_by_user_id")       // internal user who triggered grant
+  grantedByExternalSubject String?                         @map("granted_by_external_subject") // e.g. vehicle owner DID / external identity
+  grantedAt                DateTime                        @default(now()) @map("granted_at")
+  expiresAt                DateTime?                       @map("expires_at")
+  revokedAt                DateTime?                       @map("revoked_at")
+  revokedByUserId          String?                         @map("revoked_by_user_id")
+  proofReference           String?                         @map("proof_reference")          // external tx/event ID
+  proofHash                String?                         @map("proof_hash")               // hash of signed approval payload
+  providerVehicleRef       String?                         @map("provider_vehicle_ref")     // external vehicle ID at provider
+  metadataJson             Json?                           @map("metadata_json")
+  createdAt                DateTime                        @default(now()) @map("created_at")
+  updatedAt                DateTime                        @updatedAt @map("updated_at")
+
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([organizationId])
+  @@index([provider, status])
+  @@index([grantedAt])
+  @@map("vehicle_provider_consents")
 }
 
 // ------------------------------------------------
@@ -1210,10 +1335,17 @@ model VehicleServiceEvent {
   costCents     Int?             @map("cost_cents")
   provider      String?
   documentUrl   String?          @map("document_url")
+  brakeServiceKind        BrakeServiceKind?   @map("brake_service_kind")
+  brakeServiceSource      BrakeServiceSource? @map("brake_service_source")
+  brakeServiceScope       Json?               @map("brake_service_scope")
+  brakeMeasuredSnapshot   Json?               @map("brake_measured_snapshot")
+  brakeLifecycleApplied   Boolean?            @map("brake_lifecycle_applied")
+  brakeLifecycleNote      String?             @map("brake_lifecycle_note")
   createdAt     DateTime         @default(now()) @map("created_at")
   updatedAt     DateTime         @updatedAt @map("updated_at")
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  batteryEvidence BatteryEvidence[]
 
   @@index([vehicleId])
   @@index([eventDate])
@@ -1240,6 +1372,7 @@ model VehicleDocumentExtraction {
   updatedAt         DateTime                  @updatedAt @map("updated_at")
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  batteryEvidence BatteryEvidence[]
 
   @@index([vehicleId])
   @@index([status])
@@ -1297,6 +1430,24 @@ model VehicleLatestState {
   evSoc             Float?   @map("ev_soc")
   /// Traction battery power (kW). DIMO: powertrainTractionBatteryCurrentPower in W → /1000. Positive = into battery (charge/regen); negative = out (motoring).
   tractionBatteryPowerKw Float? @map("traction_battery_power_kw")
+  /// Provider-reported HV battery SOH (%) when available.
+  tractionBatterySohPercent Float? @map("traction_battery_soh_percent")
+  /// Average HV battery temperature in Celsius.
+  tractionBatteryTemperatureC Float? @map("traction_battery_temperature_c")
+  /// Charging power in kW while charging.
+  tractionBatteryChargingPowerKw Float? @map("traction_battery_charging_power_kw")
+  /// Added charging energy for current session in kWh.
+  tractionBatteryAddedEnergyKwh Float? @map("traction_battery_added_energy_kwh")
+  /// Whether charging is currently active.
+  tractionBatteryIsCharging Boolean? @map("traction_battery_is_charging")
+  /// Whether charging cable is currently connected.
+  tractionBatteryChargingCableConnected Boolean? @map("traction_battery_charging_cable_connected")
+  /// Current HV battery voltage.
+  tractionBatteryCurrentVoltage Float? @map("traction_battery_current_voltage")
+  /// Provider-reported gross HV capacity in kWh.
+  tractionBatteryGrossCapacityKwh Float? @map("traction_battery_gross_capacity_kwh")
+  /// Provider-reported current HV battery energy in kWh.
+  tractionBatteryCurrentEnergyKwh Float? @map("traction_battery_current_energy_kwh")
   isIgnitionOn      Boolean? @map("is_ignition_on")
   engineLoad        Float?   @map("engine_load")
   lvBatteryVoltage  Float?   @map("lv_battery_voltage")
@@ -1311,7 +1462,13 @@ model VehicleLatestState {
   dtcPollStatus              String?   @map("dtc_poll_status")
   dtcPollError               String?   @map("dtc_poll_error")
   rawPayloadJson    Json?    @map("raw_payload_json")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  // Provenance fields — identify where this state came from
+  providerSource      String?   @map("provider_source")       // e.g. DIMO | HIGH_MOBILITY
+  providerFetchedAt   DateTime? @map("provider_fetched_at")   // when the data was fetched from provider
+  sourceTimestamp     DateTime? @map("source_timestamp")      // timestamp reported by the provider signal itself
+  syncJobRef          String?   @map("sync_job_ref")          // poll log id / worker run ref
+  providerBindingId   String?   @map("provider_binding_id")   // VehicleDataSourceLink.id that sourced this
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
@@ -1611,16 +1768,21 @@ model RentalDrivingAnalysis {
 // ------------------------------------------------
 
 model ActivityLog {
-  id             String         @id @default(uuid())
-  organizationId String?        @map("organization_id")
-  userId         String?        @map("user_id")
-  action         ActivityAction
-  entity         ActivityEntity
-  entityId       String?        @map("entity_id")
-  description    String
-  metaJson       Json?          @map("meta_json")
-  ipAddress      String?        @map("ip_address")
-  createdAt      DateTime       @default(now()) @map("created_at")
+  id              String         @id @default(uuid())
+  organizationId  String?        @map("organization_id")
+  userId          String?        @map("user_id")
+  action          ActivityAction
+  entity          ActivityEntity
+  entityId        String?        @map("entity_id")
+  description     String
+  // Extended fields for trust/audit layer
+  changeSummary   String?        @map("change_summary")    // brief human-readable what changed
+  route           String?        @map("route")              // HTTP route that triggered the action
+  userAgent       String?        @map("user_agent")
+  level           String?        @map("level")              // INFO | WARN | CRITICAL
+  metaJson        Json?          @map("meta_json")
+  ipAddress       String?        @map("ip_address")
+  createdAt       DateTime       @default(now()) @map("created_at")
 
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -1629,6 +1791,7 @@ model ActivityLog {
   @@index([userId])
   @@index([entity, action])
   @@index([createdAt])
+  @@index([level])
   @@map("activity_logs")
 }
 
@@ -1747,21 +1910,23 @@ enum TaskPriority {
 }
 
 model OrgTask {
-  id             String       @id @default(uuid())
-  organizationId String       @map("organization_id")
-  title          String
-  description    String?
-  category       String?
-  status         TaskStatus   @default(OPEN)
-  priority       TaskPriority @default(MEDIUM)
-  vehicleId      String?      @map("vehicle_id")
-  fineId         String?      @map("fine_id")
-  invoiceId      String?      @map("invoice_id")
-  assignedTo     String?      @map("assigned_to")
-  dueDate        DateTime?    @map("due_date")
-  completedAt    DateTime?    @map("completed_at")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
+  id              String       @id @default(uuid())
+  organizationId  String       @map("organization_id")
+  title           String
+  description     String?
+  category        String?
+  status          TaskStatus   @default(OPEN)
+  priority        TaskPriority @default(MEDIUM)
+  vehicleId       String?      @map("vehicle_id")
+  fineId          String?      @map("fine_id")
+  invoiceId       String?      @map("invoice_id")
+  assignedTo      String?      @map("assigned_to")
+  dueDate         DateTime?    @map("due_date")
+  completedAt     DateTime?    @map("completed_at")
+  createdByUserId String?      @map("created_by_user_id")
+  updatedByUserId String?      @map("updated_by_user_id")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
 
   fine    Fine?       @relation(fields: [fineId], references: [id], onDelete: SetNull)
   invoice OrgInvoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
@@ -1770,6 +1935,7 @@ model OrgTask {
   @@index([status])
   @@index([fineId])
   @@index([invoiceId])
+  @@index([createdByUserId])
   @@map("org_tasks")
 }
 
@@ -1897,6 +2063,37 @@ enum SohPublicationState {
   STABLE
 }
 
+enum BatteryEvidenceScope {
+  LV
+  HV
+}
+
+enum BatteryEvidenceSourceType {
+  PROVIDER_REPORTED
+  TELEMETRY_DERIVED
+  MODEL_DERIVED
+  MANUAL_REPORT
+  DOCUMENT_CONFIRMED
+  WORKSHOP_MEASUREMENT
+  HM_SUPPLEMENTARY
+}
+
+enum BatteryEvidenceValueType {
+  SOH_PERCENT
+  SOC_PERCENT
+  RANGE_KM
+  VOLTAGE_V
+  RESTING_VOLTAGE_V
+  CRANKING_VOLTAGE_V
+  CHARGING_VOLTAGE_V
+  BATTERY_TEMPERATURE_C
+  CHARGING_POWER_KW
+  ADDED_ENERGY_KWH
+  CURRENT_ENERGY_KWH
+  CURRENT_VOLTAGE_V
+  GROSS_CAPACITY_KWH
+}
+
 /// Per-vehicle battery feature store for V2 health scoring.
 /// One row per vehicle, updated in-place (upsert pattern).
 model BatteryFeatures {
@@ -2000,6 +2197,34 @@ model HvBatteryHealthCurrent {
   @@map("hv_battery_health_current")
 }
 
+model BatteryEvidence {
+  id                   String                   @id @default(uuid())
+  vehicleId            String                   @map("vehicle_id")
+  scope                BatteryEvidenceScope
+  sourceType           BatteryEvidenceSourceType @map("source_type")
+  valueType            BatteryEvidenceValueType @map("value_type")
+  numericValue         Float                    @map("numeric_value")
+  unit                 String?
+  observedAt           DateTime                 @map("observed_at")
+  provider             String?
+  confidence           String?
+  quality              String?
+  documentExtractionId String?                  @map("document_extraction_id")
+  serviceEventId       String?                  @map("service_event_id")
+  metadataJson         Json?                    @map("metadata_json")
+  createdAt            DateTime                 @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  documentExtraction VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
+  serviceEvent VehicleServiceEvent? @relation(fields: [serviceEventId], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId, scope, valueType, observedAt])
+  @@index([sourceType, observedAt])
+  @@index([documentExtractionId])
+  @@index([serviceEventId])
+  @@map("battery_evidence")
+}
+
 // ------------------------------------------------
 // BRAKE TRIP METRICS
 // ------------------------------------------------
@@ -2080,6 +2305,14 @@ model BrakeHealthCurrent {
   confidenceScore        Float?  @map("confidence_score")
   confidenceLabel        String? @map("confidence_label")
   hasAlert               Boolean @default(false) @map("has_alert")
+
+  stateClass             String? @map("state_class")
+  anchorValidationStatus String? @map("anchor_validation_status")
+  modelCoverageRatio     Float?  @map("model_coverage_ratio")
+  modeledDistanceKm      Float?  @map("modeled_distance_km")
+  modeledTripCount       Int?    @map("modeled_trip_count")
+  modelingSource         String? @map("modeling_source")
+  baselineWarnings       Json?   @map("baseline_warnings")
 
   distanceSinceAnchorKm  Float?  @map("distance_since_anchor_km")
   calibrationCount       Int     @default(0) @map("calibration_count")
@@ -2171,12 +2404,39 @@ enum TripStatus {
   CANCELLED
 }
 
+/// Identifies the pipeline that created a canonical trip record.
+/// V2_LIVE = created by the live FSM detection engine.
+/// REPAIRED = created by the reconciliation/repair layer after the fact.
+enum TripSource {
+  V2_LIVE
+  REPAIRED
+}
+
+enum TripAssignmentStatus {
+  ASSIGNED_DRIVER
+  ASSIGNED_USER
+  ASSIGNED_BOOKING_CUSTOMER
+  PRIVATE_UNASSIGNED
+  UNKNOWN_ASSIGNMENT
+}
+
+enum TripAssignmentSubjectType {
+  DRIVER
+  USER
+  BOOKING_CUSTOMER
+}
+
 model VehicleTrip {
   id                  String     @id @default(uuid())
   vehicleId           String     @map("vehicle_id")
   dimoSegmentId       String?    @unique @map("dimo_segment_id")
   tripStatus          TripStatus @default(ONGOING) @map("trip_status")
   driverName          String?    @map("driver_name")
+  assignmentStatus    TripAssignmentStatus? @map("assignment_status")
+  assignmentSubjectType TripAssignmentSubjectType? @map("assignment_subject_type")
+  assignmentSubjectId String?    @map("assignment_subject_id")
+  assignedBookingId   String?    @map("assigned_booking_id")
+  isPrivateTrip       Boolean    @default(false) @map("is_private_trip")
   startTime           DateTime   @map("start_time")
   endTime             DateTime?  @map("end_time")
   startLatitude       Float?     @map("start_latitude")
@@ -2229,6 +2489,14 @@ model VehicleTrip {
   hardAccelerationCount  Int   @default(0) @map("hard_acceleration_count")
   hardBrakingCount       Int   @default(0) @map("hard_braking_count")
   fullBrakingCount       Int   @default(0) @map("full_braking_count")
+  totalAccelerationEvents Int  @default(0) @map("total_acceleration_events")
+  hardAccelerationEvents  Int  @default(0) @map("hard_acceleration_events")
+  totalBrakingEvents      Int  @default(0) @map("total_braking_events")
+  hardBrakingEvents       Int  @default(0) @map("hard_braking_events")
+  fullBrakingEvents       Int  @default(0) @map("full_braking_events")
+  corneringEvents         Int  @default(0) @map("cornering_events")
+  abuseEvents             Int  @default(0) @map("abuse_events")
+  speedingEvents          Int  @default(0) @map("speeding_events")
   possibleImpactCount    Int   @default(0) @map("possible_impact_count")
   kickdownCount          Int   @default(0) @map("kickdown_count")
   coldEngineAbuseCount   Int   @default(0) @map("cold_engine_abuse_count")
@@ -2261,16 +2529,38 @@ model VehicleTrip {
 
   gapEnded            Boolean  @default(false) @map("gap_ended")
   enrichedAt          DateTime? @map("enriched_at")
+
+  // ── Canonical ownership and source ──────────────────────────────────────
+  // tripSource identifies which pipeline created this trip.
+  // isRepaired is true when a repair was applied after initial creation.
+  tripSource          TripSource  @default(V2_LIVE) @map("trip_source")
+  isRepaired          Boolean     @default(false)   @map("is_repaired")
+  mergeParentTripId   String?                        @map("merge_parent_trip_id")
+
+  // ── UI-facing readiness status ───────────────────────────────────────────
+  // Simple string statuses for frontend display. Values:
+  //   qualityStatus:         VERIFIED | LOW_DATA | ANOMALY
+  //   behaviorSummaryStatus: PENDING | READY | SKIPPED | FAILED
+  //   drivingImpactStatus:   PENDING | READY | SKIPPED | FAILED
+  qualityStatus           String?   @map("quality_status")
+  behaviorSummaryStatus   String?   @map("behavior_summary_status")
+  drivingImpactStatus     String?   @map("driving_impact_status")
+
   createdAt           DateTime @default(now()) @map("created_at")
 
   vehicle        Vehicle               @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   waypoints      VehicleTripWaypoint[]
   events         DrivingEvent[]
   behaviorEvents TripBehaviorEvent[]
+  repairs        TripRepair[]
 
   @@index([vehicleId])
   @@index([startTime])
   @@index([tripStatus])
+  @@index([tripSource])
+  @@index([assignmentStatus, isPrivateTrip])
+  @@index([assignmentSubjectType, assignmentSubjectId])
+  @@index([assignedBookingId])
   @@index([behaviorEnrichmentStatus])
   @@map("vehicle_trips")
 }
@@ -3317,6 +3607,47 @@ model VehicleTripTrackingRun {
   @@map("vehicle_trip_tracking_runs")
 }
 
+// ── Trip Repair / Reconciliation Audit Trail ──────────────────────────────────
+//
+// Records every proposed or applied repair action taken by the reconciliation
+// and repair layer. Provides full auditable history of what changed and why.
+// The repair layer may never directly create trips — it always goes through
+// TripDecisionEngine, which stamps tripSource: REPAIRED on the resulting trip.
+
+/// Audit record for one repair action proposed or applied by the reconciliation layer.
+model TripRepair {
+  id               String    @id @default(uuid())
+  vehicleId        String    @map("vehicle_id")
+  // Linked to an existing trip when repairing an end-time or merge.
+  // Null when creating a brand-new trip from a gap.
+  tripId           String?   @map("trip_id")
+
+  // MISSING_TRIP | MISSING_END | SPLIT_MERGE | DUPLICATE | STALE_ONGOING
+  repairType       String    @map("repair_type")
+  // PROPOSED | APPLIED | REJECTED | EXPIRED
+  status           String    @default("PROPOSED")
+  reason           String
+  // LOW | MEDIUM | HIGH
+  confidence       String
+  windowFrom       DateTime  @map("window_from")
+  windowTo         DateTime  @map("window_to")
+
+  // Full detector evidence payload (findings array from all detectors that ran)
+  detectorEvidence Json?     @map("detector_evidence")
+  appliedAt        DateTime? @map("applied_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  vehicle Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip    VehicleTrip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId])
+  @@index([tripId])
+  @@index([status])
+  @@index([repairType])
+  @@index([createdAt])
+  @@map("trip_repairs")
+}
+
 // ── Driving Impact Engine V1 ──────────────────────────────────────────────────
 //
 // These two models form the shared normalization layer between
@@ -3362,6 +3693,10 @@ model TripDrivingImpact {
   highSpeedStressScore    Float? @map("high_speed_stress_score")
   thermalBrakeStressScore Float? @map("thermal_brake_stress_score")
   drivingStyleScore       Float? @map("driving_style_score")
+  safetyScore             Float? @map("safety_score")
+  speedingExposurePct     Float? @map("speeding_exposure_pct")
+  speedingSeverityScore   Float? @map("speeding_severity_score")
+  speedingSectionCount    Int?   @map("speeding_section_count")
 
   // Traceability
   modelVersion      String @map("model_version")
@@ -3703,6 +4038,14 @@ model AiTireSpecJob {
 // HIGH MOBILITY — Phase 1 Integration
 // ============================================================
 
+// Identifies which HM application container a record belongs to.
+// HM_HEALTH_APP  → add-on health signals for DIMO-backed vehicles (HM_HEALTH_APP_* credentials)
+// HM_TELEMETRY_APP → independent full-telemetry pipeline (HM_TELEMETRY_APP_* credentials)
+enum HmAppContainerType {
+  HM_HEALTH_APP
+  HM_TELEMETRY_APP
+}
+
 enum HmPackageType {
   HEALTH
   FULL_TELEMETRY
@@ -3761,6 +4104,10 @@ model HighMobilityVehicle {
   vin                     String
   brand                   String
 
+  // Which HM app-container manages this vehicle record.
+  // Null for legacy rows created before dual-app split; treat as HM_HEALTH_APP when null.
+  appContainerType        HmAppContainerType? @map("app_container_type")
+
   packageType             HmPackageType       @map("package_type")
   sourceMode              HmSourceMode        @default(DIMO_PLUS_HM) @map("source_mode")
 
@@ -3806,6 +4153,8 @@ model HighMobilityVehicle {
   @@index([clearanceStatus])
   @@index([packageType])
   @@index([sourceMode])
+  @@index([appContainerType])
+  @@index([vin, appContainerType])
   @@index([organizationId])
   @@index([synqdriveVehicleId])
   @@map("high_mobility_vehicles")
@@ -3882,44 +4231,59 @@ enum HmMqttConnectionState {
 
 // Extensible vehicle data source link table
 // Supports HIGH_MOBILITY now, extendable for future sources
+// Canonical provider binding structure for all external data sources.
+// Covers both DIMO and High Mobility. Extended per provider in sourceSubtype.
 model VehicleDataSourceLink {
-  id                    String   @id @default(uuid())
-  vehicleId             String   @map("vehicle_id")
-  sourceType            String   @map("source_type")
-  sourceSubtype         String?  @map("source_subtype")
-  sourceReferenceId     String   @map("source_reference_id")
-  isActive              Boolean  @default(true) @map("is_active")
-  activatedAt           DateTime @default(now()) @map("activated_at")
+  id                    String    @id @default(uuid())
+  vehicleId             String    @map("vehicle_id")
+  // Provider canonical name: DIMO | HIGH_MOBILITY | MANUAL | ...
+  provider              String    @default("UNKNOWN") @map("provider")
+  sourceType            String    @map("source_type")       // e.g. HIGH_MOBILITY, DIMO
+  sourceSubtype         String?   @map("source_subtype")    // e.g. HM_HEALTH_APP, HM_TELEMETRY_APP
+  sourceReferenceId     String    @map("source_reference_id")
+  // FK to the consent record that authorized this binding
+  consentId             String?   @map("consent_id")
+  isActive              Boolean   @default(true) @map("is_active")
+  activatedAt           DateTime  @default(now()) @map("activated_at")
   deactivatedAt         DateTime? @map("deactivated_at")
-  metadata              Json?    @map("metadata")
+  // Provenance: who set up this binding and when it was verified
+  linkedByUserId        String?   @map("linked_by_user_id")
+  lastVerifiedAt        DateTime? @map("last_verified_at")
+  metadata              Json?     @map("metadata")
 
+  // Direct FK to Vehicle enables DB-level ownership enforcement
+  vehicle   Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   hmVehicle HighMobilityVehicle? @relation(fields: [sourceReferenceId], references: [id])
 
   // Only one active link per vehicle + source type + subtype
   @@unique([vehicleId, sourceType, sourceSubtype, isActive], name: "uq_data_source_link_active")
   @@index([vehicleId])
   @@index([sourceType])
+  @@index([provider])
   @@index([sourceReferenceId])
+  @@index([consentId])
   @@map("vehicle_data_source_links")
 }
 
 // Phase 2 — raw MQTT stream message log
 model HighMobilityStreamSyncLog {
-  id                    String         @id @default(uuid())
+  id                    String              @id @default(uuid())
   // null for messages received before vehicle linkage is complete
-  highMobilityVehicleId String?        @map("high_mobility_vehicle_id")
+  highMobilityVehicleId String?             @map("high_mobility_vehicle_id")
   vin                   String?
-  messageId             String         @map("message_id")
+  messageId             String              @map("message_id")
   topic                 String
-  messageTimestamp      DateTime?      @map("message_timestamp")
-  ingestStatus          HmIngestStatus @default(RECEIVED) @map("ingest_status")
+  messageTimestamp      DateTime?           @map("message_timestamp")
+  ingestStatus          HmIngestStatus      @default(RECEIVED) @map("ingest_status")
   // true if message_id was seen before (deduplicated)
-  isDuplicate           Boolean        @default(false) @map("is_duplicate")
-  payloadJson           Json?          @map("payload_json")
+  isDuplicate           Boolean             @default(false) @map("is_duplicate")
+  payloadJson           Json?               @map("payload_json")
   // Extracted normalized summary (source-agnostic fields)
-  normalizedSummaryJson Json?          @map("normalized_summary_json")
-  errorMessage          String?        @map("error_message")
-  createdAt             DateTime       @default(now()) @map("created_at")
+  normalizedSummaryJson Json?               @map("normalized_summary_json")
+  errorMessage          String?             @map("error_message")
+  // Which HM app-container ingested this message
+  appContainerType      HmAppContainerType? @map("app_container_type")
+  createdAt             DateTime            @default(now()) @map("created_at")
 
   vehicle HighMobilityVehicle? @relation(fields: [highMobilityVehicleId], references: [id], onDelete: SetNull)
 
@@ -3929,6 +4293,7 @@ model HighMobilityStreamSyncLog {
   @@index([topic])
   @@index([createdAt])
   @@index([ingestStatus])
+  @@index([appContainerType])
   @@map("high_mobility_stream_sync_logs")
 }
 
@@ -3954,6 +4319,8 @@ model HmSignalGroupState {
   updatedAt         DateTime       @updatedAt @map("updated_at")
 
   hmVehicle HighMobilityVehicle @relation(fields: [hmVehicleId], references: [id], onDelete: Cascade)
+  // Direct FK to Vehicle enables join-free ownership checks
+  vehicle   Vehicle?            @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@unique([vehicleId, signalGroup], name: "uq_signal_group_vehicle")
   @@index([vehicleId])
@@ -3962,12 +4329,65 @@ model HmSignalGroupState {
   @@map("hm_signal_group_states")
 }
 
-// Phase 2 — MQTT consumer connection state (singleton-ish per environment)
+// Per-VIN latest normalized health state written by HM Health-APP MQTT consumer
+model HmLatestHealthState {
+  id                      String             @id @default(uuid())
+  vin                     String
+  appContainerType        HmAppContainerType @default(HM_HEALTH_APP) @map("app_container_type")
+  hmVehicleId             String?            @map("hm_vehicle_id")
+  lastMessageId           String?            @map("last_message_id")
+  lastReceivedAt          DateTime           @map("last_received_at")
+  dashboardLightsJson     Json?              @map("dashboard_lights_json")
+  brakeLiningPreWarning   Boolean?           @map("brake_lining_pre_warning")
+  engineLimpMode          Boolean?           @map("engine_limp_mode")
+  engineOilLevelJson      Json?              @map("engine_oil_level_json")
+  distanceToNextServiceKm Float?             @map("distance_to_next_service_km")
+  timeToNextServiceDays   Int?               @map("time_to_next_service_days")
+  tirePressureStatusesJson Json?             @map("tire_pressure_statuses_json")
+  tirePressuresJson        Json?             @map("tire_pressures_json")
+  rawSignalsJson          Json?              @map("raw_signals_json")
+  createdAt               DateTime           @default(now()) @map("created_at")
+  updatedAt               DateTime           @updatedAt @map("updated_at")
+
+  @@unique([vin, appContainerType], name: "uq_hm_latest_health_vin_app")
+  @@index([vin])
+  @@index([appContainerType])
+  @@map("hm_latest_health_states")
+}
+
+// Per-VIN latest normalized telemetry state written by HM Telemetry-APP MQTT consumer
+model HmLatestTelemetryState {
+  id                  String             @id @default(uuid())
+  vin                 String
+  appContainerType    HmAppContainerType @default(HM_TELEMETRY_APP) @map("app_container_type")
+  hmVehicleId         String?            @map("hm_vehicle_id")
+  lastMessageId       String?            @map("last_message_id")
+  lastReceivedAt      DateTime           @map("last_received_at")
+  latitude            Float?
+  longitude           Float?
+  speedKmh            Float?             @map("speed_kmh")
+  ignitionOn          Boolean?           @map("ignition_on")
+  odometerKm          Float?             @map("odometer_km")
+  fuelLevelPercent    Float?             @map("fuel_level_percent")
+  batteryVoltage      Float?             @map("battery_voltage")
+  rawSignalsJson      Json?              @map("raw_signals_json")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+
+  @@unique([vin, appContainerType], name: "uq_hm_latest_telemetry_vin_app")
+  @@index([vin])
+  @@index([appContainerType])
+  @@map("hm_latest_telemetry_states")
+}
+
+// MQTT consumer connection state — one row per app-container per environment
 model HighMobilityStreamConsumerState {
   id                String               @id @default(uuid())
   environment       String               // "sandbox" | "live"
   applicationId     String               @map("application_id")
   consumerGroup     String               @map("consumer_group")
+  // Which HM app-container this consumer belongs to
+  appContainerType  HmAppContainerType?  @map("app_container_type")
   connectionState   HmMqttConnectionState @default(DISCONNECTED) @map("connection_state")
   lastConnectedAt   DateTime?            @map("last_connected_at")
   lastMessageAt     DateTime?            @map("last_message_at")
@@ -3977,5 +4397,6 @@ model HighMobilityStreamConsumerState {
 
   @@unique([environment, applicationId, consumerGroup], name: "uq_hm_consumer_state")
   @@index([environment])
+  @@index([appContainerType])
   @@map("high_mobility_stream_consumer_states")
 }

@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { DrivingEventsService } from '../vehicle-intelligence/driving-events/driving-events.service';
 import { TripsService } from '../vehicle-intelligence/trips/trips.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
 import type { RentalDrivingAnalysisPayload } from './rental-driving-analysis.types';
@@ -15,7 +14,6 @@ import {
 export class RentalDrivingAnalysisService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly drivingEventsService: DrivingEventsService,
     private readonly tripsService: TripsService,
     private readonly dtcService: DtcService,
   ) {}
@@ -37,8 +35,7 @@ export class RentalDrivingAnalysisService {
     const vehicleId = booking.vehicleId;
     const driverId = booking.customerId;
 
-    const [insights, tripsInRange, dtcList] = await Promise.all([
-      this.drivingEventsService.getInsights(vehicleId, periodStart, periodEnd),
+    const [tripsInRange, dtcList] = await Promise.all([
       this.tripsService.findByVehicle(vehicleId, {
         from: periodStart,
         to: periodEnd,
@@ -55,15 +52,57 @@ export class RentalDrivingAnalysisService {
       ),
     ]);
 
-    const tripsWithMetrics = tripsInRange as Array<{ distanceKm?: number | null; drivingScore?: number | null }>;
+    const tripsWithMetrics = tripsInRange as Array<{
+      id: string;
+      distanceKm?: number | null;
+      citySharePercent?: number | null;
+      highwaySharePercent?: number | null;
+      countrySharePercent?: number | null;
+      drivingScore?: number | null;
+      totalAccelerationEvents?: number | null;
+      totalBrakingEvents?: number | null;
+      hardAccelerationEvents?: number | null;
+      hardBrakingEvents?: number | null;
+      abuseEvents?: number | null;
+    }>;
+
+    const tripIds = tripsWithMetrics.map((trip) => trip.id);
+    const impactRows = tripIds.length
+      ? await this.prisma.tripDrivingImpact.findMany({
+          where: { tripId: { in: tripIds } },
+          select: { tripId: true, drivingStyleScore: true, safetyScore: true },
+        })
+      : [];
+    const impactMap = new Map(
+      impactRows.map((row) => [
+        row.tripId,
+        {
+          drivingStyleScore: row.drivingStyleScore,
+          safetyScore: row.safetyScore,
+        },
+      ]),
+    );
+
     const periodDistance = tripsWithMetrics.reduce((s, t) => s + (t.distanceKm ?? 0), 0);
     const periodTrips = tripsWithMetrics.length;
-    const scores = tripsWithMetrics.map((t) => t.drivingScore).filter((x): x is number => x != null);
-    const drivingScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
-    const eventsCount = (insights as { total?: number }).total ?? 0;
-    const harshBraking = (insights as { harshBraking?: number }).harshBraking ?? 0;
-    const harshAccel = (insights as { harshAcceleration?: number }).harshAcceleration ?? 0;
-    const abuseCount = 0;
+    const styleScores = tripsWithMetrics
+      .map((trip) => impactMap.get(trip.id)?.drivingStyleScore ?? trip.drivingScore ?? null)
+      .filter((x): x is number => x != null);
+    const safetyScores = tripsWithMetrics
+      .map((trip) => impactMap.get(trip.id)?.safetyScore ?? null)
+      .filter((x): x is number => x != null);
+    const drivingStyleScore =
+      styleScores.length > 0 ? styleScores.reduce((a, b) => a + b, 0) / styleScores.length : null;
+    const safetyScore =
+      safetyScores.length > 0 ? safetyScores.reduce((a, b) => a + b, 0) / safetyScores.length : null;
+
+    const eventsCount = tripsWithMetrics.reduce(
+      (sum, trip) => sum + (trip.totalAccelerationEvents ?? 0) + (trip.totalBrakingEvents ?? 0),
+      0,
+    );
+    const harshBraking = tripsWithMetrics.reduce((sum, trip) => sum + (trip.hardBrakingEvents ?? 0), 0);
+    const harshAccel = tripsWithMetrics.reduce((sum, trip) => sum + (trip.hardAccelerationEvents ?? 0), 0);
+    const abuseCount = tripsWithMetrics.reduce((sum, trip) => sum + (trip.abuseEvents ?? 0), 0);
 
     let cityPct = 0;
     let highwayPct = 0;
@@ -90,7 +129,8 @@ export class RentalDrivingAnalysisService {
       periodEnd,
       vehicle: booking.vehicle,
       customer: booking.customer,
-      drivingScore,
+      drivingStyleScore,
+      safetyScore,
       drivingEventsCount: eventsCount,
       abuseDetectionCount: abuseCount,
       harshBraking,
@@ -114,7 +154,9 @@ export class RentalDrivingAnalysisService {
         overallLevel: payload.overallAssessment.level,
         driverStyleCategory: payload.driverStyle.category,
         riskLevel: payload.riskAnalysis.level,
-        drivingScore: payload.drivingBehavior.drivingScore,
+        drivingScore:
+          payload.drivingBehavior.drivingStyleScore ??
+          payload.drivingBehavior.drivingScore,
         drivingEventsCount: payload.eventSummary.drivingEventsCount ?? undefined,
         abuseDetectionCount: payload.eventSummary.abuseDetectionCount ?? undefined,
         wearImpact: payload.wearImpactAssessment.overallWearImpact,
@@ -132,7 +174,8 @@ export class RentalDrivingAnalysisService {
     periodEnd: Date;
     vehicle: { make: string; model: string; year?: number | null; fuelType?: string | null };
     customer: { firstName: string; lastName: string };
-    drivingScore: number | null;
+    drivingStyleScore: number | null;
+    safetyScore: number | null;
     drivingEventsCount: number;
     abuseDetectionCount: number;
     harshBraking: number;
@@ -143,19 +186,25 @@ export class RentalDrivingAnalysisService {
     countryPct: number;
     tripType: 'mostly_short_distance' | 'mostly_long_distance' | 'mixed';
   }): RentalDrivingAnalysisPayload {
-    const level = ctx.drivingScore != null && ctx.drivingScore >= 70 && ctx.harshBraking + ctx.harshAcceleration < 20
+    const combinedScore = this.computeCombinedScore(ctx.drivingStyleScore, ctx.safetyScore);
+    const level = combinedScore != null && combinedScore >= 70 && ctx.harshBraking + ctx.harshAcceleration < 20
       ? 'good'
-      : ctx.drivingScore != null && ctx.drivingScore >= 50 && ctx.harshBraking + ctx.harshAcceleration < 40
+      : combinedScore != null && combinedScore >= 50 && ctx.harshBraking + ctx.harshAcceleration < 40
         ? 'watch'
         : 'attention';
-    const driverCategory = ctx.drivingScore != null && ctx.drivingScore >= 85 && ctx.harshBraking + ctx.harshAcceleration < 5
+    const driverCategory = combinedScore != null && combinedScore >= 85 && ctx.harshBraking + ctx.harshAcceleration < 5
       ? 'safe'
       : ctx.harshBraking + ctx.harshAcceleration > 30
         ? 'aggressive'
-        : ctx.drivingScore != null && ctx.drivingScore < 50
+        : combinedScore != null && combinedScore < 50
           ? 'high_risk'
           : 'balanced';
-    const riskLevel = ctx.drivingScore != null && ctx.drivingScore >= 80 ? 'low' : ctx.harshBraking + ctx.harshAcceleration > 25 ? 'high' : 'medium';
+    const riskLevel =
+      combinedScore != null && combinedScore >= 80
+        ? 'low'
+        : ctx.harshBraking + ctx.harshAcceleration > 25
+          ? 'high'
+          : 'medium';
     const wearImpact = ctx.harshBraking > 15 || ctx.harshAcceleration > 15 ? (ctx.harshBraking + ctx.harshAcceleration > 40 ? 'high' : 'medium') : 'low';
     const accelLevel = ctx.harshAcceleration > 15 ? 'aggressive' : ctx.harshAcceleration > 5 ? 'moderate' : 'calm';
     const brakeLevel = ctx.harshBraking > 15 ? 'harsh' : ctx.harshBraking > 5 ? 'moderate' : 'calm';
@@ -163,12 +212,19 @@ export class RentalDrivingAnalysisService {
     const positiveSignals: string[] = [];
     const watchpoints: string[] = [];
     const recommendations: string[] = [];
-    if (ctx.drivingScore != null && ctx.drivingScore >= 75) positiveSignals.push('Good overall driving score for the rental period.');
+    if (ctx.drivingStyleScore != null && ctx.drivingStyleScore >= 75) {
+      positiveSignals.push('Good driving style score for the rental period.');
+    }
+    if (ctx.safetyScore != null && ctx.safetyScore >= 75) {
+      positiveSignals.push('Strong safety score with low speeding risk signals.');
+    }
     if (ctx.harshBraking + ctx.harshAcceleration < 10) positiveSignals.push('Few harsh events; smooth driving pattern.');
     if (ctx.harshBraking > 10) watchpoints.push('Elevated harsh braking events — may accelerate brake wear.');
     if (ctx.harshAcceleration > 10) watchpoints.push('Elevated harsh acceleration — consider driver feedback.');
     if (ctx.errorCodeOccurred) watchpoints.push('At least one error code was recorded during the rental period.');
-    if (ctx.drivingScore != null && ctx.drivingScore < 60) recommendations.push('Consider follow-up with driver on driving style.');
+    if (combinedScore != null && combinedScore < 60) {
+      recommendations.push('Consider follow-up with driver on style and safety behavior.');
+    }
     if (ctx.harshBraking > 15) recommendations.push('Inspect brake condition after this rental.');
 
     return {
@@ -205,8 +261,16 @@ export class RentalDrivingAnalysisService {
         temperatureContext: { avgTemperatureC: null, climateNote: '' },
       },
       drivingBehavior: {
-        drivingScore: ctx.drivingScore,
-        safetyStyle: ctx.drivingScore != null && ctx.drivingScore >= 80 ? 'Safety-oriented' : ctx.drivingScore != null && ctx.drivingScore >= 50 ? 'Mixed' : 'Risky tendencies',
+        drivingStyleScore: ctx.drivingStyleScore,
+        safetyScore: ctx.safetyScore,
+        // Compatibility mirror for legacy UI consumers.
+        drivingScore: ctx.drivingStyleScore,
+        safetyStyle:
+          ctx.safetyScore != null && ctx.safetyScore >= 80
+            ? 'Safety-oriented'
+            : ctx.safetyScore != null && ctx.safetyScore >= 50
+              ? 'Mixed'
+              : 'Risky tendencies',
         accelerationBehavior: { level: accelLevel as 'calm' | 'moderate' | 'aggressive', summary: `${accelLevel} acceleration pattern.` },
         brakingBehavior: { level: brakeLevel as 'calm' | 'moderate' | 'harsh', summary: `${brakeLevel} braking pattern.` },
       },
@@ -225,6 +289,16 @@ export class RentalDrivingAnalysisService {
       watchpoints,
       recommendations: recommendations.length ? recommendations : ['Continue standard post-rental checks.'],
     };
+  }
+
+  private computeCombinedScore(
+    drivingStyleScore: number | null,
+    safetyScore: number | null,
+  ): number | null {
+    if (drivingStyleScore == null && safetyScore == null) return null;
+    if (drivingStyleScore == null) return safetyScore;
+    if (safetyScore == null) return drivingStyleScore;
+    return Math.round(((drivingStyleScore + safetyScore) / 2) * 100) / 100;
   }
 
   async findAll(

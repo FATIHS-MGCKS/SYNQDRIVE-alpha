@@ -31,6 +31,7 @@ function mapApiToVehicleData(v: any): VehicleData {
     badge: v.badge ?? 0,
     odometer: v.odometer ?? 0,
     fuel: v.fuel ?? 0,
+    // `battery` in rental runtime is EV energy/SoC percent (not battery health).
     battery: v.battery ?? 0,
     speed: v.speed ?? 0,
     coolant: v.coolant ?? 0,

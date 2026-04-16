@@ -25,7 +25,7 @@ interface TripData {
   id: string;
   vehicleId: string;
   dimoSegmentId?: string;
-  tripStatus: 'ONGOING' | 'COMPLETED';
+  tripStatus: 'ONGOING' | 'COMPLETED' | 'CANCELLED';
   startTime: string;
   endTime?: string;
   startLatitude?: number;
@@ -37,6 +37,9 @@ interface TripData {
   avgSpeedKmh?: number;
   maxSpeedKmh?: number;
   drivingScore?: number;
+  drivingStyleScore?: number;
+  safetyScore?: number;
+  scoreSource?: 'trip_driving_impact' | 'vehicle_trip_compat' | 'derived';
   fuelUsedLiters?: number;
   avgConsumptionLPer100Km?: number;
   fuelConfidence?: string;
@@ -61,9 +64,17 @@ interface TripData {
   speedingDurationS?: number;
   speedingExposurePct?: number;
   avgOverSpeedKmh?: number;
-  harshBrakeCount: number;
-  harshAccelCount: number;
-  harshCornerCount: number;
+  harshBrakeCount?: number;
+  harshAccelCount?: number;
+  harshCornerCount?: number;
+  totalAccelerationEvents?: number;
+  hardAccelerationEvents?: number;
+  totalBrakingEvents?: number;
+  hardBrakingEvents?: number;
+  fullBrakingEvents?: number;
+  corneringEvents?: number;
+  abuseEvents?: number;
+  speedingEvents?: number;
   accelerationEventCount?: number;
   brakingEventCount?: number;
   abuseEventCount?: number;
@@ -76,13 +87,26 @@ interface TripData {
   longIdleCount?: number;
   abuseScore?: number;
   behaviorEnrichedAt?: string;
+  /**
+   * @deprecated Internal pipeline status — do NOT use for UI decisions.
+   * Use `behaviorReady` instead.
+   */
   behaviorEnrichmentStatus?: BehaviorEnrichmentStatus;
   behaviorEnrichmentAttempts?: number;
   drivingImpactComputedAt?: string;
   gapEnded?: boolean;
   enrichedAt?: string;
   driverName?: string;
+  assignmentStatus?: 'ASSIGNED_DRIVER' | 'ASSIGNED_USER' | 'ASSIGNED_BOOKING_CUSTOMER' | 'PRIVATE_UNASSIGNED' | 'UNKNOWN_ASSIGNMENT' | null;
+  assignmentSubjectType?: 'DRIVER' | 'USER' | 'BOOKING_CUSTOMER' | null;
+  assignmentSubjectId?: string | null;
+  isPrivateTrip?: boolean;
+  scoreEligible?: boolean;
   events?: any[];
+  /** True when behavior analysis is complete and counts/events can be displayed. */
+  behaviorReady?: boolean;
+  /** True when trip data is incomplete (no end time, low data quality, anomaly). */
+  detailsLimited?: boolean;
 }
 
 interface RoutePoint {
@@ -109,7 +133,7 @@ function getSpeedingSections(trip: TripData, enr?: TripEnrichment | null): Speed
 }
 
 function formatDuration(minutes: number | null | undefined): string {
-  if (!minutes) return '--';
+  if (minutes == null) return '--';
   const h = Math.floor(minutes / 60);
   const m = Math.round(minutes % 60);
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
@@ -198,11 +222,10 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
     if (!vehicleId || syncing) return;
     setSyncing(true); setSyncMessage(null);
     try {
-      const res = await api.vehicleIntelligence.syncTrips(vehicleId) as { synced?: number; message?: string };
-      if (res?.message) setSyncMessage(res.message);
-      else if (res?.synced != null) setSyncMessage(res.synced === 0 ? 'No new trips in range' : `Synced ${res.synced} trip${res.synced === 1 ? '' : 's'}`);
+      const res = await api.vehicleIntelligence.reconcileTrips(vehicleId);
+      setSyncMessage(res?.message ?? (res?.applied === 0 ? 'No missing trips found' : `${res?.applied} trip(s) repaired`));
       await loadTrips();
-    } catch { setSyncMessage('Sync failed'); }
+    } catch { setSyncMessage('Check failed'); }
     setSyncing(false);
   };
 
@@ -225,11 +248,17 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
     } catch { /* fallback to empty */ }
     setRouteLoading(false);
 
-    if (trip.behaviorEnrichedAt && !behaviorEvents[trip.id]) {
+    if (!behaviorEvents[trip.id]) {
       setBehaviorLoading(trip.id);
       try {
-        const evts = await api.vehicleIntelligence.tripBehaviorEvents(vehicleId, trip.id);
-        setBehaviorEvents((prev) => ({ ...prev, [trip.id]: evts ?? [] }));
+        const res = await api.vehicleIntelligence.tripBehaviorEvents(vehicleId, trip.id);
+        // Only store events when enrichment is complete (prevents false-zero display)
+        if (res?.status === 'ready') {
+          setBehaviorEvents((prev) => ({ ...prev, [trip.id]: res.events ?? [] }));
+        } else {
+          // Mark as pending so UI can show "analyzing" instead of empty
+          setBehaviorEvents((prev) => ({ ...prev, [trip.id]: [] }));
+        }
       } catch { /* silent */ }
       setBehaviorLoading(null);
     }
@@ -471,7 +500,7 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
       const coords = (mapGeoJson.lines.features[0]?.geometry as GeoJSON.LineString)?.coordinates ?? [];
       if (coords.length > 0) {
         const bounds = new mapboxgl.LngLatBounds();
-        coords.forEach((c: [number, number]) => bounds.extend(c));
+        coords.forEach((c) => bounds.extend(c as [number, number]));
         map.fitBounds(bounds, { padding: 60, maxZoom: 15 });
       }
     } else {
@@ -516,8 +545,10 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
   useEffect(() => {
     if (!selectedTrip || !vehicleId || behaviorLoading) return;
     if (selectedTrip.tripStatus !== 'COMPLETED') return;
+    // behaviorReady=true means enrichment is already done — skip
+    if (selectedTrip.behaviorReady === true) return;
+    // Legacy guard: if the status field is present and set, skip
     const status = selectedTrip.behaviorEnrichmentStatus;
-    // Only auto-trigger for truly unprocessed trips (null / undefined status)
     if (status !== null && status !== undefined) return;
     if (autoEnrichTriggeredRef.current.has(selectedTrip.id)) return;
     autoEnrichTriggeredRef.current.add(selectedTrip.id);
@@ -529,8 +560,8 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
     setBehaviorLoading(tripId);
     api.vehicleIntelligence.enrichTripBehavior(vehicleId, tripId)
       .then(async () => {
-        const evts = await api.vehicleIntelligence.tripBehaviorEvents(vehicleId, tripId).catch(() => []);
-        setBehaviorEvents((prev) => ({ ...prev, [tripId]: evts ?? [] }));
+        const evts = await api.vehicleIntelligence.tripBehaviorEvents(vehicleId, tripId).catch(() => null);
+        setBehaviorEvents((prev) => ({ ...prev, [tripId]: evts?.events ?? [] }));
         loadTrips();
       })
       .catch(() => {
@@ -543,12 +574,20 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
   }, [selectedTrip?.id]);
 
   // Use behavior-enriched counters when available (semantically correct).
-  // Fall back to legacy harsh counts only for unenriched trips.
-  const totalEvents = (t: TripData) => {
-    if (t.behaviorEnrichedAt) {
-      return (t.accelerationEventCount ?? 0) + (t.brakingEventCount ?? 0) + (t.abuseEventCount ?? 0);
+  // Returns null when analysis is not complete — callers must NOT display null as zero.
+  const totalEvents = (t: TripData): number | null => {
+    // If we have the explicit readiness flag and it says not ready, return null.
+    // This prevents false-zero display when no analysis has run.
+    if (t.behaviorReady === false) return null;
+    if (t.behaviorEnrichedAt || t.behaviorReady) {
+      return (
+        (t.totalAccelerationEvents ?? t.accelerationEventCount ?? 0) +
+        (t.totalBrakingEvents ?? t.brakingEventCount ?? 0) +
+        (t.abuseEvents ?? t.abuseEventCount ?? 0)
+      );
     }
-    return t.harshBrakeCount + t.harshAccelCount + t.harshCornerCount;
+    // Legacy fallback only for trips that predate the behaviorReady flag
+    return (t.harshBrakeCount ?? 0) + (t.harshAccelCount ?? 0) + (t.harshCornerCount ?? 0);
   };
   const hasRoadType = (t: TripData) => t.citySharePercent != null || t.highwaySharePercent != null;
 
@@ -584,11 +623,11 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
           </div>
           <div className="flex items-center gap-2">
             {syncMessage && (
-              <span className={`text-xs ${syncMessage.includes('Synced') ? (isDark ? 'text-green-400' : 'text-green-600') : isDark ? 'text-amber-400' : 'text-amber-600'}`}>{syncMessage}</span>
+              <span className={`text-xs ${(syncMessage.includes('No missing') || syncMessage.includes('repaired') || syncMessage.includes('found')) ? (isDark ? 'text-green-400' : 'text-green-600') : isDark ? 'text-amber-400' : 'text-amber-600'}`}>{syncMessage}</span>
             )}
             <button onClick={handleSync} disabled={syncing || !vehicleId}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isDark ? 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/30' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'} disabled:opacity-50`}>
-              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} /> Sync Trips
+              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} /> Check for Missing Trips
             </button>
           </div>
         </div>
@@ -730,7 +769,7 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
             <p className={`text-xs mt-1 text-muted-foreground`}>Trips werden aus DIMO geladen. Fahrzeug mit DIMO verbinden und Sync starten.</p>
             <button onClick={handleSync} disabled={syncing}
               className="mt-4 inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
-              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> Sync Trips
+              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> Check for Missing Trips
             </button>
           </div>
         )}
@@ -742,6 +781,8 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
             const events = totalEvents(trip);
             const consumption = getConsumptionDisplay(trip, enr);
             const isOngoing = trip.tripStatus === 'ONGOING';
+            const styleScore = trip.drivingStyleScore ?? trip.drivingScore ?? null;
+            const safetyScore = trip.safetyScore ?? null;
 
             return (
               <div key={trip.id} onClick={() => handleSelectTrip(trip)}
@@ -771,11 +812,22 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
                         }`}>
                           {isOngoing ? 'ongoing' : 'completed'}
                         </span>
+                        {trip.detailsLimited && (
+                          <span className="px-1.5 py-0.5 rounded text-[8px] bg-muted/80 text-muted-foreground" title="Some trip details are unavailable">limited</span>
+                        )}
+                        {trip.behaviorReady === false && !trip.detailsLimited && (
+                          <span className="px-1.5 py-0.5 rounded text-[8px] bg-blue-500/10 text-blue-400" title="Behavior analysis in progress">analyzing</span>
+                        )}
                         {trip.gapEnded && (
                           <span className="px-1 py-0.5 rounded text-[8px] bg-muted text-muted-foreground">gap</span>
                         )}
                         {trip.driverName && (
                           <span className={`flex items-center gap-1 text-[10px] text-muted-foreground`}><User className="w-3 h-3" />{trip.driverName}</span>
+                        )}
+                        {(trip.isPrivateTrip || trip.assignmentStatus === 'PRIVATE_UNASSIGNED') && (
+                          <span className="px-1.5 py-0.5 rounded text-[8px] bg-purple-500/10 text-purple-400 uppercase tracking-wider">
+                            private
+                          </span>
                         )}
                       </div>
                     </div>
@@ -783,9 +835,15 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
                     <div className="flex items-center gap-3 shrink-0">
                       <Metric isDark={isDark} label="Dist" value={formatDistance(trip.distanceKm)} />
                       <Metric isDark={isDark} label="Time" value={formatDuration(trip.durationMinutes)} />
-                      <Metric isDark={isDark} label="Events" value={String(events)} color={events > 0 ? 'orange' : 'green'} icon={<Zap className="w-3 h-3" />} />
-                      <Metric isDark={isDark} label="Score" value={trip.drivingScore != null ? String(Math.round(trip.drivingScore)) : '--'}
-                        color={trip.drivingScore != null ? (trip.drivingScore >= 90 ? 'green' : trip.drivingScore >= 75 ? 'blue' : 'orange') : undefined}
+                      <Metric isDark={isDark} label="Events"
+                        value={events === null ? '…' : String(events)}
+                        color={events === null ? undefined : events > 0 ? 'orange' : 'green'}
+                        icon={<Zap className="w-3 h-3" />} />
+                      <Metric isDark={isDark} label="Style" value={styleScore != null ? String(Math.round(styleScore)) : '--'}
+                        color={styleScore != null ? (styleScore >= 90 ? 'green' : styleScore >= 75 ? 'blue' : 'orange') : undefined}
+                        icon={<Award className="w-3 h-3" />} />
+                      <Metric isDark={isDark} label="Safety" value={safetyScore != null ? String(Math.round(safetyScore)) : '--'}
+                        color={safetyScore != null ? (safetyScore >= 90 ? 'green' : safetyScore >= 75 ? 'blue' : 'orange') : undefined}
                         icon={<Award className="w-3 h-3" />} />
                       {trip.outsideTemperatureStartC != null && (
                         <Metric isDark={isDark} label="Temp" value={`${trip.outsideTemperatureStartC.toFixed(0)}°C`} icon={<Thermometer className="w-3 h-3" />} />
@@ -851,15 +909,15 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
                     <TripAddresses trip={trip} isDark={isDark} />
 
                     <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3">
-                      <StatCell isDark={isDark} label="Accel Events"
-                        value={trip.behaviorEnrichedAt ? (trip.accelerationEventCount ?? 0) : '--'}
-                        warn={trip.behaviorEnrichedAt ? (trip.hardAccelerationCount ?? 0) > 0 : false} />
-                      <StatCell isDark={isDark} label="Brake Events"
-                        value={trip.behaviorEnrichedAt ? (trip.brakingEventCount ?? 0) : '--'}
-                        warn={trip.behaviorEnrichedAt ? (trip.hardBrakingCount ?? 0) > 0 : false} />
-                      <StatCell isDark={isDark} label="Abuse Events"
-                        value={trip.behaviorEnrichedAt ? (trip.abuseEventCount ?? 0) : '--'}
-                        warn={trip.behaviorEnrichedAt ? (trip.abuseEventCount ?? 0) > 0 : false} />
+                      <StatCell isDark={isDark} label="Accel (total)"
+                        value={trip.behaviorReady ? (trip.totalAccelerationEvents ?? trip.accelerationEventCount ?? 0) : '--'}
+                        warn={trip.behaviorReady ? (trip.hardAccelerationEvents ?? trip.hardAccelerationCount ?? 0) > 0 : false} />
+                      <StatCell isDark={isDark} label="Brake (total)"
+                        value={trip.behaviorReady ? (trip.totalBrakingEvents ?? trip.brakingEventCount ?? 0) : '--'}
+                        warn={trip.behaviorReady ? (trip.hardBrakingEvents ?? trip.hardBrakingCount ?? 0) > 0 : false} />
+                      <StatCell isDark={isDark} label="Abuse"
+                        value={trip.behaviorReady ? (trip.abuseEvents ?? trip.abuseEventCount ?? 0) : '--'}
+                        warn={trip.behaviorReady ? (trip.abuseEvents ?? trip.abuseEventCount ?? 0) > 0 : false} />
                       {trip.avgRpm != null && <StatCell isDark={isDark} label="Avg RPM" value={`${Math.round(trip.avgRpm)}`} />}
                       {trip.avgEngineLoad != null && <StatCell isDark={isDark} label="Avg Load" value={`${trip.avgEngineLoad.toFixed(1)}%`} />}
                       {trip.avgThrottlePosition != null && <StatCell isDark={isDark} label="Avg Throttle" value={`${trip.avgThrottlePosition.toFixed(1)}%`} />}
@@ -879,7 +937,7 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
                         try {
                           await api.vehicleIntelligence.enrichTripBehavior(vehicleId, trip.id);
                           const evts = await api.vehicleIntelligence.tripBehaviorEvents(vehicleId, trip.id);
-                          setBehaviorEvents((prev) => ({ ...prev, [trip.id]: evts ?? [] }));
+                          setBehaviorEvents((prev) => ({ ...prev, [trip.id]: evts?.events ?? [] }));
                           loadTrips();
                         } catch { /* silent */ }
                         setBehaviorLoading(null);
@@ -1084,16 +1142,38 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
 
                           <div>
                             <div className="flex items-center gap-1.5 mb-1">
-                              <Shield className={`w-3.5 h-3.5 ${(trip.abuseEventCount ?? 0) > 3 ? 'text-red-400' : (trip.abuseEventCount ?? 0) > 0 ? 'text-amber-400' : 'text-green-400'}`} />
+                              <Shield
+                                className={`w-3.5 h-3.5 ${
+                                  (trip.abuseEvents ?? trip.abuseEventCount ?? 0) > 3
+                                    ? 'text-red-400'
+                                    : (trip.abuseEvents ?? trip.abuseEventCount ?? 0) > 0
+                                      ? 'text-amber-400'
+                                      : 'text-green-400'
+                                }`}
+                              />
                               <span className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Behavior Analysis</span>
                             </div>
-                            {trip.behaviorEnrichedAt ? (
+                            {trip.behaviorReady ? (
                               <>
-                                <p className={`text-sm font-bold ${(trip.abuseEventCount ?? 0) > 3 ? 'text-red-400' : (trip.abuseEventCount ?? 0) > 0 ? (isDark ? 'text-amber-400' : 'text-amber-600') : (isDark ? 'text-green-400' : 'text-green-600')}`}>
-                                  {(trip.abuseEventCount ?? 0) > 3 ? 'High Risk' : (trip.abuseEventCount ?? 0) > 0 ? 'Moderate' : 'Clean'}
+                                <p
+                                  className={`text-sm font-bold ${
+                                    (trip.abuseEvents ?? trip.abuseEventCount ?? 0) > 3
+                                      ? 'text-red-400'
+                                      : (trip.abuseEvents ?? trip.abuseEventCount ?? 0) > 0
+                                        ? (isDark ? 'text-amber-400' : 'text-amber-600')
+                                        : (isDark ? 'text-green-400' : 'text-green-600')
+                                  }`}
+                                >
+                                  {(trip.abuseEvents ?? trip.abuseEventCount ?? 0) > 3
+                                    ? 'High Risk'
+                                    : (trip.abuseEvents ?? trip.abuseEventCount ?? 0) > 0
+                                      ? 'Moderate'
+                                      : 'Clean'}
                                 </p>
                                 <p className={`text-[10px] text-muted-foreground`}>
-                                  {trip.accelerationEventCount ?? 0} accel · {trip.brakingEventCount ?? 0} brake · {trip.abuseEventCount ?? 0} abuse
+                                  {trip.totalAccelerationEvents ?? trip.accelerationEventCount ?? 0} accel ·{' '}
+                                  {trip.totalBrakingEvents ?? trip.brakingEventCount ?? 0} brake ·{' '}
+                                  {trip.abuseEvents ?? trip.abuseEventCount ?? 0} abuse
                                 </p>
                               </>
                             ) : (
@@ -1119,7 +1199,7 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
             <div className={`text-center py-12 text-muted-foreground`}>
               <Navigation className="w-9 h-9 mx-auto mb-3 opacity-50" />
               <p className="text-base font-medium">No trips found</p>
-              <p className="text-xs mt-1">{vehicleId ? 'Click "Sync Trips" to fetch trips from DIMO' : 'Select a vehicle first'}</p>
+              <p className="text-xs mt-1">{vehicleId ? 'Click "Check for Missing Trips" to scan for gaps' : 'Select a vehicle first'}</p>
             </div>
           )}
         </div>
@@ -1265,8 +1345,10 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
     );
   }
 
+  const behaviorIsReady = trip.behaviorReady ?? !!trip.behaviorEnrichedAt;
+
   // Not yet processed — show analyze button
-  if (!trip.behaviorEnrichedAt) {
+  if (!behaviorIsReady) {
     return (
       <div className="rounded-lg p-4 mb-3 border border-border bg-card">
         <div className="flex items-center justify-between">
@@ -1286,9 +1368,33 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
   }
 
   const sections = [
-    { key: 'accel', label: 'Acceleration', icon: <ArrowUp className="w-3.5 h-3.5" />, count: trip.accelerationEventCount ?? accelEvents.length, hardCount: trip.hardAccelerationCount ?? 0, events: accelEvents, color: isDark ? 'text-blue-400' : 'text-blue-600' },
-    { key: 'brake', label: 'Braking', icon: <ArrowDown className="w-3.5 h-3.5" />, count: trip.brakingEventCount ?? brakeEvents.length, hardCount: trip.hardBrakingCount ?? 0, events: brakeEvents, color: isDark ? 'text-orange-400' : 'text-orange-600' },
-    { key: 'abuse', label: 'Abuse Detection', icon: <Shield className="w-3.5 h-3.5" />, count: trip.abuseEventCount ?? abuseEvents.length, hardCount: 0, events: abuseEvents, color: isDark ? 'text-red-400' : 'text-red-600' },
+    {
+      key: 'accel',
+      label: 'Acceleration',
+      icon: <ArrowUp className="w-3.5 h-3.5" />,
+      count: trip.totalAccelerationEvents ?? trip.accelerationEventCount ?? accelEvents.length,
+      hardCount: trip.hardAccelerationEvents ?? trip.hardAccelerationCount ?? 0,
+      events: accelEvents,
+      color: isDark ? 'text-blue-400' : 'text-blue-600',
+    },
+    {
+      key: 'brake',
+      label: 'Braking',
+      icon: <ArrowDown className="w-3.5 h-3.5" />,
+      count: trip.totalBrakingEvents ?? trip.brakingEventCount ?? brakeEvents.length,
+      hardCount: trip.hardBrakingEvents ?? trip.hardBrakingCount ?? 0,
+      events: brakeEvents,
+      color: isDark ? 'text-orange-400' : 'text-orange-600',
+    },
+    {
+      key: 'abuse',
+      label: 'Abuse Detection',
+      icon: <Shield className="w-3.5 h-3.5" />,
+      count: trip.abuseEvents ?? trip.abuseEventCount ?? abuseEvents.length,
+      hardCount: 0,
+      events: abuseEvents,
+      color: isDark ? 'text-red-400' : 'text-red-600',
+    },
   ];
 
   return (

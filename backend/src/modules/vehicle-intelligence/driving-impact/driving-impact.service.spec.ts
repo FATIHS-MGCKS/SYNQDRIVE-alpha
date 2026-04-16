@@ -20,6 +20,7 @@ import {
   computeHighSpeedStressScore,
   computeThermalBrakeStressScore,
   computeDrivingStyleScore,
+  computeSafetyScore,
 } from './driving-impact-scorer';
 
 import { DrivingImpactService } from './driving-impact.service';
@@ -268,15 +269,50 @@ describe('computeDrivingStyleScore', () => {
   });
 });
 
+describe('computeSafetyScore', () => {
+  it('returns 100 with no speeding exposure', () => {
+    expect(
+      computeSafetyScore({
+        speedingExposurePct: 0,
+        maxOverSpeedKmh: 0,
+        avgOverSpeedKmh: 0,
+        speedingSectionCount: 0,
+      }),
+    ).toBe(100);
+  });
+
+  it('decreases when exposure and severity increase', () => {
+    const safe = computeSafetyScore({
+      speedingExposurePct: 2,
+      maxOverSpeedKmh: 5,
+      avgOverSpeedKmh: 3,
+      speedingSectionCount: 1,
+    });
+    const risky = computeSafetyScore({
+      speedingExposurePct: 35,
+      maxOverSpeedKmh: 30,
+      avgOverSpeedKmh: 15,
+      speedingSectionCount: 8,
+    });
+    expect(risky).toBeLessThan(safe);
+  });
+});
+
 // ── DrivingImpactService with mocked Prisma ───────────────────────────────────
 
 function makeMockPrisma() {
   return {
-    vehicleTrip: { findUnique: jest.fn() },
+    vehicleTrip: { findUnique: jest.fn(), update: jest.fn() },
     tripBehaviorEvent: { count: jest.fn(), findMany: jest.fn() },
     drivingEvent: { findMany: jest.fn() },
     tripDrivingImpact: { upsert: jest.fn(), findMany: jest.fn(), findUnique: jest.fn() },
     vehicleDrivingImpactCurrent: { upsert: jest.fn(), findUnique: jest.fn() },
+  } as any;
+}
+
+function makeMockMetrics() {
+  return {
+    tripScoreDrift: { inc: jest.fn() },
   } as any;
 }
 
@@ -303,11 +339,14 @@ function makeBaseTripRow(overrides: Partial<any> = {}) {
 describe('DrivingImpactService.computeForTrip', () => {
   let service: DrivingImpactService;
   let prisma: ReturnType<typeof makeMockPrisma>;
+  let metrics: ReturnType<typeof makeMockMetrics>;
 
   beforeEach(() => {
     prisma = makeMockPrisma();
+    metrics = makeMockMetrics();
     prisma.drivingEvent.findMany.mockResolvedValue([]);
-    service = new DrivingImpactService(prisma);
+    prisma.vehicleTrip.update.mockResolvedValue({});
+    service = new DrivingImpactService(prisma, metrics);
   });
 
   it('skips trips below minimum distance threshold', async () => {
@@ -351,7 +390,14 @@ describe('DrivingImpactService.computeForTrip', () => {
     expect(typeof createArg.longitudinalStressScore).toBe('number');
     expect(typeof createArg.brakingStressScore).toBe('number');
     expect(typeof createArg.drivingStyleScore).toBe('number');
+    expect(typeof createArg.safetyScore).toBe('number');
     expect(createArg.modelVersion).toBe(C.MODEL_VERSION);
+    expect(prisma.vehicleTrip.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'trip-1' },
+        data: expect.objectContaining({ drivingScore: expect.any(Number) }),
+      }),
+    );
   });
 
   it('V3 LTE_R1: derives extreme braking and brake statistics from DrivingEvent (TELEMETRY_EVENTS)', async () => {
@@ -464,6 +510,19 @@ describe('DrivingImpactService.computeForTrip', () => {
     expect(upsertArg.where.vehicleId).toBe('vehicle-1');
     expect(upsertArg.create.windowDays).toBe(C.ROLLING_WINDOW_DAYS);
     expect(upsertArg.create.modelVersion).toBe(C.MODEL_VERSION);
+  });
+
+  it('emits score drift metric when legacy score diverges', async () => {
+    prisma.vehicleTrip.findUnique.mockResolvedValue(makeBaseTripRow({ drivingScore: 30 }));
+    prisma.tripBehaviorEvent.count.mockResolvedValue(0);
+    prisma.tripBehaviorEvent.findMany.mockResolvedValue([]);
+    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
+    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
+
+    await service.computeForTrip('trip-1', 'vehicle-1');
+
+    expect(metrics.tripScoreDrift.inc).toHaveBeenCalled();
   });
 });
 

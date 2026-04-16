@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { api } from '../../lib/api';
 import {
   isMeaningfulMovement,
@@ -8,58 +8,15 @@ import {
   type DisplayIgnition,
   type OnlineStatus,
 } from '../../lib/liveMapUtils';
+import {
+  type LiveTelemetrySnapshot,
+  useVehicleLiveMapStore,
+} from '../stores/useVehicleLiveMapStore';
 
 const GPS_POLL_MS = 5_000;
 const DASHBOARD_POLL_MS = 30_000;
 const MAX_HISTORY = 10;
 const JITTER_THRESHOLD_M = 8;
-
-export interface LiveTelemetrySnapshot {
-  speed: number;
-  fuel: number;
-  coolant: number;
-  battery: number;
-  lvBatteryVoltage: number;
-  odometer: number;
-  engineLoad?: number;
-  ignitionOn?: boolean;
-}
-
-export interface LiveMapTelemetryState {
-  targetPosition: [number, number] | null;
-  locationHistory: Array<[number, number]>;
-  heading: number | null;
-  speedKmh: number | null;
-  vehicleState: VehicleStateLabel;
-  isMoving: boolean;
-  snapshot: LiveTelemetrySnapshot | null;
-  lastLocationAt: number | null;
-  isLiveTracking: boolean;
-  lastSignal: string;
-  signalAgeMs: number;
-  isFresh: boolean;
-  onlineStatus: OnlineStatus;
-  displayState: VehicleStateLabel;
-  displayIgnition: DisplayIgnition;
-  displaySpeed: number | null;
-  displayCoolant: number | null;
-  displayEngineLoad: number | null;
-  tripDetectionState: string | null;
-  gpsSource: 'dimo' | 'cache' | null;
-}
-
-function getDefaultSnapshot(): LiveTelemetrySnapshot {
-  return {
-    speed: 0,
-    fuel: 0,
-    coolant: 0,
-    battery: 0,
-    lvBatteryVoltage: 0,
-    odometer: 0,
-    engineLoad: 0,
-    ignitionOn: false,
-  };
-}
 
 /**
  * Adaptive live-telemetry hook for the Vehicle Detail Overview tab.
@@ -68,62 +25,57 @@ function getDefaultSnapshot(): LiveTelemetrySnapshot {
  *  1. GPS cycle: every 5s → /live-gps (direct DIMO proxy, no DB)
  *     Only runs when isLiveTracking is true.
  *  2. Dashboard cycle: every 30s → /telemetry (full snapshot from DB)
- *     Always runs to keep fuel, battery, ignition, etc. current.
+ *     Always runs to keep fuel, EV SoC (`battery`), ignition, etc. current.
  *
  * When not live tracking, GPS comes from the dashboard cycle (30s).
  */
 export function useLiveVehicleTelemetry(
   vehicleId: string | null,
   orgId: string,
-): LiveMapTelemetryState {
-  const [targetPosition, setTargetPosition] = useState<[number, number] | null>(null);
-  const [locationHistory, setLocationHistory] = useState<Array<[number, number]>>([]);
-  const [heading, setHeading] = useState<number | null>(null);
-  const [speedKmh, setSpeedKmh] = useState<number | null>(null);
-  const [vehicleState, setVehicleState] = useState<VehicleStateLabel>('PARKED');
-  const [isMoving, setIsMoving] = useState(false);
-  const [snapshot, setSnapshot] = useState<LiveTelemetrySnapshot | null>(null);
-  const [lastLocationAt, setLastLocationAt] = useState<number | null>(null);
-  const [isLiveTracking, setIsLiveTracking] = useState(false);
-  const [gpsSource, setGpsSource] = useState<'dimo' | 'cache' | null>(null);
-
-  const [lastSignal, setLastSignal] = useState('');
-  const [signalAgeMs, setSignalAgeMs] = useState(0);
-  const [isFresh, setIsFresh] = useState(false);
-  const [onlineStatus, setOnlineStatus] = useState<OnlineStatus>('OFFLINE');
-  const [displayState, setDisplayState] = useState<VehicleStateLabel>('PARKED');
-  const [displayIgnition, setDisplayIgnition] = useState<DisplayIgnition>('UNKNOWN');
-  const [displaySpeed, setDisplaySpeed] = useState<number | null>(null);
-  const [displayCoolant, setDisplayCoolant] = useState<number | null>(null);
-  const [displayEngineLoad, setDisplayEngineLoad] = useState<number | null>(null);
-  const [tripDetectionState, setTripDetectionState] = useState<string | null>(null);
-
+): void {
   const lastTargetRef = useRef<[number, number] | null>(null);
-  const snapshotRef = useRef<LiveTelemetrySnapshot>(getDefaultSnapshot());
+  const locationHistoryRef = useRef<Array<[number, number]>>([]);
   const liveRef = useRef(false);
   const gpsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelledRef = useRef(false);
 
-  const applyGpsPoint = useCallback((lat: number, lng: number, speed: number | null, source: 'dimo' | 'cache') => {
-    const newPos: [number, number] = [lng, lat];
-    setLastLocationAt(Date.now());
-    setGpsSource(source);
-    if (speed != null) setSpeedKmh(speed);
-
-    setLocationHistory((prev) => {
-      const next = [...prev, newPos].slice(-MAX_HISTORY);
-      const prevPos = lastTargetRef.current ?? (next.length >= 2 ? next[next.length - 2] : null);
+  const applyGpsPoint = useCallback(
+    (lat: number, lng: number, speed: number | null, source: 'dimo' | 'cache') => {
+      const newPos: [number, number] = [lng, lat];
+      const nextHistory = [...locationHistoryRef.current, newPos].slice(-MAX_HISTORY);
+      const prevPos =
+        lastTargetRef.current ??
+        (nextHistory.length >= 2 ? nextHistory[nextHistory.length - 2] : null);
       const meaningful = prevPos ? isMeaningfulMovement(prevPos, newPos, JITTER_THRESHOLD_M) : true;
+      const heading = stableHeadingDeg(nextHistory);
+      const isMoving =
+        nextHistory.length >= 2
+          ? isMeaningfulMovement(
+              nextHistory[nextHistory.length - 2],
+              nextHistory[nextHistory.length - 1],
+              JITTER_THRESHOLD_M,
+            )
+          : false;
+
+      locationHistoryRef.current = nextHistory;
       if (meaningful) {
         lastTargetRef.current = newPos;
-        setTargetPosition(newPos);
-        const h = stableHeadingDeg(next);
-        if (h != null) setHeading(h);
       }
-      return next;
-    });
-  }, []);
+
+      useVehicleLiveMapStore.setState((state) => ({
+        locationHistory: nextHistory,
+        lastConfirmedPosition: newPos,
+        lastLocationAt: Date.now(),
+        gpsSource: source,
+        speedKmh: speed ?? state.speedKmh,
+        targetPosition: meaningful ? newPos : state.targetPosition,
+        heading: heading ?? state.heading,
+        isMoving,
+      }));
+    },
+    [],
+  );
 
   // ── GPS cycle: direct DIMO via /live-gps ────────────────────────────
   const fetchGps = useCallback(async () => {
@@ -136,7 +88,7 @@ export function useLiveVehicleTelemetry(
         applyGpsPoint(lat, lng, data.speedKmh, data.source);
       }
     } catch {
-      // Keep previous position on error
+      // Keep previous position on error.
     }
   }, [vehicleId, orgId, applyGpsPoint]);
 
@@ -174,35 +126,56 @@ export function useLiveVehicleTelemetry(
       const rawIgnition = data.isIgnitionOn;
       const backendLive = data.isLiveTracking === true;
       const ignitionOn = rawIgnition === true || (rawIgnition == null && speed > 0);
+      const onlineStatus: OnlineStatus =
+        data.onlineStatus === 'ONLINE' ||
+        data.onlineStatus === 'STANDBY' ||
+        data.onlineStatus === 'OFFLINE'
+          ? data.onlineStatus
+          : 'OFFLINE';
+      const displayState: VehicleStateLabel =
+        data.displayState === 'MOVING' ||
+        data.displayState === 'IDLE' ||
+        data.displayState === 'PARKED'
+          ? data.displayState
+          : deriveVehicleState(speed > 3, ignitionOn, engineLoad);
+      const displayIgnition: DisplayIgnition =
+        data.displayIgnition === 'ON' ||
+        data.displayIgnition === 'OFF' ||
+        data.displayIgnition === 'UNKNOWN'
+          ? data.displayIgnition
+          : 'UNKNOWN';
 
       const snap: LiveTelemetrySnapshot = {
         speed,
         fuel: typeof data.fuel === 'number' ? data.fuel : 0,
         coolant: typeof data.coolant === 'number' ? data.coolant : 0,
+        // `battery` is generic EV energy state-of-charge (%), not health.
         battery: typeof data.battery === 'number' ? data.battery : 0,
         lvBatteryVoltage: typeof data.lvBatteryVoltage === 'number' ? data.lvBatteryVoltage : 0,
         odometer: typeof data.odometer === 'number' ? data.odometer : 0,
         engineLoad,
         ignitionOn,
       };
-      snapshotRef.current = snap;
       liveRef.current = backendLive;
-      setSnapshot(snap);
-      setIsLiveTracking(backendLive);
-
-      if (data.lastSignal != null) setLastSignal(data.lastSignal);
-      if (typeof data.signalAgeMs === 'number') setSignalAgeMs(data.signalAgeMs);
-      if (typeof data.isFresh === 'boolean') setIsFresh(data.isFresh);
-      if (data.onlineStatus) setOnlineStatus(data.onlineStatus);
-      if (data.displayState) {
-        setDisplayState(data.displayState);
-        setVehicleState(data.displayState);
-      }
-      if (data.displayIgnition) setDisplayIgnition(data.displayIgnition);
-      setDisplaySpeed(data.displaySpeed ?? null);
-      setDisplayCoolant(data.displayCoolant ?? null);
-      setDisplayEngineLoad(data.displayEngineLoad ?? null);
-      setTripDetectionState(data.tripDetectionState ?? null);
+      useVehicleLiveMapStore.setState((state) => ({
+        snapshot: snap,
+        isLiveTracking: backendLive,
+        loading: false,
+        error: null,
+        lastSignal: data.lastSignal ?? state.lastSignal,
+        signalAgeMs:
+          typeof data.signalAgeMs === 'number'
+            ? data.signalAgeMs
+            : state.signalAgeMs,
+        isFresh: typeof data.isFresh === 'boolean' ? data.isFresh : state.isFresh,
+        onlineStatus,
+        displayState,
+        displayIgnition,
+        displaySpeed: data.displaySpeed ?? null,
+        displayCoolant: data.displayCoolant ?? null,
+        displayEngineLoad: data.displayEngineLoad ?? null,
+        tripDetectionState: data.tripDetectionState ?? null,
+      }));
 
       // When NOT live tracking, also use dashboard GPS (no separate GPS cycle)
       if (!backendLive) {
@@ -213,32 +186,27 @@ export function useLiveVehicleTelemetry(
           applyGpsPoint(lat, lng, speed, 'cache');
         }
       }
-    } catch {
-      // Keep previous state on error
+    } catch (error) {
+      useVehicleLiveMapStore.setState({
+        loading: false,
+        error:
+          error instanceof Error ? error.message : 'Failed to refresh live telemetry',
+      });
     }
   }, [vehicleId, orgId, applyGpsPoint]);
 
   // ── Lifecycle: manage both poll loops ───────────────────────────────
   useEffect(() => {
     if (!vehicleId || !orgId) {
-      setTargetPosition(null);
-      setLocationHistory([]);
-      setHeading(null);
-      setSpeedKmh(null);
-      setVehicleState('PARKED');
-      setIsMoving(false);
-      setIsLiveTracking(false);
-      setIsFresh(false);
-      setOnlineStatus('OFFLINE');
-      setDisplayState('PARKED');
-      setDisplayIgnition('UNKNOWN');
-      setGpsSource(null);
+      useVehicleLiveMapStore.getState().reset();
       lastTargetRef.current = null;
+      locationHistoryRef.current = [];
       liveRef.current = false;
       return;
     }
 
     cancelledRef.current = false;
+    useVehicleLiveMapStore.setState({ loading: true, error: null });
 
     // Dashboard loop (always 30s)
     const scheduleDash = () => {
@@ -282,44 +250,4 @@ export function useLiveVehicleTelemetry(
       if (dashTimerRef.current) { clearTimeout(dashTimerRef.current); dashTimerRef.current = null; }
     };
   }, [vehicleId, orgId, fetchDashboard, fetchGps]);
-
-  // Derive isMoving from location history
-  useEffect(() => {
-    if (locationHistory.length < 2) { setIsMoving(false); return; }
-    const a = locationHistory[locationHistory.length - 2];
-    const b = locationHistory[locationHistory.length - 1];
-    setIsMoving(isMeaningfulMovement(a, b, JITTER_THRESHOLD_M));
-  }, [locationHistory]);
-
-  // Fallback local state derivation
-  useEffect(() => {
-    const snap = snapshotRef.current;
-    const ignitionOn = snap?.ignitionOn ?? false;
-    const engineLoad = snap?.engineLoad ?? 0;
-    const localState = deriveVehicleState(isMoving, ignitionOn, engineLoad);
-    setVehicleState((prev) => prev || localState);
-  }, [isMoving, snapshot]);
-
-  return {
-    targetPosition,
-    locationHistory,
-    heading,
-    speedKmh,
-    vehicleState,
-    isMoving,
-    snapshot,
-    lastLocationAt,
-    isLiveTracking,
-    lastSignal,
-    signalAgeMs,
-    isFresh,
-    onlineStatus,
-    displayState,
-    displayIgnition,
-    displaySpeed,
-    displayCoolant,
-    displayEngineLoad,
-    tripDetectionState,
-    gpsSource,
-  };
 }

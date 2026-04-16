@@ -160,6 +160,7 @@ function mergeNearbyEvents(events: BrakingEvent[]): BrakingEvent[] {
         prev.peakDecelMs2 = events[i].peakDecelMs2;
         prev.peakDecelG = events[i].peakDecelG;
       }
+      prev.highSpeedStart = prev.highSpeedStart || events[i].highSpeedStart;
       prev.intensity = computeIntensity(prev.peakDecelMs2);
       prev.classification = classify(prev.peakDecelMs2);
     } else {

@@ -378,53 +378,14 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover }: Dash
                 );
               })()}
 
-              {activePopup === 'Driver Behavior' && (() => {
-                const activeRentals = fleetVehicles.filter(v => v.status === 'Active Rented');
-                const driverScores: Record<string, { overall: number; acceleration: number; braking: number; cornering: number; speeding: number; abuses: { type: string; time: string; severity: 'high' | 'medium' | 'low' }[] }> = {
-                  'v4': { overall: 92, acceleration: 95, braking: 88, cornering: 94, speeding: 91, abuses: [] },
-                  'v5': { overall: 64, acceleration: 58, braking: 52, cornering: 70, speeding: 68, abuses: [{ type: 'Harsh Braking', time: 'Heute, 14:22', severity: 'medium' }, { type: 'Excessive Speed (142 km/h)', time: 'Heute, 13:05', severity: 'high' }, { type: 'Harsh Acceleration', time: 'Heute, 11:38', severity: 'low' }] },
-                  'v6': { overall: 78, acceleration: 82, braking: 74, cornering: 76, speeding: 80, abuses: [{ type: 'Harsh Cornering', time: 'Heute, 15:10', severity: 'medium' }] },
-                  'v7': { overall: 45, acceleration: 40, braking: 38, cornering: 52, speeding: 50, abuses: [{ type: 'Excessive Speed (168 km/h)', time: 'Heute, 16:45', severity: 'high' }, { type: 'Harsh Braking (Emergency)', time: 'Heute, 16:44', severity: 'high' }, { type: 'Excessive Speed (155 km/h)', time: 'Heute, 14:30', severity: 'high' }, { type: 'Harsh Acceleration', time: 'Heute, 12:15', severity: 'medium' }, { type: 'Harsh Cornering', time: 'Heute, 10:50', severity: 'medium' }] },
-                };
-                const getScoreColor = (score: number) => {
-                  if (score >= 80) return { bg: 'bg-green-500', text: isDarkMode ? 'text-green-400' : 'text-green-600', ring: 'ring-green-500/20' };
-                  if (score >= 60) return { bg: 'bg-amber-500', text: isDarkMode ? 'text-amber-400' : 'text-amber-600', ring: 'ring-amber-500/20' };
-                  return { bg: 'bg-red-500', text: isDarkMode ? 'text-red-400' : 'text-red-600', ring: 'ring-red-500/20' };
-                };
-                const getScoreLabel = (score: number) => score >= 80 ? 'Good' : score >= 60 ? 'Fair' : 'Poor';
-                return (
-                  <div className={`col-span-2 rounded-lg border p-4 space-y-3 bg-card ${isDarkMode ? 'border-amber-800/30' : 'border-amber-200/40'}`}>
-                    <div className={`grid grid-cols-3 gap-3 p-3 rounded-lg border bg-muted border-border`}>
-                      <div className="text-center"><div className={`text-base font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{Object.values(driverScores).filter(d => d.overall >= 80).length}</div><div className="text-xs font-semibold uppercase tracking-wider mt-0.5 text-muted-foreground">Good</div></div>
-                      <div className="text-center"><div className={`text-base font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>{Object.values(driverScores).filter(d => d.overall >= 60 && d.overall < 80).length}</div><div className="text-xs font-semibold uppercase tracking-wider mt-0.5 text-muted-foreground">Fair</div></div>
-                      <div className="text-center"><div className={`text-base font-bold ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>{Object.values(driverScores).filter(d => d.overall < 60).length}</div><div className="text-xs font-semibold uppercase tracking-wider mt-0.5 text-muted-foreground">Poor</div></div>
-                    </div>
-                    {activeRentals.map((v) => {
-                      const scores = driverScores[v.id] || { overall: 75, acceleration: 78, braking: 72, cornering: 74, speeding: 76, abuses: [] };
-                      const color = getScoreColor(scores.overall);
-                      const categories = [{ label: 'Accel', value: scores.acceleration }, { label: 'Brake', value: scores.braking }, { label: 'Corner', value: scores.cornering }, { label: 'Speed', value: scores.speeding }];
-                      return (
-                        <div key={v.id} className="rounded-lg border overflow-hidden bg-card border-border">
-                          <div className={`px-3 py-2 flex items-center gap-3 ${isDarkMode ? 'border-b border-neutral-700/50' : 'border-b border-gray-100'}`}>
-                            <div className={`relative w-5 h-5 rounded-full flex items-center justify-center ring-4 ${color.ring} bg-muted`}><span className={`text-xs font-bold ${color.text}`}>{scores.overall}</span></div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2"><span className="text-xs font-bold text-foreground">{v.driver || 'Unknown'}</span><span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${scores.overall >= 80 ? (isDarkMode ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700') : scores.overall >= 60 ? (isDarkMode ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700') : (isDarkMode ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700')}`}>{getScoreLabel(scores.overall)}</span></div>
-                              <div className="text-xs mt-0.5 text-muted-foreground">{v.license} · {v.model}</div>
-                            </div>
-                            {scores.abuses.length > 0 && (<div className="flex items-center gap-1"><ShieldAlert className="w-3.5 h-3.5 text-red-500" /><span className={`text-xs font-bold ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>{scores.abuses.length}</span></div>)}
-                          </div>
-                          <div className="px-3 py-2">
-                            <div className="grid grid-cols-4 gap-2 mb-2">
-                              {categories.map((cat) => { const catColor = getScoreColor(cat.value); return (<div key={cat.label}><div className="flex items-center justify-between mb-1"><span className="text-xs font-semibold text-muted-foreground">{cat.label}</span><span className={`text-xs font-bold ${catColor.text}`}>{cat.value}</span></div><div className={`h-1.5 rounded-full overflow-hidden bg-muted`}><div className={`h-full rounded-full ${catColor.bg}`} style={{ width: `${cat.value}%` }} /></div></div>); })}
-                            </div>
-                            {scores.abuses.length > 0 && (<div className={`mt-2 pt-2 border-t border-border`}><div className="space-y-1">{scores.abuses.map((abuse, ai) => (<div key={ai} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg ${abuse.severity === 'high' ? (isDarkMode ? 'bg-red-900/15' : 'bg-red-50') : abuse.severity === 'medium' ? (isDarkMode ? 'bg-amber-900/15' : 'bg-amber-50') : 'bg-muted'}`}><div className={`w-1.5 h-1.5 rounded-full shrink-0 ${abuse.severity === 'high' ? 'bg-red-500' : abuse.severity === 'medium' ? 'bg-amber-500' : 'bg-gray-400'}`} /><span className={`text-xs flex-1 text-foreground/80`}>{abuse.type}</span><span className="text-xs text-muted-foreground">{abuse.time}</span></div>))}</div></div>)}
-                          </div>
-                        </div>
-                      );
-                    })}
+              {activePopup === 'Driver Behavior' && (
+                <div className={`col-span-2 rounded-lg border p-4 bg-card ${isDarkMode ? 'border-amber-800/30' : 'border-amber-200/40'}`}>
+                  <div className={`rounded-lg border p-4 text-sm ${isDarkMode ? 'bg-neutral-800/50 border-neutral-700 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
+                    Driver behavior detail cards were previously using hardcoded demo scores and synthetic events.
+                    This panel is intentionally hidden until canonical backend driver-score endpoints are fully wired for this dashboard surface.
                   </div>
-                );
-              })()}
+                </div>
+              )}
 
               {activePopup === 'Driver Feedback' && (
                 <div className={`col-span-2 rounded-lg border p-4 space-y-3 bg-card ${isDarkMode ? 'border-blue-800/30' : 'border-blue-200/40'}`}>
@@ -2025,170 +1986,12 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover }: Dash
             })()}
 
             {/* Driver Behavior */}
-            {activePopup === 'Driver Behavior' && (() => {
-              const activeRentals = fleetVehicles.filter(v => v.status === 'Active Rented');
-              const driverScores: Record<string, { overall: number; acceleration: number; braking: number; cornering: number; speeding: number; abuses: { type: string; time: string; severity: 'high' | 'medium' | 'low' }[] }> = {
-                'v4': { overall: 92, acceleration: 95, braking: 88, cornering: 94, speeding: 91, abuses: [] },
-                'v5': { overall: 64, acceleration: 58, braking: 52, cornering: 70, speeding: 68, abuses: [
-                  { type: 'Harsh Braking', time: 'Heute, 14:22', severity: 'medium' },
-                  { type: 'Excessive Speed (142 km/h)', time: 'Heute, 13:05', severity: 'high' },
-                  { type: 'Harsh Acceleration', time: 'Heute, 11:38', severity: 'low' },
-                ] },
-                'v6': { overall: 78, acceleration: 82, braking: 74, cornering: 76, speeding: 80, abuses: [
-                  { type: 'Harsh Cornering', time: 'Heute, 15:10', severity: 'medium' },
-                ] },
-                'v7': { overall: 45, acceleration: 40, braking: 38, cornering: 52, speeding: 50, abuses: [
-                  { type: 'Excessive Speed (168 km/h)', time: 'Heute, 16:45', severity: 'high' },
-                  { type: 'Harsh Braking (Emergency)', time: 'Heute, 16:44', severity: 'high' },
-                  { type: 'Excessive Speed (155 km/h)', time: 'Heute, 14:30', severity: 'high' },
-                  { type: 'Harsh Acceleration', time: 'Heute, 12:15', severity: 'medium' },
-                  { type: 'Harsh Cornering', time: 'Heute, 10:50', severity: 'medium' },
-                ] },
-              };
-              const getScoreColor = (score: number) => {
-                if (score >= 80) return { bg: 'bg-green-500', text: isDarkMode ? 'text-green-400' : 'text-green-600', ring: 'ring-green-500/20' };
-                if (score >= 60) return { bg: 'bg-amber-500', text: isDarkMode ? 'text-amber-400' : 'text-amber-600', ring: 'ring-amber-500/20' };
-                return { bg: 'bg-red-500', text: isDarkMode ? 'text-red-400' : 'text-red-600', ring: 'ring-red-500/20' };
-              };
-              const getScoreLabel = (score: number) => {
-                if (score >= 80) return 'Good';
-                if (score >= 60) return 'Fair';
-                return 'Poor';
-              };
-              const totalAbuses = Object.values(driverScores).reduce((sum, d) => sum + d.abuses.length, 0);
-
-              return (
-                <>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-5 h-5 rounded-lg bg-yellow-100 flex items-center justify-center">
-                      <Award className="w-5 h-5 text-yellow-600" />
-                    </div>
-                    <div>
-                      <h2 className="text-base font-semibold text-foreground">Driver Behavior</h2>
-                      <p className="text-xs text-muted-foreground">{activeRentals.length} active rentals · {totalAbuses} abuse detections today</p>
-                    </div>
-                  </div>
-
-                  {/* Summary Bar */}
-                  <div className="grid grid-cols-3 gap-3 mb-3 p-4 rounded-lg border bg-muted border-border">
-                    <div className="text-center">
-                      <div className={`text-xs font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
-                        {Object.values(driverScores).filter(d => d.overall >= 80).length}
-                      </div>
-                      <div className="text-xs font-semibold uppercase tracking-wider mt-0.5 text-muted-foreground">Good</div>
-                    </div>
-                    <div className="text-center">
-                      <div className={`text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
-                        {Object.values(driverScores).filter(d => d.overall >= 60 && d.overall < 80).length}
-                      </div>
-                      <div className="text-xs font-semibold uppercase tracking-wider mt-0.5 text-muted-foreground">Fair</div>
-                    </div>
-                    <div className="text-center">
-                      <div className={`text-xs font-bold ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
-                        {Object.values(driverScores).filter(d => d.overall < 60).length}
-                      </div>
-                      <div className="text-xs font-semibold uppercase tracking-wider mt-0.5 text-muted-foreground">Poor</div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    {activeRentals.map((v) => {
-                      const scores = driverScores[v.id] || { overall: 75, acceleration: 78, braking: 72, cornering: 74, speeding: 76, abuses: [] };
-                      const color = getScoreColor(scores.overall);
-                      const categories = [
-                        { label: 'Acceleration', value: scores.acceleration },
-                        { label: 'Braking', value: scores.braking },
-                        { label: 'Cornering', value: scores.cornering },
-                        { label: 'Speeding', value: scores.speeding },
-                      ];
-                      return (
-                        <div key={v.id} className="rounded-lg border overflow-hidden bg-card border-border">
-                          {/* Driver Header */}
-                          <div className={`px-3 py-2.5 flex items-center gap-3 ${
-                            isDarkMode ? 'border-b border-neutral-700/50' : 'border-b border-gray-100'
-                          }`}>
-                            {/* Score Circle */}
-                            <div className={`relative w-9 h-9 rounded-full flex items-center justify-center ring-4 ${color.ring} bg-muted`}>
-                              <span className={`text-base font-bold ${color.text}`}>{scores.overall}</span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-foreground">{v.driver || 'Unknown'}</span>
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                                  scores.overall >= 80 ? 'bg-green-100 text-green-700' :
-                                  scores.overall >= 60 ? 'bg-amber-100 text-amber-700' :
-                                  'bg-red-100 text-red-700'
-                                }`}>{getScoreLabel(scores.overall)}</span>
-                              </div>
-                              <div className="text-xs mt-0.5 text-muted-foreground">
-                                {v.license} · {v.model}
-                              </div>
-                            </div>
-                            {scores.abuses.length > 0 && (
-                              <div className="flex items-center gap-1.5">
-                                <ShieldAlert className="w-5 h-5 text-red-500" />
-                                <span className={`text-xs font-bold ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>{scores.abuses.length}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="px-3 py-2.5">
-                            {/* Score Bars */}
-                            <div className="grid grid-cols-4 gap-3 mb-3">
-                              {categories.map((cat) => {
-                                const catColor = getScoreColor(cat.value);
-                                return (
-                                  <div key={cat.label}>
-                                    <div className="flex items-center justify-between mb-1">
-                                      <span className="text-xs font-semibold text-muted-foreground">{cat.label}</span>
-                                      <span className={`text-xs font-bold ${catColor.text}`}>{cat.value}</span>
-                                    </div>
-                                    <div className={`h-1.5 rounded-full overflow-hidden bg-muted`}>
-                                      <div className={`h-full rounded-full ${catColor.bg}`} style={{ width: `${cat.value}%` }} />
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            {/* Abuse Detections */}
-                            {scores.abuses.length > 0 && (
-                              <div className={`mt-3 pt-3 border-t border-border`}>
-                                <div className="flex items-center gap-1.5 mb-2">
-                                  <ShieldAlert className={`w-3.5 h-3.5 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`} />
-                                  <span className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
-                                    Abuse Detections ({scores.abuses.length})
-                                  </span>
-                                </div>
-                                <div className="space-y-1.5">
-                                  {scores.abuses.map((abuse, ai) => (
-                                    <div key={ai} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${
-                                      abuse.severity === 'high'
-                                        ? isDarkMode ? 'bg-red-900/15' : 'bg-red-50'
-                                        : abuse.severity === 'medium'
-                                        ? isDarkMode ? 'bg-amber-900/15' : 'bg-amber-50'
-                                        : 'bg-muted'
-                                    }`}>
-                                      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                        abuse.severity === 'high' ? 'bg-red-500' :
-                                        abuse.severity === 'medium' ? 'bg-amber-500' :
-                                        'bg-gray-400'
-                                      }`} />
-                                      <span className={`text-xs flex-1 text-foreground/80`}>{abuse.type}</span>
-                                      <span className="text-xs text-muted-foreground">{abuse.time}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              );
-            })()}
+            {activePopup === 'Driver Behavior' && (
+              <div className={`rounded-lg border p-4 ${isDarkMode ? 'bg-neutral-800/50 border-neutral-700 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
+                Driver behavior cards in this popup previously relied on hardcoded demo values.
+                The synthetic view is disabled until this surface is connected to canonical trip analytics and driver-score APIs.
+              </div>
+            )}
 
             {/* Vehicle Alerts */}
             {activePopup === 'Vehicle Alerts' && (() => {

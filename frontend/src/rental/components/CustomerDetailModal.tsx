@@ -10,7 +10,9 @@ interface Customer {
   type: 'Individual' | 'Corporate';
   status: 'Active' | 'Under Review' | 'Suspended' | 'Blocked';
   riskLevel: 'Low Risk' | 'Medium Risk' | 'High Risk';
-  drivingScore: number;
+  drivingScore: number | null;
+  drivingStyleScore?: number | null;
+  safetyScore?: number | null;
   lastTrip: string;
   totalBookings: number;
   totalRevenue: string;
@@ -36,13 +38,14 @@ interface CustomerDetailModalProps {
 
 function generateTrips(customer: Customer) {
   const cities = ['Berlin Mitte', 'Hamburg Hafen', 'München Ost', 'Frankfurt Hbf', 'Köln Zentrum', 'Stuttgart Mitte', 'Dresden Nord'];
+  const baseScore = customer.drivingStyleScore ?? customer.drivingScore ?? 70;
   return Array.from({ length: 6 }, (_, i) => ({
     id: `T-${4500 + i}`,
     date: `${(20 - i * 2)}.02.2026`,
     from: cities[i % cities.length],
     to: cities[(i + 2) % cities.length],
     distance: `${(45 + i * 37)} km`,
-    score: Math.max(60, customer.drivingScore - i * 3 + Math.floor(Math.random() * 10)),
+    score: Math.max(60, baseScore - i * 3 + Math.floor(Math.random() * 10)),
     alerts: i < 2 ? i : 0,
   }));
 }
@@ -70,7 +73,12 @@ function generateAlerts(customer: Customer) {
 }
 
 function generateNotes(customer: Customer) {
-  const notes = [
+  const notes: Array<{
+    date: string;
+    priority: 'High' | 'Medium' | 'Low';
+    author: string;
+    message: string;
+  }> = [
     { date: '21.02.2024', priority: 'Medium' as const, author: '#10 Tim Schröder', message: customer.notes || 'Follow up on insurance add-on requests.' },
     { date: '15.01.2024', priority: 'Low' as const, author: '#27 Sarah Mayer', message: 'Customer prefers morning pick-ups and online invoices.' },
   ];
@@ -85,11 +93,14 @@ export function CustomerDetailModal({ customer, isDarkMode, onClose, isAnimating
   const fines = generateFines(customer);
   const alerts = generateAlerts(customer);
   const notes = generateNotes(customer);
+  const drivingStyleScore = customer.drivingStyleScore ?? customer.drivingScore;
+  const safetyScore = customer.safetyScore ?? null;
+  const scoreForWidgets = drivingStyleScore ?? 0;
 
   const kmDriven = `${(customer.totalBookings * 312).toLocaleString('de-DE')} km`;
-  const harshBrakingEvents = Math.max(0, Math.round((100 - customer.drivingScore) * 0.4 + customer.accidents * 3));
+  const harshBrakingEvents = Math.max(0, Math.round((100 - scoreForWidgets) * 0.4 + customer.accidents * 3));
   const speedingEvents = customer.violations;
-  const phoneUsage = customer.drivingScore >= 80 ? 'Low' : customer.drivingScore >= 60 ? 'Medium' : 'High';
+  const phoneUsage = scoreForWidgets >= 80 ? 'Low' : scoreForWidgets >= 60 ? 'Medium' : 'High';
   const driverBirthYear = 1985 + (parseInt(customer.id.replace('c', '')) % 12);
   const driverDOB = `${(12 + parseInt(customer.id.replace('c', '')) * 3) % 28 + 1}.${(parseInt(customer.id.replace('c', '')) % 12) + 1}.${driverBirthYear}`;
   const driverId = `B.${1000 + parseInt(customer.id.replace('c', '')) * 111}`;
@@ -251,13 +262,25 @@ export function CustomerDetailModal({ customer, isDarkMode, onClose, isAnimating
         {/* Content - Overview Only */}
         <div className="flex-1 overflow-y-auto px-8 py-6">
           <div className="space-y-5">
+            <div className={`rounded-lg border px-3 py-2 text-xs ${isDarkMode ? 'bg-neutral-800/60 border-neutral-700 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
+              This quick detail view still contains estimated behavior visuals. Use trips and rental analysis views for canonical style/safety/event truth.
+            </div>
             {/* Summary Stats Bar */}
             <div className="grid grid-cols-4 gap-4">
               {[
                 { label: 'Total Bookings', value: String(customer.totalBookings), icon: Calendar, bg: 'bg-blue-100', color: 'text-blue-600' },
                 { label: 'Distance Driven', value: kmDriven, icon: Car, bg: 'bg-green-100', color: 'text-green-600' },
                 { label: 'Alerts', value: String(alerts.length), icon: AlertTriangle, bg: alerts.some(a => a.severity === 'High') ? 'bg-red-100' : 'bg-amber-100', color: alerts.some(a => a.severity === 'High') ? 'text-red-600' : 'text-amber-600' },
-                { label: 'Driving Score', value: String(customer.drivingScore), icon: Star, bg: customer.drivingScore >= 80 ? 'bg-green-100' : customer.drivingScore >= 60 ? 'bg-amber-100' : 'bg-red-100', color: customer.drivingScore >= 80 ? 'text-green-600' : customer.drivingScore >= 60 ? 'text-amber-600' : 'text-red-600' },
+                {
+                  label: 'Style/Safety',
+                  value:
+                    drivingStyleScore != null || safetyScore != null
+                      ? `${drivingStyleScore != null ? Math.round(drivingStyleScore) : '--'} / ${safetyScore != null ? Math.round(safetyScore) : '--'}`
+                      : '--',
+                  icon: Star,
+                  bg: scoreForWidgets >= 80 ? 'bg-green-100' : scoreForWidgets >= 60 ? 'bg-amber-100' : 'bg-red-100',
+                  color: scoreForWidgets >= 80 ? 'text-green-600' : scoreForWidgets >= 60 ? 'text-amber-600' : 'text-red-600',
+                },
               ].map(stat => (
                 <div key={stat.label} className={`rounded-2xl border p-4 ${cardBg}`}>
                   <div className="flex items-center justify-between mb-2">
@@ -366,16 +389,25 @@ export function CustomerDetailModal({ customer, isDarkMode, onClose, isAnimating
                     <div className="relative w-16 h-16">
                       <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
                         <circle cx="32" cy="32" r="28" fill="none" strokeWidth="5" className={isDarkMode ? 'stroke-neutral-700' : 'stroke-gray-200'} />
-                        <circle cx="32" cy="32" r="28" fill="none" strokeWidth="5" strokeDasharray={`${(customer.drivingScore / 100) * 175.93} 175.93`} strokeLinecap="round" className={customer.drivingScore >= 80 ? 'stroke-green-500' : customer.drivingScore >= 60 ? 'stroke-amber-500' : 'stroke-red-500'} />
+                        <circle
+                          cx="32"
+                          cy="32"
+                          r="28"
+                          fill="none"
+                          strokeWidth="5"
+                          strokeDasharray={`${(scoreForWidgets / 100) * 175.93} 175.93`}
+                          strokeLinecap="round"
+                          className={scoreForWidgets >= 80 ? 'stroke-green-500' : scoreForWidgets >= 60 ? 'stroke-amber-500' : 'stroke-red-500'}
+                        />
                       </svg>
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className={`text-sm font-bold ${textPrimary}`}>{customer.drivingScore}</span>
+                        <span className={`text-sm font-bold ${textPrimary}`}>{Math.round(scoreForWidgets)}</span>
                       </div>
                     </div>
                     <div className="flex-1 space-y-2">
                       {[
-                        { label: 'Behavior Events', value: Math.round(24 * ((100 - customer.drivingScore) / 30)) + Math.round(18 * ((100 - customer.drivingScore) / 30)) + Math.round(31 * ((100 - customer.drivingScore) / 30)) + Math.round(8 * ((100 - customer.drivingScore) / 30)) },
-                        { label: 'Abuse Events', value: Math.round(12 * ((100 - customer.drivingScore) / 30)) + Math.round(5 * ((100 - customer.drivingScore) / 30)) + Math.round(22 * ((100 - customer.drivingScore) / 30)) + Math.round(15 * ((100 - customer.drivingScore) / 30)) + Math.round(3 * ((100 - customer.drivingScore) / 30)) + Math.round(19 * ((100 - customer.drivingScore) / 30)) },
+                        { label: 'Behavior Events', value: Math.round(24 * ((100 - scoreForWidgets) / 30)) + Math.round(18 * ((100 - scoreForWidgets) / 30)) + Math.round(31 * ((100 - scoreForWidgets) / 30)) + Math.round(8 * ((100 - scoreForWidgets) / 30)) },
+                        { label: 'Abuse Events', value: Math.round(12 * ((100 - scoreForWidgets) / 30)) + Math.round(5 * ((100 - scoreForWidgets) / 30)) + Math.round(22 * ((100 - scoreForWidgets) / 30)) + Math.round(15 * ((100 - scoreForWidgets) / 30)) + Math.round(3 * ((100 - scoreForWidgets) / 30)) + Math.round(19 * ((100 - scoreForWidgets) / 30)) },
                       ].map(item => (
                         <div key={item.label} className="flex items-center justify-between">
                           <span className={`text-xs ${textSecondary}`}>{item.label}</span>
@@ -386,8 +418,8 @@ export function CustomerDetailModal({ customer, isDarkMode, onClose, isAnimating
                   </div>
                   <div className={`p-3 rounded-xl text-center ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50'}`}>
                     <span className={`text-[11px] ${textTertiary}`}>Score rated </span>
-                    <span className={`text-[11px] font-semibold ${customer.drivingScore >= 80 ? 'text-green-500' : customer.drivingScore >= 60 ? 'text-amber-500' : 'text-red-500'}`}>
-                      {customer.drivingScore >= 80 ? 'Good' : customer.drivingScore >= 60 ? 'Average' : 'Poor'}
+                    <span className={`text-[11px] font-semibold ${scoreForWidgets >= 80 ? 'text-green-500' : scoreForWidgets >= 60 ? 'text-amber-500' : 'text-red-500'}`}>
+                      {scoreForWidgets >= 80 ? 'Good' : scoreForWidgets >= 60 ? 'Average' : 'Poor'}
                     </span>
                     <span className={`text-[11px] ${textTertiary}`}> — view full insights on the </span>
                     <button onClick={() => { onOpenDetail?.(); onClose(); }} className="text-[11px] text-blue-600 hover:text-blue-700 font-semibold">Detail Page</button>
@@ -401,7 +433,7 @@ export function CustomerDetailModal({ customer, isDarkMode, onClose, isAnimating
                     <button onClick={() => { onOpenDetail?.(); onClose(); }} className="text-xs text-blue-600 hover:text-blue-700 font-medium">Details</button>
                   </div>
                   {(() => {
-                    const factor = (100 - customer.drivingScore) / 30;
+                    const factor = (100 - scoreForWidgets) / 30;
                     const events = [
                       { label: 'Harsh Acceleration', count: Math.round(24 * factor), icon: TrendingUp },
                       { label: 'Harsh Cornering', count: Math.round(18 * factor), icon: Navigation },

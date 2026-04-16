@@ -2,8 +2,8 @@
  * TripEnrichmentOrchestratorService
  *
  * Single canonical entry point for all trip behavior enrichment and driving
- * impact computation.  Every path — V2 auto-finalize, V1 manual sync, manual
- * "Analyze Behavior", and backfill — MUST go through this service so that
+ * impact computation.  Every path — V2 FSM auto-finalize, TripReconciliationService
+ * repairs, manual "Analyze Behavior", and backfill — MUST go through this service so that
  * status tracking, idempotency guards, logging, and downstream chaining are
  * always applied consistently.
  *
@@ -14,7 +14,7 @@
  *                              └→ FAILED_PERMANENT  (no retry)
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { DimoPollJobType, DimoPollStatus, TripStatus } from '@prisma/client';
@@ -24,6 +24,9 @@ import { QUEUE_NAMES } from '../../../workers/queues/queue-names';
 import { TripBehaviorEnrichmentService } from './trip-behavior-enrichment.service';
 import type { TripBehaviorEnrichmentJobData } from '../../../workers/processors/trip-behavior-enrichment.processor';
 import type { DrivingImpactJobData } from '../../../workers/processors/driving-impact.processor';
+import { TripMetricsService } from '../../observability/trip-metrics.service';
+import { TripReconciliationService } from './reconciliation/trip-reconciliation.service';
+import { TripsService } from './trips.service';
 
 // ── Status constants ────────────────────────────────────────────────────────
 
@@ -71,10 +74,13 @@ const BACKFILL_DEFAULT_LIMIT = 200;
 function isTransientError(err: unknown): boolean {
   if (!(err instanceof Error)) return true;
   const msg = err.message.toLowerCase();
-  // Network / infrastructure failures are transient; logical failures are permanent
   if (msg.includes('econnrefused') || msg.includes('timeout') || msg.includes('enotfound')) return true;
   if (msg.includes('fetch') || msg.includes('network') || msg.includes('socket')) return true;
-  return true; // Default to transient so Bull can retry unexpected errors
+  if (msg.includes('prisma') && msg.includes('unique constraint')) return false;
+  if (msg.includes('not found') || msg.includes('does not exist')) return false;
+  if (msg.includes('invalid') || msg.includes('malformed') || msg.includes('cannot parse')) return false;
+  if (msg.includes('no token') || msg.includes('no dimo') || msg.includes('missing vehicle')) return false;
+  return true;
 }
 
 // ── Service ──────────────────────────────────────────────────────────────────
@@ -90,6 +96,9 @@ export class TripEnrichmentOrchestratorService {
     private readonly behaviorQueue: Queue<TripBehaviorEnrichmentJobData>,
     @InjectQueue(QUEUE_NAMES.DRIVING_IMPACT_COMPUTE)
     private readonly drivingImpactQueue: Queue<DrivingImpactJobData>,
+    @Optional() private readonly tripMetrics?: TripMetricsService,
+    @Optional() private readonly reconciliation?: TripReconciliationService,
+    @Optional() private readonly tripsService?: TripsService,
   ) {}
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -157,6 +166,10 @@ export class TripEnrichmentOrchestratorService {
         },
       );
       this.logger.log(`Enqueued HF enrichment for trip ${tripId} (jobId=${jobId} delay=${delay}ms)`);
+      // Update pending gauge asynchronously — don't block enqueue for metric update
+      this.prisma.vehicleTrip.count({
+        where: { behaviorEnrichmentStatus: { in: [STATUS.PENDING, STATUS.IN_PROGRESS] } },
+      }).then((count) => this.tripMetrics?.enrichmentPending.set(count)).catch(() => {});
       return true;
     } catch (err) {
       // Job with same ID already exists in queue — that is fine (idempotent)
@@ -211,6 +224,7 @@ export class TripEnrichmentOrchestratorService {
 
       if (result) {
         await this.markEnrichmentCompleted(tripId, finishedAt);
+        await this.runRouteSafetyEnrichment(vehicleId, tripId);
         await this.writePollLog(vehicleId, startedAt, finishedAt, DimoPollStatus.SUCCESS,
           `HF enrichment: ${result.totalEventsStored} events stored`);
         await this.enqueueDrivingImpact(tripId, vehicleId, orgId);
@@ -234,9 +248,30 @@ export class TripEnrichmentOrchestratorService {
         `HF enrichment failed (${transient ? 'transient' : 'permanent'}): ${errorMessage}`);
 
       this.logger.warn(`Trip ${tripId} enrichment ${failStatus}: ${errorMessage}`);
+      this.tripMetrics?.enrichmentFailed.inc({ stage: transient ? 'transient' : 'permanent' });
+
+      // Notify reconciliation layer on permanent enrichment failures for audit tracking
+      if (!transient && this.reconciliation) {
+        this.reconciliation
+          .onEnrichmentFailure(tripId)
+          .catch((err: unknown) =>
+            this.logger.debug(`Reconciliation enrichment notification failed: ${(err as Error).message}`),
+          );
+      }
 
       // Re-throw so BullMQ processor can apply its retry logic for transient failures
       throw err;
+    }
+  }
+
+  private async runRouteSafetyEnrichment(vehicleId: string, tripId: string): Promise<void> {
+    if (!this.tripsService) return;
+    try {
+      await this.tripsService.enrichTrip(vehicleId, tripId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.tripMetrics?.enrichmentFailed.inc({ stage: 'route_safety' });
+      this.logger.warn(`Route/speeding enrichment failed for trip ${tripId}: ${message}`);
     }
   }
 

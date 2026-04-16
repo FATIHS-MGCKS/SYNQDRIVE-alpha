@@ -105,25 +105,100 @@ export interface LvMaturityInput {
   crankObservationCount: number;
 }
 
+export type LvCalibrationBlocker =
+  | 'days'
+  | 'qualified_events'
+  | 'rest_observations'
+  | 'crank_observations';
+
+export type LvCalibrationPath = 'rest_and_crank' | 'rest_only';
+
+export interface LvCalibrationProgress {
+  measurementPath: LvCalibrationPath;
+  daysSinceFirstMeasurement: number;
+  minimumDaysForStabilizing: number;
+  daysRemainingForStabilizing: number;
+  qualifiedEventCount: number;
+  minimumQualifiedEventsForStabilizing: number;
+  restObservationCount: number;
+  minimumRestObservationsForStabilizing: number;
+  crankObservationCount: number;
+  minimumCrankObservationsForStabilizing: number;
+  blockers: LvCalibrationBlocker[];
+}
+
+export function getLvCalibrationProgress(input: LvMaturityInput): LvCalibrationProgress {
+  const {
+    qualifiedEventCount,
+    daysSinceFirstMeasurement,
+    restObservationCount,
+    crankObservationCount,
+  } = input;
+
+  const days = Math.max(0, daysSinceFirstMeasurement ?? 0);
+  const measurementPath: LvCalibrationPath = crankObservationCount > 0 ? 'rest_and_crank' : 'rest_only';
+  const minimumDaysForStabilizing = 5;
+  const minimumQualifiedEventsForStabilizing = 3;
+  const minimumRestObservationsForStabilizing = measurementPath === 'rest_and_crank' ? 1 : 2;
+  const minimumCrankObservationsForStabilizing = measurementPath === 'rest_and_crank' ? 1 : 0;
+  const blockers: LvCalibrationBlocker[] = [];
+
+  if (days < minimumDaysForStabilizing) blockers.push('days');
+  if (qualifiedEventCount < minimumQualifiedEventsForStabilizing) blockers.push('qualified_events');
+  if (restObservationCount < minimumRestObservationsForStabilizing) blockers.push('rest_observations');
+  if (minimumCrankObservationsForStabilizing > 0 && crankObservationCount < minimumCrankObservationsForStabilizing) {
+    blockers.push('crank_observations');
+  }
+
+  return {
+    measurementPath,
+    daysSinceFirstMeasurement: days,
+    minimumDaysForStabilizing,
+    daysRemainingForStabilizing: Math.max(0, minimumDaysForStabilizing - days),
+    qualifiedEventCount,
+    minimumQualifiedEventsForStabilizing,
+    restObservationCount,
+    minimumRestObservationsForStabilizing,
+    crankObservationCount,
+    minimumCrankObservationsForStabilizing,
+    blockers,
+  };
+}
+
 export function determineLvMaturity(input: LvMaturityInput): PublicationState {
   const { qualifiedEventCount, daysSinceFirstMeasurement, restObservationCount, crankObservationCount } = input;
   const days = daysSinceFirstMeasurement ?? 0;
+  const hasCrankData = crankObservationCount > 0;
 
-  if (
-    qualifiedEventCount >= 5 &&
-    days >= 7 &&
-    restObservationCount >= 2 &&
-    crankObservationCount >= 2
-  ) {
-    return 'STABLE';
+  // ── Full path: rest + crank data available ───────────────────────────────
+  // Crank data significantly improves confidence; use stricter rest thresholds.
+  if (hasCrankData) {
+    if (
+      qualifiedEventCount >= 5 &&
+      days >= 7 &&
+      restObservationCount >= 2 &&
+      crankObservationCount >= 2
+    ) {
+      return 'STABLE';
+    }
+    if (
+      qualifiedEventCount >= 3 &&
+      days >= 5 &&
+      restObservationCount >= 1 &&
+      crankObservationCount >= 1
+    ) {
+      return 'STABILIZING';
+    }
   }
 
-  if (
-    qualifiedEventCount >= 3 &&
-    days >= 5 &&
-    restObservationCount >= 1 &&
-    crankObservationCount >= 1
-  ) {
+  // ── Rest-only path: no crank window data available ────────────────────────
+  // Occurs when DIMO does not provide high-frequency voltage data in the crank
+  // window (common for many integrations). Apply more conservative thresholds
+  // to compensate for the missing crank signal quality.
+  if (qualifiedEventCount >= 6 && days >= 10 && restObservationCount >= 5) {
+    return 'STABLE';
+  }
+  if (qualifiedEventCount >= 3 && days >= 5 && restObservationCount >= 2) {
     return 'STABILIZING';
   }
 
@@ -142,7 +217,16 @@ export function determineHvMaturity(input: HvMaturityInput): PublicationState {
   const { validEstimateCount, daysSinceFirstMeasurement, method } = input;
   const days = daysSinceFirstMeasurement ?? 0;
 
-  if (method === 'degradation_model' || method === 'insufficient_data') {
+  if (method === 'insufficient_data') {
+    return 'INITIAL_CALIBRATION';
+  }
+
+  // Model-only path: no energy measurements available (e.g. DIMO does not
+  // provide energyUsedKwh for this vehicle). Progress based on observation
+  // duration alone; confidence stays "low" but the estimate is still useful.
+  if (method === 'degradation_model') {
+    if (days >= 14) return 'STABLE';
+    if (days >= 7) return 'STABILIZING';
     return 'INITIAL_CALIBRATION';
   }
 

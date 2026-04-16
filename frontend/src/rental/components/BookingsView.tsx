@@ -2016,8 +2016,10 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
             )}
 
             {/* Driving Behavior */}
-            {detailBooking.drivingScore != null && detailBooking.drivingBehavior && detailBooking.abuseDetection && (() => {
-              const score = detailBooking.drivingScore!;
+            {(detailBooking.drivingStyleScore != null || detailBooking.drivingScore != null || detailBooking.safetyScore != null) && detailBooking.drivingBehavior && detailBooking.abuseDetection && (() => {
+              const styleScore = detailBooking.drivingStyleScore ?? detailBooking.drivingScore ?? null;
+              const safetyScore = detailBooking.safetyScore ?? null;
+              const score = styleScore ?? 0;
               const getScoreColor = (s: number) => {
                 if (s >= 80) return { stroke: '#22c55e', bg: isDarkMode ? 'bg-green-900/30' : 'bg-green-50', text: isDarkMode ? 'text-green-400' : 'text-green-600', label: 'Good', border: isDarkMode ? 'border-green-700/50' : 'border-green-200' };
                 if (s >= 60) return { stroke: '#f59e0b', bg: isDarkMode ? 'bg-amber-900/30' : 'bg-amber-50', text: isDarkMode ? 'text-amber-400' : 'text-amber-600', label: 'Fair', border: isDarkMode ? 'border-amber-700/50' : 'border-amber-200' };
@@ -2079,7 +2081,12 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                       </div>
                     </div>
                     <div>
-                      <div className={`text-xs font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Driving Score</div>
+                      <div className={`text-xs font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Driving Style Score</div>
+                      {safetyScore != null && (
+                        <div className={`text-[10px] mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          Safety Score: {Math.round(safetyScore)}
+                        </div>
+                      )}
                       <span className={`inline-block mt-1 text-xs px-2.5 py-1 rounded-full font-semibold border ${scoreStyle.bg} ${scoreStyle.text} ${scoreStyle.border}`}>
                         {scoreStyle.label}
                       </span>
@@ -2088,7 +2095,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
 
                   {/* Driving Behavior Items */}
                   <div className="space-y-2 mb-3">
-                    {detailBooking.drivingBehavior!.map((b, idx) => {
+                    {detailBooking.drivingBehavior!.map((b: any, idx: number) => {
                       const severity = getSeverity(b.count);
                       const BIcon = behaviorIcons[b.label] || AlertTriangle;
                       return (
@@ -2108,7 +2115,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                     Abuse Detection
                   </div>
                   <div className="space-y-2">
-                    {detailBooking.abuseDetection!.map((a, idx) => {
+                    {detailBooking.abuseDetection!.map((a: any, idx: number) => {
                       const severity = getSeverity(a.count);
                       const AIcon = abuseIcons[a.label] || AlertTriangle;
                       return (
@@ -2128,7 +2135,8 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                     <div className="flex items-center justify-between">
                       <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Events</span>
                       <span className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                        {detailBooking.drivingBehavior!.reduce((s, b) => s + b.count, 0) + detailBooking.abuseDetection!.reduce((s, a) => s + a.count, 0)}
+                        {detailBooking.drivingBehavior!.reduce((s: number, b: any) => s + b.count, 0) +
+                          detailBooking.abuseDetection!.reduce((s: number, a: any) => s + a.count, 0)}
                       </span>
                     </div>
                   </div>

@@ -7,29 +7,46 @@ import {
   Param,
   Query,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import { BatteryService } from './battery/battery.service';
 import { TiresService } from './tires/tires.service';
 import { TireHealthService } from './tires/tire-health.service';
+import { TireLifecycleService } from './tires/tire-lifecycle.service';
 import { BrakesService } from './brakes/brakes.service';
 import { BrakeHealthService } from './brakes/brake-health.service';
+import { BrakeLifecycleService } from './brakes/brake-lifecycle.service';
 import { ServiceEventsService } from './service-events/service-events.service';
 import { EnrichmentJobsService } from './enrichment-jobs/enrichment-jobs.service';
 import { DtcService } from './dtc/dtc.service';
 import { TripsService } from './trips/trips.service';
 import { TripBehaviorEnrichmentService } from './trips/trip-behavior-enrichment.service';
 import { TripEnrichmentOrchestratorService } from './trips/trip-enrichment-orchestrator.service';
+import { TripReconciliationService } from './trips/reconciliation/trip-reconciliation.service';
+import { TripAnalyticsCanonicalService } from './trips/trip-analytics-canonical.service';
+import { DriverScoreService } from './trips/driver-score.service';
 import { DamagesService } from './damages/damages.service';
 import { BatteryHealthService } from './battery-health/battery-health.service';
 import { HvBatteryHealthService } from './battery-health/hv-battery-health.service';
 import { BatteryV2Service } from './battery-health/battery-v2.service';
+import { CanonicalBatteryHealthService } from './battery-health/canonical-battery-health.service';
+import { BatteryEvidenceService } from './battery-health/battery-evidence.service';
+import { normalizeBatteryDocumentConfirm } from './battery-health/battery-document-confirmation.util';
 import { HealthSummaryService } from './health-summary/health-summary.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
 import { HmVehicleActivationService } from '../high-mobility/high-mobility-vehicle-activation.service';
 import { HmSignalUsageService } from '../high-mobility/high-mobility-signal-usage.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { VehicleOwnershipGuard } from '@shared/auth/vehicle-ownership.guard';
 import { PaginationParams } from '@shared/utils/pagination';
-import { Prisma } from '@prisma/client';
+import {
+  BatteryEvidenceScope,
+  BatteryEvidenceSourceType,
+  BatteryEvidenceValueType,
+  Prisma,
+  TripAssignmentSubjectType,
+  TireSetupStatus,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { Inject, forwardRef, Logger } from '@nestjs/common';
 import { InvoicesService } from '@modules/invoices/invoices.service';
@@ -37,7 +54,7 @@ import { AiTireSpecJobService } from '@modules/dimo/ai-tire-spec-job.service';
 import { normalizeAiTireSpecResult, buildPersistedAiTireSpec, validateAiTireSpec } from './tires/ai-tire-spec-normalizer';
 
 @Controller('vehicles/:vehicleId')
-@UseGuards(RolesGuard)
+@UseGuards(RolesGuard, VehicleOwnershipGuard)
 export class VehicleIntelligenceController {
   private readonly logger = new Logger(VehicleIntelligenceController.name);
 
@@ -46,18 +63,25 @@ export class VehicleIntelligenceController {
     private readonly batteryService: BatteryService,
     private readonly tiresService: TiresService,
     private readonly tireHealthService: TireHealthService,
+    private readonly tireLifecycleService: TireLifecycleService,
     private readonly brakesService: BrakesService,
     private readonly brakeHealthService: BrakeHealthService,
+    private readonly brakeLifecycleService: BrakeLifecycleService,
     private readonly serviceEventsService: ServiceEventsService,
     private readonly enrichmentJobsService: EnrichmentJobsService,
     private readonly dtcService: DtcService,
     private readonly tripsService: TripsService,
+    private readonly tripAnalyticsCanonicalService: TripAnalyticsCanonicalService,
+    private readonly driverScoreService: DriverScoreService,
     private readonly behaviorEnrichmentService: TripBehaviorEnrichmentService,
     private readonly enrichmentOrchestrator: TripEnrichmentOrchestratorService,
+    private readonly tripReconciliation: TripReconciliationService,
     private readonly damagesService: DamagesService,
     private readonly batteryHealthService: BatteryHealthService,
     private readonly hvBatteryHealthService: HvBatteryHealthService,
     private readonly batteryV2Service: BatteryV2Service,
+    private readonly canonicalBatteryHealthService: CanonicalBatteryHealthService,
+    private readonly batteryEvidenceService: BatteryEvidenceService,
     private readonly healthSummaryService: HealthSummaryService,
     private readonly aiHealthCareAggregationService: AiHealthCareAggregationService,
     private readonly hmVehicleActivationService: HmVehicleActivationService,
@@ -133,11 +157,26 @@ export class VehicleIntelligenceController {
     @Param('vehicleId') vehicleId: string,
     @Body() body: Omit<Prisma.VehicleTireSetupCreateInput, 'vehicle'>,
   ) {
-    return this.tiresService.createSetup(vehicleId, body);
+    return this.tireLifecycleService.installTireSet(vehicleId, {
+      name: (body as any).name,
+      brandModelFront: (body as any).brandModelFront,
+      brandModelRear: (body as any).brandModelRear,
+      frontDimension: (body as any).frontDimension,
+      rearDimension: (body as any).rearDimension,
+      tireSeason: (body as any).tireSeason,
+      initialTreadDepthMm: (body as any).initialTreadDepthMm,
+      initialTreadFrontMm: (body as any).initialTreadFrontMm,
+      initialTreadRearMm: (body as any).initialTreadRearMm,
+      tireCondition: (body as any).tireCondition,
+      odometerKm: (body as any).installedOdometerKm,
+      notes: (body as any).notes,
+      archiveCurrent: false,
+    });
   }
 
   @Post('tires/:tireSetupId/measurements')
   async addTireMeasurement(
+    @Param('vehicleId') vehicleId: string,
     @Param('tireSetupId') tireSetupId: string,
     @Body()
     body: Omit<
@@ -145,11 +184,25 @@ export class VehicleIntelligenceController {
       'tireSetup' | 'vehicleId'
     >,
   ) {
-    return this.tiresService.addMeasurement(tireSetupId, body);
+    return this.tireLifecycleService.recordMeasurement({
+      vehicleId,
+      tireSetupId,
+      frontLeftMm: (body as any).frontLeftMm,
+      frontRightMm: (body as any).frontRightMm,
+      rearLeftMm: (body as any).rearLeftMm,
+      rearRightMm: (body as any).rearRightMm,
+      odometerKm: (body as any).odometerAtMeasurement,
+      measuredAt: (body as any).measuredAt,
+      source: (body as any).source,
+      workshopName: (body as any).workshopName,
+      shouldCalibrate: true,
+      triggerRecalculate: true,
+    });
   }
 
   @Post('tires/:tireSetupId/calibration-measurement')
   async addCalibrationMeasurement(
+    @Param('vehicleId') vehicleId: string,
     @Param('tireSetupId') tireSetupId: string,
     @Body() body: {
       frontLeftMm?: number;
@@ -162,7 +215,21 @@ export class VehicleIntelligenceController {
       measuredAt?: string;
     },
   ) {
-    return this.tiresService.addCalibrationMeasurement(tireSetupId, body);
+    return this.tireLifecycleService.recordMeasurement({
+      vehicleId,
+      tireSetupId,
+      frontLeftMm: body.frontLeftMm,
+      frontRightMm: body.frontRightMm,
+      rearLeftMm: body.rearLeftMm,
+      rearRightMm: body.rearRightMm,
+      odometerKm: body.odometerAtMeasurement,
+      measuredAt: body.measuredAt,
+      source: body.source ?? 'calibration',
+      workshopName: body.workshopName,
+      quality: 'mixed',
+      shouldCalibrate: true,
+      triggerRecalculate: true,
+    });
   }
 
   @Post('tires/ai-spec/apply')
@@ -187,7 +254,7 @@ export class VehicleIntelligenceController {
     // Direct flow (legacy): normalize + persist raw aiTireSpec blob
     if (body.aiTireSpec) {
       const setup = await this.prisma.vehicleTireSetup.findFirst({
-        where: { vehicleId, removedAt: null },
+        where: { vehicleId, removedAt: null, status: TireSetupStatus.ACTIVE },
         orderBy: { createdAt: 'desc' },
       });
       if (!setup) return { success: false, message: 'No active tire setup found' };
@@ -224,12 +291,18 @@ export class VehicleIntelligenceController {
   // --- Tire Health (enhanced) ---
   @Get('tires/summary')
   async getTireHealthSummary(@Param('vehicleId') vehicleId: string) {
-    return this.tireHealthService.getSummary(vehicleId);
+    const hmTirePressure = await this.hmSignalUsageService
+      .getTirePressureSignals(vehicleId)
+      .catch(() => null);
+    return this.tireHealthService.getSummary(vehicleId, { hmTirePressure });
   }
 
   @Get('tires/detail')
   async getTireHealthDetail(@Param('vehicleId') vehicleId: string) {
-    return this.tireHealthService.getDetail(vehicleId);
+    const hmTirePressure = await this.hmSignalUsageService
+      .getTirePressureSignals(vehicleId)
+      .catch(() => null);
+    return this.tireHealthService.getDetail(vehicleId, { hmTirePressure });
   }
 
   @Get('tires/rotation-history')
@@ -246,12 +319,7 @@ export class VehicleIntelligenceController {
       notes?: string;
     },
   ) {
-    return this.tireHealthService.rotateTires(
-      vehicleId,
-      body.template,
-      body.odometerKm,
-      body.notes,
-    );
+    return this.tireLifecycleService.rotateTires(vehicleId, body);
   }
 
   @Post('tires/change')
@@ -273,9 +341,22 @@ export class VehicleIntelligenceController {
       };
       odometerKm?: number;
       notes?: string;
+      workshopName?: string;
     },
   ) {
-    return this.tireHealthService.changeTires(vehicleId, body);
+    return this.tireLifecycleService.replaceTires({ vehicleId, ...body });
+  }
+
+  @Post('tires/activate-stored-set')
+  async activateStoredTireSet(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: {
+      storedSetupId?: string;
+      odometerKm?: number;
+      notes?: string;
+    },
+  ) {
+    return this.tireLifecycleService.activateStoredSet({ vehicleId, ...body });
   }
 
   @Post('tires/measurement')
@@ -291,7 +372,18 @@ export class VehicleIntelligenceController {
       source?: string;
     },
   ) {
-    return this.tireHealthService.addMeasurement(vehicleId, body);
+    return this.tireLifecycleService.recordMeasurement({
+      vehicleId,
+      frontLeftMm: body.frontLeftMm,
+      frontRightMm: body.frontRightMm,
+      rearLeftMm: body.rearLeftMm,
+      rearRightMm: body.rearRightMm,
+      odometerKm: body.odometerKm,
+      workshopName: body.workshopName,
+      source: body.source,
+      shouldCalibrate: true,
+      triggerRecalculate: true,
+    });
   }
 
   @Post('tires/recalculate')
@@ -321,7 +413,7 @@ export class VehicleIntelligenceController {
     return this.brakesService.update(id, body);
   }
 
-  // --- Brake Status (enhanced health summary) ---
+  // --- Brake Status (legacy heuristic; deprecated) ---
   @Get('brake-status')
   async getBrakeStatus(@Param('vehicleId') vehicleId: string) {
     const specs = await this.brakesService.findByVehicle(vehicleId);
@@ -346,10 +438,13 @@ export class VehicleIntelligenceController {
 
     const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000);
     const recentTrips = await this.prisma.vehicleTrip.findMany({
-      where: { vehicleId, startTime: { gte: ninetyDaysAgo } },
-      // Fetch both the canonical HF counter (hardBrakingCount from HF enrichment)
-      // and the legacy field (harshBrakeCount from route-based enrichment).
-      // The canonical HF counter is preferred when the trip has been HF-enriched.
+      where: {
+        vehicleId,
+        startTime: { gte: ninetyDaysAgo },
+        // Only count trips where behavior enrichment is complete to avoid
+        // false-zero harsh brake counts from not-yet-analyzed trips.
+        behaviorEnrichmentStatus: 'COMPLETED',
+      },
       select: {
         hardBrakingCount: true,
         harshBrakeCount: true,
@@ -361,7 +456,6 @@ export class VehicleIntelligenceController {
 
     const totalRecentKm = recentTrips.reduce((s, t) => s + (t.distanceKm ?? 0), 0);
     // Use canonical HF counter when available, otherwise fall back to legacy field.
-    // This ensures downstream health scoring always reads from the best available truth.
     const totalHarshBrakes = recentTrips.reduce((s, t) => {
       if (t.behaviorEnrichedAt != null) return s + (t.hardBrakingCount ?? 0);
       return s + (t.harshBrakeCount ?? 0);
@@ -471,6 +565,8 @@ export class VehicleIntelligenceController {
     else if (padPercent != null || lastService) dataConfidence = 'medium';
 
     return {
+      _deprecated: true,
+      _canonical: 'Use /brake-health/summary and /brake-health/detail for runtime truth.',
       hasSpecs: spec != null,
       isEv,
       regenBrakingNote: isEv ? 'Regenerative braking active — mechanical brake wear is significantly reduced.' : null,
@@ -530,9 +626,66 @@ export class VehicleIntelligenceController {
       rearPadMm?: number;
       frontRotorWidthMm?: number;
       rearRotorWidthMm?: number;
+      kind?: 'inspection_only' | 'pads_service' | 'discs_service' | 'brake_fluid_service' | 'full_brake_service';
+      scope?: Array<'front_pads' | 'rear_pads' | 'front_discs' | 'rear_discs'>;
+      workshopName?: string;
+      notes?: string;
+      source?: 'manual' | 'ai_document' | 'api';
     },
   ) {
-    return this.brakeHealthService.initializeFromService(vehicleId, body);
+    return this.brakeLifecycleService.recordService({
+      vehicleId,
+      serviceDate: body.serviceDate,
+      odometerKm: body.odometerKm,
+      workshopName: body.workshopName,
+      notes: body.notes,
+      source: body.source ?? 'manual',
+      kind: body.kind,
+      scope: body.scope,
+      measured: {
+        frontPadMm: body.frontPadMm,
+        rearPadMm: body.rearPadMm,
+        frontDiscMm: body.frontRotorWidthMm,
+        rearDiscMm: body.rearRotorWidthMm,
+      },
+      initializeIfPossible: true,
+    });
+  }
+
+  @Post('brake-health/service')
+  async recordBrakeLifecycleService(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: {
+      serviceDate: string;
+      odometerKm?: number;
+      workshopName?: string;
+      notes?: string;
+      source?: 'manual' | 'ai_document' | 'api';
+      kind?: 'inspection_only' | 'pads_service' | 'discs_service' | 'brake_fluid_service' | 'full_brake_service';
+      scope?: Array<'front_pads' | 'rear_pads' | 'front_discs' | 'rear_discs'>;
+      measured?: {
+        frontPadMm?: number;
+        rearPadMm?: number;
+        frontDiscMm?: number;
+        rearDiscMm?: number;
+      };
+      initializeIfPossible?: boolean;
+      documentUrl?: string;
+    },
+  ) {
+    return this.brakeLifecycleService.recordService({
+      vehicleId,
+      serviceDate: body.serviceDate,
+      odometerKm: body.odometerKm,
+      workshopName: body.workshopName,
+      notes: body.notes,
+      source: body.source ?? 'manual',
+      kind: body.kind,
+      scope: body.scope,
+      measured: body.measured,
+      initializeIfPossible: body.initializeIfPossible,
+      documentUrl: body.documentUrl,
+    });
   }
 
   @Post('brake-health/recalculate')
@@ -655,16 +808,83 @@ export class VehicleIntelligenceController {
     @Query('to') to?: string,
     @Query('driver') driver?: string,
   ) {
-    return this.tripsService.findByVehicle(vehicleId, {
+    const trips = await this.tripsService.findByVehicle(vehicleId, {
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
       driverName: driver,
+    });
+    const hydratedTrips = await this.tripAnalyticsCanonicalService.hydrateTrips(trips as any);
+
+    // ── Compute simple UI-facing readiness flags ─────────────────────────
+    // Frontend only needs behaviorReady/detailsLimited — it should NOT need
+    // to interpret behaviorEnrichmentStatus internally.
+    return hydratedTrips.map((trip) => {
+      const { behaviorEnrichmentStatus, behaviorEnrichmentError, behaviorEnrichmentAttempts, ...rest } = trip as any;
+      return {
+        ...rest,
+        drivingScore:
+          trip.canonicalTripSummary?.scores?.drivingStyleScore ??
+          trip.drivingScore ??
+          null,
+        drivingStyleScore:
+          trip.canonicalTripSummary?.scores?.drivingStyleScore ??
+          null,
+        safetyScore: trip.canonicalTripSummary?.scores?.safetyScore ?? null,
+        scoreSource: trip.canonicalTripSummary?.scores?.scoreSource ?? 'derived',
+        totalAccelerationEvents: trip.canonicalTripSummary?.events?.totalAccelerationEvents ?? 0,
+        hardAccelerationEvents: trip.canonicalTripSummary?.events?.hardAccelerationEvents ?? 0,
+        totalBrakingEvents: trip.canonicalTripSummary?.events?.totalBrakingEvents ?? 0,
+        hardBrakingEvents: trip.canonicalTripSummary?.events?.hardBrakingEvents ?? 0,
+        fullBrakingEvents: trip.canonicalTripSummary?.events?.fullBrakingEvents ?? 0,
+        corneringEvents: trip.canonicalTripSummary?.events?.corneringEvents ?? 0,
+        abuseEvents: trip.canonicalTripSummary?.events?.abuseEvents ?? 0,
+        speedingEvents: trip.canonicalTripSummary?.events?.speedingEvents ?? 0,
+        assignmentStatus: trip.canonicalTripSummary?.assignment?.assignmentStatus ?? null,
+        assignmentSubjectType: trip.canonicalTripSummary?.assignment?.assignmentSubjectType ?? null,
+        assignmentSubjectId: trip.canonicalTripSummary?.assignment?.assignmentSubjectId ?? null,
+        assignedBookingId: trip.canonicalTripSummary?.assignment?.assignedBookingId ?? null,
+        isPrivateTrip: trip.canonicalTripSummary?.assignment?.isPrivateTrip ?? false,
+        scoreEligible: trip.canonicalTripSummary?.assignment?.scoreEligible ?? false,
+        behaviorReady: behaviorEnrichmentStatus === 'COMPLETED',
+        detailsLimited:
+          !trip.endTime ||
+          (trip as any).qualityStatus === 'LOW_DATA' ||
+          (trip as any).qualityStatus === 'ANOMALY',
+      };
     });
   }
 
   @Get('trips/stats')
   async getTripStats(@Param('vehicleId') vehicleId: string) {
-    return this.tripsService.getStats(vehicleId);
+    return this.tripAnalyticsCanonicalService.getVehicleStats(vehicleId);
+  }
+
+  @Get('trips/driver-score')
+  async getDriverScore(
+    @Param('vehicleId') vehicleId: string,
+    @Query('subjectType') subjectType?: string,
+    @Query('subjectId') subjectId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    if (!subjectType || !subjectId) {
+      throw new BadRequestException('subjectType and subjectId are required');
+    }
+
+    const normalizedType = String(subjectType).toUpperCase();
+    if (!Object.values(TripAssignmentSubjectType).includes(normalizedType as TripAssignmentSubjectType)) {
+      throw new BadRequestException('Invalid subjectType');
+    }
+
+    return this.driverScoreService.getScoreSummary(
+      normalizedType as TripAssignmentSubjectType,
+      subjectId,
+      {
+        from: from ? new Date(from) : undefined,
+        to: to ? new Date(to) : undefined,
+        vehicleId,
+      },
+    );
   }
 
   @Get('trips/:tripId')
@@ -672,7 +892,43 @@ export class VehicleIntelligenceController {
     @Param('vehicleId') vehicleId: string,
     @Param('tripId') tripId: string,
   ) {
-    return this.tripsService.findById(tripId);
+    const trip = await this.tripsService.findById(tripId);
+    // Verify the trip belongs to the requested vehicle (prevents cross-vehicle IDOR)
+    if (!trip || trip.vehicleId !== vehicleId) return null;
+    const hydratedTrip = await this.tripAnalyticsCanonicalService.hydrateTrip(trip as any);
+
+    // ── Same readiness semantics as GET /trips list ──────────────────────
+    // Strip internal enrichment status fields; surface simple flags only.
+    const { behaviorEnrichmentStatus, behaviorEnrichmentError, behaviorEnrichmentAttempts, ...rest } = hydratedTrip as any;
+    return {
+      ...rest,
+      drivingScore:
+        hydratedTrip.canonicalTripSummary?.scores?.drivingStyleScore ??
+        hydratedTrip.drivingScore ??
+        null,
+      drivingStyleScore: hydratedTrip.canonicalTripSummary?.scores?.drivingStyleScore ?? null,
+      safetyScore: hydratedTrip.canonicalTripSummary?.scores?.safetyScore ?? null,
+      scoreSource: hydratedTrip.canonicalTripSummary?.scores?.scoreSource ?? 'derived',
+      totalAccelerationEvents: hydratedTrip.canonicalTripSummary?.events?.totalAccelerationEvents ?? 0,
+      hardAccelerationEvents: hydratedTrip.canonicalTripSummary?.events?.hardAccelerationEvents ?? 0,
+      totalBrakingEvents: hydratedTrip.canonicalTripSummary?.events?.totalBrakingEvents ?? 0,
+      hardBrakingEvents: hydratedTrip.canonicalTripSummary?.events?.hardBrakingEvents ?? 0,
+      fullBrakingEvents: hydratedTrip.canonicalTripSummary?.events?.fullBrakingEvents ?? 0,
+      corneringEvents: hydratedTrip.canonicalTripSummary?.events?.corneringEvents ?? 0,
+      abuseEvents: hydratedTrip.canonicalTripSummary?.events?.abuseEvents ?? 0,
+      speedingEvents: hydratedTrip.canonicalTripSummary?.events?.speedingEvents ?? 0,
+      assignmentStatus: hydratedTrip.canonicalTripSummary?.assignment?.assignmentStatus ?? null,
+      assignmentSubjectType: hydratedTrip.canonicalTripSummary?.assignment?.assignmentSubjectType ?? null,
+      assignmentSubjectId: hydratedTrip.canonicalTripSummary?.assignment?.assignmentSubjectId ?? null,
+      assignedBookingId: hydratedTrip.canonicalTripSummary?.assignment?.assignedBookingId ?? null,
+      isPrivateTrip: hydratedTrip.canonicalTripSummary?.assignment?.isPrivateTrip ?? false,
+      scoreEligible: hydratedTrip.canonicalTripSummary?.assignment?.scoreEligible ?? false,
+      behaviorReady: behaviorEnrichmentStatus === 'COMPLETED',
+      detailsLimited:
+        !hydratedTrip.endTime ||
+        (hydratedTrip as any).qualityStatus === 'LOW_DATA' ||
+        (hydratedTrip as any).qualityStatus === 'ANOMALY',
+    };
   }
 
   @Get('trips/:tripId/route')
@@ -684,42 +940,51 @@ export class VehicleIntelligenceController {
   }
 
   /**
-   * @deprecated LEGACY V1 manual trip sync.
+   * Triggers structured reconciliation for this vehicle.
+   * Replaces the legacy V1 "Sync Trips" endpoint.
    *
-   * Uses the old ignition-based V1 detection algorithm (isIgnitionOn && speed > 0).
-   * This is NOT the live V2 trip engine.  It exists only for admin back-fill or
-   * historical debugging.  For live trip detection, the V2 state machine driven
-   * by DimoSnapshotProcessor is used automatically.
-   *
-   * Results from this endpoint may differ from V2-detected trips and should NOT
-   * be used as a substitute for the V2 live engine output.
+   * Scans the last 12 hours by default, or a caller-provided time window for
+   * historical repair/backfill. Manual reconciliation enables the DIMO
+   * segment fallback so missed live windows can be reconstructed safely.
    */
-  @Post('trips/sync')
-  async syncTrips(
+  @Post('trips/reconcile')
+  async reconcileTrips(
     @Param('vehicleId') vehicleId: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: vehicleId },
-      include: { dimoVehicle: true },
-    });
-    const tokenId = vehicle?.dimoVehicle?.tokenId;
-    if (!tokenId) return { synced: 0, message: 'No DIMO connection' };
-    const now = new Date();
-    const fromDate = from ? new Date(from) : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const toDate = to ? new Date(to) : now;
-    const synced = await this.tripsService.syncTripsFromSegments(vehicleId, tokenId, fromDate, toDate);
-    return {
-      synced,
-      warning: 'LEGACY V1 sync — uses ignition-based detection, not the live V2 engine.',
-    };
-  }
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
 
-  @Post('trips/deduplicate')
-  async deduplicateTrips(@Param('vehicleId') vehicleId: string) {
-    const removed = await this.tripsService.deduplicateTrips(vehicleId);
-    return { removed };
+    if (from && Number.isNaN(fromDate?.getTime())) {
+      throw new BadRequestException('Invalid `from` timestamp');
+    }
+    if (to && Number.isNaN(toDate?.getTime())) {
+      throw new BadRequestException('Invalid `to` timestamp');
+    }
+    if (fromDate && toDate && fromDate >= toDate) {
+      throw new BadRequestException('`from` must be earlier than `to`');
+    }
+
+    const result = await this.tripReconciliation.triggerManualReconciliation(
+      vehicleId,
+      {
+        from: fromDate,
+        to: toDate,
+        useDimoSegmentFallback: true,
+      },
+    );
+    return {
+      found: result.repairsProposed,
+      applied: result.repairsApplied,
+      windowFrom: result.windowFrom.toISOString(),
+      windowTo: result.windowTo.toISOString(),
+      usedDimoSegmentFallback: true,
+      message:
+        result.repairsApplied > 0
+          ? `${result.repairsApplied} missing trip(s) repaired`
+          : 'No missing trips detected',
+    };
   }
 
   /**
@@ -764,6 +1029,21 @@ export class VehicleIntelligenceController {
     @Param('tripId') tripId: string,
     @Query('category') category?: string,
   ) {
+    // ── False-zero guard ─────────────────────────────────────────────────
+    // If the trip hasn't been enriched yet, returning an empty events array
+    // would be misinterpreted as "zero events". Return a pending status instead.
+    const trip = await this.prisma.vehicleTrip.findUnique({
+      where: { id: tripId },
+      select: { behaviorEnrichmentStatus: true },
+    });
+    if (trip && trip.behaviorEnrichmentStatus !== 'COMPLETED') {
+      return {
+        status: 'pending',
+        behaviorReady: false,
+        events: [],
+      };
+    }
+
     const behaviorWhere: any = { tripId, vehicleId };
     if (category) behaviorWhere.eventCategory = category;
 
@@ -842,7 +1122,11 @@ export class VehicleIntelligenceController {
     const merged = [...behaviorEvents.map((e) => ({ ...e, latitude: null, longitude: null, source: 'BEHAVIOR_EVENT' })), ...deduped];
     merged.sort((a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime());
 
-    return merged;
+    return {
+      status: 'ready',
+      behaviorReady: true,
+      events: merged,
+    };
   }
 
   @Post('trips/:tripId/behavior-enrich')
@@ -850,7 +1134,7 @@ export class VehicleIntelligenceController {
     @Param('vehicleId') vehicleId: string,
     @Param('tripId') tripId: string,
   ) {
-    // Canonical flow: same path as V2 auto and V1 sync.
+    // Canonical flow: V2 FSM auto-finalize, reconciliation repairs, and manual enrichment.
     // Status tracking, DimoPollLog, and DrivingImpact chaining all happen here.
     const { status, result } = await this.enrichmentOrchestrator.runEnrichmentSync(
       tripId,
@@ -913,31 +1197,25 @@ export class VehicleIntelligenceController {
 
   @Get('battery-health/latest')
   async getLatestBatteryHealth(@Param('vehicleId') vehicleId: string) {
-    const snapshot = await this.batteryHealthService.getLatest(vehicleId);
-    const v2 = await this.batteryV2Service.getV2Health(vehicleId);
+    const [canonical, v2] = await Promise.all([
+      this.canonicalBatteryHealthService.getSummary(vehicleId),
+      this.batteryV2Service.getV2Health(vehicleId),
+    ]);
 
-    const latestState = await this.prisma.vehicleLatestState.findUnique({
-      where: { vehicleId },
-      select: { lvBatteryVoltage: true, lastSeenAt: true },
-    });
-
-    const base = snapshot ?? (latestState?.lvBatteryVoltage != null
-      ? {
-          voltageV: latestState.lvBatteryVoltage,
-          sohPercent: null,
-          temperatureC: null,
-          recordedAt: latestState.lastSeenAt,
-          restingVoltage: null,
-          crankingVoltage: null,
-          chargingVoltage: null,
-          source: 'telemetry',
-        }
-      : null);
-
-    if (!base) return null;
+    if (!canonical) return null;
 
     return {
-      ...base,
+      voltageV: canonical.currentState?.voltageV ?? null,
+      sohPercent: canonical.currentState?.sohPercent ?? null,
+      temperatureC: canonical.currentState?.temperatureC ?? null,
+      recordedAt: canonical.currentState?.lastChecked ?? null,
+      restingVoltage: canonical.currentState?.restingVoltage ?? null,
+      crankingVoltage: canonical.currentState?.crankingVoltage ?? null,
+      chargingVoltage: canonical.currentState?.chargingVoltage ?? null,
+      source: 'canonical',
+      lv: canonical.lv,
+      hv: canonical.hv,
+      currentTelemetry: canonical.currentTelemetry,
       v2: v2
         ? {
             estimatedSocPct: v2.estimatedSocPct,
@@ -1027,115 +1305,12 @@ export class VehicleIntelligenceController {
   // --- Battery Health Summary ---
   @Get('battery-health-summary')
   async getBatteryHealthSummary(@Param('vehicleId') vehicleId: string) {
-    const latest = await this.batteryHealthService.getLatest(vehicleId);
-    const trend7 = await this.batteryHealthService.getSohTrend(vehicleId, 7);
-    const trend30 = await this.batteryHealthService.getSohTrend(vehicleId, 30);
-    const specs = await this.batteryService.findByVehicle(vehicleId);
-    const spec = specs[0] ?? null;
+    return this.canonicalBatteryHealthService.getSummary(vehicleId);
+  }
 
-    const latestState = await this.prisma.vehicleLatestState.findUnique({
-      where: { vehicleId },
-      select: { lvBatteryVoltage: true, lastSeenAt: true },
-    });
-
-    // V2 publication-aware data
-    const v2 = await this.batteryV2Service.getV2Health(vehicleId);
-    const pubState = v2?.publicationState ?? 'INITIAL_CALIBRATION';
-    const publishedSoh = v2?.publishedSohPct ?? null;
-    const maturityConf = v2?.maturityConfidence ?? 'none';
-
-    const batteryEvents = await this.prisma.vehicleServiceEvent.findMany({
-      where: { vehicleId, eventType: 'BATTERY_REPLACEMENT' },
-      orderBy: { eventDate: 'desc' },
-      take: 10,
-    });
-
-    const snapshots = await this.prisma.batteryHealthSnapshot.findMany({
-      where: { vehicleId },
-      orderBy: { recordedAt: 'desc' },
-      take: 20,
-      select: { id: true, voltageV: true, sohPercent: true, temperatureC: true, recordedAt: true, restingVoltage: true },
-    });
-
-    // Prefer published SOH from V2 pipeline when available
-    const soh = pubState !== 'INITIAL_CALIBRATION' ? (publishedSoh ?? latest?.sohPercent ?? null) : (latest?.sohPercent ?? null);
-    const voltage = latest?.voltageV ?? latestState?.lvBatteryVoltage ?? null;
-    const temp = latest?.temperatureC ?? null;
-    const lastChecked = latest?.recordedAt ?? latestState?.lastSeenAt ?? null;
-
-    let condition: 'good' | 'watch' | 'attention' | 'calibrating' = pubState === 'INITIAL_CALIBRATION' ? 'calibrating' : 'good';
-    if (condition !== 'calibrating') {
-      if (soh != null) {
-        if (soh < 50) condition = 'attention';
-        else if (soh < 70) condition = 'watch';
-      } else if (voltage != null) {
-        if (voltage < 11.5) condition = 'attention';
-        else if (voltage < 12.0) condition = 'watch';
-      }
-    }
-
-    let trendDirection: 'stable' | 'declining' | 'improving' | 'unknown' = 'unknown';
-    if (trend30.length >= 3) {
-      const first = trend30.slice(0, Math.ceil(trend30.length / 3));
-      const last = trend30.slice(-Math.ceil(trend30.length / 3));
-      const avgFirst = first.reduce((s: number, d: any) => s + (d.sohPercent ?? d.voltageV ?? 0), 0) / first.length;
-      const avgLast = last.reduce((s: number, d: any) => s + (d.sohPercent ?? d.voltageV ?? 0), 0) / last.length;
-      const delta = avgLast - avgFirst;
-      if (Math.abs(delta) < 2) trendDirection = 'stable';
-      else if (delta > 0) trendDirection = 'improving';
-      else trendDirection = 'declining';
-    }
-
-    const watchpoints: string[] = [];
-    if (soh != null && soh < 60) watchpoints.push('Battery SOH below 60% — consider battery testing');
-    if (voltage != null && voltage < 12.0) watchpoints.push('Resting voltage below 12V — battery may struggle in cold weather');
-    if (trendDirection === 'declining') watchpoints.push('Battery health trend is declining — monitor closely');
-    if (temp != null && temp < 0) watchpoints.push('Sub-zero temperature detected — cold-weather battery stress expected');
-    if (snapshots.length === 0) watchpoints.push('No battery health data available yet');
-
-    const recommendations: string[] = [];
-    if (condition === 'attention') recommendations.push('Schedule a professional battery test at next service');
-    if (condition === 'watch') recommendations.push('Monitor battery voltage over the next few weeks');
-    if (soh != null && soh < 40) recommendations.push('Battery replacement recommended in the near term');
-    if (trendDirection === 'declining' && condition !== 'attention') recommendations.push('Track voltage trend — recheck in 2 weeks');
-    if (watchpoints.length === 0 && condition === 'good') recommendations.push('Battery appears healthy — continue routine monitoring');
-
-    return {
-      currentState: {
-        sohPercent: soh,
-        publishedSohPct: publishedSoh,
-        publicationState: pubState,
-        maturityConfidence: maturityConf,
-        voltageV: voltage != null ? Math.round(voltage * 100) / 100 : null,
-        temperatureC: temp != null ? Math.round(temp * 10) / 10 : null,
-        lastChecked: lastChecked?.toISOString() ?? null,
-        restingVoltage: latest?.restingVoltage != null ? Math.round(latest.restingVoltage * 100) / 100 : null,
-        crankingVoltage: latest?.crankingVoltage != null ? Math.round((latest as any).crankingVoltage * 100) / 100 : null,
-        chargingVoltage: latest?.chargingVoltage != null ? Math.round((latest as any).chargingVoltage * 100) / 100 : null,
-      },
-      condition,
-      trendDirection,
-      specs: spec ? {
-        batteryType: spec.batteryType,
-        batteryAmpere: spec.batteryAmpere,
-        batteryVolt: spec.batteryVolt,
-        sourceType: spec.sourceType,
-      } : null,
-      trend7: trend7.map((d: any) => ({ date: d.recordedAt.toISOString(), soh: d.sohPercent, voltage: d.voltageV })),
-      trend30: trend30.map((d: any) => ({ date: d.recordedAt.toISOString(), soh: d.sohPercent, voltage: d.voltageV })),
-      history: [
-        ...snapshots.map((s: any) => ({
-          id: s.id, type: 'measurement' as const, date: s.recordedAt.toISOString(),
-          soh: s.sohPercent, voltage: s.voltageV, temperature: s.temperatureC,
-        })),
-        ...batteryEvents.map((e: any) => ({
-          id: e.id, type: 'service' as const, date: e.eventDate.toISOString(),
-          notes: e.notes, workshopName: e.workshopName, odometerKm: e.odometerKm,
-        })),
-      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 20),
-      watchpoints,
-      recommendations,
-    };
+  @Get('battery-health-detail')
+  async getBatteryHealthDetail(@Param('vehicleId') vehicleId: string) {
+    return this.canonicalBatteryHealthService.getDetail(vehicleId);
   }
 
   // --- Service Info Status ---
@@ -1326,10 +1501,86 @@ export class VehicleIntelligenceController {
     const d = body.confirmedData;
     const docType = extraction.documentType;
 
-    if (['SERVICE', 'OIL_CHANGE', 'BRAKE', 'BATTERY', 'TUV_REPORT', 'BOKRAFT_REPORT'].includes(docType)) {
+    const toNum = (v: unknown): number | undefined => {
+      if (typeof v === 'number' && Number.isFinite(v)) return v;
+      if (typeof v === 'string' && v.trim().length > 0) {
+        const parsed = Number(v);
+        if (Number.isFinite(parsed)) return parsed;
+      }
+      return undefined;
+    };
+
+    if (docType === 'BRAKE') {
+      const serviceDateRaw =
+        (typeof d?.eventDate === 'string' && d.eventDate) ||
+        (typeof d?.serviceDate === 'string' && d.serviceDate) ||
+        new Date().toISOString();
+      const notes =
+        (typeof d?.notes === 'string' && d.notes.trim()) ||
+        (typeof d?.description === 'string' && d.description.trim()) ||
+        undefined;
+      const kind =
+        d?.serviceKind === 'inspection_only' ||
+        d?.serviceKind === 'pads_service' ||
+        d?.serviceKind === 'discs_service' ||
+        d?.serviceKind === 'brake_fluid_service' ||
+        d?.serviceKind === 'full_brake_service'
+          ? d.serviceKind
+          : 'full_brake_service';
+      const rawScope = Array.isArray(d?.scope)
+        ? d.scope
+        : Array.isArray(d?.serviceScope)
+          ? d.serviceScope
+          : typeof d?.scopeCsv === 'string'
+            ? d.scopeCsv
+                .split(',')
+                .map((s: string) => s.trim())
+                .filter(Boolean)
+            : [];
+      const scope = rawScope.filter(
+        (s: unknown): s is 'front_pads' | 'rear_pads' | 'front_discs' | 'rear_discs' =>
+          s === 'front_pads' || s === 'rear_pads' || s === 'front_discs' || s === 'rear_discs',
+      );
+
+      const lifecycle = await this.brakeLifecycleService.recordService({
+        vehicleId,
+        serviceDate: serviceDateRaw,
+        odometerKm: toNum(d?.odometerKm),
+        workshopName:
+          (typeof d?.workshopName === 'string' && d.workshopName.trim()) || undefined,
+        notes,
+        source: 'ai_document',
+        kind,
+        scope,
+        measured: {
+          frontPadMm: toNum(d?.frontPadMm ?? d?.measured?.frontPadMm),
+          rearPadMm: toNum(d?.rearPadMm ?? d?.measured?.rearPadMm),
+          frontDiscMm: toNum(
+            d?.frontDiscMm ?? d?.frontRotorWidthMm ?? d?.measured?.frontDiscMm,
+          ),
+          rearDiscMm: toNum(
+            d?.rearDiscMm ?? d?.rearRotorWidthMm ?? d?.measured?.rearDiscMm,
+          ),
+        },
+        initializeIfPossible: true,
+        documentUrl: extraction.sourceFileUrl ?? undefined,
+      });
+
+      const updated = await this.prisma.vehicleDocumentExtraction.update({
+        where: { id: extractionId },
+        data: { serviceEventId: lifecycle.serviceEventId },
+      });
+
+      return {
+        ...updated,
+        applyResult: lifecycle,
+      };
+    }
+
+    if (['SERVICE', 'OIL_CHANGE', 'TUV_REPORT', 'BOKRAFT_REPORT'].includes(docType)) {
       const typeMap: Record<string, string> = {
-        SERVICE: 'FULL_SERVICE', OIL_CHANGE: 'OIL_CHANGE', BRAKE: 'BRAKE_SERVICE',
-        BATTERY: 'BATTERY_REPLACEMENT', TUV_REPORT: 'TUV_INSPECTION', BOKRAFT_REPORT: 'BOKRAFT_INSPECTION',
+        SERVICE: 'FULL_SERVICE', OIL_CHANGE: 'OIL_CHANGE',
+        TUV_REPORT: 'TUV_INSPECTION', BOKRAFT_REPORT: 'BOKRAFT_INSPECTION',
       };
       const eventType = typeMap[docType] ?? 'OTHER';
       const svcEvent = await this.prisma.vehicleServiceEvent.create({
@@ -1379,31 +1630,188 @@ export class VehicleIntelligenceController {
         nextBk.setFullYear(nextBk.getFullYear() + 1);
         await this.prisma.vehicle.update({ where: { id: vehicleId }, data: { lastBokraftDate: bkDate, nextBokraftDate: nextBk } });
       }
-      if (docType === 'BATTERY' && (d.sohPercent || d.voltageV)) {
-        await this.batteryHealthService.recordSnapshot({
-          vehicleId,
-          voltageV: d.voltageV ? parseFloat(d.voltageV) : 12.0,
-          ...(d.temperatureC ? { temperatureC: parseFloat(d.temperatureC) } : {}),
-          ...(d.restingVoltage ? { restingVoltage: parseFloat(d.restingVoltage) } : {}),
+    }
+
+    if (docType === 'BATTERY') {
+      const normalized = normalizeBatteryDocumentConfirm(
+        d as Record<string, unknown>,
+      );
+      const observedAt = normalized.observedAt;
+      const scope = normalized.scope;
+      const isReplacement = normalized.isReplacement;
+
+      let serviceEventId: string | null = null;
+      if (isReplacement) {
+        const svcEvent = await this.prisma.vehicleServiceEvent.create({
+          data: {
+            vehicleId,
+            eventType: 'BATTERY_REPLACEMENT',
+            eventDate: observedAt,
+            odometerKm: normalized.odometerKm
+              ? Math.round(normalized.odometerKm)
+              : undefined,
+            workshopName: d?.workshopName || undefined,
+            notes: d?.notes || d?.description || undefined,
+            costCents: d?.costCents ? parseInt(d.costCents, 10) : undefined,
+            documentUrl: extraction.sourceFileUrl,
+          },
         });
+        serviceEventId = svcEvent.id;
+        await this.prisma.vehicleDocumentExtraction.update({
+          where: { id: extractionId },
+          data: { serviceEventId: svcEvent.id },
+        });
+      }
+
+      const sourceType = isReplacement
+        ? BatteryEvidenceSourceType.WORKSHOP_MEASUREMENT
+        : BatteryEvidenceSourceType.DOCUMENT_CONFIRMED;
+
+      const sohPercent = normalized.sohPercent;
+      const voltageV = normalized.voltageV;
+      const restingVoltage = normalized.restingVoltage;
+      const crankingVoltage = normalized.crankingVoltage;
+      const chargingVoltage = normalized.chargingVoltage;
+      const temperatureC = normalized.temperatureC;
+
+      await this.batteryEvidenceService.recordMany([
+        {
+          vehicleId,
+          scope,
+          sourceType,
+          valueType: BatteryEvidenceValueType.SOH_PERCENT,
+          numericValue: sohPercent,
+          unit: 'percent',
+          observedAt,
+          provider: 'document_confirmed',
+          confidence: 'document_confirmed',
+          quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
+          documentExtractionId: extraction.id,
+          serviceEventId,
+        },
+        {
+          vehicleId,
+          scope: BatteryEvidenceScope.LV,
+          sourceType,
+          valueType: BatteryEvidenceValueType.VOLTAGE_V,
+          numericValue: voltageV,
+          unit: 'V',
+          observedAt,
+          provider: 'document_confirmed',
+          confidence: 'document_confirmed',
+          quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
+          documentExtractionId: extraction.id,
+          serviceEventId,
+        },
+        {
+          vehicleId,
+          scope: BatteryEvidenceScope.LV,
+          sourceType,
+          valueType: BatteryEvidenceValueType.RESTING_VOLTAGE_V,
+          numericValue: restingVoltage,
+          unit: 'V',
+          observedAt,
+          provider: 'document_confirmed',
+          confidence: 'document_confirmed',
+          quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
+          documentExtractionId: extraction.id,
+          serviceEventId,
+        },
+        {
+          vehicleId,
+          scope: BatteryEvidenceScope.LV,
+          sourceType,
+          valueType: BatteryEvidenceValueType.CRANKING_VOLTAGE_V,
+          numericValue: crankingVoltage,
+          unit: 'V',
+          observedAt,
+          provider: 'document_confirmed',
+          confidence: 'document_confirmed',
+          quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
+          documentExtractionId: extraction.id,
+          serviceEventId,
+        },
+        {
+          vehicleId,
+          scope: BatteryEvidenceScope.LV,
+          sourceType,
+          valueType: BatteryEvidenceValueType.CHARGING_VOLTAGE_V,
+          numericValue: chargingVoltage,
+          unit: 'V',
+          observedAt,
+          provider: 'document_confirmed',
+          confidence: 'document_confirmed',
+          quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
+          documentExtractionId: extraction.id,
+          serviceEventId,
+        },
+        {
+          vehicleId,
+          scope: BatteryEvidenceScope.LV,
+          sourceType,
+          valueType: BatteryEvidenceValueType.BATTERY_TEMPERATURE_C,
+          numericValue: temperatureC,
+          unit: 'celsius',
+          observedAt,
+          provider: 'document_confirmed',
+          confidence: 'document_confirmed',
+          quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
+          documentExtractionId: extraction.id,
+          serviceEventId,
+        },
+      ]);
+
+      // Keep legacy LV history only when the document actually contains LV voltage evidence.
+      if (
+        scope === BatteryEvidenceScope.LV &&
+        (voltageV != null ||
+          restingVoltage != null ||
+          crankingVoltage != null ||
+          chargingVoltage != null)
+      ) {
+        const lvReferenceVoltage =
+          voltageV ??
+          restingVoltage ??
+          crankingVoltage ??
+          chargingVoltage;
+        if (lvReferenceVoltage != null) {
+          await this.batteryHealthService.recordSnapshot({
+            vehicleId,
+            voltageV: lvReferenceVoltage,
+            temperatureC: temperatureC ?? undefined,
+            restingVoltage: restingVoltage ?? undefined,
+            crankingVoltage: crankingVoltage ?? undefined,
+            chargingVoltage: chargingVoltage ?? undefined,
+            observedAt,
+            sourceType,
+            provider: 'document_confirmed',
+            quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
+            documentExtractionId: extraction.id,
+            serviceEventId: serviceEventId ?? undefined,
+          });
+        }
       }
     }
 
     if (docType === 'TIRE' && d.treadDepthMm) {
-      const setups = await this.prisma.vehicleTireSetup.findMany({ where: { vehicleId, removedAt: null }, take: 1 });
-      if (setups[0]) {
-        await this.prisma.vehicleTireTreadMeasurement.create({
-          data: {
-            vehicleId, tireSetupId: setups[0].id, measuredAt: new Date(),
-            frontLeftMm: d.treadDepthMm?.fl ? parseFloat(d.treadDepthMm.fl) : undefined,
-            frontRightMm: d.treadDepthMm?.fr ? parseFloat(d.treadDepthMm.fr) : undefined,
-            rearLeftMm: d.treadDepthMm?.rl ? parseFloat(d.treadDepthMm.rl) : undefined,
-            rearRightMm: d.treadDepthMm?.rr ? parseFloat(d.treadDepthMm.rr) : undefined,
-            odometerAtMeasurement: d.odometerKm ? parseFloat(d.odometerKm) : undefined,
-            source: 'ai_upload',
-          },
+      await this.tireLifecycleService
+        .recordMeasurement({
+          vehicleId,
+          frontLeftMm: d.treadDepthMm?.fl ? parseFloat(d.treadDepthMm.fl) : undefined,
+          frontRightMm: d.treadDepthMm?.fr ? parseFloat(d.treadDepthMm.fr) : undefined,
+          rearLeftMm: d.treadDepthMm?.rl ? parseFloat(d.treadDepthMm.rl) : undefined,
+          rearRightMm: d.treadDepthMm?.rr ? parseFloat(d.treadDepthMm.rr) : undefined,
+          odometerKm: d.odometerKm ? parseFloat(d.odometerKm) : undefined,
+          source: 'ai_confirmed',
+          linkedExtractionId: extraction.id,
+          linkedDocumentUrl: extraction.sourceFileUrl ?? undefined,
+          quality: 'measured',
+          shouldCalibrate: true,
+          triggerRecalculate: true,
+        })
+        .catch((err: any) => {
+          this.logger.warn(`Tire extraction measurement failed: ${err?.message ?? 'unknown error'}`);
         });
-      }
     }
 
     if (docType === 'DAMAGE' || docType === 'ACCIDENT') {
@@ -1436,7 +1844,9 @@ export class VehicleIntelligenceController {
       }
     }
 
-    return extraction;
+    return this.prisma.vehicleDocumentExtraction.findUnique({
+      where: { id: extractionId },
+    });
   }
 
   // --- Oil Change Status ---
@@ -1520,7 +1930,16 @@ export class VehicleIntelligenceController {
   // --- HV Battery Health (EV) ---
   @Get('hv-battery-status')
   async getHvBatteryStatus(@Param('vehicleId') vehicleId: string) {
-    return this.hvBatteryHealthService.getHvBatteryStatus(vehicleId);
+    const [summary, legacy] = await Promise.all([
+      this.canonicalBatteryHealthService.getSummary(vehicleId),
+      this.hvBatteryHealthService.getHvBatteryStatus(vehicleId),
+    ]);
+    if (!legacy) return null;
+    return {
+      ...legacy,
+      canonical: summary?.hv ?? null,
+      currentTelemetry: summary?.currentTelemetry ?? null,
+    };
   }
 
   // --- AI Health Care Summary (legacy) ---
@@ -1591,6 +2010,77 @@ export class VehicleIntelligenceController {
   async hmRefreshAiHealthCare(@Param('vehicleId') vehicleId: string) {
     await this.hmSignalUsageService.refreshSignalGroup(vehicleId, 'AI_HEALTH_CARE');
     return { ok: true };
+  }
+
+  // ── HM Health-APP explicit endpoint aliases (/hm-health-app/) ────────────────
+  // These are the canonical new-style routes matching the spec.
+  // They delegate to the same underlying logic as the legacy /high-mobility/ routes.
+
+  @Get('hm-health-app/status')
+  async getHmHealthAppStatus(@Param('vehicleId') vehicleId: string) {
+    return this.hmVehicleActivationService.getHmStatusForVehicle(vehicleId);
+  }
+
+  @Post('hm-health-app/check-eligibility')
+  async hmHealthAppCheckEligibility(@Param('vehicleId') vehicleId: string) {
+    return this.hmVehicleActivationService.checkEligibilityForVehicle(vehicleId);
+  }
+
+  @Post('hm-health-app/activate')
+  async hmHealthAppActivate(@Param('vehicleId') vehicleId: string) {
+    return this.hmVehicleActivationService.activateHmHealth(vehicleId);
+  }
+
+  @Post('hm-health-app/refresh-status')
+  async hmHealthAppRefreshStatus(@Param('vehicleId') vehicleId: string) {
+    return this.hmVehicleActivationService.refreshHmStatus(vehicleId);
+  }
+
+  @Post('hm-health-app/deactivate')
+  async hmHealthAppDeactivate(@Param('vehicleId') vehicleId: string) {
+    return this.hmVehicleActivationService.deactivateHmHealth(vehicleId);
+  }
+
+  /**
+   * POST /vehicles/:vehicleId/hm-health-app/request-direct-clearance
+   * For VW Group (Audi, VW, Skoda, SEAT, CUPRA) and Porsche:
+   * Skips the Eligibility API and submits a direct fleet clearance request.
+   * Safe to call from the UI "Start Activation" button for these brands.
+   */
+  @Post('hm-health-app/request-direct-clearance')
+  async hmHealthAppRequestDirectClearance(@Param('vehicleId') vehicleId: string) {
+    return this.hmVehicleActivationService.requestDirectFleetClearance(vehicleId);
+  }
+
+  @Get('hm-health-app/service-info')
+  async hmHealthAppServiceInfo(@Param('vehicleId') vehicleId: string) {
+    const signals = await this.hmSignalUsageService.getServiceInfoSignals(vehicleId);
+    return signals ?? { distanceToNextServiceKm: null, timeToNextServiceDays: null, lastUpdatedAt: null, hmVehicleId: null, freshnessStatus: 'no_data' };
+  }
+
+  @Get('hm-health-app/tire-pressure-display')
+  async hmHealthAppTirePressureDisplay(@Param('vehicleId') vehicleId: string) {
+    const signals = await this.hmSignalUsageService.getTirePressureSignals(vehicleId);
+    return signals ?? { overallStatus: 'UNKNOWN', lastUpdatedAt: null, hmVehicleId: null, freshnessStatus: 'no_data' };
+  }
+
+  @Get('hm-health-app/ai-health-care')
+  async hmHealthAppAiHealthCare(@Param('vehicleId') vehicleId: string) {
+    const signals = await this.hmSignalUsageService.getAiHealthCareSignals(vehicleId);
+    return signals ?? { hmVehicleId: null, lastUpdatedAt: null, freshnessStatus: 'no_data' };
+  }
+
+  @Get('hm-health-app/error-codes-status')
+  async hmHealthAppErrorCodesStatus(@Param('vehicleId') vehicleId: string) {
+    const [dtcSummary, hmActive] = await Promise.all([
+      this.dtcService.getSummary(vehicleId).catch(() => null),
+      this.hmSignalUsageService.isHmHealthActive(vehicleId),
+    ]);
+    return {
+      hmHealthActive: hmActive,
+      dtcSummary: dtcSummary ?? null,
+      sourceDomain: hmActive ? 'HM_HEALTH_APP' : 'DIMO',
+    };
   }
 
   // ── V3: Hardware type update ────────────────────────────────────────────────

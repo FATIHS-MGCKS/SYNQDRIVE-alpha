@@ -10,6 +10,7 @@ import type {
   HmEligibilityStatus,
   HmDeliveryMode,
 } from './dto/high-mobility.dto';
+import { normalizeToHmBrand } from './high-mobility-oem-routing';
 
 /**
  * HM Eligibility API spec (from docs.high-mobility.com):
@@ -32,11 +33,16 @@ export class HighMobilityEligibilityService {
     private readonly configService: ConfigService,
   ) {}
 
-  private get baseUrl(): string {
-    return (this.configService.get('highMobility') as any).apiBaseUrl;
+  private get hmConfig(): { apiBaseUrl?: string; requestTimeoutMs?: number } | undefined {
+    return this.configService.get<{ apiBaseUrl?: string; requestTimeoutMs?: number }>('highMobility');
   }
+
+  private get baseUrl(): string {
+    return this.hmConfig?.apiBaseUrl ?? 'https://api.high-mobility.com';
+  }
+
   private get timeout(): number {
-    return (this.configService.get('highMobility') as any).requestTimeoutMs ?? 15000;
+    return this.hmConfig?.requestTimeoutMs ?? 15_000;
   }
 
   async checkEligibility(dto: CheckEligibilityDto): Promise<EligibilityResultDto> {
@@ -53,7 +59,7 @@ export class HighMobilityEligibilityService {
       return this.stubResult(vin, brand, now, 'Failed to obtain HM access token', 'ERROR');
     }
 
-    const hmBrand = this.normalizeToHmBrand(brand);
+    const hmBrand = normalizeToHmBrand(brand);
     let raw: Record<string, unknown> | null = null;
     let eligibilityStatus: HmEligibilityStatus = 'UNKNOWN';
     let deliveryMode: HmDeliveryMode | null = null;
@@ -61,7 +67,7 @@ export class HighMobilityEligibilityService {
 
     try {
       const res = await axios.post(
-        `${this.baseUrl}/eligibility`,
+        `${this.baseUrl}/v1/eligibility`,
         { vin, brand: hmBrand },
         { headers, timeout: this.timeout },
       );
@@ -137,55 +143,6 @@ export class HighMobilityEligibilityService {
       checkedAt: record.eligibilityCheckedAt.toISOString(),
       rawResponse: (record.providerPayloadJson as any)?.eligibility ?? null,
     };
-  }
-
-  // ── Brand normalization ────────────────────────────────────────────────────
-
-  /**
-   * Convert display brand names to HM API enum values (lowercase).
-   * HM supported brands: bmw, citroen, ds, mercedes-benz, mini, opel, peugeot,
-   * vauxhall, jeep, fiat, alfaromeo, ford, renault, dacia, toyota, lexus, porsche,
-   * maserati, kia, tesla, volvo-cars, skoda, audi, volkswagen, seat, cupra, polestar, nissan, sandbox
-   */
-  normalizeToHmBrand(brand: string): string {
-    const b = brand.toLowerCase().trim();
-    const MAP: Record<string, string> = {
-      'bmw': 'bmw',
-      'mercedes-benz': 'mercedes-benz',
-      'mercedes': 'mercedes-benz',
-      'mini': 'mini',
-      'audi': 'audi',
-      'volkswagen': 'volkswagen',
-      'vw': 'volkswagen',
-      'porsche': 'porsche',
-      'skoda': 'skoda',
-      'seat': 'seat',
-      'cupra': 'cupra',
-      'opel': 'opel',
-      'vauxhall': 'vauxhall',
-      'peugeot': 'peugeot',
-      'citroen': 'citroen',
-      'citroën': 'citroen',
-      'ds': 'ds',
-      'fiat': 'fiat',
-      'alfa romeo': 'alfaromeo',
-      'alfaromeo': 'alfaromeo',
-      'jeep': 'jeep',
-      'ford': 'ford',
-      'renault': 'renault',
-      'dacia': 'dacia',
-      'toyota': 'toyota',
-      'lexus': 'lexus',
-      'tesla': 'tesla',
-      'volvo': 'volvo-cars',
-      'volvo-cars': 'volvo-cars',
-      'kia': 'kia',
-      'maserati': 'maserati',
-      'nissan': 'nissan',
-      'polestar': 'polestar',
-      'sandbox': 'sandbox',
-    };
-    return MAP[b] ?? b;
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────

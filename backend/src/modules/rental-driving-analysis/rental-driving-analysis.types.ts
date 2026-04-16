@@ -29,6 +29,8 @@ export interface RentalDrivingAnalysisPayload {
     temperatureContext: { avgTemperatureC: number | null; climateNote: string };
   };
   drivingBehavior: {
+    drivingStyleScore: number | null;
+    safetyScore: number | null;
     drivingScore: number | null;
     safetyStyle: string;
     accelerationBehavior: { level: 'calm' | 'moderate' | 'aggressive'; summary: string };

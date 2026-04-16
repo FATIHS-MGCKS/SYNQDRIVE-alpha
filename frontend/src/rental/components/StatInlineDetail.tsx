@@ -78,9 +78,9 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
             >
               {vehicles.map((v) => (
                 <div key={v.id} onClick={vehicleClick(v)} onMouseEnter={() => onItemHover?.(v.model)} onMouseLeave={() => onItemHover?.(null)} className={`rounded-xl p-3 border transition-all hover:shadow-sm cursor-pointer ${cardClass}`}>
-                  {/* Row 1: License plate + health & cleaning icons */}
+                  {/* Row 1: Vehicle name + health & cleaning icons */}
                   <div className="flex items-center justify-between mb-1">
-                    <span className={`text-[10px] font-mono font-semibold tracking-wide ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{v.license}</span>
+                    <span className={`text-[10px] font-semibold tracking-wide truncate mr-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{fleetTitle(v)}</span>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <Sparkles
                         className={`w-3.5 h-3.5 ${v.cleaningStatus === 'Clean' ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-500') : (isDarkMode ? 'text-amber-400' : 'text-amber-500')}`}
@@ -89,9 +89,9 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                       <HealthFleetIcon status={v.healthStatus} />
                     </div>
                   </div>
-                  {/* Row 2: Vehicle name + chevron */}
+                  {/* Row 2: License plate + chevron */}
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className={`text-[12px] font-bold leading-tight truncate flex-1 min-w-0 mr-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{fleetTitle(v)}</span>
+                    <span className={`text-[12px] font-bold leading-tight truncate flex-1 min-w-0 mr-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{v.license}</span>
                     <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
                   </div>
                   {/* Row 3: Location · Fuel · Odometer · Ready — all in one compact footer */}
@@ -154,7 +154,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2.5">
                         <span className={`text-[13px] font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{v.license}</span>
-                        <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{v.model}</span>
+                        <span className={`text-xs truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{fleetTitle(v)}</span>
                       </div>
                       <ChevronRight className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
                     </div>
@@ -200,8 +200,8 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                   <div key={v.id} onClick={vehicleClick(v)} onMouseEnter={() => onItemHover?.(v.model)} onMouseLeave={() => onItemHover?.(null)} className={`rounded-xl p-3.5 border transition-all hover:shadow-sm cursor-pointer ${cardClass}`}>
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex flex-col min-w-0 gap-0.5">
-                        <span className={`text-[10px] font-mono font-semibold ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{v.license}</span>
-                        <span className={`text-[12px] font-bold leading-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{fleetTitle(v)}</span>
+                        <span className={`text-[10px] font-semibold truncate ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{fleetTitle(v)}</span>
+                        <span className={`text-[12px] font-bold leading-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{v.license}</span>
                       </div>
                       <ChevronRight className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
                     </div>
@@ -365,7 +365,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2.5">
                       <span className={`text-[13px] font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{v.license}</span>
-                      <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{v.model}</span>
+                      <span className={`text-xs truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{fleetTitle(v)}</span>
                     </div>
                     <ChevronRight className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
                   </div>

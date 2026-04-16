@@ -189,6 +189,34 @@ export function computeDrivingStyleScore(input: {
   );
 }
 
+/**
+ * Safety Score (0–100), intentionally separated from driving style.
+ * Speeding is first-class here and excluded from the style score.
+ */
+export function computeSafetyScore(input: {
+  speedingExposurePct: number;
+  maxOverSpeedKmh: number;
+  avgOverSpeedKmh: number;
+  speedingSectionCount: number;
+}): number {
+  const W = C.SAFETY_WEIGHTS;
+  const exposurePenalty = Math.min(
+    W.maxExposurePenalty,
+    Math.max(0, input.speedingExposurePct) * W.exposurePenaltyPerPct,
+  );
+  const severityPenalty = Math.min(
+    W.maxSeverityPenalty,
+    Math.max(0, input.maxOverSpeedKmh) * W.maxOverPenaltyPerKmh +
+      Math.max(0, input.avgOverSpeedKmh) * W.avgOverPenaltyPerKmh,
+  );
+  const sectionPenalty = Math.min(
+    W.maxSectionPenalty,
+    Math.max(0, input.speedingSectionCount) * W.sectionPenalty,
+  );
+  const score = Math.max(0, Math.min(100, 100 - exposurePenalty - severityPenalty - sectionPenalty));
+  return round1(score);
+}
+
 // ── Behavioral metric derivations ─────────────────────────────────────────────
 
 /**

@@ -1,9 +1,10 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query, Req, UseGuards } from '@nestjs/common';
 import { WorkflowsService } from './workflows.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 
 @Controller('organizations/:orgId/workflows')
-@UseGuards(RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard)
 export class WorkflowsController {
   constructor(private readonly service: WorkflowsService) {}
 

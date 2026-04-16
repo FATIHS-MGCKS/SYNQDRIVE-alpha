@@ -33,6 +33,8 @@ export class HighMobilityVehicleLinkService {
         vin,
         packageType: 'HEALTH',
         isActive: true,
+        // Scope to HM Health-APP; null = legacy rows created before dual-app split
+        OR: [{ appContainerType: 'HM_HEALTH_APP' }, { appContainerType: null }],
       },
       orderBy: { createdAt: 'desc' },
     });

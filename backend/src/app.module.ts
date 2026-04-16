@@ -1,6 +1,9 @@
 import { Module, DynamicModule, Logger } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { AuditInterceptor } from '@shared/interceptors/audit.interceptor';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { BullModule } from '@nestjs/bullmq';
 import { join } from 'path';
@@ -11,6 +14,7 @@ import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, eurom
 import { PrismaModule } from '@shared/database/prisma.module';
 import { RedisModule } from '@shared/redis/redis.module';
 import { AuthModule } from '@shared/auth/auth.module';
+import { SharedGuardsModule } from '@shared/auth/shared-guards.module';
 
 import { PlatformAdminModule } from '@modules/platform-admin/platform-admin.module';
 import { OrganizationsModule } from '@modules/organizations/organizations.module';
@@ -19,6 +23,8 @@ import { StationsModule } from '@modules/stations/stations.module';
 import { ProductsModule } from '@modules/products/products.module';
 import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { VehicleIntelligenceModule } from '@modules/vehicle-intelligence/vehicle-intelligence.module';
+import { ClickHouseModule } from '@modules/clickhouse/clickhouse.module';
+import { ObservabilityModule } from '@modules/observability/observability.module';
 import { DimoModule } from '@modules/dimo/dimo.module';
 import { IntegrationsModule } from '@modules/integrations/integrations.module';
 import { BillingModule } from '@modules/billing/billing.module';
@@ -42,6 +48,8 @@ import { ServicePartnersModule } from '@modules/service-partners/service-partner
 import { HighMobilityModule } from '@modules/high-mobility/high-mobility.module';
 import { WorkersModule } from '@workers/workers.module';
 import { AuthApiModule } from '@modules/auth/auth.module';
+import { HealthModule } from '@modules/health/health.module';
+import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { SpaFallbackController } from './spa-fallback.controller';
 
 async function isRedisCompatible(): Promise<boolean> {
@@ -75,6 +83,7 @@ async function isRedisCompatible(): Promise<boolean> {
 export class AppModule {
   static async forRootAsync(): Promise<DynamicModule> {
     const redisOk = await isRedisCompatible();
+    RuntimeStatusRegistry.setWorkersEnabled(redisOk);
 
     const bullImports: any[] = redisOk
       ? [
@@ -95,11 +104,34 @@ export class AppModule {
     return {
       module: AppModule,
       controllers: [SpaFallbackController],
+      providers: [
+        // Global rate limiting — moderate defaults for API traffic.
+        // Auth-sensitive routes (login, seed-admin) are further throttled via @Throttle().
+        {
+          provide: APP_GUARD,
+          useClass: ThrottlerGuard,
+        },
+        // Global audit interceptor — logs all mutating HTTP operations to ActivityLog.
+        // AuditService is provided by ActivityLogModule (@Global).
+        {
+          provide: APP_INTERCEPTOR,
+          useClass: AuditInterceptor,
+        },
+      ],
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
           load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, euromasterConfig, highMobilityConfig],
         }),
+
+        // Global throttler: 200 requests per minute per IP (normal API usage)
+        ThrottlerModule.forRoot([
+          {
+            name: 'global',
+            ttl: 60_000,    // 60 seconds window
+            limit: 200,     // max 200 requests per window
+          },
+        ]),
 
         ServeStaticModule.forRoot({
           rootPath: join(process.cwd(), 'public'),
@@ -113,7 +145,9 @@ export class AppModule {
         PrismaModule,
         RedisModule,
         AuthModule,
+        SharedGuardsModule,
         AuthApiModule,
+        HealthModule,
 
         PlatformAdminModule,
         OrganizationsModule,
@@ -121,6 +155,8 @@ export class AppModule {
         StationsModule,
         ProductsModule,
         VehiclesModule,
+        ClickHouseModule,
+        ObservabilityModule,
         VehicleIntelligenceModule,
         DimoModule,
         IntegrationsModule,

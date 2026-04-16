@@ -21,7 +21,7 @@ interface MainNavTabsProps {
 export function MainNavTabs({ isDarkMode: _isDarkMode, activeTab, onTabChange }: MainNavTabsProps) {
   const { t } = useLanguage();
   return (
-    <div className="rounded-lg p-1 border border-border bg-muted flex gap-1 mb-4 shadow-sm">
+    <div className="rounded-lg p-1 border border-border bg-muted flex gap-1 mt-0 mb-4 shadow-sm">
       {tabs.map((tab) => (
         <button
           key={tab.id}

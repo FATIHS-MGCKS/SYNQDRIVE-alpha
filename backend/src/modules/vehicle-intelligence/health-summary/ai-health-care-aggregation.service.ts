@@ -1,6 +1,34 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HealthSummaryService, HealthSummaryAgentResponse } from './health-summary.service';
 import { HmSignalUsageService, HmAiHealthCareSignals } from '../../high-mobility/high-mobility-signal-usage.service';
+import { DtcService } from '../dtc/dtc.service';
+import { BrakeHealthService } from '../brakes/brake-health.service';
+import { TireHealthService } from '../tires/tire-health.service';
+import { CanonicalBatteryHealthService } from '../battery-health/canonical-battery-health.service';
+
+// ── Public types ─────────────────────────────────────────────────────────────
+
+export type AiHealthStatusLevel =
+  | 'EXCELLENT'
+  | 'GOOD'
+  | 'ATTENTION_NEEDED'
+  | 'CRITICAL'
+  | 'NO_RECENT_DATA';
+
+export interface OilLevelDisplay {
+  /** How the bar value was derived */
+  mode: 'normalized_bar' | 'status_only' | 'no_data';
+  /** 0–1 fraction for the bar fill; null when no data */
+  value: number | null;
+  /** Human-readable label */
+  label: string;
+}
+
+export interface AiHealthIndicators {
+  limpMode: boolean | null;
+  brakeWarning: boolean | null;
+  tirePressureWarning: boolean | null;
+}
 
 export interface HmIndicators {
   oilLevel: {
@@ -8,19 +36,25 @@ export interface HmIndicators {
     status: 'LOW' | 'OK' | 'HIGH' | 'UNKNOWN';
     unit: string | null;
   } | null;
-  limpMode: {
-    active: boolean;
-  } | null;
-  brakeLiningPreWarning: {
-    active: boolean;
-  } | null;
-  tirePressureWarning: {
-    active: boolean;
-  } | null;
+  limpMode: { active: boolean } | null;
+  brakeLiningPreWarning: { active: boolean } | null;
+  tirePressureWarning: { active: boolean } | null;
 }
 
 export interface AiHealthCareResponse {
-  /** Base summary derived from the rule-based HealthSummaryService */
+  // ── New canonical fields ────────────────────────────────────────────────
+  /** EXCELLENT | GOOD | ATTENTION_NEEDED | CRITICAL | NO_RECENT_DATA */
+  aiStatus: AiHealthStatusLevel;
+  /** Concise German summary sentence */
+  summaryText: string;
+  /** Human-readable reasons that drove the status (empty when EXCELLENT/GOOD) */
+  reasons: string[];
+  /** Oil level visualization safe for UI rendering */
+  oilLevelDisplay: OilLevelDisplay;
+  /** Boolean indicator flags for compact icon row */
+  indicators: AiHealthIndicators;
+
+  // ── Legacy base-summary fields (HealthSummaryService) ──────────────────
   overallStatus: HealthSummaryAgentResponse['overallStatus'];
   positives: string[];
   watchpoints: string[];
@@ -29,23 +63,46 @@ export interface AiHealthCareResponse {
   maintenanceFocus: HealthSummaryAgentResponse['maintenanceFocus'];
   dataConfidence: HealthSummaryAgentResponse['dataConfidence'];
 
-  /** HM display-grade indicators — informational only, never overrides calculations */
+  // ── HM display-grade indicators ────────────────────────────────────────
   hmIndicators: HmIndicators;
-
-  /** ISO timestamp of last HM signal update for this vehicle */
   lastHmUpdate: string | null;
-
-  /** Whether HM Health is active for this vehicle */
   hmHealthActive: boolean;
+  hmFreshnessStatus: 'fresh' | 'aging' | 'stale' | 'no_data';
+  hmLastErrorAt: string | null;
+  hmLastErrorMessage: string | null;
 }
 
+// ── German summary copy ───────────────────────────────────────────────────────
+
+const SUMMARY_TEXT: Record<AiHealthStatusLevel, string> = {
+  EXCELLENT:        'Fahrzeugzustand wirkt insgesamt sehr gut.',
+  GOOD:             'Fahrzeugzustand ist stabil, aktuell keine auffälligen Probleme.',
+  ATTENTION_NEEDED: 'Einige Punkte sollten geprüft werden.',
+  CRITICAL:         'Kritischer Fahrzeugzustand erkannt. Bitte zeitnah prüfen.',
+  NO_RECENT_DATA:   'Keine aktuellen OEM-Health-Daten verfügbar.',
+};
+
+// ── Priority weights (higher = worse) ────────────────────────────────────────
+
+const LEVEL_WEIGHT: Record<AiHealthStatusLevel, number> = {
+  EXCELLENT:        0,
+  GOOD:             1,
+  ATTENTION_NEEDED: 2,
+  CRITICAL:         3,
+  NO_RECENT_DATA:   -1, // only wins if nothing else produces a real level
+};
+
 /**
- * Aggregates the existing rule-based health summary with HM display-grade indicators.
+ * AIHealthCareAggregationService
+ *
+ * Aggregates existing SynqDrive module states (DTC, Brake, Tire, Battery)
+ * with approved HM Health-APP signals to produce a display-grade health summary.
  *
  * Architectural contract:
- * - HealthSummaryService is the SOLE source for overallStatus, watchpoints, positives etc.
- * - HM signals are ADDITIVE, display-only rows; they never alter the core health assessment.
- * - If HM data is unavailable or stale, hmIndicators returns nulls — no degradation.
+ * - This is SUMMARY-ONLY. It never writes into authoritative modules.
+ * - HM signals are ADDITIVE informational inputs; they never override calculations.
+ * - BrakeHealthService, TireHealthService and canonical battery health remain authoritative.
+ * - HealthSummaryService provides the legacy watchpoints/positives/outlook fields.
  */
 @Injectable()
 export class AiHealthCareAggregationService {
@@ -54,91 +111,292 @@ export class AiHealthCareAggregationService {
   constructor(
     private readonly healthSummaryService: HealthSummaryService,
     private readonly hmSignalUsageService: HmSignalUsageService,
+    private readonly dtcService: DtcService,
+    private readonly brakeHealthService: BrakeHealthService,
+    private readonly tireHealthService: TireHealthService,
+    private readonly canonicalBatteryHealthService: CanonicalBatteryHealthService,
   ) {}
 
   async getAiHealthCare(vehicleId: string): Promise<AiHealthCareResponse> {
-    // Always compute the base health summary regardless of HM availability
-    const [baseSummary, hmActive] = await Promise.all([
-      this.healthSummaryService.getSummary(vehicleId).catch(err => {
-        this.logger.warn(`Health summary failed for ${vehicleId}: ${err?.message}`);
-        return null;
-      }),
-      this.hmSignalUsageService.isHmHealthActive(vehicleId),
-    ]);
+    // Parallel read of all inputs — failures are silenced per-source
+    const [baseSummary, hmActive, dtcSummary, brakeHealth, tireHealth, batterySummary] =
+      await Promise.all([
+        this.healthSummaryService.getSummary(vehicleId).catch(err => {
+          this.logger.warn(`Health summary failed for ${vehicleId}: ${err?.message}`);
+          return null;
+        }),
+        this.hmSignalUsageService.isHmHealthActive(vehicleId),
+        this.dtcService.getSummary(vehicleId).catch(() => null),
+        this.brakeHealthService.getSummary(vehicleId).catch(() => null),
+        this.tireHealthService.getSummary(vehicleId).catch(() => null),
+        this.canonicalBatteryHealthService.getSummary(vehicleId).catch(() => null),
+      ]);
 
-    let hmSignals: HmAiHealthCareSignals | null = null;
-    if (hmActive) {
-      hmSignals = await this.hmSignalUsageService.getAiHealthCareSignals(vehicleId).catch(err => {
-        this.logger.warn(`HM AI signals unavailable for ${vehicleId}: ${err?.message}`);
-        return null;
-      });
-    }
+    const [hmSignals, hmMeta] = hmActive
+      ? await Promise.all([
+          this.hmSignalUsageService.getAiHealthCareSignals(vehicleId).catch(err => {
+            this.logger.warn(`HM AI signals unavailable for ${vehicleId}: ${err?.message}`);
+            return null;
+          }),
+          this.hmSignalUsageService.getSignalGroupMeta(vehicleId, 'AI_HEALTH_CARE').catch(err => {
+            this.logger.warn(`HM AI meta unavailable for ${vehicleId}: ${err?.message}`);
+            return {
+              hmVehicleId: null,
+              lastUpdatedAt: null,
+              lastErrorAt: null,
+              lastErrorMessage: null,
+              freshnessStatus: 'no_data' as const,
+            };
+          }),
+        ])
+      : [null, {
+          hmVehicleId: null,
+          lastUpdatedAt: null,
+          lastErrorAt: null,
+          lastErrorMessage: null,
+          freshnessStatus: 'no_data' as const,
+        }];
 
+    // ── Compute the new canonical status ─────────────────────────────────
+    const { aiStatus, reasons } = this.computeAiStatus(
+      dtcSummary,
+      brakeHealth,
+      tireHealth,
+      batterySummary,
+      hmSignals,
+    );
+
+    const oilLevelDisplay = this.buildOilLevelDisplay(hmSignals);
+    const indicators = this.buildIndicators(hmSignals);
+    const hmIndicators = this.buildHmIndicators(hmSignals);
+
+    // ── Legacy summary fallback ───────────────────────────────────────────
     const fallback: HealthSummaryAgentResponse = {
       overallStatus: { level: 'watch', title: 'Health data unavailable', shortSummary: 'No health data available yet' },
       positives: [],
-      watchpoints: [],
+      watchpoints: reasons.length > 0 ? reasons : [],
       futureOutlook: { summary: '', items: [] },
       preventiveRecommendations: [],
       maintenanceFocus: [],
-      dataConfidence: { level: 'low', reason: 'Health summary service unavailable' },
+      dataConfidence: { level: 'low', reason: 'Insufficient data for full analysis' },
     };
-
     const summary = baseSummary ?? fallback;
-    const hmIndicators = this.buildHmIndicators(hmSignals);
 
     return {
+      // ── New canonical fields ──────────────────────────────────────────
+      aiStatus,
+      summaryText: SUMMARY_TEXT[aiStatus],
+      reasons,
+      oilLevelDisplay,
+      indicators,
+      // ── Legacy fields ─────────────────────────────────────────────────
       overallStatus: summary.overallStatus,
       positives: summary.positives,
-      watchpoints: summary.watchpoints,
+      watchpoints: reasons.length > 0 ? reasons : summary.watchpoints,
       futureOutlook: summary.futureOutlook,
       preventiveRecommendations: summary.preventiveRecommendations,
       maintenanceFocus: summary.maintenanceFocus,
       dataConfidence: summary.dataConfidence,
+      // ── HM display-grade indicators ───────────────────────────────────
       hmIndicators,
-      lastHmUpdate: hmSignals?.lastUpdatedAt ?? null,
+      lastHmUpdate: hmSignals?.lastUpdatedAt ?? hmMeta.lastUpdatedAt ?? null,
       hmHealthActive: hmActive,
+      hmFreshnessStatus: hmSignals?.freshnessStatus ?? hmMeta.freshnessStatus ?? 'no_data',
+      hmLastErrorAt: hmMeta.lastErrorAt ?? null,
+      hmLastErrorMessage: hmMeta.lastErrorMessage ?? null,
     };
   }
 
-  // ── Private helpers ──────────────────────────────────────────────────────────
+  // ── Priority model ────────────────────────────────────────────────────────
 
-  private buildHmIndicators(signals: HmAiHealthCareSignals | null): HmIndicators {
-    if (!signals) {
+  private computeAiStatus(
+    dtcSummary: Awaited<ReturnType<DtcService['getSummary']>> | null,
+    brakeHealth: Awaited<ReturnType<BrakeHealthService['getSummary']>> | null,
+    tireHealth: Awaited<ReturnType<TireHealthService['getSummary']>> | null,
+    batterySummary: Awaited<ReturnType<CanonicalBatteryHealthService['getSummary']>> | null,
+    hmSignals: HmAiHealthCareSignals | null,
+  ): { aiStatus: AiHealthStatusLevel; reasons: string[] } {
+    const reasons: string[] = [];
+    let worst: AiHealthStatusLevel = 'GOOD';
+
+    const escalate = (level: AiHealthStatusLevel, reason: string) => {
+      reasons.push(reason);
+      if (LEVEL_WEIGHT[level] > LEVEL_WEIGHT[worst]) worst = level;
+    };
+
+    // ── CRITICAL checks ─────────────────────────────────────────────────
+    if (hmSignals?.limpModeActive === true) {
+      escalate('CRITICAL', 'Limp Mode aktiv — Motor eingeschränkt');
+    }
+
+    const criticalTireAlerts = tireHealth?.alerts?.filter(a => a.severity === 'critical') ?? [];
+    if (criticalTireAlerts.length > 0) {
+      escalate('CRITICAL', `Kritischer Reifenzustand: ${criticalTireAlerts[0].message}`);
+    }
+
+    // ── ATTENTION_NEEDED checks ─────────────────────────────────────────
+    if (hmSignals?.brakeLiningPreWarning === true) {
+      escalate('ATTENTION_NEEDED', 'Bremsbelag Vorwarnung aktiv');
+    }
+    if (hmSignals?.tirePressureWarning === true) {
+      escalate('ATTENTION_NEEDED', 'Reifendruck Warnung erkannt');
+    }
+    const oil = (hmSignals?.oilLevel as { status?: string } | null);
+    if (oil?.status === 'LOW') {
+      escalate('ATTENTION_NEEDED', 'Motorölstand niedrig');
+    }
+    if (dtcSummary?.status === 'active_faults' && (dtcSummary.activeFaultCount ?? 0) > 0) {
+      escalate('ATTENTION_NEEDED', `${dtcSummary.activeFaultCount} aktive${(dtcSummary.activeFaultCount ?? 0) > 1 ? '' : 'r'} Fehlercode${(dtcSummary.activeFaultCount ?? 0) > 1 ? 's' : ''} erkannt`);
+    }
+    if (brakeHealth?.hasAlert === true) {
+      escalate('ATTENTION_NEEDED', 'Bremsanlage benötigt Aufmerksamkeit');
+    }
+    if (brakeHealth?.pads?.healthPercent != null && brakeHealth.pads.healthPercent < 25) {
+      escalate('ATTENTION_NEEDED', `Bremsbelagverschleiß: ${Math.round(brakeHealth.pads.healthPercent)}% verbleibend`);
+    }
+    const tireWarningAlerts = tireHealth?.alerts?.filter(a => a.severity === 'warning') ?? [];
+    if (tireWarningAlerts.length > 0) {
+      escalate('ATTENTION_NEEDED', `Reifenwarnung: ${tireWarningAlerts[0].message}`);
+    }
+    if (tireHealth != null && tireHealth.overallPercent < 35) {
+      escalate('ATTENTION_NEEDED', `Reifenverschleiß: ${Math.round(tireHealth.overallPercent)}% verbleibend`);
+    }
+    const batterySoh = this.getUserFacingBatterySoh(batterySummary);
+    if (batterySoh.value != null && batterySoh.value < 70) {
+      escalate(
+        'ATTENTION_NEEDED',
+        batterySoh.isEstimate
+          ? `Batterie SOH niedrig (Schätzung): ~${Math.round(batterySoh.value)}%`
+          : `Batterie SOH niedrig: ${Math.round(batterySoh.value)}%`,
+      );
+    }
+
+    // ── EXCELLENT promotion ─────────────────────────────────────────────
+    if (worst === 'GOOD') {
+      const hasGoodDtc = !dtcSummary || dtcSummary.status === 'clean';
+      const hasGoodBrake = !brakeHealth || (!brakeHealth.hasAlert && (brakeHealth.pads?.healthPercent ?? 100) >= 60);
+      const hasGoodTire = !tireHealth || (tireHealth.overallPercent >= 60 && tireHealth.alerts.every(a => a.severity === 'info'));
+      const hasGoodHm = !hmSignals || (
+        hmSignals.limpModeActive === false &&
+        hmSignals.brakeLiningPreWarning === false &&
+        hmSignals.tirePressureWarning === false &&
+        oil?.status !== 'LOW'
+      );
+      if (hasGoodDtc && hasGoodBrake && hasGoodTire && hasGoodHm) {
+        worst = 'EXCELLENT';
+      }
+    }
+
+    // ── NO_RECENT_DATA fallback ─────────────────────────────────────────
+    // Only if we have no module data at all
+    const hasAnyData = dtcSummary != null || brakeHealth != null || tireHealth != null || hmSignals != null || batterySummary != null;
+    if (!hasAnyData) {
+      return { aiStatus: 'NO_RECENT_DATA', reasons: [] };
+    }
+
+    // If HM signals are stale and no authoritative data is available either
+    if (
+      hmSignals?.freshnessStatus === 'stale' &&
+      (dtcSummary?.status === 'unavailable' || dtcSummary?.status === 'stale') &&
+      !brakeHealth?.isInitialized &&
+      tireHealth == null
+    ) {
+      return { aiStatus: 'NO_RECENT_DATA', reasons: [] };
+    }
+
+    return { aiStatus: worst, reasons };
+  }
+
+  private getUserFacingBatterySoh(
+    batterySummary: Awaited<ReturnType<CanonicalBatteryHealthService['getSummary']>> | null,
+  ): { value: number | null; isEstimate: boolean } {
+    if (!batterySummary?.lv) {
+      return { value: null, isEstimate: false };
+    }
+
+    if (
+      batterySummary.lv.status === 'calibrating' ||
+      batterySummary.lv.status === 'stabilizing'
+    ) {
       return {
-        oilLevel: null,
-        limpMode: null,
-        brakeLiningPreWarning: null,
-        tirePressureWarning: null,
+        value:
+          batterySummary.lv.estimatedHealthPercent ??
+          batterySummary.lv.healthPercent ??
+          null,
+        isEstimate: true,
       };
     }
 
     return {
-      oilLevel: signals.oilLevel
-        ? {
-            value: signals.oilLevel.value,
-            status: this.resolveOilStatus(signals.oilLevel.status),
-            unit: signals.oilLevel.unit,
-          }
+      value: batterySummary.lv.healthPercent ?? null,
+      isEstimate: false,
+    };
+  }
+
+  // ── Oil level display builder ─────────────────────────────────────────────
+
+  private buildOilLevelDisplay(signals: HmAiHealthCareSignals | null): OilLevelDisplay {
+    const oilRaw = signals?.oilLevel as { status?: string; value?: unknown; unit?: string | null } | null;
+    if (!oilRaw) {
+      return { mode: 'no_data', value: null, label: 'Keine Daten' };
+    }
+
+    const status = (oilRaw.status ?? 'UNKNOWN').toUpperCase();
+
+    // Map known normalized statuses to bar fill fractions
+    const FILL: Record<string, number> = {
+      LOW:     0.20,
+      OK:      0.70,
+      HIGH:    1.00,
+      UNKNOWN: 0.50,
+    };
+    const LABELS: Record<string, string> = {
+      LOW:     'Niedrig',
+      OK:      'OK',
+      HIGH:    'Hoch',
+      UNKNOWN: 'Unbekannt',
+    };
+
+    return {
+      mode: 'normalized_bar',
+      value: FILL[status] ?? 0.5,
+      label: LABELS[status] ?? 'Unbekannt',
+    };
+  }
+
+  // ── Indicators builder ────────────────────────────────────────────────────
+
+  private buildIndicators(signals: HmAiHealthCareSignals | null): AiHealthIndicators {
+    return {
+      limpMode: signals?.limpModeActive ?? null,
+      brakeWarning: signals?.brakeLiningPreWarning ?? null,
+      tirePressureWarning: signals?.tirePressureWarning ?? null,
+    };
+  }
+
+  // ── Legacy HmIndicators builder (backward compat) ─────────────────────────
+
+  private buildHmIndicators(signals: HmAiHealthCareSignals | null): HmIndicators {
+    if (!signals) {
+      return { oilLevel: null, limpMode: null, brakeLiningPreWarning: null, tirePressureWarning: null };
+    }
+    const oil = signals.oilLevel as { status?: string; value?: unknown; unit?: string | null } | null;
+    return {
+      oilLevel: oil != null
+        ? { value: oil.value, status: this.resolveOilStatus(oil.status ?? null), unit: oil.unit ?? null }
         : null,
-      limpMode: signals.limpModeActive !== null
-        ? { active: signals.limpModeActive }
-        : null,
-      brakeLiningPreWarning: signals.brakeLiningPreWarning !== null
-        ? { active: signals.brakeLiningPreWarning }
-        : null,
-      tirePressureWarning: signals.tirePressureWarning !== null
-        ? { active: signals.tirePressureWarning }
-        : null,
+      limpMode: signals.limpModeActive !== null ? { active: signals.limpModeActive } : null,
+      brakeLiningPreWarning: signals.brakeLiningPreWarning !== null ? { active: signals.brakeLiningPreWarning } : null,
+      tirePressureWarning: signals.tirePressureWarning !== null ? { active: signals.tirePressureWarning } : null,
     };
   }
 
   private resolveOilStatus(status: string | null): 'LOW' | 'OK' | 'HIGH' | 'UNKNOWN' {
-    switch (status) {
-      case 'LOW': return 'LOW';
-      case 'OK': return 'OK';
+    switch ((status ?? '').toUpperCase()) {
+      case 'LOW':  return 'LOW';
+      case 'OK':   return 'OK';
       case 'HIGH': return 'HIGH';
-      default: return 'UNKNOWN';
+      default:     return 'UNKNOWN';
     }
   }
 }

@@ -7,6 +7,96 @@ const mockPrisma = {} as any;
 const mockDI = { getVehicleImpactForTire: jest.fn().mockResolvedValue(null) } as any;
 const svc = new TireWearModelService(mockPrisma, mockDI);
 
+function createAnalysisFixture(
+  overrides?: {
+    latestState?: Partial<{
+      odometerKm: number;
+      tirePressureFl: number | null;
+      tirePressureFr: number | null;
+      tirePressureRl: number | null;
+      tirePressureRr: number | null;
+      speedKmh: number | null;
+      sourceTimestamp: Date | null;
+      providerFetchedAt: Date | null;
+      lastSeenAt: Date | null;
+    }>;
+  },
+) {
+  const now = new Date();
+
+  const prisma = {
+    vehicle: {
+      findUnique: jest.fn().mockResolvedValue({
+        fuelType: 'Gasoline',
+        driveType: 'FWD',
+        curbWeightKg: 1550,
+        frontWeightDistributionPct: 58,
+      }),
+    },
+    vehicleTireSetup: {
+      findFirst: jest.fn().mockResolvedValue({
+        id: 'setup-1',
+        vehicleId: 'veh-1',
+        aiTireSpec: null,
+        tireSeason: 'SUMMER',
+        initialTreadFrontMm: 8.0,
+        initialTreadRearMm: 8.0,
+        initialTreadDepthMm: 8.0,
+        expectedLifeKm: 40000,
+        expectedLifeKmFront: null,
+        expectedLifeKmRear: null,
+        isStaggered: false,
+        frontTireWidthMm: null,
+        rearTireWidthMm: null,
+        kFactorFront: 1.0,
+        kFactorRear: 1.0,
+        kFactorCalibrationCount: 0,
+        installedOdometerKm: 10000,
+        measurements: [],
+      }),
+    },
+    vehicleLatestState: {
+      findUnique: jest.fn().mockResolvedValue({
+        odometerKm: 15000,
+        tirePressureFl: 1.8,
+        tirePressureFr: 1.8,
+        tirePressureRl: 1.8,
+        tirePressureRr: 1.8,
+        speedKmh: 55,
+        sourceTimestamp: now,
+        providerFetchedAt: now,
+        lastSeenAt: now,
+        ...(overrides?.latestState ?? {}),
+      }),
+    },
+    vehicleTrip: {
+      findMany: jest.fn().mockResolvedValue([
+        { outsideTemperatureStartC: 18, distanceKm: 120 },
+      ]),
+    },
+    tireWearDataPoint: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+  };
+
+  const drivingImpact = {
+    getVehicleImpactForTire: jest.fn().mockResolvedValue({
+      vehicleId: 'veh-1',
+      windowDays: 30,
+      distanceKmWindow: 1500,
+      citySharePct: 55,
+      highwaySharePct: 35,
+      countryRoadSharePct: 10,
+      longitudinalStressScore: 35,
+      brakingStressScore: 30,
+      drivingStyleScore: 28,
+    }),
+  };
+
+  const model = new TireWearModelService(prisma as any, drivingImpact as any);
+  return { model, prisma, drivingImpact };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 //  AXLE FACTOR (spec §10)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -376,5 +466,66 @@ describe('computeWeightedTemperatureFactor', () => {
     ]);
     expect(factor).toBeGreaterThan(1.0);
     expect(factor).toBeLessThan(1.03);
+  });
+});
+
+describe('computeWearAnalysis pressure freshness gating', () => {
+  it('falls back to neutral pressure factors when pressure data is stale', async () => {
+    const staleTimestamp = new Date(Date.now() - 14 * 60 * 60 * 1000);
+    const { model } = createAnalysisFixture({
+      latestState: {
+        tirePressureFl: 1.6,
+        tirePressureFr: 1.6,
+        tirePressureRl: 1.6,
+        tirePressureRr: 1.6,
+        sourceTimestamp: staleTimestamp,
+        providerFetchedAt: staleTimestamp,
+        lastSeenAt: staleTimestamp,
+      },
+    });
+
+    const result = await model.computeWearAnalysis('veh-1');
+    expect(result).not.toBeNull();
+    expect(result?.factors.pressureFactorFront).toBe(1);
+    expect(result?.factors.pressureFactorRear).toBe(1);
+    expect(result?.explainability.pressureDataFreshness).toBe('stale');
+    expect(result?.explainability.pressureReadingsUsed).toBe(0);
+    expect(result?.explainability.possibleCauseHints).toContain(
+      'Pressure data is stale; pressure factor fallback is neutral',
+    );
+  });
+
+  it('uses pressure factors when pressure data is fresh and complete', async () => {
+    const { model } = createAnalysisFixture({
+      latestState: {
+        tirePressureFl: 1.8,
+        tirePressureFr: 1.7,
+        tirePressureRl: 1.8,
+        tirePressureRr: 1.7,
+        sourceTimestamp: new Date(),
+      },
+    });
+
+    const result = await model.computeWearAnalysis('veh-1');
+    expect(result).not.toBeNull();
+    expect(result?.factors.pressureFactorFront).toBeGreaterThan(1);
+    expect(result?.factors.pressureFactorRear).toBeGreaterThan(1);
+    expect(result?.explainability.pressureDataFreshness).toBe('fresh');
+    expect(result?.explainability.pressureReadingsUsed).toBe(4);
+  });
+
+  it('queries only the ACTIVE tire setup status', async () => {
+    const { model, prisma } = createAnalysisFixture();
+    await model.computeWearAnalysis('veh-1');
+
+    expect(prisma.vehicleTireSetup.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          vehicleId: 'veh-1',
+          removedAt: null,
+          status: 'ACTIVE',
+        }),
+      }),
+    );
   });
 });

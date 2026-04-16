@@ -19,7 +19,9 @@ interface Customer {
   type: 'Individual' | 'Corporate';
   status: 'Active' | 'Under Review' | 'Suspended' | 'Blocked';
   riskLevel: 'Low Risk' | 'Medium Risk' | 'High Risk';
-  drivingScore: number;
+  drivingScore: number | null;
+  drivingStyleScore?: number | null;
+  safetyScore?: number | null;
   lastTrip: string;
   totalBookings: number;
   totalRevenue: string;
@@ -35,6 +37,8 @@ interface Customer {
 }
 
 function mapApiCustomer(c: any): Customer {
+  const styleScore = c.drivingStyleScore ?? c.drivingScore ?? null;
+  const safetyScore = c.safetyScore ?? null;
   return {
     id: c.id,
     name: c.name ?? `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim(),
@@ -44,12 +48,14 @@ function mapApiCustomer(c: any): Customer {
     type: c.type === 'Corporate' ? 'Corporate' : 'Individual',
     status: (['Active', 'Under Review', 'Suspended', 'Blocked'].includes(c.status) ? c.status : 'Active') as Customer['status'],
     riskLevel: (['Low Risk', 'Medium Risk', 'High Risk'].includes(c.riskLevel) ? c.riskLevel : 'Low Risk') as Customer['riskLevel'],
-    drivingScore: c.drivingScore ?? 0,
-    lastTrip: c.lastTrip ?? 'â€â€ÂÂÂ',
+    drivingScore: styleScore,
+    drivingStyleScore: styleScore,
+    safetyScore,
+    lastTrip: c.lastTrip ?? '--',
     totalBookings: c.totalBookings ?? 0,
     totalRevenue: c.totalRevenue ?? 'â‚¬ 0,00',
-    joinDate: c.joinDate ?? (c.createdAt ? new Date(c.createdAt).toLocaleDateString('de-DE') : 'â€â€ÂÂÂ'),
-    licenseExpiry: c.licenseExpiry ?? 'â€â€ÂÂÂ',
+    joinDate: c.joinDate ?? (c.createdAt ? new Date(c.createdAt).toLocaleDateString('de-DE') : '--'),
+    licenseExpiry: c.licenseExpiry ?? '--',
     licenseVerified: c.licenseVerified ?? false,
     idVerified: c.idVerified ?? false,
     accidents: c.accidents ?? 0,
@@ -198,7 +204,9 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
       type: newCustomer.type,
       status: 'Active',
       riskLevel: 'Low Risk',
-      drivingScore: 100,
+      drivingScore: null,
+      drivingStyleScore: null,
+      safetyScore: null,
       lastTrip: 'â€â€ÂÂÂ',
       totalBookings: 0,
       totalRevenue: 'â‚¬ 0,00',
@@ -287,7 +295,15 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
     );
   };
 
-  const ScoreBadge = ({ score }: { score: number }) => {
+  const ScoreBadge = ({ score }: { score: number | null }) => {
+    if (score == null) {
+      return (
+        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg ${isDarkMode ? 'bg-neutral-800 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+          <Star className="w-3 h-3" />
+          <span className="text-xs font-bold">--</span>
+        </div>
+      );
+    }
     const color = score >= 80
       ? (isDarkMode ? 'text-green-400' : 'text-green-600')
       : score >= 60

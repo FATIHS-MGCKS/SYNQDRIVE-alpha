@@ -11,11 +11,12 @@ import {
 } from '@nestjs/common';
 import { BookingsService } from './bookings.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PaginationParams } from '@shared/utils/pagination';
 import { Prisma } from '@prisma/client';
 
 @Controller('organizations/:orgId/bookings')
-@UseGuards(RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard)
 export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
 

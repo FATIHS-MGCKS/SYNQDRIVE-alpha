@@ -1,9 +1,9 @@
 import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { HighMobilityAuthService } from './high-mobility-auth.service';
+import { HighMobilityHealthAppAuthService } from './high-mobility-health-app-auth.service';
+import { HighMobilityAppConfigService } from './high-mobility-app-config.service';
 import type {
   CreateHmVehicleDto,
   HmVehicleDto,
@@ -17,23 +17,31 @@ import type {
   HmStreamingState,
 } from './dto/high-mobility.dto';
 import { HmSignalUsageService } from './high-mobility-signal-usage.service';
+import { extractHmProviderVehicleReference, isUsableHmCommandVehicleReference } from './high-mobility-vehicle-reference.util';
+import { normalizeToHmBrand, getFleetClearanceTags } from './high-mobility-oem-routing';
 
+/**
+ * HighMobilityFleetService
+ *
+ * Fleet management for HM Health-APP (HEALTH package vehicles, DIMO+HM add-on path).
+ * Uses HM_HEALTH_APP_* credentials only.
+ */
 @Injectable()
 export class HighMobilityFleetService {
   private readonly logger = new Logger(HighMobilityFleetService.name);
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly authService: HighMobilityAuthService,
-    private readonly configService: ConfigService,
+    private readonly authService: HighMobilityHealthAppAuthService,
+    private readonly hmConfig: HighMobilityAppConfigService,
     private readonly hmSignalUsage: HmSignalUsageService,
   ) {}
 
   private get baseUrl(): string {
-    return (this.configService.get('highMobility') as any).apiBaseUrl;
+    return this.hmConfig.healthApp.apiBaseUrl;
   }
   private get timeout(): number {
-    return (this.configService.get('highMobility') as any).requestTimeoutMs ?? 15000;
+    return this.hmConfig.healthApp.requestTimeoutMs;
   }
 
   // ── Vehicle list ───────────────────────────────────────────────────────────
@@ -121,16 +129,32 @@ export class HighMobilityFleetService {
 
     const oldStatus = record.clearanceStatus as string;
 
-    // Attempt provider revocation if approved (HM uses VIN as path param, not hmRef)
+    // Attempt provider revocation if approved
     if (record.clearanceStatus === 'APPROVED') {
       await this.revokeClearance(id, record.vin);
     }
 
-    await this.prisma.highMobilityVehicle.update({
-      where: { id },
-      data: { isActive: false, clearanceStatus: 'CANCELED' as any },
+    // Write audit entry before deletion
+    await this.writeHistory(id, 'REMOVED', oldStatus, 'DELETED', null);
+
+    // Deactivate any data source links that reference this HM record.
+    // Must be done before hard delete to satisfy FK constraint.
+    await this.prisma.vehicleDataSourceLink.deleteMany({
+      where: { sourceReferenceId: id },
     });
-    await this.writeHistory(id, 'REMOVED', oldStatus, 'CANCELED', null);
+
+    // Hard delete the HM vehicle record.
+    // Cascades automatically: status_history, health_sync_logs, signal_group_states.
+    // stream_sync_logs are SET NULL (preserving message audit trail).
+    //
+    // Reason for hard delete instead of soft delete (isActive=false):
+    // The unique constraint @@unique([vin, packageType, sourceMode, isActive]) prevents
+    // more than one inactive record per VIN+package+sourceMode combination.
+    // Soft-deleting a second record for the same VIN would always fail with
+    // "Unique constraint failed". Hard delete avoids this and allows re-registration.
+    await this.prisma.highMobilityVehicle.delete({ where: { id } });
+
+    this.logger.log(`HM vehicle ${id} (VIN=${record.vin}) permanently removed`);
   }
 
   // ── Provider calls ─────────────────────────────────────────────────────────
@@ -155,12 +179,26 @@ export class HighMobilityFleetService {
     }
 
     const oldStatus = record.clearanceStatus as string;
-    const hmBrand = this.normalizeToHmBrand(record.brand);
+    const hmBrand = normalizeToHmBrand(record.brand);
+    const tags = getFleetClearanceTags(record.brand);
+
+    // Build vehicle entry — include OEM-specific tags for VW Group brands.
+    const vehicleEntry: Record<string, unknown> = { vin: record.vin, brand: hmBrand };
+    if (tags) vehicleEntry['tags'] = tags;
+
+    const requestPayload: { vehicles: Record<string, unknown>[] } = {
+      vehicles: [vehicleEntry],
+    };
+
+    // Diagnostic log to verify brand routing payload (especially VW Group tags).
+    this.logger.log(
+      `HM clearance payload for ${record.vin}: ${JSON.stringify(requestPayload)}`,
+    );
 
     try {
       const res = await axios.post(
-        `${this.baseUrl}/fleets/vehicles`,
-        { vehicles: [{ vin: record.vin, brand: hmBrand }] },
+        `${this.baseUrl}/v1/fleets/vehicles`,
+        requestPayload,
         { headers, timeout: this.timeout },
       );
 
@@ -168,16 +206,21 @@ export class HighMobilityFleetService {
       const vehicleResult = raw?.vehicles?.[0] ?? {};
       const providerStatus = vehicleResult?.status ?? 'pending';
       const newStatus = this.normalizeClearanceStatus({ status: providerStatus });
+      const providerVehicleReference = extractHmProviderVehicleReference(vehicleResult, record.vin);
 
-      // HM uses VIN as its primary identifier — store it as the reference
       await this.prisma.highMobilityVehicle.update({
         where: { id },
         data: {
           clearanceStatus: newStatus as any,
           clearanceRequestedAt: new Date(),
-          hmVehicleReference: record.vin, // HM fleet API uses VIN as path param
+          hmVehicleReference:
+            providerVehicleReference ??
+            (isUsableHmCommandVehicleReference(record.hmVehicleReference, record.vin)
+              ? record.hmVehicleReference
+              : null),
           providerPayloadJson: {
             ...((record.providerPayloadJson as Record<string, unknown>) ?? {}),
+            clearanceRequestPayload: requestPayload,
             clearanceRequest: vehicleResult,
           } as Prisma.InputJsonValue,
         },
@@ -193,7 +236,11 @@ export class HighMobilityFleetService {
     } catch (err: any) {
       const status = err?.response?.status;
       const body = err?.response?.data;
-      this.logger.error(`HM clearance request failed for ${record.vin} [${status}]: ${JSON.stringify(body)}`);
+      this.logger.error(
+        `HM clearance request failed for ${record.vin} [${status}] payload=${JSON.stringify(
+          requestPayload,
+        )} response=${JSON.stringify(body)}`,
+      );
       await this.prisma.highMobilityVehicle.update({
         where: { id },
         data: { clearanceStatus: 'ERROR' as any },
@@ -221,19 +268,24 @@ export class HighMobilityFleetService {
 
     try {
       // HM Fleet API: GET /v1/fleets/vehicles/{vin}
-      const res = await axios.get(`${this.baseUrl}/fleets/vehicles/${encodeURIComponent(vin)}`, {
+      const res = await axios.get(`${this.baseUrl}/v1/fleets/vehicles/${encodeURIComponent(vin)}`, {
         headers,
         timeout: this.timeout,
       });
       const raw = res.data as Record<string, unknown>;
       const newStatus = this.normalizeClearanceStatus(raw);
+      const providerVehicleReference = extractHmProviderVehicleReference(raw, vin);
 
       await this.prisma.highMobilityVehicle.update({
         where: { id },
         data: {
           clearanceStatus: newStatus as any,
           clearanceLastCheckedAt: new Date(),
-          hmVehicleReference: vin,
+          hmVehicleReference:
+            providerVehicleReference ??
+            (isUsableHmCommandVehicleReference(record.hmVehicleReference, vin)
+              ? record.hmVehicleReference
+              : null),
           ...(newStatus === 'APPROVED' && !record.clearanceApprovedAt
             ? { clearanceApprovedAt: new Date() }
             : {}),
@@ -270,7 +322,7 @@ export class HighMobilityFleetService {
 
     try {
       // HM Fleet API: DELETE /v1/fleets/vehicles/{vin}
-      const res = await axios.delete(`${this.baseUrl}/fleets/vehicles/${encodeURIComponent(vin)}`, {
+      const res = await axios.delete(`${this.baseUrl}/v1/fleets/vehicles/${encodeURIComponent(vin)}`, {
         headers,
         timeout: this.timeout,
       });
@@ -302,25 +354,6 @@ export class HighMobilityFleetService {
         });
       }
     }
-  }
-
-  /** Normalize brand display name to HM API lowercase enum */
-  private normalizeToHmBrand(brand: string): string {
-    const b = brand.toLowerCase().trim();
-    const MAP: Record<string, string> = {
-      'bmw': 'bmw', 'mercedes-benz': 'mercedes-benz', 'mercedes': 'mercedes-benz',
-      'mini': 'mini', 'audi': 'audi', 'volkswagen': 'volkswagen', 'vw': 'volkswagen',
-      'porsche': 'porsche', 'skoda': 'skoda', 'seat': 'seat', 'cupra': 'cupra',
-      'opel': 'opel', 'vauxhall': 'vauxhall', 'peugeot': 'peugeot',
-      'citroen': 'citroen', 'citroën': 'citroen', 'ds': 'ds', 'fiat': 'fiat',
-      'alfa romeo': 'alfaromeo', 'alfaromeo': 'alfaromeo', 'jeep': 'jeep',
-      'ford': 'ford', 'renault': 'renault', 'dacia': 'dacia',
-      'toyota': 'toyota', 'lexus': 'lexus', 'tesla': 'tesla',
-      'volvo': 'volvo-cars', 'volvo-cars': 'volvo-cars',
-      'kia': 'kia', 'maserati': 'maserati', 'nissan': 'nissan',
-      'polestar': 'polestar', 'sandbox': 'sandbox',
-    };
-    return MAP[b] ?? b;
   }
 
   // ── Status normalization ───────────────────────────────────────────────────

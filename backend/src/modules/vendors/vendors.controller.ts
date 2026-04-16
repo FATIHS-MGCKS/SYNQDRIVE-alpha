@@ -11,9 +11,10 @@ import {
 } from '@nestjs/common';
 import { VendorsService } from './vendors.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 
 @Controller('organizations/:orgId/vendors')
-@UseGuards(RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard)
 export class VendorsController {
   constructor(private readonly vendorsService: VendorsService) {}
 

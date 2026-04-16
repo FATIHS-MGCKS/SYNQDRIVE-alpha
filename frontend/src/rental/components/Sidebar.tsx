@@ -11,8 +11,8 @@ interface SidebarProps {
   isDarkMode: boolean;
   onNewTaskClick?: () => void;
   onNewBookingClick?: () => void;
-  currentView?: 'overview' | 'trips' | 'dashboard' | 'bookings' | 'fleet' | 'customers' | 'stations' | 'tasks' | 'vendor-management' | 'invoices' | 'fines' | 'price-tariffs' | 'analytics' | 'fleet-condition' | 'rental-driving-analysis' | 'settings' | 'new-booking' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'service-maintenance';
-  onViewChange?: (view: 'overview' | 'trips' | 'dashboard' | 'bookings' | 'fleet' | 'customers' | 'stations' | 'tasks' | 'vendor-management' | 'invoices' | 'fines' | 'price-tariffs' | 'analytics' | 'fleet-condition' | 'rental-driving-analysis' | 'settings' | 'new-booking' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'service-maintenance') => void;
+  currentView?: string;
+  onViewChange?: (view: any) => void;
   settingsTab?: SettingsTab;
   onSettingsTabChange?: (tab: SettingsTab) => void;
   isCollapsed?: boolean;

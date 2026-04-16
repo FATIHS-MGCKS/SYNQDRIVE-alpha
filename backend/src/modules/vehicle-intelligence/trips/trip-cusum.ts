@@ -170,7 +170,7 @@ export function detectTripEndChangePoint(
   // Walk backward from the detection point to the start of the run
   let transitionIdx = changePointIdx;
   for (let i = changePointIdx; i >= 1; i--) {
-    if (S[i - 1] === 0) {
+    if (S[i - 1] <= 0) {
       transitionIdx = i;
       break;
     }

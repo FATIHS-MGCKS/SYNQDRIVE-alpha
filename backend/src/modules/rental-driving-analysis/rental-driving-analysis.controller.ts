@@ -1,10 +1,11 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { RentalDrivingAnalysisService } from './rental-driving-analysis.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PaginationParams } from '@shared/utils/pagination';
 
 @Controller('organizations/:orgId/rental-driving-analyses')
-@UseGuards(RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard)
 export class RentalDrivingAnalysisController {
   constructor(private readonly service: RentalDrivingAnalysisService) {}
 

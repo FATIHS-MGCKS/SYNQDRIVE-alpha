@@ -3,11 +3,12 @@ import { ServicePartnersService } from './service-partners.service';
 import { EuromasterService, EuromasterAppointmentRequest } from './euromaster.service';
 import { EuromasterIntegrationService } from './euromaster/euromaster-integration.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { ServiceCaseStatus, ServiceCaseType } from '@prisma/client';
 
 @Controller('organizations/:orgId/service-partners')
-@UseGuards(RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard)
 export class ServicePartnersController {
   constructor(
     private readonly service: ServicePartnersService,

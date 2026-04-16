@@ -1,9 +1,9 @@
-import { Car, Search, Building2, CheckCircle, AlertTriangle, Wrench, Wifi, WifiOff, Plus, Zap, X, Battery, Disc3, Gauge, ClipboardList, Fuel, RefreshCw, RotateCcw, Pencil, Shield, Loader2 } from 'lucide-react';
+import { Car, Search, Building2, CheckCircle, AlertTriangle, Wrench, Wifi, WifiOff, Plus, Zap, X, Battery, Disc3, Gauge, ClipboardList, Fuel, RefreshCw, RotateCcw, Pencil, Shield, Loader2, Radio } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import type { RegisteredVehicle, DimoVehicle, Organization } from '../data/platform-data';
 import { VehicleRegistrationModal } from './VehicleRegistrationModal';
 import { api } from '@/lib/api';
-import type { HmVehicleStatusDto } from '@/lib/api';
+import type { HmVehicleStatusDto, HmVehicleDto } from '@/lib/api';
 
 function formatDot(dot: string): string {
   if (!dot) return '';
@@ -55,7 +55,7 @@ const statusConfig: Record<string, { color: string; icon: typeof CheckCircle }> 
 };
 
 export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehicles, organizations, dimoConnected, onRegisterVehicle, onUpdateVehicle, onDeregisterVehicle, onSyncFromDimo, onRefreshSnapshot, loading = false }: PlatformVehiclesViewProps) {
-  const [activeTab, setActiveTab] = useState<'registered' | 'unregistered'>('registered');
+  const [activeTab, setActiveTab] = useState<'registered' | 'unregistered' | 'hm-telemetry'>('registered');
   const [editVehicle, setEditVehicle] = useState<RegisteredVehicle | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -69,8 +69,45 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
   const [hmStatus, setHmStatus] = useState<HmVehicleStatusDto | null>(null);
   const [hmStatusLoading, setHmStatusLoading] = useState(false);
   const [hmActionLoading, setHmActionLoading] = useState<string | null>(null);
+  // HM Telemetry-APP candidates
+  const [hmTelemetryCandidates, setHmTelemetryCandidates] = useState<HmVehicleDto[]>([]);
+  const [hmTelemetryLoading, setHmTelemetryLoading] = useState(false);
+  // VINs that have an approved HM Health-APP record (for badge display in DIMO tab)
+  const [hmHealthVinSet, setHmHealthVinSet] = useState<Set<string>>(new Set());
 
   const effectiveDimoVehicles = dimoVehicles.map(v => localDimoOverrides[v.id] ?? v);
+
+  const loadHmTelemetryCandidates = useCallback(async () => {
+    setHmTelemetryLoading(true);
+    try {
+      const data = await api.highMobility.listTelemetryAppCandidates();
+      setHmTelemetryCandidates(data);
+    } catch {
+      setHmTelemetryCandidates([]);
+    } finally {
+      setHmTelemetryLoading(false);
+    }
+  }, []);
+
+  // Load HM Health-APP approved VINs for DIMO tab badge display
+  const loadHmHealthVins = useCallback(async () => {
+    try {
+      const data = await api.highMobility.listVehicles({ packageType: 'HEALTH', clearanceStatus: 'APPROVED' });
+      const vins = new Set([...data.health].map((v) => v.vin.toUpperCase()));
+      setHmHealthVinSet(vins);
+    } catch {
+      // non-critical — badges simply won't show
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'hm-telemetry') {
+      loadHmTelemetryCandidates();
+    }
+    if (activeTab === 'unregistered') {
+      loadHmHealthVins();
+    }
+  }, [activeTab, loadHmTelemetryCandidates, loadHmHealthVins]);
 
   const loadHmStatus = useCallback(async (vehicleId: string) => {
     setHmStatusLoading(true);
@@ -144,10 +181,17 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
 
       {/* Tabs */}
       <div className="flex gap-1 p-1.5 rounded-lg w-fit bg-muted">
-        <button onClick={() => setActiveTab('registered')} className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'registered' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>Registered Vehicles</button>
+        <button onClick={() => setActiveTab('registered')} className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'registered' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+          Registered Vehicles
+        </button>
         <button onClick={() => setActiveTab('unregistered')} className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === 'unregistered' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-          DIMO Vehicles
+          DIMO
           {effectiveDimoVehicles.length > 0 && <span className="px-2 py-0.5 bg-indigo-500 text-white text-[10px] font-bold rounded-lg">{effectiveDimoVehicles.length}</span>}
+        </button>
+        <button onClick={() => setActiveTab('hm-telemetry')} className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === 'hm-telemetry' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+          <Radio className="w-3.5 h-3.5" />
+          HM Telemetry
+          {hmTelemetryCandidates.length > 0 && <span className="px-2 py-0.5 bg-orange-500 text-white text-[10px] font-bold rounded-lg">{hmTelemetryCandidates.length}</span>}
         </button>
       </div>
 
@@ -248,13 +292,16 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
                     <th className={`text-left px-5 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Vehicle</th>
                     <th className={`text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>VIN</th>
                     <th className={`text-right px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Odometer</th>
-                    <th className={`text-right px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Battery / Fuel</th>
+                    <th className={`text-right px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Energy / Fuel</th>
                     <th className={`text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Signal</th>
                     <th className={`text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Connection</th>
+                    <th className={`text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>HM</th>
                     <th className="px-4 py-2"></th>
                   </tr></thead>
                   <tbody>
-                    {filteredDimo.map(v => (
+                    {filteredDimo.map(v => {
+                      const hasHmHealth = v.vin ? hmHealthVinSet.has(v.vin.toUpperCase()) : false;
+                      return (
                       <tr key={v.id} className="border-b border-border last:border-b-0 transition-colors hover:bg-muted/50">
                         <td className="px-5 py-2.5">
                           <p className={`text-sm font-semibold text-foreground`}>{v.make} {v.model} {v.year}</p>
@@ -271,7 +318,7 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
                         <td className="px-4 py-2.5 text-right">
                           {v.battery != null ? (
                             <span className={`inline-flex items-center gap-1 text-sm font-medium ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
-                              <Battery className="w-3.5 h-3.5" />{Math.round(v.battery)}%
+                              <Zap className="w-3.5 h-3.5" />{Math.round(v.battery)}%
                             </span>
                           ) : v.fuelLevel != null ? (
                             <span className={`inline-flex items-center gap-1 text-sm font-medium ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
@@ -291,6 +338,11 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
                           </span>
                         </td>
                         <td className="px-4 py-2.5">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border ${hasHmHealth ? 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/30' : 'bg-muted text-muted-foreground border-border'}`}>
+                            {hasHmHealth ? 'HW + HMH' : 'HW only'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5">
                           <div className="flex items-center gap-2">
                             {onRefreshSnapshot && (
                               <button
@@ -306,6 +358,95 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
                               <Plus className="w-3 h-3" /> Register
                             </button>
                           </div>
+                        </td>
+                      </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* HM Telemetry-APP Candidates Tab */}
+      {activeTab === 'hm-telemetry' && (
+        <>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Vehicles with approved HM Telemetry-APP clearance awaiting SynqDrive registration.
+              </p>
+            </div>
+            <button
+              onClick={loadHmTelemetryCandidates}
+              disabled={hmTelemetryLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold rounded-lg border border-border hover:bg-muted transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${hmTelemetryLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+
+          {hmTelemetryLoading ? (
+            <div className={`${cardClass} p-12 text-center`}>
+              <Loader2 className="w-8 h-8 mx-auto mb-3 animate-spin text-muted-foreground" />
+              <p className="text-sm font-medium text-muted-foreground">Loading HM Telemetry candidates…</p>
+            </div>
+          ) : hmTelemetryCandidates.length === 0 ? (
+            <div className={`${cardClass} p-12 text-center`}>
+              <Radio className={`w-12 h-12 mx-auto mb-4 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+              <h3 className="text-lg font-bold mb-2 text-foreground">No HM Telemetry Candidates</h3>
+              <p className="text-sm font-medium text-muted-foreground">
+                Vehicles will appear here once their HM Telemetry-APP clearance is approved.
+              </p>
+            </div>
+          ) : (
+            <div className={`${cardClass} overflow-hidden`}>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/50">
+                      <th className="text-left px-5 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Vehicle / VIN</th>
+                      <th className="text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Clearance</th>
+                      <th className="text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Source Mode</th>
+                      <th className="text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Approved At</th>
+                      <th className="px-4 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {hmTelemetryCandidates.map(v => (
+                      <tr key={v.id} className="border-b border-border last:border-b-0 transition-colors hover:bg-muted/50">
+                        <td className="px-5 py-2.5">
+                          <p className="text-sm font-semibold text-foreground">{v.brand}</p>
+                          <p className="text-[11px] font-mono text-muted-foreground mt-0.5">{v.vin}</p>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold border ${
+                            v.clearanceStatus === 'APPROVED'
+                              ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-300 dark:border-green-500/30'
+                              : v.clearanceStatus === 'CLEARANCE_PENDING'
+                                ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30'
+                                : 'bg-muted text-muted-foreground border-border'
+                          }`}>
+                            {v.clearanceStatus === 'APPROVED' ? <CheckCircle className="w-3 h-3" /> : null}
+                            {v.clearanceStatus}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span className="text-xs font-medium text-muted-foreground">{v.sourceMode}</span>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span className="text-xs text-muted-foreground">
+                            {v.clearanceApprovedAt ? new Date(v.clearanceApprovedAt).toLocaleDateString() : '—'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-500/10 dark:text-orange-300 dark:border-orange-500/30">
+                            <Radio className="w-3 h-3" />
+                            HM Telemetry-APP
+                          </span>
                         </td>
                       </tr>
                     ))}
@@ -536,13 +677,14 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
                     </div>
                   ) : hmStatus ? (
                     <div className="space-y-3">
-                      {/* State Badge */}
+                      {/* State Badge + OEM path badge */}
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border ${
                           hmStatus.state === 'LINKED_ACTIVE' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20' :
                           hmStatus.state === 'APPROVED' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20' :
                           hmStatus.state === 'CLEARANCE_PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20' :
-                          hmStatus.state === 'ERROR' || hmStatus.state === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20' :
+                          hmStatus.state === 'REJECTED' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20' :
+                          hmStatus.state === 'ERROR' ? 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/20' :
                           'bg-muted text-muted-foreground border-border'
                         }`}>
                           <Shield className="w-3 h-3" />
@@ -558,7 +700,33 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
                         {hmStatus.clearanceStatus && hmStatus.state !== 'LINKED_ACTIVE' && (
                           <span className="text-xs text-muted-foreground">{hmStatus.clearanceStatus}</span>
                         )}
+                        {/* OEM path label */}
+                        {hmStatus.oemPath === 'DIRECT_FLEET_CLEARANCE' && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
+                            Direct Clearance
+                          </span>
+                        )}
                       </div>
+
+                      {/* OEM routing note — shown for VW Group / Porsche in NOT_CONFIGURED state */}
+                      {hmStatus.routingNote && hmStatus.state === 'NOT_CONFIGURED' && (
+                        <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-violet-50 border border-violet-200 dark:bg-violet-900/20 dark:border-violet-800/40 text-xs text-violet-700 dark:text-violet-300">
+                          <Shield className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                          <span>{hmStatus.routingNote}</span>
+                        </div>
+                      )}
+
+                      {/* Clearance pending / rejected reason note */}
+                      {hmStatus.state === 'CLEARANCE_PENDING' && (
+                        <p className="text-xs text-muted-foreground">
+                          Waiting for provider approval. Refresh to check for updates.
+                        </p>
+                      )}
+                      {hmStatus.state === 'REJECTED' && (
+                        <p className="text-xs text-red-600 dark:text-red-400">
+                          Fleet clearance was rejected by the provider.
+                        </p>
+                      )}
 
                       {/* Fields */}
                       <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
@@ -578,6 +746,8 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
 
                       {/* Action Buttons */}
                       <div className="flex gap-2 flex-wrap pt-1">
+
+                        {/* ELIGIBILITY-FIRST brands: Check Eligibility */}
                         {hmStatus.canCheckEligibility && (
                           <button
                             disabled={!!hmActionLoading}
@@ -595,6 +765,27 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
                             Check Eligibility
                           </button>
                         )}
+
+                        {/* DIRECT_FLEET_CLEARANCE brands: Start Activation (VW Group, Porsche) */}
+                        {hmStatus.canRequestDirectClearance && (
+                          <button
+                            disabled={!!hmActionLoading}
+                            onClick={async () => {
+                              setHmActionLoading('directClearance');
+                              try {
+                                const result = await api.vehicleIntelligence.hmRequestDirectClearance(v.id);
+                                if (result.status) setHmStatus(result.status);
+                                else await loadHmStatus(v.id);
+                              } catch { /* silent */ }
+                              setHmActionLoading(null);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-50 transition-colors"
+                          >
+                            {hmActionLoading === 'directClearance' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shield className="w-3 h-3" />}
+                            Start Activation
+                          </button>
+                        )}
+
                         {hmStatus.canActivate && (
                           <button
                             disabled={!!hmActionLoading}

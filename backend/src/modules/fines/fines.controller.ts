@@ -8,6 +8,7 @@ import { extname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { FinesService } from './fines.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads', 'fines');
 if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -17,25 +18,25 @@ export class FinesController {
   constructor(private readonly finesService: FinesService) {}
 
   @Get('organizations/:orgId/fines')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async findAll(@Param('orgId') orgId: string) {
     return this.finesService.findByOrg(orgId);
   }
 
   @Get('organizations/:orgId/fines/stats')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async getStats(@Param('orgId') orgId: string) {
     return this.finesService.getStats(orgId);
   }
 
   @Get('organizations/:orgId/fines/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async findOne(@Param('id') id: string) {
     return this.finesService.findById(id);
   }
 
   @Get('organizations/:orgId/customers/:customerId/fines')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async findByCustomer(
     @Param('orgId') orgId: string,
     @Param('customerId') customerId: string,
@@ -44,7 +45,7 @@ export class FinesController {
   }
 
   @Post('organizations/:orgId/fines')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async create(
     @Param('orgId') orgId: string,
     @Body() body: {
@@ -69,7 +70,7 @@ export class FinesController {
   }
 
   @Patch('organizations/:orgId/fines/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async update(
     @Param('id') id: string,
     @Body() body: {
@@ -92,7 +93,7 @@ export class FinesController {
   }
 
   @Post('organizations/:orgId/fines/upload')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({

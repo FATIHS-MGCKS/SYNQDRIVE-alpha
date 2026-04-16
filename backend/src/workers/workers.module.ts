@@ -19,6 +19,7 @@ import { DimoDtcScheduler } from './schedulers/dimo-dtc.scheduler';
 import { TireRecalculationScheduler } from './schedulers/tire-recalculation.scheduler';
 import { BrakeRecalculationScheduler } from './schedulers/brake-recalculation.scheduler';
 import { TripTrackingRecoveryScheduler } from './schedulers/trip-tracking-recovery.scheduler';
+import { TripReconciliationScheduler } from './schedulers/trip-reconciliation.scheduler';
 import { HmHealthPollingScheduler } from './schedulers/hm-health-polling.scheduler';
 
 @Module({
@@ -52,6 +53,7 @@ import { HmHealthPollingScheduler } from './schedulers/hm-health-polling.schedul
     TireRecalculationScheduler,
     BrakeRecalculationScheduler,
     TripTrackingRecoveryScheduler,
+    TripReconciliationScheduler,
     HmHealthPollingScheduler,
   ],
 })

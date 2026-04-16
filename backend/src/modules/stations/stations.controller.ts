@@ -10,9 +10,10 @@ import {
 } from '@nestjs/common';
 import { StationsService } from './stations.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 
 @Controller('organizations/:orgId/stations')
-@UseGuards(RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard)
 export class StationsController {
   constructor(private readonly stationsService: StationsService) {}
 

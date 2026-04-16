@@ -34,11 +34,22 @@ export class DimoSnapshotScheduler {
       const tokenId = v.dimoVehicle?.tokenId;
       if (tokenId == null) continue;
 
-      await this.queue.add(
-        'snapshot',
-        { vehicleId: v.id, dimoTokenId: tokenId },
-        { jobId: `snapshot-${v.id}-${Date.now()}` },
-      );
+      try {
+        await this.queue.add(
+          'snapshot',
+          { vehicleId: v.id, dimoTokenId: tokenId },
+          {
+            jobId: `snapshot-${v.id}`,
+            removeOnComplete: true,
+            removeOnFail: 3,
+          },
+        );
+      } catch (err: unknown) {
+        const msg = (err as Error).message ?? '';
+        if (!msg.includes('Duplicate')) {
+          this.logger.warn(`Failed to enqueue snapshot for ${v.id}: ${msg}`);
+        }
+      }
     }
 
     if (vehicles.length > 0) {

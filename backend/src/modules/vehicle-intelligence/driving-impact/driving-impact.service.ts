@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   BehaviorEventCategory,
   BehaviorEventClassification,
@@ -7,6 +7,7 @@ import {
   HardwareType,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { TripMetricsService } from '../../observability/trip-metrics.service';
 import { DRIVING_IMPACT_CONFIG as C } from './driving-impact.config';
 import {
   capLinear,
@@ -19,6 +20,7 @@ import {
   computeHighSpeedStressScore,
   computeThermalBrakeStressScore,
   computeDrivingStyleScore,
+  computeSafetyScore,
 } from './driving-impact-scorer';
 
 // ── Public consumer DTOs ──────────────────────────────────────────────────────
@@ -92,7 +94,10 @@ export interface VehicleImpactForBrake {
 export class DrivingImpactService {
   private readonly logger = new Logger(DrivingImpactService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly tripMetrics?: TripMetricsService,
+  ) {}
 
   // ── Main computation entry point ────────────────────────────────────────────
 
@@ -121,6 +126,12 @@ export class DrivingImpactService {
         fullBrakingCount: true,
         kickdownCount: true,
         brakingEventCount: true,
+        totalBrakingEvents: true,
+        speedingExposurePct: true,
+        speedingSectionCount: true,
+        avgOverSpeedKmh: true,
+        maxOverSpeedKmh: true,
+        drivingScore: true,
       },
     });
 
@@ -241,7 +252,7 @@ export class DrivingImpactService {
     const hardBrakeCount = trip.hardBrakingCount ?? 0;
     const fullBrakingCount = trip.fullBrakingCount ?? 0;
     const kickdownCount = trip.kickdownCount ?? 0;
-    const brakesTotal = trip.brakingEventCount ?? 0;
+    const brakesTotal = trip.totalBrakingEvents ?? trip.brakingEventCount ?? 0;
 
     const hardAccelPer100Km = per100Km(hardAccelCount, distanceKm);
     const extremeAccelPer100Km = per100Km(extremeAccelCount, distanceKm);
@@ -264,8 +275,8 @@ export class DrivingImpactService {
       (e) => (e.startSpeedKmh ?? 0) >= C.HIGH_SPEED_BRAKE_THRESHOLD_KMH,
     ).length;
     const highSpeedBrakeShare =
-      brakesTotal > 0
-        ? Math.round((highSpeedBrakeCount / brakesTotal) * 100) / 100
+      brakingEventRows.length > 0
+        ? Math.round((highSpeedBrakeCount / brakingEventRows.length) * 100) / 100
         : 0;
 
     const stopCount = brakingEventRows.filter(
@@ -331,6 +342,20 @@ export class DrivingImpactService {
       highSpeedStressScore,
     });
 
+    const speedingExposurePct = trip.speedingExposurePct ?? 0;
+    const speedingSectionCount = trip.speedingSectionCount ?? 0;
+    const avgOverSpeedKmh = trip.avgOverSpeedKmh ?? 0;
+    const maxOverSpeedKmh = trip.maxOverSpeedKmh ?? 0;
+    const safetyScore = computeSafetyScore({
+      speedingExposurePct,
+      maxOverSpeedKmh,
+      avgOverSpeedKmh,
+      speedingSectionCount,
+    });
+    const speedingSeverityScore = Math.round(
+      Math.max(0, Math.min(100, maxOverSpeedKmh * 1.1 + avgOverSpeedKmh * 1.4)),
+    );
+
     // ── Persist TripDrivingImpact ─────────────────────────────────────────────
 
     await this.prisma.tripDrivingImpact.upsert({
@@ -367,6 +392,10 @@ export class DrivingImpactService {
         highSpeedStressScore,
         thermalBrakeStressScore,
         drivingStyleScore,
+        safetyScore,
+        speedingExposurePct,
+        speedingSeverityScore,
+        speedingSectionCount,
 
         modelVersion: C.MODEL_VERSION,
         sourceSummaryJson: {
@@ -380,6 +409,10 @@ export class DrivingImpactService {
           brakesTotal,
           highSpeedBrakeCount,
           stopCount,
+          speedingExposurePct,
+          speedingSectionCount,
+          maxOverSpeedKmh,
+          avgOverSpeedKmh,
           v3DrivingEventInput: useTelemetryDrivingEvents ? 'TELEMETRY_EVENTS' : 'HF_DERIVED',
           vehicleHardwareType: hardwareType,
         },
@@ -410,6 +443,10 @@ export class DrivingImpactService {
         highSpeedStressScore,
         thermalBrakeStressScore,
         drivingStyleScore,
+        safetyScore,
+        speedingExposurePct,
+        speedingSeverityScore,
+        speedingSectionCount,
         modelVersion: C.MODEL_VERSION,
         sourceSummaryJson: {
           hardAccelCount,
@@ -422,16 +459,36 @@ export class DrivingImpactService {
           brakesTotal,
           highSpeedBrakeCount,
           stopCount,
+          speedingExposurePct,
+          speedingSectionCount,
+          maxOverSpeedKmh,
+          avgOverSpeedKmh,
           v3DrivingEventInput: useTelemetryDrivingEvents ? 'TELEMETRY_EVENTS' : 'HF_DERIVED',
           vehicleHardwareType: hardwareType,
         },
       },
     });
 
+    // Compatibility mirror for one transition cycle.
+    // Canonical score source remains TripDrivingImpact.drivingStyleScore.
+    await this.prisma.vehicleTrip.update({
+      where: { id: tripId },
+      data: { drivingScore: drivingStyleScore },
+    });
+
+    if (trip.drivingScore != null) {
+      const drift = Math.abs(trip.drivingScore - drivingStyleScore);
+      const bucket =
+        drift >= 20 ? 'gte20' : drift >= 10 ? 'gte10' : drift >= 5 ? 'gte5' : null;
+      if (bucket) {
+        this.tripMetrics?.tripScoreDrift.inc({ bucket });
+      }
+    }
+
     this.logger.log(
       `DrivingImpact persisted: trip=${tripId} vehicle=${vehicleId} ` +
       `dist=${distanceKm.toFixed(1)}km long=${longitudinalStressScore} ` +
-      `brake=${brakingStressScore} style=${drivingStyleScore}`,
+      `brake=${brakingStressScore} style=${drivingStyleScore} safety=${safetyScore}`,
     );
 
     // ── Update rolling current aggregate ─────────────────────────────────────

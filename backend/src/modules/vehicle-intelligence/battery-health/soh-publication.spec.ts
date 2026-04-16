@@ -4,6 +4,7 @@ import {
   stabilize,
   shouldPublish,
   determineLvMaturity,
+  getLvCalibrationProgress,
   determineHvMaturity,
   combinedConfidence,
   mapSignalConfidence,
@@ -145,11 +146,56 @@ describe('soh-publication utilities', () => {
     });
   });
 
+  describe('getLvCalibrationProgress', () => {
+    it('tracks the 5-day wait during early calibration', () => {
+      const progress = getLvCalibrationProgress({
+        qualifiedEventCount: 2,
+        daysSinceFirstMeasurement: 3.2,
+        restObservationCount: 1,
+        crankObservationCount: 1,
+      });
+      expect(progress).toMatchObject({
+        measurementPath: 'rest_and_crank',
+        daysSinceFirstMeasurement: 3.2,
+        minimumDaysForStabilizing: 5,
+        qualifiedEventCount: 2,
+        minimumQualifiedEventsForStabilizing: 3,
+        restObservationCount: 1,
+        minimumRestObservationsForStabilizing: 1,
+        crankObservationCount: 1,
+        minimumCrankObservationsForStabilizing: 1,
+        blockers: ['days', 'qualified_events'],
+      });
+      expect(progress.daysRemainingForStabilizing).toBeCloseTo(1.8, 5);
+    });
+
+    it('requires extra rest observations on the rest-only fallback path', () => {
+      expect(getLvCalibrationProgress({
+        qualifiedEventCount: 3,
+        daysSinceFirstMeasurement: 7,
+        restObservationCount: 1,
+        crankObservationCount: 0,
+      })).toEqual({
+        measurementPath: 'rest_only',
+        daysSinceFirstMeasurement: 7,
+        minimumDaysForStabilizing: 5,
+        daysRemainingForStabilizing: 0,
+        qualifiedEventCount: 3,
+        minimumQualifiedEventsForStabilizing: 3,
+        restObservationCount: 1,
+        minimumRestObservationsForStabilizing: 2,
+        crankObservationCount: 0,
+        minimumCrankObservationsForStabilizing: 0,
+        blockers: ['rest_observations'],
+      });
+    });
+  });
+
   // ── HV Maturity ─────────────────────────────────────────────────
 
   describe('determineHvMaturity', () => {
-    it('returns INITIAL_CALIBRATION for degradation_model only', () => {
-      expect(determineHvMaturity({ validEstimateCount: 20, daysSinceFirstMeasurement: 30, method: 'degradation_model' })).toBe('INITIAL_CALIBRATION');
+    it('allows degradation_model maturity to progress by observation duration', () => {
+      expect(determineHvMaturity({ validEstimateCount: 20, daysSinceFirstMeasurement: 30, method: 'degradation_model' })).toBe('STABLE');
     });
 
     it('returns INITIAL_CALIBRATION for insufficient_data', () => {

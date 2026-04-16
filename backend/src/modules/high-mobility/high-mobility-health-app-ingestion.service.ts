@@ -1,0 +1,284 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
+import type { HmNormalizedTelemetryDto, HmStreamSyncLogDto } from './dto/high-mobility.dto';
+import {
+  extractHmSignalData,
+  extractHmSignalValue,
+  resolveHmSignalEntry,
+} from './high-mobility-mqtt-payload.util';
+import { HmSignalUsageService } from './high-mobility-signal-usage.service';
+
+/**
+ * HighMobilityHealthAppIngestionService
+ *
+ * Ingests raw MQTT messages from the HM Health-APP consumer.
+ * Scope: HEALTH package vehicles with appContainerType = HM_HEALTH_APP.
+ *
+ * DOMAIN RULE: Store and stage only. Does not push into calculation pipelines.
+ * Downstream signal usage is handled by HmSignalUsageService (health boundary).
+ */
+@Injectable()
+export class HighMobilityHealthAppIngestionService {
+  private readonly logger = new Logger(HighMobilityHealthAppIngestionService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly hmSignalUsageService: HmSignalUsageService,
+  ) {}
+
+  async ingest(rawMessage: {
+    messageId: string;
+    topic: string;
+    payload: Buffer | string;
+    receivedAt: Date;
+  }): Promise<HmNormalizedTelemetryDto | null> {
+    const { messageId, topic, payload, receivedAt } = rawMessage;
+
+    const existing = await this.prisma.highMobilityStreamSyncLog
+      .findUnique({ where: { messageId } })
+      .catch(() => null);
+
+    if (existing) {
+      this.logger.debug(`[HM Health-APP] Duplicate message_id ${messageId} — skipping`);
+      return null;
+    }
+
+    let parsedPayload: Record<string, unknown> | null = null;
+    try {
+      const raw = typeof payload === 'string' ? payload : payload.toString('utf-8');
+      parsedPayload = JSON.parse(raw);
+    } catch (err: any) {
+      this.logger.warn(`[HM Health-APP] Failed to parse payload for ${messageId}: ${err?.message}`);
+      await this.persistLog({ messageId, topic, messageTimestamp: null, ingestStatus: 'FAILED',
+        isDuplicate: false, payloadJson: null, normalizedSummaryJson: null,
+        errorMessage: `Parse failed: ${err?.message}`, hmVehicleId: null, vin: null });
+      return null;
+    }
+
+    const vin = this.extractVin(topic, parsedPayload);
+    const messageTimestamp = this.extractTimestamp(parsedPayload) ?? receivedAt;
+
+    const hmRecord = vin
+      ? await this.prisma.highMobilityVehicle.findFirst({
+          where: {
+            vin, isActive: true, clearanceStatus: 'APPROVED',
+            packageType: 'HEALTH',
+            OR: [{ appContainerType: 'HM_HEALTH_APP' }, { appContainerType: null }],
+          },
+        }).catch(() => null)
+      : null;
+
+    const normalized = this.normalizePayload(messageId, vin, hmRecord?.id ?? null, topic, messageTimestamp, parsedPayload ?? {});
+
+    await this.persistLog({
+      messageId, topic, messageTimestamp, ingestStatus: 'STORED', isDuplicate: false,
+      payloadJson: parsedPayload, normalizedSummaryJson: this.buildSummary(normalized),
+      errorMessage: null, hmVehicleId: hmRecord?.id ?? null, vin,
+    });
+
+    if (vin) {
+      await this.upsertLatestHealthState(vin, hmRecord?.id ?? null, messageId, receivedAt, parsedPayload ?? {}).catch(err =>
+        this.logger.warn(`[HM Health-APP] Failed to upsert latest health state for VIN ${vin}: ${err?.message}`),
+      );
+
+      if (hmRecord?.synqdriveVehicleId) {
+        await this.hmSignalUsageService
+          .ingestMqttHealthSnapshot({
+            vehicleId: hmRecord.synqdriveVehicleId,
+            hmVehicleId: hmRecord.id,
+            payload: parsedPayload ?? {},
+            receivedAt,
+          })
+          .catch(err =>
+            this.logger.warn(
+              `[HM Health-APP] Failed to bridge MQTT snapshot into HM signal groups for VIN ${vin}: ${err?.message}`,
+            ),
+          );
+      }
+    }
+
+    return normalized;
+  }
+
+  async getStreamLogs(params?: { limit?: number; offset?: number; hmVehicleId?: string; vin?: string; ingestStatus?: string }): Promise<{ data: HmStreamSyncLogDto[]; total: number }> {
+    const where: any = { appContainerType: 'HM_HEALTH_APP' };
+    if (params?.hmVehicleId) where.highMobilityVehicleId = params.hmVehicleId;
+    if (params?.vin) where.vin = params.vin;
+    if (params?.ingestStatus) where.ingestStatus = params.ingestStatus;
+
+    const [logs, total] = await Promise.all([
+      this.prisma.highMobilityStreamSyncLog.findMany({
+        where, orderBy: { createdAt: 'desc' }, take: params?.limit ?? 50, skip: params?.offset ?? 0,
+        select: { id: true, highMobilityVehicleId: true, vin: true, messageId: true, topic: true,
+          messageTimestamp: true, ingestStatus: true, isDuplicate: true, normalizedSummaryJson: true,
+          errorMessage: true, createdAt: true },
+      }),
+      this.prisma.highMobilityStreamSyncLog.count({ where }),
+    ]);
+
+    return { data: logs.map(l => ({
+      id: l.id, highMobilityVehicleId: l.highMobilityVehicleId ?? null, vin: l.vin ?? null,
+      messageId: l.messageId, topic: l.topic, messageTimestamp: l.messageTimestamp?.toISOString() ?? null,
+      ingestStatus: l.ingestStatus as any, isDuplicate: l.isDuplicate,
+      normalizedSummaryJson: l.normalizedSummaryJson as any ?? null,
+      errorMessage: l.errorMessage ?? null, createdAt: l.createdAt.toISOString(),
+    })), total };
+  }
+
+  private static readonly UUID_PATTERN =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  private extractVin(topic: string, payload: Record<string, unknown> | null): string | null {
+    // Topic structure for vehicle messages: live/level13/<app_id>/<vin>/...
+    // App-level management messages have only 3 segments: live/level13/<app_id>
+    // We skip the 3rd segment if it is a UUID (= app ID), since VINs are 17 alphanumeric chars with no hyphens.
+    const parts = topic.split('/');
+    if (parts.length >= 4) {
+      const candidate = parts[3];
+      if (candidate && candidate.length >= 10 && !HighMobilityHealthAppIngestionService.UUID_PATTERN.test(candidate)) {
+        return candidate.toUpperCase();
+      }
+    }
+    // Fall back to payload fields
+    return (payload?.vin as string)?.toUpperCase() ?? (payload?.vehicleVin as string)?.toUpperCase() ?? null;
+  }
+
+  private extractTimestamp(payload: Record<string, unknown> | null): Date | null {
+    if (!payload) return null;
+    const ts = payload?.timestamp ?? payload?.messageTimestamp ?? payload?.created_at;
+    if (!ts) return null;
+    const d = new Date(ts as string);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  private normalizePayload(messageId: string, vin: string | null, hmVehicleId: string | null,
+    topic: string, messageTimestamp: Date, payload: Record<string, unknown>): HmNormalizedTelemetryDto {
+    const props = (payload?.data ?? payload?.properties ?? {}) as Record<string, any>;
+    const getVal = (keys: string[]): any => {
+      for (const k of keys) {
+        const entry = resolveHmSignalEntry(payload, k);
+        const v = extractHmSignalValue(entry);
+        if (v !== undefined && v !== null) return v;
+      }
+      return null;
+    };
+    return {
+      messageId, vin: vin ?? '', hmVehicleId, topic,
+      messageTimestamp: messageTimestamp.toISOString(),
+      latitude: getVal(['location.get.location', 'location']) ? Number(getVal(['location.get.location', 'location'])?.latitude ?? null) : null,
+      longitude: getVal(['location.get.location', 'location']) ? Number(getVal(['location.get.location', 'location'])?.longitude ?? null) : null,
+      speedKmh: getVal(['vehicle_speed.get.vehicle_speed', 'vehicle_speed']) !== null ? Number(getVal(['vehicle_speed.get.vehicle_speed', 'vehicle_speed'])) : null,
+      ignitionOn: getVal(['ignition.get.status', 'ignition_status']) !== null ? Boolean(getVal(['ignition.get.status', 'ignition_status'])) : null,
+      odometerId: getVal(['odometer.get.mileage', 'odometer']) !== null ? Number(getVal(['odometer.get.mileage', 'odometer'])) : null,
+      fuelLevelPercent: getVal(['fueling.get.fuel_level', 'fuel_level']) !== null ? Number(getVal(['fueling.get.fuel_level', 'fuel_level'])) : null,
+      batteryVoltage: getVal(['diagnostics.get.battery_voltage', 'battery_voltage']) !== null ? Number(getVal(['diagnostics.get.battery_voltage', 'battery_voltage'])) : null,
+      engineCoolantTemperatureC: getVal(['diagnostics.get.engine_coolant_temperature', 'engine_coolant_temperature']) !== null ? Number(getVal(['diagnostics.get.engine_coolant_temperature', 'engine_coolant_temperature'])) : null,
+      rawSignals: props,
+    };
+  }
+
+  private buildSummary(dto: HmNormalizedTelemetryDto): Record<string, unknown> {
+    const s: Record<string, unknown> = { messageId: dto.messageId, vin: dto.vin };
+    if (dto.latitude !== null) s.lat = dto.latitude;
+    if (dto.longitude !== null) s.lng = dto.longitude;
+    if (dto.speedKmh !== null) s.speedKmh = dto.speedKmh;
+    if (dto.ignitionOn !== null) s.ignition = dto.ignitionOn;
+    return s;
+  }
+
+  private async upsertLatestHealthState(
+    vin: string,
+    hmVehicleId: string | null,
+    messageId: string,
+    receivedAt: Date,
+    payload: Record<string, unknown>,
+  ): Promise<void> {
+    const props = (payload?.data ?? payload?.properties ?? {}) as Record<string, any>;
+    const getSignal = (key: string, aliases: string[] = []): unknown =>
+      resolveHmSignalEntry(payload, key, aliases);
+
+    const toBooleanOrNull = (entry: unknown): boolean | null => {
+      const value = extractHmSignalValue(entry);
+      return value === null || value === undefined ? null : Boolean(value);
+    };
+
+    const toFiniteNumberOrNull = (entry: unknown): number | null => {
+      const value = extractHmSignalValue(entry);
+      if (value === null || value === undefined) return null;
+      const num = Number(value);
+      return Number.isFinite(num) ? num : null;
+    };
+
+    const oilSig = getSignal('diagnostics.get.engine_oil_level', ['diagnostics.engine_oil_level', 'engine_oil_level']);
+    const limpSig = getSignal('engine.get.limp_mode', ['engine.limp_mode', 'limp_mode']);
+    const brakeSig = getSignal('diagnostics.get.brake_lining_wear_pre_warning', ['diagnostics.brake_lining_wear_pre_warning', 'brake_lining_wear_pre_warning']);
+    const tirePressureStatuses = getSignal('diagnostics.get.tire_pressure_statuses', ['diagnostics.tire_pressure_statuses', 'tire_pressure_statuses']);
+    const tirePressures = getSignal('diagnostics.get.tire_pressures', ['diagnostics.tire_pressures', 'tire_pressures']);
+    const dashboardLights = getSignal('dashboard_lights.get.dashboard_lights', ['dashboard_lights.dashboard_lights']);
+    const distanceSig = getSignal('maintenance.get.distance_to_next_service', ['maintenance.distance_to_next_service', 'distance_to_next_service']);
+    const timeSig = getSignal('maintenance.get.time_to_next_service', ['maintenance.time_to_next_service', 'time_to_next_service']);
+
+    const oilPayload = extractHmSignalData(oilSig);
+    const tirePressureStatusesPayload = extractHmSignalData(tirePressureStatuses);
+    const tirePressuresPayload = extractHmSignalData(tirePressures);
+    const dashboardLightsPayload = extractHmSignalData(dashboardLights);
+    const brakeLiningPreWarning = toBooleanOrNull(brakeSig);
+    const engineLimpMode = toBooleanOrNull(limpSig);
+    const distanceToNextServiceKm = toFiniteNumberOrNull(distanceSig);
+    const timeToNextServiceDays = toFiniteNumberOrNull(timeSig);
+
+    await (this.prisma as any).hmLatestHealthState.upsert({
+      where: { uq_hm_latest_health_vin_app: { vin, appContainerType: 'HM_HEALTH_APP' } },
+      create: {
+        vin, appContainerType: 'HM_HEALTH_APP', hmVehicleId, lastMessageId: messageId, lastReceivedAt: receivedAt,
+        dashboardLightsJson: dashboardLightsPayload ?? undefined,
+        brakeLiningPreWarning: brakeLiningPreWarning ?? undefined,
+        engineLimpMode: engineLimpMode ?? undefined,
+        engineOilLevelJson: oilPayload ?? undefined,
+        distanceToNextServiceKm: distanceToNextServiceKm ?? undefined,
+        timeToNextServiceDays: timeToNextServiceDays ?? undefined,
+        tirePressureStatusesJson: tirePressureStatusesPayload ?? undefined,
+        tirePressuresJson: tirePressuresPayload ?? undefined,
+        rawSignalsJson: props as any,
+      },
+      update: {
+        hmVehicleId: hmVehicleId ?? undefined, lastMessageId: messageId, lastReceivedAt: receivedAt,
+        ...(dashboardLightsPayload !== null && dashboardLightsPayload !== undefined && { dashboardLightsJson: dashboardLightsPayload }),
+        ...(brakeLiningPreWarning !== null && { brakeLiningPreWarning }),
+        ...(engineLimpMode !== null && { engineLimpMode }),
+        ...(oilPayload !== null && oilPayload !== undefined && { engineOilLevelJson: oilPayload }),
+        ...(distanceToNextServiceKm !== null && { distanceToNextServiceKm }),
+        ...(timeToNextServiceDays !== null && { timeToNextServiceDays }),
+        ...(tirePressureStatusesPayload !== null && tirePressureStatusesPayload !== undefined && { tirePressureStatusesJson: tirePressureStatusesPayload }),
+        ...(tirePressuresPayload !== null && tirePressuresPayload !== undefined && { tirePressuresJson: tirePressuresPayload }),
+        rawSignalsJson: props as any,
+      },
+    });
+  }
+
+  private async persistLog(data: {
+    messageId: string; topic: string; messageTimestamp: Date | null; ingestStatus: string;
+    isDuplicate: boolean; payloadJson: Record<string, unknown> | null;
+    normalizedSummaryJson: Record<string, unknown> | null; errorMessage: string | null;
+    hmVehicleId: string | null; vin: string | null;
+  }): Promise<void> {
+    try {
+      await this.prisma.highMobilityStreamSyncLog.create({
+        data: {
+          messageId: data.messageId, topic: data.topic,
+          messageTimestamp: data.messageTimestamp ?? undefined,
+          ingestStatus: data.ingestStatus as any, isDuplicate: data.isDuplicate,
+          payloadJson: data.payloadJson ? (data.payloadJson as Prisma.InputJsonValue) : undefined,
+          normalizedSummaryJson: data.normalizedSummaryJson ? (data.normalizedSummaryJson as Prisma.InputJsonValue) : undefined,
+          errorMessage: data.errorMessage ?? undefined,
+          highMobilityVehicleId: data.hmVehicleId ?? undefined,
+          vin: data.vin ?? undefined,
+          appContainerType: 'HM_HEALTH_APP',
+        },
+      });
+    } catch (err: any) {
+      this.logger.warn(`[HM Health-APP] Failed to persist log for ${data.messageId}: ${err?.message}`);
+    }
+  }
+}

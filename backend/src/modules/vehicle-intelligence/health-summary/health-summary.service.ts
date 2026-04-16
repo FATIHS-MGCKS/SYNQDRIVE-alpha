@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DtcService } from '../dtc/dtc.service';
-import { BatteryHealthService } from '../battery-health/battery-health.service';
-import { BrakesService } from '../brakes/brakes.service';
+import { BrakeHealthService } from '../brakes/brake-health.service';
 import { TiresService } from '../tires/tires.service';
 import { ServiceEventsService } from '../service-events/service-events.service';
 import { TripsService } from '../trips/trips.service';
 import { DrivingEventsService } from '../driving-events/driving-events.service';
+import { CanonicalBatteryHealthService } from '../battery-health/canonical-battery-health.service';
 
 /** Structured agent request payload (extensible for Driver Feedback later). */
 export interface HealthSummaryAgentInput {
@@ -22,7 +22,14 @@ export interface HealthSummaryAgentInput {
   healthModules: {
     battery: { status: string; sohPercent: number | null; voltageV: number | null; hasData: boolean } | null;
     errorCodes: { activeCount: number; totalRecent: number; lastCheckedAt: string | null; hasData: boolean } | null;
-    brakes: { hasSpecs: boolean; hasBrakeServiceHistory: boolean; hasData: boolean } | null;
+    brakes: {
+      stateClass: string | null;
+      hasBaseline: boolean;
+      remainingKm: number | null;
+      confidenceLabel: string | null;
+      hasAlert: boolean;
+      hasData: boolean;
+    } | null;
     tires: { treadPercentEstimate: number | null; hasSetups: boolean; hasMeasurements: boolean; hasData: boolean } | null;
     serviceInfo: { lastServiceAt: string | null; lastOdometerKm: number | null; eventCount: number; hasData: boolean } | null;
     oilChange: { lastChangedAt: string | null; eventCount: number; hasData: boolean } | null;
@@ -58,8 +65,8 @@ export class HealthSummaryService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dtcService: DtcService,
-    private readonly batteryHealthService: BatteryHealthService,
-    private readonly brakesService: BrakesService,
+    private readonly canonicalBatteryHealthService: CanonicalBatteryHealthService,
+    private readonly brakeHealthService: BrakeHealthService,
     private readonly tiresService: TiresService,
     private readonly serviceEventsService: ServiceEventsService,
     private readonly tripsService: TripsService,
@@ -86,29 +93,35 @@ export class HealthSummaryService {
     const [
       dtcStats,
       dtcList,
-      batteryLatest,
-      batteryTrend,
-      brakes,
+      batterySummary,
+      brakeSummary,
       tireSetups,
       serviceEventsPaginated,
       tripStats,
       recentTrips,
-      drivingInsights,
     ] = await Promise.all([
       this.dtcService.getStats(vehicleId).catch(() => null),
       this.dtcService.findByVehicle(vehicleId).then((r) => (Array.isArray(r) ? r.slice(0, 50) : [])).catch(() => []),
-      this.batteryHealthService.getLatest(vehicleId).catch(() => null),
-      this.batteryHealthService.findByVehicle(vehicleId, 30).catch(() => []),
-      this.brakesService.findByVehicle(vehicleId).catch(() => []),
+      this.canonicalBatteryHealthService.getSummary(vehicleId).catch(() => null),
+      this.brakeHealthService.getSummary(vehicleId).catch(() => null),
       this.tiresService.findSetupsByVehicle(vehicleId).catch(() => []),
       this.serviceEventsService.findByVehicle(vehicleId, { page: 1, limit: 50 }).catch(() => ({ data: [] })),
-      this.tripsService.getStats(vehicleId).catch(() => ({ avgDrivingScore: null, totalTrips: 0, totalDistanceKm: 0 })),
+      this.tripsService.getStats(vehicleId).catch(() => ({
+        avgDrivingScore: null,
+        avgSafetyScore: null,
+        totalTrips: 0,
+        totalDistanceKm: 0,
+        totalAccelerationEvents: 0,
+        totalHardAccelerationEvents: 0,
+        totalBrakingEvents: 0,
+        totalHardBrakingEvents: 0,
+        totalAbuseEvents: 0,
+      })),
       this.prisma.vehicleTrip.findMany({
         where: { vehicleId, startTime: { gte: ninetyDaysAgo } },
         select: { distanceKm: true, citySharePercent: true, highwaySharePercent: true, countrySharePercent: true },
         take: 100,
       }).catch(() => []),
-      this.drivingEventsService.getInsights(vehicleId, ninetyDaysAgo, now).catch(() => ({ total: 0, harshBraking: 0, harshAcceleration: 0 })),
     ]);
 
     const serviceEvents = Array.isArray((serviceEventsPaginated as any).data) ? (serviceEventsPaginated as any).data : [];
@@ -118,14 +131,20 @@ export class HealthSummaryService {
     const hasBrakeService = serviceEvents.some((e: any) => e.eventType === 'BRAKE_SERVICE');
 
     let tireTreadPercent: number | null = null;
-    const firstSetup = tireSetups?.[0] as {
+    type TireSetupShape = {
+      status?: string;
+      removedAt?: Date | null;
       measurements?: Array<{ frontLeftMm?: number; frontRightMm?: number; rearLeftMm?: number; rearRightMm?: number }>;
       initialTreadDepthMm?: number;
       initialTreadFrontMm?: number;
       initialTreadRearMm?: number;
       tireSeason?: string;
       overallHealthPercent?: number;
-    } | undefined;
+    };
+    const activeSetup = (tireSetups as TireSetupShape[])?.find(
+      (s) => s.status === 'ACTIVE' && s.removedAt == null,
+    );
+    const firstSetup: TireSetupShape | undefined = activeSetup ?? (tireSetups?.[0] as TireSetupShape | undefined);
     if (firstSetup?.overallHealthPercent != null) {
       tireTreadPercent = Math.round(firstSetup.overallHealthPercent);
     } else if (firstSetup?.measurements?.length) {
@@ -165,10 +184,11 @@ export class HealthSummaryService {
     const mostlyShortDistance = avgTripDistance != null && avgTripDistance < 20;
     const mostlyLongDistance = avgTripDistance != null && avgTripDistance >= 50;
 
-    const insights = drivingInsights as { total?: number; harshBraking?: number; harshAcceleration?: number };
-    const drivingEventsCount = insights?.total ?? 0;
-    const harshBraking = insights?.harshBraking ?? 0;
-    const harshAccel = insights?.harshAcceleration ?? 0;
+    const drivingEventsCount =
+      ((tripStats as any).totalAccelerationEvents ?? 0) +
+      ((tripStats as any).totalBrakingEvents ?? 0);
+    const harshBraking = (tripStats as any).totalHardBrakingEvents ?? 0;
+    const harshAccel = (tripStats as any).totalHardAccelerationEvents ?? 0;
     let accelerationBehavior: string | null = null;
     let brakingBehavior: string | null = null;
     if (drivingEventsCount > 0) {
@@ -182,9 +202,10 @@ export class HealthSummaryService {
 
     const available: string[] = [];
     const missing: string[] = [];
-    if (batteryLatest) available.push('battery'); else missing.push('battery');
+    if (batterySummary?.lv?.status !== 'estimate_unavailable') available.push('battery');
+    else missing.push('battery');
     if (dtcStats != null) available.push('errorCodes'); else missing.push('errorCodes');
-    if (brakes?.length) available.push('brakes'); else missing.push('brakes');
+    if (brakeSummary != null) available.push('brakes'); else missing.push('brakes');
     if (tireSetups?.length) available.push('tires'); else missing.push('tires');
     if (serviceEvents.length) available.push('serviceInfo'); else missing.push('serviceInfo');
     if (oilEvents.length) available.push('oilChange'); else missing.push('oilChange');
@@ -202,11 +223,18 @@ export class HealthSummaryService {
         fuelType: vehicle.fuelType ?? undefined,
       },
       healthModules: {
-        battery: batteryLatest
+        battery: batterySummary
           ? {
-              status: (batteryLatest as any).sohPercent >= 80 ? 'good' : (batteryLatest as any).sohPercent >= 50 ? 'fair' : 'poor',
-              sohPercent: (batteryLatest as any).sohPercent ?? null,
-              voltageV: (batteryLatest as any).voltageV ?? null,
+              status:
+                batterySummary.lv?.condition === 'good'
+                  ? 'good'
+                  : batterySummary.lv?.condition === 'watch'
+                    ? 'fair'
+                    : batterySummary.lv?.condition === 'attention'
+                      ? 'poor'
+                      : 'unknown',
+              sohPercent: batterySummary.lv?.healthPercent ?? null,
+              voltageV: batterySummary.lv?.telemetry?.voltageV ?? null,
               hasData: true,
             }
           : { status: 'unknown', sohPercent: null, voltageV: null, hasData: false },
@@ -219,14 +247,18 @@ export class HealthSummaryService {
             }
           : { activeCount: 0, totalRecent: 0, lastCheckedAt: null, hasData: false },
         brakes: {
-          hasSpecs: Array.isArray(brakes) && brakes.length > 0,
-          hasBrakeServiceHistory: hasBrakeService,
-          hasData: (Array.isArray(brakes) && brakes.length > 0) || hasBrakeService,
+          stateClass: brakeSummary?.stateClass ?? null,
+          hasBaseline:
+            brakeSummary?.stateClass === 'MEASURED' || brakeSummary?.stateClass === 'ESTIMATED',
+          remainingKm: brakeSummary?.remainingKm ?? null,
+          confidenceLabel: brakeSummary?.confidence?.label ?? null,
+          hasAlert: brakeSummary?.hasAlert === true,
+          hasData: brakeSummary != null || hasBrakeService,
         },
         tires: {
           treadPercentEstimate: tireTreadPercent,
           hasSetups: Array.isArray(tireSetups) && tireSetups.length > 0,
-          hasMeasurements: Array.isArray(tireSetups) && tireSetups.length > 0 && (tireSetups[0] as any).measurements?.length > 0,
+          hasMeasurements: firstSetup?.measurements != null && firstSetup.measurements.length > 0,
           hasData: tireTreadPercent != null,
         },
         serviceInfo: {
@@ -244,7 +276,7 @@ export class HealthSummaryService {
       behaviorAndUsage: {
         drivingScore: (tripStats as any).avgDrivingScore ?? null,
         drivingEventsCount,
-        abuseDetectionCount: 0,
+        abuseDetectionCount: (tripStats as any).totalAbuseEvents ?? 0,
         accelerationBehavior,
         brakingBehavior,
         tripPattern: (tripStats as any).totalTrips > 0 ? { mostlyShortDistance, mostlyLongDistance } : null,
@@ -286,8 +318,21 @@ export class HealthSummaryService {
       maintenanceFocus.push({ area: 'tires', priority: (m.tires.treadPercentEstimate ?? 0) < 25 ? 'high' : 'medium', reason: 'Tread wear' });
     }
 
-    if (m.brakes?.hasData) {
-      positives.push('Brake specs and/or service history are recorded.');
+    if (m.brakes?.stateClass === 'MEASURED') {
+      positives.push('Brake health is based on measured baseline data.');
+    } else if (m.brakes?.stateClass === 'ESTIMATED') {
+      positives.push('Brake health is available as an estimate with baseline context.');
+    } else if (m.brakes?.stateClass === 'WARNING_ONLY') {
+      watchpoints.push('Brake module has warning-only telemetry without modeled baseline.');
+      maintenanceFocus.push({ area: 'brakes', priority: 'medium', reason: 'No modeled baseline' });
+    } else if (m.brakes?.stateClass === 'NO_BASELINE') {
+      watchpoints.push('Brake baseline missing — record measured brake inspection to enable wear modeling.');
+      maintenanceFocus.push({ area: 'brakes', priority: 'medium', reason: 'Missing baseline data' });
+    }
+
+    if (m.brakes?.hasAlert) {
+      watchpoints.push('Brake alerts are present in the canonical brake-health model.');
+      maintenanceFocus.push({ area: 'brakes', priority: 'high', reason: 'Brake alert state' });
     }
 
     if (m.serviceInfo?.hasData) {

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Inject, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, Logger, forwardRef } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import {
   Vehicle,
@@ -10,12 +10,12 @@ import {
   CleaningStatus,
   EnrichmentJobType,
   BatterySourceType,
-  TireSeason,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoTriggersService } from '@modules/dimo/dimo-triggers.service';
 import { DimoAuthService } from '@modules/dimo/dimo-auth.service';
 import { DimoTelemetryService } from '@modules/dimo/dimo-telemetry.service';
+import { VehicleProviderConsentService } from './vehicle-provider-consent.service';
 import dimoConfig from '@config/dimo.config';
 import {
   parsePagination,
@@ -25,6 +25,7 @@ import {
 } from '@shared/utils/pagination';
 import { interpretVehicleState } from './vehicle-state-interpreter';
 import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
+import { TireLifecycleService } from '@modules/vehicle-intelligence/tires/tire-lifecycle.service';
 
 const DIMO_FUEL_TYPE_MAP: Record<string, FuelType> = {
   GASOLINE: FuelType.GASOLINE,
@@ -105,6 +106,32 @@ const FULL_VEHICLE_WITH_ORG_INCLUDE = {
   organization: true,
 } satisfies Prisma.VehicleInclude;
 
+export interface FleetMapVehicleDto {
+  id: string;
+  licensePlate: string | null;
+  displayName: string;
+  make: string | null;
+  model: string;
+  year: number | null;
+  status: string;
+  fuelType: string;
+  healthStatus: string;
+  cleaningStatus: string;
+  stationId: string | null;
+  stationName: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  lastSeenAt: string | null;
+  signalAgeMs: number;
+  isFresh: boolean;
+  onlineStatus: string;
+  displayState: string;
+  displayIgnition: string;
+  isLiveTracking: boolean;
+  heading: number | null;
+  imageUrl: string | null;
+}
+
 @Injectable()
 export class VehiclesService {
   private readonly logger = new Logger(VehiclesService.name);
@@ -114,6 +141,9 @@ export class VehiclesService {
     private readonly dimoTriggers: DimoTriggersService,
     private readonly dimoAuth: DimoAuthService,
     private readonly dimoTelemetry: DimoTelemetryService,
+    private readonly providerConsent: VehicleProviderConsentService,
+    @Inject(forwardRef(() => TireLifecycleService))
+    private readonly tireLifecycleService: TireLifecycleService,
     @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
   ) {}
 
@@ -396,14 +426,58 @@ export class VehiclesService {
     return typeof v === 'number' && !Number.isNaN(v) ? v : null;
   }
 
+  private extractHeading(rawPayload: unknown): number | null {
+    if (!rawPayload || typeof rawPayload !== 'object') return null;
+    const raw = rawPayload as Record<string, unknown>;
+
+    const directKeys = ['heading', 'bearing', 'course'] as const;
+    for (const key of directKeys) {
+      const value = raw[key];
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+    }
+
+    const nestedCandidates: unknown[] = [
+      raw.currentLocationHeading,
+      raw.currentLocationCoordinates,
+      raw.currentLocationCourse,
+      raw.location,
+      raw.position,
+    ];
+
+    for (const candidate of nestedCandidates) {
+      if (!candidate || typeof candidate !== 'object') continue;
+      const obj = candidate as Record<string, unknown>;
+      const fromValue = obj.value;
+      if (typeof fromValue === 'number' && Number.isFinite(fromValue)) return fromValue;
+      if (fromValue && typeof fromValue === 'object') {
+        const nestedValue = fromValue as Record<string, unknown>;
+        for (const key of directKeys) {
+          const v = nestedValue[key];
+          if (typeof v === 'number' && Number.isFinite(v)) return v;
+        }
+      }
+      for (const key of directKeys) {
+        const v = obj[key];
+        if (typeof v === 'number' && Number.isFinite(v)) return v;
+      }
+    }
+
+    return null;
+  }
+
   // ── CRUD ──────────────────────────────────────────────────────────
 
   async create(
     organizationId: string,
     data: Omit<Prisma.VehicleCreateInput, 'organization'>,
+    createdByUserId?: string,
   ): Promise<Vehicle> {
     return this.prisma.vehicle.create({
-      data: { ...data, organization: { connect: { id: organizationId } } },
+      data: {
+        ...data,
+        organization: { connect: { id: organizationId } },
+        createdByUserId: createdByUserId ?? null,
+      },
     });
   }
 
@@ -433,6 +507,91 @@ export class VehiclesService {
       total,
       params || {},
     );
+  }
+
+  async getFleetMapData(organizationId: string): Promise<FleetMapVehicleDto[]> {
+    const where = this.withOrgScope(organizationId);
+    const vehicles = await this.prisma.vehicle.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        licensePlate: true,
+        vehicleName: true,
+        make: true,
+        model: true,
+        year: true,
+        status: true,
+        fuelType: true,
+        healthStatus: true,
+        cleaningStatus: true,
+        imageUrl: true,
+        station: { select: { id: true, name: true } },
+        latestState: {
+          select: {
+            latitude: true,
+            longitude: true,
+            lastSeenAt: true,
+            speedKmh: true,
+            isIgnitionOn: true,
+            engineLoad: true,
+            tractionBatteryPowerKw: true,
+            coolantTempC: true,
+            odometerKm: true,
+            rawPayloadJson: true,
+          },
+        },
+      },
+    });
+
+    const tripStateMap = await this.buildTripStateMap(vehicles.map((v) => v.id));
+
+    return vehicles.map((vehicle) => {
+      const state = vehicle.latestState;
+      const tripState = tripStateMap.get(vehicle.id) ?? null;
+      const interpreted = interpretVehicleState(
+        {
+          lastSeenAt: state?.lastSeenAt ?? null,
+          speedKmh: state?.speedKmh ?? null,
+          isIgnitionOn: state?.isIgnitionOn ?? null,
+          engineLoad: state?.engineLoad ?? null,
+          tractionBatteryPowerKw: state?.tractionBatteryPowerKw ?? null,
+          coolantTempC: state?.coolantTempC ?? null,
+          odometerKm: state?.odometerKm ?? null,
+        },
+        tripState,
+      );
+
+      return {
+        id: vehicle.id,
+        licensePlate: vehicle.licensePlate ?? null,
+        displayName:
+          vehicle.vehicleName ??
+          [vehicle.make, vehicle.model].filter(Boolean).join(' ').trim(),
+        make: vehicle.make ?? null,
+        model: vehicle.model,
+        year: vehicle.year ?? null,
+        status: RENTAL_STATUS_MAP[vehicle.status as VehicleStatus] ?? 'Available',
+        fuelType: FUEL_TYPE_LABEL[vehicle.fuelType as FuelType] ?? 'Other',
+        healthStatus:
+          RENTAL_HEALTH_MAP[vehicle.healthStatus as HealthStatus] ?? 'Good Health',
+        cleaningStatus:
+          CLEANING_STATUS_MAP[vehicle.cleaningStatus as CleaningStatus] ?? 'Clean',
+        stationId: vehicle.station?.id ?? null,
+        stationName: vehicle.station?.name ?? null,
+        latitude: state?.latitude ?? null,
+        longitude: state?.longitude ?? null,
+        lastSeenAt: state?.lastSeenAt?.toISOString() ?? null,
+        signalAgeMs: interpreted.signalAgeMs,
+        isFresh: interpreted.isFresh,
+        onlineStatus: interpreted.onlineStatus,
+        displayState: interpreted.displayState,
+        displayIgnition: interpreted.displayIgnition,
+        isLiveTracking: interpreted.isLiveTracking,
+        heading: this.extractHeading(state?.rawPayloadJson),
+        imageUrl: vehicle.imageUrl ?? null,
+      };
+    });
   }
 
   async findById(id: string) {
@@ -478,9 +637,12 @@ export class VehiclesService {
     );
   }
 
-  async getVehicleWithTelemetry(vehicleId: string) {
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: vehicleId },
+  async getVehicleWithTelemetry(vehicleId: string, organizationId?: string) {
+    const where = organizationId
+      ? { id: vehicleId, organizationId }
+      : { id: vehicleId };
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where,
       include: {
         station: true,
         latestState: true,
@@ -586,9 +748,12 @@ export class VehiclesService {
 
   // ── Live GPS (direct DIMO proxy, no DB caching) ──────────────────
 
-  async getLiveGps(vehicleId: string) {
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: vehicleId },
+  async getLiveGps(vehicleId: string, organizationId?: string) {
+    const where = organizationId
+      ? { id: vehicleId, organizationId }
+      : { id: vehicleId };
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where,
       select: {
         id: true,
         dimoVehicle: { select: { tokenId: true } },
@@ -699,105 +864,36 @@ export class VehiclesService {
       treadFR?: number | null;
       treadBL?: number | null;
       treadBR?: number | null;
+      tireCondition?: string | null;
     },
   ) {
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId, ...this.withOrgScope(organizationId) },
-      include: { tireSetups: { where: { removedAt: null }, orderBy: { createdAt: 'desc' }, take: 1 } },
+      select: { id: true },
     });
     if (!vehicle) throw new NotFoundException('Vehicle not found');
 
-    const hasTireFields =
-      tires.frontDimension || tires.rearDimension ||
-      tires.brandModelFront || tires.brandModelRear ||
-      tires.treadFL != null || tires.treadFR != null ||
-      tires.treadBL != null || tires.treadBR != null;
-
-    if (!hasTireFields) return { setup: null, measurement: null };
-
-    const frontAvg =
-      tires.treadFL != null && tires.treadFR != null
-        ? (tires.treadFL + tires.treadFR) / 2
-        : (tires.treadFL ?? tires.treadFR ?? null);
-    const rearAvg =
-      tires.treadBL != null && tires.treadBR != null
-        ? (tires.treadBL + tires.treadBR) / 2
-        : (tires.treadBL ?? tires.treadBR ?? null);
-    const overallAvg =
-      frontAvg != null && rearAvg != null
-        ? (frontAvg + rearAvg) / 2
-        : (frontAvg ?? rearAvg ?? null);
-
-    const existingSetup = vehicle.tireSetups[0] ?? null;
-
-    const setup = existingSetup
-      ? await this.prisma.vehicleTireSetup.update({
-          where: { id: existingSetup.id },
-          data: {
-            frontDimension: tires.frontDimension?.trim() || existingSetup.frontDimension,
-            rearDimension: tires.rearDimension?.trim() || existingSetup.rearDimension,
-            brandModelFront: tires.brandModelFront?.trim() || existingSetup.brandModelFront,
-            brandModelRear: tires.brandModelRear?.trim() || existingSetup.brandModelRear,
-            tireSeason: this.parseTireSeason(tires.tireSeason) ?? existingSetup.tireSeason,
-            ...(tires.loadIndexFront != null ? { loadIndexFront: tires.loadIndexFront.trim() || null } : {}),
-            ...(tires.speedIndexFront != null ? { speedIndexFront: tires.speedIndexFront.trim() || null } : {}),
-            ...(tires.loadIndexRear != null ? { loadIndexRear: tires.loadIndexRear.trim() || null } : {}),
-            ...(tires.speedIndexRear != null ? { speedIndexRear: tires.speedIndexRear.trim() || null } : {}),
-            ...(tires.dotCodeFront != null ? { dotCodeFront: tires.dotCodeFront.trim() || null } : {}),
-            ...(tires.dotCodeRear != null ? { dotCodeRear: tires.dotCodeRear.trim() || null } : {}),
-            initialTreadFrontMm: existingSetup.initialTreadFrontMm ?? frontAvg,
-            initialTreadRearMm: existingSetup.initialTreadRearMm ?? rearAvg,
-            initialTreadDepthMm: existingSetup.initialTreadDepthMm ?? overallAvg,
-          },
-        })
-      : await this.prisma.vehicleTireSetup.create({
-          data: {
-            vehicleId,
-            organizationId,
-            frontDimension: tires.frontDimension?.trim() || null,
-            rearDimension: tires.rearDimension?.trim() || null,
-            brandModelFront: tires.brandModelFront?.trim() || null,
-            brandModelRear: tires.brandModelRear?.trim() || null,
-            tireSeason: this.parseTireSeason(tires.tireSeason),
-            loadIndexFront: tires.loadIndexFront?.trim() || null,
-            speedIndexFront: tires.speedIndexFront?.trim() || null,
-            loadIndexRear: tires.loadIndexRear?.trim() || null,
-            speedIndexRear: tires.speedIndexRear?.trim() || null,
-            dotCodeFront: tires.dotCodeFront?.trim() || null,
-            dotCodeRear: tires.dotCodeRear?.trim() || null,
-            initialTreadFrontMm: frontAvg,
-            initialTreadRearMm: rearAvg,
-            initialTreadDepthMm: overallAvg,
-            installedAt: new Date(),
-          },
-        });
-
-    let measurement = null;
-    const hasMeasurements =
-      tires.treadFL != null || tires.treadFR != null ||
-      tires.treadBL != null || tires.treadBR != null;
-
-    if (hasMeasurements) {
-      const latestOdo = await this.prisma.vehicleLatestState.findUnique({
-        where: { vehicleId },
-        select: { odometerKm: true },
-      });
-      measurement = await this.prisma.vehicleTireTreadMeasurement.create({
-        data: {
-          vehicleId,
-          tireSetupId: setup.id,
-          frontLeftMm: tires.treadFL ?? null,
-          frontRightMm: tires.treadFR ?? null,
-          rearLeftMm: tires.treadBL ?? null,
-          rearRightMm: tires.treadBR ?? null,
-          odometerAtMeasurement: latestOdo?.odometerKm ?? null,
-          measuredAt: new Date(),
-          source: existingSetup ? 'manual_edit' : 'manual_registration',
-        },
-      });
-    }
-
-    return { setup, measurement };
+    return this.tireLifecycleService.upsertSetupAndMeasurement({
+      vehicleId,
+      organizationId,
+      frontDimension: tires.frontDimension ?? null,
+      rearDimension: tires.rearDimension ?? null,
+      brandModelFront: tires.brandModelFront ?? null,
+      brandModelRear: tires.brandModelRear ?? null,
+      tireSeason: tires.tireSeason ?? null,
+      loadIndexFront: tires.loadIndexFront ?? null,
+      speedIndexFront: tires.speedIndexFront ?? null,
+      loadIndexRear: tires.loadIndexRear ?? null,
+      speedIndexRear: tires.speedIndexRear ?? null,
+      dotCodeFront: tires.dotCodeFront ?? null,
+      dotCodeRear: tires.dotCodeRear ?? null,
+      treadFL: tires.treadFL ?? null,
+      treadFR: tires.treadFR ?? null,
+      treadBL: tires.treadBL ?? null,
+      treadBR: tires.treadBR ?? null,
+      tireCondition: tires.tireCondition ?? null,
+      source: 'manual_edit',
+    });
   }
 
   async updateCleaningStatus(
@@ -915,16 +1011,6 @@ export class VehiclesService {
     return map[k];
   }
 
-  private parseTireSeason(label: string | null | undefined): TireSeason {
-    if (!label) return TireSeason.ALL_SEASON;
-    const s = label.toUpperCase().replace(/[^A-Z]/g, '_');
-    if (s === 'SUMMER') return TireSeason.SUMMER;
-    if (s === 'WINTER') return TireSeason.WINTER;
-    if (s === 'ALL_SEASON' || s === 'ALL SEASON') return TireSeason.ALL_SEASON;
-    if (s === 'TRACK') return TireSeason.TRACK;
-    return TireSeason.ALL_SEASON;
-  }
-
   async registerFromDimo(
     orgId: string,
     stationId: string | null,
@@ -969,6 +1055,7 @@ export class VehiclesService {
         aiTireSpec?: Record<string, unknown> | null;
       };
     },
+    createdByUserId?: string | null,
   ): Promise<Vehicle> {
     const dimoVehicle = await this.prisma.dimoVehicle.findUniqueOrThrow({
       where: { id: dimoVehicleId },
@@ -1000,7 +1087,22 @@ export class VehiclesService {
       ...restExtra,
     };
 
-    const vehicle = await this.prisma.vehicle.create({ data: createData });
+    const vehicle = await this.prisma.vehicle.create({
+      data: {
+        ...createData,
+        ...(createdByUserId ? { createdByUserId } : {}),
+      },
+    });
+
+    // Record DIMO provider consent grant (fire-and-forget — never blocks vehicle creation)
+    void this.providerConsent.recordDimoConsent({
+      vehicleId: vehicle.id,
+      organizationId: orgId,
+      dimoExternalId: dimoVehicle.externalId,
+      dimoTokenId: dimoVehicle.tokenId ?? null,
+      grantedByUserId: createdByUserId ?? null,
+      metadataJson: { registeredVin: vehicle.vin, dimoVehicleId },
+    });
 
     if (manualSpecs?.battery) {
       const b = manualSpecs.battery;
@@ -1050,85 +1152,67 @@ export class VehiclesService {
 
     if (manualSpecs?.tires) {
       const tr = manualSpecs.tires;
-      const hasTireSetup =
-        tr.frontDimension ||
-        tr.rearDimension ||
-        tr.brandModelFront ||
-        tr.brandModelRear ||
-        tr.initialTreadFrontMm != null ||
-        tr.initialTreadRearMm != null ||
-        tr.treadFL != null ||
-        tr.treadFR != null ||
-        tr.treadBL != null ||
-        tr.treadBR != null;
+      const hasTireInput = [
+        tr.frontDimension,
+        tr.rearDimension,
+        tr.brandModelFront,
+        tr.brandModelRear,
+        tr.tireSeason,
+        tr.loadIndexFront,
+        tr.speedIndexFront,
+        tr.loadIndexRear,
+        tr.speedIndexRear,
+        tr.dotCodeFront,
+        tr.dotCodeRear,
+        tr.tireCondition,
+        tr.initialTreadFrontMm,
+        tr.initialTreadRearMm,
+        tr.treadFL,
+        tr.treadFR,
+        tr.treadBL,
+        tr.treadBR,
+      ].some((v) => v != null && String(v).trim() !== '');
 
-      if (hasTireSetup) {
-        // Derive initial tread from per-corner measurements if not supplied directly
-        const frontAvg =
-          tr.initialTreadFrontMm ??
-          (tr.treadFL != null && tr.treadFR != null
-            ? (tr.treadFL + tr.treadFR) / 2
-            : (tr.treadFL ?? tr.treadFR ?? null));
-        const rearAvg =
-          tr.initialTreadRearMm ??
-          (tr.treadBL != null && tr.treadBR != null
-            ? (tr.treadBL + tr.treadBR) / 2
-            : (tr.treadBL ?? tr.treadBR ?? null));
-        const overallAvg =
-          frontAvg != null && rearAvg != null
-            ? (frontAvg + rearAvg) / 2
-            : (frontAvg ?? rearAvg ?? null);
-
-        const tireSetup = await this.prisma.vehicleTireSetup.create({
-          data: {
-            vehicleId: vehicle.id,
-            organizationId: orgId,
-            frontDimension: tr.frontDimension?.trim() || null,
-            rearDimension: tr.rearDimension?.trim() || null,
-            brandModelFront: tr.brandModelFront?.trim() || null,
-            brandModelRear: tr.brandModelRear?.trim() || null,
-            tireSeason: this.parseTireSeason(tr.tireSeason),
-            loadIndexFront: tr.loadIndexFront?.trim() || null,
-            speedIndexFront: tr.speedIndexFront?.trim() || null,
-            loadIndexRear: tr.loadIndexRear?.trim() || null,
-            speedIndexRear: tr.speedIndexRear?.trim() || null,
-            dotCodeFront: tr.dotCodeFront?.trim() || null,
-            dotCodeRear: tr.dotCodeRear?.trim() || null,
-            tireCondition: tr.tireCondition === 'NEW_INSTALLED' ? 'NEW_INSTALLED'
-              : tr.tireCondition === 'ALREADY_MOUNTED' ? 'ALREADY_MOUNTED'
-              : 'UNKNOWN',
-            initialTreadFrontMm: frontAvg,
-            initialTreadRearMm: rearAvg,
-            initialTreadDepthMm: overallAvg,
-            installedAt: new Date(),
-            ...(tr.aiTireSpec ? { aiTireSpec: tr.aiTireSpec as any } : {}),
-          },
+      if (hasTireInput) {
+        const result = await this.tireLifecycleService.upsertSetupAndMeasurement({
+          vehicleId: vehicle.id,
+          organizationId: orgId,
+          frontDimension: tr.frontDimension ?? null,
+          rearDimension: tr.rearDimension ?? null,
+          brandModelFront: tr.brandModelFront ?? null,
+          brandModelRear: tr.brandModelRear ?? null,
+          tireSeason: tr.tireSeason ?? null,
+          loadIndexFront: tr.loadIndexFront ?? null,
+          speedIndexFront: tr.speedIndexFront ?? null,
+          loadIndexRear: tr.loadIndexRear ?? null,
+          speedIndexRear: tr.speedIndexRear ?? null,
+          dotCodeFront: tr.dotCodeFront ?? null,
+          dotCodeRear: tr.dotCodeRear ?? null,
+          treadFL: tr.treadFL ?? null,
+          treadFR: tr.treadFR ?? null,
+          treadBL: tr.treadBL ?? null,
+          treadBR: tr.treadBR ?? null,
+          tireCondition: tr.tireCondition ?? null,
+          source: 'manual_registration',
         });
 
-        // Create the tread measurement record if any corner value present
-        const hasMeasurements =
-          tr.treadFL != null ||
-          tr.treadFR != null ||
-          tr.treadBL != null ||
-          tr.treadBR != null;
-
-        if (hasMeasurements) {
-          const regOdo = await this.prisma.vehicleLatestState.findUnique({
-            where: { vehicleId: vehicle.id },
-            select: { odometerKm: true },
-          });
-          await this.prisma.vehicleTireTreadMeasurement.create({
+        if (
+          result.setup?.id &&
+          (tr.initialTreadFrontMm != null || tr.initialTreadRearMm != null)
+        ) {
+          await this.prisma.vehicleTireSetup.update({
+            where: { id: result.setup.id },
             data: {
-              vehicleId: vehicle.id,
-              tireSetupId: tireSetup.id,
-              frontLeftMm: tr.treadFL ?? null,
-              frontRightMm: tr.treadFR ?? null,
-              rearLeftMm: tr.treadBL ?? null,
-              rearRightMm: tr.treadBR ?? null,
-              odometerAtMeasurement: regOdo?.odometerKm ?? null,
-              measuredAt: new Date(),
-              source: 'manual_registration',
+              initialTreadFrontMm: tr.initialTreadFrontMm ?? undefined,
+              initialTreadRearMm: tr.initialTreadRearMm ?? undefined,
             },
+          });
+        }
+
+        if (tr.aiTireSpec && result.setup?.id) {
+          await this.prisma.vehicleTireSetup.update({
+            where: { id: result.setup.id },
+            data: { aiTireSpec: tr.aiTireSpec as any },
           });
         }
       }

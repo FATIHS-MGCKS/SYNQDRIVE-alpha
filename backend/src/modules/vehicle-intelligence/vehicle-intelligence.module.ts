@@ -5,8 +5,10 @@ import { BatteryService } from './battery/battery.service';
 import { TiresService } from './tires/tires.service';
 import { TireWearModelService } from './tires/tire-wear-model.service';
 import { TireHealthService } from './tires/tire-health.service';
+import { TireLifecycleService } from './tires/tire-lifecycle.service';
 import { BrakesService } from './brakes/brakes.service';
 import { BrakeHealthService } from './brakes/brake-health.service';
+import { BrakeLifecycleService } from './brakes/brake-lifecycle.service';
 import { ServiceEventsService } from './service-events/service-events.service';
 import { EnrichmentJobsService } from './enrichment-jobs/enrichment-jobs.service';
 import { DtcService } from './dtc/dtc.service';
@@ -17,10 +19,18 @@ import { TripBehaviorEnrichmentService } from './trips/trip-behavior-enrichment.
 import { TripEnrichmentOrchestratorService } from './trips/trip-enrichment-orchestrator.service';
 import { LteR1BehaviorEnrichmentService } from './trips/lte-r1-behavior-enrichment.service';
 import { MapboxService } from './trips/mapbox.service';
+import { MapboxRouteMatcherService } from './trips/mapbox-route-matcher.service';
+import { FmmRouteMatcherService } from './trips/fmm-route-matcher.service';
+import { ROUTE_MAP_MATCHER } from './trips/route-map-matcher.port';
+import { TripAssignmentService } from './trips/trip-assignment.service';
+import { DriverScoreService } from './trips/driver-score.service';
+import { TripAnalyticsCanonicalService } from './trips/trip-analytics-canonical.service';
 import { DamagesService } from './damages/damages.service';
 import { BatteryHealthService } from './battery-health/battery-health.service';
 import { HvBatteryHealthService } from './battery-health/hv-battery-health.service';
 import { BatteryV2Service } from './battery-health/battery-v2.service';
+import { BatteryEvidenceService } from './battery-health/battery-evidence.service';
+import { CanonicalBatteryHealthService } from './battery-health/canonical-battery-health.service';
 import { HealthSummaryService } from './health-summary/health-summary.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
 import { DrivingImpactService } from './driving-impact/driving-impact.service';
@@ -28,6 +38,21 @@ import { DimoModule } from '../dimo/dimo.module';
 import { InvoicesModule } from '@modules/invoices/invoices.module';
 import { HighMobilityModule } from '../high-mobility/high-mobility.module';
 import { QUEUE_NAMES } from '../../workers/queues/queue-names';
+// ── New refactored providers ──
+import { TripDecisionEngine } from './trips/decision/trip-decision.engine';
+import { TripDetectionPolicyResolver } from './trips/policy/trip-detection-policy.resolver';
+import { TripReconciliationService } from './trips/reconciliation/trip-reconciliation.service';
+import { DetectorRegistry } from './trips/detectors/detector.registry';
+import { SnapshotEvidenceEvaluator } from './trips/detectors/snapshot-evidence.evaluator';
+import { StartConfirmationDetector } from './trips/detectors/start-confirmation.detector';
+import { ContinuityAssessmentDetector } from './trips/detectors/continuity-assessment.detector';
+import { EndContinuityDetector } from './trips/detectors/end-continuity.detector';
+import { ChangePointEndDetector } from './trips/detectors/change-point-end.detector';
+import { TripQualityDetector } from './trips/detectors/trip-quality.detector';
+import { TripOverlapDetector } from './trips/detectors/trip-overlap.detector';
+import { IgnitionSegmentDetector } from './trips/detectors/ignition-segment.detector';
+import { MotionSegmentDetector } from './trips/detectors/motion-segment.detector';
+import { ActivityWindowDetector } from './trips/detectors/activity-window.detector';
 
 @Module({
   imports: [
@@ -46,8 +71,10 @@ import { QUEUE_NAMES } from '../../workers/queues/queue-names';
     TiresService,
     TireWearModelService,
     TireHealthService,
+    TireLifecycleService,
     BrakesService,
     BrakeHealthService,
+    BrakeLifecycleService,
     ServiceEventsService,
     EnrichmentJobsService,
     DtcService,
@@ -58,21 +85,51 @@ import { QUEUE_NAMES } from '../../workers/queues/queue-names';
     TripEnrichmentOrchestratorService,
     LteR1BehaviorEnrichmentService,
     MapboxService,
+    MapboxRouteMatcherService,
+    FmmRouteMatcherService,
+    {
+      provide: ROUTE_MAP_MATCHER,
+      useExisting: MapboxRouteMatcherService,
+    },
+    TripAssignmentService,
+    DriverScoreService,
+    TripAnalyticsCanonicalService,
     DamagesService,
     BatteryHealthService,
     HvBatteryHealthService,
     BatteryV2Service,
+    BatteryEvidenceService,
+    CanonicalBatteryHealthService,
     HealthSummaryService,
     AiHealthCareAggregationService,
     DrivingImpactService,
+    // ── New refactored providers ──
+    TripDecisionEngine,
+    TripDetectionPolicyResolver,
+    TripReconciliationService,
+    // Detector instances (all implement TripDetector interface)
+    SnapshotEvidenceEvaluator,
+    StartConfirmationDetector,
+    ContinuityAssessmentDetector,
+    EndContinuityDetector,
+    ChangePointEndDetector,
+    TripQualityDetector,
+    TripOverlapDetector,
+    IgnitionSegmentDetector,
+    MotionSegmentDetector,
+    ActivityWindowDetector,
+    // Registry dispatches to detector instances by name (from PolicyResolver output)
+    DetectorRegistry,
   ],
   exports: [
     BatteryService,
     TiresService,
     TireWearModelService,
     TireHealthService,
+    TireLifecycleService,
     BrakesService,
     BrakeHealthService,
+    BrakeLifecycleService,
     ServiceEventsService,
     EnrichmentJobsService,
     DtcService,
@@ -82,11 +139,20 @@ import { QUEUE_NAMES } from '../../workers/queues/queue-names';
     TripBehaviorEnrichmentService,
     TripEnrichmentOrchestratorService,
     LteR1BehaviorEnrichmentService,
+    TripAssignmentService,
+    DriverScoreService,
+    TripAnalyticsCanonicalService,
     DamagesService,
     BatteryHealthService,
     HvBatteryHealthService,
     BatteryV2Service,
+    BatteryEvidenceService,
+    CanonicalBatteryHealthService,
     DrivingImpactService,
+    TripDecisionEngine,
+    TripDetectionPolicyResolver,
+    TripReconciliationService,
+    DetectorRegistry,
   ],
 })
 export class VehicleIntelligenceModule {}

@@ -167,6 +167,41 @@ export class SupportService {
     );
   }
 
+  /** Org-scoped ticket lookup — rejects if ticket does not belong to the org. */
+  async findByIdForOrganization(organizationId: string, id: string) {
+    const ticket = await this.prisma.supportTicket.findFirst({
+      where: { id, organizationId },
+      include: {
+        messages: { orderBy: { createdAt: 'asc' } },
+        _count: { select: { messages: true } },
+      },
+    });
+    if (!ticket) throw new NotFoundException('Ticket not found');
+    return this.formatTicket(
+      ticket as unknown as Record<string, unknown>,
+      ticket.messages as unknown as unknown[],
+    );
+  }
+
+  /** Org-scoped message creation — verifies ticket belongs to the org before adding. */
+  async addMessageForOrganization(
+    organizationId: string,
+    ticketId: string,
+    data: {
+      senderId?: string;
+      senderName: string;
+      senderRole: 'user' | 'admin';
+      content: string;
+      imageUrl?: string;
+    },
+  ) {
+    const ticket = await this.prisma.supportTicket.findFirst({
+      where: { id: ticketId, organizationId },
+    });
+    if (!ticket) throw new NotFoundException('Ticket not found');
+    return this.addMessage(ticketId, data);
+  }
+
   async addMessage(
     ticketId: string,
     data: {

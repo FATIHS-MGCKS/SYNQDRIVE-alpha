@@ -8,6 +8,7 @@ import { extname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { InvoicesService } from './invoices.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads', 'invoices');
 if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -17,7 +18,7 @@ export class InvoicesController {
   constructor(private readonly invoicesService: InvoicesService) {}
 
   @Get('organizations/:orgId/invoices')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async findAll(
     @Param('orgId') orgId: string,
     @Query('type') type?: string,
@@ -27,19 +28,19 @@ export class InvoicesController {
   }
 
   @Get('organizations/:orgId/invoices/stats')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async getStats(@Param('orgId') orgId: string) {
     return this.invoicesService.getStats(orgId);
   }
 
   @Get('organizations/:orgId/invoices/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async findOne(@Param('id') id: string) {
     return this.invoicesService.findById(id);
   }
 
   @Get('organizations/:orgId/customers/:customerId/invoices')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async findByCustomer(
     @Param('orgId') orgId: string,
     @Param('customerId') customerId: string,
@@ -48,7 +49,7 @@ export class InvoicesController {
   }
 
   @Post('organizations/:orgId/invoices')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async create(
     @Param('orgId') orgId: string,
     @Body() body: {
@@ -77,7 +78,7 @@ export class InvoicesController {
   }
 
   @Patch('organizations/:orgId/invoices/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async update(
     @Param('id') id: string,
     @Body() body: {
@@ -99,13 +100,13 @@ export class InvoicesController {
   }
 
   @Patch('organizations/:orgId/invoices/:id/pay')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async markPaid(@Param('id') id: string) {
     return this.invoicesService.markPaid(id);
   }
 
   @Post('organizations/:orgId/invoices/upload')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({

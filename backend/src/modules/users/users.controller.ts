@@ -19,6 +19,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 
 @Controller()
 export class UsersController {
@@ -90,19 +91,19 @@ export class UsersController {
   // ─── Org-scoped routes ───────────────────────────────
 
   @Get('organizations/:orgId/users')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async orgFindAll(@Param('orgId') orgId: string) {
     return this.usersService.findByOrganization(orgId);
   }
 
   @Get('organizations/:orgId/users/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async orgFindOne(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.usersService.findOrgUserDetail(orgId, id);
   }
 
   @Post('organizations/:orgId/users')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async orgCreate(
     @Param('orgId') orgId: string,
     @Body() body: CreateOrgUserDto,
@@ -111,7 +112,7 @@ export class UsersController {
   }
 
   @Patch('organizations/:orgId/users/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async orgUpdate(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -121,7 +122,7 @@ export class UsersController {
   }
 
   @Post('organizations/:orgId/users/:userId/change-password')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async orgChangePassword(
     @Param('orgId') orgId: string,
     @Param('userId') userId: string,

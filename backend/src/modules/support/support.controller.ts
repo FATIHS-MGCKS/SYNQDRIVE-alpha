@@ -18,9 +18,17 @@ import { extname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { SupportService } from './support.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { PaginationParams } from '@shared/utils/pagination';
 import { TicketStatus, TicketPriority } from '@prisma/client';
+import {
+  CreateSupportTicketDto,
+  AdminCreateSupportTicketDto,
+  UpdateSupportTicketDto,
+  AddSupportMessageDto,
+  UpdateTicketStatusDto,
+} from '@shared/dto/support.dto';
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads', 'support');
 if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -76,17 +84,7 @@ export class SupportController {
   @Post('admin/support/tickets')
   @UseGuards(RolesGuard)
   @Roles('MASTER_ADMIN')
-  async adminCreate(
-    @Body()
-    body: {
-      organizationId?: string;
-      reporterEmail: string;
-      reporterName?: string;
-      subject: string;
-      description: string;
-      priority?: TicketPriority;
-    },
-  ) {
+  async adminCreate(@Body() body: AdminCreateSupportTicketDto) {
     return this.supportService.create(body);
   }
 
@@ -96,7 +94,7 @@ export class SupportController {
   async adminAddMessage(
     @Param('id') id: string,
     @Req() req: { user?: { id?: string; name?: string } },
-    @Body() body: { content: string; imageUrl?: string },
+    @Body() body: AddSupportMessageDto,
   ) {
     return this.supportService.addMessage(id, {
       senderId: req.user?.id,
@@ -110,34 +108,21 @@ export class SupportController {
   @Patch('admin/support/tickets/:id')
   @UseGuards(RolesGuard)
   @Roles('MASTER_ADMIN')
-  async update(
-    @Param('id') id: string,
-    @Body()
-    body: {
-      subject?: string;
-      description?: string;
-      priority?: TicketPriority;
-      assignedTo?: string;
-      status?: TicketStatus;
-    },
-  ) {
-    return this.supportService.update(id, body);
+  async update(@Param('id') id: string, @Body() body: UpdateSupportTicketDto) {
+    return this.supportService.update(id, body as any);
   }
 
   @Patch('admin/support/tickets/:id/status')
   @UseGuards(RolesGuard)
   @Roles('MASTER_ADMIN')
-  async updateStatus(
-    @Param('id') id: string,
-    @Body() body: { status: TicketStatus },
-  ) {
-    return this.supportService.updateStatus(id, body.status);
+  async updateStatus(@Param('id') id: string, @Body() body: UpdateTicketStatusDto) {
+    return this.supportService.updateStatus(id, body.status as any);
   }
 
   // ─── Org-scoped routes ───────────────────────────
 
   @Get('organizations/:orgId/support/tickets')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async orgFindAll(@Param('orgId') orgId: string) {
     return this.supportService.findByOrganization(orgId);
   }
@@ -145,24 +130,18 @@ export class SupportController {
   @Get('organizations/:orgId/support/tickets/:id')
   @UseGuards(RolesGuard)
   async orgFindOne(
-    @Param('orgId') _orgId: string,
+    @Param('orgId') orgId: string,
     @Param('id') id: string,
   ) {
-    return this.supportService.findById(id);
+    return this.supportService.findByIdForOrganization(orgId, id);
   }
 
   @Post('organizations/:orgId/support/tickets')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async orgCreate(
     @Param('orgId') orgId: string,
     @Req() req: { user?: { id?: string; email?: string; name?: string } },
-    @Body()
-    body: {
-      subject: string;
-      description: string;
-      priority?: TicketPriority;
-      imageUrl?: string;
-    },
+    @Body() body: CreateSupportTicketDto,
   ) {
     return this.supportService.create({
       organizationId: orgId,
@@ -177,14 +156,14 @@ export class SupportController {
   }
 
   @Post('organizations/:orgId/support/tickets/:id/messages')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async orgAddMessage(
-    @Param('orgId') _orgId: string,
+    @Param('orgId') orgId: string,
     @Param('id') id: string,
     @Req() req: { user?: { id?: string; name?: string } },
-    @Body() body: { content: string; imageUrl?: string },
+    @Body() body: AddSupportMessageDto,
   ) {
-    return this.supportService.addMessage(id, {
+    return this.supportService.addMessageForOrganization(orgId, id, {
       senderId: req.user?.id,
       senderName: req.user?.name || 'User',
       senderRole: 'user',

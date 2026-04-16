@@ -2,17 +2,45 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { HighMobilityHealthFetchService } from './high-mobility-health-fetch.service';
 import type { HmHealthDataDto } from './dto/high-mobility.dto';
+import {
+  extractHmSignalData,
+  extractHmSignalValue,
+  resolveHmSignalEntry,
+} from './high-mobility-mqtt-payload.util';
 
 /** Signal group identifier — matches HmSignalGroup Prisma enum */
 export type HmSignalGroupKey = 'SERVICE' | 'TIRE_PRESSURE' | 'AI_HEALTH_CARE';
 
+/** Freshness tier for UI display */
+export type HmFreshnessStatus = 'fresh' | 'aging' | 'stale' | 'no_data';
+
 const ALL_HM_SIGNAL_GROUPS: HmSignalGroupKey[] = ['SERVICE', 'TIRE_PRESSURE', 'AI_HEALTH_CARE'];
+
+// Freshness windows per signal group (milliseconds)
+const FRESHNESS_WINDOWS: Record<HmSignalGroupKey, { fresh: number; aging: number }> = {
+  SERVICE:         { fresh: 24 * 60 * 60 * 1000, aging: 72 * 60 * 60 * 1000 },  // 24h / 72h
+  TIRE_PRESSURE:   { fresh:  6 * 60 * 60 * 1000, aging: 24 * 60 * 60 * 1000 },  // 6h / 24h
+  AI_HEALTH_CARE:  { fresh:  6 * 60 * 60 * 1000, aging: 12 * 60 * 60 * 1000 },  // 6h / 12h
+};
+
+function getFreshnessStatus(
+  lastSuccessAt: Date | null | undefined,
+  group: HmSignalGroupKey,
+): HmFreshnessStatus {
+  if (!lastSuccessAt) return 'no_data';
+  const ageMs = Date.now() - lastSuccessAt.getTime();
+  const { fresh, aging } = FRESHNESS_WINDOWS[group];
+  if (ageMs < fresh) return 'fresh';
+  if (ageMs < aging) return 'aging';
+  return 'stale';
+}
 
 export interface HmServiceSignals {
   distanceToNextServiceKm: number | null;
   timeToNextServiceDays: number | null;
   lastUpdatedAt: string | null;
   hmVehicleId: string;
+  freshnessStatus: HmFreshnessStatus;
 }
 
 export interface HmTirePressureSignals {
@@ -28,6 +56,7 @@ export interface HmTirePressureSignals {
   overallStatus: 'OK' | 'ISSUE' | 'UNKNOWN';
   lastUpdatedAt: string | null;
   hmVehicleId: string;
+  freshnessStatus: HmFreshnessStatus;
 }
 
 export interface HmAiHealthCareSignals {
@@ -38,6 +67,15 @@ export interface HmAiHealthCareSignals {
   dashboardLights: unknown | null;
   lastUpdatedAt: string | null;
   hmVehicleId: string;
+  freshnessStatus: HmFreshnessStatus;
+}
+
+export interface HmSignalGroupMeta {
+  hmVehicleId: string | null;
+  lastUpdatedAt: string | null;
+  lastErrorAt: string | null;
+  lastErrorMessage: string | null;
+  freshnessStatus: HmFreshnessStatus;
 }
 
 /**
@@ -96,6 +134,7 @@ export class HmSignalUsageService {
       timeToNextServiceDays: data.timeToNextServiceDays ?? null,
       lastUpdatedAt: state.lastSuccessAt?.toISOString() ?? null,
       hmVehicleId: state.hmVehicleId,
+      freshnessStatus: getFreshnessStatus(state.lastSuccessAt, 'SERVICE'),
     };
   }
 
@@ -134,6 +173,7 @@ export class HmSignalUsageService {
       overallStatus: allStatuses.length === 0 ? 'UNKNOWN' : hasIssue ? 'ISSUE' : 'OK',
       lastUpdatedAt: state.lastSuccessAt?.toISOString() ?? null,
       hmVehicleId: state.hmVehicleId,
+      freshnessStatus: getFreshnessStatus(state.lastSuccessAt, 'TIRE_PRESSURE'),
     };
   }
 
@@ -173,6 +213,21 @@ export class HmSignalUsageService {
       dashboardLights: signals['dashboard_lights.get.dashboard_lights']?.value ?? null,
       lastUpdatedAt: state.lastSuccessAt?.toISOString() ?? null,
       hmVehicleId: state.hmVehicleId,
+      freshnessStatus: getFreshnessStatus(state.lastSuccessAt, 'AI_HEALTH_CARE'),
+    };
+  }
+
+  async getSignalGroupMeta(
+    vehicleId: string,
+    signalGroup: HmSignalGroupKey,
+  ): Promise<HmSignalGroupMeta> {
+    const state = await this.getGroupState(vehicleId, signalGroup);
+    return {
+      hmVehicleId: state?.hmVehicleId ?? (await this.getLinkedHmVehicleId(vehicleId)),
+      lastUpdatedAt: state?.lastSuccessAt?.toISOString() ?? null,
+      lastErrorAt: state?.lastErrorAt?.toISOString() ?? null,
+      lastErrorMessage: state?.lastErrorMessage ?? null,
+      freshnessStatus: state?.lastSuccessAt ? getFreshnessStatus(state.lastSuccessAt, signalGroup) : 'no_data',
     };
   }
 
@@ -190,6 +245,34 @@ export class HmSignalUsageService {
     const now = new Date();
     try {
       const healthData = await this.healthFetchService.fetchHealth(hmVehicleId, 'SCHEDULED');
+
+      if (healthData.syncStatus === 'MQTT_ONLY') {
+        // Fleet Clearance vehicle — REST command not supported. Data arrives via MQTT push.
+        // Write informational state (not an error). Preserve existing dataJson if present.
+        const existing = await this.getGroupState(vehicleId, signalGroup);
+        await this.upsertGroupState(vehicleId, hmVehicleId, signalGroup, {
+          lastFetchedAt: now,
+          lastErrorAt: null,
+          lastErrorMessage: 'MQTT_ONLY: waiting for vehicle telemetry via MQTT push',
+          dataJson: (existing?.dataJson as Record<string, unknown> | null) ?? null,
+        });
+        this.logger.log(
+          `HM ${signalGroup} [MQTT_ONLY] vehicle ${vehicleId} — fleet clearance push model. ` +
+          `Data arrives when the car sends telemetry. No REST polling.`,
+        );
+        return;
+      }
+
+      if (healthData.syncStatus !== 'SUCCESS') {
+        await this.upsertGroupState(vehicleId, hmVehicleId, signalGroup, {
+          lastFetchedAt: now,
+          lastErrorAt: now,
+          lastErrorMessage: healthData.errorMessage ?? `HM ${signalGroup} refresh failed`,
+          dataJson: null,
+        });
+        this.logger.warn(`HM ${signalGroup} signals unavailable for vehicle ${vehicleId}: ${healthData.errorMessage ?? healthData.syncStatus}`);
+        return;
+      }
       const dataJson = this.buildDataJsonForGroup(signalGroup, healthData);
 
       await this.upsertGroupState(vehicleId, hmVehicleId, signalGroup, {
@@ -225,6 +308,37 @@ export class HmSignalUsageService {
     const now = new Date();
     try {
       const healthData = await this.healthFetchService.fetchHealth(hmVehicleId, 'POST_APPROVAL_INITIAL');
+
+      if (healthData.syncStatus === 'MQTT_ONLY') {
+        // Fleet Clearance push model — REST command not supported.
+        // Mark all groups as MQTT_ONLY (informational, not error).
+        for (const g of ALL_HM_SIGNAL_GROUPS) {
+          await this.upsertGroupState(vehicleId, hmVehicleId, g, {
+            lastFetchedAt: now,
+            lastErrorAt: null,
+            lastErrorMessage: 'MQTT_ONLY: waiting for vehicle telemetry via MQTT push',
+            dataJson: null,
+          });
+        }
+        this.logger.log(
+          `HM initial refresh [MQTT_ONLY] for vehicle ${vehicleId} — ` +
+          `fleet clearance push model, no REST command. Waiting for car to send telemetry.`,
+        );
+        return;
+      }
+
+      if (healthData.syncStatus !== 'SUCCESS') {
+        for (const g of ALL_HM_SIGNAL_GROUPS) {
+          await this.upsertGroupState(vehicleId, hmVehicleId, g, {
+            lastFetchedAt: now,
+            lastErrorAt: now,
+            lastErrorMessage: healthData.errorMessage ?? 'HM initial refresh failed',
+            dataJson: null,
+          });
+        }
+        this.logger.warn(`HM initial signal refresh failed for vehicle ${vehicleId}: ${healthData.errorMessage ?? healthData.syncStatus}`);
+        return;
+      }
       for (const g of ALL_HM_SIGNAL_GROUPS) {
         const dataJson = this.buildDataJsonForGroup(g, healthData);
         await this.upsertGroupState(vehicleId, hmVehicleId, g, {
@@ -271,6 +385,122 @@ export class HmSignalUsageService {
     await this.refreshAllSignalGroupsInitial(link.vehicleId);
   }
 
+  /**
+   * Bridge MQTT Health-APP push payloads into hm_signal_group_states.
+   * This keeps HM health UI caches in sync for MQTT-only fleet-clearance vehicles
+   * without waiting for REST-based refresh cycles.
+   */
+  async ingestMqttHealthSnapshot(params: {
+    vehicleId: string;
+    hmVehicleId: string;
+    payload: Record<string, unknown>;
+    receivedAt: Date;
+  }): Promise<void> {
+    const { vehicleId, hmVehicleId, payload, receivedAt } = params;
+    const now = receivedAt ?? new Date();
+
+    const getSignal = (key: string, aliases: string[] = []): unknown =>
+      resolveHmSignalEntry(payload, key, aliases);
+
+    const toFiniteNumberOrNull = (entry: unknown): number | null => {
+      const value = extractHmSignalValue(entry);
+      if (value === null || value === undefined) return null;
+      const n = Number(value);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const buildSignalRecord = (entry: unknown): { value: unknown; unit: string | null; timestamp: string | null } => {
+      const sample = Array.isArray(entry) ? entry[0] : entry;
+      const payloadData = extractHmSignalData(entry);
+      const value = extractHmSignalValue(entry);
+      const unit =
+        payloadData && typeof payloadData === 'object'
+          ? ((payloadData as Record<string, unknown>).unit as string | undefined) ?? null
+          : null;
+      const timestamp =
+        sample && typeof sample === 'object'
+          ? ((sample as Record<string, unknown>).timestamp as string | undefined) ?? null
+          : null;
+      return { value, unit, timestamp };
+    };
+
+    const distanceSig = getSignal('maintenance.get.distance_to_next_service', ['maintenance.distance_to_next_service', 'distance_to_next_service']);
+    const timeSig = getSignal('maintenance.get.time_to_next_service', ['maintenance.time_to_next_service', 'time_to_next_service']);
+    const distanceToNextServiceKm = toFiniteNumberOrNull(distanceSig);
+    const timeToNextServiceDays = toFiniteNumberOrNull(timeSig);
+
+    if (distanceToNextServiceKm !== null || timeToNextServiceDays !== null) {
+      const existing = await this.getGroupState(vehicleId, 'SERVICE');
+      const prev = (existing?.dataJson as Record<string, any> | null) ?? null;
+      await this.upsertGroupState(vehicleId, hmVehicleId, 'SERVICE', {
+        lastFetchedAt: now,
+        lastSuccessAt: now,
+        lastErrorAt: null,
+        lastErrorMessage: null,
+        dataJson: {
+          distanceToNextServiceKm: distanceToNextServiceKm ?? prev?.distanceToNextServiceKm ?? null,
+          timeToNextServiceDays: timeToNextServiceDays ?? prev?.timeToNextServiceDays ?? null,
+        },
+      });
+    }
+
+    const tirePressuresSig = getSignal('diagnostics.get.tire_pressures', ['diagnostics.tire_pressures', 'tire_pressures']);
+    const tireStatusesSig = getSignal('diagnostics.get.tire_pressure_statuses', ['diagnostics.tire_pressure_statuses', 'tire_pressure_statuses']);
+    const tirePressuresPayload = extractHmSignalData(tirePressuresSig);
+    const tireStatusesPayload = extractHmSignalData(tireStatusesSig);
+
+    if (tirePressuresPayload != null || tireStatusesPayload != null) {
+      const existing = await this.getGroupState(vehicleId, 'TIRE_PRESSURE');
+      const prev = (existing?.dataJson as Record<string, any> | null) ?? null;
+      await this.upsertGroupState(vehicleId, hmVehicleId, 'TIRE_PRESSURE', {
+        lastFetchedAt: now,
+        lastSuccessAt: now,
+        lastErrorAt: null,
+        lastErrorMessage: null,
+        dataJson: {
+          tirePressures: tirePressuresPayload ?? prev?.tirePressures ?? null,
+          tirePressureStatuses: tireStatusesPayload ?? prev?.tirePressureStatuses ?? null,
+        },
+      });
+    }
+
+    const aiSignalDefs: Array<{ key: string; aliases?: string[] }> = [
+      { key: 'dashboard_lights.get.dashboard_lights', aliases: ['dashboard_lights.dashboard_lights'] },
+      { key: 'diagnostics.get.engine_oil_level', aliases: ['diagnostics.engine_oil_level', 'engine_oil_level'] },
+      { key: 'engine.get.limp_mode', aliases: ['engine.limp_mode', 'limp_mode'] },
+      { key: 'diagnostics.get.brake_lining_wear_pre_warning', aliases: ['diagnostics.brake_lining_wear_pre_warning', 'brake_lining_wear_pre_warning'] },
+    ];
+    const aiSignalDelta: Record<string, { value: unknown; unit: string | null; timestamp: string | null }> = {};
+
+    for (const def of aiSignalDefs) {
+      const entry = getSignal(def.key, def.aliases ?? []);
+      if (entry !== null && entry !== undefined) {
+        aiSignalDelta[def.key] = buildSignalRecord(entry);
+      }
+    }
+
+    if (Object.keys(aiSignalDelta).length > 0 || tireStatusesPayload != null) {
+      const existing = await this.getGroupState(vehicleId, 'AI_HEALTH_CARE');
+      const prev = (existing?.dataJson as Record<string, any> | null) ?? null;
+      const prevSignals = (prev?.signals && typeof prev.signals === 'object'
+        ? (prev.signals as Record<string, any>)
+        : {}) as Record<string, any>;
+      await this.upsertGroupState(vehicleId, hmVehicleId, 'AI_HEALTH_CARE', {
+        lastFetchedAt: now,
+        lastSuccessAt: now,
+        lastErrorAt: null,
+        lastErrorMessage: null,
+        dataJson: {
+          signals: {
+            ...prevSignals,
+            ...aiSignalDelta,
+          },
+          tirePressureStatuses: tireStatusesPayload ?? prev?.tirePressureStatuses ?? null,
+        },
+      });
+    }
+  }
+
   private buildDataJsonForGroup(signalGroup: HmSignalGroupKey, healthData: HmHealthDataDto): Record<string, unknown> {
     const signalMap: Record<string, any> = {};
     for (const sig of healthData.signals) {
@@ -312,7 +542,7 @@ export class HmSignalUsageService {
       lastSuccessAt?: Date;
       lastErrorAt?: Date | null;
       lastErrorMessage?: string | null;
-      dataJson?: Record<string, unknown>;
+      dataJson?: Record<string, unknown> | null;
     },
   ) {
     const existing = await this.getGroupState(vehicleId, signalGroup);

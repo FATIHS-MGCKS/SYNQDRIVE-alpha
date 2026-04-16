@@ -11,7 +11,7 @@ import { BrandLogo, getBrandFromModel } from './BrandLogo';
 import {
   api,
   type TireHealthSummaryResponse,
-  type BrakeStatus,
+  type BrakeHealthSummary,
   type BatteryHealthSummary,
   type ServiceInfoStatus,
 } from '../../lib/api';
@@ -29,7 +29,7 @@ type HealthCategory = 'all' | 'Good Health' | 'Warning' | 'Critical';
 
 interface VehicleConditionData {
   tires: TireHealthSummaryResponse | null;
-  brakes: BrakeStatus | null;
+  brakes: BrakeHealthSummary | null;
   battery: BatteryHealthSummary | null;
   service: ServiceInfoStatus | null;
   dtcActive: any[];
@@ -77,6 +77,11 @@ function formatDate(dateStr: string | null): string {
   return new Date(dateStr).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+function formatEnumLabel(value: unknown, fallback = '—'): string {
+  if (typeof value !== 'string' || value.length === 0) return fallback;
+  return value.replace(/_/g, ' ');
+}
+
 export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionViewProps) {
   const { fleetVehicles } = useFleetVehicles();
   const { orgId } = useRentalOrg();
@@ -117,7 +122,7 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
     try {
       const [tires, brakes, battery, service, dtcActive, dtcStats] = await Promise.all([
         api.vehicleIntelligence.tireHealthSummary(vehicleId).catch(() => null),
-        api.vehicleIntelligence.brakeStatus(vehicleId).catch(() => null),
+        api.vehicleIntelligence.brakeHealthSummary(vehicleId).catch(() => null),
         api.vehicleIntelligence.batteryHealthSummary(vehicleId).catch(() => null),
         api.vehicleIntelligence.serviceInfoStatus(vehicleId).catch(() => null),
         api.vehicleIntelligence.dtcActive(vehicleId).catch(() => []),
@@ -290,6 +295,10 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
                         const t = cd?.tires;
                         const pct = t?.overallPercent ?? vehicle.tires;
                         const remKm = t?.overallRemainingKm;
+                        const action = t?.actionState;
+                        const warningCount =
+                          (t?.dataQualityWarnings?.length ?? 0) +
+                          (t?.pressureContext?.warningHints?.length ?? 0);
                         return (
                           <div className="flex items-center gap-3 flex-1">
                             <div className="flex-1 max-w-[200px]">
@@ -299,8 +308,17 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
                             </div>
                             <span className={`text-xs font-bold w-10 text-right ${getMetricColor(pct, isDark)}`}>{Math.round(pct)}%</span>
                             <span className={`text-[10px] ${textMuted} hidden sm:inline`}>
-                              {remKm != null ? `~${Math.round(remKm / 1000)}k km remaining` : ''}
+                              {remKm != null
+                                ? `~${Math.round(remKm / 1000)}k km remaining`
+                                : action
+                                ? formatEnumLabel(action)
+                                : 'No km estimate'}
                             </span>
+                            {warningCount > 0 && (
+                              <span className={`text-[9px] hidden lg:inline ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                                {warningCount} warning{warningCount > 1 ? 's' : ''}
+                              </span>
+                            )}
                           </div>
                         );
                       })()}
@@ -310,18 +328,38 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
                     <ConditionRow isDark={isDark} icon={Disc} label="Brakes" onClick={() => onDrillDown?.(vehicle.id, 'brakes')}>
                       {(() => {
                         const b = cd?.brakes;
-                        const pct = b?.padWearPercent ?? vehicle.brakes;
-                        const remKm = b?.kmSinceService != null ? Math.max(0, 60000 - b.kmSinceService) : null;
+                        const pct =
+                          b?.pads?.healthPercent != null || b?.discs?.healthPercent != null
+                            ? Math.min(b?.pads?.healthPercent ?? 101, b?.discs?.healthPercent ?? 101)
+                            : null;
+                        const remKm = b?.remainingKm ?? null;
+                        const stateLabel =
+                          b?.stateClass === 'MEASURED'
+                            ? 'Measured'
+                            : b?.stateClass === 'ESTIMATED'
+                              ? 'Estimated'
+                              : b?.stateClass === 'WARNING_ONLY'
+                                ? 'Warning only'
+                                : 'No baseline';
                         return (
                           <div className="flex items-center gap-3 flex-1">
                             <div className="flex-1 max-w-[200px]">
                               <div className={`h-2 rounded-full overflow-hidden ${getProgressTrack(isDark)}`}>
-                                <div className={`h-full rounded-full transition-all ${getProgressColor(pct)}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                                <div
+                                  className={`h-full rounded-full transition-all ${
+                                    pct != null ? getProgressColor(pct) : isDark ? 'bg-neutral-600' : 'bg-gray-300'
+                                  }`}
+                                  style={{ width: `${pct != null ? Math.min(pct, 100) : 12}%` }}
+                                />
                               </div>
                             </div>
-                            <span className={`text-xs font-bold w-10 text-right ${getMetricColor(pct, isDark)}`}>{Math.round(pct)}%</span>
+                            <span className={`text-xs font-bold w-14 text-right ${pct != null ? getMetricColor(pct, isDark) : textMuted}`}>
+                              {pct != null ? `${Math.round(pct)}%` : '—'}
+                            </span>
                             <span className={`text-[10px] ${textMuted} hidden sm:inline`}>
-                              {remKm != null ? `~${Math.round(remKm / 1000)}k km projected` : b?.lastServiceDate ? `Srv ${formatDate(b.lastServiceDate)}` : ''}
+                              {remKm != null
+                                ? `~${Math.round(remKm / 1000)}k km projected`
+                                : stateLabel}
                             </span>
                           </div>
                         );
@@ -332,13 +370,16 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
                     <ConditionRow isDark={isDark} icon={Battery} label="Battery SOH" onClick={() => onDrillDown?.(vehicle.id, 'battery')}>
                       {(() => {
                         const bat = cd?.battery;
-                        const pubState = bat?.currentState?.publicationState;
+                        const pubState = bat?.lv?.publicationState ?? bat?.currentState?.publicationState;
                         const isCalib = pubState === 'INITIAL_CALIBRATION';
                         const isStab = pubState === 'STABILIZING';
-                        const soh = isCalib ? null : (bat?.currentState?.publishedSohPct ?? bat?.currentState?.sohPercent ?? null);
-                        const voltage = bat?.currentState?.voltageV;
-                        const cond = bat?.condition;
-                        const pct = soh ?? (voltage != null ? Math.min(100, Math.max(0, (voltage - 11.5) / (12.8 - 11.5) * 100)) : null);
+                        const soh = isCalib
+                          ? null
+                          : (bat?.lv?.healthPercent ?? bat?.currentState?.publishedSohPct ?? bat?.currentState?.sohPercent ?? null);
+                        const estimate = bat?.lv?.estimatedHealthPercent ?? bat?.currentState?.estimatedSohPct ?? null;
+                        const voltage = bat?.lv?.telemetry?.voltageV ?? bat?.currentState?.voltageV;
+                        const cond = bat?.lv?.condition ?? bat?.condition;
+                        const pct = soh ?? estimate;
                         if (isCalib) {
                           return (
                             <div className="flex items-center gap-3 flex-1">
@@ -356,7 +397,13 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
                               </div>
                             </div>
                             <span className={`text-xs font-bold w-10 text-right ${pct != null ? getMetricColor(pct, isDark) : textMuted}`}>
-                              {soh != null ? `${isStab ? '~' : ''}${Math.round(soh)}%` : voltage != null ? `${voltage.toFixed(1)}V` : '—'}
+                              {soh != null
+                                ? `${isStab ? '~' : ''}${Math.round(soh)}%`
+                                : estimate != null
+                                  ? `~${Math.round(estimate)}%`
+                                  : voltage != null
+                                    ? `${voltage.toFixed(1)}V`
+                                    : '—'}
                             </span>
                             <span className={`text-[10px] hidden sm:inline ${
                               isStab ? (isDark ? 'text-amber-400' : 'text-amber-600')
@@ -498,11 +545,19 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
                     <ConditionRow isDark={isDark} icon={Bell} label="Alerts" onClick={() => onDrillDown?.(vehicle.id, 'alerts')} noBar>
                       {(() => {
                         const tireAlerts = cd?.tires?.alerts ?? [];
-                        const brakeWatchpoints = cd?.brakes?.watchpoints ?? [];
+                        const brakeWarnings =
+                          (cd?.brakes?.baselineWarnings?.length ?? 0) +
+                          (cd?.brakes?.provenanceWarnings?.length ?? 0);
                         const batWatchpoints = cd?.battery?.watchpoints ?? [];
                         const dtcCount = cd?.dtcActive?.length ?? 0;
-                        const warningCount = tireAlerts.filter(a => a.severity === 'warning').length + brakeWatchpoints.length + batWatchpoints.length;
-                        const criticalCount = tireAlerts.filter(a => a.severity === 'critical').length + (dtcCount >= 3 ? 1 : 0);
+                        const warningCount =
+                          tireAlerts.filter(a => a.severity === 'warning').length +
+                          brakeWarnings +
+                          batWatchpoints.length;
+                        const criticalCount =
+                          tireAlerts.filter(a => a.severity === 'critical').length +
+                          (cd?.brakes?.hasAlert ? 1 : 0) +
+                          (dtcCount >= 3 ? 1 : 0);
                         const total = warningCount + criticalCount;
                         return (
                           <div className="flex items-center gap-2 flex-1">

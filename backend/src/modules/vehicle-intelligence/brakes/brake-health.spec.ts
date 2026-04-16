@@ -5,10 +5,11 @@ const cfg = BRAKE_HEALTH_CONFIG;
 
 const mockPrisma = {
   brakeHealthCurrent: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
+  tripDrivingImpact: { findMany: jest.fn().mockResolvedValue([]) },
   vehicleBrakeReferenceSpec: { findMany: jest.fn().mockResolvedValue([]) },
   vehicleServiceEvent: { findMany: jest.fn().mockResolvedValue([]) },
   vehicle: { findUnique: jest.fn().mockResolvedValue({ fuelType: 'GASOLINE', brakeForceFrontPercent: null, organizationId: null }) },
-  vehicleLatestState: { findUnique: jest.fn().mockResolvedValue({ odometerKm: 50000 }) },
+  vehicleLatestState: { findUnique: jest.fn().mockResolvedValue({ odometerKm: 50000, brakePadPercent: null, lastSeenAt: new Date('2026-04-13T10:00:00Z') }) },
 } as any;
 
 const mockDI = {
@@ -283,37 +284,128 @@ describe('BRAKE_HEALTH_CONFIG integrity', () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('getSummary', () => {
-  it('returns awaiting_service_anchor when no current record', async () => {
+  it('returns no-baseline summary when no current record', async () => {
     mockPrisma.brakeHealthCurrent.findUnique.mockResolvedValueOnce(null);
     const r = await svc.getSummary('v1');
     expect(r.isInitialized).toBe(false);
-    expect(r.status).toBe('awaiting_service_anchor');
+    expect(r.stateClass).toBe('NO_BASELINE');
+    expect(r.status).toBe('awaiting_baseline');
     expect(r.actions?.canAddBrakeService).toBe(true);
   });
 
-  it('returns awaiting_service_anchor when isInitialized is false', async () => {
+  it('returns warning-only when legacy warning exists but no baseline', async () => {
     mockPrisma.brakeHealthCurrent.findUnique.mockResolvedValueOnce({ isInitialized: false });
+    mockPrisma.vehicleLatestState.findUnique.mockResolvedValueOnce({
+      brakePadPercent: 28,
+      lastSeenAt: new Date('2026-04-13T10:00:00Z'),
+    });
     const r = await svc.getSummary('v1');
     expect(r.isInitialized).toBe(false);
+    expect(r.stateClass).toBe('WARNING_ONLY');
   });
 
   it('returns initialized summary with pads and discs', async () => {
     mockPrisma.brakeHealthCurrent.findUnique.mockResolvedValueOnce({
       isInitialized: true,
+      anchorOdometerKm: 42000,
+      frontPadAnchorMm: 12,
+      rearPadAnchorMm: 10,
+      frontDiscAnchorMm: 28,
+      rearDiscAnchorMm: 26,
       padsHealthPct: 72,
       padsRemainingKm: 28000,
       discsHealthPct: 88,
       discsRemainingKm: 55000,
       anchorServiceDate: new Date('2024-06-01'),
+      distanceSinceAnchorKm: 8000,
+      modeledDistanceKm: 7200,
+      modeledTripCount: 44,
+      modelCoverageRatio: 0.9,
+      modelingSource: 'trip_impacts',
+      baselineWarnings: [],
       confidenceScore: 62,
       confidenceLabel: 'Medium',
       hasAlert: false,
     });
     const r = await svc.getSummary('v1');
     expect(r.isInitialized).toBe(true);
+    expect(r.stateClass).toBe('ESTIMATED');
     expect(r.pads?.healthPercent).toBe(72);
     expect(r.discs?.healthPercent).toBe(88);
     expect(r.confidence?.label).toBe('Medium');
     expect(r.hasAlert).toBe(false);
+  });
+});
+
+describe('recalculate temporal coverage', () => {
+  it('uses per-trip modeled distance and applies rolling only to uncovered gap', async () => {
+    mockPrisma.brakeHealthCurrent.findUnique.mockResolvedValueOnce({
+      vehicleId: 'v1',
+      isInitialized: true,
+      anchorServiceDate: new Date('2026-01-01T00:00:00Z'),
+      anchorOdometerKm: 10000,
+      frontPadAnchorMm: 12,
+      rearPadAnchorMm: 10,
+      frontDiscAnchorMm: 28,
+      rearDiscAnchorMm: 26,
+      frontPadKFactor: 1,
+      rearPadKFactor: 1,
+      frontDiscKFactor: 1,
+      rearDiscKFactor: 1,
+      calibrationCount: 0,
+      anchorValidationStatus: 'measured_anchor',
+      baselineWarnings: [],
+    });
+    mockPrisma.vehicle.findUnique.mockResolvedValueOnce({
+      fuelType: 'GASOLINE',
+      brakeForceFrontPercent: null,
+    });
+    mockPrisma.vehicleLatestState.findUnique.mockResolvedValueOnce({ odometerKm: 11200 });
+    mockPrisma.tripDrivingImpact.findMany.mockResolvedValueOnce([
+      {
+        tripId: 't1',
+        distanceKm: 120,
+        citySharePct: 70,
+        highwaySharePct: 20,
+        countryRoadSharePct: 10,
+        hardBrakePer100Km: 5,
+        fullBrakingPer100Km: 1,
+        stopDensity: 1.4,
+        highSpeedBrakeShare: 0.12,
+        thermalBrakeStressScore: 45,
+      },
+      {
+        tripId: 't2',
+        distanceKm: 80,
+        citySharePct: 40,
+        highwaySharePct: 40,
+        countryRoadSharePct: 20,
+        hardBrakePer100Km: 3,
+        fullBrakingPer100Km: 0.6,
+        stopDensity: 0.9,
+        highSpeedBrakeShare: 0.08,
+        thermalBrakeStressScore: 35,
+      },
+    ]);
+    mockDI.getVehicleImpactForBrake.mockResolvedValueOnce({
+      citySharePct: 55,
+      highwaySharePct: 30,
+      countryRoadSharePct: 15,
+      hardBrakePer100Km: 4,
+      fullBrakingPer100Km: 0.8,
+      stopDensity: 1.1,
+      highSpeedBrakeShare: 0.1,
+      thermalBrakeStressScore: 40,
+      brakingStressScore: 58,
+    });
+
+    await svc.recalculate('v1');
+
+    expect(mockPrisma.brakeHealthCurrent.update).toHaveBeenCalled();
+    const updateArg = mockPrisma.brakeHealthCurrent.update.mock.calls.at(-1)?.[0];
+    expect(updateArg.data.modeledDistanceKm).toBe(200);
+    expect(updateArg.data.modelingSource).toBe('trip_impacts_plus_rolling_gap');
+    expect(updateArg.data.modelCoverageRatio).toBeLessThan(0.2);
+    expect(updateArg.data.distanceSinceAnchorKm).toBe(1200);
   });
 });

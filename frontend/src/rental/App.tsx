@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   api,
   type TireHealthSummaryResponse,
-  type BrakeStatus,
+  type BrakeHealthSummary,
   type BatteryHealthSummary,
   type ServiceInfoStatus,
 } from '../lib/api';
@@ -45,6 +45,8 @@ import { FleetProvider, useFleetVehicles } from './FleetContext';
 import { Toaster } from 'sonner';
 import { LiveMapOverview } from './components/LiveMapOverview';
 import { useLiveVehicleTelemetry } from './hooks/useLiveVehicleTelemetry';
+import { useVehicleLiveMapStore } from './stores/useVehicleLiveMapStore';
+import { useShallow } from 'zustand/react/shallow';
 import { RightSidebar } from './components/RightSidebar';
 import { LanguageProvider } from './i18n/LanguageContext';
 import { DocumentUploadView } from './components/DocumentUploadView';
@@ -57,6 +59,8 @@ import { PartsAccessoriesView } from './components/PartsAccessoriesView';
 import { InsurancesView } from './components/InsurancesView';
 import { ServiceMaintenanceView } from './components/ServiceMaintenanceView';
 import { VoiceAssistantView } from './components/VoiceAssistantView';
+import { VehicleInsightsCard } from './components/VehicleInsightsCard';
+import { AppErrorBoundary } from '../components/AppErrorBoundary';
 
 /* ────────────────────────────────────────────────────────────────────────
    Vehicle Health Box – Figma-aligned, API-wired
@@ -70,7 +74,7 @@ interface VehicleHealthBoxWiredProps {
 
 function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, onViewDetails }: VehicleHealthBoxWiredProps) {
   const [tires, setTires] = useState<TireHealthSummaryResponse | null>(null);
-  const [brakes, setBrakes] = useState<BrakeStatus | null>(null);
+  const [brakes, setBrakes] = useState<BrakeHealthSummary | null>(null);
   const [battery, setBattery] = useState<BatteryHealthSummary | null>(null);
   const [service, setService] = useState<ServiceInfoStatus | null>(null);
   const [dtcCount, setDtcCount] = useState(0);
@@ -83,7 +87,7 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
     (async () => {
       const [t, b, bat, svc, dtc] = await Promise.all([
         api.vehicleIntelligence.tireHealthSummary(vehicleId).catch(() => null),
-        api.vehicleIntelligence.brakeStatus(vehicleId).catch(() => null),
+        api.vehicleIntelligence.brakeHealthSummary(vehicleId).catch(() => null),
         api.vehicleIntelligence.batteryHealthSummary(vehicleId).catch(() => null),
         api.vehicleIntelligence.serviceInfoStatus(vehicleId).catch(() => null),
         api.vehicleIntelligence.dtcActive(vehicleId).catch(() => []),
@@ -97,16 +101,26 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
 
   const dm = isDarkMode;
 
-  const brakesVal = brakes?.padWearPercent ?? selectedVehicle?.brakes ?? 0;
+  const brakesPercent =
+    brakes?.pads?.healthPercent != null || brakes?.discs?.healthPercent != null
+      ? Math.min(brakes?.pads?.healthPercent ?? 101, brakes?.discs?.healthPercent ?? 101)
+      : null;
+  const brakesVal = brakesPercent ?? 0;
   const tiresVal = tires?.overallPercent ?? selectedVehicle?.tires ?? 0;
-  const batteryPubState = battery?.currentState?.publicationState ?? 'INITIAL_CALIBRATION';
-  const soh = batteryPubState === 'INITIAL_CALIBRATION' ? null : (battery?.currentState?.publishedSohPct ?? battery?.currentState?.sohPercent ?? null);
-  const voltage = battery?.currentState?.voltageV ?? lvBatteryVoltage;
-  const batteryVal = soh ?? (voltage != null ? Math.min(100, Math.max(0, Math.round((voltage - 11.5) / (12.8 - 11.5) * 100))) : 0);
+  const batteryPubState = battery?.lv?.publicationState ?? battery?.currentState?.publicationState ?? 'INITIAL_CALIBRATION';
+  const soh =
+    battery?.lv?.healthPercent ??
+    (batteryPubState === 'INITIAL_CALIBRATION'
+      ? null
+      : (battery?.currentState?.publishedSohPct ?? battery?.currentState?.sohPercent ?? null));
+  const estimatedSoh = battery?.lv?.estimatedHealthPercent ?? battery?.currentState?.estimatedSohPct ?? null;
+  const voltage = battery?.lv?.telemetry?.voltageV ?? battery?.currentState?.voltageV ?? lvBatteryVoltage;
+  const batteryScore = soh ?? estimatedSoh ?? null;
+  const batteryVal = batteryScore ?? 0;
 
-  const brakesTracked = brakes?.padWearPercent != null || (selectedVehicle?.brakes != null && selectedVehicle.brakes > 0);
+  const brakesTracked = brakesPercent != null;
   const tiresTracked = tires?.overallPercent != null || (selectedVehicle?.tires != null && selectedVehicle.tires > 0);
-  const batteryTracked = soh != null || voltage != null;
+  const batteryTracked = batteryScore != null;
   const trackedFlags = [brakesTracked, tiresTracked, batteryTracked];
   const trackedValues = [brakesVal, tiresVal, batteryVal].filter((_, i) => trackedFlags[i]);
   const untrackedCount = 3 - trackedValues.length;
@@ -126,27 +140,30 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
   };
 
   const brakesDetail = (() => {
-    const remKm = brakes?.kmSinceService != null ? Math.max(0, 60000 - brakes.kmSinceService) : null;
+    const remKm = brakes?.remainingKm ?? null;
     if (remKm != null) return `~${Math.round(remKm / 1000)}k km`;
-    if (brakesVal >= 80) return '~12,000 km';
+    if (brakes?.stateClass === 'WARNING_ONLY') return 'Warning-only telemetry';
+    if (brakes?.stateClass === 'NO_BASELINE') return 'No baseline';
+    if (brakesVal >= 80) return 'Healthy estimate';
     if (brakesVal >= 60) return 'Check soon';
-    return brakesVal > 0 ? 'Service needed' : 'No tracking';
+    return brakesTracked ? 'Service needed' : 'No tracking';
   })();
 
   const tiresDetail = (() => {
     const remKm = tires?.overallRemainingKm;
     if (remKm != null) return `~${Math.round(remKm / 1000)}k km`;
-    if (tiresVal >= 80) return '~15,000 km';
-    if (tiresVal >= 60) return '~9,000 km';
-    return tiresVal > 0 ? 'Replace soon' : 'No tracking';
+    if (tires?.actionState === 'REPLACE') return 'Replace now';
+    if (tires?.actionState === 'PLAN_SERVICE') return 'Plan service';
+    if (tires?.actionState === 'CHECK_SOON') return 'Check soon';
+    return tiresTracked ? 'Model estimate unavailable' : 'No tracking';
   })();
 
   const batteryDetail = (() => {
-    if (batteryPubState === 'INITIAL_CALIBRATION') return 'Calibrating';
+    if (batteryPubState === 'INITIAL_CALIBRATION') return 'Calibrating (estimate unavailable)';
     if (batteryPubState === 'STABILIZING') return voltage != null ? `~${voltage.toFixed(1)}V · Stabilizing` : 'Stabilizing';
     if (soh != null) return voltage != null ? `${voltage.toFixed(1)}V` : 'SOH tracked';
     if (voltage != null) return `${voltage.toFixed(1)}V`;
-    return 'No tracking';
+    return 'Estimate unavailable';
   })();
 
   const healthItems = [
@@ -407,6 +424,312 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
   );
 }
 
+function VehicleLiveTelemetryBinder({
+  vehicleId,
+  orgId,
+}: {
+  vehicleId: string | null;
+  orgId: string;
+}) {
+  useLiveVehicleTelemetry(vehicleId, orgId);
+  return null;
+}
+
+function VehicleConnectionBadge({ isDarkMode }: { isDarkMode: boolean }) {
+  const { onlineStatus, lastSignal } = useVehicleLiveMapStore(
+    useShallow((state) => ({
+      onlineStatus: state.onlineStatus,
+      lastSignal: state.lastSignal,
+    })),
+  );
+
+  const connState =
+    onlineStatus === 'ONLINE'
+      ? 'online'
+      : onlineStatus === 'STANDBY'
+      ? 'standby'
+      : 'offline';
+  let timeAgo = '—';
+  if (lastSignal) {
+    const diff = Date.now() - new Date(lastSignal).getTime();
+    if (!isNaN(diff) && diff >= 0) {
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1) timeAgo = 'just now';
+      else if (mins < 60) timeAgo = `${mins}m ago`;
+      else {
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) timeAgo = `${hrs}h ago`;
+        else timeAgo = `${Math.floor(hrs / 24)}d ago`;
+      }
+    }
+  }
+  const dotColor =
+    connState === 'online'
+      ? 'text-green-500 fill-green-500 animate-online-pulse'
+      : connState === 'standby'
+      ? 'text-amber-500 fill-amber-500'
+      : 'text-gray-400 fill-gray-400';
+  const labelColor =
+    connState === 'online'
+      ? 'text-green-700'
+      : connState === 'standby'
+      ? isDarkMode
+        ? 'text-amber-400'
+        : 'text-amber-600'
+      : 'text-gray-500';
+  const label =
+    connState === 'online'
+      ? 'Online'
+      : connState === 'standby'
+      ? 'Standby'
+      : 'Offline';
+
+  return (
+    <div className="flex items-center gap-2 px-2.5 py-1 rounded-md border border-border bg-card shadow-sm">
+      <div className="flex items-center gap-1.5">
+        <Circle className={`w-2 h-2 ${dotColor}`} />
+        <span className={`text-xs font-bold ${labelColor}`}>{label}</span>
+      </div>
+      <div className={`w-px h-4 ${isDarkMode ? 'bg-gray-600' : 'bg-gray-300'}`}></div>
+      <div className="flex items-center gap-1">
+        <span
+          className={`text-[10px] font-medium ${
+            isDarkMode ? 'text-gray-400' : 'text-gray-500'
+          }`}
+        >
+          Last Signal
+        </span>
+        <span
+          className={`text-[10px] font-bold ${
+            isDarkMode ? 'text-gray-200' : 'text-gray-900'
+          }`}
+        >
+          {timeAgo}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function OverviewLiveMapCard({
+  selectedVehicle,
+  orgId,
+  isDarkMode,
+}: {
+  selectedVehicle: VehicleData | null;
+  orgId: string;
+  isDarkMode: boolean;
+}) {
+  const liveTelemetry = useVehicleLiveMapStore(
+    useShallow((state) => ({
+      targetPosition: state.targetPosition,
+      heading: state.heading,
+      speedKmh: state.speedKmh,
+      isLiveTracking: state.isLiveTracking,
+      snapshot: state.snapshot,
+      displayIgnition: state.displayIgnition,
+      displayState: state.displayState,
+      displayCoolant: state.displayCoolant,
+    })),
+  );
+
+  return (
+    <div className="rounded-xl p-3 border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
+      <div className="group relative h-[340px] rounded-lg overflow-hidden transition-all duration-300">
+        <LiveMapOverview
+          className="w-full h-full"
+          targetPosition={liveTelemetry.targetPosition}
+          initialPosition={
+            selectedVehicle?.lat != null && selectedVehicle?.lng != null
+              ? [selectedVehicle.lng, selectedVehicle.lat]
+              : null
+          }
+          heading={liveTelemetry.heading}
+          speedKmh={liveTelemetry.speedKmh}
+          licensePlate={selectedVehicle?.license ?? ''}
+          waitingForPosition={!!selectedVehicle && !!orgId && !liveTelemetry.targetPosition}
+          isLiveTracking={liveTelemetry.isLiveTracking}
+          isDarkMode={isDarkMode}
+        />
+
+        <div className="absolute bottom-0 left-0 right-0 p-3 opacity-70 group-hover:opacity-100 transition-opacity duration-700 ease-in-out">
+          <div
+            className={`rounded-lg p-2.5 border shadow-md backdrop-blur-md ${
+              isDarkMode ? 'bg-card/90 border-border' : 'bg-card/95 border-border'
+            }`}
+          >
+            {(() => {
+              const dIgn = liveTelemetry.displayIgnition;
+              const ignIsOn = dIgn === 'ON';
+              const ignIsUnknown = dIgn === 'UNKNOWN';
+              const coolantVal = liveTelemetry.displayCoolant;
+              const coolantDisplay = coolantVal != null ? `${coolantVal}` : '—';
+              const stateLabel = liveTelemetry.displayState;
+              const stateColor =
+                stateLabel === 'MOVING'
+                  ? isDarkMode
+                    ? 'text-green-400'
+                    : 'text-green-700'
+                  : stateLabel === 'IDLE'
+                  ? isDarkMode
+                    ? 'text-amber-400'
+                    : 'text-amber-600'
+                  : isDarkMode
+                  ? 'text-gray-400'
+                  : 'text-gray-500';
+              return (
+                <div
+                  className={`grid gap-1.5 ${
+                    selectedVehicle?.isElectric ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-3 md:grid-cols-6'
+                  }`}
+                >
+                  <div
+                    className={`flex flex-col items-center px-1 py-2 rounded-xl border ${
+                      ignIsOn
+                        ? isDarkMode
+                          ? 'bg-green-900/30 border-green-800/40'
+                          : 'bg-green-100/80 border-green-200/60'
+                        : ignIsUnknown
+                        ? isDarkMode
+                          ? 'bg-neutral-800/40 border-neutral-700/40'
+                          : 'bg-gray-100/80 border-gray-200/60'
+                        : isDarkMode
+                        ? 'bg-red-900/30 border-red-800/40'
+                        : 'bg-red-100/80 border-red-200/60'
+                    }`}
+                  >
+                    <Circle
+                      className={`w-3.5 h-3.5 mb-0.5 ${
+                        ignIsOn
+                          ? 'text-green-600 fill-green-600'
+                          : ignIsUnknown
+                          ? 'text-gray-400 fill-gray-400'
+                          : 'text-red-500 fill-red-500'
+                      }`}
+                    />
+                    <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Ignition
+                    </span>
+                    <span
+                      className={`text-sm font-bold ${
+                        ignIsOn
+                          ? isDarkMode
+                            ? 'text-green-400'
+                            : 'text-green-700'
+                          : ignIsUnknown
+                          ? isDarkMode
+                            ? 'text-gray-500'
+                            : 'text-gray-400'
+                          : isDarkMode
+                          ? 'text-red-400'
+                          : 'text-red-600'
+                      }`}
+                    >
+                      {dIgn === 'UNKNOWN' ? '—' : dIgn}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col items-center px-1 py-2">
+                    <Circle className="w-3.5 h-3.5 text-blue-500 mb-0.5" />
+                    <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      State
+                    </span>
+                    <span className={`text-sm font-bold ${stateColor}`}>{stateLabel}</span>
+                  </div>
+
+                  <div className="flex flex-col items-center px-1 py-2">
+                    <Droplet
+                      className={`w-3.5 h-3.5 mb-0.5 ${
+                        selectedVehicle?.isElectric ? 'text-emerald-500' : 'text-green-500'
+                      }`}
+                    />
+                    <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {selectedVehicle?.isElectric ? 'Energy' : 'Fuel'}
+                    </span>
+                    <span className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {Math.round(
+                        selectedVehicle?.isElectric
+                          ? (liveTelemetry.snapshot?.battery ?? selectedVehicle?.battery ?? 0)
+                          : (liveTelemetry.snapshot?.fuel ?? selectedVehicle?.fuel ?? 0),
+                      )}
+                      <span className="text-[10px] font-normal text-gray-500">%</span>
+                    </span>
+                  </div>
+
+                  {!selectedVehicle?.isElectric && (
+                    <div className="flex flex-col items-center px-1 py-2">
+                      <Thermometer className="w-3.5 h-3.5 text-red-500 mb-0.5" />
+                      <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        Coolant
+                      </span>
+                      <span className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {coolantDisplay}
+                        {coolantDisplay !== '—' && (
+                          <span className="text-[10px] font-normal text-gray-500">°C</span>
+                        )}
+                      </span>
+                    </div>
+                  )}
+
+                  {!selectedVehicle?.isElectric && (
+                    <div className="flex flex-col items-center px-1 py-2">
+                      <Battery className="w-3.5 h-3.5 text-amber-500 mb-0.5" />
+                      <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        Battery
+                      </span>
+                      <span className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {(liveTelemetry.snapshot?.lvBatteryVoltage ?? 0) > 0
+                          ? liveTelemetry.snapshot!.lvBatteryVoltage.toFixed(1)
+                          : '—'}
+                        <span className="text-[10px] font-normal text-gray-500">V</span>
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col items-center px-1 py-2">
+                    <Odometer className="w-3.5 h-3.5 text-gray-500 mb-0.5" />
+                    <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Odometer
+                    </span>
+                    <span className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {selectedVehicle
+                        ? (liveTelemetry.snapshot?.odometer ?? selectedVehicle.odometer).toLocaleString('de-DE')
+                        : '—'}{' '}
+                      <span className="text-[10px] font-normal text-gray-500">km</span>
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VehicleHealthBoxTelemetryBridge({
+  selectedVehicle,
+  isDarkMode,
+  onViewDetails,
+}: {
+  selectedVehicle: VehicleData | null;
+  isDarkMode: boolean;
+  onViewDetails?: () => void;
+}) {
+  const lvBatteryVoltage = useVehicleLiveMapStore(
+    (state) => state.snapshot?.lvBatteryVoltage ?? null,
+  );
+  return (
+    <VehicleHealthBoxWired
+      selectedVehicle={selectedVehicle}
+      isDarkMode={isDarkMode}
+      lvBatteryVoltage={lvBatteryVoltage}
+      onViewDetails={onViewDetails}
+    />
+  );
+}
+
 function RentalAppContent() {
   const { orgId } = useRentalOrg();
   const { fleetVehicles, loading: fleetLoading } = useFleetVehicles();
@@ -427,10 +750,8 @@ function RentalAppContent() {
   const [financeTab, setFinanceTab] = useState<FinanceTab>('invoices');
   const [tasksSectionTab, setTasksSectionTab] = useState<TasksSectionTab>('tasks');
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>(null);
-  const liveTelemetry = useLiveVehicleTelemetry(
-    currentView === 'overview' ? selectedVehicle?.id ?? null : null,
-    orgId
-  );
+  const liveTelemetryVehicleId =
+    currentView === 'overview' ? selectedVehicle?.id ?? null : null;
   const [activeBookingRef, setActiveBookingRef] = useState<string | null>(null);
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -568,11 +889,18 @@ function RentalAppContent() {
     setShowStationWarning(false);
   };
 
+  const detailCustomerId = (() => {
+    const rawId = detailCustomer?.id;
+    if (typeof rawId !== 'string' || rawId.length === 0) return null;
+    return `CID-${rawId.replace('c', '')}4821`;
+  })();
+
   return (
     <div 
       className="h-screen w-full flex overflow-hidden transition-colors duration-300 relative bg-background"
       style={{ fontFamily: "'Inter', 'Manrope', sans-serif" }}
     >
+      <VehicleLiveTelemetryBinder vehicleId={liveTelemetryVehicleId} orgId={orgId} />
       <Toaster position="top-right" richColors closeButton theme={isDarkMode ? 'dark' : 'light'} />
       <Sidebar 
         isDarkMode={isDarkMode} 
@@ -588,7 +916,7 @@ function RentalAppContent() {
       <div className="flex-1 flex flex-col overflow-hidden pt-16 lg:pt-0">
         <div className="flex-1 overflow-auto px-4 sm:px-6 lg:px-8 pt-3 lg:pt-4 pb-6 text-foreground">
           <div className="max-w-[1400px] mx-auto text-[13px]">
-            <TopBar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} currentView={currentView} settingsTab={settingsTab} selectedVehicle={selectedVehicle} activeBookingRef={activeBookingRef} detailCustomerId={detailCustomer ? `CID-${detailCustomer.id.replace('c', '')}4821` : null} onViewChange={setCurrentView} onVehicleSelect={setSelectedVehicle} onSettingsTabChange={setSettingsTab} onFinanceTabChange={setFinanceTab} onTasksTabChange={setTasksSectionTab} />
+            <TopBar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} currentView={currentView} settingsTab={settingsTab} selectedVehicle={selectedVehicle} activeBookingRef={activeBookingRef} detailCustomerId={detailCustomerId} onViewChange={setCurrentView} onVehicleSelect={setSelectedVehicle} onSettingsTabChange={setSettingsTab} onFinanceTabChange={setFinanceTab} onTasksTabChange={setTasksSectionTab} />
         {/* Header Section - Only show for overview and trips views */}
         {currentView !== 'dashboard' && currentView !== 'bookings' && currentView !== 'fleet' && currentView !== 'customers' && currentView !== 'customer-detail' && currentView !== 'tasks' && currentView !== 'invoices' && currentView !== 'fines' && currentView !== 'price-tariffs' && currentView !== 'analytics' && currentView !== 'settings' && currentView !== 'new-booking' && currentView !== 'stations' && currentView !== 'fleet-condition' && currentView !== 'document-upload' && currentView !== 'ai-assistant' && currentView !== 'support' && currentView !== 'help-center' && currentView !== 'workflow-automation' && currentView !== 'whatsapp-business' && currentView !== 'parts-accessories' && currentView !== 'ai-voice-assistant' && (
         <div className="mb-2">
@@ -710,35 +1038,7 @@ function RentalAppContent() {
                 </span>
               </div>
             </div>
-            {(() => {
-              const connState = liveTelemetry.onlineStatus === 'ONLINE' ? 'online' : liveTelemetry.onlineStatus === 'STANDBY' ? 'standby' : 'offline';
-              let timeAgo = '—';
-              if (liveTelemetry.lastSignal) {
-                const diff = Date.now() - new Date(liveTelemetry.lastSignal).getTime();
-                if (!isNaN(diff) && diff >= 0) {
-                  const mins = Math.floor(diff / 60000);
-                  if (mins < 1) timeAgo = 'just now';
-                  else if (mins < 60) timeAgo = `${mins}m ago`;
-                  else { const hrs = Math.floor(mins / 60); if (hrs < 24) timeAgo = `${hrs}h ago`; else timeAgo = `${Math.floor(hrs / 24)}d ago`; }
-                }
-              }
-              const dotColor = connState === 'online' ? 'text-green-500 fill-green-500 animate-online-pulse' : connState === 'standby' ? 'text-amber-500 fill-amber-500' : 'text-gray-400 fill-gray-400';
-              const labelColor = connState === 'online' ? 'text-green-700' : connState === 'standby' ? (isDarkMode ? 'text-amber-400' : 'text-amber-600') : 'text-gray-500';
-              const label = connState === 'online' ? 'Online' : connState === 'standby' ? 'Standby' : 'Offline';
-              return (
-                <div className="flex items-center gap-2 px-2.5 py-1 rounded-md border border-border bg-card shadow-sm">
-                  <div className="flex items-center gap-1.5">
-                    <Circle className={`w-2 h-2 ${dotColor}`} />
-                    <span className={`text-xs font-bold ${labelColor}`}>{label}</span>
-                  </div>
-                  <div className={`w-px h-4 ${isDarkMode ? 'bg-gray-600' : 'bg-gray-300'}`}></div>
-                  <div className="flex items-center gap-1">
-                    <span className={`text-[10px] font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Last Signal</span>
-                    <span className={`text-[10px] font-bold ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{timeAgo}</span>
-                  </div>
-                </div>
-              );
-            })()}
+            <VehicleConnectionBadge isDarkMode={isDarkMode} />
           </div>
           
           {/* Vehicle Details Section */}
@@ -1166,158 +1466,17 @@ function RentalAppContent() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           {/* Left Column - Map and AI Summary */}
           <div className={"col-span-2 flex flex-col gap-3 transition-all duration-300"}>
-            {/* Mapbox with Integrated Data Bar */}
-            <div className="rounded-xl p-3 border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
-              {/* Map Area */}
-              <div className="group relative h-[340px] rounded-lg overflow-hidden transition-all duration-300">
-                <LiveMapOverview
-                  className="w-full h-full"
-                  targetPosition={liveTelemetry.targetPosition}
-                  initialPosition={selectedVehicle?.lat != null && selectedVehicle?.lng != null ? [selectedVehicle.lng, selectedVehicle.lat] : null}
-                  heading={liveTelemetry.heading}
-                  speedKmh={liveTelemetry.speedKmh}
-                  licensePlate={selectedVehicle?.license ?? ''}
-                  waitingForPosition={!!selectedVehicle && !!orgId && !liveTelemetry.targetPosition}
-                  isLiveTracking={liveTelemetry.isLiveTracking}
-                  isDarkMode={isDarkMode}
-                />
+            <OverviewLiveMapCard
+              selectedVehicle={selectedVehicle}
+              orgId={orgId}
+              isDarkMode={isDarkMode}
+            />
 
-                {/* Integrated Driving Data Bar - docked at bottom */}
-                <div className="absolute bottom-0 left-0 right-0 p-3 opacity-70 group-hover:opacity-100 transition-opacity duration-700 ease-in-out">
-                  <div className={`rounded-lg p-2.5 border shadow-md backdrop-blur-md ${isDarkMode ? 'bg-card/90 border-border' : 'bg-card/95 border-border'}`}>
-                    {(() => {
-                      const dIgn = liveTelemetry.displayIgnition;
-                      const ignIsOn = dIgn === 'ON';
-                      const ignIsUnknown = dIgn === 'UNKNOWN';
-                      const coolantVal = liveTelemetry.displayCoolant;
-                      const coolantDisplay = coolantVal != null ? `${coolantVal}` : '—';
-                      const stateLabel = liveTelemetry.displayState;
-                      const stateColor = stateLabel === 'MOVING' ? (isDarkMode ? 'text-green-400' : 'text-green-700') : stateLabel === 'IDLE' ? (isDarkMode ? 'text-amber-400' : 'text-amber-600') : (isDarkMode ? 'text-gray-400' : 'text-gray-500');
-                      return (
-                    <div className={`grid gap-1.5 ${selectedVehicle?.isElectric ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-3 md:grid-cols-6'}`}>
-                      <div className={`flex flex-col items-center px-1 py-2 rounded-xl border ${ignIsOn ? (isDarkMode ? 'bg-green-900/30 border-green-800/40' : 'bg-green-100/80 border-green-200/60') : ignIsUnknown ? (isDarkMode ? 'bg-neutral-800/40 border-neutral-700/40' : 'bg-gray-100/80 border-gray-200/60') : (isDarkMode ? 'bg-red-900/30 border-red-800/40' : 'bg-red-100/80 border-red-200/60')}`}>
-                        <Circle className={`w-3.5 h-3.5 mb-0.5 ${ignIsOn ? 'text-green-600 fill-green-600' : ignIsUnknown ? 'text-gray-400 fill-gray-400' : 'text-red-500 fill-red-500'}`} />
-                        <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Ignition</span>
-                        <span className={`text-sm font-bold ${ignIsOn ? (isDarkMode ? 'text-green-400' : 'text-green-700') : ignIsUnknown ? (isDarkMode ? 'text-gray-500' : 'text-gray-400') : (isDarkMode ? 'text-red-400' : 'text-red-600')}`}>{dIgn === 'UNKNOWN' ? '—' : dIgn}</span>
-                      </div>
-
-                      <div className="flex flex-col items-center px-1 py-2">
-                        <Circle className="w-3.5 h-3.5 text-blue-500 mb-0.5" />
-                        <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>State</span>
-                        <span className={`text-sm font-bold ${stateColor}`}>{stateLabel}</span>
-                      </div>
-
-                      <div className="flex flex-col items-center px-1 py-2">
-                        <Droplet className={`w-3.5 h-3.5 mb-0.5 ${selectedVehicle?.isElectric ? 'text-emerald-500' : 'text-green-500'}`} />
-                        <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{selectedVehicle?.isElectric ? 'Energy' : 'Fuel'}</span>
-                        <span className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{Math.round(liveTelemetry.snapshot?.fuel ?? selectedVehicle?.fuel ?? 0)}<span className="text-[10px] font-normal text-gray-500">%</span></span>
-                      </div>
-
-                      {!selectedVehicle?.isElectric && (
-                      <div className="flex flex-col items-center px-1 py-2">
-                        <Thermometer className="w-3.5 h-3.5 text-red-500 mb-0.5" />
-                        <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Coolant</span>
-                        <span className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{coolantDisplay}{coolantDisplay !== '—' && <span className="text-[10px] font-normal text-gray-500">°C</span>}</span>
-                      </div>
-                      )}
-
-                      {!selectedVehicle?.isElectric && (
-                      <div className="flex flex-col items-center px-1 py-2">
-                        <Battery className="w-3.5 h-3.5 text-amber-500 mb-0.5" />
-                        <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Battery</span>
-                        <span className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{((liveTelemetry.snapshot?.lvBatteryVoltage ?? 0) > 0 ? liveTelemetry.snapshot!.lvBatteryVoltage.toFixed(1) : '—')}<span className="text-[10px] font-normal text-gray-500">V</span></span>
-                      </div>
-                      )}
-
-                      <div className="flex flex-col items-center px-1 py-2">
-                        <Odometer className="w-3.5 h-3.5 text-gray-500 mb-0.5" />
-                        <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Odometer</span>
-                        <span className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{selectedVehicle ? (liveTelemetry.snapshot?.odometer ?? selectedVehicle.odometer).toLocaleString('de-DE') : '—'} <span className="text-[10px] font-normal text-gray-500">km</span></span>
-                      </div>
-                    </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* AI Summary */}
-            <div className="rounded-xl p-4 border border-border bg-card shadow-sm transition-shadow hover:shadow-md dark:border-purple-500/20 dark:bg-card">
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="w-5 h-5 text-purple-600" />
-                <h3 className="text-sm font-semibold text-gray-900">AI Summary</h3>
-                <span className="ml-auto px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">Last Updated: 2min ago</span>
-              </div>
-              
-              {/* Overall Status */}
-              <div className="rounded-lg p-3 mb-2 border border-border bg-muted/50">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <p className="text-sm font-bold text-gray-900">Overall Status: Excellent</p>
-                </div>
-                <p className="text-xs text-gray-700 leading-relaxed">
-                  Vehicle is operating in <span className="font-semibold text-green-600">optimal condition</span> with all systems functioning normally. No critical issues detected across 24 monitored parameters.
-                </p>
-              </div>
-
-              {/* Detailed Insights */}
-              <div className="space-y-2">
-                {/* Performance */}
-                <div className="rounded-lg p-2 border border-border bg-muted/40">
-                  <div className="flex items-start gap-2">
-                    <Gauge className="w-4 h-4 text-blue-600 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-semibold text-gray-900 mb-1">Performance Analysis</p>
-                      <p className="text-[10px] text-gray-700 leading-relaxed">
-                        Current speed at 57 km/h with RPM at 2,400 indicates efficient engine operation. Fuel consumption is <span className="font-semibold text-green-600">12% below average</span> for similar driving conditions.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Maintenance */}
-                <div className="rounded-lg p-2 border border-border bg-muted/40">
-                  <div className="flex items-start gap-2">
-                    <Wrench className="w-4 h-4 text-amber-600 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-semibold text-gray-900 mb-1">Maintenance Forecast</p>
-                      <p className="text-[10px] text-gray-700 leading-relaxed">
-                        Next scheduled service in <span className="font-semibold text-amber-600">10,000 km</span> or <span className="font-semibold">3 months</span> (April 2026). Oil change and brake inspection recommended. Tire tread depth is good for <span className="font-semibold">15,000+ km</span>.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Rental Impact */}
-                <div className="rounded-lg p-2 border border-border bg-muted/40">
-                  <div className="flex items-start gap-2">
-                    <Calendar className="w-4 h-4 text-purple-600 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-semibold text-gray-900 mb-1">Rental Readiness</p>
-                      <p className="text-[10px] text-gray-700 leading-relaxed">
-                        Vehicle is <span className="font-semibold text-green-600">ready for rental</span>. Current booking ends in <span className="font-semibold">2 days</span>. Interior cleaning task scheduled before next rental on Feb 25. Battery health and tire pressure optimal.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Recommendations */}
-                <div className="bg-gradient-to-r from-blue-50/80 to-purple-50/80 rounded-xl p-2.5 border border-blue-200/50">
-                  <div className="flex items-start gap-2">
-                    <Sparkles className="w-4 h-4 text-blue-600 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-semibold text-gray-900 mb-1">AI Recommendations</p>
-                      <p className="text-[10px] text-gray-700 leading-relaxed">
-                        • Monitor brake fluid level (high priority task open)<br/>
-                        • Consider pre-rental inspection checklist<br/>
-                        • Update vehicle documentation before end of month
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* Vehicle Insights — data-driven operational widget */}
+            <VehicleInsightsCard
+              vehicleId={selectedVehicle?.id ?? null}
+              isDarkMode={isDarkMode}
+            />
           </div>
 
           {/* Right Column - Health Box */}
@@ -1325,10 +1484,9 @@ function RentalAppContent() {
             {/* Overall Health Box */}
             <div className="flex flex-col gap-4 h-full">
             {/* Box 1: Vehicle Health (Figma design) */}
-            <VehicleHealthBoxWired
+            <VehicleHealthBoxTelemetryBridge
               selectedVehicle={selectedVehicle}
               isDarkMode={isDarkMode}
-              lvBatteryVoltage={liveTelemetry.snapshot?.lvBatteryVoltage ?? null}
               onViewDetails={() => {
                 if (selectedVehicle) {
                   setCurrentView('health-errors');
@@ -1549,7 +1707,12 @@ export default function App() {
     <LanguageProvider>
       <RentalProvider>
         <FleetProvider>
-          <RentalAppContent />
+          <AppErrorBoundary
+            title="Rental view crashed"
+            description="A runtime error interrupted the rental interface. Reload and try opening Fleet again."
+          >
+            <RentalAppContent />
+          </AppErrorBoundary>
         </FleetProvider>
       </RentalProvider>
     </LanguageProvider>

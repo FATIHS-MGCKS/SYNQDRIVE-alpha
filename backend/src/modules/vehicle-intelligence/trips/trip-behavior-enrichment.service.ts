@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoSegmentsService } from '../../dimo/dimo-segments.service';
 import { BehaviorEventCategory, BehaviorEventClassification } from '@prisma/client';
@@ -15,6 +15,8 @@ import {
 import { getVehicleCapabilities } from '../vehicle-capabilities';
 import { LteR1BehaviorEnrichmentService } from './lte-r1-behavior-enrichment.service';
 import { summarizeEvTractionPowerFromHf, type EvTractionPowerTripSummary } from './hf-recuperation';
+import { TripAssignmentService } from './trip-assignment.service';
+import { TripMetricsService } from '../../observability/trip-metrics.service';
 
 export interface BehaviorEnrichmentResult {
   accelerationEvents: number;
@@ -36,6 +38,8 @@ export class TripBehaviorEnrichmentService {
     private readonly prisma: PrismaService,
     private readonly segments: DimoSegmentsService,
     private readonly lteR1: LteR1BehaviorEnrichmentService,
+    private readonly tripAssignmentService: TripAssignmentService,
+    @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {}
 
   async enrichTrip(tripId: string): Promise<BehaviorEnrichmentResult | null> {
@@ -235,6 +239,11 @@ export class TripBehaviorEnrichmentService {
 
     // Deterministic abuse score (Fix J)
     const abuseScore = computeAbuseScore(allAbuse);
+    const hfCanonicalCounterTotal =
+      allAccel.length + allBrake.length + allAbuse.length;
+    if (allRows.length > 0 && hfCanonicalCounterTotal === 0) {
+      this.observeCounterAnomaly('rows_present_but_zero_counters', 'hf');
+    }
 
     // ── Fix A: Transaction-safe persistence ──────────────────────────────────
     // The delete + createMany + trip.update are wrapped in a single Prisma
@@ -253,15 +262,21 @@ export class TripBehaviorEnrichmentService {
         where: { id: tripId },
         data: {
           accelerationEventCount: allAccel.length,
-          // brakingEventCount = HARD + EXTREME braking events only.
-          // Normalized to match LTE_R1 semantics where native hardware only
-          // reports significant braking (harsh+extreme).
+          // Legacy compatibility: this field was historically overloaded.
+          // Canonical readers should use totalBrakingEvents + hardBrakingEvents.
           brakingEventCount: hardBrake + fullBraking,
           abuseEventCount: allAbuse.length,
 
           // ── Canonical HF counters (Fix B) ──
           hardAccelerationCount: hardAccel,
           hardBrakingCount: hardBrake,
+          totalAccelerationEvents: allAccel.length,
+          hardAccelerationEvents: hardAccel,
+          totalBrakingEvents: allBrake.length + fullBraking,
+          hardBrakingEvents: hardBrake,
+          fullBrakingEvents: fullBraking,
+          corneringEvents: 0,
+          abuseEvents: allAbuse.length,
 
           // ── Legacy compatibility aliases (Fix B) ──
           // harshAccelCount and harshBrakeCount are DEPRECATED aliases for the canonical
@@ -272,6 +287,7 @@ export class TripBehaviorEnrichmentService {
           harshBrakeCount: hardBrake,
 
           fullBrakingCount: fullBraking,
+          speedingEvents: 0,
           possibleImpactCount: possibleImpact,
           kickdownCount,
           coldEngineAbuseCount: coldEngineAbuse,
@@ -319,6 +335,7 @@ export class TripBehaviorEnrichmentService {
         },
       });
     });
+    await this.tripAssignmentService.applyAssignmentToTrip(tripId);
 
     this.logger.log(
       `HF enrichment complete for trip ${tripId}: ` +
@@ -444,6 +461,16 @@ export class TripBehaviorEnrichmentService {
     const possibleImpact = allAbuse.filter((e) => e.eventType === 'POSSIBLE_IMPACT').length;
     const kickdownCount = allAbuse.filter((e) => e.eventType === 'KICKDOWN').length;
     const longIdle = allAbuse.filter((e) => e.eventType === 'LONG_IDLE').length;
+    const lteAccelerationTotal = drivingResult?.harshAccelerationCount ?? 0;
+    const lteBrakingTotal =
+      (drivingResult?.harshBrakingCount ?? 0) + (drivingResult?.extremeBrakingCount ?? 0) + fullBraking;
+    const lteCorneringTotal = drivingResult?.harshCorneringCount ?? 0;
+    const lteCanonicalCounterTotal =
+      lteAccelerationTotal + lteBrakingTotal + lteCorneringTotal + allAbuse.length;
+    const lteRowsObserved = (drivingResult?.drivingEventsIngested ?? 0) + abuseRows.length;
+    if (lteRowsObserved > 0 && lteCanonicalCounterTotal === 0) {
+      this.observeCounterAnomaly('rows_present_but_zero_counters', 'lte_r1');
+    }
 
     // Always persist abuse slice in one transaction (transaction-safe, idempotent for TripBehaviorEvent).
     // Canonical hard* counters were already set by LteR1BehaviorEnrichmentService and are not touched here.
@@ -455,8 +482,29 @@ export class TripBehaviorEnrichmentService {
       await tx.vehicleTrip.update({
         where: { id: tripId },
         data: {
+          totalAccelerationEvents: drivingResult?.harshAccelerationCount ?? 0,
+          hardAccelerationEvents: drivingResult?.harshAccelerationCount ?? 0,
+          totalBrakingEvents:
+            (drivingResult?.harshBrakingCount ?? 0) +
+            (drivingResult?.extremeBrakingCount ?? 0) +
+            fullBraking,
+          hardBrakingEvents:
+            (drivingResult?.harshBrakingCount ?? 0) +
+            (drivingResult?.extremeBrakingCount ?? 0),
+          fullBrakingEvents: fullBraking,
+          brakingEventCount:
+            (drivingResult?.harshBrakingCount ?? 0) +
+            (drivingResult?.extremeBrakingCount ?? 0) +
+            fullBraking,
+          hardBrakingCount:
+            (drivingResult?.harshBrakingCount ?? 0) +
+            (drivingResult?.extremeBrakingCount ?? 0),
+          hardAccelerationCount: drivingResult?.harshAccelerationCount ?? 0,
+          corneringEvents: drivingResult?.harshCorneringCount ?? 0,
+          abuseEvents: allAbuse.length,
           abuseEventCount: allAbuse.length,
           fullBrakingCount: fullBraking,
+          speedingEvents: 0,
           possibleImpactCount: possibleImpact,
           kickdownCount,
           coldEngineAbuseCount: coldEngineAbuse,
@@ -482,6 +530,7 @@ export class TripBehaviorEnrichmentService {
         },
       });
     });
+    await this.tripAssignmentService.applyAssignmentToTrip(tripId);
 
     this.logger.log(
       `LTE_R1 enrichment complete for trip ${tripId}: ` +
@@ -496,8 +545,18 @@ export class TripBehaviorEnrichmentService {
       hardAccelerationCount: drivingResult?.harshAccelerationCount ?? 0,
       hardBrakingCount: (drivingResult?.harshBrakingCount ?? 0) + (drivingResult?.extremeBrakingCount ?? 0),
       abuseScore,
-      totalEventsStored: abuseRows.length,
+      totalEventsStored: abuseRows.length + (drivingResult?.drivingEventsIngested ?? 0),
     };
+  }
+
+  private observeCounterAnomaly(
+    anomalyType: 'rows_present_but_zero_counters',
+    source: 'hf' | 'lte_r1',
+  ): void {
+    this.tripMetrics?.tripCounterAnomalies.inc({
+      anomaly_type: anomalyType,
+      source,
+    });
   }
 }
 

@@ -3,22 +3,43 @@ import {
   Post,
   Body,
   UnauthorizedException,
+  ForbiddenException,
   Get,
   Req,
+  Headers,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
+import { RefreshTokenService } from './refresh-token.service';
+import { LoginDto, RefreshTokenDto, LogoutDto } from '@shared/dto/auth.dto';
+import { AuditService } from '@modules/activity-log/audit.service';
+import { ActivityAction, ActivityEntity } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import * as jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'synqdrive-dev-jwt-secret-2026';
-const JWT_EXPIRES_IN = '24h';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly jwtSecret: string;
+  private readonly jwtExpiresIn: string;
 
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+    private readonly refreshTokenService: RefreshTokenService,
+    private readonly audit: AuditService,
+  ) {
+    // JWT_SECRET is validated at startup by app.config.ts; reading it here is safe
+    this.jwtSecret = this.configService.get<string>('app.jwtSecret')!;
+    this.jwtExpiresIn = this.configService.get<string>('app.jwtExpiresIn', '24h');
+  }
+
+  // Strict rate limit on login: max 10 attempts per minute per IP
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @Post('login')
-  async login(@Body() body: { email: string; password: string }) {
+  @HttpCode(HttpStatus.OK)
+  async login(@Body() body: LoginDto, @Req() req: any) {
     const { email, password } = body;
     if (!email || !password) {
       throw new UnauthorizedException('Email and password are required');
@@ -35,11 +56,33 @@ export class AuthController {
       },
     });
 
+    const auditBase = {
+      actorUserId: undefined as string | undefined,
+      actorOrganizationId: undefined as string | undefined,
+      ipAddress: req?.ip ?? req?.connection?.remoteAddress,
+      userAgent: req?.headers?.['user-agent'],
+      route: 'POST /auth/login',
+    };
+
     if (!user) {
+      void this.audit.warn({
+        ...auditBase,
+        action: ActivityAction.AUTH_FAIL,
+        entity: ActivityEntity.AUTH_EVENT,
+        description: `Login failed — unknown email: ${email}`,
+      });
       throw new UnauthorizedException('Invalid credentials');
     }
 
     if (user.status !== 'ACTIVE') {
+      void this.audit.warn({
+        ...auditBase,
+        actorUserId: user.id,
+        action: ActivityAction.AUTH_FAIL,
+        entity: ActivityEntity.AUTH_EVENT,
+        entityId: user.id,
+        description: `Login rejected — account inactive: ${email}`,
+      });
       throw new UnauthorizedException('Account is inactive');
     }
 
@@ -49,6 +92,14 @@ export class AuthController {
 
     const passwordValid = await bcrypt.compare(password, user.passwordHash);
     if (!passwordValid) {
+      void this.audit.warn({
+        ...auditBase,
+        actorUserId: user.id,
+        action: ActivityAction.AUTH_FAIL,
+        entity: ActivityEntity.AUTH_EVENT,
+        entityId: user.id,
+        description: `Login failed — wrong password: ${email}`,
+      });
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -68,10 +119,37 @@ export class AuthController {
       organizationName: membership?.organization?.companyName ?? null,
     };
 
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    const { accessToken, refreshToken, expiresIn } = await this.refreshTokenService.issueTokenPair(
+      user,
+      membership
+        ? {
+            role: membership.role,
+            organizationId: membership.organizationId,
+            organizationName: membership.organization?.companyName ?? null,
+            permissions: membership.permissions,
+          }
+        : null,
+      {
+        userAgent: (req as any)?.headers?.['user-agent'],
+        ipAddress: (req as any)?.ip,
+      },
+    );
+
+    void this.audit.record({
+      ...auditBase,
+      actorUserId: user.id,
+      actorOrganizationId: membership?.organizationId ?? undefined,
+      action: ActivityAction.LOGIN,
+      entity: ActivityEntity.AUTH_EVENT,
+      entityId: user.id,
+      description: `Login success: ${email}`,
+    });
 
     return {
-      token,
+      token: accessToken,
+      accessToken,
+      refreshToken,
+      expiresIn,
       mustChangePassword: user.mustChangePassword,
       user: {
         id: user.id,
@@ -84,6 +162,72 @@ export class AuthController {
         permissions: (membership?.permissions as Record<string, { read: boolean; write: boolean }>) ?? null,
       },
     };
+  }
+
+  /** Exchange a valid refresh token for a new access + refresh token pair (rotation). */
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  async refresh(
+    @Body() body: RefreshTokenDto,
+    @Req() req: any,
+  ) {
+    if (!body.refreshToken) {
+      throw new UnauthorizedException('Refresh token is required');
+    }
+    const result = await this.refreshTokenService.rotate(body.refreshToken, {
+      userAgent: req?.headers?.['user-agent'],
+      ipAddress: req?.ip,
+    });
+    void this.audit.record({
+      ipAddress: req?.ip,
+      userAgent: req?.headers?.['user-agent'],
+      route: 'POST /auth/refresh',
+      action: ActivityAction.REFRESH,
+      entity: ActivityEntity.REFRESH_TOKEN,
+      description: 'Access token refreshed via rotation',
+    });
+    return {
+      token: result.accessToken,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      expiresIn: result.expiresIn,
+    };
+  }
+
+  /** Revoke a specific refresh token (logout from current device). */
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Body() body: LogoutDto, @Req() req: any) {
+    if (body.refreshToken) {
+      await this.refreshTokenService.revoke(body.refreshToken);
+    }
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.LOGOUT,
+      entity: ActivityEntity.AUTH_EVENT,
+      entityId: req.user?.id,
+      description: `Logout: user ${req.user?.id ?? 'unknown'} (single device)`,
+    });
+    return { message: 'Logged out successfully' };
+  }
+
+  /** Revoke all refresh tokens for the authenticated user (logout from all devices). */
+  @Post('logout-all')
+  @HttpCode(HttpStatus.OK)
+  async logoutAll(@Req() req: any) {
+    const userId = req.user?.id;
+    if (userId) {
+      await this.refreshTokenService.revokeAllForUser(userId);
+    }
+    void this.audit.warn({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.REVOKE_ALL,
+      entity: ActivityEntity.REFRESH_TOKEN,
+      entityId: userId,
+      description: `Logout all devices: user ${userId ?? 'unknown'}`,
+    });
+    return { message: 'Logged out from all devices' };
   }
 
   @Get('me')
@@ -121,35 +265,51 @@ export class AuthController {
     };
   }
 
+  /**
+   * Bootstrap endpoint to create the initial MASTER_ADMIN.
+   *
+   * Security gates (all must pass):
+   *   1. ENABLE_SEED_ADMIN=true must be set in environment
+   *   2. SEED_ADMIN_TOKEN must be set and must match the x-seed-token header
+   *
+   * Disabled by default. Must never be usable in production without explicit opt-in.
+   * Does NOT accept or return passwords — caller must set the password via a separate flow.
+   */
+  // Very strict rate limit on seed-admin: max 3 attempts per 5 minutes
+  @Throttle({ default: { ttl: 300_000, limit: 3 } })
   @Post('seed-admin')
-  async seedAdmin() {
+  @HttpCode(HttpStatus.OK)
+  async seedAdmin(@Headers('x-seed-token') tokenHeader: string | undefined) {
+    const enableSeedAdmin = this.configService.get<boolean>('app.enableSeedAdmin', false);
+    const seedAdminToken = this.configService.get<string>('app.seedAdminToken', '');
+
+    if (!enableSeedAdmin || !seedAdminToken) {
+      throw new ForbiddenException('Seed-admin endpoint is disabled');
+    }
+
+    if (!tokenHeader || tokenHeader !== seedAdminToken) {
+      throw new ForbiddenException('Invalid seed-admin token');
+    }
+
     const existing = await this.prisma.user.findFirst({
       where: { platformRole: 'MASTER_ADMIN' },
     });
 
     if (existing) {
-      if (!existing.passwordHash) {
-        const hash = await bcrypt.hash('SynqDrive2026!', 10);
-        await this.prisma.user.update({
-          where: { id: existing.id },
-          data: { passwordHash: hash },
-        });
-        return { message: 'Password set for existing admin', email: existing.email };
-      }
       return { message: 'Admin already exists', email: existing.email };
     }
 
-    const hash = await bcrypt.hash('SynqDrive2026!', 10);
+    // Create admin without a password — caller must use change-password flow to set one
     const admin = await this.prisma.user.create({
       data: {
-        email: 'admin@synqdrive.de',
+        email: process.env.SEED_ADMIN_EMAIL || 'admin@synqdrive.de',
         name: 'Master Admin',
-        passwordHash: hash,
+        passwordHash: null,
         platformRole: 'MASTER_ADMIN',
         status: 'ACTIVE',
       },
     });
 
-    return { message: 'Admin created', email: admin.email, password: 'SynqDrive2026!' };
+    return { message: 'Admin created — set a password before use', email: admin.email };
   }
 }

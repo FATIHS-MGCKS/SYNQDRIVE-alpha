@@ -13,9 +13,11 @@ export class DimoDtcScheduler implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    await this.queue.add('dtc-poll', {}, {
-      repeat: { every: 3 * 60 * 60 * 1000 },
-    });
+    await this.queue.upsertJobScheduler(
+      'dtc-poll-repeat',
+      { every: 3 * 60 * 60 * 1000 },
+      { name: 'dtc-poll', data: {} },
+    );
     this.logger.log('DTC poll scheduled every 3 hours');
   }
 }

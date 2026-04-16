@@ -1,9 +1,10 @@
 import { Controller, Get, Post, Patch, Param, Body, Query, Req, UseGuards } from '@nestjs/common';
 import { DataAuthorizationsService } from './data-authorizations.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 
 @Controller('organizations/:orgId/data-authorizations')
-@UseGuards(RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard)
 export class DataAuthorizationsController {
   constructor(private readonly service: DataAuthorizationsService) {}
 

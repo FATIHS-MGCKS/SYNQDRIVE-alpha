@@ -5,7 +5,7 @@
  *   Fix A — EV/HYBRID idle-within-trip handling
  *   Fix B — time-based continuity window (no magic slice(-5))
  *   Fix C — ignition de-prioritized in end / resume detection
- *   Fix D — V1 legacy isolation (no live path calls legacy detectTrips)
+ *   Fix D — V1 legacy isolation (V1 detectTrips removed from DimoSegmentsService; live path is V2 FSM only)
  *   Fix E — canonical HF counter preference in health scoring
  *   Plus   — CUSUM, profile thresholds, merge/cancel, timeout fallback
  */
@@ -18,13 +18,20 @@ import {
   hasActivityResumed,
   checkTripQuality,
   getProfileThresholds,
+  refineTripStartBoundary,
+  resolveAnalyticsAssistedStartDecision,
+  resolveClickHouseContinuityGuard,
 } from './trip-evidence.helpers';
 import {
   detectTripEndChangePoint,
   hasOngoingActivityInWindow,
 } from './trip-cusum';
 import { END_DETECTION_MODES } from './trip-detection.types';
-import type { TripCoreDataPoint } from '../../dimo/dimo-segments.service';
+import type {
+  TripCoreDataPoint,
+  RoutePoint,
+} from '../../dimo/dimo-segments.service';
+import type { DetectorFinding } from './detectors/detector.interfaces';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -351,6 +358,230 @@ describe('evaluateSnapshotEvidence — Trip Start still works', () => {
   it('does NOT trigger for EV on low-speed only (no odometer delta)', () => {
     const result = evaluateSnapshotEvidence(snapshot(false, 1, 0), null, 'EV');
     expect(result.triggered).toBe(false);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  refineTripStartBoundary — start boundary accuracy
+// ═══════════════════════════════════════════════════════════════
+
+describe('refineTripStartBoundary', () => {
+  it('prefers the earliest route movement when route activity predates the snapshot candidate', () => {
+    const candidateStartAt = new Date('2026-04-11T14:22:50.236Z');
+    const corePoints: TripCoreDataPoint[] = [
+      {
+        timestamp: '2026-04-11T14:20:40.000Z',
+        isIgnitionOn: true,
+        speed: 69,
+        travelledDistance: null,
+        fuelAbsoluteLevel: null,
+        batteryEnergy: null,
+      },
+      {
+        timestamp: '2026-04-11T14:21:00.000Z',
+        isIgnitionOn: true,
+        speed: 18,
+        travelledDistance: 186166,
+        fuelAbsoluteLevel: null,
+        batteryEnergy: null,
+      },
+    ];
+    const routePoints: RoutePoint[] = [
+      {
+        timestamp: '2026-04-11T14:20:29.000Z',
+        latitude: 51.33537,
+        longitude: 9.5061383,
+        speedKmh: null,
+      },
+      {
+        timestamp: '2026-04-11T14:20:36.000Z',
+        latitude: 51.3348633,
+        longitude: 9.5055816,
+        speedKmh: 134,
+      },
+      {
+        timestamp: '2026-04-11T14:20:43.000Z',
+        latitude: 51.3345183,
+        longitude: 9.504915,
+        speedKmh: null,
+      },
+    ];
+
+    const result = refineTripStartBoundary(
+      candidateStartAt,
+      corePoints,
+      routePoints,
+      'ICE',
+    );
+
+    expect(result.source).toBe('ROUTE_ACTIVITY');
+    expect(result.startAt.toISOString()).toBe('2026-04-11T14:20:36.000Z');
+    expect(result.startLatitude).toBeCloseTo(51.3348633, 6);
+    expect(result.adjustedMs).toBeLessThan(0);
+  });
+
+  it('falls back to the first core activity when no route points are available', () => {
+    const candidateStartAt = new Date('2026-04-11T14:22:50.236Z');
+    const corePoints: TripCoreDataPoint[] = [
+      {
+        timestamp: '2026-04-11T14:21:20.000Z',
+        isIgnitionOn: true,
+        speed: 0,
+        travelledDistance: 186166,
+        fuelAbsoluteLevel: null,
+        batteryEnergy: null,
+      },
+      {
+        timestamp: '2026-04-11T14:21:40.000Z',
+        isIgnitionOn: true,
+        speed: 12,
+        travelledDistance: 186166,
+        fuelAbsoluteLevel: null,
+        batteryEnergy: null,
+      },
+    ];
+
+    const result = refineTripStartBoundary(
+      candidateStartAt,
+      corePoints,
+      [],
+      'ICE',
+    );
+
+    expect(result.source).toBe('CORE_ACTIVITY');
+    expect(result.startAt.toISOString()).toBe('2026-04-11T14:21:40.000Z');
+    expect(result.startLatitude).toBeNull();
+  });
+
+  it('keeps the snapshot candidate when only small GPS drift is present', () => {
+    const candidateStartAt = new Date('2026-04-11T14:22:50.236Z');
+    const routePoints: RoutePoint[] = [
+      {
+        timestamp: '2026-04-11T14:22:20.000Z',
+        latitude: 51.33537,
+        longitude: 9.5061383,
+        speedKmh: null,
+      },
+      {
+        timestamp: '2026-04-11T14:22:27.000Z',
+        latitude: 51.33539,
+        longitude: 9.50615,
+        speedKmh: null,
+      },
+    ];
+
+    const result = refineTripStartBoundary(
+      candidateStartAt,
+      [],
+      routePoints,
+      'ICE',
+    );
+
+    expect(result.source).toBe('SNAPSHOT_CANDIDATE');
+    expect(result.startAt.toISOString()).toBe('2026-04-11T14:22:50.236Z');
+    expect(result.adjustedMs).toBe(0);
+  });
+});
+
+describe('resolveAnalyticsAssistedStartDecision', () => {
+  function finding(
+    detectorName: string,
+    verdict: DetectorFinding['verdict'],
+    confidence: DetectorFinding['confidence'],
+    evidence: Record<string, unknown> = {},
+  ): DetectorFinding {
+    return {
+      detectorName,
+      verdict,
+      confidence,
+      evidence,
+      timestamp: new Date(),
+    };
+  }
+
+  it('keeps DIMO confirmation when start confirmation already triggered', () => {
+    const result = resolveAnalyticsAssistedStartDecision({
+      startConfirmation: finding('StartConfirmationDetector', 'TRIGGERED', 'HIGH', {
+        mode: 'IGNITION_PRIMARY',
+      }),
+      currentTelemetry: { isIgnitionOn: true, speedKmh: 20, engineLoad: 30 },
+    });
+
+    expect(result.confirmed).toBe(true);
+    expect(result.evidencePath).toBe('DIMO_ONLY');
+    expect(result.mode).toBe('IGNITION_PRIMARY');
+  });
+
+  it('allows ClickHouse-assisted confirmation only with strong CH activity and ignition support', () => {
+    const result = resolveAnalyticsAssistedStartDecision({
+      startConfirmation: finding('StartConfirmationDetector', 'NOT_TRIGGERED', 'LOW'),
+      activityWindow: finding('ActivityWindowDetector', 'TRIGGERED', 'HIGH', {
+        pointCount: 4,
+        maxSpeedKmh: 22,
+        odometerDeltaKm: 0.2,
+      }),
+      ignitionSegment: finding('IgnitionSegmentDetector', 'TRIGGERED', 'MEDIUM'),
+      currentTelemetry: { isIgnitionOn: true, speedKmh: 12, engineLoad: 18 },
+    });
+
+    expect(result.confirmed).toBe(true);
+    expect(result.evidencePath).toBe('CLICKHOUSE_ASSISTED');
+  });
+
+  it('does not allow ClickHouse-only assist without active current telemetry', () => {
+    const result = resolveAnalyticsAssistedStartDecision({
+      startConfirmation: finding('StartConfirmationDetector', 'NOT_TRIGGERED', 'LOW'),
+      activityWindow: finding('ActivityWindowDetector', 'TRIGGERED', 'HIGH', {
+        pointCount: 4,
+        maxSpeedKmh: 22,
+        odometerDeltaKm: 0.2,
+      }),
+      ignitionSegment: finding('IgnitionSegmentDetector', 'TRIGGERED', 'MEDIUM'),
+      currentTelemetry: { isIgnitionOn: false, speedKmh: 0, engineLoad: 0 },
+    });
+
+    expect(result.confirmed).toBe(false);
+  });
+});
+
+describe('resolveClickHouseContinuityGuard', () => {
+  function activityFinding(
+    verdict: DetectorFinding['verdict'],
+    evidence: Record<string, unknown>,
+  ): DetectorFinding {
+    return {
+      detectorName: 'ActivityWindowDetector',
+      verdict,
+      confidence: 'HIGH',
+      evidence,
+      timestamp: new Date(),
+    };
+  }
+
+  it('keeps the trip open when ClickHouse shows strong recent activity', () => {
+    const result = resolveClickHouseContinuityGuard(
+      activityFinding('TRIGGERED', {
+        pointCount: 4,
+        maxSpeedKmh: 18,
+        odometerDeltaKm: 0.12,
+      }),
+    );
+
+    expect(result.keepTripOpen).toBe(true);
+    expect(result.evidencePath).toBe('CLICKHOUSE_GUARD');
+  });
+
+  it('does not keep the trip open when ClickHouse activity is weak or absent', () => {
+    const result = resolveClickHouseContinuityGuard(
+      activityFinding('NOT_TRIGGERED', {
+        pointCount: 1,
+        maxSpeedKmh: 0,
+        odometerDeltaKm: 0,
+      }),
+    );
+
+    expect(result.keepTripOpen).toBe(false);
+    expect(result.evidencePath).toBe('DIMO_ONLY');
   });
 });
 

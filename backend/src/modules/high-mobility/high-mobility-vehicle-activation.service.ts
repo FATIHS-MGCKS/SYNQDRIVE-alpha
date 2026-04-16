@@ -3,6 +3,13 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { HighMobilityVehicleLinkService } from './high-mobility-vehicle-link.service';
 import { HighMobilityEligibilityService } from './high-mobility-eligibility.service';
 import { HighMobilityFleetService } from './high-mobility-fleet.service';
+import {
+  getOemPath,
+  supportsEligibility,
+  usesDirectFleetClearance,
+  getOemRoutingNote,
+  type HmOemPath,
+} from './high-mobility-oem-routing';
 
 /**
  * Composite HM state for a SynqDrive vehicle (used by Vehicle Edit / Detail page).
@@ -32,6 +39,12 @@ export interface HmVehicleStatusDto {
   canDeactivate: boolean;
   canCheckEligibility: boolean;
   canRefresh: boolean;
+  /** OEM onboarding path — determines whether eligibility must be checked first. */
+  oemPath: HmOemPath;
+  /** True when brand uses direct fleet clearance (VW Group, Porsche) and no HM record yet exists. */
+  canRequestDirectClearance: boolean;
+  /** Human-readable explanation for why eligibility is skipped. Null for eligibility-first brands. */
+  routingNote: string | null;
 }
 
 /**
@@ -55,6 +68,7 @@ export class HmVehicleActivationService {
   /**
    * Get composite HM status for a SynqDrive vehicle.
    * Reads from vehicle_data_source_links + high_mobility_vehicles.
+   * Returns OEM-path-aware capabilities for the UI.
    */
   async getHmStatusForVehicle(vehicleId: string): Promise<HmVehicleStatusDto> {
     const vehicle = await this.prisma.vehicle.findUnique({
@@ -64,6 +78,8 @@ export class HmVehicleActivationService {
     if (!vehicle) throw new NotFoundException(`Vehicle ${vehicleId} not found`);
 
     const vin = vehicle.vin;
+    const brand = vehicle.make ?? '';
+    const oemPath = getOemPath(brand);
 
     // Check for active HM_HEALTH data source link
     const activeLink = await this.prisma.vehicleDataSourceLink.findFirst({
@@ -76,7 +92,6 @@ export class HmVehicleActivationService {
     });
 
     if (activeLink) {
-      // Vehicle already has an active HM Health link
       const hmRecord = await this.prisma.highMobilityVehicle.findUnique({
         where: { id: activeLink.sourceReferenceId },
         select: {
@@ -99,6 +114,9 @@ export class HmVehicleActivationService {
         canDeactivate: true,
         canCheckEligibility: false,
         canRefresh: true,
+        oemPath,
+        canRequestDirectClearance: false,
+        routingNote: null,
       };
     }
 
@@ -106,7 +124,7 @@ export class HmVehicleActivationService {
     const availability = await this.linkService.checkAvailability(vin);
 
     if (!availability.available && !availability.hmVehicleId) {
-      return this.buildNotConfiguredStatus(vin, vehicle.make);
+      return this.buildNotConfiguredStatus(vin, brand, oemPath);
     }
 
     // HM record exists — get full details
@@ -128,7 +146,7 @@ export class HmVehicleActivationService {
       state,
       hmVehicleId: availability.hmVehicleId,
       vin,
-      brand: hmRecord?.brand ?? vehicle.make,
+      brand: hmRecord?.brand ?? brand,
       clearanceStatus,
       eligibilityStatus: hmRecord?.eligibilityStatus ?? null,
       isLinked: availability.isLinked,
@@ -136,13 +154,25 @@ export class HmVehicleActivationService {
       lastCheckedAt: hmRecord?.clearanceLastCheckedAt?.toISOString() ?? null,
       canActivate: state === 'APPROVED' && !availability.isLinked,
       canDeactivate: availability.isLinked,
-      canCheckEligibility: state === 'NOT_CONFIGURED' || state === 'ERROR',
+      // Eligibility check only available for brands that support it
+      canCheckEligibility: supportsEligibility(brand) && (state === 'NOT_CONFIGURED' || state === 'ERROR'),
       canRefresh: !!availability.hmVehicleId && state !== 'NOT_CONFIGURED',
+      oemPath,
+      canRequestDirectClearance: false, // Record already exists
+      routingNote: null,
     };
   }
 
   /**
-   * Run eligibility check using VIN + brand from the SynqDrive vehicle record.
+   * Brand-aware eligibility check.
+   *
+   * For brands that support the HM Eligibility API (BMW, Mercedes, Toyota, etc.):
+   *   → runs the eligibility check normally.
+   *
+   * For VW Group brands and Porsche:
+   *   → returns a structured NOT_APPLICABLE response explaining the routing.
+   *   → does NOT call the HM Eligibility API (which would fail / mislead).
+   *   → instructs the caller to use requestDirectFleetClearance() instead.
    */
   async checkEligibilityForVehicle(vehicleId: string) {
     const vehicle = await this.prisma.vehicle.findUnique({
@@ -152,7 +182,96 @@ export class HmVehicleActivationService {
     if (!vehicle?.vin) throw new NotFoundException(`Vehicle ${vehicleId} has no VIN`);
 
     const brand = vehicle.make ?? '';
+
+    if (!supportsEligibility(brand)) {
+      const oemPath = getOemPath(brand);
+      const note = getOemRoutingNote(brand);
+      this.logger.log(
+        `HM eligibility check skipped for VIN ${vehicle.vin} — brand "${brand}" uses ${oemPath} path`,
+      );
+      return {
+        vin: vehicle.vin,
+        brand,
+        eligibilityStatus: 'NOT_APPLICABLE' as const,
+        oemPath,
+        routingNote: note ?? `Brand "${brand}" does not use the HM Eligibility API. Use direct fleet clearance instead.`,
+        canRequestDirectClearance: usesDirectFleetClearance(brand),
+        deliveryMode: null,
+        capabilities: null,
+        checkedAt: new Date().toISOString(),
+        rawResponse: null,
+      };
+    }
+
     return this.eligibilityService.checkEligibility({ vin: vehicle.vin, brand });
+  }
+
+  /**
+   * Request direct fleet clearance for VW Group / Porsche vehicles.
+   * Skips the Eligibility API entirely and goes straight to fleet clearance activation.
+   * Safe to call for any brand — returns an error for eligibility-first brands to prevent misuse.
+   */
+  async requestDirectFleetClearance(
+    vehicleId: string,
+  ): Promise<{ success: boolean; message: string; status?: HmVehicleStatusDto }> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { vin: true, make: true },
+    });
+    if (!vehicle?.vin) throw new NotFoundException(`Vehicle ${vehicleId} has no VIN`);
+
+    const brand = vehicle.make ?? '';
+
+    if (!usesDirectFleetClearance(brand)) {
+      return {
+        success: false,
+        message: `Brand "${brand}" uses the ELIGIBILITY_FIRST path. Use checkEligibility instead.`,
+      };
+    }
+
+    // Guard: prevent duplicate HM records
+    const existing = await this.prisma.highMobilityVehicle.findFirst({
+      where: { vin: vehicle.vin, packageType: 'HEALTH', sourceMode: 'DIMO_PLUS_HM', isActive: true },
+    });
+    if (existing) {
+      this.logger.log(
+        `Direct clearance requested for ${vehicle.vin} but HM record ${existing.id} already exists — returning current status`,
+      );
+      const current = await this.getHmStatusForVehicle(vehicleId);
+      return {
+        success: true,
+        message: 'Fleet clearance record already exists. Returning current status.',
+        status: current,
+      };
+    }
+
+    this.logger.log(
+      `Starting direct fleet clearance for VIN ${vehicle.vin} brand=${brand} (${getOemPath(brand)} path)`,
+    );
+
+    // Create HM vehicle record + trigger clearance request in one call
+    try {
+      await this.fleetService.createVehicle({
+        vin: vehicle.vin,
+        brand,
+        packageType: 'HEALTH',
+        sourceMode: 'DIMO_PLUS_HM',
+      });
+    } catch (err: any) {
+      if (err?.status === 409 || err?.message?.includes('already exists')) {
+        this.logger.log(`HM record conflict for ${vehicle.vin} — reading current status`);
+      } else {
+        this.logger.error(`Direct clearance failed for ${vehicle.vin}: ${err?.message}`);
+        return { success: false, message: `Fleet clearance request failed: ${err?.message}` };
+      }
+    }
+
+    const updatedStatus = await this.getHmStatusForVehicle(vehicleId);
+    return {
+      success: true,
+      message: 'Fleet clearance request submitted. Waiting for provider approval.',
+      status: updatedStatus,
+    };
   }
 
   /**
@@ -232,7 +351,8 @@ export class HmVehicleActivationService {
     }
   }
 
-  private buildNotConfiguredStatus(vin: string, brand: string): HmVehicleStatusDto {
+  private buildNotConfiguredStatus(vin: string, brand: string, oemPath: HmOemPath): HmVehicleStatusDto {
+    const directClearance = usesDirectFleetClearance(brand);
     return {
       state: 'NOT_CONFIGURED',
       hmVehicleId: null,
@@ -245,8 +365,13 @@ export class HmVehicleActivationService {
       lastCheckedAt: null,
       canActivate: false,
       canDeactivate: false,
-      canCheckEligibility: true,
+      // Eligibility check only valid for brands that support it
+      canCheckEligibility: supportsEligibility(brand),
       canRefresh: false,
+      oemPath,
+      // Direct clearance button shown for VW Group / Porsche when no record exists
+      canRequestDirectClearance: directClearance,
+      routingNote: getOemRoutingNote(brand),
     };
   }
 }

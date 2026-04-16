@@ -25,7 +25,12 @@ export type HmClearanceStatus =
   | 'CANCELED';
 
 export type HmSyncType   = 'MANUAL' | 'SCHEDULED' | 'POST_APPROVAL_INITIAL';
-export type HmSyncStatus = 'SUCCESS' | 'FAILED' | 'PARTIAL';
+/**
+ * MQTT_ONLY = HM Fleet Clearance vehicles (e.g. Mercedes-Benz) push data via MQTT only.
+ * The REST command endpoint (/v1/vehicles/{ref}/command) does not exist for these vehicles.
+ * Data arrives when the car is driven and Mercedes pushes telemetry.
+ */
+export type HmSyncStatus = 'SUCCESS' | 'FAILED' | 'PARTIAL' | 'MQTT_ONLY';
 
 // Phase 2 types
 export type HmRegistrationState = 'NOT_REGISTERED' | 'REGISTRATION_PENDING' | 'REGISTERED' | 'REGISTRATION_FAILED';
@@ -59,6 +64,16 @@ export interface CreateHmVehicleDto {
   sourceMode?: HmSourceMode;
   organizationId?: string;
 }
+
+// ── OEM routing ─────────────────────────────────────────────
+
+/**
+ * Onboarding path for a given OEM brand.
+ *  ELIGIBILITY_FIRST      — BMW, Mercedes, Toyota, Renault, Ford, etc.
+ *  DIRECT_FLEET_CLEARANCE — VW Group (Audi, VW, Skoda, SEAT, CUPRA) + Porsche
+ *  UNKNOWN                — unrecognized brand; safe fallback tries direct clearance
+ */
+export type HmOemPath = 'ELIGIBILITY_FIRST' | 'DIRECT_FLEET_CLEARANCE' | 'UNKNOWN';
 
 export interface HmVehicleDto {
   id: string;
@@ -133,6 +148,8 @@ export interface HmHealthDataDto {
   hmVehicleId: string;
   vin: string;
   fetchedAt: string;
+  syncStatus: HmSyncStatus;
+  errorMessage: string | null;
   signals: HmHealthSignalDto[];
   // Convenience accessors for UI integrations
   tirePressures: HmTirePressureDto | null;

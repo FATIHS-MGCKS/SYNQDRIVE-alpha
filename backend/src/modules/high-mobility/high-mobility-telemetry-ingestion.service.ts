@@ -157,13 +157,19 @@ export class HighMobilityTelemetryIngestionService {
 
   // ── Private helpers ────────────────────────────────────────────────────────
 
+  private static readonly UUID_PATTERN =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   private extractVin(topic: string, payload: Record<string, unknown> | null): string | null {
-    // HM MQTT topic format: <prefix>/<appId>/<vin>/<signalGroup>
+    // HM MQTT topic format: live/level13/<app_id>/<vin>/<signalGroup>
+    // App-level management messages have only 3 segments — no VIN.
+    // VIN is at index 3; index 2 is the app UUID, not a VIN.
     const parts = topic.split('/');
-    // VIN is typically at index 2
-    if (parts.length >= 3) {
-      const candidate = parts[2];
-      if (candidate && candidate.length >= 10) return candidate.toUpperCase();
+    if (parts.length >= 4) {
+      const candidate = parts[3];
+      if (candidate && candidate.length >= 10 && !HighMobilityTelemetryIngestionService.UUID_PATTERN.test(candidate)) {
+        return candidate.toUpperCase();
+      }
     }
     // Fallback: check payload
     return (payload?.vin as string)?.toUpperCase() ?? (payload?.vehicleVin as string)?.toUpperCase() ?? null;

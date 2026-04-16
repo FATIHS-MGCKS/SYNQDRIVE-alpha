@@ -1,10 +1,11 @@
 import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, Logger } from '@nestjs/common';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { VoiceAssistantService } from './voice-assistant.service';
 
 @Controller('organizations/:orgId/voice-assistant')
-@UseGuards(RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard)
 export class VoiceAssistantController {
   private readonly logger = new Logger(VoiceAssistantController.name);
 

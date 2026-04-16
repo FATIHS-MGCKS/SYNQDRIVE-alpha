@@ -9,6 +9,10 @@ import { buildTirePressureHistoryQuery } from './queries/tire-pressure-history.q
 import { buildHighFrequencyQuery } from './queries/high-frequency.query';
 import { buildBatteryCrankQuery } from './queries/battery-crank.query';
 import { buildDrivingEventsQuery } from './queries/driving-events.query';
+import {
+  buildTripSegmentsQuery,
+  type DimoDetectionMechanism,
+} from './queries/trip-segments.query';
 
 // ── V3 LTE_R1: native DIMO driving event signal sample ──
 export interface DimoNativeDrivingEventSample {
@@ -36,7 +40,26 @@ export interface TripCoreDataPoint {
   batteryEnergy: number | null;
 }
 
+export interface DimoTripSegment {
+  segmentId: string;
+  mechanism: DimoDetectionMechanism;
+  startTime: string;
+  endTime: string | null;
+  isOngoing: boolean;
+  startedBeforeRange: boolean;
+  durationSeconds: number;
+  startLatitude: number | null;
+  startLongitude: number | null;
+  endLatitude: number | null;
+  endLongitude: number | null;
+  odometerStartKm: number | null;
+  odometerEndKm: number | null;
+  distanceKm: number | null;
+  maxSpeedKmh: number | null;
+}
+
 // ── Detected trip segment ──
+/** @internal No longer used — kept only as type reference for migration compatibility. Remove in next major cleanup. */
 export interface DetectedTrip {
   startTime: string;
   endTime: string | null;
@@ -101,64 +124,46 @@ export interface TirePressureReading {
   rearRight: number | null;
 }
 
-const GAP_TIMEOUT_MS = 20 * 60 * 1000;
-const MIN_TRIP_DURATION_MS = 60 * 1000;
-
 @Injectable()
 export class DimoSegmentsService {
   private readonly logger = new Logger(DimoSegmentsService.name);
+  private readonly segmentMechanismFallbackOrder: DimoDetectionMechanism[] = [
+    'changePointDetection',
+    'frequencyAnalysis',
+  ];
 
   constructor(
     private readonly auth: DimoAuthService,
     private readonly telemetry: DimoTelemetryService,
   ) {}
 
-  // ────────────────────────────────────────────────────────
-  // ⚠️  LEGACY V1 TRIP DETECTION — DEPRECATED
-  //
-  // The methods below (fetchAndDetectTrips, detectTrips, finalizeTrip) are the
-  // original V1 signal-based trip detection path. They use a simple
-  // `isIgnitionOn && speed > 0` heuristic that is NOT profile-aware and produces
-  // incorrect results for EVs and HYBRIDs.
-  //
-  // These methods are NO LONGER called by the live V2 trip orchestration engine.
-  // The live engine is driven by:
-  //   DimoSnapshotProcessor → TripDetectionOrchestrationService
-  //
-  // These methods are retained ONLY for:
-  //   • The manual admin-only POST /vehicles/:id/trips/sync endpoint (for
-  //     historical back-fill or debugging by platform admins).
-  //   • Backward compatibility with the TripsService.syncTripsFromSegments path.
-  //
-  // Do NOT call these methods from any worker, scheduler, or live orchestration path.
-  // ────────────────────────────────────────────────────────
+  // V1 trip detection (fetchAndDetectTrips, detectTrips, finalizeTrip) REMOVED.
+  // Replaced by: TripReconciliationService (repair layer) + V2 FSM (live engine).
+  // See: trips/reconciliation/trip-reconciliation.service.ts
 
-  /**
-   * @deprecated V1 legacy path. Use the V2 live orchestration engine instead.
-   *   (TripDetectionOrchestrationService via DimoSnapshotProcessor)
-   */
-  async fetchAndDetectTrips(
+  async fetchTripSegments(
     tokenId: number,
     from: Date,
     to: Date,
-  ): Promise<DetectedTrip[]> {
+    mechanisms: DimoDetectionMechanism[] = this.segmentMechanismFallbackOrder,
+  ): Promise<DimoTripSegment[]> {
     const jwt = await this.auth.getVehicleJwt(tokenId);
-    if (!jwt) {
-      this.logger.warn(`No vehicle JWT for tokenId=${tokenId}`);
-      return [];
+    if (!jwt) return [];
+
+    for (const mechanism of mechanisms) {
+      const segments = await this.fetchTripSegmentsWithJwt(
+        jwt,
+        tokenId,
+        from,
+        to,
+        mechanism,
+      );
+      if (segments.length > 0) {
+        return segments;
+      }
     }
 
-    const corePoints = await this.fetchTripCoreData(jwt, tokenId, from, to);
-    if (corePoints.length === 0) {
-      this.logger.debug(`No trip core data for tokenId=${tokenId} in range`);
-      return [];
-    }
-
-    const trips = this.detectTrips(corePoints);
-    this.logger.debug(
-      `Detected ${trips.length} trips from ${corePoints.length} core points for tokenId=${tokenId}`,
-    );
-    return trips;
+    return [];
   }
 
   async fetchRawTripCoreData(
@@ -215,135 +220,115 @@ export class DimoSegmentsService {
     }
   }
 
-  /**
-   * @deprecated V1 legacy detection. isIgnitionOn-based, not profile-aware.
-   *   Not used by the live V2 engine. Retained for admin manual-sync only.
-   *
-   * Trip boundary detection from core signal time series.
-   * START: isIgnitionOn=true AND speed>0
-   * END:   isIgnitionOn=false AND speed=0
-   * GAP:   20 minutes with no qualifying data → auto-finalize
-   */
-  private detectTrips(points: TripCoreDataPoint[]): DetectedTrip[] {
-    const trips: DetectedTrip[] = [];
-    let activePoints: TripCoreDataPoint[] = [];
-    let lastActiveTime = 0;
-
-    for (const point of points) {
-      const pointMs = new Date(point.timestamp).getTime();
-      const isDriving = point.isIgnitionOn && point.speed != null && point.speed > 0;
-
-      if (isDriving) {
-        if (
-          activePoints.length > 0 &&
-          lastActiveTime > 0 &&
-          pointMs - lastActiveTime > GAP_TIMEOUT_MS
-        ) {
-          this.finalizeTrip(activePoints, trips, false);
-          activePoints = [];
-        }
-        activePoints.push(point);
-        lastActiveTime = pointMs;
-      } else {
-        const isEnded =
-          !point.isIgnitionOn &&
-          (point.speed == null || point.speed === 0);
-
-        if (activePoints.length > 0 && isEnded) {
-          activePoints.push(point);
-          if (lastActiveTime > 0 && pointMs - lastActiveTime > GAP_TIMEOUT_MS) {
-            this.finalizeTrip(activePoints, trips, false);
-            activePoints = [];
-            lastActiveTime = 0;
-          }
-        } else if (activePoints.length > 0) {
-          if (lastActiveTime > 0 && pointMs - lastActiveTime > GAP_TIMEOUT_MS) {
-            this.finalizeTrip(activePoints, trips, false);
-            activePoints = [];
-            lastActiveTime = 0;
-          }
-        }
-      }
+  private async fetchTripSegmentsWithJwt(
+    jwt: string,
+    tokenId: number,
+    from: Date,
+    to: Date,
+    mechanism: DimoDetectionMechanism,
+  ): Promise<DimoTripSegment[]> {
+    const query = buildTripSegmentsQuery(tokenId, from, to, mechanism);
+    try {
+      const result = await this.telemetry.queryGraphQL(jwt, query);
+      const segments: any[] = result?.data?.segments ?? [];
+      return segments
+        .map((segment) => this.parseTripSegment(tokenId, mechanism, segment))
+        .filter((segment): segment is DimoTripSegment => segment != null)
+        .sort(
+          (a, b) =>
+            new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+        );
+    } catch (err: any) {
+      this.logger.warn(
+        `Trip segment fetch failed for tokenId=${tokenId} mechanism=${mechanism}: ${err.message}`,
+      );
+      return [];
     }
-
-    if (activePoints.length > 0) {
-      const lastPoint = activePoints[activePoints.length - 1];
-      const lastIsDriving =
-        lastPoint.isIgnitionOn && lastPoint.speed != null && lastPoint.speed > 0;
-      this.finalizeTrip(activePoints, trips, lastIsDriving);
-    }
-
-    return trips;
   }
 
-  /** @deprecated V1 legacy path. See detectTrips() above. */
-  private finalizeTrip(
-    points: TripCoreDataPoint[],
-    trips: DetectedTrip[],
-    isOngoing: boolean,
-  ): void {
-    if (points.length < 2) return;
+  private parseTripSegment(
+    tokenId: number,
+    mechanism: DimoDetectionMechanism,
+    segment: any,
+  ): DimoTripSegment | null {
+    const startTimestamp =
+      typeof segment?.start?.timestamp === 'string'
+        ? segment.start.timestamp
+        : null;
+    if (!startTimestamp) return null;
 
-    const startMs = new Date(points[0].timestamp).getTime();
-    const endMs = new Date(points[points.length - 1].timestamp).getTime();
-    if (endMs - startMs < MIN_TRIP_DURATION_MS) return;
+    const endTimestamp =
+      typeof segment?.end?.timestamp === 'string' ? segment.end.timestamp : null;
+    const signalValues = this.groupNumericSignalValues(segment?.signals);
+    const odometerValues =
+      signalValues.get('powertrainTransmissionTravelledDistance') ?? [];
+    const speedValues = signalValues.get('speed') ?? [];
 
-    const odometerValues = points
-      .filter((p) => p.travelledDistance != null)
-      .map((p) => p.travelledDistance!);
-    const startOdometer =
-      odometerValues.length > 0 ? odometerValues[0] : null;
-    const endOdometer =
-      odometerValues.length > 0
-        ? odometerValues[odometerValues.length - 1]
+    const odometerStartKm = odometerValues.length > 0 ? Math.min(...odometerValues) : null;
+    const odometerEndKm = odometerValues.length > 0 ? Math.max(...odometerValues) : null;
+    const distanceKm =
+      odometerStartKm != null &&
+      odometerEndKm != null &&
+      odometerEndKm >= odometerStartKm
+        ? odometerEndKm - odometerStartKm
         : null;
 
-    if (
-      startOdometer != null &&
-      endOdometer != null &&
-      endOdometer - startOdometer < 0.1
-    ) {
-      return;
+    return {
+      segmentId: this.buildSegmentId(tokenId, startTimestamp),
+      mechanism,
+      startTime: startTimestamp,
+      endTime: endTimestamp,
+      isOngoing: segment?.isOngoing === true,
+      startedBeforeRange: segment?.startedBeforeRange === true,
+      durationSeconds:
+        typeof segment?.duration === 'number' ? segment.duration : 0,
+      startLatitude:
+        typeof segment?.start?.value?.latitude === 'number'
+          ? segment.start.value.latitude
+          : null,
+      startLongitude:
+        typeof segment?.start?.value?.longitude === 'number'
+          ? segment.start.value.longitude
+          : null,
+      endLatitude:
+        typeof segment?.end?.value?.latitude === 'number'
+          ? segment.end.value.latitude
+          : null,
+      endLongitude:
+        typeof segment?.end?.value?.longitude === 'number'
+          ? segment.end.value.longitude
+          : null,
+      odometerStartKm,
+      odometerEndKm,
+      distanceKm,
+      maxSpeedKmh: speedValues.length > 0 ? Math.max(...speedValues) : null,
+    };
+  }
+
+  private groupNumericSignalValues(
+    signals: unknown,
+  ): Map<string, number[]> {
+    const grouped = new Map<string, number[]>();
+    const rows = Array.isArray(signals) ? signals : [];
+
+    for (const row of rows) {
+      const name =
+        typeof (row as { name?: unknown })?.name === 'string'
+          ? ((row as { name: string }).name as string)
+          : null;
+      const value =
+        typeof (row as { value?: unknown })?.value === 'number'
+          ? ((row as { value: number }).value as number)
+          : null;
+
+      if (!name || value == null) continue;
+
+      const list = grouped.get(name) ?? [];
+      list.push(value);
+      grouped.set(name, list);
     }
 
-    const fuelValues = points.filter((p) => p.fuelAbsoluteLevel != null);
-    const energyValues = points.filter((p) => p.batteryEnergy != null);
-    const speeds = points
-      .filter((p) => p.speed != null && p.speed > 0)
-      .map((p) => p.speed!);
-
-    trips.push({
-      startTime: points[0].timestamp,
-      endTime: isOngoing ? null : points[points.length - 1].timestamp,
-      isOngoing,
-      startOdometer,
-      endOdometer,
-      startFuelLevel:
-        fuelValues.length > 0 ? fuelValues[0].fuelAbsoluteLevel : null,
-      endFuelLevel:
-        fuelValues.length > 0
-          ? fuelValues[fuelValues.length - 1].fuelAbsoluteLevel
-          : null,
-      startBatteryEnergy:
-        energyValues.length > 0 ? energyValues[0].batteryEnergy : null,
-      endBatteryEnergy:
-        energyValues.length > 0
-          ? energyValues[energyValues.length - 1].batteryEnergy
-          : null,
-      startLatitude: null,
-      startLongitude: null,
-      endLatitude: null,
-      endLongitude: null,
-      avgSpeed:
-        speeds.length > 0
-          ? Math.round(
-              (speeds.reduce((a, b) => a + b, 0) / speeds.length) * 10,
-            ) / 10
-          : null,
-      maxSpeed: speeds.length > 0 ? Math.max(...speeds) : null,
-      durationSeconds: (endMs - startMs) / 1000,
-      corePoints: points,
-    });
+    return grouped;
   }
 
   // ────────────────────────────────────────────────────────

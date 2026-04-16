@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, UseGuards, Query, Req } from '@nestjs/common';
 import { PlatformAdminService } from './platform-admin.service';
 import { VehicleLogbookService } from './vehicle-logbook.service';
 import { DimoAuthService } from '../dimo/dimo-auth.service';
@@ -6,6 +6,8 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { TripEnrichmentOrchestratorService } from '../vehicle-intelligence/trips/trip-enrichment-orchestrator.service';
+import { AuditService } from '@modules/activity-log/audit.service';
+import { ActivityAction, ActivityEntity } from '@prisma/client';
 
 @Controller('admin')
 @UseGuards(RolesGuard)
@@ -17,6 +19,7 @@ export class PlatformAdminController {
     private readonly dimoAuthService: DimoAuthService,
     private readonly prisma: PrismaService,
     private readonly enrichmentOrchestrator: TripEnrichmentOrchestratorService,
+    private readonly audit: AuditService,
   ) {}
 
   @Get('changelogs')
@@ -25,12 +28,26 @@ export class PlatformAdminController {
   }
 
   @Post('changelogs')
-  async createChangelog(@Body() body: any) {
-    return this.platformAdminService.createChangelog(body);
+  async createChangelog(@Body() body: any, @Req() req: any) {
+    const result = await this.platformAdminService.createChangelog(body);
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.CREATE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: `Admin created changelog entry: ${body?.title ?? 'untitled'}`,
+    });
+    return result;
   }
 
   @Post('prune')
-  async pruneMasterData() {
+  async pruneMasterData(@Req() req: any) {
+    void this.audit.critical({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.PRUNE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: 'Platform admin triggered pruneMasterData',
+      changeSummary: 'Destructive: master data pruned',
+    });
     return this.platformAdminService.pruneMasterData();
   }
 
@@ -108,6 +125,7 @@ export class PlatformAdminController {
   @Post('vehicles/hardware-backfill')
   async backfillHardwareType(
     @Body() body: { vehicleIds: string[]; hardwareType: 'LTE_R1' | 'SMART5' | 'UNKNOWN' },
+    @Req() req: any,
   ) {
     if (!body.vehicleIds || body.vehicleIds.length === 0) {
       return { updated: 0, message: 'No vehicle IDs provided' };
@@ -115,6 +133,14 @@ export class PlatformAdminController {
     const result = await this.prisma.vehicle.updateMany({
       where: { id: { in: body.vehicleIds } },
       data: { hardwareType: body.hardwareType },
+    });
+    void this.audit.critical({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.BACKFILL,
+      entity: ActivityEntity.VEHICLE,
+      description: `Admin hardware backfill: ${result.count} vehicles → ${body.hardwareType}`,
+      changeSummary: `hardwareType set to ${body.hardwareType} on ${result.count} vehicles`,
+      metaJson: { vehicleIds: body.vehicleIds, hardwareType: body.hardwareType, updated: result.count },
     });
     return {
       updated: result.count,
@@ -144,13 +170,30 @@ export class PlatformAdminController {
   async enableLogbook(
     @Param('vehicleId') vehicleId: string,
     @Body() body: { durationHours?: number; enabledBy?: string; notes?: string },
+    @Req() req: any,
   ) {
-    return this.logbookService.enableLogbook(vehicleId, body.durationHours ?? 24, body.enabledBy, body.notes);
+    const result = await this.logbookService.enableLogbook(vehicleId, body.durationHours ?? 24, body.enabledBy, body.notes);
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.ADMIN_OVERRIDE,
+      entity: ActivityEntity.VEHICLE,
+      entityId: vehicleId,
+      description: `Admin enabled logbook for vehicle ${vehicleId} (${body.durationHours ?? 24}h)`,
+    });
+    return result;
   }
 
   @Post('vehicle-logbook/:vehicleId/disable')
-  async disableLogbook(@Param('vehicleId') vehicleId: string) {
-    return this.logbookService.disableLogbook(vehicleId);
+  async disableLogbook(@Param('vehicleId') vehicleId: string, @Req() req: any) {
+    const result = await this.logbookService.disableLogbook(vehicleId);
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.ADMIN_OVERRIDE,
+      entity: ActivityEntity.VEHICLE,
+      entityId: vehicleId,
+      description: `Admin disabled logbook for vehicle ${vehicleId}`,
+    });
+    return result;
   }
 
   @Get('vehicle-logbook/:vehicleId/detail')
@@ -165,11 +208,21 @@ export class PlatformAdminController {
   async backfillTripEnrichment(
     @Query('vehicleId') vehicleId?: string,
     @Query('limit') limit?: string,
+    @Req() req?: any,
   ) {
     const result = await this.enrichmentOrchestrator.backfillUnenrichedTrips(
       vehicleId,
       limit ? parseInt(limit, 10) : undefined,
     );
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.BACKFILL,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      entityId: vehicleId,
+      description: `Admin trip enrichment backfill: ${result.enqueued} trips enqueued`,
+      changeSummary: `${result.enqueued} trips enqueued for enrichment`,
+      metaJson: { vehicleId, limit, enqueued: result.enqueued },
+    });
     return {
       ...result,
       message: `Backfill complete: ${result.enqueued} trips enqueued for enrichment`,

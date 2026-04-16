@@ -8,7 +8,8 @@ import {
   api,
   type TireHealthSummaryResponse,
   type TireHealthDetailResponse,
-  type BrakeStatus,
+  type BrakeHealthSummary,
+  type BrakeHealthDetail,
   type BatteryHealthSummary,
   type ServiceInfoStatus,
   type HealthSummaryResponse,
@@ -39,6 +40,7 @@ function getProgressTrack(d: boolean) { return d ? 'bg-neutral-700/50' : 'bg-gra
 function getMetricColor(v: number, d: boolean) { return v >= 70 ? (d ? 'text-emerald-400' : 'text-emerald-500') : v >= 40 ? (d ? 'text-amber-400' : 'text-amber-500') : (d ? 'text-red-400' : 'text-red-500'); }
 function fmtDate(s: string | null) { return s ? new Date(s).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'; }
 function fmtRemTime(mo: number | null) { if (mo == null) return '—'; if (mo < 0) return 'Overdue'; const m = Math.round(mo); return m >= 12 ? `${Math.floor(m / 12)}y ${m % 12}mo` : `${m} months`; }
+function formatEnumLabel(value: unknown, fallback = '—') { return typeof value === 'string' && value.length > 0 ? value.replace(/_/g, ' ') : fallback; }
 
 export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBack }: FleetConditionDetailViewProps) {
   const isDark = isDarkMode;
@@ -48,7 +50,8 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
   const [loading, setLoading] = useState(true);
   const [tiresSummary, setTiresSummary] = useState<TireHealthSummaryResponse | null>(null);
   const [tiresDetail, setTiresDetail] = useState<TireHealthDetailResponse | null>(null);
-  const [brakes, setBrakes] = useState<BrakeStatus | null>(null);
+  const [brakeSummary, setBrakeSummary] = useState<BrakeHealthSummary | null>(null);
+  const [brakeDetail, setBrakeDetail] = useState<BrakeHealthDetail | null>(null);
   const [battery, setBattery] = useState<BatteryHealthSummary | null>(null);
   const [service, setService] = useState<ServiceInfoStatus | null>(null);
   const [dtcActive, setDtcActive] = useState<any[]>([]);
@@ -68,7 +71,10 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
         api.vehicleIntelligence.tireHealthDetail(vehicleId).then(setTiresDetail).catch(() => null),
       );
     } else if (category === 'brakes') {
-      promises.push(api.vehicleIntelligence.brakeStatus(vehicleId).then(setBrakes).catch(() => null));
+      promises.push(
+        api.vehicleIntelligence.brakeHealthSummary(vehicleId).then(setBrakeSummary).catch(() => null),
+        api.vehicleIntelligence.brakeHealthDetail(vehicleId).then(setBrakeDetail).catch(() => null),
+      );
     } else if (category === 'battery') {
       promises.push(api.vehicleIntelligence.batteryHealthSummary(vehicleId).then(setBattery).catch(() => null));
     } else if (category === 'dtc') {
@@ -81,7 +87,8 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
     } else if (category === 'alerts') {
       promises.push(
         api.vehicleIntelligence.tireHealthSummary(vehicleId).then(setTiresSummary).catch(() => null),
-        api.vehicleIntelligence.brakeStatus(vehicleId).then(setBrakes).catch(() => null),
+        api.vehicleIntelligence.brakeHealthSummary(vehicleId).then(setBrakeSummary).catch(() => null),
+        api.vehicleIntelligence.brakeHealthDetail(vehicleId).then(setBrakeDetail).catch(() => null),
         api.vehicleIntelligence.batteryHealthSummary(vehicleId).then(setBattery).catch(() => null),
         api.vehicleIntelligence.dtcActive(vehicleId).then(d => setDtcActive(Array.isArray(d) ? d : [])).catch(() => []),
       );
@@ -129,14 +136,14 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
         <>
           {/* ─── Category-specific content ─── */}
           {category === 'tires' && <TiresDetail isDark={isDark} summary={tiresSummary} detail={tiresDetail} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
-          {category === 'brakes' && <BrakesDetail isDark={isDark} brakes={brakes} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
+          {category === 'brakes' && <BrakesDetail isDark={isDark} summary={brakeSummary} detail={brakeDetail} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
           {category === 'battery' && <BatteryDetail isDark={isDark} battery={battery} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
           {category === 'dtc' && <DtcDetail isDark={isDark} active={dtcActive} all={dtcAll} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
           {category === 'service' && <ServiceDetail isDark={isDark} service={service} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
           {category === 'tuev' && <TuevDetail isDark={isDark} service={service} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
           {category === 'bokraft' && <BokraftDetail isDark={isDark} service={service} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
           {category === 'driver-feedback' && <DriverFeedbackDetail isDark={isDark} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
-          {category === 'alerts' && <AlertsDetail isDark={isDark} tires={tiresSummary} brakes={brakes} battery={battery} dtcActive={dtcActive} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
+          {category === 'alerts' && <AlertsDetail isDark={isDark} tires={tiresSummary} brakeSummary={brakeSummary} brakeDetail={brakeDetail} battery={battery} dtcActive={dtcActive} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
 
           {/* ─── AI Analysis Box ─── */}
           <div className={`${cardClass} p-5`}>
@@ -320,6 +327,50 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
         } />
       </div>
 
+      {s?.actionState && (
+        <div className={`${p.cardClass} p-4`}>
+          <div className="flex items-center justify-between gap-2">
+            <p className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>Operational Action</p>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+              s.actionState === 'REPLACE'
+                ? isDark ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700'
+                : s.actionState === 'PLAN_SERVICE'
+                ? isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700'
+                : s.actionState === 'CHECK_SOON'
+                ? isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-700'
+                : isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700'
+            }`}>
+              {formatEnumLabel(s.actionState)}
+            </span>
+          </div>
+          {(s.actionReasons ?? []).length > 0 && (
+            <p className={`text-xs mt-2 ${p.textSecondary}`}>{s.actionReasons?.[0]}</p>
+          )}
+          <div className="flex flex-wrap gap-2 mt-2">
+            {s.measurementState && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'bg-neutral-800 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                {s.measurementState}
+              </span>
+            )}
+            {s.pressureContext?.dimoFreshness && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'bg-neutral-800 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                DIMO pressure: {s.pressureContext.dimoFreshness}
+              </span>
+            )}
+            {s.pressureContext?.hmFreshness && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'bg-neutral-800 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                HM pressure: {s.pressureContext.hmFreshness}
+              </span>
+            )}
+          </div>
+          {(s.dataQualityWarnings ?? []).length > 0 && (
+            <p className={`text-[10px] mt-2 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+              {s.dataQualityWarnings?.[0]}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Per-wheel */}
       {detail?.wheels && detail.wheels.length > 0 && (
         <div className={`${p.cardClass} p-5`}>
@@ -416,51 +467,160 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
 }
 
 /* ─── BRAKES ─── */
-function BrakesDetail({ isDark, brakes: b, ...p }: DetailProps & { brakes: BrakeStatus | null }) {
-  const pad = b?.padWearPercent ?? 0;
-  const condColor = b?.condition === 'good' ? (isDark ? 'text-emerald-400' : 'text-emerald-500') : b?.condition === 'watch' ? (isDark ? 'text-amber-400' : 'text-amber-500') : (isDark ? 'text-red-400' : 'text-red-500');
+function BrakesDetail({
+  isDark,
+  summary,
+  detail,
+  ...p
+}: DetailProps & { summary: BrakeHealthSummary | null; detail: BrakeHealthDetail | null }) {
+  const pct =
+    summary?.pads?.healthPercent != null || summary?.discs?.healthPercent != null
+      ? Math.min(summary?.pads?.healthPercent ?? 101, summary?.discs?.healthPercent ?? 101)
+      : null;
+  const stateLabel =
+    summary?.stateClass === 'MEASURED'
+      ? 'Measured'
+      : summary?.stateClass === 'ESTIMATED'
+        ? 'Estimated'
+        : summary?.stateClass === 'WARNING_ONLY'
+          ? 'Warning only'
+          : 'No baseline';
+  const statusLabel =
+    summary?.status === 'healthy'
+      ? 'Healthy'
+      : summary?.status === 'attention'
+        ? 'Attention'
+        : summary?.status === 'critical'
+          ? 'Critical'
+          : 'Pending baseline';
+  const statusColor =
+    summary?.status === 'healthy'
+      ? isDark
+        ? 'text-emerald-400'
+        : 'text-emerald-500'
+      : summary?.status === 'attention'
+        ? isDark
+          ? 'text-amber-400'
+          : 'text-amber-500'
+        : summary?.status === 'critical'
+          ? isDark
+            ? 'text-red-400'
+            : 'text-red-500'
+          : p.textMuted;
+
+  const watchpoints = [
+    ...(summary?.baselineWarnings ?? []),
+    ...(summary?.provenanceWarnings ?? []),
+    ...(detail?.alerts ?? []).map((a) => a.message),
+  ];
+
   return (
     <>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatBox {...p} isDark={isDark} label="Pad Life" value={b?.padWearPercent != null ? `${Math.round(pad)}%` : '—'} colorClass={b?.padWearPercent != null ? getMetricColor(pad, isDark) : p.textMuted} sub="brake pad remaining" />
-        <StatBox {...p} isDark={isDark} label="KM Since Service" value={b?.kmSinceService != null ? `${b.kmSinceService.toLocaleString('de-DE')}` : '—'} sub="kilometers" />
-        <StatBox {...p} isDark={isDark} label="Condition" value={b?.condition === 'good' ? 'Healthy' : b?.condition === 'watch' ? 'Monitor' : b?.condition === 'attention' ? 'Attention' : '—'} colorClass={condColor} sub={`Confidence: ${b?.dataConfidence ?? '—'}`} />
-        <StatBox {...p} isDark={isDark} label="Braking Behavior" value={b?.drivingImpact.brakingBehavior !== 'unknown' ? b?.drivingImpact.brakingBehavior ?? '—' : '—'} sub={b?.drivingImpact.harshBrakesPer100km != null ? `${b.drivingImpact.harshBrakesPer100km}/100km harsh` : ''} colorClass={
-          b?.drivingImpact.brakingBehavior === 'aggressive' ? (isDark ? 'text-red-400' : 'text-red-500')
-          : b?.drivingImpact.brakingBehavior === 'elevated' ? (isDark ? 'text-amber-400' : 'text-amber-500')
-          : undefined
-        } />
+        <StatBox
+          {...p}
+          isDark={isDark}
+          label="Brake Health"
+          value={pct != null ? `${Math.round(pct)}%` : '—'}
+          colorClass={pct != null ? getMetricColor(pct, isDark) : p.textMuted}
+          sub={summary?.limitingComponent ? `Limit: ${summary.limitingComponent}` : 'limiting component'}
+        />
+        <StatBox
+          {...p}
+          isDark={isDark}
+          label="Remaining KM"
+          value={
+            summary?.remainingKm != null
+              ? `~${Math.round(summary.remainingKm / 1000)}k`
+              : '—'
+          }
+          sub="projected"
+        />
+        <StatBox
+          {...p}
+          isDark={isDark}
+          label="State"
+          value={stateLabel}
+          colorClass={
+            summary?.stateClass === 'NO_BASELINE'
+              ? isDark
+                ? 'text-gray-400'
+                : 'text-gray-500'
+              : summary?.stateClass === 'WARNING_ONLY'
+                ? isDark
+                  ? 'text-amber-400'
+                  : 'text-amber-600'
+                : undefined
+          }
+          sub={statusLabel}
+        />
+        <StatBox
+          {...p}
+          isDark={isDark}
+          label="Confidence"
+          value={summary?.confidence?.label ?? '—'}
+          colorClass={statusColor}
+          sub={summary?.confidence?.score != null ? `Score: ${summary.confidence.score}` : ''}
+        />
       </div>
 
-      {/* Driving Impact */}
-      {b?.drivingImpact && (
+      {summary?.modelCoverage && (
         <div className={`${p.cardClass} p-5`}>
-          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>Driving Impact on Brake Wear</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div><p className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>Harsh Brakes (90d)</p><p className={`text-lg font-bold mt-1 ${p.textPrimary}`}>{b.drivingImpact.totalHarshBrakes90d}</p></div>
-            <div><p className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>Per 100 km</p><p className={`text-lg font-bold mt-1 ${b.drivingImpact.harshBrakesPer100km != null && b.drivingImpact.harshBrakesPer100km > 5 ? (isDark ? 'text-amber-400' : 'text-amber-500') : p.textPrimary}`}>{b.drivingImpact.harshBrakesPer100km ?? '—'}</p></div>
-            <div><p className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>Total KM (90d)</p><p className={`text-lg font-bold mt-1 ${p.textPrimary}`}>{b.drivingImpact.totalKm90d.toLocaleString('de-DE')}</p></div>
+          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>Model Coverage</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <p className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>Coverage</p>
+              <p className={`text-lg font-bold mt-1 ${p.textPrimary}`}>
+                {summary.modelCoverage.coverageRatio != null
+                  ? `${Math.round(summary.modelCoverage.coverageRatio * 100)}%`
+                  : '—'}
+              </p>
+            </div>
+            <div>
+              <p className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>Modeled KM</p>
+              <p className={`text-lg font-bold mt-1 ${p.textPrimary}`}>
+                {summary.modelCoverage.modeledDistanceKm != null
+                  ? Math.round(summary.modelCoverage.modeledDistanceKm).toLocaleString('de-DE')
+                  : '—'}
+              </p>
+            </div>
+            <div>
+              <p className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>Since Anchor</p>
+              <p className={`text-lg font-bold mt-1 ${p.textPrimary}`}>
+                {summary.modelCoverage.distanceSinceAnchorKm != null
+                  ? Math.round(summary.modelCoverage.distanceSinceAnchorKm).toLocaleString('de-DE')
+                  : '—'}
+              </p>
+            </div>
+            <div>
+              <p className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>Trips</p>
+              <p className={`text-lg font-bold mt-1 ${p.textPrimary}`}>
+                {summary.modelCoverage.modeledTripCount}
+              </p>
+            </div>
           </div>
+          <p className={`text-[10px] mt-3 ${p.textMuted}`}>
+            Source: {summary.modelCoverage.source}
+          </p>
         </div>
       )}
 
-      {/* Watchpoints + Recs */}
-      {((b?.watchpoints?.length ?? 0) > 0 || (b?.recommendations?.length ?? 0) > 0) && (
+      {watchpoints.length > 0 && (
         <div className={`${p.cardClass} p-5 space-y-4`}>
-          {(b?.watchpoints?.length ?? 0) > 0 && <><h3 className={`text-sm font-semibold mb-2 ${p.textPrimary}`}>Watchpoints</h3><WatchpointList items={b!.watchpoints} isDark={isDark} textSecondary={p.textSecondary} /></>}
-          {(b?.recommendations?.length ?? 0) > 0 && <><h3 className={`text-sm font-semibold mb-2 ${p.textPrimary}`}>Recommendations</h3><RecommendationList items={b!.recommendations} isDark={isDark} textSecondary={p.textSecondary} /></>}
+          <h3 className={`text-sm font-semibold mb-2 ${p.textPrimary}`}>Watchpoints</h3>
+          <WatchpointList items={watchpoints} isDark={isDark} textSecondary={p.textSecondary} />
         </div>
       )}
 
-      {/* History */}
-      {b?.history && b.history.length > 0 && (
+      {(detail?.history?.length ?? 0) > 0 && (
         <div className={`${p.cardClass} p-5`}>
           <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>Service History</h3>
           <div className="space-y-2">
-            {b.history.slice(0, 10).map(h => (
+            {detail!.history.slice(0, 10).map((h) => (
               <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'bg-neutral-800/40' : 'bg-gray-50'}`}>
                 <Clock className={`w-3 h-3 ${p.textMuted}`} />
                 <span className={`text-xs font-medium ${p.textPrimary}`}>{fmtDate(h.date)}</span>
+                {h.serviceKind && <span className={`text-[10px] ${p.textMuted}`}>{h.serviceKind}</span>}
                 {h.odometerKm != null && <span className={`text-[10px] ${p.textMuted}`}>{h.odometerKm.toLocaleString('de-DE')} km</span>}
                 {h.workshopName && <span className={`text-[10px] ${p.textMuted}`}>{h.workshopName}</span>}
                 {h.notes && <span className={`text-[10px] ${p.textMuted} truncate flex-1`}>{h.notes}</span>}
@@ -475,13 +635,17 @@ function BrakesDetail({ isDark, brakes: b, ...p }: DetailProps & { brakes: Brake
 
 /* ─── BATTERY ─── */
 function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: BatteryHealthSummary | null }) {
-  const pubState = bat?.currentState?.publicationState;
+  const pubState = bat?.lv?.publicationState ?? bat?.currentState?.publicationState;
   const isCalib = pubState === 'INITIAL_CALIBRATION';
   const isStab = pubState === 'STABILIZING';
-  const soh = isCalib ? null : (bat?.currentState?.publishedSohPct ?? bat?.currentState?.sohPercent ?? null);
-  const volt = bat?.currentState?.voltageV;
-  const cond = bat?.condition;
-  const matConf = bat?.currentState?.maturityConfidence;
+  const soh = isCalib
+    ? null
+    : (bat?.lv?.healthPercent ?? bat?.currentState?.publishedSohPct ?? bat?.currentState?.sohPercent ?? null);
+  const estSoh = bat?.lv?.estimatedHealthPercent ?? bat?.currentState?.estimatedSohPct ?? null;
+  const volt = bat?.lv?.telemetry?.voltageV ?? bat?.currentState?.voltageV;
+  const cond = bat?.lv?.condition ?? bat?.condition;
+  const matConf = bat?.lv?.confidence ?? bat?.currentState?.maturityConfidence;
+  const lvStatus = bat?.lv?.status ?? (isCalib ? 'calibrating' : 'ready');
 
   return (
     <>
@@ -497,11 +661,77 @@ function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: 
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatBox {...p} isDark={isDark} label={isStab ? 'Estimated SOH' : 'SOH'} value={isCalib ? 'Calibrating' : soh != null ? `${isStab ? '~' : ''}${Math.round(soh)}%` : '—'} colorClass={isCalib ? (isDark ? 'text-blue-400' : 'text-blue-500') : isStab ? (isDark ? 'text-amber-400' : 'text-amber-500') : soh != null ? getMetricColor(soh, isDark) : p.textMuted} sub={isCalib ? 'collecting data' : isStab ? 'stabilizing' : 'state of health'} />
+        <StatBox
+          {...p}
+          isDark={isDark}
+          label={isStab ? 'Estimated SOH' : 'SOH'}
+          value={
+            isCalib
+              ? 'Calibrating'
+              : soh != null
+                ? `${isStab ? '~' : ''}${Math.round(soh)}%`
+                : estSoh != null
+                  ? `~${Math.round(estSoh)}%`
+                  : lvStatus === 'no_recent_data'
+                    ? 'No data'
+                    : 'Unavailable'
+          }
+          colorClass={
+            isCalib
+              ? (isDark ? 'text-blue-400' : 'text-blue-500')
+              : isStab || estSoh != null
+                ? (isDark ? 'text-amber-400' : 'text-amber-500')
+                : soh != null
+                  ? getMetricColor(soh, isDark)
+                  : p.textMuted
+          }
+          sub={
+            isCalib
+              ? 'collecting data'
+              : lvStatus === 'no_recent_data'
+                ? 'no recent data'
+                : isStab || estSoh != null
+                  ? 'estimated'
+                  : 'state of health'
+          }
+        />
         <StatBox {...p} isDark={isDark} label="Voltage" value={volt != null ? `${volt.toFixed(1)}V` : '—'} sub="current reading" />
-        <StatBox {...p} isDark={isDark} label="Condition" value={isCalib ? 'Calibrating' : isStab ? 'Estimated' : cond === 'good' ? 'Healthy' : cond === 'watch' ? 'Monitor' : cond === 'attention' ? 'Attention' : '—'} colorClass={
-          isCalib ? (isDark ? 'text-blue-400' : 'text-blue-500') : isStab ? (isDark ? 'text-amber-400' : 'text-amber-500') : cond === 'good' ? (isDark ? 'text-emerald-400' : 'text-emerald-500') : cond === 'watch' ? (isDark ? 'text-amber-400' : 'text-amber-500') : cond === 'attention' ? (isDark ? 'text-red-400' : 'text-red-500') : p.textMuted
-        } sub="interpreted status" />
+        <StatBox
+          {...p}
+          isDark={isDark}
+          label="Condition"
+          value={
+            lvStatus === 'no_recent_data'
+              ? 'No recent data'
+              : lvStatus === 'estimate_unavailable'
+                ? 'Unavailable'
+                : isCalib
+                  ? 'Calibrating'
+                  : isStab
+                    ? 'Estimated'
+                    : cond === 'good'
+                      ? 'Healthy'
+                      : cond === 'watch'
+                        ? 'Monitor'
+                        : cond === 'attention'
+                          ? 'Attention'
+                          : '—'
+          }
+          colorClass={
+            isCalib
+              ? (isDark ? 'text-blue-400' : 'text-blue-500')
+              : isStab
+                ? (isDark ? 'text-amber-400' : 'text-amber-500')
+                : cond === 'good'
+                  ? (isDark ? 'text-emerald-400' : 'text-emerald-500')
+                  : cond === 'watch'
+                    ? (isDark ? 'text-amber-400' : 'text-amber-500')
+                    : cond === 'attention'
+                      ? (isDark ? 'text-red-400' : 'text-red-500')
+                      : p.textMuted
+          }
+          sub="interpreted status"
+        />
         <StatBox {...p} isDark={isDark} label="Confidence" value={matConf ?? '—'} sub="maturity level" />
       </div>
 
@@ -656,16 +886,29 @@ function DriverFeedbackDetail({ isDark, ...p }: DetailProps) {
 }
 
 /* ─── ALERTS ─── */
-function AlertsDetail({ isDark, tires, brakes, battery, dtcActive, ...p }: DetailProps & {
+function AlertsDetail({ isDark, tires, brakeSummary, brakeDetail, battery, dtcActive, ...p }: DetailProps & {
   tires: TireHealthSummaryResponse | null;
-  brakes: BrakeStatus | null;
+  brakeSummary: BrakeHealthSummary | null;
+  brakeDetail: BrakeHealthDetail | null;
   battery: BatteryHealthSummary | null;
   dtcActive: any[];
 }) {
   const allAlerts: { source: string; severity: 'critical' | 'warning' | 'info'; message: string }[] = [];
 
   (tires?.alerts ?? []).forEach(a => allAlerts.push({ source: 'Tires', severity: a.severity, message: a.message }));
-  (brakes?.watchpoints ?? []).forEach(w => allAlerts.push({ source: 'Brakes', severity: 'warning', message: w }));
+  (brakeSummary?.baselineWarnings ?? []).forEach(w =>
+    allAlerts.push({ source: 'Brakes', severity: 'warning', message: w }),
+  );
+  (brakeSummary?.provenanceWarnings ?? []).forEach(w =>
+    allAlerts.push({ source: 'Brakes', severity: 'info', message: w }),
+  );
+  (brakeDetail?.alerts ?? []).forEach((a) =>
+    allAlerts.push({
+      source: 'Brakes',
+      severity: a.severity === 'critical' ? 'critical' : a.severity === 'warning' ? 'warning' : 'info',
+      message: a.message,
+    }),
+  );
   (battery?.watchpoints ?? []).forEach(w => allAlerts.push({ source: 'Battery', severity: 'warning', message: w }));
   if (dtcActive.length > 0) allAlerts.push({ source: 'DTC', severity: dtcActive.length >= 3 ? 'critical' : 'warning', message: `${dtcActive.length} active error code(s)` });
 

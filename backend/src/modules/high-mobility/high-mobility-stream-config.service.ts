@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
+import * as path from 'path';
 import { PrismaService } from '@shared/database/prisma.service';
+import { HighMobilityAppConfigService } from './high-mobility-app-config.service';
+import type { HmMqttAppConfig } from '@config/high-mobility.config';
 import type {
   HmStreamingReadinessDto,
   HmMqttConsumerStatusDto,
@@ -11,11 +13,15 @@ import type {
   HmMqttConnectionState,
 } from './dto/high-mobility.dto';
 
+export type HmStreamApp = 'healthApp' | 'telemetryApp';
+
 /**
- * Phase 2: HighMobilityStreamConfigService
+ * HighMobilityStreamConfigService
  *
- * Manages MQTT V2 streaming configuration state and readiness diagnostics.
- * Never exposes certificate contents or secrets to the frontend.
+ * Manages MQTT V2 streaming configuration state and readiness diagnostics
+ * for both HM Health-APP and HM Telemetry-APP independently.
+ *
+ * SECURITY: never exposes certificate contents or raw secrets to callers.
  */
 @Injectable()
 export class HighMobilityStreamConfigService {
@@ -23,55 +29,47 @@ export class HighMobilityStreamConfigService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService,
+    private readonly hmConfig: HighMobilityAppConfigService,
   ) {}
 
-  private get mqttCfg() {
-    return (this.configService.get('highMobility') as any).mqtt as {
-      enabled: boolean;
-      host: string;
-      port: number;
-      appId: string;
-      topicPrefix: string;
-      caCertPath: string;
-      clientCertPath: string;
-      clientKeyPath: string;
-      consumerGroup: string;
-    };
+  private mqttCfg(app: HmStreamApp): HmMqttAppConfig {
+    return this.hmConfig[app].mqtt;
   }
 
-  private get hmEnv(): string {
-    return (this.configService.get('highMobility') as any).env ?? 'sandbox';
+  private hmEnv(app: HmStreamApp): string {
+    return this.hmConfig[app].env;
   }
 
-  /** Check if MQTT cert files exist (server-side only, never returned raw) */
-  isCertConfigured(): boolean {
-    const { caCertPath, clientCertPath, clientKeyPath } = this.mqttCfg;
+  isCertConfigured(app: HmStreamApp): boolean {
+    const { caCertPath, clientCertPath, clientKeyPath } = this.mqttCfg(app);
     if (!caCertPath || !clientCertPath || !clientKeyPath) return false;
     try {
-      return fs.existsSync(caCertPath) && fs.existsSync(clientCertPath) && fs.existsSync(clientKeyPath);
+      const ca = path.resolve(caCertPath);
+      const cert = path.resolve(clientCertPath);
+      const key = path.resolve(clientKeyPath);
+      return fs.existsSync(ca) && fs.existsSync(cert) && fs.existsSync(key);
     } catch {
       return false;
     }
   }
 
-  isMqttEnabled(): boolean {
-    return this.mqttCfg.enabled;
+  isMqttEnabled(app: HmStreamApp): boolean {
+    return this.mqttCfg(app).enabled;
   }
 
-  isMqttReadyToConnect(): boolean {
-    return this.isMqttEnabled() && !!this.mqttCfg.appId && this.isCertConfigured();
+  isMqttReadyToConnect(app: HmStreamApp): boolean {
+    const hmReady =
+      app === 'healthApp' ? this.hmConfig.isHealthAppMqttReady() : this.hmConfig.isTelemetryAppMqttReady();
+    return hmReady && this.isCertConfigured(app);
   }
 
-  /** Get readiness diagnostics for a specific HM vehicle's streaming setup */
-  async getStreamingReadiness(hmVehicleId: string): Promise<HmStreamingReadinessDto> {
+  async getStreamingReadiness(hmVehicleId: string, app: HmStreamApp = 'telemetryApp'): Promise<HmStreamingReadinessDto> {
     const hmRecord = await this.prisma.highMobilityVehicle.findUnique({ where: { id: hmVehicleId } });
-    if (!hmRecord) {
-      throw new Error(`HM vehicle ${hmVehicleId} not found`);
-    }
+    if (!hmRecord) throw new Error(`HM vehicle ${hmVehicleId} not found`);
 
-    const mqttEnabled = this.isMqttEnabled();
-    const mqttConfigured = this.isCertConfigured() && !!this.mqttCfg.appId;
+    const mqttEnabled = this.isMqttEnabled(app);
+    const mqttConfigured = this.isCertConfigured(app) && Boolean(this.mqttCfg(app).appId);
+    const appLabel = app === 'healthApp' ? 'HM Health-APP' : 'HM Telemetry-APP';
 
     const checks: { key: string; label: string; ok: boolean; note?: string }[] = [
       {
@@ -81,31 +79,18 @@ export class HighMobilityStreamConfigService {
         note: hmRecord.clearanceStatus !== 'APPROVED' ? `Current: ${hmRecord.clearanceStatus}` : undefined,
       },
       {
-        key: 'package_full_telemetry',
-        label: 'Full Telemetry Package',
-        ok: hmRecord.packageType === 'FULL_TELEMETRY',
-        note: hmRecord.packageType !== 'FULL_TELEMETRY' ? `Package is ${hmRecord.packageType}` : undefined,
-      },
-      {
         key: 'mqtt_enabled',
-        label: 'MQTT Streaming Enabled',
+        label: `${appLabel} MQTT Enabled`,
         ok: mqttEnabled,
-        note: !mqttEnabled ? 'Set HM_MQTT_ENABLED=true to enable' : undefined,
+        note: !mqttEnabled ? `Set ${app === 'healthApp' ? 'HM_HEALTH_APP' : 'HM_TELEMETRY_APP'}_MQTT_ENABLED=true` : undefined,
       },
       {
         key: 'mqtt_certs',
-        label: 'MQTT Certificates Configured',
+        label: `${appLabel} MQTT Certificates Configured`,
         ok: mqttConfigured,
-        note: !mqttConfigured ? 'Configure HM_MQTT_CA_CERT_PATH, CLIENT_CERT_PATH, CLIENT_KEY_PATH, and APP_ID' : undefined,
-      },
-      {
-        key: 'hm_only_or_dimo_plus',
-        label: 'Source Mode Valid',
-        ok: ['HM_ONLY', 'DIMO_PLUS_HM'].includes(hmRecord.sourceMode),
+        note: !mqttConfigured ? 'Configure MQTT_CA_CERT_PATH, CLIENT_CERT_PATH, CLIENT_KEY_PATH, MQTT_APP_ID, MQTT_CLIENT_ID' : undefined,
       },
     ];
-
-    const ready = checks.every(c => c.ok);
 
     return {
       hmVehicleId,
@@ -116,21 +101,23 @@ export class HighMobilityStreamConfigService {
       streamingState: (hmRecord as any).streamingState as HmStreamingState ?? 'NOT_CONFIGURED',
       mqttEnabled,
       mqttConfigured,
-      ready,
+      ready: checks.every(c => c.ok),
       checks,
     };
   }
 
-  /** Upsert consumer state in DB (used by MQTT consumer service) */
-  async upsertConsumerState(update: {
-    connectionState: HmMqttConnectionState;
-    lastConnectedAt?: Date;
-    lastMessageAt?: Date;
-    lastErrorAt?: Date;
-    lastErrorMessage?: string;
-  }): Promise<void> {
-    const { appId, consumerGroup } = this.mqttCfg;
-    const env = this.hmEnv;
+  async upsertConsumerState(
+    app: HmStreamApp,
+    update: {
+      connectionState: HmMqttConnectionState;
+      lastConnectedAt?: Date;
+      lastMessageAt?: Date;
+      lastErrorAt?: Date;
+      lastErrorMessage?: string;
+    },
+  ): Promise<void> {
+    const { appId, consumerGroup } = this.mqttCfg(app);
+    const env = this.hmEnv(app);
 
     try {
       await this.prisma.highMobilityStreamConsumerState.upsert({
@@ -154,18 +141,17 @@ export class HighMobilityStreamConfigService {
         },
       });
     } catch (err: any) {
-      this.logger.warn(`Failed to upsert consumer state: ${err?.message}`);
+      this.logger.warn(`[${app}] Failed to upsert consumer state: ${err?.message}`);
     }
   }
 
-  /** Get consumer connection status for admin display */
-  async getConsumerStatus(): Promise<HmMqttConsumerStatusDto> {
-    const { appId, consumerGroup } = this.mqttCfg;
-    const env = this.hmEnv;
+  async getConsumerStatus(app: HmStreamApp): Promise<HmMqttConsumerStatusDto> {
+    const { appId, consumerGroup } = this.mqttCfg(app);
+    const env = this.hmEnv(app);
 
-    const record = await this.prisma.highMobilityStreamConsumerState.findUnique({
-      where: { uq_hm_consumer_state: { environment: env, applicationId: appId, consumerGroup } },
-    }).catch(() => null);
+    const record = await this.prisma.highMobilityStreamConsumerState
+      .findUnique({ where: { uq_hm_consumer_state: { environment: env, applicationId: appId, consumerGroup } } })
+      .catch(() => null);
 
     return {
       environment: env,
@@ -176,30 +162,45 @@ export class HighMobilityStreamConfigService {
       lastMessageAt: record?.lastMessageAt?.toISOString() ?? null,
       lastErrorAt: record?.lastErrorAt?.toISOString() ?? null,
       lastErrorMessage: record?.lastErrorMessage ?? null,
-      mqttEnabled: this.isMqttEnabled(),
-      certConfigured: this.isCertConfigured(),
+      mqttEnabled: this.isMqttEnabled(app),
+      certConfigured: this.isCertConfigured(app),
       updatedAt: record?.updatedAt?.toISOString() ?? new Date().toISOString(),
     };
   }
 
-  /** Get MQTT topic for a VIN/vehicle */
-  buildTopic(vin: string): string {
-    const { topicPrefix, appId } = this.mqttCfg;
-    return `${topicPrefix}/${appId}/${vin}/#`;
+  buildTopic(app: HmStreamApp, vin?: string): string {
+    const { topic, appId, consumerGroup } = this.mqttCfg(app);
+    // If a full topic from HM snippet is available, use it directly
+    if (topic) return vin ? topic.replace('#', `${vin}/#`) : topic;
+    // Fallback construction (legacy)
+    return vin
+      ? `$share/${consumerGroup}/live/${appId}/${vin}/#`
+      : `$share/${consumerGroup}/live/${appId}/#`;
   }
 
-  /** Return certificate file contents for use by MQTT client (server-side only) */
-  loadCertFiles(): { ca: Buffer; cert: Buffer; key: Buffer } | null {
-    if (!this.isCertConfigured()) return null;
-    const { caCertPath, clientCertPath, clientKeyPath } = this.mqttCfg;
+  loadCertFiles(app: HmStreamApp): {
+    ca: Buffer;
+    cert: Buffer;
+    key: Buffer;
+    resolvedPaths: { ca: string; cert: string; key: string };
+  } | null {
+    if (!this.isCertConfigured(app)) return null;
+    const { caCertPath, clientCertPath, clientKeyPath } = this.mqttCfg(app);
+    const resolvedPaths = {
+      ca: path.resolve(caCertPath),
+      cert: path.resolve(clientCertPath),
+      key: path.resolve(clientKeyPath),
+    };
+    this.logger.log(`[${app}] Loading HM MQTT TLS files — ca=${resolvedPaths.ca} cert=${resolvedPaths.cert} key=${resolvedPaths.key}`);
     try {
       return {
-        ca: fs.readFileSync(caCertPath),
-        cert: fs.readFileSync(clientCertPath),
-        key: fs.readFileSync(clientKeyPath),
+        ca: fs.readFileSync(resolvedPaths.ca),
+        cert: fs.readFileSync(resolvedPaths.cert),
+        key: fs.readFileSync(resolvedPaths.key),
+        resolvedPaths,
       };
     } catch (err: any) {
-      this.logger.error(`Failed to load MQTT cert files: ${err?.message}`);
+      this.logger.error(`[${app}] Failed to load MQTT cert files: ${err?.message}`);
       return null;
     }
   }

@@ -10,7 +10,7 @@
 
 export const DRIVING_IMPACT_CONFIG = {
   /** Bump this string whenever any formula weight or reference max changes. */
-  MODEL_VERSION: 'v1.0.0',
+  MODEL_VERSION: 'v1.1.0',
 
   /** Rolling window used when computing VehicleDrivingImpactCurrent. */
   ROLLING_WINDOW_DAYS: 30,
@@ -122,5 +122,16 @@ export const DRIVING_IMPACT_CONFIG = {
     braking: 0.35,
     stopGo: 0.20,
     highSpeed: 0.15,
+  },
+
+  // ── Safety score inputs (speeding-centric, separate from style) ───────────
+  SAFETY_WEIGHTS: {
+    exposurePenaltyPerPct: 0.8,
+    maxOverPenaltyPerKmh: 0.7,
+    avgOverPenaltyPerKmh: 0.6,
+    sectionPenalty: 1.5,
+    maxExposurePenalty: 55,
+    maxSeverityPenalty: 35,
+    maxSectionPenalty: 10,
   },
 } as const;

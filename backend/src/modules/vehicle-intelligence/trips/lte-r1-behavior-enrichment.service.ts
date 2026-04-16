@@ -163,6 +163,14 @@ export class LteR1BehaviorEnrichmentService {
         data: {
           hardBrakingCount: hardBraking,
           hardAccelerationCount: hardAccel,
+          totalAccelerationEvents: counters.harshAcceleration,
+          hardAccelerationEvents: hardAccel,
+          totalBrakingEvents: counters.harshBraking + counters.extremeBraking,
+          hardBrakingEvents: hardBraking,
+          fullBrakingEvents: 0,
+          corneringEvents: counters.harshCornering,
+          abuseEvents: 0,
+          speedingEvents: 0,
           harshBrakeCount: hardBraking,   // DEPRECATED alias — mirrored for compatibility
           harshAccelCount: hardAccel,      // DEPRECATED alias — mirrored for compatibility
           harshCornerCount: counters.harshCornering,

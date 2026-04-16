@@ -193,7 +193,13 @@ function generateAlerts(customer: Customer) {
 }
 
 function generateNotes(customer: Customer) {
-  const notes = [
+  const notes: Array<{
+    date: string;
+    priority: 'High' | 'Medium' | 'Low';
+    author: string;
+    message: string;
+    status: 'Verified';
+  }> = [
     { date: '21.02.2024', priority: 'Medium' as const, author: '#10 Tim Schröder', message: customer.notes || 'Follow up on insurance add-on requests.', status: 'Verified' as const },
     { date: '15.01.2024', priority: 'Low' as const, author: '#27 Sarah Mayer', message: `Customer prefers morning pick-ups and online invoices.`, status: 'Verified' as const },
   ];
@@ -433,6 +439,11 @@ export function CustomerDetailView({ customer, isDarkMode, onBack, onUpdateCusto
             </div>
           </div>
         </div>
+
+      <div className={`rounded-lg border px-3 py-2 text-xs ${isDarkMode ? 'bg-neutral-800/60 border-neutral-700 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
+        Several behavior widgets in this customer detail page are estimated visualizations.
+        Use the canonical Trips and Rental Driving Analysis pages for production style/safety/event truth.
+      </div>
 
         {/* Tabs */}
         <div className="flex gap-1">

@@ -33,18 +33,30 @@ export class ReturnNeedsInspectionDetector implements InsightDetector {
 
       const analysis = await this.prisma.rentalDrivingAnalysis.findUnique({
         where: { bookingId: b.id },
-        select: { riskLevel: true, abuseDetectionCount: true, drivingScore: true },
+        select: { riskLevel: true, abuseDetectionCount: true, drivingScore: true, payload: true },
       });
 
       if (analysis) {
+        const payload = (analysis.payload ?? {}) as {
+          drivingBehavior?: {
+            drivingStyleScore?: number | null;
+            safetyScore?: number | null;
+          };
+        };
+        const styleScore = payload.drivingBehavior?.drivingStyleScore ?? analysis.drivingScore ?? null;
+        const safetyScore = payload.drivingBehavior?.safetyScore ?? null;
+
         if (analysis.riskLevel === 'HIGH' || analysis.riskLevel === 'VERY_HIGH') {
           reasons.push(`High-risk driving profile: ${analysis.riskLevel}`);
         }
         if (analysis.abuseDetectionCount != null && analysis.abuseDetectionCount > 0) {
           reasons.push(`${analysis.abuseDetectionCount} abuse events detected`);
         }
-        if (analysis.drivingScore != null && analysis.drivingScore < 40) {
-          reasons.push(`Low driving score: ${analysis.drivingScore}`);
+        if (styleScore != null && styleScore < 40) {
+          reasons.push(`Low driving style score: ${styleScore}`);
+        }
+        if (safetyScore != null && safetyScore < 50) {
+          reasons.push(`Low safety score: ${safetyScore}`);
         }
       }
 

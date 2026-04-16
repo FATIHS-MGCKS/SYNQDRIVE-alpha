@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { VehiclesService } from './vehicles.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { PaginationParams } from '@shared/utils/pagination';
 import {
@@ -46,6 +47,7 @@ export class VehiclesController {
   // ── Organizations/:orgId/vehicles (org-scoped CRUD) ───────────────
 
   @Get('organizations/:orgId/vehicles')
+  @UseGuards(OrgScopingGuard)
   async findAllByOrg(
     @Param('orgId') orgId: string,
     @Query() query: PaginationParams,
@@ -53,7 +55,14 @@ export class VehiclesController {
     return this.vehiclesService.findByOrganization(orgId, query);
   }
 
+  @Get('organizations/:orgId/fleet-map')
+  @UseGuards(OrgScopingGuard)
+  async getFleetMap(@Param('orgId') orgId: string) {
+    return this.vehiclesService.getFleetMapData(orgId);
+  }
+
   @Get('organizations/:orgId/vehicles/:vehicleId')
+  @UseGuards(OrgScopingGuard)
   async findOneByOrg(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
@@ -63,26 +72,28 @@ export class VehiclesController {
 
   @Get('organizations/:orgId/vehicles/:vehicleId/telemetry')
   async getVehicleTelemetry(
-    @Param('orgId') _orgId: string,
+    @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
   ) {
-    return this.vehiclesService.getVehicleWithTelemetry(vehicleId);
+    return this.vehiclesService.getVehicleWithTelemetry(vehicleId, orgId);
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId/live-gps')
   async getLiveGps(
-    @Param('orgId') _orgId: string,
+    @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
   ) {
-    return this.vehiclesService.getLiveGps(vehicleId);
+    return this.vehiclesService.getLiveGps(vehicleId, orgId);
   }
 
   @Post('organizations/:orgId/vehicles')
+  @UseGuards(OrgScopingGuard)
   async createByOrg(
     @Param('orgId') orgId: string,
     @Body() body: Omit<Prisma.VehicleCreateInput, 'organization'>,
+    @Req() req: any,
   ) {
-    return this.vehiclesService.create(orgId, body);
+    return this.vehiclesService.create(orgId, body, req.user?.id);
   }
 
   @Post('organizations/:orgId/vehicles/register-from-dimo')
@@ -127,6 +138,7 @@ export class VehiclesController {
         };
       };
     },
+    @Req() req: any,
   ) {
     return this.vehiclesService.registerFromDimo(
       orgId,
@@ -134,6 +146,7 @@ export class VehiclesController {
       body.dimoVehicleId,
       body.extraData,
       body.manualSpecs,
+      req.user?.id ?? null,
     );
   }
 
@@ -156,6 +169,13 @@ export class VehiclesController {
       brandModelFront?: string | null;
       brandModelRear?: string | null;
       tireSeason?: string | null;
+      loadIndexFront?: string | null;
+      speedIndexFront?: string | null;
+      loadIndexRear?: string | null;
+      speedIndexRear?: string | null;
+      dotCodeFront?: string | null;
+      dotCodeRear?: string | null;
+      tireCondition?: string | null;
       treadFL?: number | null;
       treadFR?: number | null;
       treadBL?: number | null;

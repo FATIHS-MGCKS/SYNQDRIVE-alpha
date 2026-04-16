@@ -1,0 +1,5 @@
+mosquitto_sub --host mqtt-v2.high-mobility.com --port 8883 --qos 1 \
+--topic '$share/c002b216-4165-4a36-99e6-863c5ff99d6f/live/level13/c002b216-4165-4a36-99e6-863c5ff99d6f' \
+--id c002b216-4165-4a36-99e6-863c5ff99d6f-live-random-id --disable-clean-session \
+--cert client_crt.pem --key client_key.pem   --cafile ca_crt.pem \
+--verbose --debug

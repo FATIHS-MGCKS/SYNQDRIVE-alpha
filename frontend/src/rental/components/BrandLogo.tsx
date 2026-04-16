@@ -4,8 +4,8 @@ interface BrandLogoProps {
   isDarkMode?: boolean;
 }
 
-export function getBrandFromModel(model: string): string {
-  const lower = model.toLowerCase();
+export function getBrandFromModel(model: string | null | undefined): string {
+  const lower = (model ?? '').toLowerCase();
   if (lower.startsWith('volkswagen') || lower.startsWith('vw ')) return 'volkswagen';
   if (lower.startsWith('tesla')) return 'tesla';
   if (lower.startsWith('bmw')) return 'bmw';

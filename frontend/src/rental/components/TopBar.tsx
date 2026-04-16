@@ -22,7 +22,7 @@ type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billi
 interface TopBarProps {
   isDarkMode: boolean;
   setIsDarkMode: (value: boolean) => void;
-  currentView?: ViewType;
+  currentView?: string;
   settingsTab?: SettingsTab;
   selectedVehicle?: VehicleData | null;
   activeBookingRef?: string | null;
@@ -30,8 +30,8 @@ interface TopBarProps {
   onViewChange?: (view: any) => void;
   onVehicleSelect?: (vehicle: VehicleData) => void;
   onSettingsTabChange?: (tab: SettingsTab) => void;
-  onFinanceTabChange?: (tab: string) => void;
-  onTasksTabChange?: (tab: string) => void;
+  onFinanceTabChange?: (tab: any) => void;
+  onTasksTabChange?: (tab: any) => void;
 }
 
 import type { TranslationKey } from '../i18n/translations/en';
@@ -41,7 +41,7 @@ const viewLabelKeys: Record<ViewType, TranslationKey> = {
   'trips': 'view.trips',
   'dashboard': 'view.dashboard',
   'bookings': 'view.bookings',
-  'rental-driving-analysis': 'Rental Driving Analysis',
+  'rental-driving-analysis': 'view.analytics',
   'health-errors': 'view.healthErrors',
   'fleet': 'view.fleet',
   'damages': 'view.damages',
@@ -128,6 +128,10 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
     if (currentUser?.email) return currentUser.email.slice(0, 2).toUpperCase();
     return 'U';
   }, [currentUser?.name, currentUser?.email]);
+
+  const resolvedView = Object.prototype.hasOwnProperty.call(viewLabelKeys, currentView)
+    ? (currentView as ViewType)
+    : 'dashboard';
 
   // Mock searchable data
   const mockCustomers = [
@@ -348,12 +352,12 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
   };
 
   return (
-    <div className="flex items-center justify-between mb-4 z-10 relative">
+    <div className="flex items-center justify-between mb-[28px] z-10 relative">
       {/* Left Section - Breadcrumb Navigation */}
       <div className="flex items-center gap-1.5 lg:gap-2 text-xs min-w-0 overflow-hidden">
         <Home className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
         <span className="hidden sm:inline text-muted-foreground/40">/</span>
-        <span className="hidden sm:inline text-muted-foreground">{t(viewCategoryKeys[currentView])}</span>
+        <span className="hidden sm:inline text-muted-foreground">{t(viewCategoryKeys[resolvedView])}</span>
         <span className="hidden sm:inline text-muted-foreground/40">/</span>
         {currentView === 'settings' && settingsTab ? (
           <>
@@ -365,19 +369,19 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
           <>
             <span className="hidden md:inline text-muted-foreground">{t('category.finance')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-sm font-semibold truncate text-foreground">{t(viewLabelKeys[currentView])}</span>
+            <span className="text-sm font-semibold truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
           </>
         ) : ['tasks', 'vendor-management', 'vendor-detail'].includes(currentView) ? (
           <>
             <span className="hidden md:inline text-muted-foreground">{t('category.tasks')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-sm font-semibold truncate text-foreground">{t(viewLabelKeys[currentView])}</span>
+            <span className="text-sm font-semibold truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
           </>
         ) : ['analytics', 'fleet-condition'].includes(currentView) ? (
           <>
             <span className="hidden md:inline text-muted-foreground">{t('category.insights')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-sm font-semibold truncate text-foreground">{t(viewLabelKeys[currentView])}</span>
+            <span className="text-sm font-semibold truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
           </>
         ) : currentView === 'new-booking' ? (
           <>
@@ -399,12 +403,12 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
           </>
         ) : ['overview', 'trips', 'health-errors', 'damages', 'documents'].includes(currentView) && selectedVehicle ? (
           <>
-            <span className="hidden md:inline text-muted-foreground">{t(viewLabelKeys[currentView])}</span>
+            <span className="hidden md:inline text-muted-foreground">{t(viewLabelKeys[resolvedView])}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
             <span className="text-sm font-semibold truncate text-foreground">{selectedVehicle.model}</span>
           </>
         ) : (
-          <span className="text-sm font-semibold truncate text-foreground">{t(viewLabelKeys[currentView])}</span>
+          <span className="text-sm font-semibold truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
         )}
       </div>
 
@@ -577,16 +581,16 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
 
           {/* Profile Dropdown */}
           {isProfileMenuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-64 rounded-lg shadow-lg border overflow-hidden z-[9999] bg-card/95 border-border">
+            <div className="absolute right-0 top-full mt-2 w-56 rounded-lg shadow-lg border overflow-hidden z-[9999] bg-card/95 border-border">
               {/* User Info Header */}
-              <div className="px-4 py-3.5 border-b border-border">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-xs font-medium shadow-sm">
+              <div className="px-3 py-3 border-b border-border">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-xs font-medium shadow-sm shrink-0">
                     {currentUserInitials}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[13px] font-semibold truncate text-foreground">{currentUserName}</p>
-                    <p className="text-[11px] truncate text-muted-foreground">{currentUserEmail}</p>
+                    <p className="text-xs font-semibold truncate text-foreground">{currentUserName}</p>
+                    <p className="text-[10px] truncate text-muted-foreground">{currentUserEmail}</p>
                   </div>
                 </div>
               </div>
@@ -599,11 +603,11 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
                     onSettingsTabChange?.('account');
                     onViewChange?.('settings');
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-[13px] hover:bg-muted text-foreground"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 transition-colors text-xs hover:bg-muted text-foreground"
                 >
-                  <User className="w-4 h-4 text-muted-foreground" />
+                  <User className="w-3.5 h-3.5 text-muted-foreground" />
                   <span>{t('topbar.accountSettings')}</span>
-                  <ChevronRight className="w-3.5 h-3.5 ml-auto text-muted-foreground/50" />
+                  <ChevronRight className="w-3 h-3 ml-auto text-muted-foreground/50" />
                 </button>
               </div>
 
@@ -615,9 +619,9 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
                     clearAuth();
                     window.location.href = '/login';
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-[13px] hover:bg-destructive/10 text-destructive"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 transition-colors text-xs hover:bg-destructive/10 text-destructive"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-3.5 h-3.5" />
                   <span>{t('topbar.logOut')}</span>
                 </button>
               </div>

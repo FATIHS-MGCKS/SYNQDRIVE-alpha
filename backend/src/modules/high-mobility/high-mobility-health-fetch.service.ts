@@ -1,9 +1,10 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { HighMobilityAuthService } from './high-mobility-auth.service';
+import { HighMobilityHealthAppAuthService } from './high-mobility-health-app-auth.service';
+import { HighMobilityAppConfigService } from './high-mobility-app-config.service';
+import { extractHmProviderVehicleReference, isUsableHmCommandVehicleReference } from './high-mobility-vehicle-reference.util';
 import type {
   HmHealthDataDto,
   HmHealthSignalDto,
@@ -11,6 +12,7 @@ import type {
   HmTirePressureStatusesDto,
   HmServiceInfoDto,
   HmSyncType,
+  HmSyncStatus,
 } from './dto/high-mobility.dto';
 
 /**
@@ -37,15 +39,15 @@ export class HighMobilityHealthFetchService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly authService: HighMobilityAuthService,
-    private readonly configService: ConfigService,
+    private readonly authService: HighMobilityHealthAppAuthService,
+    private readonly hmConfig: HighMobilityAppConfigService,
   ) {}
 
   private get baseUrl(): string {
-    return (this.configService.get('highMobility') as any).apiBaseUrl;
+    return this.hmConfig.healthApp.apiBaseUrl;
   }
   private get timeout(): number {
-    return (this.configService.get('highMobility') as any).requestTimeoutMs ?? 15000;
+    return this.hmConfig.healthApp.requestTimeoutMs;
   }
 
   /**
@@ -63,36 +65,83 @@ export class HighMobilityHealthFetchService {
 
     const requestedAt = new Date();
     let rawPayload: Record<string, unknown> | null = null;
-    let syncStatus: 'SUCCESS' | 'FAILED' | 'PARTIAL' = 'FAILED';
+    let syncStatus: HmSyncStatus = 'FAILED';
     let errorMessage: string | null = null;
 
-    const headers = await this.authService.authHeaders();
-    if (!headers || !this.authService.isConfigured()) {
-      this.logger.warn(`HM not configured — returning empty HEALTH signals for ${hmRecord.vin}`);
+    if (!this.authService.isConfigured()) {
+      this.logger.warn(`HM Health OAuth credentials missing — returning empty HEALTH signals for ${hmRecord.vin}`);
       syncStatus = 'FAILED';
-      errorMessage = 'HM credentials not configured';
+      errorMessage = 'HM OAuth credentials missing (HM_HEALTH_APP_CLIENT_ID / HM_HEALTH_APP_CLIENT_SECRET)';
     } else {
-      try {
-        const hmRef = hmRecord.hmVehicleReference;
-        if (!hmRef) throw new Error('No HM vehicle reference available');
-
-        // Fetch OEM data via HM REST API
-        const res = await axios.post(
-          `${this.baseUrl}/v1/vehicles/${hmRef}/command`,
-          {
-            command: 'get_vehicle_status',
-            properties: PHASE1_SIGNALS,
-          },
-          { headers, timeout: this.timeout },
+      const headers = await this.authService.authHeaders();
+      if (!headers) {
+        const authFailure = this.authService.getLastFailureContext();
+        const statusPart = authFailure.status ? ` status=${authFailure.status}` : '';
+        this.logger.warn(
+          `HM Health auth token unavailable for ${hmRecord.vin}${statusPart} — returning empty HEALTH signals`,
         );
-
-        rawPayload = res.data as Record<string, unknown>;
-        syncStatus = 'SUCCESS';
-        this.logger.log(`HM health data fetched for ${hmRecord.vin}`);
-      } catch (err: any) {
-        errorMessage = err?.message;
         syncStatus = 'FAILED';
-        this.logger.error(`HM health fetch failed for ${hmRecord.vin}: ${err?.message}`);
+        errorMessage =
+          authFailure.reason === 'TOKEN_FETCH_FAILED'
+            ? `HM OAuth token fetch failed${statusPart}; check network/DNS/OAuth endpoint`
+            : 'HM OAuth token unavailable';
+      } else {
+        try {
+          const payloadVehicleRef = extractHmProviderVehicleReference(hmRecord.providerPayloadJson, hmRecord.vin);
+
+          let hmRef: string | null;
+          if (isUsableHmCommandVehicleReference(hmRecord.hmVehicleReference, hmRecord.vin)) {
+            hmRef = hmRecord.hmVehicleReference!.trim();
+          } else if (payloadVehicleRef) {
+            hmRef = payloadVehicleRef;
+            await this.prisma.highMobilityVehicle.update({
+              where: { id: hmRecord.id },
+              data: { hmVehicleReference: hmRef },
+            });
+          } else if (hmRecord.clearanceStatus === 'APPROVED' && hmRecord.vin) {
+            // No provider vehicleId in clearance payload — fall back to VIN for brands
+            // where HM uses VIN as the command reference (some brands support this).
+            hmRef = hmRecord.vin.trim();
+          } else {
+            hmRef = null;
+          }
+
+          if (!hmRef) {
+            throw new Error('No HM command vehicle reference available (clearance not approved or VIN missing)');
+          }
+
+          // Fetch OEM data via HM REST API
+          const res = await axios.post(
+            `${this.baseUrl}/v1/vehicles/${hmRef}/command`,
+            { command: 'get_vehicle_status', properties: PHASE1_SIGNALS },
+            { headers, timeout: this.timeout },
+          );
+
+          rawPayload = res.data as Record<string, unknown>;
+          syncStatus = 'SUCCESS';
+          this.logger.log(`HM health data fetched for ${hmRecord.vin} via REST command`);
+        } catch (err: any) {
+          const httpStatus = err?.response?.status;
+
+          // 404 from HM command endpoint means this vehicle uses MQTT push only
+          // (OEM Fleet Clearance model — e.g. Mercedes-Benz).
+          // The REST /v1/vehicles/{ref}/command API does not exist for fleet-cleared vehicles.
+          // Data arrives via MQTT streaming when the car is driven.
+          if (httpStatus === 404) {
+            syncStatus = 'MQTT_ONLY';
+            errorMessage =
+              'HM Fleet Clearance vehicle — REST command API not supported. ' +
+              'Health data is delivered via MQTT push when the vehicle sends telemetry (car must be in use).';
+            this.logger.log(
+              `[HM Health] ${hmRecord.vin} — MQTT_ONLY: REST command returned 404 (fleet clearance vehicles use MQTT push). ` +
+              `Data will arrive when Mercedes-Benz pushes telemetry.`,
+            );
+          } else {
+            errorMessage = err?.message;
+            syncStatus = 'FAILED';
+            this.logger.error(`HM health fetch failed for ${hmRecord.vin} [${httpStatus ?? 'network'}]: ${err?.message}`);
+          }
+        }
       }
     }
 
@@ -124,6 +173,8 @@ export class HighMobilityHealthFetchService {
       hmVehicleId,
       vin: hmRecord.vin,
       fetchedAt: completedAt.toISOString(),
+      syncStatus,
+      errorMessage,
       signals,
       tirePressures,
       tirePressureStatuses,

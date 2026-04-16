@@ -57,15 +57,19 @@ export function preprocessHighFrequency(
 
   if (valid.length < 2) return [];
 
-  // Remove impossible acceleration spikes (pre-smoothing filter)
+  // Remove impossible acceleration spikes (pre-smoothing filter).
+  // Compare against the last *kept* sample so that dropping a spike does not
+  // shift the reference and incorrectly reject subsequent valid samples.
   const filtered: typeof valid = [valid[0]];
+  let lastKeptIdx = 0;
   for (let i = 1; i < valid.length; i++) {
-    const dt = (valid[i].ts - valid[i - 1].ts) / 1000;
+    const dt = (valid[i].ts - valid[lastKeptIdx].ts) / 1000;
     if (dt <= 0) continue;
-    const dv = Math.abs(valid[i].rawSpeedKmh - valid[i - 1].rawSpeedKmh) / 3.6;
+    const dv = Math.abs(valid[i].rawSpeedKmh - valid[lastKeptIdx].rawSpeedKmh) / 3.6;
     const accel = dv / dt;
     if (accel > MAX_ACCEL_MS2 && dt < 3) continue;
     filtered.push(valid[i]);
+    lastKeptIdx = i;
   }
 
   if (filtered.length < 2) return [];

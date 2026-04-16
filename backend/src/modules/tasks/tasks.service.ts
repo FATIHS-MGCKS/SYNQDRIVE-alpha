@@ -47,7 +47,7 @@ export class TasksService {
     invoiceId?: string;
     assignedTo?: string;
     dueDate?: string;
-  }) {
+  }, createdByUserId?: string) {
     const task = await this.prisma.orgTask.create({
       data: {
         organizationId: orgId,
@@ -58,6 +58,7 @@ export class TasksService {
         vehicleId: data.vehicleId,
         fineId: data.fineId,
         invoiceId: data.invoiceId,
+        createdByUserId: createdByUserId ?? null,
         assignedTo: data.assignedTo,
         dueDate: data.dueDate ? new Date(data.dueDate) : null,
       },

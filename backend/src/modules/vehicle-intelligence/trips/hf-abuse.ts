@@ -157,7 +157,7 @@ export function detectAbuseEvents(
   events.push(...detectLaunchLikeStart(segment, cfg, t));
   events.push(...detectOverheatingEngine(segment));
   events.push(...detectLongIdle(segment, cfg));
-  events.push(...detectFullBrakingAndImpact(segment));
+  events.push(...deduplicateBrakingAndImpact(detectFullBrakingAndImpact(segment)));
 
   return events.sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime());
 }
@@ -645,6 +645,29 @@ function detectLongIdle(seg: CleanHfPoint[], cfg: VehicleRpmConfig): AbuseEvent[
 // ═══════════════════════════════════════════════════════════════
 //  DETECTOR: FULL_BRAKING + POSSIBLE_IMPACT (mini-window approach)
 // ═══════════════════════════════════════════════════════════════
+
+/**
+ * When POSSIBLE_IMPACT and FULL_BRAKING fire for the same physical stop (overlapping
+ * time windows), keep only the more severe POSSIBLE_IMPACT to prevent double-counting
+ * in the abuse score.
+ */
+function deduplicateBrakingAndImpact(events: AbuseEvent[]): AbuseEvent[] {
+  const impacts = events.filter((e) => e.eventType === 'POSSIBLE_IMPACT');
+  const rest = events.filter((e) => e.eventType !== 'POSSIBLE_IMPACT' && e.eventType !== 'FULL_BRAKING');
+  const fullBraking = events.filter((e) => e.eventType === 'FULL_BRAKING');
+
+  const keptFb = fullBraking.filter((fb) => {
+    const fbStart = fb.startedAt.getTime();
+    const fbEnd = fb.endedAt.getTime();
+    return !impacts.some((imp) => {
+      const impStart = imp.startedAt.getTime();
+      const impEnd = imp.endedAt.getTime();
+      return impStart <= fbEnd && impEnd >= fbStart;
+    });
+  });
+
+  return [...rest, ...keptFb, ...impacts];
+}
 
 /**
  * FULL_BRAKING and POSSIBLE_IMPACT are derived from a validated mini-window scanner —

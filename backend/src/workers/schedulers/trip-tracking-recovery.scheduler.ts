@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Interval } from '@nestjs/schedule';
@@ -10,6 +10,13 @@ import {
   TRIP_TRACKING_TRIGGERS,
   type TripTrackingJobData,
 } from '../../modules/vehicle-intelligence/trips/trip-detection.types';
+import { TripReconciliationService } from '../../modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
+
+/** Threshold: a POSSIBLE_END state older than this triggers event-based repair */
+const STUCK_POSSIBLE_END_THRESHOLD_MS = 30 * 60_000; // 30 minutes
+
+/** Threshold: an ACTIVE_TRIP older than this is considered suspiciously long */
+const SUSPICIOUS_LONG_OPEN_THRESHOLD_MS = 4 * 3600_000; // 4 hours
 
 /**
  * Recovery-only safety-net scheduler for the V2 Trip Detection pipeline.
@@ -32,6 +39,7 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
     @InjectQueue(QUEUE_NAMES.TRIP_TRACKING)
     private readonly trackingQueue: Queue,
     private readonly prisma: PrismaService,
+    @Optional() private readonly reconciliation?: TripReconciliationService,
   ) {}
 
   async onModuleInit() {
@@ -95,7 +103,7 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
           requestedAt: now.toISOString(),
         } satisfies TripTrackingJobData,
         {
-          jobId: `trip-recovery-${s.vehicleId}-${Date.now()}`,
+          jobId: `trip-recovery-${s.vehicleId}`,
           removeOnComplete: true,
           removeOnFail: 5,
         },
@@ -106,6 +114,64 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
       this.logger.warn(
         `Recovery: re-enqueued ${staleStates.length} stale trip tracking job(s)`,
       );
+    }
+
+    // ── Event-triggered reconciliation for anomalous states ─────────────────
+    await this.triggerEventBasedReconciliation(now, staleStates);
+  }
+
+  /**
+   * Event-triggered reconciliation pass: fires for vehicles that are stuck
+   * in pathological states beyond normal recovery thresholds.
+   *
+   * Cases handled:
+   *   - POSSIBLE_END stuck > 30 min: force-end via reconciliation
+   *   - ACTIVE_TRIP stuck > 4 hours: suspicious long-open trip
+   */
+  private async triggerEventBasedReconciliation(
+    now: Date,
+    staleStates: Awaited<ReturnType<PrismaService['vehicleTripDetectionState']['findMany']>>,
+  ): Promise<void> {
+    if (!this.reconciliation) return;
+
+    for (const s of staleStates) {
+      // ── Stuck in POSSIBLE_END > 30 min → trigger onStuckTrip ─────────────
+      if (
+        s.state === TripDetectionState.POSSIBLE_END &&
+        s.possibleEndAt &&
+        now.getTime() - s.possibleEndAt.getTime() > STUCK_POSSIBLE_END_THRESHOLD_MS &&
+        s.activeTripId
+      ) {
+        this.logger.warn(
+          `Event trigger: POSSIBLE_END stuck for ${Math.round((now.getTime() - s.possibleEndAt.getTime()) / 60_000)}min — vehicle=${s.vehicleId} trip=${s.activeTripId}`,
+        );
+        this.reconciliation
+          .onStuckTrip(s.vehicleId, s.activeTripId)
+          .catch((err: unknown) =>
+            this.logger.warn(`onStuckTrip failed for ${s.vehicleId}: ${(err as Error).message}`),
+          );
+      }
+
+      // ── ACTIVE_TRIP open > 4 hours → trigger anomaly reconciliation ───────
+      if (
+        s.state === TripDetectionState.ACTIVE_TRIP &&
+        s.possibleStartAt &&
+        now.getTime() - s.possibleStartAt.getTime() > SUSPICIOUS_LONG_OPEN_THRESHOLD_MS
+      ) {
+        this.logger.warn(
+          `Event trigger: ACTIVE_TRIP suspicious long-open (${Math.round((now.getTime() - s.possibleStartAt.getTime()) / 3600_000)}h) — vehicle=${s.vehicleId}`,
+        );
+        this.reconciliation
+          .onAnomalyDetected({
+            vehicleId: s.vehicleId,
+            type: 'SUSPICIOUS_LONG_OPEN',
+            windowFrom: s.possibleStartAt,
+            windowTo: now,
+          })
+          .catch((err: unknown) =>
+            this.logger.warn(`onAnomalyDetected failed for ${s.vehicleId}: ${(err as Error).message}`),
+          );
+      }
     }
   }
 }

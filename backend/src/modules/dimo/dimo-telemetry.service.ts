@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
 import { buildLatestSnapshotQuery } from './queries/latest-vehicle-snapshot.query';
@@ -15,6 +15,7 @@ export interface VehicleSummary {
 
 @Injectable()
 export class DimoTelemetryService {
+  private readonly logger = new Logger(DimoTelemetryService.name);
   private readonly client: AxiosInstance;
 
   constructor(private readonly configService: ConfigService) {
@@ -68,6 +69,19 @@ export class DimoTelemetryService {
       headers: { Authorization: `Bearer ${vehicleJwt}` },
       timeout: 30000,
     });
+
+    const gqlErrors = response.data?.errors;
+    if (Array.isArray(gqlErrors) && gqlErrors.length > 0) {
+      const messages = gqlErrors
+        .map((e: any) => e?.message ?? JSON.stringify(e))
+        .join('; ');
+      this.logger.warn(`GraphQL response contains errors: ${messages}`);
+
+      if (!response.data?.data) {
+        throw new Error(`DIMO GraphQL error: ${messages}`);
+      }
+    }
+
     return response.data;
   }
 

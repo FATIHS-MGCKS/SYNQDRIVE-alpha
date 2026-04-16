@@ -18,7 +18,15 @@ export function buildLatestSnapshotQuery(tokenId: number): string {
         powertrainFuelSystemRelativeLevel { timestamp value }
         powertrainFuelSystemAbsoluteLevel { timestamp value }
         powertrainTractionBatteryStateOfChargeCurrent { timestamp value }
+        powertrainTractionBatteryStateOfChargeCurrentEnergy { timestamp value }
+        powertrainTractionBatteryStateOfHealth { timestamp value }
         powertrainTractionBatteryCurrentPower { timestamp value }
+        powertrainTractionBatteryCurrentVoltage { timestamp value }
+        powertrainTractionBatteryTemperatureAverage { timestamp value }
+        powertrainTractionBatteryChargingIsCharging { timestamp value }
+        powertrainTractionBatteryChargingIsChargingCableConnected { timestamp value }
+        powertrainTractionBatteryChargingPower { timestamp value }
+        powertrainTractionBatteryChargingAddedEnergy { timestamp value }
         powertrainTractionBatteryRange { timestamp value }
         powertrainTractionBatteryGrossCapacity { timestamp value }
         powertrainCombustionEngineEngineOilRelativeLevel { timestamp value }

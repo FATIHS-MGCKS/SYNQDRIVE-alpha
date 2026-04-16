@@ -203,14 +203,24 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.message || `API error ${res.status} (${path})`);
   }
-  return res.json();
+
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
+  const text = await res.text();
+  if (!text) {
+    return undefined as T;
+  }
+
+  return JSON.parse(text) as T;
 }
 
-function buildQuery(params?: Record<string, string | undefined>): string {
+function buildQuery(params?: Record<string, string | number | undefined>): string {
   if (!params) return '';
   const entries = Object.entries(params).filter(([, v]) => v != null);
   if (!entries.length) return '';
-  return '?' + entries.map(([k, v]) => `${k}=${encodeURIComponent(v!)}`).join('&');
+  return '?' + entries.map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&');
 }
 
 function get<T>(path: string) {
@@ -231,6 +241,112 @@ function put<T>(path: string, body: unknown) {
 
 function del<T>(path: string) {
   return request<T>(path, { method: 'DELETE' });
+}
+
+export type TripAssignmentStatus =
+  | 'ASSIGNED_DRIVER'
+  | 'ASSIGNED_USER'
+  | 'ASSIGNED_BOOKING_CUSTOMER'
+  | 'PRIVATE_UNASSIGNED'
+  | 'UNKNOWN_ASSIGNMENT';
+
+export type TripAssignmentSubjectType = 'DRIVER' | 'USER' | 'BOOKING_CUSTOMER';
+
+export interface VehicleTripAnalytics {
+  id: string;
+  vehicleId: string;
+  tripStatus: 'ONGOING' | 'COMPLETED' | 'CANCELLED';
+  startTime: string;
+  endTime?: string | null;
+  distanceKm?: number | null;
+  durationMinutes?: number | null;
+  avgSpeedKmh?: number | null;
+  maxSpeedKmh?: number | null;
+  drivingScore?: number | null;
+  drivingStyleScore?: number | null;
+  safetyScore?: number | null;
+  scoreSource?: 'trip_driving_impact' | 'vehicle_trip_compat' | 'derived';
+  totalAccelerationEvents?: number;
+  hardAccelerationEvents?: number;
+  totalBrakingEvents?: number;
+  hardBrakingEvents?: number;
+  fullBrakingEvents?: number;
+  corneringEvents?: number;
+  abuseEvents?: number;
+  speedingEvents?: number;
+  speedingExposurePct?: number | null;
+  speedingSectionCount?: number | null;
+  speedingSectionsJson?: SpeedingSection[];
+  behaviorReady?: boolean;
+  detailsLimited?: boolean;
+  assignmentStatus?: TripAssignmentStatus | null;
+  assignmentSubjectType?: TripAssignmentSubjectType | null;
+  assignmentSubjectId?: string | null;
+  assignedBookingId?: string | null;
+  isPrivateTrip?: boolean;
+  scoreEligible?: boolean;
+  [key: string]: unknown;
+}
+
+export interface VehicleTripStats {
+  totalTrips: number;
+  totalDistanceKm: number;
+  avgDrivingScore: number;
+  avgDrivingStyleScore: number;
+  avgSafetyScore: number;
+  totalAccelerationEvents: number;
+  totalHardAccelerationEvents: number;
+  totalBrakingEvents: number;
+  totalHardBrakingEvents: number;
+  totalAbuseEvents: number;
+  totalSpeedingEvents: number;
+  privateTripCount: number;
+  assignedTripCount: number;
+}
+
+export interface DriverScoreSummary {
+  subjectType: TripAssignmentSubjectType;
+  subjectId: string;
+  tripCount: number;
+  scoredTripCount: number;
+  drivingStyleScore: number | null;
+  safetyScore: number | null;
+  assignmentCoveragePct: number;
+}
+
+export interface CustomerApiRecord {
+  id: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  bookingCount?: number;
+  drivingStyleScore?: number | null;
+  safetyScore?: number | null;
+  scoreEligibleTripCount?: number;
+  [key: string]: unknown;
+}
+
+export interface RentalDrivingAnalysisItem {
+  id: string;
+  bookingId: string;
+  vehicleId: string;
+  driverId: string;
+  periodStart: string;
+  periodEnd: string;
+  overallLevel: string;
+  riskLevel: string;
+  drivingScore: number | null;
+  payload: {
+    overallAssessment?: { level?: string; title?: string; shortSummary?: string };
+    drivingBehavior?: { drivingStyleScore?: number | null; safetyScore?: number | null; drivingScore?: number | null };
+    eventSummary?: { drivingEventsCount?: number | null; abuseDetectionCount?: number | null; errorCodeOccurred?: boolean };
+    [key: string]: unknown;
+  } | null;
+  vehicle?: { id?: string; make?: string; model?: string; licensePlate?: string } | null;
+  driver?: { id?: string; firstName?: string; lastName?: string } | null;
+  [key: string]: unknown;
 }
 
 export const api = {
@@ -318,6 +434,8 @@ export const api = {
     get: (id: string) => get<any>(`/admin/vehicles/${id}`),
     listByOrg: (orgId: string, params?: { page?: number; limit?: number }) =>
       get<{ data: any[]; meta?: { total: number } }>(`/organizations/${orgId}/vehicles` + (params ? `?page=${params.page ?? 1}&limit=${params.limit ?? 200}` : '?limit=200')),
+    fleetMap: (orgId: string) =>
+      get<FleetMapVehicleResponse[]>(`/organizations/${orgId}/fleet-map`),
     create: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/vehicles`, data),
     update: (orgId: string, id: string, data: any) => patch<any>(`/organizations/${orgId}/vehicles/${id}`, data),
     delete: (orgId: string, id: string) => del<void>(`/organizations/${orgId}/vehicles/${id}`),
@@ -328,6 +446,7 @@ export const api = {
       loadIndexFront?: string | null; speedIndexFront?: string | null;
       loadIndexRear?: string | null; speedIndexRear?: string | null;
       dotCodeFront?: string | null; dotCodeRear?: string | null;
+      tireCondition?: string | null;
       treadFL?: number | null; treadFR?: number | null;
       treadBL?: number | null; treadBR?: number | null;
     }) => put<any>(`/organizations/${orgId}/vehicles/${vehicleId}/tires`, data),
@@ -510,13 +629,15 @@ export const api = {
       if (params?.from) q.set('from', params.from);
       if (params?.to) q.set('to', params.to);
       const suffix = q.toString() ? '?' + q.toString() : '';
-      return get<{ data: any[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(`/organizations/${orgId}/rental-driving-analyses${suffix}`);
+      return get<{ data: RentalDrivingAnalysisItem[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(
+        `/organizations/${orgId}/rental-driving-analyses${suffix}`,
+      );
     },
-    get: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/rental-driving-analyses/${id}`),
+    get: (orgId: string, id: string) => get<RentalDrivingAnalysisItem>(`/organizations/${orgId}/rental-driving-analyses/${id}`),
   },
   customers: {
-    list: (orgId: string) => get<any[]>(`/organizations/${orgId}/customers`),
-    get: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/customers/${id}`),
+    list: (orgId: string) => get<{ data: CustomerApiRecord[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(`/organizations/${orgId}/customers`),
+    get: (orgId: string, id: string) => get<CustomerApiRecord>(`/organizations/${orgId}/customers/${id}`),
     create: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/customers`, data),
     update: (orgId: string, id: string, data: any) => patch<any>(`/organizations/${orgId}/customers/${id}`, data),
     delete: (orgId: string, id: string) => del<void>(`/organizations/${orgId}/customers/${id}`),
@@ -700,6 +821,8 @@ export const api = {
     rotateTires: (vehicleId: string, data: { template: string; odometerKm?: number; notes?: string }) =>
       post<any>(`/vehicles/${vehicleId}/tires/rotate`, data),
     changeTires: (vehicleId: string, data: any) => post<any>(`/vehicles/${vehicleId}/tires/change`, data),
+    activateStoredTireSet: (vehicleId: string, data: { storedSetupId?: string; odometerKm?: number; notes?: string }) =>
+      post<any>(`/vehicles/${vehicleId}/tires/activate-stored-set`, data),
     addTireHealthMeasurement: (vehicleId: string, data: any) =>
       post<any>(`/vehicles/${vehicleId}/tires/measurement`, data),
     recalculateTireHealth: (vehicleId: string) => post<any>(`/vehicles/${vehicleId}/tires/recalculate`, {}),
@@ -712,10 +835,44 @@ export const api = {
     tireCalibrationMeasurement: (vehicleId: string, tireSetupId: string, data: any) =>
       post<any>(`/vehicles/${vehicleId}/tires/${tireSetupId}/calibration-measurement`, data),
     brakes: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/brakes`),
+    /** @deprecated Legacy heuristic endpoint only. */
     brakeStatus: (vehicleId: string) => get<BrakeStatus>(`/vehicles/${vehicleId}/brake-status`),
     brakeHealthSummary: (vehicleId: string) => get<BrakeHealthSummary>(`/vehicles/${vehicleId}/brake-health/summary`),
     brakeHealthDetail: (vehicleId: string) => get<BrakeHealthDetail>(`/vehicles/${vehicleId}/brake-health/detail`),
-    brakeHealthInitialize: (vehicleId: string, data: { serviceDate: string; odometerKm?: number; frontPadMm?: number; rearPadMm?: number; frontRotorWidthMm?: number; rearRotorWidthMm?: number }) => post<any>(`/vehicles/${vehicleId}/brake-health/initialize`, data),
+    brakeHealthInitialize: (
+      vehicleId: string,
+      data: {
+        serviceDate: string;
+        odometerKm?: number;
+        frontPadMm?: number;
+        rearPadMm?: number;
+        frontRotorWidthMm?: number;
+        rearRotorWidthMm?: number;
+        kind?: BrakeServiceKindInput;
+        scope?: BrakeServiceScopeInput[];
+        workshopName?: string;
+        notes?: string;
+      },
+    ) => post<BrakeServiceLifecycleResult>(`/vehicles/${vehicleId}/brake-health/initialize`, data),
+    recordBrakeService: (
+      vehicleId: string,
+      data: {
+        serviceDate: string;
+        odometerKm?: number;
+        workshopName?: string;
+        notes?: string;
+        source?: 'manual' | 'ai_document' | 'api';
+        kind?: BrakeServiceKindInput;
+        scope?: BrakeServiceScopeInput[];
+        measured?: {
+          frontPadMm?: number;
+          rearPadMm?: number;
+          frontDiscMm?: number;
+          rearDiscMm?: number;
+        };
+        initializeIfPossible?: boolean;
+      },
+    ) => post<BrakeServiceLifecycleResult>(`/vehicles/${vehicleId}/brake-health/service`, data),
     brakeHealthRecalculate: (vehicleId: string) => post<any>(`/vehicles/${vehicleId}/brake-health/recalculate`, {}),
     createBrakeSpec: (vehicleId: string, data: any) => post<any>(`/vehicles/${vehicleId}/brakes`, data),
     tripProfile: (vehicleId: string) => get<TripProfile>(`/vehicles/${vehicleId}/trip-profile`),
@@ -726,16 +883,30 @@ export const api = {
     dtcSummary: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/dtc/summary`),
     dtcDetail: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/dtc/detail`),
     trips: (vehicleId: string, params?: { from?: string; to?: string; driver?: string }) =>
-      get<any[]>(`/vehicles/${vehicleId}/trips` + buildQuery(params)),
-    tripStats: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/trips/stats`),
-    tripDetail: (vehicleId: string, tripId: string) => get<any>(`/vehicles/${vehicleId}/trips/${tripId}`),
+      get<VehicleTripAnalytics[]>(`/vehicles/${vehicleId}/trips` + buildQuery(params)),
+    tripStats: (vehicleId: string) => get<VehicleTripStats>(`/vehicles/${vehicleId}/trips/stats`),
+    tripDetail: (vehicleId: string, tripId: string) => get<VehicleTripAnalytics>(`/vehicles/${vehicleId}/trips/${tripId}`),
+    driverScore: (
+      vehicleId: string,
+      params: { subjectType: TripAssignmentSubjectType; subjectId: string; from?: string; to?: string },
+    ) => get<DriverScoreSummary>(`/vehicles/${vehicleId}/trips/driver-score` + buildQuery({
+      subjectType: params.subjectType,
+      subjectId: params.subjectId,
+      from: params.from,
+      to: params.to,
+    })),
     tripRoute: (vehicleId: string, tripId: string) => get<any[]>(`/vehicles/${vehicleId}/trips/${tripId}/route`),
-    syncTrips: (vehicleId: string, params?: { from?: string; to?: string }) =>
-      post<any>(`/vehicles/${vehicleId}/trips/sync` + buildQuery(params), {}),
+    /** @deprecated Use reconcileTrips instead */
+    syncTrips: (vehicleId: string, _params?: { from?: string; to?: string }) =>
+      post<any>(`/vehicles/${vehicleId}/trips/reconcile`, {}),
+    reconcileTrips: (vehicleId: string) =>
+      post<{ found: number; applied: number; message: string }>(`/vehicles/${vehicleId}/trips/reconcile`, {}),
     enrichTrip: (vehicleId: string, tripId: string) =>
       post<TripEnrichment>(`/vehicles/${vehicleId}/trips/${tripId}/enrich`, {}),
     tripBehaviorEvents: (vehicleId: string, tripId: string, category?: string) =>
-      get<TripBehaviorEvent[]>(`/vehicles/${vehicleId}/trips/${tripId}/behavior-events` + (category ? `?category=${category}` : '')),
+      get<{ status: 'ready' | 'pending'; behaviorReady: boolean; events: TripBehaviorEvent[] }>(
+        `/vehicles/${vehicleId}/trips/${tripId}/behavior-events` + (category ? `?category=${category}` : ''),
+      ),
     enrichTripBehavior: (vehicleId: string, tripId: string) =>
       post<any>(`/vehicles/${vehicleId}/trips/${tripId}/behavior-enrich`, {}),
     damages: (vehicleId: string) => get<any[]>(`/vehicles/${vehicleId}/damages`),
@@ -749,6 +920,7 @@ export const api = {
     batteryHealthTrend: (vehicleId: string, days?: number) =>
       get<any[]>(`/vehicles/${vehicleId}/battery-health/trend` + (days ? `?days=${days}` : '')),
     batteryHealthSummary: (vehicleId: string) => get<BatteryHealthSummary>(`/vehicles/${vehicleId}/battery-health-summary`),
+    batteryHealthDetail: (vehicleId: string) => get<BatteryHealthDetail>(`/vehicles/${vehicleId}/battery-health-detail`),
     createServiceEvent: (vehicleId: string, data: any) => post<any>(`/vehicles/${vehicleId}/service-events`, data),
     createTireSetup: (vehicleId: string, data: any) => post<any>(`/vehicles/${vehicleId}/tires`, data),
     addTireMeasurement: (vehicleId: string, tireSetupId: string, data: any) =>
@@ -756,7 +928,7 @@ export const api = {
     healthSummary: (vehicleId: string) => get<HealthSummaryResponse>(`/vehicles/${vehicleId}/health-summary`),
     oilChangeStatus: (vehicleId: string) => get<OilChangeStatus>(`/vehicles/${vehicleId}/oil-change-status`),
     createOilChangeEvent: (vehicleId: string, data: any) => post<any>(`/vehicles/${vehicleId}/service-events`, { ...data, eventType: 'OIL_CHANGE' }),
-    hvBatteryStatus: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/hv-battery-status`),
+    hvBatteryStatus: (vehicleId: string) => get<HvBatteryStatus>(`/vehicles/${vehicleId}/hv-battery-status`),
     serviceInfoStatus: (vehicleId: string) => get<ServiceInfoStatus>(`/vehicles/${vehicleId}/service-info-status`),
     // Phase 3: AI Health Care with HM indicators
     aiHealthCare: (vehicleId: string) => get<AiHealthCareResponse>(`/vehicles/${vehicleId}/health/ai-health-care`),
@@ -766,6 +938,12 @@ export const api = {
     hmActivateHealth: (vehicleId: string) => post<{ success: boolean; message: string }>(`/vehicles/${vehicleId}/high-mobility/activate-health`, {}),
     hmRefreshStatus: (vehicleId: string) => post<HmVehicleStatusDto>(`/vehicles/${vehicleId}/high-mobility/refresh-status`, {}),
     hmDeactivate: (vehicleId: string) => post<{ success: boolean; message: string }>(`/vehicles/${vehicleId}/high-mobility/deactivate`, {}),
+    /** VW Group + Porsche only: skips eligibility, submits direct fleet clearance. */
+    hmRequestDirectClearance: (vehicleId: string) =>
+      post<{ success: boolean; message: string; status?: HmVehicleStatusDto }>(
+        `/vehicles/${vehicleId}/hm-health-app/request-direct-clearance`,
+        {},
+      ),
     // Phase 3: HM Vehicle Health signals
     hmVehicleHealth: (vehicleId: string) => get<HmVehicleHealthPayload>(`/vehicles/${vehicleId}/hm-vehicle-health`),
     hmRefreshService: (vehicleId: string) => post<{ ok: boolean }>(`/vehicles/${vehicleId}/hm-vehicle-health/refresh-service`, {}),
@@ -1000,6 +1178,72 @@ export const api = {
       '/vehicles/register/hm-only',
       data,
     ),
+
+    // HM Telemetry-APP candidates (APPROVED FULL_TELEMETRY vehicles awaiting registration)
+    listTelemetryAppCandidates: () =>
+      get<HmVehicleDto[]>('/admin/high-mobility/telemetry-app/candidates'),
+
+    // HM Telemetry-APP vehicle management
+    listTelemetryAppVehicles: (params?: { clearanceStatus?: HmClearanceStatus }) =>
+      get<HmVehicleListDto>('/admin/high-mobility/telemetry-app/vehicles' + buildQuery(params)),
+    createTelemetryAppVehicle: (data: { vin: string; brand: string; organizationId?: string }) =>
+      post<HmVehicleDto>('/admin/high-mobility/telemetry-app/vehicles', data),
+    refreshTelemetryAppVehicleStatus: (id: string) =>
+      post<HmVehicleDto>(`/admin/high-mobility/telemetry-app/vehicles/${id}/refresh-status`, {}),
+    getTelemetryAppStreamingReadiness: (id: string) =>
+      get<HmStreamingReadinessDto>(`/admin/high-mobility/telemetry-app/vehicles/${id}/streaming-readiness`),
+
+    // HM app-container consumer status
+    getHealthAppConsumerStatus: () =>
+      get<HmMqttConsumerStatusDto>('/admin/high-mobility/health-app/stream/consumer-status'),
+    getTelemetryAppConsumerStatus: () =>
+      get<HmMqttConsumerStatusDto>('/admin/high-mobility/telemetry-app/stream/consumer-status'),
+    testHealthAppMqttConnection: () =>
+      post<{ success: boolean; message: string }>('/admin/high-mobility/health-app/stream/test-connection', {}),
+    testTelemetryAppMqttConnection: () =>
+      post<{ success: boolean; message: string }>('/admin/high-mobility/telemetry-app/stream/test-connection', {}),
+
+    // System readiness
+    getReadiness: () =>
+      get<{
+        healthApp: { oauthReady: boolean; mqttReady: boolean; mqttConnectionState: string };
+        telemetryApp: { oauthReady: boolean; mqttReady: boolean; mqttConnectionState: string };
+      }>('/admin/high-mobility/readiness'),
+
+    // Per-app MQTT diagnostic endpoints (via /integrations/ prefix)
+    getHealthAppMqttStatus: () =>
+      get<{
+        appContainer: string; mqttEnabled: boolean; oauthEnabled: boolean;
+        connectionState: HmMqttConnectionState; consumerDbState: any;
+        config: { host: string | null; port: number | null; topic: string | null; clientId: string | null; consumerGroup: string | null };
+      }>('/integrations/hm-health-app/mqtt/status'),
+    getTelemetryAppMqttStatus: () =>
+      get<{
+        appContainer: string; mqttEnabled: boolean; oauthEnabled: boolean;
+        connectionState: HmMqttConnectionState; consumerDbState: any;
+        config: { host: string | null; port: number | null; topic: string | null; clientId: string | null; consumerGroup: string | null };
+      }>('/integrations/hm-telemetry-app/mqtt/status'),
+    getHealthAppStreamLogs: (params?: { limit?: number; offset?: number; vin?: string; status?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.limit) q.set('limit', String(params.limit));
+      if (params?.offset) q.set('offset', String(params.offset));
+      if (params?.vin) q.set('vin', params.vin);
+      if (params?.status) q.set('status', params.status);
+      return get<{ data: HmStreamSyncLogDto[]; total: number }>(`/integrations/hm-health-app/stream/logs?${q}`);
+    },
+    getTelemetryAppStreamLogs: (params?: { limit?: number; offset?: number; vin?: string; status?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.limit) q.set('limit', String(params.limit));
+      if (params?.offset) q.set('offset', String(params.offset));
+      if (params?.vin) q.set('vin', params.vin);
+      if (params?.status) q.set('status', params.status);
+      return get<{ data: HmStreamSyncLogDto[]; total: number }>(`/integrations/hm-telemetry-app/stream/logs?${q}`);
+    },
+    getHmDualReadiness: () =>
+      get<{
+        healthApp: { appContainer: string; oauthReady: boolean; mqttReady: boolean; certConfigured: boolean };
+        telemetryApp: { appContainer: string; oauthReady: boolean; mqttReady: boolean; certConfigured: boolean };
+      }>('/integrations/hm/readiness'),
   },
 };
 
@@ -1062,6 +1306,26 @@ export interface TireAlert {
   value?: number;
 }
 
+export type TireActionState =
+  | 'OBSERVE'
+  | 'CHECK_SOON'
+  | 'PLAN_SERVICE'
+  | 'REPLACE';
+
+export type TirePressureFreshness =
+  | 'fresh'
+  | 'aging'
+  | 'stale'
+  | 'no_data';
+
+export interface TirePressureContext {
+  source: 'DIMO' | 'HM' | 'MIXED' | 'NONE';
+  dimoFreshness: TirePressureFreshness;
+  hmFreshness: TirePressureFreshness;
+  overallStatus: 'OK' | 'ISSUE' | 'STALE' | 'UNKNOWN';
+  warningHints: string[];
+}
+
 export interface TireHealthSummaryResponse {
   overallPercent: number;
   overallRemainingKm: number;
@@ -1088,6 +1352,12 @@ export interface TireHealthSummaryResponse {
   currentTreadSource?: string | null;
   operationalReplacementMm?: number | null;
   topWearDrivers?: string[];
+  actionState?: TireActionState;
+  actionReasons?: string[];
+  measurementState?: 'measured' | 'estimated' | 'mixed';
+  dataQualityWarnings?: string[];
+  pressureContext?: TirePressureContext;
+  latestMeasurementAt?: string | null;
 }
 
 export interface TireWheelEstimate {
@@ -1163,10 +1433,116 @@ export interface TireHealthDetailResponse {
 
 export type SohPublicationState = 'INITIAL_CALIBRATION' | 'STABILIZING' | 'STABLE';
 
+export interface BatteryCalibrationProgress {
+  measurementPath: 'rest_and_crank' | 'rest_only';
+  daysSinceFirstMeasurement: number;
+  minimumDaysForStabilizing: number;
+  daysRemainingForStabilizing: number;
+  qualifiedEventCount: number;
+  minimumQualifiedEventsForStabilizing: number;
+  restObservationCount: number;
+  minimumRestObservationsForStabilizing: number;
+  crankObservationCount: number;
+  minimumCrankObservationsForStabilizing: number;
+  blockers: Array<'days' | 'qualified_events' | 'rest_observations' | 'crank_observations'>;
+  lastMeasurementAgeMs: number | null;
+}
+
+export type BatteryRuntimeStatus =
+  | 'ready'
+  | 'calibrating'
+  | 'stabilizing'
+  | 'no_recent_data'
+  | 'estimate_unavailable'
+  | 'unsupported';
+
+export type BatteryRuntimeCondition =
+  | 'good'
+  | 'watch'
+  | 'attention'
+  | 'calibrating'
+  | 'unknown';
+
+export interface BatteryFreshness {
+  observedAt: string | null;
+  ageMs: number | null;
+  isFresh: boolean;
+}
+
+export interface CanonicalLvBatterySection {
+  status: BatteryRuntimeStatus;
+  condition: BatteryRuntimeCondition;
+  healthPercent: number | null;
+  estimatedHealthPercent: number | null;
+  method: string | null;
+  confidence: string | null;
+  freshness: BatteryFreshness;
+  evidenceType: string | null;
+  publicationState: SohPublicationState;
+  telemetry: {
+    voltageV: number | null;
+    restingVoltage: number | null;
+    crankingVoltage: number | null;
+    chargingVoltage: number | null;
+    temperatureC: number | null;
+  };
+  calibrationProgress: BatteryCalibrationProgress;
+}
+
+export interface CanonicalHvBatterySection {
+  status: BatteryRuntimeStatus;
+  condition: BatteryRuntimeCondition;
+  healthPercent: number | null;
+  method: string | null;
+  confidence: string | null;
+  freshness: BatteryFreshness;
+  evidenceType: string | null;
+  publicationState: SohPublicationState;
+  telemetry: {
+    socPercent: number | null;
+    rangeKm: number | null;
+    chargingPowerKw: number | null;
+    isCharging: boolean | null;
+    chargingCableConnected: boolean | null;
+    temperatureC: number | null;
+    currentVoltageV: number | null;
+    grossCapacityKwh: number | null;
+    currentEnergyKwh: number | null;
+    addedEnergyKwh: number | null;
+    providerSohPercent: number | null;
+  };
+  snapshotCount: number;
+  interpretation: { label: string; color: string; description: string } | null;
+}
+
+export interface BatteryCurrentTelemetrySection {
+  observedAt: string | null;
+  socPercent: number | null;
+  rangeKm: number | null;
+  chargingState: 'charging' | 'not_charging' | null;
+  chargingPowerKw: number | null;
+  lvVoltageV: number | null;
+  genericEnergyPercent: number | null;
+}
+
 export interface BatteryHealthSummary {
+  vehicleId: string;
+  generatedAt: string;
+  support: {
+    lv: boolean;
+    hv: boolean;
+  };
+  lv: CanonicalLvBatterySection;
+  hv: CanonicalHvBatterySection;
+  currentTelemetry: BatteryCurrentTelemetrySection;
+  watchpoints: string[];
+  recommendations: string[];
+
+  // Compatibility fields for existing runtime consumers.
   currentState: {
     sohPercent: number | null;
     publishedSohPct: number | null;
+    estimatedSohPct: number | null;
     publicationState: SohPublicationState;
     maturityConfidence: string;
     voltageV: number | null;
@@ -1175,6 +1551,7 @@ export interface BatteryHealthSummary {
     restingVoltage: number | null;
     crankingVoltage: number | null;
     chargingVoltage: number | null;
+    calibrationProgress: BatteryCalibrationProgress;
   };
   condition: 'good' | 'watch' | 'attention' | 'calibrating';
   trendDirection: 'stable' | 'declining' | 'improving' | 'unknown';
@@ -1192,19 +1569,47 @@ export interface BatteryHealthSummary {
     workshopName?: string | null;
     odometerKm?: number | null;
   }>;
-  watchpoints: string[];
-  recommendations: string[];
+}
+
+export interface BatteryEvidenceItem {
+  id: string;
+  observedAt: string;
+  sourceType: string | null;
+  valueType: string;
+  value: number | null;
+  unit: string | null;
+  provider: string | null;
+  confidence: string | null;
+  quality: string | null;
+  documentExtractionId: string | null;
+  serviceEventId: string | null;
+}
+
+export interface BatteryHealthDetail extends BatteryHealthSummary {
+  detail: {
+    lv: {
+      evidence: BatteryEvidenceItem[];
+    };
+    hv: {
+      evidence: BatteryEvidenceItem[];
+      chargingSessions: Array<any>;
+      recentTrend: Array<any>;
+    };
+  };
 }
 
 export interface HvBatteryStatus {
   isEv: boolean;
   nominalCapacityKwh: number | null;
+  providerNominalCapacityKwh?: number | null;
   currentSocPercent: number | null;
   estimatedRangeKm: number | null;
   sohPercent: number | null;
   rawSohPercent: number | null;
+  providerReportedSohPercent?: number | null;
   publishedSohPercent: number | null;
   sohMethod: string;
+  sohSourceType?: string | null;
   publicationState: SohPublicationState;
   publicationMethod: string;
   maturityConfidence: string;
@@ -1215,6 +1620,18 @@ export interface HvBatteryStatus {
   chargingSessions: Array<any>;
   recentTrend: Array<any>;
   lastRecordedAt: string | null;
+  telemetry?: {
+    temperatureC: number | null;
+    chargingPowerKw: number | null;
+    isCharging: boolean | null;
+    chargingCableConnected: boolean | null;
+    currentVoltageV: number | null;
+    currentEnergyKwh: number | null;
+    addedEnergyKwh: number | null;
+  };
+  providerSohObservedAt?: string | null;
+  canonical?: CanonicalHvBatterySection | null;
+  currentTelemetry?: BatteryCurrentTelemetrySection | null;
 }
 
 export interface ServiceInfoStatus {
@@ -1262,6 +1679,7 @@ export interface OilChangeStatus {
   }>;
 }
 
+/** @deprecated Legacy heuristic payload. Prefer BrakeHealthSummary/Detail. */
 export interface BrakeStatus {
   hasSpecs: boolean;
   isEv: boolean;
@@ -1314,16 +1732,76 @@ export interface BrakeAlert {
   value?: number;
 }
 
+export type BrakeStateClass = 'MEASURED' | 'ESTIMATED' | 'WARNING_ONLY' | 'NO_BASELINE';
+export type BrakeServiceKindInput =
+  | 'inspection_only'
+  | 'pads_service'
+  | 'discs_service'
+  | 'brake_fluid_service'
+  | 'full_brake_service';
+export type BrakeServiceScopeInput =
+  | 'front_pads'
+  | 'rear_pads'
+  | 'front_discs'
+  | 'rear_discs';
+
+export interface BrakeModeledComponents {
+  frontPads: boolean;
+  rearPads: boolean;
+  frontDiscs: boolean;
+  rearDiscs: boolean;
+  hasAnyPads: boolean;
+  hasAnyDiscs: boolean;
+  hasAnyModeled: boolean;
+}
+
+export interface BrakeModelCoverage {
+  distanceSinceAnchorKm: number | null;
+  modeledDistanceKm: number | null;
+  modeledTripCount: number;
+  coverageRatio: number | null;
+  hasGap: boolean;
+  source:
+    | 'trip_impacts'
+    | 'trip_impacts_plus_rolling_gap'
+    | 'rolling_gap_only'
+    | 'none';
+}
+
+export interface BrakeServiceLifecycleResult {
+  serviceEventId: string;
+  lifecycleApplied: boolean;
+  initialized: boolean;
+  status: 'initialized' | 'history_only';
+  message: string;
+}
+
 export interface BrakeHealthSummary {
   isInitialized: boolean;
+  stateClass: BrakeStateClass;
   status?: string;
   message?: string;
   actions?: { canAddBrakeService: boolean; canUseAiUpload: boolean };
-  pads?: { healthPercent: number; estimatedLifetimeKm: number };
-  discs?: { healthPercent: number; estimatedLifetimeKm: number };
+  pads?: { healthPercent: number; estimatedLifetimeKm: number | null };
+  discs?: { healthPercent: number; estimatedLifetimeKm: number | null };
+  limitingComponent?:
+    | 'FRONT_PADS'
+    | 'REAR_PADS'
+    | 'FRONT_DISCS'
+    | 'REAR_DISCS'
+    | 'PADS_SET'
+    | 'DISCS_SET'
+    | null;
+  remainingKm?: number | null;
+  modeledComponents: BrakeModeledComponents;
+  modelCoverage: BrakeModelCoverage;
   lastChangeAt?: string | null;
+  lastRecalculatedAt?: string | null;
   confidence?: { score: number; label: string };
+  baselineWarnings: string[];
+  provenanceWarnings: string[];
   hasAlert?: boolean;
+  legacyHeuristic?: { available: boolean; note: string };
 }
 
 export interface BrakeHealthDetail {
@@ -1333,7 +1811,19 @@ export interface BrakeHealthDetail {
   frontDiscs: BrakeAxleEstimate | null;
   rearDiscs: BrakeAxleEstimate | null;
   specs: any;
-  history: Array<{ id: string; date: string; odometerKm: number | null; workshopName: string | null; notes: string | null; costCents: number | null }>;
+  history: Array<{
+    id: string;
+    date: string;
+    odometerKm: number | null;
+    workshopName: string | null;
+    notes: string | null;
+    costCents: number | null;
+    serviceKind?: string | null;
+    source?: string | null;
+    scope?: string[] | null;
+    lifecycleApplied?: boolean | null;
+    lifecycleNote?: string | null;
+  }>;
   alerts: BrakeAlert[];
   factors: Record<string, number>;
   drivingImpactAvailable: boolean;
@@ -1439,6 +1929,32 @@ export interface JammingIncidentDto {
   detectedAt: string | null;
   where: string | null;
   lastKnownAddress: string | null;
+}
+
+export interface FleetMapVehicleResponse {
+  id: string;
+  licensePlate: string | null;
+  displayName: string;
+  make: string | null;
+  model: string;
+  year: number | null;
+  status: string;
+  fuelType: string;
+  healthStatus: string;
+  cleaningStatus: string;
+  stationId: string | null;
+  stationName: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  lastSeenAt: string | null;
+  signalAgeMs: number;
+  isFresh: boolean;
+  onlineStatus: string;
+  displayState: string;
+  displayIgnition: string;
+  isLiveTracking: boolean;
+  heading: number | null;
+  imageUrl: string | null;
 }
 
 export interface FleetConnectivityVehicle {
@@ -1584,6 +2100,14 @@ export type HmActivationState =
   | 'REVOKED'
   | 'ERROR';
 
+/**
+ * OEM onboarding path.
+ * ELIGIBILITY_FIRST      — BMW, Mercedes, Toyota, Renault, Ford, etc.
+ * DIRECT_FLEET_CLEARANCE — VW Group (Audi, VW, Skoda, SEAT, CUPRA) + Porsche
+ * UNKNOWN                — unrecognized brand; safe fallback tries direct clearance
+ */
+export type HmOemPath = 'ELIGIBILITY_FIRST' | 'DIRECT_FLEET_CLEARANCE' | 'UNKNOWN';
+
 export interface HmVehicleStatusDto {
   state: HmActivationState;
   hmVehicleId: string | null;
@@ -1598,6 +2122,12 @@ export interface HmVehicleStatusDto {
   canDeactivate: boolean;
   canCheckEligibility: boolean;
   canRefresh: boolean;
+  /** OEM onboarding path — determines whether eligibility must be checked first. */
+  oemPath: HmOemPath;
+  /** True when brand uses direct fleet clearance and no HM record exists yet. */
+  canRequestDirectClearance: boolean;
+  /** Human-readable explanation for why eligibility is skipped (VW Group / Porsche). */
+  routingNote: string | null;
 }
 
 export interface HmTirePressureSignals {
@@ -1646,10 +2176,41 @@ export interface HmIndicators {
   tirePressureWarning: { active: boolean } | null;
 }
 
+export type HmFreshnessStatus = 'fresh' | 'aging' | 'stale' | 'no_data';
+
+export type AiHealthStatusLevel =
+  | 'EXCELLENT'
+  | 'GOOD'
+  | 'ATTENTION_NEEDED'
+  | 'CRITICAL'
+  | 'NO_RECENT_DATA';
+
+export interface OilLevelDisplay {
+  mode: 'normalized_bar' | 'status_only' | 'no_data';
+  value: number | null;
+  label: string;
+}
+
+export interface AiHealthIndicators {
+  limpMode: boolean | null;
+  brakeWarning: boolean | null;
+  tirePressureWarning: boolean | null;
+}
+
 export interface AiHealthCareResponse extends HealthSummaryResponse {
+  // ── New canonical fields ────────────────────────────────────────────────
+  aiStatus: AiHealthStatusLevel;
+  summaryText: string;
+  reasons: string[];
+  oilLevelDisplay: OilLevelDisplay;
+  indicators: AiHealthIndicators;
+  // ── Legacy HM fields ───────────────────────────────────────────────────
   hmIndicators: HmIndicators;
   lastHmUpdate: string | null;
   hmHealthActive: boolean;
+  hmFreshnessStatus?: HmFreshnessStatus;
+  hmLastErrorAt?: string | null;
+  hmLastErrorMessage?: string | null;
 }
 
 // ── Vendor / Service Partner types ──────────────────────

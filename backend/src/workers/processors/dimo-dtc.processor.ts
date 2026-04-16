@@ -53,20 +53,18 @@ export class DimoDtcProcessor extends WorkerHost {
         return;
       }
 
-      // Use the filtered signalsLatest form so we only pull obdDTCList
+      // Fetch latest obdDTCList signal via DIMO signalsLatest (SignalCollection format)
       const query = `
         query {
-          signalsLatest(tokenId: ${tokenId}, signals: [obdDTCList]) {
-            timestamp
-            signal
-            value
+          signalsLatest(tokenId: ${tokenId}) {
+            obdDTCList { timestamp value }
           }
         }
       `;
       const result = await this.telemetry.queryGraphQL(jwt, query);
 
-      const signalRows: any[] = result?.data?.signalsLatest ?? [];
-      const dtcSignal = signalRows.find((s: any) => s.signal === 'obdDTCList');
+      // SignalCollection returns obdDTCList as { timestamp, value } object, not a row array
+      const dtcSignal = result?.data?.signalsLatest?.obdDTCList ?? null;
 
       // Normalize: DIMO may return a comma-joined string or an array
       const newCodes: string[] = this.normalizeDtcCodes(dtcSignal?.value);
