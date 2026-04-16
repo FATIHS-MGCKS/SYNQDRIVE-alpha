@@ -449,10 +449,19 @@ export class TripReconciliationService {
       }
     }
 
+    // Motion fallback / augmentation.
+    // Old behavior: only run when ignition returned zero candidates. That
+    // was wrong for EVs — a single ignition segment (often from stale device
+    // state) was enough to suppress motion entirely, even though motion
+    // represents the actual ground truth for Tesla-style vehicles with no
+    // ignition telemetry. New behavior:
+    //   - EV / HYBRID / UNKNOWN: always run motion (then dedupe).
+    //   - ICE: run only as fallback when ignition produced nothing.
+    const motionProfileEligible =
+      profile === 'EV' || profile === 'HYBRID' || profile === 'UNKNOWN';
     const useMotionFallback =
       this.motionDetector &&
-      candidates.length === 0 &&
-      (profile === 'EV' || profile === 'HYBRID' || profile === 'UNKNOWN');
+      (motionProfileEligible || candidates.length === 0);
 
     if (useMotionFallback) {
       const motionFinding = await this.motionDetector!.evaluate({

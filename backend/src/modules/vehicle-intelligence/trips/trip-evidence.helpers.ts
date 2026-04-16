@@ -415,6 +415,8 @@ export function resolveAnalyticsAssistedStartDecision(input: {
   startConfirmation?: DetectorFinding;
   activityWindow?: DetectorFinding;
   ignitionSegment?: DetectorFinding;
+  motionSegment?: DetectorFinding;
+  profile?: string;
   currentTelemetry: {
     isIgnitionOn: boolean | null;
     speedKmh: number | null;
@@ -424,6 +426,8 @@ export function resolveAnalyticsAssistedStartDecision(input: {
   const startConfirmation = input.startConfirmation;
   const activityWindow = input.activityWindow;
   const ignitionSegment = input.ignitionSegment;
+  const motionSegment = input.motionSegment;
+  const profile = (input.profile ?? 'UNKNOWN').toUpperCase();
   const currentTelemetryActive =
     (input.currentTelemetry?.speedKmh ?? 0) > 0.5 ||
     input.currentTelemetry?.engineLoad != null && input.currentTelemetry.engineLoad > 15 ||
@@ -431,7 +435,9 @@ export function resolveAnalyticsAssistedStartDecision(input: {
       (input.currentTelemetry?.speedKmh ?? 0) > 0);
   const activityTriggered = activityWindow?.verdict === 'TRIGGERED';
   const ignitionTriggered = ignitionSegment?.verdict === 'TRIGGERED';
-  const analyticsCorroborated = activityTriggered || ignitionTriggered;
+  const motionTriggered = motionSegment?.verdict === 'TRIGGERED';
+  const analyticsCorroborated =
+    activityTriggered || ignitionTriggered || motionTriggered;
 
   if (startConfirmation?.verdict === 'TRIGGERED') {
     return {
@@ -447,6 +453,7 @@ export function resolveAnalyticsAssistedStartDecision(input: {
         startConfirmationConfidence: startConfirmation.confidence,
         clickhouseActivityTriggered: activityTriggered,
         clickhouseIgnitionTriggered: ignitionTriggered,
+        clickhouseMotionTriggered: motionTriggered,
       },
     };
   }
@@ -467,6 +474,7 @@ export function resolveAnalyticsAssistedStartDecision(input: {
     activityTriggered &&
     (activityPointCount >= 3 || activitySpeed > 5 || activityOdometerDelta > 0.05);
 
+  // ICE / HYBRID path: require ignition + activity corroboration.
   if (currentTelemetryActive && strongActivityWindow && ignitionTriggered) {
     return {
       confirmed: true,
@@ -480,9 +488,42 @@ export function resolveAnalyticsAssistedStartDecision(input: {
         currentTelemetryActive,
         clickhouseActivityTriggered: activityTriggered,
         clickhouseIgnitionTriggered: ignitionTriggered,
+        clickhouseMotionTriggered: motionTriggered,
         pointCount: activityPointCount,
         maxSpeedKmh: activitySpeed,
         odometerDeltaKm: activityOdometerDelta,
+      },
+    };
+  }
+
+  // EV / UNKNOWN path: ignition telemetry is frequently absent. Accept motion
+  // segment + activity window as sufficient corroboration when telemetry is
+  // active. This is the single most impactful fix for Tesla trip detection.
+  const isEvProfile =
+    profile === 'EV' || profile === 'HYBRID' || profile === 'UNKNOWN';
+  if (
+    isEvProfile &&
+    currentTelemetryActive &&
+    (motionTriggered || strongActivityWindow)
+  ) {
+    return {
+      confirmed: true,
+      confidence:
+        motionSegment?.confidence === 'HIGH' ||
+        activityWindow?.confidence === 'HIGH'
+          ? 'HIGH'
+          : 'MEDIUM',
+      mode: START_DETECTION_MODES.MOTION_PRIMARY,
+      evidencePath: 'CLICKHOUSE_ASSISTED',
+      summary: {
+        currentTelemetryActive,
+        clickhouseActivityTriggered: activityTriggered,
+        clickhouseIgnitionTriggered: ignitionTriggered,
+        clickhouseMotionTriggered: motionTriggered,
+        pointCount: activityPointCount,
+        maxSpeedKmh: activitySpeed,
+        odometerDeltaKm: activityOdometerDelta,
+        evPath: true,
       },
     };
   }
@@ -496,6 +537,7 @@ export function resolveAnalyticsAssistedStartDecision(input: {
       currentTelemetryActive,
       clickhouseActivityTriggered: activityTriggered,
       clickhouseIgnitionTriggered: ignitionTriggered,
+      clickhouseMotionTriggered: motionTriggered,
       pointCount: activityPointCount,
       maxSpeedKmh: activitySpeed,
       odometerDeltaKm: activityOdometerDelta,
@@ -550,7 +592,7 @@ function isPointActive(pt: TripCoreDataPoint, t: ProfileThresholds): boolean {
   const hasSpeed = pt.speed != null && pt.speed > t.speedActiveKmh;
   // Secondary: ignition + minimal speed (both must be present, ignition alone is not enough)
   const hasIgnitionWithSpeed =
-    pt.isIgnitionOn && pt.speed != null && pt.speed > t.speedMotionKmh;
+    pt.isIgnitionOn === true && pt.speed != null && pt.speed > t.speedMotionKmh;
   return hasSpeed || hasIgnitionWithSpeed;
 }
 
@@ -665,13 +707,24 @@ export function evaluateInactivityWindow(
   let inactiveCount = 0;
   let allStopped = true;
   let allIgnitionOff = true;
+  let hasAnyIgnitionData = false;
 
   for (const pt of points) {
     const isStopped = pt.speed == null || pt.speed <= t.speedMotionKmh;
     if (!isStopped) allStopped = false;
-    if (pt.isIgnitionOn) allIgnitionOff = false;
+    if (pt.isIgnitionOn != null) {
+      hasAnyIgnitionData = true;
+      if (pt.isIgnitionOn) allIgnitionOff = false;
+    }
     // Count as inactive if stopped — ignition state is secondary since it can be stale
     if (isStopped) inactiveCount++;
+  }
+
+  // If we have no ignition data at all (e.g. Tesla via DIMO), we cannot
+  // confirm "all ignition off" — treat it as unknown rather than asserting off.
+  // This prevents false HIGH-confidence end detection for EVs.
+  if (!hasAnyIgnitionData) {
+    allIgnitionOff = false;
   }
 
   const odoValues = points

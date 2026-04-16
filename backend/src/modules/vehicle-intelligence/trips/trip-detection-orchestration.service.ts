@@ -628,6 +628,10 @@ export class TripDetectionOrchestrationService {
         ignitionSegment: confirmFindings.find(
           (f) => f.detectorName === 'IgnitionSegmentDetector',
         ),
+        motionSegment: confirmFindings.find(
+          (f) => f.detectorName === 'MotionSegmentDetector',
+        ),
+        profile,
         currentTelemetry: telemetry
           ? {
               isIgnitionOn: telemetry.isIgnitionOn,
@@ -1696,10 +1700,13 @@ export class TripDetectionOrchestrationService {
         });
 
         if (trip) {
-          const lastWaypoint = await this.prisma.vehicleTripWaypoint.findFirst({
-            where: { tripId },
-            orderBy: { recordedAt: 'desc' },
-          });
+          const [lastWaypoint, waypointCount] = await Promise.all([
+            this.prisma.vehicleTripWaypoint.findFirst({
+              where: { tripId },
+              orderBy: { recordedAt: 'desc' },
+            }),
+            this.prisma.vehicleTripWaypoint.count({ where: { tripId } }),
+          ]);
 
           // ── End-time priority (most reliable → least reliable):
           //   1. CUSUM validated segment end (change-point detected)
@@ -1731,10 +1738,18 @@ export class TripDetectionOrchestrationService {
           // Tracks why we are entering RESTING, for smart cooldown in next evaluation.
           restingReason = 'complete';
 
+          // Derive a practical maxConsecutiveActive proxy from waypoint count.
+          // Any trip that made it to finalize has already survived
+          // POSSIBLE_START → ACTIVE_TRIP → POSSIBLE_END, so passing a hardcoded
+          // 0 here would discard every finalizing trip whose distance < 100m
+          // regardless of real movement — catastrophic for urban short trips.
+          // waypointCount reflects actual route density without re-evaluating
+          // core points. A trip with 0–1 waypoints is genuinely suspect and
+          // still legitimately subject to the `no_meaningful_movement` rule.
           const qualityCheck = checkTripQuality(
             durationMs,
             trip.distanceKm,
-            0,
+            waypointCount,
             null,
             trip.startTime,
           );

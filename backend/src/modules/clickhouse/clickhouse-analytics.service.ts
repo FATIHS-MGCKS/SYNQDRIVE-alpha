@@ -4,7 +4,13 @@ import type { IgnitionSegmentFinding } from '../vehicle-intelligence/trips/detec
 import type { MotionSegmentFinding } from '../vehicle-intelligence/trips/detectors/motion-segment.detector';
 import { TripMetricsService } from '../observability/trip-metrics.service';
 
-const MIN_SEGMENT_DURATION_MS = 2 * 60_000; // 2 min minimum trip candidate
+// Minimum segment duration per signal type.
+// Ignition segments: 60s — short ICE on/off cycles (e.g. starting for pickup) are real trips.
+// Motion segments:   30s — short EV hops (e.g. parking reposition, courier deliveries) are real trips.
+// Lowering these from the old 2-minute global filter unblocks Tesla + micro-trip detection
+// which previously failed the 2-minute floor entirely.
+const MIN_IGNITION_SEGMENT_DURATION_MS = 60_000;
+const MIN_MOTION_SEGMENT_DURATION_MS = 30_000;
 
 function toClickHouseDateTime64Param(value: Date): string {
   return value.toISOString().replace('T', ' ').replace('Z', '');
@@ -83,7 +89,7 @@ export class ClickHouseAnalyticsService {
           vehicleId,
           from: toClickHouseDateTime64Param(from),
           to: toClickHouseDateTime64Param(to),
-          minDurationMs: MIN_SEGMENT_DURATION_MS,
+          minDurationMs: MIN_IGNITION_SEGMENT_DURATION_MS,
         },
         format: 'JSONEachRow',
       });
@@ -173,7 +179,7 @@ export class ClickHouseAnalyticsService {
           vehicleId,
           from: toClickHouseDateTime64Param(from),
           to: toClickHouseDateTime64Param(to),
-          minDurationMs: MIN_SEGMENT_DURATION_MS,
+          minDurationMs: MIN_MOTION_SEGMENT_DURATION_MS,
         },
         format: 'JSONEachRow',
       });

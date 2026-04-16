@@ -36,13 +36,13 @@ export class DimoTelemetryService {
     vehicleJwt: string,
     tokenId: number,
   ): Promise<unknown> {
+    // Route through queryGraphQL so DIMO GraphQL `errors` are logged and, when
+    // no `data` is returned, surfaced as an exception. Previously these errors
+    // were silently swallowed, causing the snapshot processor to treat a failed
+    // fetch as a no-op and leaving gaps in our live trip detection FSM.
     const query = buildLatestSnapshotQuery(tokenId);
-    const response = await this.client.post(
-      '',
-      { query },
-      { headers: { Authorization: `Bearer ${vehicleJwt}` } },
-    );
-    return response.data?.data ?? response.data;
+    const result = await this.queryGraphQL(vehicleJwt, query);
+    return result?.data ?? result;
   }
 
   async fetchLastSeenLocation(
@@ -50,12 +50,8 @@ export class DimoTelemetryService {
     tokenId: number,
   ): Promise<unknown> {
     const query = buildLastSeenLocationQuery(tokenId);
-    const response = await this.client.post(
-      '',
-      { query },
-      { headers: { Authorization: `Bearer ${vehicleJwt}` } },
-    );
-    return response.data?.data ?? response.data;
+    const result = await this.queryGraphQL(vehicleJwt, query);
+    return result?.data ?? result;
   }
 
   async queryGraphQL(

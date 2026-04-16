@@ -37,6 +37,16 @@ export class TripDetectionPolicyResolver {
           const detectors = ['StartConfirmationDetector'];
           if (anomalyContext.clickhouseAvailable) {
             detectors.push('ActivityWindowDetector', 'IgnitionSegmentDetector');
+            // EV / HYBRID / UNKNOWN profiles frequently lack ignition telemetry
+            // (Tesla has `isIgnitionOn=null`). Adding MotionSegmentDetector
+            // gives the decision engine a ground-truth motion signal.
+            if (
+              profile === 'EV' ||
+              profile === 'HYBRID' ||
+              profile === 'UNKNOWN'
+            ) {
+              detectors.push('MotionSegmentDetector');
+            }
           }
           return {
             detectors,
@@ -77,12 +87,22 @@ export class TripDetectionPolicyResolver {
       // ── Repair: look for missing trips in a historical window ──────────────
       case DETECTION_PHASES.REPAIR_MISSING_TRIP: {
         const detectors: string[] = [];
-        // If ClickHouse data is dense, prefer analytical detectors
+        // If ClickHouse data is dense, prefer analytical detectors.
         if (dataQuality.highFrequencyAvailable && dataQuality.telemetryDensity !== 'NONE') {
           detectors.push('IgnitionSegmentDetector');
+          // MotionSegmentDetector is the EV ground truth (Tesla has no
+          // ignition telemetry). Including it alongside ignition avoids
+          // missed repairs and lets the reconciliation layer merge by time.
+          if (
+            profile === 'EV' ||
+            profile === 'HYBRID' ||
+            profile === 'UNKNOWN'
+          ) {
+            detectors.push('MotionSegmentDetector');
+          }
           detectors.push('ActivityWindowDetector');
         } else {
-          // Fallback: use core DIMO data points if provided in context
+          // Fallback: use core DIMO data points if provided in context.
           detectors.push('StartConfirmationDetector');
         }
         return {
@@ -94,13 +114,23 @@ export class TripDetectionPolicyResolver {
       }
 
       // ── Repair: find the correct end time for an open/missing-end trip ─────
-      case DETECTION_PHASES.REPAIR_MISSING_END:
+      case DETECTION_PHASES.REPAIR_MISSING_END: {
+        const detectors: string[] = ['ChangePointEndDetector', 'IgnitionSegmentDetector'];
+        // EV profiles need motion-based end signal since ignition is unreliable.
+        if (
+          profile === 'EV' ||
+          profile === 'HYBRID' ||
+          profile === 'UNKNOWN'
+        ) {
+          detectors.push('MotionSegmentDetector');
+        }
         return {
-          detectors: ['ChangePointEndDetector', 'IgnitionSegmentDetector'],
+          detectors,
           requiredConfidence: 'MEDIUM',
           timeoutMs: 20_000,
           fallbackBehavior: 'ESCALATE',
         };
+      }
 
       // ── Overlap / duplicate check before inserting a repair trip ──────────
       case DETECTION_PHASES.DUPLICATE_OR_OVERLAP_CHECK:

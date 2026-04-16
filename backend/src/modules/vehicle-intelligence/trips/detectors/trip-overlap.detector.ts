@@ -33,11 +33,24 @@ export class TripOverlapDetector implements TripDetector {
     const windowStart = new Date(candidateStart.getTime() - OVERLAP_TOLERANCE_MS);
     const windowEnd = new Date(candidateEnd.getTime() + OVERLAP_TOLERANCE_MS);
 
+    // An ONGOING trip (endTime=null) should only block a candidate that
+    // actually intersects it — i.e. the candidate starts at/after the ongoing
+    // trip's start. Historically the `{ endTime: null }` branch matched every
+    // open trip regardless of when it started, blocking any repair of older
+    // missing trips while an ongoing trip existed ("phantom ONGOING blocks all").
     const overlap = await this.prisma.vehicleTrip.findFirst({
       where: {
         vehicleId,
-        startTime: { lte: windowEnd },
-        OR: [{ endTime: { gte: windowStart } }, { endTime: null }],
+        OR: [
+          {
+            endTime: { not: null, gte: windowStart },
+            startTime: { lte: windowEnd },
+          },
+          {
+            endTime: null,
+            startTime: { lte: windowEnd, gte: windowStart },
+          },
+        ],
         ...(excludeTripId ? { id: { not: excludeTripId } } : {}),
       },
       select: { id: true, startTime: true, endTime: true, tripStatus: true },

@@ -33,7 +33,10 @@ export interface CrankDataPoint {
 // ── Core data point from 20-second trip detection buckets ──
 export interface TripCoreDataPoint {
   timestamp: string;
-  isIgnitionOn: boolean;
+  // nullable: DIMO returns no ignition value for EVs (e.g. Tesla).
+  // Coercing to false would mask "unknown" as "off" and falsely trigger
+  // ignition-off-based end detection.
+  isIgnitionOn: boolean | null;
   speed: number | null;
   travelledDistance: number | null;
   fuelAbsoluteLevel: number | null;
@@ -127,9 +130,15 @@ export interface TirePressureReading {
 @Injectable()
 export class DimoSegmentsService {
   private readonly logger = new Logger(DimoSegmentsService.name);
+  // Order matters: changePointDetection is the most robust historical
+  // mechanism, frequencyAnalysis catches sparse-signal trips, and
+  // ignitionDetection is the tie-breaker for ICE vehicles with clean
+  // ignition transitions. Previously ignitionDetection was declared on the
+  // DIMO API but never iterated — missing many repairable trips.
   private readonly segmentMechanismFallbackOrder: DimoDetectionMechanism[] = [
     'changePointDetection',
     'frequencyAnalysis',
+    'ignitionDetection',
   ];
 
   constructor(
@@ -191,8 +200,10 @@ export class DimoSegmentsService {
         .filter((s: any) => s.timestamp)
         .map((s: any) => ({
           timestamp: s.timestamp,
+          // Preserve null when DIMO provides no ignition signal (EVs).
+          // Only coerce to boolean when a numeric value is present.
           isIgnitionOn:
-            typeof s.isIgnitionOn === 'number' ? s.isIgnitionOn >= 0.5 : false,
+            typeof s.isIgnitionOn === 'number' ? s.isIgnitionOn >= 0.5 : null,
           speed: typeof s.speed === 'number' ? s.speed : null,
           travelledDistance:
             typeof s.powertrainTransmissionTravelledDistance === 'number'

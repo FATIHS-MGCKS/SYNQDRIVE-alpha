@@ -30,10 +30,17 @@ export class TripReconciliationScheduler {
     const to = new Date();
     const from = new Date(to.getTime() - 45 * 60_000);
 
-    // Only vehicles with recent snapshot activity (active vehicles)
+    // Only vehicles with recent snapshot activity (active vehicles).
+    // providerFetchedAt reflects when we polled DIMO; lastSeenAt reflects DIMO's
+    // provider timestamp which can lag wall clock (esp. Tesla). We consider a
+    // vehicle "recently active" if either signal is within the last hour.
+    const recencyThreshold = new Date(to.getTime() - 60 * 60_000);
     const recentActive = await this.prisma.vehicleLatestState.findMany({
       where: {
-        lastSeenAt: { gte: new Date(to.getTime() - 60 * 60_000) },
+        OR: [
+          { lastSeenAt: { gte: recencyThreshold } },
+          { providerFetchedAt: { gte: recencyThreshold } },
+        ],
       },
       select: { vehicleId: true },
     });
@@ -45,6 +52,7 @@ export class TripReconciliationScheduler {
           from,
           to,
           'fast',
+          { useDimoSegmentFallback: true },
         );
         if (result.repairsApplied > 0 || result.repairsProposed > 0) {
           this.logger.log(

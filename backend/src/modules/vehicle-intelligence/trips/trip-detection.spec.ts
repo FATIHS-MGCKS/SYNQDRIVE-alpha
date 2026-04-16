@@ -542,6 +542,58 @@ describe('resolveAnalyticsAssistedStartDecision', () => {
 
     expect(result.confirmed).toBe(false);
   });
+
+  it('EV profile: confirms start via motion segment + active telemetry without ignition', () => {
+    const result = resolveAnalyticsAssistedStartDecision({
+      startConfirmation: finding('StartConfirmationDetector', 'NOT_TRIGGERED', 'LOW'),
+      motionSegment: finding('MotionSegmentDetector', 'TRIGGERED', 'HIGH', {
+        segments: [{ start: '2026-04-16T10:00:00Z', end: '2026-04-16T10:05:00Z' }],
+      }),
+      profile: 'EV',
+      currentTelemetry: { isIgnitionOn: null, speedKmh: 18, engineLoad: null },
+    });
+
+    expect(result.confirmed).toBe(true);
+    expect(result.evidencePath).toBe('CLICKHOUSE_ASSISTED');
+    expect(result.mode).toBe('MOTION_PRIMARY');
+  });
+
+  it('EV profile: confirms start via activity window alone when motion absent', () => {
+    const result = resolveAnalyticsAssistedStartDecision({
+      startConfirmation: finding('StartConfirmationDetector', 'NOT_TRIGGERED', 'LOW'),
+      activityWindow: finding('ActivityWindowDetector', 'TRIGGERED', 'HIGH', {
+        pointCount: 5,
+        maxSpeedKmh: 30,
+        odometerDeltaKm: 0.15,
+      }),
+      profile: 'EV',
+      currentTelemetry: { isIgnitionOn: null, speedKmh: 12, engineLoad: null },
+    });
+
+    expect(result.confirmed).toBe(true);
+    expect(result.evidencePath).toBe('CLICKHOUSE_ASSISTED');
+  });
+
+  it('EV profile: rejects start without any analytics corroboration', () => {
+    const result = resolveAnalyticsAssistedStartDecision({
+      startConfirmation: finding('StartConfirmationDetector', 'NOT_TRIGGERED', 'LOW'),
+      profile: 'EV',
+      currentTelemetry: { isIgnitionOn: null, speedKmh: 18, engineLoad: null },
+    });
+
+    expect(result.confirmed).toBe(false);
+  });
+
+  it('ICE profile: still requires ignition corroboration (regression guard)', () => {
+    const result = resolveAnalyticsAssistedStartDecision({
+      startConfirmation: finding('StartConfirmationDetector', 'NOT_TRIGGERED', 'LOW'),
+      motionSegment: finding('MotionSegmentDetector', 'TRIGGERED', 'HIGH'),
+      profile: 'ICE',
+      currentTelemetry: { isIgnitionOn: false, speedKmh: 0, engineLoad: 0 },
+    });
+
+    expect(result.confirmed).toBe(false);
+  });
 });
 
 describe('resolveClickHouseContinuityGuard', () => {
@@ -804,6 +856,42 @@ describe('evaluateInactivityWindow', () => {
     const result = evaluateInactivityWindow([], 'ICE');
     expect(result.allStopped).toBe(true);
     expect(result.totalPoints).toBe(0);
+  });
+
+  it('EV (Tesla): null ignition is treated as unknown, not as "off"', () => {
+    const mkNullIgnition = (secondsAgo: number, speed: number): TripCoreDataPoint => ({
+      timestamp: makeTs(secondsAgo),
+      isIgnitionOn: null,
+      speed,
+      travelledDistance: null,
+      fuelAbsoluteLevel: null,
+      batteryEnergy: null,
+    });
+    const points = [mkNullIgnition(100, 0), mkNullIgnition(80, 0), mkNullIgnition(60, 0)];
+    const result = evaluateInactivityWindow(points, 'EV');
+    expect(result.allStopped).toBe(true);
+    // Critical: must NOT claim ignition is off just because all samples are null.
+    // This prevents premature POSSIBLE_END on Tesla.
+    expect(result.allIgnitionOff).toBe(false);
+  });
+
+  it('mixed ignition data: confirms "all off" only when explicit false present', () => {
+    const mkPt = (
+      secondsAgo: number,
+      speed: number,
+      ignition: boolean | null,
+    ): TripCoreDataPoint => ({
+      timestamp: makeTs(secondsAgo),
+      isIgnitionOn: ignition,
+      speed,
+      travelledDistance: null,
+      fuelAbsoluteLevel: null,
+      batteryEnergy: null,
+    });
+    const points = [mkPt(100, 0, false), mkPt(80, 0, null), mkPt(60, 0, false)];
+    const result = evaluateInactivityWindow(points, 'ICE');
+    expect(result.allStopped).toBe(true);
+    expect(result.allIgnitionOff).toBe(true);
   });
 });
 
