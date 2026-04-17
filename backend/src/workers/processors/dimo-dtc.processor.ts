@@ -126,8 +126,11 @@ export class DimoDtcProcessor extends WorkerHost {
             dtcPollError: errorMessage.slice(0, 500),
           },
         })
-        .catch(() => {
-          // Best-effort update — ignore secondary failures
+        .catch((secondaryErr) => {
+          const msg = secondaryErr instanceof Error ? secondaryErr.message : String(secondaryErr);
+          this.logger.warn(
+            `DTC poll-failure metadata update also failed: vehicleId=${vehicleId} error=${msg}`,
+          );
         });
     }
   }

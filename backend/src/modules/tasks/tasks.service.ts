@@ -31,8 +31,12 @@ export class TasksService {
     return tasks.map((t) => this.format(t as unknown as Record<string, unknown>));
   }
 
-  async findById(id: string) {
-    const task = await this.prisma.orgTask.findUnique({ where: { id } });
+  async findById(id: string, orgId?: string) {
+    // When orgId is provided we scope the lookup to that tenant to prevent
+    // cross-tenant reads even if a caller guesses a valid id in another org.
+    const task = orgId
+      ? await this.prisma.orgTask.findFirst({ where: { id, organizationId: orgId } })
+      : await this.prisma.orgTask.findUnique({ where: { id } });
     if (!task) throw new NotFoundException('Task not found');
     return this.format(task as unknown as Record<string, unknown>);
   }
@@ -73,7 +77,7 @@ export class TasksService {
     priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
     assignedTo?: string;
     dueDate?: string;
-  }) {
+  }, orgId?: string) {
     const updateData: Record<string, unknown> = {};
     if (data.title !== undefined) updateData.title = data.title;
     if (data.description !== undefined) updateData.description = data.description;
@@ -84,6 +88,16 @@ export class TasksService {
     if (data.priority !== undefined) updateData.priority = data.priority;
     if (data.assignedTo !== undefined) updateData.assignedTo = data.assignedTo;
     if (data.dueDate !== undefined) updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null;
+
+    // Tenant-scoped update: when orgId is known, verify the task belongs to
+    // that org before applying the change. Prevents cross-tenant PATCH.
+    if (orgId) {
+      const existing = await this.prisma.orgTask.findFirst({
+        where: { id, organizationId: orgId },
+        select: { id: true },
+      });
+      if (!existing) throw new NotFoundException('Task not found');
+    }
 
     const task = await this.prisma.orgTask.update({ where: { id }, data: updateData });
     return this.format(task as unknown as Record<string, unknown>);

@@ -14,6 +14,7 @@ import {
 import { VehiclesService } from './vehicles.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { VehicleOwnershipGuard } from '@shared/auth/vehicle-ownership.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { PaginationParams } from '@shared/utils/pagination';
 import {
@@ -245,22 +246,42 @@ export class VehiclesController {
   }
 
   // ── vehicles/:vehicleId (direct access) ───────────────────────────
+  //
+  // These routes are protected by VehicleOwnershipGuard, which validates that
+  // the target vehicle belongs to the requesting user's organization (derived
+  // from the JWT). MASTER_ADMIN bypasses the ownership check. The service
+  // calls also pass user.organizationId for defense-in-depth where applicable.
 
   @Get('vehicles/:vehicleId')
+  @UseGuards(VehicleOwnershipGuard)
   async findOne(@Param('vehicleId') vehicleId: string) {
     return this.vehiclesService.findById(vehicleId);
   }
 
   @Patch('vehicles/:vehicleId')
+  @UseGuards(VehicleOwnershipGuard)
   async update(
     @Param('vehicleId') vehicleId: string,
     @Body() body: Prisma.VehicleUpdateInput,
+    @Req() req: any,
   ) {
-    return this.vehiclesService.update(vehicleId, body);
+    // Service-side defense-in-depth: only allow update when the vehicle
+    // belongs to the caller's organization (skipped for MASTER_ADMIN which
+    // passes the guard without an organizationId check).
+    const orgId: string | undefined =
+      req?.user?.platformRole === 'MASTER_ADMIN'
+        ? undefined
+        : req?.user?.organizationId;
+    return this.vehiclesService.update(vehicleId, body, orgId);
   }
 
   @Delete('vehicles/:vehicleId')
-  async delete(@Param('vehicleId') vehicleId: string) {
-    return this.vehiclesService.delete(vehicleId);
+  @UseGuards(VehicleOwnershipGuard)
+  async delete(@Param('vehicleId') vehicleId: string, @Req() req: any) {
+    const orgId: string | undefined =
+      req?.user?.platformRole === 'MASTER_ADMIN'
+        ? undefined
+        : req?.user?.organizationId;
+    return this.vehiclesService.delete(vehicleId, orgId);
   }
 }

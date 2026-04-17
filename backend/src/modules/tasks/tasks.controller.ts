@@ -15,8 +15,8 @@ export class TasksController {
 
   @Get('organizations/:orgId/tasks/:id')
   @UseGuards(OrgScopingGuard, RolesGuard)
-  async findOne(@Param('id') id: string) {
-    return this.tasksService.findById(id);
+  async findOne(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.tasksService.findById(id, orgId);
   }
 
   @Post('organizations/:orgId/tasks')
@@ -36,7 +36,7 @@ export class TasksController {
 
   @Patch('organizations/:orgId/tasks/:id')
   @UseGuards(OrgScopingGuard, RolesGuard)
-  async update(@Param('id') id: string, @Body() body: {
+  async update(@Param('orgId') orgId: string, @Param('id') id: string, @Body() body: {
     title?: string;
     description?: string;
     status?: 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
@@ -44,6 +44,6 @@ export class TasksController {
     assignedTo?: string;
     dueDate?: string;
   }) {
-    return this.tasksService.update(id, body);
+    return this.tasksService.update(id, body, orgId);
   }
 }

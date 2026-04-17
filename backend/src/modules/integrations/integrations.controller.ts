@@ -10,6 +10,7 @@ import {
 import { IntegrationsService } from './integrations.service';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 
 @Controller()
 @UseGuards(RolesGuard)
@@ -31,11 +32,13 @@ export class IntegrationsController {
 
   // --- organizations/:orgId/integrations (org integration management) ---
   @Get('organizations/:orgId/integrations')
+  @UseGuards(OrgScopingGuard)
   async findByOrg(@Param('orgId') orgId: string) {
     return this.integrationsService.findByOrganization(orgId);
   }
 
   @Post('organizations/:orgId/integrations/:integrationId/connect')
+  @UseGuards(OrgScopingGuard)
   async connect(
     @Param('orgId') orgId: string,
     @Param('integrationId') integrationId: string,
@@ -50,6 +53,7 @@ export class IntegrationsController {
   }
 
   @Delete('organizations/:orgId/integrations/:integrationId')
+  @UseGuards(OrgScopingGuard)
   async disconnect(
     @Param('orgId') orgId: string,
     @Param('integrationId') integrationId: string,

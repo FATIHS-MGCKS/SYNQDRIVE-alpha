@@ -7,16 +7,20 @@ import { createHmac, timingSafeEqual } from 'crypto';
 @Controller('webhooks/dimo')
 export class DimoWebhookController {
   private readonly logger = new Logger(DimoWebhookController.name);
-  private readonly isProduction = process.env.NODE_ENV === 'production';
+  private readonly nodeEnv = process.env.NODE_ENV ?? 'development';
+  private readonly isProduction = this.nodeEnv === 'production';
+  // Only strict local dev may accept unsigned webhooks. Staging / test / preview
+  // environments MUST provide DIMO_WEBHOOK_SECRET — otherwise we fail closed.
+  private readonly allowUnsignedInDev = this.nodeEnv === 'development';
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly dtcService: DtcService,
   ) {
     const secret = process.env.DIMO_WEBHOOK_SECRET;
-    if (this.isProduction && !secret) {
+    if (!this.allowUnsignedInDev && !secret) {
       this.logger.error(
-        'DIMO_WEBHOOK_SECRET is not set in production. All inbound DIMO webhooks will be rejected until this is fixed.',
+        `DIMO_WEBHOOK_SECRET is not set (NODE_ENV=${this.nodeEnv}). All inbound DIMO webhooks will be rejected until this is fixed.`,
       );
     }
   }
@@ -31,11 +35,15 @@ export class DimoWebhookController {
     const secret = process.env.DIMO_WEBHOOK_SECRET;
 
     if (!secret) {
-      if (this.isProduction) {
-        this.logger.warn('DIMO webhook rejected: DIMO_WEBHOOK_SECRET not configured in production');
+      if (!this.allowUnsignedInDev) {
+        this.logger.warn(
+          `DIMO webhook rejected: DIMO_WEBHOOK_SECRET not configured (NODE_ENV=${this.nodeEnv})`,
+        );
         return { status: 'rejected', reason: 'webhook_not_configured' };
       }
-      this.logger.debug('DIMO webhook received without signature check (DIMO_WEBHOOK_SECRET not set, dev mode)');
+      this.logger.debug(
+        'DIMO webhook received without signature check (NODE_ENV=development, secret absent)',
+      );
     } else {
       if (!signature) {
         this.logger.warn('DIMO webhook rejected: missing x-dimo-signature header');

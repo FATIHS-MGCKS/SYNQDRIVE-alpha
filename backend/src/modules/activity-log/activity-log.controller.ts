@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ActivityLogService } from './activity-log.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { PaginationParams } from '@shared/utils/pagination';
 
@@ -24,6 +25,7 @@ export class ActivityLogController {
   }
 
   @Get('organizations/:orgId/activity-log')
+  @UseGuards(OrgScopingGuard)
   async findByOrganization(
     @Param('orgId') orgId: string,
     @Query() query: PaginationParams & { entity?: string; action?: string },

@@ -166,10 +166,14 @@ export class TripEnrichmentOrchestratorService {
         },
       );
       this.logger.log(`Enqueued HF enrichment for trip ${tripId} (jobId=${jobId} delay=${delay}ms)`);
-      // Update pending gauge asynchronously — don't block enqueue for metric update
+      // Update pending gauge asynchronously — don't block enqueue for metric update.
+      // Failures are logged at debug but never bubble up, by design: this is purely
+      // observability and must not poison a successful enqueue.
       this.prisma.vehicleTrip.count({
         where: { behaviorEnrichmentStatus: { in: [STATUS.PENDING, STATUS.IN_PROGRESS] } },
-      }).then((count) => this.tripMetrics?.enrichmentPending.set(count)).catch(() => {});
+      }).then((count) => this.tripMetrics?.enrichmentPending.set(count)).catch((err) => {
+        this.logger.debug(`Failed to update enrichmentPending gauge: ${err instanceof Error ? err.message : err}`);
+      });
       return true;
     } catch (err) {
       // Job with same ID already exists in queue — that is fine (idempotent)

@@ -139,13 +139,18 @@ export class UsersController {
   }
 
   @Delete('organizations/:orgId/users/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
+  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
   async orgDelete(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.usersService.removeOrgUser(orgId, id);
   }
 
+  // Attaching a membership (role) to a user is a privileged operation that can
+  // escalate access. Require ORG_ADMIN or MASTER_ADMIN and enforce tenant
+  // scope via OrgScopingGuard so users cannot be added to foreign orgs.
   @Post('organizations/:orgId/users/:userId/membership')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
+  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
   async orgCreateMembership(
     @Param('orgId') orgId: string,
     @Param('userId') userId: string,

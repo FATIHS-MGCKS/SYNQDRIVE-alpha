@@ -128,7 +128,7 @@ export class SupportController {
   }
 
   @Get('organizations/:orgId/support/tickets/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(OrgScopingGuard, RolesGuard)
   async orgFindOne(
     @Param('orgId') orgId: string,
     @Param('id') id: string,

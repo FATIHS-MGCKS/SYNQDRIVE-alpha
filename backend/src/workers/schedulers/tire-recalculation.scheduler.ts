@@ -33,17 +33,27 @@ export class TireRecalculationScheduler {
       distinct: ['vehicleId'],
     });
 
+    // jobId includes an hourly bucket so that scheduler runs inside the same
+    // hour naturally deduplicate against an already-queued / running job for
+    // the same vehicle, while still letting a new job be created in the next
+    // hour window. Combined with defaultJobOptions (removeOnComplete), this
+    // prevents unbounded Redis memory growth.
+    const hourBucket = Math.floor(Date.now() / 3_600_000);
     for (const s of setups) {
       await this.queue.add(
         'tire-recalc',
         { vehicleId: s.vehicleId },
-        { jobId: `tire-recalc-${s.vehicleId}-${Date.now()}` },
+        {
+          jobId: `tire-recalc:${s.vehicleId}:${hourBucket}`,
+          removeOnComplete: { count: 500, age: 24 * 3600 },
+          removeOnFail: { count: 1000, age: 7 * 24 * 3600 },
+        },
       );
     }
 
     if (setups.length > 0) {
       this.logger.debug(
-        `Enqueued ${setups.length} tire recalculation jobs`,
+        `Enqueued ${setups.length} tire recalculation jobs (hourBucket=${hourBucket})`,
       );
     }
   }

@@ -35,8 +35,8 @@ export class InvoicesController {
 
   @Get('organizations/:orgId/invoices/:id')
   @UseGuards(OrgScopingGuard, RolesGuard)
-  async findOne(@Param('id') id: string) {
-    return this.invoicesService.findById(id);
+  async findOne(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.invoicesService.findById(id, orgId);
   }
 
   @Get('organizations/:orgId/customers/:customerId/invoices')
@@ -80,6 +80,7 @@ export class InvoicesController {
   @Patch('organizations/:orgId/invoices/:id')
   @UseGuards(OrgScopingGuard, RolesGuard)
   async update(
+    @Param('orgId') orgId: string,
     @Param('id') id: string,
     @Body() body: {
       title?: string;
@@ -96,13 +97,13 @@ export class InvoicesController {
       templateId?: string;
     },
   ) {
-    return this.invoicesService.update(id, body);
+    return this.invoicesService.update(id, body, orgId);
   }
 
   @Patch('organizations/:orgId/invoices/:id/pay')
   @UseGuards(OrgScopingGuard, RolesGuard)
-  async markPaid(@Param('id') id: string) {
-    return this.invoicesService.markPaid(id);
+  async markPaid(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.invoicesService.markPaid(id, orgId);
   }
 
   @Post('organizations/:orgId/invoices/upload')

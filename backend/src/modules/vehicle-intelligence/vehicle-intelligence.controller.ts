@@ -8,6 +8,7 @@ import {
   Query,
   UseGuards,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { BatteryService } from './battery/battery.service';
 import { TiresService } from './tires/tires.service';
@@ -1496,6 +1497,21 @@ export class VehicleIntelligenceController {
     @Param('extractionId') extractionId: string,
     @Body() body: { confirmedData: any },
   ) {
+    // Cross-vehicle IDOR guard: prevent applying an extraction from vehicle A
+    // to vehicle B even within the same organization. VehicleOwnershipGuard
+    // only validates the vehicleId in the path — the extractionId is not
+    // implicitly scoped to that vehicle.
+    const existing = await this.prisma.vehicleDocumentExtraction.findUnique({
+      where: { id: extractionId },
+      select: { id: true, vehicleId: true, documentType: true, sourceFileUrl: true },
+    });
+    if (!existing) {
+      throw new NotFoundException('Document extraction not found');
+    }
+    if (existing.vehicleId !== vehicleId) {
+      throw new NotFoundException('Document extraction not found');
+    }
+
     const extraction = await this.prisma.vehicleDocumentExtraction.update({
       where: { id: extractionId },
       data: { confirmedData: body.confirmedData, status: 'CONFIRMED', appliedAt: new Date() },
@@ -1504,13 +1520,20 @@ export class VehicleIntelligenceController {
     const d = body.confirmedData;
     const docType = extraction.documentType;
 
+    // Locale-aware numeric parser: accepts numbers and strings.
+    // Handles German decimal commas ("5,5" → 5.5) which parseFloat silently truncates.
     const toNum = (v: unknown): number | undefined => {
       if (typeof v === 'number' && Number.isFinite(v)) return v;
       if (typeof v === 'string' && v.trim().length > 0) {
-        const parsed = Number(v);
+        const normalized = v.trim().replace(',', '.');
+        const parsed = Number(normalized);
         if (Number.isFinite(parsed)) return parsed;
       }
       return undefined;
+    };
+    const toInt = (v: unknown): number | undefined => {
+      const n = toNum(v);
+      return n != null ? Math.round(n) : undefined;
     };
 
     if (docType === 'BRAKE') {
@@ -1586,15 +1609,17 @@ export class VehicleIntelligenceController {
         TUV_REPORT: 'TUV_INSPECTION', BOKRAFT_REPORT: 'BOKRAFT_INSPECTION',
       };
       const eventType = typeMap[docType] ?? 'OTHER';
+      const odometerKmParsed = toInt(d?.odometerKm);
+      const costCentsParsed = toInt(d?.costCents);
       const svcEvent = await this.prisma.vehicleServiceEvent.create({
         data: {
           vehicleId,
           eventType: eventType as any,
           eventDate: d.eventDate ? new Date(d.eventDate) : new Date(),
-          odometerKm: d.odometerKm ? parseInt(d.odometerKm, 10) : undefined,
+          odometerKm: odometerKmParsed,
           workshopName: d.workshopName || undefined,
           notes: d.notes || d.description || undefined,
-          costCents: d.costCents ? parseInt(d.costCents, 10) : undefined,
+          costCents: costCentsParsed,
           documentUrl: extraction.sourceFileUrl,
         },
       });
@@ -1608,7 +1633,7 @@ export class VehicleIntelligenceController {
           where: { id: vehicleId },
           data: {
             lastOilChangeDate: new Date(d.eventDate),
-            ...(d.odometerKm ? { lastOilChangeOdometerKm: parseInt(d.odometerKm, 10) } : {}),
+            ...(odometerKmParsed != null ? { lastOilChangeOdometerKm: odometerKmParsed } : {}),
           },
         });
       }
@@ -1617,7 +1642,7 @@ export class VehicleIntelligenceController {
           where: { id: vehicleId },
           data: {
             lastServiceDate: new Date(d.eventDate),
-            ...(d.odometerKm ? { lastServiceOdometerKm: parseInt(d.odometerKm, 10) } : {}),
+            ...(odometerKmParsed != null ? { lastServiceOdometerKm: odometerKmParsed } : {}),
           },
         });
       }
@@ -1650,12 +1675,12 @@ export class VehicleIntelligenceController {
             vehicleId,
             eventType: 'BATTERY_REPLACEMENT',
             eventDate: observedAt,
-            odometerKm: normalized.odometerKm
+            odometerKm: normalized.odometerKm != null
               ? Math.round(normalized.odometerKm)
               : undefined,
             workshopName: d?.workshopName || undefined,
             notes: d?.notes || d?.description || undefined,
-            costCents: d?.costCents ? parseInt(d.costCents, 10) : undefined,
+            costCents: toInt(d?.costCents),
             documentUrl: extraction.sourceFileUrl,
           },
         });
@@ -1800,15 +1825,17 @@ export class VehicleIntelligenceController {
       }
     }
 
-    if (docType === 'TIRE' && d.treadDepthMm) {
+    if (docType === 'TIRE' && d?.treadDepthMm && typeof d.treadDepthMm === 'object') {
+      // Use toNum to correctly parse "5,5" (German decimal comma) and to treat
+      // a literal "0" as a valid measurement rather than dropping it via truthy check.
       await this.tireLifecycleService
         .recordMeasurement({
           vehicleId,
-          frontLeftMm: d.treadDepthMm?.fl ? parseFloat(d.treadDepthMm.fl) : undefined,
-          frontRightMm: d.treadDepthMm?.fr ? parseFloat(d.treadDepthMm.fr) : undefined,
-          rearLeftMm: d.treadDepthMm?.rl ? parseFloat(d.treadDepthMm.rl) : undefined,
-          rearRightMm: d.treadDepthMm?.rr ? parseFloat(d.treadDepthMm.rr) : undefined,
-          odometerKm: d.odometerKm ? parseFloat(d.odometerKm) : undefined,
+          frontLeftMm: toNum(d.treadDepthMm?.fl),
+          frontRightMm: toNum(d.treadDepthMm?.fr),
+          rearLeftMm: toNum(d.treadDepthMm?.rl),
+          rearRightMm: toNum(d.treadDepthMm?.rr),
+          odometerKm: toNum(d?.odometerKm),
           source: 'ai_confirmed',
           linkedExtractionId: extraction.id,
           linkedDocumentUrl: extraction.sourceFileUrl ?? undefined,
@@ -1835,19 +1862,22 @@ export class VehicleIntelligenceController {
     if (docType === 'INVOICE') {
       const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId }, select: { organizationId: true } });
       if (vehicle?.organizationId) {
+        const totalCentsParsed = toInt(d?.totalCents) ?? toInt(d?.costCents) ?? 0;
         await this.invoicesService.create(vehicle.organizationId, {
           type: 'INCOMING_UPLOADED',
           vehicleId,
           title: d.title || d.invoiceTitle || 'Hochgeladene Rechnung',
           description: d.description || '',
           vendorName: d.vendorName || d.workshopName || '',
-          totalCents: d.totalCents ? parseInt(d.totalCents, 10) : (d.costCents ? parseInt(d.costCents, 10) : 0),
+          totalCents: totalCentsParsed,
           invoiceDate: d.invoiceDate || d.eventDate || new Date().toISOString(),
           dueDate: d.dueDate || undefined,
           imageUrl: extraction.sourceFileUrl || undefined,
           extractedData: d,
           status: 'SENT',
-        }).catch(() => {});
+        }).catch((err: any) => {
+          this.logger.warn(`Invoice creation from extraction failed: ${err?.message ?? 'unknown error'}`);
+        });
       }
     }
 

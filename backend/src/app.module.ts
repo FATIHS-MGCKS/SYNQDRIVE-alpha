@@ -82,24 +82,17 @@ async function isRedisCompatible(): Promise<boolean> {
 @Module({})
 export class AppModule {
   static async forRootAsync(): Promise<DynamicModule> {
+    // Redis availability is reported but not used as a gate for module registration.
+    //
+    // Previously BullModule and WorkersModule were registered conditionally, which
+    // caused a critical bootstrap failure: feature modules (e.g. VehicleIntelligenceModule)
+    // unconditionally call `BullModule.registerQueue` and inject queues via `@InjectQueue`,
+    // which is unresolvable when the root BullModule is missing. We now always register
+    // BullModule + WorkersModule so the dependency graph is stable. If Redis is
+    // unavailable at runtime, BullMQ (via ioredis) will reconnect automatically
+    // and queue producers will surface errors on `.add()` rather than crashing boot.
     const redisOk = await isRedisCompatible();
     RuntimeStatusRegistry.setWorkersEnabled(redisOk);
-
-    const bullImports: any[] = redisOk
-      ? [
-          BullModule.forRootAsync({
-            useFactory: () => ({
-              connection: {
-                host: process.env.REDIS_HOST || 'localhost',
-                port: parseInt(process.env.REDIS_PORT || '6379', 10),
-                password: process.env.REDIS_PASSWORD || undefined,
-              },
-            }),
-          }),
-        ]
-      : [];
-
-    const workerImports: any[] = redisOk ? [WorkersModule] : [];
 
     return {
       module: AppModule,
@@ -138,7 +131,29 @@ export class AppModule {
           exclude: ['/api/(.*)'],
         }),
 
-        ...bullImports,
+        // Global BullMQ root — always registered so @InjectQueue resolves across
+        // the dependency graph. defaultJobOptions enforce bounded Redis memory
+        // via removeOnComplete / removeOnFail and a consistent retry policy.
+        BullModule.forRootAsync({
+          useFactory: () => ({
+            connection: {
+              host: process.env.REDIS_HOST || 'localhost',
+              port: parseInt(process.env.REDIS_PORT || '6379', 10),
+              password: process.env.REDIS_PASSWORD || undefined,
+              // BullMQ requires this to be null for blocking commands (waitUntilFinished, etc.)
+              maxRetriesPerRequest: null,
+              enableReadyCheck: false,
+            },
+            defaultJobOptions: {
+              // Keep last N completed jobs for inspection; older ones evicted to cap memory.
+              removeOnComplete: { count: 1000, age: 24 * 3600 },
+              // Keep last N failed jobs for DLQ / debugging.
+              removeOnFail: { count: 5000, age: 7 * 24 * 3600 },
+              attempts: 3,
+              backoff: { type: 'exponential', delay: 5_000 },
+            },
+          }),
+        }),
 
         ScheduleModule.forRoot(),
 
@@ -180,7 +195,10 @@ export class AppModule {
         ServicePartnersModule,
         HighMobilityModule,
 
-        ...workerImports,
+        // Workers / processors / schedulers. Non-Redis schedulers inside this
+        // module (e.g. brake recalc, trip reconciliation, HM polling) also live
+        // here for colocation; they boot independently of queue availability.
+        WorkersModule,
       ],
     };
   }

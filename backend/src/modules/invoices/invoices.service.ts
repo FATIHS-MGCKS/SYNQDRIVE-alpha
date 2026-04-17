@@ -67,11 +67,18 @@ export class InvoicesService {
     return invoices.map((inv) => this.format(inv as unknown as Record<string, unknown>));
   }
 
-  async findById(id: string) {
-    const inv = await this.prisma.orgInvoice.findUnique({
-      where: { id },
-      include: { tasks: true },
-    });
+  async findById(id: string, orgId?: string) {
+    // When orgId is provided we require the invoice to belong to that org to
+    // prevent cross-tenant reads via a guessed / leaked id.
+    const inv = orgId
+      ? await this.prisma.orgInvoice.findFirst({
+          where: { id, organizationId: orgId },
+          include: { tasks: true },
+        })
+      : await this.prisma.orgInvoice.findUnique({
+          where: { id },
+          include: { tasks: true },
+        });
     if (!inv) throw new NotFoundException('Invoice not found');
     const formatted = this.format(inv as unknown as Record<string, unknown>);
     formatted.tasks = (inv.tasks || []).map((t) => ({
@@ -147,7 +154,16 @@ export class InvoicesService {
     customerId?: string;
     notes?: string;
     templateId?: string;
-  }) {
+  }, orgId?: string) {
+    if (orgId) {
+      // Tenant-scoped check: verify the invoice belongs to the caller's org
+      // before applying an update.
+      const existing = await this.prisma.orgInvoice.findFirst({
+        where: { id, organizationId: orgId },
+        select: { id: true },
+      });
+      if (!existing) throw new NotFoundException('Invoice not found');
+    }
     const updateData: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(data)) {
       if (val === undefined) continue;
@@ -170,16 +186,23 @@ export class InvoicesService {
       await this.closeLinkedTasks(id);
     }
 
-    return this.findById(id);
+    return this.findById(id, orgId);
   }
 
-  async markPaid(id: string) {
+  async markPaid(id: string, orgId?: string) {
+    if (orgId) {
+      const existing = await this.prisma.orgInvoice.findFirst({
+        where: { id, organizationId: orgId },
+        select: { id: true },
+      });
+      if (!existing) throw new NotFoundException('Invoice not found');
+    }
     await this.prisma.orgInvoice.update({
       where: { id },
       data: { status: 'PAID', paidAt: new Date() },
     });
     await this.closeLinkedTasks(id);
-    return this.findById(id);
+    return this.findById(id, orgId);
   }
 
   async createBookingInvoice(orgId: string, booking: {

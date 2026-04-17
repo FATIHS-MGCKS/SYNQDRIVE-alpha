@@ -31,6 +31,8 @@ export class TireRecalculationProcessor extends WorkerHost {
       this.logger.error(
         `Tire recalculation failed for vehicle=${vehicleId}: ${err.message}`,
       );
+      // Rethrow so BullMQ marks the job as failed and applies retry/backoff policy.
+      throw err;
     }
   }
 }

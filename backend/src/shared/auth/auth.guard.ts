@@ -10,6 +10,8 @@ const PUBLIC_EXACT_PATHS = new Set<string>([
   '/api/v1/auth/login',
   '/api/v1/auth/refresh',
   '/api/v1/auth/logout',
+  // Seed-admin bootstrap: still token-gated via SEED_ADMIN_TOKEN + ENABLE_SEED_ADMIN in controller.
+  '/api/v1/auth/seed-admin',
   '/api/v1/webhooks/dimo',
   '/api/v1/webhooks/dimo/health',
   '/api/v1/metrics',
