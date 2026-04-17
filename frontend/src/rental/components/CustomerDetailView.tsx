@@ -113,22 +113,10 @@ function useCustomerFines(customerId: string) {
   return fines;
 }
 
-function _generateFines_UNUSED(customer: Customer) {
-  if (customer.violations === 0) return [];
-  return Array.from({ length: Math.min(customer.violations, 5) }, (_, i) => ({
-    id: `F-${1000 + i}`,
-    date: `${(15 - i * 5 + 30) % 28 + 1}.0${(i % 3) + 1}.2026`,
-    type: i % 3 === 0 ? 'Speeding' : i % 3 === 1 ? 'Parking Violation' : 'Red Light',
-    description: i % 3 === 0
-      ? `${80 + i * 15} km/h in 50 km/h zone`
-      : i % 3 === 1
-        ? 'Parking in no-parking zone'
-        : 'Ran red light at intersection',
-    amount: `â‚¬ ${(50 + i * 35)}`,
-    status: i < 2 ? 'Unpaid' : 'Paid',
-    vehicle: i % 2 === 0 ? 'DEF-456 / VW Polo' : 'ABC-123 / Ford Transit',
-  }));
-}
+// `_generateFines_UNUSED` and `_generateInvoices_UNUSED` (defined lower) were
+// retained from an earlier refactor that replaced the fabricated data with
+// real `/fines` + `/invoices` endpoint fetches. They're now dead and have
+// been removed from batch-C cleanup.
 
 function generateDocuments(customer: Customer) {
   const baseDocs = [
@@ -156,17 +144,6 @@ function useCustomerInvoices(customerId: string) {
     api.invoices.byCustomer(orgId, customerId).then(setInvoices).catch(() => setInvoices([]));
   }, [orgId, customerId]);
   return invoices;
-}
-
-function _generateInvoices_UNUSED(customer: Customer) {
-  return Array.from({ length: Math.min(customer.totalBookings, 8) }, (_, i) => ({
-    id: `INV-${2026}${String(i + 1).padStart(4, '0')}`,
-    date: `${(28 - i * 3)}.01.2026`,
-    description: i % 3 === 0 ? 'Vehicle Rental' : i % 3 === 1 ? 'Extra Insurance' : 'Fuel Surcharge',
-    amount: `â‚¬ ${(120 + i * 45)},00`,
-    status: i < 3 ? 'Paid' : i < 5 ? 'Pending' : 'Overdue',
-    bookingRef: `#${2172 - i}`,
-  }));
 }
 
 function generateAlerts(customer: Customer) {

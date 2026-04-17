@@ -56,7 +56,10 @@ export class RequestLoggingInterceptor implements NestInterceptor {
     const entry = {
       requestId,
       method: req.method,
-      url: req.url,
+      // Redact sensitive query parameters (tokens, passwords, API keys, etc.).
+      // An authenticated request URL of the form `/api/foo?token=abc&email=bar`
+      // must not hit our log aggregator verbatim (ISO 27001 A.12, GDPR).
+      url: redactUrl(req.url),
       statusCode: res.statusCode,
       durationMs,
       userId: user?.id ?? null,
@@ -68,4 +71,46 @@ export class RequestLoggingInterceptor implements NestInterceptor {
     const level = res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'log';
     this.logger[level](JSON.stringify(entry));
   }
+}
+
+/**
+ * Query-string keys that must never appear in plain-text logs. Matched
+ * case-insensitively against the whole key name (a key like
+ * `userPasswordReset` matches because it contains "password").
+ */
+const REDACT_QS_KEY_FRAGMENTS = [
+  'token',
+  'password',
+  'secret',
+  'apikey',
+  'api_key',
+  'auth',
+  'authorization',
+  'session',
+  'otp',
+  'code',
+  'pin',
+  'signature',
+  'x-api-key',
+  'refresh',
+];
+
+function redactUrl(url: string | undefined): string {
+  if (!url) return '';
+  const qIdx = url.indexOf('?');
+  if (qIdx === -1) return url;
+
+  const path = url.slice(0, qIdx);
+  const qs = url.slice(qIdx + 1);
+  // Hand-rolled parser — Node's URL requires a base and can throw on some
+  // exotic characters that still appear in real URLs.
+  const pairs = qs.split('&').map((pair) => {
+    const eq = pair.indexOf('=');
+    const rawKey = eq === -1 ? pair : pair.slice(0, eq);
+    const rawVal = eq === -1 ? '' : pair.slice(eq + 1);
+    const keyLower = rawKey.toLowerCase();
+    const shouldRedact = REDACT_QS_KEY_FRAGMENTS.some((f) => keyLower.includes(f));
+    return shouldRedact ? `${rawKey}=[REDACTED]` : `${rawKey}${eq === -1 ? '' : `=${rawVal}`}`;
+  });
+  return `${path}?${pairs.join('&')}`;
 }

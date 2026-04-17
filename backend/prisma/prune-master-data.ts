@@ -1,6 +1,17 @@
 /**
- * Prune script: Removes all organizations, users (except MASTER_ADMIN), vehicles, prospects.
- * Run: npx ts-node prisma/prune-master-data.ts
+ * Prune script: Removes all organizations, users (except MASTER_ADMIN),
+ * vehicles, prospects.
+ *
+ * Run: npx ts-node prisma/prune-master-data.ts  (also: `npm run prisma:prune`)
+ *
+ * ⚠️  DRIFT WARNING — this script is the CLI twin of
+ *     `platform-admin.service.ts#pruneMasterData`. Both delete the exact same
+ *     set of tables in the exact same order. If you add a new entity that
+ *     needs to be pruned, UPDATE BOTH IMPLEMENTATIONS. A shared list is the
+ *     next sensible refactor once the destructive paths are covered by tests.
+ *
+ * Kept as a raw `PrismaClient` script (not bootstrapping NestJS) so it can
+ * run during local dev / CI without spinning up the whole app module graph.
  */
 import { PrismaClient } from '@prisma/client';
 

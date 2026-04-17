@@ -12,6 +12,7 @@ import {
   BatterySourceType,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { RedisService } from '@shared/redis/redis.service';
 import { DimoTriggersService } from '@modules/dimo/dimo-triggers.service';
 import { DimoAuthService } from '@modules/dimo/dimo-auth.service';
 import { DimoTelemetryService } from '@modules/dimo/dimo-telemetry.service';
@@ -138,6 +139,7 @@ export class VehiclesService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
     private readonly dimoTriggers: DimoTriggersService,
     private readonly dimoAuth: DimoAuthService,
     private readonly dimoTelemetry: DimoTelemetryService,
@@ -146,6 +148,15 @@ export class VehiclesService {
     private readonly tireLifecycleService: TireLifecycleService,
     @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
   ) {}
+
+  // Short-lived cache for the fleet-map endpoint. The UI polls every few
+  // seconds for live tracking; a 5s TTL makes the common case (heartbeat
+  // refresh) serve from Redis instead of Postgres without sacrificing
+  // perceived freshness (telemetry lag is > 5s anyway on most providers).
+  private static readonly FLEET_MAP_CACHE_TTL_SECONDS = 5;
+  private fleetMapCacheKey(orgId: string) {
+    return `fleet-map:${orgId}:v1`;
+  }
 
   private withOrgScope(organizationId: string) {
     return { organizationId };
@@ -510,6 +521,18 @@ export class VehiclesService {
   }
 
   async getFleetMapData(organizationId: string): Promise<FleetMapVehicleDto[]> {
+    // Try cache first. We intentionally swallow Redis errors — fleet map must
+    // never 500 because cache is momentarily unreachable.
+    const cacheKey = this.fleetMapCacheKey(organizationId);
+    try {
+      const cached = await this.redis.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached) as FleetMapVehicleDto[];
+      }
+    } catch (err: any) {
+      this.logger.debug(`Fleet-map cache read failed (${err?.message ?? err})`);
+    }
+
     const where = this.withOrgScope(organizationId);
     // Hard cap to prevent unbounded queries for very large fleets. The UI
     // paginates/virtualises at 500+ markers anyway. Orgs exceeding this cap
@@ -551,7 +574,7 @@ export class VehiclesService {
 
     const tripStateMap = await this.buildTripStateMap(vehicles.map((v) => v.id));
 
-    return vehicles.map((vehicle) => {
+    const result: FleetMapVehicleDto[] = vehicles.map((vehicle) => {
       const state = vehicle.latestState;
       const tripState = tripStateMap.get(vehicle.id) ?? null;
       const interpreted = interpretVehicleState(
@@ -597,6 +620,19 @@ export class VehiclesService {
         imageUrl: vehicle.imageUrl ?? null,
       };
     });
+
+    try {
+      await this.redis.set(
+        cacheKey,
+        JSON.stringify(result),
+        'EX',
+        VehiclesService.FLEET_MAP_CACHE_TTL_SECONDS,
+      );
+    } catch (err: any) {
+      this.logger.debug(`Fleet-map cache write failed (${err?.message ?? err})`);
+    }
+
+    return result;
   }
 
   async findById(id: string) {

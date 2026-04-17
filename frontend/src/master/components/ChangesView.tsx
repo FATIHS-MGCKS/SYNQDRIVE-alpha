@@ -35,6 +35,45 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'codebase-audit-batch-c-2026-04-13',
+    version: '4.6.25',
+    title:
+      'V4.6.25 Codebase audit — Batch C (performance, indexes, cleanup, ISO hardening)',
+    summary: [
+      'PERF: Added composite indexes for VehicleTrip / DrivingEvent / DTC / Booking / OrgTask / OrgInvoice / ActivityLog / DimoPollLog to eliminate seq-scans on hot per-org and per-vehicle query paths (Postgres migration uses CREATE INDEX CONCURRENTLY for zero-downtime deploy)',
+      'PERF: HM polling scheduler now batch-loads all HmSignalGroupState rows per cycle (was N+1: 3 × vehicles findFirst calls)',
+      'PERF: Business-Insights detectors now run in parallel per org (Promise.allSettled) and tenants run with bounded concurrency (4)',
+      'PERF: Fleet-Map endpoint now served from a 5-second Redis cache keyed per org, with graceful fallthrough on Redis errors',
+      'CLEANUP: Removed fabricated mock-data dead code — MOCK_AI_RESULTS (DocumentUploadView) and _generateFines_UNUSED / _generateInvoices_UNUSED (CustomerDetailView)',
+      'CLEANUP: Documented drift risk between prune-master-data.ts CLI and PlatformAdminService.pruneMasterData',
+      'ROBUSTNESS: parseInt() calls across frontend and backend now pass radix 10 explicitly; removed `|| 1` division-by-zero mask in PriceTariffsView; added cleanup to TasksView highlight timers',
+      'ISO 27001 / GDPR: Request-log interceptor now redacts token/password/secret/etc. query-string params; ActivityLog `description` + `metaJson` PII-scrubbed before persistence (emails masked, long digit runs tagged)',
+      'ISO 27001 A.9.4: Password policy raised to min 10 chars + complexity (lower/upper/digit/special) across all DTOs (org admin, org user, change password)',
+    ],
+    reason:
+      'The user requested a maximal-sweep codebase audit covering bugs, dead code, unwired elements, ISO-certification blockers, and performance. Batch C (medium severity) delivered the performance, indexing, cleanup, and security-logging hardening portion.',
+    previousBehavior:
+      'Hot per-org queries fell back to seq-scans; HM polling issued 3 findFirst per vehicle per cycle; insights ran strictly sequentially; fleet map hit Postgres on every UI poll; several frontend surfaces still carried fabricated random-data generators that were either consumed or at risk of being re-wired; request logs contained raw query strings and ActivityLog persisted PII verbatim; password policy accepted 6-character passwords without complexity.',
+    details: [
+      'backend/prisma/schema.prisma — composite indexes on VehicleTrip/VehicleDtcEvent/DrivingEvent/TripBehaviorEvent/DimoPollLog/ActivityLog/Booking/OrgInvoice/OrgTask',
+      'backend/prisma/migrations/20260413230000_add_composite_indexes_batch_c/migration.sql — CREATE INDEX CONCURRENTLY IF NOT EXISTS',
+      'backend/src/workers/schedulers/hm-health-polling.scheduler.ts — batch-load HmSignalGroupState per cycle',
+      'backend/src/modules/business-insights/business-insights.service.ts — Promise.allSettled + bounded parallel tenants',
+      'backend/src/modules/vehicles/vehicles.service.ts — 5s Redis cache on getFleetMapData',
+      'frontend/src/rental/components/DocumentUploadView.tsx — removed MOCK_AI_RESULTS',
+      'frontend/src/rental/components/CustomerDetailView.tsx — removed _generateFines_UNUSED / _generateInvoices_UNUSED',
+      'backend/src/shared/interceptors/request-logging.interceptor.ts — redactUrl() for sensitive query params',
+      'backend/src/modules/activity-log/activity-log.service.ts — scrubPiiString + scrubPiiJson on log() write path',
+      'backend/src/shared/dto/{user,organization}.dto.ts — PASSWORD_MIN_LENGTH=10 + PASSWORD_COMPLEXITY_REGEX',
+      'backend/src/modules/vehicle-intelligence/vehicle-intelligence.controller.ts — battery-health trend days clamped 1..365',
+      'frontend/src/rental/components/{BookingsView,NewBookingView,InvoicesView,FinesView,WorkflowAutomationView,PriceTariffsView}.tsx + master/components/ProspectsView.tsx — parseInt radix + kmLimit fallback fix',
+      'frontend/src/rental/components/TasksView.tsx — clearTimeout cleanup on highlight-task effect',
+    ].join('\n'),
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: new Date().toISOString(),
+  },
+  {
     id: 'fleet-shell-runtime-audit-hardening-2026-04-15',
     version: '4.6.24',
     title:

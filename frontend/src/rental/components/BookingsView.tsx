@@ -125,9 +125,9 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
     if (!dateStr) return '';
     const parts = dateStr.split(' ');
     if (parts.length < 3) return '';
-    const day = parseInt(parts[0]);
+    const day = parseInt(parts[0], 10);
     const month = editCalMonthNamesShortEN[parts[1]];
-    const year = parseInt(parts[2]);
+    const year = parseInt(parts[2], 10);
     if (isNaN(day) || month === undefined || isNaN(year)) return '';
     return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   };
@@ -525,7 +525,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
     const match = b.startDate?.match(/\d+\s+(\w+)\s+(\d+)/);
     if (match) {
       const mIdx = monthNamesShortEN_lookup.indexOf(match[1]);
-      return mIdx === displayMonth && parseInt(match[2]) === displayYear;
+      return mIdx === displayMonth && parseInt(match[2], 10) === displayYear;
     }
     return false;
   });
@@ -568,7 +568,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
   // Helper function to parse date string and extract day
   const parseDateDay = (dateStr: string): number | null => {
     const match = dateStr.match(/(\d+)\s+\w+\s+\d+/);
-    return match ? parseInt(match[1]) : null;
+    return match ? parseInt(match[1], 10) : null;
   };
 
   // Helper function to get all days in a booking range
@@ -1065,10 +1065,10 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                     {(() => {
                       const parseDateLocal = (d: string) => {
                         const parts = d.split(' ');
-                        const day = parseInt(parts[0]);
+                        const day = parseInt(parts[0], 10);
                         const months: Record<string, number> = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
                         const m = months[parts[1]] ?? 0;
-                        const y = parseInt(parts[2]);
+                        const y = parseInt(parts[2], 10);
                         return new Date(y, m, day);
                       };
                       const sDate = isEditMode ? (inlineEdit.startDate || detailBooking.startDate) : detailBooking.startDate;

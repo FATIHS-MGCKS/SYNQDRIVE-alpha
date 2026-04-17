@@ -656,7 +656,9 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                         <div>
                           <label className={`text-xs uppercase tracking-wider font-semibold ${textTertiary}`}>Effective/km</label>
                           <div className={`mt-1 px-3 py-2 rounded-lg text-xs font-medium ${isDarkMode ? 'bg-neutral-700/40 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
-                            {formatCurrency(editTariff[period].rate / (editTariff[period].kmLimit || 1))}
+                            {editTariff[period].kmLimit > 0
+                              ? formatCurrency(editTariff[period].rate / editTariff[period].kmLimit)
+                              : '—'}
                           </div>
                         </div>
                       </div>

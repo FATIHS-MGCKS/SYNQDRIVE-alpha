@@ -1303,7 +1303,13 @@ export class VehicleIntelligenceController {
     @Param('vehicleId') vehicleId: string,
     @Query('days') days?: string,
   ) {
-    return this.batteryHealthService.getSohTrend(vehicleId, days ? parseInt(days) : 30);
+    // Always pass radix 10: `parseInt("08")` etc. otherwise risks octal
+    // interpretation on very old engines and sails past `strict` lint.
+    const parsedDays = days ? parseInt(days, 10) : 30;
+    const safeDays = Number.isFinite(parsedDays) && parsedDays > 0
+      ? Math.min(parsedDays, 365)
+      : 30;
+    return this.batteryHealthService.getSohTrend(vehicleId, safeDays);
   }
 
   // --- Battery Health Summary ---

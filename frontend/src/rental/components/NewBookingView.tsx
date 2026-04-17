@@ -2317,7 +2317,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                           placeholder="Custom"
                           value={![0, 5, 10, 15, 20].includes(discountPercent) ? discountPercent : ''}
                           onChange={(e) => {
-                            const val = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
+                            const val = Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0));
                             setDiscountPercent(val);
                           }}
                           className={`w-16 bg-transparent outline-none text-xs text-center ${

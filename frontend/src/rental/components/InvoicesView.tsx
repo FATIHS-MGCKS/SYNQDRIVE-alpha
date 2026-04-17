@@ -490,7 +490,7 @@ function CreateInvoiceForm({ isDarkMode, orgId, customers, vehicles, onClose, on
               {lineItems.map((li, idx) => (
                 <div key={idx} className={`flex gap-2 items-center p-2 rounded-lg ${isDarkMode ? 'bg-neutral-800/30' : 'bg-gray-50/50'}`}>
                   <input value={li.description} onChange={e => updateLineItem(idx, 'description', e.target.value)} className={`${inputCls} flex-1 !py-2`} placeholder="Beschreibung" />
-                  <input type="number" value={li.quantity} onChange={e => updateLineItem(idx, 'quantity', parseInt(e.target.value) || 1)} className={`${inputCls} !w-16 !py-2 text-center`} />
+                  <input type="number" value={li.quantity} onChange={e => updateLineItem(idx, 'quantity', parseInt(e.target.value, 10) || 1)} className={`${inputCls} !w-16 !py-2 text-center`} />
                   <input type="number" step="0.01" value={li.unitPriceCents ? (li.unitPriceCents / 100).toFixed(2) : ''} onChange={e => updateLineItem(idx, 'unitPriceCents', Math.round(parseFloat(e.target.value || '0') * 100))} className={`${inputCls} !w-24 !py-2`} placeholder="€/Stk" />
                   <span className={`text-xs font-bold ${tp} w-20 text-right`}>{formatAmount(li.totalCents)}</span>
                   {lineItems.length > 1 && <button onClick={() => removeLineItem(idx)} className="text-red-500"><X className="w-3.5 h-3.5" /></button>}
@@ -678,7 +678,7 @@ function AIUploadInvoice({ isDarkMode, orgId, vehicles, onClose, onCreated, card
             </div>
             <div>
               <label className={labelCls}>Betrag (EUR)</label>
-              <input type="number" step="0.01" value={extracted.totalCents ? (parseInt(extracted.totalCents) / 100).toFixed(2) : ''} onChange={e => setEx('totalCents', String(Math.round(parseFloat(e.target.value || '0') * 100)))} className={inputCls} />
+              <input type="number" step="0.01" value={extracted.totalCents ? (parseInt(extracted.totalCents, 10) / 100).toFixed(2) : ''} onChange={e => setEx('totalCents', String(Math.round(parseFloat(e.target.value || '0') * 100)))} className={inputCls} />
             </div>
             <div>
               <label className={labelCls}>Rechnungsdatum</label>

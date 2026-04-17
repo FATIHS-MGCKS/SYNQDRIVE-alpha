@@ -550,7 +550,7 @@ function AIUploadFlow({ isDarkMode, orgId, vehicles, onClose, onCreated, card, t
             </div>
             <div>
               <label className={labelCls}>Betrag (EUR)</label>
-              <input type="number" step="0.01" value={extracted.amountCents ? (parseInt(extracted.amountCents) / 100).toFixed(2) : ''} onChange={e => setEx('amountCents', String(Math.round(parseFloat(e.target.value || '0') * 100)))} className={inputCls} />
+              <input type="number" step="0.01" value={extracted.amountCents ? (parseInt(extracted.amountCents, 10) / 100).toFixed(2) : ''} onChange={e => setEx('amountCents', String(Math.round(parseFloat(e.target.value || '0') * 100)))} className={inputCls} />
             </div>
             <div>
               <label className={labelCls}>Behörde</label>

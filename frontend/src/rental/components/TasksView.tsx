@@ -135,39 +135,47 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
 
   // Handle highlighted task from RightSidebar click
   useEffect(() => {
-    if (highlightedTaskId) {
-      // Reset filters so the task is visible
-      setStatusFilter('all');
-      setPriorityFilter('all');
-      setCategoryFilter('all');
-      setVehicleFilter('all');
-      setAssigneeFilter('all');
-      setSearchQuery('');
+    if (!highlightedTaskId) return;
 
-      // Flash the task row
-      setFlashingTaskId(highlightedTaskId);
+    // Reset filters so the task is visible
+    setStatusFilter('all');
+    setPriorityFilter('all');
+    setCategoryFilter('all');
+    setVehicleFilter('all');
+    setAssigneeFilter('all');
+    setSearchQuery('');
 
-      // Scroll to it after a short delay (for filters to apply)
-      setTimeout(() => {
-        const row = taskRowRefs.current[highlightedTaskId];
-        if (row) {
-          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+    // Flash the task row
+    setFlashingTaskId(highlightedTaskId);
 
-        // Open detail panel
-        const task = taskData.find(t => t.id === highlightedTaskId);
-        if (task) {
-          openTaskDetail(task);
-        }
-      }, 100);
+    // Scroll to it after a short delay (for filters to apply)
+    const scrollTimer = setTimeout(() => {
+      const row = taskRowRefs.current[highlightedTaskId];
+      if (row) {
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
 
-      // Remove flash after 3 seconds
-      setTimeout(() => {
-        setFlashingTaskId(null);
-      }, 3000);
+      // Open detail panel
+      const task = taskData.find((t) => t.id === highlightedTaskId);
+      if (task) {
+        openTaskDetail(task);
+      }
+    }, 100);
 
-      onHighlightConsumed?.();
-    }
+    // Remove flash after 3 seconds
+    const flashTimer = setTimeout(() => {
+      setFlashingTaskId(null);
+    }, 3000);
+
+    onHighlightConsumed?.();
+
+    // Cleanup: cancel pending timers if highlight changes or component
+    // unmounts before they fire. Without this the timers keep a reference
+    // to taskRowRefs / taskData and can setState after unmount.
+    return () => {
+      clearTimeout(scrollTimer);
+      clearTimeout(flashTimer);
+    };
   }, [highlightedTaskId]);
 
   const resetNewTaskForm = () => {

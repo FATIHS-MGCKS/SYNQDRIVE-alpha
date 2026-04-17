@@ -135,6 +135,11 @@ export class PlatformAdminService {
     return { total, active, trial, suspended, churned };
   }
 
+  /**
+   * ⚠️  DRIFT WARNING — mirrors the CLI script at
+   *     `prisma/prune-master-data.ts`. When adding new entities to the prune
+   *     list, keep both paths in sync (see the header of that file).
+   */
   async pruneMasterData(): Promise<{ message: string }> {
     await this.prisma.booking.deleteMany({});
     await this.prisma.customer.deleteMany({});

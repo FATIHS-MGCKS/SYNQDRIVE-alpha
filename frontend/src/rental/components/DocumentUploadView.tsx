@@ -129,71 +129,12 @@ interface FiledDocument {
   confidence: number;
 }
 
-const MOCK_AI_RESULTS: Record<string, AIResult> = {
-  invoice: {
-    documentType: 'Invoice',
-    documentTypeKey: 'docUpload.type.invoice',
-    category: 'Finance',
-    categoryKey: 'docUpload.cat.finance',
-    confidence: 96,
-    assignedTo: 'Mercedes AMG GT - KS-MG-2020',
-    fields: [
-      { key: 'invoiceNumber', label: 'docUpload.field.invoiceNumber', value: 'INV-2026-0087' },
-      { key: 'amount', label: 'docUpload.field.amount', value: '€ 1.842,50' },
-      { key: 'date', label: 'docUpload.field.date', value: '05.03.2026' },
-      { key: 'vendor', label: 'docUpload.field.vendor', value: 'AutoTeile GmbH' },
-      { key: 'dueDate', label: 'docUpload.field.dueDate', value: '20.03.2026' },
-      { key: 'description', label: 'docUpload.field.description', value: 'Brake pads + labor' },
-    ],
-  },
-  fine: {
-    documentType: 'Fine / Penalty Notice',
-    documentTypeKey: 'docUpload.type.fine',
-    category: 'Legal',
-    categoryKey: 'docUpload.cat.legal',
-    confidence: 91,
-    assignedTo: 'VW Touareg - KS-VT-2021',
-    fields: [
-      { key: 'invoiceNumber', label: 'docUpload.field.invoiceNumber', value: 'BG-2026-44210' },
-      { key: 'amount', label: 'docUpload.field.amount', value: '€ 55,00' },
-      { key: 'date', label: 'docUpload.field.date', value: '28.02.2026' },
-      { key: 'vehicle', label: 'docUpload.field.vehicle', value: 'VW Touareg - KS-VT-2021' },
-      { key: 'description', label: 'docUpload.field.description', value: 'Speed limit violation - 12 km/h over' },
-    ],
-  },
-  contract: {
-    documentType: 'Rental Contract',
-    documentTypeKey: 'docUpload.type.contract',
-    category: 'Customer',
-    categoryKey: 'docUpload.cat.customer',
-    confidence: 94,
-    assignedTo: 'Kunde A',
-    fields: [
-      { key: 'invoiceNumber', label: 'docUpload.field.invoiceNumber', value: 'MV-2026-0023' },
-      { key: 'customer', label: 'docUpload.field.customer', value: 'Kunde A' },
-      { key: 'vehicle', label: 'docUpload.field.vehicle', value: 'Tesla Model S - KS-TS-2020' },
-      { key: 'date', label: 'docUpload.field.date', value: '01.03.2026' },
-      { key: 'dueDate', label: 'docUpload.field.dueDate', value: '31.03.2026' },
-      { key: 'amount', label: 'docUpload.field.amount', value: '€ 3.200,00 / month' },
-    ],
-  },
-  service: {
-    documentType: 'Service Record',
-    documentTypeKey: 'docUpload.type.serviceRecord',
-    category: 'Maintenance',
-    categoryKey: 'docUpload.cat.maintenance',
-    confidence: 89,
-    assignedTo: 'Hyundai Tucson - KS-HT-2024',
-    fields: [
-      { key: 'invoiceNumber', label: 'docUpload.field.invoiceNumber', value: 'SRV-2026-0044' },
-      { key: 'vehicle', label: 'docUpload.field.vehicle', value: 'Hyundai Tucson - KS-HT-2024' },
-      { key: 'date', label: 'docUpload.field.date', value: '03.03.2026' },
-      { key: 'vendor', label: 'docUpload.field.vendor', value: 'Autohaus Kassel Nord' },
-      { key: 'description', label: 'docUpload.field.description', value: 'Oil change + filter replacement, 45.320 km' },
-      { key: 'amount', label: 'docUpload.field.amount', value: '€ 289,00' },
-    ],
-  },
-};
+// MOCK_AI_RESULTS was deleted during the batch-C audit. It was a fabricated
+// mapping of document type → hard-coded invoice / fine / contract / service
+// payloads with fake amounts, dates and license plates. No code path on the
+// real upload flow consumed it any more (the confirm-step reads its data from
+// the real `/document-extractions/:id` endpoint), so keeping it around only
+// risked some future developer wiring it in as a "fallback".
 
 function getFileIcon(name: string) {
   const ext = name.split('.').pop()?.toLowerCase();

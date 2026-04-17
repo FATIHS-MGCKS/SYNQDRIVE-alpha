@@ -59,17 +59,34 @@ export class BusinessInsightsService {
       const enabledDetectors = this.detectors.filter((d) => policy.enabledTypes.includes(d.type));
       const allCandidates: InsightCandidate[] = [];
 
-      for (const detector of enabledDetectors) {
-        try {
+      // Detectors are independent (each queries its own data slice) — run them
+      // in parallel with Promise.allSettled so one slow detector no longer
+      // blocks the whole run. A failing detector is still logged individually
+      // without tearing down the others (same isolation as the previous
+      // per-detector try/catch).
+      const detectorResults = await Promise.allSettled(
+        enabledDetectors.map(async (detector) => {
           const start = Date.now();
           const results = await detector.detect(ctx);
           const elapsed = Date.now() - start;
           if (elapsed > 2000) {
-            this.logger.warn(`Detector ${detector.type} slow for org ${organizationId}: ${elapsed}ms`);
+            this.logger.warn(
+              `Detector ${detector.type} slow for org ${organizationId}: ${elapsed}ms`,
+            );
           }
-          allCandidates.push(...results);
-        } catch (err) {
-          this.logger.warn(`Detector ${detector.type} failed for org ${organizationId}: ${err}`);
+          return { detector, results };
+        }),
+      );
+
+      for (let i = 0; i < detectorResults.length; i++) {
+        const r = detectorResults[i];
+        const type = enabledDetectors[i].type;
+        if (r.status === 'fulfilled') {
+          allCandidates.push(...r.value.results);
+        } else {
+          this.logger.warn(
+            `Detector ${type} failed for org ${organizationId}: ${r.reason?.message ?? r.reason}`,
+          );
         }
       }
 
@@ -97,11 +114,15 @@ export class BusinessInsightsService {
       select: { id: true },
     });
 
-    const results: { orgId: string; published: number }[] = [];
-    for (const org of orgs) {
+    // Bounded parallelism across tenants: N orgs were previously processed
+    // strictly sequentially which made a scheduled run O(N × detector-time).
+    // A concurrency of 4 gives a meaningful wall-clock reduction while
+    // bounding DB connection pressure (each org uses ~1-2 Prisma connections
+    // across detectors).
+    const results = await this.runWithConcurrency(orgs, 4, async (org) => {
       const r = await this.runForOrganization(org.id, trigger);
-      results.push({ orgId: org.id, published: r.published });
-    }
+      return { orgId: org.id, published: r.published };
+    });
     return results;
   }
 
@@ -110,9 +131,42 @@ export class BusinessInsightsService {
       where: { status: 'ACTIVE' },
       select: { id: true },
     });
-    for (const org of orgs) {
+    // Prune is a lightweight delete — a bit of concurrency is safe and cheap.
+    await this.runWithConcurrency(orgs, 4, async (org) => {
       await this.repo.pruneOldRuns(org.id);
-    }
+    });
     this.logger.log(`Pruned old insight data for ${orgs.length} organizations`);
+  }
+
+  /**
+   * Minimal bounded-parallel executor. Preserves input order in the output
+   * and swallows rejections to `undefined` so one failing tenant cannot abort
+   * the whole batch.
+   */
+  private async runWithConcurrency<T, R>(
+    items: T[],
+    limit: number,
+    fn: (item: T) => Promise<R>,
+  ): Promise<R[]> {
+    if (items.length === 0) return [];
+    const safeLimit = Math.max(1, Math.min(limit, items.length));
+    const results: R[] = new Array(items.length);
+    let nextIndex = 0;
+
+    const worker = async (): Promise<void> => {
+      while (true) {
+        const i = nextIndex++;
+        if (i >= items.length) return;
+        try {
+          results[i] = await fn(items[i]);
+        } catch (err: any) {
+          this.logger.warn(`Per-item task failed at index ${i}: ${err?.message ?? err}`);
+          results[i] = undefined as unknown as R;
+        }
+      }
+    };
+
+    await Promise.all(Array.from({ length: safeLimit }, () => worker()));
+    return results.filter((r) => r !== undefined);
   }
 }

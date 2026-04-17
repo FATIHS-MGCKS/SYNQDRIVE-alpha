@@ -1210,7 +1210,7 @@ function TriggerConfigEditor({ trigger, onChange, isDarkMode }: {
       return (
         <div>
           <label className={labelClass}>Duration outside territory (minutes)</label>
-          <input type="number" value={trigger.config?.durationMinutes || 120} onChange={(e) => updateConfig('durationMinutes', parseInt(e.target.value))} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
+          <input type="number" value={trigger.config?.durationMinutes || 120} onChange={(e) => updateConfig('durationMinutes', parseInt(e.target.value, 10))} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
         </div>
       );
     case 'health_threshold':
@@ -1228,7 +1228,7 @@ function TriggerConfigEditor({ trigger, onChange, isDarkMode }: {
           </div>
           <div>
             <label className={labelClass}>Threshold (%)</label>
-            <input type="number" value={trigger.config?.threshold || 60} onChange={(e) => updateConfig('threshold', parseInt(e.target.value))} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
+            <input type="number" value={trigger.config?.threshold || 60} onChange={(e) => updateConfig('threshold', parseInt(e.target.value, 10))} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
           </div>
         </div>
       );
@@ -1246,7 +1246,7 @@ function TriggerConfigEditor({ trigger, onChange, isDarkMode }: {
           </div>
           <div>
             <label className={labelClass}>Days before expiry</label>
-            <input type="number" value={trigger.config?.daysBefore || 30} onChange={(e) => updateConfig('daysBefore', parseInt(e.target.value))} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
+            <input type="number" value={trigger.config?.daysBefore || 30} onChange={(e) => updateConfig('daysBefore', parseInt(e.target.value, 10))} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
           </div>
         </div>
       );
@@ -1254,21 +1254,21 @@ function TriggerConfigEditor({ trigger, onChange, isDarkMode }: {
       return (
         <div>
           <label className={labelClass}>Overdue threshold (days)</label>
-          <input type="number" value={trigger.config?.overdueDays || 14} onChange={(e) => updateConfig('overdueDays', parseInt(e.target.value))} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
+          <input type="number" value={trigger.config?.overdueDays || 14} onChange={(e) => updateConfig('overdueDays', parseInt(e.target.value, 10))} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
         </div>
       );
     case 'support_escalation':
       return (
         <div>
           <label className={labelClass}>Hours unanswered</label>
-          <input type="number" value={trigger.config?.hoursUnanswered || 4} onChange={(e) => updateConfig('hoursUnanswered', parseInt(e.target.value))} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
+          <input type="number" value={trigger.config?.hoursUnanswered || 4} onChange={(e) => updateConfig('hoursUnanswered', parseInt(e.target.value, 10))} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
         </div>
       );
     case 'task_escalation':
       return (
         <div>
           <label className={labelClass}>Hours until escalation</label>
-          <input type="number" value={trigger.config?.hoursUntilEscalation || 24} onChange={(e) => updateConfig('hoursUntilEscalation', parseInt(e.target.value))} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
+          <input type="number" value={trigger.config?.hoursUntilEscalation || 24} onChange={(e) => updateConfig('hoursUntilEscalation', parseInt(e.target.value, 10))} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
         </div>
       );
     case 'ai_action_request':

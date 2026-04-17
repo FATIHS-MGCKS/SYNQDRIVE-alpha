@@ -58,6 +58,38 @@ export class HmHealthPollingScheduler {
       h => nowHourUtc === h && nowMinute < 10
     );
 
+    // Batch-load all signal-group states in a single query instead of doing
+    // 3 × N findFirst calls per cycle. For large HM fleets this was an N+1
+    // pattern that scaled linearly with vehicle count.
+    const vehicleIds = activeLinks.map((l) => l.vehicleId);
+    const groups: HmSignalGroupKey[] = ['SERVICE', 'TIRE_PRESSURE', 'AI_HEALTH_CARE'];
+    const states = await this.prisma.hmSignalGroupState.findMany({
+      where: {
+        vehicleId: { in: vehicleIds },
+        signalGroup: { in: groups as any[] },
+      },
+      select: { vehicleId: true, signalGroup: true, lastSuccessAt: true },
+    });
+
+    // Key: `${vehicleId}:${group}` → lastSuccessAt (or null if never fetched).
+    const stateMap = new Map<string, Date | null>();
+    for (const s of states) {
+      stateMap.set(
+        `${s.vehicleId}:${s.signalGroup as unknown as string}`,
+        s.lastSuccessAt,
+      );
+    }
+
+    const shouldFetch = (
+      vehicleId: string,
+      group: HmSignalGroupKey,
+      minIntervalMs: number,
+    ): boolean => {
+      const last = stateMap.get(`${vehicleId}:${group}`);
+      if (!last) return true; // Never fetched — fetch now
+      return Date.now() - last.getTime() >= minIntervalMs;
+    };
+
     let serviceCount = 0;
     let tireCount = 0;
     let aiCount = 0;
@@ -65,25 +97,17 @@ export class HmHealthPollingScheduler {
     for (const link of activeLinks) {
       const vehicleId = link.vehicleId;
 
-      // SERVICE group — 3x/day
-      if (isServiceWindow) {
-        const shouldFetch = await this.shouldFetchGroup(vehicleId, 'SERVICE', this.SERVICE_MIN_INTERVAL_MS);
-        if (shouldFetch) {
-          await this.safeRefresh(vehicleId, 'SERVICE');
-          serviceCount++;
-        }
+      if (isServiceWindow && shouldFetch(vehicleId, 'SERVICE', this.SERVICE_MIN_INTERVAL_MS)) {
+        await this.safeRefresh(vehicleId, 'SERVICE');
+        serviceCount++;
       }
 
-      // TIRE_PRESSURE — every 4 hours
-      const shouldFetchTire = await this.shouldFetchGroup(vehicleId, 'TIRE_PRESSURE', this.PERIODIC_MIN_INTERVAL_MS);
-      if (shouldFetchTire) {
+      if (shouldFetch(vehicleId, 'TIRE_PRESSURE', this.PERIODIC_MIN_INTERVAL_MS)) {
         await this.safeRefresh(vehicleId, 'TIRE_PRESSURE');
         tireCount++;
       }
 
-      // AI_HEALTH_CARE — every 4 hours
-      const shouldFetchAi = await this.shouldFetchGroup(vehicleId, 'AI_HEALTH_CARE', this.PERIODIC_MIN_INTERVAL_MS);
-      if (shouldFetchAi) {
+      if (shouldFetch(vehicleId, 'AI_HEALTH_CARE', this.PERIODIC_MIN_INTERVAL_MS)) {
         await this.safeRefresh(vehicleId, 'AI_HEALTH_CARE');
         aiCount++;
       }
@@ -97,22 +121,6 @@ export class HmHealthPollingScheduler {
   }
 
   // ── Private helpers ──────────────────────────────────────────────────────────
-
-  private async shouldFetchGroup(
-    vehicleId: string,
-    group: HmSignalGroupKey,
-    minIntervalMs: number,
-  ): Promise<boolean> {
-    const state = await this.prisma.hmSignalGroupState.findFirst({
-      where: { vehicleId, signalGroup: group as any },
-      select: { lastSuccessAt: true },
-    });
-
-    if (!state?.lastSuccessAt) return true; // Never fetched — fetch now
-
-    const elapsed = Date.now() - state.lastSuccessAt.getTime();
-    return elapsed >= minIntervalMs;
-  }
 
   private async safeRefresh(vehicleId: string, group: HmSignalGroupKey): Promise<void> {
     try {

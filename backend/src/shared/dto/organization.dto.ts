@@ -1,7 +1,12 @@
 import {
   IsString, IsOptional, IsEmail, IsEnum, IsUrl,
-  MaxLength, MinLength,
+  MaxLength, MinLength, Matches,
 } from 'class-validator';
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_COMPLEXITY_REGEX,
+  PASSWORD_COMPLEXITY_MESSAGE,
+} from './user.dto';
 
 export enum BusinessTypeDto {
   RENTAL = 'RENTAL',
@@ -88,7 +93,10 @@ export class CreateOrgAdminDto {
   email: string;
 
   @IsString()
-  @MinLength(8, { message: 'Password must be at least 8 characters' })
+  @MinLength(PASSWORD_MIN_LENGTH, {
+    message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters`,
+  })
   @MaxLength(128)
+  @Matches(PASSWORD_COMPLEXITY_REGEX, { message: PASSWORD_COMPLEXITY_MESSAGE })
   password: string;
 }

@@ -148,7 +148,7 @@ export function ProspectsView({ isDarkMode }: ProspectsViewProps) {
   const handleAddProspect = () => {
     const np: Prospect = {
       id: `p-${Date.now()}`, companyName: addForm.companyName, businessType: addForm.businessType, city: addForm.city, country: addForm.country,
-      website: addForm.website, phone: addForm.phone, email: addForm.email, fleetSizeEstimate: parseInt(addForm.fleetSizeEstimate) || 0,
+      website: addForm.website, phone: addForm.phone, email: addForm.email, fleetSizeEstimate: parseInt(addForm.fleetSizeEstimate, 10) || 0,
       source: addForm.source, status: 'New', priority: addForm.priority, assignedTo: '', lastContact: '', nextAction: 'AI Enrichment',
       tags: [], notes: [], activity: [{ id: `a-${Date.now()}`, action: 'Prospect created manually', date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), by: 'Marcus Weber' }],
       aiSummary: { category: addForm.businessType, productFit: 'Pending AI analysis', useCase: 'Pending AI analysis', outreachAngle: 'Pending AI analysis' },
