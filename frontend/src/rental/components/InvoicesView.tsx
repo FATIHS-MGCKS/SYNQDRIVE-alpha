@@ -562,16 +562,24 @@ function AIUploadInvoice({ isDarkMode, orgId, vehicles, onClose, onCreated, card
       setImageUrl(uploadRes.url);
     } catch { /* continue */ }
 
-    await new Promise(r => setTimeout(r, 2500));
-    const mockExtracted: Record<string, string> = {
-      title: 'Werkstattrechnung – Ölwechsel & Inspektion',
-      vendorName: 'AutoService GmbH',
-      totalCents: String(Math.round((200 + Math.random() * 800) * 100)),
-      invoiceDate: new Date(Date.now() - Math.random() * 14 * 86400000).toISOString().split('T')[0],
+    // No invoice OCR/extraction service is wired to the backend yet.
+    // Previously this method invented vendor / amount / description values via
+    // Math.random() which could silently persist fabricated data if the user
+    // clicked "confirm" without editing every field — a serious data-integrity
+    // risk for an accounting surface.
+    //
+    // Until a real extraction service is available (e.g. Document AI / Vertex
+    // or a dedicated invoice OCR worker), we drop the user into manual-entry
+    // mode with empty fields and a notice. The review step with imageUrl
+    // preview still lets the user transcribe from the attached image.
+    setExtracted({
+      title: '',
+      vendorName: '',
+      totalCents: '',
+      invoiceDate: new Date().toISOString().split('T')[0],
       dueDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
-      description: 'Ölwechsel, Filteraustausch, Sichtprüfung',
-    };
-    setExtracted(mockExtracted);
+      description: '',
+    });
     setStep('review');
   };
 

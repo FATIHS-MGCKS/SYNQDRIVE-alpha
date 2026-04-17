@@ -53,10 +53,17 @@ export class DtcService {
 
   // ── Basic reads ─────────────────────────────────────────────────────────────
 
-  async findByVehicle(vehicleId: string) {
+  /**
+   * Returns the most recent DTC events for a vehicle (active + historical).
+   * Hard cap prevents unbounded queries for high-fault vehicles accumulating
+   * history over time. UI only needs the recent tail.
+   */
+  async findByVehicle(vehicleId: string, limit: number = 200) {
+    const safeLimit = Math.max(1, Math.min(1000, Math.floor(limit)));
     return this.prisma.vehicleDtcEvent.findMany({
       where: { vehicleId },
       orderBy: { lastSeenAt: 'desc' },
+      take: safeLimit,
     });
   }
 
@@ -64,6 +71,9 @@ export class DtcService {
     return this.prisma.vehicleDtcEvent.findMany({
       where: { vehicleId, isActive: true },
       orderBy: { lastSeenAt: 'desc' },
+      // Practical cap: active faults for a single vehicle very rarely exceed
+      // a few dozen; this protects against pathological data.
+      take: 200,
     });
   }
 
@@ -186,6 +196,9 @@ export class DtcService {
       this.prisma.vehicleDtcEvent.findMany({
         where: { vehicleId },
         orderBy: { firstSeenAt: 'desc' },
+        // Cap full history returned to the detail modal so a vehicle with a
+        // lifetime of thousands of events doesn't send megabytes of JSON.
+        take: 500,
       }),
       this.prisma.vehicleLatestState.findUnique({
         where: { vehicleId },

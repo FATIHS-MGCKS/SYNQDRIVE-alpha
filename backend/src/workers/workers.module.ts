@@ -16,6 +16,7 @@ import { DrivingImpactProcessor } from './processors/driving-impact.processor';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
 import { DimoDtcScheduler } from './schedulers/dimo-dtc.scheduler';
+import { DimoVehicleSyncScheduler } from './schedulers/dimo-vehicle-sync.scheduler';
 import { TireRecalculationScheduler } from './schedulers/tire-recalculation.scheduler';
 import { BrakeRecalculationScheduler } from './schedulers/brake-recalculation.scheduler';
 import { TripTrackingRecoveryScheduler } from './schedulers/trip-tracking-recovery.scheduler';
@@ -50,6 +51,7 @@ import { HmHealthPollingScheduler } from './schedulers/hm-health-polling.schedul
     // Schedulers
     DimoSnapshotScheduler,
     DimoDtcScheduler,
+    DimoVehicleSyncScheduler,
     TireRecalculationScheduler,
     BrakeRecalculationScheduler,
     TripTrackingRecoveryScheduler,

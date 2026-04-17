@@ -25,20 +25,33 @@ export class ServiceWindowDetector implements InsightDetector {
     );
 
     const candidates: InsightCandidate[] = [];
+    if (needsAttention.length === 0) return candidates;
+
+    // Single batched query instead of a findMany-per-vehicle N+1.
+    // We fetch all upcoming bookings for the affected vehicles in one round-trip
+    // and group them locally — far cheaper at org scale.
+    const vehicleIds = needsAttention.map((v) => v.id);
+    const allBookings = await this.prisma.booking.findMany({
+      where: {
+        vehicleId: { in: vehicleIds },
+        organizationId: ctx.organizationId,
+        status: { in: ['CONFIRMED', 'ACTIVE'] },
+        startDate: { lte: horizon },
+        endDate: { gte: ctx.now },
+      },
+      orderBy: { startDate: 'asc' },
+      select: { vehicleId: true, startDate: true, endDate: true },
+    });
+
+    const bookingsByVehicle = new Map<string, { startDate: Date; endDate: Date }[]>();
+    for (const b of allBookings) {
+      const list = bookingsByVehicle.get(b.vehicleId) ?? [];
+      list.push({ startDate: b.startDate, endDate: b.endDate });
+      bookingsByVehicle.set(b.vehicleId, list);
+    }
 
     for (const v of needsAttention) {
-      const bookings = await this.prisma.booking.findMany({
-        where: {
-          vehicleId: v.id,
-          organizationId: ctx.organizationId,
-          status: { in: ['CONFIRMED', 'ACTIVE'] },
-          startDate: { lte: horizon },
-          endDate: { gte: ctx.now },
-        },
-        orderBy: { startDate: 'asc' },
-        select: { startDate: true, endDate: true },
-      });
-
+      const bookings = bookingsByVehicle.get(v.id) ?? [];
       const gaps = this.findGaps(ctx.now, horizon, bookings);
       const usableGap = gaps.find((g) => g.durationMs >= minWindowMs);
 

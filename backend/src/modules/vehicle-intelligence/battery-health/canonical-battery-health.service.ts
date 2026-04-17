@@ -489,12 +489,12 @@ export class CanonicalBatteryHealthService {
           lastMeasurementAgeMs: lvFreshness.ageMs,
         },
       },
-      condition:
-        lvCondition === 'calibrating'
-          ? 'calibrating'
-          : lvCondition === 'unknown'
-            ? 'watch'
-            : lvCondition,
+      // Surface the real condition. Previously 'unknown' was silently rewritten
+      // to 'watch' which violates the "show missing-data, don't fabricate it"
+      // contract used throughout the health stack. UIs must handle 'unknown'
+      // explicitly (no coloring, no score penalty) so callers don't see a
+      // yellow "watch" box for a vehicle we simply have no samples for.
+      condition: lvCondition,
       trendDirection,
       specs: specs
         ? {

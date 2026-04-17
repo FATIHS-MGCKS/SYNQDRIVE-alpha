@@ -77,11 +77,16 @@ export class TripsService {
     }
     if (options?.driverName) where.driverName = options.driverName;
 
+    // List view does NOT include per-trip `events` rows. The callers (trips list
+    // controller, rental-driving-analysis) operate exclusively on the aggregated
+    // counters on VehicleTrip + canonical summary. Inlining every event row made
+    // the payload grow linearly with trip count × events-per-trip and hit the
+    // DB with a large join for no UI benefit. Event details are fetched on
+    // demand via GET /trips/:tripId (findById still includes events).
     return this.prisma.vehicleTrip.findMany({
       where,
       orderBy: { startTime: 'desc' },
       take: options?.limit ?? 50,
-      include: { events: true },
     });
   }
 

@@ -632,24 +632,29 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover }: Dash
 
           {/* Middle Section: Chart Left, AI Insights Right */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
-            {/* Upcoming This Month Chart */}
+            {/* Upcoming This Month Chart
+             *
+             * NOTE: The per-day revenue/costs/profit chart previously used
+             * `Math.random() + Math.sin()` to fabricate 28 days of data. That
+             * presented synthetic numbers to fleet operators as if they were
+             * real KPIs — a data-integrity risk and a blocker for ISO audits.
+             *
+             * Until a real `/billing/daily-revenue` endpoint is wired, we keep
+             * the chart structure (for visual consistency) but zero the values
+             * and render a "no data" overlay so the surface is honest.
+             */}
             {(() => {
-              const dailyData = Array.from({ length: 28 }, (_, i) => {
-                const day = i + 1;
-                const baseRevenue = 800 + Math.sin(day * 0.3) * 400 + Math.random() * 300;
-                const baseCosts = 300 + Math.sin(day * 0.25) * 150 + Math.random() * 120;
-                const isWeekend = (day % 7 === 0 || day % 7 === 6);
-                return {
-                  day: String(day),
-                  revenue: Math.round(isWeekend ? baseRevenue * 1.4 : baseRevenue),
-                  costs: Math.round(isWeekend ? baseCosts * 0.8 : baseCosts),
-                  profit: Math.round((isWeekend ? baseRevenue * 1.4 : baseRevenue) - (isWeekend ? baseCosts * 0.8 : baseCosts)),
-                };
-              });
-              const totalRevDaily = dailyData.reduce((s, d) => s + d.revenue, 0);
-              const totalCostDaily = dailyData.reduce((s, d) => s + d.costs, 0);
-              const totalProfitDaily = totalRevDaily - totalCostDaily;
-              const avgDaily = Math.round(totalRevDaily / dailyData.length);
+              const dailyData = Array.from({ length: 28 }, (_, i) => ({
+                day: String(i + 1),
+                revenue: 0,
+                costs: 0,
+                profit: 0,
+              }));
+              const totalRevDaily = 0;
+              const totalCostDaily = 0;
+              const totalProfitDaily = 0;
+              const avgDaily = 0;
+              const hasNoDailyData = true;
 
               return (
                 <div className="rounded-lg p-4 border shadow-sm bg-card border-border">
@@ -673,6 +678,15 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover }: Dash
                       </div>
                     </div>
                   </div>
+                  <div className="relative">
+                  {hasNoDailyData && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                      <div className="px-4 py-2 rounded-lg bg-muted/70 border border-border text-center">
+                        <p className="text-xs font-semibold text-foreground">No revenue data yet</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">Daily revenue & costs will appear once bookings and invoices are recorded.</p>
+                      </div>
+                    </div>
+                  )}
                   <ResponsiveContainer width="100%" height={280}>
                     <AreaChart data={dailyData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
                       <defs>
@@ -750,6 +764,7 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover }: Dash
                       />
                     </AreaChart>
                   </ResponsiveContainer>
+                  </div>
                   <div className="flex items-center justify-between mt-4">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-1.5">
@@ -768,7 +783,7 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover }: Dash
                         ? 'bg-green-100 text-green-700' 
                         : 'bg-red-100 text-red-700'
                     }`}>
-                      Margin {Math.round((totalProfitDaily / totalRevDaily) * 100)}%
+                      Margin {totalRevDaily > 0 ? Math.round((totalProfitDaily / totalRevDaily) * 100) : 0}%
                     </div>
                   </div>
                 </div>

@@ -418,19 +418,21 @@ function AIUploadFlow({ isDarkMode, orgId, vehicles, onClose, onCreated, card, t
       setImageUrl(uploadRes.url);
     } catch { /* continue even if upload fails for local preview */ }
 
-    // Simulated AI extraction (in production, this would call a real OCR/AI endpoint)
-    await new Promise(r => setTimeout(r, 2500));
-    const mockExtracted: Record<string, string> = {
-      title: 'Geschwindigkeitsüberschreitung',
-      offenseType: 'Geschwindigkeitsüberschreitung',
-      fineNumber: 'BG-' + Math.floor(100000 + Math.random() * 900000),
-      issuingAuthority: 'Bußgeldstelle Stuttgart',
-      amountCents: String(Math.round((25 + Math.random() * 175) * 100)),
-      location: 'B27, Stuttgart-Mitte',
-      offenseDate: new Date(Date.now() - Math.random() * 30 * 86400000).toISOString().split('T')[0],
+    // No fine OCR/extraction service is wired yet. Previously this method
+    // fabricated Aktenzeichen, amounts, location and dates via Math.random()
+    // which is unsafe for a legal/regulatory record that directly drives
+    // driver liability. Until a real extraction service is available, we
+    // drop the user into manual-entry mode with sensible defaults.
+    setExtracted({
+      title: '',
+      offenseType: '',
+      fineNumber: '',
+      issuingAuthority: '',
+      amountCents: '',
+      location: '',
+      offenseDate: '',
       receivedDate: new Date().toISOString().split('T')[0],
-    };
-    setExtracted(mockExtracted);
+    });
     setStep('review');
   };
 

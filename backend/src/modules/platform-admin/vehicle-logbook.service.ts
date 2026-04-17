@@ -10,6 +10,9 @@ export class VehicleLogbookService {
   // ── Vehicle list with logbook status ──────────────────────────────────
 
   async getVehicleList() {
+    // Platform-wide admin view — capped to prevent pathological queries as the
+    // platform grows. When this is hit, the view should paginate (future).
+    const PLATFORM_LOGBOOK_HARD_LIMIT = 2000;
     const vehicles = await this.prisma.vehicle.findMany({
       include: {
         logbookConfig: true,
@@ -18,6 +21,7 @@ export class VehicleLogbookService {
         tripDetectionState: { select: { state: true } },
       },
       orderBy: { createdAt: 'desc' },
+      take: PLATFORM_LOGBOOK_HARD_LIMIT,
     });
 
     return vehicles.map((v) => ({

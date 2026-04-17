@@ -1,11 +1,17 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Processor, WorkerHost, InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
-import { Job } from 'bullmq';
+import { Job, Queue } from 'bullmq';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoTelemetryService } from '../../modules/dimo/dimo-telemetry.service';
 import { DimoAuthService } from '../../modules/dimo/dimo-auth.service';
 import { DtcService } from '../../modules/vehicle-intelligence/dtc/dtc.service';
 import { QUEUE_NAMES } from '../queues/queue-names';
+
+// Supported job names on the DTC queue:
+//   dtc-poll         — legacy full-fleet scan (still works, but fans out)
+//   dtc-poll-vehicle — single-vehicle job produced by the fan-out
+export const DTC_JOB_FANOUT = 'dtc-poll';
+export const DTC_JOB_SINGLE = 'dtc-poll-vehicle';
 
 @Processor(QUEUE_NAMES.DTC_POLL)
 @Injectable()
@@ -17,25 +23,54 @@ export class DimoDtcProcessor extends WorkerHost {
     private readonly telemetry: DimoTelemetryService,
     private readonly auth: DimoAuthService,
     private readonly dtcService: DtcService,
+    @InjectQueue(QUEUE_NAMES.DTC_POLL) private readonly queue: Queue,
   ) {
     super();
   }
 
-  async process(_job: Job): Promise<void> {
-    this.logger.log('Starting DTC poll cycle');
+  async process(job: Job): Promise<void> {
+    if (job.name === DTC_JOB_SINGLE) {
+      const vehicleId = job.data?.vehicleId as string | undefined;
+      const tokenId = job.data?.tokenId as number | undefined;
+      if (!vehicleId || !tokenId) {
+        this.logger.warn(`Malformed dtc-poll-vehicle job: ${JSON.stringify(job.data)}`);
+        return;
+      }
+      await this.pollVehicleDtc(vehicleId, tokenId);
+      return;
+    }
+
+    // Fan-out: enqueue one dtc-poll-vehicle job per vehicle instead of processing
+    // the full fleet inline. This keeps a single job from blocking the worker
+    // and allows BullMQ concurrency + retry to handle per-vehicle failures.
+    this.logger.log('Starting DTC poll fan-out');
 
     const vehicles = await this.prisma.vehicle.findMany({
       where: { dimoVehicle: { isNot: null } },
-      include: { dimoVehicle: true },
+      select: { id: true, dimoVehicle: { select: { tokenId: true } } },
     });
 
+    const pollBucket = Math.floor(Date.now() / (3 * 3600_000)); // 3h bucket aligned with scheduler
+    let enqueued = 0;
     for (const vehicle of vehicles) {
       const tokenId = vehicle.dimoVehicle?.tokenId;
       if (!tokenId) continue;
-      await this.pollVehicleDtc(vehicle.id, tokenId);
+      await this.queue.add(
+        DTC_JOB_SINGLE,
+        { vehicleId: vehicle.id, tokenId },
+        {
+          jobId: `dtc-poll:${vehicle.id}:${pollBucket}`,
+          // Per-vehicle retention so a single flaky vehicle doesn't fill Redis.
+          removeOnComplete: { count: 100, age: 24 * 3600 },
+          removeOnFail: { count: 500, age: 7 * 24 * 3600 },
+        },
+      );
+      enqueued++;
     }
 
-    this.logger.log(`DTC poll cycle finished for ${vehicles.length} vehicles`);
+    this.logger.log(
+      `DTC fan-out enqueued ${enqueued}/${vehicles.length} per-vehicle jobs (bucket=${pollBucket})`,
+    );
   }
 
   // ── Per-vehicle poll ───────────────────────────────────────────────

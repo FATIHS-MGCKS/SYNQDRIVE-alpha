@@ -511,9 +511,14 @@ export class VehiclesService {
 
   async getFleetMapData(organizationId: string): Promise<FleetMapVehicleDto[]> {
     const where = this.withOrgScope(organizationId);
+    // Hard cap to prevent unbounded queries for very large fleets. The UI
+    // paginates/virtualises at 500+ markers anyway. Orgs exceeding this cap
+    // should migrate to a clustered / bbox-scoped endpoint.
+    const FLEET_MAP_HARD_LIMIT = 500;
     const vehicles = await this.prisma.vehicle.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      take: FLEET_MAP_HARD_LIMIT,
       select: {
         id: true,
         licensePlate: true,
@@ -1253,9 +1258,12 @@ export class VehiclesService {
   }
 
   async getFleetConnectivity(organizationId: string) {
+    // Hard cap — see getFleetMapData. Large fleets need a paginated endpoint.
+    const FLEET_CONNECTIVITY_HARD_LIMIT = 1000;
     const vehicles = await this.prisma.vehicle.findMany({
       where: { organizationId },
       orderBy: { createdAt: 'desc' },
+      take: FLEET_CONNECTIVITY_HARD_LIMIT,
       include: {
         dimoVehicle: true,
         latestState: true,

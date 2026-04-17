@@ -36,19 +36,13 @@ interface CustomerDetailModalProps {
   onOpenDetail?: () => void;
 }
 
-function generateTrips(customer: Customer) {
-  const cities = ['Berlin Mitte', 'Hamburg Hafen', 'München Ost', 'Frankfurt Hbf', 'Köln Zentrum', 'Stuttgart Mitte', 'Dresden Nord'];
-  const baseScore = customer.drivingStyleScore ?? customer.drivingScore ?? 70;
-  return Array.from({ length: 6 }, (_, i) => ({
-    id: `T-${4500 + i}`,
-    date: `${(20 - i * 2)}.02.2026`,
-    from: cities[i % cities.length],
-    to: cities[(i + 2) % cities.length],
-    distance: `${(45 + i * 37)} km`,
-    score: Math.max(60, baseScore - i * 3 + Math.floor(Math.random() * 10)),
-    alerts: i < 2 ? i : 0,
-  }));
-}
+// `generateTrips` was previously defined here and produced 6 fabricated trips
+// per customer via Math.random() for driving scores. Its result was assigned
+// to a local `trips` const that was never consumed — so it was both dead code
+// and a source of synthetic data that was technically exposed to React. The
+// quick-detail modal now shows only aggregated stats from the Customer record
+// itself; canonical trip-by-trip data must come from the trips/driver-score
+// endpoints (wired in the dedicated CustomerDetailView, not this modal).
 
 function generateFines(customer: Customer) {
   if (customer.violations === 0) return [];
@@ -68,7 +62,9 @@ function generateAlerts(customer: Customer) {
   if (customer.riskLevel === 'High Risk') alerts.push({ date: '10.02.', type: 'Harsh Braking', severity: 'Medium' });
   if (!customer.licenseVerified) alerts.push({ date: '22.01.', type: 'License Alert', severity: 'High' });
   if (customer.licenseExpiry < '01.01.2027') alerts.push({ date: '22.01.', type: 'License Alert', severity: 'Low' });
-  if (alerts.length === 0) alerts.push({ date: '15.02.', type: 'Info', severity: 'Low' });
+  // Previously a synthetic "Info" alert was appended when alerts was empty,
+  // which falsely surfaced a severity indicator for customers with no real
+  // issues. Leave the list empty and let the UI show its zero-state badge.
   return alerts;
 }
 
@@ -89,7 +85,6 @@ function generateNotes(customer: Customer) {
 }
 
 export function CustomerDetailModal({ customer, isDarkMode, onClose, isAnimating = true, onUpdateCustomer, onOpenDetail }: CustomerDetailModalProps) {
-  const trips = generateTrips(customer);
   const fines = generateFines(customer);
   const alerts = generateAlerts(customer);
   const notes = generateNotes(customer);
