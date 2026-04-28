@@ -1,4 +1,4 @@
-import { Circle, MapPin, Gauge, Droplet, Thermometer, Battery, Gauge as Odometer, Calendar, ClipboardList, Sparkles, Wrench, FileText, AlertTriangle, Disc, Camera, Settings, Home, CheckCircle, Heart, XCircle, ChevronDown, User, X, ArrowLeft, Maximize2, Minimize2, MessageSquare, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { Circle, MapPin, Gauge, Droplet, Gauge as Odometer, Calendar, ClipboardList, Sparkles, Wrench, FileText, AlertTriangle, Disc, Camera, Settings, Home, CheckCircle, Heart, XCircle, ChevronDown, User, X, ArrowLeft, Maximize2, Minimize2, MessageSquare, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   api,
@@ -6,6 +6,7 @@ import {
   type BrakeHealthSummary,
   type BatteryHealthSummary,
   type ServiceInfoStatus,
+  type AiHealthCareResponse,
 } from '../lib/api';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
@@ -14,6 +15,7 @@ import { TripsView } from './components/TripsView';
 import { DashboardView } from './components/DashboardView';
 import { BookingsView } from './components/BookingsView';
 import { RentalDrivingAnalysisView } from './components/RentalDrivingAnalysisView';
+import { FinancialInsightsView } from './components/FinancialInsightsView';
 import { HealthErrorsView } from './components/HealthErrorsView';
 import { FleetView } from './components/FleetView';
 import { DamagesView } from './components/DamagesView';
@@ -23,8 +25,6 @@ import { CustomersView } from './components/CustomersView';
 // are now rendered via OperationsView
 import { SettingsView, StationsTab } from './components/SettingsView';
 import { NewBookingView } from './components/NewBookingView';
-import { MainNavTabs } from './components/MainNavTabs';
-import type { MainNavTab } from './components/MainNavTabs';
 import { OperationsView } from './components/OperationsView';
 import type { OperationsTab } from './components/OperationsView';
 import { FleetConditionDetailView } from './components/FleetConditionDetailView';
@@ -42,6 +42,8 @@ import { VehicleData } from './data/vehicles';
 import { VehicleTariff, buildTariffs } from './data/tariffs';
 import { RentalProvider, useRentalOrg } from './RentalContext';
 import { FleetProvider, useFleetVehicles } from './FleetContext';
+import { DashboardInsightsProvider } from './DashboardInsightsContext';
+import { HandoverProvider } from './HandoverContext';
 import { Toaster } from 'sonner';
 import { LiveMapOverview } from './components/LiveMapOverview';
 import { useLiveVehicleTelemetry } from './hooks/useLiveVehicleTelemetry';
@@ -61,6 +63,14 @@ import { ServiceMaintenanceView } from './components/ServiceMaintenanceView';
 import { VoiceAssistantView } from './components/VoiceAssistantView';
 import { VehicleInsightsCard } from './components/VehicleInsightsCard';
 import { AppErrorBoundary } from '../components/AppErrorBoundary';
+import vhBrakeIcon from '../assets/icons/vehicle-health/brake.svg';
+import vhMotorFilterIcon from '../assets/icons/vehicle-health/motor-filter.svg';
+import vhCarBatteryIcon from '../assets/icons/vehicle-health/car-battery.svg';
+import tellTaleOilIcon from '../assets/icons/telltale/oil.svg';
+import tellTaleCelIcon from '../assets/icons/telltale/cel.svg';
+import tellTaleBrakePadIcon from '../assets/icons/telltale/brake-pad.svg';
+import tellTaleTirePressureIcon from '../assets/icons/telltale/tire-pressure.svg';
+import tellTaleBatteryWarningIcon from '../assets/icons/telltale/battery.svg';
 
 /* ────────────────────────────────────────────────────────────────────────
    Vehicle Health Box – Figma-aligned, API-wired
@@ -78,23 +88,30 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
   const [battery, setBattery] = useState<BatteryHealthSummary | null>(null);
   const [service, setService] = useState<ServiceInfoStatus | null>(null);
   const [dtcCount, setDtcCount] = useState(0);
+  const [aiHealthCare, setAiHealthCare] = useState<AiHealthCareResponse | null>(null);
 
   const vehicleId = selectedVehicle?.id ?? null;
 
   useEffect(() => {
-    if (!vehicleId) { setTires(null); setBrakes(null); setBattery(null); setService(null); setDtcCount(0); return; }
+    if (!vehicleId) {
+      setTires(null); setBrakes(null); setBattery(null); setService(null);
+      setDtcCount(0); setAiHealthCare(null);
+      return;
+    }
     let cancelled = false;
     (async () => {
-      const [t, b, bat, svc, dtc] = await Promise.all([
+      const [t, b, bat, svc, dtc, ai] = await Promise.all([
         api.vehicleIntelligence.tireHealthSummary(vehicleId).catch(() => null),
         api.vehicleIntelligence.brakeHealthSummary(vehicleId).catch(() => null),
         api.vehicleIntelligence.batteryHealthSummary(vehicleId).catch(() => null),
         api.vehicleIntelligence.serviceInfoStatus(vehicleId).catch(() => null),
         api.vehicleIntelligence.dtcActive(vehicleId).catch(() => []),
+        api.vehicleIntelligence.aiHealthCare(vehicleId).catch(() => null),
       ]);
       if (cancelled) return;
       setTires(t); setBrakes(b); setBattery(bat); setService(svc);
       setDtcCount(Array.isArray(dtc) ? dtc.length : 0);
+      setAiHealthCare(ai);
     })();
     return () => { cancelled = true; };
   }, [vehicleId]);
@@ -117,6 +134,7 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
   const voltage = battery?.lv?.telemetry?.voltageV ?? battery?.currentState?.voltageV ?? lvBatteryVoltage;
   const batteryScore = soh ?? estimatedSoh ?? null;
   const batteryVal = batteryScore ?? 0;
+  const batteryCondition = battery?.lv?.condition ?? battery?.condition ?? null;
 
   const brakesTracked = brakesPercent != null;
   const tiresTracked = tires?.overallPercent != null || (selectedVehicle?.tires != null && selectedVehicle.tires > 0);
@@ -124,12 +142,33 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
   const trackedFlags = [brakesTracked, tiresTracked, batteryTracked];
   const trackedValues = [brakesVal, tiresVal, batteryVal].filter((_, i) => trackedFlags[i]);
   const untrackedCount = 3 - trackedValues.length;
+  const trackedCount = trackedValues.length;
 
   const healthScore = trackedValues.length > 0
     ? Math.round(trackedValues.reduce((a, b) => a + b, 0) / trackedValues.length)
     : -1;
-  const criticalCount = trackedValues.filter(v => v < 30).length;
-  const dueSoonCount = trackedValues.filter(v => v >= 30 && v < 60).length;
+  const healthProgress = healthScore < 0 ? 0 : Math.min(Math.max(healthScore, 0), 100);
+  const overallStatusLabel =
+    healthScore < 0 ? 'Insufficient Data' : healthScore >= 80 ? 'Good Health' : healthScore >= 60 ? 'Fair Health' : 'Poor Health';
+  const overallAccent = healthScore < 0 ? 'bg-slate-400' : healthScore >= 80 ? 'bg-emerald-500' : healthScore >= 60 ? 'bg-amber-500' : 'bg-red-500';
+  const overallProgress = healthScore < 0 ? (dm ? 'bg-neutral-700' : 'bg-slate-200') : healthScore >= 80 ? 'bg-emerald-500' : healthScore >= 60 ? 'bg-amber-500' : 'bg-red-500';
+  const overallBadge = healthScore < 0
+    ? dm ? 'bg-neutral-800/90 text-neutral-300 ring-neutral-700/80' : 'bg-slate-50 text-slate-500 ring-slate-200'
+    : healthScore >= 80
+    ? dm ? 'bg-emerald-500/10 text-emerald-300 ring-emerald-500/25' : 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+    : healthScore >= 60
+    ? dm ? 'bg-amber-500/10 text-amber-300 ring-amber-500/25' : 'bg-amber-50 text-amber-700 ring-amber-200'
+    : dm ? 'bg-red-500/10 text-red-300 ring-red-500/25' : 'bg-red-50 text-red-700 ring-red-200';
+  // Critical/Monitor counts: tires/brakes use the generic wear scale, battery
+  // uses the canonical condition so Dashboard and Health Tab agree.
+  const brakeCritical = brakesTracked && brakesVal < 30;
+  const tireCritical = tiresTracked && tiresVal < 30;
+  const batteryCriticalFlag = batteryTracked && batteryCondition === 'attention';
+  const brakeDueSoon = brakesTracked && brakesVal >= 30 && brakesVal < 60;
+  const tireDueSoon = tiresTracked && tiresVal >= 30 && tiresVal < 60;
+  const batteryDueSoonFlag = batteryTracked && batteryCondition === 'watch';
+  const criticalCount = [brakeCritical, tireCritical, batteryCriticalFlag].filter(Boolean).length;
+  const dueSoonCount = [brakeDueSoon, tireDueSoon, batteryDueSoonFlag].filter(Boolean).length;
 
   const getStatus = (v: number, tracked: boolean) => {
     if (!tracked) return { label: 'No Data', labelColor: dm ? 'text-gray-500' : 'text-gray-400', bar: dm ? 'bg-neutral-700' : 'bg-gray-200' };
@@ -137,6 +176,36 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
     if (v >= 60) return { label: 'Monitor', labelColor: 'text-yellow-600', bar: 'bg-yellow-500' };
     if (v >= 30) return { label: 'Due soon', labelColor: 'text-orange-500', bar: 'bg-orange-500' };
     return { label: 'Critical', labelColor: 'text-red-600', bar: 'bg-red-500' };
+  };
+
+  // Battery uses the canonical condition from the backend
+  // (CanonicalBatteryHealthService) so the Dashboard Vehicle Health box and
+  // the Health Tab render the identical green/amber/red status for the same
+  // vehicle. The generic wear-scale (80/60/30) only fits brakes and tires.
+  //
+  // Thresholds (mirrored from backend, for voltage-only fallback):
+  //   voltage < 12.0 → Attention (red)   — starting unlikely
+  //   voltage < 12.4 → Monitor   (amber) — starting difficulty possible
+  //   SOH    < 50   → Attention (red)
+  //   SOH    < 75   → Monitor   (amber)
+  const getBatteryStatus = (
+    v: number,
+    tracked: boolean,
+    condition: string | null | undefined,
+    voltageV: number | null | undefined,
+  ) => {
+    if (!tracked) return { label: 'No Data', labelColor: dm ? 'text-gray-500' : 'text-gray-400', bar: dm ? 'bg-neutral-700' : 'bg-gray-200' };
+    if (condition === 'good') return { label: 'Healthy', labelColor: 'text-green-600', bar: 'bg-green-500' };
+    if (condition === 'watch') return { label: 'Monitor', labelColor: 'text-amber-600', bar: 'bg-amber-500' };
+    if (condition === 'attention') return { label: 'Attention', labelColor: 'text-red-600', bar: 'bg-red-500' };
+    if (voltageV != null) {
+      if (voltageV < 12.0) return { label: 'Attention', labelColor: 'text-red-600', bar: 'bg-red-500' };
+      if (voltageV < 12.4) return { label: 'Monitor', labelColor: 'text-amber-600', bar: 'bg-amber-500' };
+      return { label: 'Healthy', labelColor: 'text-green-600', bar: 'bg-green-500' };
+    }
+    if (v < 50) return { label: 'Attention', labelColor: 'text-red-600', bar: 'bg-red-500' };
+    if (v < 75) return { label: 'Monitor', labelColor: 'text-amber-600', bar: 'bg-amber-500' };
+    return { label: 'Healthy', labelColor: 'text-green-600', bar: 'bg-green-500' };
   };
 
   const brakesDetail = (() => {
@@ -161,142 +230,181 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
   const batteryDetail = (() => {
     if (batteryPubState === 'INITIAL_CALIBRATION') return 'Calibrating (estimate unavailable)';
     if (batteryPubState === 'STABILIZING') return voltage != null ? `~${voltage.toFixed(1)}V · Stabilizing` : 'Stabilizing';
-    if (soh != null) return voltage != null ? `${voltage.toFixed(1)}V` : 'SOH tracked';
-    if (voltage != null) return `${voltage.toFixed(1)}V`;
+    const vStr = voltage != null ? `${voltage.toFixed(1)}V` : null;
+    // Surface the critical message inline so operators don't need to open
+    // the Health Tab to see why the battery is amber/red.
+    if (batteryCondition === 'attention') {
+      return vStr
+        ? `${vStr} · Kritisch — Starthilfe/Austausch empfohlen`
+        : 'Kritisch — Starthilfe/Austausch empfohlen';
+    }
+    if (batteryCondition === 'watch') {
+      return vStr
+        ? `${vStr} · Startschwierigkeiten möglich`
+        : 'Startschwierigkeiten möglich';
+    }
+    if (soh != null) return vStr ?? 'SOH tracked';
+    if (vStr) return vStr;
     return 'Estimate unavailable';
   })();
 
   const healthItems = [
     {
       key: 'brakes', label: 'Brakes', value: brakesVal, detail: brakesDetail, tracked: brakesTracked,
-      iconBg: dm ? 'bg-green-900/30' : 'bg-green-50',
-      icon: <Disc className="w-4 h-4 text-green-600" />,
+      iconBg: '',
+      icon: <img src={vhBrakeIcon} alt="" aria-hidden="true" className={`w-5 h-5 object-contain ${dm ? 'invert' : ''}`} />,
     },
     {
       key: 'tires', label: 'Tires', value: tiresVal, detail: tiresDetail, tracked: tiresTracked,
-      iconBg: dm ? 'bg-neutral-700' : 'bg-gray-100',
-      icon: (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={dm ? '#9ca3af' : '#6b7280'} strokeWidth="2" strokeLinecap="round">
-          <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="3" />
-          <line x1="12" y1="2" x2="12" y2="9" /><line x1="12" y1="15" x2="12" y2="22" />
-          <line x1="2" y1="12" x2="9" y2="12" /><line x1="15" y1="12" x2="22" y2="12" />
-        </svg>
-      ),
+      iconBg: '',
+      icon: <img src={vhMotorFilterIcon} alt="" aria-hidden="true" className={`w-5 h-5 object-contain rotate-90 ${dm ? 'invert' : ''}`} />,
     },
     {
       key: 'battery', label: 'Battery', value: batteryVal, detail: batteryDetail, tracked: batteryTracked,
-      iconBg: dm ? 'bg-green-900/30' : 'bg-green-50',
-      icon: <Battery className="w-4 h-4 text-green-600" />,
+      iconBg: '',
+      icon: <img src={vhCarBatteryIcon} alt="" aria-hidden="true" className={`w-5 h-5 object-contain ${dm ? 'invert' : ''}`} />,
     },
   ];
 
-  const svcRemWeeks = service?.serviceRemainingMonths != null ? Math.round(service.serviceRemainingMonths * 4.33) : null;
+  // Service status — prefer day-level precision from the backend and keep
+  // the sign so an overdue vehicle renders red instead of being silently
+  // clamped to 0 weeks remaining.
+  const svcOverdue = service?.serviceOverdue === true;
+  const svcImminent = service?.serviceDueImminently === true && !svcOverdue;
+  const svcRemDays = service?.serviceRemainingDays ?? null;
+  const svcRemMonths = service?.serviceRemainingMonths ?? null;
+  const svcOverdueDays = service?.serviceOverdueDays ?? null;
+  const svcOverdueKm = service?.serviceOverdueKm ?? null;
   const svcRemKm = service?.serviceRemainingKm;
   const tuvDate = service?.tuvValidTill ? new Date(service.tuvValidTill).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : null;
+  const tuvOverdue = service?.tuvOverdue === true;
+  const tuvDays = service?.tuvRemainingDays ?? null;
 
   const divider = <div className={`border-t my-3 ${dm ? 'border-neutral-700/80' : 'border-gray-100'}`} />;
 
   return (
-    <div className="rounded-xl p-3 border border-border bg-card shadow-sm hover:shadow-md transition-all duration-300 flex flex-col">
+    <div className={`group relative overflow-hidden rounded-[18px] p-[1px] shadow-[var(--shadow-2)] transition-[box-shadow,transform] duration-300 ease-[var(--ease-out-soft)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-hover)] ${
+      dm
+        ? 'bg-gradient-to-br from-blue-500/25 via-neutral-800/80 to-emerald-500/20'
+        : 'bg-gradient-to-br from-blue-500/20 via-white to-emerald-500/10'
+    }`}>
+      <div className={`pointer-events-none absolute -right-12 -top-12 h-28 w-28 rounded-full blur-2xl ${
+        dm ? 'bg-blue-400/10' : 'bg-blue-500/10'
+      }`} />
+      <div className={`relative flex h-full flex-col rounded-[17px] p-3 ${
+        dm
+          ? 'border border-white/10 bg-neutral-950/95 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
+          : 'border border-white/80 bg-white/95 text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]'
+      }`}>
       <style>{`
         @keyframes barFillUp { from { width: 0%; } }
-        @keyframes statusPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-        @keyframes ecgRun { from { transform: translateX(0px); } to { transform: translateX(-36px); } }
         @keyframes calibDots { 0%,20%{opacity:.2} 50%{opacity:1} 100%{opacity:.2} }
       `}</style>
 
-      {/* Header: Title + Heart ECG */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex flex-col items-start gap-1">
-          <h3 className={`font-bold text-base leading-tight ${dm ? 'text-white' : 'text-gray-900'}`}>Vehicle Health</h3>
-          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-            healthScore < 0
-              ? dm ? 'bg-neutral-500/15 border-neutral-500/30 text-gray-400' : 'bg-gray-50 border-gray-200 text-gray-500'
-              : healthScore >= 80
-              ? dm ? 'bg-green-500/15 border-green-500/30 text-green-400' : 'bg-green-50 border-green-200 text-green-700'
-              : healthScore >= 60
-              ? dm ? 'bg-amber-500/15 border-amber-500/30 text-amber-400' : 'bg-amber-50 border-amber-200 text-amber-700'
-              : dm ? 'bg-red-500/15 border-red-500/30 text-red-400' : 'bg-red-50 border-red-200 text-red-700'
-          }`}>
-            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-              healthScore < 0 ? (dm ? 'bg-gray-500' : 'bg-gray-400') : healthScore >= 80 ? 'bg-green-500' : healthScore >= 60 ? 'bg-amber-500' : 'bg-red-500'
-            }`} style={{ animation: 'statusPulse 2s ease-in-out infinite' }} />
-            {healthScore < 0 ? 'Insufficient Data' : healthScore >= 80 ? 'Good Health' : healthScore >= 60 ? 'Fair Health' : 'Poor Health'}
+      <div className={`relative mb-2.5 overflow-hidden rounded-[14px] border p-2.5 ${
+        dm ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200/80 bg-slate-50/80'
+      }`}>
+        <div className="mb-2 flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h3 className={`text-[10.5px] font-bold uppercase tracking-[0.12em] ${dm ? 'text-neutral-400' : 'text-slate-500'}`}>Vehicle Health</h3>
+            <div className="mt-0.5 flex items-baseline gap-1">
+              <span className={`font-mono text-[24px] font-bold leading-none tracking-[-0.04em] tabular-nums ${dm ? 'text-white' : 'text-slate-950'}`}>
+                {healthScore < 0 ? '—' : healthScore}
+              </span>
+              <span className={`text-[10px] font-semibold ${dm ? 'text-neutral-500' : 'text-slate-400'}`}>%</span>
+            </div>
+          </div>
+          <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold ring-1 ${overallBadge}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${overallAccent}`} />
+            {overallStatusLabel}
           </span>
         </div>
-        <div className="relative flex-shrink-0 w-[62px] h-[62px]">
-          <svg width="62" height="62" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <clipPath id="heartClipVHB">
-                <path d="M36,21 C36,14 26,9 19,17 C12,25 12,33 19,40 L36,57 L53,40 C60,33 60,25 53,17 C46,9 36,14 36,21Z"/>
-              </clipPath>
-            </defs>
-            <path
-              d="M36,21 C36,14 26,9 19,17 C12,25 12,33 19,40 L36,57 L53,40 C60,33 60,25 53,17 C46,9 36,14 36,21Z"
-              fill={healthScore < 0 ? '#9ca3af' : healthScore >= 80 ? '#22c55e' : healthScore >= 60 ? '#f59e0b' : '#ef4444'} fillOpacity="0.15"
-              stroke={healthScore < 0 ? '#9ca3af' : healthScore >= 80 ? '#22c55e' : healthScore >= 60 ? '#f59e0b' : '#ef4444'} strokeWidth="2.5" strokeLinejoin="round"
-            />
-            <g clipPath="url(#heartClipVHB)">
-              <g style={{ animation: 'ecgRun 1.6s linear infinite' }}>
-                <polyline
-                  points="-36,38 -24,38 -21,22 -18,54 -15,38 0,38 12,38 15,22 18,54 21,38 36,38 48,38 51,22 54,54 57,38 72,38 84,38 87,22 90,54 93,38 108,38"
-                  fill="none" stroke={healthScore < 0 ? '#9ca3af' : healthScore >= 80 ? '#22c55e' : healthScore >= 60 ? '#f59e0b' : '#ef4444'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
-                />
-              </g>
-            </g>
-          </svg>
+        <div className={`h-2 overflow-hidden rounded-full ${dm ? 'bg-neutral-800' : 'bg-white shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05)]'}`}>
+          <div
+            className={`h-full rounded-full ${overallProgress} shadow-[0_0_12px_rgba(37,99,235,0.18)]`}
+            style={{ width: `${healthProgress}%`, animation: 'barFillUp 0.7s cubic-bezier(0.16,1,0.3,1) both' }}
+          />
+        </div>
+        <div className={`mt-1.5 flex items-center justify-between text-[9.5px] font-semibold ${dm ? 'text-neutral-500' : 'text-slate-500'}`}>
+          <span>{trackedCount}/3 tracked</span>
+          <span>{untrackedCount > 0 ? `${untrackedCount} missing` : 'complete'}</span>
         </div>
       </div>
 
-      {/* Status Bar */}
-      <div className={`flex items-center rounded-xl border mb-2 ${dm ? 'border-neutral-700 bg-neutral-800/60' : 'border-gray-200 bg-gray-50'}`}>
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5 flex-1 justify-center">
-          <CheckCircle className={`w-3.5 h-3.5 flex-shrink-0 ${criticalCount === 0 ? 'text-green-500' : 'text-red-500'}`} />
-          <span className={`text-[11px] font-medium ${dm ? 'text-gray-300' : 'text-gray-700'}`}>{criticalCount} Critical</span>
-        </div>
-        <div className={`w-px h-4 ${dm ? 'bg-neutral-600' : 'bg-gray-200'}`} />
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5 flex-1 justify-center">
-          <AlertTriangle className={`w-3.5 h-3.5 flex-shrink-0 ${dueSoonCount > 0 ? 'text-amber-500' : dm ? 'text-gray-500' : 'text-gray-400'}`} />
-          <span className={`text-[11px] font-medium ${dueSoonCount > 0 ? 'text-amber-600' : dm ? 'text-gray-500' : 'text-gray-500'}`}>{dueSoonCount} Due Soon</span>
-        </div>
-        <div className={`w-px h-4 ${dm ? 'bg-neutral-600' : 'bg-gray-200'}`} />
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5 flex-1 justify-center">
-          <AlertCircle className={`w-3.5 h-3.5 flex-shrink-0 ${dtcCount > 0 ? 'text-red-500' : dm ? 'text-gray-500' : 'text-gray-400'}`} />
-          <span className={`text-[11px] font-medium ${dtcCount > 0 ? (dm ? 'text-red-400' : 'text-red-600') : dm ? 'text-gray-400' : 'text-gray-600'}`}>{dtcCount} Faults</span>
-        </div>
+      <div className="mb-2 grid grid-cols-3 gap-1.5">
+        {([
+          {
+            label: 'Critical',
+            value: criticalCount,
+            tone: criticalCount > 0
+              ? dm ? 'border-red-500/25 bg-red-500/10 text-red-300' : 'border-red-200 bg-red-50 text-red-700'
+              : dm ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300' : 'border-emerald-100 bg-emerald-50/80 text-emerald-700',
+          },
+          {
+            label: 'Due soon',
+            value: dueSoonCount,
+            tone: dueSoonCount > 0
+              ? dm ? 'border-amber-500/25 bg-amber-500/10 text-amber-300' : 'border-amber-200 bg-amber-50 text-amber-700'
+              : dm ? 'border-white/10 bg-white/[0.03] text-neutral-400' : 'border-slate-100 bg-slate-50 text-slate-500',
+          },
+          {
+            label: 'Faults',
+            value: dtcCount,
+            tone: dtcCount > 0
+              ? dm ? 'border-red-500/25 bg-red-500/10 text-red-300' : 'border-red-200 bg-red-50 text-red-700'
+              : dm ? 'border-white/10 bg-white/[0.03] text-neutral-400' : 'border-slate-100 bg-slate-50 text-slate-500',
+          },
+        ] as const).map((stat) => (
+          <div key={stat.label} className={`rounded-[10px] border px-1.5 py-1.5 text-center ${stat.tone}`}>
+            <div className="font-mono text-[15px] font-bold leading-none tabular-nums">{stat.value}</div>
+            <div className="mt-0.5 truncate text-[8.5px] font-semibold leading-none tracking-[-0.01em]">{stat.label}</div>
+          </div>
+        ))}
       </div>
       {untrackedCount > 0 && (
-        <div className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 mb-1 border ${dm ? 'bg-blue-500/5 border-blue-500/20' : 'bg-blue-50/60 border-blue-100'}`}>
+        <div className={`mb-2 flex items-start gap-1.5 rounded-[11px] border px-2 py-1.5 ${dm ? 'bg-blue-500/5 border-blue-500/20' : 'bg-blue-50/70 border-blue-100'}`}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={dm ? 'text-blue-400' : 'text-blue-500'}>
             <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
           </svg>
-          <span className={`text-[10px] leading-snug ${dm ? 'text-blue-300/80' : 'text-blue-600'}`}>
+          <span className={`text-[9.5px] leading-snug ${dm ? 'text-blue-300/80' : 'text-blue-700'}`}>
             {untrackedCount} of 3 health dimensions have no data yet. Enable tracking to get more accurate results.
           </span>
         </div>
       )}
-      <p className={`text-[10px] mb-1 ${dm ? 'text-gray-500' : 'text-gray-400'}`}>
+      <p className={`mb-1 text-[9.5px] font-semibold tracking-[0.02em] ${dm ? 'text-neutral-500' : 'text-slate-400'}`}>
         Diagnostics · Wear trends · Service status
       </p>
 
       {divider}
 
       {/* Health Items */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {healthItems.map((item, idx) => {
           const isCalibrating = item.key === 'battery' && batteryPubState === 'INITIAL_CALIBRATION';
           const isStabilizing = item.key === 'battery' && batteryPubState === 'STABILIZING';
           const isUntracked = !item.tracked && !isCalibrating && !isStabilizing;
-          const st = getStatus(item.value, item.tracked);
-          const showBadge = !isCalibrating && !isStabilizing && !isUntracked && item.value < 60;
+          const st = item.key === 'battery'
+            ? getBatteryStatus(item.value, item.tracked, batteryCondition, voltage)
+            : getStatus(item.value, item.tracked);
+          const showBadge =
+            !isCalibrating && !isStabilizing && !isUntracked && (
+              item.key === 'battery'
+                ? (batteryCondition === 'watch' || batteryCondition === 'attention')
+                : item.value < 60
+            );
           return (
-            <div key={item.key} className={`flex gap-2.5 items-center ${isUntracked ? 'opacity-60' : ''}`}>
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${item.iconBg}`}>
+            <div key={item.key} className={`rounded-[13px] border px-2 py-2 transition-colors ${
+              dm ? 'border-white/10 bg-white/[0.025]' : 'border-slate-100 bg-slate-50/70'
+            } ${isUntracked ? 'opacity-70' : ''}`}>
+              <div className="flex gap-2.5 items-center">
+              <div className={`w-8 h-8 rounded-[10px] border flex items-center justify-center flex-shrink-0 ${
+                dm ? 'border-white/10 bg-white/[0.04]' : 'border-white bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+              } ${item.iconBg}`}>
                 {item.icon}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <span className={`text-xs font-semibold flex-1 ${dm ? 'text-gray-100' : 'text-gray-800'}`}>{item.label}</span>
+                  <span className={`text-[11.5px] font-bold flex-1 tracking-[-0.01em] ${dm ? 'text-gray-100' : 'text-slate-800'}`}>{item.label}</span>
                   {isCalibrating && (
                     <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${dm ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-600'}`}>
                       Calibrating
@@ -313,29 +421,33 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
                   )}
                   {showBadge && (
                     <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${
-                      item.value < 30 ? 'bg-red-50 border-red-200 text-red-600' : 'bg-amber-50 border-amber-200 text-amber-700'
+                      item.key === 'battery'
+                        ? (batteryCondition === 'attention'
+                            ? 'bg-red-50 border-red-200 text-red-600'
+                            : 'bg-amber-50 border-amber-200 text-amber-700')
+                        : (item.value < 30 ? 'bg-red-50 border-red-200 text-red-600' : 'bg-amber-50 border-amber-200 text-amber-700')
                     }`}>{st.label}</span>
                   )}
                   {isCalibrating ? (
-                    <span className={`text-xs ${dm ? 'text-gray-500' : 'text-gray-400'}`}>—</span>
+                    <span className={`font-mono text-xs ${dm ? 'text-gray-500' : 'text-gray-400'}`}>—</span>
                   ) : isUntracked ? (
-                    <span className={`text-xs ${dm ? 'text-gray-500' : 'text-gray-400'}`}>—</span>
+                    <span className={`font-mono text-xs ${dm ? 'text-gray-500' : 'text-gray-400'}`}>—</span>
                   ) : (
-                    <span className={`text-xs font-bold ${isStabilizing ? (dm ? 'text-gray-300' : 'text-gray-600') : dm ? 'text-white' : 'text-gray-900'}`}>{item.value > 0 ? `${isStabilizing ? '~' : ''}${Math.round(item.value)}%` : '—'}</span>
+                    <span className={`font-mono text-[12px] font-bold tabular-nums ${isStabilizing ? (dm ? 'text-gray-300' : 'text-gray-600') : dm ? 'text-white' : 'text-slate-950'}`}>{item.value > 0 ? `${isStabilizing ? '~' : ''}${Math.round(item.value)}%` : '—'}</span>
                   )}
                 </div>
                 {isCalibrating ? (
-                  <div className={`w-full rounded-full h-1.5 overflow-hidden ${dm ? 'bg-neutral-800' : 'bg-gray-100'}`}>
-                    <div className={`h-1.5 rounded-full ${dm ? 'bg-blue-500/30' : 'bg-blue-200'}`} style={{ width: '30%', animation: `barFillUp 2s ease-in-out infinite alternate` }} />
+                  <div className={`w-full rounded-full h-2 overflow-hidden ${dm ? 'bg-neutral-800' : 'bg-white shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05)]'}`}>
+                    <div className={`h-full rounded-full ${dm ? 'bg-blue-500/30' : 'bg-blue-200'}`} style={{ width: '30%', animation: `barFillUp 2s cubic-bezier(0.16,1,0.3,1) infinite alternate` }} />
                   </div>
                 ) : isUntracked ? (
-                  <div className={`w-full rounded-full h-1.5 ${dm ? 'bg-neutral-800' : 'bg-gray-100'}`}>
-                    <div className={`h-1.5 rounded-full ${dm ? 'bg-neutral-700' : 'bg-gray-200'}`} style={{ width: '100%' }} />
+                  <div className={`w-full rounded-full h-2 ${dm ? 'bg-neutral-800' : 'bg-white shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05)]'}`}>
+                    <div className={`h-full rounded-full ${dm ? 'bg-neutral-700' : 'bg-slate-200'}`} style={{ width: '100%' }} />
                   </div>
                 ) : (
-                  <div className={`w-full rounded-full h-1.5 ${dm ? 'bg-neutral-800' : 'bg-gray-100'}`}>
-                    <div className={`h-1.5 rounded-full ${isStabilizing ? (dm ? 'bg-amber-500/60' : 'bg-amber-400') : st.bar}`}
-                      style={{ width: `${Math.min(item.value, 100)}%`, animation: `barFillUp 0.8s cubic-bezier(0.25,0.46,0.45,0.94) ${idx * 0.15}s both` }}
+                  <div className={`w-full rounded-full h-2 overflow-hidden ${dm ? 'bg-neutral-800' : 'bg-white shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05)]'}`}>
+                    <div className={`h-full rounded-full ${isStabilizing ? (dm ? 'bg-amber-500/60' : 'bg-amber-400') : st.bar}`}
+                      style={{ width: `${Math.min(item.value, 100)}%`, animation: `barFillUp 0.8s cubic-bezier(0.16,1,0.3,1) ${idx * 0.15}s both` }}
                     />
                   </div>
                 )}
@@ -357,6 +469,7 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
                   )}
                 </div>
               </div>
+              </div>
             </div>
           );
         })}
@@ -364,18 +477,156 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
 
       {divider}
 
-      {/* Service Info (integrated) */}
+      {/* ── Tacho Warnleuchten (Quick-View)
+            Compact mirror of the dedicated warning-light strip in the
+            Health Tab (HealthErrorsView). Shows 5 dashboard tell-tale
+            icons (Motoröl, Motorkontrollleuchte, Bremsbelag, Reifendruck,
+            Batterie-Warnleuchte) with active/off/no-data state, derived
+            from the same `aiHealthCare.indicators` payload so the
+            Dashboard and the Health Tab can never disagree.
+            Only rendered when HM/OEM dashboard streaming is active for
+            the vehicle (`hmHealthActive`), to avoid a misleading "alle
+            Aus"-line on fleets without OEM stream coverage. */}
+      {aiHealthCare?.hmHealthActive && (() => {
+        type Tone = 'alert' | 'ok' | 'neutral' | 'muted';
+        const freshness = aiHealthCare.hmFreshnessStatus;
+        const streamCold = freshness === 'no_data';
+        const resolveFlag = (
+          value: boolean | null | undefined,
+          activeText: string,
+          okText: string,
+        ): { text: string; tone: Tone } => {
+          if (value === true) return { text: activeText, tone: 'alert' };
+          if (value === false) return { text: okText, tone: 'ok' };
+          if (streamCold) return { text: 'Noch keine Daten', tone: 'neutral' };
+          // warn_flag semantics: missing push on a fresh stream === light is off
+          return { text: okText, tone: 'ok' };
+        };
+        const oilLow = aiHealthCare.hmIndicators?.oilLevel?.status === 'LOW';
+        const oilHasData = aiHealthCare.oilLevelDisplay && aiHealthCare.oilLevelDisplay.mode !== 'no_data';
+        const oilTone: Tone = oilLow ? 'alert' : oilHasData ? 'ok' : streamCold ? 'neutral' : 'muted';
+        const cel = resolveFlag(aiHealthCare.indicators?.limpMode, 'Aktiv', 'Aus');
+        const brakePad = resolveFlag(aiHealthCare.indicators?.brakeWarning, 'Aktiv', 'Aus');
+        const tirePressure = resolveFlag(aiHealthCare.indicators?.tirePressureWarning, 'Aktiv', 'Aus');
+        const batteryLight = resolveFlag(aiHealthCare.indicators?.batteryWarningLight, 'Aktiv', 'Aus');
+
+        const items: Array<{ key: string; label: string; tone: Tone; text: string; icon: string; rotate?: boolean }> = [
+          { key: 'oil', label: 'Motoröl', tone: oilTone, text: oilLow ? 'Niedrig' : oilHasData ? (aiHealthCare.oilLevelDisplay?.label ?? 'OK') : streamCold ? 'Noch keine Daten' : 'Kein Push', icon: tellTaleOilIcon },
+          { key: 'cel', label: 'Motor-K.', tone: cel.tone, text: cel.text, icon: tellTaleCelIcon },
+          { key: 'brake-pad', label: 'Bremsbelag', tone: brakePad.tone, text: brakePad.text, icon: tellTaleBrakePadIcon },
+          { key: 'tire-pressure', label: 'Reifendruck', tone: tirePressure.tone, text: tirePressure.text, icon: tellTaleTirePressureIcon },
+          { key: 'battery-light', label: 'Batterie', tone: batteryLight.tone, text: batteryLight.text, icon: tellTaleBatteryWarningIcon },
+        ];
+
+        const activeAlerts = items.filter(it => it.tone === 'alert').length;
+        const lastUpdateLabel = (() => {
+          if (!aiHealthCare.lastHmUpdate) return null;
+          const ms = Date.now() - new Date(aiHealthCare.lastHmUpdate).getTime();
+          const h = Math.floor(ms / 3600000);
+          const d = Math.floor(h / 24);
+          if (d >= 1) return `vor ${d}d`;
+          return `vor ${h < 1 ? '<1h' : `${h}h`}`;
+        })();
+
+        const iconBgFor = (tone: Tone): string => {
+          if (tone === 'alert') return dm ? 'bg-amber-500/20' : 'bg-amber-50';
+          if (tone === 'ok') return dm ? 'bg-emerald-500/10' : 'bg-emerald-50';
+          if (tone === 'muted') return dm ? 'bg-neutral-800' : 'bg-gray-100';
+          return dm ? 'bg-neutral-800' : 'bg-gray-100';
+        };
+
+        return (
+          <>
+            <div className="mb-2">
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className={`text-[11px] font-semibold ${dm ? 'text-gray-100' : 'text-gray-800'}`}>Tacho Warnleuchten</span>
+                {activeAlerts > 0 ? (
+                  <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${dm ? 'bg-amber-500/15 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+                    {activeAlerts} aktiv
+                  </span>
+                ) : (
+                  <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${dm ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+                    Alle aus
+                  </span>
+                )}
+                {freshness === 'stale' && (
+                  <span className="inline-flex items-center gap-0.5 text-[9px] font-medium text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="w-2.5 h-2.5" />
+                    Veraltet
+                  </span>
+                )}
+                {lastUpdateLabel && freshness !== 'stale' && (
+                  <span className={`ml-auto text-[9px] ${dm ? 'text-gray-500' : 'text-gray-400'}`}>{lastUpdateLabel}</span>
+                )}
+              </div>
+              <div className="grid grid-cols-5 gap-1.5">
+                {items.map(it => (
+                  <button
+                    key={it.key}
+                    type="button"
+                    onClick={onViewDetails}
+                    title={`${it.label}: ${it.text}`}
+                    className={`group flex flex-col items-center gap-1 px-1 py-1.5 rounded-lg border transition-colors ${
+                      it.tone === 'alert'
+                        ? dm ? 'border-amber-500/30 hover:bg-amber-500/10' : 'border-amber-200 hover:bg-amber-50'
+                        : dm ? 'border-neutral-700/70 hover:bg-neutral-800/60' : 'border-gray-100 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${iconBgFor(it.tone)}`}>
+                      <img
+                        src={it.icon}
+                        alt=""
+                        aria-hidden="true"
+                        className={`w-3.5 h-3.5 object-contain transition-opacity ${
+                          it.tone === 'alert' ? 'opacity-95' : it.tone === 'ok' ? 'opacity-50 grayscale' : 'opacity-30 grayscale'
+                        }`}
+                      />
+                    </div>
+                    <span className={`text-[9px] leading-none truncate w-full text-center ${
+                      it.tone === 'alert'
+                        ? dm ? 'text-amber-300 font-semibold' : 'text-amber-700 font-semibold'
+                        : dm ? 'text-gray-400' : 'text-gray-500'
+                    }`}>{it.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {divider}
+          </>
+        );
+      })()}
+
+      {/* Service Info (integrated)
+          Emphasizes critical state: overdue → red label + icon + overdue copy,
+          imminent (≤7d / ≤500km) → amber. The label text is precise (Tage/km)
+          so operators see "Überfällig seit 48 Tagen" instead of a rounded
+          "-2 months" that hides the urgency. */}
       <div className="grid grid-cols-2 gap-x-3">
         <div>
           <div className="flex items-center gap-1 mb-1">
-            <Wrench className="w-3 h-3 text-blue-500 flex-shrink-0" />
-            <span className={`text-[11px] font-semibold ${dm ? 'text-white' : 'text-gray-800'}`}>Maintenance</span>
+            <Wrench className={`w-3 h-3 flex-shrink-0 ${svcOverdue ? 'text-red-500' : svcImminent ? 'text-amber-500' : 'text-blue-500'}`} />
+            <span className={`text-[11px] font-semibold ${svcOverdue ? 'text-red-600 dark:text-red-400' : svcImminent ? 'text-amber-600 dark:text-amber-400' : dm ? 'text-white' : 'text-gray-800'}`}>
+              Maintenance{svcOverdue ? ' — Überfällig' : svcImminent ? ' — Fällig' : ''}
+            </span>
           </div>
           <div className="flex items-start gap-1">
-            <Calendar className="w-3 h-3 text-violet-400 mt-px flex-shrink-0" />
+            <Calendar className={`w-3 h-3 mt-px flex-shrink-0 ${svcOverdue ? 'text-red-400' : svcImminent ? 'text-amber-400' : 'text-violet-400'}`} />
             <span className={`text-[10px] leading-snug ${dm ? 'text-gray-400' : 'text-gray-500'}`}>
-              {svcRemWeeks != null ? (
-                <>Next: <span className={`font-semibold ${dm ? 'text-gray-200' : 'text-gray-700'}`}>in {svcRemWeeks} weeks</span>{svcRemKm != null && <><br />{svcRemKm.toLocaleString('de-DE')} km</>}</>
+              {svcOverdue ? (
+                <>
+                  Service: <span className="font-semibold text-red-600 dark:text-red-400">
+                    überfällig seit {svcOverdueDays != null ? `${svcOverdueDays} Tagen` : ''}
+                    {svcOverdueDays != null && svcOverdueKm != null ? ' / ' : ''}
+                    {svcOverdueKm != null ? `${svcOverdueKm.toLocaleString('de-DE')} km` : ''}
+                  </span>
+                </>
+              ) : svcRemDays != null ? (
+                <>
+                  Next: <span className={`font-semibold ${svcImminent ? 'text-amber-600 dark:text-amber-400' : dm ? 'text-gray-200' : 'text-gray-700'}`}>
+                    {svcRemDays <= 90 ? `in ${svcRemDays} Tagen` : `in ${svcRemMonths ?? Math.round(svcRemDays / 30)} Monaten`}
+                  </span>
+                  {svcRemKm != null && svcRemKm >= 0 && <><br />{svcRemKm.toLocaleString('de-DE')} km</>}
+                </>
               ) : service?.lastServiceDate ? (
                 <>Last: <span className={`font-semibold ${dm ? 'text-gray-200' : 'text-gray-700'}`}>{new Date(service.lastServiceDate).toLocaleDateString('de-DE')}</span></>
               ) : (
@@ -386,15 +637,20 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
         </div>
         <div>
           <div className="flex items-center gap-1 mb-1">
-            <Calendar className="w-3 h-3 text-blue-500 flex-shrink-0" />
-            <span className={`text-[11px] font-semibold ${dm ? 'text-white' : 'text-gray-800'}`}>Inspection</span>
+            <Calendar className={`w-3 h-3 flex-shrink-0 ${tuvOverdue ? 'text-red-500' : 'text-blue-500'}`} />
+            <span className={`text-[11px] font-semibold ${tuvOverdue ? 'text-red-600 dark:text-red-400' : dm ? 'text-white' : 'text-gray-800'}`}>
+              Inspection{tuvOverdue ? ' — Abgelaufen' : ''}
+            </span>
           </div>
           <div className="flex items-start gap-1">
-            <Calendar className="w-3 h-3 text-violet-400 mt-px flex-shrink-0" />
+            <Calendar className={`w-3 h-3 mt-px flex-shrink-0 ${tuvOverdue ? 'text-red-400' : 'text-violet-400'}`} />
             <span className={`text-[10px] leading-snug ${dm ? 'text-gray-400' : 'text-gray-500'}`}>
               {tuvDate ? (
                 <>TÜV: <span className={`font-semibold ${
-                  (service?.tuvRemainingMonths ?? 99) <= 2 ? 'text-red-500' : (service?.tuvRemainingMonths ?? 99) <= 6 ? 'text-amber-500' : dm ? 'text-gray-200' : 'text-gray-700'
+                  tuvOverdue ? 'text-red-600 dark:text-red-400' :
+                  (tuvDays ?? 9999) <= 60 ? 'text-red-500' :
+                  (tuvDays ?? 9999) <= 180 ? 'text-amber-500' :
+                  dm ? 'text-gray-200' : 'text-gray-700'
                 }`}>{tuvDate}</span></>
               ) : (
                 <span className={dm ? 'text-gray-600' : 'text-gray-400'}>No tracking</span>
@@ -407,22 +663,44 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
       {divider}
 
       {/* Footer CTAs */}
-      <div className="flex items-center justify-between">
+      <div className="pt-1">
         <button
           onClick={onViewDetails}
-          className="text-[12px] font-medium text-blue-500 hover:text-blue-600 transition-colors flex items-center gap-1 group"
+          className={`group flex w-full items-center justify-between rounded-[12px] px-2.5 py-2 text-[11px] font-bold transition-[background-color,color,transform] duration-300 ease-[var(--ease-out-soft)] active:scale-[0.99] ${
+            dm
+              ? 'bg-blue-500/10 text-blue-300 hover:bg-blue-500/15'
+              : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+          }`}
         >
-          View Health Details
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-            strokeLinecap="round" strokeLinejoin="round"
-            className="group-hover:translate-x-0.5 transition-transform">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
+          <span>View Health Details</span>
+          <span className={`flex h-5 w-5 items-center justify-center rounded-full transition-transform duration-300 ease-[var(--ease-out-soft)] group-hover:translate-x-0.5 ${
+            dm ? 'bg-blue-400/15' : 'bg-white/80'
+          }`}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+              strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </span>
         </button>
+      </div>
       </div>
     </div>
   );
 }
+
+// Views that render the vehicle detail header (incl. <VehicleConnectionBadge>).
+// The live-telemetry binder must cover the same set so the Online/Offline +
+// Last-Signal indicator stays populated across tabs — not just Overview.
+// Keep in sync with the header/tabs guards further below in RentalAppContent.
+const VEHICLE_DETAIL_VIEWS = new Set<string>([
+  'overview',
+  'trips',
+  'health-errors',
+  'damages',
+  'documents',
+  'vehicle-bookings',
+  'vehicle-tasks',
+]);
 
 function VehicleLiveTelemetryBinder({
   vehicleId,
@@ -488,19 +766,19 @@ function VehicleConnectionBadge({ isDarkMode }: { isDarkMode: boolean }) {
     <div className="flex items-center gap-2 px-2.5 py-1 rounded-md border border-border bg-card shadow-sm">
       <div className="flex items-center gap-1.5">
         <Circle className={`w-2 h-2 ${dotColor}`} />
-        <span className={`text-xs font-bold ${labelColor}`}>{label}</span>
+        <span className={`text-[12px] font-semibold tracking-[-0.003em] ${labelColor}`}>{label}</span>
       </div>
       <div className={`w-px h-4 ${isDarkMode ? 'bg-gray-600' : 'bg-gray-300'}`}></div>
       <div className="flex items-center gap-1">
         <span
-          className={`text-[10px] font-medium ${
+          className={`text-[10.5px] font-semibold ${
             isDarkMode ? 'text-gray-400' : 'text-gray-500'
           }`}
         >
           Last Signal
         </span>
         <span
-          className={`text-[10px] font-bold ${
+          className={`text-[10.5px] font-bold tabular-nums ${
             isDarkMode ? 'text-gray-200' : 'text-gray-900'
           }`}
         >
@@ -527,9 +805,7 @@ function OverviewLiveMapCard({
       speedKmh: state.speedKmh,
       isLiveTracking: state.isLiveTracking,
       snapshot: state.snapshot,
-      displayIgnition: state.displayIgnition,
       displayState: state.displayState,
-      displayCoolant: state.displayCoolant,
     })),
   );
 
@@ -552,18 +828,11 @@ function OverviewLiveMapCard({
           isDarkMode={isDarkMode}
         />
 
-        <div className="absolute bottom-0 left-0 right-0 p-3 opacity-70 group-hover:opacity-100 transition-opacity duration-700 ease-in-out">
+        <div className="absolute bottom-0 left-0 right-0 p-3 opacity-85 group-hover:opacity-100 transition-opacity duration-700 ease-[var(--ease-out-soft)]">
           <div
-            className={`rounded-lg p-2.5 border shadow-md backdrop-blur-md ${
-              isDarkMode ? 'bg-card/90 border-border' : 'bg-card/95 border-border'
-            }`}
+            className="sq-map-liquid-glass rounded-[18px] p-2.5"
           >
             {(() => {
-              const dIgn = liveTelemetry.displayIgnition;
-              const ignIsOn = dIgn === 'ON';
-              const ignIsUnknown = dIgn === 'UNKNOWN';
-              const coolantVal = liveTelemetry.displayCoolant;
-              const coolantDisplay = coolantVal != null ? `${coolantVal}` : '—';
               const stateLabel = liveTelemetry.displayState;
               const stateColor =
                 stateLabel === 'MOVING'
@@ -578,58 +847,8 @@ function OverviewLiveMapCard({
                   ? 'text-gray-400'
                   : 'text-gray-500';
               return (
-                <div
-                  className={`grid gap-1.5 ${
-                    selectedVehicle?.isElectric ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-3 md:grid-cols-6'
-                  }`}
-                >
-                  <div
-                    className={`flex flex-col items-center px-1 py-2 rounded-xl border ${
-                      ignIsOn
-                        ? isDarkMode
-                          ? 'bg-green-900/30 border-green-800/40'
-                          : 'bg-green-100/80 border-green-200/60'
-                        : ignIsUnknown
-                        ? isDarkMode
-                          ? 'bg-neutral-800/40 border-neutral-700/40'
-                          : 'bg-gray-100/80 border-gray-200/60'
-                        : isDarkMode
-                        ? 'bg-red-900/30 border-red-800/40'
-                        : 'bg-red-100/80 border-red-200/60'
-                    }`}
-                  >
-                    <Circle
-                      className={`w-3.5 h-3.5 mb-0.5 ${
-                        ignIsOn
-                          ? 'text-green-600 fill-green-600'
-                          : ignIsUnknown
-                          ? 'text-gray-400 fill-gray-400'
-                          : 'text-red-500 fill-red-500'
-                      }`}
-                    />
-                    <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      Ignition
-                    </span>
-                    <span
-                      className={`text-sm font-bold ${
-                        ignIsOn
-                          ? isDarkMode
-                            ? 'text-green-400'
-                            : 'text-green-700'
-                          : ignIsUnknown
-                          ? isDarkMode
-                            ? 'text-gray-500'
-                            : 'text-gray-400'
-                          : isDarkMode
-                          ? 'text-red-400'
-                          : 'text-red-600'
-                      }`}
-                    >
-                      {dIgn === 'UNKNOWN' ? '—' : dIgn}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col items-center px-1 py-2">
+                <div className="grid grid-cols-3 gap-1.5">
+                  <div className="sq-map-liquid-tile flex flex-col items-center rounded-[12px] px-1 py-2">
                     <Circle className="w-3.5 h-3.5 text-blue-500 mb-0.5" />
                     <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                       State
@@ -637,7 +856,7 @@ function OverviewLiveMapCard({
                     <span className={`text-sm font-bold ${stateColor}`}>{stateLabel}</span>
                   </div>
 
-                  <div className="flex flex-col items-center px-1 py-2">
+                  <div className="sq-map-liquid-tile flex flex-col items-center rounded-[12px] px-1 py-2">
                     <Droplet
                       className={`w-3.5 h-3.5 mb-0.5 ${
                         selectedVehicle?.isElectric ? 'text-emerald-500' : 'text-green-500'
@@ -656,37 +875,7 @@ function OverviewLiveMapCard({
                     </span>
                   </div>
 
-                  {!selectedVehicle?.isElectric && (
-                    <div className="flex flex-col items-center px-1 py-2">
-                      <Thermometer className="w-3.5 h-3.5 text-red-500 mb-0.5" />
-                      <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Coolant
-                      </span>
-                      <span className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                        {coolantDisplay}
-                        {coolantDisplay !== '—' && (
-                          <span className="text-[10px] font-normal text-gray-500">°C</span>
-                        )}
-                      </span>
-                    </div>
-                  )}
-
-                  {!selectedVehicle?.isElectric && (
-                    <div className="flex flex-col items-center px-1 py-2">
-                      <Battery className="w-3.5 h-3.5 text-amber-500 mb-0.5" />
-                      <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Battery
-                      </span>
-                      <span className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                        {(liveTelemetry.snapshot?.lvBatteryVoltage ?? 0) > 0
-                          ? liveTelemetry.snapshot!.lvBatteryVoltage.toFixed(1)
-                          : '—'}
-                        <span className="text-[10px] font-normal text-gray-500">V</span>
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex flex-col items-center px-1 py-2">
+                  <div className="sq-map-liquid-tile flex flex-col items-center rounded-[12px] px-1 py-2">
                     <Odometer className="w-3.5 h-3.5 text-gray-500 mb-0.5" />
                     <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                       Odometer
@@ -732,7 +921,7 @@ function VehicleHealthBoxTelemetryBridge({
 
 function RentalAppContent() {
   const { orgId } = useRentalOrg();
-  const { fleetVehicles, loading: fleetLoading } = useFleetVehicles();
+  const { fleetVehicles, loading: fleetLoading, refresh: refreshFleet } = useFleetVehicles();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [cleaningStatus, setCleaningStatus] = useState<'Clean' | 'Needs Cleaning'>('Clean');
   const [vehicleStatus, setVehicleStatus] = useState<'Available' | 'Manual Block' | 'Maintenance'>('Available');
@@ -740,9 +929,15 @@ function RentalAppContent() {
   const [isCleaningDropdownOpen, setIsCleaningDropdownOpen] = useState(false);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [autoOpenNewTask, setAutoOpenNewTask] = useState(false);
-  const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-management' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'analytics' | 'rental-driving-analysis' | 'settings' | 'new-booking' | 'stations' | 'vehicle-bookings' | 'vehicle-tasks' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'fleet-condition' | 'fleet-condition-detail' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'service-maintenance' | 'ai-voice-assistant'>('dashboard');
+  const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-management' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'analytics' | 'rental-driving-analysis' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'vehicle-bookings' | 'vehicle-tasks' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'fleet-condition' | 'fleet-condition-detail' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'service-maintenance' | 'ai-voice-assistant'>('dashboard');
   const [detailCustomer, setDetailCustomer] = useState<any>(null);
   const [detailVendorId, setDetailVendorId] = useState<string | null>(null);
+  // V4.6.99 — Pending Booking-Detail-Id für die Cross-View-Navigation
+  // (Dashboard → BookingsView → Detail-Seite). Wird gesetzt, wenn ein
+  // BK-Chip in einer StatInlineDetail-Karte geklickt wird; BookingsView
+  // konsumiert das Feld in einem useEffect und setzt anschliessend
+  // `setPendingBookingDetailId(null)` über den Reset-Callback zurück.
+  const [pendingBookingDetailId, setPendingBookingDetailId] = useState<string | null>(null);
   const [settingsTab, setSettingsTab] = useState<'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization'>('company');
   const [operationsTab, setOperationsTab] = useState<OperationsTab>('analytics');
   const [conditionDrillVehicleId, setConditionDrillVehicleId] = useState<string | null>(null);
@@ -750,11 +945,19 @@ function RentalAppContent() {
   const [financeTab, setFinanceTab] = useState<FinanceTab>('invoices');
   const [tasksSectionTab, setTasksSectionTab] = useState<TasksSectionTab>('tasks');
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>(null);
+  // Poll live telemetry on every vehicle-detail tab that shows the header badge
+  // (Overview, Trips, Health, Damages, Documents, Bookings, Task List). Before
+  // this gate was limited to `overview`, causing `VehicleConnectionBadge` to
+  // render "Last Signal —" on every other tab because the hook's cleanup
+  // resets the store when vehicleId becomes null.
   const liveTelemetryVehicleId =
-    currentView === 'overview' ? selectedVehicle?.id ?? null : null;
+    selectedVehicle?.id && VEHICLE_DETAIL_VIEWS.has(currentView)
+      ? selectedVehicle.id
+      : null;
   const [activeBookingRef, setActiveBookingRef] = useState<string | null>(null);
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(false);
   
   // Tariff state (shared between PriceTariffsView and NewBookingView)
   const [tariffs, setTariffs] = useState<VehicleTariff[]>([]);
@@ -779,6 +982,33 @@ function RentalAppContent() {
   // Shared new bookings (created in NewBookingView, shown in BookingsView)
   const [createdBookings, setCreatedBookings] = useState<any[]>([]);
 
+  // Monotonic counter bumped whenever bookings are created / updated /
+  // cancelled. Persistent components (e.g. the RightSidebar calendar and
+  // schedule list) use this as a refetch trigger so newly created bookings
+  // with a today pickup/return show up immediately without a page reload.
+  // Also triggers a FleetContext refresh so the backend-derived vehicle
+  // status (Available/Reserved/Active Rented) reflects the new commitment
+  // state inside the next render instead of waiting up to 30s for the
+  // scheduled fleet poll to pick it up.
+  const [bookingsVersion, setBookingsVersion] = useState(0);
+  const bumpBookingsVersion = () => {
+    setBookingsVersion(v => v + 1);
+    refreshFleet().catch(() => {});
+  };
+
+  // V4.6.75 — HandoverProvider broadcasts `handover:completed` after the
+  // pickup or return protocol has been written. Bump bookingsVersion +
+  // refresh fleet so BookingsView, DashboardView and the RightSidebar
+  // reflect the new booking status + vehicle availability immediately.
+  useEffect(() => {
+    const onHandover = () => {
+      setBookingsVersion(v => v + 1);
+      refreshFleet().catch(() => {});
+    };
+    window.addEventListener('handover:completed', onHandover as EventListener);
+    return () => window.removeEventListener('handover:completed', onHandover as EventListener);
+  }, [refreshFleet]);
+
   // Hovered vehicle for cross-component highlighting (StatInlineDetail <-> RightSidebar)
   const [hoveredVehicle, setHoveredVehicle] = useState<string | null>(null);
 
@@ -799,7 +1029,18 @@ function RentalAppContent() {
   
   // Trip filter states
   const [selectedDriver, setSelectedDriver] = useState('all');
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  // V4.6.71 — Default to the local calendar day, not `toISOString().slice(0,10)`
+  // which is the UTC day and is 1 off for an operator in CEST/CET looking at
+  // late-evening trips. See TripsView.localDayRangeIso for the detailed bug
+  // report; the picker (<input type="date">) emits local YYYY-MM-DD, so the
+  // default has to speak the same dialect.
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  });
   const [isDriverDropdownOpen, setIsDriverDropdownOpen] = useState(false);
   const [isDateDropdownOpen, setIsDateDropdownOpen] = useState(false);
 
@@ -896,9 +1137,10 @@ function RentalAppContent() {
   })();
 
   return (
+    <HandoverProvider isDarkMode={isDarkMode}>
     <div 
       className="h-screen w-full flex overflow-hidden transition-colors duration-300 relative bg-background"
-      style={{ fontFamily: "'Inter', 'Manrope', sans-serif" }}
+      style={{ fontFamily: "'Manrope', sans-serif" }}
     >
       <VehicleLiveTelemetryBinder vehicleId={liveTelemetryVehicleId} orgId={orgId} />
       <Toaster position="top-right" richColors closeButton theme={isDarkMode ? 'dark' : 'light'} />
@@ -914,43 +1156,62 @@ function RentalAppContent() {
         onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
       />
       <div className="flex-1 flex flex-col overflow-hidden pt-16 lg:pt-0">
-        <div className="flex-1 overflow-auto px-4 sm:px-6 lg:px-8 pt-3 lg:pt-4 pb-6 text-foreground">
-          <div className="max-w-[1400px] mx-auto text-[13px]">
+        {/* V4.6.86 — larger gutters + more breathable top/bottom rhythm. Max-width grows slightly
+            on ultra-wide screens so dashboards/tables don't cramp against the right sidebar. */}
+        <div className="flex-1 overflow-auto px-5 sm:px-7 lg:px-[50px] pt-4 lg:pt-6 pb-8 text-foreground">
+          <div className="max-w-[1440px] mx-auto text-[13px]">
             <TopBar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} currentView={currentView} settingsTab={settingsTab} selectedVehicle={selectedVehicle} activeBookingRef={activeBookingRef} detailCustomerId={detailCustomerId} onViewChange={setCurrentView} onVehicleSelect={setSelectedVehicle} onSettingsTabChange={setSettingsTab} onFinanceTabChange={setFinanceTab} onTasksTabChange={setTasksSectionTab} />
         {/* Header Section - Only show for overview and trips views */}
         {currentView !== 'dashboard' && currentView !== 'bookings' && currentView !== 'fleet' && currentView !== 'customers' && currentView !== 'customer-detail' && currentView !== 'tasks' && currentView !== 'invoices' && currentView !== 'fines' && currentView !== 'price-tariffs' && currentView !== 'analytics' && currentView !== 'settings' && currentView !== 'new-booking' && currentView !== 'stations' && currentView !== 'fleet-condition' && currentView !== 'document-upload' && currentView !== 'ai-assistant' && currentView !== 'support' && currentView !== 'help-center' && currentView !== 'workflow-automation' && currentView !== 'whatsapp-business' && currentView !== 'parts-accessories' && currentView !== 'ai-voice-assistant' && (
-        <div className="mb-2">
-          <div className="flex flex-wrap items-center justify-between mb-2">
-            <div className="flex flex-wrap items-center gap-2.5">
+        <div className="mb-3 animate-fade-up">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 min-w-0">
               <button
                 onClick={handleBackToFleet}
-                className={`p-1.5 rounded-lg border transition-all duration-200 hover:shadow-md ${
-                  isDarkMode
-                    ? 'bg-neutral-800/60 border-neutral-700/50 text-gray-300 hover:bg-neutral-800'
-                    : 'bg-white/60 border-gray-200/50 text-gray-600 hover:bg-white'
-                }`}
+                className="sq-press p-1.5 rounded-xl border border-border/60 bg-card text-muted-foreground hover:text-foreground hover:bg-muted"
                 title="Back to Fleet"
+                aria-label="Back to Fleet"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
-              <div className="flex items-center justify-center" style={{ width: 22, height: 22 }}>
-                <BrandLogo 
-                  brand={getBrandFromModel(selectedVehicle?.make || selectedVehicle?.model || '')} 
-                  size={20} 
-                  isDarkMode={isDarkMode} 
+              <div className="flex items-center justify-center shrink-0" style={{ width: 28, height: 28 }}>
+                <BrandLogo
+                  brand={getBrandFromModel(selectedVehicle?.make || selectedVehicle?.model || '')}
+                  size={24}
+                  isDarkMode={isDarkMode}
                 />
               </div>
-              <h1 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{selectedVehicle ? `${selectedVehicle.make ?? ''} ${selectedVehicle.model} ${selectedVehicle.year}`.trim() : '—'}</h1>
+              <h1 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground truncate">
+                {selectedVehicle ? `${selectedVehicle.make ?? ''} ${selectedVehicle.model} ${selectedVehicle.year}`.trim() : '—'}
+              </h1>
+
+              {/* Inline meta: license · station (flat, no card wrappers) */}
+              <div className="flex items-center gap-1.5 shrink-0 pl-1.5 ml-0.5 border-l border-border/60">
+                <span
+                  className="text-[11px] font-semibold tabular-nums text-foreground"
+                  title="License"
+                >
+                  {selectedVehicle?.license || '—'}
+                </span>
+                <span aria-hidden className="text-muted-foreground/60">·</span>
+                <span
+                  className="text-[11px] font-medium text-muted-foreground"
+                  title="Station"
+                >
+                  {selectedVehicle?.station || '—'}
+                </span>
+              </div>
+
               <div className="flex gap-1.5">
                 <div className="relative">
-                <button 
+                <button
                   onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-semibold border flex items-center gap-1 transition-all duration-200 hover:shadow-md cursor-pointer ${
+                  className={`sq-press sq-chip ${
                     vehicleStatus === 'Available'
-                      ? 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200'
+                      ? 'sq-chip-success'
                       : vehicleStatus === 'Manual Block'
-                      ? 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200'
-                      : 'bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200'
+                        ? 'sq-chip-critical'
+                        : 'sq-chip-warning'
                   }`}
                 >
                   {vehicleStatus === 'Available' ? (
@@ -961,31 +1222,31 @@ function RentalAppContent() {
                     <Wrench className="w-3 h-3" />
                   )}
                   {vehicleStatus}
-                  <ChevronDown className="w-3 h-3 ml-0.5" />
+                  <ChevronDown className={`w-3 h-3 ml-0.5 transition-transform duration-200 ${isStatusDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
                 
                 {isStatusDropdownOpen && (
-                  <div className="absolute top-full mt-1.5 left-0 z-50 min-w-[160px] bg-popover text-popover-foreground rounded-lg border border-border shadow-lg overflow-hidden">
+                  <div className="sq-overlay animate-fade-up absolute top-full mt-1.5 left-0 z-50 min-w-[170px] p-1 rounded-xl">
                     <button
                       onClick={() => handleVehicleStatusChange('Available')}
-                      className="w-full px-3 py-2 flex items-center gap-2 hover:bg-green-50 transition-colors text-left border-b border-gray-100"
+                      className="w-full px-2.5 py-2 flex items-center gap-2 rounded-lg hover:bg-muted transition-colors text-left"
                     >
-                      <CheckCircle className="w-3.5 h-3.5 text-green-600" />
-                      <span className="text-xs font-medium text-gray-700">Available</span>
+                      <CheckCircle className="w-3.5 h-3.5 text-[color:var(--status-positive)]" />
+                      <span className="text-[12px] font-medium text-foreground">Available</span>
                     </button>
                     <button
                       onClick={() => handleVehicleStatusChange('Manual Block')}
-                      className="w-full px-3 py-2 flex items-center gap-2 hover:bg-red-50 transition-colors text-left border-b border-gray-100"
+                      className="w-full px-2.5 py-2 flex items-center gap-2 rounded-lg hover:bg-muted transition-colors text-left"
                     >
-                      <XCircle className="w-3.5 h-3.5 text-red-600" />
-                      <span className="text-xs font-medium text-gray-700">Manual Block</span>
+                      <XCircle className="w-3.5 h-3.5 text-[color:var(--status-critical)]" />
+                      <span className="text-[12px] font-medium text-foreground">Manual Block</span>
                     </button>
                     <button
                       onClick={() => handleVehicleStatusChange('Maintenance')}
-                      className="w-full px-3 py-2 flex items-center gap-2 hover:bg-orange-50 transition-colors text-left"
+                      className="w-full px-2.5 py-2 flex items-center gap-2 rounded-lg hover:bg-muted transition-colors text-left"
                     >
-                      <Wrench className="w-3.5 h-3.5 text-orange-600" />
-                      <span className="text-xs font-medium text-gray-700">Maintenance</span>
+                      <Wrench className="w-3.5 h-3.5 text-[color:var(--status-attention)]" />
+                      <span className="text-[12px] font-medium text-foreground">Maintenance</span>
                     </button>
                   </div>
                 )}
@@ -993,45 +1254,41 @@ function RentalAppContent() {
 
                 {/* Cleaning Status Dropdown */}
                 <div className="relative">
-                <button 
+                <button
                   onClick={() => setIsCleaningDropdownOpen(!isCleaningDropdownOpen)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-semibold border flex items-center gap-1 transition-all duration-200 hover:shadow-md cursor-pointer ${
-                    cleaningStatus === 'Clean'
-                      ? 'bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200'
-                      : 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200'
-                  }`}
+                  className={`sq-press sq-chip ${cleaningStatus === 'Clean' ? 'sq-chip-info' : 'sq-chip-critical'}`}
                 >
                   <Sparkles className="w-3 h-3" />
                   {cleaningStatus}
-                  <ChevronDown className="w-3 h-3 ml-0.5" />
+                  <ChevronDown className={`w-3 h-3 ml-0.5 transition-transform duration-200 ${isCleaningDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {isCleaningDropdownOpen && (
-                  <div className="absolute top-full mt-1.5 left-0 z-50 min-w-[160px] bg-popover text-popover-foreground rounded-lg border border-border shadow-lg overflow-hidden">
+                  <div className="sq-overlay animate-fade-up absolute top-full mt-1.5 left-0 z-50 min-w-[170px] p-1 rounded-xl">
                     <button
                       onClick={() => handleCleaningStatusChange('Clean')}
-                      className="w-full px-3 py-2 flex items-center gap-2 hover:bg-blue-50 transition-colors text-left border-b border-gray-100"
+                      className="w-full px-2.5 py-2 flex items-center gap-2 rounded-lg hover:bg-muted transition-colors text-left"
                     >
-                      <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                      <span className="text-xs font-medium text-gray-700">Clean</span>
+                      <Sparkles className="w-3.5 h-3.5 text-[color:var(--status-info)]" />
+                      <span className="text-[12px] font-medium text-foreground">Clean</span>
                     </button>
                     <button
                       onClick={() => handleCleaningStatusChange('Needs Cleaning')}
-                      className="w-full px-3 py-2 flex items-center gap-2 hover:bg-red-50 transition-colors text-left"
+                      className="w-full px-2.5 py-2 flex items-center gap-2 rounded-lg hover:bg-muted transition-colors text-left"
                     >
-                      <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
-                      <span className="text-xs font-medium text-gray-700">Needs Cleaning</span>
+                      <AlertTriangle className="w-3.5 h-3.5 text-[color:var(--status-critical)]" />
+                      <span className="text-[12px] font-medium text-foreground">Needs Cleaning</span>
                     </button>
                   </div>
                 )}
                 </div>
 
-                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border flex items-center gap-1 ${
+                <span className={`sq-chip ${
                   selectedVehicle?.healthStatus === 'Critical'
-                    ? 'bg-red-100 text-red-700 border-red-200'
+                    ? 'sq-chip-critical'
                     : selectedVehicle?.healthStatus === 'Warning'
-                    ? 'bg-amber-100 text-amber-700 border-amber-200'
-                    : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                      ? 'sq-chip-warning'
+                      : 'sq-chip-success'
                 }`}>
                   <Heart className="w-3 h-3" />
                   {selectedVehicle?.healthStatus || 'Good Health'}
@@ -1040,138 +1297,35 @@ function RentalAppContent() {
             </div>
             <VehicleConnectionBadge isDarkMode={isDarkMode} />
           </div>
-          
-          {/* Vehicle Details Section */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-card shadow-sm">
-              <span className={`text-[10px] font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>License Plate</span>
-              <span className={`text-xs font-bold ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{selectedVehicle?.license || '—'}</span>
-            </div>
-            
-            <div className="relative">
-              <button 
-                onClick={() => setIsStationDropdownOpen(!isStationDropdownOpen)}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-card shadow-sm transition-all duration-200 hover:bg-muted cursor-pointer">
-                <span className={`text-[10px] font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Station</span>
-                <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{currentStation}</span>
-                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isStationDropdownOpen ? 'rotate-180' : ''} ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-              </button>
-              
-              {isStationDropdownOpen && (
-                <div className="absolute top-full mt-1.5 left-0 min-w-[200px] rounded-lg shadow-lg border border-border bg-popover z-50 overflow-hidden">
-                  {availableStations.map((station) => (
-                    <button
-                      key={station}
-                      onClick={() => handleStationChange(station)}
-                      className={`w-full px-3 py-2 text-left text-xs font-medium transition-all duration-200 flex items-center gap-2 ${
-                        station === currentStation
-                          ? isDarkMode
-                            ? 'bg-blue-600/20 text-blue-400'
-                            : 'bg-blue-50 text-blue-600'
-                          : isDarkMode
-                            ? 'text-gray-300 hover:bg-neutral-800/60'
-                            : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      <MapPin className="w-3.5 h-3.5" />
-                      {station}
-                      {station === currentStation && (
-                        <CheckCircle className="w-3.5 h-3.5 ml-auto" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            
-            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border shadow-sm ${
-              selectedVehicle?.isElectric
-                ? 'border-emerald-500/25 bg-emerald-500/5'
-                : 'border-amber-500/25 bg-amber-500/5'
-            }`}>
-              <span className={`text-[10px] font-medium ${selectedVehicle?.isElectric ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600') : (isDarkMode ? 'text-amber-400' : 'text-amber-600')}`}>{selectedVehicle?.isElectric ? 'Energy' : 'Fuel'}</span>
-              <span className={`text-xs font-bold ${selectedVehicle?.isElectric ? (isDarkMode ? 'text-emerald-300' : 'text-emerald-900') : (isDarkMode ? 'text-amber-300' : 'text-amber-900')}`}>
-                {selectedVehicle?.isElectric
-                  ? (selectedVehicle.battery != null ? `${Math.round(selectedVehicle.battery)}%` : 'EV')
-                  : (selectedVehicle?.fuelLevel != null ? `${Math.round(selectedVehicle.fuelLevel)}%` : selectedVehicle?.fuelType || 'Petrol')}
-              </span>
-            </div>
-          </div>
         </div>
         )}
 
-        {/* Tab Navigation - Only show for overview and trips views */}
-        {currentView !== 'dashboard' && currentView !== 'bookings' && currentView !== 'fleet' && currentView !== 'customers' && currentView !== 'customer-detail' && currentView !== 'tasks' && currentView !== 'invoices' && currentView !== 'fines' && currentView !== 'price-tariffs' && currentView !== 'analytics' && currentView !== 'settings' && currentView !== 'new-booking' && currentView !== 'stations' && currentView !== 'fleet-condition' && currentView !== 'document-upload' && currentView !== 'ai-assistant' && currentView !== 'support' && currentView !== 'help-center' && currentView !== 'whatsapp-business' && currentView !== 'parts-accessories' && currentView !== 'ai-voice-assistant' && (
+        {/* Tab Navigation - Only show for vehicle detail views */}
+        {currentView !== 'dashboard' && currentView !== 'bookings' && currentView !== 'fleet' && currentView !== 'customers' && currentView !== 'customer-detail' && currentView !== 'tasks' && currentView !== 'invoices' && currentView !== 'fines' && currentView !== 'price-tariffs' && currentView !== 'analytics' && currentView !== 'settings' && currentView !== 'new-booking' && currentView !== 'stations' && currentView !== 'fleet-condition' && currentView !== 'document-upload' && currentView !== 'ai-assistant' && currentView !== 'support' && currentView !== 'help-center' && currentView !== 'workflow-automation' && currentView !== 'whatsapp-business' && currentView !== 'parts-accessories' && currentView !== 'ai-voice-assistant' && (
         <div className="mb-4">
-          <div className="rounded-lg p-1 border border-border bg-muted flex gap-1 items-center w-full shadow-sm">
-            <div className="flex flex-nowrap gap-1 flex-1 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <button 
-                onClick={() => setCurrentView('overview')}
-                className={`px-3 py-1 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-200 ${
-                currentView === 'overview'
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
-              }`}>
-                Overview
-              </button>
-              <button 
-                onClick={() => setCurrentView('trips')}
-                className={`px-3 py-1 rounded-md text-xs font-semibold whitespace-nowrap transition-all duration-200 ${
-                currentView === 'trips'
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
-              }`}>
-                Trips
-              </button>
-              <button 
-                onClick={() => setCurrentView('health-errors')}
-                className={`px-3 py-1 text-xs font-medium whitespace-nowrap rounded-md transition-all duration-200 ${
-                currentView === 'health-errors'
-                  ? 'bg-card text-foreground shadow-sm font-semibold'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
-              }`}>
-                Health
-              </button>
-              <button 
-                onClick={() => setCurrentView('damages')}
-                className={`px-4 py-1.5 text-xs font-medium whitespace-nowrap rounded-lg transition-all duration-200 ${
-                currentView === 'damages'
-                  ? isDarkMode 
-                    ? 'bg-neutral-800 text-white shadow-[0_2px_8px_rgb(0,0,0,0.08)]' 
-                    : 'bg-white text-gray-900 shadow-[0_2px_8px_rgb(0,0,0,0.08)]'
-                  : isDarkMode 
-                    ? 'text-gray-400 hover:text-gray-200 hover:bg-neutral-800/50' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-              }`}>
-                Damages
-              </button>
-              <button 
-                onClick={() => setCurrentView('documents')}
-                className={`px-3 py-1 text-xs font-medium whitespace-nowrap rounded-md transition-all duration-200 ${
-                currentView === 'documents'
-                  ? 'bg-card text-foreground shadow-sm font-semibold'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
-              }`}>
-                Documents
-              </button>
-              <button 
-                onClick={() => setCurrentView('vehicle-bookings')}
-                className={`px-3 py-1 text-xs font-medium whitespace-nowrap rounded-md transition-all duration-200 ${
-                currentView === 'vehicle-bookings'
-                  ? 'bg-card text-foreground shadow-sm font-semibold'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
-              }`}>
-                Bookings
-              </button>
-              <button 
-                onClick={() => setCurrentView('vehicle-tasks')}
-                className={`px-3 py-1 text-xs font-medium whitespace-nowrap rounded-md transition-all duration-200 ${
-                currentView === 'vehicle-tasks'
-                  ? 'bg-card text-foreground shadow-sm font-semibold'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
-              }`}>
-                Task List
-              </button>
+          <div className="sq-tab-bar p-1 flex items-center w-full">
+            <div className="flex flex-nowrap gap-0.5 flex-1 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {([
+                { key: 'overview', label: 'Overview' },
+                { key: 'trips', label: 'Trips' },
+                { key: 'health-errors', label: 'Health' },
+                { key: 'damages', label: 'Damages' },
+                { key: 'documents', label: 'Documents' },
+                { key: 'vehicle-bookings', label: 'Bookings' },
+                { key: 'vehicle-tasks', label: 'Task List' },
+              ] as const).map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setCurrentView(tab.key as typeof currentView)}
+                  className={`px-3.5 py-1.5 rounded-[calc(var(--radius-md)-2px)] text-[12px] leading-[16.2px] font-semibold tracking-[-0.003em] whitespace-nowrap transition-all duration-200 ${
+                    currentView === tab.key
+                      ? 'bg-card text-foreground shadow-[var(--shadow-1)]'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -1220,7 +1374,15 @@ function RentalAppContent() {
                       ? isDarkMode ? 'text-green-300' : 'text-green-700'
                       : isDarkMode ? 'text-gray-200' : 'text-gray-900'
                   }`}>
-                    {selectedDate ? new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'All Time'}
+                    {selectedDate ? (() => {
+                      // V4.6.71 — Parse as LOCAL date: `new Date("2026-04-19")`
+                      // interprets YYYY-MM-DD as UTC midnight per ES spec, which
+                      // shifts the display one day earlier in western timezones.
+                      // The date picker emits a local calendar day string, so
+                      // the display must parse it the same way.
+                      const [y, m, d] = selectedDate.split('-').map(Number);
+                      return new Date(y, (m || 1) - 1, d || 1).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                    })() : 'All Time'}
                   </span>
                   <ChevronDown className={`w-3.5 h-3.5 ${
                     selectedDate
@@ -1325,16 +1487,12 @@ function RentalAppContent() {
           </div>
         )}
 
-        {/* Content Area - Changes based on currentView */}
-        {/* Main Navigation Tabs - Show for Dashboard, Bookings, Fleet, Customers, Stations */}
-        {(['dashboard', 'bookings', 'fleet', 'customers', 'stations'] as const).includes(currentView as MainNavTab) && (
-          <MainNavTabs
-            isDarkMode={isDarkMode}
-            activeTab={currentView as MainNavTab}
-            onTabChange={(tab) => setCurrentView(tab)}
-          />
-        )}
-
+        {/* V4.6.94 — `MainNavTabs` retired. The horizontal Dashboard /
+            Bookings / Fleet / Customers / Stations tab strip duplicated the
+            top-level Sidebar entries 1:1, only appeared on those 5 routes
+            (causing a ~50px header jump when switching to Insights /
+            Settings / Trips), and added zero capability the always-visible
+            sidebar (incl. its mobile drawer) didn't already cover. */}
         {currentView === 'trips' ? (
           <TripsView 
             isDarkMode={isDarkMode} 
@@ -1351,7 +1509,20 @@ function RentalAppContent() {
         ) : currentView === 'stations' ? (
           <StationsTab isDarkMode={isDarkMode} />
         ) : currentView === 'dashboard' ? (
-          <DashboardView isDarkMode={isDarkMode} onVehicleSelect={(vehicle) => { setSelectedVehicle(vehicle); setCurrentView('overview'); }} onItemHover={setHoveredVehicle} />
+          <DashboardView
+            isDarkMode={isDarkMode}
+            onVehicleSelect={(vehicle) => { setSelectedVehicle(vehicle); setCurrentView('overview'); }}
+            onItemHover={setHoveredVehicle}
+            onOpenVehicleById={(vehicleId) => {
+              const v = fleetVehicles.find((fv) => fv.id === vehicleId);
+              if (v) { setSelectedVehicle(v); setCurrentView('overview'); }
+            }}
+            onOpenRentalView={(view) => setCurrentView(view)}
+            onOpenBookingById={(bookingId) => {
+              setPendingBookingDetailId(bookingId);
+              setCurrentView('bookings');
+            }}
+          />
         ) : currentView === 'bookings' ? (
           <BookingsView isDarkMode={isDarkMode} onActiveBookingRefChange={setActiveBookingRef} onNavigateToVehicle={(vehicleName) => {
             const nameNorm = vehicleName.toLowerCase().replace(/[-\s]/g, '');
@@ -1362,13 +1533,21 @@ function RentalAppContent() {
             if (vehicle) { handleVehicleSelect(vehicle); }
           }} onCreateNewBooking={() => setCurrentView('new-booking')} additionalBookings={createdBookings} onBookingUpdated={(updatedBooking) => {
             setCreatedBookings(prev => prev.map(b => b.id === updatedBooking.id ? updatedBooking : b));
+            bumpBookingsVersion();
           }} onBookingCancelled={(bookingId) => {
             setCreatedBookings(prev => prev.filter(b => b.id !== bookingId));
-          }} />
+            bumpBookingsVersion();
+          }} initialDetailBookingId={pendingBookingDetailId} onConsumeInitialDetailBookingId={() => setPendingBookingDetailId(null)} />
         ) : currentView === 'health-errors' ? (
           <HealthErrorsView isDarkMode={isDarkMode} vehicleId={selectedVehicle?.id} fuelType={selectedVehicle?.fuelType} />
         ) : currentView === 'rental-driving-analysis' ? (
           <RentalDrivingAnalysisView isDarkMode={isDarkMode} />
+        ) : currentView === 'financial-insights' ? (
+          /* V4.6.93 — Standalone Financial Insights page (replacement for the
+             retired Dashboard Finances tab). Aggregates real invoice data
+             (`/organizations/:orgId/invoices*`) end-to-end without mock
+             fallbacks. Lives next to other Insights pages, not under Finance. */
+          <FinancialInsightsView isDarkMode={isDarkMode} />
         ) : currentView === 'fleet' ? (
           <FleetView isDarkMode={isDarkMode} onVehicleSelect={handleVehicleSelect} />
         ) : currentView === 'damages' ? (
@@ -1459,7 +1638,7 @@ function RentalAppContent() {
         ) : currentView === 'settings' ? (
           <SettingsView isDarkMode={isDarkMode} activeTab={settingsTab} onTabChange={setSettingsTab} />
         ) : currentView === 'new-booking' ? (
-          <NewBookingView isDarkMode={isDarkMode} onBack={() => setCurrentView('bookings')} tariffs={tariffs} onCustomerCreated={(c) => setNewlyCreatedCustomers(prev => [c, ...prev])} onBookingCreated={(b) => { setCreatedBookings(prev => [b, ...prev]); }} />
+          <NewBookingView isDarkMode={isDarkMode} onBack={() => setCurrentView('bookings')} tariffs={tariffs} onCustomerCreated={(c) => setNewlyCreatedCustomers(prev => [c, ...prev])} onBookingCreated={(b) => { setCreatedBookings(prev => [b, ...prev]); bumpBookingsVersion(); }} />
         ) : (
           <>
         {/* Main Grid - Top Section */}
@@ -1494,45 +1673,6 @@ function RentalAppContent() {
               }}
             />
 
-            {/* Box 3: Quick Actions */}
-            <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden transition-shadow hover:shadow-md dark:border-blue-500/20">
-              <div className="px-3 py-2.5 border-b border-border bg-muted/30">
-                <h4 className="text-xs font-semibold text-foreground flex items-center gap-2 font-display">
-                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                  Quick Actions
-                </h4>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-3">
-                <button type="button" className="flex items-center gap-2 px-2.5 py-2 bg-card hover:bg-muted rounded-md border border-border hover:border-primary/20 hover:shadow-sm transition-all duration-200 group sq-press">
-                  <Droplet className="w-3.5 h-3.5 text-amber-600 group-hover:text-amber-700" />
-                  <span className="text-[10px] font-medium text-foreground">Log Oil Change</span>
-                </button>
-                <button type="button" className="flex items-center gap-2 px-2.5 py-2 bg-card hover:bg-muted rounded-md border border-border hover:border-primary/20 hover:shadow-sm transition-all duration-200 group sq-press">
-                  <Wrench className="w-3.5 h-3.5 text-blue-600 group-hover:text-blue-700" />
-                  <span className="text-[10px] font-medium text-foreground">Log Service</span>
-                </button>
-                <button type="button" className="flex items-center gap-2 px-2.5 py-2 bg-card hover:bg-muted rounded-md border border-border hover:border-primary/20 hover:shadow-sm transition-all duration-200 group sq-press">
-                  <FileText className="w-3.5 h-3.5 text-purple-600 group-hover:text-purple-700" />
-                  <span className="text-[10px] font-medium text-foreground">Log Inspection</span>
-                </button>
-                <button type="button" className="flex items-center gap-2 px-2.5 py-2 bg-card hover:bg-muted rounded-md border border-border hover:border-primary/20 hover:shadow-sm transition-all duration-200 group sq-press">
-                  <Disc className="w-3.5 h-3.5 text-red-600 group-hover:text-red-700" />
-                  <span className="text-[10px] font-medium text-foreground">Log Brake</span>
-                </button>
-                <button type="button" className="flex items-center gap-2 px-2.5 py-2 bg-card hover:bg-muted rounded-md border border-border hover:border-primary/20 hover:shadow-sm transition-all duration-200 group sq-press">
-                  <Circle className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground" />
-                  <span className="text-[10px] font-medium text-foreground">Log Tire</span>
-                </button>
-                <button type="button" className="flex items-center gap-2 px-2.5 py-2 bg-card hover:bg-muted rounded-md border border-border hover:border-primary/20 hover:shadow-sm transition-all duration-200 group sq-press">
-                  <Camera className="w-3.5 h-3.5 text-orange-600 group-hover:text-orange-700" />
-                  <span className="text-[10px] font-medium text-foreground">Log Damage</span>
-                </button>
-                <button type="button" className="flex items-center gap-2 px-2.5 py-2 bg-card hover:bg-muted rounded-md border border-border hover:border-primary/20 hover:shadow-sm transition-all duration-200 group sq-press">
-                  <Settings className="w-3.5 h-3.5 text-green-600 group-hover:text-green-700" />
-                  <span className="text-[10px] font-medium text-foreground">Log Repair</span>
-                </button>
-              </div>
-            </div>
             </div>
           </div>
         </div>
@@ -1550,6 +1690,7 @@ function RentalAppContent() {
         highlightedVehicle={hoveredVehicle}
         orgId={orgId}
         fleetVehicles={fleetVehicles}
+        bookingsVersion={bookingsVersion}
         onTaskClick={(taskId) => {
           setCurrentView('tasks');
           setTasksSectionTab('tasks');
@@ -1572,6 +1713,8 @@ function RentalAppContent() {
             setCurrentView('health-errors');
           }
         }}
+        isCollapsed={isRightSidebarCollapsed}
+        onToggleCollapse={() => setIsRightSidebarCollapsed(prev => !prev)}
       />
       
       {/* New Task Modal */}
@@ -1699,6 +1842,7 @@ function RentalAppContent() {
       )}
 
     </div>
+    </HandoverProvider>
   );
 }
 
@@ -1707,12 +1851,14 @@ export default function App() {
     <LanguageProvider>
       <RentalProvider>
         <FleetProvider>
-          <AppErrorBoundary
-            title="Rental view crashed"
-            description="A runtime error interrupted the rental interface. Reload and try opening Fleet again."
-          >
-            <RentalAppContent />
-          </AppErrorBoundary>
+          <DashboardInsightsProvider>
+            <AppErrorBoundary
+              title="Rental view crashed"
+              description="A runtime error interrupted the rental interface. Reload and try opening Fleet again."
+            >
+              <RentalAppContent />
+            </AppErrorBoundary>
+          </DashboardInsightsProvider>
         </FleetProvider>
       </RentalProvider>
     </LanguageProvider>

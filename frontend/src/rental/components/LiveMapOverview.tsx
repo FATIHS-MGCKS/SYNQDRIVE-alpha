@@ -44,7 +44,7 @@ function createCalloutEl(plate: string, isDark: boolean): HTMLDivElement {
   callout.style.transform = 'translateX(-50%)';
   callout.style.padding = '4px 10px';
   callout.style.borderRadius = '8px';
-  callout.style.fontSize = '12px';
+  callout.style.fontSize = '10px';
   callout.style.fontWeight = '600';
   callout.style.letterSpacing = '0.05em';
   callout.style.whiteSpace = 'nowrap';
@@ -303,7 +303,7 @@ export function LiveMapOverview({
       )}
       {currentAddress && currentAddress.formatted !== '—' && !waitingForPosition && (
         <div className="absolute top-3 left-3 max-w-[220px] px-2.5 py-1.5 bg-card/85 backdrop-blur-sm border border-border/50 rounded-lg shadow-md text-foreground">
-          <p className="text-[11px] font-semibold leading-tight truncate">{currentAddress.street ? `${currentAddress.street}${currentAddress.houseNumber ? ` ${currentAddress.houseNumber}` : ''}` : currentAddress.city ?? '—'}</p>
+          <p className="text-[10px] font-semibold leading-tight truncate">{currentAddress.street ? `${currentAddress.street}${currentAddress.houseNumber ? ` ${currentAddress.houseNumber}` : ''}` : currentAddress.city ?? '—'}</p>
           {currentAddress.street && currentAddress.city && (
             <p className="text-[10px] leading-tight truncate text-muted-foreground">{currentAddress.city}</p>
           )}
@@ -316,14 +316,14 @@ export function LiveMapOverview({
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
             </span>
-            <span className="text-[11px] font-semibold tracking-wider">LIVE</span>
+            <span className="text-[10px] font-semibold tracking-wider">LIVE</span>
           </>
         ) : (
           <>
             <span className="relative flex h-2 w-2">
               <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-400" />
             </span>
-            <span className="text-[11px] font-semibold tracking-wider">SNAPSHOT</span>
+            <span className="text-[10px] font-semibold tracking-wider">SNAPSHOT</span>
           </>
         )}
       </div>
