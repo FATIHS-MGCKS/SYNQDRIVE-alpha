@@ -149,8 +149,11 @@ export class TripsService {
       }),
     ]);
 
-    const avgDrivingStyleScore = impactAgg._avg.drivingStyleScore ?? 0;
-    const avgSafetyScore = impactAgg._avg.safetyScore ?? 0;
+    // V4.6.95 — nullable averages: missing data must never render as 0.
+    // Prisma returns `null` from `_avg` if no rows match. Preserve that
+    // semantics all the way through to the API so the UI can show "—".
+    const avgDrivingStyleScore = impactAgg._avg.drivingStyleScore ?? null;
+    const avgSafetyScore = impactAgg._avg.safetyScore ?? null;
 
     return {
       totalTrips,

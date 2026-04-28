@@ -39,6 +39,52 @@ export function distanceMeters(
 }
 
 /**
+ * Decide whether a vehicle is currently parked / "at home" at its assigned
+ * station. The station defines a circular geofence via `latitude`,
+ * `longitude` and `radiusMeters`. A vehicle is "at home" if all of:
+ *   1. The station has valid coordinates AND a positive radius.
+ *   2. The vehicle has a recent valid GPS fix.
+ *   3. The haversine distance is ≤ `radiusMeters`.
+ *
+ * Returns `null` when any required input is missing — callers can then
+ * choose to render an "unbekannt" badge instead of a binary yes/no.
+ */
+export function isVehicleAtHomeStation(
+  vehicle: { latitude: number | null | undefined; longitude: number | null | undefined },
+  // V4.7.06 — `station` is now nullable in the type signature to match
+  // the runtime contract (the body already early-returns `null` for a
+  // missing station). Without this the `HomeAwayBadge` callers had to
+  // pass a placeholder object whenever the vehicle's station could not
+  // be resolved — clutter that the Operations → Fleet card consumer
+  // hit when stations fetch is still inflight.
+  station:
+    | {
+        latitude: number | null | undefined;
+        longitude: number | null | undefined;
+        radiusMeters: number | null | undefined;
+      }
+    | null
+    | undefined,
+): boolean | null {
+  if (!station) return null;
+  if (
+    station.latitude == null ||
+    station.longitude == null ||
+    station.radiusMeters == null ||
+    station.radiusMeters <= 0
+  ) {
+    return null;
+  }
+  if (!isValidCoord(vehicle.latitude, vehicle.longitude)) return null;
+
+  const d = distanceMeters(
+    [vehicle.longitude as number, vehicle.latitude as number],
+    [station.longitude, station.latitude],
+  );
+  return d <= station.radiusMeters;
+}
+
+/**
  * Interpolate a point between a and b by fraction t in [0, 1].
  * Returns [lng, lat].
  */

@@ -6,6 +6,8 @@ import {
   extractHmSignalData,
   extractHmSignalValue,
   resolveHmSignalEntry,
+  normalizeHmTirePressures,
+  normalizeHmTirePressureStatuses,
 } from './high-mobility-mqtt-payload.util';
 import { HmSignalUsageService } from './high-mobility-signal-usage.service';
 
@@ -82,6 +84,18 @@ export class HighMobilityHealthAppIngestionService {
         this.logger.warn(`[HM Health-APP] Failed to upsert latest health state for VIN ${vin}: ${err?.message}`),
       );
 
+      // Flip streamingState to CONNECTED on the HM vehicle record the first time
+      // a valid MQTT payload arrives. Prevents the UI showing "NOT_CONFIGURED"
+      // indefinitely even though messages have been flowing for days.
+      if (hmRecord && hmRecord.streamingState !== 'CONNECTED') {
+        await this.prisma.highMobilityVehicle.update({
+          where: { id: hmRecord.id },
+          data: { streamingState: 'CONNECTED', updatedAt: new Date() },
+        }).catch(err =>
+          this.logger.debug(`[HM Health-APP] Failed to flip streamingState for ${vin}: ${err?.message}`),
+        );
+      }
+
       if (hmRecord?.synqdriveVehicleId) {
         await this.hmSignalUsageService
           .ingestMqttHealthSnapshot({
@@ -154,6 +168,10 @@ export class HighMobilityHealthAppIngestionService {
 
   private normalizePayload(messageId: string, vin: string | null, hmVehicleId: string | null,
     topic: string, messageTimestamp: Date, payload: Record<string, unknown>): HmNormalizedTelemetryDto {
+    // Mercedes Health-APP MQTT V2 payloads use the fully-qualified capability
+    // IDs under `data` (e.g. `diagnostics.get.odometer`,
+    // `vehicle_location.get.coordinates`). The previous key list was the
+    // legacy REST style and silently returned null for every field.
     const props = (payload?.data ?? payload?.properties ?? {}) as Record<string, any>;
     const getVal = (keys: string[]): any => {
       for (const k of keys) {
@@ -163,17 +181,70 @@ export class HighMobilityHealthAppIngestionService {
       }
       return null;
     };
+    const getNum = (keys: string[]): number | null => {
+      const v = getVal(keys);
+      if (v === null || v === undefined) return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const locationVal = getVal([
+      'vehicle_location.get.coordinates',
+      'vehicle_location.coordinates',
+      'location.get.location',
+      'location',
+    ]);
+    const latitude = locationVal && typeof locationVal === 'object'
+      ? Number(locationVal.latitude ?? locationVal.lat ?? NaN)
+      : NaN;
+    const longitude = locationVal && typeof locationVal === 'object'
+      ? Number(locationVal.longitude ?? locationVal.lng ?? NaN)
+      : NaN;
+
     return {
       messageId, vin: vin ?? '', hmVehicleId, topic,
       messageTimestamp: messageTimestamp.toISOString(),
-      latitude: getVal(['location.get.location', 'location']) ? Number(getVal(['location.get.location', 'location'])?.latitude ?? null) : null,
-      longitude: getVal(['location.get.location', 'location']) ? Number(getVal(['location.get.location', 'location'])?.longitude ?? null) : null,
-      speedKmh: getVal(['vehicle_speed.get.vehicle_speed', 'vehicle_speed']) !== null ? Number(getVal(['vehicle_speed.get.vehicle_speed', 'vehicle_speed'])) : null,
-      ignitionOn: getVal(['ignition.get.status', 'ignition_status']) !== null ? Boolean(getVal(['ignition.get.status', 'ignition_status'])) : null,
-      odometerId: getVal(['odometer.get.mileage', 'odometer']) !== null ? Number(getVal(['odometer.get.mileage', 'odometer'])) : null,
-      fuelLevelPercent: getVal(['fueling.get.fuel_level', 'fuel_level']) !== null ? Number(getVal(['fueling.get.fuel_level', 'fuel_level'])) : null,
-      batteryVoltage: getVal(['diagnostics.get.battery_voltage', 'battery_voltage']) !== null ? Number(getVal(['diagnostics.get.battery_voltage', 'battery_voltage'])) : null,
-      engineCoolantTemperatureC: getVal(['diagnostics.get.engine_coolant_temperature', 'engine_coolant_temperature']) !== null ? Number(getVal(['diagnostics.get.engine_coolant_temperature', 'engine_coolant_temperature'])) : null,
+      latitude: Number.isFinite(latitude) ? latitude : null,
+      longitude: Number.isFinite(longitude) ? longitude : null,
+      speedKmh: getNum([
+        'vehicle_status.get.speed',
+        'vehicle_speed.get.vehicle_speed',
+        'vehicle_speed',
+      ]),
+      ignitionOn: (() => {
+        const v = getVal([
+          'vehicle_status.get.ignition',
+          'ignition.get.status',
+          'ignition.status',
+          'ignition_status',
+        ]);
+        if (v === null || v === undefined) return null;
+        if (typeof v === 'boolean') return v;
+        if (typeof v === 'string') return ['on', 'true', 'accessory', 'running'].includes(v.toLowerCase());
+        return Boolean(v);
+      })(),
+      odometerId: getNum([
+        'diagnostics.get.odometer',
+        'odometer.get.mileage',
+        'odometer.mileage',
+        'odometer',
+      ]),
+      fuelLevelPercent: getNum([
+        'diagnostics.get.fuel_level',
+        'fueling.get.fuel_level',
+        'fueling.fuel_level',
+        'fuel_level',
+      ]),
+      batteryVoltage: getNum([
+        'diagnostics.get.battery_voltage',
+        'diagnostics.battery_voltage',
+        'battery_voltage',
+      ]),
+      engineCoolantTemperatureC: getNum([
+        'diagnostics.get.engine_coolant_temperature',
+        'diagnostics.engine_coolant_temperature',
+        'engine_coolant_temperature',
+      ]),
       rawSignals: props,
     };
   }
@@ -220,13 +291,61 @@ export class HighMobilityHealthAppIngestionService {
     const timeSig = getSignal('maintenance.get.time_to_next_service', ['maintenance.time_to_next_service', 'time_to_next_service']);
 
     const oilPayload = extractHmSignalData(oilSig);
-    const tirePressureStatusesPayload = extractHmSignalData(tirePressureStatuses);
-    const tirePressuresPayload = extractHmSignalData(tirePressures);
+    // Tire payloads need the shared normalizer so we persist canonical
+    // { frontLeft, frontRight, rearLeft, rearRight } objects regardless of
+    // whether the wire format is the new MQTT V2 per-wheel array or the
+    // legacy keyed object. Otherwise we wrote a single `{ location, pressure }`
+    // blob (first wheel only) into tirePressuresJson.
+    const normalizedTirePressures = tirePressures != null ? normalizeHmTirePressures(tirePressures) : null;
+    const normalizedTireStatuses =
+      tirePressureStatuses != null ? normalizeHmTirePressureStatuses(tirePressureStatuses) : null;
+    const tirePressuresPayload = normalizedTirePressures
+      ? {
+          frontLeft: normalizedTirePressures.frontLeft,
+          frontRight: normalizedTirePressures.frontRight,
+          rearLeft: normalizedTirePressures.rearLeft,
+          rearRight: normalizedTirePressures.rearRight,
+          unit: normalizedTirePressures.unit,
+        }
+      : null;
+    const tirePressureStatusesPayload = normalizedTireStatuses
+      ? {
+          frontLeft: normalizedTireStatuses.frontLeft,
+          frontRight: normalizedTireStatuses.frontRight,
+          rearLeft: normalizedTireStatuses.rearLeft,
+          rearRight: normalizedTireStatuses.rearRight,
+        }
+      : null;
     const dashboardLightsPayload = extractHmSignalData(dashboardLights);
     const brakeLiningPreWarning = toBooleanOrNull(brakeSig);
     const engineLimpMode = toBooleanOrNull(limpSig);
     const distanceToNextServiceKm = toFiniteNumberOrNull(distanceSig);
     const timeToNextServiceDays = toFiniteNumberOrNull(timeSig);
+
+    // Read current row so we can merge incoming deltas instead of overwriting
+    // with null for every signal the current message didn't carry.
+    const existing = await (this.prisma as any).hmLatestHealthState.findUnique({
+      where: { uq_hm_latest_health_vin_app: { vin, appContainerType: 'HM_HEALTH_APP' } },
+    }).catch(() => null);
+
+    const mergedTirePressures = tirePressuresPayload
+      ? {
+          ...(existing?.tirePressuresJson ?? {}),
+          ...Object.fromEntries(Object.entries(tirePressuresPayload).filter(([, v]) => v !== null)),
+        }
+      : existing?.tirePressuresJson ?? null;
+
+    const mergedTireStatuses = tirePressureStatusesPayload
+      ? {
+          ...(existing?.tirePressureStatusesJson ?? {}),
+          ...Object.fromEntries(Object.entries(tirePressureStatusesPayload).filter(([, v]) => v !== null)),
+        }
+      : existing?.tirePressureStatusesJson ?? null;
+
+    // Preserve the accumulated raw signals map so we keep evidence of all past
+    // capability groups — a single MQTT message only carries one group.
+    const prevRaw = (existing?.rawSignalsJson as Record<string, any> | null) ?? {};
+    const mergedRaw = { ...prevRaw, ...props };
 
     await (this.prisma as any).hmLatestHealthState.upsert({
       where: { uq_hm_latest_health_vin_app: { vin, appContainerType: 'HM_HEALTH_APP' } },
@@ -238,9 +357,9 @@ export class HighMobilityHealthAppIngestionService {
         engineOilLevelJson: oilPayload ?? undefined,
         distanceToNextServiceKm: distanceToNextServiceKm ?? undefined,
         timeToNextServiceDays: timeToNextServiceDays ?? undefined,
-        tirePressureStatusesJson: tirePressureStatusesPayload ?? undefined,
-        tirePressuresJson: tirePressuresPayload ?? undefined,
-        rawSignalsJson: props as any,
+        tirePressureStatusesJson: mergedTireStatuses ?? undefined,
+        tirePressuresJson: mergedTirePressures ?? undefined,
+        rawSignalsJson: mergedRaw as any,
       },
       update: {
         hmVehicleId: hmVehicleId ?? undefined, lastMessageId: messageId, lastReceivedAt: receivedAt,
@@ -250,9 +369,9 @@ export class HighMobilityHealthAppIngestionService {
         ...(oilPayload !== null && oilPayload !== undefined && { engineOilLevelJson: oilPayload }),
         ...(distanceToNextServiceKm !== null && { distanceToNextServiceKm }),
         ...(timeToNextServiceDays !== null && { timeToNextServiceDays }),
-        ...(tirePressureStatusesPayload !== null && tirePressureStatusesPayload !== undefined && { tirePressureStatusesJson: tirePressureStatusesPayload }),
-        ...(tirePressuresPayload !== null && tirePressuresPayload !== undefined && { tirePressuresJson: tirePressuresPayload }),
-        rawSignalsJson: props as any,
+        ...(mergedTireStatuses !== null && { tirePressureStatusesJson: mergedTireStatuses }),
+        ...(mergedTirePressures !== null && { tirePressuresJson: mergedTirePressures }),
+        rawSignalsJson: mergedRaw as any,
       },
     });
   }

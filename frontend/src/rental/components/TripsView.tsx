@@ -3,9 +3,10 @@ import {
   Navigation, AlertTriangle, Award, User, Clock, Gauge, MapPin, RefreshCw,
   Zap, ChevronDown, ChevronUp, Thermometer, Activity, Wind, Fuel, TrendingUp,
   AlertCircle, Shield, Loader2, BarChart3, Route, Play, CheckCircle2, ArrowUp, ArrowDown,
+  BatteryCharging,
 } from 'lucide-react';
 import { api } from '../../lib/api';
-import type { TripEnrichment, TripBehaviorEvent, SpeedingSection } from '../../lib/api';
+import type { TripEnrichment, TripBehaviorEvent, SpeedingSection, EnergyEvent } from '../../lib/api';
 import { buildTripsMapGeoJson } from '../../lib/geospatial';
 import { useAddress } from '../../lib/useAddress';
 import mapboxgl from 'mapbox-gl';
@@ -36,9 +37,15 @@ interface TripData {
   durationMinutes?: number;
   avgSpeedKmh?: number;
   maxSpeedKmh?: number;
-  drivingScore?: number;
-  drivingStyleScore?: number;
-  safetyScore?: number;
+  // V4.6.95 — `drivingScore` is a legacy compatibility mirror. Prefer
+  // `drivingStyleScore` everywhere. Both are 0–100 model scores, never %.
+  drivingScore?: number | null;
+  drivingStyleScore?: number | null;
+  // V4.6.95 — `safetyScore` is null when route / speed-limit data is
+  // unavailable. Never coerce to 0/100.
+  safetyScore?: number | null;
+  hasSpeedingData?: boolean;
+  safetyDataConfidence?: 'none' | 'low' | 'medium' | 'high';
   scoreSource?: 'trip_driving_impact' | 'vehicle_trip_compat' | 'derived';
   fuelUsedLiters?: number;
   avgConsumptionLPer100Km?: number;
@@ -97,8 +104,9 @@ interface TripData {
   gapEnded?: boolean;
   enrichedAt?: string;
   driverName?: string;
-  assignmentStatus?: 'ASSIGNED_DRIVER' | 'ASSIGNED_USER' | 'ASSIGNED_BOOKING_CUSTOMER' | 'PRIVATE_UNASSIGNED' | 'UNKNOWN_ASSIGNMENT' | null;
-  assignmentSubjectType?: 'DRIVER' | 'USER' | 'BOOKING_CUSTOMER' | null;
+  // V4.6.95 — `ASSIGNED_USER` / `USER` removed; trip assignment is DRIVER or BOOKING_CUSTOMER.
+  assignmentStatus?: 'ASSIGNED_DRIVER' | 'ASSIGNED_BOOKING_CUSTOMER' | 'PRIVATE_UNASSIGNED' | 'UNKNOWN_ASSIGNMENT' | null;
+  assignmentSubjectType?: 'DRIVER' | 'BOOKING_CUSTOMER' | null;
   assignmentSubjectId?: string | null;
   isPrivateTrip?: boolean;
   scoreEligible?: boolean;
@@ -152,6 +160,28 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+/**
+ * Builds a UTC ISO timestamp for the start of a **local** calendar day.
+ *
+ * V4.6.71 — We cannot send `${dateYMD}T00:00:00.000Z` to the backend: the
+ * trailing `Z` forces UTC-midnight interpretation, but the date picker
+ * (HTML5 `<input type="date">`) yields the user's **local** calendar
+ * day. In CEST/CET that misalignment erases 1–2 hours of trips per day:
+ * a trip recorded in Europe at 01:55 local time has a UTC start of
+ * 23:55 on the **previous** day, so a UTC-midnight filter for today
+ * never matches it even though the operator selected today in the
+ * picker. The explicit constructor below pins the range to the
+ * browser's local timezone offset, then serialises to ISO-UTC for the
+ * backend filter — startTime.gte / startTime.lte now fall on the same
+ * local calendar day the user actually clicked.
+ */
+function localDayRangeIso(dateYMD: string): { from: string; to: string } {
+  const [y, m, d] = dateYMD.split('-').map(Number);
+  const start = new Date(y, (m || 1) - 1, d || 1, 0, 0, 0, 0);
+  const end = new Date(y, (m || 1) - 1, d || 1, 23, 59, 59, 999);
+  return { from: start.toISOString(), to: end.toISOString() };
+}
+
 export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver, fuelType, onTripsLoaded }: TripsViewProps) {
   const isEv = fuelType === 'Electric' || fuelType === 'PHEV';
   const [trips, setTrips] = useState<TripData[]>([]);
@@ -167,6 +197,7 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
   const [behaviorEvents, setBehaviorEvents] = useState<Record<string, TripBehaviorEvent[]>>({});
   const [behaviorLoading, setBehaviorLoading] = useState<string | null>(null);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [energyEvents, setEnergyEvents] = useState<EnergyEvent[]>([]);
   const [mapShowSpeed, setMapShowSpeed] = useState(true);
   const [mapShowSpeeding, setMapShowSpeeding] = useState(true);
   const [mapShowDrivingEvents, setMapShowDrivingEvents] = useState(true);
@@ -185,24 +216,70 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
   const isDark = isDarkMode;
 
   const loadTrips = useCallback(async () => {
-    if (!vehicleId) { setTrips([]); onTripsLoadedRef.current?.([]); return; }
+    if (!vehicleId) {
+      setTrips([]);
+      setEnergyEvents([]);
+      onTripsLoadedRef.current?.([]);
+      return;
+    }
     setLoading(true);
     setLoadError(null);
     try {
-      const from = selectedDate ? `${selectedDate}T00:00:00.000Z` : undefined;
-      const to = selectedDate ? `${selectedDate}T23:59:59.999Z` : undefined;
+      // V4.6.71 — Build the from/to range from the **local** calendar day,
+      // not a UTC-day window. See `localDayRangeIso` for the rationale.
+      const range = selectedDate ? localDayRangeIso(selectedDate) : undefined;
+      const from = range?.from;
+      const to = range?.to;
       const driver = selectedDriver && selectedDriver !== 'all' ? selectedDriver : undefined;
-      const data = await api.vehicleIntelligence.trips(vehicleId, { from, to, driver });
-      const list = data ?? [];
+      // Trips + energy events are fetched in parallel so the timeline renders
+      // in a single paint. Refuel/recharge events failing independently never
+      // block trip rendering (catch is scoped).
+      const [tripsData, eventsData] = await Promise.all([
+        api.vehicleIntelligence.trips(vehicleId, { from, to, driver }),
+        api.vehicleIntelligence
+          .energyEvents(vehicleId, { from, to })
+          .catch(() => [] as EnergyEvent[]),
+      ]);
+      const list = tripsData ?? [];
       setTrips(list);
+      setEnergyEvents(eventsData ?? []);
       onTripsLoadedRef.current?.(list);
     } catch {
-      setTrips([]); setLoadError('Failed to load trips'); onTripsLoadedRef.current?.([]);
+      setTrips([]);
+      setEnergyEvents([]);
+      setLoadError('Failed to load trips');
+      onTripsLoadedRef.current?.([]);
     }
     setLoading(false);
   }, [vehicleId, selectedDate, selectedDriver]);
 
   useEffect(() => { loadTrips(); }, [loadTrips]);
+
+  // Canonical render feed for the Trip History list: trips + refuel / recharge
+  // events sorted by startTime DESC so refuels appear inline between the
+  // trips surrounding them. Discriminated-union items let the render loop
+  // branch cleanly without overloading TripData with event fields.
+  type TimelineItem =
+    | { itemType: 'trip'; id: string; startTime: string; trip: TripData }
+    | { itemType: 'energy-event'; id: string; startTime: string; event: EnergyEvent };
+
+  const timelineItems = useMemo<TimelineItem[]>(() => {
+    const tripItems: TimelineItem[] = trips.map((trip) => ({
+      itemType: 'trip',
+      id: trip.id,
+      startTime: trip.startTime,
+      trip,
+    }));
+    const eventItems: TimelineItem[] = energyEvents.map((event) => ({
+      itemType: 'energy-event',
+      id: event.id,
+      startTime: event.startTime,
+      event,
+    }));
+    return [...tripItems, ...eventItems].sort(
+      (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime(),
+    );
+  }, [trips, energyEvents]);
 
   const mapGeoJson = useMemo(() => {
     const empty = { heatmap: { type: 'FeatureCollection' as const, features: [] as GeoJSON.Feature<GeoJSON.Point>[] }, lines: { type: 'FeatureCollection' as const, features: [] as GeoJSON.Feature<GeoJSON.LineString>[] } };
@@ -381,6 +458,23 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
       mapRef.current = null;
     };
   }, [isDarkMode]);
+
+  // V4.6.89 — Keep Mapbox canvas in sync with container size.
+  // Required because the map card now switches between stacked (full width,
+  // fixed 420px) and side-by-side (flex-1 fills sticky column height) layouts
+  // on the xl breakpoint. Without a manual resize() the canvas stays locked
+  // to its mount-time dimensions and the map either crops or leaves a gap.
+  useEffect(() => {
+    const container = mapContainerRef.current;
+    if (!container || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => {
+      const map = mapRef.current;
+      if (!map) return;
+      try { map.resize(); } catch { /* mapbox not ready yet */ }
+    });
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, []);
 
   // ── Map data update ──
   useEffect(() => {
@@ -608,33 +702,38 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
 
   return (
     <div className="max-w-[1600px] mx-auto">
+      {/* V4.6.89 — Map + Trip List side-by-side on xl+ screens (map left sticky, list right scrollable).
+          Below xl (<1280px) falls back to the original stacked layout. */}
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-3 items-start">
       {/* Map */}
-      <div className="rounded-xl p-4 shadow-sm border border-border mb-3 bg-card">
+      <div className="rounded-xl p-4 shadow-sm border border-border bg-card flex flex-col xl:sticky xl:top-2 xl:self-start xl:h-[calc(100vh-120px)] xl:min-h-[560px]">
         {/* Header row */}
         <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <Route className={`w-5 h-5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
-            <h2 className={`text-lg font-semibold text-foreground`}>
+          <div className="flex items-center gap-2 min-w-0">
+            <Route className={`w-[18px] h-[18px] shrink-0 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+            <h2 className="text-[16px] font-semibold tracking-[-0.003em] truncate text-foreground">
               {selectedTrip ? `Trip Route – ${formatDate(selectedTrip.startTime)}` : 'Trip Route Map'}
             </h2>
             {selectedTrip && enrichments[selectedTrip.id]?.mapMatchConfidence > 0 && (
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-emerald-500/10 text-emerald-500">Map Matched</span>
+              <span className="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-medium bg-emerald-500/10 text-emerald-500">Map Matched</span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {syncMessage && (
-              <span className={`text-xs ${(syncMessage.includes('No missing') || syncMessage.includes('repaired') || syncMessage.includes('found')) ? (isDark ? 'text-green-400' : 'text-green-600') : isDark ? 'text-amber-400' : 'text-amber-600'}`}>{syncMessage}</span>
+              <span className={`text-[11px] ${(syncMessage.includes('No missing') || syncMessage.includes('repaired') || syncMessage.includes('found')) ? (isDark ? 'text-green-400' : 'text-green-600') : isDark ? 'text-amber-400' : 'text-amber-600'}`}>{syncMessage}</span>
             )}
             <button onClick={handleSync} disabled={syncing || !vehicleId}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isDark ? 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/30' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'} disabled:opacity-50`}>
-              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} /> Check for Missing Trips
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all ${isDark ? 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/30' : 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] hover:bg-[color:color-mix(in_srgb,var(--brand)_14%,transparent)]'} disabled:opacity-50`}>
+              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Check for Missing Trips</span>
+              <span className="sm:hidden">Sync</span>
             </button>
           </div>
         </div>
 
         {/* Filter / legend bar */}
         {selectedTrip && routePoints.length > 0 && (
-          <div className="flex items-center gap-3 px-3 py-2 mb-2 rounded-lg border flex-wrap bg-muted border-border">
+          <div className="flex items-center gap-2 px-2.5 py-1.5 mb-2 rounded-lg border flex-wrap bg-muted border-border">
             {/* Speed legend */}
             <div className="flex items-center gap-2 shrink-0">
               <span className={`text-[10px] font-semibold uppercase tracking-wider text-muted-foreground`}>Speed</span>
@@ -696,7 +795,7 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
           </div>
         )}
 
-        <div className="relative w-full h-[420px] rounded-xl overflow-hidden border border-border">
+        <div className="relative w-full h-[420px] xl:h-auto xl:flex-1 xl:min-h-[360px] rounded-xl overflow-hidden border border-border">
           <div ref={mapContainerRef} className="w-full h-full" />
           {/* Map loading overlay */}
           {!mapLoaded && (
@@ -754,10 +853,12 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
       </div>
 
       {/* Trip List */}
-      <div className="rounded-xl p-4 shadow-sm border border-border bg-card">
+      <div className="rounded-xl p-4 shadow-sm border border-border bg-card min-w-0">
         <div className="flex items-center justify-between mb-3">
-          <h2 className={`text-lg font-semibold text-foreground`}>Trip History ({trips.length})</h2>
-          {loading && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
+          <h2 className="text-[16px] font-semibold tracking-[-0.003em] text-foreground">
+            Trip History <span className="text-muted-foreground font-medium">({trips.length}{energyEvents.length > 0 ? ` · ${energyEvents.length} events` : ''})</span>
+          </h2>
+          {loading && <Loader2 className="w-4 h-4 animate-spin text-[color:var(--brand)]" />}
         </div>
         {loadError && (
           <div className="mb-3 px-3 py-2 rounded-lg border border-destructive/50 bg-destructive/10 text-destructive text-xs">{loadError}</div>
@@ -775,12 +876,26 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
         )}
 
         <div className="space-y-1.5">
-          {trips.map((trip) => {
+          {timelineItems.map((item) => {
+            if (item.itemType === 'energy-event') {
+              return (
+                <EnergyEventCard
+                  key={item.id}
+                  event={item.event}
+                  isDark={isDark}
+                />
+              );
+            }
+            const trip = item.trip;
             const enr = enrichments[trip.id];
             const isSelected = selectedTrip?.id === trip.id;
             const events = totalEvents(trip);
             const consumption = getConsumptionDisplay(trip, enr);
             const isOngoing = trip.tripStatus === 'ONGOING';
+            // V4.6.95 — `drivingStyleScore` is the canonical scalar.
+            // `drivingScore` is a legacy compat mirror retained only for
+            // older trips where the canonical column is not yet populated.
+            // We never show a separate "Driving Score" anywhere in the UI.
             const styleScore = trip.drivingStyleScore ?? trip.drivingScore ?? null;
             const safetyScore = trip.safetyScore ?? null;
 
@@ -1204,6 +1319,7 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
           )}
         </div>
       </div>
+      </div>
     </div>
   );
 }
@@ -1518,6 +1634,119 @@ function RoadRow({ isDark, color, label, percent, km }: { isDark: boolean; color
       <span className={`text-[11px] font-semibold w-8 text-foreground`}>{percent}%</span>
       <span className={`text-[10px] flex-1 text-muted-foreground`}>{label}</span>
       {km != null && km > 0 && <span className={`text-[10px] font-medium text-muted-foreground`}>{km.toFixed(1)} km</span>}
+    </div>
+  );
+}
+
+// ── Energy-event card (Refuel / Recharge) ─────────────────────────────────
+// Rendered inline in the Trip History list between trips. Deliberately lower
+// visual weight than a trip card: single row, event-specific tint, concise
+// delta readout. Does NOT open a detail panel — refuel / recharge have no
+// drill-down behaviour yet (planned in a follow-up for charge-curve graphs).
+function EnergyEventCard({ event, isDark }: { event: EnergyEvent; isDark: boolean }) {
+  const isRefuel = event.kind === 'REFUEL';
+  const date = new Date(event.startTime);
+  const end = new Date(event.endTime);
+  const dateLabel = date.toLocaleDateString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+  const timeLabel = `${date.toLocaleTimeString('de-DE', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })} – ${end.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+
+  const durationMin = Math.max(1, Math.round(event.durationSeconds / 60));
+
+  let primaryDelta: string | null = null;
+  let secondaryDelta: string | null = null;
+  if (isRefuel) {
+    if (event.fuelDeltaLiters != null) {
+      primaryDelta = `+${event.fuelDeltaLiters.toFixed(1)} L`;
+    }
+    if (event.fuelDeltaPercent != null) {
+      secondaryDelta = `+${event.fuelDeltaPercent.toFixed(0)} %`;
+    }
+  } else {
+    if (event.socDeltaPercent != null) {
+      primaryDelta = `+${event.socDeltaPercent.toFixed(0)} % SoC`;
+    }
+    if (event.energyDeltaKwh != null) {
+      secondaryDelta = `+${event.energyDeltaKwh.toFixed(1)} kWh`;
+    }
+  }
+
+  const accentBg = isRefuel
+    ? isDark
+      ? 'bg-amber-500/15'
+      : 'bg-amber-100'
+    : isDark
+      ? 'bg-emerald-500/15'
+      : 'bg-emerald-100';
+  const accentText = isRefuel
+    ? isDark
+      ? 'text-amber-300'
+      : 'text-amber-700'
+    : isDark
+      ? 'text-emerald-300'
+      : 'text-emerald-700';
+  const pillBg = isRefuel
+    ? 'bg-amber-500/10 text-amber-500'
+    : 'bg-emerald-500/10 text-emerald-500';
+
+  const confidenceTint =
+    event.confidence === 'HIGH'
+      ? 'bg-emerald-500/10 text-emerald-500'
+      : event.confidence === 'MEDIUM'
+        ? 'bg-blue-500/10 text-blue-500'
+        : 'bg-muted text-muted-foreground';
+
+  return (
+    <div className="rounded-lg border border-border bg-card/60 shadow-xs">
+      <div className="p-3 flex items-center gap-3">
+        <div
+          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${accentBg}`}
+        >
+          {isRefuel ? (
+            <Fuel className={`w-4 h-4 ${accentText}`} />
+          ) : (
+            <BatteryCharging className={`w-4 h-4 ${accentText}`} />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-foreground">{dateLabel}</span>
+            <span className="text-[11px] text-muted-foreground">{timeLabel}</span>
+            <span
+              className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider ${pillBg}`}
+            >
+              {isRefuel ? 'refuel' : 'recharge'}
+            </span>
+            <span
+              className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider ${confidenceTint}`}
+            >
+              {event.confidence}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
+            {primaryDelta && (
+              <span className={`font-semibold ${accentText}`}>{primaryDelta}</span>
+            )}
+            {secondaryDelta && <span>{secondaryDelta}</span>}
+            <span>{durationMin} min</span>
+            {event.odometerEndKm != null && (
+              <span>@ {Math.round(event.odometerEndKm).toLocaleString()} km</span>
+            )}
+            {event.startLatitude != null && event.startLongitude != null && (
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="w-2.5 h-2.5" />
+                {event.startLatitude.toFixed(3)}, {event.startLongitude.toFixed(3)}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

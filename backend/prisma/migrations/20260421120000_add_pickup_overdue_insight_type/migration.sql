@@ -1,0 +1,15 @@
+-- Extend InsightType enum with PICKUP_OVERDUE.
+--
+-- V4.6.81 — Pickup lifecycle hardening. Bookings whose scheduled pickup
+-- time has passed without a pickup handover protocol were previously
+-- invisible: the "Pick Up Today" dashboard list filtered strictly on
+-- start_date in the current calendar day, and no detector surfaced a
+-- missed pickup as a dashboard insight. Operators had no signal that
+-- a customer never showed (or is seriously late) until they manually
+-- drilled into the bookings list.
+--
+-- A dedicated InsightType lets the ranking and grouping layer treat
+-- overdue pickups as their own category and keeps the enum aligned
+-- with the new detector (PickupOverdueDetector) registered in
+-- BusinessInsightsModule.
+ALTER TYPE "InsightType" ADD VALUE IF NOT EXISTS 'PICKUP_OVERDUE';

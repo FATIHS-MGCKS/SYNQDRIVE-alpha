@@ -39,6 +39,10 @@ import { HighMobilityWebhookController } from './high-mobility-webhook.controlle
 import { HighMobilityVehicleRegisterController } from './high-mobility-vehicle-register.controller';
 import { HighMobilityDiagnosticsController } from './high-mobility-diagnostics.controller';
 
+// ── Compatibility intelligence (V4.6.77) ───────────────────────────────────
+import { HighMobilityCompatibilityController } from './compatibility/hm-compatibility.controller';
+import { HighMobilityCompatibilityService } from './compatibility/hm-compatibility.service';
+
 @Module({
   imports: [ConfigModule.forFeature(highMobilityConfig)],
   controllers: [
@@ -46,6 +50,7 @@ import { HighMobilityDiagnosticsController } from './high-mobility-diagnostics.c
     HighMobilityWebhookController,
     HighMobilityVehicleRegisterController,
     HighMobilityDiagnosticsController,
+    HighMobilityCompatibilityController,
   ],
   providers: [
     // ── Consent / audit infrastructure ────────────────────────────────────
@@ -80,6 +85,9 @@ import { HighMobilityDiagnosticsController } from './high-mobility-diagnostics.c
     HighMobilityMqttConsumerService,
     HmVehicleActivationService,
     HmSignalUsageService,
+
+    // ── Compatibility intelligence (V4.6.77) ──────────────────────────────
+    HighMobilityCompatibilityService,
   ],
   exports: [
     HighMobilityAppConfigService,
@@ -96,6 +104,7 @@ import { HighMobilityDiagnosticsController } from './high-mobility-diagnostics.c
     HighMobilityTelemetryAppIngestionService,
     HmVehicleActivationService,
     HmSignalUsageService,
+    HighMobilityCompatibilityService,
     // Legacy compat
     HighMobilityAuthService,
   ],

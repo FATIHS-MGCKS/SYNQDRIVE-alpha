@@ -208,8 +208,19 @@ export function RentalDrivingAnalysisView({ isDarkMode }: RentalDrivingAnalysisV
               const payload = item.payload || {};
               const assessment = payload.overallAssessment || {};
               const behavior = payload.drivingBehavior || {};
-              const styleScore = behavior.drivingStyleScore ?? item.drivingScore ?? null;
-              const safetyScore = behavior.safetyScore ?? null;
+              // V4.6.95 — `drivingStyleScore` is canonical; `drivingScore`
+              // is the legacy compat mirror. `safetyScore` may be null when
+              // route / speed-limit data is missing.
+              const styleScore =
+                typeof behavior.drivingStyleScore === 'number'
+                  ? behavior.drivingStyleScore
+                  : typeof item.drivingScore === 'number'
+                    ? item.drivingScore
+                    : null;
+              const safetyScore =
+                typeof behavior.safetyScore === 'number'
+                  ? behavior.safetyScore
+                  : null;
               const level = (assessment.level || item.overallLevel || 'good') as string;
               const colors = levelColors[level] || levelColors.good;
               const driverName = item.driver ? `${item.driver.firstName} ${item.driver.lastName}` : 'â€â€ÂÂ';
@@ -248,8 +259,12 @@ export function RentalDrivingAnalysisView({ isDarkMode }: RentalDrivingAnalysisV
                       {(styleScore != null || safetyScore != null) && (
                         <span className={`flex items-center gap-1 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                           <Gauge className="w-3.5 h-3.5" />
-                          {styleScore != null ? `Style ${Math.round(styleScore)}` : ''}
-                          {safetyScore != null ? ` · Safety ${Math.round(safetyScore)}` : ''}
+                          {styleScore != null
+                            ? `Style ${Math.round(styleScore)}/100`
+                            : ''}
+                          {safetyScore != null
+                            ? ` · Safety ${Math.round(safetyScore)}/100`
+                            : ''}
                         </span>
                       )}
                       <ChevronRight className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
@@ -400,15 +415,19 @@ function RentalAnalysisDetailContent({ detail, isDarkMode }: { detail: any; isDa
 
       {section('Driving behavior', (
         <div className={`p-4 rounded-lg ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50'}`}>
+          {/* V4.6.95 — drivingStyleScore is canonical; drivingScore is the
+               legacy compat mirror only used when canonical is null. */}
           {(behavior.drivingStyleScore != null || behavior.drivingScore != null) && (
             <p className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
               Driving style score:{' '}
-              <strong>{Math.round(behavior.drivingStyleScore ?? behavior.drivingScore)}</strong>
+              <strong>
+                {Math.round(behavior.drivingStyleScore ?? behavior.drivingScore)} / 100
+              </strong>
             </p>
           )}
           {behavior.safetyScore != null && (
             <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              Safety score: <strong>{Math.round(behavior.safetyScore)}</strong>
+              Safety score: <strong>{Math.round(behavior.safetyScore)} / 100</strong>
             </p>
           )}
           <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{behavior.safetyStyle}</p>

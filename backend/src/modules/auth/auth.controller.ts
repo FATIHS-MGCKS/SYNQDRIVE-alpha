@@ -117,6 +117,7 @@ export class AuthController {
       membershipRole: membership?.role ?? null,
       organizationId: membership?.organizationId ?? null,
       organizationName: membership?.organization?.companyName ?? null,
+      organizationLogoUrl: membership?.organization?.logoUrl ?? null,
     };
 
     const { accessToken, refreshToken, expiresIn } = await this.refreshTokenService.issueTokenPair(
@@ -126,6 +127,7 @@ export class AuthController {
             role: membership.role,
             organizationId: membership.organizationId,
             organizationName: membership.organization?.companyName ?? null,
+            organizationLogoUrl: membership.organization?.logoUrl ?? null,
             permissions: membership.permissions,
           }
         : null,
@@ -159,6 +161,7 @@ export class AuthController {
         membershipRole: membership?.role ?? null,
         organizationId: membership?.organizationId ?? null,
         organizationName: membership?.organization?.companyName ?? null,
+        organizationLogoUrl: membership?.organization?.logoUrl ?? null,
         permissions: (membership?.permissions as Record<string, { read: boolean; write: boolean }>) ?? null,
       },
     };
@@ -261,6 +264,7 @@ export class AuthController {
       membershipRole: membership?.role ?? null,
       organizationId: membership?.organizationId ?? null,
       organizationName: membership?.organization?.companyName ?? null,
+      organizationLogoUrl: membership?.organization?.logoUrl ?? null,
       permissions: (membership?.permissions as Record<string, { read: boolean; write: boolean }>) ?? null,
     };
   }

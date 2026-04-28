@@ -10,15 +10,20 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { BookingsService } from './bookings.service';
+import { BookingsHandoverService } from './bookings-handover.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PaginationParams } from '@shared/utils/pagination';
 import { Prisma } from '@prisma/client';
+import { CreateHandoverProtocolPayload } from './handover.types';
 
 @Controller('organizations/:orgId/bookings')
 @UseGuards(OrgScopingGuard, RolesGuard)
 export class BookingsController {
-  constructor(private readonly bookingsService: BookingsService) {}
+  constructor(
+    private readonly bookingsService: BookingsService,
+    private readonly handoverService: BookingsHandoverService,
+  ) {}
 
   @Get('today/pickups')
   async findTodaysPickups(@Param('orgId') orgId: string) {
@@ -74,5 +79,48 @@ export class BookingsController {
     @Param('id') id: string,
   ) {
     return this.bookingsService.cancel(orgId, id);
+  }
+
+  // V4.6.81 — No-show transition (distinct from cancel). Surfaced as a
+  // first-class action so operators can close out a booking whose
+  // customer failed to appear, without overloading the generic cancel
+  // path. See BookingsService.markNoShow for the guardrails.
+  @Post(':id/no-show')
+  async markNoShow(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: { reason?: string | null } = {},
+  ) {
+    return this.bookingsService.markNoShow(orgId, id, body?.reason ?? null);
+  }
+
+  // V4.6.75 — Handover routes (pickup + return).
+  // Transition the booking through its operational lifecycle and persist the
+  // formal protocol (odometer, fuel/SoC, cleanliness + warning-light checks,
+  // customer + staff signature, noted damage ids).
+  @Get(':id/handover')
+  async listHandovers(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+  ) {
+    return this.handoverService.findForBooking(orgId, bookingId);
+  }
+
+  @Post(':id/handover/pickup')
+  async createPickupHandover(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Body() body: CreateHandoverProtocolPayload,
+  ) {
+    return this.handoverService.createHandover(orgId, bookingId, 'PICKUP', body);
+  }
+
+  @Post(':id/handover/return')
+  async createReturnHandover(
+    @Param('orgId') orgId: string,
+    @Param('id') bookingId: string,
+    @Body() body: CreateHandoverProtocolPayload,
+  ) {
+    return this.handoverService.createHandover(orgId, bookingId, 'RETURN', body);
   }
 }

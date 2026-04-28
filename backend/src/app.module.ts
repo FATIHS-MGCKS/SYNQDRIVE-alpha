@@ -46,6 +46,7 @@ import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.m
 import { BusinessInsightsModule } from '@modules/business-insights/business-insights.module';
 import { ServicePartnersModule } from '@modules/service-partners/service-partners.module';
 import { HighMobilityModule } from '@modules/high-mobility/high-mobility.module';
+import { RentalHealthModule } from '@modules/rental-health/rental-health.module';
 import { WorkersModule } from '@workers/workers.module';
 import { AuthApiModule } from '@modules/auth/auth.module';
 import { HealthModule } from '@modules/health/health.module';
@@ -194,6 +195,7 @@ export class AppModule {
         BusinessInsightsModule,
         ServicePartnersModule,
         HighMobilityModule,
+        RentalHealthModule,
 
         // Workers / processors / schedulers. Non-Redis schedulers inside this
         // module (e.g. brake recalc, trip reconciliation, HM polling) also live

@@ -61,9 +61,13 @@ export class DimoTelemetryService {
   ): Promise<any> {
     const body: Record<string, unknown> = { query };
     if (variables) body.variables = variables;
+    // Keep this tighter than the BullMQ lockDuration on the snapshot worker
+    // (60s) so that a single hung DIMO round-trip can never outlive the
+    // worker lock and cause a "job stalled" failure that later blocks the
+    // per-vehicle jobId.
     const response = await this.client.post('', body, {
       headers: { Authorization: `Bearer ${vehicleJwt}` },
-      timeout: 30000,
+      timeout: 15000,
     });
 
     const gqlErrors = response.data?.errors;

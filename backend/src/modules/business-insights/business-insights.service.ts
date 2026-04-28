@@ -13,6 +13,9 @@ import { StationShortageDetector } from './detectors/station-shortage.detector';
 import { LowUtilizationDetector } from './detectors/low-utilization.detector';
 import { ServiceWindowDetector } from './detectors/service-window.detector';
 import { ServiceBeforeBookingDetector } from './detectors/service-before-booking.detector';
+import { BatteryCriticalDetector } from './detectors/battery-critical.detector';
+import { ServiceOverdueDetector } from './detectors/service-overdue.detector';
+import { PickupOverdueDetector } from './detectors/pickup-overdue.detector';
 
 @Injectable()
 export class BusinessInsightsService {
@@ -32,6 +35,9 @@ export class BusinessInsightsService {
     lowUtilization: LowUtilizationDetector,
     serviceWindow: ServiceWindowDetector,
     serviceBeforeBooking: ServiceBeforeBookingDetector,
+    batteryCritical: BatteryCriticalDetector,
+    serviceOverdue: ServiceOverdueDetector,
+    pickupOverdue: PickupOverdueDetector,
   ) {
     this.detectors = [
       tightHandover,
@@ -40,6 +46,9 @@ export class BusinessInsightsService {
       lowUtilization,
       serviceWindow,
       serviceBeforeBooking,
+      batteryCritical,
+      serviceOverdue,
+      pickupOverdue,
     ];
   }
 

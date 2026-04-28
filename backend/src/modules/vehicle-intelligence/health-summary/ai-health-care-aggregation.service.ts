@@ -28,6 +28,13 @@ export interface AiHealthIndicators {
   limpMode: boolean | null;
   brakeWarning: boolean | null;
   tirePressureWarning: boolean | null;
+  /**
+   * Active 12 V / low-voltage battery warning light on the dashboard, if
+   * the OEM exposes `dashboard_lights.battery_low_warning` via HM. Mercedes
+   * fleet-clearance pushes this flag; most others don't. Remains null when
+   * the OEM does not stream it.
+   */
+  batteryWarningLight: boolean | null;
 }
 
 export interface HmIndicators {
@@ -371,7 +378,40 @@ export class AiHealthCareAggregationService {
       limpMode: signals?.limpModeActive ?? null,
       brakeWarning: signals?.brakeLiningPreWarning ?? null,
       tirePressureWarning: signals?.tirePressureWarning ?? null,
+      batteryWarningLight: this.resolveBatteryWarningLight(signals?.dashboardLights ?? null),
     };
+  }
+
+  /**
+   * Parse `dashboard_lights.get.dashboard_lights` into a boolean for the
+   * battery low-voltage warning light. HM/Mercedes ships this value as
+   * either a single `{ name, state }` object or an array of such objects
+   * (multiple lights in one payload). Returns null when the signal is
+   * absent so the UI can distinguish "no data" from "off".
+   */
+  private resolveBatteryWarningLight(raw: unknown): boolean | null {
+    if (raw == null) return null;
+    const isBatteryLight = (name: unknown): boolean =>
+      typeof name === 'string' && name.toLowerCase().includes('battery');
+    const isActive = (state: unknown): boolean => {
+      if (typeof state !== 'string') return false;
+      const s = state.toLowerCase();
+      return s !== 'off' && s !== 'inactive' && s !== 'none' && s !== '';
+    };
+    const inspect = (entry: any): boolean | null => {
+      if (!entry || typeof entry !== 'object') return null;
+      return isBatteryLight(entry.name) ? isActive(entry.state) : null;
+    };
+    if (Array.isArray(raw)) {
+      let seen = false;
+      for (const entry of raw) {
+        const r = inspect(entry);
+        if (r === true) return true;
+        if (r === false) seen = true;
+      }
+      return seen ? false : null;
+    }
+    return inspect(raw);
   }
 
   // ── Legacy HmIndicators builder (backward compat) ─────────────────────────

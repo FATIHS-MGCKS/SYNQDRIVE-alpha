@@ -297,6 +297,143 @@ export class OrganizationsService {
     return { deleted: true };
   }
 
+  // ─── Tenant-scoped profile (used by the Rental Settings → Company Profile tab) ───
+  //
+  // These helpers keep the tenant-facing shape stable regardless of how the
+  // underlying schema evolves. `getTenantProfile` always returns every field
+  // (null when missing) so the frontend can render pre-filled inputs without
+  // extra merging logic. `updateTenantProfile` only accepts a strict allow-list
+  // of UI-editable fields — platform-level fields (status, shortCode,
+  // businessType, lastActiveAt, createdAt, updatedAt) stay under MASTER_ADMIN
+  // control via the existing `/admin/organizations` routes.
+
+  async getTenantProfile(orgId: string): Promise<{
+    id: string;
+    companyName: string;
+    address: string | null;
+    city: string | null;
+    state: string | null;
+    zip: string | null;
+    country: string | null;
+    taxId: string | null;
+    phone: string | null;
+    email: string | null;
+    website: string | null;
+    timezone: string | null;
+    language: string | null;
+    managerName: string | null;
+    managerEmail: string | null;
+    logoUrl: string | null;
+    businessType: string;
+  }> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      select: {
+        id: true,
+        companyName: true,
+        address: true,
+        city: true,
+        state: true,
+        zip: true,
+        country: true,
+        taxId: true,
+        phone: true,
+        email: true,
+        website: true,
+        timezone: true,
+        language: true,
+        managerName: true,
+        managerEmail: true,
+        logoUrl: true,
+        businessType: true,
+      },
+    });
+    if (!org) throw new NotFoundException('Organization not found');
+    return {
+      id: org.id,
+      companyName: org.companyName,
+      address: org.address,
+      city: org.city,
+      state: org.state,
+      zip: org.zip,
+      country: org.country,
+      taxId: org.taxId,
+      phone: org.phone,
+      email: org.email,
+      website: org.website,
+      timezone: org.timezone,
+      language: org.language,
+      managerName: org.managerName,
+      managerEmail: org.managerEmail,
+      logoUrl: org.logoUrl,
+      businessType: org.businessType,
+    };
+  }
+
+  async updateTenantProfile(
+    orgId: string,
+    patch: {
+      companyName?: string;
+      address?: string | null;
+      city?: string | null;
+      state?: string | null;
+      zip?: string | null;
+      country?: string | null;
+      taxId?: string | null;
+      phone?: string | null;
+      email?: string | null;
+      website?: string | null;
+      timezone?: string | null;
+      language?: string | null;
+      managerName?: string | null;
+      managerEmail?: string | null;
+      logoUrl?: string | null;
+    },
+  ) {
+    const data: Prisma.OrganizationUpdateInput = {};
+    if (typeof patch.companyName === 'string' && patch.companyName.trim().length > 0) {
+      data.companyName = patch.companyName.trim();
+    }
+    const stringOrNull = (v: unknown) => {
+      if (v === null) return null;
+      if (typeof v !== 'string') return undefined;
+      const trimmed = v.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    };
+    const address = stringOrNull(patch.address);
+    if (address !== undefined) data.address = address;
+    const city = stringOrNull(patch.city);
+    if (city !== undefined) data.city = city;
+    const state = stringOrNull(patch.state);
+    if (state !== undefined) data.state = state;
+    const zip = stringOrNull(patch.zip);
+    if (zip !== undefined) data.zip = zip;
+    const country = stringOrNull(patch.country);
+    if (country !== undefined) data.country = country;
+    const taxId = stringOrNull(patch.taxId);
+    if (taxId !== undefined) data.taxId = taxId;
+    const phone = stringOrNull(patch.phone);
+    if (phone !== undefined) data.phone = phone;
+    const email = stringOrNull(patch.email);
+    if (email !== undefined) data.email = email;
+    const website = stringOrNull(patch.website);
+    if (website !== undefined) data.website = website;
+    const timezone = stringOrNull(patch.timezone);
+    if (timezone !== undefined) data.timezone = timezone;
+    const language = stringOrNull(patch.language);
+    if (language !== undefined) data.language = language;
+    const managerName = stringOrNull(patch.managerName);
+    if (managerName !== undefined) data.managerName = managerName;
+    const managerEmail = stringOrNull(patch.managerEmail);
+    if (managerEmail !== undefined) data.managerEmail = managerEmail;
+    if (patch.logoUrl === null || typeof patch.logoUrl === 'string') {
+      data.logoUrl = stringOrNull(patch.logoUrl);
+    }
+
+    await this.prisma.organization.update({ where: { id: orgId }, data });
+    return this.getTenantProfile(orgId);
+  }
+
   async getOrganizationStats(orgId: string) {
     const org = await this.prisma.organization.findUnique({
       where: { id: orgId },

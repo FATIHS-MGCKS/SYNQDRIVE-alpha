@@ -49,6 +49,40 @@ export class HmHealthPollingScheduler {
 
     if (activeLinks.length === 0) return;
 
+    // Suppress REST polling for vehicles whose HM_HEALTH_APP container uses the
+    // MQTT V2 push path. OEMs like Mercedes-Benz run exclusively in
+    // fleet-clearance push mode and reject the REST command endpoint with 404,
+    // so polling them just produces noisy error logs while MQTT already keeps
+    // hmSignalGroupState fresh (or is waiting for the car to send data).
+    //
+    // We skip both:
+    //   - CONNECTED   → at least one MQTT message has arrived
+    //   - CONFIGURED  → HealthFetchService saw a 404 and marked this vehicle
+    //                   as push-only, so REST can never succeed
+    // We keep legacy REST-only vehicles (streamingState = NOT_CONFIGURED) in
+    // the polling rotation until we can confirm their transport.
+    const mqttDriven = await this.prisma.highMobilityVehicle.findMany({
+      where: {
+        synqdriveVehicleId: { in: activeLinks.map((l) => l.vehicleId) },
+        appContainerType: 'HM_HEALTH_APP',
+        isActive: true,
+        clearanceStatus: 'APPROVED',
+        streamingState: { in: ['CONNECTED', 'CONFIGURED'] },
+      },
+      select: { synqdriveVehicleId: true },
+    });
+    const mqttDrivenSet = new Set(
+      mqttDriven.map((v) => v.synqdriveVehicleId).filter((id): id is string => Boolean(id)),
+    );
+    const eligibleLinks = activeLinks.filter((l) => !mqttDrivenSet.has(l.vehicleId));
+
+    if (mqttDrivenSet.size > 0) {
+      this.logger.debug(
+        `HM polling: skipping ${mqttDrivenSet.size} MQTT-driven vehicle(s) — REST not authoritative`,
+      );
+    }
+    if (eligibleLinks.length === 0) return;
+
     const now = new Date();
     const nowHourUtc = now.getUTCHours();
     const nowMinute = now.getUTCMinutes();
@@ -61,7 +95,7 @@ export class HmHealthPollingScheduler {
     // Batch-load all signal-group states in a single query instead of doing
     // 3 × N findFirst calls per cycle. For large HM fleets this was an N+1
     // pattern that scaled linearly with vehicle count.
-    const vehicleIds = activeLinks.map((l) => l.vehicleId);
+    const vehicleIds = eligibleLinks.map((l) => l.vehicleId);
     const groups: HmSignalGroupKey[] = ['SERVICE', 'TIRE_PRESSURE', 'AI_HEALTH_CARE'];
     const states = await this.prisma.hmSignalGroupState.findMany({
       where: {
@@ -94,7 +128,7 @@ export class HmHealthPollingScheduler {
     let tireCount = 0;
     let aiCount = 0;
 
-    for (const link of activeLinks) {
+    for (const link of eligibleLinks) {
       const vehicleId = link.vehicleId;
 
       if (isServiceWindow && shouldFetch(vehicleId, 'SERVICE', this.SERVICE_MIN_INTERVAL_MS)) {

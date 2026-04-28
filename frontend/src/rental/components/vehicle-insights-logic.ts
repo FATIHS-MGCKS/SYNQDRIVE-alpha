@@ -257,13 +257,23 @@ export function deriveConfidence(input: InsightsInput): string {
   if (tires?.overallPercent != null) tracked.push('tires');
   if (brakes?.stateClass === 'MEASURED' || brakes?.stateClass === 'ESTIMATED') tracked.push('brakes');
   if (battery && batStatus !== 'calibrating' && batStatus !== 'estimate_unavailable') tracked.push('battery');
-  if (service?.hasServiceBaseline) tracked.push('service');
+  // "Service is tracked" is broader than "DB baseline exists": for HM
+  // fleet-clearance vehicles the OEM pushes remaining days/km directly,
+  // which is a fully legitimate tracking source even without a DB event.
+  const serviceTracked =
+    service?.hasServiceBaseline ||
+    service?.hmServiceSource === true ||
+    service?.serviceRemainingDays != null ||
+    service?.serviceRemainingMonths != null ||
+    service?.serviceRemainingKm != null ||
+    service?.serviceOverdue === true;
+  if (serviceTracked) tracked.push('service');
 
   const missing: string[] = [];
   if (!tires || (tires.overallPercent == null && tires.actionState == null)) missing.push('tire');
   if (!brakes || brakes.stateClass === 'NO_BASELINE' || brakes.stateClass === 'WARNING_ONLY') missing.push('brake');
   if (batStatus === 'calibrating' || batStatus === 'estimate_unavailable') missing.push('battery');
-  if (!service?.hasServiceBaseline) missing.push('service');
+  if (!serviceTracked) missing.push('service');
 
   if (tracked.length === 0) return 'No tracking data connected.';
 

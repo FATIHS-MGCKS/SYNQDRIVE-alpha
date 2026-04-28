@@ -270,7 +270,17 @@ function buildOilItem(input: ForecastEngineInput, trend: MileageTrend): Planning
 
 function buildServiceItem(input: ForecastEngineInput, trend: MileageTrend): PlanningItem | null {
   const { service } = input;
-  if (!service?.hasServiceBaseline) return null;
+  // HM fleet-clearance fahrzeuge can ship `timeToNextServiceDays` /
+  // `distanceToNextServiceKm` without a local DB-baseline; we must not
+  // exclude them from the forecast in that case.
+  const hasSource =
+    service?.hasServiceBaseline ||
+    service?.hmServiceSource === true ||
+    service?.serviceRemainingDays != null ||
+    service?.serviceRemainingMonths != null ||
+    service?.serviceRemainingKm != null ||
+    service?.serviceOverdue === true;
+  if (!service || !hasSource) return null;
 
   const kmUntil = service.serviceRemainingKm;
   const monthsUntil = service.serviceRemainingMonths;

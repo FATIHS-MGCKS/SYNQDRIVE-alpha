@@ -92,6 +92,22 @@ export class TripDetectionOrchestrationService {
   // CUSUM data window: how far forward from possibleEndAt to fetch
   private readonly TRIP_END_SEGMENT_LOOKAHEAD_MS: number;
 
+  // ── Mid-trip gap split: recognise short ignition-off parks inside a trip ──
+  // Silence of at least this duration inside an otherwise ACTIVE trip,
+  // sandwiched by stationary data, is treated as a mid-trip end + restart
+  // and the trip is split into two canonical trips. Covers the DIMO case
+  // where the telematics unit sleeps during a brief stop and no explicit
+  // ignition-off signal is ever emitted.
+  private readonly TRIP_MID_GAP_SPLIT_MS: number;
+  // Max GPS drift between pre-gap and post-gap position that still counts
+  // as "same parking spot" (prevents splitting signal dropouts during
+  // actual driving, e.g., tunnels).
+  private readonly TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M: number;
+  // Minimum already-elapsed duration of the trip before we will consider a
+  // split. Prevents splitting a trip seconds after it started when a startup
+  // hiccup could be mistaken for a parked gap.
+  private readonly TRIP_MID_GAP_MIN_PRE_DURATION_MS: number;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly segments: DimoSegmentsService,
@@ -117,6 +133,9 @@ export class TripDetectionOrchestrationService {
     this.TRIP_END_VALIDATION_MAX_ATTEMPTS = this.configService.get<number>('worker.tripEndValidationMaxAttempts') ?? 3;
     this.TRIP_END_SEGMENT_LOOKBACK_MS = this.configService.get<number>('worker.tripEndSegmentLookbackMs') ?? 900_000;
     this.TRIP_END_SEGMENT_LOOKAHEAD_MS = this.configService.get<number>('worker.tripEndSegmentLookaheadMs') ?? 300_000;
+    this.TRIP_MID_GAP_SPLIT_MS = this.configService.get<number>('worker.tripMidGapSplitMs') ?? 180_000;
+    this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M = this.configService.get<number>('worker.tripMidGapMaxStationaryDriftM') ?? 200;
+    this.TRIP_MID_GAP_MIN_PRE_DURATION_MS = this.configService.get<number>('worker.tripMidGapMinPreDurationMs') ?? 60_000;
   }
 
   // ══════════════════════════════════════════════════════════
@@ -915,6 +934,64 @@ export class TripDetectionOrchestrationService {
       ]);
 
       if (corePoints.length === 0) {
+        // ── Inactivity-based POSSIBLE_END transition ────────────────────────
+        // DIMO stops streaming core data once the ignition is off and the
+        // vehicle drops off the network. Without a core stream the continuity
+        // assessment below never runs, so historically the FSM stayed in
+        // ACTIVE_TRIP until the 2 h stale-ongoing repair kicked in — leaving
+        // the trip visually "ongoing" for up to two hours after the driver
+        // parked. If the last meaningful movement is older than the CUSUM
+        // inactivity threshold, hand off to POSSIBLE_END and let the
+        // POSSIBLE_END_CHECK → END_VALIDATION chain finalize the trip with
+        // a proper endTime (lastMeaningfulMovementAt / last waypoint / CUSUM).
+        const anchorAt =
+          (det as any).lastMeaningfulMovementAt ??
+          det.lastActivityAt ??
+          det.possibleStartAt ??
+          now;
+        const inactiveMs = now.getTime() - anchorAt.getTime();
+        if (inactiveMs >= this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS) {
+          resultState = TripDetectionState.POSSIBLE_END;
+          await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+            possibleEndAt: anchorAt,
+            endValidationAttempts: 0,
+            cusumValidatedAt: null,
+            cusumSegmentStart: null,
+            cusumSegmentEnd: null,
+          });
+          await this.schedulePossibleEndCheck(
+            vehicleId,
+            organizationId,
+            dimoTokenId,
+            0,
+          );
+          this.logger.log(
+            `ACTIVE_TICK: no core data for ${vehicleId}, last movement ${Math.round(inactiveMs / 60_000)}min ago → POSSIBLE_END`,
+          );
+          await this.logTrackingRun({
+            vehicleId,
+            organizationId,
+            tripId,
+            stateAtRun: det.state,
+            runType: TripTrackingRunType.ACTIVE_TRACKING,
+            requestedFrom: coreFrom,
+            requestedTo: now,
+            corePointsCount: 0,
+            routePointsCount: routePoints.length,
+            drivingPointsCount: perfReadings.length,
+            resultState,
+            resultSummary: {
+              reason: 'no_core_data_inactivity_to_possible_end',
+              inactiveMs,
+              anchorAt: anchorAt.toISOString(),
+              routePointsCount: routePoints.length,
+              drivingPointsCount: perfReadings.length,
+            },
+            durationMs: Date.now() - startedMs,
+          });
+          return;
+        }
+
         resultState = det.state;
         await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
         await this.logTrackingRun({
@@ -931,12 +1008,183 @@ export class TripDetectionOrchestrationService {
           resultState,
           resultSummary: {
             reason: 'no_core_data_keep_open',
+            inactiveMs,
             routePointsCount: routePoints.length,
             drivingPointsCount: perfReadings.length,
           },
           durationMs: Date.now() - startedMs,
         });
         return;
+      }
+
+      // ── Mid-trip gap split (live) ───────────────────────────────────────
+      // A sustained stationary silence inside an ACTIVE trip means the
+      // vehicle was parked with the engine off and then restarted. DIMO's
+      // telematics unit sleeps during such a stop so we never see an
+      // ignition-off transition, but the silence + "parked in place" is
+      // strong evidence that the old trip ended and a new one begins.
+      // Detected here on the LIVE path so the split happens as soon as the
+      // new data arrives; a parallel retroactive scan lives in
+      // TripReconciliationService.repairIntraTripGapSplits.
+      const midGap = this.findMidTripGap(corePoints, det);
+      if (midGap) {
+        const tripAge =
+          new Date().getTime() - det.possibleStartAt!.getTime();
+        if (tripAge >= this.TRIP_MID_GAP_MIN_PRE_DURATION_MS) {
+          // Validate with GPS drift between the last pre-gap waypoint and
+          // the first post-gap waypoint (both still on this trip). If the
+          // vehicle drifted more than the stationary threshold, the gap is
+          // likely a signal dropout during actual driving (tunnel, rural
+          // area) and MUST NOT be split.
+          const drift = await this.computeMidGapPositionDrift(
+            tripId,
+            midGap.firstEndAt,
+            midGap.secondStartAt,
+          );
+          const driftOk =
+            drift == null || drift <= this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M;
+
+          if (driftOk) {
+            try {
+              // Persist waypoints that belong to segment 1 (<= firstEndAt)
+              // before the split so route rendering stays intact. Anything
+              // after the gap will arrive via the next tick on the new trip.
+              const seg1Cutoff = det.lastRouteProcessedAt
+                ? det.lastRouteProcessedAt.getTime() - 5000
+                : 0;
+              const seg1Waypoints = routePoints.filter((p) => {
+                const tsMs = new Date(p.timestamp).getTime();
+                return (
+                  tsMs > seg1Cutoff && tsMs <= midGap.firstEndAt.getTime()
+                );
+              });
+              if (seg1Waypoints.length > 0) {
+                await this.prisma.vehicleTripWaypoint.createMany({
+                  data: seg1Waypoints.map((p) => ({
+                    tripId,
+                    latitude: p.latitude,
+                    longitude: p.longitude,
+                    speedKmh: p.speedKmh,
+                    recordedAt: new Date(p.timestamp),
+                  })),
+                });
+              }
+
+              const splitResult = await this.decisionEngine.splitTripAtGap({
+                tripId,
+                firstEndAt: midGap.firstEndAt,
+                firstEndLatitude: midGap.firstEndLatitude,
+                firstEndLongitude: midGap.firstEndLongitude,
+                secondStartAt: midGap.secondStartAt,
+                secondStartLatitude: midGap.secondStartLatitude,
+                secondStartLongitude: midGap.secondStartLongitude,
+                gapMs: midGap.gapMs,
+                detectionProfile: String(
+                  det.detectionProfile ?? VehicleDetectionProfile.UNKNOWN,
+                ),
+                reason: 'live_mid_trip_gap_split',
+                triggeredBy: 'LIVE_FSM',
+              });
+
+              // Re-point the FSM at the continuation trip and reset
+              // lifecycle-scoped fields so the next tick processes segment 2
+              // from a clean slate.
+              await this.transitionState(
+                vehicleId,
+                TripDetectionState.ACTIVE_TRIP,
+                {
+                  activeTripId: splitResult.secondTripId,
+                  possibleStartAt: midGap.secondStartAt,
+                  possibleEndAt: null,
+                  endValidationAttempts: 0,
+                  endDetectionMode: null,
+                  endConfidence: null,
+                  cusumValidatedAt: null,
+                  cusumSegmentStart: null,
+                  cusumSegmentEnd: null,
+                  startDetectionMode:
+                    'MID_TRIP_GAP_SPLIT' as unknown as StartDetectionMode,
+                  startConfidence: 'MEDIUM' as DetectionConfidence,
+                  lastActivityAt: midGap.secondStartAt,
+                  lastMeaningfulMovementAt: midGap.secondStartAt,
+                  // Next fetch windows start at the gap boundary so we do not
+                  // re-process segment 1 on the next tick.
+                  lastRouteProcessedAt: midGap.secondStartAt,
+                  lastDrivingProcessedAt: midGap.secondStartAt,
+                  lastCoreProcessedAt: midGap.secondStartAt,
+                  startOdometerKm: null,
+                  startFuelLevel: null,
+                  startEvSoc: null,
+                },
+              );
+
+              // Enqueue enrichment for the finalized first trip.
+              this.enrichmentOrchestrator
+                .enqueueBehaviorEnrichment(
+                  splitResult.firstTripId,
+                  vehicleId,
+                  organizationId,
+                )
+                .catch((e) =>
+                  this.logger.warn(
+                    `MID_GAP_SPLIT: enrichment enqueue failed for ${splitResult.firstTripId}: ${e}`,
+                  ),
+                );
+
+              // Schedule the next ACTIVE_TICK so the new trip picks up its
+              // own data immediately.
+              await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
+
+              this.logger.log(
+                `MID_GAP_SPLIT: vehicle=${vehicleId} firstTrip=${splitResult.firstTripId} ` +
+                  `→ secondTrip=${splitResult.secondTripId} gap=${Math.round(midGap.gapMs / 1000)}s ` +
+                  `firstEnd=${midGap.firstEndAt.toISOString()} secondStart=${midGap.secondStartAt.toISOString()} ` +
+                  `drift=${drift != null ? `${Math.round(drift)}m` : 'unknown'}`,
+              );
+
+              this.tripMetrics?.tripEvidencePaths.inc({
+                phase: 'mid_gap_split',
+                path: 'live_fsm',
+              });
+
+              await this.logTrackingRun({
+                vehicleId,
+                organizationId,
+                tripId: splitResult.secondTripId,
+                stateAtRun: det.state,
+                runType: TripTrackingRunType.ACTIVE_TRACKING,
+                requestedFrom: coreFrom,
+                requestedTo: now,
+                corePointsCount: corePoints.length,
+                routePointsCount: routePoints.length,
+                drivingPointsCount: perfReadings.length,
+                resultState: TripDetectionState.ACTIVE_TRIP,
+                resultSummary: {
+                  reason: 'live_mid_trip_gap_split_applied',
+                  firstTripId: splitResult.firstTripId,
+                  secondTripId: splitResult.secondTripId,
+                  firstEndAt: midGap.firstEndAt.toISOString(),
+                  secondStartAt: midGap.secondStartAt.toISOString(),
+                  gapMs: midGap.gapMs,
+                  driftM: drift,
+                },
+                durationMs: Date.now() - startedMs,
+              });
+
+              return;
+            } catch (err) {
+              this.logger.warn(
+                `MID_GAP_SPLIT: split failed for ${vehicleId}: ${err}`,
+              );
+              // Fall through and continue the tick as normal.
+            }
+          } else {
+            this.logger.debug(
+              `MID_GAP_SPLIT: rejected for ${vehicleId} — drift=${Math.round(drift!)}m ` +
+                `exceeds ${this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M}m (likely signal dropout, not park)`,
+            );
+          }
+        }
       }
 
       // ── Store new waypoints (deduplicate overlap) ──
@@ -981,12 +1229,19 @@ export class TripDetectionOrchestrationService {
 
       const vehicleForTank = await this.prisma.vehicle.findUnique({
         where: { id: vehicleId },
-        select: { tankCapacityLiters: true },
+        select: { tankCapacityLiters: true, fuelType: true },
       });
       const maxTank = vehicleForTank?.tankCapacityLiters ?? 120;
+      // EV gating (V4.6.46): no ICE tank → skip legacy fuel delta entirely.
+      // Battery-electric consumption is tracked via energyUsedKwh below.
+      const isEv = vehicleForTank?.fuelType === 'ELECTRIC';
 
       let fuelUsedLiters: number | null = null;
-      if (det.startFuelLevel != null && telemetry?.fuelLevelAbsolute != null) {
+      if (
+        !isEv &&
+        det.startFuelLevel != null &&
+        telemetry?.fuelLevelAbsolute != null
+      ) {
         if (
           det.startFuelLevel <= maxTank * 1.1 &&
           telemetry.fuelLevelAbsolute <= maxTank * 1.1
@@ -1877,6 +2132,170 @@ export class TripDetectionOrchestrationService {
       this.detectorRegistry.get('ActivityWindowDetector') != null &&
       this.detectorRegistry.get('IgnitionSegmentDetector') != null
     );
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  MID-TRIP GAP DETECTION
+  // ══════════════════════════════════════════════════════════
+
+  /**
+   * Scans a batch of DIMO core points for a mid-trip stationary silence
+   * sandwiched between "stopped" and "moving" samples. The anchor is the
+   * detection-state's `lastMeaningfulMovementAt`, which represents the
+   * previous tick's latest confirmed motion timestamp — so we also detect
+   * cross-tick gaps (silence spanning the entire fetch window).
+   *
+   * Returns the gap boundary and the indicative pre/post coordinates,
+   * or `null` if no qualifying gap is present.
+   *
+   * NOTE: This is evidence only. The orchestrator MUST additionally check
+   * GPS drift via `computeMidGapPositionDrift` before actually splitting.
+   */
+  private findMidTripGap(
+    corePoints: Awaited<ReturnType<DimoSegmentsService['fetchRawTripCoreData']>>,
+    det: DetState,
+  ): {
+    gapMs: number;
+    firstEndAt: Date;
+    firstEndLatitude: number | null;
+    firstEndLongitude: number | null;
+    secondStartAt: Date;
+    secondStartLatitude: number | null;
+    secondStartLongitude: number | null;
+  } | null {
+    if (corePoints.length === 0) return null;
+
+    const anchorAt =
+      (det as any).lastMeaningfulMovementAt ??
+      det.lastActivityAt ??
+      null;
+
+    // Sort defensively (service already sorts but guard anyway).
+    const sorted = [...corePoints].sort(
+      (a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    );
+
+    type TP = { ts: Date; speed: number | null; ign: boolean | null };
+    const timeline: TP[] = [];
+
+    // Prepend synthetic anchor (stationary assumption since no motion was
+    // recorded between that timestamp and now).
+    if (anchorAt) {
+      timeline.push({ ts: anchorAt, speed: 0, ign: null });
+    }
+    for (const p of sorted) {
+      timeline.push({
+        ts: new Date(p.timestamp),
+        speed: p.speed ?? null,
+        ign: p.isIgnitionOn ?? null,
+      });
+    }
+
+    if (timeline.length < 2) return null;
+
+    let bestIdx = -1;
+    let bestGapMs = 0;
+    for (let i = 1; i < timeline.length; i++) {
+      const before = timeline[i - 1];
+      const after = timeline[i];
+      const gapMs = after.ts.getTime() - before.ts.getTime();
+      if (gapMs < this.TRIP_MID_GAP_SPLIT_MS) continue;
+      const beforeStopped = before.speed == null || before.speed <= 5;
+      if (!beforeStopped) continue;
+      if (gapMs > bestGapMs) {
+        bestIdx = i;
+        bestGapMs = gapMs;
+      }
+    }
+
+    if (bestIdx < 0) return null;
+
+    // Confirm motion resumed at/after the gap: the `after` sample itself
+    // is moving, OR a later sample in the same batch shows motion.
+    const after = timeline[bestIdx];
+    const afterMoving = after.speed != null && after.speed > 5;
+    const anyLaterMoving = timeline
+      .slice(bestIdx)
+      .some((p) => p.speed != null && p.speed > 5);
+    if (!afterMoving && !anyLaterMoving) return null;
+
+    // Resolve the split point: prefer the after-gap sample if it shows
+    // motion; otherwise advance to the first later sample that does.
+    let secondStartIdx = bestIdx;
+    if (!afterMoving) {
+      for (let i = bestIdx + 1; i < timeline.length; i++) {
+        const p = timeline[i];
+        if (p.speed != null && p.speed > 5) {
+          secondStartIdx = i;
+          break;
+        }
+      }
+    }
+
+    const before = timeline[bestIdx - 1];
+    const second = timeline[secondStartIdx];
+
+    // Lat/Lng are not on the core-data shape — caller will resolve these
+    // via waypoints when drift-validating the split.
+    return {
+      gapMs: bestGapMs,
+      firstEndAt: before.ts,
+      firstEndLatitude: null,
+      firstEndLongitude: null,
+      secondStartAt: second.ts,
+      secondStartLatitude: null,
+      secondStartLongitude: null,
+    };
+  }
+
+  /**
+   * Returns the GPS drift in metres between the last pre-gap waypoint and
+   * the first post-gap waypoint for the given trip. If either waypoint is
+   * missing (e.g., route enrichment lagged), returns `null` — callers should
+   * treat that as "cannot validate, allow split" to avoid blocking the fix
+   * on missing route data for live detections.
+   */
+  private async computeMidGapPositionDrift(
+    tripId: string,
+    firstEndAt: Date,
+    secondStartAt: Date,
+  ): Promise<number | null> {
+    const [pre, post] = await Promise.all([
+      this.prisma.vehicleTripWaypoint.findFirst({
+        where: { tripId, recordedAt: { lte: firstEndAt } },
+        orderBy: { recordedAt: 'desc' },
+        select: { latitude: true, longitude: true, recordedAt: true },
+      }),
+      this.prisma.vehicleTripWaypoint.findFirst({
+        where: { tripId, recordedAt: { gte: secondStartAt } },
+        orderBy: { recordedAt: 'asc' },
+        select: { latitude: true, longitude: true, recordedAt: true },
+      }),
+    ]);
+    if (!pre || !post) return null;
+    return this.haversineMeters(
+      pre.latitude,
+      pre.longitude,
+      post.latitude,
+      post.longitude,
+    );
+  }
+
+  private haversineMeters(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number {
+    const R = 6371000;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
   }
 
   private async resolveConfirmedStartBoundary(input: {

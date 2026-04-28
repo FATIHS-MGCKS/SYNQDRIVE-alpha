@@ -69,3 +69,15 @@ figma-ref/
 # MCP build artifacts
 mcp-dimo-main/node_modules/
 mcp-dimo-main/dist/
+
+# Local runtime uploads (customer documents, org logos, etc.)
+backend/uploads/
+
+# Database dumps and binary backups
+*.dump
+*.sql.gz
+*.bak
+
+# Local analysis / debug script output
+backend/*-output.txt
+backend/analyze-*.txt

@@ -10,7 +10,19 @@ export type IntegrationId = 'woocommerce' | 'shopify';
 export type IntegrationStatus = 'Connected' | 'Disconnected' | 'Error';
 export type UserRole = 'Master Admin' | 'Org Admin' | 'Sub Admin' | 'Worker' | 'Driver' | 'Customer';
 export type UserStatus = 'Active' | 'Inactive' | 'Invited';
-export type VehicleStatus = 'Available' | 'Rented' | 'Maintenance' | 'Blocked';
+// V4.6.86 — Platform-admin status union. Shares the canonical
+// `Available` / `Reserved` / `Active Rented` labels with the rental
+// surfaces (via `RENTAL_STATUS_MAP` / `VEHICLE_STATUS_MAP`), and keeps
+// the admin-only `Blocked` distinction for `OUT_OF_SERVICE` so
+// platform operators can differentiate a scheduled maintenance from a
+// hard operational block. `Reserved` was previously missing from this
+// union even though the backend emits it; that gap is now closed.
+export type VehicleStatus =
+  | 'Available'
+  | 'Reserved'
+  | 'Active Rented'
+  | 'Maintenance'
+  | 'Blocked';
 export type DimoConnectionStatus = 'Connected' | 'Disconnected' | 'Error';
 export type StripeConnectionStatus = 'Connected' | 'Disconnected';
 

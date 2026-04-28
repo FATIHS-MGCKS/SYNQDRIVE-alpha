@@ -17,6 +17,11 @@ export const REPAIR_TYPES = {
   SUSPICIOUS_LONG_OPEN: 'SUSPICIOUS_LONG_OPEN',
   DUPLICATE: 'DUPLICATE',
   SPLIT_MERGE: 'SPLIT_MERGE',
+  // Retroactive detection that a finalized trip actually contained a
+  // mid-trip ignition-off window (vehicle parked with engine off for a few
+  // minutes, then restarted). Reconciliation repairs split these into two
+  // canonical trips. Complements live FSM detection in processActiveTick.
+  INTRA_TRIP_GAP_SPLIT: 'INTRA_TRIP_GAP_SPLIT',
 } as const;
 
 export type RepairType = (typeof REPAIR_TYPES)[keyof typeof REPAIR_TYPES];

@@ -1,17 +1,39 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+﻿import { useState, useMemo, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import {
   ArrowLeft, ArrowRight, Check, Search, Plus, User, Car, Calendar, CreditCard,
   MapPin, Phone, Mail, Star, Shield, Clock, ChevronDown, X, Fuel, Battery,
   CheckCircle, AlertCircle, FileText, Percent, Euro, Building2, ChevronLeft,
-  ChevronRight as ChevronRightIcon, Wrench, IdCard, Upload, Camera, Eye,
+  ChevronRight as ChevronRightIcon, Wrench, IdCard, Upload, Eye,
   Printer, Send, FileSignature, Receipt, Loader2, ExternalLink, ShieldCheck
 } from 'lucide-react';
 import { VehicleData } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { CustomerDetailModal } from './CustomerDetailModal';
+import { CustomerDocumentUploadBox } from './CustomerDocumentUploadBox';
 import { VehicleTariff, ExtraOption, buildTariffs } from '../data/tariffs';
+import { useRentalOrg } from '../RentalContext';
+import { api } from '../../lib/api';
+// V4.6.67 — share the same brand-logo CDN/component used in FleetView so the
+// vehicle picker shows real brand artwork (Volkswagen, BMW, Tesla, …) instead
+// of an inline mock map of carlogos.org URLs.
+import { BrandLogo, getBrandFromModel } from './BrandLogo';
+import {
+  buildCustomerCreatePayload,
+  buildBookingCreatePayload,
+  customerTypeApiToUi,
+  customerStatusApiToUi,
+  customerRiskApiToUi,
+  mapApiBooking,
+} from '../lib/entityMappers';
+// V4.6.76 Rental Health V1 — pre-flight the rental_blocked gate in the
+// vehicle picker so dispatchers see "Nicht vermietbar" BEFORE they click,
+// instead of first getting a 409 from the booking create endpoint.
+import { useFleetHealthMap } from '../hooks/useVehicleHealth';
+import { RentalHealthBadge } from './rental-health/RentalHealthBadge';
+
+const EM_DASH = '\u2014';
 
 interface NewBookingViewProps {
   isDarkMode: boolean;
@@ -30,8 +52,11 @@ interface Customer {
   company?: string;
   type: 'Individual' | 'Corporate';
   status: 'Active' | 'Under Review' | 'Suspended' | 'Blocked';
-  riskLevel: 'Low Risk' | 'Medium Risk' | 'High Risk';
-  drivingScore: number;
+  // V4.6.95 — neutral 'Not Assessed' default replaces fake "Low Risk".
+  riskLevel: 'Not Assessed' | 'Low Risk' | 'Medium Risk' | 'High Risk';
+  // Canonical Driving Style Score (0–100, may be null when no scored trips
+  // exist). Frontend never recomputes — backend is source of truth.
+  drivingStyleScore: number | null;
   totalBookings: number;
   totalRevenue: string;
   city: string;
@@ -39,25 +64,61 @@ interface Customer {
   idVerified: boolean;
 }
 
-const initialCustomersList: Customer[] = [
-  { id: 'c1', name: 'Max Mustermann', email: 'max.mustermann@email.com', phone: '+49 176 1234 5678', company: 'TechCorp GmbH', type: 'Corporate', status: 'Active', riskLevel: 'Low Risk', drivingScore: 92, totalBookings: 47, totalRevenue: 'â‚¬ 8.460,00', city: 'Berlin', licenseVerified: true, idVerified: true },
-  { id: 'c2', name: 'Anna Schmidt', email: 'anna.schmidt@email.com', phone: '+49 151 9876 5432', type: 'Individual', status: 'Active', riskLevel: 'Low Risk', drivingScore: 95, totalBookings: 23, totalRevenue: '€ 4.140,00', city: 'München', licenseVerified: true, idVerified: true },
-  { id: 'c3', name: 'Thomas Weber', email: 't.weber@company.de', phone: '+49 162 3456 7890', company: 'Weber Consulting', type: 'Corporate', status: 'Active', riskLevel: 'Medium Risk', drivingScore: 78, totalBookings: 31, totalRevenue: 'â‚¬ 5.580,00', city: 'Hamburg', licenseVerified: true, idVerified: true },
-  { id: 'c4', name: 'Lisa Becker', email: 'lisa.becker@mail.de', phone: '+49 170 5555 1234', type: 'Individual', status: 'Active', riskLevel: 'Low Risk', drivingScore: 88, totalBookings: 15, totalRevenue: 'â‚¬ 2.700,00', city: 'Berlin', licenseVerified: true, idVerified: true },
-  { id: 'c5', name: 'Hanna Weber', email: 'hanna.weber@email.com', phone: '+49 155 7777 8888', type: 'Individual', status: 'Active', riskLevel: 'Low Risk', drivingScore: 91, totalBookings: 19, totalRevenue: 'â‚¬ 3.420,00', city: 'Frankfurt', licenseVerified: true, idVerified: true },
-  { id: 'c6', name: 'Sarah Müller', email: 'sarah.mueller@web.de', phone: '+49 173 2468 1357', type: 'Individual', status: 'Active', riskLevel: 'Low Risk', drivingScore: 89, totalBookings: 12, totalRevenue: '€ 2.160,00', city: 'Dresden', licenseVerified: true, idVerified: true },
-];
-
-// Vehicle images mapping
-const vehicleImages: Record<string, string> = {
-  'v1': 'https://images.unsplash.com/photo-1771773638952-d7c87e5a6858?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2b2xrc3dhZ2VuJTIwZ29sZiUyMHdoaXRlJTIwc2VkYW58ZW58MXx8fHwxNzcyMDM2MjgzfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-  'v2': 'https://images.unsplash.com/photo-1610470832703-95d40c3fad55?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0ZXNsYSUyMG1vZGVsJTIwMyUyMHdoaXRlJTIwZWxlY3RyaWN8ZW58MXx8fHwxNzcyMDM2MjgzfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-  'v4': 'https://images.unsplash.com/photo-1694658073846-bcf14ab05945?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxCTVclMjAzJTIwc2VyaWVzJTIwYmx1ZSUyMHNlZGFufGVufDF8fHx8MTc3MjAzNjI4NHww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-  'v7': 'https://images.unsplash.com/photo-1660108473348-f5e886564b78?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtZXJjZWRlcyUyMGMlMjBjbGFzcyUyMHNpbHZlciUyMGx1eHVyeXxlbnwxfHx8fDE3NzIwMzYyODV8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-  'v10': 'https://images.unsplash.com/photo-1730645659878-a9ee5d79b5ad?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhdWRpJTIwQTQlMjBkYXJrJTIwc2VkYW58ZW58MXx8fHwxNzcyMDM2Mjg1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
+const formatEuro = (value?: number | null): string => {
+  const n = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  try {
+    return n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+  } catch {
+    return `€ ${n.toFixed(2)}`;
+  }
 };
 
-const getVehicleImage = (id: string) => vehicleImages[id] || vehicleImages['v1'];
+const mapApiCustomerToBookingCustomer = (c: any): Customer => {
+  const name = [c?.firstName, c?.lastName].filter(Boolean).join(' ').trim() || c?.email || 'Kunde';
+  return {
+    id: String(c?.id ?? ''),
+    name,
+    email: c?.email ?? '',
+    phone: c?.phone ?? '',
+    company: c?.company ?? undefined,
+    type: customerTypeApiToUi(c?.customerType),
+    status: customerStatusApiToUi(c?.status),
+    riskLevel: customerRiskApiToUi(c?.riskLevel),
+    // V4.6.95 — drivingStyleScore is the canonical scalar; legacy
+    // `drivingScore` is kept as fallback only for older payloads. Missing
+    // data is preserved as `null` (do NOT coerce to 0/100).
+    drivingStyleScore:
+      typeof c?.drivingStyleScore === 'number'
+        ? c.drivingStyleScore
+        : typeof c?.drivingScore === 'number'
+          ? c.drivingScore
+          : null,
+    totalBookings: typeof c?.totalRentals === 'number' ? c.totalRentals : 0,
+    totalRevenue: formatEuro(typeof c?.totalRevenue === 'number' ? c.totalRevenue : 0),
+    city: c?.city ?? '',
+    licenseVerified: Boolean(c?.licenseVerified),
+    idVerified: Boolean(c?.idVerified),
+  };
+};
+
+// V4.6.67 — Removed mock `vehicleImages` map and `getVehicleImage` helper.
+// The vehicle picker now uses the shared BrandLogo component which fetches the
+// brand artwork from the carlogos-dataset CDN, identical to FleetView.
+
+// V4.6.67 — Build the canonical Make Model Year ("MMY") label.
+// Falls back to the legacy `model` string (which already includes the year for
+// many seed vehicles) so we never render an empty title.
+const buildMMY = (v: { make?: string | null; model?: string | null; year?: number | null }) => {
+  const make = (v.make ?? '').toString().trim();
+  const rawModel = (v.model ?? '').toString().trim();
+  const year = typeof v.year === 'number' && Number.isFinite(v.year) ? v.year : null;
+  // Strip a trailing 4-digit year that already lives inside `model`.
+  const modelClean = rawModel.replace(/\s+\d{4}$/, '').trim();
+  // Avoid duplicating make if it is already the first word of the model.
+  const makeAlreadyInModel = make && modelClean.toLowerCase().startsWith(make.toLowerCase());
+  const head = makeAlreadyInModel || !make ? modelClean : `${make} ${modelClean}`.trim();
+  return year ? `${head} ${year}`.trim() : head || rawModel || 'Fahrzeug';
+};
 
 // Fallback pricing (used only when no tariff data is available)
 const getDailyRateFallback = (v: VehicleData) => {
@@ -66,18 +127,79 @@ const getDailyRateFallback = (v: VehicleData) => {
   return base + yearMod;
 };
 
+// V4.6.67 — Reordered steps so that the booking flow is logically gated:
+//   Vehicle → Period → Extras → Customer → Checkout
+// Extras (mileage / insurance / accessories) need rentalDays + the vehicle
+// tariff to compute prices; choosing them before the period was confusing and
+// the user could not advance from Period because the bottom Next button kept
+// asking for fields the calendar step does not actually own.
 const steps = [
   { id: 1, label: 'Vehicle', icon: Car },
-  { id: 2, label: 'Extras', icon: Star },
-  { id: 3, label: 'Period', icon: Calendar },
+  { id: 2, label: 'Period', icon: Calendar },
+  { id: 3, label: 'Extras', icon: Star },
   { id: 4, label: 'Customer', icon: User },
   { id: 5, label: 'Checkout', icon: CreditCard },
 ];
 
 export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, onCustomerCreated, onBookingCreated }: NewBookingViewProps) {
   const { fleetVehicles } = useFleetVehicles();
+  const { orgId } = useRentalOrg();
   const allTariffs = externalTariffs?.length ? externalTariffs : buildTariffs(fleetVehicles);
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomersList);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customersLoading, setCustomersLoading] = useState(false);
+  const [customersError, setCustomersError] = useState<string | null>(null);
+  const [isSavingBooking, setIsSavingBooking] = useState(false);
+  const [isSavingCustomer, setIsSavingCustomer] = useState(false);
+
+  // V4.6.67 — Real org bookings (used to compute calendar conflicts per
+  // selected vehicle). Replaces the previous hardcoded `vehicleBookings`
+  // dictionary that only worked for the legacy v1..v6 demo IDs.
+  const [orgBookings, setOrgBookings] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!orgId) return;
+    let cancelled = false;
+    (async () => {
+      setCustomersLoading(true);
+      setCustomersError(null);
+      try {
+        const res: any = await (api.customers.list as any)(orgId, { limit: 500 });
+        if (cancelled) return;
+        const list = Array.isArray(res) ? res : (res?.data ?? res?.items ?? []);
+        setCustomers(list.map(mapApiCustomerToBookingCustomer));
+      } catch (err: any) {
+        if (cancelled) return;
+        const msg = err?.response?.data?.message || err?.message || 'Kunden konnten nicht geladen werden';
+        setCustomersError(String(msg));
+        setCustomers([]);
+      } finally {
+        if (!cancelled) setCustomersLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
+
+  // V4.6.67 — load all org bookings once so the calendar in the Period step
+  // can mark days that are actually blocked for the selected vehicle.
+  useEffect(() => {
+    if (!orgId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res: any = await api.bookings.list(orgId);
+        if (cancelled) return;
+        const list = Array.isArray(res) ? res : (res?.data ?? res?.items ?? []);
+        setOrgBookings(list);
+      } catch {
+        if (!cancelled) setOrgBookings([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
 
   // Tariff-aware daily rate lookup
   const getDailyRate = (v: VehicleData) => {
@@ -118,7 +240,10 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
   const [generatingContract, setGeneratingContract] = useState(false);
   const [quickViewDoc, setQuickViewDoc] = useState<'invoice' | 'contract' | null>(null);
-  const [calendarMonth, setCalendarMonth] = useState(2); // March 2026 (0-indexed)
+  // V4.6.67 — Default the calendar to TODAY (was hardcoded to March 2026).
+  // Tracks both month and year so the calendar keeps working past 2026.
+  const [calendarMonth, setCalendarMonth] = useState<number>(() => new Date().getMonth());
+  const [calendarYear, setCalendarYear] = useState<number>(() => new Date().getFullYear());
   const [calendarSelectMode, setCalendarSelectMode] = useState<'pickup' | 'return'>('pickup');
 
   // Customer Detail Modal state
@@ -134,7 +259,11 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
     licenseNumber: '', licenseExpiry: '', licenseClass: 'B',
     idType: 'Personalausweis' as 'Personalausweis' | 'Reisepass',
     idNumber: '', idExpiry: '',
-    idFrontUploaded: false, idBackUploaded: false, licenseFrontUploaded: false, licenseBackUploaded: false,
+    // V4.6.65 — real uploaded document URLs.
+    idFrontUrl: null as string | null,
+    idBackUrl: null as string | null,
+    licenseFrontUrl: null as string | null,
+    licenseBackUrl: null as string | null,
     notes: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -146,7 +275,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
       type: 'Individual', company: '',
       licenseNumber: '', licenseExpiry: '', licenseClass: 'B',
       idType: 'Personalausweis', idNumber: '', idExpiry: '',
-      idFrontUploaded: false, idBackUploaded: false, licenseFrontUploaded: false, licenseBackUploaded: false,
+      idFrontUrl: null, idBackUrl: null, licenseFrontUrl: null, licenseBackUrl: null,
       notes: '',
     });
     setFormErrors({});
@@ -170,9 +299,9 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
       if (!newCustomer.idNumber.trim()) errors.idNumber = 'ID number required';
       if (!newCustomer.idExpiry) errors.idExpiry = 'Expiry date required';
     } else if (step === 2) {
-      if (!newCustomer.idFrontUploaded) errors.idFront = 'ID front side required';
-      if (!newCustomer.idBackUploaded) errors.idBack = 'ID back side required';
-      if (!newCustomer.licenseFrontUploaded) errors.licenseFront = 'License front side required';
+      if (!newCustomer.idFrontUrl) errors.idFront = 'ID front side required';
+      if (!newCustomer.idBackUrl) errors.idBack = 'ID back side required';
+      if (!newCustomer.licenseFrontUrl) errors.licenseFront = 'License front side required';
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -184,52 +313,74 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
     }
   };
 
-  const handleSubmitNewCustomer = () => {
-    const newId = `c${Date.now()}`;
-    const createdCustomer: Customer = {
-      id: newId,
-      name: `${newCustomer.firstName} ${newCustomer.lastName}`,
-      email: newCustomer.email,
-      phone: newCustomer.phone,
-      company: newCustomer.type === 'Corporate' ? newCustomer.company : undefined,
-      type: newCustomer.type,
-      status: 'Active',
-      riskLevel: 'Low Risk',
-      drivingScore: 100,
-      totalBookings: 0,
-      totalRevenue: 'â‚¬ 0,00',
-      city: newCustomer.city || 'Kassel',
-      licenseVerified: newCustomer.licenseFrontUploaded,
-      idVerified: idVerificationStatus === 'verified',
-    };
-    // Add to local customer list
-    setCustomers(prev => [createdCustomer, ...prev]);
-    // Auto-select the newly created customer
-    setSelectedCustomer(createdCustomer);
-    // Notify parent (App.tsx) so CustomersView also gets the new customer
-    if (onCustomerCreated) {
-      onCustomerCreated({
-        ...createdCustomer,
-        lastTrip: 'â€â€ÂÂ',
-        joinDate: new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+  const handleSubmitNewCustomer = async () => {
+    if (!orgId || isSavingCustomer) return;
+    setIsSavingCustomer(true);
+    try {
+      const payload = buildCustomerCreatePayload({
+        firstName: newCustomer.firstName,
+        lastName: newCustomer.lastName,
+        email: newCustomer.email,
+        phone: newCustomer.phone,
+        street: newCustomer.street,
+        zip: newCustomer.zip,
+        city: newCustomer.city || 'Kassel',
+        company: newCustomer.type === 'Corporate' ? newCustomer.company : undefined,
+        type: newCustomer.type,
+        licenseNumber: newCustomer.licenseNumber,
         licenseExpiry: newCustomer.licenseExpiry,
-        accidents: 0,
-        violations: 0,
-        notes: newCustomer.notes || undefined,
+        licenseClass: newCustomer.licenseClass,
+        idType: newCustomer.idType,
+        idNumber: newCustomer.idNumber,
+        idExpiry: newCustomer.idExpiry,
+        notes: newCustomer.notes,
+        idVerified: idVerificationStatus === 'verified',
+        licenseVerified: Boolean(newCustomer.licenseFrontUrl),
+        idFrontUrl: newCustomer.idFrontUrl,
+        idBackUrl: newCustomer.idBackUrl,
+        licenseFrontUrl: newCustomer.licenseFrontUrl,
+        licenseBackUrl: newCustomer.licenseBackUrl,
       });
+      const created = await api.customers.create(orgId, payload as any);
+      const bookingCustomer = mapApiCustomerToBookingCustomer(created);
+      setCustomers(prev => [bookingCustomer, ...prev.filter(c => c.id !== bookingCustomer.id)]);
+      setSelectedCustomer(bookingCustomer);
+      if (onCustomerCreated) {
+        onCustomerCreated({
+          ...bookingCustomer,
+          lastTrip: '—',
+          joinDate: new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+          licenseExpiry: newCustomer.licenseExpiry,
+          accidents: 0,
+          violations: 0,
+          notes: newCustomer.notes || undefined,
+        });
+      }
+      toast.success('Kunde gespeichert', { description: bookingCustomer.name });
+      setIsAddCustomerOpen(false);
+      resetAddCustomerForm();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Kunde konnte nicht gespeichert werden';
+      toast.error('Fehler beim Anlegen', { description: String(msg) });
+    } finally {
+      setIsSavingCustomer(false);
     }
-    setIsAddCustomerOpen(false);
-    resetAddCustomerForm();
   };
 
-  // Map simple Customer to full Customer for DetailModal
+
+  // V4.6.83 — CustomerDetailModal consumes the full Customer shape. We pass
+  // through whatever the booking-flow Customer row already knows and leave
+  // back-end-sourced fields empty/zero. The modal itself fetches the real
+  // detail record (`api.customers.get`) and renders em-dashes for missing
+  // values, so we never fabricate trip/license dates or derive fake
+  // accident/violation counts from a score.
   const mapToDetailCustomer = (c: Customer) => ({
     ...c,
-    lastTrip: '25.02.2026',
-    joinDate: '15.01.2024',
-    licenseExpiry: '15.08.2028',
-    accidents: c.drivingScore < 80 ? 1 : 0,
-    violations: c.drivingScore < 85 ? Math.floor((100 - c.drivingScore) / 10) : 0,
+    lastTrip: c.lastTrip ?? EM_DASH,
+    joinDate: c.joinDate ?? EM_DASH,
+    licenseExpiry: c.licenseExpiry ?? EM_DASH,
+    accidents: 0,
+    violations: 0,
     notes: '',
     currentVehicle: undefined as string | undefined,
   });
@@ -268,6 +419,16 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
     const matchesCategory = vehicleCategoryFilter === 'all' || getCategory(v.model) === vehicleCategoryFilter;
     return matchesSearch && matchesStation && matchesFuel && matchesBrand && matchesCategory;
   });
+
+  // V4.6.76 Rental Health V1 — preload the canonical health map for the
+  // vehicles visible in the picker. We pass the full fleet IDs (not the
+  // filtered subset) so applying/removing search/station/fuel filters
+  // doesn't refetch every keystroke.
+  const fleetPickerIds = useMemo(
+    () => fleetVehicles.map((v) => v.id).filter(Boolean),
+    [fleetVehicles],
+  );
+  const { map: pickerHealthMap } = useFleetHealthMap(orgId, fleetPickerIds);
 
   const rentalDays = useMemo(() => {
     if (!pickupDate || !returnDate) return 0;
@@ -340,80 +501,133 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
     };
   }, [redirectCountdown]);
 
-  const handleConfirm = () => {
-    setBookingConfirmed(true);
+  const handleConfirm = async () => {
+    if (isSavingBooking) return;
 
-    // Show toast notification
-    toast.success('Buchung erfolgreich erstellt!', {
-      description: `${selectedVehicle?.model} â€¢ ${selectedCustomer?.name} â€¢ ${rentalDays} Tage`,
-      duration: 5000,
-    });
+    if (!orgId || !selectedVehicle || !selectedCustomer || !pickupDate || !returnDate) {
+      toast.error('Buchung unvollständig', {
+        description: 'Fahrzeug, Kunde, Abhol- und Rückgabedatum werden benötigt.',
+      });
+      return;
+    }
 
-    // Start auto-redirect countdown (4 seconds)
-    setRedirectCountdown(4);
-
-    // Build booking object and pass to parent
-    if (onBookingCreated && selectedVehicle && selectedCustomer && pickupDate && returnDate) {
-      const monthNamesShortEN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const pDate = new Date(pickupDate);
-      const rDate = new Date(returnDate);
-      const startDay = pDate.getDate();
-      const endDay = rDate.getDate();
-      const startMonth = pDate.getMonth();
-      const endMonth = rDate.getMonth();
-      const startYear = pDate.getFullYear();
-      const endYear = rDate.getFullYear();
-      const bookingRef = `BK-${Date.now().toString().slice(-6)}`;
+    setIsSavingBooking(true);
+    try {
       const insuranceLabel = selectedInsurances.length > 0 && vehicleTariff
         ? vehicleTariff.insurances.filter(i => selectedInsurances.includes(i.id)).map(i => i.name).join(', ')
         : 'Haftpflicht';
       const paymentLabel = paymentMethod === 'card' ? 'Kreditkarte' : paymentMethod === 'cash' ? 'Barzahlung' : 'Rechnung';
       const effectiveReturnStation = sameReturnStation ? pickupStation : returnStation;
 
-      const newBooking = {
-        id: `new-${Date.now()}`,
-        customer: selectedCustomer.name,
-        customerPhone: selectedCustomer.phone || '+49 000 0000 0000',
-        vehicle: selectedVehicle.model,
-        plate: selectedVehicle.license,
-        startDate: `${startDay} ${monthNamesShortEN[startMonth]} ${startYear}`,
-        endDate: `${endDay} ${monthNamesShortEN[endMonth]} ${endYear}`,
-        startTime: pickupTime,
-        endTime: returnTime,
-        startMonth: startMonth,
-        startYear: startYear,
-        startDay: startDay,
-        endDay: endDay,
-        pickupLocation: pickupStation || selectedVehicle.station,
-        returnLocation: effectiveReturnStation || pickupStation || selectedVehicle.station,
-        revenue: `â‚¬${grandTotal.toFixed(0)}`,
-        status: pDate <= new Date() && rDate >= new Date() ? 'active' : rDate < new Date() ? 'completed' : 'confirmed',
-        bookingRef,
-        insurance: insuranceLabel,
-        paymentMethod: paymentLabel,
-        fuelLevel: 'Voll',
-        mileageStart: selectedVehicle.odometer || 10000,
-        mileageEnd: null,
-        notes: '',
-        pickupProtocol: null,
-        returnProtocol: null,
-        bookingSource: 'App',
-        bookedBy: 'Current User',
-        pickupHandoverBy: null,
-        returnHandoverBy: null,
+      const dailyRateEuro = (vehicleTariff?.dailyRate ?? getDailyRateFallback(selectedVehicle)) || 0;
+      const extrasForPayload = (extras || [])
+        .map((id) => {
+          const opt = extraOptions.find((o) => o.id === id);
+          return opt
+            ? { id: opt.id, name: opt.label, price: opt.dailyPrice * rentalDays }
+            : null;
+        })
+        .filter(Boolean) as Array<{ id: string; name: string; price: number }>;
+
+      const payload = buildBookingCreatePayload({
+        vehicleId: selectedVehicle.id,
+        customerId: selectedCustomer.id,
+        pickupDate,
+        pickupTime,
+        returnDate,
+        returnTime,
+        dailyRateEuro,
+        totalPriceEuro: grandTotal,
         includedKm: totalFreeKm,
-        drivenKm: null,
-        drivingScore: null,
-        drivingBehavior: null,
-        abuseDetection: null,
-      };
-      onBookingCreated(newBooking);
+        insuranceLabels: insuranceLabel ? [insuranceLabel] : [],
+        extras: extrasForPayload,
+        notes: `Abholung: ${pickupStation || selectedVehicle.station} • Rückgabe: ${effectiveReturnStation || pickupStation || selectedVehicle.station} • Zahlung: ${paymentLabel}`,
+        currency: 'eur',
+        // V4.6.70 — always CONFIRMED at creation time. The booking
+        // lifecycle transitions CONFIRMED → ACTIVE at the explicit
+        // handover step (pickup action in BookingsView); auto-promoting
+        // to ACTIVE just because the pickup date is today was wrong on
+        // two fronts: (a) `findTodaysPickups` filters to PENDING|CONFIRMED
+        // so the entry silently disappeared from the "Pick Up Today"
+        // dashboard tile, and (b) the rental surface expects "Reserved"
+        // until the handover — ACTIVE means "physically out on the road".
+        status: 'CONFIRMED',
+      });
+
+      const created = await api.bookings.create(orgId, payload as any);
+      const uiBooking = mapApiBooking(created);
+
+      setBookingConfirmed(true);
+      toast.success('Buchung erfolgreich erstellt!', {
+        description: `${buildMMY(selectedVehicle)} • ${selectedCustomer.name} • ${rentalDays} Tage`,
+        duration: 5000,
+      });
+      setRedirectCountdown(4);
+
+      if (onBookingCreated) {
+        onBookingCreated({
+          id: uiBooking.id,
+          customer: uiBooking.customer,
+          customerPhone: selectedCustomer.phone || '+49 000 0000 0000',
+          vehicle: uiBooking.vehicle,
+          plate: uiBooking.plate,
+          startDate: uiBooking.startDate,
+          endDate: uiBooking.endDate,
+          startTime: uiBooking.startTime,
+          endTime: uiBooking.endTime,
+          pickupLocation: uiBooking.pickupLocation,
+          returnLocation: uiBooking.returnLocation,
+          revenue: uiBooking.revenue,
+          status: uiBooking.status,
+          bookingRef: uiBooking.bookingRef,
+          insurance: insuranceLabel,
+          paymentMethod: paymentLabel,
+          fuelLevel: 'Voll',
+          mileageStart: selectedVehicle.odometer || 10000,
+          mileageEnd: null,
+          notes: '',
+          pickupProtocol: null,
+          returnProtocol: null,
+          bookingSource: 'App',
+          bookedBy: 'Current User',
+          pickupHandoverBy: null,
+          returnHandoverBy: null,
+          includedKm: totalFreeKm,
+          drivenKm: null,
+          drivingScore: null,
+          drivingBehavior: null,
+          abuseDetection: null,
+        });
+      }
+    } catch (err: any) {
+      // V4.6.76 Rental Health V1 — surface the rental_blocked hard-gate with a
+      // dedicated message so dispatchers see WHY the booking was rejected
+      // (TÜV überfällig, Limp Mode aktiv, Bremsen kritisch, etc.) instead of
+      // a generic conflict toast.
+      const body = err?.response?.data;
+      const code = body?.code;
+      const reasons: string[] = Array.isArray(body?.blockingReasons)
+        ? (body.blockingReasons as string[])
+        : [];
+      if (code === 'VEHICLE_RENTAL_BLOCKED' && reasons.length > 0) {
+        toast.error('Fahrzeug nicht vermietbar', {
+          description: reasons.join(' · '),
+          duration: 8000,
+        });
+      } else {
+        const msg =
+          body?.message || err?.message || 'Buchung konnte nicht gespeichert werden';
+        toast.error('Fehler beim Speichern', { description: String(msg) });
+      }
+      setIsSavingBooking(false);
+      return;
     }
+    setIsSavingBooking(false);
+
   };
 
-  // Calendar generation
-  const getCalendarDays = (month: number) => {
-    const year = 2026;
+  // V4.6.67 — Calendar generation now respects calendarYear (no longer hardcoded to 2026).
+  const getCalendarDays = (month: number, year: number) => {
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const adjustedFirst = firstDay === 0 ? 6 : firstDay - 1; // Monday start
@@ -423,62 +637,74 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
     return days;
   };
 
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+
+  // Build a stable YYYY-MM-DD key from (year, month, day) using calendarYear.
+  const calendarDateStr = (day: number) =>
+    `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
   const isInRange = (day: number) => {
     if (!pickupDate || !returnDate || !day) return false;
-    const dateStr = `2026-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const dateStr = calendarDateStr(day);
     return dateStr >= pickupDate && dateStr <= returnDate;
   };
 
   const isStartDay = (day: number) => {
     if (!pickupDate || !day) return false;
-    const dateStr = `2026-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return dateStr === pickupDate;
+    return calendarDateStr(day) === pickupDate;
   };
 
   const isEndDay = (day: number) => {
     if (!returnDate || !day) return false;
-    const dateStr = `2026-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return dateStr === returnDate;
+    return calendarDateStr(day) === returnDate;
   };
 
-  // Vehicle-specific bookings: each vehicle has its own booking periods
-  const vehicleBookings: Record<string, { startDay: number; endDay: number; startMonth: number; endMonth: number; customer: string; reason: 'booking' | 'maintenance' }[]> = {
-    'v1': [
-      { startDay: 1, endDay: 15, startMonth: 2, endMonth: 2, customer: 'Max Mustermann', reason: 'booking' },
-      { startDay: 22, endDay: 28, startMonth: 2, endMonth: 2, customer: 'Anna Schmidt', reason: 'booking' },
-    ],
-    'v2': [
-      { startDay: 5, endDay: 9, startMonth: 2, endMonth: 2, customer: 'Thomas Weber', reason: 'booking' },
-    ],
-    'v3': [
-      { startDay: 12, endDay: 16, startMonth: 2, endMonth: 2, customer: 'Lisa Becker', reason: 'booking' },
-    ],
-    'v4': [],
-    'v5': [
-      { startDay: 1, endDay: 5, startMonth: 2, endMonth: 2, customer: 'Maintenance', reason: 'maintenance' },
-      { startDay: 20, endDay: 25, startMonth: 2, endMonth: 2, customer: 'Hanna Weber', reason: 'booking' },
-    ],
-    'v6': [
-      { startDay: 1, endDay: 8, startMonth: 2, endMonth: 2, customer: 'Maintenance', reason: 'maintenance' },
-    ],
-  };
-
-  // Compute blocked days for the selected vehicle in current calendar month
+  // V4.6.67 — Real bookings of the selected vehicle that fall in the
+  // currently displayed calendar month. Replaces the legacy v1..v6 mock map.
+  // We only block days for non-cancelled bookings (CONFIRMED / ACTIVE / etc.).
+  // A booking is treated as a blocker for any day it overlaps within the month.
   const vehicleBlockedInfo = useMemo(() => {
-    if (!selectedVehicle) return {};
-    const bookings = vehicleBookings[selectedVehicle.id] || [];
     const info: Record<number, { customer: string; startDay: number; endDay: number; reason: 'booking' | 'maintenance' }> = {};
-    bookings.forEach(b => {
-      if (b.startMonth === calendarMonth || b.endMonth === calendarMonth) {
-        for (let d = b.startDay; d <= b.endDay; d++) {
-          info[d] = { customer: b.customer, startDay: b.startDay, endDay: b.endDay, reason: b.reason };
-        }
+    if (!selectedVehicle || orgBookings.length === 0) return info;
+
+    const monthStart = new Date(calendarYear, calendarMonth, 1);
+    const monthEnd = new Date(calendarYear, calendarMonth + 1, 0); // last day of the month
+    const monthEndExclusive = new Date(calendarYear, calendarMonth + 1, 1);
+
+    for (const b of orgBookings) {
+      if (!b) continue;
+      // V4.6.74 — only block days for bookings that belong to the CURRENTLY
+      // selected vehicle. Previously we allowed bookings without a
+      // `vehicleId` on the response to "fall through" (treating them as
+      // matching), which caused every org booking to appear as a blocker on
+      // every vehicle's calendar — making it impossible to reserve a free
+      // second vehicle for a date range already booked for a different one.
+      // The backend now always includes `vehicleId`; we therefore require a
+      // strict match here and skip any record that cannot be positively
+      // attributed to the selected vehicle.
+      const bookingVehicleId =
+        b.vehicleId ?? b.vehicle?.id ?? null;
+      if (!bookingVehicleId || bookingVehicleId !== selectedVehicle.id) continue;
+      const status = (b.status || '').toUpperCase();
+      if (status === 'CANCELLED' || status === 'CANCELED' || status === 'NO_SHOW') continue;
+      const startRaw = b.startDate ? new Date(b.startDate) : null;
+      const endRaw = b.endDate ? new Date(b.endDate) : null;
+      if (!startRaw || !endRaw || isNaN(+startRaw) || isNaN(+endRaw)) continue;
+      // Skip bookings that don't overlap the current month at all.
+      if (endRaw < monthStart || startRaw >= monthEndExclusive) continue;
+      const clampedStart = startRaw < monthStart ? monthStart : startRaw;
+      const clampedEnd = endRaw > monthEnd ? monthEnd : endRaw;
+      const startDay = clampedStart.getDate();
+      const endDay = clampedEnd.getDate();
+      const customer = b.customerName ?? b.customer ?? 'Reservierung';
+      const reason: 'booking' | 'maintenance' = status === 'MAINTENANCE' ? 'maintenance' : 'booking';
+      for (let d = startDay; d <= endDay; d++) {
+        // First booking wins; this is good enough for visual hint purposes.
+        if (!info[d]) info[d] = { customer, startDay, endDay, reason };
       }
-    });
+    }
     return info;
-  }, [selectedVehicle, calendarMonth]);
+  }, [selectedVehicle, orgBookings, calendarMonth, calendarYear]);
 
   const blockedDays = Object.keys(vehicleBlockedInfo).map(Number);
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
@@ -491,7 +717,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
   const handleCalendarDayClick = (day: number) => {
     if (!day) return;
     if (blockedDays.includes(day)) return;
-    const dateStr = `2026-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const dateStr = calendarDateStr(day);
     if (calendarSelectMode === 'pickup') {
       setPickupDate(dateStr);
       if (returnDate && dateStr >= returnDate) {
@@ -499,7 +725,8 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
       } else if (returnDate) {
         const returnDay = parseInt(returnDate.split('-')[2], 10);
         const returnMonth = parseInt(returnDate.split('-')[1], 10) - 1;
-        if (returnMonth === calendarMonth && hasBlockedDaysBetween(day, returnDay)) {
+        const returnYear = parseInt(returnDate.split('-')[0], 10);
+        if (returnYear === calendarYear && returnMonth === calendarMonth && hasBlockedDaysBetween(day, returnDay)) {
           setReturnDate('');
         }
       }
@@ -513,7 +740,8 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
         if (pickupDate) {
           const pickupDay = parseInt(pickupDate.split('-')[2], 10);
           const pickupMonth = parseInt(pickupDate.split('-')[1], 10) - 1;
-          if (pickupMonth === calendarMonth && hasBlockedDaysBetween(pickupDay, day)) {
+          const pickupYear = parseInt(pickupDate.split('-')[0], 10);
+          if (pickupYear === calendarYear && pickupMonth === calendarMonth && hasBlockedDaysBetween(pickupDay, day)) {
             return;
           }
         }
@@ -523,37 +751,47 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
     }
   };
 
-  // Check if the currently selected date range has a conflict with blocked days
+  // V4.6.67 — Conflict detection now respects calendarYear and walks the
+  // full range across month boundaries by comparing date strings rather than
+  // raw day numbers.
   const rangeHasConflict = useMemo(() => {
-    if (!pickupDate || !returnDate) return false;
-    const pDay = parseInt(pickupDate.split('-')[2], 10);
-    const rDay = parseInt(returnDate.split('-')[2], 10);
-    const pMonth = parseInt(pickupDate.split('-')[1], 10) - 1;
-    const rMonth = parseInt(returnDate.split('-')[1], 10) - 1;
-    if (pMonth === rMonth && pMonth === calendarMonth) {
-      return blockedDays.some(bd => bd >= pDay && bd <= rDay);
+    if (!pickupDate || !returnDate || !selectedVehicle) return false;
+    if (returnDate < pickupDate) return false;
+    for (const dayKey of Object.keys(vehicleBlockedInfo)) {
+      const day = parseInt(dayKey, 10);
+      if (Number.isNaN(day)) continue;
+      const ds = calendarDateStr(day);
+      if (ds >= pickupDate && ds <= returnDate) return true;
     }
     return false;
-  }, [pickupDate, returnDate, blockedDays, calendarMonth]);
+  }, [pickupDate, returnDate, vehicleBlockedInfo, calendarYear, calendarMonth, selectedVehicle]);
 
+  // V4.6.67 — Gating rules for the new step order
+  //   1: Vehicle  → must be selected
+  //   2: Period   → pickup + return + non-empty range, no calendar conflict
+  //                 (pickupStation is auto-derived from the vehicle so it is
+  //                 NOT part of the gate; see below.)
+  //   3: Extras   → always proceedable (everything is optional)
+  //   4: Customer → must be selected
+  //   5: Checkout → both consents must be ticked
   const canProceed = () => {
     switch (currentStep) {
-      case 1: return selectedVehicle !== null;
-      case 2: return true;
-      case 3: {
-        if (!pickupDate || !returnDate || !pickupStation || rentalDays <= 0) return false;
-        const pDay = parseInt(pickupDate.split('-')[2], 10);
-        const rDay = parseInt(returnDate.split('-')[2], 10);
-        const pMonth = parseInt(pickupDate.split('-')[1], 10) - 1;
-        const rMonth = parseInt(returnDate.split('-')[1], 10) - 1;
-        if (pMonth === rMonth) {
-          if (blockedDays.some(bd => bd >= pDay && bd <= rDay)) return false;
-        }
+      case 1:
+        return selectedVehicle !== null;
+      case 2: {
+        if (!pickupDate || !returnDate || rentalDays <= 0) return false;
+        if (returnDate <= pickupDate) return false;
+        if (rangeHasConflict) return false;
         return true;
       }
-      case 4: return selectedCustomer !== null;
-      case 5: return agbAccepted && privacyAccepted;
-      default: return false;
+      case 3:
+        return true;
+      case 4:
+        return selectedCustomer !== null;
+      case 5:
+        return agbAccepted && privacyAccepted;
+      default:
+        return false;
     }
   };
 
@@ -665,7 +903,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Vehicle</span>
-                  <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>{selectedVehicle?.model}</span>
+                  <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>{selectedVehicle ? buildMMY(selectedVehicle) : '—'}</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Period</span>
@@ -673,7 +911,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                 </div>
                 <div className={`flex justify-between text-xs pt-2 border-t ${isDarkMode ? 'border-neutral-700' : 'border-gray-200'}`}>
                   <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Total Amount</span>
-                  <span className={`${isDarkMode ? 'text-green-400' : 'text-green-700'}`}>â‚¬ {grandTotal.toFixed(2)}</span>
+                  <span className={`${isDarkMode ? 'text-green-400' : 'text-green-700'}`}>€ {grandTotal.toFixed(2)}</span>
                 </div>
               </div>
               <div className="flex gap-3">
@@ -738,6 +976,21 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
 
                     {/* Suggested / Search Results */}
                     <div className="space-y-2 flex-1 overflow-y-auto pr-1">
+                      {customersLoading && (
+                        <div className={`text-xs p-3 rounded-lg ${isDarkMode ? 'bg-neutral-800/40 text-gray-400' : 'bg-gray-50 text-gray-500'}`}>
+                          Kunden werden geladen…
+                        </div>
+                      )}
+                      {!customersLoading && customersError && (
+                        <div className={`text-xs p-3 rounded-lg ${isDarkMode ? 'bg-red-900/20 text-red-300 border border-red-500/30' : 'bg-red-50 text-red-600 border border-red-200'}`}>
+                          {customersError}
+                        </div>
+                      )}
+                      {!customersLoading && !customersError && filteredCustomers.length === 0 && (
+                        <div className={`text-xs p-3 rounded-lg ${isDarkMode ? 'bg-neutral-800/40 text-gray-400' : 'bg-gray-50 text-gray-500'}`}>
+                          Keine Kunden gefunden. Lege einen neuen Kunden an.
+                        </div>
+                      )}
                       {filteredCustomers.map((c) => (
                         <button
                           key={c.id}
@@ -775,8 +1028,23 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                           <div className="text-right shrink-0">
                             <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{c.totalBookings} Buchungen</div>
                             <div className="flex items-center gap-1 mt-1">
-                              <Star className={`w-3 h-3 ${c.drivingScore >= 85 ? 'text-green-500' : c.drivingScore >= 70 ? 'text-amber-500' : 'text-red-500'}`} />
-                              <span className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{c.drivingScore}</span>
+                              {/* V4.6.95 — Driving Style Score (0–100). "—" if not yet scored. */}
+                              <Star
+                                className={`w-3 h-3 ${
+                                  c.drivingStyleScore == null
+                                    ? 'text-gray-400'
+                                    : c.drivingStyleScore >= 85
+                                      ? 'text-green-500'
+                                      : c.drivingStyleScore >= 70
+                                        ? 'text-amber-500'
+                                        : 'text-red-500'
+                                }`}
+                              />
+                              <span className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                {c.drivingStyleScore == null
+                                  ? '\u2014'
+                                  : Math.round(c.drivingStyleScore)}
+                              </span>
                             </div>
                           </div>
                           <button
@@ -842,41 +1110,10 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                         );
                       };
 
-                      const UploadBox = ({ label, uploaded, errorKey, onUpload }: { label: string; uploaded: boolean; errorKey?: string; onUpload: () => void }) => (
-                        <div>
-                          <label className={labelClass}>{label}</label>
-                          <div className={`relative cursor-pointer rounded-lg border-2 border-dashed p-4 text-center transition-all ${
-                            uploaded
-                              ? isDarkMode ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-emerald-300 bg-emerald-50/50'
-                              : formErrors[errorKey || '']
-                                ? 'border-red-300 bg-red-50/30'
-                                : isDarkMode
-                                  ? 'border-neutral-700 bg-neutral-800/30 hover:border-blue-500/40 hover:bg-blue-500/5'
-                                  : 'border-gray-200 bg-gray-50/50 hover:border-blue-300 hover:bg-blue-50/30'
-                          }`}>
-                            {uploaded ? (
-                              <div className="flex flex-col items-center gap-1.5">
-                                <CheckCircle className="w-5 h-5 text-emerald-500" />
-                                <span className={`text-xs font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>Hochgeladen</span>
-                              </div>
-                            ) : (
-                              <div className="flex flex-col items-center gap-1.5">
-                                <Camera className={`w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
-                                <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Klicken zum Hochladen</span>
-                              </div>
-                            )}
-                            <input type="file" accept="image/*,.pdf"
-                              onChange={(e) => { if (e.target.files?.[0]) onUpload(); }}
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                          </div>
-                          {errorKey && formErrors[errorKey] && <p className="text-[11px] text-red-500 mt-1">{formErrors[errorKey]}</p>}
-                        </div>
-                      );
-
                       const SummaryRow = ({ label, value }: { label: string; value: string }) => (
                         <div className="flex items-center justify-between py-2">
                           <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{label}</span>
-                          <span className={`text-xs font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{value || 'â€â€ÂÂ'}</span>
+                          <span className={`text-xs font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{value || '—'}</span>
                         </div>
                       );
 
@@ -1080,10 +1317,26 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                 <div className="space-y-5">
                                   {sectionTitle(IdCard, `${newCustomer.idType} hochladen`)}
                                   <div className="grid grid-cols-2 gap-3">
-                                    <UploadBox label="Vorderseite *" uploaded={newCustomer.idFrontUploaded} errorKey="idFront"
-                                      onUpload={() => setNewCustomer({ ...newCustomer, idFrontUploaded: true })} />
-                                    <UploadBox label="Rückseite *" uploaded={newCustomer.idBackUploaded} errorKey="idBack"
-                                      onUpload={() => setNewCustomer({ ...newCustomer, idBackUploaded: true })} />
+                                    <CustomerDocumentUploadBox
+                                      label="Vorderseite *"
+                                      slot="id-front"
+                                      orgId={orgId}
+                                      isDarkMode={isDarkMode}
+                                      url={newCustomer.idFrontUrl}
+                                      errorMessage={formErrors.idFront}
+                                      onUploaded={(url) => setNewCustomer((prev) => ({ ...prev, idFrontUrl: url }))}
+                                      onCleared={() => setNewCustomer((prev) => ({ ...prev, idFrontUrl: null }))}
+                                    />
+                                    <CustomerDocumentUploadBox
+                                      label="Rückseite *"
+                                      slot="id-back"
+                                      orgId={orgId}
+                                      isDarkMode={isDarkMode}
+                                      url={newCustomer.idBackUrl}
+                                      errorMessage={formErrors.idBack}
+                                      onUploaded={(url) => setNewCustomer((prev) => ({ ...prev, idBackUrl: url }))}
+                                      onCleared={() => setNewCustomer((prev) => ({ ...prev, idBackUrl: null }))}
+                                    />
                                   </div>
 
                                   {/* Veriff ID Verification */}
@@ -1143,7 +1396,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                         </p>
                                         <button
                                           onClick={() => {
-                                            if (!newCustomer.idFrontUploaded) {
+                                            if (!newCustomer.idFrontUrl) {
                                               setFormErrors({ ...formErrors, veriff: 'Bitte laden Sie zuerst die Vorderseite des Ausweises hoch.' });
                                               return;
                                             }
@@ -1153,9 +1406,9 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                               setIdVerificationStatus('verified');
                                             }, 3000);
                                           }}
-                                          disabled={!newCustomer.idFrontUploaded}
+                                          disabled={!newCustomer.idFrontUrl}
                                           className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-                                            newCustomer.idFrontUploaded
+                                            newCustomer.idFrontUrl
                                               ? 'bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-violet-700 text-white shadow-md hover:shadow-lg'
                                               : isDarkMode
                                                 ? 'bg-neutral-800 border border-neutral-700 text-gray-600 cursor-not-allowed'
@@ -1166,7 +1419,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                           <ExternalLink className="w-3 h-3 opacity-60" />
                                         </button>
                                         {formErrors.veriff && <p className="text-[11px] text-red-500 mt-1.5">{formErrors.veriff}</p>}
-                                        {!newCustomer.idFrontUploaded && (
+                                        {!newCustomer.idFrontUrl && (
                                           <p className={`text-[11px] mt-1.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>
                                             Bitte laden Sie zuerst die Vorderseite des Ausweises hoch.
                                           </p>
@@ -1230,10 +1483,25 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                   <div className={`h-px my-1 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-100'}`} />
                                   {sectionTitle(Car, 'Führerschein hochladen')}
                                   <div className="grid grid-cols-2 gap-3">
-                                    <UploadBox label="Vorderseite *" uploaded={newCustomer.licenseFrontUploaded} errorKey="licenseFront"
-                                      onUpload={() => setNewCustomer({ ...newCustomer, licenseFrontUploaded: true })} />
-                                    <UploadBox label="Rückseite (optional)" uploaded={newCustomer.licenseBackUploaded}
-                                      onUpload={() => setNewCustomer({ ...newCustomer, licenseBackUploaded: true })} />
+                                    <CustomerDocumentUploadBox
+                                      label="Vorderseite *"
+                                      slot="license-front"
+                                      orgId={orgId}
+                                      isDarkMode={isDarkMode}
+                                      url={newCustomer.licenseFrontUrl}
+                                      errorMessage={formErrors.licenseFront}
+                                      onUploaded={(url) => setNewCustomer((prev) => ({ ...prev, licenseFrontUrl: url }))}
+                                      onCleared={() => setNewCustomer((prev) => ({ ...prev, licenseFrontUrl: null }))}
+                                    />
+                                    <CustomerDocumentUploadBox
+                                      label="Rückseite (optional)"
+                                      slot="license-back"
+                                      orgId={orgId}
+                                      isDarkMode={isDarkMode}
+                                      url={newCustomer.licenseBackUrl}
+                                      onUploaded={(url) => setNewCustomer((prev) => ({ ...prev, licenseBackUrl: url }))}
+                                      onCleared={() => setNewCustomer((prev) => ({ ...prev, licenseBackUrl: null }))}
+                                    />
                                   </div>
                                 </div>
                               )}
@@ -1248,7 +1516,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                     <SummaryRow label="E-Mail" value={newCustomer.email} />
                                     <SummaryRow label="Telefon" value={newCustomer.phone} />
                                     <SummaryRow label="Adresse" value={[newCustomer.street, `${newCustomer.zip} ${newCustomer.city}`].filter(Boolean).join(', ')} />
-                                    <SummaryRow label="Typ" value={newCustomer.type === 'Corporate' ? `Firma â€â€ÂÂ ${newCustomer.company}` : 'Privatkunde'} />
+                                    <SummaryRow label="Typ" value={newCustomer.type === 'Corporate' ? `Firma — ${newCustomer.company}` : 'Privatkunde'} />
                                   </div>
                                   <div className={`rounded-lg border p-4 space-y-0 divide-y ${
                                     isDarkMode ? 'bg-neutral-800/40 border-neutral-700 divide-neutral-800' : 'bg-gray-50/50 border-gray-200/60 divide-gray-100'
@@ -1281,10 +1549,10 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                       <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Dokumente</span>
                                       <div className="flex items-center gap-3">
                                         {[
-                                          { label: 'Ausweis VS', ok: newCustomer.idFrontUploaded },
-                                          { label: 'Ausweis RS', ok: newCustomer.idBackUploaded },
-                                          { label: 'FS VS', ok: newCustomer.licenseFrontUploaded },
-                                          { label: 'FS RS', ok: newCustomer.licenseBackUploaded },
+                                          { label: 'Ausweis VS', ok: Boolean(newCustomer.idFrontUrl) },
+                                          { label: 'Ausweis RS', ok: Boolean(newCustomer.idBackUrl) },
+                                          { label: 'FS VS', ok: Boolean(newCustomer.licenseFrontUrl) },
+                                          { label: 'FS RS', ok: Boolean(newCustomer.licenseBackUrl) },
                                         ].map(d => (
                                           <span key={d.label} className={`inline-flex items-center gap-1 text-[11px] font-medium ${
                                             d.ok ? isDarkMode ? 'text-emerald-400' : 'text-emerald-600' : isDarkMode ? 'text-gray-600' : 'text-gray-300'
@@ -1333,9 +1601,10 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                   </button>
                                 ) : (
                                   <button onClick={handleSubmitNewCustomer}
-                                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-xs font-semibold shadow-md hover:shadow-lg transition-all">
+                                    disabled={isSavingCustomer}
+                                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-white text-xs font-semibold shadow-md transition-all ${isSavingCustomer ? 'bg-emerald-300 cursor-not-allowed' : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 hover:shadow-lg'}`}>
                                     <CheckCircle className="w-3.5 h-3.5" />
-                                    Kunden anlegen
+                                    {isSavingCustomer ? 'Speichert…' : 'Kunden anlegen'}
                                   </button>
                                 )}
                               </div>
@@ -1437,6 +1706,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                       {[
                         { label: 'Alle', value: 'all', count: availableVehicles.length },
                         { label: 'Verfügbar', value: 'Available', count: availableVehicles.filter(v => v.status === 'Available').length },
+                        { label: 'Reserviert', value: 'Reserved', count: availableVehicles.filter(v => v.status === 'Reserved').length },
                         { label: 'Vermietet', value: 'Active Rented', count: availableVehicles.filter(v => v.status === 'Active Rented').length },
                         { label: 'Wartung', value: 'Maintenance', count: availableVehicles.filter(v => v.status === 'Maintenance').length },
                       ].map(tab => (
@@ -1466,32 +1736,26 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                         .map((v) => {
                         const isMaintenance = v.status === 'Maintenance';
                         const isRented = v.status === 'Active Rented';
-                        const brand = v.model.split(' ')[0];
-                        const brandLogos: Record<string, string> = {
-                          Volkswagen: 'https://www.carlogos.org/car-logos/volkswagen-logo-2019.png',
-                          Hyundai: 'https://www.carlogos.org/car-logos/hyundai-logo-2011.png',
-                          Tesla: 'https://www.carlogos.org/car-logos/tesla-logo-2007.png',
-                          Mercedes: 'https://www.carlogos.org/car-logos/mercedes-benz-logo-2011.png',
-                          Audi: 'https://www.carlogos.org/car-logos/audi-logo-2016.png',
-                          BMW: 'https://www.carlogos.org/car-logos/bmw-logo-2020.png',
-                        };
-                        const brandColors: Record<string, string> = {
-                          Volkswagen: 'from-blue-600/20 to-blue-800/20',
-                          Hyundai: 'from-sky-500/20 to-sky-700/20',
-                          Tesla: 'from-red-500/20 to-red-700/20',
-                          Mercedes: 'from-gray-400/20 to-gray-600/20',
-                          Audi: 'from-gray-500/20 to-gray-700/20',
-                          BMW: 'from-blue-500/20 to-blue-700/20',
-                        };
-                        const modelName = v.model.replace(/\s*\d{4}$/, '').trim();
-                        const modelYear = v.model.match(/\d{4}$/)?.[0] || '';
+                        // V4.6.76 Rental Health V1 — show the rental_blocked pill
+                        // in the picker so dispatchers know the booking would be
+                        // rejected BEFORE clicking. The backend still hard-gates
+                        // in BookingsService.create, so this is purely UX signal.
+                        const vehicleHealth = pickerHealthMap.get(v.id) ?? null;
+                        const isRentalBlocked = vehicleHealth?.rental_blocked === true;
+                        // V4.6.67 — derive brand from `make` first (true source from
+                        // backend), fall back to the model string. Use the shared
+                        // BrandLogo component (carlogos-dataset CDN) for the icon
+                        // and `buildMMY` for the Make Model Year title.
+                        const brandKey = getBrandFromModel(v.make ?? v.model ?? '');
+                        const mmy = buildMMY(v);
                         return (
                         <button
                           key={v.id}
                           onClick={() => {
                             setSelectedVehicle(v);
-                            setPickupStation(v.station);
-                            if (sameReturnStation) setReturnStation(v.station);
+                            const station = v.station ?? '';
+                            setPickupStation(station);
+                            if (sameReturnStation) setReturnStation(station);
                           }}
                           className={`flex items-center gap-3 w-full text-left rounded-lg border px-3 py-2 transition-all duration-200 cursor-pointer ${
                             isMaintenance
@@ -1511,22 +1775,17 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                 : 'border-gray-200/30 bg-gray-50/40 hover:border-gray-300/50 hover:bg-white'
                           }`}
                         >
-                          {/* Brand Logo */}
-                          <div className={`w-11 h-11 rounded-lg bg-gradient-to-br ${brandColors[brand] || 'from-gray-500/20 to-gray-700/20'} flex items-center justify-center shrink-0 ${isMaintenance ? 'grayscale' : ''}`}>
-                            {brandLogos[brand] ? (
-                              <img src={brandLogos[brand]} alt={brand} className="w-7 h-7 object-contain" />
-                            ) : (
-                              <span className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{brand.slice(0, 2).toUpperCase()}</span>
-                            )}
+                          {/* Brand Logo (shared CDN component, isomorphic with FleetView) */}
+                          <div className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 p-1.5 ${
+                            isDarkMode ? 'bg-neutral-800' : 'bg-gray-50'
+                          } ${isMaintenance ? 'grayscale opacity-70' : ''}`}>
+                            <BrandLogo brand={brandKey} size={28} isDarkMode={isDarkMode} />
                           </div>
 
                           {/* Vehicle Info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className={`text-xs truncate ${isMaintenance ? (isDarkMode ? 'text-gray-500 line-through' : 'text-gray-400 line-through') : isDarkMode ? 'text-white' : 'text-gray-900'}`}>{modelName}</p>
-                              {modelYear && (
-                                <span className={`text-xs shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{modelYear}</span>
-                              )}
+                              <p className={`text-xs truncate ${isMaintenance ? (isDarkMode ? 'text-gray-500 line-through' : 'text-gray-400 line-through') : isDarkMode ? 'text-white' : 'text-gray-900'}`}>{mmy}</p>
                               {isMaintenance && (
                                 <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] bg-red-600/80 text-white shrink-0">
                                   <Wrench className="w-3 h-3" />
@@ -1542,7 +1801,15 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                             </div>
                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                               <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{v.license}</span>
-                              <span className={`text-xs ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`}>Â·</span>
+                              {isRentalBlocked ? (
+                                <RentalHealthBadge
+                                  health={vehicleHealth}
+                                  isDarkMode={isDarkMode}
+                                  size="sm"
+                                  showBlockingLabel
+                                />
+                              ) : null}
+                              <span className={`text-xs ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`}>·</span>
                               <span className={`text-xs px-1.5 py-0.5 rounded ${
                                 v.fuelType === 'Electric' ? 'bg-green-100 text-green-700' :
                                 v.fuelType === 'Hybrid' ? 'bg-teal-100 text-teal-700' :
@@ -1550,18 +1817,22 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                 v.fuelType === 'Petrol' ? 'bg-orange-100 text-orange-700' :
                                 'bg-gray-100 text-gray-600'
                               }`}>{v.fuelType}</span>
-                              <span className={`text-xs ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`}>Â·</span>
-                              <div className="flex items-center gap-1">
-                                <MapPin className={`w-3 h-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                                <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{v.station}</span>
-                              </div>
+                              {v.station && (
+                                <>
+                                  <span className={`text-xs ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`}>·</span>
+                                  <div className="flex items-center gap-1">
+                                    <MapPin className={`w-3 h-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                                    <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{v.station}</span>
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </div>
 
                           {/* Price & Selection */}
                           <div className="flex items-center gap-3 shrink-0">
                             <div className="text-right">
-                              <p className={`text-xs ${isMaintenance ? (isDarkMode ? 'text-gray-500 line-through' : 'text-gray-400 line-through') : isDarkMode ? 'text-white' : 'text-gray-900'}`}>â‚¬ {getDailyRate(v)}</p>
+                              <p className={`text-xs ${isMaintenance ? (isDarkMode ? 'text-gray-500 line-through' : 'text-gray-400 line-through') : isDarkMode ? 'text-white' : 'text-gray-900'}`}>€ {getDailyRate(v)}</p>
                               <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>pro Tag</p>
                             </div>
                             {selectedVehicle?.id === v.id ? (
@@ -1594,8 +1865,8 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
               </>
             )}
 
-            {/* STEP 2: Extras & Packages */}
-            {currentStep === 2 && (
+            {/* STEP 3: Extras & Packages — V4.6.67 reordered after Period */}
+            {currentStep === 3 && (
               <>
                 {/* Mileage Packages */}
                 {card(
@@ -1804,8 +2075,8 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
               </>
             )}
 
-            {/* STEP 3: Date & Time */}
-            {currentStep === 3 && (
+            {/* STEP 2: Date & Time — V4.6.67 moved before Extras */}
+            {currentStep === 2 && (
               <>
                 {card(
                   <div className="p-4">
@@ -1819,21 +2090,16 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                           <input
                             type="date"
                             value={pickupDate}
+                            min={new Date().toISOString().slice(0, 10)}
                             onChange={(e) => {
                               const val = e.target.value;
                               setPickupDate(val);
                               if (val) {
-                                const m = new Date(val).getMonth();
-                                setCalendarMonth(m);
-                                // Reset return if it conflicts
-                                if (returnDate) {
-                                  const pDay = parseInt(val.split('-')[2], 10);
-                                  const rDay = parseInt(returnDate.split('-')[2], 10);
-                                  const pMonth = parseInt(val.split('-')[1], 10) - 1;
-                                  const rMonth = parseInt(returnDate.split('-')[1], 10) - 1;
-                                  if (pMonth === rMonth && blockedDays.some(bd => bd > pDay && bd < rDay)) {
-                                    setReturnDate('');
-                                  }
+                                const d = new Date(val);
+                                setCalendarMonth(d.getMonth());
+                                setCalendarYear(d.getFullYear());
+                                if (returnDate && val >= returnDate) {
+                                  setReturnDate('');
                                 }
                               }
                             }}
@@ -1926,22 +2192,16 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                           <input
                             type="date"
                             value={returnDate}
+                            min={pickupDate || new Date().toISOString().slice(0, 10)}
                             onChange={(e) => {
                               const val = e.target.value;
-                              if (val && pickupDate) {
-                                const pDay = parseInt(pickupDate.split('-')[2], 10);
-                                const rDay = parseInt(val.split('-')[2], 10);
-                                const pMonth = parseInt(pickupDate.split('-')[1], 10) - 1;
-                                const rMonth = parseInt(val.split('-')[1], 10) - 1;
-                                // Don't allow if blocked days are in between
-                                if (pMonth === rMonth && blockedDays.some(bd => bd > pDay && bd < rDay)) {
-                                  return;
-                                }
-                              }
+                              // Don't allow same-day or earlier-than-pickup return values.
+                              if (val && pickupDate && val <= pickupDate) return;
                               setReturnDate(val);
                               if (val) {
-                                const m = new Date(val).getMonth();
-                                setCalendarMonth(m);
+                                const d = new Date(val);
+                                setCalendarMonth(d.getMonth());
+                                setCalendarYear(d.getFullYear());
                               }
                             }}
                             className={`flex-1 px-3 py-2.5 rounded-lg border text-xs outline-none ${
@@ -2037,7 +2297,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                         }`}>
                           <MapPin className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
                           <span className={pickupStation ? '' : (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>
-                            {pickupStation || 'Wird vom Fahrzeug ï¿½ï¿½bernommen'}
+                            {pickupStation || 'Wird vom Fahrzeug übernommen'}
                           </span>
                           {pickupStation && (
                             <span className={`ml-auto text-xs px-1.5 py-0.5 rounded ${isDarkMode ? 'bg-blue-600/15 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>Vorgegeben</span>
@@ -2098,11 +2358,33 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                       </div>
 
                       <div className="flex items-center justify-between mb-3">
-                        <button onClick={() => setCalendarMonth(m => Math.max(0, m - 1))} className={`p-1 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-700' : 'hover:bg-gray-200'}`}>
+                        <button
+                          onClick={() => {
+                            // Roll over to previous year when stepping back from January.
+                            if (calendarMonth === 0) {
+                              setCalendarMonth(11);
+                              setCalendarYear(y => y - 1);
+                            } else {
+                              setCalendarMonth(m => m - 1);
+                            }
+                          }}
+                          className={`p-1 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-700' : 'hover:bg-gray-200'}`}
+                        >
                           <ChevronLeft className="w-5 h-5" />
                         </button>
-                        <span className={`text-xs ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{monthNames[calendarMonth]} 2026</span>
-                        <button onClick={() => setCalendarMonth(m => Math.min(11, m + 1))} className={`p-1 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-700' : 'hover:bg-gray-200'}`}>
+                        <span className={`text-xs ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{monthNames[calendarMonth]} {calendarYear}</span>
+                        <button
+                          onClick={() => {
+                            // Roll forward to next year when stepping past December.
+                            if (calendarMonth === 11) {
+                              setCalendarMonth(0);
+                              setCalendarYear(y => y + 1);
+                            } else {
+                              setCalendarMonth(m => m + 1);
+                            }
+                          }}
+                          className={`p-1 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-700' : 'hover:bg-gray-200'}`}
+                        >
                           <ChevronRightIcon className="w-5 h-5" />
                         </button>
                       </div>
@@ -2110,7 +2392,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                         {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map(d => (
                           <div key={d} className={`text-xs py-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{d}</div>
                         ))}
-                        {getCalendarDays(calendarMonth).map((day, i) => {
+                        {getCalendarDays(calendarMonth, calendarYear).map((day, i) => {
                           const isBlocked = day ? blockedDays.includes(day) : false;
                           const blockInfo = day ? vehicleBlockedInfo[day] : null;
                           return (
@@ -2163,7 +2445,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                   <div className={`text-xs mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                                     <span className="flex items-center gap-1">
                                       <Calendar className="w-3 h-3" />
-                                      {blockInfo.startDay}. â€“ {blockInfo.endDay}. {monthNames[calendarMonth]}
+                                      {blockInfo.startDay}. – {blockInfo.endDay}. {monthNames[calendarMonth]}
                                     </span>
                                   </div>
                                   {blockInfo.reason !== 'maintenance' && (
@@ -2329,7 +2611,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                     </div>
                     {discountPercent > 0 && (
                       <p className={`text-xs mt-2 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
-                        Ersparnis: â‚¬ {discountAmount.toFixed(2)}
+                        Ersparnis: € {discountAmount.toFixed(2)}
                       </p>
                     )}
                   </div>
@@ -2491,9 +2773,9 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                       <style>body{font-family:system-ui,sans-serif;padding:40px;max-width:800px;margin:0 auto;color:#333}h1{font-size:22px}table{width:100%;border-collapse:collapse;margin:20px 0}th,td{text-align:left;padding:8px 12px;border-bottom:1px solid #eee}th{background:#f9f9f9}.total{font-size:18px;font-weight:600}</style>
                                       </head><body>
                                       <h1>Rechnung</h1>
-                                      <p>Kunde: ${selectedCustomer?.name || 'â€“'}</p>
-                                      <p>Fahrzeug: ${selectedVehicle?.model || 'â€“'} (${selectedVehicle?.license || 'â€“'})</p>
-                                      <p>Zeitraum: ${pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : 'â€“'} â€“ ${returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : 'â€“'}</p>
+                                      <p>Kunde: ${selectedCustomer?.name || '–'}</p>
+                                      <p>Fahrzeug: ${selectedVehicle ? buildMMY(selectedVehicle) : '–'} (${selectedVehicle?.license || '–'})</p>
+                                      <p>Zeitraum: ${pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : '–'} – ${returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : '–'}</p>
                                       <table><tr><th>Position</th><th>Betrag</th></tr>
                                       <tr><td>${rentalDays}x Tagestarif</td><td>&euro; ${subtotal.toFixed(2)}</td></tr>
                                       <tr><td>Packages & Extras</td><td>&euro; ${extrasTotal.toFixed(2)}</td></tr>
@@ -2513,12 +2795,12 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                               </button>
                               <button
                                 onClick={() => {
-                                  const subject = encodeURIComponent(`Rechnung â€“ ${selectedVehicle?.model || 'Fahrzeug'}`);
+                                  const subject = encodeURIComponent(`Rechnung – ${selectedVehicle ? buildMMY(selectedVehicle) : 'Fahrzeug'}`);
                                   const body = encodeURIComponent(
                                     `Sehr geehrte/r ${selectedCustomer?.name || 'Kunde/in'},\n\nanbei Ihre Rechnung.\n\n` +
-                                    `Fahrzeug: ${selectedVehicle?.model} (${selectedVehicle?.license})\n` +
+                                    `Fahrzeug: ${selectedVehicle ? buildMMY(selectedVehicle) : '–'} (${selectedVehicle?.license || '–'})\n` +
                                     `Zeitraum: ${rentalDays} Tage\n` +
-                                    `Gesamt: â‚¬ ${grandTotal.toFixed(2)}\n\n` +
+                                    `Gesamt: € ${grandTotal.toFixed(2)}\n\n` +
                                     'Mit freundlichen Grüßen\nIhr Flottenmanagement-Team'
                                   );
                                   const email = selectedCustomer?.email || '';
@@ -2584,11 +2866,11 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                       </head><body>
                                       <h1>Mietvertrag</h1>
                                       <p><strong>Vermieter:</strong> Flottenmanagement GmbH</p>
-                                      <p><strong>Mieter:</strong> ${selectedCustomer?.name || 'â€“'}</p>
+                                      <p><strong>Mieter:</strong> ${selectedCustomer?.name || '–'}</p>
                                       <h2>Fahrzeug</h2>
-                                      <p>${selectedVehicle?.model || 'â€“'} Â· ${selectedVehicle?.license || 'â€“'}</p>
+                                      <p>${selectedVehicle ? buildMMY(selectedVehicle) : '–'} · ${selectedVehicle?.license || '–'}</p>
                                       <h2>Mietzeitraum</h2>
-                                      <p>${pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : 'â€“'} (${pickupTime}) â€“ ${returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : 'â€“'} (${returnTime})</p>
+                                      <p>${pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : '–'} (${pickupTime}) – ${returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : '–'} (${returnTime})</p>
                                       <h2>Kosten</h2>
                                       <p>Gesamt: &euro; ${grandTotal.toFixed(2)} (inkl. MwSt.)</p>
                                       <p>Kaution: &euro; ${depositAmount.toFixed(2)}</p>
@@ -2607,12 +2889,12 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                               </button>
                               <button
                                 onClick={() => {
-                                  const subject = encodeURIComponent(`Mietvertrag â€“ ${selectedVehicle?.model || 'Fahrzeug'}`);
+                                  const subject = encodeURIComponent(`Mietvertrag – ${selectedVehicle ? buildMMY(selectedVehicle) : 'Fahrzeug'}`);
                                   const body = encodeURIComponent(
                                     `Sehr geehrte/r ${selectedCustomer?.name || 'Kunde/in'},\n\nanbei Ihr Mietvertrag.\n\n` +
-                                    `Fahrzeug: ${selectedVehicle?.model} (${selectedVehicle?.license})\n` +
-                                    `Zeitraum: ${pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : 'â€“'} â€“ ${returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : 'â€“'}\n` +
-                                    `Gesamt: â‚¬ ${grandTotal.toFixed(2)}\n\n` +
+                                    `Fahrzeug: ${selectedVehicle ? buildMMY(selectedVehicle) : '–'} (${selectedVehicle?.license || '–'})\n` +
+                                    `Zeitraum: ${pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : '–'} – ${returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : '–'}\n` +
+                                    `Gesamt: € ${grandTotal.toFixed(2)}\n\n` +
                                     'Mit freundlichen Grüßen\nIhr Flottenmanagement-Team'
                                   );
                                   const email = selectedCustomer?.email || '';
@@ -2663,7 +2945,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                     >
                       <div className={`sticky top-0 flex items-center justify-between p-4 border-b ${isDarkMode ? 'border-neutral-700 bg-neutral-900' : 'border-gray-200 bg-white'}`}>
                         <h3 className={`text-base ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                          {quickViewDoc === 'invoice' ? 'Rechnung â€“ Vorschau' : 'Mietvertrag â€“ Vorschau'}
+                          {quickViewDoc === 'invoice' ? 'Rechnung – Vorschau' : 'Mietvertrag – Vorschau'}
                         </h3>
                         <button onClick={() => setQuickViewDoc(null)} className={`p-1.5 rounded-lg transition-all ${isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
                           <X className="w-5 h-5" />
@@ -2679,37 +2961,37 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                             <div className={`grid grid-cols-2 gap-3 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                               <div>
                                 <p className={`text-xs mb-0.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Kunde</p>
-                                <p>{selectedCustomer?.name || 'â€“'}</p>
+                                <p>{selectedCustomer?.name || '–'}</p>
                                 <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{selectedCustomer?.email}</p>
                               </div>
                               <div>
                                 <p className={`text-xs mb-0.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Fahrzeug</p>
-                                <p>{selectedVehicle?.model || 'â€“'}</p>
+                                <p>{selectedVehicle ? buildMMY(selectedVehicle) : '–'}</p>
                                 <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{selectedVehicle?.license}</p>
                               </div>
                             </div>
                             <div className={`border-t pt-3 space-y-2 ${isDarkMode ? 'border-neutral-700' : 'border-gray-200'}`}>
                               <div className="flex justify-between text-xs">
-                                <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>{rentalDays}x Tagestarif (â‚¬{dailyRate})</span>
-                                <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>â‚¬ {subtotal.toFixed(2)}</span>
+                                <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>{rentalDays}x Tagestarif (€{dailyRate})</span>
+                                <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>€ {subtotal.toFixed(2)}</span>
                               </div>
                               <div className="flex justify-between text-xs">
                                 <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Packages & Extras</span>
-                                <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>â‚¬ {extrasTotal.toFixed(2)}</span>
+                                <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>€ {extrasTotal.toFixed(2)}</span>
                               </div>
                               {discountPercent > 0 && (
                                 <div className="flex justify-between text-xs">
                                   <span className="text-green-500">Rabatt ({discountPercent}%)</span>
-                                  <span className="text-green-500">-â‚¬ {discountAmount.toFixed(2)}</span>
+                                  <span className="text-green-500">-€ {discountAmount.toFixed(2)}</span>
                                 </div>
                               )}
                               <div className="flex justify-between text-xs">
                                 <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>MwSt. (19%)</span>
-                                <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>â‚¬ {tax.toFixed(2)}</span>
+                                <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>€ {tax.toFixed(2)}</span>
                               </div>
                               <div className={`flex justify-between pt-2 border-t ${isDarkMode ? 'border-neutral-700' : 'border-gray-200'}`}>
                                 <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>Gesamt</span>
-                                <span className={`text-xs ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>â‚¬ {grandTotal.toFixed(2)}</span>
+                                <span className={`text-xs ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>€ {grandTotal.toFixed(2)}</span>
                               </div>
                             </div>
                           </div>
@@ -2726,22 +3008,22 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                               </div>
                               <div>
                                 <p className={`text-xs mb-0.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Mieter</p>
-                                <p>{selectedCustomer?.name || 'â€“'}</p>
+                                <p>{selectedCustomer?.name || '–'}</p>
                                 <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{selectedCustomer?.email}</p>
                               </div>
                             </div>
                             <div className={`border-t pt-3 space-y-2 text-xs ${isDarkMode ? 'border-neutral-700 text-gray-300' : 'border-gray-200 text-gray-700'}`}>
                               <div className="flex justify-between">
                                 <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Fahrzeug</span>
-                                <span>{selectedVehicle?.model} Â· {selectedVehicle?.license}</span>
+                                <span>{selectedVehicle ? buildMMY(selectedVehicle) : '–'} · {selectedVehicle?.license || '–'}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Zeitraum</span>
-                                <span>{pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : 'â€“'} â€“ {returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : 'â€“'}</span>
+                                <span>{pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : '–'} – {returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : '–'}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Abhol-/Rückgabezeit</span>
-                                <span>{pickupTime} â€“ {returnTime}</span>
+                                <span>{pickupTime} – {returnTime}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Frei-Kilometer</span>
@@ -2749,11 +3031,11 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                               </div>
                               <div className={`flex justify-between pt-2 border-t ${isDarkMode ? 'border-neutral-700' : 'border-gray-200'}`}>
                                 <span>Gesamtkosten</span>
-                                <span className={`text-xs ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>â‚¬ {grandTotal.toFixed(2)}</span>
+                                <span className={`text-xs ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>€ {grandTotal.toFixed(2)}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Kaution</span>
-                                <span className={isDarkMode ? 'text-amber-400' : 'text-amber-600'}>â‚¬ {depositAmount.toFixed(2)}</span>
+                                <span className={isDarkMode ? 'text-amber-400' : 'text-amber-600'}>€ {depositAmount.toFixed(2)}</span>
                               </div>
                             </div>
                             <div className={`border-t pt-6 mt-6 flex gap-16 ${isDarkMode ? 'border-neutral-700' : 'border-gray-200'}`}>
@@ -2788,12 +3070,21 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                     <div>
                       <div className={`text-[11px] mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Fahrzeug</div>
                       {selectedVehicle ? (
-                        <>
-                          <p className={`text-xs ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{selectedVehicle.model}</p>
-                          <p className={`text-[11px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{selectedVehicle.license}</p>
-                        </>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 p-1 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-50'}`}>
+                            <BrandLogo
+                              brand={getBrandFromModel(selectedVehicle.make ?? selectedVehicle.model ?? '')}
+                              size={20}
+                              isDarkMode={isDarkMode}
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <p className={`text-xs truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{buildMMY(selectedVehicle)}</p>
+                            <p className={`text-[11px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{selectedVehicle.license}</p>
+                          </div>
+                        </div>
                       ) : (
-                        <p className={`text-xs italic ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>â€“</p>
+                        <p className={`text-xs italic ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>–</p>
                       )}
                     </div>
                     <div>
@@ -2804,7 +3095,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                           <p className={`text-[11px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{selectedCustomer.type === 'Corporate' ? 'Firmenkunde' : 'Privatkunde'}</p>
                         </>
                       ) : (
-                        <p className={`text-xs italic ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>â€“</p>
+                        <p className={`text-xs italic ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>–</p>
                       )}
                     </div>
                   </div>
@@ -2814,12 +3105,12 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                       {pickupDate && returnDate ? (
                         <>
                           <p className={`text-xs ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {new Date(pickupDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })} â€“ {new Date(returnDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
+                            {new Date(pickupDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })} – {new Date(returnDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
                           </p>
-                          <p className={`text-[11px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{rentalDays} Tage Â· {pickupTime} â€“ {returnTime}</p>
+                          <p className={`text-[11px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{rentalDays} Tage · {pickupTime} – {returnTime}</p>
                         </>
                       ) : (
-                        <p className={`text-xs italic ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>â€“</p>
+                        <p className={`text-xs italic ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>–</p>
                       )}
                     </div>
                     <div>
@@ -2834,7 +3125,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                           )}
                         </>
                       ) : (
-                        <p className={`text-xs italic ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>â€“</p>
+                        <p className={`text-xs italic ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>–</p>
                       )}
                     </div>
                   </div>
@@ -2865,8 +3156,8 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                 {/* Price breakdown */}
                 <div className="space-y-2.5">
                   <div className="flex justify-between text-xs">
-                    <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>{rentalDays}x Tagestarif (â‚¬{dailyRate})</span>
-                    <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>â‚¬ {subtotal.toFixed(2)}</span>
+                    <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>{rentalDays}x Tagestarif (€{dailyRate})</span>
+                    <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>€ {subtotal.toFixed(2)}</span>
                   </div>
                   {extrasTotal > 0 && (
                     <div className="flex justify-between text-xs">
@@ -2924,26 +3215,26 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                   {discountPercent > 0 && (
                     <div className="flex justify-between text-xs">
                       <span className="text-green-500">Rabatt ({discountPercent}%)</span>
-                      <span className="text-green-500">-â‚¬ {discountAmount.toFixed(2)}</span>
+                      <span className="text-green-500">-€ {discountAmount.toFixed(2)}</span>
                     </div>
                   )}
                   <div className={`pt-3 mt-2 border-t space-y-2 ${isDarkMode ? 'border-neutral-700' : 'border-gray-200'}`}>
                     <div className="flex justify-between text-xs">
                       <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Zwischensumme</span>
-                      <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>â‚¬ {totalBeforeTax.toFixed(2)}</span>
+                      <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>€ {totalBeforeTax.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>MwSt. (19%)</span>
-                      <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>â‚¬ {tax.toFixed(2)}</span>
+                      <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>€ {tax.toFixed(2)}</span>
                     </div>
                   </div>
                   <div className={`flex justify-between items-baseline pt-3 border-t ${isDarkMode ? 'border-neutral-700' : 'border-gray-200'}`}>
                     <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>Gesamt</span>
-                    <span className={`text-base ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>â‚¬ {grandTotal.toFixed(2)}</span>
+                    <span className={`text-base ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>€ {grandTotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Kaution</span>
-                    <span className={isDarkMode ? 'text-amber-400' : 'text-amber-600'}>â‚¬ {depositAmount.toFixed(2)}</span>
+                    <span className={isDarkMode ? 'text-amber-400' : 'text-amber-600'}>€ {depositAmount.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -2982,9 +3273,9 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
               ) : (
                 <button
                   onClick={handleConfirm}
-                  disabled={!canProceed()}
+                  disabled={!canProceed() || isSavingBooking}
                   className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs transition-all ${
-                    canProceed()
+                    canProceed() && !isSavingBooking
                       ? 'bg-green-600 text-white hover:bg-green-700 shadow-[0_4px_16px_rgba(34,197,94,0.3)]'
                       : isDarkMode
                         ? 'bg-neutral-700 text-gray-500 cursor-not-allowed'
@@ -2992,7 +3283,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                   }`}
                 >
                   <Check className="w-5 h-5" />
-                  Buchung bestätigen
+                  {isSavingBooking ? 'Speichert…' : 'Buchung bestätigen'}
                 </button>
               )}
             </div>

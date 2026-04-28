@@ -192,6 +192,12 @@ export function computeDrivingStyleScore(input: {
 /**
  * Safety Score (0–100), intentionally separated from driving style.
  * Speeding is first-class here and excluded from the style score.
+ *
+ * IMPORTANT: This pure function only handles **numeric** inputs. Whether the
+ * underlying data was actually present is the caller's responsibility — see
+ * `hasSpeedingDataFromTrip()` below. A trip with all `null` speed-limit
+ * fields must NOT be passed to this function with `?? 0` substitutes; that
+ * would coerce missing data into "100 = perfectly safe", which is wrong.
  */
 export function computeSafetyScore(input: {
   speedingExposurePct: number;
@@ -215,6 +221,61 @@ export function computeSafetyScore(input: {
   );
   const score = Math.max(0, Math.min(100, 100 - exposurePenalty - severityPenalty - sectionPenalty));
   return round1(score);
+}
+
+// ── Safety-data presence helpers ──────────────────────────────────────────────
+
+/**
+ * Subset of `VehicleTrip` fields that determine whether the trip carries any
+ * meaningful speed-limit / route-analysis output. Kept structurally typed so
+ * both `VehicleTrip` (Prisma) and the smaller TripProjection used inside
+ * `TripAnalyticsCanonicalService` can be fed directly without `any`-casts.
+ */
+export interface SpeedingDataInput {
+  speedingExposurePct?: number | null;
+  maxOverSpeedKmh?: number | null;
+  avgOverSpeedKmh?: number | null;
+  speedingSectionCount?: number | null;
+  speedingDistanceM?: number | null;
+  speedingDurationS?: number | null;
+}
+
+/**
+ * Returns true only when at least one speeding-relevant field is non-null —
+ * i.e. route/mapbox enrichment has run. Distinguishes "no data" from
+ * "data present and zero speeding". Used to gate `computeSafetyScore`.
+ *
+ * - All fields null  ⇒ `false` (no enrichment) ⇒ caller must yield safetyScore = null.
+ * - Any field present (even 0) ⇒ `true` (data is real) ⇒ caller may compute the score.
+ */
+export function hasSpeedingDataFromTrip(trip: SpeedingDataInput): boolean {
+  return (
+    trip.speedingExposurePct != null ||
+    trip.maxOverSpeedKmh != null ||
+    trip.avgOverSpeedKmh != null ||
+    trip.speedingSectionCount != null ||
+    trip.speedingDistanceM != null ||
+    trip.speedingDurationS != null
+  );
+}
+
+/**
+ * Map a per-trip speeding-data presence into a coarse confidence label that
+ * UIs can render directly. Only used at trip granularity; subject/booking
+ * aggregates compute their own confidence based on `scoredTripCount` +
+ * `totalDistanceKm` (see `DriverScoreService`).
+ */
+export function safetyDataConfidenceFromTrip(
+  trip: SpeedingDataInput,
+): 'none' | 'low' | 'medium' | 'high' {
+  if (!hasSpeedingDataFromTrip(trip)) return 'none';
+  // If the canonical exposure metric is present, trust the run.
+  if (trip.speedingExposurePct != null) return 'high';
+  // Section / over-speed metrics alone still indicate run, but partially.
+  if (trip.speedingSectionCount != null || trip.maxOverSpeedKmh != null) {
+    return 'medium';
+  }
+  return 'low';
 }
 
 // ── Behavioral metric derivations ─────────────────────────────────────────────

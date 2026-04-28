@@ -5,22 +5,22 @@ import { setAuth } from '../lib/auth';
 import { Eye, EyeOff, ArrowRight, Car, Zap, Shield, Globe } from 'lucide-react';
 import synqdriveLogoLight from '../assets/synqdrive-logo-light.png';
 import synqdriveLogoDark from '../assets/synqdrive-logo-dark.png';
-import loginHero from '../assets/login-hero.png';
+import loginHeroVideo from '../assets/synqdrive-login.mp4';
 
 const loginCopy: Record<string, { en: string; de: string }> = {
-  fleetManagement: { en: 'FLEET MANAGEMENT', de: 'FLOTTENMANAGEMENT' },
-  headline: { en: "Don't just manage your fleet,", de: 'Verwalten Sie nicht nur Ihre Flotte,' },
-  headlineBr: { en: 'lead it to success.', de: 'führen Sie sie zum Erfolg.' },
-  subPart1: { en: 'Track, manage and automate your fleet with', de: 'Verfolgen, verwalten und automatisieren Sie Ihre Flotte mit' },
-  subHighlight1: { en: 'AI', de: 'KI' },
+  fleetManagement: { en: 'LIVE FLEET INTELLIGENCE', de: 'LIVE FLOTTEN-INTELLIGENZ' },
+  headline: { en: 'See your fleet', de: 'Sehen Sie Ihre Flotte' },
+  headlineBr: { en: 'in real time.', de: 'in Echtzeit.' },
+  subPart1: { en: 'Live telemetry,', de: 'Live-Telemetrie,' },
+  subHighlight1: { en: 'AI analytics', de: 'KI-Analyse' },
   subAnd: { en: 'and', de: 'und' },
-  subHighlight2: { en: 'smart analytics', de: 'intelligenter Analyse' },
-  subPart2: { en: 'your way to success.', de: 'Ihr Weg zum Erfolg.' },
-  pillFleet: { en: 'Fleet Tracking', de: 'Flotten-Tracking' },
+  subHighlight2: { en: 'smart automation', de: 'smarte Automatisierung' },
+  subPart2: { en: 'in one platform.', de: 'in einer Plattform.' },
+  pillFleet: { en: 'Live Tracking', de: 'Live-Tracking' },
   pillSecure: { en: 'Secure', de: 'Sicher' },
   pillRealtime: { en: 'Real-time', de: 'Echtzeit' },
   trustCompanies: { en: '2,400+ Companies', de: '2.400+ Unternehmen' },
-  trustSubtitle: { en: 'trust SYNQDRIVE', de: 'vertrauen SYNQDRIVE' },
+  trustSubtitle: { en: 'move with SYNQDRIVE', de: 'fahren mit SYNQDRIVE' },
   welcomeBack: { en: 'Welcome Back!', de: 'Willkommen zurück!' },
   subtitle: { en: 'Enter your details below to sign in.', de: 'Geben Sie Ihre Daten ein, um sich anzumelden.' },
   email: { en: 'Email', de: 'E-Mail' },
@@ -149,9 +149,14 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Main Card */}
+      {/* Main Card
+          Scaled to 120% via CSS transform on md+ so all inner proportions
+          (video, typography, pills, form fields, spacing) enlarge uniformly
+          without needing to touch every utility class. On small viewports we
+          keep the original size so the card does not overflow the root's
+          overflow-hidden container. */}
       <div
-        className="relative w-full max-w-[820px] min-h-[440px] rounded-[20px] overflow-hidden z-10"
+        className="relative w-full max-w-[820px] min-h-[440px] rounded-[20px] overflow-hidden z-10 origin-center md:scale-[1.2]"
         style={{
           background: 'rgba(255, 255, 255, 0.72)',
           backdropFilter: 'blur(60px) saturate(180%)',
@@ -161,20 +166,27 @@ export default function LoginPage() {
       >
         <div className="flex min-h-[460px]">
           {/* Left Panel */}
-          <div className="hidden lg:flex lg:w-[360px] relative overflow-hidden rounded-[14px] m-2">
-            <img
-              src={loginHero}
-              alt="AI Fleet Management"
+          <div className="hidden lg:flex lg:w-[360px] relative overflow-hidden rounded-[14px] m-2 bg-black">
+            <video
+              src={loginHeroVideo}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
+              aria-hidden
               className="absolute inset-0 w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/10 to-black/70" />
+            {/* Gradient focused on the bottom 40% so the upper portion of the
+                video stays visually unobstructed. */}
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/25 to-black/90" />
 
-            <div className="relative z-10 flex flex-col justify-between p-6 h-full">
-              {/* Top Section */}
-              <div className="space-y-4">
+            <div className="relative z-10 flex flex-col justify-end p-6 h-full">
+              {/* Content block — anchored to the bottom 40% of the panel */}
+              <div className="space-y-3">
                 <div
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/15 shadow-sm"
-                  style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(12px)' }}
+                  style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(12px)' }}
                 >
                   <Zap className="w-3 h-3 text-violet-300" />
                   <span className="text-[10px] text-white/90 font-medium tracking-wide">{t('fleetManagement')}</span>
@@ -202,18 +214,15 @@ export default function LoginPage() {
                     <div
                       key={item.label}
                       className="flex items-center gap-1 px-2 py-1 rounded-md border border-white/20 shadow-sm"
-                      style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(12px)' }}
+                      style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(12px)' }}
                     >
                       <item.icon className="w-2.5 h-2.5 text-white/80" />
                       <span className="text-[10px] text-white/90 font-medium">{item.label}</span>
                     </div>
                   ))}
                 </div>
-              </div>
 
-              {/* Bottom Section */}
-              <div>
-                <div 
+                <div
                   className="inline-flex items-center gap-2 p-2 rounded-xl border border-white/15 shadow-lg"
                   style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)' }}
                 >

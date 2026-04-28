@@ -1,7 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import { BookingStatus, TripAssignmentSubjectType, TripStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripsService } from '../vehicle-intelligence/trips/trips.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
+import {
+  AggregationRow,
+  DataConfidence,
+  DriverScoreService,
+} from '../vehicle-intelligence/trips/driver-score.service';
 import type { RentalDrivingAnalysisPayload } from './rental-driving-analysis.types';
 import {
   parsePagination,
@@ -10,12 +16,31 @@ import {
   PaginatedResult,
 } from '@shared/utils/pagination';
 
+type TripForAnalysis = {
+  id: string;
+  distanceKm?: number | null;
+  citySharePercent?: number | null;
+  highwaySharePercent?: number | null;
+  countrySharePercent?: number | null;
+  drivingScore?: number | null;
+  totalAccelerationEvents?: number | null;
+  totalBrakingEvents?: number | null;
+  hardAccelerationEvents?: number | null;
+  hardBrakingEvents?: number | null;
+  abuseEvents?: number | null;
+};
+
+type AnalysisSource = NonNullable<
+  RentalDrivingAnalysisPayload['analysisMeta']['analysisSource']
+>;
+
 @Injectable()
 export class RentalDrivingAnalysisService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tripsService: TripsService,
     private readonly dtcService: DtcService,
+    private readonly driverScoreService: DriverScoreService,
   ) {}
 
   async generateForBooking(orgId: string, bookingId: string) {
@@ -28,18 +53,31 @@ export class RentalDrivingAnalysisService {
       where: { id: bookingId, organizationId: orgId },
       include: { vehicle: true, customer: true },
     });
-    if (!booking || booking.status !== 'COMPLETED') return null;
+    if (!booking || booking.status !== BookingStatus.COMPLETED) return null;
 
     const periodStart = booking.startDate;
     const periodEnd = booking.endDate;
     const vehicleId = booking.vehicleId;
     const driverId = booking.customerId;
 
-    const [tripsInRange, dtcList] = await Promise.all([
-      this.tripsService.findByVehicle(vehicleId, {
-        from: periodStart,
-        to: periodEnd,
-        limit: 200,
+    // V4.6.83 — Primary selector: trips that TripAssignmentService resolved
+    // onto THIS booking (VehicleTrip.assignedBookingId = bookingId). This is
+    // the authoritative match and avoids pulling trips that happened inside
+    // the same calendar window but were actually assigned to another booking
+    // or a private period.
+    //
+    // Only if no assigned trips exist yet (legacy bookings, replay of an old
+    // rental, reconciliation not caught up), we fall back to a vehicle + time
+    // window query and flag the result as low-confidence.
+    const [assignedTrips, dtcList] = await Promise.all([
+      this.prisma.vehicleTrip.findMany({
+        where: {
+          assignedBookingId: bookingId,
+          isPrivateTrip: false,
+          tripStatus: TripStatus.COMPLETED,
+        },
+        orderBy: { startTime: 'desc' },
+        take: 200,
       }),
       this.dtcService.findByVehicle(vehicleId).then((list) =>
         (Array.isArray(list) ? list : []).filter((e: { firstSeenAt: Date; lastSeenAt: Date }) => {
@@ -52,25 +90,31 @@ export class RentalDrivingAnalysisService {
       ),
     ]);
 
-    const tripsWithMetrics = tripsInRange as Array<{
-      id: string;
-      distanceKm?: number | null;
-      citySharePercent?: number | null;
-      highwaySharePercent?: number | null;
-      countrySharePercent?: number | null;
-      drivingScore?: number | null;
-      totalAccelerationEvents?: number | null;
-      totalBrakingEvents?: number | null;
-      hardAccelerationEvents?: number | null;
-      hardBrakingEvents?: number | null;
-      abuseEvents?: number | null;
-    }>;
+    let tripsInRange: unknown[] = assignedTrips;
+    let analysisSource: AnalysisSource = 'booking_assignment';
+
+    if (assignedTrips.length === 0) {
+      const fallbackTrips = await this.tripsService.findByVehicle(vehicleId, {
+        from: periodStart,
+        to: periodEnd,
+        limit: 200,
+      });
+      tripsInRange = fallbackTrips;
+      analysisSource = fallbackTrips.length === 0 ? 'none' : 'time_window_fallback';
+    }
+
+    const tripsWithMetrics = tripsInRange as Array<TripForAnalysis>;
 
     const tripIds = tripsWithMetrics.map((trip) => trip.id);
     const impactRows = tripIds.length
       ? await this.prisma.tripDrivingImpact.findMany({
           where: { tripId: { in: tripIds } },
-          select: { tripId: true, drivingStyleScore: true, safetyScore: true },
+          select: {
+            tripId: true,
+            drivingStyleScore: true,
+            safetyScore: true,
+            distanceKm: true,
+          },
         })
       : [];
     const impactMap = new Map(
@@ -79,22 +123,38 @@ export class RentalDrivingAnalysisService {
         {
           drivingStyleScore: row.drivingStyleScore,
           safetyScore: row.safetyScore,
+          distanceKm: row.distanceKm ?? 0,
         },
       ]),
     );
 
     const periodDistance = tripsWithMetrics.reduce((s, t) => s + (t.distanceKm ?? 0), 0);
     const periodTrips = tripsWithMetrics.length;
-    const styleScores = tripsWithMetrics
-      .map((trip) => impactMap.get(trip.id)?.drivingStyleScore ?? trip.drivingScore ?? null)
-      .filter((x): x is number => x != null);
-    const safetyScores = tripsWithMetrics
-      .map((trip) => impactMap.get(trip.id)?.safetyScore ?? null)
-      .filter((x): x is number => x != null);
-    const drivingStyleScore =
-      styleScores.length > 0 ? styleScores.reduce((a, b) => a + b, 0) / styleScores.length : null;
-    const safetyScore =
-      safetyScores.length > 0 ? safetyScores.reduce((a, b) => a + b, 0) / safetyScores.length : null;
+
+    // V4.6.95 — booking aggregation now goes through `DriverScoreService`'s
+    // unified helper. Distance-weighted average + null-aware per-metric
+    // aggregation matches the per-driver / per-customer path so the same
+    // trip set produces the same numeric scores no matter which surface
+    // reads them. Legacy trips without an impact row fall back to
+    // `trip.drivingScore` for drivingStyleScore (compat-mirror only); they
+    // never contribute a fake safetyScore because no impact ⇒ no safety
+    // signal.
+    const aggregationRows: AggregationRow[] = tripsWithMetrics.map((trip) => {
+      const impact = impactMap.get(trip.id);
+      return {
+        drivingStyleScore:
+          impact?.drivingStyleScore ?? trip.drivingScore ?? null,
+        safetyScore: impact?.safetyScore ?? null,
+        distanceKm: impact?.distanceKm ?? trip.distanceKm ?? 0,
+      };
+    });
+    const aggregate = this.driverScoreService.aggregateRows(
+      TripAssignmentSubjectType.BOOKING_CUSTOMER,
+      bookingId,
+      aggregationRows,
+    );
+    const drivingStyleScore = aggregate.drivingStyleScore;
+    const safetyScore = aggregate.safetyScore;
 
     const eventsCount = tripsWithMetrics.reduce(
       (sum, trip) => sum + (trip.totalAccelerationEvents ?? 0) + (trip.totalBrakingEvents ?? 0),
@@ -120,6 +180,10 @@ export class RentalDrivingAnalysisService {
     const avgTripKm = periodTrips > 0 ? periodDistance / periodTrips : 0;
     const tripType = avgTripKm < 20 ? 'mostly_short_distance' : avgTripKm >= 50 ? 'mostly_long_distance' : 'mixed';
 
+    const scoredTripCount = aggregate.scoredTripCount;
+    const safetyScoredTripCount = aggregate.safetyScoredTripCount;
+    const totalDistanceKm = aggregate.totalDistanceKm;
+    const aggregateConfidence = aggregate.dataConfidence;
     const payload = this.generatePayload({
       bookingId,
       vehicleId,
@@ -140,6 +204,11 @@ export class RentalDrivingAnalysisService {
       highwayPct,
       countryPct,
       tripType,
+      analysisSource,
+      scoredTripCount,
+      safetyScoredTripCount,
+      totalDistanceKm,
+      aggregateConfidence,
     });
 
     const record = await this.prisma.rentalDrivingAnalysis.create({
@@ -185,6 +254,11 @@ export class RentalDrivingAnalysisService {
     highwayPct: number;
     countryPct: number;
     tripType: 'mostly_short_distance' | 'mostly_long_distance' | 'mixed';
+    analysisSource: AnalysisSource;
+    scoredTripCount: number;
+    safetyScoredTripCount: number;
+    totalDistanceKm: number;
+    aggregateConfidence: DataConfidence;
   }): RentalDrivingAnalysisPayload {
     const combinedScore = this.computeCombinedScore(ctx.drivingStyleScore, ctx.safetyScore);
     const level = combinedScore != null && combinedScore >= 70 && ctx.harshBraking + ctx.harshAcceleration < 20
@@ -227,6 +301,23 @@ export class RentalDrivingAnalysisService {
     }
     if (ctx.harshBraking > 15) recommendations.push('Inspect brake condition after this rental.');
 
+    // V4.6.95 — dataConfidence combines two signals:
+    //   1. How trips were matched (`analysisSource`). Time-window fallback can
+    //      never be "high" — the trip-set isn't authoritative.
+    //   2. How many trips actually scored, weighted by total distance. This
+    //      comes from the unified DriverScoreService aggregation so booking
+    //      analyses use the SAME confidence rules as customer/driver scores.
+    // The 'none' bucket from the aggregator collapses to 'low' here because
+    // the rental-analysis schema persists only low/medium/high.
+    const aggregateConfidence: 'low' | 'medium' | 'high' =
+      ctx.aggregateConfidence === 'none' ? 'low' : ctx.aggregateConfidence;
+    const dataConfidence: 'low' | 'medium' | 'high' =
+      ctx.analysisSource === 'none'
+        ? 'low'
+        : ctx.analysisSource === 'time_window_fallback'
+          ? 'low'
+          : aggregateConfidence;
+
     return {
       analysisMeta: {
         vehicleId: ctx.vehicleId,
@@ -234,7 +325,11 @@ export class RentalDrivingAnalysisService {
         rentalPeriodId: ctx.bookingId,
         periodStart: ctx.periodStart.toISOString(),
         periodEnd: ctx.periodEnd.toISOString(),
-        dataConfidence: 'medium',
+        dataConfidence,
+        analysisSource: ctx.analysisSource,
+        scoredTripCount: ctx.scoredTripCount,
+        safetyScoredTripCount: ctx.safetyScoredTripCount,
+        totalDistanceKm: ctx.totalDistanceKm,
       },
       overallAssessment: {
         level,
@@ -303,12 +398,19 @@ export class RentalDrivingAnalysisService {
 
   async findAll(
     orgId: string,
-    params?: PaginationParams & { vehicleId?: string; driverId?: string; from?: string; to?: string },
+    params?: PaginationParams & {
+      vehicleId?: string;
+      driverId?: string;
+      bookingId?: string;
+      from?: string;
+      to?: string;
+    },
   ): Promise<PaginatedResult<any>> {
     const { skip, take } = parsePagination(params || {});
     const where: any = { organizationId: orgId };
     if (params?.vehicleId) where.vehicleId = params.vehicleId;
     if (params?.driverId) where.driverId = params.driverId;
+    if (params?.bookingId) where.bookingId = params.bookingId;
     if (params?.from || params?.to) {
       if (params.from) {
         where.periodStart = where.periodStart || {};

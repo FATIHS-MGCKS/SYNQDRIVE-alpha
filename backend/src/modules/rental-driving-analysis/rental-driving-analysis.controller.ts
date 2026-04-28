@@ -16,14 +16,19 @@ export class RentalDrivingAnalysisController {
     @Query('limit') limit?: string,
     @Query('vehicleId') vehicleId?: string,
     @Query('driverId') driverId?: string,
+    @Query('bookingId') bookingId?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
+    // V4.6.95 — `bookingId` filter is required for the per-booking
+    // "Booking Driving Analysis" card in BookingsView. The same endpoint
+    // is reused so we don't grow the API surface area.
     return this.service.findAll(orgId, {
       page: page ? parseInt(page, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
       vehicleId,
       driverId,
+      bookingId,
       from,
       to,
     });

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -186,7 +187,31 @@ export class VehiclesController {
     return this.vehiclesService.upsertTireData(vehicleId, orgId, body);
   }
 
+  /**
+   * V4.6.90 — Only operational availability states can be set directly
+   * via the admin status PATCH.
+   *
+   * `RENTED` and `RESERVED` are derived from real booking / handover
+   * truth (see `BookingsHandoverService.createHandover` — PICKUP moves
+   * the booking to ACTIVE which the fleet-status derivation surfaces
+   * as "Active Rented"; CONFIRMED/PENDING bookings with a future start
+   * show as "Reserved"). Allowing an admin to write those enum values
+   * directly used to create "ghost rentals" — a vehicle card that said
+   * "Active Rented" with null customer / return data because no matching
+   * booking existed. The fleet-status derivation now demotes such ghost
+   * rows to Available at read time (see
+   * `VehiclesService.deriveFleetStatusContext`), but we also reject the
+   * write boundary here so the DB truth stays consistent.
+   */
+  private static readonly ADMIN_WRITABLE_VEHICLE_STATES: ReadonlySet<VehicleStatus> =
+    new Set<VehicleStatus>([
+      'AVAILABLE' as VehicleStatus,
+      'IN_SERVICE' as VehicleStatus,
+      'OUT_OF_SERVICE' as VehicleStatus,
+    ]);
+
   @Patch('organizations/:orgId/vehicles/:vehicleId/status')
+  @UseGuards(OrgScopingGuard)
   async updateVehicleStatus(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
@@ -198,7 +223,14 @@ export class VehiclesController {
     },
   ) {
     const data: Prisma.VehicleUpdateInput = {};
-    if (body.status) data.status = body.status;
+    if (body.status) {
+      if (!VehiclesController.ADMIN_WRITABLE_VEHICLE_STATES.has(body.status)) {
+        throw new BadRequestException(
+          `Vehicle status '${body.status}' cannot be set via the admin status endpoint. RENTED / RESERVED are derived from booking and handover events; create/cancel the booking instead.`,
+        );
+      }
+      data.status = body.status;
+    }
     if (body.cleaningStatus) data.cleaningStatus = body.cleaningStatus;
     if (body.healthStatus) data.healthStatus = body.healthStatus;
     return this.vehiclesService.update(vehicleId, data, orgId);

@@ -9,6 +9,141 @@ export interface AgentStep {
   detail?: string;
 }
 
+// ── Rental Health V1 — canonical types ──────────────────────────────────────
+// These mirror backend/src/modules/rental-health/rental-health.types.ts
+// The UI renders exactly this shape; no free-form rewriting allowed.
+export type RentalHealthState =
+  | 'good'
+  | 'warning'
+  | 'critical'
+  | 'unknown'
+  | 'n_a';
+
+export interface RentalHealthModule {
+  state: RentalHealthState;
+  reason: string;
+  last_updated_at: string | null;
+  data_stale: boolean;
+}
+
+export interface VehicleHealthResponse {
+  vehicle_id: string;
+  organization_id: string;
+  overall_state: RentalHealthState;
+  rental_blocked: boolean;
+  blocking_reasons: string[];
+  modules: {
+    battery: RentalHealthModule;
+    tires: RentalHealthModule;
+    brakes: RentalHealthModule;
+    error_codes: RentalHealthModule;
+    service_compliance: RentalHealthModule;
+    complaints: RentalHealthModule;
+    vehicle_alerts: RentalHealthModule;
+  };
+  generated_at: string;
+}
+
+// ── HM Compatibility Matrix V1 (V4.6.77) ────────────────────────────────────
+// Master-Admin-internal compatibility intelligence — matches
+// backend/src/modules/high-mobility/compatibility/hm-compatibility.types.ts.
+// The shape is UI-ready so the same response can later be re-used by the
+// landing-page compatibility checker and onboarding assistant.
+export type HmCompatibilityEligibilityMode =
+  | 'AVAILABLE'
+  | 'NOT_AVAILABLE'
+  | 'SUPPORT_REQUEST'
+  | 'VIN_DEPENDENT';
+export type HmCompatibilityOnboardingMode =
+  | 'PRECHECK_CONNECT'
+  | 'DIRECT_CONNECT'
+  | 'MANUAL_REVIEW';
+export type HmCompatibilityAppStatus = 'SUPPORTED' | 'PARTIAL' | 'NOT_RECOMMENDED';
+export type HmCompatibilityOverall = 'GOOD' | 'LIMITED' | 'WEAK';
+export type HmCompatibilityConfidence = 'HIGH' | 'MEDIUM' | 'LOW';
+export type HmCompatibilityApp = 'HEALTH' | 'TELEMETRY';
+export type HmSignalCoverage = 'CONFIRMED' | 'EXPECTED' | 'UNVERIFIED' | 'MISSING';
+
+export interface HmCompatibilityBrandOption {
+  brand: string;
+  displayName: string;
+  modelCount: number;
+}
+
+export interface HmCompatibilityModelOption {
+  model: string;
+  displayName: string;
+  yearRange: string | null;
+}
+
+export interface HmSignalCoverageItem {
+  app: HmCompatibilityApp;
+  signalKey: string;
+  signalLabel: string;
+  signalGroup: string;
+  required: boolean;
+  coverage: HmSignalCoverage;
+  confidence: HmCompatibilityConfidence;
+  notes: string | null;
+  displayOrder: number;
+}
+
+export interface HmAppCoverageSummary {
+  status: HmCompatibilityAppStatus;
+  coveredRequired: number;
+  totalRequired: number;
+  totalSignals: number;
+  reason: string;
+  signals: HmSignalCoverageItem[];
+}
+
+export interface HmCompatibilitySummary {
+  brand: string;
+  brandDisplayName: string;
+  model: string;
+  modelDisplayName: string;
+  modelYearFrom: number | null;
+  modelYearTo: number | null;
+  supportFromText: string | null;
+  overallStatus: HmCompatibilityOverall;
+  overallNotes: string | null;
+}
+
+export interface HmCompatibilityOnboardingInfo {
+  eligibilityMode: HmCompatibilityEligibilityMode;
+  onboardingMode: HmCompatibilityOnboardingMode;
+  oemPath: 'ELIGIBILITY_FIRST' | 'DIRECT_FLEET_CLEARANCE' | 'UNKNOWN';
+  routingNote: string | null;
+  guidance: string;
+}
+
+export interface HmCompatibilitySourceInfo {
+  supportSource: string | null;
+  confidence: HmCompatibilityConfidence;
+  lastReviewedAt: string | null;
+  notes: string | null;
+}
+
+export interface HmCompatibilityLookupEcho {
+  brand: string;
+  model: string;
+  year: number | null;
+  resolvedBrandNormalized: string | null;
+  resolvedModelNormalized: string | null;
+}
+
+export interface HmCompatibilityCheckResponse {
+  lookup: HmCompatibilityLookupEcho;
+  found: boolean;
+  summary: HmCompatibilitySummary | null;
+  healthApp: HmAppCoverageSummary | null;
+  telemetryApp: HmAppCoverageSummary | null;
+  onboarding: HmCompatibilityOnboardingInfo | null;
+  source: HmCompatibilitySourceInfo | null;
+  notFoundReason: string | null;
+  generatedAt: string;
+}
+
 /** Response from GET /vehicles/register/ai-specs (DIMO Agents flow). */
 export interface EuromasterAccessInfo {
   enabled: boolean;
@@ -243,14 +378,44 @@ function del<T>(path: string) {
   return request<T>(path, { method: 'DELETE' });
 }
 
+// V4.6.95 — `ASSIGNED_USER` / `USER` removed alongside the unused user-score
+// feature. Canonical assignment statuses match the Prisma enum 1:1.
 export type TripAssignmentStatus =
   | 'ASSIGNED_DRIVER'
-  | 'ASSIGNED_USER'
   | 'ASSIGNED_BOOKING_CUSTOMER'
   | 'PRIVATE_UNASSIGNED'
   | 'UNKNOWN_ASSIGNMENT';
 
-export type TripAssignmentSubjectType = 'DRIVER' | 'USER' | 'BOOKING_CUSTOMER';
+export type TripAssignmentSubjectType = 'DRIVER' | 'BOOKING_CUSTOMER';
+
+export type EnergyEventKind = 'REFUEL' | 'RECHARGE';
+export type EnergyEventConfidence = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export interface EnergyEvent {
+  id: string;
+  vehicleId: string;
+  dimoSegmentId: string;
+  kind: EnergyEventKind;
+  detectionMechanism: 'refuel' | 'recharge' | string;
+  startTime: string;
+  endTime: string;
+  durationSeconds: number;
+  startLatitude: number | null;
+  startLongitude: number | null;
+  endLatitude: number | null;
+  endLongitude: number | null;
+  fuelDeltaLiters: number | null;
+  fuelDeltaPercent: number | null;
+  socDeltaPercent: number | null;
+  energyDeltaKwh: number | null;
+  odometerStartKm: number | null;
+  odometerEndKm: number | null;
+  confidence: EnergyEventConfidence;
+}
+
+export type TripTimelineItem =
+  | ({ itemType: 'trip' } & VehicleTripAnalytics)
+  | ({ itemType: 'energy-event' } & EnergyEvent);
 
 export interface VehicleTripAnalytics {
   id: string;
@@ -325,6 +490,9 @@ export interface CustomerApiRecord {
   drivingStyleScore?: number | null;
   safetyScore?: number | null;
   scoreEligibleTripCount?: number;
+  // V4.6.66 — booking-derived aggregates returned by /customers and /customers/:id.
+  totalRevenueCents?: number;
+  lastBookingDate?: string | null;
   [key: string]: unknown;
 }
 
@@ -336,12 +504,52 @@ export interface RentalDrivingAnalysisItem {
   periodStart: string;
   periodEnd: string;
   overallLevel: string;
+  // V4.6.95 — riskLevel is lowercase ('low' | 'medium' | 'high') as
+  // produced by RentalDrivingAnalysisService.
   riskLevel: string;
+  // V4.6.95 — `drivingScore` is the legacy compat mirror. Prefer
+  // `payload.drivingBehavior.drivingStyleScore` everywhere.
   drivingScore: number | null;
+  drivingEventsCount?: number | null;
+  abuseDetectionCount?: number | null;
+  wearImpact?: string | null;
+  driverStyleCategory?: string | null;
   payload: {
     overallAssessment?: { level?: string; title?: string; shortSummary?: string };
-    drivingBehavior?: { drivingStyleScore?: number | null; safetyScore?: number | null; drivingScore?: number | null };
-    eventSummary?: { drivingEventsCount?: number | null; abuseDetectionCount?: number | null; errorCodeOccurred?: boolean };
+    drivingBehavior?: {
+      drivingStyleScore?: number | null;
+      safetyScore?: number | null;
+      drivingScore?: number | null;
+      safetyStyle?: string;
+      accelerationBehavior?: { level?: string; summary?: string };
+      brakingBehavior?: { level?: string; summary?: string };
+    };
+    eventSummary?: {
+      drivingEventsCount?: number | null;
+      abuseDetectionCount?: number | null;
+      errorCodeOccurred?: boolean;
+      eventHighlights?: string[];
+    };
+    riskAnalysis?: {
+      level?: string;
+      summary?: string;
+      keyRisks?: string[];
+    };
+    wearImpactAssessment?: {
+      overallWearImpact?: string;
+      summary?: string;
+      affectedAreas?: Array<{ area: string; impact: string; reason?: string }>;
+    };
+    // V4.6.95 — backend-supplied confidence metadata.
+    analysisMeta?: {
+      tripCount?: number;
+      scoredTripCount?: number;
+      safetyScoredTripCount?: number;
+      totalDistanceKm?: number;
+      assignmentCoveragePct?: number;
+      hasEnoughData?: boolean;
+      dataConfidence?: 'none' | 'low' | 'medium' | 'high';
+    };
     [key: string]: unknown;
   } | null;
   vehicle?: { id?: string; make?: string; model?: string; licensePlate?: string } | null;
@@ -412,6 +620,71 @@ export const api = {
     update: (id: string, data: any) => patch<any>(`/admin/organizations/${id}`, data),
     delete: (id: string) => del<void>(`/admin/organizations/${id}`),
     stats: (id: string) => get<any>(`/admin/organizations/${id}/stats`),
+
+    // ─── Tenant-scoped own-organization profile (Settings → Company Profile) ───
+    // Distinct from the MASTER_ADMIN routes above: these are guarded by
+    // OrgScopingGuard and only allow editing the caller's own org.
+    getProfile: (orgId: string) =>
+      get<{
+        id: string;
+        companyName: string;
+        address: string | null;
+        city: string | null;
+        state: string | null;
+        zip: string | null;
+        country: string | null;
+        taxId: string | null;
+        phone: string | null;
+        email: string | null;
+        website: string | null;
+        timezone: string | null;
+        language: string | null;
+        managerName: string | null;
+        managerEmail: string | null;
+        logoUrl: string | null;
+        businessType: string;
+      }>(`/organizations/${orgId}/profile`),
+    updateProfile: (
+      orgId: string,
+      data: {
+        companyName?: string;
+        address?: string | null;
+        city?: string | null;
+        state?: string | null;
+        zip?: string | null;
+        country?: string | null;
+        taxId?: string | null;
+        phone?: string | null;
+        email?: string | null;
+        website?: string | null;
+        timezone?: string | null;
+        language?: string | null;
+        managerName?: string | null;
+        managerEmail?: string | null;
+        logoUrl?: string | null;
+      },
+    ) => patch<any>(`/organizations/${orgId}/profile`, data),
+    uploadLogo: async (orgId: string, file: File) => {
+      const form = new FormData();
+      form.append('file', file);
+      const token = localStorage.getItem('synqdrive_token');
+      const res = await fetch(`/api/v1/organizations/${orgId}/profile/logo`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      });
+      if (!res.ok) {
+        let message = `Upload failed (${res.status})`;
+        try {
+          const body = (await res.json()) as { message?: string };
+          if (body?.message) message = body.message;
+        } catch {
+          /* ignore */
+        }
+        throw new Error(message);
+      }
+      return res.json() as Promise<{ url: string }>;
+    },
   },
   users: {
     listAll: () => get<any[]>('/admin/users'),
@@ -524,9 +797,44 @@ export const api = {
     create: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/bookings`, data),
     update: (orgId: string, id: string, data: any) => patch<any>(`/organizations/${orgId}/bookings/${id}`, data),
     cancel: (orgId: string, id: string) => del<void>(`/organizations/${orgId}/bookings/${id}`),
+    // V4.6.81 — Mark a CONFIRMED booking whose scheduled pickup has
+    // passed without a handover as NO_SHOW. Distinct from cancel so
+    // downstream reporting can tell "called off" from "customer never
+    // showed". Server-side guardrails enforce status + time window.
+    markNoShow: (orgId: string, id: string, reason?: string | null) =>
+      post<any>(`/organizations/${orgId}/bookings/${id}/no-show`, { reason: reason ?? null }),
     stats: (orgId: string) => get<any>(`/organizations/${orgId}/bookings/stats`),
     todayPickups: (orgId: string) => get<any[]>(`/organizations/${orgId}/bookings/today/pickups`),
     todayReturns: (orgId: string) => get<any[]>(`/organizations/${orgId}/bookings/today/returns`),
+    // V4.6.75 — Handover-Protokoll (Übergabe beim Pickup, Rückgabe beim Return).
+    // V4.6.81 — Pickup handover now accepts an optional `performedAt`
+    // ISO-8601 string so operators can record a handover that physically
+    // happened earlier (customer arrived late, dispatcher logs after
+    // the fact). Omitted → server uses `now()`.
+    listHandovers: (orgId: string, bookingId: string) =>
+      get<any[]>(`/organizations/${orgId}/bookings/${bookingId}/handover`),
+    createPickupHandover: (orgId: string, bookingId: string, data: any) =>
+      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/pickup`, data),
+    createReturnHandover: (orgId: string, bookingId: string, data: any) =>
+      post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return`, data),
+  },
+  // V4.6.76 Rental Health V1 — canonical 5-state vehicle health with
+  // rental_blocked gate. The backend aggregates Battery/Tires/Brakes/
+  // DTC/Service-Info/Complaints/OEM-Alerts into one deterministic shape.
+  rentalHealth: {
+    getVehicle: (orgId: string, vehicleId: string) =>
+      get<VehicleHealthResponse>(
+        `/organizations/${orgId}/vehicles/${vehicleId}/rental-health`,
+      ),
+    getFleet: (orgId: string, vehicleIds?: string[]) => {
+      const suffix =
+        vehicleIds && vehicleIds.length > 0
+          ? `?vehicleIds=${encodeURIComponent(vehicleIds.join(','))}`
+          : '';
+      return get<{ vehicles: VehicleHealthResponse[] }>(
+        `/organizations/${orgId}/rental-health${suffix}`,
+      );
+    },
   },
   dashboardInsights: {
     get: (orgId: string) => get<{
@@ -620,12 +928,26 @@ export const api = {
     seed: () => post<any>('/admin/service-partners/seed', {}),
   },
   rentalDrivingAnalyses: {
-    list: (orgId: string, params?: { page?: number; limit?: number; vehicleId?: string; driverId?: string; from?: string; to?: string }) => {
+    // V4.6.95 — `bookingId` filter added so the booking detail card in
+    // BookingsView can fetch the single canonical analysis row for a booking.
+    list: (
+      orgId: string,
+      params?: {
+        page?: number;
+        limit?: number;
+        vehicleId?: string;
+        driverId?: string;
+        bookingId?: string;
+        from?: string;
+        to?: string;
+      },
+    ) => {
       const q = new URLSearchParams();
       if (params?.page != null) q.set('page', String(params.page));
       if (params?.limit != null) q.set('limit', String(params.limit));
       if (params?.vehicleId) q.set('vehicleId', params.vehicleId);
       if (params?.driverId) q.set('driverId', params.driverId);
+      if (params?.bookingId) q.set('bookingId', params.bookingId);
       if (params?.from) q.set('from', params.from);
       if (params?.to) q.set('to', params.to);
       const suffix = q.toString() ? '?' + q.toString() : '';
@@ -642,14 +964,73 @@ export const api = {
     update: (orgId: string, id: string, data: any) => patch<any>(`/organizations/${orgId}/customers/${id}`, data),
     delete: (orgId: string, id: string) => del<void>(`/organizations/${orgId}/customers/${id}`),
     stats: (orgId: string) => get<any>(`/organizations/${orgId}/customers/stats`),
+    // V4.6.65 — KYC document upload during customer registration.
+    // documentType is one of 'id-front' | 'id-back' | 'license-front' | 'license-back'.
+    uploadDocument: async (
+      orgId: string,
+      documentType: 'id-front' | 'id-back' | 'license-front' | 'license-back',
+      file: File,
+    ) => {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('documentType', documentType);
+      const token = localStorage.getItem('synqdrive_token');
+      const res = await fetch(
+        `/api/v1/organizations/${orgId}/customers/documents`,
+        {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: form,
+        },
+      );
+      if (!res.ok) {
+        let message = `Upload failed (${res.status})`;
+        try {
+          const body = (await res.json()) as { message?: string };
+          if (body?.message) message = body.message;
+        } catch {
+          /* ignore */
+        }
+        throw new Error(message);
+      }
+      return res.json() as Promise<{ url: string; documentType: string | null }>;
+    },
   },
   stations: {
-    list: (orgId: string) => get<any[]>(`/organizations/${orgId}/stations`),
-    get: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/stations/${id}`),
-    create: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/stations`, data),
-    update: (orgId: string, id: string, data: any) => patch<any>(`/organizations/${orgId}/stations/${id}`, data),
-    delete: (orgId: string, id: string) => del<void>(`/organizations/${orgId}/stations/${id}`),
-    stats: (orgId: string) => get<any>(`/organizations/${orgId}/stations/stats`),
+    list: (orgId: string) => get<Station[]>(`/organizations/${orgId}/stations`),
+    get: (orgId: string, id: string) => get<Station>(`/organizations/${orgId}/stations/${id}`),
+    create: (orgId: string, data: StationUpsertPayload) =>
+      post<Station>(`/organizations/${orgId}/stations`, data),
+    update: (orgId: string, id: string, data: Partial<StationUpsertPayload>) =>
+      patch<Station>(`/organizations/${orgId}/stations/${id}`, data),
+    delete: (orgId: string, id: string) =>
+      del<{ id: string; unassignedVehicles: number }>(`/organizations/${orgId}/stations/${id}`),
+    stats: (orgId: string) => get<StationsStats>(`/organizations/${orgId}/stations/stats`),
+    searchPlaces: (orgId: string, q: string) =>
+      get<StationPlaceSuggestion[]>(`/organizations/${orgId}/stations/search-places?q=${encodeURIComponent(q)}`),
+    placeDetails: (orgId: string, placeId: string) =>
+      get<StationPlaceDetails | null>(`/organizations/${orgId}/stations/place-details/${placeId}`),
+    /**
+     * Replace this station's vehicle list with `vehicleIds` (SET semantics).
+     * Vehicles previously assigned to this station that are not in the list
+     * will be detached; vehicles in the list that are currently elsewhere
+     * (including at another station) are moved here.
+     */
+    setVehicles: (orgId: string, stationId: string, vehicleIds: string[]) =>
+      put<StationVehicleAssignmentResult>(
+        `/organizations/${orgId}/stations/${stationId}/vehicles`,
+        { vehicleIds },
+      ),
+    /**
+     * V4.7.07 — Geocode all stations in this org that are missing
+     * latitude / longitude. Idempotent. Returns a per-station summary
+     * (geocoded / failed / skipped) so the UI can show progress.
+     */
+    backfillCoordinates: (orgId: string) =>
+      post<StationGeocodingBackfillResult>(
+        `/organizations/${orgId}/stations/backfill-coordinates`,
+        {},
+      ),
   },
   vendors: {
     list: (orgId: string) => get<Vendor[]>(`/organizations/${orgId}/vendors`),
@@ -886,6 +1267,31 @@ export const api = {
       get<VehicleTripAnalytics[]>(`/vehicles/${vehicleId}/trips` + buildQuery(params)),
     tripStats: (vehicleId: string) => get<VehicleTripStats>(`/vehicles/${vehicleId}/trips/stats`),
     tripDetail: (vehicleId: string, tripId: string) => get<VehicleTripAnalytics>(`/vehicles/${vehicleId}/trips/${tripId}`),
+    energyEvents: (
+      vehicleId: string,
+      params?: { from?: string; to?: string },
+    ) =>
+      get<EnergyEvent[]>(
+        `/vehicles/${vehicleId}/energy-events` + buildQuery(params),
+      ),
+    detectEnergyEvents: (
+      vehicleId: string,
+      payload?: { from?: string; to?: string },
+    ) =>
+      post<{
+        fetched: number;
+        created: number;
+        updated: number;
+        skipped: number;
+        events: EnergyEvent[];
+      }>(`/vehicles/${vehicleId}/energy-events/detect`, payload ?? {}),
+    tripsTimeline: (
+      vehicleId: string,
+      params?: { from?: string; to?: string; driver?: string },
+    ) =>
+      get<TripTimelineItem[]>(
+        `/vehicles/${vehicleId}/trips-timeline` + buildQuery(params),
+      ),
     driverScore: (
       vehicleId: string,
       params: { subjectType: TripAssignmentSubjectType; subjectId: string; from?: string; to?: string },
@@ -1244,6 +1650,32 @@ export const api = {
         healthApp: { appContainer: string; oauthReady: boolean; mqttReady: boolean; certConfigured: boolean };
         telemetryApp: { appContainer: string; oauthReady: boolean; mqttReady: boolean; certConfigured: boolean };
       }>('/integrations/hm/readiness'),
+  },
+  // V4.6.77 High Mobility Compatibility Matrix — Master-Admin internal
+  // compatibility intelligence (brand/model/model-year → app suitability +
+  // signal coverage + onboarding mode). Powers HighMobilityCompatibilityView
+  // and is designed to be reusable later by the landing-page compatibility
+  // checker and onboarding assistant.
+  hmCompatibility: {
+    listBrands: () =>
+      get<{ brands: HmCompatibilityBrandOption[] }>(
+        '/admin/high-mobility/compatibility/brands',
+      ),
+    listModels: (brand: string) =>
+      get<{ models: HmCompatibilityModelOption[] }>(
+        `/admin/high-mobility/compatibility/models?brand=${encodeURIComponent(brand)}`,
+      ),
+    check: (brand: string, model: string, year?: number | null) => {
+      const params = new URLSearchParams();
+      params.set('brand', brand);
+      params.set('model', model);
+      if (year != null && Number.isFinite(year)) {
+        params.set('year', String(year));
+      }
+      return get<HmCompatibilityCheckResponse>(
+        `/admin/high-mobility/compatibility/check?${params.toString()}`,
+      );
+    },
   },
 };
 
@@ -1639,6 +2071,16 @@ export interface ServiceInfoStatus {
   serviceRemainingPercent: number | null;
   serviceRemainingKm: number | null;
   serviceRemainingMonths: number | null;
+  /** Day-level precision from HM OEM signal (or derived from months). Signed — negative means overdue. */
+  serviceRemainingDays: number | null;
+  /** True when remainingDays < 0 OR remainingKm < 0 (either channel signals overdue). */
+  serviceOverdue: boolean;
+  /** Absolute days overdue. null when not overdue by time. */
+  serviceOverdueDays: number | null;
+  /** Absolute km overdue. null when not overdue by distance. */
+  serviceOverdueKm: number | null;
+  /** True when 0..7 remaining days OR 0..500 remaining km (imminent but not yet overdue). */
+  serviceDueImminently: boolean;
   intervalKm: number | null;
   intervalMonths: number | null;
   lastServiceDate: string | null;
@@ -1646,9 +2088,15 @@ export interface ServiceInfoStatus {
   lastServiceWorkshop: string | null;
   tuvValidTill: string | null;
   tuvRemainingMonths: number | null;
+  /** Signed days until TÜV expires. Negative = lapsed. */
+  tuvRemainingDays: number | null;
+  tuvOverdue: boolean;
   tuvLastDate: string | null;
   bokraftValidTill: string | null;
   bokraftRemainingMonths: number | null;
+  /** Signed days until BOKraft expires. Negative = lapsed. */
+  bokraftRemainingDays: number | null;
+  bokraftOverdue: boolean;
   bokraftLastDate: string | null;
   serviceHistory: Array<{ id: string; eventType: string; date: string; odometerKm: number | null; workshopName: string | null; notes: string | null }>;
   tuvHistory: Array<{ id: string; eventType: string; date: string; odometerKm: number | null; workshopName: string | null; notes: string | null }>;
@@ -1657,6 +2105,10 @@ export interface ServiceInfoStatus {
   hmServiceSource?: boolean;
   /** Phase 3: ISO timestamp of last successful HM service signal fetch */
   hmLastUpdatedAt?: string | null;
+  /** True when OEM streams `maintenance.distance_to_next_service` for this vehicle. */
+  hmDistanceFromOem?: boolean;
+  /** True when OEM streams `maintenance.time_to_next_service` for this vehicle. */
+  hmTimeFromOem?: boolean;
 }
 
 export interface OilChangeStatus {
@@ -1955,7 +2407,36 @@ export interface FleetMapVehicleResponse {
   isLiveTracking: boolean;
   heading: number | null;
   imageUrl: string | null;
+  // V4.6.84 — canonical fleet-status context. All fields nullable so
+  // legacy consumers that do not read them keep working unchanged.
+  odometerKm: number | null;
+  fuelPercent: number | null;
+  evSoc: number | null;
+  isElectric: boolean;
+  reservedBookingId: string | null;
+  reservedCustomerName: string | null;
+  reservedPickupAt: string | null;
+  // V4.6.94 — Booking endDate exposed so the Reserved fleet-status card
+  // can render the planned rental duration without an extra round-trip.
+  reservedReturnAt: string | null;
+  reservedPickupStationName: string | null;
+  reservedIsOverdue: boolean;
+  activeBookingId: string | null;
+  activeCustomerName: string | null;
+  // V4.6.94 — Booking startDate (NOT pickup-protocol timestamp). Lets
+  // the Active Rented card render a "time-progress" bar.
+  activeStartAt: string | null;
+  activeReturnAt: string | null;
+  activeReturnStationName: string | null;
+  activeKmIncluded: number | null;
+  activeKmDriven: number | null;
+  activeIsOverdue: boolean;
+  maintenanceReason: string | null;
+  maintenanceReasonCode: FleetMaintenanceReasonCode | null;
+  maintenanceUrgency: 'planned' | 'urgent' | null;
 }
+
+export type FleetMaintenanceReasonCode = 'SCHEDULED_SERVICE' | 'OPERATIONAL_BLOCK';
 
 export interface FleetConnectivityVehicle {
   vehicleId: string;
@@ -2195,6 +2676,11 @@ export interface AiHealthIndicators {
   limpMode: boolean | null;
   brakeWarning: boolean | null;
   tirePressureWarning: boolean | null;
+  /**
+   * Dashboard battery warning light (from OEM dashboard_lights.battery_low_warning
+   * where available). null when the OEM does not stream this signal.
+   */
+  batteryWarningLight: boolean | null;
 }
 
 export interface AiHealthCareResponse extends HealthSummaryResponse {
@@ -2281,6 +2767,118 @@ export interface PlaceDetails {
   longitude: number | null;
   googleMapsUrl: string | null;
   types: string[];
+}
+
+// ── Stations & Branches ─────────────────────────────────────────────────────
+// Mirrors backend StationDto / StationsService.
+export type StationStatus = 'ACTIVE' | 'INACTIVE';
+
+export interface Station {
+  id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  postalCode: string | null;
+  country: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  /**
+   * Geofence radius (m). When non-null and combined with `latitude` /
+   * `longitude`, a vehicle is considered "at home" if its current GPS
+   * fix is within this many meters of the station's coordinates. See
+   * `frontend/src/lib/geospatial.ts > isVehicleAtHomeStation`.
+   */
+  radiusMeters: number | null;
+  phone: string | null;
+  email: string | null;
+  managerName: string | null;
+  openingHours: string | null;
+  notes: string | null;
+  googlePlaceId: string | null;
+  status: StationStatus;
+  statusLabel: string;
+  vehicleCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StationUpsertPayload {
+  name: string;
+  address?: string | null;
+  city?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  radiusMeters?: number | null;
+  phone?: string | null;
+  email?: string | null;
+  managerName?: string | null;
+  openingHours?: string | null;
+  notes?: string | null;
+  googlePlaceId?: string | null;
+  status?: StationStatus;
+}
+
+export interface StationsStats {
+  totalStations: number;
+  activeStations: number;
+  inactiveStations: number;
+  totalVehicles: number;
+  unassignedVehicles: number;
+  stations: Array<{
+    id: string;
+    name: string;
+    city: string | null;
+    status: StationStatus;
+    statusLabel: string;
+    vehicleCount: number;
+  }>;
+}
+
+export interface StationVehicleAssignmentResult {
+  stationId: string;
+  totalAssigned: number;
+  newlyAttached: number;
+  detached: number;
+  movedFromOtherStations: number;
+}
+
+// V4.7.07 — One-shot Mapbox geocoding backfill summary returned by
+// `api.stations.backfillCoordinates(orgId)`. Mirrors backend
+// `StationGeocodingBackfillResult` in `stations.service.ts`.
+export interface StationGeocodingBackfillResult {
+  totalChecked: number;
+  totalGeocoded: number;
+  totalFailed: number;
+  totalSkipped: number;
+  results: Array<{
+    stationId: string;
+    stationName: string;
+    status: 'geocoded' | 'failed' | 'skipped';
+    latitude: number | null;
+    longitude: number | null;
+    reason?: string;
+  }>;
+}
+
+export interface StationPlaceSuggestion {
+  placeId: string;
+  mainText: string;
+  secondaryText: string;
+  description: string;
+}
+
+export interface StationPlaceDetails {
+  name: string | null;
+  address: string | null;
+  city: string | null;
+  postalCode: string | null;
+  country: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  phone: string | null;
+  googleMapsUrl: string | null;
 }
 
 export interface ChatMessageResponse {

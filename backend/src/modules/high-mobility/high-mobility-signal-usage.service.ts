@@ -6,6 +6,8 @@ import {
   extractHmSignalData,
   extractHmSignalValue,
   resolveHmSignalEntry,
+  normalizeHmTirePressures,
+  normalizeHmTirePressureStatuses,
 } from './high-mobility-mqtt-payload.util';
 
 /** Signal group identifier — matches HmSignalGroup Prisma enum */
@@ -65,6 +67,13 @@ export interface HmAiHealthCareSignals {
   brakeLiningPreWarning: boolean | null;
   tirePressureWarning: boolean | null;
   dashboardLights: unknown | null;
+  // Extended display-grade signals (Mercedes fleet clearance actually pushes these)
+  batteryVoltage: { value: number | null; unit: string | null; timestamp: string | null } | null;
+  engineCoolantTemperatureC: { value: number | null; unit: string | null; timestamp: string | null } | null;
+  fuelLevelPercent: { value: number | null; unit: string | null; timestamp: string | null } | null;
+  odometerKm: { value: number | null; unit: string | null; timestamp: string | null } | null;
+  ignitionOn: boolean | null;
+  lastKnownLocation: { latitude: number | null; longitude: number | null; timestamp: string | null } | null;
   lastUpdatedAt: string | null;
   hmVehicleId: string;
   freshnessStatus: HmFreshnessStatus;
@@ -160,6 +169,32 @@ export class HmSignalUsageService {
       s === 'ALERT'
     );
 
+    // V4.6.41: Derive overallStatus from numeric pressures when status strings
+    // are absent. Mercedes fleet-clearance pushes tire_pressures (numeric bar
+    // values) but does NOT push tire_pressure_statuses — previously this fell
+    // through to UNKNOWN and the UI rendered "No recent tire pressure data"
+    // even though four valid bar readings were cached. Treat a pressure as
+    // suspicious only if it is implausibly low (<1.5 bar = definite
+    // underinflation/puncture) or implausibly high (>4.0 bar = sensor anomaly
+    // or massive overpressure). Otherwise numeric pressures count as OK —
+    // this is conservative: an actual underinflation warning would still
+    // flip overallStatus via the HM push of the dedicated status signal.
+    const numericPressures = [
+      pressures.frontLeft, pressures.frontRight,
+      pressures.rearLeft, pressures.rearRight,
+    ].filter((p: unknown): p is number => typeof p === 'number' && Number.isFinite(p));
+
+    const pressureSuggestsIssue = numericPressures.some((p) => p < 1.5 || p > 4.0);
+
+    let derivedOverallStatus: 'OK' | 'ISSUE' | 'UNKNOWN';
+    if (allStatuses.length > 0) {
+      derivedOverallStatus = hasIssue ? 'ISSUE' : 'OK';
+    } else if (numericPressures.length > 0) {
+      derivedOverallStatus = pressureSuggestsIssue ? 'ISSUE' : 'OK';
+    } else {
+      derivedOverallStatus = 'UNKNOWN';
+    }
+
     return {
       frontLeft: pressures.frontLeft ?? null,
       frontRight: pressures.frontRight ?? null,
@@ -170,7 +205,7 @@ export class HmSignalUsageService {
       statusFrontRight: statuses.frontRight ?? null,
       statusRearLeft: statuses.rearLeft ?? null,
       statusRearRight: statuses.rearRight ?? null,
-      overallStatus: allStatuses.length === 0 ? 'UNKNOWN' : hasIssue ? 'ISSUE' : 'OK',
+      overallStatus: derivedOverallStatus,
       lastUpdatedAt: state.lastSuccessAt?.toISOString() ?? null,
       hmVehicleId: state.hmVehicleId,
       freshnessStatus: getFreshnessStatus(state.lastSuccessAt, 'TIRE_PRESSURE'),
@@ -201,6 +236,23 @@ export class HmSignalUsageService {
       );
     }
 
+    const readNumeric = (key: string): { value: number | null; unit: string | null; timestamp: string | null } | null => {
+      const s = signals[key];
+      if (!s) return null;
+      const n = Number(s.value);
+      return {
+        value: Number.isFinite(n) ? n : null,
+        unit: s.unit ?? null,
+        timestamp: s.timestamp ?? null,
+      };
+    };
+
+    const ignitionSig = signals['vehicle_status.get.ignition'];
+    const locSig = signals['vehicle_location.get.coordinates'];
+    const locRaw = locSig?.value as any;
+    const locLat = locRaw && typeof locRaw === 'object' ? Number(locRaw.latitude) : NaN;
+    const locLng = locRaw && typeof locRaw === 'object' ? Number(locRaw.longitude) : NaN;
+
     return {
       oilLevel: oilSig != null ? {
         value: oilSig.value,
@@ -211,6 +263,21 @@ export class HmSignalUsageService {
       brakeLiningPreWarning: brakeSig != null ? Boolean(brakeSig.value) : null,
       tirePressureWarning,
       dashboardLights: signals['dashboard_lights.get.dashboard_lights']?.value ?? null,
+      batteryVoltage: readNumeric('diagnostics.get.battery_voltage'),
+      engineCoolantTemperatureC: readNumeric('diagnostics.get.engine_coolant_temperature'),
+      fuelLevelPercent: readNumeric('diagnostics.get.fuel_level'),
+      odometerKm: readNumeric('diagnostics.get.odometer'),
+      ignitionOn: ignitionSig?.value !== undefined && ignitionSig?.value !== null
+        ? Boolean(ignitionSig.value)
+        : null,
+      lastKnownLocation:
+        locRaw && typeof locRaw === 'object' && (Number.isFinite(locLat) || Number.isFinite(locLng))
+          ? {
+              latitude: Number.isFinite(locLat) ? locLat : null,
+              longitude: Number.isFinite(locLng) ? locLng : null,
+              timestamp: locSig?.timestamp ?? null,
+            }
+          : null,
       lastUpdatedAt: state.lastSuccessAt?.toISOString() ?? null,
       hmVehicleId: state.hmVehicleId,
       freshnessStatus: getFreshnessStatus(state.lastSuccessAt, 'AI_HEALTH_CARE'),
@@ -248,12 +315,14 @@ export class HmSignalUsageService {
 
       if (healthData.syncStatus === 'MQTT_ONLY') {
         // Fleet Clearance vehicle — REST command not supported. Data arrives via MQTT push.
-        // Write informational state (not an error). Preserve existing dataJson if present.
+        // This is NOT an error; lastErrorMessage must stay null so the UI does not
+        // render a red "Letzter HM-Abruf fehlgeschlagen" banner. Informational
+        // status is surfaced via logs only. Preserve existing dataJson if present.
         const existing = await this.getGroupState(vehicleId, signalGroup);
         await this.upsertGroupState(vehicleId, hmVehicleId, signalGroup, {
           lastFetchedAt: now,
           lastErrorAt: null,
-          lastErrorMessage: 'MQTT_ONLY: waiting for vehicle telemetry via MQTT push',
+          lastErrorMessage: null,
           dataJson: (existing?.dataJson as Record<string, unknown> | null) ?? null,
         });
         this.logger.log(
@@ -311,12 +380,12 @@ export class HmSignalUsageService {
 
       if (healthData.syncStatus === 'MQTT_ONLY') {
         // Fleet Clearance push model — REST command not supported.
-        // Mark all groups as MQTT_ONLY (informational, not error).
+        // Informational only; keep lastErrorMessage null so UI doesn't flag it as failure.
         for (const g of ALL_HM_SIGNAL_GROUPS) {
           await this.upsertGroupState(vehicleId, hmVehicleId, g, {
             lastFetchedAt: now,
             lastErrorAt: null,
-            lastErrorMessage: 'MQTT_ONLY: waiting for vehicle telemetry via MQTT push',
+            lastErrorMessage: null,
             dataJson: null,
           });
         }
@@ -444,31 +513,72 @@ export class HmSignalUsageService {
       });
     }
 
+    // ── Tire pressures ──────────────────────────────────────────────────────
+    // Mercedes MQTT V2 delivers the 4 wheels as a single array with {location, pressure}
+    // sub-objects, NOT as a keyed object. The shared normalizer accepts both shapes
+    // and always returns {frontLeft, frontRight, rearLeft, rearRight, unit:'bar'}.
     const tirePressuresSig = getSignal('diagnostics.get.tire_pressures', ['diagnostics.tire_pressures', 'tire_pressures']);
     const tireStatusesSig = getSignal('diagnostics.get.tire_pressure_statuses', ['diagnostics.tire_pressure_statuses', 'tire_pressure_statuses']);
-    const tirePressuresPayload = extractHmSignalData(tirePressuresSig);
-    const tireStatusesPayload = extractHmSignalData(tireStatusesSig);
+    const normalizedTirePressures = tirePressuresSig != null ? normalizeHmTirePressures(tirePressuresSig) : null;
+    const normalizedTireStatuses = tireStatusesSig != null ? normalizeHmTirePressureStatuses(tireStatusesSig) : null;
 
-    if (tirePressuresPayload != null || tireStatusesPayload != null) {
+    if (normalizedTirePressures || normalizedTireStatuses) {
       const existing = await this.getGroupState(vehicleId, 'TIRE_PRESSURE');
       const prev = (existing?.dataJson as Record<string, any> | null) ?? null;
+
+      // Merge wheel-by-wheel so a partial push (e.g. only front_left) doesn't
+      // wipe previously known values for the other three positions.
+      const prevPressures = (prev?.tirePressures as Record<string, any> | null) ?? null;
+      const prevStatuses = (prev?.tirePressureStatuses as Record<string, any> | null) ?? null;
+
+      const mergedPressures = normalizedTirePressures
+        ? {
+            frontLeft: normalizedTirePressures.frontLeft ?? prevPressures?.frontLeft ?? null,
+            frontRight: normalizedTirePressures.frontRight ?? prevPressures?.frontRight ?? null,
+            rearLeft: normalizedTirePressures.rearLeft ?? prevPressures?.rearLeft ?? null,
+            rearRight: normalizedTirePressures.rearRight ?? prevPressures?.rearRight ?? null,
+            unit: normalizedTirePressures.unit,
+          }
+        : prevPressures;
+
+      const mergedStatuses = normalizedTireStatuses
+        ? {
+            frontLeft: normalizedTireStatuses.frontLeft ?? prevStatuses?.frontLeft ?? null,
+            frontRight: normalizedTireStatuses.frontRight ?? prevStatuses?.frontRight ?? null,
+            rearLeft: normalizedTireStatuses.rearLeft ?? prevStatuses?.rearLeft ?? null,
+            rearRight: normalizedTireStatuses.rearRight ?? prevStatuses?.rearRight ?? null,
+          }
+        : prevStatuses;
+
       await this.upsertGroupState(vehicleId, hmVehicleId, 'TIRE_PRESSURE', {
         lastFetchedAt: now,
         lastSuccessAt: now,
         lastErrorAt: null,
         lastErrorMessage: null,
         dataJson: {
-          tirePressures: tirePressuresPayload ?? prev?.tirePressures ?? null,
-          tirePressureStatuses: tireStatusesPayload ?? prev?.tirePressureStatuses ?? null,
+          tirePressures: mergedPressures,
+          tirePressureStatuses: mergedStatuses,
         },
       });
     }
 
+    // ── AI Health Care signals (+ extended display-grade HM signals) ────────
+    // These are informational / display-only signals. Any new key that lands
+    // here is also reflected in getAiHealthCareSignals() for the UI.
     const aiSignalDefs: Array<{ key: string; aliases?: string[] }> = [
       { key: 'dashboard_lights.get.dashboard_lights', aliases: ['dashboard_lights.dashboard_lights'] },
       { key: 'diagnostics.get.engine_oil_level', aliases: ['diagnostics.engine_oil_level', 'engine_oil_level'] },
       { key: 'engine.get.limp_mode', aliases: ['engine.limp_mode', 'limp_mode'] },
       { key: 'diagnostics.get.brake_lining_wear_pre_warning', aliases: ['diagnostics.brake_lining_wear_pre_warning', 'brake_lining_wear_pre_warning'] },
+      // New in 2026-04: extended HM signals that Mercedes fleet clearance actually
+      // pushes (verified via real MQTT payload capture). These used to arrive,
+      // be logged, and then be dropped on the floor.
+      { key: 'diagnostics.get.battery_voltage', aliases: ['diagnostics.battery_voltage', 'battery_voltage'] },
+      { key: 'diagnostics.get.engine_coolant_temperature', aliases: ['diagnostics.engine_coolant_temperature', 'engine_coolant_temperature'] },
+      { key: 'diagnostics.get.fuel_level', aliases: ['diagnostics.fuel_level', 'fueling.fuel_level', 'fueling.get.fuel_level', 'fuel_level'] },
+      { key: 'diagnostics.get.odometer', aliases: ['diagnostics.odometer', 'odometer.mileage', 'odometer.get.mileage', 'odometer'] },
+      { key: 'vehicle_status.get.ignition', aliases: ['ignition.status', 'ignition.get.status', 'ignition_status'] },
+      { key: 'vehicle_location.get.coordinates', aliases: ['vehicle_location.coordinates', 'location.get.location', 'location'] },
     ];
     const aiSignalDelta: Record<string, { value: unknown; unit: string | null; timestamp: string | null }> = {};
 
@@ -479,7 +589,7 @@ export class HmSignalUsageService {
       }
     }
 
-    if (Object.keys(aiSignalDelta).length > 0 || tireStatusesPayload != null) {
+    if (Object.keys(aiSignalDelta).length > 0 || normalizedTireStatuses) {
       const existing = await this.getGroupState(vehicleId, 'AI_HEALTH_CARE');
       const prev = (existing?.dataJson as Record<string, any> | null) ?? null;
       const prevSignals = (prev?.signals && typeof prev.signals === 'object'
@@ -495,7 +605,14 @@ export class HmSignalUsageService {
             ...prevSignals,
             ...aiSignalDelta,
           },
-          tirePressureStatuses: tireStatusesPayload ?? prev?.tirePressureStatuses ?? null,
+          tirePressureStatuses: normalizedTireStatuses
+            ? {
+                frontLeft: normalizedTireStatuses.frontLeft,
+                frontRight: normalizedTireStatuses.frontRight,
+                rearLeft: normalizedTireStatuses.rearLeft,
+                rearRight: normalizedTireStatuses.rearRight,
+              }
+            : prev?.tirePressureStatuses ?? null,
         },
       });
     }

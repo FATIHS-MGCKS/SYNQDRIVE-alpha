@@ -11,6 +11,7 @@ export const de: Record<TranslationKey, string> = {
   'nav.insights': 'Auswertungen',
   'nav.analytics': 'Analyse',
   'nav.fleetCondition': 'Flottenzustand',
+  'nav.financialInsights': 'Finanz-Auswertungen',
   'nav.finance': 'Finanzen',
   'nav.invoices': 'Rechnungen',
   'nav.fines': 'Bussen',
@@ -165,13 +166,6 @@ export const de: Record<TranslationKey, string> = {
   'settingsTab.users': 'Benutzer & Rollen',
   'settingsTab.billing': 'Abrechnung & Abonnement',
   'settingsTab.dataAuthorization': 'Datenberechtigung',
-
-  // ─── MainNavTabs ───
-  'mainNav.dashboard': 'Dashboard',
-  'mainNav.bookings': 'Buchungen',
-  'mainNav.fleet': 'Flotte',
-  'mainNav.customers': 'Kunden',
-  'mainNav.stations': 'Standorte',
 
   // ─── Finance Tabs ───
   'financeTab.invoices': 'Rechnungen',
@@ -366,6 +360,13 @@ export const de: Record<TranslationKey, string> = {
   'dashboard.revenueMtd': 'Umsatz MTD',
   'dashboard.costsMtd': 'Kosten MTD',
   'dashboard.keyKpis': 'Kennzahlen',
+  'dashboard.thisMonth': 'Diesen Monat',
+  'dashboard.welcomeBack': 'Willkommen zurück, {name}',
+  'dashboard.welcomeBackGeneric': 'Willkommen zurück',
+  'dashboard.profit': 'Gewinn',
+  'dashboard.expenses': 'Ausgaben',
+  'dashboard.vsLastMonth': 'vs. Vormonat',
+  'dashboard.invoicesShort': '{count} Rechnungen',
   'dashboard.revenueAndCosts': 'Umsatz & Kosten',
   'dashboard.monthlyForecast': 'Monatsprognose',
   'dashboard.revenue': 'Umsatz',

@@ -203,15 +203,32 @@ export class CanonicalBatteryHealthService {
       null;
     const lvFreshness = freshnessFromDate(lvLastChecked, 48 * 60 * 60 * 1000);
 
+    // Unified LV battery condition thresholds (single source of truth for all
+    // UIs — Dashboard Vehicle Health box, Health Tab, Fleet Condition view).
+    //
+    // SOH (preferred when available):
+    //   < 50   → attention  (red)     — health critical, replace / diagnose
+    //   < 75   → watch      (amber)   — monitor, starting problems possible
+    //   ≥ 75   → good       (green)
+    //
+    // Voltage (fallback when no SOH is available):
+    //   < 12.0 → attention  (red)     — battery depleted, likely won't start
+    //   < 12.4 → watch      (amber)   — low resting voltage, starting risk
+    //   ≥ 12.4 → good       (green)
+    //
+    // The voltage-based watch threshold was raised from 12.0V to 12.4V on
+    // explicit fleet-ops request: 12.4V (≈ 75 % SoC) is the practical cut-off
+    // where starting difficulties can begin to occur, and operators need to
+    // see that as a warning instead of green.
     let lvCondition: BatteryCondition = 'unknown';
     if (lvIsCalibrating) lvCondition = 'calibrating';
     else if (lvHealthPercent != null) {
       if (lvHealthPercent < 50) lvCondition = 'attention';
-      else if (lvHealthPercent < 70) lvCondition = 'watch';
+      else if (lvHealthPercent < 75) lvCondition = 'watch';
       else lvCondition = 'good';
     } else if (lvVoltage != null) {
-      if (lvVoltage < 11.5) lvCondition = 'attention';
-      else if (lvVoltage < 12.0) lvCondition = 'watch';
+      if (lvVoltage < 12.0) lvCondition = 'attention';
+      else if (lvVoltage < 12.4) lvCondition = 'watch';
       else lvCondition = 'good';
     }
 
@@ -306,11 +323,15 @@ export class CanonicalBatteryHealthService {
             : 'good';
 
     const lvWatchpoints: string[] = [];
-    if (lvHealthPercent != null && lvHealthPercent < 60) {
-      lvWatchpoints.push('LV health below 60%');
+    if (lvHealthPercent != null && lvHealthPercent < 50) {
+      lvWatchpoints.push('12V-Batterie SOH unter 50% — Austausch prüfen');
+    } else if (lvHealthPercent != null && lvHealthPercent < 75) {
+      lvWatchpoints.push('12V-Batterie SOH unter 75% — Startschwierigkeiten möglich');
     }
     if (lvVoltage != null && lvVoltage < 12.0) {
-      lvWatchpoints.push('LV voltage below 12.0V');
+      lvWatchpoints.push('Spannung unter 12.0V — Batterie entladen, Starthilfe/Austausch empfohlen');
+    } else if (lvVoltage != null && lvVoltage < 12.4) {
+      lvWatchpoints.push('Spannung unter 12.4V — kritisch beobachten, Startschwierigkeiten möglich');
     }
     if (lvStatus === 'no_recent_data') {
       lvWatchpoints.push('No recent LV sample');
@@ -327,7 +348,13 @@ export class CanonicalBatteryHealthService {
     const watchpoints = [...lvWatchpoints, ...hvWatchpoints];
     const recommendations: string[] = [];
     if (lvCondition === 'attention') {
-      recommendations.push('Schedule LV battery electrical check');
+      recommendations.push(
+        '12V-Batterie kritisch — Starthilfe oder Austausch empfohlen',
+      );
+    } else if (lvCondition === 'watch') {
+      recommendations.push(
+        '12V-Batterie kritisch beobachten — Startschwierigkeiten möglich, Ladezustand und Lichtmaschine prüfen',
+      );
     }
     if (hvCondition === 'attention') {
       recommendations.push('Schedule traction battery diagnostics');

@@ -46,8 +46,13 @@ export class ReturnNeedsInspectionDetector implements InsightDetector {
         const styleScore = payload.drivingBehavior?.drivingStyleScore ?? analysis.drivingScore ?? null;
         const safetyScore = payload.drivingBehavior?.safetyScore ?? null;
 
-        if (analysis.riskLevel === 'HIGH' || analysis.riskLevel === 'VERY_HIGH') {
-          reasons.push(`High-risk driving profile: ${analysis.riskLevel}`);
+        // V4.6.95 — `RentalDrivingAnalysis.riskLevel` is written lowercase
+        // by `rental-driving-analysis.service.ts` ('low' / 'medium' / 'high').
+        // The previous uppercase comparison silently swallowed every signal.
+        // Normalize defensively in case future writers use a different casing.
+        const riskLevel = analysis.riskLevel?.toLowerCase() ?? null;
+        if (riskLevel === 'high') {
+          reasons.push(`High-risk driving profile: ${riskLevel}`);
         }
         if (analysis.abuseDetectionCount != null && analysis.abuseDetectionCount > 0) {
           reasons.push(`${analysis.abuseDetectionCount} abuse events detected`);

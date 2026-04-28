@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { HmNormalizedTelemetryDto, HmStreamSyncLogDto } from './dto/high-mobility.dto';
+import { extractHmSignalValue, resolveHmSignalEntry } from './high-mobility-mqtt-payload.util';
 
 /**
  * HighMobilityTelemetryAppIngestionService
@@ -72,6 +73,18 @@ export class HighMobilityTelemetryAppIngestionService {
       await this.upsertLatestTelemetryState(vin, hmRecord?.id ?? null, messageId, receivedAt, normalized).catch(err =>
         this.logger.warn(`[HM Telemetry-APP] Failed to upsert latest telemetry state for VIN ${vin}: ${err?.message}`),
       );
+
+      // Flip streamingState to CONNECTED the first time a valid MQTT payload
+      // is ingested. Keeps the HM vehicle record consistent with actual
+      // streaming reality so the UI no longer shows NOT_CONFIGURED forever.
+      if (hmRecord && hmRecord.streamingState !== 'CONNECTED') {
+        await this.prisma.highMobilityVehicle.update({
+          where: { id: hmRecord.id },
+          data: { streamingState: 'CONNECTED', updatedAt: new Date() },
+        }).catch(err =>
+          this.logger.debug(`[HM Telemetry-APP] Failed to flip streamingState for ${vin}: ${err?.message}`),
+        );
+      }
     }
 
     if (hmRecord) {
@@ -135,25 +148,88 @@ export class HighMobilityTelemetryAppIngestionService {
 
   private normalizePayload(messageId: string, vin: string | null, hmVehicleId: string | null,
     topic: string, messageTimestamp: Date, payload: Record<string, unknown>): HmNormalizedTelemetryDto {
-    const props = (payload?.properties ?? payload?.data ?? {}) as Record<string, any>;
-    const getVal = (keys: string[]): any => {
+    // MQTT V2 payloads ship signals under `data` with full-qualified capability IDs
+    // (e.g. `vehicle_location.get.coordinates`). The old REST-style aliases
+    // (`location.get.location`, `odometer.get.mileage`, …) almost never matched
+    // a Mercedes fleet-cleared payload, so every normalized field silently
+    // collapsed to null. resolveHmSignalEntry() walks the keyed object and
+    // returns the signal entry regardless of whether it sits at the top level
+    // or nested under `data`/`properties`.
+    const props = (payload?.data ?? payload?.properties ?? {}) as Record<string, any>;
+    const getEntry = (keys: string[]): unknown => {
       for (const k of keys) {
-        const v = props[k];
-        if (v !== undefined && v !== null) return typeof v === 'object' ? v?.value : v;
+        const entry = resolveHmSignalEntry(payload, k);
+        if (entry !== null && entry !== undefined) return entry;
       }
       return null;
     };
+    const getVal = (keys: string[]): any => extractHmSignalValue(getEntry(keys));
+    const getNum = (keys: string[]): number | null => {
+      const v = getVal(keys);
+      if (v === null || v === undefined) return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    // Vehicle location is delivered as `{ latitude, longitude, altitude? }`
+    // either on the value directly or wrapped as `{ value: { lat, lng } }`.
+    const locationVal = getVal([
+      'vehicle_location.get.coordinates',
+      'vehicle_location.coordinates',
+      'location.get.location',
+      'location',
+    ]);
+    const latitude = locationVal && typeof locationVal === 'object'
+      ? Number(locationVal.latitude ?? locationVal.lat ?? NaN)
+      : NaN;
+    const longitude = locationVal && typeof locationVal === 'object'
+      ? Number(locationVal.longitude ?? locationVal.lng ?? NaN)
+      : NaN;
+
     return {
       messageId, vin: vin ?? '', hmVehicleId, topic,
       messageTimestamp: messageTimestamp.toISOString(),
-      latitude: getVal(['location.get.location', 'location']) ? Number(getVal(['location.get.location', 'location'])?.latitude ?? null) : null,
-      longitude: getVal(['location.get.location', 'location']) ? Number(getVal(['location.get.location', 'location'])?.longitude ?? null) : null,
-      speedKmh: getVal(['vehicle_speed.get.vehicle_speed', 'vehicle_speed']) !== null ? Number(getVal(['vehicle_speed.get.vehicle_speed', 'vehicle_speed'])) : null,
-      ignitionOn: getVal(['ignition.get.status', 'ignition_status']) !== null ? Boolean(getVal(['ignition.get.status', 'ignition_status'])) : null,
-      odometerId: getVal(['odometer.get.mileage', 'odometer']) !== null ? Number(getVal(['odometer.get.mileage', 'odometer'])) : null,
-      fuelLevelPercent: getVal(['fueling.get.fuel_level', 'fuel_level']) !== null ? Number(getVal(['fueling.get.fuel_level', 'fuel_level'])) : null,
-      batteryVoltage: getVal(['diagnostics.get.battery_voltage', 'battery_voltage']) !== null ? Number(getVal(['diagnostics.get.battery_voltage', 'battery_voltage'])) : null,
-      engineCoolantTemperatureC: getVal(['diagnostics.get.engine_coolant_temperature', 'engine_coolant_temperature']) !== null ? Number(getVal(['diagnostics.get.engine_coolant_temperature', 'engine_coolant_temperature'])) : null,
+      latitude: Number.isFinite(latitude) ? latitude : null,
+      longitude: Number.isFinite(longitude) ? longitude : null,
+      speedKmh: getNum([
+        'vehicle_status.get.speed',
+        'vehicle_speed.get.vehicle_speed',
+        'vehicle_speed',
+      ]),
+      ignitionOn: (() => {
+        const v = getVal([
+          'vehicle_status.get.ignition',
+          'ignition.get.status',
+          'ignition.status',
+          'ignition_status',
+        ]);
+        if (v === null || v === undefined) return null;
+        if (typeof v === 'boolean') return v;
+        if (typeof v === 'string') return ['on', 'true', 'accessory', 'running'].includes(v.toLowerCase());
+        return Boolean(v);
+      })(),
+      odometerId: getNum([
+        'diagnostics.get.odometer',
+        'odometer.get.mileage',
+        'odometer.mileage',
+        'odometer',
+      ]),
+      fuelLevelPercent: getNum([
+        'diagnostics.get.fuel_level',
+        'fueling.get.fuel_level',
+        'fueling.fuel_level',
+        'fuel_level',
+      ]),
+      batteryVoltage: getNum([
+        'diagnostics.get.battery_voltage',
+        'diagnostics.battery_voltage',
+        'battery_voltage',
+      ]),
+      engineCoolantTemperatureC: getNum([
+        'diagnostics.get.engine_coolant_temperature',
+        'diagnostics.engine_coolant_temperature',
+        'engine_coolant_temperature',
+      ]),
       rawSignals: props,
     };
   }
@@ -174,6 +250,19 @@ export class HighMobilityTelemetryAppIngestionService {
     receivedAt: Date,
     normalized: HmNormalizedTelemetryDto,
   ): Promise<void> {
+    // Merge accumulated raw signals across MQTT messages — a single message
+    // only carries one capability group, so blindly overwriting would drop
+    // older groups (fuel_level, ignition, etc.) as soon as a location-only
+    // message arrives.
+    const existing = await (this.prisma as any).hmLatestTelemetryState
+      .findUnique({
+        where: { uq_hm_latest_telemetry_vin_app: { vin, appContainerType: 'HM_TELEMETRY_APP' } },
+      })
+      .catch(() => null);
+
+    const prevRaw = (existing?.rawSignalsJson as Record<string, any> | null) ?? {};
+    const mergedRaw = { ...prevRaw, ...(normalized.rawSignals ?? {}) };
+
     const base = {
       hmVehicleId: hmVehicleId ?? undefined, lastMessageId: messageId, lastReceivedAt: receivedAt,
       latitude: normalized.latitude ?? undefined, longitude: normalized.longitude ?? undefined,
@@ -181,7 +270,7 @@ export class HighMobilityTelemetryAppIngestionService {
       odometerKm: normalized.odometerId ?? undefined,
       fuelLevelPercent: normalized.fuelLevelPercent ?? undefined,
       batteryVoltage: normalized.batteryVoltage ?? undefined,
-      rawSignalsJson: normalized.rawSignals as any ?? undefined,
+      rawSignalsJson: mergedRaw as any,
     };
     await (this.prisma as any).hmLatestTelemetryState.upsert({
       where: { uq_hm_latest_telemetry_vin_app: { vin, appContainerType: 'HM_TELEMETRY_APP' } },

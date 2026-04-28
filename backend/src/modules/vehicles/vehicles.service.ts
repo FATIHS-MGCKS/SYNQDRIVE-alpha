@@ -10,6 +10,7 @@ import {
   CleaningStatus,
   EnrichmentJobType,
   BatterySourceType,
+  BookingStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RedisService } from '@shared/redis/redis.service';
@@ -39,9 +40,17 @@ const DIMO_FUEL_TYPE_MAP: Record<string, FuelType> = {
   OTHER: FuelType.OTHER,
 };
 
+// V4.6.86 — Platform-admin status labels. Aligned with the rental
+// `RENTAL_STATUS_MAP` for the shared states (`Available`, `Reserved`,
+// `Active Rented`). Keeps the admin-only distinction between
+// scheduled `Maintenance` (IN_SERVICE) and an explicit operational
+// `Blocked` (OUT_OF_SERVICE) so platform operators can still see
+// whether a vehicle is down by choice or by break-down. Previously
+// used `Rented`, which caused terminology drift between master and
+// rental surfaces.
 const VEHICLE_STATUS_MAP: Record<VehicleStatus, string> = {
   AVAILABLE: 'Available',
-  RENTED: 'Rented',
+  RENTED: 'Active Rented',
   IN_SERVICE: 'Maintenance',
   OUT_OF_SERVICE: 'Blocked',
   RESERVED: 'Reserved',
@@ -107,7 +116,57 @@ const FULL_VEHICLE_WITH_ORG_INCLUDE = {
   organization: true,
 } satisfies Prisma.VehicleInclude;
 
-export interface FleetMapVehicleDto {
+// V4.6.84 — Fleet-status context that every vehicle-status surface
+// (Fleet page, Dashboard tabs, Business widgets) must be able to render
+// without inventing data. Nullable everywhere so legacy API consumers
+// keep working unchanged.
+export interface FleetVehicleBookingContextDto {
+  // Reserved bucket (PENDING/CONFIRMED booking with start in the future
+  // or within the booking window).
+  reservedBookingId: string | null;
+  reservedCustomerName: string | null;
+  reservedPickupAt: string | null;
+  // V4.6.94 — Planned end-of-rental for the reserved booking. Surfaces
+  // the booked rental duration on the Dashboard fleet-status popup so
+  // dispatchers see "for how long" without opening the booking.
+  reservedReturnAt: string | null;
+  reservedPickupStationName: string | null;
+  // V4.6.85 — True when the planned pickup time has passed but the
+  // handover has not been recorded yet (no-show risk / backlog).
+  reservedIsOverdue: boolean;
+  // Active rented bucket (ACTIVE booking, including overdue ones).
+  activeBookingId: string | null;
+  activeCustomerName: string | null;
+  // V4.6.94 — Effective rental start (= booking startDate, NOT the
+  // pickup-protocol timestamp). Combined with `activeReturnAt` this
+  // lets the frontend render a time-progress bar without a second API
+  // round-trip into the bookings/handover service.
+  activeStartAt: string | null;
+  activeReturnAt: string | null;
+  activeReturnStationName: string | null;
+  activeKmIncluded: number | null;
+  activeKmDriven: number | null;
+  activeIsOverdue: boolean;
+}
+
+// V4.6.84 — Declarative maintenance context derived from Vehicle.status
+// and Vehicle.healthStatus. No free-form reason is fabricated — we only
+// surface the canonical operational reason. Health problems are surfaced
+// via the RentalHealthBadge, not via this field.
+// V4.6.85 — The frontend now drives its own localized label from the
+// enum code; `maintenanceReason` stays for legacy API consumers that
+// render a ready-to-use English string.
+export type FleetMaintenanceReasonCode = 'SCHEDULED_SERVICE' | 'OPERATIONAL_BLOCK';
+
+export interface FleetVehicleMaintenanceContextDto {
+  maintenanceReason: string | null;
+  maintenanceReasonCode: FleetMaintenanceReasonCode | null;
+  maintenanceUrgency: 'planned' | 'urgent' | null;
+}
+
+export interface FleetMapVehicleDto
+  extends FleetVehicleBookingContextDto,
+    FleetVehicleMaintenanceContextDto {
   id: string;
   licensePlate: string | null;
   displayName: string;
@@ -131,6 +190,13 @@ export interface FleetMapVehicleDto {
   isLiveTracking: boolean;
   heading: number | null;
   imageUrl: string | null;
+  // V4.6.84 — telemetry summary so map markers can render fuel/SoC and
+  // odometer without a second round-trip. Nullable when no telemetry
+  // state exists yet.
+  odometerKm: number | null;
+  fuelPercent: number | null;
+  evSoc: number | null;
+  isElectric: boolean;
 }
 
 @Injectable()
@@ -173,6 +239,242 @@ export class VehiclesService {
       })
       .catch(() => [] as { vehicleId: string; state: any }[]);
     return new Map(rows.map((r) => [r.vehicleId, { state: r.state }]));
+  }
+
+  /**
+   * V4.6.84 — Single canonical booking context resolver for the Fleet
+   * page, Dashboard fleet-status tabs and any other surface that needs
+   * to render "who is this vehicle reserved for / rented to". Returns
+   * one entry per vehicle that has at least one PENDING / CONFIRMED /
+   * ACTIVE booking, with an ACTIVE booking always winning over a future
+   * reservation.
+   *
+   * Booking lifecycle we respect:
+   *   1. ACTIVE (regardless of endDate) → Active Rented; when endDate is
+   *      in the past we additionally flag `activeIsOverdue = true` so
+   *      the operator sees the overdue state until the return handover
+   *      is recorded.
+   *   2. PENDING / CONFIRMED with `endDate >= now` → Reserved. When
+   *      `startDate < now` we additionally flag `reservedIsOverdue = true`
+   *      (the planned pickup time has passed — no-show / late backlog).
+   *   3. Maintenance is resolved separately from `Vehicle.status`; this
+   *      helper never downgrades a maintenance vehicle.
+   *
+   * All booking fields are resolved server-side so the frontend never
+   * has to stitch customer names, pickup/return times or km allowance
+   * from multiple endpoints.
+   */
+  private async buildBookingContextMap(
+    organizationId: string,
+    vehicleIds: string[],
+  ): Promise<Map<string, FleetVehicleBookingContextDto>> {
+    const map = new Map<string, FleetVehicleBookingContextDto>();
+    if (vehicleIds.length === 0) return map;
+
+    const now = new Date();
+    const rows = await this.prisma.booking
+      .findMany({
+        where: {
+          organizationId,
+          vehicleId: { in: vehicleIds },
+          OR: [
+            {
+              status: 'ACTIVE',
+            },
+            {
+              status: { in: ['PENDING', 'CONFIRMED'] as BookingStatus[] },
+              endDate: { gte: now },
+            },
+          ],
+        },
+        select: {
+          id: true,
+          vehicleId: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+          kmIncluded: true,
+          kmDriven: true,
+          pickupStationId: true,
+          returnStationId: true,
+          customer: { select: { firstName: true, lastName: true, company: true } },
+        },
+        orderBy: { startDate: 'asc' },
+      })
+      .catch(
+        () =>
+          [] as Array<{
+            id: string;
+            vehicleId: string;
+            status: BookingStatus;
+            startDate: Date;
+            endDate: Date;
+            kmIncluded: number | null;
+            kmDriven: number | null;
+            pickupStationId: string | null;
+            returnStationId: string | null;
+            customer: { firstName: string; lastName: string; company: string | null };
+          }>,
+      );
+
+    // Resolve station names in a single batched query (Booking has no
+    // direct `pickupStation` / `returnStation` relation — only the FK
+    // scalar columns exist). This keeps the helper tenant-safe and
+    // avoids N+1.
+    const stationIds = Array.from(
+      new Set(
+        rows
+          .flatMap((r) => [r.pickupStationId, r.returnStationId])
+          .filter((x): x is string => !!x),
+      ),
+    );
+    const stationMap = new Map<string, string>();
+    if (stationIds.length > 0) {
+      const stations = await this.prisma.station
+        .findMany({
+          where: { id: { in: stationIds }, organizationId },
+          select: { id: true, name: true },
+        })
+        .catch(() => [] as Array<{ id: string; name: string }>);
+      for (const s of stations) stationMap.set(s.id, s.name);
+    }
+
+    const fmtCustomer = (c: {
+      firstName: string;
+      lastName: string;
+      company: string | null;
+    }): string => {
+      const personal = `${c.firstName} ${c.lastName}`.trim();
+      if (c.company && c.company.trim().length > 0) {
+        return personal ? `${personal} · ${c.company}` : c.company;
+      }
+      return personal || c.company || '';
+    };
+
+    const empty = (): FleetVehicleBookingContextDto => ({
+      reservedBookingId: null,
+      reservedCustomerName: null,
+      reservedPickupAt: null,
+      reservedReturnAt: null,
+      reservedPickupStationName: null,
+      reservedIsOverdue: false,
+      activeBookingId: null,
+      activeCustomerName: null,
+      activeStartAt: null,
+      activeReturnAt: null,
+      activeReturnStationName: null,
+      activeKmIncluded: null,
+      activeKmDriven: null,
+      activeIsOverdue: false,
+    });
+
+    for (const r of rows) {
+      const existing = map.get(r.vehicleId) ?? empty();
+      if (r.status === 'ACTIVE') {
+        // ACTIVE always wins. If multiple ACTIVE rows exist (unexpected),
+        // keep the earliest — matches `orderBy: { startDate: 'asc' }`.
+        if (existing.activeBookingId) continue;
+        existing.activeBookingId = r.id;
+        existing.activeCustomerName = fmtCustomer(r.customer);
+        // V4.6.94 — booking startDate is the canonical "rental began"
+        // marker for the time-progress bar. Pickup-protocol timestamps
+        // (BookingsService.findHandoverProtocolForBooking) may differ
+        // and are recorded separately.
+        existing.activeStartAt = r.startDate.toISOString();
+        existing.activeReturnAt = r.endDate.toISOString();
+        existing.activeReturnStationName = r.returnStationId
+          ? stationMap.get(r.returnStationId) ?? null
+          : null;
+        existing.activeKmIncluded = r.kmIncluded ?? null;
+        existing.activeKmDriven = r.kmDriven ?? null;
+        existing.activeIsOverdue = r.endDate.getTime() < now.getTime();
+        map.set(r.vehicleId, existing);
+        continue;
+      }
+      // PENDING / CONFIRMED → Reserved slot. Keep the earliest upcoming
+      // one (first by startDate); skip if vehicle already has ACTIVE or
+      // a reservation registered.
+      if (existing.activeBookingId || existing.reservedBookingId) {
+        map.set(r.vehicleId, existing);
+        continue;
+      }
+      existing.reservedBookingId = r.id;
+      existing.reservedCustomerName = fmtCustomer(r.customer);
+      existing.reservedPickupAt = r.startDate.toISOString();
+      // V4.6.94 — Booking endDate exposed so the Reserved card can
+      // render the planned rental duration ("for how long").
+      existing.reservedReturnAt = r.endDate.toISOString();
+      existing.reservedPickupStationName = r.pickupStationId
+        ? stationMap.get(r.pickupStationId) ?? null
+        : null;
+      // V4.6.85 — planned pickup is in the past but endDate hasn't
+      // expired yet → reservation is overdue (no-show risk).
+      existing.reservedIsOverdue = r.startDate.getTime() < now.getTime();
+      map.set(r.vehicleId, existing);
+    }
+    return map;
+  }
+
+  /**
+   * V4.6.84 — Maintenance reason is derived from `Vehicle.status` only.
+   * We intentionally do NOT fabricate reasons from health state — health
+   * warnings already surface via the RentalHealthBadge on every card.
+   */
+  /**
+   * V4.6.84 — Resolve the odometer recorded at booking handover (PICKUP).
+   * Used to compute a live "kmDriven so far" for ACTIVE bookings by
+   * subtracting this value from the current `VehicleLatestState.odometerKm`.
+   * Batched, safe on empty input, and resilient to DB errors.
+   */
+  private async fetchPickupOdometerMap(
+    organizationId: string,
+    bookingIds: string[],
+  ): Promise<Map<string, number>> {
+    const map = new Map<string, number>();
+    if (bookingIds.length === 0) return map;
+    // V4.6.85 — explicit tenant scope. Booking IDs are already org-scoped
+    // upstream, but joining on `booking.organizationId` defends against a
+    // future caller that forgets to pre-filter.
+    const rows = await this.prisma.bookingHandoverProtocol
+      .findMany({
+        where: {
+          bookingId: { in: bookingIds },
+          kind: 'PICKUP',
+          booking: { organizationId },
+        },
+        select: { bookingId: true, odometerKm: true },
+      })
+      .catch(() => [] as Array<{ bookingId: string; odometerKm: number }>);
+    for (const r of rows) {
+      if (typeof r.odometerKm === 'number' && Number.isFinite(r.odometerKm)) {
+        map.set(r.bookingId, r.odometerKm);
+      }
+    }
+    return map;
+  }
+
+  private deriveMaintenanceContext(
+    status: VehicleStatus | string | null | undefined,
+  ): FleetVehicleMaintenanceContextDto {
+    if (status === VehicleStatus.IN_SERVICE) {
+      return {
+        maintenanceReason: 'Scheduled service',
+        maintenanceReasonCode: 'SCHEDULED_SERVICE',
+        maintenanceUrgency: 'planned',
+      };
+    }
+    if (status === VehicleStatus.OUT_OF_SERVICE) {
+      return {
+        maintenanceReason: 'Operationally blocked',
+        maintenanceReasonCode: 'OPERATIONAL_BLOCK',
+        maintenanceUrgency: 'urgent',
+      };
+    }
+    return {
+      maintenanceReason: null,
+      maintenanceReasonCode: null,
+      maintenanceUrgency: null,
+    };
   }
 
   // ── Mapping: RegisteredVehicle (Master Admin) ─────────────────────
@@ -299,16 +601,16 @@ export class VehiclesService {
   mapToVehicleData(
     v: any,
     tripStateMap?: Map<string, { state: any }>,
+    bookingContextMap?: Map<string, FleetVehicleBookingContextDto>,
+    pickupOdoByBooking?: Map<string, number>,
   ) {
     const state = v.latestState;
     const leasing = v.leasingRateCents ?? 0;
     const insurance = v.insuranceCostCents ?? 0;
     const tax = v.taxCostCents ?? 0;
     const totalCents = leasing + insurance + tax;
-    const fuelPercent = this.resolveFuelPercent(state, v.tankCapacityLiters);
     const isEv =
       v.fuelType === FuelType.ELECTRIC || v.fuelType === FuelType.PLUGIN_HYBRID;
-    const fuelOrEnergyPct = isEv ? (state?.evSoc ?? 0) : fuelPercent;
 
     const tripState = tripStateMap?.get(v.id) ?? null;
     const interpreted = interpretVehicleState(
@@ -324,6 +626,34 @@ export class VehiclesService {
       tripState,
     );
 
+    // V4.6.85 — Single source of truth for status / booking context /
+    // telemetry fallbacks. `getFleetMapData` calls the same helper, so
+    // the Fleet page, Dashboard tabs and the map marker layer cannot
+    // drift from each other anymore.
+    // V4.6.90 — `pickupOdoByBooking` is now a required field on the
+    // derivation input; we pass an empty map when a caller did not
+    // pre-compute it (e.g. `findById`). An empty map is correct for
+    // that case because the vehicle has no in-flight booking at that
+    // call site; the derivation will fall through the `liveKmDriven`
+    // branch safely.
+    const bookingCtx = bookingContextMap?.get(v.id) ?? null;
+    const fleetCtx = this.deriveFleetStatusContext({
+      vehicle: v,
+      state,
+      bookingCtx,
+      pickupOdoByBooking: pickupOdoByBooking ?? new Map(),
+    });
+
+    // Legacy numeric fallbacks for existing consumers (RentalVehicleTable
+    // counters, CSV exports, …). Telemetry-grade code must read the
+    // nullable canonical fields below.
+    const odometerLegacy = Math.floor(
+      fleetCtx.odometerKm ?? v.mileageKm ?? 0,
+    );
+    const fuelOrEnergyLegacy = isEv
+      ? fleetCtx.evSoc ?? 0
+      : fleetCtx.fuelPercent ?? 0;
+
     return {
       id: v.id,
       license: v.licensePlate ?? '',
@@ -331,26 +661,40 @@ export class VehiclesService {
       model: v.model,
       year: v.year,
       station: v.station?.name ?? '',
+      // V4.6.96 — expose canonical station identity so the Settings →
+      // Stations vehicle-assignment modal can render the current
+      // station of each vehicle without a second round-trip.
+      stationId: v.station?.id ?? null,
+      stationName: v.station?.name ?? null,
       fuelType: FUEL_TYPE_LABEL[v.fuelType as FuelType] ?? 'Other',
-      status: RENTAL_STATUS_MAP[v.status as VehicleStatus] ?? 'Available',
+      // Rental status is derived from open bookings first, then falls back
+      // to the admin-managed DB column. Maintenance wins over booking
+      // state — a vehicle physically in service is never reported as
+      // Rented or Reserved even if a booking row exists for it.
+      status: fleetCtx.status,
       cleaningStatus:
         CLEANING_STATUS_MAP[v.cleaningStatus as CleaningStatus] ?? 'Clean',
       healthStatus:
         RENTAL_HEALTH_MAP[v.healthStatus as HealthStatus] ?? 'Good Health',
       online: interpreted.isFresh,
       lastSignal: interpreted.lastSignal,
-      odometer: Math.floor(state?.odometerKm ?? v.mileageKm ?? 0),
-      fuel: Math.min(100, Math.max(0, Math.ceil(fuelOrEnergyPct))),
-      battery: state?.evSoc ?? 0,
+      // Legacy numeric fields (always numbers) — kept for backward compat.
+      odometer: odometerLegacy,
+      fuel: Math.min(100, Math.max(0, Math.ceil(fuelOrEnergyLegacy))),
+      battery: fleetCtx.evSoc ?? 0,
       speed: state?.speedKmh ?? 0,
       coolant: state?.coolantTempC ?? 0,
       brakes: state?.brakePadPercent ?? 0,
       tires: state?.tireHealthPercent ?? 0,
       engineOil: state?.engineOilPercent ?? 0,
-      isElectric: v.fuelType === 'ELECTRIC' || v.fuelType === 'PLUGIN_HYBRID',
+      // V4.6.85 — canonical telemetry, null-preserving.
+      odometerKm: fleetCtx.odometerKm,
+      fuelPercent: fleetCtx.fuelPercent,
+      evSoc: fleetCtx.evSoc,
+      isElectric: isEv,
       hvBatteryCapacityKwh: v.hvBatteryCapacityKwh ?? null,
       tankCapacityLiters: v.tankCapacityLiters ?? null,
-      fuelLevel: fuelPercent || null,
+      fuelLevel: fleetCtx.fuelPercent,
       lat: state?.latitude ?? null,
       lng: state?.longitude ?? null,
       leasingRate: centsToEur(leasing),
@@ -365,6 +709,195 @@ export class VehiclesService {
       displayIgnition: interpreted.displayIgnition,
       isLiveTracking: interpreted.isLiveTracking,
       imageUrl: v.imageUrl ?? null,
+      // V4.6.84 — canonical fleet-status context. All fields nullable;
+      // the frontend renders graceful fallbacks when nothing is
+      // persisted yet.
+      reservedBookingId: fleetCtx.bookingDto.reservedBookingId,
+      reservedCustomerName: fleetCtx.bookingDto.reservedCustomerName,
+      reservedPickupAt: fleetCtx.bookingDto.reservedPickupAt,
+      reservedReturnAt: fleetCtx.bookingDto.reservedReturnAt,
+      reservedPickupStationName: fleetCtx.bookingDto.reservedPickupStationName,
+      reservedIsOverdue: fleetCtx.bookingDto.reservedIsOverdue,
+      activeBookingId: fleetCtx.bookingDto.activeBookingId,
+      activeCustomerName: fleetCtx.bookingDto.activeCustomerName,
+      activeStartAt: fleetCtx.bookingDto.activeStartAt,
+      activeReturnAt: fleetCtx.bookingDto.activeReturnAt,
+      activeReturnStationName: fleetCtx.bookingDto.activeReturnStationName,
+      activeKmIncluded: fleetCtx.bookingDto.activeKmIncluded,
+      activeKmDriven: fleetCtx.liveKmDriven,
+      activeIsOverdue: fleetCtx.bookingDto.activeIsOverdue,
+      maintenanceReason: fleetCtx.maintenanceCtx.maintenanceReason,
+      maintenanceReasonCode: fleetCtx.maintenanceCtx.maintenanceReasonCode,
+      maintenanceUrgency: fleetCtx.maintenanceCtx.maintenanceUrgency,
+    };
+  }
+
+  /**
+   * V4.6.90 — Explicit input shape for `deriveFleetStatusContext`.
+   *
+   * Before V4.6.90 the `pickupOdoByBooking` map was a silently optional
+   * 4th positional arg — a future caller that forgot to pass it would
+   * silently lose the live `kmDriven` delta for every in-flight ACTIVE
+   * booking with no visible error. Making the shape explicit and
+   * marking every field as required means the TypeScript compiler now
+   * flags the mistake at build time instead of at runtime.
+   *
+   * Callers MUST pre-compute `bookingCtx` via `buildBookingContextMap`
+   * and `pickupOdoByBooking` via `fetchPickupOdometerMap`. Passing an
+   * empty map for vehicles without active bookings is correct and safe.
+   */
+  static readonly EMPTY_BOOKING_CONTEXT: FleetVehicleBookingContextDto = {
+    reservedBookingId: null,
+    reservedCustomerName: null,
+    reservedPickupAt: null,
+    reservedReturnAt: null,
+    reservedPickupStationName: null,
+    reservedIsOverdue: false,
+    activeBookingId: null,
+    activeCustomerName: null,
+    activeStartAt: null,
+    activeReturnAt: null,
+    activeReturnStationName: null,
+    activeKmIncluded: null,
+    activeKmDriven: null,
+    activeIsOverdue: false,
+  };
+
+  /**
+   * V4.6.85 — Canonical fleet-status context resolver. Returns the
+   * derived rental status, the normalized maintenance context, a
+   * booking DTO safe to spread, the live `kmDriven` (telemetry-aware
+   * for in-flight ACTIVE bookings) and the null-preserving telemetry
+   * fields used by every fleet-status surface. Shared between the
+   * rental dashboard (`/vehicles`) and the map (`/fleet-map`) so the
+   * two endpoints cannot drift.
+   *
+   * V4.6.90 — Hardened against two regression vectors:
+   *  1. **Ghost operational states**: when the raw DB `Vehicle.status`
+   *     column is `RENTED` / `RESERVED` but no matching booking row
+   *     exists (either because an admin mutated the column directly or
+   *     because a booking was deleted without resetting the column),
+   *     the derivation falls back to `Available` instead of rendering a
+   *     hollow "Active Rented" / "Reserved" card with null customer /
+   *     pickup / return data. A warning is emitted so ops can trace the
+   *     stale row.
+   *  2. **Silent optional footgun**: see the dedicated interface above —
+   *     `pickupOdoByBooking` is now a required argument.
+   */
+  // Visible for tests.
+  public deriveFleetStatusContext(input: {
+    vehicle: {
+      id?: string;
+      status: VehicleStatus | string | null | undefined;
+      licensePlate?: string | null;
+      tankCapacityLiters?: number | null;
+    };
+    state: {
+      odometerKm?: number | null;
+      evSoc?: number | null;
+      fuelLevelRelative?: number | null;
+      fuelLevelAbsolute?: number | null;
+      // Prisma types `rawPayloadJson` as `JsonValue` (string | number |
+      // boolean | null | object | array). We only ever read it as an
+      // optional object / unknown, so the relaxed `unknown` matches the
+      // Prisma row shape while still keeping the rest of the contract
+      // tight.
+      rawPayloadJson?: unknown;
+    } | null;
+    bookingCtx: FleetVehicleBookingContextDto | null;
+    pickupOdoByBooking: Map<string, number>;
+  }): {
+    status: string;
+    maintenanceCtx: FleetVehicleMaintenanceContextDto;
+    bookingDto: FleetVehicleBookingContextDto;
+    liveKmDriven: number | null;
+    odometerKm: number | null;
+    fuelPercent: number | null;
+    evSoc: number | null;
+  } {
+    const { vehicle, state, bookingCtx, pickupOdoByBooking } = input;
+    const dbStatus =
+      RENTAL_STATUS_MAP[vehicle.status as VehicleStatus] ?? 'Available';
+    const bookingDerived: 'Active Rented' | 'Reserved' | null =
+      bookingCtx && bookingCtx.activeBookingId
+        ? 'Active Rented'
+        : bookingCtx && bookingCtx.reservedBookingId
+          ? 'Reserved'
+          : null;
+
+    // V4.6.90 — Ghost-state guard. `Maintenance` always wins (true
+    // operational block). Otherwise the booking-derived bucket wins.
+    // If the DB column says `RENTED` / `RESERVED` but no booking truth
+    // backs it, demote to `Available` and log once per vehicle — we
+    // never render an operational state from a db-only row.
+    let status: string;
+    if (dbStatus === 'Maintenance') {
+      status = 'Maintenance';
+    } else if (bookingDerived) {
+      status = bookingDerived;
+    } else if (dbStatus === 'Active Rented' || dbStatus === 'Reserved') {
+      status = 'Available';
+      this.logger.warn(
+        `[fleet-status] Ghost ${dbStatus} state on vehicle ${
+          vehicle.id ?? vehicle.licensePlate ?? '<unknown>'
+        }: Vehicle.status is ${String(vehicle.status)} but no matching booking truth. Treating as Available.`,
+      );
+    } else {
+      status = dbStatus;
+    }
+    const maintenanceCtx: FleetVehicleMaintenanceContextDto =
+      status === 'Maintenance'
+        ? this.deriveMaintenanceContext(vehicle.status)
+        : {
+            maintenanceReason: null,
+            maintenanceReasonCode: null,
+            maintenanceUrgency: null,
+          };
+
+    // When we demoted a ghost RENTED/RESERVED to Available, also drop
+    // the (necessarily null) booking context — otherwise the frontend
+    // could still try to render e.g. a reservedPickupAt timestamp that
+    // has no matching booking row.
+    const bookingDto: FleetVehicleBookingContextDto =
+      status === 'Active Rented' || status === 'Reserved'
+        ? bookingCtx ?? VehiclesService.EMPTY_BOOKING_CONTEXT
+        : VehiclesService.EMPTY_BOOKING_CONTEXT;
+
+    const liveKmDriven: number | null = (() => {
+      if (!bookingDto.activeBookingId) {
+        return bookingDto.activeKmDriven ?? null;
+      }
+      if (bookingDto.activeKmDriven != null) return bookingDto.activeKmDriven;
+      const pickupOdo = pickupOdoByBooking.get(bookingDto.activeBookingId);
+      const currentOdo =
+        typeof state?.odometerKm === 'number' ? state.odometerKm : null;
+      if (pickupOdo == null || currentOdo == null) return null;
+      return Math.max(0, Math.floor(currentOdo - pickupOdo));
+    })();
+
+    const odometerKm =
+      typeof state?.odometerKm === 'number' && Number.isFinite(state.odometerKm)
+        ? Math.floor(state.odometerKm)
+        : null;
+
+    const fuelPercent = this.resolveFuelPercentOrNull(
+      state,
+      vehicle.tankCapacityLiters,
+    );
+
+    const evSoc =
+      typeof state?.evSoc === 'number' && Number.isFinite(state.evSoc)
+        ? Math.min(100, Math.max(0, Math.ceil(state.evSoc)))
+        : null;
+
+    return {
+      status,
+      maintenanceCtx,
+      bookingDto,
+      liveKmDriven,
+      odometerKm,
+      fuelPercent,
+      evSoc,
     };
   }
 
@@ -422,6 +955,26 @@ export class VehiclesService {
         ? tankCapacityLiters
         : DEFAULT_TANK_LITERS;
     return Math.round(Math.min(100, (absLiters / capacity) * 100) * 10) / 10;
+  }
+
+  /**
+   * V4.6.85 — Null-preserving variant of `resolveFuelPercent` used by the
+   * fleet-status layer. Returns `null` (not `0`) when no fuel signal has
+   * ever been reported, so the UI can show "—" instead of a misleading
+   * "0%" for vehicles that simply lack a fuel sensor or fresh telemetry.
+   * EV-only vehicles (no fuel tank, no fuel signal) naturally resolve to
+   * `null`, and the rendering layer falls back to `evSoc`.
+   */
+  private resolveFuelPercentOrNull(
+    state: any,
+    tankCapacityLiters?: number | null,
+  ): number | null {
+    if (!state) return null;
+    const relPct = state.fuelLevelRelative as number | null;
+    const absLiters = state.fuelLevelAbsolute as number | null;
+    if (relPct == null && absLiters == null) return null;
+    const value = this.resolveFuelPercent(state, tankCapacityLiters);
+    return Math.min(100, Math.max(0, Math.ceil(value)));
   }
 
   private signalTimestamp(signal: unknown): Date | null {
@@ -509,12 +1062,28 @@ export class VehiclesService {
       this.prisma.vehicle.count({ where }),
     ]);
 
-    const tripStateMap = await this.buildTripStateMap(
-      data.map((v) => v.id),
+    const vehicleIds = data.map((v) => v.id);
+    const [tripStateMap, bookingContextMap] = await Promise.all([
+      this.buildTripStateMap(vehicleIds),
+      this.buildBookingContextMap(organizationId, vehicleIds),
+    ]);
+    const activeBookingIds = Array.from(bookingContextMap.values())
+      .map((ctx) => ctx.activeBookingId)
+      .filter((id): id is string => !!id);
+    const pickupOdoByBooking = await this.fetchPickupOdometerMap(
+      organizationId,
+      activeBookingIds,
     );
 
     return buildPaginatedResult(
-      data.map((v) => this.mapToVehicleData(v, tripStateMap)),
+      data.map((v) =>
+        this.mapToVehicleData(
+          v,
+          tripStateMap,
+          bookingContextMap,
+          pickupOdoByBooking,
+        ),
+      ),
       total,
       params || {},
     );
@@ -554,6 +1123,7 @@ export class VehiclesService {
         healthStatus: true,
         cleaningStatus: true,
         imageUrl: true,
+        tankCapacityLiters: true,
         station: { select: { id: true, name: true } },
         latestState: {
           select: {
@@ -566,13 +1136,33 @@ export class VehiclesService {
             tractionBatteryPowerKw: true,
             coolantTempC: true,
             odometerKm: true,
+            fuelLevelRelative: true,
+            fuelLevelAbsolute: true,
+            evSoc: true,
             rawPayloadJson: true,
           },
         },
       },
     });
 
-    const tripStateMap = await this.buildTripStateMap(vehicles.map((v) => v.id));
+    const vehicleIdsForMap = vehicles.map((v) => v.id);
+    const [tripStateMap, bookingContextMap] = await Promise.all([
+      this.buildTripStateMap(vehicleIdsForMap),
+      this.buildBookingContextMap(organizationId, vehicleIdsForMap),
+    ]);
+
+    // V4.6.84 — Live kmDriven for ACTIVE bookings is computed here in
+    // one batched query: pickup-handover odometer per active booking +
+    // vehicle.latestState.odometerKm (already loaded above). Falls back
+    // to `Booking.kmDriven` when the return handover has already
+    // persisted the final value.
+    const activeBookingIds = Array.from(bookingContextMap.values())
+      .map((ctx) => ctx.activeBookingId)
+      .filter((id): id is string => !!id);
+    const pickupOdoByBooking = await this.fetchPickupOdometerMap(
+      organizationId,
+      activeBookingIds,
+    );
 
     const result: FleetMapVehicleDto[] = vehicles.map((vehicle) => {
       const state = vehicle.latestState;
@@ -590,6 +1180,17 @@ export class VehiclesService {
         tripState,
       );
 
+      const bookingCtx = bookingContextMap.get(vehicle.id) ?? null;
+      const fleetCtx = this.deriveFleetStatusContext({
+        vehicle,
+        state,
+        bookingCtx,
+        pickupOdoByBooking,
+      });
+      const isElectric =
+        vehicle.fuelType === FuelType.ELECTRIC ||
+        vehicle.fuelType === FuelType.PLUGIN_HYBRID;
+
       return {
         id: vehicle.id,
         licensePlate: vehicle.licensePlate ?? null,
@@ -599,7 +1200,7 @@ export class VehiclesService {
         make: vehicle.make ?? null,
         model: vehicle.model,
         year: vehicle.year ?? null,
-        status: RENTAL_STATUS_MAP[vehicle.status as VehicleStatus] ?? 'Available',
+        status: fleetCtx.status,
         fuelType: FUEL_TYPE_LABEL[vehicle.fuelType as FuelType] ?? 'Other',
         healthStatus:
           RENTAL_HEALTH_MAP[vehicle.healthStatus as HealthStatus] ?? 'Good Health',
@@ -618,6 +1219,13 @@ export class VehiclesService {
         isLiveTracking: interpreted.isLiveTracking,
         heading: this.extractHeading(state?.rawPayloadJson),
         imageUrl: vehicle.imageUrl ?? null,
+        odometerKm: fleetCtx.odometerKm,
+        fuelPercent: fleetCtx.fuelPercent,
+        evSoc: fleetCtx.evSoc,
+        isElectric,
+        ...fleetCtx.bookingDto,
+        activeKmDriven: fleetCtx.liveKmDriven,
+        ...fleetCtx.maintenanceCtx,
       };
     });
 
@@ -651,8 +1259,23 @@ export class VehiclesService {
       include: FULL_VEHICLE_INCLUDE,
     });
     if (!vehicle) return null;
-    const tripStateMap = await this.buildTripStateMap([vehicle.id]);
-    return this.mapToVehicleData(vehicle, tripStateMap);
+    const [tripStateMap, bookingContextMap] = await Promise.all([
+      this.buildTripStateMap([vehicle.id]),
+      this.buildBookingContextMap(organizationId, [vehicle.id]),
+    ]);
+    const activeBookingIds = Array.from(bookingContextMap.values())
+      .map((ctx) => ctx.activeBookingId)
+      .filter((id): id is string => !!id);
+    const pickupOdoByBooking = await this.fetchPickupOdometerMap(
+      organizationId,
+      activeBookingIds,
+    );
+    return this.mapToVehicleData(
+      vehicle,
+      tripStateMap,
+      bookingContextMap,
+      pickupOdoByBooking,
+    );
   }
 
   async findAllPlatform(

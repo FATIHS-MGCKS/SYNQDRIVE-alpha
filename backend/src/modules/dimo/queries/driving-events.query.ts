@@ -1,58 +1,75 @@
 /**
- * DIMO Telemetry API — Driving Event Signals Query (LTE_R1 path)
+ * DIMO Telemetry API — Vehicle Events Query (LTE_R1 driving-events path)
  *
- * Fetches the history of harsh-event signals over a trip window.
- * DIMO reports these as boolean/flag signals when a harsh event is detected
- * by the on-board sensor.  Each sample where the value is truthy represents
- * one event occurrence.
+ * Historical note (IMPORTANT):
+ * Prior versions of this file built a `signals(... safetySystemBraking* ...)`
+ * query. Those signal fields do **not** exist on DIMO's `SignalAggregations`
+ * type and DIMO responded with HTTP 422 "Cannot query field" — silently
+ * swallowed by the caller, which is why zero DrivingEvent rows were ever
+ * persisted for any LTE_R1 vehicle.
  *
- * Signal mapping (DIMO signal → SynqDrive DrivingEventType):
- *   safetySystemBrakingHarshBraking        → HARSH_BRAKING
- *   safetySystemBrakingExtremeEmergency    → EXTREME_BRAKING
- *   safetySystemAccelerationHarshAcceleration → HARSH_ACCELERATION
- *   safetySystemCorneringHarshCornering    → HARSH_CORNERING
+ * Canonical source — discovered via `telemetry_introspect`:
+ *   Query.events(tokenId, from, to, filter): [Event!]
+ *   type Event { timestamp: Time!  name: String!  source: String!
+ *                durationNs: Int!   metadata: String }
  *
- * Additional context signals fetched alongside (for severity/speed context):
- *   speed — vehicle speed at event time
+ * Observed event names on real LTE_R1 vehicles (verified against VW Golf 2026,
+ * tokenId 189118):
+ *   - behavior.harshBraking
+ *   - behavior.extremeBraking
+ *   - behavior.harshAcceleration
+ *   - behavior.harshCornering
  *
- * NOTE: The DIMO signal names follow the VSS naming convention used by the
- * DIMO Telemetry API.  If a vehicle does not report a particular signal,
- * the response will include null entries which are filtered out by the caller.
+ * `metadata` is a JSON string, typically `{"counterValue": 1}`. `source` is
+ * the DIMO connection (LTE R1 device) wallet address.
+ *
+ * Mapping to SynqDrive DrivingEventType is handled in
+ * LteR1BehaviorEnrichmentService.normalizeEventName (case-insensitive,
+ * prefix-tolerant).
  */
 
-export interface DimoSignalSample {
+/** One record as returned by DIMO's `events(...)` root query. */
+export interface DimoVehicleEventRecord {
+  /** ISO timestamp of the event (device wall-clock). */
   timestamp: string;
-  /** Signal value — for event signals: 1 = event detected, null = no event */
-  safetySystemBrakingHarshBraking: number | null;
-  safetySystemBrakingExtremeEmergency: number | null;
-  safetySystemAccelerationHarshAcceleration: number | null;
-  safetySystemCorneringHarshCornering: number | null;
-  /** Speed context at time of sample */
-  speed: number | null;
+  /** Canonical DIMO event name, e.g. `behavior.harshBraking`. */
+  name: string;
+  /** DIMO connection address that emitted the event (wallet of the device). */
+  source: string;
+  /** Event duration in nanoseconds (usually 0 for instantaneous events). */
+  durationNs: number;
+  /** Raw metadata JSON string (e.g. `{"counterValue":1}`). */
+  metadata: string | null;
 }
 
+/**
+ * Build a GraphQL query that returns all `behavior.*` events for a vehicle
+ * in the given time window.
+ *
+ * The DIMO `events(...)` query supports server-side filtering via
+ * `EventFilter { name: StringValueFilter, source: StringValueFilter, ... }`.
+ * We restrict to `behavior.*` names to keep payloads small and to avoid
+ * other event families (e.g. ignition transitions) that SynqDrive does not
+ * map to DrivingEvent rows.
+ */
 export function buildDrivingEventsQuery(
   tokenId: number,
   from: Date,
   to: Date,
 ): string {
-  // Use a 1-second interval to capture individual event occurrences.
-  // For event-type signals, DIMO reports TRUE/1 at the exact moment the
-  // device detects the event; all other samples will be null or 0.
   return `
     query DrivingEvents {
-      signals(
+      events(
         tokenId: ${tokenId}
         from: "${from.toISOString()}"
         to: "${to.toISOString()}"
-        interval: "1s"
+        filter: { name: { in: ["behavior.harshBraking", "behavior.extremeBraking", "behavior.harshAcceleration", "behavior.harshCornering"] } }
       ) {
         timestamp
-        safetySystemBrakingHarshBraking(agg: MAX)
-        safetySystemBrakingExtremeEmergency(agg: MAX)
-        safetySystemAccelerationHarshAcceleration(agg: MAX)
-        safetySystemCorneringHarshCornering(agg: MAX)
-        speed(agg: AVG)
+        name
+        source
+        durationNs
+        metadata
       }
     }
   `.trim();

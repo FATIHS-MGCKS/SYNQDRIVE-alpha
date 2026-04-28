@@ -18,7 +18,20 @@ export interface DimoSnapshotJobData {
   dimoTokenId: number;
 }
 
-@Processor(QUEUE_NAMES.DIMO_SNAPSHOT)
+/**
+ * BullMQ worker options:
+ *  - lockDuration: 60s gives each snapshot up to ~60s of end-to-end work
+ *    before BullMQ marks the job "stalled". Previously (default 30s) a
+ *    slow GraphQL round-trip plus the follow-up DB upserts and trip-start
+ *    evaluation could overrun the lock and flip the job into a permanent
+ *    failed state that silently blocked all future enqueues for that
+ *    vehicle (shared jobId = snapshot-<vehicleId>).
+ *  - concurrency: 5 keeps queue throughput high without hammering DIMO.
+ */
+@Processor(QUEUE_NAMES.DIMO_SNAPSHOT, {
+  lockDuration: 60_000,
+  concurrency: 5,
+})
 export class DimoSnapshotProcessor extends WorkerHost {
   private readonly logger = new Logger(DimoSnapshotProcessor.name);
 

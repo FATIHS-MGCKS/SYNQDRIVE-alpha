@@ -1,19 +1,20 @@
-import { Moon, Sun, Bell, Home, Search, Settings, Grid3X3, Car, Users, FileText, ListTodo, BarChart3, Calendar, MapPin, Tag, AlertCircle, Briefcase, X, ArrowRight, Zap, CreditCard, Building2, UserCog, Wifi, Lock, LogOut, User, ChevronRight } from 'lucide-react';
+import { Moon, Sun, Home, Search, Settings, Grid3X3, Car, Users, FileText, ListTodo, BarChart3, Calendar, MapPin, Tag, AlertCircle, Briefcase, X, ArrowRight, Zap, CreditCard, Building2, UserCog, Wifi, Lock, LogOut, User, ChevronRight } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { clearAuth, getStoredUser } from '../../lib/auth';
 import { VehicleData } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
 import { useLanguage, type Locale } from '../i18n/LanguageContext';
 
+// V4.6.86 — flags replaced with ISO-2 code pills (anti-emoji, per design direction).
 const languages = [
-  { code: 'en' as Locale, name: 'English', flag: '🇺🇸' },
-  { code: 'de' as Locale, name: 'Deutsch', flag: '🇩🇪' },
-  { code: 'fr' as Locale, name: 'Français', flag: '🇫🇷' },
-  { code: 'nl' as Locale, name: 'Nederlands', flag: '🇳🇱' },
-  { code: 'es' as Locale, name: 'Español', flag: '🇪🇸' },
-  { code: 'it' as Locale, name: 'Italiano', flag: '🇮🇹' },
-  { code: 'pl' as Locale, name: 'Polski', flag: '🇵🇱' },
-  { code: 'cs' as Locale, name: 'Čeština', flag: '🇨🇿' },
+  { code: 'en' as Locale, name: 'English', short: 'EN' },
+  { code: 'de' as Locale, name: 'Deutsch', short: 'DE' },
+  { code: 'fr' as Locale, name: 'Français', short: 'FR' },
+  { code: 'nl' as Locale, name: 'Nederlands', short: 'NL' },
+  { code: 'es' as Locale, name: 'Español', short: 'ES' },
+  { code: 'it' as Locale, name: 'Italiano', short: 'IT' },
+  { code: 'pl' as Locale, name: 'Polski', short: 'PL' },
+  { code: 'cs' as Locale, name: 'Čeština', short: 'CS' },
 ];
 
 type ViewType = 'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-management' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'analytics' | 'fleet-condition' | 'rental-driving-analysis' | 'settings' | 'new-booking' | 'stations' | 'document-upload' | 'ai-assistant' | 'ai-voice-assistant' | 'support';
@@ -338,21 +339,29 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
     }
   };
 
+  // V4.6.86 — consolidated from 7 ad-hoc inline colors to semantic tone utilities.
+  // Tonal hue now carries the *kind* of result (operational vs financial vs warning),
+  // not a rainbow. Visual noise reduced; theme-aware in both modes.
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'vehicle': return isDarkMode ? 'text-blue-400 bg-blue-500/15' : 'text-blue-600 bg-blue-100';
-      case 'customer': return isDarkMode ? 'text-purple-400 bg-purple-500/15' : 'text-purple-600 bg-purple-100';
-      case 'booking': return isDarkMode ? 'text-emerald-400 bg-emerald-500/15' : 'text-emerald-600 bg-emerald-100';
-      case 'invoice': return isDarkMode ? 'text-amber-400 bg-amber-500/15' : 'text-amber-600 bg-amber-100';
-      case 'task': return isDarkMode ? 'text-orange-400 bg-orange-500/15' : 'text-orange-600 bg-orange-100';
-      case 'fine': return isDarkMode ? 'text-red-400 bg-red-500/15' : 'text-red-600 bg-red-100';
-      case 'page': return isDarkMode ? 'text-gray-400 bg-neutral-700' : 'text-gray-600 bg-gray-100';
-      default: return isDarkMode ? 'text-gray-400 bg-neutral-700' : 'text-gray-500 bg-gray-100';
+      case 'vehicle':
+      case 'customer':
+        return 'sq-tone-info';
+      case 'booking':
+        return 'sq-tone-success';
+      case 'invoice':
+      case 'task':
+        return 'sq-tone-warning';
+      case 'fine':
+        return 'sq-tone-critical';
+      case 'page':
+      default:
+        return 'sq-tone-neutral';
     }
   };
 
   return (
-    <div className="flex items-center justify-between mb-[28px] z-10 relative">
+    <div className="flex items-center justify-between gap-3 pb-3 mb-5 border-b border-border/50 z-10 relative">
       {/* Left Section - Breadcrumb Navigation */}
       <div className="flex items-center gap-1.5 lg:gap-2 text-xs min-w-0 overflow-hidden">
         <Home className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
@@ -363,59 +372,59 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
           <>
             <span className="hidden md:inline text-muted-foreground">{t('view.settings')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-sm font-semibold truncate text-foreground">{t(settingsTabKeys[settingsTab])}</span>
+            <span className="text-[14px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(settingsTabKeys[settingsTab])}</span>
           </>
         ) : ['invoices', 'fines', 'price-tariffs'].includes(currentView) ? (
           <>
             <span className="hidden md:inline text-muted-foreground">{t('category.finance')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-sm font-semibold truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
+            <span className="text-[14px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
           </>
         ) : ['tasks', 'vendor-management', 'vendor-detail'].includes(currentView) ? (
           <>
             <span className="hidden md:inline text-muted-foreground">{t('category.tasks')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-sm font-semibold truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
+            <span className="text-[14px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
           </>
         ) : ['analytics', 'fleet-condition'].includes(currentView) ? (
           <>
             <span className="hidden md:inline text-muted-foreground">{t('category.insights')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-sm font-semibold truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
+            <span className="text-[14px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
           </>
         ) : currentView === 'new-booking' ? (
           <>
             <span className="hidden md:inline text-muted-foreground">{t('view.bookings')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-sm font-semibold truncate text-foreground">{t('view.newBooking')}</span>
+            <span className="text-[14px] font-semibold tracking-[-0.003em] truncate text-foreground">{t('view.newBooking')}</span>
           </>
         ) : currentView === 'customer-detail' && detailCustomerId ? (
           <>
             <span className="hidden md:inline text-muted-foreground">{t('view.customers')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-sm font-semibold font-mono truncate text-foreground">{detailCustomerId}</span>
+            <span className="text-[14px] font-semibold font-mono truncate text-foreground">{detailCustomerId}</span>
           </>
         ) : currentView === 'bookings' && activeBookingRef ? (
           <>
             <span className="hidden md:inline text-muted-foreground">{t('view.bookings')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-sm font-semibold truncate text-foreground">{activeBookingRef}</span>
+            <span className="text-[14px] font-semibold tracking-[-0.003em] truncate text-foreground">{activeBookingRef}</span>
           </>
         ) : ['overview', 'trips', 'health-errors', 'damages', 'documents'].includes(currentView) && selectedVehicle ? (
           <>
             <span className="hidden md:inline text-muted-foreground">{t(viewLabelKeys[resolvedView])}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-sm font-semibold truncate text-foreground">{selectedVehicle.model}</span>
+            <span className="text-[14px] font-semibold tracking-[-0.003em] truncate text-foreground">{selectedVehicle.model}</span>
           </>
         ) : (
-          <span className="text-sm font-semibold truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
+          <span className="text-[14px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
         )}
       </div>
 
-      {/* Center Section - Search */}
+      {/* Center Section - Search (V4.6.86: refined focus ring, brand-tinted glow) */}
       <div className="hidden md:flex flex-1 max-w-xs" ref={searchRef}>
         <div className="relative w-full">
-          <div className="flex items-center gap-2 w-full px-3 py-1.5 rounded-lg border transition-colors bg-muted border-border focus-within:border-foreground/20">
+          <div className="flex items-center gap-2 w-full h-8 px-3 rounded-lg border bg-muted/80 border-border transition-[border-color,background-color,box-shadow] duration-200 ease-out focus-within:border-[color:var(--brand-soft)] focus-within:bg-card focus-within:shadow-[0_0_0_3px_var(--brand-soft)]">
             <Search className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
             <input
               ref={inputRef}
@@ -425,14 +434,14 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
               onChange={(e) => { setSearchQuery(e.target.value); setIsSearchOpen(true); }}
               onFocus={() => { if (searchQuery.trim()) setIsSearchOpen(true); }}
               onKeyDown={handleSearchKeyDown}
-              className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground text-foreground"
+              className="flex-1 bg-transparent outline-none text-[13px] placeholder:text-muted-foreground text-foreground"
             />
             {searchQuery ? (
-              <button onClick={() => { setSearchQuery(''); setIsSearchOpen(false); inputRef.current?.focus(); }} className="p-0.5 rounded transition-colors hover:bg-muted text-muted-foreground">
+              <button onClick={() => { setSearchQuery(''); setIsSearchOpen(false); inputRef.current?.focus(); }} className="p-0.5 rounded transition-colors hover:bg-foreground/10 text-muted-foreground hover:text-foreground">
                 <X className="w-3 h-3" />
               </button>
             ) : (
-              <div className="flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded bg-foreground/5 text-muted-foreground">
+              <div className="flex items-center gap-0.5 text-[10px] font-semibold font-mono tabular px-1.5 py-0.5 rounded bg-foreground/5 text-muted-foreground">
                 <span>⌘</span><span>K</span>
               </div>
             )}
@@ -440,7 +449,7 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
 
           {/* Search Results Dropdown */}
           {isSearchOpen && searchQuery.trim() && (
-            <div className="absolute top-full mt-2 left-0 right-0 z-[9999] rounded-lg border shadow-lg overflow-hidden bg-card/95 border-border">
+            <div className="absolute top-full mt-2 left-0 right-0 z-[9999] sq-overlay overflow-hidden animate-fade-up">
               {searchResults.length === 0 ? (
                 <div className="px-4 py-8 text-center">
                   <Search className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
@@ -459,7 +468,7 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
                     let globalIndex = 0;
                     return Object.entries(grouped).map(([category, items]) => (
                       <div key={category}>
-                        <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground bg-muted/50">
+                        <div className="sq-section-label px-3 py-1.5 bg-muted/50">
                           {category}
                         </div>
                         {items.map((result) => {
@@ -517,30 +526,32 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
 
       {/* Right Section - Actions */}
       <div className="flex items-center gap-1 lg:gap-1.5 shrink-0">
-        {/* Dark Mode Toggle */}
+        {/* Dark Mode Toggle — V4.6.86: soft press + subtle rotation micro-motion */}
         <button
           onClick={() => setIsDarkMode(!isDarkMode)}
-          className="p-1.5 rounded-md transition-colors hover:bg-muted text-muted-foreground"
+          className="w-8 h-8 flex items-center justify-center rounded-md transition-all duration-200 ease-out hover:bg-muted text-muted-foreground hover:text-foreground sq-press"
+          aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
         >
           {isDarkMode ? (
-            <Sun className="w-4 h-4" />
+            <Sun className="w-4 h-4 transition-transform duration-300 ease-out hover:rotate-45" />
           ) : (
-            <Moon className="w-4 h-4" />
+            <Moon className="w-4 h-4 transition-transform duration-300 ease-out hover:-rotate-12" />
           )}
         </button>
 
-        {/* Language Selector */}
+        {/* Language Selector — ISO-code pill (V4.6.86: anti-emoji) */}
         <div className="relative hidden sm:block">
-          <button 
+          <button
             onClick={() => setIsLanguageOpen(!isLanguageOpen)}
-            className="flex items-center gap-1.5 p-1.5 rounded-md transition-colors hover:bg-muted"
+            className="flex items-center justify-center h-8 min-w-[36px] px-2 rounded-md text-[10.5px] font-semibold tracking-[0.06em] font-mono tabular transition-all duration-200 ease-out text-muted-foreground hover:text-foreground hover:bg-muted sq-press"
+            aria-label={`Language: ${selectedLanguage.name}`}
           >
-            <span className="text-sm leading-none">{selectedLanguage.flag}</span>
+            {selectedLanguage.short}
           </button>
 
           {/* Language Dropdown */}
           {isLanguageOpen && (
-            <div className="absolute right-0 top-full mt-1 w-44 rounded-lg shadow-lg border overflow-hidden z-[9999] bg-card border-border">
+            <div className="absolute right-0 top-full mt-1.5 w-44 sq-overlay overflow-hidden z-[9999] animate-fade-up">
               {languages.map((lang) => (
                 <button
                   key={lang.code}
@@ -549,48 +560,48 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
                     setLocale(lang.code);
                     setIsLanguageOpen(false);
                   }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-[13px] hover:bg-muted ${
+                  className={`w-full flex items-center gap-3 px-3 py-2 transition-colors text-[12.5px] hover:bg-muted ${
                     selectedLanguage.code === lang.code ? 'bg-muted' : ''
                   }`}
                 >
-                  <span className="text-base">{lang.flag}</span>
+                  <span className="inline-flex items-center justify-center h-5 min-w-[28px] px-1.5 rounded-sm text-[10px] font-semibold tracking-[0.06em] font-mono tabular bg-muted text-muted-foreground">
+                    {lang.short}
+                  </span>
                   <span className="text-foreground">{lang.name}</span>
+                  {selectedLanguage.code === lang.code && (
+                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-brand" aria-hidden />
+                  )}
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* Notifications with Badge */}
-        <button className="relative p-1.5 rounded-md transition-colors hover:bg-muted text-muted-foreground">
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full ring-2 ring-background"></span>
-        </button>
-
         {/* Divider */}
-        <div className="hidden sm:block w-px h-6 mx-1 bg-border" />
+        <div className="hidden sm:block w-px h-5 mx-1 bg-border/60" />
 
-        {/* User Avatar */}
+        {/* User Avatar — V4.6.86: brand-tinted tile, no AI gradient; subtle hover lift */}
         <div className="relative" ref={profileRef}>
           <button
             onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-            className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-xs font-medium shadow-sm"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-semibold tracking-tight transition-all duration-200 ease-out sq-tone-brand hover:-translate-y-px hover:shadow-[0_4px_12px_-4px_var(--brand-glow)] ring-1 ring-[color:var(--brand-soft)]"
+            aria-label={`Open profile menu for ${currentUserName}`}
           >
             {currentUserInitials}
           </button>
 
           {/* Profile Dropdown */}
           {isProfileMenuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-56 rounded-lg shadow-lg border overflow-hidden z-[9999] bg-card/95 border-border">
+            <div className="absolute right-0 top-full mt-2 w-56 sq-overlay overflow-hidden z-[9999] animate-fade-up">
               {/* User Info Header */}
               <div className="px-3 py-3 border-b border-border">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-xs font-medium shadow-sm shrink-0">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-semibold tracking-tight shrink-0 sq-tone-brand ring-1 ring-[color:var(--brand-soft)]">
                     {currentUserInitials}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold truncate text-foreground">{currentUserName}</p>
-                    <p className="text-[10px] truncate text-muted-foreground">{currentUserEmail}</p>
+                    <p className="text-[13px] font-semibold truncate text-foreground">{currentUserName}</p>
+                    <p className="text-[11px] truncate text-muted-foreground">{currentUserEmail}</p>
                   </div>
                 </div>
               </div>

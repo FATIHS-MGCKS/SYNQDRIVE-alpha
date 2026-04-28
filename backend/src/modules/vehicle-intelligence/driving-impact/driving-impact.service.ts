@@ -21,6 +21,7 @@ import {
   computeThermalBrakeStressScore,
   computeDrivingStyleScore,
   computeSafetyScore,
+  hasSpeedingDataFromTrip,
 } from './driving-impact-scorer';
 
 // ── Public consumer DTOs ──────────────────────────────────────────────────────
@@ -129,6 +130,8 @@ export class DrivingImpactService {
         totalBrakingEvents: true,
         speedingExposurePct: true,
         speedingSectionCount: true,
+        speedingDistanceM: true,
+        speedingDurationS: true,
         avgOverSpeedKmh: true,
         maxOverSpeedKmh: true,
         drivingScore: true,
@@ -342,19 +345,34 @@ export class DrivingImpactService {
       highSpeedStressScore,
     });
 
+    // V4.6.95 — Safety Score must be NULL when no route / speed-limit
+    // enrichment ran for this trip. Coercing the four speed-limit fields to 0
+    // would produce safetyScore = 100 ("perfectly safe"), which is dangerous
+    // and wrong. We distinguish:
+    //   - all speed-limit fields null     ⇒ no data        ⇒ safetyScore = null
+    //   - fields present (even all zero)  ⇒ data present   ⇒ compute via formula
+    // The exposure / section counters that ARE persisted on TripDrivingImpact
+    // are still recorded as 0 fallbacks — they describe "events seen" not
+    // "data quality". `safetyScore` itself is the only field that becomes
+    // null when the underlying enrichment never ran.
     const speedingExposurePct = trip.speedingExposurePct ?? 0;
     const speedingSectionCount = trip.speedingSectionCount ?? 0;
     const avgOverSpeedKmh = trip.avgOverSpeedKmh ?? 0;
     const maxOverSpeedKmh = trip.maxOverSpeedKmh ?? 0;
-    const safetyScore = computeSafetyScore({
-      speedingExposurePct,
-      maxOverSpeedKmh,
-      avgOverSpeedKmh,
-      speedingSectionCount,
-    });
-    const speedingSeverityScore = Math.round(
-      Math.max(0, Math.min(100, maxOverSpeedKmh * 1.1 + avgOverSpeedKmh * 1.4)),
-    );
+    const hasSpeedingData = hasSpeedingDataFromTrip(trip);
+    const safetyScore: number | null = hasSpeedingData
+      ? computeSafetyScore({
+          speedingExposurePct,
+          maxOverSpeedKmh,
+          avgOverSpeedKmh,
+          speedingSectionCount,
+        })
+      : null;
+    // NOTE (V4.6.83): `TripDrivingImpact.speedingSeverityScore` was previously
+    // populated with an ad-hoc `maxOverSpeedKmh * 1.1 + avgOverSpeedKmh * 1.4`
+    // formula but never read by any consumer. The canonical speeding-centric
+    // scalar is `safetyScore` (via `computeSafetyScore`). V4.6.95 fully
+    // retires the column — the migration drops it; no consumer remained.
 
     // ── Persist TripDrivingImpact ─────────────────────────────────────────────
 
@@ -394,7 +412,6 @@ export class DrivingImpactService {
         drivingStyleScore,
         safetyScore,
         speedingExposurePct,
-        speedingSeverityScore,
         speedingSectionCount,
 
         modelVersion: C.MODEL_VERSION,
@@ -445,7 +462,6 @@ export class DrivingImpactService {
         drivingStyleScore,
         safetyScore,
         speedingExposurePct,
-        speedingSeverityScore,
         speedingSectionCount,
         modelVersion: C.MODEL_VERSION,
         sourceSummaryJson: {
@@ -572,6 +588,7 @@ export class DrivingImpactService {
         highSpeedStressScore: wavg('highSpeedStressScore'),
         thermalBrakeStressScore: wavg('thermalBrakeStressScore'),
         drivingStyleScore: wavg('drivingStyleScore'),
+        safetyScore: wavg('safetyScore'),
         modelVersion: C.MODEL_VERSION,
       },
       update: {
@@ -600,6 +617,7 @@ export class DrivingImpactService {
         highSpeedStressScore: wavg('highSpeedStressScore'),
         thermalBrakeStressScore: wavg('thermalBrakeStressScore'),
         drivingStyleScore: wavg('drivingStyleScore'),
+        safetyScore: wavg('safetyScore'),
         modelVersion: C.MODEL_VERSION,
       },
     });

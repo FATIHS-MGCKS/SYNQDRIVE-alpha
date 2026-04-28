@@ -15,7 +15,9 @@ export interface InsightCandidate {
   entityScope: InsightEntityScope;
   entityIds: string[];
   timeContext?: Record<string, string>;
-  metrics?: Record<string, number | string>;
+  // Persisted as Prisma JSON; allow nested structures (e.g. per-entity
+  // breakdown for grouped insights consumed by the dashboard).
+  metrics?: Record<string, any>;
   reasons: string[];
   confidence: number;
   dedupeKey: string;
@@ -60,6 +62,9 @@ export const DEFAULT_POLICY: TenantPolicy = {
     InsightType.LOW_UTILIZATION,
     InsightType.SERVICE_WINDOW,
     InsightType.SERVICE_BEFORE_BOOKING,
+    InsightType.BATTERY_CRITICAL,
+    InsightType.SERVICE_OVERDUE,
+    InsightType.PICKUP_OVERDUE,
   ],
   handoverBufferMin: 60,
   lowUtilizationDays: 7,

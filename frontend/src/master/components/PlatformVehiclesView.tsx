@@ -200,7 +200,7 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           {[
             { label: 'Available', count: registeredVehicles.filter(v => v.status === 'Available').length, color: 'text-green-500', bg: isDarkMode ? 'bg-green-500/10' : 'bg-green-50' },
-            { label: 'Rented', count: registeredVehicles.filter(v => v.status === 'Rented').length, color: 'text-blue-500', bg: isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50' },
+            { label: 'Active Rented', count: registeredVehicles.filter(v => v.status === 'Active Rented').length, color: 'text-blue-500', bg: isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50' },
             { label: 'Maintenance', count: registeredVehicles.filter(v => v.status === 'Maintenance').length, color: 'text-orange-500', bg: isDarkMode ? 'bg-orange-500/10' : 'bg-orange-50' },
             { label: 'Blocked', count: registeredVehicles.filter(v => v.status === 'Blocked').length, color: 'text-red-500', bg: isDarkMode ? 'bg-red-500/10' : 'bg-red-50' },
             { label: 'Reserved', count: registeredVehicles.filter(v => v.status === 'Reserved').length, color: 'text-purple-500', bg: isDarkMode ? 'bg-purple-500/10' : 'bg-purple-50' },

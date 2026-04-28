@@ -41,4 +41,27 @@ export default registerAs('worker', () => ({
 
   // ── Trip End: How far forward from possibleEndAt to fetch data for CUSUM ──
   tripEndSegmentLookaheadMs: parseInt(process.env.TRIP_END_SEGMENT_LOOKAHEAD_MS || '300000', 10),
+
+  // ── Trip Mid-Gap Split ──
+  // Minimum stationary silence inside an otherwise ACTIVE trip that triggers
+  // an automatic split into two trips. Covers the common case of a driver
+  // parking briefly (coffee run, pickup, short errand) with the engine off:
+  // DIMO then drops the connection, resumes on restart, and neither side
+  // emits an explicit ignition-off transition. Default 3 min.
+  tripMidGapSplitMs: parseInt(process.env.TRIP_MID_GAP_SPLIT_MS || '180000', 10),
+  // Maximum position drift (meters) between the last pre-gap waypoint and
+  // the first post-gap waypoint for the gap to be considered a stationary
+  // stop (i.e., the same parking spot). Larger drifts mean the vehicle kept
+  // moving through a signal dropout (e.g., tunnel) and MUST NOT be split.
+  tripMidGapMaxStationaryDriftM: parseInt(
+    process.env.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M || '200',
+    10,
+  ),
+  // Lower bound for the pre-split trip's existing duration/distance.
+  // Prevents splitting a trip whose first segment would be trivially short
+  // (e.g., false-positive signal glitches near trip start).
+  tripMidGapMinPreDurationMs: parseInt(
+    process.env.TRIP_MID_GAP_MIN_PRE_DURATION_MS || '60000',
+    10,
+  ),
 }));

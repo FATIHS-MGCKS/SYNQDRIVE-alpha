@@ -11,7 +11,10 @@ import type {
   RepairDecision,
   CreateTripParams,
   FinalizeMeta,
+  SplitTripAtGapParams,
+  SplitTripAtGapResult,
 } from './decision.types';
+import { END_DETECTION_MODES, START_DETECTION_MODES } from '../trip-detection.types';
 
 /**
  * TripDecisionEngine
@@ -354,6 +357,143 @@ export class TripDecisionEngine {
       ...params,
       tripSource: TripSource.REPAIRED,
     });
+  }
+
+  /**
+   * Splits a trip into two canonical trips at a detected mid-trip gap
+   * (vehicle was parked with engine off for long enough that the previous
+   * drive effectively ended and a new drive began).
+   *
+   * Transactionally:
+   *   1. Finalizes the existing trip at `firstEndAt` with the
+   *      MID_TRIP_GAP_SPLIT end mode.
+   *   2. Creates a new ONGOING trip that begins at `secondStartAt` with
+   *      the MID_TRIP_GAP_SPLIT start mode and the same vehicle/organization.
+   *   3. Re-parents every waypoint whose `recordedAt >= secondStartAt`
+   *      from the old trip to the new trip so route rendering stays intact.
+   *   4. Recomputes `durationMinutes` for the old trip from the new
+   *      `firstEndAt`. Distance is left to the caller (needs odometer).
+   *
+   * Returns both trip ids plus the number of waypoints moved.
+   *
+   * Safety: callers MUST have already verified the gap is real (sustained
+   * stationary silence + position drift below threshold + both endpoints
+   * stopped). This method does not re-validate.
+   */
+  async splitTripAtGap(
+    params: SplitTripAtGapParams,
+  ): Promise<SplitTripAtGapResult> {
+    const originalTrip = await this.prisma.vehicleTrip.findUnique({
+      where: { id: params.tripId },
+      select: {
+        id: true,
+        vehicleId: true,
+        startTime: true,
+        distanceKm: true,
+        tripStatus: true,
+      },
+    });
+    if (!originalTrip) {
+      throw new Error(`splitTripAtGap: trip ${params.tripId} not found`);
+    }
+
+    const vehicleRow = await this.prisma.vehicle.findUnique({
+      where: { id: originalTrip.vehicleId },
+      select: { organizationId: true },
+    });
+
+    const firstDurationMs =
+      params.firstEndAt.getTime() - originalTrip.startTime.getTime();
+    const firstDurationMinutes =
+      firstDurationMs > 0 ? firstDurationMs / 60_000 : undefined;
+
+    // Best-effort first-trip distance: if caller knows it, honour it; otherwise
+    // keep what was recorded (the original trip was already tracking distance
+    // while ONGOING so the last write is the lower bound for segment 1).
+    const firstDistanceKm =
+      params.firstEndDistanceKm ?? originalTrip.distanceKm ?? undefined;
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      // ── 1. Finalize the existing trip as the first segment ────────────
+      await tx.vehicleTrip.update({
+        where: { id: params.tripId },
+        data: {
+          tripStatus: TripStatus.COMPLETED,
+          endTime: params.firstEndAt,
+          endLatitude: params.firstEndLatitude ?? undefined,
+          endLongitude: params.firstEndLongitude ?? undefined,
+          endDetectionMode: END_DETECTION_MODES.MID_TRIP_GAP_SPLIT,
+          endConfidence: 'MEDIUM',
+          durationMinutes: firstDurationMinutes,
+          distanceKm: firstDistanceKm,
+          qualityStatus: 'VERIFIED',
+          behaviorSummaryStatus: 'PENDING',
+          drivingImpactStatus: 'PENDING',
+          rawDetectionMeta: {
+            splitReason: params.reason,
+            splitTriggeredBy: params.triggeredBy,
+            splitGapMs: params.gapMs,
+            splitFirstEndAt: params.firstEndAt.toISOString(),
+            splitSecondStartAt: params.secondStartAt.toISOString(),
+          } as any,
+        },
+      });
+
+      // ── 2. Create the continuation trip ───────────────────────────────
+      const secondTrip = await tx.vehicleTrip.create({
+        data: {
+          vehicleId: originalTrip.vehicleId,
+          tripStatus: TripStatus.ONGOING,
+          tripSource:
+            params.triggeredBy === 'RECONCILIATION'
+              ? TripSource.REPAIRED
+              : TripSource.V2_LIVE,
+          startTime: params.secondStartAt,
+          startLatitude: params.secondStartLatitude ?? undefined,
+          startLongitude: params.secondStartLongitude ?? undefined,
+          detectionProfile: (params.detectionProfile as any) ?? undefined,
+          startDetectionMode: START_DETECTION_MODES.MID_TRIP_GAP_SPLIT,
+          startConfidence: 'MEDIUM',
+          qualityStatus: 'VERIFIED',
+          behaviorSummaryStatus: 'PENDING',
+          drivingImpactStatus: 'PENDING',
+          isRepaired: params.triggeredBy === 'RECONCILIATION',
+          rawDetectionMeta: {
+            splitFrom: params.tripId,
+            splitReason: params.reason,
+            splitTriggeredBy: params.triggeredBy,
+            splitGapMs: params.gapMs,
+          } as any,
+        },
+      });
+
+      // ── 3. Re-parent waypoints that belong to segment 2 ───────────────
+      const movedWaypoints = await tx.vehicleTripWaypoint.updateMany({
+        where: {
+          tripId: params.tripId,
+          recordedAt: { gte: params.secondStartAt },
+        },
+        data: { tripId: secondTrip.id },
+      });
+
+      return {
+        firstTripId: params.tripId,
+        secondTripId: secondTrip.id,
+        movedWaypoints: movedWaypoints.count,
+      };
+    });
+
+    this.logger.log(
+      `[${TRIP_OWNERSHIP.LIFECYCLE_OWNER}] Trip SPLIT ON GAP — ` +
+        `firstId=${result.firstTripId} secondId=${result.secondTripId} ` +
+        `firstEnd=${params.firstEndAt.toISOString()} ` +
+        `secondStart=${params.secondStartAt.toISOString()} ` +
+        `gap=${Math.round(params.gapMs / 1000)}s moved=${result.movedWaypoints} ` +
+        `trigger=${params.triggeredBy} reason=${params.reason} ` +
+        `vehicleId=${originalTrip.vehicleId} orgId=${vehicleRow?.organizationId ?? '—'}`,
+    );
+
+    return result;
   }
 
   /**

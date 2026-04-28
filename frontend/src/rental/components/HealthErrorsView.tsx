@@ -1,11 +1,14 @@
-import { CheckCircle, AlertTriangle, Battery, Wrench, Calendar, Disc, Circle as TireIcon, Download, FileText, Bell, Share2, Settings, ChevronRight, Sparkles, X, Plus, Search, PenTool, ShieldAlert, CircleDot, ChevronLeft, Clock, Thermometer, BatteryCharging, RefreshCw, Loader2, Upload, Ruler, Gauge, Zap, Snowflake, Sun, Wind, Activity, ClipboardList, Bot, Droplets, AlertOctagon, DiscAlbum } from 'lucide-react';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { CheckCircle, AlertTriangle, Battery, Wrench, Calendar, Disc, Circle as TireIcon, Download, FileText, Bell, Share2, Settings, ChevronRight, Sparkles, X, Plus, Search, PenTool, ShieldAlert, CircleDot, ChevronLeft, Clock, Thermometer, BatteryCharging, RefreshCw, Loader2, Upload, Ruler, Gauge, Zap, Snowflake, Sun, Wind, Activity, ClipboardList, Bot } from 'lucide-react';
+import tellTaleOilIcon from '../../assets/icons/telltale/oil.svg';
+import tellTaleCelIcon from '../../assets/icons/telltale/cel.svg';
+import tellTaleBrakePadIcon from '../../assets/icons/telltale/brake-pad.svg';
+import tellTaleTirePressureIcon from '../../assets/icons/telltale/tire-pressure.svg';
+import tellTaleBatteryIcon from '../../assets/icons/telltale/battery.svg';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { XAxis, YAxis, ResponsiveContainer, Tooltip, Line, LineChart, ReferenceArea } from 'recharts';
 import { api, streamAiTireSpecs, type AgentStep, type AiTireSpecsStreamEvent, type HealthSummaryResponse, type TireWearAnalysis, type ServiceInfoStatus, type BatteryHealthSummary, type BatteryHealthDetail, type HvBatteryStatus, type BrakeHealthSummary as BrakeHealthSummaryType, type BrakeHealthDetail, type BrakeAlert, type TripProfile, type TireHealthSummaryResponse, type TireHealthDetailResponse, type TireAlert, type VehicleComplaint } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
-import { EuromasterServiceRequestModal } from './euromaster/EuromasterServiceRequestModal';
-import { useEuromasterIntegration } from './euromaster/useEuromasterIntegration';
 
 interface HealthErrorsViewProps {
   isDarkMode: boolean;
@@ -16,6 +19,12 @@ interface HealthErrorsViewProps {
 function formatEnumLabel(value: unknown, fallback = '—'): string {
   if (typeof value !== 'string' || value.length === 0) return fallback;
   return value.replace(/_/g, ' ');
+}
+
+function formatMaxDecimals(value: number | null | undefined, maxDecimals = 2, fallback = '—'): string {
+  if (value == null || !Number.isFinite(value)) return fallback;
+  const rounded = Math.round(value * 10 ** maxDecimals) / 10 ** maxDecimals;
+  return String(rounded);
 }
 
 
@@ -34,8 +43,6 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
   const [complaintForm, setComplaintForm] = useState({ description: '', urgency: 'MEDIUM', region: '' });
   const [submittingComplaint, setSubmittingComplaint] = useState(false);
   const [batteryChartTab, setBatteryChartTab] = useState<'woche' | 'monat'>('woche');
-  const [showEuromasterTireModal, setShowEuromasterTireModal] = useState(false);
-  const emState = useEuromasterIntegration();
   const [isModalAnimating, setIsModalAnimating] = useState(false);
   const [isModalClosing, setIsModalClosing] = useState(false);
   const [expandedErrorIndex, setExpandedErrorIndex] = useState<number | null>(null);
@@ -670,8 +677,19 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
   const bSummary = batterySummary;
   const lvPubState = bSummary?.lv?.publicationState ?? bSummary?.currentState?.publicationState ?? 'INITIAL_CALIBRATION';
   const lvStatus = bSummary?.lv?.status ?? (lvPubState === 'INITIAL_CALIBRATION' ? 'calibrating' : lvPubState === 'STABILIZING' ? 'stabilizing' : 'ready');
-  const lvIsCalibrating = lvStatus === 'calibrating' || lvPubState === 'INITIAL_CALIBRATION';
-  const lvIsStabilizing = lvStatus === 'stabilizing' || lvPubState === 'STABILIZING';
+  // Backend marks `status: 'estimate_unavailable'` when neither an LV voltage
+  // reading nor a BatteryFeatures row exists — i.e. the vehicle has never
+  // emitted a 12V/LV signal. We cross-check the telemetry fallbacks so the UI
+  // never shows "No LV Battery detected" for a vehicle that actually reported
+  // a voltage at some point (e.g. rare telemetry races).
+  const lvNoBatteryDetected =
+    lvStatus === 'estimate_unavailable'
+    && (bSummary?.lv?.telemetry?.voltageV ?? null) == null
+    && (bSummary?.currentState?.voltageV ?? null) == null
+    && (bSummary?.currentTelemetry?.lvVoltageV ?? null) == null
+    && (batteryLatest?.voltageV ?? null) == null;
+  const lvIsCalibrating = !lvNoBatteryDetected && (lvStatus === 'calibrating' || lvPubState === 'INITIAL_CALIBRATION');
+  const lvIsStabilizing = !lvNoBatteryDetected && (lvStatus === 'stabilizing' || lvPubState === 'STABILIZING');
   const voltageDisplay = bSummary?.lv?.telemetry?.voltageV?.toFixed(2) ?? bSummary?.currentState?.voltageV?.toFixed(2) ?? batteryLatest?.voltageV?.toFixed(2) ?? '—';
   const capacityPct = lvIsCalibrating
     ? null
@@ -771,7 +789,161 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
 
   const hs = aiHealthCare ?? healthSummary;
 
+  // ── Vehicle Health Center – critical findings aggregator ────────────────────
+  // V4.6.42: The old "AI Health Care" summary only reflected the backend AI
+  // narrative (hs.overallStatus + futureOutlook) and silently ignored the
+  // deterministic compliance/safety signals that the other tiles already
+  // surface (Service / TÜV / BOKraft / Battery). That meant the card could
+  // show "Gut — keine auffälligen Probleme" while the Service-Tile right next
+  // to it screamed "ÜBERFÄLLIG" in red. The VHC is now the authoritative
+  // roll-up: it cross-checks all known deterministic health facets and
+  // escalates the overall status + renders a dedicated "Sofortige
+  // Aufmerksamkeit"-section so operators see the actual vehicle condition at
+  // a glance instead of a stale AI blurb.
+  type FindingSeverity = 'critical' | 'warning';
+  type CriticalFinding = {
+    id: string;
+    severity: FindingSeverity;
+    icon: 'wrench' | 'calendar' | 'shield' | 'battery';
+    title: string;
+    detail: string;
+    onClick?: () => void;
+  };
+
+  const criticalFindings = useMemo<CriticalFinding[]>(() => {
+    const out: CriticalFinding[] = [];
+    const si = serviceInfo;
+
+    // Service
+    if (si?.serviceOverdue) {
+      const byDays = si.serviceOverdueDays != null && si.serviceOverdueDays > 0
+        ? `${si.serviceOverdueDays} Tage`
+        : null;
+      const byKm = si.serviceOverdueKm != null && si.serviceOverdueKm > 0
+        ? `${si.serviceOverdueKm.toLocaleString('de-DE')} km`
+        : null;
+      const overBy = [byDays, byKm].filter(Boolean).join(' / ');
+      out.push({
+        id: 'service-overdue',
+        severity: 'critical',
+        icon: 'wrench',
+        title: 'Service überfällig',
+        detail: overBy ? `Seit ${overBy} überfällig — Werkstatttermin vereinbaren.` : 'Werkstatttermin vereinbaren.',
+        onClick: () => setShowService(true),
+      });
+    } else if (si?.serviceDueImminently) {
+      const inDays = si.serviceRemainingDays != null && si.serviceRemainingDays >= 0 ? `${si.serviceRemainingDays} Tage` : null;
+      const inKm = si.serviceRemainingKm != null && si.serviceRemainingKm >= 0 ? `${si.serviceRemainingKm.toLocaleString('de-DE')} km` : null;
+      const within = [inDays, inKm].filter(Boolean).join(' / ');
+      out.push({
+        id: 'service-imminent',
+        severity: 'warning',
+        icon: 'wrench',
+        title: 'Service bald fällig',
+        detail: within ? `Fällig in ${within} — Werkstatttermin planen.` : 'Werkstatttermin planen.',
+        onClick: () => setShowService(true),
+      });
+    }
+
+    // TÜV / HU
+    if (si?.tuvOverdue) {
+      const lapsed = si.tuvRemainingDays != null && si.tuvRemainingDays < 0
+        ? `${Math.abs(si.tuvRemainingDays)} Tage`
+        : null;
+      out.push({
+        id: 'tuv-overdue',
+        severity: 'critical',
+        icon: 'calendar',
+        title: 'TÜV abgelaufen',
+        detail: lapsed ? `Seit ${lapsed} abgelaufen — Hauptuntersuchung sofort.` : 'Hauptuntersuchung sofort nachholen.',
+        onClick: () => setShowService(true),
+      });
+    } else if (si?.tuvRemainingDays != null && si.tuvRemainingDays >= 0 && si.tuvRemainingDays <= 30) {
+      out.push({
+        id: 'tuv-soon',
+        severity: 'warning',
+        icon: 'calendar',
+        title: 'TÜV bald fällig',
+        detail: `Fällig in ${si.tuvRemainingDays} Tagen — HU-Termin planen.`,
+        onClick: () => setShowService(true),
+      });
+    }
+
+    // BOKraft (§57b)
+    if (si?.bokraftOverdue) {
+      const lapsed = si.bokraftRemainingDays != null && si.bokraftRemainingDays < 0
+        ? `${Math.abs(si.bokraftRemainingDays)} Tage`
+        : null;
+      out.push({
+        id: 'bokraft-overdue',
+        severity: 'critical',
+        icon: 'shield',
+        title: 'BOKraft abgelaufen',
+        detail: lapsed ? `Seit ${lapsed} abgelaufen — §57b-Prüfung sofort.` : '§57b-Prüfung sofort nachholen.',
+        onClick: () => setShowService(true),
+      });
+    } else if (si?.bokraftRemainingDays != null && si.bokraftRemainingDays >= 0 && si.bokraftRemainingDays <= 30) {
+      out.push({
+        id: 'bokraft-soon',
+        severity: 'warning',
+        icon: 'shield',
+        title: 'BOKraft bald fällig',
+        detail: `Fällig in ${si.bokraftRemainingDays} Tagen — §57b-Termin planen.`,
+        onClick: () => setShowService(true),
+      });
+    }
+
+    // Battery — canonical condition + live HM dashboard warning-light flag,
+    // merged into a SINGLE finding (never two battery rows). Precedence:
+    //   attention → "Batterie kritisch"
+    //   watch OR dashboard warning-light active → "Batterie beobachten"
+    // If the dashboard warning-light is on, its note is appended to the
+    // existing detail so the driver sees one consolidated message.
+    const battCond = batterySummary?.condition;
+    const dashBatteryLightOn = aiHealthCare?.indicators?.batteryWarningLight === true;
+    const warnLightNote = 'Dashboard-Warnleuchte aktiv — Lichtmaschine und Ladezustand prüfen.';
+
+    if (battCond === 'attention') {
+      const sohPct = batterySummary?.currentState?.publishedSohPct ?? batterySummary?.currentState?.sohPercent ?? null;
+      const voltage = batterySummary?.currentState?.voltageV ?? null;
+      const bits: string[] = [];
+      if (sohPct != null) bits.push(`SOH ${Math.round(sohPct)} %`);
+      if (voltage != null) bits.push(`${voltage.toFixed(2)} V`);
+      const base = bits.length
+        ? `${bits.join(' · ')} — Starthilfe oder Austausch empfohlen.`
+        : 'Starthilfe oder Austausch empfohlen.';
+      out.push({
+        id: 'battery-critical',
+        severity: 'critical',
+        icon: 'battery',
+        title: 'Batterie kritisch',
+        detail: dashBatteryLightOn ? `${base} ${warnLightNote}` : base,
+        onClick: () => setShowBattery(true),
+      });
+    } else if (battCond === 'watch' || dashBatteryLightOn) {
+      const base = 'Startschwierigkeiten möglich — Ladezustand und Lichtmaschine prüfen.';
+      out.push({
+        id: 'battery-watch',
+        severity: 'warning',
+        icon: 'battery',
+        title: 'Batterie beobachten',
+        detail: dashBatteryLightOn ? `${base} ${warnLightNote}` : base,
+        onClick: () => setShowBattery(true),
+      });
+    }
+
+    return out;
+  }, [serviceInfo, batterySummary, aiHealthCare]);
+
+  const hasCriticalFinding = criticalFindings.some((f) => f.severity === 'critical');
+  const hasWarningFinding = criticalFindings.some((f) => f.severity === 'warning');
+
   const cardClass = 'bg-card border border-border rounded-lg shadow-xs p-4';
+  const quickCardClass = `${cardClass} flex flex-col cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02]`;
+  const quickCardHeaderClass = 'flex items-center justify-between mb-2.5';
+  const quickCardTitleClass = 'text-base font-semibold text-foreground';
+  const quickCardBodyClass = 'flex-1 flex flex-col justify-center min-h-[104px]';
+  const quickCardFooterClass = 'mt-2 pt-2 border-t border-border';
 
   return (
     <div className="relative">
@@ -784,13 +956,13 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
           pointerEvents: (anyModalOpen || isModalClosing) ? 'none' : 'auto',
         }}
       >
-        {/* ─── AI Health Care – col 1, spans 2 rows ─── */}
+        {/* ─── Vehicle Health Center – col 1, spans 2 rows ─── */}
         <div className={`${cardClass} row-span-2 flex flex-col`}>
             <div className="flex items-center gap-3 mb-3">
             <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>
               <Sparkles className="w-4 h-4" />
             </div>
-            <h3 className="text-base font-semibold text-foreground">AI Health Care</h3>
+            <h3 className="text-base font-semibold text-foreground">Vehicle Health Center</h3>
             <span className={`ml-auto px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>Powered by AI</span>
             <button onClick={refreshHealth} className={`p-1 rounded-full transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
               {healthLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
@@ -800,10 +972,24 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
 
             {/* ── Overall Status ─────────────────────────────────────────── */}
             {(() => {
-              const status = aiHealthCare?.aiStatus ?? (
+              // V4.6.42: Status is now an aggregate of the AI narrative AND
+              // the deterministic compliance/safety findings. If Service/TÜV/
+              // BOKraft is overdue or the battery is in 'attention' condition,
+              // we hard-escalate to CRITICAL regardless of what the AI text
+              // claims. A 'warning'-level finding (imminent/watch) lifts the
+              // status at least to ATTENTION_NEEDED. This prevents the old
+              // failure mode where the card said "Gut" while the Service tile
+              // next to it screamed "ÜBERFÄLLIG".
+              const aiStatus = aiHealthCare?.aiStatus ?? (
                 (hs?.overallStatus?.level === 'good') ? 'GOOD' :
                 (hs?.overallStatus?.level === 'watch') ? 'ATTENTION_NEEDED' : 'ATTENTION_NEEDED'
               );
+              const escalated = hasCriticalFinding
+                ? 'CRITICAL'
+                : hasWarningFinding && (aiStatus === 'GOOD' || aiStatus === 'EXCELLENT')
+                  ? 'ATTENTION_NEEDED'
+                  : aiStatus;
+              const status = escalated;
               const cfg = {
                 EXCELLENT:        { bg: isDarkMode ? 'bg-green-500/10' : 'bg-green-50', dot: 'bg-green-500', ping: 'bg-green-400', text: isDarkMode ? 'text-green-300' : 'text-green-800', sub: isDarkMode ? 'text-green-200/70' : 'text-green-700/80', label: 'Sehr gut' },
                 GOOD:             { bg: isDarkMode ? 'bg-green-500/8' : 'bg-green-50/60', dot: 'bg-green-400', ping: 'bg-green-300', text: isDarkMode ? 'text-green-300' : 'text-green-800', sub: isDarkMode ? 'text-green-200/70' : 'text-green-700/80', label: 'Gut' },
@@ -812,8 +998,30 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 NO_RECENT_DATA:   { bg: isDarkMode ? 'bg-neutral-800/60' : 'bg-gray-50', dot: 'bg-gray-400', ping: 'bg-gray-300', text: isDarkMode ? 'text-gray-400' : 'text-gray-600', sub: isDarkMode ? 'text-gray-400/70' : 'text-gray-500/80', label: 'Keine Daten' },
               }[status] ?? { bg: isDarkMode ? 'bg-neutral-800/60' : 'bg-gray-50', dot: 'bg-gray-400', ping: 'bg-gray-300', text: 'text-muted-foreground', sub: 'text-muted-foreground', label: '—' };
 
-              const summaryText = aiHealthCare?.summaryText ?? hs?.overallStatus?.shortSummary ?? 'Keine Analyse verfügbar.';
-              const reasons = aiHealthCare?.reasons ?? (hs?.watchpoints ?? []);
+              // When escalation kicks in, the AI summary may be out of sync
+              // with the deterministic findings. Replace it with a concrete
+              // summary of what's actually wrong so the card is honest.
+              const aiSummaryText = aiHealthCare?.summaryText ?? hs?.overallStatus?.shortSummary ?? 'Keine Analyse verfügbar.';
+              // Build a consolidated one-liner that names BOTH counts so the
+              // header mirrors the "Sofortige Aufmerksamkeit" list 1:1. Avoids
+              // the previous failure where a warning next to a critical was
+              // invisible at the header level (operators had to scroll).
+              const critCount = criticalFindings.filter((f) => f.severity === 'critical').length;
+              const warnCount = criticalFindings.filter((f) => f.severity === 'warning').length;
+              const summaryText = (() => {
+                if (critCount === 0 && warnCount === 0) {
+                  return aiSummaryText;
+                }
+                const parts: string[] = [];
+                if (critCount > 0) parts.push(`${critCount} kritische${critCount === 1 ? 'r' : ''} Befund${critCount === 1 ? '' : 'e'}`);
+                if (warnCount > 0) parts.push(`${warnCount} Warnung${warnCount === 1 ? '' : 'en'}`);
+                const lead = parts.join(' · ');
+                if (critCount > 0) return `${lead} — sofortiges Handeln erforderlich.`;
+                return `${lead} — bitte prüfen.`;
+              })();
+              const reasons = hasCriticalFinding || hasWarningFinding
+                ? [] // list is rendered as dedicated "Sofortige Aufmerksamkeit" section below
+                : aiHealthCare?.reasons ?? (hs?.watchpoints ?? []);
 
               return (
                 <div className={`p-4 rounded-xl ${cfg.bg}`}>
@@ -845,30 +1053,72 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               );
             })()}
 
-            {/* ── Predictive Maintenance ──────────────────────────────────── */}
-            {((hs?.futureOutlook?.summary) || (hs?.futureOutlook?.items ?? []).length > 0) && (
-              <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50'}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                  <span className={`font-semibold text-sm ${isDarkMode ? 'text-blue-300' : 'text-blue-800'}`}>Vorausschauende Wartung</span>
+            {/* ── Sofortige Aufmerksamkeit (deterministic findings) ──────── */}
+            {criticalFindings.length > 0 && (
+              <div className={`p-4 rounded-xl border ${
+                hasCriticalFinding
+                  ? isDarkMode ? 'bg-red-500/5 border-red-500/25' : 'bg-red-50/60 border-red-200'
+                  : isDarkMode ? 'bg-amber-500/5 border-amber-500/25' : 'bg-amber-50/60 border-amber-200'
+              }`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertTriangle className={`w-4 h-4 ${
+                    hasCriticalFinding
+                      ? isDarkMode ? 'text-red-400' : 'text-red-600'
+                      : isDarkMode ? 'text-amber-400' : 'text-amber-600'
+                  }`} />
+                  <span className={`font-semibold text-sm ${
+                    hasCriticalFinding
+                      ? isDarkMode ? 'text-red-300' : 'text-red-800'
+                      : isDarkMode ? 'text-amber-300' : 'text-amber-800'
+                  }`}>{hasCriticalFinding ? 'Sofortige Aufmerksamkeit' : 'Warnungen'}</span>
+                  <span className={`ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                    hasCriticalFinding
+                      ? isDarkMode ? 'bg-red-500/20 text-red-300' : 'bg-red-100 text-red-700'
+                      : isDarkMode ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700'
+                  }`}>{criticalFindings.length}</span>
                 </div>
-                {hs?.futureOutlook?.summary && (
-                  <p className={`text-xs mb-2 leading-relaxed ${isDarkMode ? 'text-blue-200/70' : 'text-blue-700/80'}`}>
-                    {hs.futureOutlook.summary}
-                  </p>
-                )}
-                <ul className={`space-y-1.5 text-xs ${isDarkMode ? 'text-blue-200/70' : 'text-blue-700/80'}`}>
-                  {(hs?.futureOutlook?.items ?? []).map((item, i) => (
-                    <li key={i} className="flex items-center gap-2">
-                      <div className={`w-1 h-1 rounded-full shrink-0 ${isDarkMode ? 'bg-blue-400' : 'bg-blue-600'}`} />
-                      <span>{item}</span>
-                    </li>
-                  ))}
+                <ul className="space-y-2">
+                  {criticalFindings.map((f) => {
+                    const isCrit = f.severity === 'critical';
+                    const IconComp = f.icon === 'wrench' ? Wrench : f.icon === 'calendar' ? Calendar : f.icon === 'shield' ? ShieldAlert : Battery;
+                    const tint = isCrit
+                      ? isDarkMode ? 'text-red-400 bg-red-500/10' : 'text-red-600 bg-red-50'
+                      : isDarkMode ? 'text-amber-400 bg-amber-500/10' : 'text-amber-600 bg-amber-50';
+                    const titleColor = isCrit
+                      ? isDarkMode ? 'text-red-300' : 'text-red-800'
+                      : isDarkMode ? 'text-amber-300' : 'text-amber-800';
+                    const detailColor = isCrit
+                      ? isDarkMode ? 'text-red-200/75' : 'text-red-700/85'
+                      : isDarkMode ? 'text-amber-200/75' : 'text-amber-700/85';
+                    return (
+                      <li
+                        key={f.id}
+                        onClick={(e) => { if (f.onClick) { e.stopPropagation(); f.onClick(); } }}
+                        className={`flex items-start gap-2.5 rounded-lg p-2 -mx-1 transition-colors ${f.onClick ? 'cursor-pointer hover:bg-black/[0.03] dark:hover:bg-white/[0.03]' : ''}`}
+                      >
+                        <div className={`shrink-0 p-1.5 rounded-lg ${tint}`}>
+                          <IconComp className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={`text-xs font-semibold ${titleColor}`}>{f.title}</span>
+                            {isCrit ? (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-red-500/15 text-red-700 dark:bg-red-500/20 dark:text-red-300">Kritisch</span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300">Warnung</span>
+                            )}
+                          </div>
+                          <p className={`text-[11px] mt-0.5 leading-snug ${detailColor}`}>{f.detail}</p>
+                        </div>
+                        {f.onClick && <ChevronRight className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${isCrit ? 'text-red-400' : 'text-amber-400'}`} />}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
 
-            {/* ── HM Live Vehicle Health ──────────────────────────────────── */}
+            {/* ── Tacho Warnleuchten (live dashboard warning lights) ──────── */}
             {aiHealthCare?.hmHealthActive && (
               <div className={`p-4 rounded-xl border ${
                 aiHealthCare.hmFreshnessStatus === 'stale'
@@ -876,23 +1126,16 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   : isDarkMode ? 'bg-purple-500/5 border-purple-500/15' : 'bg-purple-50/60 border-purple-100'
               }`}>
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400">HM</span>
-                  <span className={`text-xs font-semibold ${isDarkMode ? 'text-purple-300' : 'text-purple-800'}`}>Live Vehicle Health</span>
+                  <span className={`text-xs font-semibold ${isDarkMode ? 'text-purple-300' : 'text-purple-800'}`}>Tacho Warnleuchten</span>
                   {aiHealthCare.hmFreshnessStatus === 'stale' && (
                     <span className="flex items-center gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400">
                       <AlertTriangle className="w-2.5 h-2.5" />
                       Daten veraltet
                     </span>
                   )}
-                  {aiHealthCare.hmFreshnessStatus === 'aging' && (
-                    <span className="text-[10px] font-medium text-amber-500 dark:text-amber-500">
-                      Daten altern
-                    </span>
-                  )}
                   {aiHealthCare.lastHmUpdate && (
                     <span className={`ml-auto text-[10px] ${
                       aiHealthCare.hmFreshnessStatus === 'stale' ? 'text-amber-500' :
-                      aiHealthCare.hmFreshnessStatus === 'aging' ? 'text-amber-400' :
                       'text-muted-foreground'
                     }`}>
                       {(() => {
@@ -905,23 +1148,113 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     </span>
                   )}
                 </div>
-                {aiHealthCare.hmLastErrorMessage && (
+                {aiHealthCare.hmLastErrorAt && aiHealthCare.hmLastErrorMessage && (
                   <div className={`mb-3 rounded-lg px-3 py-2 text-[10px] border ${
                     isDarkMode ? 'bg-red-500/10 border-red-500/20 text-red-300' : 'bg-red-50 border-red-200 text-red-700'
                   }`}>
                     Letzter HM-Abruf fehlgeschlagen: {aiHealthCare.hmLastErrorMessage}
                   </div>
                 )}
+                {!aiHealthCare.hmLastErrorAt && aiHealthCare.hmFreshnessStatus === 'no_data' && (
+                  <div className={`mb-3 rounded-lg px-3 py-2 text-[10px] border ${
+                    isDarkMode ? 'bg-blue-500/10 border-blue-500/20 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-700'
+                  }`}>
+                    OEM-Fleet-Clearance aktiv — Daten werden via MQTT gestreamt, sobald das Fahrzeug Telemetrie sendet.
+                  </div>
+                )}
+                {(() => {
+                  // V4.6.39: Signal-semantics-aware rendering of "no push" state.
+                  //
+                  // Context: HM MQTT Push at Mercedes-Benz (and most OEMs) is
+                  // edge-triggered — the Airtable "Every 2min" column refers to
+                  // PULL sampling (REST polling frequency), not push cadence.
+                  // The vehicle only pushes when the internal state actually
+                  // changes (Mercedes OEM guide: "data being uploaded by the
+                  // vehicle as soon as the state changes internally").
+                  //
+                  // That means `null` in our cache can mean several things and
+                  // the UI must NOT collapse them into one ambiguous label
+                  // (V4.6.38's "OEM liefert dieses Signal nicht" was wrong —
+                  // Mercedes does ship these signals, just not periodically).
+                  //
+                  // Signal classes for the Mercedes C 63 AMG empirically and
+                  // cross-verified with the HM Auto-API-Availability Airtable
+                  // (shr4Tv65uPkaf5wzy, 90 rows) for Mercedes-Benz fleets:
+                  //  • warn_flag      : limp_mode, brake_lining_pre_warning,
+                  //                     tire_pressure_statuses, battery_low_warning
+                  //                     → push only when the warning fires.
+                  //                     null + fresh HM stream = "no alarm".
+                  //  • measure        : engine_oil_level. Should be periodic
+                  //                     per the tabular spec but Mercedes
+                  //                     pushes it only on significant delta,
+                  //                     so null on a warm car is common.
+                  //                     Keep wording neutral (no "OK" claim).
+                  type SignalSemantics = 'warn_flag' | 'measure';
+                  const freshness = aiHealthCare.hmFreshnessStatus;
+                  const streamCold = freshness === 'no_data';
+                  type Tone = 'alert' | 'ok' | 'neutral' | 'muted';
+                  const resolveFlag = (
+                    value: boolean | null | undefined,
+                    activeText: string,
+                    okText: string,
+                    semantics: SignalSemantics,
+                  ): { text: string; tone: Tone } => {
+                    if (value === true) return { text: activeText, tone: 'alert' };
+                    if (value === false) return { text: okText, tone: 'ok' };
+                    if (streamCold) return { text: 'Noch keine Daten', tone: 'neutral' };
+                    if (semantics === 'warn_flag') {
+                      // V4.6.40: warn_flag at null + fresh stream → render as "Aus"
+                      // (same text + tone as an explicit false push). Rationale:
+                      // physical dashboard lights are binary — if Mercedes didn't
+                      // push, the light is physically off; "Keine Meldung" was
+                      // ambiguous. Consistent wording with okText keeps the row
+                      // semantics readable at a glance.
+                      return { text: okText, tone: 'ok' };
+                    }
+                    return { text: 'Aktuell nicht vom OEM übertragen', tone: 'muted' };
+                  };
+                  const textClassFor = (tone: Tone, strong = false) => {
+                    if (tone === 'alert') return 'text-amber-600 dark:text-amber-400 font-semibold';
+                    if (tone === 'ok') return strong ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-muted-foreground';
+                    if (tone === 'muted') return 'italic text-muted-foreground/60';
+                    return 'text-muted-foreground';
+                  };
+                  const dotClassFor = (tone: Tone) => {
+                    if (tone === 'alert') return 'bg-amber-500 animate-pulse';
+                    if (tone === 'ok') return 'bg-emerald-500';
+                    return 'bg-gray-300 dark:bg-gray-600';
+                  };
+                  const iconTintFor = (tone: Tone) => {
+                    if (tone === 'alert') return 'text-amber-500';
+                    if (tone === 'ok') return isDarkMode ? 'text-emerald-400' : 'text-emerald-500';
+                    if (tone === 'muted') return 'text-gray-300 dark:text-gray-600';
+                    return isDarkMode ? 'text-gray-400' : 'text-gray-500';
+                  };
+                  const iconBgFor = (tone: Tone) => {
+                    if (tone === 'alert') return isDarkMode ? 'bg-amber-500/20' : 'bg-amber-50';
+                    if (tone === 'ok') return isDarkMode ? 'bg-emerald-500/15' : 'bg-emerald-50';
+                    return isDarkMode ? 'bg-muted' : 'bg-gray-100';
+                  };
+                  return (
                 <div className="space-y-2.5">
-                  {/* Oil Level — uses new oilLevelDisplay from backend */}
+                  {/* Motoröl — measure (periodic but Mercedes pushes only on delta) */}
                   {(() => {
                     const oil = aiHealthCare.oilLevelDisplay;
                     const hasData = oil && oil.mode !== 'no_data';
                     const isLow = aiHealthCare.hmIndicators?.oilLevel?.status === 'LOW';
+                    const gapText = streamCold
+                      ? 'Noch keine Daten'
+                      : 'Aktuell nicht vom OEM übertragen';
                     return (
                       <div className="flex items-center gap-3">
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isLow ? (isDarkMode ? 'bg-amber-500/20' : 'bg-amber-50') : (isDarkMode ? 'bg-muted' : 'bg-gray-100')}`}>
-                          <Droplets className={`w-4 h-4 ${isLow ? 'text-amber-500' : hasData ? (isDarkMode ? 'text-gray-400' : 'text-gray-500') : 'text-gray-300 dark:text-gray-600'}`} />
+                          {/* Min Oil Level — Figma: TA284qaiR287FrPzedlr58, node 2:98 */}
+                          <img
+                            src={tellTaleOilIcon}
+                            alt=""
+                            aria-hidden="true"
+                            className={`w-3.5 h-3.5 object-contain transition-opacity ${isLow ? 'opacity-95' : 'opacity-40 grayscale'}`}
+                          />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[10px] font-semibold text-muted-foreground">Motoröl</p>
@@ -935,72 +1268,86 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                               </div>
                               <p className={`text-[10px] mt-0.5 ${isLow ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>{oil!.label}</p>
                             </>
-                          ) : <p className="text-[10px] text-muted-foreground/50">keine Daten</p>}
+                          ) : <p className="text-[10px] italic text-muted-foreground/60">{gapText}</p>}
                         </div>
                       </div>
                     );
                   })()}
 
-                  {/* Limp Mode — uses indicators.limpMode */}
+                  {/* Motorkontrolleuchte — warn_flag (HM engine.limp_mode) */}
                   {(() => {
-                    const active = aiHealthCare.indicators?.limpMode === true;
-                    const hasData = aiHealthCare.indicators?.limpMode !== null;
+                    const r = resolveFlag(aiHealthCare.indicators?.limpMode, 'Aktiv — Werkstatt aufsuchen', 'Aus', 'warn_flag');
                     return (
                       <div className="flex items-center gap-3">
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${active ? (isDarkMode ? 'bg-amber-500/20' : 'bg-amber-50') : (isDarkMode ? 'bg-muted' : 'bg-gray-100')}`}>
-                          <AlertOctagon className={`w-4 h-4 ${active ? 'text-amber-500' : hasData ? (isDarkMode ? 'text-gray-400' : 'text-gray-500') : 'text-gray-300 dark:text-gray-600'}`} />
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${iconBgFor(r.tone)}`}>
+                          {/* CEL_1 — Figma: TA284qaiR287FrPzedlr58, node 1:4 */}
+                          <img src={tellTaleCelIcon} alt="" aria-hidden="true" className={`w-3.5 h-3.5 object-contain transition-opacity ${r.tone === 'ok' ? 'opacity-40 grayscale' : 'opacity-95'}`} />
                         </div>
                         <div className="flex-1">
-                          <p className="text-[10px] font-semibold text-muted-foreground">Limp Mode</p>
-                          <p className={`text-[10px] ${active ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-muted-foreground'}`}>
-                            {hasData ? (active ? 'Aktiv — Werkstatt aufsuchen' : 'Inaktiv') : 'keine Daten'}
-                          </p>
+                          <p className="text-[10px] font-semibold text-muted-foreground">Motorkontrolleuchte</p>
+                          <p className={`text-[10px] ${textClassFor(r.tone)}`}>{r.text}</p>
                         </div>
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${active ? 'bg-amber-500 animate-pulse' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${dotClassFor(r.tone)}`} />
                       </div>
                     );
                   })()}
 
-                  {/* Brake Lining Pre-Warning — uses indicators.brakeWarning */}
+                  {/* Bremsbelag Vorwarnung — warn_flag */}
                   {(() => {
-                    const active = aiHealthCare.indicators?.brakeWarning === true;
-                    const hasData = aiHealthCare.indicators?.brakeWarning !== null;
+                    const r = resolveFlag(aiHealthCare.indicators?.brakeWarning, 'Warnung aktiv', 'Aus', 'warn_flag');
                     return (
                       <div className="flex items-center gap-3">
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${active ? (isDarkMode ? 'bg-amber-500/20' : 'bg-amber-50') : (isDarkMode ? 'bg-muted' : 'bg-gray-100')}`}>
-                          <DiscAlbum className={`w-4 h-4 ${active ? 'text-amber-500' : hasData ? (isDarkMode ? 'text-gray-400' : 'text-gray-500') : 'text-gray-300 dark:text-gray-600'}`} />
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${iconBgFor(r.tone)}`}>
+                          {/* Brake Pad Warning_2 — Figma: TA284qaiR287FrPzedlr58, node 1:66 */}
+                          <img src={tellTaleBrakePadIcon} alt="" aria-hidden="true" className={`w-3.5 h-3.5 object-contain transition-opacity ${r.tone === 'ok' ? 'opacity-40 grayscale' : 'opacity-95'}`} />
                         </div>
                         <div className="flex-1">
                           <p className="text-[10px] font-semibold text-muted-foreground">Bremsbelag Vorwarnung</p>
-                          <p className={`text-[10px] ${active ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-muted-foreground'}`}>
-                            {hasData ? (active ? 'Warnung aktiv' : 'Kein Warnung') : 'keine Daten'}
-                          </p>
+                          <p className={`text-[10px] ${textClassFor(r.tone)}`}>{r.text}</p>
                         </div>
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${active ? 'bg-amber-500 animate-pulse' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${dotClassFor(r.tone)}`} />
                       </div>
                     );
                   })()}
 
-                  {/* Tire Pressure Warning — uses indicators.tirePressureWarning */}
+                  {/* Reifendruck Warnung — warn_flag */}
                   {(() => {
-                    const active = aiHealthCare.indicators?.tirePressureWarning === true;
-                    const hasData = aiHealthCare.indicators?.tirePressureWarning !== null;
+                    const r = resolveFlag(aiHealthCare.indicators?.tirePressureWarning, 'Druckwarnung aktiv', 'Aus', 'warn_flag');
                     return (
                       <div className="flex items-center gap-3">
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${active ? (isDarkMode ? 'bg-amber-500/20' : 'bg-amber-50') : (isDarkMode ? 'bg-muted' : 'bg-gray-100')}`}>
-                          <Gauge className={`w-4 h-4 ${active ? 'text-amber-500' : hasData ? (isDarkMode ? 'text-gray-400' : 'text-gray-500') : 'text-gray-300 dark:text-gray-600'}`} />
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${iconBgFor(r.tone)}`}>
+                          {/* LTP_1 — Figma: TA284qaiR287FrPzedlr58, node 2:112 */}
+                          <img src={tellTaleTirePressureIcon} alt="" aria-hidden="true" className={`w-3.5 h-3.5 object-contain transition-opacity ${r.tone === 'ok' ? 'opacity-40 grayscale' : 'opacity-95'}`} />
                         </div>
                         <div className="flex-1">
                           <p className="text-[10px] font-semibold text-muted-foreground">Reifendruck Warnung</p>
-                          <p className={`text-[10px] ${active ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-muted-foreground'}`}>
-                            {hasData ? (active ? 'Druckwarnung aktiv' : 'OK') : 'keine Daten'}
-                          </p>
+                          <p className={`text-[10px] ${textClassFor(r.tone)}`}>{r.text}</p>
                         </div>
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${active ? 'bg-amber-500 animate-pulse' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${dotClassFor(r.tone)}`} />
+                      </div>
+                    );
+                  })()}
+
+                  {/* Batterie-Warnleuchte — warn_flag (dashboard_lights.battery_low_warning) */}
+                  {(() => {
+                    const r = resolveFlag(aiHealthCare.indicators?.batteryWarningLight, 'Warnleuchte aktiv', 'Aus', 'warn_flag');
+                    return (
+                      <div className="flex items-center gap-3">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${iconBgFor(r.tone)}`}>
+                          {/* Battery Level Low_2 — Figma: TA284qaiR287FrPzedlr58, node 2:107 */}
+                          <img src={tellTaleBatteryIcon} alt="" aria-hidden="true" className={`w-3.5 h-3.5 object-contain transition-opacity ${r.tone === 'ok' ? 'opacity-40 grayscale' : 'opacity-95'}`} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-[10px] font-semibold text-muted-foreground">Batterie-Warnleuchte</p>
+                          <p className={`text-[10px] ${textClassFor(r.tone)}`}>{r.text}</p>
+                        </div>
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${dotClassFor(r.tone)}`} />
                       </div>
                     );
                   })()}
                 </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -1015,16 +1362,16 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
           const faultCount = s?.activeFaultCount ?? (dtcStatus === 'active_faults' ? activeDtcCount : 0);
           const checkedAt = s?.lastCheckedAt ?? lastDtcChecked;
           return (
-            <div onClick={() => openModal(setShowErrorCodes)} className={`${cardClass} flex flex-col cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02]`}>
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="text-base font-semibold text-foreground">Error Codes</h3>
+            <div onClick={() => openModal(setShowErrorCodes)} className={quickCardClass}>
+              <div className={quickCardHeaderClass}>
+                <h3 className={quickCardTitleClass}>Error Codes</h3>
                 <ChevronRight className={`w-4 h-4 text-muted-foreground`} />
               </div>
-              <div className="flex-1 flex flex-col items-center justify-center min-h-[100px]">
+              <div className={`${quickCardBodyClass} items-center`}>
                 {dtcStatus === 'unavailable' && (
                   <>
                     <span className={`text-3xl mb-1 text-muted-foreground/60`}>—</span>
-                    <p className={`text-xs text-center text-muted-foreground`}>Noch nicht geprüft</p>
+                    <p className={`text-[10px] text-center text-muted-foreground`}>Noch nicht geprüft</p>
                   </>
                 )}
                 {dtcStatus === 'stale' && (
@@ -1032,20 +1379,20 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 ${isDarkMode ? 'bg-amber-500/15' : 'bg-amber-50'}`}>
                       <AlertTriangle className={`w-4 h-4 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
                     </div>
-                    <p className={`text-xs font-medium ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>Daten veraltet / Abruf fehlgeschlagen</p>
+                    <p className={`text-[10px] font-medium text-center ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>Daten veraltet / Abruf fehlgeschlagen</p>
                   </>
                 )}
                 {(dtcStatus === 'clean' || dtcStatus === 'active_faults') && (
                   <>
-                    <div className={`text-7xl font-bold tracking-tighter ${faultCount > 0 ? 'text-red-500' : isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>{faultCount}</div>
-                    {faultCount === 0 && <p className={`text-xs mt-1 ${isDarkMode ? 'text-green-400/70' : 'text-green-600/70'}`}>Keine Fehlercodes erkannt</p>}
-                    {faultCount > 0 && <p className={`text-xs mt-1 ${isDarkMode ? 'text-red-400/70' : 'text-red-600/70'}`}>{faultCount} Fehlercode{faultCount > 1 ? 's' : ''} erkannt</p>}
+                    <div className={`text-6xl font-bold tracking-tighter ${faultCount > 0 ? 'text-red-500' : isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>{faultCount}</div>
+                    {faultCount === 0 && <p className={`text-[10px] mt-1 text-center ${isDarkMode ? 'text-green-400/70' : 'text-green-600/70'}`}>Keine Fehlercodes erkannt</p>}
+                    {faultCount > 0 && <p className={`text-[10px] mt-1 text-center ${isDarkMode ? 'text-red-400/70' : 'text-red-600/70'}`}>{faultCount} Fehlercode{faultCount > 1 ? 's' : ''} erkannt</p>}
                   </>
                 )}
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className={`${quickCardFooterClass} flex items-center gap-1.5`}>
                 {isStale && <AlertTriangle className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-amber-500' : 'text-amber-400'}`} />}
-                <p className={`text-xs ${isStale ? (isDarkMode ? 'text-amber-500' : 'text-amber-400') : (isDarkMode ? 'text-gray-500' : 'text-gray-400')}`}>
+                <p className={`text-[10px] ${isStale ? (isDarkMode ? 'text-amber-500' : 'text-amber-400') : (isDarkMode ? 'text-gray-500' : 'text-gray-400')}`}>
                   {checkedAt ? formatRelativeTime(checkedAt) : '—'}
                 </p>
               </div>
@@ -1054,14 +1401,40 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         })()}
 
         {/* ─── Battery card (12V) — SOH bar + current voltage ─── */}
-        <div onClick={() => openModal(setShowBattery)} className={`${cardClass} flex flex-col cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02]`}>
+        <div onClick={() => openModal(setShowBattery)} className={quickCardClass}>
           <style>{`@keyframes calibDots { 0%,20%{opacity:.2} 50%{opacity:1} 100%{opacity:.2} }`}</style>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-base font-semibold text-foreground">Battery</h3>
-            <ChevronRight className={`w-4 h-4 text-muted-foreground`} />
+          <div className={`${quickCardHeaderClass} gap-2`}>
+            <div className="flex items-center gap-2 min-w-0">
+              <h3 className={quickCardTitleClass}>Battery</h3>
+              {aiHealthCare?.indicators?.batteryWarningLight === true && (
+                <span
+                  title="Dashboard-Warnleuchte leuchtet — Lichtmaschine und Ladezustand prüfen"
+                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold border animate-pulse ${
+                    isDarkMode
+                      ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                      : 'bg-amber-50 text-amber-700 border-amber-200'
+                  }`}
+                >
+                  <img src={tellTaleBatteryIcon} alt="" aria-hidden="true" className="w-3 h-3 object-contain" />
+                  Warnleuchte
+                </span>
+              )}
+            </div>
+            <ChevronRight className={`w-4 h-4 text-muted-foreground shrink-0`} />
           </div>
-          <div className="flex-1 flex flex-col justify-center">
-            {lvIsCalibrating ? (
+          <div className={`${quickCardBodyClass} min-h-[112px]`}>
+            {lvNoBatteryDetected ? (
+              <>
+                <div className="mb-1 flex items-center gap-1.5">
+                  <span className={`text-sm font-bold tracking-tight text-foreground`}>
+                    No LV Battery detected
+                  </span>
+                </div>
+                <p className={`text-[10px] text-muted-foreground`}>
+                  Für dieses Fahrzeug wird kein 12V-Signal gemeldet. Entweder besitzt es keine separat überwachte LV-Batterie oder die Telemetrie ist nicht verfügbar.
+                </p>
+              </>
+            ) : lvIsCalibrating ? (
               <>
                 <div className="mb-1.5 flex items-center gap-1.5">
                   <span className={`text-xs font-medium ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
@@ -1117,37 +1490,144 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   batteryCondition === 'watch' ? (isDarkMode ? 'text-amber-400' : 'text-amber-600') :
                   (isDarkMode ? 'text-red-400' : 'text-red-600')
                 }`}>{lvIsStabilizing ? 'Stabilizing' : batteryCondition === 'good' ? 'Healthy' : batteryCondition === 'watch' ? 'Monitor' : 'Attention needed'}</p>
+                {!lvIsStabilizing && (batteryCondition === 'watch' || batteryCondition === 'attention') && (
+                  <div className={`mt-2 rounded-md px-2 py-1.5 border text-[10px] leading-snug ${
+                    batteryCondition === 'attention'
+                      ? (isDarkMode ? 'bg-red-500/10 border-red-500/30 text-red-300' : 'bg-red-50 border-red-200 text-red-700')
+                      : (isDarkMode ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-700')
+                  }`}>
+                    {batteryCondition === 'attention'
+                      ? 'Batteriespannung kritisch — Starthilfe oder Austausch empfohlen. Startschwierigkeiten wahrscheinlich.'
+                      : 'Batteriespannung kritisch — bitte beobachten. Startschwierigkeiten möglich.'}
+                  </div>
+                )}
               </>
             )}
+            {aiHealthCare?.indicators?.batteryWarningLight === true && (
+              <div className={`mt-2 rounded-md px-2 py-1.5 border text-[10px] leading-snug flex items-start gap-1.5 ${
+                isDarkMode ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-700'
+              }`}>
+                <img src={tellTaleBatteryIcon} alt="" aria-hidden="true" className="w-3.5 h-3.5 shrink-0 mt-0.5 object-contain" />
+                <span><span className="font-semibold">Warnleuchte aktiv</span> — Dashboard meldet Batterie-Warnung. Lichtmaschine und Ladezustand prüfen.</span>
+              </div>
+            )}
           </div>
-          {batteryLastCheckedAgo && <p className={`text-[10px] mt-2 text-muted-foreground/70`}>{batteryLastCheckedAgo}</p>}
+          {!lvNoBatteryDetected && batteryLastCheckedAgo && (
+            <div className={quickCardFooterClass}>
+              <p className={`text-[10px] text-muted-foreground/70`}>{batteryLastCheckedAgo}</p>
+            </div>
+          )}
         </div>
 
         {/* ─── Service Info card ─── */}
         {(() => {
           const si = serviceInfo;
           const pct = si?.serviceRemainingPercent ?? null;
-          const barColor = pct == null ? 'bg-gray-400' : pct >= 50 ? 'bg-green-500' : pct >= 25 ? 'bg-amber-500' : 'bg-red-500';
-          const nextParts = [si?.serviceRemainingKm != null ? `${si.serviceRemainingKm.toLocaleString()} km` : null, si?.serviceRemainingMonths != null ? `${si.serviceRemainingMonths} mo` : null].filter(Boolean);
-          const nextStr = nextParts.length > 0 ? nextParts.join(' · ') : '—';
-          const hasBok = si?.bokraftValidTill != null;
-          const bokM = si?.bokraftRemainingMonths;
-          const bokDate = hasBok ? new Date(si!.bokraftValidTill!).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
-          const bokColor =
-            !hasBok || bokM == null
+          const overdue = si?.serviceOverdue === true;
+          const imminent = si?.serviceDueImminently === true && !overdue;
+
+          // Precise "next service" string — formats by the best available
+          // precision the backend gave us and preserves the sign so overdue
+          // vehicles show "überfällig seit …" instead of a misleading 0 mo.
+          //
+          // Note: `hasServiceBaseline` only reflects DB-side history (a stored
+          // VehicleServiceEvent / lastServiceDate). Vehicles that stream
+          // service counters via HM (e.g. Mercedes fleet-clearance with
+          // `timeToNextServiceDays`) can legitimately be overdue even when
+          // no local baseline exists — in that case we still have a real
+          // remaining/overdue value and must render it. Otherwise the card
+          // collapses to "—" while the red ÜBERFÄLLIG badge stays lit.
+          const nextStr = (() => {
+            if (!si) return '—';
+            const hasAnySource =
+              si.hasServiceBaseline ||
+              si.hmServiceSource === true ||
+              si.serviceRemainingDays != null ||
+              si.serviceRemainingMonths != null ||
+              si.serviceRemainingKm != null ||
+              si.serviceOverdue === true;
+            if (!hasAnySource) return '—';
+            const dayParts: string[] = [];
+            if (si.serviceOverdue) {
+              if (si.serviceOverdueDays != null) dayParts.push(`${si.serviceOverdueDays} Tagen`);
+              if (si.serviceOverdueKm != null) dayParts.push(`${si.serviceOverdueKm.toLocaleString('de-DE')} km`);
+              return dayParts.length > 0
+                ? `Überfällig seit ${dayParts.join(' / ')}`
+                : 'Überfällig';
+            }
+            const parts: string[] = [];
+            if (si.serviceRemainingDays != null && si.serviceRemainingDays <= 90) {
+              parts.push(`in ${si.serviceRemainingDays} Tagen`);
+            } else if (si.serviceRemainingMonths != null) {
+              parts.push(`in ${si.serviceRemainingMonths} Monaten`);
+            }
+            if (si.serviceRemainingKm != null && si.serviceRemainingKm >= 0) {
+              parts.push(`${si.serviceRemainingKm.toLocaleString('de-DE')} km`);
+            }
+            return parts.length > 0 ? parts.join(' · ') : '—';
+          })();
+
+          // Progress bar: red when overdue, amber when imminent, otherwise
+          // follow the existing percent-based scale so "fine" vehicles keep
+          // their green bar.
+          const barColor = overdue
+            ? 'bg-red-500'
+            : imminent
+              ? 'bg-amber-500'
+              : pct == null
+                ? 'bg-gray-400'
+                : pct >= 50
+                  ? 'bg-green-500'
+                  : pct >= 25
+                    ? 'bg-amber-500'
+                    : 'bg-red-500';
+          const nextColor = overdue ? 'text-red-600 dark:text-red-400' : imminent ? 'text-amber-600 dark:text-amber-400' : 'text-foreground';
+
+          const hasTuv = si?.tuvValidTill != null;
+          const tuvDays = si?.tuvRemainingDays;
+          const tuvDate = hasTuv ? new Date(si!.tuvValidTill!).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+          const tuvOverdue = si?.tuvOverdue === true;
+          const tuvColor =
+            !hasTuv || tuvDays == null
               ? isDarkMode ? 'text-gray-500' : 'text-gray-400'
-              : bokM <= 1
+              : tuvOverdue || tuvDays <= 30
                 ? isDarkMode ? 'text-red-400' : 'text-red-600'
-                : bokM <= 2
+                : tuvDays <= 60
                   ? isDarkMode ? 'text-amber-400' : 'text-amber-600'
                   : 'text-foreground';
+
+          const hasBok = si?.bokraftValidTill != null;
+          const bokDays = si?.bokraftRemainingDays;
+          const bokDate = hasBok ? new Date(si!.bokraftValidTill!).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+          const bokOverdue = si?.bokraftOverdue === true;
+          const bokColor =
+            !hasBok || bokDays == null
+              ? isDarkMode ? 'text-gray-500' : 'text-gray-400'
+              : bokOverdue || bokDays <= 30
+                ? isDarkMode ? 'text-red-400' : 'text-red-600'
+                : bokDays <= 60
+                  ? isDarkMode ? 'text-amber-400' : 'text-amber-600'
+                  : 'text-foreground';
+
+          // Overdue/imminent borders: outline the card so it visually matches
+          // the red/amber emphasis used on the Brakes/Tires cards when those
+          // modules cross their critical thresholds.
+          const borderHighlight = overdue
+            ? 'border-red-500/50 dark:border-red-500/40 ring-1 ring-red-500/20'
+            : imminent
+              ? 'border-amber-500/50 dark:border-amber-500/40 ring-1 ring-amber-500/20'
+              : '';
+
           return (
-            <div onClick={() => openModal(setShowService)} className={`${cardClass} flex flex-col cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02]`}>
-              <div className="flex items-center justify-between mb-2">
+            <div onClick={() => openModal(setShowService)} className={`${quickCardClass} ${borderHighlight}`}>
+              <div className={quickCardHeaderClass}>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-semibold text-foreground">Service Info</h3>
-                  {si?.hmServiceSource && (
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-400">HM</span>
+                  <h3 className={quickCardTitleClass}>Service Info</h3>
+                  {overdue && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400 uppercase tracking-wider">Überfällig</span>
+                  )}
+                  {imminent && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400 uppercase tracking-wider">Fällig</span>
                   )}
                 </div>
                 <ChevronRight className={`w-4 h-4 text-muted-foreground`} />
@@ -1157,10 +1637,10 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${pct}%` }} />
                 </div>
               )}
-              <div className="flex flex-col justify-between flex-1 gap-2">
+              <div className="flex flex-col justify-between flex-1 min-h-[112px] gap-2.5">
                 <div>
                   <p className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>Next service</p>
-                  <p className={`text-xs font-bold text-foreground`}>{nextStr}</p>
+                  <p className={`text-xs font-bold ${nextColor}`}>{nextStr}</p>
                   {si?.hmServiceSource && si.hmLastUpdatedAt && (
                     <p className="text-[10px] mt-0.5 text-purple-500 dark:text-purple-400">
                       via HM · {(() => {
@@ -1172,12 +1652,37 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   )}
                 </div>
                 <div>
+                  <p className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>Next TÜV</p>
+                  <p className={`text-xs font-bold ${tuvColor}`}>{hasTuv ? tuvDate : '—'}</p>
+                  {hasTuv && tuvOverdue && (
+                    <p className={`text-[10px] mt-0.5 font-semibold text-red-600 dark:text-red-400`}>TÜV abgelaufen</p>
+                  )}
+                  {hasTuv && !tuvOverdue && tuvDays != null && tuvDays <= 90 && (
+                    <p className={`text-[10px] mt-0.5 ${tuvDays <= 30 ? 'text-red-500 dark:text-red-400' : 'text-amber-500 dark:text-amber-400'}`}>
+                      Fällig in {tuvDays} Tagen
+                    </p>
+                  )}
+                  {!hasTuv && (
+                    <p className={`text-[10px] mt-0.5 text-muted-foreground/70`}>No tracking</p>
+                  )}
+                </div>
+                <div>
                   <p className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>Next BOKraft</p>
                   <p className={`text-xs font-bold ${bokColor}`}>{hasBok ? bokDate : '—'}</p>
+                  {hasBok && bokOverdue && (
+                    <p className={`text-[10px] mt-0.5 font-semibold text-red-600 dark:text-red-400`}>BOKraft abgelaufen</p>
+                  )}
                   {!hasBok && (
                     <p className={`text-[10px] mt-0.5 text-muted-foreground/70`}>No tracking</p>
                   )}
                 </div>
+                {(overdue || imminent) && (
+                  <div className={`rounded-md px-2 py-1.5 text-[10px] leading-snug ${overdue ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'}`}>
+                    {overdue
+                      ? 'Service überfällig — Werkstatttermin sofort vereinbaren. Betriebssicherheit und Garantie können gefährdet sein.'
+                      : 'Service fällig — Werkstatttermin planen, idealerweise vor der nächsten Buchung.'}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -1191,13 +1696,13 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
           const lifeKm = bhs?.pads?.estimatedLifetimeKm ?? null;
           const barC = padPct >= 60 ? 'bg-green-500' : padPct >= 30 ? 'bg-amber-500' : 'bg-red-500';
           return (
-            <div onClick={() => { openModal(setShowBrakes); if (vehicleId) api.vehicleIntelligence.brakeHealthDetail(vehicleId).then(setBrakeHealthDetail).catch(() => null); }} className={`${cardClass} flex flex-col cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] ${!v2 ? 'opacity-60' : ''}`}>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-base font-semibold text-foreground">Brake Health</h3>
+            <div onClick={() => { openModal(setShowBrakes); if (vehicleId) api.vehicleIntelligence.brakeHealthDetail(vehicleId).then(setBrakeHealthDetail).catch(() => null); }} className={`${quickCardClass} ${!v2 ? 'opacity-60' : ''}`}>
+              <div className={quickCardHeaderClass}>
+                <h3 className={quickCardTitleClass}>Brake Health</h3>
                 <ChevronRight className={`w-4 h-4 text-muted-foreground`} />
               </div>
               {v2 ? (
-                <div className="flex-1 flex flex-col justify-center py-1">
+                <div className={quickCardBodyClass}>
                   <div className={`text-sm font-bold mb-1 text-foreground`}>{padPct}%</div>
                   <div className={`w-full h-1.5 rounded-full overflow-hidden mb-1.5 bg-muted`}>
                     <div className={`h-full rounded-full ${barC}`} style={{ width: `${Math.min(padPct, 100)}%` }} />
@@ -1207,8 +1712,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   </p>
                 </div>
               ) : (
-                <div className="flex-1 flex flex-col justify-center py-2">
-                  <p className={`text-xs font-medium text-muted-foreground`}>No active Tracking</p>
+                <div className={quickCardBodyClass}>
+                  <p className={`text-[10px] font-medium text-muted-foreground`}>No active Tracking</p>
                 </div>
               )}
             </div>
@@ -1226,17 +1731,17 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
           const hasAlerts = (th?.alerts?.length ?? 0) > 0;
           const activeSetup = resolveActiveSetup(tiresData);
           return (
-            <div onClick={() => { setTireActionError(null); openModal(setShowTires); loadTireDetail(); }} className={`${cardClass} cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] ${!hasTireData ? 'opacity-60' : ''}`}>
-              <div className="flex items-center justify-between mb-2">
+            <div onClick={() => { setTireActionError(null); openModal(setShowTires); loadTireDetail(); }} className={`${quickCardClass} ${!hasTireData ? 'opacity-60' : ''}`}>
+              <div className={quickCardHeaderClass}>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-semibold text-foreground">Tires</h3>
+                  <h3 className={quickCardTitleClass}>Tires</h3>
                   {hasTireData && <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-gradient-to-r from-violet-500 to-purple-600 text-white">ML</span>}
                   {hasAlerts && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
                 </div>
                 <ChevronRight className={`w-4 h-4 text-muted-foreground`} />
               </div>
               {hasTireData && pct != null ? (
-                <div className="flex-1 flex flex-col justify-center py-1">
+                <div className={quickCardBodyClass}>
                   <div className={`text-sm font-bold mb-1 text-foreground`}>{pct}%</div>
                   <div className={`w-full h-1.5 rounded-full overflow-hidden mb-1.5 bg-muted`}>
                     <div className={`h-full ${barColor} rounded-full`} style={{ width: `${pct}%` }} />
@@ -1245,55 +1750,50 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     Estimated Lifetime in {remKm != null ? `${Math.floor(remKm).toLocaleString('de-DE')} km` : '—'}
                   </p>
                   {th?.actionState && (
-                    <p className={`text-[9px] mt-1 font-semibold ${th.actionState === 'REPLACE' ? 'text-red-500' : th.actionState === 'PLAN_SERVICE' ? 'text-amber-500' : 'text-blue-500'}`}>
+                    <p className={`text-[10px] mt-1 font-semibold ${th.actionState === 'REPLACE' ? 'text-red-500' : th.actionState === 'PLAN_SERVICE' ? 'text-amber-500' : 'text-blue-500'}`}>
                       Action: {formatEnumLabel(th.actionState)}
                     </p>
                   )}
                   {conf && conf !== 'High' && (
-                    <p className={`text-[9px] mt-1 flex items-center gap-1 ${isDarkMode ? 'text-amber-500/70' : 'text-amber-600/70'}`}>
+                    <p className={`text-[10px] mt-1 flex items-center gap-1 ${isDarkMode ? 'text-amber-500/70' : 'text-amber-600/70'}`}>
                       <AlertTriangle className="w-2.5 h-2.5" />
                       Estimate quality: {conf}
                     </p>
                   )}
                   {th?.measurementState && (
-                    <p className={`text-[9px] mt-1 text-muted-foreground`}>
+                    <p className={`text-[10px] mt-1 text-muted-foreground`}>
                       Source: {th.measurementState}
                     </p>
                   )}
                 </div>
               ) : (
-                <div className="flex-1 flex flex-col justify-center py-2">
+                <div className={quickCardBodyClass}>
                   {activeSetup && (
                     <p className={`text-[10px] mb-1 text-muted-foreground`}>{activeSetup.brandModelFront ?? activeSetup.frontDimension ?? 'Setup'}</p>
                   )}
-                  <p className={`text-xs font-medium ${isDarkMode ? 'text-amber-500' : 'text-amber-600'}`}>No active Tracking</p>
+                  <p className={`text-[10px] font-medium ${isDarkMode ? 'text-amber-500' : 'text-amber-600'}`}>No active Tracking</p>
                   <p className={`text-[10px] mt-0.5 text-muted-foreground`}>please provide Tire Information</p>
                 </div>
               )}
               {/* HM Tire Pressure indicator */}
               {hmTirePressure && (
-                <div className="mt-2 pt-2 border-t border-border">
-                  <div className="flex items-center gap-1.5">
-                    <span className={`text-[10px] font-semibold ${
-                      hmTirePressure.overallStatus === 'OK' ? 'text-green-600 dark:text-green-400' :
-                      hmTirePressure.overallStatus === 'ISSUE' ? 'text-amber-600 dark:text-amber-400' :
-                      'text-muted-foreground'
-                    }`}>
-                      {hmTirePressure.overallStatus === 'OK' ? '✓ Tire pressure OK' :
-                       hmTirePressure.overallStatus === 'ISSUE' ? '⚠ Tire pressure issue detected' :
-                       'No recent tire pressure data'}
-                    </span>
-                    <span className="px-1 py-0.5 rounded text-[9px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-400">HM</span>
-                  </div>
-                  {hmTirePressure.lastUpdatedAt && (
-                    <p className="text-[9px] mt-0.5 text-muted-foreground/70">
-                      {(() => {
-                        const ms = Date.now() - new Date(hmTirePressure.lastUpdatedAt!).getTime();
-                        const h = Math.floor(ms / 3600000);
-                        return h < 1 ? 'gerade eben' : `vor ${h}h`;
-                      })()}
-                    </p>
-                  )}
+                <div className={`${quickCardFooterClass} flex items-center justify-between gap-2`}>
+                  <p className="text-[10px] text-muted-foreground/70 shrink-0">
+                    {hmTirePressure.lastUpdatedAt ? (() => {
+                      const ms = Date.now() - new Date(hmTirePressure.lastUpdatedAt!).getTime();
+                      const h = Math.floor(ms / 3600000);
+                      return h < 1 ? 'gerade eben' : `vor ${h}h`;
+                    })() : '—'}
+                  </p>
+                  <p className={`text-[10px] font-semibold text-right ${
+                    hmTirePressure.overallStatus === 'OK' ? 'text-green-600 dark:text-green-400' :
+                    hmTirePressure.overallStatus === 'ISSUE' ? 'text-amber-600 dark:text-amber-400' :
+                    'text-muted-foreground'
+                  }`}>
+                    {hmTirePressure.overallStatus === 'OK' ? '✓ Reifendruck OK' :
+                     hmTirePressure.overallStatus === 'ISSUE' ? '⚠ Reifendruck-Warnung' :
+                     'Keine aktuellen Reifendruckdaten'}
+                  </p>
                 </div>
               )}
             </div>
@@ -1352,7 +1852,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   </>
                 )}
                 {hvBatteryStatus?.currentSocPercent != null && (
-                  <p className={`text-[10px] mt-1 text-muted-foreground/70`}>Current SoC: {hvBatteryStatus.currentSocPercent}%</p>
+                  <p className={`text-[10px] mt-1 text-muted-foreground/70`}>Current SoC: {formatMaxDecimals(hvBatteryStatus.currentSocPercent)}%</p>
                 )}
               </div>
             </div>
@@ -1360,24 +1860,24 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         })() : (() => {
           const activeComplaints = complaints.filter((c) => c.status === 'ACTIVE').length;
           return (
-            <div onClick={() => openModal(setShowComplaintsModal)} className={`${cardClass} flex flex-col cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02]`}>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-base font-semibold text-foreground">Complaint List</h3>
+            <div onClick={() => openModal(setShowComplaintsModal)} className={quickCardClass}>
+              <div className={quickCardHeaderClass}>
+                <h3 className={quickCardTitleClass}>Complaint List</h3>
                 <ChevronRight className={`w-4 h-4 text-muted-foreground`} />
               </div>
-              <div className="flex-1 flex flex-col items-center justify-center min-h-[100px]">
+              <div className={`${quickCardBodyClass} items-center`}>
                 {complaintsLoading ? (
                   <Loader2 className={`w-6 h-6 animate-spin text-muted-foreground`} />
                 ) : (
                   <>
-                    <div className={`text-5xl font-bold tracking-tighter ${activeComplaints > 0 ? 'text-amber-500' : isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{activeComplaints}</div>
-                    <p className={`text-xs mt-1 text-center text-muted-foreground`}>
+                    <div className={`text-6xl font-bold tracking-tighter ${activeComplaints > 0 ? 'text-amber-500' : isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{activeComplaints}</div>
+                    <p className={`text-[10px] mt-1 text-center text-muted-foreground`}>
                       {activeComplaints === 0 ? 'No active Feedbacks' : 'Active complaints'}
                     </p>
                   </>
                 )}
               </div>
-              <div className="flex items-center gap-1.5 mt-1">
+              <div className={`${quickCardFooterClass} flex items-center gap-1.5`}>
                 <ClipboardList className={`w-3.5 h-3.5 text-muted-foreground`} />
                 <p className={`text-[10px] text-muted-foreground`}>Technical issues & observations</p>
               </div>
@@ -1702,7 +2202,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             {/* Header + condition badge */}
             <div className="flex items-center gap-3 mb-5">
               <h2 className={`text-sm font-semibold tracking-tight text-foreground`}>Battery Health</h2>
-              {lvIsCalibrating ? (
+              {lvNoBatteryDetected ? (
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'bg-neutral-800 text-gray-400' : 'bg-gray-100 text-gray-600'}`}>Not detected</span>
+              ) : lvIsCalibrating ? (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700">Calibrating</span>
               ) : lvIsStabilizing ? (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700">Estimated · Stabilizing</span>
@@ -1711,7 +2213,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   batteryCondition === 'good' ? 'bg-green-100 text-green-700' : batteryCondition === 'watch' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
                 }`}>{batteryCondition === 'good' ? 'Healthy' : batteryCondition === 'watch' ? 'Monitor' : 'Attention'}</span>
               )}
-              {!lvIsCalibrating && bSummary?.trendDirection && bSummary.trendDirection !== 'unknown' && (
+              {!lvNoBatteryDetected && !lvIsCalibrating && bSummary?.trendDirection && bSummary.trendDirection !== 'unknown' && (
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                   bSummary.trendDirection === 'stable' ? (isDarkMode ? 'bg-neutral-700 text-gray-300' : 'bg-gray-100 text-gray-600') :
                   bSummary.trendDirection === 'improving' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
@@ -1791,6 +2293,19 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             {/* SOH gauge */}
             {(() => {
               const soh = capacityPct;
+              if (lvNoBatteryDetected) {
+                return (
+                  <div className={`rounded-lg px-5 py-4 mb-5 ${isDarkMode ? 'bg-neutral-800/60' : 'bg-gray-100'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>State of Health (SOH)</p>
+                      <span className={`text-sm font-semibold text-foreground`}>No LV Battery detected</span>
+                    </div>
+                    <p className={`text-[11px] text-muted-foreground`}>
+                      Für dieses Fahrzeug wird kein 12V-Signal (<code className="px-1 py-0.5 rounded bg-muted text-[10px]">lowVoltageBatteryCurrentVoltage</code>) über die DIMO-Telemetrie gemeldet. Entweder besitzt das Fahrzeug keine separat überwachte LV-Batterie, oder der Hersteller/das Fahrzeug liefert dieses Signal nicht aus. Es werden keine Messwerte gesammelt.
+                    </p>
+                  </div>
+                );
+              }
               if (lvIsCalibrating) {
                 return (
                   <div className={`rounded-lg px-5 py-4 mb-5 ${isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50'}`}>
@@ -1999,18 +2514,95 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             <h2 className={`text-sm font-semibold tracking-tight mb-5 text-foreground`}>Service Info</h2>
 
             {/* Next Service */}
-            <div className={`rounded-lg p-5 mb-5 ${isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50'}`}>
-              <p className={`text-sm font-semibold mb-2 ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>Next Service Due In</p>
-              <p className={`text-sm font-bold mb-1 text-foreground`}>
-                {[serviceInfo?.serviceRemainingKm != null ? `${serviceInfo.serviceRemainingKm.toLocaleString()} km` : null, serviceInfo?.serviceRemainingMonths != null ? `${serviceInfo.serviceRemainingMonths} months` : null].filter(Boolean).join(' or ') || '—'}
-              </p>
-              <p className={`text-xs mb-3 text-muted-foreground`}>whichever comes first</p>
-              {serviceInfo?.serviceRemainingPercent != null && (
-                <div className={`w-full h-2 rounded-full overflow-hidden ${isDarkMode ? 'bg-neutral-700' : 'bg-blue-200'}`}>
-                  <div className={`h-full rounded-full transition-all ${serviceInfo.serviceRemainingPercent >= 50 ? 'bg-green-500' : serviceInfo.serviceRemainingPercent >= 25 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${serviceInfo.serviceRemainingPercent}%` }} />
+            {(() => {
+              const si = serviceInfo;
+              const overdue = si?.serviceOverdue === true;
+              const imminent = si?.serviceDueImminently === true && !overdue;
+
+              const panelBg = overdue
+                ? isDarkMode ? 'bg-red-500/10' : 'bg-red-50'
+                : imminent
+                  ? isDarkMode ? 'bg-amber-500/10' : 'bg-amber-50'
+                  : isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50';
+              const headerText = overdue
+                ? isDarkMode ? 'text-red-300' : 'text-red-800'
+                : imminent
+                  ? isDarkMode ? 'text-amber-300' : 'text-amber-800'
+                  : isDarkMode ? 'text-blue-300' : 'text-blue-900';
+              const bodyText = overdue
+                ? 'text-red-700 dark:text-red-300'
+                : imminent
+                  ? 'text-amber-700 dark:text-amber-300'
+                  : 'text-foreground';
+              const headerLabel = overdue
+                ? 'Nächster Service — ÜBERFÄLLIG'
+                : imminent
+                  ? 'Nächster Service — fällig'
+                  : 'Nächster Service in';
+
+              const bodyValue = (() => {
+                if (!si) return '—';
+                // Same source-precedence as the card: DB baseline OR HM stream
+                // OR any remaining/overdue number we already know about.
+                const hasAnySource =
+                  si.hasServiceBaseline ||
+                  si.hmServiceSource === true ||
+                  si.serviceRemainingDays != null ||
+                  si.serviceRemainingMonths != null ||
+                  si.serviceRemainingKm != null ||
+                  si.serviceOverdue === true;
+                if (!hasAnySource) return '—';
+                if (overdue) {
+                  const parts: string[] = [];
+                  if (si.serviceOverdueDays != null) parts.push(`${si.serviceOverdueDays} Tagen`);
+                  if (si.serviceOverdueKm != null) parts.push(`${si.serviceOverdueKm.toLocaleString('de-DE')} km`);
+                  return parts.length > 0 ? `Überfällig seit ${parts.join(' / ')}` : 'Überfällig';
+                }
+                const parts: string[] = [];
+                if (si.serviceRemainingDays != null && si.serviceRemainingDays <= 90) {
+                  parts.push(`${si.serviceRemainingDays} Tage`);
+                } else if (si.serviceRemainingMonths != null) {
+                  parts.push(`${si.serviceRemainingMonths} Monate`);
+                }
+                if (si.serviceRemainingKm != null && si.serviceRemainingKm >= 0) {
+                  parts.push(`${si.serviceRemainingKm.toLocaleString('de-DE')} km`);
+                }
+                return parts.length > 0 ? parts.join(' oder ') : '—';
+              })();
+
+              return (
+                <div className={`rounded-lg p-5 mb-5 ${panelBg}`}>
+                  <p className={`text-sm font-semibold mb-2 ${headerText}`}>{headerLabel}</p>
+                  <p className={`text-sm font-bold mb-1 ${bodyText}`}>{bodyValue}</p>
+                  <p className={`text-xs mb-3 text-muted-foreground`}>whichever comes first</p>
+                  {si?.serviceRemainingPercent != null && (
+                    <div className={`w-full h-2 rounded-full overflow-hidden ${isDarkMode ? 'bg-neutral-700' : 'bg-blue-200'}`}>
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          overdue
+                            ? 'bg-red-500'
+                            : imminent
+                              ? 'bg-amber-500'
+                              : si.serviceRemainingPercent >= 50
+                                ? 'bg-green-500'
+                                : si.serviceRemainingPercent >= 25
+                                  ? 'bg-amber-500'
+                                  : 'bg-red-500'
+                        }`}
+                        style={{ width: `${si.serviceRemainingPercent}%` }}
+                      />
+                    </div>
+                  )}
+                  {(overdue || imminent) && (
+                    <p className={`text-[11px] mt-3 leading-relaxed font-medium ${overdue ? 'text-red-700 dark:text-red-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                      {overdue
+                        ? 'Werkstatttermin sofort vereinbaren. Garantie- und Betriebssicherheit können gefährdet sein; bei einer laufenden Buchung bitte den Fahrer informieren.'
+                        : 'Werkstatttermin planen — idealerweise vor der nächsten Buchung, um Stornos oder Pickup-Risiken zu vermeiden.'}
+                    </p>
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
 
             {/* Manufacturer Interval */}
             <div className={`rounded-lg p-5 mb-5 bg-muted`}>
@@ -2056,7 +2648,29 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   <div className={`rounded-lg p-4 mb-4 border bg-muted border-border`}>
                     <div className="flex items-center gap-3">
                       <div><p className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>Valid till</p><p className={`text-sm font-bold text-foreground`}>{serviceInfo?.tuvValidTill ? new Date(serviceInfo.tuvValidTill).toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric', year: 'numeric' }) : '—'}</p></div>
-                      <div className="ml-auto text-right"><p className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>Remaining</p><p className={`text-sm font-bold ${serviceInfo?.tuvRemainingMonths != null && serviceInfo.tuvRemainingMonths <= 3 ? 'text-red-500' : serviceInfo?.tuvRemainingMonths != null && serviceInfo.tuvRemainingMonths <= 6 ? 'text-orange-500' : isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{serviceInfo?.tuvRemainingMonths != null ? `${serviceInfo.tuvRemainingMonths} Months` : '—'}</p></div>
+                      <div className="ml-auto text-right">
+                        <p className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>Remaining</p>
+                        {(() => {
+                          const days = serviceInfo?.tuvRemainingDays ?? null;
+                          const months = serviceInfo?.tuvRemainingMonths ?? null;
+                          const tuvOverdue = serviceInfo?.tuvOverdue === true;
+                          const color = tuvOverdue
+                            ? 'text-red-600 dark:text-red-400'
+                            : days != null && days <= 90
+                              ? 'text-red-500'
+                              : days != null && days <= 180
+                                ? 'text-orange-500'
+                                : isDarkMode ? 'text-green-400' : 'text-green-600';
+                          const label = days == null
+                            ? '—'
+                            : tuvOverdue
+                              ? `Abgelaufen seit ${Math.abs(days)} Tagen`
+                              : days <= 60
+                                ? `${days} Tage`
+                                : `${months} Monate`;
+                          return <p className={`text-sm font-bold ${color}`}>{label}</p>;
+                        })()}
+                      </div>
                     </div>
                   </div>
                   {serviceInfo && serviceInfo.tuvHistory.length > 0 && (
@@ -2080,7 +2694,29 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   <div className={`rounded-lg p-4 mb-4 border bg-muted border-border`}>
                     <div className="flex items-center gap-3">
                       <div><p className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>Valid till</p><p className={`text-sm font-bold text-foreground`}>{serviceInfo?.bokraftValidTill ? new Date(serviceInfo.bokraftValidTill).toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric', year: 'numeric' }) : '—'}</p></div>
-                      <div className="ml-auto text-right"><p className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>Remaining</p><p className={`text-sm font-bold ${serviceInfo?.bokraftRemainingMonths != null && serviceInfo.bokraftRemainingMonths <= 2 ? 'text-red-500' : serviceInfo?.bokraftRemainingMonths != null && serviceInfo.bokraftRemainingMonths <= 4 ? 'text-orange-500' : isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{serviceInfo?.bokraftRemainingMonths != null ? `${serviceInfo.bokraftRemainingMonths} Months` : '—'}</p></div>
+                      <div className="ml-auto text-right">
+                        <p className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>Remaining</p>
+                        {(() => {
+                          const days = serviceInfo?.bokraftRemainingDays ?? null;
+                          const months = serviceInfo?.bokraftRemainingMonths ?? null;
+                          const bokOverdue = serviceInfo?.bokraftOverdue === true;
+                          const color = bokOverdue
+                            ? 'text-red-600 dark:text-red-400'
+                            : days != null && days <= 60
+                              ? 'text-red-500'
+                              : days != null && days <= 120
+                                ? 'text-orange-500'
+                                : isDarkMode ? 'text-green-400' : 'text-green-600';
+                          const label = days == null
+                            ? '—'
+                            : bokOverdue
+                              ? `Abgelaufen seit ${Math.abs(days)} Tagen`
+                              : days <= 60
+                                ? `${days} Tage`
+                                : `${months} Monate`;
+                          return <p className={`text-sm font-bold ${color}`}>{label}</p>;
+                        })()}
+                      </div>
                     </div>
                   </div>
                   {serviceInfo && serviceInfo.bokraftHistory.length > 0 && (
@@ -2516,25 +3152,6 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 )}
               </div>
             )}
-
-            {/* Euromaster Tire Service CTA */}
-            <div className={`flex items-center justify-between rounded-xl px-4 py-3 mb-5 ${isDarkMode ? 'bg-red-500/5 border border-red-500/10' : 'bg-red-50/50 border border-red-100'}`}>
-              <div className="flex items-center gap-2">
-                <Wrench className="w-4 h-4 text-red-500" />
-                <span className={`text-xs font-medium text-foreground/80`}>Need tire service?</span>
-              </div>
-              <button
-                onClick={() => setShowEuromasterTireModal(true)}
-                disabled={!emState.canCreateCase}
-                className={`px-3 py-1 text-[10px] font-semibold rounded-lg transition-colors ${
-                  emState.canCreateCase
-                    ? 'text-white bg-red-600 hover:bg-red-700 cursor-pointer'
-                    : isDarkMode ? 'bg-gray-700/50 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                {emState.canCreateCase ? 'Plan with Euromaster →' : 'Euromaster (setup required)'}
-              </button>
-            </div>
 
             {/* Tab navigation */}
             <div className={`flex gap-1 mb-5 p-1 rounded-xl ${isDarkMode ? 'bg-neutral-800/60' : 'bg-gray-100'}`}>
@@ -3391,7 +4008,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     )}
                     <div className="grid grid-cols-2 gap-3 mt-3">
                       <div className="text-center">
-                        <div className={`text-2xl font-black text-foreground`}>{hvBatteryStatus?.currentSocPercent != null ? `${hvBatteryStatus.currentSocPercent}%` : '—'}</div>
+                        <div className={`text-2xl font-black text-foreground`}>{hvBatteryStatus?.currentSocPercent != null ? `${formatMaxDecimals(hvBatteryStatus.currentSocPercent)}%` : '—'}</div>
                         <p className={`text-xs mt-1 text-muted-foreground`}>Current SoC</p>
                       </div>
                       <div className="text-center">
@@ -3407,11 +4024,11 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                         <div className={`text-3xl font-black ${
                           (hvBatteryStatus?.sohPercent ?? 0) >= 80 ? 'text-green-500' :
                           (hvBatteryStatus?.sohPercent ?? 0) >= 60 ? 'text-amber-500' : 'text-red-500'
-                        }`}>{hvBatteryStatus?.sohPercent != null ? `${hvBatteryStatus.publicationState === 'STABILIZING' ? '~' : ''}${hvBatteryStatus.sohPercent}%` : '—'}</div>
+                        }`}>{hvBatteryStatus?.sohPercent != null ? `${hvBatteryStatus.publicationState === 'STABILIZING' ? '~' : ''}${formatMaxDecimals(hvBatteryStatus.sohPercent)}%` : '—'}</div>
                         <p className={`text-xs mt-1 text-muted-foreground`}>{hvBatteryStatus?.publicationState === 'STABILIZING' ? 'Estimated SOH' : 'SOH'}</p>
                       </div>
                       <div className="text-center">
-                        <div className={`text-3xl font-black text-foreground`}>{hvBatteryStatus?.currentSocPercent != null ? `${hvBatteryStatus.currentSocPercent}%` : '—'}</div>
+                        <div className={`text-3xl font-black text-foreground`}>{hvBatteryStatus?.currentSocPercent != null ? `${formatMaxDecimals(hvBatteryStatus.currentSocPercent)}%` : '—'}</div>
                         <p className={`text-xs mt-1 text-muted-foreground`}>Current SoC</p>
                       </div>
                       <div className="text-center">
@@ -3458,11 +4075,11 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 text-muted-foreground`}>Nominal</p>
-                    <p className={`text-lg font-bold text-foreground`}>{hvBatteryStatus?.nominalCapacityKwh != null ? `${hvBatteryStatus.nominalCapacityKwh} kWh` : '—'}</p>
+                    <p className={`text-lg font-bold text-foreground`}>{hvBatteryStatus?.nominalCapacityKwh != null ? `${formatMaxDecimals(hvBatteryStatus.nominalCapacityKwh)} kWh` : '—'}</p>
                   </div>
                   <div>
                     <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 text-muted-foreground`}>Estimated Current</p>
-                    <p className={`text-lg font-bold text-foreground`}>{hvBatteryStatus?.estimatedCurrentCapacityKwh != null ? `${hvBatteryStatus.estimatedCurrentCapacityKwh} kWh` : '—'}</p>
+                    <p className={`text-lg font-bold text-foreground`}>{hvBatteryStatus?.estimatedCurrentCapacityKwh != null ? `${formatMaxDecimals(hvBatteryStatus.estimatedCurrentCapacityKwh)} kWh` : '—'}</p>
                   </div>
                 </div>
               </div>
@@ -3485,7 +4102,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                             </span>
                           </div>
                           <span className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                            {s.startSoc}% → {s.endSoc}%
+                            {formatMaxDecimals(s.startSoc)}% → {formatMaxDecimals(s.endSoc)}%
                           </span>
                         </div>
                         <div className="grid grid-cols-3 gap-2">
@@ -3538,19 +4155,6 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         </div>,
         document.body
       )}
-
-      {/* Euromaster Tire Service Modal */}
-      <EuromasterServiceRequestModal
-        isDarkMode={isDarkMode}
-        isOpen={showEuromasterTireModal}
-        onClose={() => setShowEuromasterTireModal(false)}
-        prefill={{
-          vehicleId: vehicleId,
-          serviceType: 'TIRE_SERVICE',
-          notes: 'Tire service request from vehicle health view',
-          context: 'tire-health',
-        }}
-      />
     </div>
   );
 }

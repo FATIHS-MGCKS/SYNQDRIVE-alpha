@@ -9,6 +9,7 @@ export const en = {
   'nav.insights': 'Insights',
   'nav.analytics': 'Analytics',
   'nav.fleetCondition': 'Fleet Condition',
+  'nav.financialInsights': 'Financial Insights',
   'nav.finance': 'Finance',
   'nav.invoices': 'Invoices',
   'nav.fines': 'Fines',
@@ -92,13 +93,6 @@ export const en = {
   'settingsTab.users': 'Users & Roles',
   'settingsTab.billing': 'Billing & Subscription',
   'settingsTab.dataAuthorization': 'Data Authorization',
-
-  // ─── MainNavTabs ───
-  'mainNav.dashboard': 'Dashboard',
-  'mainNav.bookings': 'Bookings',
-  'mainNav.fleet': 'Fleet',
-  'mainNav.customers': 'Customers',
-  'mainNav.stations': 'Stations',
 
   // ─── Finance Tabs ───
   'financeTab.invoices': 'Invoices',
@@ -293,6 +287,13 @@ export const en = {
   'dashboard.revenueMtd': 'Revenue MTD',
   'dashboard.costsMtd': 'Costs MTD',
   'dashboard.keyKpis': 'Key KPIs',
+  'dashboard.thisMonth': 'This Month',
+  'dashboard.welcomeBack': 'Welcome back, {name}',
+  'dashboard.welcomeBackGeneric': 'Welcome back',
+  'dashboard.profit': 'Profit',
+  'dashboard.expenses': 'Expenses',
+  'dashboard.vsLastMonth': 'vs. last month',
+  'dashboard.invoicesShort': '{count} invoices',
   'dashboard.revenueAndCosts': 'Revenue & Costs',
   'dashboard.monthlyForecast': 'Monthly Forecast',
   'dashboard.revenue': 'Revenue',

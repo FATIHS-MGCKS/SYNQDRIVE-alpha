@@ -73,3 +73,34 @@ export interface FinalizeMeta {
   rawDetectionMeta?: Record<string, unknown>;
   discardReason?: string;
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  MID-TRIP GAP SPLIT
+// ═══════════════════════════════════════════════════════════════
+//
+// Splits a single trip into two canonical trips at a detected mid-trip
+// ignition-off window. Used by both the live FSM path (processActiveTick
+// detects a stationary silence) and the retroactive reconciliation scan
+// (IntraTripGap repair). See START_DETECTION_MODES.MID_TRIP_GAP_SPLIT and
+// END_DETECTION_MODES.MID_TRIP_GAP_SPLIT.
+export interface SplitTripAtGapParams {
+  tripId: string;
+  firstEndAt: Date;
+  firstEndLatitude?: number | null;
+  firstEndLongitude?: number | null;
+  firstEndDistanceKm?: number | null;
+  secondStartAt: Date;
+  secondStartLatitude?: number | null;
+  secondStartLongitude?: number | null;
+  secondStartOdometerKm?: number | null;
+  gapMs: number;
+  detectionProfile?: string;
+  reason: string;
+  triggeredBy: 'LIVE_FSM' | 'RECONCILIATION';
+}
+
+export interface SplitTripAtGapResult {
+  firstTripId: string;
+  secondTripId: string;
+  movedWaypoints: number;
+}

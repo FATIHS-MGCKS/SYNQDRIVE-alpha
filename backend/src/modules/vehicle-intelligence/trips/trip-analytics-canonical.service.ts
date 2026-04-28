@@ -7,6 +7,11 @@ import {
   VehicleTrip,
 } from '@prisma/client';
 import { TripAssignmentResolution, TripAssignmentService } from './trip-assignment.service';
+import {
+  computeSafetyScore,
+  hasSpeedingDataFromTrip,
+  safetyDataConfidenceFromTrip,
+} from '../driving-impact/driving-impact-scorer';
 
 export interface CanonicalTripEventSummary {
   totalAccelerationEvents: number;
@@ -24,6 +29,10 @@ export interface CanonicalTripScoreSummary {
   drivingStyleScore: number | null;
   safetyScore: number | null;
   scoreSource: 'trip_driving_impact' | 'vehicle_trip_compat' | 'derived';
+  /** True when the trip carries enriched speed-limit / route data. */
+  hasSpeedingData: boolean;
+  /** Per-trip safety-data confidence; subject aggregates have their own. */
+  safetyDataConfidence: 'none' | 'low' | 'medium' | 'high';
 }
 
 export interface CanonicalTripAssignmentSummary extends TripAssignmentResolution {}
@@ -37,9 +46,11 @@ export interface CanonicalTripSummary {
 export interface CanonicalTripStats {
   totalTrips: number;
   totalDistanceKm: number;
-  avgDrivingScore: number;
-  avgDrivingStyleScore: number;
-  avgSafetyScore: number;
+  // V4.6.95 — nullable averages preserve "no data" semantics. Frontend
+  // renders "—" / "Not enough data"; old `?? 0` callers were lying.
+  avgDrivingScore: number | null;
+  avgDrivingStyleScore: number | null;
+  avgSafetyScore: number | null;
   totalAccelerationEvents: number;
   totalHardAccelerationEvents: number;
   totalBrakingEvents: number;
@@ -146,10 +157,12 @@ export class TripAnalyticsCanonicalService {
         where: {
           vehicleId,
           isPrivateTrip: false,
+          // V4.6.95 — `ASSIGNED_USER` was removed alongside the unused
+          // user-score feature. Canonical assignment statuses are
+          // ASSIGNED_DRIVER and ASSIGNED_BOOKING_CUSTOMER.
           assignmentStatus: {
             in: [
               TripAssignmentStatus.ASSIGNED_DRIVER,
-              TripAssignmentStatus.ASSIGNED_USER,
               TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
             ],
           },
@@ -157,8 +170,11 @@ export class TripAnalyticsCanonicalService {
       }),
     ]);
 
-    const avgDrivingStyleScore = this.round2(impactAvg._avg.drivingStyleScore ?? 0);
-    const avgSafetyScore = this.round2(impactAvg._avg.safetyScore ?? 0);
+    // V4.6.95 — preserve null when no impact rows exist for this vehicle.
+    const styleAvg = impactAvg._avg.drivingStyleScore;
+    const safetyAvg = impactAvg._avg.safetyScore;
+    const avgDrivingStyleScore = styleAvg != null ? this.round2(styleAvg) : null;
+    const avgSafetyScore = safetyAvg != null ? this.round2(safetyAvg) : null;
     return {
       totalTrips: tripSummary._count._all ?? 0,
       totalDistanceKm: this.round2(tripSummary._sum.distanceKm ?? 0),
@@ -197,16 +213,19 @@ export class TripAnalyticsCanonicalService {
     const drivingStyleScore = impactHasStyle
       ? impact!.drivingStyleScore
       : (trip.drivingScore ?? null);
+    // Safety score always goes through the canonical `computeSafetyScore` path
+    // (shared with DrivingImpactService). This avoids two different numeric
+    // definitions of "safety score" living in parallel. For trips without a
+    // persisted TripDrivingImpact row we derive the score directly from the
+    // canonical speeding inputs on VehicleTrip — never from a second formula.
+    // V4.6.95 — `deriveSafetyScoreFromTrip` returns null when speed-data is
+    // missing, so the chain below correctly yields null for un-enriched trips.
     const safetyScore =
-      impact?.safetyScore ??
-      this.deriveSafetyScoreFromTrip({
-        speedingExposurePct: trip.speedingExposurePct ?? null,
-        maxOverSpeedKmh: trip.maxOverSpeedKmh ?? null,
-        avgOverSpeedKmh: trip.avgOverSpeedKmh ?? null,
-        speedingSectionCount: trip.speedingSectionCount ?? null,
-      });
+      impact?.safetyScore ?? this.deriveSafetyScoreFromTrip(trip);
     const scoreSource: CanonicalTripScoreSummary['scoreSource'] =
       impactHasStyle ? 'trip_driving_impact' : drivingStyleScore != null ? 'vehicle_trip_compat' : 'derived';
+    const hasSpeedingData = hasSpeedingDataFromTrip(trip);
+    const safetyDataConfidence = safetyDataConfidenceFromTrip(trip);
 
     return {
       events,
@@ -214,6 +233,8 @@ export class TripAnalyticsCanonicalService {
         drivingStyleScore,
         safetyScore,
         scoreSource,
+        hasSpeedingData,
+        safetyDataConfidence,
       },
       assignment,
     };
@@ -237,22 +258,26 @@ export class TripAnalyticsCanonicalService {
     return map;
   }
 
-  private deriveSafetyScoreFromTrip(input: {
-    speedingExposurePct: number | null;
-    maxOverSpeedKmh: number | null;
-    avgOverSpeedKmh: number | null;
-    speedingSectionCount: number | null;
-  }): number {
-    const exposure = input.speedingExposurePct ?? 0;
-    const maxOver = input.maxOverSpeedKmh ?? 0;
-    const avgOver = input.avgOverSpeedKmh ?? 0;
-    const sectionCount = input.speedingSectionCount ?? 0;
-    const exposurePenalty = Math.min(50, exposure * 0.9);
-    const severityPenalty = Math.min(25, maxOver * 0.8);
-    const avgOverPenalty = Math.min(15, avgOver * 0.7);
-    const sectionPenalty = Math.min(10, sectionCount * 1.5);
-    const score = Math.max(0, Math.min(100, 100 - exposurePenalty - severityPenalty - avgOverPenalty - sectionPenalty));
-    return this.round2(score);
+  /**
+   * Derive a Safety Score when no TripDrivingImpact row exists yet (legacy trip
+   * or a trip below the impact minimum-distance threshold).
+   *
+   * V4.6.95 — Returns `null` when the underlying speed-limit / route-analysis
+   * fields are genuinely missing on the VehicleTrip row. Coercing those nulls
+   * to 0 (as the previous implementation did) produced safetyScore = 100,
+   * incorrectly painting un-enriched trips as "perfectly safe". The pure
+   * `computeSafetyScore` function is only called when speed-data is real.
+   */
+  private deriveSafetyScoreFromTrip(trip: TripProjection): number | null {
+    if (!hasSpeedingDataFromTrip(trip)) {
+      return null;
+    }
+    return computeSafetyScore({
+      speedingExposurePct: trip.speedingExposurePct ?? 0,
+      maxOverSpeedKmh: trip.maxOverSpeedKmh ?? 0,
+      avgOverSpeedKmh: trip.avgOverSpeedKmh ?? 0,
+      speedingSectionCount: trip.speedingSectionCount ?? 0,
+    });
   }
 
   private round2(value: number): number {

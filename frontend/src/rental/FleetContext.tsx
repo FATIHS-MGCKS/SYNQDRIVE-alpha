@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef } f
 import type { ReactNode } from 'react';
 import { api } from '../lib/api';
 import { useRentalOrg } from './RentalContext';
-import type { VehicleData, VehicleOnlineStatus, VehicleDisplayState, VehicleDisplayIgnition } from './data/vehicles';
+import type { VehicleData, VehicleOnlineStatus, VehicleDisplayState, VehicleDisplayIgnition, FleetMaintenanceReasonCode } from './data/vehicles';
 
 const FLEET_REFRESH_MS = 30_000;
 
@@ -16,12 +16,37 @@ function mapApiToVehicleData(v: any): VehicleData {
   const displayState = (['MOVING', 'IDLE', 'PARKED'].includes(v.displayState) ? v.displayState : undefined) as VehicleDisplayState | undefined;
   const displayIgnition = (['ON', 'OFF', 'UNKNOWN'].includes(v.displayIgnition) ? v.displayIgnition : undefined) as VehicleDisplayIgnition | undefined;
 
+  // V4.6.85 — preserve null telemetry so UI cells can render "—" instead
+  // of a misleading "0 km" / "0%".
+  const odometerKm =
+    typeof v.odometerKm === 'number' && Number.isFinite(v.odometerKm)
+      ? v.odometerKm
+      : typeof v.odometer === 'number' && Number.isFinite(v.odometer) && v.odometer > 0
+        ? v.odometer
+        : null;
+  const fuelPercent =
+    typeof v.fuelPercent === 'number' && Number.isFinite(v.fuelPercent)
+      ? v.fuelPercent
+      : null;
+  const evSoc =
+    typeof v.evSoc === 'number' && Number.isFinite(v.evSoc)
+      ? v.evSoc
+      : typeof v.battery === 'number' && Number.isFinite(v.battery) && v.battery > 0
+        ? v.battery
+        : null;
+  const reasonCode = (['SCHEDULED_SERVICE', 'OPERATIONAL_BLOCK'].includes(
+    v.maintenanceReasonCode,
+  )
+    ? v.maintenanceReasonCode
+    : null) as FleetMaintenanceReasonCode | null;
+
   return {
     id: v.id,
     license: v.license ?? v.licensePlate ?? '',
     model: v.model ?? '',
     year: v.year ?? 0,
     station: v.station ?? '',
+    stationId: v.stationId ?? null,
     fuelType: ['Petrol', 'Diesel', 'Electric', 'Hybrid', 'PHEV'].includes(fuelType) ? fuelType : 'Petrol',
     status: ['Available', 'Active Rented', 'Reserved', 'Maintenance'].includes(status) ? status : 'Available',
     cleaningStatus: ['Clean', 'Needs Cleaning'].includes(cleaningStatus) ? cleaningStatus : 'Clean',
@@ -29,10 +54,12 @@ function mapApiToVehicleData(v: any): VehicleData {
     online: v.online ?? false,
     lastSignal: v.lastSignal ?? '',
     badge: v.badge ?? 0,
-    odometer: v.odometer ?? 0,
-    fuel: v.fuel ?? 0,
+    // Legacy numeric mirrors — kept for aggregations / exports that read
+    // `.odometer` / `.fuel` as plain numbers.
+    odometer: odometerKm ?? 0,
+    fuel: fuelPercent ?? evSoc ?? 0,
     // `battery` in rental runtime is EV energy/SoC percent (not battery health).
-    battery: v.battery ?? 0,
+    battery: evSoc ?? 0,
     speed: v.speed ?? 0,
     coolant: v.coolant ?? 0,
     brakes: v.brakes ?? 0,
@@ -40,18 +67,14 @@ function mapApiToVehicleData(v: any): VehicleData {
     engineOil: v.engineOil ?? 0,
     isElectric: v.isElectric ?? (v.fuelType === 'Electric' || v.fuelType === 'PHEV'),
     hvBatteryCapacityKwh: v.hvBatteryCapacityKwh ?? null,
-    fuelLevel: v.fuelLevel ?? null,
+    fuelLevel: typeof v.fuelLevel === 'number' ? v.fuelLevel : fuelPercent,
+    odometerKm,
+    fuelPercent,
+    evSoc,
     lat: v.lat ?? null,
     lng: v.lng ?? null,
     make: v.make ?? '',
     alert: v.alert ?? null,
-    driver: v.driver,
-    ert: v.ert,
-    customer: v.customer,
-    pickup: v.pickup,
-    reason: v.reason,
-    workshop: v.workshop,
-    eta: v.eta,
     leasingRate: v.leasingRate ?? '€ 0,00',
     insuranceCost: v.insuranceCost ?? '€ 0,00',
     taxCost: v.taxCost ?? '€ 0,00',
@@ -63,6 +86,27 @@ function mapApiToVehicleData(v: any): VehicleData {
     displayState,
     displayIgnition,
     isLiveTracking: typeof v.isLiveTracking === 'boolean' ? v.isLiveTracking : undefined,
+    // V4.6.84/85 — fleet-status context propagated from backend
+    reservedBookingId: v.reservedBookingId ?? null,
+    reservedCustomerName: v.reservedCustomerName ?? null,
+    reservedPickupAt: v.reservedPickupAt ?? null,
+    reservedReturnAt: v.reservedReturnAt ?? null,
+    reservedPickupStationName: v.reservedPickupStationName ?? null,
+    reservedIsOverdue: Boolean(v.reservedIsOverdue),
+    activeBookingId: v.activeBookingId ?? null,
+    activeCustomerName: v.activeCustomerName ?? null,
+    activeStartAt: v.activeStartAt ?? null,
+    activeReturnAt: v.activeReturnAt ?? null,
+    activeReturnStationName: v.activeReturnStationName ?? null,
+    activeKmIncluded: typeof v.activeKmIncluded === 'number' ? v.activeKmIncluded : null,
+    activeKmDriven: typeof v.activeKmDriven === 'number' ? v.activeKmDriven : null,
+    activeIsOverdue: Boolean(v.activeIsOverdue),
+    maintenanceReason: v.maintenanceReason ?? null,
+    maintenanceReasonCode: reasonCode,
+    maintenanceUrgency:
+      v.maintenanceUrgency === 'planned' || v.maintenanceUrgency === 'urgent'
+        ? v.maintenanceUrgency
+        : null,
   };
 }
 

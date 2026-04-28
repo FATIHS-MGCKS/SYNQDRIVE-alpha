@@ -25,6 +25,7 @@ import { PerformanceLogicView } from './components/PerformanceLogicView';
 import VehicleLogbookView from './components/VehicleLogbookView';
 import { ServiceMaintenanceAdminView } from './components/ServiceMaintenanceAdminView';
 import { HighMobilityDataView } from './components/HighMobilityDataView';
+import { HighMobilityCompatibilityView } from './components/HighMobilityCompatibilityView';
 import { Toaster, toast } from 'sonner';
 import type { Organization, PlatformUser, RegisteredVehicle, DimoVehicle } from './data/platform-data';
 import { api } from '../lib/api';
@@ -741,6 +742,10 @@ export default function App() {
 
             {currentView === 'high-mobility' && (
               <HighMobilityDataView isDarkMode={isDarkMode} />
+            )}
+
+            {currentView === 'hm-compatibility' && (
+              <HighMobilityCompatibilityView isDarkMode={isDarkMode} />
             )}
 
           </div>

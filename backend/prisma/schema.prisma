@@ -302,6 +302,19 @@ enum CustomerStatus {
   ACTIVE
   INACTIVE
   BLOCKED
+  SUSPENDED
+  UNDER_REVIEW
+}
+
+enum CustomerType {
+  INDIVIDUAL
+  CORPORATE
+}
+
+enum CustomerRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
 }
 
 enum BookingStatus {
@@ -320,6 +333,9 @@ enum InsightType {
   LOW_UTILIZATION
   SERVICE_WINDOW
   SERVICE_BEFORE_BOOKING
+  BATTERY_CRITICAL
+  SERVICE_OVERDUE
+  PICKUP_OVERDUE
 }
 
 enum InsightSeverity {
@@ -536,10 +552,17 @@ model Organization {
   businessType BusinessType       @map("business_type")
   address      String?
   city         String?
+  state        String?
+  zip          String?
   country      String?
+  taxId        String?            @map("tax_id")
   phone        String?
   email        String?
   website      String?
+  timezone     String?
+  language     String?
+  managerName  String?            @map("manager_name")
+  managerEmail String?            @map("manager_email")
   logoUrl      String?            @map("logo_url")
   status       OrganizationStatus @default(ACTIVE)
   lastActiveAt DateTime?          @map("last_active_at")
@@ -555,6 +578,7 @@ model Organization {
   subscriptions             BillingSubscription[]
   customers                 Customer[]
   bookings                  Booking[]
+  bookingHandoverProtocols  BookingHandoverProtocol[]
   activityLogs              ActivityLog[]
   rentalDrivingAnalyses     RentalDrivingAnalysis[]
   vendors                   Vendor[]
@@ -673,9 +697,17 @@ model Station {
   name           String
   address        String?
   city           String?
+  postalCode     String?       @map("postal_code")
   country        String?
   latitude       Float?
   longitude      Float?
+  radiusMeters   Int?          @default(150) @map("radius_meters")
+  phone          String?
+  email          String?
+  managerName    String?       @map("manager_name")
+  openingHours   String?       @map("opening_hours")
+  notes          String?
+  googlePlaceId  String?       @map("google_place_id")
   status         StationStatus @default(ACTIVE)
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
@@ -808,6 +840,7 @@ model Vehicle {
   analyticsCacheEntries  AnalyticsCache[]
   pollLogs               DimoPollLog[]
   bookings               Booking[]
+  handoverProtocols      BookingHandoverProtocol[]
   drivingEvents          DrivingEvent[]
   batterySnapshots       BatteryHealthSnapshot[]
   hvBatterySnapshots     HvBatteryHealthSnapshot[]
@@ -826,6 +859,7 @@ model Vehicle {
   tripTrackingRuns       VehicleTripTrackingRun[]
   tripBehaviorEvents     TripBehaviorEvent[]
   tripRepairs            TripRepair[]
+  energyEvents           VehicleEnergyEvent[]
   logbookConfig          VehicleLogbookConfig?
   documentExtractions    VehicleDocumentExtraction[]
   vendorVehicles         VendorVehicle[]
@@ -852,11 +886,31 @@ enum ComplaintUrgency {
 enum ComplaintLifecycleStatus {
   ACTIVE
   RESOLVED
+  // V4.6.76 Rental Health V1 — richer lifecycle so operators can triage
+  // complaints before they either get confirmed (→ feeds rental_blocked
+  // if impact=SAFETY) or dismissed. ACTIVE remains the legacy default so
+  // historic rows stay valid without a data-migration.
+  OPEN
+  IN_REVIEW
+  CONFIRMED
+  REJECTED
 }
 
 enum ComplaintSource {
   FIELD_AGENT
   MANUAL
+}
+
+// V4.6.76 Rental Health V1 — impact classification drives the
+// rental_blocked gate. A complaint with impact=SAFETY that is currently
+// OPEN / IN_REVIEW / CONFIRMED / ACTIVE hard-blocks new bookings.
+// DRIVABILITY / ENVIRONMENT / COMFORT only surface as warning state.
+// `impact` is nullable so existing rows (pre-migration) stay valid.
+enum ComplaintImpact {
+  SAFETY
+  DRIVABILITY
+  ENVIRONMENT
+  COMFORT
 }
 
 model VehicleComplaint {
@@ -869,6 +923,11 @@ model VehicleComplaint {
   region          String?
   status          ComplaintLifecycleStatus @default(ACTIVE)
   source          ComplaintSource          @default(MANUAL)
+  // V4.6.76 Rental Health V1 — nullable so existing rows migrate
+  // without backfill; Rental-Health evaluator treats null as "no impact
+  // classification", which keeps the legacy complaint severity (urgency)
+  // out of the rental_blocked gate.
+  impact          ComplaintImpact?
   resolvedAt      DateTime?                @map("resolved_at")
   createdAt       DateTime                 @default(now()) @map("created_at")
   updatedAt       DateTime                 @updatedAt @map("updated_at")
@@ -1666,20 +1725,39 @@ model Prospect {
 // ------------------------------------------------
 
 model Customer {
-  id             String         @id @default(uuid())
-  organizationId String         @map("organization_id")
-  firstName      String         @map("first_name")
-  lastName       String         @map("last_name")
+  id             String             @id @default(uuid())
+  organizationId String             @map("organization_id")
+  firstName      String             @map("first_name")
+  lastName       String             @map("last_name")
   email          String?
   phone          String?
-  licenseNumber  String?        @map("license_number")
-  dateOfBirth    DateTime?      @map("date_of_birth")
+  licenseNumber  String?            @map("license_number")
+  dateOfBirth    DateTime?          @map("date_of_birth")
   address        String?
   city           String?
+  zip            String?
   country        String?
-  status         CustomerStatus @default(ACTIVE)
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
+  company        String?
+  customerType   CustomerType       @default(INDIVIDUAL) @map("customer_type")
+  riskLevel      CustomerRiskLevel  @default(LOW) @map("risk_level")
+  notes          String?
+  licenseExpiry  DateTime?          @map("license_expiry")
+  licenseClass   String?            @map("license_class")
+  idType         String?            @map("id_type")
+  idNumber       String?            @map("id_number")
+  idExpiry       DateTime?          @map("id_expiry")
+  idVerified     Boolean            @default(false) @map("id_verified")
+  licenseVerified Boolean           @default(false) @map("license_verified")
+  // V4.6.65 — KYC document URLs (stored under /uploads/customer-documents).
+  // Kept as plain URLs for simplicity; switch to a dedicated CustomerDocument
+  // table if the product ever needs versioning or per-document metadata.
+  idFrontUrl      String?            @map("id_front_url")
+  idBackUrl       String?            @map("id_back_url")
+  licenseFrontUrl String?            @map("license_front_url")
+  licenseBackUrl  String?            @map("license_back_url")
+  status         CustomerStatus     @default(ACTIVE)
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
 
   organization          Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   bookings              Booking[]
@@ -1717,10 +1795,11 @@ model Booking {
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
 
-  organization          Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  customer              Customer               @relation(fields: [customerId], references: [id])
-  vehicle               Vehicle                @relation(fields: [vehicleId], references: [id])
+  organization          Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer              Customer                  @relation(fields: [customerId], references: [id])
+  vehicle               Vehicle                   @relation(fields: [vehicleId], references: [id])
   rentalDrivingAnalysis RentalDrivingAnalysis?
+  handoverProtocols     BookingHandoverProtocol[]
 
   @@index([organizationId])
   @@index([customerId])
@@ -1732,6 +1811,56 @@ model Booking {
   @@index([vehicleId, status, startDate])
   @@index([organizationId, status])
   @@map("bookings")
+}
+
+// ------------------------------------------------
+// BOOKING HANDOVER PROTOCOL (V4.6.75 — pickup + return)
+// ------------------------------------------------
+
+enum HandoverKind {
+  PICKUP
+  RETURN
+}
+
+model BookingHandoverProtocol {
+  id                       String       @id @default(uuid())
+  organizationId           String       @map("organization_id")
+  bookingId                String       @map("booking_id")
+  vehicleId                String       @map("vehicle_id")
+  kind                     HandoverKind
+  performedAt              DateTime     @default(now()) @map("performed_at")
+  performedByUserId        String?      @map("performed_by_user_id")
+  performedByName          String?      @map("performed_by_name")
+  odometerKm               Int          @map("odometer_km")
+  fuelPercent              Int          @map("fuel_percent")
+  fuelFull                 Boolean      @default(false) @map("fuel_full")
+  exteriorClean            Boolean      @default(true) @map("exterior_clean")
+  interiorClean            Boolean      @default(true) @map("interior_clean")
+  tiresSeasonOk            Boolean      @default(true) @map("tires_season_ok")
+  warningLightsOn          Boolean      @default(false) @map("warning_lights_on")
+  warningLightsNotes       String?      @map("warning_lights_notes")
+  notes                    String?
+  customerSignatureName    String?      @map("customer_signature_name")
+  customerSignatureDataUrl String?      @map("customer_signature_data_url")
+  staffSignatureName       String?      @map("staff_signature_name")
+  staffSignatureDataUrl    String?      @map("staff_signature_data_url")
+  documentsAcknowledged    Boolean      @default(false) @map("documents_acknowledged")
+  // JSON array of VehicleDamage.id values that were noted or created
+  // during this handover. We link rather than duplicate — damage records
+  // continue to live in VehicleDamage with their pin coordinates, images,
+  // cost and repair status.
+  damageIds                Json?        @map("damage_ids")
+  createdAt                DateTime     @default(now()) @map("created_at")
+  updatedAt                DateTime     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, kind])
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@map("booking_handover_protocols")
 }
 
 // ------------------------------------------------
@@ -2436,7 +2565,6 @@ enum TripSource {
 
 enum TripAssignmentStatus {
   ASSIGNED_DRIVER
-  ASSIGNED_USER
   ASSIGNED_BOOKING_CUSTOMER
   PRIVATE_UNASSIGNED
   UNKNOWN_ASSIGNMENT
@@ -2444,7 +2572,6 @@ enum TripAssignmentStatus {
 
 enum TripAssignmentSubjectType {
   DRIVER
-  USER
   BOOKING_CUSTOMER
 }
 
@@ -2605,6 +2732,56 @@ model VehicleTripWaypoint {
   @@index([tripId])
   @@index([recordedAt])
   @@map("vehicle_trip_waypoints")
+}
+
+// ── Vehicle Energy Events (Refuel + Recharge, detected via DIMO segments) ──
+// Canonical contract: DIMO's native RefuelDetector / RechargeDetector emit
+// segments via the same `segments(mechanism: refuel|recharge)` GraphQL query
+// that we already consume for trip detection. We persist each segment as a
+// first-class event so the Trips-Tab timeline can render "refill / recharge
+// between trips" without merging trip-side heuristics into the same table.
+
+enum EnergyEventKind {
+  REFUEL
+  RECHARGE
+}
+
+enum EnergyEventConfidence {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model VehicleEnergyEvent {
+  id                 String                @id @default(uuid())
+  vehicleId          String                @map("vehicle_id")
+  dimoSegmentId      String                @unique @map("dimo_segment_id")
+  kind               EnergyEventKind
+  detectionMechanism String                @map("detection_mechanism")
+  startTime          DateTime              @map("start_time")
+  endTime            DateTime              @map("end_time")
+  durationSeconds    Int                   @map("duration_seconds")
+  startLatitude      Float?                @map("start_latitude")
+  startLongitude     Float?                @map("start_longitude")
+  endLatitude        Float?                @map("end_latitude")
+  endLongitude       Float?                @map("end_longitude")
+  fuelDeltaLiters    Float?                @map("fuel_delta_liters")
+  fuelDeltaPercent   Float?                @map("fuel_delta_percent")
+  socDeltaPercent    Float?                @map("soc_delta_percent")
+  energyDeltaKwh     Float?                @map("energy_delta_kwh")
+  odometerStartKm    Float?                @map("odometer_start_km")
+  odometerEndKm      Float?                @map("odometer_end_km")
+  confidence         EnergyEventConfidence @default(MEDIUM)
+  rawDetectionMeta   Json?                 @map("raw_detection_meta")
+  createdAt          DateTime              @default(now()) @map("created_at")
+  updatedAt          DateTime              @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([vehicleId, startTime])
+  @@index([kind])
+  @@map("vehicle_energy_events")
 }
 
 // ── Trip Behavior Events (post-trip HF enrichment) ──
@@ -3724,7 +3901,9 @@ model TripDrivingImpact {
   drivingStyleScore       Float? @map("driving_style_score")
   safetyScore             Float? @map("safety_score")
   speedingExposurePct     Float? @map("speeding_exposure_pct")
-  speedingSeverityScore   Float? @map("speeding_severity_score")
+  // V4.6.95 — `speedingSeverityScore` was deprecated in V4.6.83 (no consumer
+  // ever read it; canonical speeding-related scalar is `safetyScore`). The
+  // column is now dropped via the V4.6.95 migration to remove the dead path.
   speedingSectionCount    Int?   @map("speeding_section_count")
 
   // Traceability
@@ -3780,6 +3959,11 @@ model VehicleDrivingImpactCurrent {
   highSpeedStressScore    Float? @map("high_speed_stress_score")
   thermalBrakeStressScore Float? @map("thermal_brake_stress_score")
   drivingStyleScore       Float? @map("driving_style_score")
+  // Rolling speeding-centric Safety Score (V4.6.83). Distance-weighted
+  // aggregate over the same rolling window as drivingStyleScore. Kept in
+  // sync with TripDrivingImpact.safetyScore; mirrors the canonical
+  // `computeSafetyScore` output from the Driving Impact Engine.
+  safetyScore             Float? @map("safety_score")
 
   modelVersion String   @map("model_version")
   updatedAt    DateTime @updatedAt @map("updated_at")
@@ -4120,6 +4304,9 @@ enum HmSyncStatus {
   SUCCESS
   FAILED
   PARTIAL
+  // Used by fleet-clearance brands (e.g. Mercedes-Benz) where the REST /command
+  // endpoint returns 404 and data is delivered exclusively via MQTT push.
+  MQTT_ONLY
 }
 
 // Primary managed vehicle record for High Mobility
@@ -4428,4 +4615,129 @@ model HighMobilityStreamConsumerState {
   @@index([environment])
   @@index([appContainerType])
   @@map("high_mobility_stream_consumer_states")
+}
+
+// =================================================================
+// HIGH MOBILITY — Compatibility Matrix (V4.6.77)
+// Internal Master-Admin compatibility intelligence for Health APP and
+// Telemetry APP. Brand + model + model-year → signal coverage, app
+// suitability, onboarding mode. Reusable later for landing-page
+// compatibility checker, onboarding assistance, and feature gating.
+// App status is computed deterministically from signal coverage in
+// the service; the optional *AppStatus / overallStatus columns are
+// manual override/cache slots for rare edge cases.
+// =================================================================
+
+enum HmCompatibilityEligibilityMode {
+  AVAILABLE
+  NOT_AVAILABLE
+  SUPPORT_REQUEST
+  VIN_DEPENDENT
+}
+
+enum HmCompatibilityOnboardingMode {
+  PRECHECK_CONNECT
+  DIRECT_CONNECT
+  MANUAL_REVIEW
+}
+
+enum HmCompatibilityAppStatus {
+  SUPPORTED
+  PARTIAL
+  NOT_RECOMMENDED
+}
+
+enum HmCompatibilityOverall {
+  GOOD
+  LIMITED
+  WEAK
+}
+
+enum HmCompatibilityConfidence {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum HmCompatibilityApp {
+  HEALTH
+  TELEMETRY
+}
+
+enum HmSignalCoverage {
+  CONFIRMED
+  EXPECTED
+  UNVERIFIED
+  MISSING
+}
+
+model HighMobilityCompatibilityRecord {
+  id                 String                         @id @default(uuid())
+  // Normalized lowercase brand (aligned with high-mobility-oem-routing.normalizeToHmBrand)
+  brand              String
+  // Original/preferred display form (e.g. "Volkswagen", "Mercedes-Benz")
+  brandDisplayName   String                         @map("brand_display_name")
+  // Normalized lowercase model key (e.g. "golf", "a-class")
+  model              String
+  // Original/preferred display form (e.g. "Golf", "A-Class")
+  modelDisplayName   String                         @map("model_display_name")
+  modelYearFrom      Int?                           @map("model_year_from")
+  modelYearTo        Int?                           @map("model_year_to")
+  // Free-form support basis note (e.g. "MY 2019+", "from Nov 2020")
+  supportFromText    String?                        @map("support_from_text")
+
+  eligibilityMode    HmCompatibilityEligibilityMode @map("eligibility_mode")
+  onboardingMode     HmCompatibilityOnboardingMode  @map("onboarding_mode")
+
+  // Optional manual override/cache — when null, the service derives these
+  // from signal coverage (Product rule 2: derive from signal groups, not OEM name).
+  healthAppStatus    HmCompatibilityAppStatus?      @map("health_app_status")
+  telemetryAppStatus HmCompatibilityAppStatus?      @map("telemetry_app_status")
+  overallStatus      HmCompatibilityOverall?        @map("overall_status")
+
+  supportSource      String?                        @map("support_source")
+  confidence         HmCompatibilityConfidence      @default(MEDIUM)
+  notes              String?
+  lastReviewedAt     DateTime?                      @map("last_reviewed_at")
+
+  createdAt          DateTime                       @default(now()) @map("created_at")
+  updatedAt          DateTime                       @updatedAt @map("updated_at")
+
+  signals            HighMobilityCompatibilitySignal[]
+
+  @@unique([brand, model, modelYearFrom, modelYearTo], name: "uq_hm_compat_record")
+  @@index([brand])
+  @@index([brand, model])
+  @@index([eligibilityMode])
+  @@map("hm_compatibility_records")
+}
+
+model HighMobilityCompatibilitySignal {
+  id                    String                          @id @default(uuid())
+  compatibilityRecordId String                          @map("compatibility_record_id")
+
+  app                   HmCompatibilityApp
+  // Stable machine key (e.g. "odometer", "gps_latitude") — used for de-duplication + API grouping
+  signalKey             String                          @map("signal_key")
+  // Human-readable label (e.g. "Odometer")
+  signalLabel           String                          @map("signal_label")
+  // Product-oriented signal group (e.g. "Core Metrics", "Energy", "Location")
+  signalGroup           String                          @map("signal_group")
+
+  required              Boolean                         @default(true)
+  coverage              HmSignalCoverage
+  confidence            HmCompatibilityConfidence       @default(MEDIUM)
+  notes                 String?
+  displayOrder          Int                             @default(0) @map("display_order")
+
+  createdAt             DateTime                        @default(now()) @map("created_at")
+  updatedAt             DateTime                        @updatedAt @map("updated_at")
+
+  record                HighMobilityCompatibilityRecord @relation(fields: [compatibilityRecordId], references: [id], onDelete: Cascade)
+
+  @@unique([compatibilityRecordId, app, signalKey], name: "uq_hm_compat_signal")
+  @@index([compatibilityRecordId])
+  @@index([app])
+  @@index([coverage])
+  @@map("hm_compatibility_signals")
 }

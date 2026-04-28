@@ -5,7 +5,7 @@ import {
   Settings, BarChart3, Globe,
   Code2, FileText, Phone,
   ChevronRight, Menu, X, Plus, UserPlus,
-  MapPin, Gauge, BookOpen, Wrench
+  MapPin, Gauge, BookOpen, Wrench, ShieldCheck
 } from 'lucide-react';
 import { useState } from 'react';
 import synqdriveLogoDark from '../../assets/synqdrive-logo-dark.png';
@@ -26,6 +26,7 @@ export type MasterView =
   | 'insurances'
   | 'voice-assistant'
   | 'high-mobility'
+  | 'hm-compatibility'
   | 'architektur'
   | 'changes'
   | 'health-tracking'
@@ -155,6 +156,9 @@ export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, on
           </button>
           <button onClick={() => go('high-mobility')} className={itemCls(active('high-mobility'))}>
             <Radio className={icon} /><span>High Mobility</span>
+          </button>
+          <button onClick={() => go('hm-compatibility')} className={itemCls(active('hm-compatibility'))}>
+            <ShieldCheck className={icon} /><span>HM Compatibility Check</span>
           </button>
         </nav>
       )}

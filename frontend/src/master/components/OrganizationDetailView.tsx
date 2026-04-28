@@ -144,7 +144,7 @@ export function OrganizationDetailView({ isDarkMode, org, orgUsers, orgVehicles,
                 {orgVehicles.map(v => (
                   <tr key={v.id} className={`border-b last:border-b-0 ${isDarkMode ? 'border-neutral-800 hover:bg-neutral-800' : 'border-gray-50 hover:bg-gray-50'}`}>
                     <td className="px-6 py-3"><p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{v.vehicleName}</p><p className={`text-xs font-mono ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{v.vin}</p></td>
-                    <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${v.status === 'Available' ? 'bg-green-50 text-green-700' : v.status === 'Rented' ? 'bg-blue-50 text-blue-700' : v.status === 'Maintenance' ? 'bg-orange-50 text-orange-700' : 'bg-red-50 text-red-700'}`}>{v.status}</span></td>
+                    <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${v.status === 'Available' ? 'bg-green-50 text-green-700' : v.status === 'Active Rented' ? 'bg-blue-50 text-blue-700' : v.status === 'Reserved' ? 'bg-purple-50 text-purple-700' : v.status === 'Maintenance' ? 'bg-orange-50 text-orange-700' : 'bg-red-50 text-red-700'}`}>{v.status}</span></td>
                     <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${v.health === 'Good' ? 'bg-green-50 text-green-700' : v.health === 'Warning' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>{v.health}</span></td>
                     <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{v.station}</td>
                     <td className="px-4 py-3">{(() => {

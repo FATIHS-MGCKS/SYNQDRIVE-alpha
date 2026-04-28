@@ -26,7 +26,7 @@ export class RefreshTokenService {
   /** Issue a new access + refresh token pair after successful authentication. */
   async issueTokenPair(
     user: { id: string; email: string; name?: string | null; platformRole: string },
-    membership: { role?: string | null; organizationId?: string | null; organizationName?: string | null; permissions?: any } | null,
+    membership: { role?: string | null; organizationId?: string | null; organizationName?: string | null; organizationLogoUrl?: string | null; permissions?: any } | null,
     context: { userAgent?: string; ipAddress?: string } = {},
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: string }> {
     const accessToken = this.signAccessToken(user, membership);

@@ -137,7 +137,65 @@ describe('TripAnalyticsCanonicalService', () => {
 
     expect(result[0].canonicalTripSummary.scores.drivingStyleScore).toBe(55);
     expect(result[0].canonicalTripSummary.scores.scoreSource).toBe('vehicle_trip_compat');
+    // V4.6.95 — trip with no speed-limit enrichment must surface safetyScore=null,
+    // not a fake "100 = perfect safety". `hasSpeedingData` reflects the same.
+    expect(result[0].canonicalTripSummary.scores.safetyScore).toBeNull();
+    expect(result[0].canonicalTripSummary.scores.hasSpeedingData).toBe(false);
+    expect(result[0].canonicalTripSummary.scores.safetyDataConfidence).toBe('none');
     expect(result[0].canonicalTripSummary.events.totalAccelerationEvents).toBe(0);
+  });
+
+  it('returns safetyScore=100 when speed-limit data exists with zero speeding events', async () => {
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
+    assignmentService.resolveForTrip.mockResolvedValue({
+      assignmentStatus: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
+      assignmentSubjectType: TripAssignmentSubjectType.BOOKING_CUSTOMER,
+      assignmentSubjectId: 'cust-1',
+      assignedBookingId: 'booking-1',
+      isPrivateTrip: false,
+      scoreEligible: true,
+    });
+
+    const result = await service.hydrateTrips([
+      {
+        id: 'trip-clean',
+        vehicleId: 'vehicle-1',
+        driverName: null,
+        startTime: new Date('2026-03-01T08:00:00Z'),
+        endTime: new Date('2026-03-01T09:00:00Z'),
+        drivingScore: 90,
+        // Real speed-limit data, no speeding events occurred.
+        speedingExposurePct: 0,
+        speedingSectionCount: 0,
+        maxOverSpeedKmh: 0,
+        avgOverSpeedKmh: 0,
+        speedingSegments: 0,
+        accelerationEventCount: 0,
+        hardAccelerationCount: 0,
+        brakingEventCount: 0,
+        hardBrakingCount: 0,
+        fullBrakingCount: 0,
+        harshCornerCount: 0,
+        abuseEventCount: 0,
+        totalAccelerationEvents: 0,
+        hardAccelerationEvents: 0,
+        totalBrakingEvents: 0,
+        hardBrakingEvents: 0,
+        fullBrakingEvents: 0,
+        corneringEvents: 0,
+        abuseEvents: 0,
+        speedingEvents: 0,
+        assignmentStatus: null,
+        assignmentSubjectType: null,
+        assignmentSubjectId: null,
+        assignedBookingId: null,
+        isPrivateTrip: false,
+      },
+    ] as any);
+
+    expect(result[0].canonicalTripSummary.scores.safetyScore).toBe(100);
+    expect(result[0].canonicalTripSummary.scores.hasSpeedingData).toBe(true);
+    expect(result[0].canonicalTripSummary.scores.safetyDataConfidence).toBe('high');
   });
 
   it('returns canonical trip stats from aggregates', async () => {

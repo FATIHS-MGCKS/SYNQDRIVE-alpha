@@ -8,6 +8,16 @@ const TITLE_TEMPLATES: Record<InsightType, string> = {
   [InsightType.LOW_UTILIZATION]: 'Low Utilization',
   [InsightType.SERVICE_WINDOW]: 'Service Window Available',
   [InsightType.SERVICE_BEFORE_BOOKING]: 'Check Before Rental',
+  // BATTERY_CRITICAL keeps whatever title the detector produced (vehicle-specific)
+  // rather than a generic label — empty string here means "use candidate title".
+  [InsightType.BATTERY_CRITICAL]: '',
+  // SERVICE_OVERDUE likewise uses the detector's title so "Service überfällig"
+  // and "Service fällig" can coexist as distinct labels for the same type.
+  [InsightType.SERVICE_OVERDUE]: '',
+  // PICKUP_OVERDUE — the detector emits graduated titles ("Kunde verspätet",
+  // "Pickup überfällig", "Pickup >24 h überfällig") that must not be
+  // collapsed into a single generic label.
+  [InsightType.PICKUP_OVERDUE]: '',
 };
 
 const ACTION_LABELS: Record<InsightType, string> = {
@@ -17,6 +27,9 @@ const ACTION_LABELS: Record<InsightType, string> = {
   [InsightType.LOW_UTILIZATION]: 'Review vehicle',
   [InsightType.SERVICE_WINDOW]: 'Schedule service',
   [InsightType.SERVICE_BEFORE_BOOKING]: 'Review vehicle',
+  [InsightType.BATTERY_CRITICAL]: 'Fahrzeug prüfen',
+  [InsightType.SERVICE_OVERDUE]: 'Fahrzeug prüfen',
+  [InsightType.PICKUP_OVERDUE]: 'Buchung öffnen',
 };
 
 const MAX_TITLE = 40;
@@ -26,12 +39,16 @@ const MAX_ACTION = 24;
 @Injectable()
 export class InsightFormatterService {
   format(candidates: InsightCandidate[], _useLlm = false): InsightCandidate[] {
-    return candidates.map((c) => ({
-      ...c,
-      title: this.truncate(TITLE_TEMPLATES[c.type] ?? c.title, MAX_TITLE),
-      message: this.truncate(c.message, MAX_MESSAGE),
-      actionLabel: this.truncate(c.actionLabel ?? ACTION_LABELS[c.type] ?? 'View', MAX_ACTION),
-    }));
+    return candidates.map((c) => {
+      const template = TITLE_TEMPLATES[c.type];
+      const title = template && template.length > 0 ? template : c.title;
+      return {
+        ...c,
+        title: this.truncate(title, MAX_TITLE),
+        message: this.truncate(c.message, MAX_MESSAGE),
+        actionLabel: this.truncate(c.actionLabel ?? ACTION_LABELS[c.type] ?? 'View', MAX_ACTION),
+      };
+    });
   }
 
   private truncate(s: string, max: number): string {

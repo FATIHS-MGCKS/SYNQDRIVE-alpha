@@ -31,7 +31,20 @@ export interface HealthSummaryAgentInput {
       hasData: boolean;
     } | null;
     tires: { treadPercentEstimate: number | null; hasSetups: boolean; hasMeasurements: boolean; hasData: boolean } | null;
-    serviceInfo: { lastServiceAt: string | null; lastOdometerKm: number | null; eventCount: number; hasData: boolean } | null;
+    serviceInfo: {
+      lastServiceAt: string | null;
+      lastOdometerKm: number | null;
+      eventCount: number;
+      hasData: boolean;
+      // Next-service horizon — new fields so the AI Health Care summary can
+      // explicitly flag overdue services instead of silently ignoring them.
+      remainingDays: number | null;
+      remainingKm: number | null;
+      overdue: boolean;
+      overdueDays: number | null;
+      overdueKm: number | null;
+      dueImminently: boolean;
+    } | null;
     oilChange: { lastChangedAt: string | null; eventCount: number; hasData: boolean } | null;
   };
   behaviorAndUsage: {
@@ -81,11 +94,29 @@ export class HealthSummaryService {
   async buildAgentInput(vehicleId: string): Promise<HealthSummaryAgentInput> {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
-      select: { id: true, organizationId: true, make: true, model: true, year: true, vin: true, fuelType: true },
+      select: {
+        id: true,
+        organizationId: true,
+        make: true,
+        model: true,
+        year: true,
+        vin: true,
+        fuelType: true,
+        serviceIntervalManufacturerKm: true,
+        serviceIntervalManufacturerMonths: true,
+        lastServiceDate: true,
+        lastServiceOdometerKm: true,
+        nextServiceDueDate: true,
+      },
     });
     if (!vehicle) {
       throw new Error('Vehicle not found');
     }
+
+    const latestStateRow = await this.prisma.vehicleLatestState.findUnique({
+      where: { vehicleId },
+      select: { odometerKm: true },
+    });
 
     const now = new Date();
     const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
@@ -261,12 +292,57 @@ export class HealthSummaryService {
           hasMeasurements: firstSetup?.measurements != null && firstSetup.measurements.length > 0,
           hasData: tireTreadPercent != null,
         },
-        serviceInfo: {
-          lastServiceAt: lastService?.eventDate ? (lastService as any).eventDate : null,
-          lastOdometerKm: lastService?.odometerKm ?? null,
-          eventCount: serviceEvents.length,
-          hasData: serviceEvents.length > 0,
-        },
+        serviceInfo: (() => {
+          // Compute remaining days/km and overdue flags from the same
+          // manufacturer-interval inputs the Service Info card uses. This
+          // keeps the AI summary consistent with the Health Tab UI without
+          // needing a second round-trip to the service-info-status endpoint.
+          const MS_PER_DAY = 24 * 60 * 60 * 1000;
+          const DAYS_PER_MONTH = 30.44;
+          const baselineDate: Date | null =
+            (lastService as any)?.eventDate ?? vehicle.lastServiceDate ?? null;
+          const baselineOdo: number | null =
+            (lastService as any)?.odometerKm ?? vehicle.lastServiceOdometerKm ?? null;
+          const intervalMonths = vehicle.serviceIntervalManufacturerMonths ?? null;
+          const intervalKm = vehicle.serviceIntervalManufacturerKm ?? null;
+          const currentOdo = latestStateRow?.odometerKm ?? null;
+
+          let remainingDays: number | null = null;
+          let remainingKm: number | null = null;
+          if (baselineDate && intervalMonths != null && intervalMonths > 0) {
+            const intervalDays = Math.round(intervalMonths * DAYS_PER_MONTH);
+            const elapsedDays = Math.floor(
+              (now.getTime() - new Date(baselineDate).getTime()) / MS_PER_DAY,
+            );
+            remainingDays = intervalDays - elapsedDays;
+          }
+          if (baselineOdo != null && currentOdo != null && intervalKm != null && intervalKm > 0) {
+            remainingKm = intervalKm - Math.round(currentOdo - baselineOdo);
+          }
+
+          const overdueByDays = remainingDays != null && remainingDays < 0;
+          const overdueByKm = remainingKm != null && remainingKm < 0;
+          const overdue = overdueByDays || overdueByKm;
+          const overdueDays = overdueByDays ? Math.abs(remainingDays!) : null;
+          const overdueKm = overdueByKm ? Math.abs(remainingKm!) : null;
+          const dueImminently =
+            !overdue &&
+            ((remainingDays != null && remainingDays >= 0 && remainingDays <= 7) ||
+              (remainingKm != null && remainingKm >= 0 && remainingKm <= 500));
+
+          return {
+            lastServiceAt: (lastService as any)?.eventDate ?? null,
+            lastOdometerKm: (lastService as any)?.odometerKm ?? null,
+            eventCount: serviceEvents.length,
+            hasData: serviceEvents.length > 0,
+            remainingDays,
+            remainingKm,
+            overdue,
+            overdueDays,
+            overdueKm,
+            dueImminently,
+          };
+        })(),
         oilChange: {
           lastChangedAt: lastOil?.eventDate ? (lastOil as any).eventDate : null,
           eventCount: oilEvents.length,
@@ -297,11 +373,14 @@ export class HealthSummaryService {
     const preventive: string[] = [];
     const maintenanceFocus: Array<{ area: string; priority: 'low' | 'medium' | 'high'; reason: string }> = [];
 
-    if (m.battery?.hasData && (m.battery.sohPercent ?? 0) >= 70) {
+    if (m.battery?.hasData && (m.battery.sohPercent ?? 0) >= 75) {
       positives.push(`Battery state of health is ${m.battery.sohPercent}% — within normal range.`);
     } else if (m.battery?.hasData && (m.battery.sohPercent ?? 0) < 50) {
-      watchpoints.push('Battery capacity is below 50%. Consider testing or replacement soon.');
+      watchpoints.push('Battery-SOH unter 50% — Startschwierigkeiten wahrscheinlich, Austausch empfohlen.');
       maintenanceFocus.push({ area: 'battery', priority: 'high', reason: 'Low state of health' });
+    } else if (m.battery?.hasData && (m.battery.sohPercent ?? 0) < 75) {
+      watchpoints.push('Battery-SOH unter 75% — Startschwierigkeiten möglich, beobachten.');
+      maintenanceFocus.push({ area: 'battery', priority: 'medium', reason: 'Declining state of health' });
     }
 
     if (m.errorCodes?.hasData && m.errorCodes.activeCount === 0) {
@@ -335,6 +414,30 @@ export class HealthSummaryService {
       maintenanceFocus.push({ area: 'brakes', priority: 'high', reason: 'Brake alert state' });
     }
 
+    // Service overdue / imminent — surfaces the same critical state the
+    // Service Info card shows on the Health Tab. A single watchpoint here
+    // flows into the AI Health Care summary reasons list and also flips the
+    // overall status to "attention" via the hasRisks branch below.
+    if (m.serviceInfo?.overdue) {
+      const parts: string[] = [];
+      if (m.serviceInfo.overdueDays != null) parts.push(`${m.serviceInfo.overdueDays} Tagen`);
+      if (m.serviceInfo.overdueKm != null) parts.push(`${m.serviceInfo.overdueKm.toLocaleString('de-DE')} km`);
+      const suffix = parts.length > 0 ? ` seit ${parts.join(' / ')}` : '';
+      watchpoints.push(
+        `Nächster Service überfällig${suffix} — Werkstatttermin zeitnah vereinbaren, Garantie- und Betriebssicherheit gefährdet.`,
+      );
+      maintenanceFocus.push({ area: 'service', priority: 'high', reason: 'Service overdue' });
+    } else if (m.serviceInfo?.dueImminently) {
+      const parts: string[] = [];
+      if (m.serviceInfo.remainingDays != null && m.serviceInfo.remainingDays <= 7) parts.push(`${m.serviceInfo.remainingDays} Tagen`);
+      if (m.serviceInfo.remainingKm != null && m.serviceInfo.remainingKm <= 500) parts.push(`${m.serviceInfo.remainingKm.toLocaleString('de-DE')} km`);
+      const suffix = parts.length > 0 ? ` in ${parts.join(' / ')}` : '';
+      watchpoints.push(
+        `Nächster Service fällig${suffix} — Werkstatttermin planen, vor der nächsten Buchung durchführen.`,
+      );
+      maintenanceFocus.push({ area: 'service', priority: 'medium', reason: 'Service due imminently' });
+    }
+
     if (m.serviceInfo?.hasData) {
       positives.push('Service history is available; last service recorded.');
     }
@@ -363,7 +466,7 @@ export class HealthSummaryService {
     if (m.tires?.hasData && (m.tires.treadPercentEstimate ?? 100) < 60 && (m.tires.treadPercentEstimate ?? 0) >= 30) {
       futureItems.push('Monitor tire tread; plan replacement before it falls below 25%.');
     }
-    if (m.battery?.hasData && (m.battery.sohPercent ?? 100) < 70 && (m.battery.sohPercent ?? 0) >= 50) {
+    if (m.battery?.hasData && (m.battery.sohPercent ?? 100) < 75 && (m.battery.sohPercent ?? 0) >= 50) {
       futureItems.push('Battery capacity is declining; recheck in a few months.');
     }
 

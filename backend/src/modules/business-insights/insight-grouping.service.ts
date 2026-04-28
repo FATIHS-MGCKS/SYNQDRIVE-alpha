@@ -4,6 +4,12 @@ import { InsightCandidate, InsightType, InsightSeverity } from './insight.types'
 const GROUP_TEMPLATES: Partial<Record<InsightType, (count: number) => string>> = {
   [InsightType.LOW_UTILIZATION]: (n) => `${n} vehicles idle with no recent or upcoming bookings.`,
   [InsightType.SERVICE_WINDOW]: (n) => `${n} vehicles have free windows available for service.`,
+  [InsightType.BATTERY_CRITICAL]: (n) =>
+    `${n} Fahrzeuge mit kritischer Batterie — Startschwierigkeiten möglich.`,
+  [InsightType.SERVICE_OVERDUE]: (n) =>
+    `${n} Fahrzeuge mit überfälligem Service — Werkstatttermine zeitnah vereinbaren.`,
+  [InsightType.PICKUP_OVERDUE]: (n) =>
+    `${n} Buchungen mit überfälligem Pickup — Pickup nachtragen oder No-Show markieren.`,
 };
 
 @Injectable()
@@ -49,6 +55,20 @@ export class InsightGroupingService {
 
       const totalRevenue = items.reduce((s, i) => s + ((i.metrics?.lostRevenueEur as number) ?? 0), 0);
 
+      // Preserve per-entity payload so the dashboard can expand the grouped
+      // row into a small list of affected vehicles (with their individual
+      // metrics) without an extra API round-trip.
+      const entities = items.flatMap((item) =>
+        item.entityIds.map((entityId) => ({
+          id: entityId,
+          severity: item.severity,
+          title: item.title,
+          message: item.message,
+          metrics: item.metrics ?? null,
+          reasons: item.reasons.slice(0, 3),
+        })),
+      );
+
       result.push({
         ...best,
         severity: highestSeverity,
@@ -59,6 +79,7 @@ export class InsightGroupingService {
           ...best.metrics,
           groupedCount: items.length,
           ...(totalRevenue > 0 ? { totalLostRevenueEur: totalRevenue } : {}),
+          entities,
         },
         dedupeKey: `grouped:${best.groupKey}`,
       });

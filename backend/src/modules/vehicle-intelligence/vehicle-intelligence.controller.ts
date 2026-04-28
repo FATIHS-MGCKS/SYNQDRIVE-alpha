@@ -24,6 +24,7 @@ import { TripsService } from './trips/trips.service';
 import { TripBehaviorEnrichmentService } from './trips/trip-behavior-enrichment.service';
 import { TripEnrichmentOrchestratorService } from './trips/trip-enrichment-orchestrator.service';
 import { TripReconciliationService } from './trips/reconciliation/trip-reconciliation.service';
+import { EnergyEventsService } from './energy-events/energy-events.service';
 import { TripAnalyticsCanonicalService } from './trips/trip-analytics-canonical.service';
 import { DriverScoreService } from './trips/driver-score.service';
 import { DamagesService } from './damages/damages.service';
@@ -76,6 +77,7 @@ export class VehicleIntelligenceController {
     private readonly dtcService: DtcService,
     private readonly tripsService: TripsService,
     private readonly tripAnalyticsCanonicalService: TripAnalyticsCanonicalService,
+    private readonly energyEventsService: EnergyEventsService,
     private readonly driverScoreService: DriverScoreService,
     private readonly behaviorEnrichmentService: TripBehaviorEnrichmentService,
     private readonly enrichmentOrchestrator: TripEnrichmentOrchestratorService,
@@ -863,6 +865,62 @@ export class VehicleIntelligenceController {
     return this.tripAnalyticsCanonicalService.getVehicleStats(vehicleId);
   }
 
+  // ── Energy events (refuel / recharge) ────────────────────────────────
+  // Backed by native DIMO RefuelDetector / RechargeDetector segments. These
+  // endpoints are deliberately adjacent to `trips` so the frontend Trips-Tab
+  // can mount a merged timeline without a second round-trip when possible.
+
+  @Get('energy-events')
+  async getEnergyEvents(
+    @Param('vehicleId') vehicleId: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.energyEventsService.listEnergyEvents(vehicleId, {
+      from: from ? new Date(from) : undefined,
+      to: to ? new Date(to) : undefined,
+    });
+  }
+
+  @Post('energy-events/detect')
+  async detectEnergyEvents(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: { from?: string; to?: string },
+  ) {
+    const now = new Date();
+    const defaultFrom = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    return this.energyEventsService.detectEnergyEvents(vehicleId, {
+      from: body.from ? new Date(body.from) : defaultFrom,
+      to: body.to ? new Date(body.to) : now,
+    });
+  }
+
+  @Get('trips-timeline')
+  async getTripsTimeline(
+    @Param('vehicleId') vehicleId: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('driver') driver?: string,
+  ) {
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+
+    const trips = await this.tripsService.findByVehicle(vehicleId, {
+      from: fromDate,
+      to: toDate,
+      driverName: driver,
+    });
+    const hydratedTrips = await this.tripAnalyticsCanonicalService.hydrateTrips(
+      trips as any,
+    );
+
+    return this.energyEventsService.buildTripsTimeline(
+      vehicleId,
+      hydratedTrips as any,
+      { from: fromDate, to: toDate },
+    );
+  }
+
   @Get('trips/driver-score')
   async getDriverScore(
     @Param('vehicleId') vehicleId: string,
@@ -1372,26 +1430,44 @@ export class VehicleIntelligenceController {
     const currentOdometer = latestState?.odometerKm ?? null;
     const hasServiceBaseline = lastServiceDate != null;
 
+    // Service remaining values — we now preserve the SIGN of each value so an
+    // overdue service (negative days/km) can be surfaced as critical in the
+    // Dashboard, Health Tab, AI Health Care Summary, and Business Insights.
+    // Previously these were clamped to Math.max(0, ...), which silently hid
+    // overdue vehicles as "0 km / 0 months remaining" = green in every UI.
     let serviceRemainingPercent: number | null = null;
     let serviceRemainingKm: number | null = null;
     let serviceRemainingMonths: number | null = null;
+    // Higher-resolution remaining days — months are far too coarse for a
+    // vehicle that is e.g. 48 days overdue (would otherwise collapse to -2 mo).
+    let serviceRemainingDays: number | null = null;
+
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+    const DAYS_PER_MONTH = 30.44;
 
     if (hasServiceBaseline) {
       const now = new Date();
-      const monthsElapsed = (now.getFullYear() - new Date(lastServiceDate!).getFullYear()) * 12
-        + (now.getMonth() - new Date(lastServiceDate!).getMonth());
+      const lastSvc = new Date(lastServiceDate!);
+      const daysElapsed = Math.floor((now.getTime() - lastSvc.getTime()) / MS_PER_DAY);
 
       if (intervalMonths != null && intervalMonths > 0) {
-        serviceRemainingMonths = Math.max(0, intervalMonths - monthsElapsed);
+        const intervalDays = Math.round(intervalMonths * DAYS_PER_MONTH);
+        serviceRemainingDays = intervalDays - daysElapsed;
+        // Keep months as an integer, but allow it to go negative so the UI
+        // can render "überfällig seit 2 Monaten". Round-to-nearest rather
+        // than floor so -59 days → -2 months, not -1.
+        serviceRemainingMonths = Math.round(serviceRemainingDays / DAYS_PER_MONTH);
       }
 
       if (lastServiceOdometer != null && currentOdometer != null && intervalKm != null && intervalKm > 0) {
         const kmSince = Math.round(currentOdometer - lastServiceOdometer);
-        serviceRemainingKm = Math.max(0, intervalKm - kmSince);
+        serviceRemainingKm = intervalKm - kmSince;
       }
 
       const pcts: number[] = [];
       if (intervalKm != null && intervalKm > 0 && serviceRemainingKm != null) {
+        // Percentages are still clamped 0..100 for the progress bar, but a
+        // negative remaining value correctly yields 0 % (not 100 %).
         pcts.push(Math.max(0, Math.min(100, Math.round((serviceRemainingKm / intervalKm) * 100))));
       }
       if (intervalMonths != null && intervalMonths > 0 && serviceRemainingMonths != null) {
@@ -1403,8 +1479,21 @@ export class VehicleIntelligenceController {
     const now = new Date();
     const tuvValidTill = vehicle?.nextTuvDate ?? null;
     const bokraftValidTill = vehicle?.nextBokraftDate ?? null;
-    const tuvRemainingMonths = tuvValidTill ? Math.max(0, Math.round((tuvValidTill.getTime() - now.getTime()) / (30.44 * 24 * 60 * 60 * 1000))) : null;
-    const bokraftRemainingMonths = bokraftValidTill ? Math.max(0, Math.round((bokraftValidTill.getTime() - now.getTime()) / (30.44 * 24 * 60 * 60 * 1000))) : null;
+    // TÜV / BOKraft remaining months are also allowed to go negative so a
+    // lapsed inspection shows up as overdue (red) rather than silently
+    // snapping to 0 months remaining = amber.
+    const tuvRemainingMonths = tuvValidTill
+      ? Math.round((tuvValidTill.getTime() - now.getTime()) / (DAYS_PER_MONTH * MS_PER_DAY))
+      : null;
+    const bokraftRemainingMonths = bokraftValidTill
+      ? Math.round((bokraftValidTill.getTime() - now.getTime()) / (DAYS_PER_MONTH * MS_PER_DAY))
+      : null;
+    const tuvRemainingDays = tuvValidTill
+      ? Math.floor((tuvValidTill.getTime() - now.getTime()) / MS_PER_DAY)
+      : null;
+    const bokraftRemainingDays = bokraftValidTill
+      ? Math.floor((bokraftValidTill.getTime() - now.getTime()) / MS_PER_DAY)
+      : null;
 
     const mapEvent = (e: any) => ({
       id: e.id, eventType: e.eventType, date: e.eventDate.toISOString(),
@@ -1414,22 +1503,33 @@ export class VehicleIntelligenceController {
     // HM override: check for active HM Health signals for service distance/time
     let hmServiceSource = false;
     let hmLastUpdatedAt: string | null = null;
+    // Distinguish "HM is source but OEM didn't send this specific sub-signal"
+    // from "no HM at all". Mercedes fleet-clearance frequently ships
+    // time_to_next_service without distance_to_next_service, so the UI must
+    // know whether the missing km value is a provider gap or a data error.
+    let hmDistanceFromOem = false;
+    let hmTimeFromOem = false;
     try {
       const hmActive = await this.hmSignalUsageService.isHmHealthActive(vehicleId);
       if (hmActive) {
         const hmService = await this.hmSignalUsageService.getServiceInfoSignals(vehicleId);
         if (hmService) {
           if (hmService.distanceToNextServiceKm != null) {
-            serviceRemainingKm = hmService.distanceToNextServiceKm;
+            // OEMs stream a signed value (negative = overdue) — keep it.
+            serviceRemainingKm = Math.round(hmService.distanceToNextServiceKm);
             hmServiceSource = true;
+            hmDistanceFromOem = true;
           }
           if (hmService.timeToNextServiceDays != null) {
-            // Convert days to months for consistency
-            serviceRemainingMonths = Math.round(hmService.timeToNextServiceDays / 30);
+            // Preserve day-level precision from the OEM. Months is just a
+            // rounded projection — useful as a rough summary but never
+            // authoritative when the OEM gives us days directly.
+            serviceRemainingDays = Math.round(hmService.timeToNextServiceDays);
+            serviceRemainingMonths = Math.round(hmService.timeToNextServiceDays / DAYS_PER_MONTH);
             hmServiceSource = true;
+            hmTimeFromOem = true;
           }
           hmLastUpdatedAt = hmService.lastUpdatedAt;
-          // Recalculate percent from HM values
           const pcts: number[] = [];
           if (intervalKm && intervalKm > 0 && serviceRemainingKm != null) {
             pcts.push(Math.max(0, Math.min(100, Math.round((serviceRemainingKm / intervalKm) * 100))));
@@ -1444,11 +1544,36 @@ export class VehicleIntelligenceController {
       // Non-critical — HM service override is optional; fall through to manufacturer values
     }
 
+    // Derived critical-state flags. UIs and the BusinessInsights detector
+    // read these instead of re-deriving them from the signed values, so the
+    // whole app is consistent about what "overdue" means.
+    //
+    //   overdue       → distance < 0 km  OR  days < 0
+    //   dueImminently → 0..7 days remaining  OR  0..500 km remaining
+    //                   (still positive, but close enough that a booking
+    //                   starting tomorrow might cross the threshold)
+    const serviceOverdueByDays = serviceRemainingDays != null && serviceRemainingDays < 0;
+    const serviceOverdueByKm = serviceRemainingKm != null && serviceRemainingKm < 0;
+    const serviceOverdue = serviceOverdueByDays || serviceOverdueByKm;
+    const serviceOverdueDays = serviceOverdueByDays ? Math.abs(serviceRemainingDays!) : null;
+    const serviceOverdueKm = serviceOverdueByKm ? Math.abs(serviceRemainingKm!) : null;
+    const serviceDueImminently =
+      !serviceOverdue &&
+      ((serviceRemainingDays != null && serviceRemainingDays >= 0 && serviceRemainingDays <= 7) ||
+        (serviceRemainingKm != null && serviceRemainingKm >= 0 && serviceRemainingKm <= 500));
+    const tuvOverdue = tuvRemainingDays != null && tuvRemainingDays < 0;
+    const bokraftOverdue = bokraftRemainingDays != null && bokraftRemainingDays < 0;
+
     return {
       hasServiceBaseline,
       serviceRemainingPercent,
       serviceRemainingKm,
       serviceRemainingMonths,
+      serviceRemainingDays,
+      serviceOverdue,
+      serviceOverdueDays,
+      serviceOverdueKm,
+      serviceDueImminently,
       intervalKm,
       intervalMonths,
       lastServiceDate: lastServiceDate?.toISOString?.() ?? null,
@@ -1456,15 +1581,21 @@ export class VehicleIntelligenceController {
       lastServiceWorkshop: latestServiceEvent?.workshopName ?? null,
       tuvValidTill: tuvValidTill?.toISOString() ?? null,
       tuvRemainingMonths,
+      tuvRemainingDays,
+      tuvOverdue,
       tuvLastDate: vehicle?.lastTuvDate?.toISOString() ?? null,
       bokraftValidTill: bokraftValidTill?.toISOString() ?? null,
       bokraftRemainingMonths,
+      bokraftRemainingDays,
+      bokraftOverdue,
       bokraftLastDate: vehicle?.lastBokraftDate?.toISOString() ?? null,
       serviceHistory: serviceEvents.map(mapEvent),
       tuvHistory: tuvEvents.map(mapEvent),
       bokraftHistory: bokraftEvents.map(mapEvent),
       hmServiceSource,
       hmLastUpdatedAt,
+      hmDistanceFromOem,
+      hmTimeFromOem,
     };
   }
 

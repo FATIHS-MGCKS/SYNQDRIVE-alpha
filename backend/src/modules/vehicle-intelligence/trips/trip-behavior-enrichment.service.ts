@@ -1,7 +1,11 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { DimoSegmentsService } from '../../dimo/dimo-segments.service';
-import { BehaviorEventCategory, BehaviorEventClassification } from '@prisma/client';
+import { DimoSegmentsService, type DimoFuelSummary } from '../../dimo/dimo-segments.service';
+import {
+  BehaviorEventCategory,
+  BehaviorEventClassification,
+  FuelType,
+} from '@prisma/client';
 import { preprocessHighFrequency, splitByGaps } from './hf-preprocessing';
 import { detectAccelerationEvents, type AccelerationEvent } from './hf-acceleration';
 import { detectBrakingEvents, type BrakingEvent } from './hf-braking';
@@ -26,6 +30,99 @@ export interface BehaviorEnrichmentResult {
   hardBrakingCount: number;
   abuseScore: number;
   totalEventsStored: number;
+  fuelUsedLiters: number | null;
+  avgConsumptionLPer100Km: number | null;
+  fuelConfidence: 'high' | 'medium' | 'low' | null;
+}
+
+/**
+ * Compute fuel-consumption enrichment from a DIMO fuel summary for the trip.
+ *
+ * Writes three canonical fields onto VehicleTrip:
+ *   - fuelUsedLiters            : Liters consumed (delta of start→end absolute
+ *                                 tank levels, clamped to >= 0).
+ *   - avgConsumptionLPer100Km   : L per 100 km, when both liters and
+ *                                 distanceKm are known and non-zero.
+ *   - fuelConfidence            : DIMO sample-proximity confidence label.
+ *
+ * Exported for use by both HF (SMART5) and DIMO-Events (LTE_R1) paths so the
+ * derivation is identical regardless of hardware.
+ *
+ * Fallback ladder (V4.6.46):
+ *   1. Absolute-level delta     — direct liters, confidence = high/medium/low.
+ *   2. Relative-% × tank cap.   — when absolute samples are missing but both
+ *                                 start/end % are known and tankCapacityLiters
+ *                                 is > 0.  Confidence = 'relative_fallback'.
+ *   3. null                     — no usable data.  fuelConfidence still carries
+ *                                 the raw status so ops can see why it's empty.
+ */
+function buildFuelTripUpdate(
+  distanceKm: number | null,
+  summary: DimoFuelSummary,
+  tankCapacityLiters: number | null,
+): {
+  fuelUsedLiters: number | null;
+  avgConsumptionLPer100Km: number | null;
+  fuelConfidence: string | null;
+} {
+  if (summary.refuelDetected) {
+    // A mid-trip refuel makes simple start-vs-end delta unreliable.  We still
+    // record the confidence flag so ops can see why liters are null.
+    return {
+      fuelUsedLiters: null,
+      avgConsumptionLPer100Km: null,
+      fuelConfidence: 'refuel_detected',
+    };
+  }
+
+  if (summary.fuelUsedLiters != null) {
+    const liters = summary.fuelUsedLiters;
+    const avg = distanceKm != null && distanceKm > 0 ? (liters / distanceKm) * 100 : null;
+    return {
+      fuelUsedLiters: liters,
+      avgConsumptionLPer100Km: avg,
+      fuelConfidence: summary.confidence,
+    };
+  }
+
+  // Relative-% fallback: when DIMO returned only RelativeLevel samples (common
+  // on LTE_R1 vehicles during short windows) and we know the tank capacity,
+  // estimate liters from the percentage delta.  Flagged as 'relative_fallback'
+  // so downstream UIs can label it as an estimate.
+  const startRel = summary.startRelativePct;
+  const endRel = summary.endRelativePct;
+  if (
+    startRel != null &&
+    endRel != null &&
+    tankCapacityLiters != null &&
+    tankCapacityLiters > 0 &&
+    summary.relativeSampleCount >= 2
+  ) {
+    const deltaPct = startRel - endRel;
+    if (deltaPct >= 0 && deltaPct <= 100) {
+      const liters = Math.round((deltaPct / 100) * tankCapacityLiters * 100) / 100;
+      const avg = distanceKm != null && distanceKm > 0 ? (liters / distanceKm) * 100 : null;
+      return {
+        fuelUsedLiters: liters,
+        avgConsumptionLPer100Km: avg,
+        fuelConfidence: 'relative_fallback',
+      };
+    }
+  }
+
+  return {
+    fuelUsedLiters: null,
+    avgConsumptionLPer100Km: null,
+    fuelConfidence: summary.confidence,
+  };
+}
+
+/**
+ * Fuel sampling is meaningless for battery-electric vehicles (no ICE tank).
+ * Skip the GraphQL call entirely so we don't spend quota and don't log noise.
+ */
+function skipFuelForFuelType(fuelType: FuelType | null | undefined): boolean {
+  return fuelType === FuelType.ELECTRIC;
 }
 
 const MIN_TRIP_DURATION_MS = 60_000;
@@ -53,6 +150,8 @@ export class TripBehaviorEnrichmentService {
             idleRpm: true,
             maxRpm: true,
             hardwareType: true,
+            fuelType: true,
+            tankCapacityLiters: true,
             dimoVehicle: { select: { tokenId: true } },
           },
         },
@@ -245,6 +344,40 @@ export class TripBehaviorEnrichmentService {
       this.observeCounterAnomaly('rows_present_but_zero_counters', 'hf');
     }
 
+    // ── Fuel-consumption summary (both hardware paths share this derivation) ──
+    // Fetched after HF processing so we do not add latency to the detector
+    // hot-path; if the query fails, we log and persist null values — the trip
+    // is already safely persisted and other counters are independent.
+    //
+    // EV gating (V4.6.46): skip the DIMO fuel query entirely for battery-
+    // electric vehicles — they have no ICE tank signal and the query would
+    // just burn DIMO quota and log false warnings.
+    let fuelUpdate: {
+      fuelUsedLiters: number | null;
+      avgConsumptionLPer100Km: number | null;
+      fuelConfidence: string | null;
+    } = { fuelUsedLiters: null, avgConsumptionLPer100Km: null, fuelConfidence: null };
+    if (!skipFuelForFuelType(trip.vehicle.fuelType)) {
+      const fuelSummary = await this.segments.fetchFuelSummary(
+        tokenId,
+        trip.startTime,
+        trip.endTime,
+      );
+      fuelUpdate = buildFuelTripUpdate(
+        trip.distanceKm,
+        fuelSummary,
+        trip.vehicle.tankCapacityLiters,
+      );
+      this.logger.debug(
+        `HF enrich trip ${tripId}: fuel liters=${fuelUpdate.fuelUsedLiters}, ` +
+          `L/100km=${fuelUpdate.avgConsumptionLPer100Km}, confidence=${fuelUpdate.fuelConfidence}, ` +
+          `refuelDetected=${fuelSummary.refuelDetected}, absSamples=${fuelSummary.absoluteSampleCount}, ` +
+          `relSamples=${fuelSummary.relativeSampleCount}`,
+      );
+    } else {
+      this.logger.debug(`HF enrich trip ${tripId}: EV — fuel summary skipped`);
+    }
+
     // ── Fix A: Transaction-safe persistence ──────────────────────────────────
     // The delete + createMany + trip.update are wrapped in a single Prisma
     // transaction.  If any step fails, all are rolled back — the trip cannot
@@ -296,6 +429,20 @@ export class TripBehaviorEnrichmentService {
 
           // Deterministic abuse score (Fix J)
           abuseScore,
+
+          // ── Fuel consumption (shared derivation across hardware paths) ──
+          // Fix V4.6.46: conditional spread so a null post-trip summary does
+          // NOT overwrite a valid legacy FSM-derived value written earlier in
+          // TripDetectionOrchestrationService.processActiveTick.  The confidence
+          // label is always refreshed so ops can see the latest sampling
+          // status.
+          ...(fuelUpdate.fuelUsedLiters != null && {
+            fuelUsedLiters: fuelUpdate.fuelUsedLiters,
+          }),
+          ...(fuelUpdate.avgConsumptionLPer100Km != null && {
+            avgConsumptionLPer100Km: fuelUpdate.avgConsumptionLPer100Km,
+          }),
+          fuelConfidence: fuelUpdate.fuelConfidence,
 
           behaviorEnrichedAt: new Date(),
 
@@ -351,6 +498,9 @@ export class TripBehaviorEnrichmentService {
       hardBrakingCount: hardBrake,
       abuseScore,
       totalEventsStored: allRows.length,
+      fuelUsedLiters: fuelUpdate.fuelUsedLiters,
+      avgConsumptionLPer100Km: fuelUpdate.avgConsumptionLPer100Km,
+      fuelConfidence: (fuelUpdate.fuelConfidence as 'high' | 'medium' | 'low' | null) ?? null,
     };
   }
 
@@ -365,11 +515,14 @@ export class TripBehaviorEnrichmentService {
       startTime: Date;
       endTime: Date | null;
       vehicleId: string;
+      distanceKm: number | null;
       vehicle: {
         organizationId: string;
         idleRpm: number | null;
         maxRpm: number | null;
         hardwareType: import('@prisma/client').HardwareType;
+        fuelType: FuelType | null;
+        tankCapacityLiters: number | null;
         dimoVehicle: { tokenId: number | null } | null;
       };
     },
@@ -465,11 +618,44 @@ export class TripBehaviorEnrichmentService {
     const lteBrakingTotal =
       (drivingResult?.harshBrakingCount ?? 0) + (drivingResult?.extremeBrakingCount ?? 0) + fullBraking;
     const lteCorneringTotal = drivingResult?.harshCorneringCount ?? 0;
+    // DIMO-reported `behavior.extremeBraking` events count as abuse on the
+    // LTE_R1 path so the Abuse Detection KPI stays populated even when HF
+    // data is too sparse to derive abuse events locally.
+    const dimoAbuseContribution = drivingResult?.extremeBrakingCount ?? 0;
+    const combinedAbuseTotal = allAbuse.length + dimoAbuseContribution;
     const lteCanonicalCounterTotal =
-      lteAccelerationTotal + lteBrakingTotal + lteCorneringTotal + allAbuse.length;
+      lteAccelerationTotal + lteBrakingTotal + lteCorneringTotal + combinedAbuseTotal;
     const lteRowsObserved = (drivingResult?.drivingEventsIngested ?? 0) + abuseRows.length;
     if (lteRowsObserved > 0 && lteCanonicalCounterTotal === 0) {
       this.observeCounterAnomaly('rows_present_but_zero_counters', 'lte_r1');
+    }
+
+    // ── Fuel-consumption summary (shared derivation across hardware paths) ──
+    // EV gating (V4.6.46): skip the DIMO fuel query for battery-electric cars.
+    let fuelUpdate: {
+      fuelUsedLiters: number | null;
+      avgConsumptionLPer100Km: number | null;
+      fuelConfidence: string | null;
+    } = { fuelUsedLiters: null, avgConsumptionLPer100Km: null, fuelConfidence: null };
+    if (!skipFuelForFuelType(trip.vehicle.fuelType)) {
+      const fuelSummary = await this.segments.fetchFuelSummary(
+        tokenId,
+        trip.startTime,
+        trip.endTime,
+      );
+      fuelUpdate = buildFuelTripUpdate(
+        trip.distanceKm,
+        fuelSummary,
+        trip.vehicle.tankCapacityLiters,
+      );
+      this.logger.debug(
+        `LTE_R1 enrich trip ${tripId}: fuel liters=${fuelUpdate.fuelUsedLiters}, ` +
+          `L/100km=${fuelUpdate.avgConsumptionLPer100Km}, confidence=${fuelUpdate.fuelConfidence}, ` +
+          `refuelDetected=${fuelSummary.refuelDetected}, absSamples=${fuelSummary.absoluteSampleCount}, ` +
+          `relSamples=${fuelSummary.relativeSampleCount}`,
+      );
+    } else {
+      this.logger.debug(`LTE_R1 enrich trip ${tripId}: EV — fuel summary skipped`);
     }
 
     // Always persist abuse slice in one transaction (transaction-safe, idempotent for TripBehaviorEvent).
@@ -501,8 +687,8 @@ export class TripBehaviorEnrichmentService {
             (drivingResult?.extremeBrakingCount ?? 0),
           hardAccelerationCount: drivingResult?.harshAccelerationCount ?? 0,
           corneringEvents: drivingResult?.harshCorneringCount ?? 0,
-          abuseEvents: allAbuse.length,
-          abuseEventCount: allAbuse.length,
+          abuseEvents: combinedAbuseTotal,
+          abuseEventCount: combinedAbuseTotal,
           fullBrakingCount: fullBraking,
           speedingEvents: 0,
           possibleImpactCount: possibleImpact,
@@ -510,6 +696,16 @@ export class TripBehaviorEnrichmentService {
           coldEngineAbuseCount: coldEngineAbuse,
           longIdleCount: longIdle,
           abuseScore,
+          // ── Fuel consumption (shared derivation across hardware paths) ──
+          // Fix V4.6.46: conditional spread prevents a null post-trip summary
+          // from clobbering a valid legacy FSM-derived value.
+          ...(fuelUpdate.fuelUsedLiters != null && {
+            fuelUsedLiters: fuelUpdate.fuelUsedLiters,
+          }),
+          ...(fuelUpdate.avgConsumptionLPer100Km != null && {
+            avgConsumptionLPer100Km: fuelUpdate.avgConsumptionLPer100Km,
+          }),
+          fuelConfidence: fuelUpdate.fuelConfidence,
           behaviorEnrichedAt: new Date(),
           behaviorSummaryJson: {
             hfPointsTotal: rawReadings.length,
@@ -541,11 +737,14 @@ export class TripBehaviorEnrichmentService {
     return {
       accelerationEvents: 0,
       brakingEvents: 0,
-      abuseEvents: allAbuse.length,
+      abuseEvents: combinedAbuseTotal,
       hardAccelerationCount: drivingResult?.harshAccelerationCount ?? 0,
       hardBrakingCount: (drivingResult?.harshBrakingCount ?? 0) + (drivingResult?.extremeBrakingCount ?? 0),
       abuseScore,
       totalEventsStored: abuseRows.length + (drivingResult?.drivingEventsIngested ?? 0),
+      fuelUsedLiters: fuelUpdate.fuelUsedLiters,
+      avgConsumptionLPer100Km: fuelUpdate.avgConsumptionLPer100Km,
+      fuelConfidence: (fuelUpdate.fuelConfidence as 'high' | 'medium' | 'low' | null) ?? null,
     };
   }
 

@@ -1,7 +1,14 @@
 export type DimoDetectionMechanism =
   | 'ignitionDetection'
   | 'frequencyAnalysis'
-  | 'changePointDetection';
+  | 'changePointDetection'
+  // Native DIMO energy-segment detectors. These do NOT produce driving trips;
+  // they emit stationary windows during which the fuel tank grew (refuel) or
+  // the traction-battery SoC rose (recharge). Consumed by
+  // DimoSegmentsService.fetchEnergyEventSegments → persisted as
+  // VehicleEnergyEvent rows.
+  | 'refuel'
+  | 'recharge';
 
 /**
  * Canonical DIMO trip segments for repair/backfill windows.

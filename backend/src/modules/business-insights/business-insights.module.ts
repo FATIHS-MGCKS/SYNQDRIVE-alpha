@@ -14,6 +14,9 @@ import { StationShortageDetector } from './detectors/station-shortage.detector';
 import { LowUtilizationDetector } from './detectors/low-utilization.detector';
 import { ServiceWindowDetector } from './detectors/service-window.detector';
 import { ServiceBeforeBookingDetector } from './detectors/service-before-booking.detector';
+import { BatteryCriticalDetector } from './detectors/battery-critical.detector';
+import { ServiceOverdueDetector } from './detectors/service-overdue.detector';
+import { PickupOverdueDetector } from './detectors/pickup-overdue.detector';
 
 import { DashboardInsightsController } from './dashboard-insights.controller';
 import { InternalBusinessInsightsController } from './internal-business-insights.controller';
@@ -35,6 +38,9 @@ import { InternalBusinessInsightsController } from './internal-business-insights
     LowUtilizationDetector,
     ServiceWindowDetector,
     ServiceBeforeBookingDetector,
+    BatteryCriticalDetector,
+    ServiceOverdueDetector,
+    PickupOverdueDetector,
   ],
   exports: [BusinessInsightsService, BusinessInsightsTriggerService],
 })

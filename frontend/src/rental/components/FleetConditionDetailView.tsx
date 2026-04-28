@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   ArrowLeft, CircleDot, Disc, Battery, AlertCircle, Wrench, ShieldCheck,
   Calendar, MessageSquare, Bell, Activity, TrendingDown, TrendingUp,
-  CheckCircle, AlertTriangle, ShieldAlert, Clock, Zap, Sparkles, ChevronRight
+  CheckCircle, AlertTriangle, ShieldAlert, Clock, Zap, Sparkles, ChevronRight, Info
 } from 'lucide-react';
 import {
   api,
@@ -23,16 +23,16 @@ interface FleetConditionDetailViewProps {
   onBack: () => void;
 }
 
-const CATEGORY_META: Record<ConditionCategory, { label: string; icon: typeof CircleDot }> = {
-  tires: { label: 'Tire Condition & Wear Projection', icon: CircleDot },
-  brakes: { label: 'Brake Condition & Wear Analysis', icon: Disc },
-  battery: { label: 'Battery Health & Degradation', icon: Battery },
-  dtc: { label: 'Error Codes & Diagnostics', icon: AlertCircle },
-  service: { label: 'Service Interval Analysis', icon: Wrench },
-  tuev: { label: 'TÜV Validity & Planning', icon: ShieldCheck },
-  bokraft: { label: 'BOKraft Validity & Planning', icon: Calendar },
-  'driver-feedback': { label: 'Driver Feedback', icon: MessageSquare },
-  alerts: { label: 'Alerts & Watchpoints', icon: Bell },
+const CATEGORY_META: Record<ConditionCategory, { label: string; tagline: string; icon: typeof CircleDot }> = {
+  tires: { label: 'Tire Condition & Wear Projection', tagline: 'Tread, pressure and estimated remaining life', icon: CircleDot },
+  brakes: { label: 'Brake Condition & Wear Analysis', tagline: 'Pads, discs and wear projection', icon: Disc },
+  battery: { label: 'Battery Health & Degradation', tagline: 'SOH, telemetry and watchpoints', icon: Battery },
+  dtc: { label: 'Error Codes & Diagnostics', tagline: 'Active and historical DTCs across ECUs', icon: AlertCircle },
+  service: { label: 'Service Interval Analysis', tagline: 'Remaining km, time and last service event', icon: Wrench },
+  tuev: { label: 'TÜV Validity & Planning', tagline: 'Validity window and upcoming HU date', icon: ShieldCheck },
+  bokraft: { label: 'BOKraft Validity & Planning', tagline: 'BOKraft inspection status and planning', icon: Calendar },
+  'driver-feedback': { label: 'Driver Feedback', tagline: 'Reports and complaints from drivers', icon: MessageSquare },
+  alerts: { label: 'Alerts & Watchpoints', tagline: 'Aggregated warnings across all subsystems', icon: Bell },
 };
 
 function getProgressColor(v: number) { return v >= 70 ? 'bg-emerald-500' : v >= 40 ? 'bg-amber-500' : 'bg-red-500'; }
@@ -123,7 +123,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
         </div>
         <div>
           <h1 className={`text-lg font-bold tracking-tight ${textPrimary}`}>{meta.label}</h1>
-          <p className={`text-xs mt-0.5 ${textSecondary}`}>Predictive maintenance analysis and wear projection</p>
+          <p className={`text-xs mt-0.5 ${textSecondary}`}>{meta.tagline}</p>
         </div>
       </div>
 
@@ -735,6 +735,34 @@ function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: 
         <StatBox {...p} isDark={isDark} label="Confidence" value={matConf ?? '—'} sub="maturity level" />
       </div>
 
+      {!isCalib && !isStab && (cond === 'watch' || cond === 'attention') && (
+        <div className={`${p.cardClass} p-4 flex items-start gap-3 ${
+          cond === 'attention'
+            ? (isDark ? 'border-red-500/30 bg-red-500/5' : 'border-red-200 bg-red-50/80')
+            : (isDark ? 'border-amber-500/30 bg-amber-500/5' : 'border-amber-200 bg-amber-50/80')
+        }`}>
+          <AlertCircle className={`w-4 h-4 mt-0.5 shrink-0 ${
+            cond === 'attention'
+              ? (isDark ? 'text-red-400' : 'text-red-600')
+              : (isDark ? 'text-amber-400' : 'text-amber-600')
+          }`} />
+          <div>
+            <p className={`text-sm font-semibold ${
+              cond === 'attention'
+                ? (isDark ? 'text-red-300' : 'text-red-700')
+                : (isDark ? 'text-amber-300' : 'text-amber-700')
+            }`}>
+              {cond === 'attention' ? 'Batterie kritisch' : 'Batterie kritisch beobachten'}
+            </p>
+            <p className={`text-xs mt-0.5 ${p.textSecondary}`}>
+              {cond === 'attention'
+                ? 'Batteriespannung bzw. SOH kritisch — Starthilfe oder Austausch empfohlen. Startschwierigkeiten wahrscheinlich.'
+                : 'Batteriespannung unter 12.4V oder SOH unter 75% — Startschwierigkeiten möglich, Ladezustand und Lichtmaschine prüfen.'}
+            </p>
+          </div>
+        </div>
+      )}
+
       {!isCalib && ((bat?.watchpoints?.length ?? 0) > 0 || (bat?.recommendations?.length ?? 0) > 0) && (
         <div className={`${p.cardClass} p-5 space-y-4`}>
           {(bat?.watchpoints?.length ?? 0) > 0 && <><h3 className={`text-sm font-semibold mb-2 ${p.textPrimary}`}>Watchpoints</h3><WatchpointList items={bat!.watchpoints} isDark={isDark} textSecondary={p.textSecondary} /></>}
@@ -778,14 +806,37 @@ function DtcDetail({ isDark, active, all, ...p }: DetailProps & { active: any[];
 /* ─── SERVICE ─── */
 function ServiceDetail({ isDark, service: svc, ...p }: DetailProps & { service: ServiceInfoStatus | null }) {
   const pct = svc?.serviceRemainingPercent ?? null;
+  // Mercedes fleet-clearance only ships time_to_next_service (days) today,
+  // not distance_to_next_service (km). Surface that gap explicitly rather
+  // than rendering "—" which looks like a data bug.
+  const hmActive = svc?.hmServiceSource === true;
+  const kmMissingFromOem = hmActive && svc?.hmDistanceFromOem === false;
+  const timeMissingFromOem = hmActive && svc?.hmTimeFromOem === false;
+  const kmValue =
+    svc?.serviceRemainingKm != null
+      ? `${svc.serviceRemainingKm.toLocaleString('de-DE')}`
+      : kmMissingFromOem
+        ? 'n/a'
+        : '—';
+  const kmSub = kmMissingFromOem ? 'vom OEM nicht geliefert' : 'estimated';
+  const timeSub = timeMissingFromOem ? 'vom OEM nicht geliefert' : 'until due';
   return (
     <>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatBox {...p} isDark={isDark} label="Service Remaining" value={pct != null ? `${Math.round(pct)}%` : '—'} colorClass={pct != null ? getMetricColor(pct, isDark) : p.textMuted} sub="until next service" />
-        <StatBox {...p} isDark={isDark} label="Remaining KM" value={svc?.serviceRemainingKm != null ? `${svc.serviceRemainingKm.toLocaleString('de-DE')}` : '—'} sub="estimated" />
-        <StatBox {...p} isDark={isDark} label="Remaining Time" value={fmtRemTime(svc?.serviceRemainingMonths ?? null)} sub="until due" />
+        <StatBox {...p} isDark={isDark} label="Remaining KM" value={kmValue} sub={kmSub} colorClass={kmMissingFromOem ? p.textMuted : undefined} />
+        <StatBox {...p} isDark={isDark} label="Remaining Time" value={fmtRemTime(svc?.serviceRemainingMonths ?? null)} sub={timeSub} />
         <StatBox {...p} isDark={isDark} label="Last Service" value={fmtDate(svc?.lastServiceDate ?? null)} sub={svc?.lastServiceWorkshop ?? ''} />
       </div>
+
+      {hmActive && kmMissingFromOem && (
+        <div className={`${p.cardClass} p-3 text-xs ${p.textMuted} flex items-center gap-2`}>
+          <Info className="w-3.5 h-3.5 flex-shrink-0" />
+          <span>
+            Kilometer bis zum nächsten Service werden vom OEM aktuell nicht gestreamt — nur Tage verfügbar.
+          </span>
+        </div>
+      )}
 
       {svc?.serviceHistory && svc.serviceHistory.length > 0 && (
         <div className={`${p.cardClass} p-5`}>

@@ -3,6 +3,8 @@ import { en } from './en';
 
 export const fr: Record<TranslationKey, string> = {
   ...en,
+  'dashboard.welcomeBack': 'Bon retour, {name}',
+  'dashboard.welcomeBackGeneric': 'Bon retour',
   'nav.operations': 'Operations',
   'nav.dashboard': 'Tableau de bord',
   'nav.bookings': 'Reservations',
@@ -85,11 +87,6 @@ export const fr: Record<TranslationKey, string> = {
   'settingsTab.users': 'Utilisateurs et roles',
   'settingsTab.billing': 'Facturation et abonnement',
   'settingsTab.dataAuthorization': 'Autorisation des donnees',
-  'mainNav.dashboard': 'Tableau de bord',
-  'mainNav.bookings': 'Reservations',
-  'mainNav.fleet': 'Flotte',
-  'mainNav.customers': 'Clients',
-  'mainNav.stations': 'Stations',
   'financeTab.invoices': 'Factures',
   'financeTab.fines': 'Amendes',
   'financeTab.pricingTariffs': 'Prix et tarifs',

@@ -1,8 +1,16 @@
-import { useState, useEffect } from 'react';
-import { Search, ChevronDown, Users, UserCheck, UserX, AlertTriangle, Plus, Phone, Mail, MapPin, Calendar, Car, CreditCard, Shield, ShieldCheck, Star, X, ChevronRight, ChevronLeft, FileText, Clock, TrendingUp, Ban, Eye, Upload, CheckCircle, Camera, IdCard, User, Loader2, ExternalLink } from 'lucide-react';
+﻿import { useState, useEffect, useCallback } from 'react';
+import { Search, ChevronDown, Users, UserCheck, UserX, AlertTriangle, Plus, Phone, Mail, MapPin, Calendar, Car, CreditCard, Shield, ShieldCheck, Star, X, ChevronRight, ChevronLeft, FileText, Clock, TrendingUp, Ban, Eye, Upload, CheckCircle, IdCard, User, Loader2, ExternalLink } from 'lucide-react';
+import { toast } from 'sonner';
 import { CustomerDetailModal } from './CustomerDetailModal';
+import { CustomerDocumentUploadBox } from './CustomerDocumentUploadBox';
 import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
+import {
+  buildCustomerCreatePayload,
+  customerStatusApiToUi,
+  customerRiskApiToUi,
+  customerTypeApiToUi,
+} from '../lib/entityMappers';
 
 interface CustomersViewProps {
   isDarkMode: boolean;
@@ -18,10 +26,19 @@ interface Customer {
   company?: string;
   type: 'Individual' | 'Corporate';
   status: 'Active' | 'Under Review' | 'Suspended' | 'Blocked';
-  riskLevel: 'Low Risk' | 'Medium Risk' | 'High Risk';
-  drivingScore: number | null;
+  // V4.6.95 — Customer.riskLevel is operational. Default is 'Not Assessed'.
+  riskLevel: 'Not Assessed' | 'Low Risk' | 'Medium Risk' | 'High Risk';
+  // V4.6.95 — `drivingStyleScore` is the canonical 0–100 scalar. The legacy
+  // `drivingScore` mirror is optional and must NEVER be displayed as a
+  // separate score; it is only kept around so older API payloads keep working.
+  drivingScore?: number | null;
   drivingStyleScore?: number | null;
   safetyScore?: number | null;
+  // V4.6.95 — backend-supplied confidence metadata.
+  hasEnoughData?: boolean;
+  dataConfidence?: 'none' | 'low' | 'medium' | 'high';
+  scoredTripCount?: number;
+  totalDistanceKm?: number;
   lastTrip: string;
   totalBookings: number;
   totalRevenue: string;
@@ -36,26 +53,77 @@ interface Customer {
   notes?: string;
 }
 
+const EM_DASH = '\u2014';
+
+function formatDateShort(raw?: string | Date | null): string {
+  if (!raw) return EM_DASH;
+  const d = typeof raw === 'string' ? new Date(raw) : raw;
+  if (!d || Number.isNaN(d.getTime())) return EM_DASH;
+  return d.toLocaleDateString('de-DE');
+}
+
+function formatCentsEUR(cents?: number | null): string {
+  if (cents == null) return EM_DASH;
+  try {
+    return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(
+      cents / 100,
+    );
+  } catch {
+    return `${(cents / 100).toFixed(2)} EUR`;
+  }
+}
+
+// V4.6.66 — uses booking-derived aggregates now returned by /customers:
+//   - totalRevenueCents → formatted EUR revenue
+//   - lastBookingDate   → "Last Trip"
+// Previously the UI used `c.totalRevenue` / `c.lastTrip` which were never
+// computed on the backend → always fell through to the placeholder.
 function mapApiCustomer(c: any): Customer {
-  const styleScore = c.drivingStyleScore ?? c.drivingScore ?? null;
-  const safetyScore = c.safetyScore ?? null;
+  // V4.6.95 — drivingStyleScore is the canonical scalar; drivingScore is
+  // a legacy compat mirror retained only for older API payloads. Backend
+  // is the single source of truth — frontend never recomputes scores.
+  const styleScore =
+    typeof c.drivingStyleScore === 'number'
+      ? c.drivingStyleScore
+      : typeof c.drivingScore === 'number'
+        ? c.drivingScore
+        : null;
+  const safetyScore = typeof c.safetyScore === 'number' ? c.safetyScore : null;
+  const totalBookings =
+    typeof c.totalBookings === 'number'
+      ? c.totalBookings
+      : typeof c.bookingCount === 'number'
+      ? c.bookingCount
+      : Array.isArray(c.bookings)
+      ? c.bookings.length
+      : 0;
   return {
     id: c.id,
     name: c.name ?? `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim(),
     email: c.email ?? '',
     phone: c.phone ?? '',
     company: c.company ?? c.companyName ?? undefined,
-    type: c.type === 'Corporate' ? 'Corporate' : 'Individual',
-    status: (['Active', 'Under Review', 'Suspended', 'Blocked'].includes(c.status) ? c.status : 'Active') as Customer['status'],
-    riskLevel: (['Low Risk', 'Medium Risk', 'High Risk'].includes(c.riskLevel) ? c.riskLevel : 'Low Risk') as Customer['riskLevel'],
+    type: customerTypeApiToUi(c.customerType ?? c.type),
+    status: customerStatusApiToUi(c.status),
+    riskLevel: customerRiskApiToUi(c.riskLevel),
     drivingScore: styleScore,
     drivingStyleScore: styleScore,
     safetyScore,
-    lastTrip: c.lastTrip ?? '--',
-    totalBookings: c.totalBookings ?? 0,
-    totalRevenue: c.totalRevenue ?? 'â‚¬ 0,00',
-    joinDate: c.joinDate ?? (c.createdAt ? new Date(c.createdAt).toLocaleDateString('de-DE') : '--'),
-    licenseExpiry: c.licenseExpiry ?? '--',
+    hasEnoughData: typeof c.hasEnoughData === 'boolean' ? c.hasEnoughData : undefined,
+    dataConfidence: c.dataConfidence ?? undefined,
+    scoredTripCount: typeof c.scoredTripCount === 'number' ? c.scoredTripCount : undefined,
+    totalDistanceKm: typeof c.totalDistanceKm === 'number' ? c.totalDistanceKm : undefined,
+    lastTrip: formatDateShort(c.lastBookingDate ?? c.lastTrip ?? null),
+    totalBookings,
+    totalRevenue: formatCentsEUR(
+      typeof c.totalRevenueCents === 'number' ? c.totalRevenueCents : null,
+    ),
+    joinDate: c.joinDate ?? (c.createdAt ? new Date(c.createdAt).toLocaleDateString('de-DE') : EM_DASH),
+    licenseExpiry: c.licenseExpiry
+      ? (typeof c.licenseExpiry === 'string' && !c.licenseExpiry.includes('T')
+          ? c.licenseExpiry
+          : new Date(c.licenseExpiry).toLocaleDateString('de-DE'))
+      : EM_DASH,
     licenseVerified: c.licenseVerified ?? false,
     idVerified: c.idVerified ?? false,
     accidents: c.accidents ?? 0,
@@ -69,8 +137,9 @@ function mapApiCustomer(c: any): Customer {
 export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCustomers = [] }: CustomersViewProps) {
   const { orgId } = useRentalOrg();
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isSavingCustomer, setIsSavingCustomer] = useState(false);
 
-  useEffect(() => {
+  const loadCustomers = useCallback(() => {
     if (!orgId) return;
     api.customers.list(orgId)
       .then((res: any) => {
@@ -79,6 +148,10 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
       })
       .catch(() => setCustomers([]));
   }, [orgId]);
+
+  useEffect(() => {
+    loadCustomers();
+  }, [loadCustomers]);
 
   // Merge additional customers from NewBookingView
   const allCustomers = [...customers, ...additionalCustomers.filter(ac => !customers.some(c => c.id === ac.id))] as Customer[];
@@ -103,7 +176,11 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
     licenseNumber: '', licenseExpiry: '', licenseClass: 'B',
     idType: 'Personalausweis' as 'Personalausweis' | 'Reisepass',
     idNumber: '', idExpiry: '',
-    idFrontUploaded: false, idBackUploaded: false, licenseFrontUploaded: false, licenseBackUploaded: false,
+    // V4.6.65 — real uploaded document URLs (null = not yet uploaded).
+    idFrontUrl: null as string | null,
+    idBackUrl: null as string | null,
+    licenseFrontUrl: null as string | null,
+    licenseBackUrl: null as string | null,
     notes: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -115,7 +192,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
       type: 'Individual', company: '',
       licenseNumber: '', licenseExpiry: '', licenseClass: 'B',
       idType: 'Personalausweis', idNumber: '', idExpiry: '',
-      idFrontUploaded: false, idBackUploaded: false, licenseFrontUploaded: false, licenseBackUploaded: false,
+      idFrontUrl: null, idBackUrl: null, licenseFrontUrl: null, licenseBackUrl: null,
       notes: '',
     });
     setFormErrors({});
@@ -177,9 +254,9 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
       if (!newCustomer.idNumber.trim()) errors.idNumber = 'Ausweisnummer erforderlich';
       if (!newCustomer.idExpiry) errors.idExpiry = 'Ablaufdatum erforderlich';
     } else if (step === 2) {
-      if (!newCustomer.idFrontUploaded) errors.idFront = 'Vorderseite des Ausweises erforderlich';
-      if (!newCustomer.idBackUploaded) errors.idBack = 'Rückseite des Ausweises erforderlich';
-      if (!newCustomer.licenseFrontUploaded) errors.licenseFront = 'Vorderseite des Führerscheins erforderlich';
+      if (!newCustomer.idFrontUrl) errors.idFront = 'Vorderseite des Ausweises erforderlich';
+      if (!newCustomer.idBackUrl) errors.idBack = 'Rückseite des Ausweises erforderlich';
+      if (!newCustomer.licenseFrontUrl) errors.licenseFront = 'Vorderseite des Führerscheins erforderlich';
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -191,36 +268,54 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
     }
   };
 
-  const handleSubmitCustomer = () => {
-    const today = new Date();
-    const formattedDate = `${String(today.getDate()).padStart(2, '0')}.${String(today.getMonth() + 1).padStart(2, '0')}.${today.getFullYear()}`;
-    const newId = `c${Date.now()}`;
-    const createdCustomer: Customer = {
-      id: newId,
-      name: `${newCustomer.firstName} ${newCustomer.lastName}`,
-      email: newCustomer.email,
-      phone: newCustomer.phone,
-      company: newCustomer.type === 'Corporate' ? newCustomer.company : undefined,
-      type: newCustomer.type,
-      status: 'Active',
-      riskLevel: 'Low Risk',
-      drivingScore: null,
-      drivingStyleScore: null,
-      safetyScore: null,
-      lastTrip: 'â€â€ÂÂÂ',
-      totalBookings: 0,
-      totalRevenue: 'â‚¬ 0,00',
-      joinDate: formattedDate,
-      licenseExpiry: newCustomer.licenseExpiry,
-      licenseVerified: newCustomer.licenseFrontUploaded,
-      idVerified: idVerificationStatus === 'verified',
-      accidents: 0,
-      violations: 0,
-      city: newCustomer.city || 'Kassel',
-      notes: newCustomer.notes || undefined,
-    };
-    setCustomers(prev => [createdCustomer, ...prev]);
-    closeAddCustomer();
+  const handleSubmitCustomer = async () => {
+    if (!orgId) {
+      toast.error('Keine Organisation geladen');
+      return;
+    }
+    setIsSavingCustomer(true);
+    try {
+      const payload = buildCustomerCreatePayload({
+        firstName: newCustomer.firstName,
+        lastName: newCustomer.lastName,
+        email: newCustomer.email,
+        phone: newCustomer.phone,
+        street: newCustomer.street,
+        zip: newCustomer.zip,
+        city: newCustomer.city || 'Kassel',
+        country: 'DE',
+        type: newCustomer.type,
+        company: newCustomer.type === 'Corporate' ? newCustomer.company : undefined,
+        licenseNumber: newCustomer.licenseNumber,
+        licenseExpiry: newCustomer.licenseExpiry,
+        licenseClass: newCustomer.licenseClass,
+        idType: newCustomer.idType,
+        idNumber: newCustomer.idNumber,
+        idExpiry: newCustomer.idExpiry,
+        idVerified: idVerificationStatus === 'verified',
+        licenseVerified: Boolean(newCustomer.licenseFrontUrl),
+        riskLevel: 'Low Risk',
+        status: 'Active',
+        notes: newCustomer.notes,
+        idFrontUrl: newCustomer.idFrontUrl,
+        idBackUrl: newCustomer.idBackUrl,
+        licenseFrontUrl: newCustomer.licenseFrontUrl,
+        licenseBackUrl: newCustomer.licenseBackUrl,
+      });
+      const created: any = await api.customers.create(orgId, payload);
+      const mapped = mapApiCustomer(created);
+      setCustomers(prev => [mapped, ...prev.filter(c => c.id !== mapped.id)]);
+      toast.success('Kunde angelegt', {
+        description: `${mapped.name}${mapped.email ? ' · ' + mapped.email : ''}`,
+        duration: 3000,
+      });
+      closeAddCustomer();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Fehler beim Anlegen';
+      toast.error('Kunde konnte nicht angelegt werden', { description: String(msg), duration: 5000 });
+    } finally {
+      setIsSavingCustomer(false);
+    }
   };
 
   const filtered = allCustomers.filter(c => {
@@ -277,13 +372,18 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
   };
 
   const RiskPill = ({ level }: { level: Customer['riskLevel'] }) => {
+    // V4.6.95 — `'Not Assessed'` is a neutral-grey state, NOT a green badge.
+    // Customer.riskLevel currently has no automated writer; the previous
+    // green "Low Risk" default falsely communicated a positive assessment.
     const styles = isDarkMode
       ? {
+          'Not Assessed': 'bg-neutral-700/40 text-neutral-300 border-neutral-600/40',
           'Low Risk': 'bg-green-500/20 text-green-400 border-green-500/30',
           'Medium Risk': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
           'High Risk': 'bg-red-500/20 text-red-400 border-red-500/30',
         }
       : {
+          'Not Assessed': 'bg-gray-100 text-gray-600 border-gray-200',
           'Low Risk': 'bg-green-50 text-green-700 border-green-200',
           'Medium Risk': 'bg-amber-50 text-amber-700 border-amber-200',
           'High Risk': 'bg-red-50 text-red-700 border-red-200',
@@ -295,29 +395,69 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
     );
   };
 
-  const ScoreBadge = ({ score }: { score: number | null }) => {
-    if (score == null) {
+  // V4.6.95 — score visualization standard:
+  //   - 0–100 model score (never %, never grades)
+  //   - null/insufficient data renders neutral "—" badge
+  // Backend is the canonical writer; we only format here.
+  const ScoreBadge = ({
+    score,
+    hasEnoughData = true,
+  }: {
+    score: number | null | undefined;
+    hasEnoughData?: boolean;
+  }) => {
+    const missing = score == null || !hasEnoughData;
+    if (missing) {
       return (
-        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg ${isDarkMode ? 'bg-neutral-800 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+        <div
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg ${
+            isDarkMode
+              ? 'bg-neutral-800 text-gray-400'
+              : 'bg-gray-100 text-gray-500'
+          }`}
+          title={
+            score == null
+              ? 'No driving data yet'
+              : 'Not enough scored trip data'
+          }
+        >
           <Star className="w-3 h-3" />
-          <span className="text-xs font-bold">--</span>
+          <span className="text-xs font-bold">{'\u2014'}</span>
         </div>
       );
     }
-    const color = score >= 80
-      ? (isDarkMode ? 'text-green-400' : 'text-green-600')
-      : score >= 60
-      ? (isDarkMode ? 'text-amber-400' : 'text-amber-600')
-      : (isDarkMode ? 'text-red-400' : 'text-red-600');
-    const bg = score >= 80
-      ? (isDarkMode ? 'bg-green-500/20' : 'bg-green-50')
-      : score >= 60
-      ? (isDarkMode ? 'bg-amber-500/20' : 'bg-amber-50')
-      : (isDarkMode ? 'bg-red-500/20' : 'bg-red-50');
+    const rounded = Math.round(score as number);
+    const color =
+      rounded >= 80
+        ? isDarkMode
+          ? 'text-green-400'
+          : 'text-green-600'
+        : rounded >= 60
+          ? isDarkMode
+            ? 'text-amber-400'
+            : 'text-amber-600'
+          : isDarkMode
+            ? 'text-red-400'
+            : 'text-red-600';
+    const bg =
+      rounded >= 80
+        ? isDarkMode
+          ? 'bg-green-500/20'
+          : 'bg-green-50'
+        : rounded >= 60
+          ? isDarkMode
+            ? 'bg-amber-500/20'
+            : 'bg-amber-50'
+          : isDarkMode
+            ? 'bg-red-500/20'
+            : 'bg-red-50';
     return (
-      <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg ${bg}`}>
+      <div
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg ${bg}`}
+        title={`${rounded} / 100 (Driving Style)`}
+      >
         <Star className={`w-3 h-3 ${color}`} />
-        <span className={`text-xs font-bold ${color}`}>{score}</span>
+        <span className={`text-xs font-bold ${color}`}>{rounded}</span>
       </div>
     );
   };
@@ -464,6 +604,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
             onSelect={setRiskFilter}
             options={[
               { value: 'all', label: 'All Risk Levels' },
+              { value: 'Not Assessed', label: 'Not Assessed' },
               { value: 'Low Risk', label: 'Low Risk' },
               { value: 'Medium Risk', label: 'Medium Risk' },
               { value: 'High Risk', label: 'High Risk' },
@@ -498,7 +639,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
         <table className="w-full">
           <thead>
             <tr className={`border-b ${isDarkMode ? 'border-neutral-700/50' : 'border-gray-200/60'}`}>
-              {['Name', 'Company', 'Contact', 'Last Trip', 'Status', 'Verification', 'Risk Score', 'Driving Score', 'Bookings', 'Revenue', ''].map(h => (
+              {['Name', 'Company', 'Contact', 'Last Trip', 'Status', 'Verification', 'Risk Level', 'Driving Style', 'Bookings', 'Revenue', ''].map(h => (
                 <th key={h} className={`text-left text-xs uppercase tracking-wider font-semibold px-3 py-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
                   {h}
                 </th>
@@ -527,7 +668,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                   </div>
                 </td>
                 <td className={`px-3 py-2.5 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {customer.company || 'â€â€ÂÂÂ'}
+                  {customer.company || '—'}
                 </td>
                 <td className="px-3 py-2.5">
                   <p className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{customer.email}</p>
@@ -560,7 +701,10 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                   <RiskPill level={customer.riskLevel} />
                 </td>
                 <td className="px-3 py-2.5">
-                  <ScoreBadge score={customer.drivingScore} />
+                  <ScoreBadge
+                    score={customer.drivingStyleScore ?? customer.drivingScore}
+                    hasEnoughData={customer.hasEnoughData ?? true}
+                  />
                 </td>
                 <td className={`px-3 py-2.5 text-xs font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                   {customer.totalBookings}
@@ -635,41 +779,10 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
           );
         };
 
-        const UploadBox = ({ label, uploaded, errorKey, onUpload }: { label: string; uploaded: boolean; errorKey?: string; onUpload: () => void }) => (
-          <div>
-            <label className={labelClass}>{label}</label>
-            <div className={`relative cursor-pointer rounded-lg border-2 border-dashed p-4 text-center transition-all ${
-              uploaded
-                ? isDarkMode ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-emerald-300 bg-emerald-50/50'
-                : formErrors[errorKey || '']
-                  ? 'border-red-300 bg-red-50/30'
-                  : isDarkMode
-                    ? 'border-neutral-700/50 bg-neutral-800/30 hover:border-blue-500/40 hover:bg-blue-500/5'
-                    : 'border-gray-200 bg-gray-50/50 hover:border-blue-300 hover:bg-blue-50/30'
-            }`}>
-              {uploaded ? (
-                <div className="flex flex-col items-center gap-1.5">
-                  <CheckCircle className="w-5 h-5 text-emerald-500" />
-                  <span className={`text-xs font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>Hochgeladen</span>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-1.5">
-                  <Camera className={`w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
-                  <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Klicken zum Hochladen</span>
-                </div>
-              )}
-              <input type="file" accept="image/*,.pdf"
-                onChange={(e) => { if (e.target.files?.[0]) onUpload(); }}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-            </div>
-            {errorKey && formErrors[errorKey] && <p className="text-[11px] text-red-500 mt-1">{formErrors[errorKey]}</p>}
-          </div>
-        );
-
         const SummaryRow = ({ label, value }: { label: string; value: string }) => (
           <div className="flex items-center justify-between py-2">
             <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{label}</span>
-            <span className={`text-xs font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{value || 'â€â€ÂÂÂ'}</span>
+            <span className={`text-xs font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{value || '—'}</span>
           </div>
         );
 
@@ -885,10 +998,26 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                   <div className="space-y-5">
                     {sectionTitle(IdCard, `${newCustomer.idType} hochladen`)}
                     <div className="grid grid-cols-2 gap-3">
-                      <UploadBox label="Vorderseite *" uploaded={newCustomer.idFrontUploaded} errorKey="idFront"
-                        onUpload={() => setNewCustomer({ ...newCustomer, idFrontUploaded: true })} />
-                      <UploadBox label="Rückseite *" uploaded={newCustomer.idBackUploaded} errorKey="idBack"
-                        onUpload={() => setNewCustomer({ ...newCustomer, idBackUploaded: true })} />
+                      <CustomerDocumentUploadBox
+                        label="Vorderseite *"
+                        slot="id-front"
+                        orgId={orgId}
+                        isDarkMode={isDarkMode}
+                        url={newCustomer.idFrontUrl}
+                        errorMessage={formErrors.idFront}
+                        onUploaded={(url) => setNewCustomer((prev) => ({ ...prev, idFrontUrl: url }))}
+                        onCleared={() => setNewCustomer((prev) => ({ ...prev, idFrontUrl: null }))}
+                      />
+                      <CustomerDocumentUploadBox
+                        label="Rückseite *"
+                        slot="id-back"
+                        orgId={orgId}
+                        isDarkMode={isDarkMode}
+                        url={newCustomer.idBackUrl}
+                        errorMessage={formErrors.idBack}
+                        onUploaded={(url) => setNewCustomer((prev) => ({ ...prev, idBackUrl: url }))}
+                        onCleared={() => setNewCustomer((prev) => ({ ...prev, idBackUrl: null }))}
+                      />
                     </div>
                     {/* Veriff ID Verification */}
                     <div className={`rounded-lg border p-4 transition-all ${
@@ -947,7 +1076,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                           </p>
                           <button
                             onClick={() => {
-                              if (!newCustomer.idFrontUploaded) {
+                              if (!newCustomer.idFrontUrl) {
                                 setFormErrors({ ...formErrors, veriff: 'Bitte laden Sie zuerst die Vorderseite des Ausweises hoch.' });
                                 return;
                               }
@@ -957,9 +1086,9 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                                 setIdVerificationStatus('verified');
                               }, 3000);
                             }}
-                            disabled={!newCustomer.idFrontUploaded}
+                            disabled={!newCustomer.idFrontUrl}
                             className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-                              newCustomer.idFrontUploaded
+                              newCustomer.idFrontUrl
                                 ? 'bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-violet-700 text-white shadow-md hover:shadow-lg'
                                 : isDarkMode
                                   ? 'bg-neutral-800 border border-neutral-700/50 text-gray-600 cursor-not-allowed'
@@ -970,7 +1099,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                             <ExternalLink className="w-3 h-3 opacity-60" />
                           </button>
                           {formErrors.veriff && <p className="text-[11px] text-red-500 mt-1.5">{formErrors.veriff}</p>}
-                          {!newCustomer.idFrontUploaded && (
+                          {!newCustomer.idFrontUrl && (
                             <p className={`text-[11px] mt-1.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>
                               Bitte laden Sie zuerst die Vorderseite des Ausweises hoch.
                             </p>
@@ -1034,10 +1163,25 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                     <div className={`h-px my-1 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-100'}`} />
                     {sectionTitle(Car, 'Führerschein hochladen')}
                     <div className="grid grid-cols-2 gap-3">
-                      <UploadBox label="Vorderseite *" uploaded={newCustomer.licenseFrontUploaded} errorKey="licenseFront"
-                        onUpload={() => setNewCustomer({ ...newCustomer, licenseFrontUploaded: true })} />
-                      <UploadBox label="Rückseite (optional)" uploaded={newCustomer.licenseBackUploaded}
-                        onUpload={() => setNewCustomer({ ...newCustomer, licenseBackUploaded: true })} />
+                      <CustomerDocumentUploadBox
+                        label="Vorderseite *"
+                        slot="license-front"
+                        orgId={orgId}
+                        isDarkMode={isDarkMode}
+                        url={newCustomer.licenseFrontUrl}
+                        errorMessage={formErrors.licenseFront}
+                        onUploaded={(url) => setNewCustomer((prev) => ({ ...prev, licenseFrontUrl: url }))}
+                        onCleared={() => setNewCustomer((prev) => ({ ...prev, licenseFrontUrl: null }))}
+                      />
+                      <CustomerDocumentUploadBox
+                        label="Rückseite (optional)"
+                        slot="license-back"
+                        orgId={orgId}
+                        isDarkMode={isDarkMode}
+                        url={newCustomer.licenseBackUrl}
+                        onUploaded={(url) => setNewCustomer((prev) => ({ ...prev, licenseBackUrl: url }))}
+                        onCleared={() => setNewCustomer((prev) => ({ ...prev, licenseBackUrl: null }))}
+                      />
                     </div>
                   </div>
                 )}
@@ -1052,7 +1196,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                       <SummaryRow label="E-Mail" value={newCustomer.email} />
                       <SummaryRow label="Telefon" value={newCustomer.phone} />
                       <SummaryRow label="Adresse" value={[newCustomer.street, `${newCustomer.zip} ${newCustomer.city}`].filter(Boolean).join(', ')} />
-                      <SummaryRow label="Typ" value={newCustomer.type === 'Corporate' ? `Firma â€â€ÂÂÂ ${newCustomer.company}` : 'Privatkunde'} />
+                      <SummaryRow label="Typ" value={newCustomer.type === 'Corporate' ? `Firma — ${newCustomer.company}` : 'Privatkunde'} />
                     </div>
                     <div className={`rounded-lg border p-4 space-y-0 divide-y ${
                       isDarkMode ? 'bg-neutral-800/40 border-neutral-700/50 divide-neutral-800' : 'bg-gray-50/50 border-gray-200/60 divide-gray-100'
@@ -1085,10 +1229,10 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                         <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Dokumente</span>
                         <div className="flex items-center gap-3">
                           {[
-                            { label: 'Ausweis VS', ok: newCustomer.idFrontUploaded },
-                            { label: 'Ausweis RS', ok: newCustomer.idBackUploaded },
-                            { label: 'FS VS', ok: newCustomer.licenseFrontUploaded },
-                            { label: 'FS RS', ok: newCustomer.licenseBackUploaded },
+                            { label: 'Ausweis VS', ok: Boolean(newCustomer.idFrontUrl) },
+                            { label: 'Ausweis RS', ok: Boolean(newCustomer.idBackUrl) },
+                            { label: 'FS VS', ok: Boolean(newCustomer.licenseFrontUrl) },
+                            { label: 'FS RS', ok: Boolean(newCustomer.licenseBackUrl) },
                           ].map(d => (
                             <span key={d.label} className={`inline-flex items-center gap-1 text-[11px] font-medium ${
                               d.ok ? isDarkMode ? 'text-emerald-400' : 'text-emerald-600' : isDarkMode ? 'text-gray-600' : 'text-gray-300'
@@ -1137,9 +1281,14 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                     </button>
                   ) : (
                     <button onClick={handleSubmitCustomer}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-xs font-semibold shadow-md hover:shadow-lg transition-all">
-                      <CheckCircle className="w-3.5 h-3.5" />
-                      Kunden anlegen
+                      disabled={isSavingCustomer}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold shadow-md transition-all ${
+                        isSavingCustomer
+                          ? 'bg-gray-300 text-white cursor-not-allowed'
+                          : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white hover:shadow-lg'
+                      }`}>
+                      {isSavingCustomer ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                      {isSavingCustomer ? 'Speichert…' : 'Kunden anlegen'}
                     </button>
                   )}
                 </div>

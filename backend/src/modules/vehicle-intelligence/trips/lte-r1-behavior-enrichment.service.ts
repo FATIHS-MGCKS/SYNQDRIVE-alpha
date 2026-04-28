@@ -23,7 +23,10 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { DimoSegmentsService, type DimoNativeDrivingEventSample } from '../../dimo/dimo-segments.service';
+import {
+  DimoSegmentsService,
+  type DimoVehicleEventRecord,
+} from '../../dimo/dimo-segments.service';
 import { DrivingEventType, DrivingEventSource } from '@prisma/client';
 import { preprocessHighFrequency, type CleanHfPoint } from './hf-preprocessing';
 
@@ -50,6 +53,33 @@ interface EventCounters {
   extremeBraking: number;
   harshAcceleration: number;
   harshCornering: number;
+}
+
+/**
+ * DIMO-name → SynqDrive DrivingEventType. Matching is case-insensitive and
+ * prefix-tolerant so future DIMO variants (e.g. `behavior.harsh_braking`,
+ * `Behavior.HarshBraking`) still map correctly.
+ */
+function normalizeEventName(raw: string): DrivingEventType | null {
+  const base = raw
+    .trim()
+    .toLowerCase()
+    .replace(/^behavior\./, '')
+    .replace(/[\s_\-]+/g, '');
+  switch (base) {
+    case 'harshbraking':
+      return DrivingEventType.HARSH_BRAKING;
+    case 'extremebraking':
+    case 'extremeemergency':
+    case 'extremeemergencybraking':
+      return DrivingEventType.EXTREME_BRAKING;
+    case 'harshacceleration':
+      return DrivingEventType.HARSH_ACCELERATION;
+    case 'harshcornering':
+      return DrivingEventType.HARSH_CORNERING;
+    default:
+      return null;
+  }
 }
 
 interface LteR1EnrichmentResult {
@@ -151,6 +181,10 @@ export class LteR1BehaviorEnrichmentService {
               rpm: e.contextRpm,
               throttlePct: e.contextThrottlePct,
               hardwareSource: 'LTE_R1',
+              // DIMO-native event provenance (replaces legacy safetySystem signal mapping)
+              dimoEventName: e.rawName,
+              dimoEventSource: e.dimoSource,
+              dimoCounterValue: e.counterValue,
             },
           })),
         });
@@ -158,6 +192,17 @@ export class LteR1BehaviorEnrichmentService {
 
       // Update VehicleTrip canonical counters so Driving Impact engine receives
       // the same interface as for SMART5 HF-derived trips.
+      //
+      // Severity-ladder for Abuse on LTE_R1:
+      //   DIMO `behavior.extremeBraking` = DIMO's own critical-severity braking
+      //   event.  In the absence of sufficient HF context (common on LTE_R1
+      //   because HF data is sparse for this hardware family), we surface
+      //   `extremeBraking` as an abuse event so the "Abuse Detection" KPI is
+      //   actually populated from vehicle-reported critical events.  When
+      //   HF-derived abuse events are also available, TripBehaviorEnrichment
+      //   overwrites abuseEvents below — but those additions are additive,
+      //   not a replacement, so the extremeBraking-sourced minimum remains.
+      const abuseFromDimo = counters.extremeBraking;
       await tx.vehicleTrip.update({
         where: { id: tripId },
         data: {
@@ -169,7 +214,7 @@ export class LteR1BehaviorEnrichmentService {
           hardBrakingEvents: hardBraking,
           fullBrakingEvents: 0,
           corneringEvents: counters.harshCornering,
-          abuseEvents: 0,
+          abuseEvents: abuseFromDimo,
           speedingEvents: 0,
           harshBrakeCount: hardBraking,   // DEPRECATED alias — mirrored for compatibility
           harshAccelCount: hardAccel,      // DEPRECATED alias — mirrored for compatibility
@@ -205,14 +250,22 @@ export class LteR1BehaviorEnrichmentService {
     from: Date,
     to: Date,
     tripId: string,
-  ): Promise<Map<number, { coolantC: number | null; rpm: number | null; throttlePct: number | null }>> {
-    const map = new Map<number, { coolantC: number | null; rpm: number | null; throttlePct: number | null }>();
+  ): Promise<Map<number, { coolantC: number | null; rpm: number | null; throttlePct: number | null; speedKmh: number | null }>> {
+    const map = new Map<
+      number,
+      { coolantC: number | null; rpm: number | null; throttlePct: number | null; speedKmh: number | null }
+    >();
     try {
       const rawHf = await this.segments.fetchHighFrequency(tokenId, from, to);
       if (rawHf.length >= 5) {
         const cleaned: CleanHfPoint[] = preprocessHighFrequency(rawHf);
         for (const p of cleaned) {
-          map.set(p.ts, { coolantC: p.coolantC ?? null, rpm: p.rpm ?? null, throttlePct: p.throttlePct ?? null });
+          map.set(p.ts, {
+            coolantC: p.coolantC ?? null,
+            rpm: p.rpm ?? null,
+            throttlePct: p.throttlePct ?? null,
+            speedKmh: p.speedKmh ?? null,
+          });
         }
       }
     } catch (err: any) {
@@ -224,11 +277,11 @@ export class LteR1BehaviorEnrichmentService {
   }
 
   private mapToNormalizedEvents(
-    samples: DimoNativeDrivingEventSample[],
+    samples: DimoVehicleEventRecord[],
     vehicleId: string,
     organizationId: string,
     tripId: string,
-    hfContext: Map<number, { coolantC: number | null; rpm: number | null; throttlePct: number | null }>,
+    hfContext: Map<number, { coolantC: number | null; rpm: number | null; throttlePct: number | null; speedKmh: number | null }>,
   ): Array<{
     vehicleId: string;
     organizationId: string;
@@ -241,40 +294,53 @@ export class LteR1BehaviorEnrichmentService {
     contextCoolantC: number | null;
     contextRpm: number | null;
     contextThrottlePct: number | null;
+    counterValue: number | null;
+    rawName: string;
+    dimoSource: string;
   }> {
     const events: ReturnType<typeof this.mapToNormalizedEvents> = [];
 
     for (const s of samples) {
+      const eventType = normalizeEventName(s.name);
+      if (!eventType) {
+        this.logger.debug(
+          `LTE_R1 enrich: ignoring unmapped DIMO event name "${s.name}"`,
+        );
+        continue;
+      }
+
       const ts = new Date(s.timestamp).getTime();
       const ctx = this.findClosestHfContext(ts, hfContext);
       const coldEngine = ctx.coolantC != null && ctx.coolantC < COLD_ENGINE_TEMP_C;
 
-      const base = {
+      let counterValue: number | null = null;
+      if (s.metadata) {
+        try {
+          const meta = JSON.parse(s.metadata);
+          if (typeof meta?.counterValue === 'number') counterValue = meta.counterValue;
+        } catch {
+          // Metadata is occasionally sent as non-JSON free text — ignore.
+        }
+      }
+
+      events.push({
         vehicleId,
         organizationId,
         tripId,
+        eventType,
         recordedAt: new Date(s.timestamp),
-        speedKmh: s.speed,
+        // DIMO events don't carry speed. HF context (1-s interval during the
+        // trip) is the best alignment we have; null when HF is sparse.
+        speedKmh: ctx.speedKmh,
+        severity: EVENT_SEVERITY[eventType],
         coldEngineContext: coldEngine,
         contextCoolantC: ctx.coolantC,
         contextRpm: ctx.rpm,
         contextThrottlePct: ctx.throttlePct,
-      };
-
-      // Extreme braking takes precedence over harsh braking if both fire
-      if (s.safetySystemBrakingExtremeEmergency != null && s.safetySystemBrakingExtremeEmergency > 0) {
-        events.push({ ...base, eventType: DrivingEventType.EXTREME_BRAKING, severity: EVENT_SEVERITY.EXTREME_BRAKING });
-      } else if (s.safetySystemBrakingHarshBraking != null && s.safetySystemBrakingHarshBraking > 0) {
-        events.push({ ...base, eventType: DrivingEventType.HARSH_BRAKING, severity: EVENT_SEVERITY.HARSH_BRAKING });
-      }
-
-      if (s.safetySystemAccelerationHarshAcceleration != null && s.safetySystemAccelerationHarshAcceleration > 0) {
-        events.push({ ...base, eventType: DrivingEventType.HARSH_ACCELERATION, severity: EVENT_SEVERITY.HARSH_ACCELERATION });
-      }
-
-      if (s.safetySystemCorneringHarshCornering != null && s.safetySystemCorneringHarshCornering > 0) {
-        events.push({ ...base, eventType: DrivingEventType.HARSH_CORNERING, severity: EVENT_SEVERITY.HARSH_CORNERING });
-      }
+        counterValue,
+        rawName: s.name,
+        dimoSource: s.source,
+      });
     }
 
     return events;
@@ -282,9 +348,14 @@ export class LteR1BehaviorEnrichmentService {
 
   private findClosestHfContext(
     tsMs: number,
-    hfContext: Map<number, { coolantC: number | null; rpm: number | null; throttlePct: number | null }>,
-  ): { coolantC: number | null; rpm: number | null; throttlePct: number | null } {
-    let closest: { coolantC: number | null; rpm: number | null; throttlePct: number | null } = { coolantC: null, rpm: null, throttlePct: null };
+    hfContext: Map<number, { coolantC: number | null; rpm: number | null; throttlePct: number | null; speedKmh: number | null }>,
+  ): { coolantC: number | null; rpm: number | null; throttlePct: number | null; speedKmh: number | null } {
+    let closest: { coolantC: number | null; rpm: number | null; throttlePct: number | null; speedKmh: number | null } = {
+      coolantC: null,
+      rpm: null,
+      throttlePct: null,
+      speedKmh: null,
+    };
     let minDiff = Infinity;
     for (const [ptTs, ctx] of hfContext) {
       const diff = Math.abs(ptTs - tsMs);

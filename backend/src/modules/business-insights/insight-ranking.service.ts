@@ -15,6 +15,25 @@ const TYPE_OPERATIONAL_WEIGHT: Record<InsightType, number> = {
   [InsightType.RETURN_NEEDS_INSPECTION]: 8,
   [InsightType.LOW_UTILIZATION]: 3,
   [InsightType.SERVICE_WINDOW]: 2,
+  // Battery-critical: outranks LOW_UTILIZATION / SERVICE_WINDOW because a
+  // starting problem is an immediate operational blocker (can strand a
+  // vehicle at pickup). Sits below TIGHT_HANDOVER so acute customer-facing
+  // handover risks still take the top slot.
+  [InsightType.BATTERY_CRITICAL]: 13,
+  // Service overdue: a lapsed manufacturer service threatens warranty,
+  // operational safety, and upcoming bookings. Ranked just above
+  // SERVICE_BEFORE_BOOKING because "already overdue" beats "must be
+  // resolved before next pickup" and at par with battery-critical so a
+  // fleet with both simultaneous issues shows both on the dashboard.
+  [InsightType.SERVICE_OVERDUE]: 13,
+  // Pickup overdue: an acute customer-facing event — scheduled pickup
+  // has passed without a handover protocol. Ranked on par with
+  // TIGHT_HANDOVER because both belong to the "right now, in-flight
+  // booking" class of alerts; the detector's own graduated severity
+  // (INFO → WARNING → CRITICAL at 24 h) does the heavy lifting to
+  // keep a 45-min late pickup below a 3-day-stuck booking on the
+  // dashboard ordering.
+  [InsightType.PICKUP_OVERDUE]: 15,
 };
 
 @Injectable()

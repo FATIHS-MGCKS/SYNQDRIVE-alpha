@@ -34,6 +34,7 @@ import { CanonicalBatteryHealthService } from './battery-health/canonical-batter
 import { HealthSummaryService } from './health-summary/health-summary.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
 import { DrivingImpactService } from './driving-impact/driving-impact.service';
+import { EnergyEventsService } from './energy-events/energy-events.service';
 import { DimoModule } from '../dimo/dimo.module';
 import { InvoicesModule } from '@modules/invoices/invoices.module';
 import { HighMobilityModule } from '../high-mobility/high-mobility.module';
@@ -103,6 +104,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     HealthSummaryService,
     AiHealthCareAggregationService,
     DrivingImpactService,
+    EnergyEventsService,
     // ── New refactored providers ──
     TripDecisionEngine,
     TripDetectionPolicyResolver,
@@ -149,6 +151,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     BatteryEvidenceService,
     CanonicalBatteryHealthService,
     DrivingImpactService,
+    EnergyEventsService,
     TripDecisionEngine,
     TripDetectionPolicyResolver,
     TripReconciliationService,

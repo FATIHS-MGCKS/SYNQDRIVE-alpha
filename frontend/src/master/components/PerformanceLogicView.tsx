@@ -648,10 +648,43 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                 {[
                   'longitudinalStressScore', 'brakingStressScore', 'stopGoStressScore',
                   'highSpeedStressScore', 'thermalBrakeStressScore',
+                  'drivingStyleScore ✓ CANONICAL', 'safetyScore ✓ CANONICAL',
                   'hardAccelPer100km', 'hardBrakePer100km', 'fullBrakingPer100km',
                   'kickdownPer100km', 'p95DecelMs2', 'meanBrakeEnergyKjPerKm',
                   'citySharePct', 'highwaySharePct', 'countrySharePct',
                 ].map(f => <code key={f} className={`${code} block text-[10px] truncate`}>{f}</code>)}
+              </div>
+              <div className={`mt-3 p-3 rounded-xl text-[11px] leading-relaxed ${d ? 'bg-emerald-900/20 text-emerald-300 border border-emerald-800/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+                <strong>Canonical scoring truth (V4.6.83):</strong> SynqDrive has exactly two trip-level
+                driving scores. <code className="font-mono">drivingStyleScore</code> measures driving
+                style / dynamic stress / wear behavior (hard accel, hard braking, stop-and-go, high-speed
+                braking share, etc.). <code className="font-mono">safetyScore</code> measures
+                safety / compliance behavior — in the current version intentionally primarily speeding-based
+                (speeding exposure %, max / avg overspeed, section count). Both come from
+                <code className="font-mono ml-1">driving-impact-scorer.ts</code> (one canonical implementation).
+              </div>
+              <div className={`mt-2 p-3 rounded-xl text-[11px] leading-relaxed ${d ? 'bg-blue-900/20 text-blue-300 border border-blue-800/30' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+                <strong>V4.6.95 hardening:</strong> <code className="font-mono">safetyScore</code> is
+                now <em>nullable</em> on <code className="font-mono">TripDrivingImpact</code>.
+                Helper <code className="font-mono">hasSpeedingDataFromTrip()</code> guards
+                <code className="font-mono ml-1">DrivingImpactService.computeForTrip</code> and
+                <code className="font-mono ml-1">TripAnalyticsCanonicalService.deriveSafetyScoreFromTrip</code>
+                — when no speed-limit / route enrichment ran, safetyScore is <code className="font-mono">null</code>,
+                never coerced to 100. Rolling
+                <code className="font-mono ml-1">VehicleDrivingImpactCurrent.safetyScore</code> averages
+                only over rows whose <code className="font-mono">safetyScore</code> is non-null and is
+                itself null when the 30-day window has no enriched trips. Subject / customer / booking
+                aggregates use one canonical entry point —
+                <code className="font-mono ml-1">DriverScoreService.aggregateRows</code> (distance-weighted,
+                returns <code className="font-mono">tripCount</code> / <code className="font-mono">scoredTripCount</code>
+                / <code className="font-mono">safetyScoredTripCount</code> / <code className="font-mono">totalDistanceKm</code>
+                / <code className="font-mono">assignmentCoveragePct</code> / <code className="font-mono">hasEnoughData</code>
+                / <code className="font-mono">dataConfidence</code>). USER / ASSIGNED_USER and
+                <code className="font-mono ml-1">speedingSeverityScore</code> retired in migration
+                <code className="font-mono ml-1">20260425000000_retire_user_assignment_and_speeding_severity</code>.
+                Frontend score-render contract lives in
+                <code className="font-mono ml-1">frontend/src/rental/lib/scoreFormat.ts</code> — never %, never grades,
+                null → em-dash + semantic „Not enough data" / „No speed-limit data".
               </div>
             </div>
           </div>
@@ -669,7 +702,10 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                 After each trip's TripDrivingImpact is stored, the Driving Impact Engine V1 updates
                 <code className={code}>VehicleDrivingImpactCurrent</code> — a distance-weighted rolling
                 average over the last 30 days of trips. This is the single shared data source for both
-                Tire Health V2 and Brake Health V2.
+                Tire Health V2 and Brake Health V2, and since V4.6.83 also carries the rolling
+                <code className="font-mono ml-1">drivingStyleScore</code> AND
+                <code className="font-mono ml-1">safetyScore</code> so vehicle-level cards can show the
+                same two canonical scores as the individual trips they aggregate.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
@@ -696,14 +732,31 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
             <div className={`${CARD(d)} p-5`}>
               <div className="flex items-center gap-2 mb-2">
                 <Gauge size={16} className="text-amber-400" />
-                <h2 className={h2}>Driving Score (per trip)</h2>
+                <h2 className={h2}>Per-Trip Driving Scores (canonical)</h2>
               </div>
-              <p className={body}>
-                A simple 0–100 score is computed per trip from the normalized stress metrics:
-                base 100, minus penalties for hard/extreme events per 100km.
-                Stored in <code className={code}>VehicleTrip.drivingScore</code>.
-                Not the same as the rolling VehicleDrivingImpactCurrent — the trip score is point-in-time.
+              <p className={`${body} mb-3`}>
+                Every scored trip carries two canonical 0–100 scalars on
+                <code className={code}>TripDrivingImpact</code>:
               </p>
+              <ul className="space-y-1 mb-3">
+                <li className={li}>
+                  • <code className="font-mono">drivingStyleScore</code> — reference-based deduction over the
+                  stress components (longitudinal, braking, stop-and-go, high-speed, thermal-brake), clamped 0–100.
+                </li>
+                <li className={li}>
+                  • <code className="font-mono">safetyScore</code> — speeding-centric score derived from
+                  speeding exposure %, max / avg overspeed km/h, and section count via
+                  <code className="font-mono ml-1">computeSafetyScore()</code>.
+                </li>
+              </ul>
+              <div className={`p-3 rounded-xl text-[11px] leading-relaxed ${d ? 'bg-amber-900/20 text-amber-300 border border-amber-800/30' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                <strong>Legacy compatibility:</strong>
+                <code className="font-mono ml-1">VehicleTrip.drivingScore</code> is kept as a
+                transition-compatible mirror of <code className="font-mono">drivingStyleScore</code> only.
+                New logic must read <code className="font-mono">TripDrivingImpact.drivingStyleScore</code> /
+                <code className="font-mono ml-1">.safetyScore</code>. There is no separate "base-100
+                minus penalties" per-trip formula anymore.
+              </div>
             </div>
             <div className={`${CARD(d)} p-5`}>
               <div className="flex items-center gap-2 mb-2">

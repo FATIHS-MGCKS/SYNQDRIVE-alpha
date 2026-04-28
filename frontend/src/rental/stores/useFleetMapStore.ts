@@ -6,6 +6,7 @@ import type {
   VehicleDisplayIgnition,
   VehicleDisplayState,
   VehicleOnlineStatus,
+  FleetMaintenanceReasonCode,
 } from '../data/vehicles';
 
 export const FLEET_MAP_REFRESH_MS = 30_000;
@@ -109,7 +110,25 @@ function mapFleetVehicle(raw: FleetMapVehicleResponse): FleetMapVehicle {
   const status = normalizeStatus(raw.status);
   const healthStatus = normalizeHealthStatus(raw.healthStatus);
   const cleaningStatus = normalizeCleaningStatus(raw.cleaningStatus);
-  const isElectric = fuelType === 'Electric' || fuelType === 'PHEV';
+  const isElectric =
+    typeof raw.isElectric === 'boolean'
+      ? raw.isElectric
+      : fuelType === 'Electric' || fuelType === 'PHEV';
+  // V4.6.85 — null-preserving telemetry. The UI cells (FuelCell /
+  // OdometerCell) read these fields and render "—" when they are null
+  // instead of a misleading "0 km" / "0%".
+  const fuelPercent = toFiniteNumber(raw.fuelPercent) ?? null;
+  const evSocPercent = toFiniteNumber(raw.evSoc) ?? null;
+  const odometerKm = toFiniteNumber(raw.odometerKm) ?? null;
+  const chargePct = isElectric
+    ? evSocPercent ?? fuelPercent
+    : fuelPercent ?? evSocPercent;
+  const reasonCode = (
+    raw.maintenanceReasonCode === 'SCHEDULED_SERVICE' ||
+    raw.maintenanceReasonCode === 'OPERATIONAL_BLOCK'
+      ? raw.maintenanceReasonCode
+      : null
+  ) as FleetMaintenanceReasonCode | null;
 
   return {
     id: raw.id,
@@ -125,14 +144,25 @@ function mapFleetVehicle(raw: FleetMapVehicleResponse): FleetMapVehicle {
     online: raw.isFresh,
     lastSignal: raw.lastSeenAt ?? '',
     badge: 0,
-    odometer: 0,
-    fuel: 0,
-    battery: 0,
+    // Legacy numeric mirrors — kept as-is for consumers that already
+    // tolerate 0 for "no data". Production cells read the nullable
+    // canonical fields below.
+    odometer: odometerKm ?? 0,
+    fuel:
+      chargePct != null
+        ? Math.max(0, Math.min(100, Math.round(chargePct)))
+        : 0,
+    fuelLevel: fuelPercent,
+    battery: evSocPercent ?? 0,
     speed: 0,
     coolant: 0,
     brakes: 0,
     tires: 0,
     engineOil: 0,
+    // V4.6.85 — canonical null-preserving fields.
+    odometerKm,
+    fuelPercent,
+    evSoc: evSocPercent,
     isElectric,
     hvBatteryCapacityKwh: null,
     lat: toFiniteNumber(raw.latitude),
@@ -153,6 +183,26 @@ function mapFleetVehicle(raw: FleetMapVehicleResponse): FleetMapVehicle {
     stationName: raw.stationName ?? null,
     heading: toFiniteNumber(raw.heading) ?? null,
     lastSeenAt: raw.lastSeenAt ?? null,
+    // V4.6.84/85 — canonical fleet-status context (reserved / active
+    // rented / maintenance).
+    reservedBookingId: raw.reservedBookingId ?? null,
+    reservedCustomerName: raw.reservedCustomerName ?? null,
+    reservedPickupAt: raw.reservedPickupAt ?? null,
+    reservedPickupStationName: raw.reservedPickupStationName ?? null,
+    reservedIsOverdue: Boolean(raw.reservedIsOverdue),
+    activeBookingId: raw.activeBookingId ?? null,
+    activeCustomerName: raw.activeCustomerName ?? null,
+    activeReturnAt: raw.activeReturnAt ?? null,
+    activeReturnStationName: raw.activeReturnStationName ?? null,
+    activeKmIncluded: toFiniteNumber(raw.activeKmIncluded) ?? null,
+    activeKmDriven: toFiniteNumber(raw.activeKmDriven) ?? null,
+    activeIsOverdue: Boolean(raw.activeIsOverdue),
+    maintenanceReason: raw.maintenanceReason ?? null,
+    maintenanceReasonCode: reasonCode,
+    maintenanceUrgency:
+      raw.maintenanceUrgency === 'planned' || raw.maintenanceUrgency === 'urgent'
+        ? raw.maintenanceUrgency
+        : null,
   };
 }
 

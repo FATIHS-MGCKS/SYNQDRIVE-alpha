@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Customer, Prisma, TripAssignmentSubjectType, TripStatus } from '@prisma/client';
+import { Customer, Prisma, TripAssignmentSubjectType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   parsePagination,
@@ -7,10 +7,14 @@ import {
   PaginationParams,
   PaginatedResult,
 } from '@shared/utils/pagination';
+import { DriverScoreService } from '../vehicle-intelligence/trips/driver-score.service';
 
 @Injectable()
 export class CustomersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly driverScoreService: DriverScoreService,
+  ) {}
 
   async create(orgId: string, data: Omit<Prisma.CustomerCreateInput, 'organization'>): Promise<Customer> {
     return this.prisma.customer.create({
@@ -33,16 +37,34 @@ export class CustomersService {
     ]);
 
     const customerIds = data.map((c) => c.id);
-    const scoreMap = await this.buildCustomerScoreMap(orgId, customerIds);
+    const [scoreMap, bookingAggMap] = await Promise.all([
+      this.buildCustomerScoreMap(orgId, customerIds),
+      this.buildBookingAggregateMap(orgId, customerIds),
+    ]);
 
-    const mapped = data.map((c) => ({
-      ...c,
-      bookingCount: c._count.bookings,
-      drivingStyleScore: scoreMap.get(c.id)?.drivingStyleScore ?? null,
-      safetyScore: scoreMap.get(c.id)?.safetyScore ?? null,
-      scoreEligibleTripCount: scoreMap.get(c.id)?.tripCount ?? 0,
-      _count: undefined,
-    }));
+    const mapped = data.map((c) => {
+      const score = scoreMap.get(c.id);
+      return {
+        ...c,
+        bookingCount: c._count.bookings,
+        drivingStyleScore: score?.drivingStyleScore ?? null,
+        safetyScore: score?.safetyScore ?? null,
+        scoreEligibleTripCount: score?.tripCount ?? 0,
+        // V4.6.95 — confidence metadata derived by the unified
+        // `DriverScoreService` aggregator. Frontend renders "—" /
+        // "Not enough data" when these are low / not enough trips.
+        scoredTripCount: score?.scoredTripCount ?? 0,
+        safetyScoredTripCount: score?.safetyScoredTripCount ?? 0,
+        totalDistanceKm: score?.totalDistanceKm ?? 0,
+        hasEnoughData: score?.hasEnoughData ?? false,
+        dataConfidence: score?.dataConfidence ?? 'none',
+        // V4.6.66 — derived booking aggregates (null when the customer has no
+        // completed or active bookings yet; UI renders an em-dash placeholder).
+        totalRevenueCents: bookingAggMap.get(c.id)?.totalRevenueCents ?? 0,
+        lastBookingDate: bookingAggMap.get(c.id)?.lastBookingDate ?? null,
+        _count: undefined,
+      };
+    });
 
     return buildPaginatedResult(mapped, total, params || {});
   }
@@ -59,13 +81,25 @@ export class CustomersService {
     });
     if (!customer) return null;
 
-    const scoreMap = await this.buildCustomerScoreMap(orgId, [id]);
+    const [scoreMap, bookingAggMap] = await Promise.all([
+      this.buildCustomerScoreMap(orgId, [id]),
+      this.buildBookingAggregateMap(orgId, [id]),
+    ]);
     const score = scoreMap.get(id);
+    const agg = bookingAggMap.get(id);
     return {
       ...customer,
       drivingStyleScore: score?.drivingStyleScore ?? null,
       safetyScore: score?.safetyScore ?? null,
       scoreEligibleTripCount: score?.tripCount ?? 0,
+      // V4.6.95 — same confidence metadata that the list endpoint returns.
+      scoredTripCount: score?.scoredTripCount ?? 0,
+      safetyScoredTripCount: score?.safetyScoredTripCount ?? 0,
+      totalDistanceKm: score?.totalDistanceKm ?? 0,
+      hasEnoughData: score?.hasEnoughData ?? false,
+      dataConfidence: score?.dataConfidence ?? 'none',
+      totalRevenueCents: agg?.totalRevenueCents ?? 0,
+      lastBookingDate: agg?.lastBookingDate ?? null,
     };
   }
 
@@ -99,61 +133,130 @@ export class CustomersService {
     return { total, active, inactive };
   }
 
+  /**
+   * V4.6.66 — aggregate bookings per customer to surface real revenue +
+   * last-booking date on the customer list and detail endpoints. We skip
+   * CANCELLED / NO_SHOW bookings so the revenue reflects actually billed
+   * rentals. Uses `totalPriceCents` when present, otherwise falls back to
+   * `dailyRateCents * durationDays` so the row still shows a plausible value
+   * for legacy rentals that skipped the total computation.
+   */
+  private async buildBookingAggregateMap(
+    orgId: string,
+    customerIds: string[],
+  ): Promise<Map<string, { totalRevenueCents: number; lastBookingDate: Date | null }>> {
+    const map = new Map<string, { totalRevenueCents: number; lastBookingDate: Date | null }>();
+    if (customerIds.length === 0) return map;
+
+    const rows = await this.prisma.booking.findMany({
+      where: {
+        organizationId: orgId,
+        customerId: { in: customerIds },
+        status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+      },
+      select: {
+        customerId: true,
+        startDate: true,
+        endDate: true,
+        totalPriceCents: true,
+        dailyRateCents: true,
+      },
+    });
+
+    for (const row of rows) {
+      const entry = map.get(row.customerId) ?? {
+        totalRevenueCents: 0,
+        lastBookingDate: null as Date | null,
+      };
+      let price = row.totalPriceCents ?? 0;
+      if (!price && row.dailyRateCents && row.startDate && row.endDate) {
+        const ms = row.endDate.getTime() - row.startDate.getTime();
+        const days = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+        price = row.dailyRateCents * days;
+      }
+      entry.totalRevenueCents += price;
+      if (
+        row.startDate &&
+        (!entry.lastBookingDate || row.startDate > entry.lastBookingDate)
+      ) {
+        entry.lastBookingDate = row.startDate;
+      }
+      map.set(row.customerId, entry);
+    }
+    return map;
+  }
+
+  /**
+   * V4.6.83 — subject-level score aggregation is consolidated onto the central
+   * `DriverScoreService.getScoresForSubjects` path.
+   *
+   * Preserves the original filter rules:
+   *   - completed trips only
+   *   - `assignmentSubjectType = BOOKING_CUSTOMER` and `assignmentSubjectId IN (customerIds)`
+   *   - `isPrivateTrip = false`
+   *   - averages only over trips that have a persisted `TripDrivingImpact` row
+   *     (matches prior behavior, where missing impact → null field in the mean)
+   *
+   * No second parallel score formula lives in this service anymore.
+   */
   private async buildCustomerScoreMap(
     orgId: string,
     customerIds: string[],
-  ): Promise<Map<string, { tripCount: number; drivingStyleScore: number | null; safetyScore: number | null }>> {
-    const map = new Map<string, { tripCount: number; drivingStyleScore: number | null; safetyScore: number | null }>();
+  ): Promise<
+    Map<
+      string,
+      {
+        tripCount: number;
+        scoredTripCount: number;
+        safetyScoredTripCount: number;
+        totalDistanceKm: number;
+        drivingStyleScore: number | null;
+        safetyScore: number | null;
+        hasEnoughData: boolean;
+        dataConfidence: 'none' | 'low' | 'medium' | 'high';
+      }
+    >
+  > {
+    const map = new Map<
+      string,
+      {
+        tripCount: number;
+        scoredTripCount: number;
+        safetyScoredTripCount: number;
+        totalDistanceKm: number;
+        drivingStyleScore: number | null;
+        safetyScore: number | null;
+        hasEnoughData: boolean;
+        dataConfidence: 'none' | 'low' | 'medium' | 'high';
+      }
+    >();
     if (customerIds.length === 0) return map;
 
-    const assignedTrips = await this.prisma.vehicleTrip.findMany({
-      where: {
-        vehicle: { organizationId: orgId },
-        tripStatus: TripStatus.COMPLETED,
-        isPrivateTrip: false,
-        assignmentSubjectType: TripAssignmentSubjectType.BOOKING_CUSTOMER,
-        assignmentSubjectId: { in: customerIds },
-      },
-      select: { id: true, assignmentSubjectId: true },
-    });
-    if (assignedTrips.length === 0) return map;
+    const orgCustomerIds = await this.prisma.customer
+      .findMany({
+        where: { organizationId: orgId, id: { in: customerIds } },
+        select: { id: true },
+      })
+      .then((rows) => rows.map((r) => r.id));
 
-    const impacts = await this.prisma.tripDrivingImpact.findMany({
-      where: { tripId: { in: assignedTrips.map((trip) => trip.id) } },
-      select: { tripId: true, drivingStyleScore: true, safetyScore: true },
-    });
-    const impactByTripId = new Map(impacts.map((row) => [row.tripId, row]));
-    const grouped = new Map<string, Array<{ drivingStyleScore: number | null; safetyScore: number | null }>>();
+    if (orgCustomerIds.length === 0) return map;
 
-    for (const trip of assignedTrips) {
-      const customerId = trip.assignmentSubjectId ?? '';
-      if (!customerId) continue;
-      const rows = grouped.get(customerId) ?? [];
-      rows.push({
-        drivingStyleScore: impactByTripId.get(trip.id)?.drivingStyleScore ?? null,
-        safetyScore: impactByTripId.get(trip.id)?.safetyScore ?? null,
-      });
-      grouped.set(customerId, rows);
-    }
+    const scores = await this.driverScoreService.getScoresForSubjects(
+      TripAssignmentSubjectType.BOOKING_CUSTOMER,
+      orgCustomerIds,
+    );
 
     for (const customerId of customerIds) {
-      const rows = grouped.get(customerId) ?? [];
-      const styleValues = rows
-        .map((row) => row.drivingStyleScore)
-        .filter((value): value is number => value != null);
-      const safetyValues = rows
-        .map((row) => row.safetyScore)
-        .filter((value): value is number => value != null);
+      const summary = scores.get(customerId);
       map.set(customerId, {
-        tripCount: rows.length,
-        drivingStyleScore:
-          styleValues.length > 0
-            ? Math.round((styleValues.reduce((sum, value) => sum + value, 0) / styleValues.length) * 100) / 100
-            : null,
-        safetyScore:
-          safetyValues.length > 0
-            ? Math.round((safetyValues.reduce((sum, value) => sum + value, 0) / safetyValues.length) * 100) / 100
-            : null,
+        tripCount: summary?.tripCount ?? 0,
+        scoredTripCount: summary?.scoredTripCount ?? 0,
+        safetyScoredTripCount: summary?.safetyScoredTripCount ?? 0,
+        totalDistanceKm: summary?.totalDistanceKm ?? 0,
+        drivingStyleScore: summary?.drivingStyleScore ?? null,
+        safetyScore: summary?.safetyScore ?? null,
+        hasEnoughData: summary?.hasEnoughData ?? false,
+        dataConfidence: summary?.dataConfidence ?? 'none',
       });
     }
     return map;

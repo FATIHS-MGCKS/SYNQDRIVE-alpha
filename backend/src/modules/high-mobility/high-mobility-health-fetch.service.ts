@@ -5,6 +5,10 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { HighMobilityHealthAppAuthService } from './high-mobility-health-app-auth.service';
 import { HighMobilityAppConfigService } from './high-mobility-app-config.service';
 import { extractHmProviderVehicleReference, isUsableHmCommandVehicleReference } from './high-mobility-vehicle-reference.util';
+import {
+  normalizeHmTirePressures,
+  normalizeHmTirePressureStatuses,
+} from './high-mobility-mqtt-payload.util';
 import type {
   HmHealthDataDto,
   HmHealthSignalDto,
@@ -132,6 +136,26 @@ export class HighMobilityHealthFetchService {
             errorMessage =
               'HM Fleet Clearance vehicle — REST command API not supported. ' +
               'Health data is delivered via MQTT push when the vehicle sends telemetry (car must be in use).';
+            // Persist the push-only nature so the scheduler suppresses
+            // further REST polling for this vehicle. We mark streamingState
+            // as CONFIGURED (channel is live and we are the subscriber)
+            // instead of waiting for the first MQTT message, which may never
+            // arrive while the car is parked.
+            if (hmRecord.streamingState === 'NOT_CONFIGURED') {
+              try {
+                await this.prisma.highMobilityVehicle.update({
+                  where: { id: hmRecord.id },
+                  data: { streamingState: 'CONFIGURED' },
+                });
+                this.logger.log(
+                  `[HM Health] ${hmRecord.vin} — marked streamingState=CONFIGURED (fleet-clearance MQTT_ONLY). REST polling suppressed.`,
+                );
+              } catch (flipErr: any) {
+                this.logger.warn(
+                  `[HM Health] ${hmRecord.vin} — failed to flip streamingState: ${flipErr?.message}`,
+                );
+              }
+            }
             this.logger.log(
               `[HM Health] ${hmRecord.vin} — MQTT_ONLY: REST command returned 404 (fleet clearance vehicles use MQTT push). ` +
               `Data will arrive when Mercedes-Benz pushes telemetry.`,
@@ -215,13 +239,14 @@ export class HighMobilityHealthFetchService {
     const sig = signals.find(s => s.signalId === 'diagnostics.get.tire_pressures');
     if (!sig || sig.value == null) return null;
 
-    const v = sig.value as any;
+    const norm = normalizeHmTirePressures(sig.value);
+    if (!norm) return null;
     return {
-      frontLeft: v?.front_left?.value ?? v?.frontLeft ?? null,
-      frontRight: v?.front_right?.value ?? v?.frontRight ?? null,
-      rearLeft: v?.rear_left?.value ?? v?.rearLeft ?? null,
-      rearRight: v?.rear_right?.value ?? v?.rearRight ?? null,
-      unit: sig.unit ?? 'bar',
+      frontLeft: norm.frontLeft,
+      frontRight: norm.frontRight,
+      rearLeft: norm.rearLeft,
+      rearRight: norm.rearRight,
+      unit: norm.unit,
     };
   }
 
@@ -229,12 +254,13 @@ export class HighMobilityHealthFetchService {
     const sig = signals.find(s => s.signalId === 'diagnostics.get.tire_pressure_statuses');
     if (!sig || sig.value == null) return null;
 
-    const v = sig.value as any;
+    const norm = normalizeHmTirePressureStatuses(sig.value);
+    if (!norm) return null;
     return {
-      frontLeft: v?.front_left ?? v?.frontLeft ?? null,
-      frontRight: v?.front_right ?? v?.frontRight ?? null,
-      rearLeft: v?.rear_left ?? v?.rearLeft ?? null,
-      rearRight: v?.rear_right ?? v?.rearRight ?? null,
+      frontLeft: norm.frontLeft,
+      frontRight: norm.frontRight,
+      rearLeft: norm.rearLeft,
+      rearRight: norm.rearRight,
     };
   }
 

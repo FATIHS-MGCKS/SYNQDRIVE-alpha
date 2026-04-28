@@ -9,6 +9,7 @@ export interface AuthUser {
   membershipRole: string | null;
   organizationId: string | null;
   organizationName: string | null;
+  organizationLogoUrl?: string | null;
   permissions: Record<string, { read: boolean; write: boolean }> | null;
 }
 
@@ -29,6 +30,19 @@ export function getStoredUser(): AuthUser | null {
 export function setAuth(token: string, user: AuthUser): void {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+/**
+ * Patch the stored user record in-place (e.g. after the user updates their
+ * own organization profile / logo). Returns the merged user, or null when no
+ * user is currently stored.
+ */
+export function patchStoredUser(patch: Partial<AuthUser>): AuthUser | null {
+  const current = getStoredUser();
+  if (!current) return null;
+  const next: AuthUser = { ...current, ...patch };
+  localStorage.setItem(USER_KEY, JSON.stringify(next));
+  return next;
 }
 
 export function clearAuth(): void {

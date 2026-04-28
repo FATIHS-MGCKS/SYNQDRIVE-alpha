@@ -388,7 +388,7 @@ export class BatteryV2Service {
     const badge: string =
       soh === null || confidence === 'insufficient_data'
         ? 'unknown'
-        : soh >= 70
+        : soh >= 75
           ? 'healthy'
           : soh >= 50
             ? 'attention'
