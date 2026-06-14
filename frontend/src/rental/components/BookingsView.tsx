@@ -1,7 +1,7 @@
 
 import { Baby, CheckCircle, Clock, CreditCard, Globe, MapPin, Snowflake, UserCheck, Wifi, Zap } from 'lucide-react';
 import { Icon } from './ui/Icon';
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
@@ -19,6 +19,18 @@ import { EntityTasksSection } from './EntityTasksSection';
 // creation and the actual pickup day.
 import { useVehicleHealth } from '../hooks/useVehicleHealth';
 import { RentalHealthBadge } from './rental-health/RentalHealthBadge';
+import {
+  PageHeader,
+  MetricCard,
+  DataTable,
+  DetailDrawer,
+  EmptyState,
+  SkeletonMetricGrid,
+  StatusChip,
+  SectionHeader,
+  DataCard,
+} from '../../components/patterns';
+import type { StatusTone } from '../../components/patterns';
 
 // V4.6.68 — Canonical "Make Model Year" label, identical to NewBookingView.
 // Guarantees consistent vehicle naming between creation and management flows.
@@ -32,8 +44,29 @@ const buildMMY = (v: { make?: string | null; model?: string | null; year?: numbe
   return year ? `${head} ${year}`.trim() : head || rawModel || 'Fahrzeug';
 };
 
+const bookingStatusTone = (status: string): StatusTone => {
+  if (status === 'active') return 'info';
+  if (status === 'pending') return 'warning';
+  if (status === 'confirmed' || status === 'completed') return 'success';
+  return 'neutral';
+};
+
+const bookingStatusLabel = (status: string): string => {
+  if (status === 'active') return 'Active';
+  if (status === 'pending') return 'Pending';
+  if (status === 'confirmed') return 'Confirmed';
+  if (status === 'completed') return 'Completed';
+  return status;
+};
+
+const metricToneToStatus = (tone: 'brand' | 'success' | 'warning' | 'neutral'): StatusTone => {
+  if (tone === 'brand') return 'info';
+  if (tone === 'success') return 'success';
+  if (tone === 'warning') return 'warning';
+  return 'neutral';
+};
+
 interface BookingsViewProps {
-  isDarkMode: boolean;
   onActiveBookingRefChange?: (ref: string | null) => void;
   onNavigateToVehicle?: (vehicleName: string) => void;
   onCreateNewBooking?: () => void;
@@ -51,8 +84,18 @@ interface BookingsViewProps {
   onConsumeInitialDetailBookingId?: () => void;
 }
 
-export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateToVehicle, onCreateNewBooking, additionalBookings = [], onBookingUpdated, onBookingCancelled, initialDetailBookingId, onConsumeInitialDetailBookingId }: BookingsViewProps) {
+export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, onCreateNewBooking, additionalBookings = [], onBookingUpdated, onBookingCancelled, initialDetailBookingId, onConsumeInitialDetailBookingId }: BookingsViewProps) {
   const { orgId } = useRentalOrg();
+  const systemDark = useSyncExternalStore(
+    (onStoreChange) => {
+      const el = document.documentElement;
+      const obs = new MutationObserver(onStoreChange);
+      obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+      return () => obs.disconnect();
+    },
+    () => document.documentElement.classList.contains('dark'),
+    () => false,
+  );
   const { fleetVehicles } = useFleetVehicles();
   // V4.6.75 — open the Übergabeprotokoll dialog (pickup/return) via the
   // global HandoverProvider mounted in App.tsx.
@@ -119,13 +162,9 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
 
   const [activeTab, setActiveTab] = useState<'active' | 'upcoming' | 'completed' | null>('active');
   const [selectedDate, setSelectedDate] = useState<number | null>(null);
-  const [hoveredBookingId, setHoveredBookingId] = useState<string | null>(null);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
   const [popupBookingId, setPopupBookingId] = useState<string | null>(null);
-  const [popupAnimating, setPopupAnimating] = useState(false);
-  const [popupClosing, setPopupClosing] = useState(false);
-  const [popupFullView, setPopupFullView] = useState(false);
   const [detailBookingId, setDetailBookingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -501,18 +540,18 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
         <div
           onClick={() => isEditMode && setActiveDropdown(isOpen ? null : fieldKey)}
           className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ${
-            isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'
+            'bg-muted/50'
           } ${isEditMode ? 'cursor-pointer ring-1 ring-transparent hover:ring-blue-500/40 group' : ''}`}
         >
-          <Icon className={`w-5 h-5 ${iconColor || (isDarkMode ? 'text-gray-500' : 'text-gray-400')}`} />
+          <Icon className={`w-5 h-5 ${iconColor || ('text-muted-foreground')}`} />
           <div className="flex-1 min-w-0">
-            <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{label}</div>
-            <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+            <div className={`text-xs text-muted-foreground`}>{label}</div>
+            <div className={`text-xs font-semibold text-foreground`}>
               {isEditMode ? (inlineEdit[fieldKey] || value) : value}
             </div>
           </div>
           {isEditMode && (
-            <div className={`flex items-center gap-1 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`}>
+            <div className={`flex items-center gap-1 text-[color:var(--brand)]`}>
               <Icon name="pencil" className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
               <Icon name="chevron-down" className={`w-5 h-5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </div>
@@ -520,7 +559,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
         </div>
         {isOpen && (
           <div className={`absolute z-50 mt-1 w-full rounded-lg border shadow-xl overflow-hidden ${
-            isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
+            'bg-card border-border'
           }`}>
             <div className="max-h-48 overflow-y-auto py-1">
               {options.map(opt => (
@@ -529,8 +568,8 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                   onClick={() => { setInlineEdit(prev => ({ ...prev, [fieldKey]: opt })); setActiveDropdown(null); }}
                   className={`w-full text-left px-3 py-2.5 text-xs transition-colors ${
                     (inlineEdit[fieldKey] || value) === opt
-                      ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
-                      : isDarkMode ? 'text-gray-300 hover:bg-neutral-700' : 'text-gray-700 hover:bg-gray-50'
+                      ? 'sq-tone-brand'
+                      : 'text-foreground hover:bg-muted'
                   }`}
                 >
                   {renderOption ? renderOption(opt) : opt}
@@ -553,50 +592,33 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
     iconColor?: string;
   }) => (
     <div className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ${
-      isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'
+      'bg-muted/50'
     } ${isEditMode ? 'ring-1 ring-transparent hover:ring-blue-500/40 group' : ''}`}>
-      <Icon className={`w-5 h-5 ${iconColor || (isDarkMode ? 'text-gray-500' : 'text-gray-400')}`} />
+      <Icon className={`w-5 h-5 ${iconColor || ('text-muted-foreground')}`} />
       <div className="flex-1 min-w-0">
-        <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{label}</div>
+        <div className={`text-xs text-muted-foreground`}>{label}</div>
         {isEditMode ? (
           <input
             type={type}
             value={inlineEdit[fieldKey] ?? value}
             onChange={(e) => setInlineEdit(prev => ({ ...prev, [fieldKey]: e.target.value }))}
             className={`w-full text-xs font-semibold bg-transparent outline-none border-b transition-colors ${
-              isDarkMode ? 'text-white border-neutral-600 focus:border-blue-500' : 'text-gray-900 border-gray-300 focus:border-blue-500'
+              'text-foreground border-border focus:border-[color:var(--brand)]'
             }`}
           />
         ) : (
-          <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{value}</div>
+          <div className={`text-xs font-semibold text-foreground`}>{value}</div>
         )}
       </div>
       {isEditMode && !isEditMode ? null : isEditMode && (
-        <Icon name="pencil" className={`w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+        <Icon name="pencil" className={`w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-[color:var(--brand)]`} />
       )}
     </div>
   );
 
-  useEffect(() => {
-    if (popupBookingId) {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => setPopupAnimating(true));
-      });
-    } else {
-      setPopupAnimating(false);
-      setPopupClosing(false);
-    }
-  }, [popupBookingId]);
-
   const handleClosePopup = () => {
-    setPopupClosing(true);
-    setPopupAnimating(false);
-    setTimeout(() => {
-      setPopupBookingId(null);
-      setSelectedBookingId(null);
-      setPopupClosing(false);
-      setPopupFullView(false);
-    }, 300);
+    setPopupBookingId(null);
+    setSelectedBookingId(null);
   };
 
   // Open edit modal for a booking
@@ -944,15 +966,14 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
 
   // Check if a day is part of the hovered booking
   const isDayInHoveredBooking = (day: number): boolean => {
-    if (!hoveredBookingId) return false;
-    const hovered = allBookingsWithDays.find(b => b.id === hoveredBookingId);
+    if (!selectedBookingId) return false;
+    const hovered = allBookingsWithDays.find(b => b.id === selectedBookingId);
     return hovered ? hovered.days.includes(day) : false;
   };
 
-  // Get the hovered booking's status color
   const getHoveredBookingColor = (): 'blue' | 'purple' | 'green' => {
-    if (!hoveredBookingId) return 'blue';
-    const hovered = allBookingsWithDays.find(b => b.id === hoveredBookingId);
+    if (!selectedBookingId) return 'blue';
+    const hovered = allBookingsWithDays.find(b => b.id === selectedBookingId);
     if (!hovered) return 'blue';
     if (hovered.status === 'active') return 'blue';
     if (hovered.status === 'confirmed' || hovered.status === 'pending') return 'purple';
@@ -1091,6 +1112,74 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
     { label: 'Upcoming', value: dayFilteredCounts.upcoming, icon: 'clock', tone: 'warning', tab: 'upcoming' },
     { label: 'Completed', value: dayFilteredCounts.completed, icon: 'check-circle', tone: 'success', tab: 'completed' },
   ];
+
+  const bookingTableColumns = useMemo(
+    () => [
+      {
+        key: 'customer',
+        header: 'Customer',
+        cell: (booking: BookingUiRow) => (
+          <div>
+            <div className="font-semibold text-foreground">{booking.customer}</div>
+            <div className="text-[10px] font-mono text-muted-foreground">Ref: {booking.bookingRef}</div>
+          </div>
+        ),
+      },
+      {
+        key: 'vehicle',
+        header: 'Vehicle',
+        cell: (booking: BookingUiRow) => (
+          <div className="text-xs">
+            <div className="font-medium text-foreground">{booking.vehicle}</div>
+            <div className="text-muted-foreground">{booking.plate}</div>
+          </div>
+        ),
+      },
+      {
+        key: 'period',
+        header: 'Period',
+        cell: (booking: BookingUiRow) => (
+          <div className="text-xs text-muted-foreground whitespace-nowrap">
+            {booking.startDate} – {booking.endDate}
+          </div>
+        ),
+      },
+      {
+        key: 'status',
+        header: 'Status',
+        cell: (booking: BookingUiRow) => (
+          <StatusChip tone={bookingStatusTone(booking.status)} dot={booking.status === 'active'}>
+            {bookingStatusLabel(booking.status)}
+          </StatusChip>
+        ),
+      },
+      {
+        key: 'revenue',
+        header: 'Revenue',
+        align: 'right' as const,
+        numeric: true,
+        cell: (booking: BookingUiRow) => (
+          <span className="font-semibold text-[color:var(--status-success)]">{booking.revenue}</span>
+        ),
+      },
+    ],
+    [],
+  );
+
+  const popupBooking = useMemo(() => {
+    if (!popupBookingId) return null;
+    const allBookings = [...activeBookings, ...upcomingBookings, ...completedBookings];
+    return allBookings.find((b) => b.id === popupBookingId) ?? null;
+  }, [popupBookingId, activeBookings, upcomingBookings, completedBookings]);
+
+  const listSectionTitle =
+    activeTab === null
+      ? 'All bookings'
+      : activeTab === 'active'
+        ? 'Active bookings'
+        : activeTab === 'upcoming'
+          ? 'Upcoming bookings'
+          : 'Completed bookings';
   
   // Generate calendar days
   const calendarDays = [];
@@ -1122,7 +1211,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
       if (!apiLoaded) {
         return (
           <div className="max-w-[1800px] mx-auto px-4 py-10">
-            <div className={`flex items-center gap-3 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            <div className={`flex items-center gap-3 text-sm text-muted-foreground`}>
               <Icon name="loader-2" className="w-4 h-4 animate-spin" />
               <span>Lade Buchung…</span>
             </div>
@@ -1143,29 +1232,27 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
           <button
             onClick={() => { setDetailBookingId(null); cancelEditMode(); }}
             className={`p-3 rounded-lg transition-all duration-200 ${
-              isDarkMode
-                ? 'hover:bg-neutral-800 text-gray-400 hover:text-white'
-                : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'
+              'hover:bg-muted text-muted-foreground hover:text-foreground'
             }`}
           >
             <Icon name="arrow-left" className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-3">
             <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
-              isDarkMode ? 'bg-neutral-800' : 'bg-gray-100/80'
+              'bg-muted'
             }`}>
-              <Icon name="hash" className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-              <span className={`text-xs font-mono font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <Icon name="hash" className={`w-5 h-5 text-muted-foreground`} />
+              <span className={`text-xs font-mono font-semibold text-foreground`}>
                 {detailBooking.bookingRef}
               </span>
             </div>
-            <h1 className={`text-lg font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <h1 className={`text-lg font-bold tracking-tight text-foreground`}>
               Booking Details
             </h1>
             <span className={`text-xs px-3 py-1.5 rounded-full font-semibold flex items-center gap-1.5 ${
-              detailStatusColor === 'blue' ? (isDarkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700') :
-              detailStatusColor === 'purple' ? (detailBooking.status === 'pending' ? (isDarkMode ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-700') : (isDarkMode ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700')) :
-              (isDarkMode ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700')
+              detailStatusColor === 'blue' ? ('sq-tone-brand') :
+              detailStatusColor === 'purple' ? (detailBooking.status === 'pending' ? ('sq-tone-warning') : ('sq-tone-success')) :
+              ('sq-tone-success')
             }`}>
               {detailBooking.status === 'active' && <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>}
               {detailBooking.status === 'completed' && <Icon name="check-circle" className="w-5 h-5" />}
@@ -1181,11 +1268,11 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
           {isEditMode ? (
             <div className="col-span-12">
               <div className={`flex items-center justify-between px-3 py-3 rounded-lg border ${
-                isDarkMode ? 'bg-blue-900/15 border-blue-700/30' : 'bg-blue-50/60 border-blue-200/60'
+                'sq-tone-brand border border-current/20'
               }`}>
                 <div className="flex items-center gap-3">
-                  <Icon name="pencil" className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
-                  <span className={`text-xs font-semibold ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>
+                  <Icon name="pencil" className={`w-5 h-5 text-[color:var(--brand)]`} />
+                  <span className={`text-xs font-semibold ${'text-[color:var(--brand)]'}`}>
                     Bearbeitungsmodus aktiv — Klicke auf ein Feld zum Ändern
                   </span>
                 </div>
@@ -1193,9 +1280,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                   <button
                     onClick={cancelEditMode}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all duration-200 ${
-                      isDarkMode
-                        ? 'bg-neutral-800 text-gray-300 hover:bg-neutral-700 border border-neutral-700'
-                        : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                      'bg-card text-foreground hover:bg-muted border border-border'
                     }`}
                   >
                     <Icon name="x" className="w-3.5 h-3.5" />
@@ -1238,14 +1323,14 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                     : `${mins} Min.`;
                 const isCritical = deltaMin >= 24 * 60;
                 const bannerBg = isCritical
-                  ? isDarkMode ? 'bg-rose-900/20 border-rose-700/50' : 'bg-rose-50 border-rose-200'
-                  : isDarkMode ? 'bg-amber-900/20 border-amber-700/50' : 'bg-amber-50 border-amber-200';
+                  ? 'sq-tone-critical border border-current/30'
+                  : 'sq-tone-warning border border-current/30';
                 const iconColor = isCritical
-                  ? isDarkMode ? 'text-rose-300' : 'text-rose-600'
-                  : isDarkMode ? 'text-amber-300' : 'text-amber-600';
+                  ? 'text-[color:var(--status-critical)]'
+                  : 'text-[color:var(--status-attention)]';
                 const textColor = isCritical
-                  ? isDarkMode ? 'text-rose-200' : 'text-rose-700'
-                  : isDarkMode ? 'text-amber-200' : 'text-amber-700';
+                  ? 'text-[color:var(--status-critical)]'
+                  : 'text-[color:var(--status-attention)]';
                 return (
                   <div className={`flex items-start gap-3 px-3 py-3 rounded-lg border ${bannerBg}`}>
                     <Icon name="alert-triangle" className={`w-5 h-5 mt-0.5 shrink-0 ${iconColor}`} />
@@ -1261,9 +1346,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                     <button
                       onClick={(e) => confirmNoShow(detailBooking.id, e)}
                       className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                        isDarkMode
-                          ? 'bg-rose-600/20 text-rose-300 hover:bg-rose-600/40 border border-rose-500/30'
-                          : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                        'sq-tone-critical border border-current/30'
                       }`}
                     >
                       <Icon name="user-x" className="w-3.5 h-3.5" />
@@ -1279,33 +1362,32 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                   in BookingsService.create / handover flows in agreement. */}
               {detailHealth?.rental_blocked ? (
                 <div className={`flex items-start gap-3 px-3 py-3 rounded-lg border ${
-                  isDarkMode ? 'bg-rose-900/15 border-rose-700/40' : 'bg-rose-50/70 border-rose-200/70'
+                  'sq-tone-critical border border-current/20'
                 }`}>
-                  <Icon name="alert-triangle" className={`w-5 h-5 mt-0.5 shrink-0 ${isDarkMode ? 'text-rose-300' : 'text-rose-600'}`} />
+                  <Icon name="alert-triangle" className={`w-5 h-5 mt-0.5 shrink-0 text-[color:var(--status-critical)]`} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-xs font-semibold ${isDarkMode ? 'text-rose-200' : 'text-rose-700'}`}>
+                      <span className={`text-xs font-semibold ${'text-[color:var(--status-critical)]'}`}>
                         Fahrzeug ist aktuell nicht vermietbar
                       </span>
                       <RentalHealthBadge
                         health={detailHealth}
-                        isDarkMode={isDarkMode}
                         size="sm"
                         showBlockingLabel
                       />
                     </div>
-                    <div className={`mt-1 text-xs ${isDarkMode ? 'text-rose-300/90' : 'text-rose-700/90'}`}>
+                    <div className={`mt-1 text-xs ${'text-[color:var(--status-critical)]/90'}`}>
                       {detailHealth.blocking_reasons.join(' · ')}
                     </div>
                   </div>
                 </div>
               ) : null}
               <div className={`flex items-center justify-between px-3 py-3 rounded-lg border ${
-                isDarkMode ? 'bg-purple-900/15 border-purple-700/30' : 'bg-purple-50/60 border-purple-200/60'
+                'sq-tone-warning border border-current/20'
               }`}>
                 <div className="flex items-center gap-3">
-                  <Icon name="info" className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
-                  <span className={`text-xs ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>
+                  <Icon name="info" className={`w-5 h-5 text-[color:var(--status-attention)]`} />
+                  <span className={`text-xs ${'text-[color:var(--status-attention)]'}`}>
                     Diese Buchung ist noch bevorstehend und kann bearbeitet oder storniert werden.
                   </span>
                 </div>
@@ -1344,12 +1426,8 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                     }}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 shadow-sm ${
                       detailHealth?.rental_blocked
-                        ? isDarkMode
-                          ? 'bg-neutral-800 text-gray-500 cursor-not-allowed border border-neutral-700'
-                          : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-                        : isDarkMode
-                          ? 'bg-blue-600 text-white hover:bg-blue-700'
-                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                        ? 'bg-muted text-muted-foreground cursor-not-allowed border border-border'
+                        : 'bg-[color:var(--brand)] text-[color:var(--brand-foreground)] hover:opacity-90'
                     }`}
                   >
                     <Icon name="file-signature" className="w-3.5 h-3.5" />
@@ -1358,9 +1436,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                   <button
                     onClick={() => enterEditMode(detailBooking)}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all duration-200 ${
-                      isDarkMode
-                        ? 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/40 border border-blue-500/30'
-                        : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200'
+                      'sq-tone-brand border border-current/30'
                     }`}
                   >
                     <Icon name="pencil" className="w-3.5 h-3.5" />
@@ -1369,9 +1445,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                   <button
                     onClick={(e) => confirmCancel(detailBooking.id, e)}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all duration-200 ${
-                      isDarkMode
-                        ? 'bg-red-600/20 text-red-400 hover:bg-red-600/40 border border-red-500/30'
-                        : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                      'sq-tone-critical border border-current/30'
                     }`}
                   >
                     <Icon name="trash-2" className="w-3.5 h-3.5" />
@@ -1383,11 +1457,11 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
           ) : detailBooking.status === 'active' ? (
             <div className="col-span-12">
               <div className={`flex items-center justify-between px-3 py-3 rounded-lg border ${
-                isDarkMode ? 'bg-blue-900/15 border-blue-700/30' : 'bg-blue-50/60 border-blue-200/60'
+                'sq-tone-brand border border-current/20'
               }`}>
                 <div className="flex items-center gap-3">
-                  <Icon name="info" className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
-                  <span className={`text-xs ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>
+                  <Icon name="info" className={`w-5 h-5 text-[color:var(--brand)]`} />
+                  <span className={`text-xs ${'text-[color:var(--brand)]'}`}>
                     Fahrzeug ist vermietet. Rückgabe per Übergabeprotokoll abschließen.
                   </span>
                 </div>
@@ -1420,14 +1494,12 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
           ) : (
             <div className="col-span-12">
               <div className={`flex items-center justify-end px-3 py-2 rounded-lg border ${
-                isDarkMode ? 'bg-neutral-900/30 border-neutral-700/30' : 'bg-white/30 border-gray-200/30'
+                'bg-card/30 border-border/30'
               }`}>
                 <button
                   onClick={() => enterEditMode(detailBooking)}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all duration-200 ${
-                    isDarkMode
-                      ? 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/40 border border-blue-500/30'
-                      : 'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200'
+                    'sq-tone-brand border border-current/30'
                   }`}
                 >
                   <Icon name="pencil" className="w-3.5 h-3.5" />
@@ -1441,18 +1513,18 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
           <div className="col-span-1 lg:col-span-8 space-y-5">
             {/* Vehicle Card */}
             <div className={`rounded-lg p-8 border shadow-sm ${
-              isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+              'bg-card border-border'
             }`}>
               <div className="flex items-center gap-3 mb-3">
                 <div className={`w-16 h-16 rounded-lg flex items-center justify-center ${
-                  detailStatusColor === 'blue' ? (isDarkMode ? 'bg-blue-900/50' : 'bg-blue-100') :
-                  detailStatusColor === 'purple' ? (isDarkMode ? 'bg-purple-900/50' : 'bg-purple-100') :
-                  (isDarkMode ? 'bg-green-900/50' : 'bg-green-100')
+                  detailStatusColor === 'blue' ? ('sq-tone-brand') :
+                  detailStatusColor === 'purple' ? ('sq-tone-warning') :
+                  ('sq-tone-success')
                 }`}>
                   <Icon name="car" className={`w-5 h-5 ${
-                    detailStatusColor === 'blue' ? (isDarkMode ? 'text-blue-400' : 'text-blue-600') :
-                    detailStatusColor === 'purple' ? (isDarkMode ? 'text-purple-400' : 'text-purple-600') :
-                    (isDarkMode ? 'text-green-400' : 'text-green-600')
+                    detailStatusColor === 'blue' ? ('text-[color:var(--brand)]') :
+                    detailStatusColor === 'purple' ? ('text-[color:var(--status-attention)]') :
+                    ('text-[color:var(--status-success)]')
                   }`} />
                 </div>
                 <div className="flex-1 relative">
@@ -1462,22 +1534,22 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                         onClick={() => setActiveDropdown(activeDropdown === 'vehicle' ? null : 'vehicle')}
                         className={`flex items-center gap-2 group cursor-pointer`}
                       >
-                        <h2 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <h2 className={`text-base font-bold text-foreground`}>
                           {inlineEdit.vehicle || detailBooking.vehicle}
                         </h2>
-                        <Icon name="pencil" className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
-                        <Icon name="chevron-down" className={`w-5 h-5 transition-transform ${isDarkMode ? 'text-blue-400' : 'text-blue-500'} ${activeDropdown === 'vehicle' ? 'rotate-180' : ''}`} />
+                        <Icon name="pencil" className={`w-5 h-5 text-[color:var(--brand)]`} />
+                        <Icon name="chevron-down" className={`w-5 h-5 transition-transform text-[color:var(--brand)] ${activeDropdown === 'vehicle' ? 'rotate-180' : ''}`} />
                       </button>
-                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <div className={`text-xs text-muted-foreground`}>
                         {inlineEdit.plate || detailBooking.plate}
                       </div>
                       {activeDropdown === 'vehicle' && (
                         <div className={`absolute z-50 mt-2 w-72 rounded-lg border shadow-xl overflow-hidden ${
-                          isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
+                          'bg-card border-border'
                         }`}>
                           <div className="max-h-64 overflow-y-auto py-1">
                             {vehicleOptions.length === 0 && (
-                              <div className={`px-3 py-4 text-center text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                              <div className={`px-3 py-4 text-center text-xs text-muted-foreground`}>
                                 Keine Fahrzeuge verfügbar
                               </div>
                             )}
@@ -1492,19 +1564,19 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                                   }}
                                   className={`w-full text-left px-3 py-2 flex items-center gap-3 transition-colors ${
                                     (inlineEdit.vehicle || detailBooking.vehicle) === v.name
-                                      ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
-                                      : isDarkMode ? 'text-gray-300 hover:bg-neutral-700' : 'text-gray-700 hover:bg-gray-50'
+                                      ? 'sq-tone-brand'
+                                      : 'text-foreground hover:bg-muted'
                                   }`}
                                 >
                                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 p-1 ${
-                                    isDarkMode ? 'bg-neutral-900' : 'bg-gray-50'
+                                    'bg-muted'
                                   }`}>
-                                    <BrandLogo brand={brandKey} size={20} isDarkMode={isDarkMode} />
+                                    <BrandLogo brand={brandKey} size={20} />
                                   </div>
                                   <div className="min-w-0">
                                     <div className="text-xs font-semibold truncate">{v.name}</div>
                                     {v.plate && (
-                                      <div className={`text-xs font-mono ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{v.plate}</div>
+                                      <div className={`text-xs font-mono text-muted-foreground`}>{v.plate}</div>
                                     )}
                                   </div>
                                   {(inlineEdit.vehicle || detailBooking.vehicle) === v.name && <Icon name="check-circle" className="w-5 h-5 ml-auto shrink-0" />}
@@ -1517,10 +1589,10 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                     </div>
                   ) : (
                     <>
-                      <h2 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      <h2 className={`text-base font-bold text-foreground`}>
                         {detailBooking.vehicle}
                       </h2>
-                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <div className={`text-xs text-muted-foreground`}>
                         {detailBooking.plate}
                       </div>
                     </>
@@ -1529,9 +1601,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                     <button
                       onClick={() => onNavigateToVehicle?.(detailBooking.vehicle)}
                       className={`mt-2 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
-                        isDarkMode
-                          ? 'bg-blue-900/40 text-blue-400 border border-blue-700/50 hover:bg-blue-900/60 hover:border-blue-600/60'
-                          : 'bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 hover:border-blue-300'
+                        'bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 hover:border-blue-300'
                       }`}
                     >
                       <Icon name="radio" className="w-3.5 h-3.5" />
@@ -1546,19 +1616,19 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                     const taxVal = Math.round((bruttoVal - nettoVal) * 100) / 100;
                     return (
                       <>
-                        <div className={`text-xs font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
+                        <div className={`text-xs font-bold text-[color:var(--status-success)]`}>
                           €{bruttoVal.toFixed(2)}
                         </div>
-                        <div className={`text-[11px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Brutto</div>
+                        <div className={`text-[11px] text-muted-foreground`}>Brutto</div>
                         <div className={`mt-1.5 flex items-center justify-end gap-3`}>
                           <div className="text-right">
-                            <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>€{nettoVal.toFixed(2)}</div>
-                            <div className={`text-xs ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>Netto</div>
+                            <div className={`text-xs font-semibold text-foreground`}>€{nettoVal.toFixed(2)}</div>
+                            <div className={`text-xs text-muted-foreground`}>Netto</div>
                           </div>
-                          <div className={`w-px h-6 ${isDarkMode ? 'bg-neutral-700' : 'bg-gray-200'}`} />
+                          <div className={`w-px h-6 bg-border`} />
                           <div className="text-right">
-                            <div className={`text-xs font-semibold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>€{taxVal.toFixed(2)}</div>
-                            <div className={`text-xs ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>19% MwSt.</div>
+                            <div className={`text-xs font-semibold text-[color:var(--status-attention)]`}>€{taxVal.toFixed(2)}</div>
+                            <div className={`text-xs text-muted-foreground`}>19% MwSt.</div>
                           </div>
                         </div>
                       </>
@@ -1572,14 +1642,14 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                 {/* Abholdatum & Uhrzeit */}
                 <div
                   onClick={() => isEditMode && openEditCalendar('pickup')}
-                  className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'} ${isEditMode ? 'cursor-pointer ring-1 ring-transparent hover:ring-blue-500/40 group' : ''} ${
-                    isEditMode && editCalendarOpen && editCalendarMode === 'pickup' ? (isDarkMode ? '!ring-blue-500/60' : '!ring-blue-400/60') : ''
+                  className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 bg-muted/50 ${isEditMode ? 'cursor-pointer ring-1 ring-transparent hover:ring-blue-500/40 group' : ''} ${
+                    isEditMode && editCalendarOpen && editCalendarMode === 'pickup' ? ('!ring-[color:var(--brand)]/60') : ''
                   }`}
                 >
-                  <Icon name="calendar" className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                  <Icon name="calendar" className={`w-5 h-5 text-[color:var(--brand)]`} />
                   <div className="flex-1">
-                    <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Abholdatum & Uhrzeit</div>
-                    <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                    <div className={`text-xs text-muted-foreground`}>Abholdatum & Uhrzeit</div>
+                    <div className={`text-xs font-semibold text-foreground`}>
                       {isEditMode ? (inlineEdit.startDate || detailBooking.startDate || 'Datum wählen') : detailBooking.startDate}
                     </div>
                     {isEditMode ? (
@@ -1588,25 +1658,25 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                         value={inlineEdit.startTime ?? detailBooking.startTime}
                         onClick={e => e.stopPropagation()}
                         onChange={e => setInlineEdit(prev => ({ ...prev, startTime: e.target.value }))}
-                        className={`w-full text-xs font-mono bg-transparent outline-none mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}
+                        className={`w-full text-xs font-mono bg-transparent outline-none mt-0.5 text-muted-foreground`}
                       />
                     ) : (
-                      <div className={`text-xs font-mono ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{detailBooking.startTime} Uhr</div>
+                      <div className={`text-xs font-mono text-muted-foreground`}>{detailBooking.startTime} Uhr</div>
                     )}
                   </div>
-                  {isEditMode && <Icon name="pencil" className={`w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />}
+                  {isEditMode && <Icon name="pencil" className={`w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-[color:var(--brand)]`} />}
                 </div>
                 {/* Rückgabedatum & Uhrzeit */}
                 <div
                   onClick={() => isEditMode && openEditCalendar('return')}
-                  className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'} ${isEditMode ? 'cursor-pointer ring-1 ring-transparent hover:ring-blue-500/40 group' : ''} ${
-                    isEditMode && editCalendarOpen && editCalendarMode === 'return' ? (isDarkMode ? '!ring-green-500/60' : '!ring-green-400/60') : ''
+                  className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 bg-muted/50 ${isEditMode ? 'cursor-pointer ring-1 ring-transparent hover:ring-blue-500/40 group' : ''} ${
+                    isEditMode && editCalendarOpen && editCalendarMode === 'return' ? ('!ring-[color:var(--status-success)]/60') : ''
                   }`}
                 >
-                  <Icon name="calendar" className={`w-5 h-5 ${isDarkMode ? 'text-green-400' : 'text-green-500'}`} />
+                  <Icon name="calendar" className={`w-5 h-5 ${'text-[color:var(--status-success)]'}`} />
                   <div className="flex-1">
-                    <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Rückgabedatum & Uhrzeit</div>
-                    <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                    <div className={`text-xs text-muted-foreground`}>Rückgabedatum & Uhrzeit</div>
+                    <div className={`text-xs font-semibold text-foreground`}>
                       {isEditMode ? (inlineEdit.endDate || detailBooking.endDate || 'Datum wählen') : detailBooking.endDate}
                     </div>
                     {isEditMode ? (
@@ -1615,19 +1685,19 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                         value={inlineEdit.endTime ?? detailBooking.endTime}
                         onClick={e => e.stopPropagation()}
                         onChange={e => setInlineEdit(prev => ({ ...prev, endTime: e.target.value }))}
-                        className={`w-full text-xs font-mono bg-transparent outline-none mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}
+                        className={`w-full text-xs font-mono bg-transparent outline-none mt-0.5 text-muted-foreground`}
                       />
                     ) : (
-                      <div className={`text-xs font-mono ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{detailBooking.endTime} Uhr</div>
+                      <div className={`text-xs font-mono text-muted-foreground`}>{detailBooking.endTime} Uhr</div>
                     )}
                   </div>
-                  {isEditMode && <Icon name="pencil" className={`w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />}
+                  {isEditMode && <Icon name="pencil" className={`w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-[color:var(--brand)]`} />}
                 </div>
                 {/* Mietdauer */}
-                <div className={`flex items-center gap-3 px-3 py-3 rounded-lg ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'}`}>
-                  <Icon name="clock" className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
+                <div className={`flex items-center gap-3 px-3 py-3 rounded-lg bg-muted/50`}>
+                  <Icon name="clock" className={`w-5 h-5 text-[color:var(--status-attention)]`} />
                   <div>
-                    <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Mietdauer</div>
+                    <div className={`text-xs text-muted-foreground`}>Mietdauer</div>
                     {(() => {
                       const parseDateLocal = (d: string) => {
                         const parts = d.split(' ');
@@ -1639,14 +1709,14 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                       };
                       const sDate = isEditMode ? (inlineEdit.startDate || detailBooking.startDate) : detailBooking.startDate;
                       const eDate = isEditMode ? (inlineEdit.endDate || detailBooking.endDate) : detailBooking.endDate;
-                      if (!sDate || !eDate) return <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>—</div>;
+                      if (!sDate || !eDate) return <div className={`text-xs font-semibold text-muted-foreground`}>—</div>;
                       const start = parseDateLocal(sDate);
                       const end = parseDateLocal(eDate);
                       const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
                       return (
                         <>
-                          <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{days} {days === 1 ? 'Tag' : 'Tage'}</div>
-                          <div className={`text-xs font-mono ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{days * 24}h gesamt</div>
+                          <div className={`text-xs font-semibold text-foreground`}>{days} {days === 1 ? 'Tag' : 'Tage'}</div>
+                          <div className={`text-xs font-mono text-muted-foreground`}>{days * 24}h gesamt</div>
                         </>
                       );
                     })()}
@@ -1661,7 +1731,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                 const blockedDays = Object.keys(blockedInfo).map(Number);
                 return (
                   <div ref={calendarPopoverRef} className={`rounded-lg border p-4 mb-3 shadow-xl transition-all duration-200 ${
-                    isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200/60'
+                    'bg-card border-border/60'
                   }`}>
                     {/* Selection mode toggle */}
                     <div className="flex items-center gap-2 mb-3">
@@ -1669,8 +1739,8 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                         onClick={() => setEditCalendarMode('pickup')}
                         className={`flex-1 px-3 py-2.5 rounded-lg text-xs text-center transition-all ${
                           editCalendarMode === 'pickup'
-                            ? isDarkMode ? 'bg-blue-600/20 text-blue-400 border border-blue-500/40' : 'bg-blue-50 text-blue-600 border border-blue-200'
-                            : isDarkMode ? 'bg-neutral-800 text-gray-400 border border-neutral-700/40' : 'bg-gray-50/60 text-gray-500 border border-gray-200/40'
+                            ? 'sq-tone-brand border border-current/40'
+                            : 'bg-muted/50 text-muted-foreground border border-border/40'
                         }`}
                       >
                         <Icon name="calendar" className="w-3.5 h-3.5 mx-auto mb-1" />
@@ -1680,8 +1750,8 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                         onClick={() => setEditCalendarMode('return')}
                         className={`flex-1 px-3 py-2.5 rounded-lg text-xs text-center transition-all ${
                           editCalendarMode === 'return'
-                            ? isDarkMode ? 'bg-green-600/20 text-green-400 border border-green-500/40' : 'bg-green-50 text-green-600 border border-green-200'
-                            : isDarkMode ? 'bg-neutral-800 text-gray-400 border border-neutral-700/40' : 'bg-gray-50/60 text-gray-500 border border-gray-200/40'
+                            ? 'sq-tone-success border border-current/40'
+                            : 'bg-muted/50 text-muted-foreground border border-border/40'
                         }`}
                       >
                         <Icon name="calendar" className="w-3.5 h-3.5 mx-auto mb-1" />
@@ -1696,11 +1766,11 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                           if (editCalendarMonth === 0) { setEditCalendarMonth(11); setEditCalendarYear(y => y - 1); }
                           else setEditCalendarMonth(m => m - 1);
                         }}
-                        className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500'}`}
+                        className={`p-1.5 rounded-lg transition-colors ${'hover:bg-muted text-muted-foreground'}`}
                       >
                         <Icon name="chevron-left" className="w-5 h-5" />
                       </button>
-                      <span className={`text-xs font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      <span className={`text-xs font-semibold text-foreground`}>
                         {editCalMonthNames[editCalendarMonth]} {editCalendarYear}
                       </span>
                       <button
@@ -1708,7 +1778,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                           if (editCalendarMonth === 11) { setEditCalendarMonth(0); setEditCalendarYear(y => y + 1); }
                           else setEditCalendarMonth(m => m + 1);
                         }}
-                        className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500'}`}
+                        className={`p-1.5 rounded-lg transition-colors ${'hover:bg-muted text-muted-foreground'}`}
                       >
                         <Icon name="chevron-right" className="w-5 h-5" />
                       </button>
@@ -1717,7 +1787,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                     {/* Calendar grid */}
                     <div className="grid grid-cols-7 gap-1 text-center">
                       {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map(d => (
-                        <div key={d} className={`text-xs py-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{d}</div>
+                        <div key={d} className={`text-xs py-1 text-muted-foreground`}>{d}</div>
                       ))}
                       {getEditCalendarDays(editCalendarMonth, editCalendarYear).map((day, i) => {
                         const isBlocked = day ? blockedDays.includes(day) : false;
@@ -1736,16 +1806,16 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                                   : isBlocked
                                   ? `cursor-not-allowed ${
                                       blockInfo?.reason === 'maintenance'
-                                        ? isDarkMode ? 'bg-amber-900/20 text-amber-500/60' : 'bg-amber-50 text-amber-400'
-                                        : isDarkMode ? 'bg-red-900/20 text-red-400/60' : 'bg-red-50 text-red-400'
+                                        ? 'sq-tone-warning'
+                                        : 'sq-tone-critical'
                                     }`
                                   : editCalIsStartDay(day)
                                   ? 'bg-blue-600 text-white cursor-pointer hover:bg-blue-700 shadow-sm'
                                   : editCalIsEndDay(day)
                                   ? 'bg-green-600 text-white cursor-pointer hover:bg-green-700 shadow-sm'
                                   : editCalIsInRange(day)
-                                  ? `cursor-pointer ${isDarkMode ? 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/30' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`
-                                  : `cursor-pointer ${isDarkMode ? 'text-gray-300 hover:bg-neutral-700' : 'text-gray-700 hover:bg-gray-100'}`
+                                  ? `cursor-pointer ${'sq-tone-brand hover:opacity-90'}`
+                                  : `cursor-pointer ${'text-foreground hover:bg-muted'}`
                               }`}
                             >
                               {day || ''}
@@ -1753,30 +1823,30 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                             {/* Hover tooltip for blocked days */}
                             {editHoveredDay === day && day && blockInfo && (
                               <div className={`absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2.5 rounded-lg border shadow-lg ${
-                                isDarkMode ? 'bg-neutral-900/95 border-neutral-700/60 text-white' : 'bg-white/95 border-gray-200/60 text-gray-900'
+                                'bg-card/95 border-border/60 text-foreground'
                               }`}>
                                 <div className="flex items-center gap-1.5 mb-1.5">
                                   {blockInfo.reason === 'maintenance' ? (
-                                    <Icon name="clock" className={`w-3 h-3 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
+                                    <Icon name="clock" className={`w-3 h-3 ${'text-[color:var(--status-attention)]'}`} />
                                   ) : (
-                                    <Icon name="car" className={`w-3 h-3 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`} />
+                                    <Icon name="car" className={`w-3 h-3 text-[color:var(--status-critical)]`} />
                                   )}
                                   <span className={`text-xs ${
                                     blockInfo.reason === 'maintenance'
-                                      ? isDarkMode ? 'text-amber-400' : 'text-amber-600'
-                                      : isDarkMode ? 'text-red-400' : 'text-red-600'
+                                      ? 'text-[color:var(--status-attention)]'
+                                      : 'text-[color:var(--status-critical)]'
                                   }`}>
                                     {blockInfo.reason === 'maintenance' ? 'Wartung' : 'Vermietet'}
                                   </span>
                                 </div>
-                                <div className={`text-xs mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                <div className={`text-xs mb-1 text-foreground`}>
                                   <span className="flex items-center gap-1">
                                     <Icon name="calendar" className="w-3 h-3" />
                                     {blockInfo.startDay}. – {blockInfo.endDay}. {editCalMonthNames[editCalendarMonth]}
                                   </span>
                                 </div>
                                 {blockInfo.reason !== 'maintenance' && (
-                                  <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  <div className={`text-xs text-muted-foreground`}>
                                     <span className="flex items-center gap-1">
                                       <Icon name="user" className="w-3 h-3" />
                                       {blockInfo.customer}
@@ -1784,7 +1854,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                                   </div>
                                 )}
                                 <div className={`absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 -mt-1 border-r border-b ${
-                                  isDarkMode ? 'bg-neutral-900/95 border-neutral-700/60' : 'bg-white/95 border-gray-200/60'
+                                  'bg-card/95 border-border/60'
                                 }`}></div>
                               </div>
                             )}
@@ -1794,26 +1864,26 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                     </div>
 
                     {/* Legend */}
-                    <div className={`flex items-center gap-3 mt-3 pt-3 border-t ${isDarkMode ? 'border-neutral-700/40' : 'border-gray-200/40'}`}>
+                    <div className={`flex items-center gap-3 mt-3 pt-3 border-t ${'border-border/40'}`}>
                       <div className="flex items-center gap-1.5">
                         <div className="w-3 h-3 rounded bg-blue-600"></div>
-                        <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Abholung</span>
+                        <span className={`text-xs text-muted-foreground`}>Abholung</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <div className="w-3 h-3 rounded bg-green-600"></div>
-                        <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Rückgabe</span>
+                        <span className={`text-xs text-muted-foreground`}>Rückgabe</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <div className={`w-3 h-3 rounded ${isDarkMode ? 'bg-blue-600/20' : 'bg-blue-100'}`}></div>
-                        <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Zeitraum</span>
+                        <div className={`w-3 h-3 rounded ${'sq-tone-brand'}`}></div>
+                        <span className={`text-xs text-muted-foreground`}>Zeitraum</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <div className={`w-3 h-3 rounded ${isDarkMode ? 'bg-red-900/40' : 'bg-red-50'}`}></div>
-                        <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Gebucht</span>
+                        <div className={`w-3 h-3 rounded ${'sq-tone-critical'}`}></div>
+                        <span className={`text-xs text-muted-foreground`}>Gebucht</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <div className={`w-3 h-3 rounded ${isDarkMode ? 'bg-amber-900/40' : 'bg-amber-50'}`}></div>
-                        <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Wartung</span>
+                        <div className={`w-3 h-3 rounded ${'sq-tone-warning'}`}></div>
+                        <span className={`text-xs text-muted-foreground`}>Wartung</span>
                       </div>
                     </div>
                   </div>
@@ -1827,7 +1897,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                   label="Abholort"
                   value={detailBooking.pickupLocation}
                   options={locationOptions}
-                  iconColor={isDarkMode ? 'text-blue-400' : 'text-blue-500'}
+                  iconColor={'text-[color:var(--brand)]'}
                 />
                 <EditableDropdown
                   fieldKey="returnLocation"
@@ -1835,20 +1905,20 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                   label="Rückgabeort"
                   value={detailBooking.returnLocation}
                   options={locationOptions}
-                  iconColor={isDarkMode ? 'text-green-400' : 'text-green-500'}
+                  iconColor={'text-[color:var(--status-success)]'}
                 />
                 {/* Kilometer frei — editable via km package */}
                 <div className="relative" ref={activeDropdown === 'includedKm' ? dropdownRef : undefined}>
                   <div
                     onClick={() => isEditMode && setActiveDropdown(activeDropdown === 'includedKm' ? null : 'includedKm')}
                     className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ${
-                      isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'
+                      'bg-muted/50'
                     } ${isEditMode ? 'cursor-pointer ring-1 ring-transparent hover:ring-blue-500/40 group' : ''}`}
                   >
-                    <Icon name="arrow-up-down" className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
+                    <Icon name="arrow-up-down" className={`w-5 h-5 text-[color:var(--status-attention)]`} />
                     <div className="flex-1">
-                      <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Kilometer frei</div>
-                      <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                      <div className={`text-xs text-muted-foreground`}>Kilometer frei</div>
+                      <div className={`text-xs font-semibold text-foreground`}>
                         {(() => {
                           const km = isEditMode ? (inlineEdit.includedKm ?? detailBooking.includedKm) : detailBooking.includedKm;
                           return km != null ? `${km.toLocaleString('de-DE')} km` : '—';
@@ -1856,7 +1926,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                       </div>
                     </div>
                     {isEditMode && (
-                      <div className={`flex items-center gap-1 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`}>
+                      <div className={`flex items-center gap-1 text-[color:var(--brand)]`}>
                         <Icon name="pencil" className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
                         <Icon name="chevron-down" className={`w-5 h-5 transition-transform ${activeDropdown === 'includedKm' ? 'rotate-180' : ''}`} />
                       </div>
@@ -1864,7 +1934,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                   </div>
                   {activeDropdown === 'includedKm' && (
                     <div className={`absolute z-50 mt-1 w-full rounded-lg border shadow-xl overflow-hidden ${
-                      isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
+                      'bg-card border-border'
                     }`}>
                       <div className="py-1">
                         {kmPackageOptions.map(pkg => (
@@ -1873,8 +1943,8 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                             onClick={() => { setInlineEdit(prev => ({ ...prev, includedKm: pkg.km })); setActiveDropdown(null); }}
                             className={`w-full text-left px-3 py-2.5 text-xs flex items-center justify-between transition-colors ${
                               (inlineEdit.includedKm ?? detailBooking.includedKm) === pkg.km
-                                ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
-                                : isDarkMode ? 'text-gray-300 hover:bg-neutral-700' : 'text-gray-700 hover:bg-gray-50'
+                                ? 'sq-tone-brand'
+                                : 'text-foreground hover:bg-muted'
                             }`}
                           >
                             <span>{pkg.label} — {pkg.km.toLocaleString('de-DE')} km</span>
@@ -1890,27 +1960,27 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
 
             {/* Übergabe & Kilometer Box */}
             <div className={`rounded-lg px-3 py-3 border shadow-sm ${
-              isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+              'bg-card border-border'
             }`}>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {/* Pickup durch */}
                 <div className="relative" ref={activeDropdown === 'pickupHandoverByBox' ? dropdownRef : undefined}>
                   <div
                     onClick={() => isEditMode && setActiveDropdown(activeDropdown === 'pickupHandoverByBox' ? null : 'pickupHandoverByBox')}
-                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-200 ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'} ${isEditMode ? 'cursor-pointer ring-1 ring-transparent hover:ring-blue-500/40 group' : ''}`}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-200 bg-muted/50 ${isEditMode ? 'cursor-pointer ring-1 ring-transparent hover:ring-blue-500/40 group' : ''}`}
                   >
-                    <Icon name="users" className={`w-5 h-5 shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                    <Icon name="users" className={`w-5 h-5 shrink-0 text-[color:var(--brand)]`} />
                     <div className="flex-1 min-w-0">
-                      <div className={`text-xs leading-tight whitespace-nowrap ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Pickup durch</div>
-                      <div className={`text-xs font-semibold truncate ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                      <div className={`text-xs leading-tight whitespace-nowrap text-muted-foreground`}>Pickup durch</div>
+                      <div className={`text-xs font-semibold truncate text-foreground`}>
                         {isEditMode ? (inlineEdit.pickupHandoverBy || detailBooking.pickupHandoverBy || '—') : (detailBooking.pickupHandoverBy || '—')}
                       </div>
                     </div>
-                    {isEditMode && <Icon name="chevron-down" className={`w-3.5 h-3.5 shrink-0 transition-transform ${isDarkMode ? 'text-blue-400' : 'text-blue-500'} ${activeDropdown === 'pickupHandoverByBox' ? 'rotate-180' : ''}`} />}
+                    {isEditMode && <Icon name="chevron-down" className={`w-3.5 h-3.5 shrink-0 transition-transform text-[color:var(--brand)] ${activeDropdown === 'pickupHandoverByBox' ? 'rotate-180' : ''}`} />}
                   </div>
                   {activeDropdown === 'pickupHandoverByBox' && (
                     <div className={`absolute z-50 mt-1 w-full rounded-lg border shadow-xl overflow-hidden ${
-                      isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
+                      'bg-card border-border'
                     }`}>
                       <div className="max-h-48 overflow-y-auto py-1">
                         {['—', ...employeeOptions].map(opt => (
@@ -1919,8 +1989,8 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                             onClick={() => { setInlineEdit(prev => ({ ...prev, pickupHandoverBy: opt === '—' ? '' : opt })); setActiveDropdown(null); }}
                             className={`w-full text-left px-3 py-2.5 text-xs flex items-center justify-between transition-colors ${
                               (inlineEdit.pickupHandoverBy ?? detailBooking.pickupHandoverBy ?? '') === (opt === '—' ? '' : opt)
-                                ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
-                                : isDarkMode ? 'text-gray-300 hover:bg-neutral-700' : 'text-gray-700 hover:bg-gray-50'
+                                ? 'sq-tone-brand'
+                                : 'text-foreground hover:bg-muted'
                             }`}
                           >
                             <span>{opt}</span>
@@ -1936,20 +2006,20 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                 <div className="relative" ref={activeDropdown === 'returnHandoverByBox' ? dropdownRef : undefined}>
                   <div
                     onClick={() => isEditMode && setActiveDropdown(activeDropdown === 'returnHandoverByBox' ? null : 'returnHandoverByBox')}
-                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-200 ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'} ${isEditMode ? 'cursor-pointer ring-1 ring-transparent hover:ring-blue-500/40 group' : ''}`}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-200 bg-muted/50 ${isEditMode ? 'cursor-pointer ring-1 ring-transparent hover:ring-blue-500/40 group' : ''}`}
                   >
-                    <Icon name="users" className={`w-5 h-5 shrink-0 ${isDarkMode ? 'text-green-400' : 'text-green-500'}`} />
+                    <Icon name="users" className={`w-5 h-5 shrink-0 ${'text-[color:var(--status-success)]'}`} />
                     <div className="flex-1 min-w-0">
-                      <div className={`text-xs leading-tight whitespace-nowrap ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Rückgabe durch</div>
-                      <div className={`text-xs font-semibold truncate ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                      <div className={`text-xs leading-tight whitespace-nowrap text-muted-foreground`}>Rückgabe durch</div>
+                      <div className={`text-xs font-semibold truncate text-foreground`}>
                         {isEditMode ? (inlineEdit.returnHandoverBy || detailBooking.returnHandoverBy || '—') : (detailBooking.returnHandoverBy || '—')}
                       </div>
                     </div>
-                    {isEditMode && <Icon name="chevron-down" className={`w-3.5 h-3.5 shrink-0 transition-transform ${isDarkMode ? 'text-green-400' : 'text-green-500'} ${activeDropdown === 'returnHandoverByBox' ? 'rotate-180' : ''}`} />}
+                    {isEditMode && <Icon name="chevron-down" className={`w-3.5 h-3.5 shrink-0 transition-transform ${'text-[color:var(--status-success)]'} ${activeDropdown === 'returnHandoverByBox' ? 'rotate-180' : ''}`} />}
                   </div>
                   {activeDropdown === 'returnHandoverByBox' && (
                     <div className={`absolute z-50 mt-1 w-full rounded-lg border shadow-xl overflow-hidden ${
-                      isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
+                      'bg-card border-border'
                     }`}>
                       <div className="max-h-48 overflow-y-auto py-1">
                         {['—', ...employeeOptions].map(opt => (
@@ -1958,8 +2028,8 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                             onClick={() => { setInlineEdit(prev => ({ ...prev, returnHandoverBy: opt === '—' ? '' : opt })); setActiveDropdown(null); }}
                             className={`w-full text-left px-3 py-2.5 text-xs flex items-center justify-between transition-colors ${
                               (inlineEdit.returnHandoverBy ?? detailBooking.returnHandoverBy ?? '') === (opt === '—' ? '' : opt)
-                                ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
-                                : isDarkMode ? 'text-gray-300 hover:bg-neutral-700' : 'text-gray-700 hover:bg-gray-50'
+                                ? 'sq-tone-brand'
+                                : 'text-foreground hover:bg-muted'
                             }`}
                           >
                             <span>{opt}</span>
@@ -1974,13 +2044,13 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                 {/* KM Übergabe */}
                 <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-200 ${
                   detailBooking.pickupHandoverBy
-                    ? isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'
-                    : isDarkMode ? 'bg-neutral-800/30 opacity-60' : 'bg-gray-50/40 opacity-60'
+                    ? 'bg-muted/50'
+                    : 'bg-muted/30 opacity-60'
                 }`}>
-                  <Icon name="car" className={`w-5 h-5 shrink-0 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
+                  <Icon name="car" className={`w-5 h-5 shrink-0 text-[color:var(--status-attention)]`} />
                   <div className="flex-1 min-w-0">
-                    <div className={`text-xs leading-tight whitespace-nowrap ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>KM Übergabe</div>
-                    <div className={`text-xs font-semibold truncate ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                    <div className={`text-xs leading-tight whitespace-nowrap text-muted-foreground`}>KM Übergabe</div>
+                    <div className={`text-xs font-semibold truncate text-foreground`}>
                       {detailBooking.pickupHandoverBy
                         ? detailBooking.mileageStart != null ? `${detailBooking.mileageStart.toLocaleString('de-DE')} km` : '—'
                         : 'Bei Pickup'}
@@ -1991,24 +2061,24 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                 {/* KM gefahren */}
                 <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-200 ${
                   detailBooking.drivenKm != null && detailBooking.includedKm != null && detailBooking.drivenKm > detailBooking.includedKm
-                    ? isDarkMode ? 'bg-red-900/20 border border-red-800/30' : 'bg-red-50/80 border border-red-200'
-                    : isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'
+                    ? 'sq-tone-critical border border-current/30'
+                    : 'bg-muted/50'
                 }`}>
                   <Icon name="gauge" className={`w-5 h-5 shrink-0 ${
                     detailBooking.drivenKm != null && detailBooking.includedKm != null && detailBooking.drivenKm > detailBooking.includedKm
-                      ? isDarkMode ? 'text-red-400' : 'text-red-500'
-                      : isDarkMode ? 'text-amber-400' : 'text-amber-500'
+                      ? 'text-[color:var(--status-critical)]'
+                      : 'text-[color:var(--status-attention)]'
                   }`} />
                   <div className="flex-1 min-w-0">
-                    <div className={`text-xs leading-tight whitespace-nowrap ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>KM gefahren</div>
+                    <div className={`text-xs leading-tight whitespace-nowrap text-muted-foreground`}>KM gefahren</div>
                     <div className={`text-xs font-semibold truncate ${
                       detailBooking.drivenKm != null && detailBooking.includedKm != null && detailBooking.drivenKm > detailBooking.includedKm
-                        ? isDarkMode ? 'text-red-400' : 'text-red-600'
-                        : isDarkMode ? 'text-gray-200' : 'text-gray-800'
+                        ? 'text-[color:var(--status-critical)]'
+                        : 'text-foreground'
                     }`}>
                       {detailBooking.drivenKm != null ? `${detailBooking.drivenKm.toLocaleString('de-DE')} km` : '—'}
                       {detailBooking.drivenKm != null && detailBooking.includedKm != null && detailBooking.drivenKm > detailBooking.includedKm && (
-                        <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${isDarkMode ? 'bg-red-900/40 text-red-400' : 'bg-red-100 text-red-600'}`}>
+                        <span className={`ml-1 text-xs px-1.5 py-0.5 rounded-full ${'sq-tone-critical'}`}>
                           +{(detailBooking.drivenKm - detailBooking.includedKm).toLocaleString('de-DE')}
                         </span>
                       )}
@@ -2022,31 +2092,31 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
             <div className="grid grid-cols-2 gap-3">
               {/* Box 1: Pakete & Extras */}
               <div className={`rounded-lg p-8 border shadow-sm ${
-                isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+                'bg-card border-border'
               }`}>
-                <div className={`text-xs font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                <div className={`text-xs font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>
                   Pakete & Extras
                 </div>
 
                 {/* Kilometerpaket */}
                 <div className="mb-3">
-                  <div className={`text-[11px] font-semibold uppercase tracking-wider mb-2.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>
+                  <div className={`text-[11px] font-semibold uppercase tracking-wider mb-2.5 text-muted-foreground`}>
                     Kilometerpaket
                   </div>
                   <div className="relative" ref={activeDropdown === 'kmPackage' ? dropdownRef : undefined}>
                     <div
                       onClick={() => isEditMode && setActiveDropdown(activeDropdown === 'kmPackage' ? null : 'kmPackage')}
-                      className={`flex items-center gap-3 px-3 py-3 rounded-lg border transition-all duration-200 ${isDarkMode ? 'bg-neutral-800/50 border-neutral-700/40' : 'bg-gray-50/80 border-gray-100'} ${isEditMode ? 'cursor-pointer hover:border-blue-500/40 group' : ''}`}
+                      className={`flex items-center gap-3 px-3 py-3 rounded-lg border transition-all duration-200 ${'bg-muted/50 border-border/40'} ${isEditMode ? 'cursor-pointer hover:border-blue-500/40 group' : ''}`}
                     >
-                      <div className={`w-5 h-5 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-purple-900/40' : 'bg-purple-50'}`}>
-                        <Icon name="gauge" className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
+                      <div className={`w-5 h-5 rounded-lg flex items-center justify-center ${'sq-tone-warning'}`}>
+                        <Icon name="gauge" className={`w-5 h-5 text-[color:var(--status-attention)]`} />
                       </div>
                       <div className="flex-1">
                         {(() => {
                           const km = isEditMode ? (inlineEdit.includedKm ?? detailBooking.includedKm) : detailBooking.includedKm;
                           return (
                             <>
-                              <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                              <div className={`text-xs font-semibold text-foreground`}>
                                 {km != null ? (
                                   km >= 2000 ? 'Unlimited' :
                                   km >= 1500 ? 'Premium' :
@@ -2054,7 +2124,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                                   km >= 750 ? 'Standard' : 'Basis'
                                 ) : 'Standard'}
                               </div>
-                              <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                              <div className={`text-xs text-muted-foreground`}>
                                 {km != null ? `${km.toLocaleString('de-DE')} km inkl.` : '—'}
                               </div>
                             </>
@@ -2062,19 +2132,19 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                         })()}
                       </div>
                       {isEditMode ? (
-                        <div className={`flex items-center gap-1 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`}>
+                        <div className={`flex items-center gap-1 text-[color:var(--brand)]`}>
                           <Icon name="pencil" className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
                           <Icon name="chevron-down" className={`w-5 h-5 transition-transform ${activeDropdown === 'kmPackage' ? 'rotate-180' : ''}`} />
                         </div>
                       ) : (
-                        <div className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${isDarkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>
+                        <div className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${'sq-tone-warning'}`}>
                           Aktiv
                         </div>
                       )}
                     </div>
                     {activeDropdown === 'kmPackage' && (
                       <div className={`absolute z-50 mt-1 w-full rounded-lg border shadow-xl overflow-hidden ${
-                        isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
+                        'bg-card border-border'
                       }`}>
                         <div className="py-1">
                           {kmPackageOptions.map(pkg => (
@@ -2083,8 +2153,8 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                               onClick={() => { setInlineEdit(prev => ({ ...prev, includedKm: pkg.km })); setActiveDropdown(null); }}
                               className={`w-full text-left px-3 py-2.5 text-xs flex items-center justify-between transition-colors ${
                                 (inlineEdit.includedKm ?? detailBooking.includedKm) === pkg.km
-                                  ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
-                                  : isDarkMode ? 'text-gray-300 hover:bg-neutral-700' : 'text-gray-700 hover:bg-gray-50'
+                                  ? 'sq-tone-brand'
+                                  : 'text-foreground hover:bg-muted'
                               }`}
                             >
                               <span>{pkg.label} — {pkg.km.toLocaleString('de-DE')} km</span>
@@ -2099,24 +2169,24 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
 
                 {/* Versicherungspaket */}
                 <div className="mb-3">
-                  <div className={`text-[11px] font-semibold uppercase tracking-wider mb-2.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>
+                  <div className={`text-[11px] font-semibold uppercase tracking-wider mb-2.5 text-muted-foreground`}>
                     Versicherungspaket
                   </div>
                   <div className="relative" ref={activeDropdown === 'insurance' ? dropdownRef : undefined}>
                     <div
                       onClick={() => isEditMode && setActiveDropdown(activeDropdown === 'insurance' ? null : 'insurance')}
-                      className={`flex items-center gap-3 px-3 py-3 rounded-lg border transition-all duration-200 ${isDarkMode ? 'bg-neutral-800/50 border-neutral-700/40' : 'bg-gray-50/80 border-gray-100'} ${isEditMode ? 'cursor-pointer hover:border-blue-500/40 group' : ''}`}
+                      className={`flex items-center gap-3 px-3 py-3 rounded-lg border transition-all duration-200 ${'bg-muted/50 border-border/40'} ${isEditMode ? 'cursor-pointer hover:border-blue-500/40 group' : ''}`}
                     >
-                      <div className={`w-5 h-5 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-blue-900/40' : 'bg-blue-50'}`}>
-                        <Icon name="shield" className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                      <div className={`w-5 h-5 rounded-lg flex items-center justify-center ${'sq-tone-brand'}`}>
+                        <Icon name="shield" className={`w-5 h-5 text-[color:var(--brand)]`} />
                       </div>
                       <div className="flex-1">
                         {(() => {
                           const ins = isEditMode ? (inlineEdit.insurance || detailBooking.insurance) : detailBooking.insurance;
                           return (
                             <>
-                              <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{ins}</div>
-                              <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                              <div className={`text-xs font-semibold text-foreground`}>{ins}</div>
+                              <div className={`text-xs text-muted-foreground`}>
                                 {ins === 'Premium Vollkasko' ? 'Keine SB • Glas • Reifen • Unterboden' :
                                  ins === 'Vollkasko' ? 'SB €500 • Glas inkl.' :
                                  ins === 'Teilkasko' ? 'SB €1.000 • Basis' : 'Gesetzlicher Standard'}
@@ -2126,15 +2196,15 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                         })()}
                       </div>
                       {isEditMode ? (
-                        <div className={`flex items-center gap-1 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`}>
+                        <div className={`flex items-center gap-1 text-[color:var(--brand)]`}>
                           <Icon name="pencil" className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
                           <Icon name="chevron-down" className={`w-5 h-5 transition-transform ${activeDropdown === 'insurance' ? 'rotate-180' : ''}`} />
                         </div>
                       ) : (
                         <div className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
                           detailBooking.insurance === 'Premium Vollkasko'
-                            ? isDarkMode ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-50 text-amber-600'
-                            : isDarkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600'
+                            ? 'sq-tone-warning'
+                            : 'sq-tone-brand'
                         }`}>
                           {detailBooking.insurance === 'Premium Vollkasko' ? 'Premium' : 'Aktiv'}
                         </div>
@@ -2142,7 +2212,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                     </div>
                     {activeDropdown === 'insurance' && (
                       <div className={`absolute z-50 mt-1 w-full rounded-lg border shadow-xl overflow-hidden ${
-                        isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
+                        'bg-card border-border'
                       }`}>
                         <div className="py-1">
                           {insuranceOptions.map(opt => (
@@ -2151,13 +2221,13 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                               onClick={() => { setInlineEdit(prev => ({ ...prev, insurance: opt })); setActiveDropdown(null); }}
                               className={`w-full text-left px-3 py-2.5 text-xs flex items-center justify-between transition-colors ${
                                 (inlineEdit.insurance || detailBooking.insurance) === opt
-                                  ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
-                                  : isDarkMode ? 'text-gray-300 hover:bg-neutral-700' : 'text-gray-700 hover:bg-gray-50'
+                                  ? 'sq-tone-brand'
+                                  : 'text-foreground hover:bg-muted'
                               }`}
                             >
                               <div>
                                 <div className="font-semibold">{opt}</div>
-                                <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                                <div className={`text-xs text-muted-foreground`}>
                                   {opt === 'Premium Vollkasko' ? 'Keine SB • Glas • Reifen • Unterboden' :
                                    opt === 'Vollkasko' ? 'SB €500 • Glas inkl.' :
                                    opt === 'Teilkasko' ? 'SB €1.000 • Basis' : 'Gesetzlicher Standard'}
@@ -2174,7 +2244,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
 
                 {/* Extras */}
                 <div>
-                  <div className={`text-[11px] font-semibold uppercase tracking-wider mb-2.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>
+                  <div className={`text-[11px] font-semibold uppercase tracking-wider mb-2.5 text-muted-foreground`}>
                     Extras
                   </div>
                   <div className="space-y-2">
@@ -2187,25 +2257,25 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                       if (extrasFromNotes.length === 0) {
                         return (
                           <div className={`flex items-center justify-center py-3 rounded-lg border border-dashed ${
-                            isDarkMode ? 'border-neutral-700 bg-neutral-800/20' : 'border-gray-200/80 bg-gray-50/30'
+                            'border-border bg-muted/20'
                           }`}>
                             <div className="text-center">
-                              <Icon name="package" className={`w-5 h-5 mx-auto mb-1.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
-                              <p className={`text-xs ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>Keine Extras gebucht</p>
+                              <Icon name="package" className={`w-5 h-5 mx-auto mb-1.5 ${'text-muted-foreground'}`} />
+                              <p className={`text-xs text-muted-foreground`}>Keine Extras gebucht</p>
                             </div>
                           </div>
                         );
                       }
                       return extrasFromNotes.map((extra, idx) => (
-                        <div key={idx} className={`flex items-center gap-3 px-3 py-2 rounded-lg border ${isDarkMode ? 'bg-neutral-800/50 border-neutral-700/40' : 'bg-gray-50/80 border-gray-100'}`}>
-                          <div className={`w-5 h-5 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-green-900/40' : 'bg-green-50'}`}>
-                            <extra.icon className={`w-5 h-5 ${isDarkMode ? 'text-green-400' : 'text-green-500'}`} />
+                        <div key={idx} className={`flex items-center gap-3 px-3 py-2 rounded-lg border ${'bg-muted/50 border-border/40'}`}>
+                          <div className={`w-5 h-5 rounded-lg flex items-center justify-center ${'sq-tone-success'}`}>
+                            <extra.icon className={`w-5 h-5 ${'text-[color:var(--status-success)]'}`} />
                           </div>
                           <div className="flex-1">
-                            <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{extra.label}</div>
-                            <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{extra.detail}</div>
+                            <div className={`text-xs font-semibold text-foreground`}>{extra.label}</div>
+                            <div className={`text-xs text-muted-foreground`}>{extra.detail}</div>
                           </div>
-                          <Icon name="check-circle" className={`w-5 h-5 ${isDarkMode ? 'text-green-400' : 'text-green-500'}`} />
+                          <Icon name="check-circle" className={`w-5 h-5 ${'text-[color:var(--status-success)]'}`} />
                         </div>
                       ));
                     })()}
@@ -2215,9 +2285,9 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
 
               {/* Box 2: Buchungsdetails */}
               <div className={`rounded-lg p-8 border shadow-sm ${
-                isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+                'bg-card border-border'
               }`}>
-                <div className={`text-xs font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                <div className={`text-xs font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>
                   Buchungsdetails
                 </div>
 
@@ -2257,7 +2327,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
             <BookingDocumentsSection
               orgId={orgId}
               bookingId={detailBooking.id}
-              isDarkMode={isDarkMode}
+              isDarkMode={systemDark}
             />
 
             {/* Booking Tasks — operative action layer for this booking
@@ -2265,7 +2335,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                 comes straight from the central Task service. */}
             {orgId && (
               <EntityTasksSection
-                isDark={isDarkMode}
+                isDark={systemDark}
                 title="Booking Tasks"
                 emptyHint="Keine Tasks für diese Buchung. Vorbereitungs-, Pickup- und Rückgabe-Tasks werden automatisch erzeugt, sobald sich der Buchungsstatus ändert."
                 fetchTasks={() => api.tasks.forBooking(orgId, detailBooking.id)}
@@ -2294,46 +2364,46 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
               };
               return (
             <div className={`rounded-lg p-8 border shadow-sm ${
-              isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+              'bg-card border-border'
             }`}>
-              <div className={`text-xs font-semibold uppercase tracking-wider mb-3 flex items-center justify-between ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+              <div className={`text-xs font-semibold uppercase tracking-wider mb-3 flex items-center justify-between text-muted-foreground`}>
                 Kunde
-                {isEditMode && <Icon name="pencil" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />}
+                {isEditMode && <Icon name="pencil" className={`w-3.5 h-3.5 text-[color:var(--brand)]`} />}
               </div>
               <div className="relative" ref={activeDropdown === 'customer' ? dropdownRef : undefined}>
                 <div
                   onClick={() => isEditMode && setActiveDropdown(activeDropdown === 'customer' ? null : 'customer')}
                   className={`flex items-center gap-3 ${isEditMode ? 'cursor-pointer rounded-lg p-2 -m-2 transition-all hover:ring-1 hover:ring-blue-500/40 group' : ''}`}
                 >
-                  <div className={`w-14 h-14 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-gradient-to-br from-blue-500/20 to-indigo-500/20' : 'bg-gradient-to-br from-blue-50 to-indigo-50'}`}>
-                    <Icon name="user" className={`w-7 h-7 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                  <div className={`w-14 h-14 rounded-lg flex items-center justify-center ${'sq-tone-brand'}`}>
+                    <Icon name="user" className={`w-7 h-7 text-[color:var(--brand)]`} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <div className={`text-xs font-bold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      <div className={`text-xs font-bold truncate text-foreground`}>
                         {currentCustomerName}
                       </div>
                       {cDetail.customerId && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-mono shrink-0 ${isDarkMode ? 'bg-neutral-800 text-gray-500' : 'bg-gray-100 text-gray-400'}`}>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-mono shrink-0 ${'bg-muted text-muted-foreground'}`}>
                           {cDetail.customerId}
                         </span>
                       )}
                     </div>
-                    <div className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    <div className={`text-xs mt-0.5 text-muted-foreground`}>
                       {cDetail.since ? `Kunde seit ${cDetail.since} · ` : ''}{cDetail.bookingsCount} Buchungen
                     </div>
                   </div>
                   {isEditMode && (
-                    <Icon name="chevron-down" className={`w-5 h-5 transition-transform shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'} ${activeDropdown === 'customer' ? 'rotate-180' : ''}`} />
+                    <Icon name="chevron-down" className={`w-5 h-5 transition-transform shrink-0 text-[color:var(--brand)] ${activeDropdown === 'customer' ? 'rotate-180' : ''}`} />
                   )}
                 </div>
                 {activeDropdown === 'customer' && (
                   <div className={`absolute z-50 mt-2 w-full rounded-lg border shadow-xl overflow-hidden ${
-                    isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
+                    'bg-card border-border'
                   }`}>
                     <div className="py-1">
                       {customerOptions.length === 0 && (
-                        <div className={`px-3 py-4 text-center text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                        <div className={`px-3 py-4 text-center text-xs text-muted-foreground`}>
                           Keine Kunden verfügbar
                         </div>
                       )}
@@ -2346,17 +2416,17 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                           }}
                           className={`w-full text-left px-3 py-2 flex items-center gap-3 transition-colors ${
                             currentCustomerName === c.name
-                              ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
-                              : isDarkMode ? 'text-gray-300 hover:bg-neutral-700' : 'text-gray-700 hover:bg-gray-50'
+                              ? 'sq-tone-brand'
+                              : 'text-foreground hover:bg-muted'
                           }`}
                         >
-                          <div className={`w-5 h-5 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-neutral-700' : 'bg-gray-100'}`}>
+                          <div className={`w-5 h-5 rounded-lg flex items-center justify-center ${'bg-muted'}`}>
                             <Icon name="user" className="w-5 h-5" />
                           </div>
                           <div>
                             <div className="text-xs font-semibold">{c.name}</div>
                             {c.phone && (
-                              <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{c.phone}</div>
+                              <div className={`text-xs text-muted-foreground`}>{c.phone}</div>
                             )}
                           </div>
                           {currentCustomerName === c.name && <Icon name="check-circle" className="w-5 h-5 ml-auto shrink-0" />}
@@ -2368,42 +2438,42 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
               </div>
 
               {/* Customer Detail Grid */}
-              <div className={`mt-5 pt-5 border-t grid grid-cols-2 gap-x-6 gap-y-4 ${isDarkMode ? 'border-neutral-700/40' : 'border-gray-200'}`}>
+              <div className={`mt-5 pt-5 border-t grid grid-cols-2 gap-x-6 gap-y-4 ${'border-border/40'}`}>
                 <div className="flex items-start gap-2.5">
-                  <Icon name="phone" className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />
+                  <Icon name="phone" className={`w-3.5 h-3.5 mt-0.5 shrink-0 text-muted-foreground`} />
                   <div>
-                    <div className={`text-xs uppercase tracking-wider mb-0.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>Telefon</div>
-                    <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    <div className={`text-xs uppercase tracking-wider mb-0.5 text-muted-foreground`}>Telefon</div>
+                    <div className={`text-xs text-foreground`}>
                       {isEditMode ? (inlineEdit.customerPhone || detailBooking.customerPhone || '—') : (detailBooking.customerPhone || '—')}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-start gap-2.5">
-                  <Icon name="mail" className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />
+                  <Icon name="mail" className={`w-3.5 h-3.5 mt-0.5 shrink-0 text-muted-foreground`} />
                   <div>
-                    <div className={`text-xs uppercase tracking-wider mb-0.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>E-Mail</div>
-                    <div className={`text-xs truncate ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{cDetail.email || '—'}</div>
+                    <div className={`text-xs uppercase tracking-wider mb-0.5 text-muted-foreground`}>E-Mail</div>
+                    <div className={`text-xs truncate text-foreground`}>{cDetail.email || '—'}</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-2.5">
-                  <Icon name="map-pin" className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />
+                  <Icon name="map-pin" className={`w-3.5 h-3.5 mt-0.5 shrink-0 text-muted-foreground`} />
                   <div>
-                    <div className={`text-xs uppercase tracking-wider mb-0.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>Adresse</div>
-                    <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{cDetail.address || '—'}</div>
+                    <div className={`text-xs uppercase tracking-wider mb-0.5 text-muted-foreground`}>Adresse</div>
+                    <div className={`text-xs text-foreground`}>{cDetail.address || '—'}</div>
                     {cDetail.city && (
-                      <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{cDetail.city}</div>
+                      <div className={`text-xs text-muted-foreground`}>{cDetail.city}</div>
                     )}
                   </div>
                 </div>
                 <div className="flex items-start gap-2.5">
-                  <Icon name="id-card" className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />
+                  <Icon name="id-card" className={`w-3.5 h-3.5 mt-0.5 shrink-0 text-muted-foreground`} />
                   <div>
-                    <div className={`text-xs uppercase tracking-wider mb-0.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>Führerschein</div>
-                    <div className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    <div className={`text-xs uppercase tracking-wider mb-0.5 text-muted-foreground`}>Führerschein</div>
+                    <div className={`text-xs text-foreground`}>
                       {cDetail.license ? `Klasse ${cDetail.license}` : '—'}
                     </div>
                     {cDetail.licenseExpiry && (
-                      <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>gültig bis {cDetail.licenseExpiry}</div>
+                      <div className={`text-xs text-muted-foreground`}>gültig bis {cDetail.licenseExpiry}</div>
                     )}
                   </div>
                 </div>
@@ -2415,62 +2485,62 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
             {/* Booking Summary Card for upcoming */}
             {(detailBooking.status === 'confirmed' || detailBooking.status === 'pending') && (
               <div className={`rounded-lg p-8 border shadow-sm ${
-                isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+                'bg-card border-border'
               }`}>
-                <div className={`text-xs font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                <div className={`text-xs font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>
                   Buchungsübersicht
                 </div>
                 <div className="space-y-3">
-                  <div className={`flex items-center justify-between px-3 py-2 rounded-lg ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'}`}>
-                    <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Status</span>
+                  <div className={`flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50`}>
+                    <span className={`text-xs text-muted-foreground`}>Status</span>
                     <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
                       detailBooking.status === 'pending'
-                        ? (isDarkMode ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-700')
-                        : (isDarkMode ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700')
+                        ? ('sq-tone-warning')
+                        : ('sq-tone-success')
                     }`}>
                       {detailBooking.status === 'pending' ? 'Ausstehend' : 'Bestätigt'}
                     </span>
                   </div>
-                  <div className={`flex items-center justify-between px-3 py-2 rounded-lg ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'}`}>
-                    <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Versicherung</span>
-                    <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{detailBooking.insurance || '—'}</span>
+                  <div className={`flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50`}>
+                    <span className={`text-xs text-muted-foreground`}>Versicherung</span>
+                    <span className={`text-xs font-semibold text-foreground`}>{detailBooking.insurance || '—'}</span>
                   </div>
-                  <div className={`flex items-center justify-between px-3 py-2 rounded-lg ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'}`}>
-                    <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Zahlungsart</span>
-                    <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{detailBooking.paymentMethod || '—'}</span>
+                  <div className={`flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50`}>
+                    <span className={`text-xs text-muted-foreground`}>Zahlungsart</span>
+                    <span className={`text-xs font-semibold text-foreground`}>{detailBooking.paymentMethod || '—'}</span>
                   </div>
                   {detailBooking.includedKm != null && (
-                    <div className={`flex items-center justify-between px-3 py-2 rounded-lg ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'}`}>
-                      <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Freikilometer</span>
-                      <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{detailBooking.includedKm.toLocaleString('de-DE')} km</span>
+                    <div className={`flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50`}>
+                      <span className={`text-xs text-muted-foreground`}>Freikilometer</span>
+                      <span className={`text-xs font-semibold text-foreground`}>{detailBooking.includedKm.toLocaleString('de-DE')} km</span>
                     </div>
                   )}
                   <div className={`px-3 py-2 rounded-lg border ${
-                    isDarkMode ? 'bg-green-900/15 border-green-700/30' : 'bg-green-50/60 border-green-200/60'
+                    'sq-tone-success border border-current/20'
                   }`}>
                     <div className="flex items-center justify-between mb-2">
-                      <span className={`text-xs font-semibold ${isDarkMode ? 'text-green-400' : 'text-green-700'}`}>Gesamtbetrag</span>
-                      <span className={`text-xs font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{detailBooking.revenue}</span>
+                      <span className={`text-xs font-semibold text-[color:var(--status-success)]`}>Gesamtbetrag</span>
+                      <span className={`text-xs font-bold text-[color:var(--status-success)]`}>{detailBooking.revenue}</span>
                     </div>
                     {(() => {
                       const bruttoVal = parseFloat((detailBooking.revenue || '€0').replace('€', '').replace(',', '.')) || 0;
                       const nettoVal = Math.round((bruttoVal / 1.19) * 100) / 100;
                       const taxVal = Math.round((bruttoVal - nettoVal) * 100) / 100;
                       return (
-                        <div className={`flex items-center justify-end gap-3 pt-2 border-t ${isDarkMode ? 'border-green-700/20' : 'border-green-200/60'}`}>
+                        <div className={`flex items-center justify-end gap-3 pt-2 border-t ${'border-[color:var(--status-success)]/20'}`}>
                           <div className="text-right">
-                            <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Netto</div>
-                            <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>€{nettoVal.toFixed(2)}</div>
+                            <div className={`text-xs text-muted-foreground`}>Netto</div>
+                            <div className={`text-xs font-semibold text-foreground`}>€{nettoVal.toFixed(2)}</div>
                           </div>
-                          <div className={`w-px h-6 ${isDarkMode ? 'bg-green-700/30' : 'bg-green-200/80'}`} />
+                          <div className={`w-px h-6 ${'sq-tone-success'}`} />
                           <div className="text-right">
-                            <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>19% MwSt.</div>
-                            <div className={`text-xs font-semibold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>€{taxVal.toFixed(2)}</div>
+                            <div className={`text-xs text-muted-foreground`}>19% MwSt.</div>
+                            <div className={`text-xs font-semibold text-[color:var(--status-attention)]`}>€{taxVal.toFixed(2)}</div>
                           </div>
-                          <div className={`w-px h-6 ${isDarkMode ? 'bg-green-700/30' : 'bg-green-200/80'}`} />
+                          <div className={`w-px h-6 ${'sq-tone-success'}`} />
                           <div className="text-right">
-                            <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Brutto</div>
-                            <div className={`text-xs font-semibold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>€{bruttoVal.toFixed(2)}</div>
+                            <div className={`text-xs text-muted-foreground`}>Brutto</div>
+                            <div className={`text-xs font-semibold text-[color:var(--status-success)]`}>€{bruttoVal.toFixed(2)}</div>
                           </div>
                         </div>
                       );
@@ -2499,19 +2569,17 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
               if (!showCard) return null;
 
               const cardWrapper = `rounded-lg p-8 border shadow-sm ${
-                isDarkMode
-                  ? 'bg-neutral-900 border-neutral-700'
-                  : 'bg-white border-gray-200'
+                'bg-card border-border'
               }`;
 
               if (bookingAnalysisLoading) {
                 return (
                   <div className={cardWrapper}>
-                    <div className={`text-xs font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    <div className={`text-xs font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>
                       Booking Driving Analysis
                     </div>
                     <div
-                      className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}
+                      className={`text-xs text-muted-foreground`}
                     >
                       Loading analysis…
                     </div>
@@ -2522,11 +2590,11 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
               if (!bookingAnalysis) {
                 return (
                   <div className={cardWrapper}>
-                    <div className={`text-xs font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    <div className={`text-xs font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>
                       Booking Driving Analysis
                     </div>
                     <div
-                      className={`flex items-start gap-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}
+                      className={`flex items-start gap-2 text-xs text-muted-foreground`}
                     >
                       <Icon name="info" className="w-4 h-4 mt-0.5 shrink-0" />
                       <span>
@@ -2593,31 +2661,31 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
               const scoreTone = (s: number | null) => {
                 if (s == null) {
                   return {
-                    stroke: isDarkMode ? '#525252' : '#d4d4d8',
-                    bg: isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50',
-                    text: isDarkMode ? 'text-gray-400' : 'text-gray-500',
-                    border: isDarkMode ? 'border-neutral-700' : 'border-gray-200',
+                    stroke: 'var(--border)',
+                    bg: 'bg-muted/50',
+                    text: 'text-muted-foreground',
+                    border: 'border-border',
                   };
                 }
                 if (s >= 80)
                   return {
                     stroke: '#22c55e',
-                    bg: isDarkMode ? 'bg-green-900/30' : 'bg-green-50',
-                    text: isDarkMode ? 'text-green-400' : 'text-green-600',
-                    border: isDarkMode ? 'border-green-700/50' : 'border-green-200',
+                    bg: 'sq-tone-success',
+                    text: 'text-[color:var(--status-success)]',
+                    border: 'border-[color:var(--status-success)]/30',
                   };
                 if (s >= 60)
                   return {
                     stroke: '#f59e0b',
-                    bg: isDarkMode ? 'bg-amber-900/30' : 'bg-amber-50',
-                    text: isDarkMode ? 'text-amber-400' : 'text-amber-600',
-                    border: isDarkMode ? 'border-amber-700/50' : 'border-amber-200',
+                    bg: 'sq-tone-warning',
+                    text: 'text-[color:var(--status-attention)]',
+                    border: 'border-[color:var(--status-attention)]/30',
                   };
                 return {
                   stroke: '#ef4444',
-                  bg: isDarkMode ? 'bg-red-900/30' : 'bg-red-50',
-                  text: isDarkMode ? 'text-red-400' : 'text-red-600',
-                  border: isDarkMode ? 'border-red-700/50' : 'border-red-200',
+                  bg: 'sq-tone-critical',
+                  text: 'text-[color:var(--status-critical)]',
+                  border: 'border-[color:var(--status-critical)]/30',
                 };
               };
               const styleLabel =
@@ -2650,20 +2718,20 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
               const riskTone =
                 riskLevel === 'high'
                   ? {
-                      bg: isDarkMode ? 'bg-red-900/30' : 'bg-red-50',
-                      text: isDarkMode ? 'text-red-400' : 'text-red-700',
-                      border: isDarkMode ? 'border-red-700/50' : 'border-red-200',
+                      bg: 'sq-tone-critical',
+                      text: 'text-[color:var(--status-critical)]',
+                      border: 'border-[color:var(--status-critical)]/30',
                     }
                   : riskLevel === 'medium'
                     ? {
-                        bg: isDarkMode ? 'bg-amber-900/30' : 'bg-amber-50',
-                        text: isDarkMode ? 'text-amber-400' : 'text-amber-700',
-                        border: isDarkMode ? 'border-amber-700/50' : 'border-amber-200',
+                        bg: 'sq-tone-warning',
+                        text: 'text-[color:var(--status-attention)]',
+                        border: 'border-[color:var(--status-attention)]/30',
                       }
                     : {
-                        bg: isDarkMode ? 'bg-green-900/30' : 'bg-green-50',
-                        text: isDarkMode ? 'text-green-400' : 'text-green-700',
-                        border: isDarkMode ? 'border-green-700/50' : 'border-green-200',
+                        bg: 'sq-tone-success',
+                        text: 'text-[color:var(--status-success)]',
+                        border: 'border-[color:var(--status-success)]/30',
                       };
 
               const renderScoreDial = (
@@ -2676,7 +2744,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                       cx="32"
                       cy="32"
                       r="28"
-                      stroke={isDarkMode ? '#27272a' : '#e5e7eb'}
+                      stroke='var(--border)'
                       strokeWidth="5"
                       fill="none"
                     />
@@ -2698,12 +2766,8 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                     <span
                       className={`text-xs font-bold ${
                         score != null && hasEnoughData
-                          ? isDarkMode
-                            ? 'text-white'
-                            : 'text-gray-900'
-                          : isDarkMode
-                            ? 'text-gray-500'
-                            : 'text-gray-400'
+                          ? 'text-foreground'
+                          : 'text-muted-foreground'
                       }`}
                     >
                       {score != null && hasEnoughData
@@ -2717,21 +2781,19 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
               return (
                 <div className={cardWrapper}>
                   <div className="flex items-center gap-3 mb-4">
-                    <div className={`text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    <div className={`text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>
                       Booking Driving Analysis
                     </div>
-                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-lg ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-100/80'}`}>
-                      <Icon name="hash" className={`w-3 h-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                      <span className={`text-xs font-mono font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-lg bg-muted`}>
+                      <Icon name="hash" className={`w-3 h-3 text-muted-foreground`} />
+                      <span className={`text-xs font-mono font-semibold text-foreground`}>
                         {detailBooking.bookingRef}
                       </span>
                     </div>
                     {dataConfidence && (
                       <span
                         className={`ml-auto inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider border ${
-                          isDarkMode
-                            ? 'bg-neutral-800 text-gray-300 border-neutral-700'
-                            : 'bg-gray-50 text-gray-600 border-gray-200'
+                          'bg-muted text-muted-foreground border-border'
                         }`}
                       >
                         Confidence: {String(dataConfidence)}
@@ -2742,9 +2804,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                   {!hasEnoughData && (
                     <div
                       className={`flex items-start gap-2 mb-4 px-3 py-2 rounded-lg border text-xs ${
-                        isDarkMode
-                          ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
-                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                        'sq-tone-warning border border-current/20'
                       }`}
                     >
                       <Icon name="alert-triangle" className="w-3.5 h-3.5 mt-0.5 shrink-0" />
@@ -2756,18 +2816,16 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     <div
                       className={`flex items-center gap-3 p-3 rounded-lg border ${
-                        isDarkMode
-                          ? 'bg-neutral-800/40 border-neutral-700'
-                          : 'bg-gray-50 border-gray-200'
+                        'bg-muted/40 border-border'
                       }`}
                       title="Bewertet das Fahrverhalten in Bezug auf Verschleiß, Bremsen, Reifen und Antriebsbelastung. Geschwindigkeitsüberschreitungen sind hier nicht enthalten."
                     >
                       {renderScoreDial(styleScore, styleTone)}
                       <div className="min-w-0">
-                        <div className={`text-[10px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                        <div className={`text-[10px] font-semibold uppercase tracking-wider ${'text-muted-foreground'}`}>
                           Driving Style
                         </div>
-                        <div className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <div className={`text-sm font-bold text-foreground`}>
                           {styleScore != null && hasEnoughData
                             ? `${Math.round(styleScore)} / 100`
                             : '\u2014'}
@@ -2782,18 +2840,16 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
 
                     <div
                       className={`flex items-center gap-3 p-3 rounded-lg border ${
-                        isDarkMode
-                          ? 'bg-neutral-800/40 border-neutral-700'
-                          : 'bg-gray-50 border-gray-200'
+                        'bg-muted/40 border-border'
                       }`}
                       title="Bewertet sicherheitsrelevantes Geschwindigkeitsverhalten anhand von Speed-Limit-Analyse, Überschreitungsanteil und Überschreitungsschwere."
                     >
                       {renderScoreDial(safetyScore, safetyTone)}
                       <div className="min-w-0">
-                        <div className={`text-[10px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                        <div className={`text-[10px] font-semibold uppercase tracking-wider ${'text-muted-foreground'}`}>
                           Safety
                         </div>
-                        <div className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <div className={`text-sm font-bold text-foreground`}>
                           {safetyScore != null && hasEnoughData
                             ? `${Math.round(safetyScore)} / 100`
                             : '\u2014'}
@@ -2819,27 +2875,25 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                         {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}
                       </div>
                       {riskAnalysis.summary && (
-                        <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <p className={`text-[11px] mt-1 text-muted-foreground`}>
                           {riskAnalysis.summary}
                         </p>
                       )}
                     </div>
                     <div
                       className={`p-3 rounded-lg border ${
-                        isDarkMode
-                          ? 'bg-neutral-800/40 border-neutral-700'
-                          : 'bg-gray-50 border-gray-200'
+                        'bg-muted/40 border-border'
                       }`}
                     >
-                      <div className={`text-[10px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                      <div className={`text-[10px] font-semibold uppercase tracking-wider ${'text-muted-foreground'}`}>
                         Coverage
                       </div>
-                      <div className={`text-sm font-bold mt-0.5 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      <div className={`text-sm font-bold mt-0.5 text-foreground`}>
                         {scoredTripCount != null
                           ? `${scoredTripCount} scored trip${scoredTripCount === 1 ? '' : 's'}`
                           : '\u2014'}
                       </div>
-                      <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <p className={`text-[11px] mt-1 text-muted-foreground`}>
                         {totalDistanceKm != null
                           ? `${Math.round(totalDistanceKm).toLocaleString('de-DE')} km`
                           : 'Distance unavailable'}
@@ -2850,40 +2904,38 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                   {/* Event totals */}
                   <div
                     className={`grid grid-cols-3 gap-3 px-3 py-2.5 rounded-lg border ${
-                      isDarkMode
-                        ? 'bg-neutral-800/40 border-neutral-700'
-                        : 'bg-gray-50 border-gray-200'
+                      'bg-muted/40 border-border'
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <Icon name="trending-up" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                      <Icon name="trending-up" className={`w-3.5 h-3.5 text-muted-foreground`} />
                       <div>
-                        <div className={`text-[10px] uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                        <div className={`text-[10px] uppercase tracking-wider ${'text-muted-foreground'}`}>
                           Driving Events
                         </div>
-                        <div className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <div className={`text-xs font-bold text-foreground`}>
                           {drivingEventsCount ?? '\u2014'}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Icon name="alert-triangle" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                      <Icon name="alert-triangle" className={`w-3.5 h-3.5 text-muted-foreground`} />
                       <div>
-                        <div className={`text-[10px] uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                        <div className={`text-[10px] uppercase tracking-wider ${'text-muted-foreground'}`}>
                           Abuse Flags
                         </div>
-                        <div className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <div className={`text-xs font-bold text-foreground`}>
                           {abuseDetectionCount ?? '\u2014'}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Icon name="activity" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                      <Icon name="activity" className={`w-3.5 h-3.5 text-muted-foreground`} />
                       <div>
-                        <div className={`text-[10px] uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                        <div className={`text-[10px] uppercase tracking-wider ${'text-muted-foreground'}`}>
                           Wear Impact
                         </div>
-                        <div className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <div className={`text-xs font-bold text-foreground`}>
                           {wear.overallWearImpact
                             ? String(wear.overallWearImpact).replace(/_/g, ' ')
                             : bookingAnalysis.wearImpact
@@ -2898,9 +2950,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                   {riskLevel === 'high' && (
                     <div
                       className={`mt-3 flex items-start gap-2 px-3 py-2 rounded-lg border text-xs ${
-                        isDarkMode
-                          ? 'bg-red-500/10 text-red-300 border-red-500/30'
-                          : 'bg-red-50 text-red-700 border-red-200'
+                        'bg-red-50 text-red-700 border-red-200'
                       }`}
                     >
                       <Icon name="clipboard-check" className="w-3.5 h-3.5 mt-0.5 shrink-0" />
@@ -2917,11 +2967,11 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
             {/* Notes */}
             {(detailBooking.notes || isEditMode) && (
               <div className={`rounded-lg p-8 border shadow-sm ${
-                isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+                'bg-card border-border'
               }`}>
-                <div className={`text-xs font-semibold uppercase tracking-wider mb-3 flex items-center justify-between ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                <div className={`text-xs font-semibold uppercase tracking-wider mb-3 flex items-center justify-between text-muted-foreground`}>
                   Notizen
-                  {isEditMode && <Icon name="pencil" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />}
+                  {isEditMode && <Icon name="pencil" className={`w-3.5 h-3.5 text-[color:var(--brand)]`} />}
                 </div>
                 {isEditMode ? (
                   <textarea
@@ -2930,14 +2980,12 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                     rows={4}
                     placeholder="Notizen zur Buchung..."
                     className={`w-full px-3 py-3 rounded-lg text-xs resize-none outline-none border transition-colors ${
-                      isDarkMode
-                        ? 'bg-neutral-800/50 text-gray-200 border-neutral-700/30 focus:border-blue-500 placeholder:text-gray-600'
-                        : 'bg-gray-50 text-gray-700 border-gray-100 focus:border-blue-500 placeholder:text-gray-400'
+                      'border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] placeholder:text-muted-foreground'
                     }`}
                   />
                 ) : (
                   <div className={`px-3 py-3 rounded-lg ${
-                    isDarkMode ? 'bg-neutral-800/50 text-gray-300 border border-neutral-700/30' : 'bg-gray-50 text-gray-700 border border-gray-100'
+                    'bg-muted/50 text-foreground border border-border/30'
                   }`}>
                     {detailBooking.notes}
                   </div>
@@ -2959,45 +3007,45 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
             <div
               onClick={(e) => e.stopPropagation()}
               className={`relative w-full max-w-md mx-4 rounded-lg shadow-2xl border overflow-hidden ${
-                isDarkMode ? 'bg-neutral-900/95 border-neutral-700' : 'bg-white/95 border-gray-200'
+                'bg-card/95 border-border'
               }`}
             >
               <div className="p-8 text-center">
-                <div className={`w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center ${isDarkMode ? 'bg-red-600/20' : 'bg-red-50'}`}>
-                  <Icon name="alert-triangle" className={`w-5 h-5 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`} />
+                <div className={`w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center sq-tone-critical`}>
+                  <Icon name="alert-triangle" className={`w-5 h-5 text-[color:var(--status-critical)]`} />
                 </div>
-                <h3 className={`text-base mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Buchung stornieren?</h3>
-                <p className={`text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                <h3 className={`text-base mb-2 text-foreground`}>Buchung stornieren?</h3>
+                <p className={`text-xs mb-1 text-muted-foreground`}>
                   Möchten Sie diese Buchung wirklich stornieren?
                 </p>
                 {booking && (
-                  <div className={`rounded-lg p-3 my-4 text-left text-xs space-y-1.5 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-50'}`}>
+                  <div className={`rounded-lg p-3 my-4 text-left text-xs space-y-1.5 bg-muted`}>
                     <div className="flex justify-between">
-                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Kunde</span>
-                      <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>{booking.customer}</span>
+                      <span className={'text-muted-foreground'}>Kunde</span>
+                      <span className={'text-foreground'}>{booking.customer}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Fahrzeug</span>
-                      <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>{booking.vehicle}</span>
+                      <span className={'text-muted-foreground'}>Fahrzeug</span>
+                      <span className={'text-foreground'}>{booking.vehicle}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Zeitraum</span>
-                      <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>{booking.startDate} – {booking.endDate}</span>
+                      <span className={'text-muted-foreground'}>Zeitraum</span>
+                      <span className={'text-foreground'}>{booking.startDate} – {booking.endDate}</span>
                     </div>
-                    <div className={`flex justify-between pt-1.5 border-t ${isDarkMode ? 'border-neutral-700' : 'border-gray-200'}`}>
-                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Betrag</span>
-                      <span className={isDarkMode ? 'text-red-400' : 'text-red-600'}>{booking.revenue}</span>
+                    <div className={`flex justify-between pt-1.5 border-t border-border`}>
+                      <span className={'text-muted-foreground'}>Betrag</span>
+                      <span className={'text-[color:var(--status-critical)]'}>{booking.revenue}</span>
                     </div>
                   </div>
                 )}
-                <p className={`text-xs mb-3 ${isDarkMode ? 'text-red-400/80' : 'text-red-500/80'}`}>
+                <p className={`text-xs mb-3 ${'text-[color:var(--status-critical)]/80'}`}>
                   Diese Aktion kann nicht rückgängig gemacht werden.
                 </p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setCancelConfirmId(null)}
                     className={`flex-1 px-3 py-2.5 rounded-lg text-xs border transition-all ${
-                      isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-700' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                      'bg-card border-border text-foreground hover:bg-muted'
                     }`}
                   >
                     Zurück
@@ -3030,35 +3078,35 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
             <div
               onClick={(e) => e.stopPropagation()}
               className={`relative w-full max-w-md mx-4 rounded-lg shadow-2xl border overflow-hidden ${
-                isDarkMode ? 'bg-neutral-900/95 border-neutral-700' : 'bg-white/95 border-gray-200'
+                'bg-card/95 border-border'
               }`}
             >
               <div className="p-8 text-center">
-                <div className={`w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center ${isDarkMode ? 'bg-rose-600/20' : 'bg-rose-50'}`}>
-                  <Icon name="user-x" className={`w-6 h-6 ${isDarkMode ? 'text-rose-300' : 'text-rose-500'}`} />
+                <div className={`w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center sq-tone-critical`}>
+                  <Icon name="user-x" className={`w-6 h-6 text-[color:var(--status-critical)]`} />
                 </div>
-                <h3 className={`text-base mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Kunde nicht erschienen?</h3>
-                <p className={`text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                <h3 className={`text-base mb-2 text-foreground`}>Kunde nicht erschienen?</h3>
+                <p className={`text-xs mb-1 text-muted-foreground`}>
                   Die Buchung wird auf <strong>No-Show</strong> gesetzt und das Fahrzeug wieder freigegeben.
                 </p>
                 {booking && (
-                  <div className={`rounded-lg p-3 my-4 text-left text-xs space-y-1.5 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-50'}`}>
+                  <div className={`rounded-lg p-3 my-4 text-left text-xs space-y-1.5 bg-muted`}>
                     <div className="flex justify-between">
-                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Kunde</span>
-                      <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>{booking.customer}</span>
+                      <span className={'text-muted-foreground'}>Kunde</span>
+                      <span className={'text-foreground'}>{booking.customer}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Fahrzeug</span>
-                      <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>{booking.vehicle}</span>
+                      <span className={'text-muted-foreground'}>Fahrzeug</span>
+                      <span className={'text-foreground'}>{booking.vehicle}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Geplanter Pickup</span>
-                      <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>{booking.startDate}</span>
+                      <span className={'text-muted-foreground'}>Geplanter Pickup</span>
+                      <span className={'text-foreground'}>{booking.startDate}</span>
                     </div>
                   </div>
                 )}
                 <div className="text-left mb-3">
-                  <label className={`block text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <label className={`block text-[11px] font-semibold mb-1 text-foreground`}>
                     Grund (optional)
                   </label>
                   <textarea
@@ -3067,13 +3115,11 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                     rows={3}
                     placeholder="z. B. Kunde telefonisch nicht erreichbar, keine Rückmeldung auf E-Mail …"
                     className={`w-full px-2.5 py-2 rounded-md border text-xs outline-none resize-none ${
-                      isDarkMode
-                        ? 'bg-neutral-900 border-neutral-700 text-white placeholder-gray-500 focus:border-neutral-500'
-                        : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-gray-400'
+                      'border border-border bg-[color:var(--input-background)] text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)]'
                     }`}
                   />
                 </div>
-                <p className={`text-xs mb-3 ${isDarkMode ? 'text-rose-400/80' : 'text-rose-500/80'}`}>
+                <p className={`text-xs mb-3 ${'text-[color:var(--status-critical)]/80'}`}>
                   Diese Aktion kann nicht rückgängig gemacht werden.
                 </p>
                 <div className="flex gap-3">
@@ -3081,7 +3127,7 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                     disabled={noShowSubmitting}
                     onClick={() => { setNoShowConfirmId(null); setNoShowReason(''); }}
                     className={`flex-1 px-3 py-2.5 rounded-lg text-xs border transition-all ${
-                      isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-700' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                      'bg-card border-border text-foreground hover:bg-muted'
                     } ${noShowSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     Zurück
@@ -3108,57 +3154,41 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
 
   return (
     <div className="max-w-[1800px] mx-auto relative space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-2 sm:gap-3">
-        <div className="animate-fade-up min-w-0">
-          <h1 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground truncate">
-            Bookings
-          </h1>
+      <PageHeader
+        title="Bookings"
+        actions={
+          <button
+            onClick={onCreateNewBooking}
+            className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
+          >
+            <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" />
+            Create New Booking
+          </button>
+        }
+      />
+
+      {!apiLoaded ? (
+        <SkeletonMetricGrid count={4} />
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {bookingMetricCards.map((card) => {
+            const isActive = activeTab === card.tab;
+            return (
+              <MetricCard
+                key={card.label}
+                label={card.label}
+                value={card.value}
+                icon={<Icon name={card.icon} className="w-4 h-4" />}
+                status={metricToneToStatus(card.tone)}
+                onClick={() => setActiveTab(isActive && card.tab !== null ? null : card.tab)}
+                className={isActive ? 'ring-2 ring-[color:var(--brand)]' : undefined}
+              />
+            );
+          })}
         </div>
-        <button
-          onClick={onCreateNewBooking}
-          className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
-        >
-          <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" />
-          Create New Booking
-        </button>
-      </div>
+      )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {bookingMetricCards.map((card) => {
-          const isActive = activeTab === card.tab;
-          const toneClass =
-            card.tone === 'brand'
-              ? 'sq-tone-brand'
-              : card.tone === 'success'
-                ? 'sq-tone-success'
-                : card.tone === 'warning'
-                  ? 'sq-tone-warning'
-                  : 'sq-tone-neutral';
-          return (
-            <button
-              key={card.label}
-              type="button"
-              onClick={() => setActiveTab(isActive && card.tab !== null ? null : card.tab)}
-              aria-pressed={isActive}
-              className={`rounded-xl p-3 text-left transition-all duration-200 ${toneClass} ${
-                isActive
-                  ? 'shadow-[inset_0_0_0_1px_currentColor,0_6px_14px_rgba(15,23,42,0.12)]'
-                  : 'opacity-80 hover:opacity-100 hover:shadow-sm'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[18px] leading-none font-bold tabular-nums">{card.value}</p>
-                  <p className="text-[9px] mt-1 font-semibold uppercase tracking-wider opacity-75">{card.label}</p>
-                </div>
-                <Icon name={card.icon} className="w-4 h-4 shrink-0 opacity-80" />
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+      <DataCard className="rounded-2xl shadow-[var(--shadow-1)]" bodyClassName="p-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="relative min-w-[220px] flex-1 max-w-[420px]">
             <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -3223,540 +3253,77 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
             )}
           </div>
         )}
-      </div>
-
-      {/* Main Content: Calendar and Bookings List */}
+      </DataCard>
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
         {/* Bookings List - Left Side */}
         <div className="col-span-1 lg:col-span-2 sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
-          {/* Title */}
-          <div className="flex items-center justify-between gap-2.5 mb-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="p-1.5 rounded-lg sq-tone-brand">
-                <Icon name="book-open" className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <h3 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">
-                  {activeTab === null ? 'All bookings' : activeTab === 'active' ? 'Active bookings' : activeTab === 'upcoming' ? 'Upcoming bookings' : 'Completed bookings'}
-                </h3>
-                <p className="text-[10px] text-muted-foreground">
-                  {filteredBookings.length} {filteredBookings.length === 1 ? 'booking' : 'bookings'}
-                </p>
-              </div>
-            </div>
+          <SectionHeader
+            title={listSectionTitle}
+            description={`${filteredBookings.length} ${filteredBookings.length === 1 ? 'booking' : 'bookings'}`}
+            as="label"
+          />
+
+          <div className="max-h-[600px] overflow-y-auto">
+            <DataTable
+              columns={bookingTableColumns}
+              rows={filteredBookings}
+              getRowKey={(row) => row.id}
+              loading={!apiLoaded}
+              dense
+              card={false}
+              onRowClick={(booking) => {
+                handleBookingClick(booking.id);
+                setPopupBookingId(booking.id);
+              }}
+              rowActions={(booking) =>
+                booking.status === 'confirmed' || booking.status === 'pending' ? (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDetailBookingId(booking.id);
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold sq-tone-brand hover:opacity-90"
+                      title="Buchung bearbeiten"
+                    >
+                      <Icon name="pencil" className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => confirmCancel(booking.id, e)}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold sq-tone-critical hover:opacity-90"
+                      title="Buchung stornieren"
+                    >
+                      <Icon name="trash-2" className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : null
+              }
+              empty={
+                <EmptyState
+                  icon={<Icon name="search" className="w-5 h-5" />}
+                  title={
+                    searchQuery.trim()
+                      ? `Keine Buchungen für „${searchQuery}" gefunden`
+                      : 'Keine Buchungen vorhanden'
+                  }
+                  action={
+                    searchQuery.trim() ? (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="text-xs font-semibold px-3 py-1 rounded-lg transition-colors sq-tone-brand"
+                      >
+                        Suche zurücksetzen
+                      </button>
+                    ) : undefined
+                  }
+                  compact
+                />
+              }
+            />
           </div>
-
-          {/* Bookings List */}
-          <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-            {filteredBookings.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 rounded-xl border border-dashed border-border/70 bg-muted/20">
-                <Icon name="search" className="w-5 h-5 mb-3 text-muted-foreground" />
-                <p className="text-xs font-medium text-muted-foreground">
-                  {searchQuery.trim() ? `Keine Buchungen für „${searchQuery}" gefunden` : 'Keine Buchungen vorhanden'}
-                </p>
-                {searchQuery.trim() && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="mt-2 text-xs font-semibold px-3 py-1 rounded-lg transition-colors sq-tone-brand"
-                  >
-                    Suche zurücksetzen
-                  </button>
-                )}
-              </div>
-            )}
-            {filteredBookings.map((booking) => (
-              <div
-                key={booking.id}
-                onMouseEnter={() => setHoveredBookingId(booking.id)}
-                onMouseLeave={() => setHoveredBookingId(null)}
-                onClick={() => {
-                  handleBookingClick(booking.id);
-                  setPopupBookingId(booking.id);
-                }}
-                className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer ${
-                  selectedBookingId === booking.id
-                    ? 'bg-card border-[color:var(--brand)] shadow-[var(--shadow-1)] ring-2 ring-[color:var(--brand-soft)]'
-                    : hoveredBookingId === booking.id
-                    ? 'bg-muted/40 border-border shadow-sm'
-                    : 'bg-card border-border/60 hover:bg-muted/40 hover:border-border'
-                }`}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <Icon name="user" className="w-4 h-4 text-muted-foreground" />
-                      <span className="font-bold text-xs text-foreground">
-                        {booking.customer}
-                      </span>
-                      {booking.status === 'active' && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 sq-tone-brand">
-                          <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
-                          Active
-                        </span>
-                      )}
-                      {booking.status === 'pending' && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold sq-tone-warning">
-                          Pending
-                        </span>
-                      )}
-                      {booking.status === 'confirmed' && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold sq-tone-success">
-                          Confirmed
-                        </span>
-                      )}
-                      {booking.status === 'completed' && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 sq-tone-success">
-                          <Icon name="check-circle" className="w-3 h-3" />
-                          Completed
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs font-semibold mb-1 text-foreground">
-                      {booking.vehicle} • {booking.plate}
-                    </div>
-                    <div className="text-[10px] font-mono text-muted-foreground">
-                      Ref: {booking.bookingRef}
-                    </div>
-                  </div>
-                  <div className="text-right flex flex-col items-end gap-1.5">
-                    <div className="text-xs font-bold text-[color:var(--status-success)]">
-                      {booking.revenue}
-                    </div>
-                    {/* Edit & Cancel buttons on hover for upcoming bookings */}
-                    {(booking.status === 'confirmed' || booking.status === 'pending') && hoveredBookingId === booking.id && (
-                      <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-right-2 duration-200">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDetailBookingId(booking.id);
-                          }}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-all duration-200 sq-tone-brand hover:opacity-90"
-                          title="Buchung bearbeiten"
-                        >
-                          <Icon name="pencil" className="w-3 h-3" />
-                          Bearbeiten
-                        </button>
-                        <button
-                          onClick={(e) => confirmCancel(booking.id, e)}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-all duration-200 sq-tone-critical hover:opacity-90"
-                          title="Buchung stornieren"
-                        >
-                          <Icon name="trash-2" className="w-3 h-3" />
-                          Stornieren
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  <div className="flex items-center gap-2">
-                    <Icon name="calendar" className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">
-                      {booking.startDate} - {booking.endDate}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Icon name="clock" className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">
-                      {booking.startTime} - {booking.endTime}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Icon name="map-pin" className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">
-                      {booking.pickupLocation}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Icon name="shield" className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">
-                      {booking.insurance}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Booking Detail Popup Modal */}
-          {popupBookingId && (() => {
-            const allBookings = [...activeBookings, ...upcomingBookings, ...completedBookings];
-            const booking = allBookings.find(b => b.id === popupBookingId);
-            if (!booking) return null;
-            const statusColor = booking.status === 'active' ? 'blue' : booking.status === 'confirmed' || booking.status === 'pending' ? 'purple' : 'green';
-            const statusLabel = booking.status === 'active' ? 'Active' : booking.status === 'pending' ? 'Pending' : booking.status === 'confirmed' ? 'Confirmed' : 'Completed';
-            return (
-              <div 
-                className={`z-50 flex items-center justify-center overflow-hidden transition-all duration-500 ease-out ${
-                  popupFullView 
-                    ? 'fixed inset-0 rounded-none' 
-                    : 'absolute inset-0 rounded-3xl'
-                }`}
-                onClick={handleClosePopup}
-              >
-                {/* Backdrop */}
-                <div className={`absolute inset-0 transition-all duration-500 ease-out ${
-                  popupAnimating 
-                    ? isDarkMode ? 'bg-black/70 backdrop-blur-[2px]' : 'bg-black/40 backdrop-blur-[2px]' 
-                    : 'bg-black/0 backdrop-blur-none'
-                }`} />
-                
-                {/* Modal - fills BookingsView container or full screen */}
-                <div 
-                  onClick={(e) => e.stopPropagation()}
-                  className={`relative flex flex-col border shadow-[0_40px_120px_rgb(0,0,0,0.4)] transition-all duration-500 ease-out ${
-                    popupFullView ? 'w-full h-full rounded-none' : 'w-full h-full rounded-3xl'
-                  } ${
-                    popupAnimating
-                      ? 'opacity-100 scale-100 translate-y-0'
-                      : 'opacity-0 scale-[0.97] translate-y-4'
-                  } ${
-                    isDarkMode 
-                      ? 'bg-neutral-900 border-neutral-700/60' 
-                      : 'bg-[#f5f5f7] border-gray-200/60'
-                  }`}
-                >
-                  {/* Sticky Header */}
-                  <div className={`flex-shrink-0 px-8 pt-8 pb-5 border-b ${isDarkMode ? 'border-neutral-700/40' : 'border-gray-200/60'}`}>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className={`w-14 h-14 rounded-lg flex items-center justify-center ${
-                            statusColor === 'blue' ? (isDarkMode ? 'bg-blue-900/50' : 'bg-blue-100') :
-                            statusColor === 'purple' ? (isDarkMode ? 'bg-purple-900/50' : 'bg-purple-100') :
-                            (isDarkMode ? 'bg-green-900/50' : 'bg-green-100')
-                          }`}>
-                            <Icon name="car" className={`w-7 h-7 ${
-                              statusColor === 'blue' ? (isDarkMode ? 'text-blue-400' : 'text-blue-600') :
-                              statusColor === 'purple' ? (isDarkMode ? 'text-purple-400' : 'text-purple-600') :
-                              (isDarkMode ? 'text-green-400' : 'text-green-600')
-                            }`} />
-                          </div>
-                          <div>
-                            <h2 className={`text-lg font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                              {booking.vehicle}
-                            </h2>
-                            <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                              {booking.plate} • {booking.bookingRef}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 mt-4">
-                          <span className={`text-xs px-3 py-1.5 rounded-full font-semibold flex items-center gap-1.5 ${
-                            statusColor === 'blue' ? (isDarkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700') :
-                            statusColor === 'purple' ? (booking.status === 'pending' ? (isDarkMode ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-700') : (isDarkMode ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700')) :
-                            (isDarkMode ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700')
-                          }`}>
-                            {booking.status === 'active' && <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>}
-                            {booking.status === 'completed' && <Icon name="check-circle" className="w-5 h-5" />}
-                            {statusLabel}
-                          </span>
-                          <span className={`text-xs font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
-                            {booking.revenue}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button 
-                          onClick={() => {
-                            setDetailBookingId(booking.id);
-                            setPopupBookingId(null);
-                            setPopupAnimating(false);
-                            setPopupClosing(false);
-                            setPopupFullView(false);
-                            setSelectedBookingId(null);
-                          }}
-                          className={`p-3 rounded-lg transition-all duration-200 ${
-                            isDarkMode 
-                              ? 'hover:bg-neutral-800 text-gray-400 hover:text-white' 
-                              : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'
-                          }`}
-                          title="Detailansicht öffnen"
-                        >
-                          <Icon name="maximize-2" className="w-5 h-5" />
-                        </button>
-                        <button 
-                          onClick={handleClosePopup}
-                          className={`p-3 rounded-lg transition-all duration-200 ${
-                            isDarkMode 
-                              ? 'hover:bg-neutral-800 text-gray-400 hover:text-white' 
-                              : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'
-                          }`}
-                        >
-                          <Icon name="x" className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Scrollable Content */}
-                  <div className="flex-1 overflow-y-auto px-8 py-3 space-y-5">
-                    {/* Customer & Booking - Side by Side */}
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* Customer Info */}
-                      <div>
-                        <div className={`text-xs font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                          Kunde
-                        </div>
-                        <div className="space-y-3">
-                          <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'}`}>
-                            <Icon name="user" className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                            <div>
-                              <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Name</div>
-                              <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{booking.customer}</div>
-                            </div>
-                          </div>
-                          <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'}`}>
-                            <Icon name="phone" className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                            <div>
-                              <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Telefon</div>
-                              <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{booking.customerPhone}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Booking Times */}
-                      <div>
-                        <div className={`text-xs font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                          Buchungsdetails
-                        </div>
-                        <div className="space-y-3">
-                          <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'}`}>
-                            <Icon name="calendar" className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                            <div>
-                              <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Zeitraum</div>
-                              <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{booking.startDate} – {booking.endDate}</div>
-                            </div>
-                          </div>
-                          <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'}`}>
-                            <Icon name="clock" className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                            <div>
-                              <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Uhrzeit</div>
-                              <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{booking.startTime} – {booking.endTime}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Locations */}
-                    <div>
-                      <div className={`text-xs font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                        Standorte
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'}`}>
-                          <Icon name="map-pin" className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
-                          <div>
-                            <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Abholung</div>
-                            <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{booking.pickupLocation}</div>
-                          </div>
-                        </div>
-                        <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'}`}>
-                          <Icon name="map-pin" className={`w-5 h-5 ${isDarkMode ? 'text-green-400' : 'text-green-500'}`} />
-                          <div>
-                            <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Rückgabe</div>
-                            <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{booking.returnLocation}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Vehicle & Payment - 4 columns */}
-                    <div>
-                      <div className={`text-xs font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                        Fahrzeug & Zahlung
-                      </div>
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                        <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'}`}>
-                          <Icon name="shield" className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                          <div>
-                            <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Versicherung</div>
-                            <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{booking.insurance}</div>
-                          </div>
-                        </div>
-                        <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'}`}>
-                          <Icon name="credit-card" className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                          <div>
-                            <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Zahlungsart</div>
-                            <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{booking.paymentMethod}</div>
-                          </div>
-                        </div>
-                        <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'}`}>
-                          <Icon name="fuel" className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                          <div>
-                            <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Tankstand</div>
-                            <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{booking.fuelLevel}</div>
-                          </div>
-                        </div>
-                        <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'}`}>
-                          <Icon name="car" className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                          <div>
-                            <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Kilometerstand</div>
-                            <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-                              {/* V4.6.72 — `mileageStart` / `mileageEnd` are always null for
-                                  bookings returned from the API (the fields are not persisted
-                                  on the Booking model; mapApiBooking assigns null). Without
-                                  this guard the expanded booking card crashes on
-                                  `.toLocaleString` the moment the user clicks any booking. */}
-                              {booking.mileageStart != null ? `${booking.mileageStart.toLocaleString('de-DE')} km` : '—'}
-                              {booking.mileageStart != null && booking.mileageEnd != null && (
-                                <span className={`ml-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                                  → {booking.mileageEnd.toLocaleString('de-DE')} km
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Mileage Summary for completed */}
-                    {booking.status === 'completed' && booking.mileageEnd != null && booking.mileageStart != null && (
-                      <div className={`flex items-center gap-3 px-3 py-3 rounded-lg ${
-                        isDarkMode ? 'bg-green-900/20 text-green-400 border border-green-800/30' : 'bg-green-50 text-green-700 border border-green-100'
-                      }`}>
-                        <Icon name="car" className="w-5 h-5" />
-                        <span className="font-semibold">Gefahrene Kilometer:</span> {(booking.mileageEnd - booking.mileageStart).toLocaleString('de-DE')} km
-                      </div>
-                    )}
-
-                    {/* Notes */}
-                    {booking.notes && (
-                      <div className={`px-3 py-3 rounded-lg ${
-                        isDarkMode ? 'bg-neutral-800/50 text-gray-400 border border-neutral-700/30' : 'bg-gray-50 text-gray-600 border border-gray-100'
-                      }`}>
-                        <span className="font-semibold">Notiz:</span> {booking.notes}
-                      </div>
-                    )}
-
-                    {/* Documents Section */}
-                    {(booking.pickupProtocol || booking.returnProtocol) && (
-                      <div>
-                        <div className={`text-xs font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                          Dokumente
-                        </div>
-                        <div className="space-y-2">
-                          {booking.pickupProtocol && (
-                            <div className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-all duration-200 ${
-                              isDarkMode 
-                                ? 'bg-neutral-800/50 border-neutral-700/40 hover:border-blue-600/50 hover:bg-blue-900/20' 
-                                : 'bg-white border-gray-200/60 hover:border-blue-300 hover:bg-blue-50/50'
-                            }`}>
-                              <div className="flex items-center gap-3">
-                                <div className={`w-5 h-5 rounded-lg flex items-center justify-center ${
-                                  isDarkMode ? 'bg-blue-900/40' : 'bg-blue-100'
-                                }`}>
-                                  <Icon name="clipboard-check" className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                                </div>
-                                <div>
-                                  <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-                                    Pickup-Protokoll
-                                  </div>
-                                  <div className={`text-xs font-mono ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                                    HO-PICKUP-{(booking.bookingRef || '').replace('BK-', '')}.pdf
-                                  </div>
-                                  {booking.pickupProtocol?.performedByName || booking.pickupProtocol?.performedAt ? (
-                                    <div className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-500'}`}>
-                                      {[
-                                        booking.pickupProtocol?.performedByName || null,
-                                        booking.pickupProtocol?.performedAt
-                                          ? new Date(booking.pickupProtocol.performedAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
-                                          : null,
-                                      ].filter(Boolean).join(' · ')}
-                                    </div>
-                                  ) : null}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  className={`p-2 rounded-lg transition-all duration-200 ${
-                                    isDarkMode 
-                                      ? 'hover:bg-neutral-700 text-gray-400 hover:text-blue-400' 
-                                      : 'hover:bg-gray-100 text-gray-500 hover:text-blue-600'
-                                  }`}
-                                  title="Ansehen"
-                                >
-                                  <Icon name="eye" className="w-5 h-5" />
-                                </button>
-                                <button
-                                  className={`p-2 rounded-lg transition-all duration-200 ${
-                                    isDarkMode 
-                                      ? 'hover:bg-neutral-700 text-gray-400 hover:text-blue-400' 
-                                      : 'hover:bg-gray-100 text-gray-500 hover:text-blue-600'
-                                  }`}
-                                  title="Herunterladen"
-                                >
-                                  <Icon name="download" className="w-5 h-5" />
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                          {booking.returnProtocol && (
-                            <div className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-all duration-200 ${
-                              isDarkMode 
-                                ? 'bg-neutral-800/50 border-neutral-700/40 hover:border-green-600/50 hover:bg-green-900/20' 
-                                : 'bg-white border-gray-200/60 hover:border-green-300 hover:bg-green-50/50'
-                            }`}>
-                              <div className="flex items-center gap-3">
-                                <div className={`w-5 h-5 rounded-lg flex items-center justify-center ${
-                                  isDarkMode ? 'bg-green-900/40' : 'bg-green-100'
-                                }`}>
-                                  <Icon name="file-text" className={`w-5 h-5 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
-                                </div>
-                                <div>
-                                  <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-                                    Return-Protokoll
-                                  </div>
-                                  <div className={`text-xs font-mono ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                                    HO-RETURN-{(booking.bookingRef || '').replace('BK-', '')}.pdf
-                                  </div>
-                                  {booking.returnProtocol?.performedByName || booking.returnProtocol?.performedAt ? (
-                                    <div className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-500'}`}>
-                                      {[
-                                        booking.returnProtocol?.performedByName || null,
-                                        booking.returnProtocol?.performedAt
-                                          ? new Date(booking.returnProtocol.performedAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
-                                          : null,
-                                      ].filter(Boolean).join(' · ')}
-                                    </div>
-                                  ) : null}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  className={`p-2 rounded-lg transition-all duration-200 ${
-                                    isDarkMode 
-                                      ? 'hover:bg-neutral-700 text-gray-400 hover:text-green-400' 
-                                      : 'hover:bg-gray-100 text-gray-500 hover:text-green-600'
-                                  }`}
-                                  title="Ansehen"
-                                >
-                                  <Icon name="eye" className="w-5 h-5" />
-                                </button>
-                                <button
-                                  className={`p-2 rounded-lg transition-all duration-200 ${
-                                    isDarkMode 
-                                      ? 'hover:bg-neutral-700 text-gray-400 hover:text-green-400' 
-                                      : 'hover:bg-gray-100 text-gray-500 hover:text-green-600'
-                                  }`}
-                                  title="Herunterladen"
-                                >
-                                  <Icon name="download" className="w-5 h-5" />
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
         </div>
 
         {/* Calendar - Right Side */}
@@ -3943,6 +3510,294 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
         </div>
       </div>
 
+
+      <DetailDrawer
+        open={!!popupBooking}
+        onOpenChange={(open) => {
+          if (!open) handleClosePopup();
+        }}
+        title={popupBooking?.vehicle ?? 'Booking'}
+        eyebrow={popupBooking ? `${popupBooking.plate} • ${popupBooking.bookingRef}` : undefined}
+        description={popupBooking ? popupBooking.customer : undefined}
+        status={
+          popupBooking ? (
+            <StatusChip tone={bookingStatusTone(popupBooking.status)} dot={popupBooking.status === 'active'}>
+              {bookingStatusLabel(popupBooking.status)}
+            </StatusChip>
+          ) : undefined
+        }
+        footer={
+          popupBooking ? (
+            <div className="flex w-full items-center justify-between gap-2">
+              <span className="text-xs font-bold text-[color:var(--status-success)]">{popupBooking.revenue}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setDetailBookingId(popupBooking.id);
+                  handleClosePopup();
+                }}
+                className="sq-press flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold sq-tone-brand"
+              >
+                <Icon name="maximize-2" className="w-4 h-4" />
+                Full detail
+              </button>
+            </div>
+          ) : undefined
+        }
+        widthClassName="sm:max-w-2xl"
+      >
+        {popupBooking && (
+          <div className="space-y-5">
+                              {/* Customer & Booking - Side by Side */}
+                              <div className="grid grid-cols-2 gap-3">
+                                {/* Customer Info */}
+                                <div>
+                                  <div className={`text-xs font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>
+                                    Kunde
+                                  </div>
+                                  <div className="space-y-3">
+                                    <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50`}>
+                                      <Icon name="user" className={`w-5 h-5 text-muted-foreground`} />
+                                      <div>
+                                        <div className={`text-xs text-muted-foreground`}>Name</div>
+                                        <div className={`text-xs font-semibold text-foreground`}>{popupBooking.customer}</div>
+                                      </div>
+                                    </div>
+                                    <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50`}>
+                                      <Icon name="phone" className={`w-5 h-5 text-muted-foreground`} />
+                                      <div>
+                                        <div className={`text-xs text-muted-foreground`}>Telefon</div>
+                                        <div className={`text-xs font-semibold text-foreground`}>{popupBooking.customerPhone}</div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+          
+                                {/* Booking Times */}
+                                <div>
+                                  <div className={`text-xs font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>
+                                    Buchungsdetails
+                                  </div>
+                                  <div className="space-y-3">
+                                    <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50`}>
+                                      <Icon name="calendar" className={`w-5 h-5 text-muted-foreground`} />
+                                      <div>
+                                        <div className={`text-xs text-muted-foreground`}>Zeitraum</div>
+                                        <div className={`text-xs font-semibold text-foreground`}>{popupBooking.startDate} – {popupBooking.endDate}</div>
+                                      </div>
+                                    </div>
+                                    <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50`}>
+                                      <Icon name="clock" className={`w-5 h-5 text-muted-foreground`} />
+                                      <div>
+                                        <div className={`text-xs text-muted-foreground`}>Uhrzeit</div>
+                                        <div className={`text-xs font-semibold text-foreground`}>{popupBooking.startTime} – {popupBooking.endTime}</div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+          
+                              {/* Locations */}
+                              <div>
+                                <div className={`text-xs font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>
+                                  Standorte
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50`}>
+                                    <Icon name="map-pin" className={`w-5 h-5 text-[color:var(--brand)]`} />
+                                    <div>
+                                      <div className={`text-xs text-muted-foreground`}>Abholung</div>
+                                      <div className={`text-xs font-semibold text-foreground`}>{popupBooking.pickupLocation}</div>
+                                    </div>
+                                  </div>
+                                  <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50`}>
+                                    <Icon name="map-pin" className={`w-5 h-5 ${'text-[color:var(--status-success)]'}`} />
+                                    <div>
+                                      <div className={`text-xs text-muted-foreground`}>Rückgabe</div>
+                                      <div className={`text-xs font-semibold text-foreground`}>{popupBooking.returnLocation}</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+          
+                              {/* Vehicle & Payment - 4 columns */}
+                              <div>
+                                <div className={`text-xs font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>
+                                  Fahrzeug & Zahlung
+                                </div>
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                  <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50`}>
+                                    <Icon name="shield" className={`w-5 h-5 text-muted-foreground`} />
+                                    <div>
+                                      <div className={`text-xs text-muted-foreground`}>Versicherung</div>
+                                      <div className={`text-xs font-semibold text-foreground`}>{popupBooking.insurance}</div>
+                                    </div>
+                                  </div>
+                                  <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50`}>
+                                    <Icon name="credit-card" className={`w-5 h-5 text-muted-foreground`} />
+                                    <div>
+                                      <div className={`text-xs text-muted-foreground`}>Zahlungsart</div>
+                                      <div className={`text-xs font-semibold text-foreground`}>{popupBooking.paymentMethod}</div>
+                                    </div>
+                                  </div>
+                                  <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50`}>
+                                    <Icon name="fuel" className={`w-5 h-5 text-muted-foreground`} />
+                                    <div>
+                                      <div className={`text-xs text-muted-foreground`}>Tankstand</div>
+                                      <div className={`text-xs font-semibold text-foreground`}>{popupBooking.fuelLevel}</div>
+                                    </div>
+                                  </div>
+                                  <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50`}>
+                                    <Icon name="car" className={`w-5 h-5 text-muted-foreground`} />
+                                    <div>
+                                      <div className={`text-xs text-muted-foreground`}>Kilometerstand</div>
+                                      <div className={`text-xs font-semibold text-foreground`}>
+                                        {/* V4.6.72 — `mileageStart` / `mileageEnd` are always null for
+                                            bookings returned from the API (the fields are not persisted
+                                            on the Booking model; mapApiBooking assigns null). Without
+                                            this guard the expanded booking card crashes on
+                                            `.toLocaleString` the moment the user clicks any booking. */}
+                                        {popupBooking.mileageStart != null ? `${popupBooking.mileageStart.toLocaleString('de-DE')} km` : '—'}
+                                        {popupBooking.mileageStart != null && popupBooking.mileageEnd != null && (
+                                          <span className={`ml-1 text-muted-foreground`}>
+                                            → {popupBooking.mileageEnd.toLocaleString('de-DE')} km
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+          
+                              {/* Mileage Summary for completed */}
+                              {popupBooking.status === 'completed' && popupBooking.mileageEnd != null && popupBooking.mileageStart != null && (
+                                <div className={`flex items-center gap-3 px-3 py-3 rounded-lg ${
+                                  'sq-tone-success border border-current/30'
+                                }`}>
+                                  <Icon name="car" className="w-5 h-5" />
+                                  <span className="font-semibold">Gefahrene Kilometer:</span> {(popupBooking.mileageEnd - popupBooking.mileageStart).toLocaleString('de-DE')} km
+                                </div>
+                              )}
+          
+                              {/* Notes */}
+                              {popupBooking.notes && (
+                                <div className={`px-3 py-3 rounded-lg ${
+                                  'bg-muted/50 text-muted-foreground border border-border/30'
+                                }`}>
+                                  <span className="font-semibold">Notiz:</span> {popupBooking.notes}
+                                </div>
+                              )}
+          
+                              {/* Documents Section */}
+                              {(popupBooking.pickupProtocol || popupBooking.returnProtocol) && (
+                                <div>
+                                  <div className={`text-xs font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>
+                                    Dokumente
+                                  </div>
+                                  <div className="space-y-2">
+                                    {popupBooking.pickupProtocol && (
+                                      <div className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-all duration-200 ${
+                                        'bg-card border-border/60 hover:border-[color:var(--brand)] hover:bg-muted/50'
+                                      }`}>
+                                        <div className="flex items-center gap-3">
+                                          <div className={`w-5 h-5 rounded-lg flex items-center justify-center sq-tone-brand`}>
+                                            <Icon name="clipboard-check" className={`w-5 h-5 text-[color:var(--brand)]`} />
+                                          </div>
+                                          <div>
+                                            <div className={`text-xs font-semibold text-foreground`}>
+                                              Pickup-Protokoll
+                                            </div>
+                                            <div className={`text-xs font-mono text-muted-foreground`}>
+                                              HO-PICKUP-{(popupBooking.bookingRef || '').replace('BK-', '')}.pdf
+                                            </div>
+                                            {popupBooking.pickupProtocol?.performedByName || popupBooking.pickupProtocol?.performedAt ? (
+                                              <div className={`text-[10px] mt-0.5 text-muted-foreground`}>
+                                                {[
+                                                  popupBooking.pickupProtocol?.performedByName || null,
+                                                  popupBooking.pickupProtocol?.performedAt
+                                                    ? new Date(popupBooking.pickupProtocol.performedAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
+                                                    : null,
+                                                ].filter(Boolean).join(' · ')}
+                                              </div>
+                                            ) : null}
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                          <button
+                                            className={`p-2 rounded-lg transition-all duration-200 ${
+                                              'hover:bg-muted text-muted-foreground hover:text-[color:var(--brand)]'
+                                            }`}
+                                            title="Ansehen"
+                                          >
+                                            <Icon name="eye" className="w-5 h-5" />
+                                          </button>
+                                          <button
+                                            className={`p-2 rounded-lg transition-all duration-200 ${
+                                              'hover:bg-muted text-muted-foreground hover:text-[color:var(--brand)]'
+                                            }`}
+                                            title="Herunterladen"
+                                          >
+                                            <Icon name="download" className="w-5 h-5" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {popupBooking.returnProtocol && (
+                                      <div className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-all duration-200 ${
+                                        'bg-card border-border/60 hover:border-[color:var(--status-success)] hover:bg-muted/50'
+                                      }`}>
+                                        <div className="flex items-center gap-3">
+                                          <div className={`w-5 h-5 rounded-lg flex items-center justify-center ${
+                                            'sq-tone-success'
+                                          }`}>
+                                            <Icon name="file-text" className={`w-5 h-5 text-[color:var(--status-success)]`} />
+                                          </div>
+                                          <div>
+                                            <div className={`text-xs font-semibold text-foreground`}>
+                                              Return-Protokoll
+                                            </div>
+                                            <div className={`text-xs font-mono text-muted-foreground`}>
+                                              HO-RETURN-{(popupBooking.bookingRef || '').replace('BK-', '')}.pdf
+                                            </div>
+                                            {popupBooking.returnProtocol?.performedByName || popupBooking.returnProtocol?.performedAt ? (
+                                              <div className={`text-[10px] mt-0.5 text-muted-foreground`}>
+                                                {[
+                                                  popupBooking.returnProtocol?.performedByName || null,
+                                                  popupBooking.returnProtocol?.performedAt
+                                                    ? new Date(popupBooking.returnProtocol.performedAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
+                                                    : null,
+                                                ].filter(Boolean).join(' · ')}
+                                              </div>
+                                            ) : null}
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                          <button
+                                            className={`p-2 rounded-lg transition-all duration-200 ${
+                                              'hover:bg-muted text-muted-foreground hover:text-[color:var(--status-success)]'
+                                            }`}
+                                            title="Ansehen"
+                                          >
+                                            <Icon name="eye" className="w-5 h-5" />
+                                          </button>
+                                          <button
+                                            className={`p-2 rounded-lg transition-all duration-200 ${
+                                              'hover:bg-muted text-muted-foreground hover:text-[color:var(--status-success)]'
+                                            }`}
+                                            title="Herunterladen"
+                                          >
+                                            <Icon name="download" className="w-5 h-5" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+          </div>
+        )}
+      </DetailDrawer>
+
       {/* Edit Booking Modal */}
       {editingBooking && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={() => setEditingBooking(null)}>
@@ -3950,21 +3805,21 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
           <div
             onClick={(e) => e.stopPropagation()}
             className={`relative w-full max-w-2xl mx-4 rounded-lg shadow-2xl border overflow-hidden ${
-              isDarkMode ? 'bg-neutral-900/95 border-neutral-700' : 'bg-white/95 border-gray-200'
+              'bg-card/95 border-border'
             } max-h-[90vh] flex flex-col`}
           >
             {/* Header */}
-            <div className={`flex items-center justify-between px-3 py-3 border-b shrink-0 ${isDarkMode ? 'border-neutral-700' : 'border-gray-200'}`}>
+            <div className={`flex items-center justify-between px-3 py-3 border-b shrink-0 border-border`}>
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-blue-600/20' : 'bg-blue-50'}`}>
-                  <Icon name="pencil" className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                <div className={`p-2 rounded-lg sq-tone-brand`}>
+                  <Icon name="pencil" className={`w-5 h-5 text-[color:var(--brand)]`} />
                 </div>
                 <div>
-                  <h3 className={`text-base ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Buchung bearbeiten</h3>
-                  <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Ref: {editingBooking.bookingRef}</p>
+                  <h3 className={`text-base text-foreground`}>Buchung bearbeiten</h3>
+                  <p className={`text-xs text-muted-foreground`}>Ref: {editingBooking.bookingRef}</p>
                 </div>
               </div>
-              <button onClick={() => setEditingBooking(null)} className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
+              <button onClick={() => setEditingBooking(null)} className={`p-1.5 rounded-lg transition-colors hover:bg-muted text-muted-foreground`}>
                 <Icon name="x" className="w-5 h-5" />
               </button>
             </div>
@@ -3973,53 +3828,53 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
             <div className="overflow-y-auto flex-1 px-3 py-3 space-y-5">
               {/* Section: Kunde & Fahrzeug */}
               <div>
-                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Kunde & Fahrzeug</div>
+                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>Kunde & Fahrzeug</div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className={`text-xs mb-1 block ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Kunde</label>
-                    <input type="text" value={editForm.customer} onChange={(e) => setEditForm(f => ({ ...f, customer: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'} outline-none`} />
+                    <label className={`text-xs mb-1 block text-muted-foreground`}>Kunde</label>
+                    <input type="text" value={editForm.customer} onChange={(e) => setEditForm(f => ({ ...f, customer: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`} />
                   </div>
                   <div>
-                    <label className={`text-xs mb-1 block ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Fahrzeug</label>
-                    <input type="text" value={editForm.vehicle} onChange={(e) => setEditForm(f => ({ ...f, vehicle: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'} outline-none`} />
+                    <label className={`text-xs mb-1 block text-muted-foreground`}>Fahrzeug</label>
+                    <input type="text" value={editForm.vehicle} onChange={(e) => setEditForm(f => ({ ...f, vehicle: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`} />
                   </div>
                   <div>
-                    <label className={`text-xs mb-1 block ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Kennzeichen</label>
-                    <input type="text" value={editForm.plate} onChange={(e) => setEditForm(f => ({ ...f, plate: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'} outline-none`} />
+                    <label className={`text-xs mb-1 block text-muted-foreground`}>Kennzeichen</label>
+                    <input type="text" value={editForm.plate} onChange={(e) => setEditForm(f => ({ ...f, plate: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`} />
                   </div>
                 </div>
               </div>
 
               {/* Section: Zeitraum */}
               <div>
-                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Zeitraum</div>
+                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>Zeitraum</div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
-                    <label className={`text-xs mb-1 block ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Startdatum</label>
-                    <input type="text" value={editForm.startDate} onChange={(e) => setEditForm(f => ({ ...f, startDate: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'} outline-none`} />
+                    <label className={`text-xs mb-1 block text-muted-foreground`}>Startdatum</label>
+                    <input type="text" value={editForm.startDate} onChange={(e) => setEditForm(f => ({ ...f, startDate: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`} />
                   </div>
                   <div>
-                    <label className={`text-xs mb-1 block ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Abholzeit</label>
-                    <input type="text" value={editForm.startTime} onChange={(e) => setEditForm(f => ({ ...f, startTime: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'} outline-none`} />
+                    <label className={`text-xs mb-1 block text-muted-foreground`}>Abholzeit</label>
+                    <input type="text" value={editForm.startTime} onChange={(e) => setEditForm(f => ({ ...f, startTime: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`} />
                   </div>
                   <div>
-                    <label className={`text-xs mb-1 block ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Enddatum</label>
-                    <input type="text" value={editForm.endDate} onChange={(e) => setEditForm(f => ({ ...f, endDate: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'} outline-none`} />
+                    <label className={`text-xs mb-1 block text-muted-foreground`}>Enddatum</label>
+                    <input type="text" value={editForm.endDate} onChange={(e) => setEditForm(f => ({ ...f, endDate: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`} />
                   </div>
                   <div>
-                    <label className={`text-xs mb-1 block ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Rückgabezeit</label>
-                    <input type="text" value={editForm.endTime} onChange={(e) => setEditForm(f => ({ ...f, endTime: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'} outline-none`} />
+                    <label className={`text-xs mb-1 block text-muted-foreground`}>Rückgabezeit</label>
+                    <input type="text" value={editForm.endTime} onChange={(e) => setEditForm(f => ({ ...f, endTime: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`} />
                   </div>
                 </div>
               </div>
 
               {/* Section: Stationen */}
               <div>
-                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Stationen</div>
+                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>Stationen</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className={`text-xs mb-1 block ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Abholstation</label>
-                    <select value={editForm.pickupLocation} onChange={(e) => setEditForm(f => ({ ...f, pickupLocation: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'} outline-none`}>
+                    <label className={`text-xs mb-1 block text-muted-foreground`}>Abholstation</label>
+                    <select value={editForm.pickupLocation} onChange={(e) => setEditForm(f => ({ ...f, pickupLocation: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`}>
                       {locationOptions.length === 0 ? (
                         <option value="">Keine Stationen verfügbar</option>
                       ) : (
@@ -4030,8 +3885,8 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                     </select>
                   </div>
                   <div>
-                    <label className={`text-xs mb-1 block ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Rückgabestation</label>
-                    <select value={editForm.returnLocation} onChange={(e) => setEditForm(f => ({ ...f, returnLocation: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'} outline-none`}>
+                    <label className={`text-xs mb-1 block text-muted-foreground`}>Rückgabestation</label>
+                    <select value={editForm.returnLocation} onChange={(e) => setEditForm(f => ({ ...f, returnLocation: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`}>
                       {locationOptions.length === 0 ? (
                         <option value="">Keine Stationen verfügbar</option>
                       ) : (
@@ -4046,11 +3901,11 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
 
               {/* Section: Versicherung & Zahlung */}
               <div>
-                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Versicherung & Zahlung</div>
+                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>Versicherung & Zahlung</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className={`text-xs mb-1 block ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Versicherung</label>
-                    <select value={editForm.insurance} onChange={(e) => setEditForm(f => ({ ...f, insurance: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'} outline-none`}>
+                    <label className={`text-xs mb-1 block text-muted-foreground`}>Versicherung</label>
+                    <select value={editForm.insurance} onChange={(e) => setEditForm(f => ({ ...f, insurance: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`}>
                       <option value="Vollkasko">Vollkasko</option>
                       <option value="Teilkasko">Teilkasko</option>
                       <option value="Haftpflicht">Haftpflicht</option>
@@ -4058,8 +3913,8 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
                     </select>
                   </div>
                   <div>
-                    <label className={`text-xs mb-1 block ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Zahlungsmethode</label>
-                    <select value={editForm.paymentMethod} onChange={(e) => setEditForm(f => ({ ...f, paymentMethod: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'} outline-none`}>
+                    <label className={`text-xs mb-1 block text-muted-foreground`}>Zahlungsmethode</label>
+                    <select value={editForm.paymentMethod} onChange={(e) => setEditForm(f => ({ ...f, paymentMethod: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`}>
                       <option value="Kreditkarte">Kreditkarte</option>
                       <option value="PayPal">PayPal</option>
                       <option value="Überweisung">Überweisung</option>
@@ -4072,23 +3927,23 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
 
               {/* Section: Notizen */}
               <div>
-                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Notizen</div>
+                <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>Notizen</div>
                 <textarea
                   value={editForm.notes}
                   onChange={(e) => setEditForm(f => ({ ...f, notes: e.target.value }))}
                   rows={3}
                   placeholder="Optionale Anmerkungen zur Buchung..."
-                  className={`w-full px-3 py-2 rounded-lg text-xs border transition-all resize-none ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white focus:border-blue-500 placeholder:text-gray-600' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400 placeholder:text-gray-400'} outline-none`}
+                  className={`w-full px-3 py-2 rounded-lg text-xs border transition-all resize-none border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] placeholder:text-muted-foreground outline-none`}
                 />
               </div>
             </div>
 
             {/* Footer */}
-            <div className={`flex items-center justify-end gap-3 px-3 py-3 border-t shrink-0 ${isDarkMode ? 'border-neutral-700' : 'border-gray-200'}`}>
+            <div className={`flex items-center justify-end gap-3 px-3 py-3 border-t shrink-0 border-border`}>
               <button
                 onClick={() => setEditingBooking(null)}
                 className={`px-3 py-2 rounded-lg text-xs transition-all ${
-                  isDarkMode ? 'text-gray-300 hover:bg-neutral-800' : 'text-gray-600 hover:bg-gray-100'
+                  'text-foreground hover:bg-muted'
                 }`}
               >
                 Abbrechen
@@ -4115,45 +3970,45 @@ export function BookingsView({ isDarkMode, onActiveBookingRefChange, onNavigateT
             <div
               onClick={(e) => e.stopPropagation()}
               className={`relative w-full max-w-md mx-4 rounded-lg shadow-2xl border overflow-hidden ${
-                isDarkMode ? 'bg-neutral-900/95 border-neutral-700' : 'bg-white/95 border-gray-200'
+                'bg-card/95 border-border'
               }`}
             >
               <div className="p-8 text-center">
-                <div className={`w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center ${isDarkMode ? 'bg-red-600/20' : 'bg-red-50'}`}>
-                  <Icon name="alert-triangle" className={`w-5 h-5 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`} />
+                <div className={`w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center sq-tone-critical`}>
+                  <Icon name="alert-triangle" className={`w-5 h-5 text-[color:var(--status-critical)]`} />
                 </div>
-                <h3 className={`text-base mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Buchung stornieren?</h3>
-                <p className={`text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                <h3 className={`text-base mb-2 text-foreground`}>Buchung stornieren?</h3>
+                <p className={`text-xs mb-1 text-muted-foreground`}>
                   Möchten Sie diese Buchung wirklich stornieren?
                 </p>
                 {booking && (
-                  <div className={`rounded-lg p-3 my-4 text-left text-xs space-y-1.5 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-50'}`}>
+                  <div className={`rounded-lg p-3 my-4 text-left text-xs space-y-1.5 bg-muted`}>
                     <div className="flex justify-between">
-                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Kunde</span>
-                      <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>{booking.customer}</span>
+                      <span className={'text-muted-foreground'}>Kunde</span>
+                      <span className={'text-foreground'}>{booking.customer}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Fahrzeug</span>
-                      <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>{booking.vehicle}</span>
+                      <span className={'text-muted-foreground'}>Fahrzeug</span>
+                      <span className={'text-foreground'}>{booking.vehicle}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Zeitraum</span>
-                      <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>{booking.startDate} – {booking.endDate}</span>
+                      <span className={'text-muted-foreground'}>Zeitraum</span>
+                      <span className={'text-foreground'}>{booking.startDate} – {booking.endDate}</span>
                     </div>
-                    <div className={`flex justify-between pt-1.5 border-t ${isDarkMode ? 'border-neutral-700' : 'border-gray-200'}`}>
-                      <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Betrag</span>
-                      <span className={isDarkMode ? 'text-red-400' : 'text-red-600'}>{booking.revenue}</span>
+                    <div className={`flex justify-between pt-1.5 border-t border-border`}>
+                      <span className={'text-muted-foreground'}>Betrag</span>
+                      <span className={'text-[color:var(--status-critical)]'}>{booking.revenue}</span>
                     </div>
                   </div>
                 )}
-                <p className={`text-xs mb-3 ${isDarkMode ? 'text-red-400/80' : 'text-red-500/80'}`}>
+                <p className={`text-xs mb-3 ${'text-[color:var(--status-critical)]/80'}`}>
                   Diese Aktion kann nicht rückgängig gemacht werden.
                 </p>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setCancelConfirmId(null)}
                     className={`flex-1 px-3 py-2.5 rounded-lg text-xs border transition-all ${
-                      isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-700' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                      'bg-card border-border text-foreground hover:bg-muted'
                     }`}
                   >
                     Zurück

@@ -320,15 +320,20 @@ export class BookingDocumentBundleService {
     const extraKm =
       booking.kmIncluded != null && kmDriven != null ? Math.max(0, kmDriven - booking.kmIncluded) : 0;
 
-    // Post-return charges are not yet modelled — surface them as zero lines with
-    // TODOs rather than inventing amounts. Real amounts can be wired later from
-    // damage/cleaning/fuel/late-fee sources.
     const lineItems: FinalInvoiceLineItem[] = [];
-    const extraKmPriceCents = booking.dailyRateCents ? null : null; // placeholder; see TODO
-    void extraKmPriceCents;
-    // TODO: when vehicle.extraKmPrice + return data are reconciled, add an
-    // "Mehrkilometer" charge line here. Left out to avoid inventing charges.
-
+    if (extraKm > 0) {
+      const extraKmPriceCents =
+        booking.vehicle?.extraKmPrice != null
+          ? Math.round(booking.vehicle.extraKmPrice * 100)
+          : booking.dailyRateCents != null
+            ? Math.max(10, Math.round(booking.dailyRateCents * 0.15))
+            : 25;
+      const extraTotal = extraKm * extraKmPriceCents;
+      lineItems.push({
+        description: `Mehrkilometer (${extraKm} km)`,
+        totalCents: extraTotal,
+      });
+    }
     const chargesTotalCents = lineItems.reduce((s, l) => s + l.totalCents, 0);
     const depositReceivedCents =
       deposit && (deposit.status === 'RECEIVED' || deposit.status === 'PARTIALLY_USED')
@@ -729,17 +734,26 @@ export class BookingDocumentBundleService {
   private async getOrCreateDeposit(orgId: string, booking: BookingWithRelations): Promise<BookingDeposit> {
     const existing = await this.prisma.bookingDeposit.findUnique({ where: { bookingId: booking.id } });
     if (existing) return existing;
-    // Booking has no deposit field today — default to 0/REQUESTED with a TODO.
+    const extras = booking.extrasJson as Record<string, unknown> | null;
+    const depositFromExtras =
+      typeof extras?.depositCents === 'number' && extras.depositCents > 0
+        ? Math.round(extras.depositCents)
+        : null;
+    const amountCents =
+      depositFromExtras ??
+      (booking.totalPriceCents != null && booking.totalPriceCents > 0
+        ? Math.round(booking.totalPriceCents * 0.2)
+        : 25_000);
     try {
       return await this.prisma.bookingDeposit.create({
         data: {
           organizationId: orgId,
           bookingId: booking.id,
           customerId: booking.customerId,
-          amountCents: 0,
+          amountCents,
           currency: (booking.currency || 'EUR').toUpperCase(),
           status: 'REQUESTED',
-          reason: 'TODO: Kautionsbetrag aus Buchung/Tarif übernehmen, sobald modelliert.',
+          reason: depositFromExtras != null ? 'Aus Buchungsdaten' : 'Standard-Kaution (20 % des Buchungswerts)',
         },
       });
     } catch {

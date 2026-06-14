@@ -16,7 +16,17 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { Icon } from './ui/Icon';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
+import {
+  PageHeader,
+  MetricCard,
+  HealthStatusChip,
+  StatusChip,
+  EmptyState,
+  SkeletonMetricGrid,
+  SkeletonCard,
+} from '../../components/patterns';
+import type { StatusTone } from '../../components/patterns';
 
 import { getShortModel } from '../data/vehicles';
 // V4.7.23 — health map now comes from the shared FleetProvider so this
@@ -37,7 +47,6 @@ import {
 export type ConditionCategory = 'tires' | 'brakes' | 'battery' | 'dtc' | 'service' | 'tuev' | 'bokraft' | 'driver-feedback' | 'alerts';
 
 interface FleetConditionViewProps {
-  isDarkMode: boolean;
   onDrillDown?: (vehicleId: string, category: ConditionCategory) => void;
 }
 
@@ -182,6 +191,20 @@ function healthLabelEx(status: EffectiveStatus, isLoading = false): string {
   return 'Healthy';
 }
 
+function effectiveStatusToHealthState(status: EffectiveStatus): string {
+  if (status === 'Critical') return 'critical';
+  if (status === 'Warning') return 'warning';
+  return 'good';
+}
+
+function summaryToneToStatus(tone: Tone): StatusTone {
+  if (tone === 'success') return 'success';
+  if (tone === 'warning') return 'warning';
+  if (tone === 'critical') return 'critical';
+  if (tone === 'brand') return 'info';
+  return 'neutral';
+}
+
 function barClass(value: number | null | undefined): string {
   const tone = toneFromPercent(value);
   if (tone === 'success') return 'bg-[color:var(--status-success)]';
@@ -198,7 +221,17 @@ function textToneClass(tone: Tone): string {
   return 'text-muted-foreground';
 }
 
-export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionViewProps) {
+export function FleetConditionView({ onDrillDown }: FleetConditionViewProps) {
+  const systemDark = useSyncExternalStore(
+    (onStoreChange) => {
+      const el = document.documentElement;
+      const obs = new MutationObserver(onStoreChange);
+      obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+      return () => obs.disconnect();
+    },
+    () => document.documentElement.classList.contains('dark'),
+    () => false,
+  );
   const { fleetVehicles, healthMap, healthLoading } = useFleetVehicles();
 
   const [filterCategory, setFilterCategory] = useState<HealthCategory>('all');
@@ -440,6 +473,15 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
     const batteryResting = cd?.battery?.lv?.restingVoltage?.valueV ?? cd?.battery?.lv?.telemetry?.restingVoltage ?? null;
 
     const activeDtcCount = cd?.dtcActive?.length ?? 0;
+    const errorCodesState = healthMap.get(vehicle.id)?.modules?.error_codes?.state;
+    const dtcTone: Tone =
+      errorCodesState === 'critical'
+        ? 'critical'
+        : errorCodesState === 'warning'
+          ? 'warning'
+          : activeDtcCount > 0
+            ? 'warning'
+            : 'success';
     const servicePct = cd?.service?.serviceRemainingPercent ?? null;
     const serviceKm = cd?.service?.serviceRemainingKm;
     const serviceMonths = cd?.service?.serviceRemainingMonths;
@@ -454,7 +496,7 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
     const criticalAlerts =
       tireAlerts.filter(a => a.severity === 'critical').length +
       (cd?.brakes?.hasAlert ? 1 : 0) +
-      (activeDtcCount >= 3 ? 1 : 0);
+      (errorCodesState === 'critical' ? 1 : 0);
 
     const tiles = [
       {
@@ -512,7 +554,7 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
         value: activeDtcCount > 0 ? `${activeDtcCount} active` : 'Clear',
         meta: cd?.dtcStats?.lastChecked ? `Checked ${formatDate(cd.dtcStats.lastChecked)}` : 'No active DTCs',
         percent: activeDtcCount > 0 ? Math.max(8, 100 - activeDtcCount * 20) : 100,
-        tone: activeDtcCount >= 3 ? 'critical' as Tone : activeDtcCount > 0 ? 'warning' as Tone : 'success' as Tone,
+        tone: dtcTone,
         category: 'dtc' as ConditionCategory,
       },
       {
@@ -571,9 +613,8 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
 
     if (isLoading && !cd) {
       return (
-        <div className="px-3 py-6 flex items-center justify-center text-[11px] text-muted-foreground">
-          <span className="mr-2 h-3.5 w-3.5 rounded-full border-2 border-[color:var(--brand)] border-t-transparent animate-spin" />
-          Loading condition data
+        <div className="px-3 py-6">
+          <SkeletonCard className="border-0 shadow-none bg-transparent p-2" />
         </div>
       );
     }
@@ -694,54 +735,41 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-5">
-      {/* V4.7.27 — Header is intentionally minimal. Counts and severity
-          live in the KPI cards below; repeating them here as pills was
-          redundant and noisy. We only surface a tiny in-flight spinner
-          when the canonical Rental-Health-V1 batch is still loading. */}
-      <div className="flex min-h-8 flex-wrap items-end justify-between gap-2 sm:gap-3">
-        <div className="animate-fade-up min-w-0">
-          <h1 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground truncate">
-            Fleet Condition
-          </h1>
-        </div>
-        {healthPending && (
-          <span
-            className="sq-tone-neutral inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-semibold"
-            title="Loading rental health data"
-          >
-            <span className="h-2.5 w-2.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
-            Refreshing
-          </span>
-        )}
-      </div>
+      <PageHeader
+        title="Fleet Condition"
+        status={
+          healthPending ? (
+            <StatusChip tone="neutral" icon={
+              <span className="h-2 w-2 rounded-full border-[1.5px] border-current border-t-transparent animate-spin" />
+            }>
+              Refreshing
+            </StatusChip>
+          ) : undefined
+        }
+      />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        {summaryCards.map(card => {
-          const active = filterCategory === card.category;
-          const ToneIcon = card.icon;
-          return (
-            <button
-              key={card.label}
-              onClick={() => applyHealthFilter(card.category)}
-              className={`sq-press rounded-xl p-3 text-left transition-all duration-200 flex flex-col ${toneClass(card.tone)} ${
-                active ? 'ring-1 ring-current/30 shadow-sm' : 'hover:opacity-90 hover:shadow-sm'
-              }`}
-            >
-              <div className="flex items-start justify-between mb-2">
-                <span className="w-7 h-7 rounded-lg flex items-center justify-center bg-current/10">
-                  <ToneIcon className="w-4 h-4" />
-                </span>
-              </div>
-              <div className="text-[16px] font-bold leading-tight tabular-nums">{card.value}</div>
-              <div className="text-[9px] mt-1 font-semibold uppercase tracking-wider opacity-75">{card.label}</div>
-              <div className="text-[10px] mt-2 pt-2 border-t border-current/15 flex items-center justify-between opacity-80">
-                <span className="truncate">{card.meta}</span>
-                <Icon name="arrow-right" className="w-3.5 h-3.5 shrink-0" />
-              </div>
-            </button>
-          );
-        })}
-      </div>
+      {healthLoading && totalCount === 0 ? (
+        <SkeletonMetricGrid count={4} />
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          {summaryCards.map(card => {
+            const active = filterCategory === card.category;
+            const ToneIcon = card.icon;
+            return (
+              <MetricCard
+                key={card.label}
+                label={card.label}
+                value={card.value}
+                hint={card.meta}
+                icon={<ToneIcon className="w-4 h-4" />}
+                status={summaryToneToStatus(card.tone)}
+                onClick={() => applyHealthFilter(card.category)}
+                className={active ? 'ring-2 ring-[color:var(--brand)]' : undefined}
+              />
+            );
+          })}
+        </div>
+      )}
 
       <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
         {/* V4.7.29 — Match Customers/Financial-Insights control rhythm:
@@ -777,11 +805,7 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
               <button
                 type="button"
                 onClick={clearSelection}
-                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold transition-all ${
-                  isDarkMode
-                    ? 'bg-red-900/30 border-red-700/50 text-red-400 hover:bg-red-900/50'
-                    : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
-                }`}
+                className="sq-press flex items-center gap-1.5 rounded-lg border border-[color:color-mix(in_srgb,var(--status-critical)_35%,transparent)] bg-[color:color-mix(in_srgb,var(--status-critical)_8%,transparent)] px-2.5 py-1.5 text-[10px] font-semibold text-[color:var(--status-critical)] transition-all hover:bg-[color:color-mix(in_srgb,var(--status-critical)_14%,transparent)]"
               >
                 <Icon name="x" className="h-3.5 w-3.5" />
                 Clear filters
@@ -792,16 +816,12 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-[240px] flex-1">
-            <Icon name="search" className={`absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+            <Icon name="search" className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search model, plate or station..."
-              className={`w-full rounded-lg border py-2.5 pl-10 pr-4 text-xs outline-none transition-all ${
-                isDarkMode
-                  ? 'bg-neutral-800 border-neutral-700 text-gray-200 placeholder-gray-500 focus:border-blue-500/50'
-                  : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-300'
-              }`}
+              className="w-full rounded-lg border border-border/70 bg-card py-2.5 pl-10 pr-4 text-xs text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]"
             />
           </div>
 
@@ -809,23 +829,17 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
             <button
               type="button"
               onClick={() => { setIsHealthFilterOpen(!isHealthFilterOpen); setIsSortOpen(false); }}
-              className={`flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-all ${
+              className={`sq-press flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-all ${
                 filterCategory !== 'all'
-                  ? isDarkMode
-                    ? 'bg-blue-900/30 border-blue-700/50 text-blue-400'
-                    : 'bg-blue-50 border-blue-200 text-blue-700'
-                  : isDarkMode
-                    ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-800'
-                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                  ? 'border-[color:color-mix(in_srgb,var(--brand)_35%,transparent)] bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
+                  : 'border-border/70 bg-card text-foreground hover:bg-muted'
               }`}
             >
               <span>{filterCategory === 'all' ? 'Health status' : activeFilterLabel}</span>
               <Icon name="chevron-down" className={`h-3.5 w-3.5 transition-transform ${isHealthFilterOpen ? 'rotate-180' : ''}`} />
             </button>
             {isHealthFilterOpen && (
-              <div className={`absolute left-0 top-full z-50 mt-2 min-w-[210px] overflow-hidden rounded-lg border shadow-xl ${
-                isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
-              }`}>
+              <div className="sq-overlay animate-fade-up absolute left-0 top-full z-50 mt-2 min-w-[210px] overflow-hidden rounded-lg p-1">
                 {healthFilterOptions.map(option => (
                   <button
                     key={option.category}
@@ -834,16 +848,16 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
                       applyHealthFilter(option.category);
                       setIsHealthFilterOpen(false);
                     }}
-                    className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-xs font-medium transition-colors ${
+                    className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-medium transition-colors ${
                       option.category === filterCategory
-                        ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
-                        : isDarkMode ? 'text-gray-300 hover:bg-neutral-800' : 'text-gray-700 hover:bg-gray-50'
+                        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
+                        : 'text-foreground hover:bg-muted'
                     }`}
                   >
                     <span>{option.label}</span>
-                    <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${toneClass(option.tone)}`}>
+                    <StatusChip tone={summaryToneToStatus(option.tone)} className="text-[10px] font-bold tabular-nums">
                       {option.count}
-                    </span>
+                    </StatusChip>
                   </button>
                 ))}
               </div>
@@ -854,19 +868,13 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
             <button
               type="button"
               onClick={() => { setIsSortOpen(!isSortOpen); setIsHealthFilterOpen(false); }}
-              className={`flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-all ${
-                isDarkMode
-                  ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-800'
-                  : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-              }`}
+              className="sq-press flex items-center gap-2 rounded-lg border border-border/70 bg-card px-3.5 py-2.5 text-xs font-medium text-foreground transition-all hover:bg-muted"
             >
               <span>Sort: {activeSortLabel}</span>
               <Icon name="chevron-down" className={`h-3.5 w-3.5 transition-transform ${isSortOpen ? 'rotate-180' : ''}`} />
             </button>
             {isSortOpen && (
-              <div className={`absolute left-0 top-full z-50 mt-2 min-w-[180px] overflow-hidden rounded-lg border shadow-xl ${
-                isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
-              }`}>
+              <div className="sq-overlay animate-fade-up absolute left-0 top-full z-50 mt-2 min-w-[180px] overflow-hidden rounded-lg p-1">
                 {sortOptions.map(option => (
                   <button
                     key={option.value}
@@ -875,10 +883,10 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
                       setSortMode(option.value);
                       setIsSortOpen(false);
                     }}
-                    className={`w-full px-3 py-2.5 text-left text-xs font-medium transition-colors ${
+                    className={`w-full rounded-lg px-3 py-2.5 text-left text-xs font-medium transition-colors ${
                       option.value === sortMode
-                        ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
-                        : isDarkMode ? 'text-gray-300 hover:bg-neutral-800' : 'text-gray-700 hover:bg-gray-50'
+                        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
+                        : 'text-foreground hover:bg-muted'
                     }`}
                   >
                     {option.label}
@@ -909,10 +917,12 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
       </div>
 
       {filtered.length === 0 ? (
-        <div className="sq-card rounded-2xl py-12 text-center shadow-[var(--shadow-1)]">
-          <Icon name="check-circle" className="mx-auto mb-2 h-7 w-7 text-muted-foreground" />
-          <p className="text-[12px] font-medium text-muted-foreground">No vehicles match the current filter{searchQuery ? ' or search' : ''}.</p>
-        </div>
+        <EmptyState
+          compact
+          icon={<Icon name="check-circle" className="h-5 w-5" />}
+          title={`No vehicles match the current filter${searchQuery ? ' or search' : ''}.`}
+          className="sq-card rounded-2xl shadow-[var(--shadow-1)]"
+        />
       ) : (
         <div className="space-y-2.5">
           {groupedVehicles.map(group => {
@@ -976,7 +986,7 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
                               className={`w-full px-3 py-2.5 flex items-start gap-2.5 text-left transition-colors ${isVehicleOpen ? 'bg-muted/30' : 'hover:bg-muted/35'}`}
                             >
                               <div className="h-9 w-9 rounded-xl bg-muted/70 flex items-center justify-center shrink-0 mt-0.5">
-                                <BrandLogo brand={brand} size={18} isDarkMode={isDarkMode} />
+                                <BrandLogo brand={brand} size={18} isDarkMode={systemDark} />
                               </div>
                               <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -1019,13 +1029,13 @@ export function FleetConditionView({ isDarkMode, onDrillDown }: FleetConditionVi
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
                                 {blocked && (
-                                  <span className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-critical">
-                                    Blocked
-                                  </span>
+                                  <StatusChip tone="critical">Blocked</StatusChip>
                                 )}
-                                <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${toneClass(statusTone)}`}>
-                                  {healthLabelEx(status, healthPending)}
-                                </span>
+                                <HealthStatusChip
+                                  state={effectiveStatusToHealthState(status)}
+                                  label={healthLabelEx(status, healthPending)}
+                                  dot={false}
+                                />
                                 <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isVehicleOpen ? 'rotate-180' : ''}`} />
                               </div>
                             </button>
@@ -1088,8 +1098,9 @@ function ConditionTile({ icon: IconCmp, label, value, meta, percent, tone, onCli
   const width = percent == null ? 10 : Math.min(Math.max(percent, 6), 100);
   return (
     <button
+      type="button"
       onClick={onClick}
-      className="rounded-xl border border-border/60 bg-card px-3 py-2.5 text-left transition-colors hover:bg-muted/35"
+      className="sq-card-elevated rounded-xl px-3 py-2.5 text-left"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">

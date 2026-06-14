@@ -24,25 +24,25 @@ export class DocumentNumberingService {
     const yearStart = new Date(Date.UTC(year, 0, 1));
     const yearEnd = new Date(Date.UTC(year + 1, 0, 1));
 
-    const count = await this.prisma.generatedDocument.count({
-      where: {
-        organizationId,
-        documentType,
-        createdAt: { gte: yearStart, lt: yearEnd },
-      },
-    });
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const count = await this.prisma.generatedDocument.count({
+        where: {
+          organizationId,
+          documentType,
+          createdAt: { gte: yearStart, lt: yearEnd },
+        },
+      });
 
-    const candidate = `${prefix}-${year}-${String(count + 1).padStart(4, '0')}`;
+      const candidate = `${prefix}-${year}-${String(count + 1 + attempt).padStart(4, '0')}`;
 
-    // Defensive uniqueness check (best-effort): if a row with this number
-    // already exists for the org, fall back to a short random suffix.
-    const exists = await this.prisma.generatedDocument.findFirst({
-      where: { organizationId, documentNumber: candidate },
-      select: { id: true },
-    });
-    if (!exists) return candidate;
+      const exists = await this.prisma.generatedDocument.findFirst({
+        where: { organizationId, documentNumber: candidate },
+        select: { id: true },
+      });
+      if (!exists) return candidate;
+    }
 
     const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
-    return `${prefix}-${year}-${String(count + 1).padStart(4, '0')}-${suffix}`;
+    return `${prefix}-${year}-${suffix}`;
   }
 }

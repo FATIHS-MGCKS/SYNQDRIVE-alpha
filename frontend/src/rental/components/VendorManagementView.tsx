@@ -6,6 +6,7 @@ import { api } from '../../lib/api';
 import type { Vendor, VendorCategory, VendorSource, VendorSourceType, VendorInput, VendorMapboxSuggestion } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
+import { PageHeader } from '../../components/patterns';
 
 // ── constants ──────────────────────────────────────────
 
@@ -50,6 +51,8 @@ interface VendorManagementViewProps {
 }
 
 type VendorScopeFilter = 'ALL' | 'ACTIVE' | 'LINKED';
+
+type MapboxSuggestionWithToken = VendorMapboxSuggestion & { sessionToken: string };
 
 interface VendorFormData {
   name: string;
@@ -104,10 +107,9 @@ export function VendorManagementView({ onOpenDetail }: VendorManagementViewProps
 
   // ── Mapbox POI search state ──
   const [poiQuery, setPoiQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<VendorMapboxSuggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<MapboxSuggestionWithToken[]>([]);
   const [sugLoading, setSugLoading] = useState(false);
   const [sugError, setSugError] = useState(false);
-  const [sessionToken, setSessionToken] = useState<string | null>(null);
   const sugTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -177,7 +179,6 @@ export function VendorManagementView({ onOpenDetail }: VendorManagementViewProps
     setSuggestions([]);
     setShowSuggestions(false);
     setSugError(false);
-    setSessionToken(null);
   };
 
   const handlePoiQueryChange = (value: string) => {
@@ -195,8 +196,8 @@ export function VendorManagementView({ onOpenDetail }: VendorManagementViewProps
     sugTimeout.current = setTimeout(() => {
       api.vendors.searchMapbox(orgId, value.trim())
         .then((res) => {
-          setSuggestions(res.suggestions ?? []);
-          setSessionToken(res.sessionToken);
+          const token = res.sessionToken;
+          setSuggestions((res.suggestions ?? []).map((s) => ({ ...s, sessionToken: token })));
           setSugError(false);
         })
         .catch(() => { setSuggestions([]); setSugError(true); })
@@ -204,11 +205,11 @@ export function VendorManagementView({ onOpenDetail }: VendorManagementViewProps
     }, 350);
   };
 
-  const selectSuggestion = async (sug: VendorMapboxSuggestion) => {
+  const selectSuggestion = async (sug: MapboxSuggestionWithToken) => {
     setShowSuggestions(false);
     setSuggestions([]);
-    if (!orgId || !sessionToken) return;
-    const prefill = await api.vendors.mapboxRetrieve(orgId, sug.mapboxId, sessionToken).catch(() => null);
+    if (!orgId || !sug.sessionToken) return;
+    const prefill = await api.vendors.mapboxRetrieve(orgId, sug.mapboxId, sug.sessionToken).catch(() => null);
     setPoiQuery('');
     if (prefill) {
       setForm((f) => ({
@@ -316,14 +317,9 @@ export function VendorManagementView({ onOpenDetail }: VendorManagementViewProps
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-5">
-      {/* Header */}
-      <div className="flex min-h-8 flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground">
-            Vendor Management
-          </h1>
-        </div>
-        {canManage && (
+      <PageHeader
+        title="Vendor Management"
+        actions={canManage ? (
           <button
             type="button"
             onClick={openCreate}
@@ -332,8 +328,8 @@ export function VendorManagementView({ onOpenDetail }: VendorManagementViewProps
             <Icon name="plus" className="h-4 w-4" />
             Add Vendor
           </button>
-        )}
-      </div>
+        ) : undefined}
+      />
 
       {/* Segment metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">

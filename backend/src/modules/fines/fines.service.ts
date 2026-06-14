@@ -133,7 +133,7 @@ export class FinesService {
       },
     });
 
-    await this.tasksService.create(orgId, {
+    await this.tasksService.upsertByDedup(orgId, `fine:${fine.id}`, {
       title: `Bußgeld bearbeiten: ${data.title}`,
       description: `Bußgeld "${data.title}" (${(data.amountCents / 100).toFixed(2)} ${data.currency || 'EUR'}) muss geprüft und weiterverarbeitet werden.${customerId ? ' Kunde wurde automatisch zugeordnet.' : ' Kunde konnte nicht automatisch zugeordnet werden – bitte manuell prüfen.'}`,
       category: 'fine',
@@ -143,8 +143,8 @@ export class FinesService {
       priority: data.amountCents >= 10000 ? 'HIGH' : 'MEDIUM',
       vehicleId: data.vehicleId,
       customerId: customerId ?? undefined,
+      dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
       fineId: fine.id,
-      dueDate: data.dueDate,
     });
 
     return this.findById(fine.id);

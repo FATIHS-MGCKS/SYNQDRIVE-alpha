@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { BrakeHealthCurrent } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   DrivingImpactService,
@@ -201,8 +202,8 @@ export interface BrakeHealthDetailDto {
   rearPads: AxleEstimate | null;
   frontDiscs: AxleEstimate | null;
   rearDiscs: AxleEstimate | null;
-  specs: any;
-  history: any[];
+  specs: Record<string, unknown> | null;
+  history: Array<Record<string, unknown>>;
   alerts: BrakeAlert[];
   factors: Record<string, number>;
   drivingImpactAvailable: boolean;
@@ -1265,7 +1266,7 @@ export class BrakeHealthService {
   }
 
   private computeConfidence(
-    current: any,
+    current: BrakeHealthCurrent,
     impact: VehicleImpactForBrake | null,
     coverageRatio: number,
     modeledTripCount: number,
@@ -1301,7 +1302,7 @@ export class BrakeHealthService {
     return { score, label };
   }
 
-  private computeAlerts(current: any): BrakeAlert[] {
+  private computeAlerts(current: BrakeHealthCurrent): BrakeAlert[] {
     const alerts: BrakeAlert[] = [];
     const a = this.cfg.alerts;
 
@@ -1395,7 +1396,7 @@ export class BrakeHealthService {
     return round2(value);
   }
 
-  private deriveModeledComponents(current: any): BrakeModeledComponentsDto {
+  private deriveModeledComponents(current: BrakeHealthCurrent | null): BrakeModeledComponentsDto {
     const frontPads = current?.frontPadAnchorMm != null;
     const rearPads = current?.rearPadAnchorMm != null;
     const frontDiscs = current?.frontDiscAnchorMm != null;
@@ -1411,7 +1412,7 @@ export class BrakeHealthService {
     };
   }
 
-  private deriveStateClass(current: any, modeled: BrakeModeledComponentsDto): BrakeStateClass {
+  private deriveStateClass(current: BrakeHealthCurrent | null, modeled: BrakeModeledComponentsDto): BrakeStateClass {
     if (!modeled.hasAnyModeled) return 'NO_BASELINE';
     if (!current?.isInitialized) return 'NO_BASELINE';
     const status = String(current.anchorValidationStatus ?? '').toLowerCase();
@@ -1419,17 +1420,17 @@ export class BrakeHealthService {
     return 'ESTIMATED';
   }
 
-  private hasMeasuredAnchorStatus(current: any): boolean {
+  private hasMeasuredAnchorStatus(current: BrakeHealthCurrent | null): boolean {
     const status = String(current?.anchorValidationStatus ?? '').toLowerCase();
     return status.includes('measured');
   }
 
-  private deriveLimitingComponent(current: any): BrakeLimitingComponent {
+  private deriveLimitingComponent(current: BrakeHealthCurrent | null): BrakeLimitingComponent {
     const components: Array<{ key: BrakeLimitingComponent; value: number | null | undefined }> = [
-      { key: 'FRONT_PADS', value: current.frontPadHealthPct },
-      { key: 'REAR_PADS', value: current.rearPadHealthPct },
-      { key: 'FRONT_DISCS', value: current.frontDiscHealthPct },
-      { key: 'REAR_DISCS', value: current.rearDiscHealthPct },
+      { key: 'FRONT_PADS', value: current?.frontPadHealthPct },
+      { key: 'REAR_PADS', value: current?.rearPadHealthPct },
+      { key: 'FRONT_DISCS', value: current?.frontDiscHealthPct },
+      { key: 'REAR_DISCS', value: current?.rearDiscHealthPct },
     ];
     const valid = components.filter(
       (c): c is { key: Exclude<BrakeLimitingComponent, null>; value: number } =>
@@ -1486,7 +1487,7 @@ export class BrakeHealthService {
 
   private async buildNoBaselineSummary(
     vehicleId: string,
-    current: any,
+    current: BrakeHealthCurrent | null,
     modeledComponents: BrakeModeledComponentsDto,
   ): Promise<BrakeHealthSummaryDto> {
     const baselineWarnings = this.readWarningArray(current?.baselineWarnings);
@@ -1552,7 +1553,7 @@ export class BrakeHealthService {
    */
   private async buildCanonicalReadModel(
     vehicleId: string,
-    current: any,
+    current: BrakeHealthCurrent | null,
     modeledComponents: BrakeModeledComponentsDto,
   ): Promise<BrakeCanonicalReadModel> {
     const c = this.cfg;

@@ -1,7 +1,9 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { RentalHealthService } from './rental-health.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { VehicleHealth } from './rental-health.types';
+import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { RolesGuard } from '@shared/auth/roles.guard';
 
 /**
  * Rental Health V1 — read-only endpoints.
@@ -19,6 +21,7 @@ import { VehicleHealth } from './rental-health.types';
  * deterministic `unknown` + reasons entry, never silently dropped.
  */
 @Controller('organizations/:orgId')
+@UseGuards(OrgScopingGuard, RolesGuard)
 export class RentalHealthController {
   constructor(
     private readonly rentalHealth: RentalHealthService,

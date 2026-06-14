@@ -25,13 +25,14 @@ import { BatteryHealthService } from '@modules/vehicle-intelligence/battery-heal
 import { DamagesService } from '@modules/vehicle-intelligence/damages/damages.service';
 import { normalizeBatteryDocumentConfirm } from '@modules/vehicle-intelligence/battery-health/battery-document-confirmation.util';
 import { InvoicesService } from '@modules/invoices/invoices.service';
+import { ConfirmedExtractionData } from './document-extraction.types';
 
 export interface ApplyInput {
   extractionId: string;
   vehicleId: string;
   documentType: DocumentExtractionType;
   sourceFileUrl: string | null;
-  confirmedData: any;
+  confirmedData: ConfirmedExtractionData;
 }
 
 export interface ApplyResult {
@@ -84,38 +85,31 @@ export class DocumentExtractionApplyService {
     }
 
     if (docType === 'TIRE' && d?.treadDepthMm && typeof d.treadDepthMm === 'object') {
-      await this.tireLifecycleService
-        .recordMeasurement({
-          vehicleId,
-          frontLeftMm: this.toNum(d.treadDepthMm?.fl),
-          frontRightMm: this.toNum(d.treadDepthMm?.fr),
-          rearLeftMm: this.toNum(d.treadDepthMm?.rl),
-          rearRightMm: this.toNum(d.treadDepthMm?.rr),
-          odometerKm: this.toNum(d?.odometerKm),
-          source: 'ai_confirmed',
-          linkedExtractionId: extractionId,
-          linkedDocumentUrl: sourceFileUrl ?? undefined,
-          quality: 'measured',
-          shouldCalibrate: true,
-          triggerRecalculate: true,
-        })
-        .catch((err: any) => {
-          this.logger.warn(`Tire extraction measurement failed: ${err?.message ?? 'unknown error'}`);
-        });
+      const tread = d.treadDepthMm as Record<string, unknown>;
+      await this.tireLifecycleService.recordMeasurement({
+        vehicleId,
+        frontLeftMm: this.toNum(tread.fl),
+        frontRightMm: this.toNum(tread.fr),
+        rearLeftMm: this.toNum(tread.rl),
+        rearRightMm: this.toNum(tread.rr),
+        odometerKm: this.toNum(d?.odometerKm),
+        source: 'ai_confirmed',
+        linkedExtractionId: extractionId,
+        linkedDocumentUrl: sourceFileUrl ?? undefined,
+        quality: 'measured',
+        shouldCalibrate: true,
+        triggerRecalculate: true,
+      });
       return {};
     }
 
     if (docType === 'DAMAGE' || docType === 'ACCIDENT') {
-      await this.damagesService
-        .create({
-          vehicleId,
-          damageType: (d.damageType as any) || 'SCRATCH',
-          description: d.description || `${docType} report`,
-          severity: (d.severity as any) || 'MODERATE',
-        })
-        .catch((err: any) => {
-          this.logger.warn(`Damage creation from extraction failed: ${err?.message ?? 'unknown error'}`);
-        });
+      await this.damagesService.create({
+        vehicleId,
+        damageType: (d.damageType as any) || 'SCRATCH',
+        description: typeof d.description === 'string' ? d.description : `${docType} report`,
+        severity: (d.severity as any) || 'MODERATE',
+      });
       return {};
     }
 
@@ -130,7 +124,7 @@ export class DocumentExtractionApplyService {
 
   // ── per-type apply (mirrors prior controller behaviour) ───────────────────
 
-  private async applyBrake(input: ApplyInput, d: any): Promise<ApplyResult> {
+  private async applyBrake(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {
     const { vehicleId, sourceFileUrl, extractionId } = input;
     const serviceDateRaw =
       (typeof d?.eventDate === 'string' && d.eventDate) ||
@@ -160,6 +154,8 @@ export class DocumentExtractionApplyService {
         s === 'front_pads' || s === 'rear_pads' || s === 'front_discs' || s === 'rear_discs',
     );
 
+    const measured = (d.measured && typeof d.measured === 'object' ? d.measured : {}) as Record<string, unknown>;
+
     const lifecycle = await this.brakeLifecycleService.recordService({
       vehicleId,
       serviceDate: serviceDateRaw,
@@ -170,10 +166,10 @@ export class DocumentExtractionApplyService {
       kind,
       scope,
       measured: {
-        frontPadMm: this.toNum(d?.frontPadMm ?? d?.measured?.frontPadMm),
-        rearPadMm: this.toNum(d?.rearPadMm ?? d?.measured?.rearPadMm),
-        frontDiscMm: this.toNum(d?.frontDiscMm ?? d?.frontRotorWidthMm ?? d?.measured?.frontDiscMm),
-        rearDiscMm: this.toNum(d?.rearDiscMm ?? d?.rearRotorWidthMm ?? d?.measured?.rearDiscMm),
+        frontPadMm: this.toNum(d.frontPadMm ?? measured.frontPadMm),
+        rearPadMm: this.toNum(d.rearPadMm ?? measured.rearPadMm),
+        frontDiscMm: this.toNum(d.frontDiscMm ?? d.frontRotorWidthMm ?? measured.frontDiscMm),
+        rearDiscMm: this.toNum(d.rearDiscMm ?? d.rearRotorWidthMm ?? measured.rearDiscMm),
       },
       initializeIfPossible: true,
       documentUrl: sourceFileUrl ?? undefined,
@@ -188,10 +184,10 @@ export class DocumentExtractionApplyService {
     const brakeFluidStatus = this.mapBrakeComponentStatus(d?.brakeFluidStatus ?? d?.brakeFluid);
     const immediateReplacement = this.toBoolean(d?.immediateReplacement ?? d?.replaceNow);
 
-    const frontPadMm = this.toNum(d?.frontPadMm ?? d?.measured?.frontPadMm);
-    const rearPadMm = this.toNum(d?.rearPadMm ?? d?.measured?.rearPadMm);
-    const frontDiscMm = this.toNum(d?.frontDiscMm ?? d?.frontRotorWidthMm ?? d?.measured?.frontDiscMm);
-    const rearDiscMm = this.toNum(d?.rearDiscMm ?? d?.rearRotorWidthMm ?? d?.measured?.rearDiscMm);
+    const frontPadMm = this.toNum(d.frontPadMm ?? measured.frontPadMm);
+    const rearPadMm = this.toNum(d.rearPadMm ?? measured.rearPadMm);
+    const frontDiscMm = this.toNum(d.frontDiscMm ?? d.frontRotorWidthMm ?? measured.frontDiscMm);
+    const rearDiscMm = this.toNum(d.rearDiscMm ?? d.rearRotorWidthMm ?? measured.rearDiscMm);
 
     const base = {
       vehicleId,
@@ -269,7 +265,7 @@ export class DocumentExtractionApplyService {
     return null;
   }
 
-  private async applyServiceEvent(input: ApplyInput, d: any): Promise<ApplyResult> {
+  private async applyServiceEvent(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {
     const { vehicleId, sourceFileUrl, documentType: docType } = input;
     const typeMap: Record<string, string> = {
       SERVICE: 'FULL_SERVICE',
@@ -280,54 +276,53 @@ export class DocumentExtractionApplyService {
     const eventType = typeMap[docType] ?? 'OTHER';
     const odometerKmParsed = this.toInt(d?.odometerKm);
     const costCentsParsed = this.toInt(d?.costCents);
+    const eventDate = this.dateFrom(d.eventDate);
     const svcEvent = await this.prisma.vehicleServiceEvent.create({
       data: {
         vehicleId,
         eventType: eventType as any,
-        eventDate: d.eventDate ? new Date(d.eventDate) : new Date(),
+        eventDate: eventDate ?? new Date(),
         odometerKm: odometerKmParsed,
-        workshopName: d.workshopName || undefined,
-        notes: d.notes || d.description || undefined,
+        workshopName: this.str(d.workshopName),
+        notes: this.str(d.notes) ?? this.str(d.description),
         costCents: costCentsParsed,
         documentUrl: sourceFileUrl,
       },
     });
 
-    if (docType === 'OIL_CHANGE' && d.eventDate) {
+    if (docType === 'OIL_CHANGE' && eventDate) {
       await this.prisma.vehicle.update({
         where: { id: vehicleId },
         data: {
-          lastOilChangeDate: new Date(d.eventDate),
+          lastOilChangeDate: eventDate,
           ...(odometerKmParsed != null ? { lastOilChangeOdometerKm: odometerKmParsed } : {}),
         },
       });
     }
-    if (docType === 'SERVICE' && d.eventDate) {
+    if (docType === 'SERVICE' && eventDate) {
       await this.prisma.vehicle.update({
         where: { id: vehicleId },
         data: {
-          lastServiceDate: new Date(d.eventDate),
+          lastServiceDate: eventDate,
           ...(odometerKmParsed != null ? { lastServiceOdometerKm: odometerKmParsed } : {}),
         },
       });
     }
-    if (docType === 'TUV_REPORT' && d.eventDate) {
-      const tuvDate = new Date(d.eventDate);
-      const nextTuv = new Date(tuvDate);
+    if (docType === 'TUV_REPORT' && eventDate) {
+      const nextTuv = new Date(eventDate);
       nextTuv.setFullYear(nextTuv.getFullYear() + 2);
-      await this.prisma.vehicle.update({ where: { id: vehicleId }, data: { lastTuvDate: tuvDate, nextTuvDate: nextTuv } });
+      await this.prisma.vehicle.update({ where: { id: vehicleId }, data: { lastTuvDate: eventDate, nextTuvDate: nextTuv } });
     }
-    if (docType === 'BOKRAFT_REPORT' && d.eventDate) {
-      const bkDate = new Date(d.eventDate);
-      const nextBk = new Date(bkDate);
+    if (docType === 'BOKRAFT_REPORT' && eventDate) {
+      const nextBk = new Date(eventDate);
       nextBk.setFullYear(nextBk.getFullYear() + 1);
-      await this.prisma.vehicle.update({ where: { id: vehicleId }, data: { lastBokraftDate: bkDate, nextBokraftDate: nextBk } });
+      await this.prisma.vehicle.update({ where: { id: vehicleId }, data: { lastBokraftDate: eventDate, nextBokraftDate: nextBk } });
     }
 
     return { serviceEventId: svcEvent.id };
   }
 
-  private async applyBattery(input: ApplyInput, d: any): Promise<ApplyResult> {
+  private async applyBattery(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {
     const { vehicleId, extractionId, sourceFileUrl } = input;
     const normalized = normalizeBatteryDocumentConfirm(d as Record<string, unknown>);
     const observedAt = normalized.observedAt;
@@ -342,8 +337,8 @@ export class DocumentExtractionApplyService {
           eventType: 'BATTERY_REPLACEMENT',
           eventDate: observedAt,
           odometerKm: normalized.odometerKm != null ? Math.round(normalized.odometerKm) : undefined,
-          workshopName: d?.workshopName || undefined,
-          notes: d?.notes || d?.description || undefined,
+          workshopName: this.str(d.workshopName),
+          notes: this.str(d.notes) ?? this.str(d.description),
           costCents: this.toInt(d?.costCents),
           documentUrl: sourceFileUrl,
         },
@@ -413,31 +408,43 @@ export class DocumentExtractionApplyService {
     return { serviceEventId };
   }
 
-  private async applyInvoice(input: ApplyInput, d: any): Promise<ApplyResult> {
+  private async applyInvoice(input: ApplyInput, d: Record<string, unknown>): Promise<ApplyResult> {
     const { vehicleId, sourceFileUrl } = input;
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
       select: { organizationId: true },
     });
     if (vehicle?.organizationId) {
+      const orgId = vehicle.organizationId;
       const totalCentsParsed = this.toInt(d?.totalCents) ?? this.toInt(d?.costCents) ?? 0;
-      await this.invoicesService
-        .create(vehicle.organizationId, {
-          type: 'INCOMING_UPLOADED',
-          vehicleId,
-          title: d.title || d.invoiceTitle || 'Hochgeladene Rechnung',
-          description: d.description || '',
-          vendorName: d.vendorName || d.workshopName || '',
-          totalCents: totalCentsParsed,
-          invoiceDate: d.invoiceDate || d.eventDate || new Date().toISOString(),
-          dueDate: d.dueDate || undefined,
-          imageUrl: sourceFileUrl || undefined,
-          extractedData: d,
-          status: 'SENT',
-        })
-        .catch((err: any) => {
-          this.logger.warn(`Invoice creation from extraction failed: ${err?.message ?? 'unknown error'}`);
+      const vendorNameRaw = this.str(d.vendorName) ?? this.str(d.workshopName) ?? '';
+      let vendorId: string | undefined;
+      if (vendorNameRaw) {
+        const match = await this.prisma.vendor.findFirst({
+          where: {
+            organizationId: orgId,
+            name: { equals: vendorNameRaw, mode: 'insensitive' },
+          },
+          select: { id: true },
         });
+        vendorId = match?.id;
+      }
+      const invoiceDate =
+        this.str(d.invoiceDate) ?? this.str(d.eventDate) ?? new Date().toISOString();
+      await this.invoicesService.create(orgId, {
+        type: 'INCOMING_UPLOADED',
+        vehicleId,
+        title: this.str(d.title) ?? this.str(d.invoiceTitle) ?? 'Hochgeladene Rechnung',
+        description: this.str(d.description) ?? '',
+        vendorId,
+        vendorName: vendorNameRaw,
+        totalCents: totalCentsParsed,
+        invoiceDate,
+        dueDate: this.str(d.dueDate),
+        imageUrl: sourceFileUrl || undefined,
+        extractedData: d,
+        status: 'SENT',
+      });
     }
     return {};
   }
@@ -456,5 +463,18 @@ export class DocumentExtractionApplyService {
   private toInt(v: unknown): number | undefined {
     const n = this.toNum(v);
     return n != null ? Math.round(n) : undefined;
+  }
+
+  private str(v: unknown): string | undefined {
+    return typeof v === 'string' && v.trim().length > 0 ? v.trim() : undefined;
+  }
+
+  private dateFrom(v: unknown): Date | undefined {
+    if (v instanceof Date) return v;
+    if (typeof v === 'string' || typeof v === 'number') {
+      const parsed = new Date(v);
+      return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+    }
+    return undefined;
   }
 }

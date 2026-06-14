@@ -16,6 +16,7 @@ import {
   DocumentStoragePort,
 } from './storage/document-storage.interface';
 import { DocumentExtractionApplyService } from './document-extraction-apply.service';
+import { DocumentExtractionPlausibilityService } from './document-extraction-plausibility.service';
 import {
   getFieldSchema,
   isSupportedDocumentType,
@@ -66,6 +67,7 @@ export class DocumentExtractionService {
     @Inject(DOCUMENT_STORAGE) private readonly storage: DocumentStoragePort,
     @InjectQueue(QUEUE_NAMES.DOCUMENT_EXTRACTION) private readonly queue: Queue,
     private readonly applyService: DocumentExtractionApplyService,
+    private readonly plausibilityService: DocumentExtractionPlausibilityService,
   ) {}
 
   // ── create (real upload) ──────────────────────────────────────────────
@@ -130,28 +132,14 @@ export class DocumentExtractionService {
 
   // ── create (legacy client-supplied flow, kept for backward compat) ──────
 
-  async createLegacy(
-    vehicleId: string,
-    body: { documentType: string; extractedData?: any; sourceFileName?: string; sourceFileUrl?: string },
-  ) {
-    if (!isSupportedDocumentType(body.documentType)) {
-      throw new BadRequestException(`Unsupported document type: ${body.documentType}`);
-    }
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: vehicleId },
-      select: { organizationId: true },
-    });
-    return this.prisma.vehicleDocumentExtraction.create({
-      data: {
-        vehicleId,
-        organizationId: vehicle?.organizationId ?? null,
-        documentType: body.documentType as DocumentExtractionType,
-        extractedData: body.extractedData ?? undefined,
-        sourceFileName: body.sourceFileName,
-        sourceFileUrl: body.sourceFileUrl,
-        status: 'PENDING',
-      },
-    });
+  /** @deprecated Use POST upload — legacy no-file create is disabled for safety. */
+  createLegacy(
+    _vehicleId: string,
+    _body: { documentType: string; extractedData?: unknown; sourceFileName?: string; sourceFileUrl?: string },
+  ): never {
+    throw new BadRequestException(
+      'Legacy document-extraction create is disabled. Upload a file via POST .../upload and confirm after READY_FOR_REVIEW.',
+    );
   }
 
   // ── reads (vehicle-scoped) ──────────────────────────────────────────────
@@ -210,21 +198,53 @@ export class DocumentExtractionService {
       return existing;
     }
 
+    if (existing.status !== 'READY_FOR_REVIEW') {
+      throw new BadRequestException(
+        `Extraction must be READY_FOR_REVIEW before confirmation (current: ${existing.status})`,
+      );
+    }
+
     const confirmedData = this.sanitizeConfirmedData(existing.documentType, confirmedDataRaw);
+
+    const plausibility = await this.runConfirmPlausibility(vehicleId, existing.documentType, confirmedData);
+    if (plausibility.overallStatus === 'BLOCKER') {
+      throw new BadRequestException({
+        message: 'Plausibility checks failed — cannot apply data with BLOCKER status',
+        plausibility,
+      });
+    }
+
+    const sourceFileUrl =
+      existing.sourceFileUrl ??
+      (existing.objectKey ? `storage://${existing.objectKey}` : null);
 
     // Mark human-confirmed first (keeps original extractedData intact for audit).
     await this.prisma.vehicleDocumentExtraction.update({
       where: { id: extractionId },
-      data: { confirmedData: confirmedData as Prisma.InputJsonValue, status: 'CONFIRMED' },
+      data: {
+        confirmedData: confirmedData as Prisma.InputJsonValue,
+        status: 'CONFIRMED',
+        plausibility: plausibility as unknown as Prisma.InputJsonValue,
+      },
     });
 
-    const applyResult = await this.applyService.apply({
-      extractionId,
-      vehicleId,
-      documentType: existing.documentType,
-      sourceFileUrl: existing.sourceFileUrl,
-      confirmedData,
-    });
+    let applyResult: Awaited<ReturnType<DocumentExtractionApplyService['apply']>>;
+    try {
+      applyResult = await this.applyService.apply({
+        extractionId,
+        vehicleId,
+        documentType: existing.documentType,
+        sourceFileUrl,
+        confirmedData,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Apply failed for extraction ${extractionId}: ${(err as Error).message}`,
+      );
+      throw new BadRequestException(
+        `Failed to apply confirmed data: ${(err as Error).message}`,
+      );
+    }
 
     const updated = await this.prisma.vehicleDocumentExtraction.update({
       where: { id: extractionId },
@@ -253,6 +273,26 @@ export class DocumentExtractionService {
   }
 
   // ── helpers ─────────────────────────────────────────────────────────────
+
+  private async runConfirmPlausibility(
+    vehicleId: string,
+    documentType: DocumentExtractionType,
+    confirmedData: Record<string, unknown>,
+  ) {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { vin: true, licensePlate: true, mileageKm: true },
+    });
+    const latest = await this.prisma.vehicleLatestState.findUnique({
+      where: { vehicleId },
+      select: { odometerKm: true },
+    });
+    return this.plausibilityService.runChecks(documentType, confirmedData, {
+      vin: vehicle?.vin,
+      licensePlate: vehicle?.licensePlate,
+      lastKnownOdometerKm: latest?.odometerKm ?? vehicle?.mileageKm ?? null,
+    });
+  }
 
   private async enqueue(extractionId: string, data: DocumentExtractionJobData) {
     try {

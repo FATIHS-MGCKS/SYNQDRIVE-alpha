@@ -614,7 +614,6 @@ export default function App() {
             )}
             {currentView === 'organizations' && selectedOrg && (
               <OrganizationDetailView
-                isDarkMode={isDarkMode}
                 org={selectedOrg}
                 orgUsers={getOrgUsers(selectedOrg.id)}
                 orgVehicles={getOrgVehicles(selectedOrg.id)}
@@ -682,22 +681,22 @@ export default function App() {
 
             {/* PROSPECTS */}
             {currentView === 'prospects' && (
-              <ProspectsView isDarkMode={isDarkMode} />
+              <ProspectsView />
             )}
 
             {/* FLEET CONNECTION */}
             {currentView === 'fleet-connection' && (
-              <FleetConnectionView isDarkMode={isDarkMode} />
+              <FleetConnectionView />
             )}
 
             {/* PARTS & ACCESSORIES */}
             {currentView === 'parts-accessories' && (
-              <PartsAccessoriesAdminView isDarkMode={isDarkMode} />
+              <PartsAccessoriesAdminView />
             )}
 
             {/* INSURANCES */}
             {currentView === 'insurances' && (
-              <InsurancesAdminView isDarkMode={isDarkMode} />
+              <InsurancesAdminView />
             )}
 
             {/* VOICE ASSISTANT */}
@@ -736,7 +735,7 @@ export default function App() {
             )}
 
             {currentView === 'high-mobility' && (
-              <HighMobilityDataView isDarkMode={isDarkMode} />
+              <HighMobilityDataView />
             )}
 
             {currentView === 'hm-compatibility' && (

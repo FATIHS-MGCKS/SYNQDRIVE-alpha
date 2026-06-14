@@ -123,7 +123,9 @@ export function classifyRestingVoltage(
     return { status: 'UNSUPPORTED', thresholdSource: 'UNSUPPORTED', batteryType };
   }
 
-  const thresholdSource: RestingThresholdSource = batteryType === 'UNKNOWN' ? 'DEFAULT' : 'BATTERY_SPEC';
+  // Only AGM has distinct resting bands; EFB shares DEFAULT_RESTING_THRESHOLDS.
+  const thresholdSource: RestingThresholdSource =
+    batteryType === 'AGM' ? 'BATTERY_SPEC' : 'DEFAULT';
 
   if (voltageV == null || !Number.isFinite(voltageV)) {
     return { status: 'UNKNOWN', thresholdSource, batteryType };

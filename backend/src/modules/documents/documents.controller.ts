@@ -11,6 +11,7 @@ import {
 import type { Response } from 'express';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { Roles } from '@shared/decorators/roles.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { GeneratedDocumentsService } from './generated-documents.service';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
@@ -36,6 +37,7 @@ export class DocumentsController {
   }
 
   @Post('bookings/:bookingId/documents/generate-initial-bundle')
+  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
   generateInitialBundle(
     @Param('orgId') orgId: string,
     @Param('bookingId') bookingId: string,
@@ -45,6 +47,7 @@ export class DocumentsController {
   }
 
   @Post('bookings/:bookingId/documents/regenerate/:documentType')
+  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
   regenerate(
     @Param('orgId') orgId: string,
     @Param('bookingId') bookingId: string,
@@ -60,6 +63,7 @@ export class DocumentsController {
   }
 
   @Post('documents/:documentId/void')
+  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
   async void(@Param('orgId') orgId: string, @Param('documentId') documentId: string) {
     return this.generated.toDto(await this.generated.voidDocument(orgId, documentId));
   }

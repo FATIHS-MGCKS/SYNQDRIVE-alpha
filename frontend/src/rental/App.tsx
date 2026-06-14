@@ -149,10 +149,16 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
   // wear scale; battery and tires use their canonical status so Dashboard and
   // Health Tab always agree on the same green/amber/red state for a vehicle.
   const tireCanon = tires?.overallStatus ?? null;
-  const brakeCritical = brakesTracked && brakesVal < 30;
+  const brakeCond = brakes?.overallCondition;
+  const brakeCritical =
+    brakeCond === 'CRITICAL' ||
+    ((brakeCond == null || brakeCond === 'UNKNOWN') && brakesTracked && brakesVal < 30);
   const tireCritical = tiresTracked && (tireCanon ? tireCanon === 'CRITICAL' : tiresVal < 30);
   const batteryCriticalFlag = batteryTracked && batteryCondition === 'attention';
-  const brakeDueSoon = brakesTracked && brakesVal >= 30 && brakesVal < 60;
+  const brakeDueSoon =
+    brakeCond === 'WARNING' ||
+    brakeCond === 'WATCH' ||
+    ((brakeCond == null || brakeCond === 'UNKNOWN') && brakesTracked && brakesVal >= 30 && brakesVal < 60);
   const tireDueSoon = tiresTracked && (tireCanon ? (tireCanon === 'WARNING' || tireCanon === 'WATCH') : (tiresVal >= 30 && tiresVal < 60));
   const batteryDueSoonFlag = batteryTracked && batteryCondition === 'watch';
   const localCriticalCount = [brakeCritical, tireCritical, batteryCriticalFlag].filter(Boolean).length;
@@ -1546,10 +1552,9 @@ function RentalAppContent() {
             }}
           />
         ) : currentView === 'stations' ? (
-          <StationsTab isDarkMode={isDarkMode} />
+          <StationsTab />
         ) : currentView === 'dashboard' ? (
           <DashboardView
-            isDarkMode={isDarkMode}
             onVehicleSelect={(vehicle) => { setSelectedVehicle(vehicle); setCurrentView('overview'); }}
             onOpenVehicleById={(vehicleId) => {
               const v = fleetVehicles.find((fv) => fv.id === vehicleId);
@@ -1562,7 +1567,7 @@ function RentalAppContent() {
             }}
           />
         ) : currentView === 'bookings' ? (
-          <BookingsView isDarkMode={isDarkMode} onActiveBookingRefChange={setActiveBookingRef} onNavigateToVehicle={(vehicleName) => {
+          <BookingsView onActiveBookingRefChange={setActiveBookingRef} onNavigateToVehicle={(vehicleName) => {
             const nameNorm = vehicleName.toLowerCase().replace(/[-\s]/g, '');
             const vehicle = fleetVehicles.find(v => {
               const modelNorm = v.model.toLowerCase().replace(/[-\s]/g, '');
@@ -1577,7 +1582,7 @@ function RentalAppContent() {
             bumpBookingsVersion();
           }} initialDetailBookingId={pendingBookingDetailId} onConsumeInitialDetailBookingId={() => setPendingBookingDetailId(null)} />
         ) : currentView === 'health-errors' ? (
-          <HealthErrorsView isDarkMode={isDarkMode} vehicleId={selectedVehicle?.id} fuelType={selectedVehicle?.fuelType} />
+          <HealthErrorsView vehicleId={selectedVehicle?.id} fuelType={selectedVehicle?.fuelType} />
         ) : currentView === 'financial-insights' ? (
           /* V4.6.93 — Standalone Financial Insights page (replacement for the
              retired Dashboard Finances tab). Aggregates real invoice data
@@ -1585,7 +1590,7 @@ function RentalAppContent() {
              fallbacks. Lives next to other Insights pages, not under Finance. */
           <FinancialInsightsView isDarkMode={isDarkMode} />
         ) : currentView === 'fleet' ? (
-          <FleetView isDarkMode={isDarkMode} onVehicleSelect={handleVehicleSelect} />
+          <FleetView onVehicleSelect={handleVehicleSelect} />
         ) : currentView === 'damages' ? (
           <DamagesView isDarkMode={isDarkMode} vehicleId={selectedVehicle?.id} />
         ) : currentView === 'documents' ? (
@@ -1595,11 +1600,10 @@ function RentalAppContent() {
         ) : currentView === 'vehicle-tasks' ? (
           <VehicleTasksView isDarkMode={isDarkMode} vehicle={selectedVehicle} />
         ) : currentView === 'customers' ? (
-          <CustomersView isDarkMode={isDarkMode} onOpenCustomerDetail={(c) => { setDetailCustomer(c); setCurrentView('customer-detail'); }} additionalCustomers={newlyCreatedCustomers} />
+          <CustomersView onOpenCustomerDetail={(c) => { setDetailCustomer(c); setCurrentView('customer-detail'); }} additionalCustomers={newlyCreatedCustomers} />
         ) : currentView === 'customer-detail' && detailCustomer ? (
           <CustomerDetailView
             customer={detailCustomer}
-            isDarkMode={isDarkMode}
             onBack={() => setCurrentView('customers')}
             onUpdateCustomer={(updated) => setDetailCustomer(updated)}
           />
@@ -1637,7 +1641,6 @@ function RentalAppContent() {
           />
         ) : currentView === 'fleet-condition' ? (
           <FleetConditionView
-            isDarkMode={isDarkMode}
             onDrillDown={(vehicleId, category) => {
               setConditionDrillVehicleId(vehicleId);
               setConditionDrillCategory(category);
@@ -1657,7 +1660,7 @@ function RentalAppContent() {
         ) : currentView === 'parts-accessories' ? (
           <PartsAccessoriesView isDarkMode={isDarkMode} />
         ) : currentView === 'insurances' ? (
-          <InsurancesView isDarkMode={isDarkMode} onNavigateToVehicleDocuments={(vehicleId) => {
+          <InsurancesView onNavigateToVehicleDocuments={(vehicleId) => {
             const v = fleetVehicles.find((fv: any) => fv.id === vehicleId);
             if (v) { setSelectedVehicle(v); setCurrentView('documents'); }
           }} />
@@ -1666,9 +1669,9 @@ function RentalAppContent() {
         ) : currentView === 'help-center' ? (
           <HelpCenterView isDarkMode={isDarkMode} />
         ) : currentView === 'settings' ? (
-          <SettingsView isDarkMode={isDarkMode} activeTab={settingsTab} onTabChange={setSettingsTab} />
+          <SettingsView activeTab={settingsTab} onTabChange={setSettingsTab} />
         ) : currentView === 'new-booking' ? (
-          <NewBookingView isDarkMode={isDarkMode} onBack={() => setCurrentView('bookings')} tariffs={tariffs} onCustomerCreated={(c) => setNewlyCreatedCustomers(prev => [c, ...prev])} onBookingCreated={(b) => { setCreatedBookings(prev => [b, ...prev]); bumpBookingsVersion(); }} />
+          <NewBookingView onBack={() => setCurrentView('bookings')} tariffs={tariffs} onCustomerCreated={(c) => setNewlyCreatedCustomers(prev => [c, ...prev])} onBookingCreated={(b) => { setCreatedBookings(prev => [b, ...prev]); bumpBookingsVersion(); }} />
         ) : (
           <>
         {/* Main Grid - Top Section */}

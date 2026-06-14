@@ -1,7 +1,10 @@
 
 import { Icon } from './ui/Icon';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useFleetVehicles } from '../FleetContext';
+import { useRentalOrg } from '../RentalContext';
+import { api } from '../../lib/api';
+import type { CreateTaskPayload } from '../../lib/api';
 
 interface NewTaskModalProps {
   isOpen: boolean;
@@ -9,25 +12,68 @@ interface NewTaskModalProps {
   isDarkMode: boolean;
 }
 
+const PRIORITY_MAP: Record<'Low' | 'Medium' | 'High' | 'Urgent', CreateTaskPayload['priority']> = {
+  Low: 'LOW',
+  Medium: 'MEDIUM',
+  High: 'HIGH',
+  Urgent: 'URGENT',
+};
+
 export function NewTaskModal({ isOpen, onClose, isDarkMode }: NewTaskModalProps) {
   const { fleetVehicles } = useFleetVehicles();
+  const { orgId } = useRentalOrg();
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState<'Low' | 'Medium' | 'High' | 'Urgent'>('Medium');
   const [assignedTo, setAssignedTo] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState('');
+  const [orgMembers, setOrgMembers] = useState<{ id: string; name: string }[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!orgId || !isOpen) return;
+    let cancelled = false;
+    api.users.listByOrg(orgId)
+      .then((res) => {
+        if (cancelled) return;
+        const list = Array.isArray(res) ? res : ((res as { data?: unknown[] })?.data ?? []);
+        setOrgMembers(
+          list.map((u: { id: string; name?: string; firstName?: string; lastName?: string; email?: string }) => ({
+            id: u.id,
+            name: u.name || `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email || u.id,
+          })),
+        );
+      })
+      .catch(() => { if (!cancelled) setOrgMembers([]); });
+    return () => { cancelled = true; };
+  }, [orgId, isOpen]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Hier würde die Task-Erstellung stattfinden
-    console.log({ description, dueDate, priority, assignedTo, selectedVehicle });
-    // Reset form
-    setDescription('');
-    setDueDate('');
-    setPriority('Medium');
-    setAssignedTo('');
-    setSelectedVehicle('');
-    onClose();
+    if (!orgId || submitting) return;
+    setSubmitting(true);
+    try {
+      await api.tasks.create(orgId, {
+        title: description.trim().slice(0, 120) || 'Task',
+        description: description.trim(),
+        type: 'CUSTOM',
+        source: 'MANUAL',
+        priority: PRIORITY_MAP[priority],
+        dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
+        vehicleId: selectedVehicle || undefined,
+        assignedUserId: assignedTo || undefined,
+      });
+      setDescription('');
+      setDueDate('');
+      setPriority('Medium');
+      setAssignedTo('');
+      setSelectedVehicle('');
+      onClose();
+    } catch (err) {
+      console.error('Create task failed', err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -185,11 +231,9 @@ export function NewTaskModal({ isOpen, onClose, isDarkMode }: NewTaskModalProps)
                   }`}
                 >
                   <option value="">Person auswählen...</option>
-                  <option value="Max Mustermann">Max Mustermann</option>
-                  <option value="Anna Schmidt">Anna Schmidt</option>
-                  <option value="Thomas Müller">Thomas Müller</option>
-                  <option value="Sarah Weber">Sarah Weber</option>
-                  <option value="Michael Fischer">Michael Fischer</option>
+                  {orgMembers.map((m) => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -210,7 +254,8 @@ export function NewTaskModal({ isOpen, onClose, isDarkMode }: NewTaskModalProps)
             </button>
             <button
               type="submit"
-              className="flex-1 px-6 py-3 rounded-xl font-semibold transition-all duration-200 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl"
+              disabled={submitting || !orgId}
+              className="flex-1 px-6 py-3 rounded-xl font-semibold transition-all duration-200 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl disabled:opacity-50"
             >
               Task erstellen
             </button>

@@ -56,7 +56,6 @@ interface Customer {
 
 interface CustomerDetailModalProps {
   customer: Customer;
-  isDarkMode: boolean;
   onClose: () => void;
   isAnimating?: boolean;
   onUpdateCustomer?: (updatedCustomer: Customer) => void;
@@ -110,7 +109,6 @@ type ModalDetail = {
 
 export function CustomerDetailModal({
   customer,
-  isDarkMode,
   onClose,
   isAnimating = true,
   onUpdateCustomer,

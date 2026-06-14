@@ -6,6 +6,7 @@ import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
 import type { ApiTask, ApiTaskType, CreateTaskPayload } from '../../lib/api';
+import { PageHeader } from '../../components/patterns';
 
 // View category → canonical backend TaskType.
 const CATEGORY_TO_TASK_TYPE: Record<string, ApiTaskType> = {
@@ -36,7 +37,7 @@ interface TasksViewProps {
   onHighlightConsumed?: () => void;
 }
 
-type TaskStatus = 'Open' | 'In Progress' | 'Completed' | 'Overdue';
+type TaskStatus = 'Open' | 'In Progress' | 'Waiting' | 'Completed' | 'Overdue';
 type TaskPriority = 'Low' | 'Medium' | 'High' | 'Critical';
 type TaskCategory = 'Cleaning' | 'Maintenance' | 'Repair' | 'Inspection' | 'Damage' | 'TÜV' | 'Insurance' | 'Documents' | 'Tire Change' | 'Oil Change';
 
@@ -107,9 +108,10 @@ function fmtDate(iso?: string | null): string {
 function mapStatus(status: string, dueIso?: string | null): TaskStatus {
   const s = (status || '').toUpperCase();
   if (s === 'DONE' || s === 'CANCELLED') return 'Completed';
+  if (s === 'WAITING') return 'Waiting';
   if (dueIso) {
     const due = new Date(dueIso);
-    if (!Number.isNaN(due.getTime()) && due.getTime() < Date.now()) return 'Overdue';
+    if (!Number.isNaN(due.getTime()) && due.getTime() < Date.now() && s !== 'IN_PROGRESS' && s !== 'WAITING') return 'Overdue';
   }
   return s === 'IN_PROGRESS' ? 'In Progress' : 'Open';
 }
@@ -161,6 +163,28 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
   const [mutating, setMutating] = useState(false);
   // Full server detail for the open task (checklist / comments / timeline).
   const [detailFull, setDetailFull] = useState<ApiTask | null>(null);
+  const [orgMembers, setOrgMembers] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    if (!orgId) {
+      setOrgMembers([]);
+      return;
+    }
+    let cancelled = false;
+    api.users.listByOrg(orgId)
+      .then((res) => {
+        if (cancelled) return;
+        const list = Array.isArray(res) ? res : ((res as { data?: unknown[] })?.data ?? []);
+        setOrgMembers(
+          list.map((u: { id: string; name?: string; firstName?: string; lastName?: string; email?: string }) => ({
+            id: u.id,
+            name: u.name || `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email || u.id,
+          })),
+        );
+      })
+      .catch(() => { if (!cancelled) setOrgMembers([]); });
+    return () => { cancelled = true; };
+  }, [orgId]);
 
   const loadTasks = useRef<() => void>(() => {});
   loadTasks.current = () => {
@@ -241,7 +265,11 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
         vehicleLicense: veh?.license || '',
         vehicleModel: veh?.model || '',
         station: veh?.station || '',
-        assignedTo: t.assignedTo || (isAuto ? 'System' : 'Unassigned'),
+        assignedTo: (() => {
+          const uid = (t as BackendTask & { assignedUserId?: string }).assignedUserId;
+          if (uid) return orgMembers.find((m) => m.id === uid)?.name ?? t.assignedTo ?? 'Unassigned';
+          return t.assignedTo || (isAuto ? 'System' : 'Unassigned');
+        })(),
         createdDate: fmtDate(t.createdAt),
         dueDate: fmtDate(t.dueDate),
         completedDate: t.completedAt ? fmtDate(t.completedAt) : undefined,
@@ -249,7 +277,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
         notes: isAuto ? 'Automatisch erzeugt durch SynqDrive Insights.' : undefined,
       };
     });
-  }, [rawTasks, fleetVehicles]);
+  }, [rawTasks, fleetVehicles, orgMembers]);
 
   const openNewTask = () => {
     setIsNewTaskOpen(true);
@@ -391,6 +419,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
       priority: VIEW_PRIORITY_TO_API[newTask.priority] ?? 'MEDIUM',
       category: newTask.category,
       dueDate: newTask.dueDate ? new Date(newTask.dueDate).toISOString() : undefined,
+      assignedUserId: newTask.assignedTo || undefined,
       vehicleId: vehicle?.id,
     };
     setMutating(true);
@@ -429,7 +458,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
   });
 
   const priorityOrder: Record<TaskPriority, number> = { 'Critical': 0, 'High': 1, 'Medium': 2, 'Low': 3 };
-  const statusOrder: Record<TaskStatus, number> = { 'Overdue': 0, 'Open': 1, 'In Progress': 2, 'Completed': 3 };
+  const statusOrder: Record<TaskStatus, number> = { 'Overdue': 0, 'Open': 1, 'Waiting': 2, 'In Progress': 3, 'Completed': 4 };
 
   const sorted = [...filtered].sort((a, b) => {
     if (sortBy === 'priority') return priorityOrder[a.priority] - priorityOrder[b.priority];
@@ -500,6 +529,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
     const s: Record<TaskStatus, string> = {
       'Open': 'sq-tone-neutral border-current/15',
       'In Progress': 'sq-tone-info border-current/15',
+      'Waiting': 'sq-tone-watch border-current/15',
       'Completed': 'sq-tone-success border-current/15',
       'Overdue': 'sq-tone-critical border-current/15',
     };
@@ -575,22 +605,19 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
           pointerEvents: (isNewTaskOpen || selectedTask || isDetailClosing) ? 'none' : 'auto',
         }}
       >
-      {/* Header */}
-      <div className="flex min-h-8 flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground">
-            Task Management
-          </h1>
-        </div>
-        <button
-          type="button"
-          className="sq-press flex items-center gap-2 rounded-xl bg-[color:var(--brand)] px-3 py-2 text-[10px] font-semibold text-white shadow-[var(--shadow-1)] transition-all hover:opacity-90"
-          onClick={openNewTask}
-        >
-          <Icon name="plus" className="h-4 w-4" />
-          New Task
-        </button>
-      </div>
+      <PageHeader
+        title="Task Management"
+        actions={(
+          <button
+            type="button"
+            className="sq-press flex items-center gap-2 rounded-xl bg-[color:var(--brand)] px-3 py-2 text-[10px] font-semibold text-white shadow-[var(--shadow-1)] transition-all hover:opacity-90"
+            onClick={openNewTask}
+          >
+            <Icon name="plus" className="h-4 w-4" />
+            New Task
+          </button>
+        )}
+      />
 
       {/* Segment metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
@@ -731,6 +758,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
               { value: 'all', label: 'All Status', count: statusCount('all') },
               { value: 'Open', label: 'Open', count: statusCount('Open') },
               { value: 'In Progress', label: 'In Progress', count: statusCount('In Progress') },
+              { value: 'Waiting', label: 'Waiting', count: statusCount('Waiting') },
               { value: 'Completed', label: 'Completed', count: statusCount('Completed') },
               { value: 'Overdue', label: 'Overdue', count: statusCount('Overdue') },
             ]}
@@ -915,6 +943,15 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                   <h2 className={`text-base font-bold ${textPrimary}`}>{selectedTask.title}</h2>
                 </div>
                 <div className="flex items-center gap-2">
+                  {detailFull && detailFull.status === 'WAITING' && (
+                    <button
+                      disabled={mutating}
+                      onClick={() => runTaskAction(() => api.tasks.start(orgId!, detailFull.id))}
+                      className="px-3 py-2 rounded-lg bg-brand hover:bg-[color:var(--brand-hover)] text-brand-foreground text-xs font-semibold transition-all shadow-sm disabled:opacity-50"
+                    >
+                      Resume
+                    </button>
+                  )}
                   {detailFull && detailFull.status === 'OPEN' && (
                     <button
                       disabled={mutating}
@@ -1126,7 +1163,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
         const today = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
         const allCategories: TaskCategory[] = ['Cleaning', 'Maintenance', 'Repair', 'Inspection', 'Damage', 'TÜV', 'Insurance', 'Documents', 'Tire Change', 'Oil Change'];
         const allPriorities: TaskPriority[] = ['Low', 'Medium', 'High', 'Critical'];
-        const assigneesList = ['Tim Schröder', 'Marco Becker', 'Sarah Mayer', 'Lisa Weber'];
+        const assigneesList = orgMembers;
         const stationsList: string[] = [];
 
         return (
@@ -1251,7 +1288,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                         <label className={labelClass}>Zugewiesen an *</label>
                         <select value={newTask.assignedTo} onChange={e => setNewTask({ ...newTask, assignedTo: e.target.value })} className={inputClass}>
                           <option value="">Mitarbeiter wählen...</option>
-                          {assigneesList.map(a => <option key={a} value={a}>{a}</option>)}
+                          {assigneesList.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                         </select>
                         {taskFormErrors.assignedTo && <p className="text-[11px] text-[color:var(--status-critical)] mt-1">{taskFormErrors.assignedTo}</p>}
                       </div>
@@ -1302,7 +1339,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                         <Icon name="user" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50" />
                         <select value={newTask.createdBy} onChange={e => setNewTask({ ...newTask, createdBy: e.target.value })} className={`${inputClass} pl-9`}>
                           <option value="">Ersteller wählen...</option>
-                          {assigneesList.map(a => <option key={a} value={a}>{a}</option>)}
+                          {assigneesList.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                         </select>
                       </div>
                       {taskFormErrors.createdBy && <p className="text-[11px] text-[color:var(--status-critical)] mt-1">{taskFormErrors.createdBy}</p>}
@@ -1331,7 +1368,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                       'bg-muted/40 border-border divide-border/60'
                     }`}>
                       <SummaryRow label="Fahrzeug" value={newTask.vehicleLicense ? (uniqueVehicles.find(v => v.value === newTask.vehicleLicense)?.label || newTask.vehicleLicense) : ''} />
-                      <SummaryRow label="Zugewiesen an" value={newTask.assignedTo} />
+                      <SummaryRow label="Zugewiesen an" value={orgMembers.find(m => m.id === newTask.assignedTo)?.name ?? newTask.assignedTo} />
                       <SummaryRow label="Station" value={newTask.station} />
                     </div>
                     <div className={`rounded-lg border p-4 space-y-0 divide-y ${

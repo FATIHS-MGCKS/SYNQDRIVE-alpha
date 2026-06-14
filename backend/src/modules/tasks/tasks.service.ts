@@ -86,6 +86,16 @@ export interface ListTasksFilters {
   search?: string;
 }
 
+type OrgTaskDetail = Prisma.OrgTaskGetPayload<{
+  include: {
+    checklistItems: true;
+    comments: true;
+    attachments: true;
+    events: true;
+  };
+}>;
+type OrgTaskRow = Prisma.OrgTaskGetPayload<object> | OrgTaskDetail;
+
 @Injectable()
 export class TasksService {
   private readonly logger = new Logger(TasksService.name);
@@ -103,7 +113,7 @@ export class TasksService {
     );
   }
 
-  private format(t: any, now = new Date()) {
+  private format(t: OrgTaskRow, now = new Date()) {
     return {
       id: t.id,
       organizationId: t.organizationId,
@@ -136,22 +146,22 @@ export class TasksService {
       cancelledAt: (t.cancelledAt as Date)?.toISOString?.() || null,
       createdAt: (t.createdAt as Date)?.toISOString?.() || '',
       updatedAt: (t.updatedAt as Date)?.toISOString?.() || '',
-      ...(t.checklistItems
+      ...( 'checklistItems' in t && t.checklistItems
         ? {
-            checklist: (t.checklistItems as any[]).map((c) => this.formatChecklistItem(c)),
+            checklist: t.checklistItems.map((c) => this.formatChecklistItem(c)),
           }
         : {}),
-      ...(t.comments
-        ? { comments: (t.comments as any[]).map((c) => this.formatComment(c)) }
+      ...( 'comments' in t && t.comments
+        ? { comments: t.comments.map((c) => this.formatComment(c)) }
         : {}),
-      ...(t.attachments
-        ? { attachments: (t.attachments as any[]).map((a) => this.formatAttachment(a)) }
+      ...( 'attachments' in t && t.attachments
+        ? { attachments: t.attachments.map((a) => this.formatAttachment(a)) }
         : {}),
-      ...(t.events ? { timeline: (t.events as any[]).map((e) => this.formatEvent(e)) } : {}),
+      ...( 'events' in t && t.events ? { timeline: t.events.map((e) => this.formatEvent(e)) } : {}),
     };
   }
 
-  private formatChecklistItem(c: any) {
+  private formatChecklistItem(c: Prisma.TaskChecklistItemGetPayload<object>) {
     return {
       id: c.id,
       title: c.title,
@@ -163,7 +173,7 @@ export class TasksService {
     };
   }
 
-  private formatComment(c: any) {
+  private formatComment(c: Prisma.TaskCommentGetPayload<object>) {
     return {
       id: c.id,
       userId: c.userId || null,
@@ -172,7 +182,7 @@ export class TasksService {
     };
   }
 
-  private formatAttachment(a: any) {
+  private formatAttachment(a: Prisma.TaskAttachmentGetPayload<object>) {
     return {
       id: a.id,
       fileUrl: a.fileUrl,
@@ -184,7 +194,7 @@ export class TasksService {
     };
   }
 
-  private formatEvent(e: any) {
+  private formatEvent(e: Prisma.TaskEventGetPayload<object>) {
     return {
       id: e.id,
       type: e.type,
@@ -258,7 +268,7 @@ export class TasksService {
    * single seam where task assignment / overdue / critical-creation events
    * would fan out. Kept as a structured no-op so wiring is trivial later.
    */
-  private notify(event: 'assigned' | 'created_critical' | 'completed' | 'cancelled', _task: any): void {
+  private notify(event: 'assigned' | 'created_critical' | 'completed' | 'cancelled', _task: { id: string }): void {
     this.logger.debug(`task.${event}`);
   }
 
@@ -714,8 +724,10 @@ export class TasksService {
   // (`dedupKey`) escalates instead of duplicating across runs.
 
   async findActiveByDedup(orgId: string, dedupKey: string) {
-    const existing = await this.prisma.orgTask.findUnique({ where: { dedupKey } });
-    if (!existing || existing.organizationId !== orgId) return null;
+    const existing = await this.prisma.orgTask.findFirst({
+      where: { organizationId: orgId, dedupKey },
+    });
+    if (!existing) return null;
     if (existing.status === 'DONE' || existing.status === 'CANCELLED') return null;
     return existing;
   }
@@ -742,6 +754,8 @@ export class TasksService {
       vendorId?: string | null;
       alertId?: string | null;
       documentId?: string | null;
+      fineId?: string | null;
+      invoiceId?: string | null;
       source: string;
       dueDate?: Date | null;
       metadata?: Prisma.InputJsonValue;
@@ -749,7 +763,9 @@ export class TasksService {
       checklist?: Array<{ title: string; description?: string; sortOrder?: number }>;
     },
   ) {
-    const existing = await this.prisma.orgTask.findUnique({ where: { dedupKey } });
+    const existing = await this.prisma.orgTask.findFirst({
+      where: { organizationId: orgId, dedupKey },
+    });
     const reusable =
       !!existing &&
       existing.organizationId === orgId &&
@@ -772,6 +788,8 @@ export class TasksService {
           vendorId: payload.vendorId ?? existing!.vendorId,
           alertId: payload.alertId ?? existing!.alertId,
           documentId: payload.documentId ?? existing!.documentId,
+          fineId: payload.fineId ?? existing!.fineId,
+          invoiceId: payload.invoiceId ?? existing!.invoiceId,
           dueDate: payload.dueDate ?? null,
           source: payload.source,
           metadata: payload.metadata,
@@ -802,6 +820,8 @@ export class TasksService {
         vendorId: payload.vendorId ?? undefined,
         alertId: payload.alertId ?? undefined,
         documentId: payload.documentId ?? undefined,
+        fineId: payload.fineId ?? undefined,
+        invoiceId: payload.invoiceId ?? undefined,
         dueDate: payload.dueDate ?? null,
         source: payload.source,
         dedupKey,
@@ -832,6 +852,37 @@ export class TasksService {
       where: {
         organizationId: orgId,
         source: { in: sources },
+        status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
+        dedupKey: { notIn: activeDedupKeys.length > 0 ? activeDedupKeys : ['__never__'] },
+      },
+      select: { id: true },
+    });
+    if (tasks.length === 0) return 0;
+
+    const now = new Date();
+    await this.prisma.$transaction(
+      tasks.map((t) =>
+        this.prisma.orgTask.update({ where: { id: t.id }, data: { status: 'DONE', completedAt: now } }),
+      ),
+    );
+    return tasks.length;
+  }
+
+  /**
+   * Auto-closes superseded booking lifecycle tasks when a booking advances to a
+   * new phase. Scoped to one booking so prep/pickup/return keys from prior
+   * phases are completed without touching other bookings.
+   */
+  async closeStaleBookingLifecycleTasks(
+    orgId: string,
+    bookingId: string,
+    activeDedupKeys: string[],
+  ): Promise<number> {
+    const tasks = await this.prisma.orgTask.findMany({
+      where: {
+        organizationId: orgId,
+        bookingId,
+        source: 'BOOKING',
         status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
         dedupKey: { notIn: activeDedupKeys.length > 0 ? activeDedupKeys : ['__never__'] },
       },

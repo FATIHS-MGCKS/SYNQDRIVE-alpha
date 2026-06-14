@@ -52,6 +52,9 @@ describe('BatteryCriticalDetector', () => {
           opts.hvCurrent ? [{ vehicleId: 'veh-1', ...opts.hvCurrent }] : [],
         ),
       },
+      batteryEvidence: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
     } as any;
   };
 

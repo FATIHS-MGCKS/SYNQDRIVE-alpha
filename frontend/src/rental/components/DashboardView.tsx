@@ -1,6 +1,6 @@
 ﻿
-import { Icon, type IconName } from './ui/Icon';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Icon } from './ui/Icon';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { VehicleData } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
 import { StatInlineDetail } from './StatInlineDetail';
@@ -11,6 +11,13 @@ import { useRentalOrg } from '../RentalContext';
 import { api, type Station } from '../../lib/api';
 import { getStoredUser } from '../../lib/auth';
 import { useHandover } from '../HandoverContext';
+import {
+  PageHeader,
+  MetricCard,
+  SkeletonMetricGrid,
+  StatusChip,
+} from '../../components/patterns';
+import type { StatusTone } from '../../components/patterns';
 
 // V4.6.95 — Dashboard station filter is now wired end-to-end. The dropdown
 // loads the org's real station catalogue (`api.stations.list`), the choice
@@ -31,6 +38,8 @@ const STATION_FILTER_STORAGE_KEY = 'synqdrive.dashboard.selectedStationName';
 const OUTGOING_INVOICE_TYPES = new Set(['OUTGOING_BOOKING', 'OUTGOING_MANUAL']);
 const INCOMING_INVOICE_TYPES = new Set(['INCOMING_VENDOR', 'INCOMING_UPLOADED']);
 
+type KpiTone = 'success' | 'critical' | 'brand' | 'info';
+
 interface DashboardInvoice {
   id: string;
   type: string;
@@ -47,7 +56,6 @@ function effectiveInvoiceDate(inv: DashboardInvoice): Date | null {
 }
 
 interface DashboardViewProps {
-  isDarkMode: boolean;
   onVehicleSelect?: (vehicle: VehicleData) => void;
   onItemHover?: (vehicleName: string | null) => void;
   /** Direct navigation to a vehicle id (used by Business Insights drill-in). */
@@ -61,7 +69,24 @@ interface DashboardViewProps {
   onOpenBookingById?: (bookingId: string) => void;
 }
 
-export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpenVehicleById, onOpenRentalView, onOpenBookingById }: DashboardViewProps) {
+function kpiToneToStatus(tone: KpiTone): StatusTone {
+  if (tone === 'success') return 'success';
+  if (tone === 'critical') return 'critical';
+  if (tone === 'brand') return 'info';
+  return 'info';
+}
+
+export function DashboardView({ onVehicleSelect, onItemHover, onOpenVehicleById, onOpenRentalView, onOpenBookingById }: DashboardViewProps) {
+  const systemDark = useSyncExternalStore(
+    (onStoreChange) => {
+      const el = document.documentElement;
+      const obs = new MutationObserver(onStoreChange);
+      obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+      return () => obs.disconnect();
+    },
+    () => document.documentElement.classList.contains('dark'),
+    () => false,
+  );
   const { t, locale } = useLanguage();
   const { fleetVehicles } = useFleetVehicles();
   const { orgId } = useRentalOrg();
@@ -79,13 +104,16 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpen
   // buckets locally. Loading is non-blocking and fails silently — the tiles
   // simply render 0 / no-delta if the request errors out.
   const [invoicesApi, setInvoicesApi] = useState<DashboardInvoice[]>([]);
+  const [invoicesLoaded, setInvoicesLoaded] = useState(false);
 
   useEffect(() => {
     if (!orgId) {
       setInvoicesApi([]);
+      setInvoicesLoaded(true);
       return;
     }
     let cancelled = false;
+    setInvoicesLoaded(false);
     api.invoices
       .list(orgId)
       .then((rows) => {
@@ -96,6 +124,9 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpen
       .catch(() => {
         if (cancelled) return;
         setInvoicesApi([]);
+      })
+      .finally(() => {
+        if (!cancelled) setInvoicesLoaded(true);
       });
     return () => { cancelled = true; };
   }, [orgId]);
@@ -481,117 +512,107 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpen
     [intlLocale],
   );
 
+  const welcomeTitle = (() => {
+    const u = getStoredUser();
+    const fullName = (u?.name || '').trim();
+    if (fullName) return t('dashboard.welcomeBack', { name: fullName });
+    return t('dashboard.welcomeBackGeneric');
+  })();
+
+  const dateLabel = (() => {
+    const lm: Record<string, string> = { en: 'en-US', de: 'de-DE', fr: 'fr-FR', nl: 'nl-NL', es: 'es-ES', it: 'it-IT', pl: 'pl-PL', cs: 'cs-CZ' };
+    const loc = lm[locale] || 'en-US';
+    return new Date().toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  })();
+
   return (
     <div className="max-w-[1600px] mx-auto space-y-5">
-      {/* V4.7.37 — Dashboard is the operational home surface, so its header
-          now follows the same clean page rhythm as Fleet / Customers /
-          Financial Insights: title left, compact contextual controls right.
-          Date is no longer centered as a detached object; it behaves like
-          a filter/context pill next to the station selector. */}
-      <div className="flex min-h-8 flex-wrap items-end justify-between gap-2 sm:gap-3">
-        <div className="animate-fade-up min-w-0">
-          <h1 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground truncate">
-            {(() => {
-              const u = getStoredUser();
-              const fullName = (u?.name || '').trim();
-              if (fullName) return t('dashboard.welcomeBack', { name: fullName });
-              return t('dashboard.welcomeBackGeneric');
-            })()}
-          </h1>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-          <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold sq-tone-neutral capitalize whitespace-nowrap">
-            {(() => {
-              const lm: Record<string, string> = { en: 'en-US', de: 'de-DE', fr: 'fr-FR', nl: 'nl-NL', es: 'es-ES', it: 'it-IT', pl: 'pl-PL', cs: 'cs-CZ' };
-              const loc = lm[locale] || 'en-US';
-              return new Date().toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-            })()}
-          </span>
-          {/* V4.6.95 — Station filter is now data-driven: options come from
-              `api.stations.list(orgId)` (loaded into `stationsApi`), the
-              chosen station is persisted to localStorage and propagated as
-              a filter to every dashboard widget. The sentinel value `null`
-              represents the explicit „All Stations" choice. The button
-              label echoes the active selection so the dispatcher always
-              sees which slice of the fleet they are looking at. */}
-          <div className="relative" ref={stationDropdownRef}>
-            <button
-              type="button"
-              onClick={() => setIsStationDropdownOpen((prev) => !prev)}
-              aria-haspopup="listbox"
-              aria-expanded={isStationDropdownOpen}
-              className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border max-w-[260px]"
-            >
-              <Icon name="map-pin" className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <span className="truncate">
-                {selectedStationName ?? t('dashboard.allStations')}
-              </span>
-              <Icon name="chevron-down" className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 shrink-0 ${isStationDropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {isStationDropdownOpen && (
-              <div
-                role="listbox"
-                className="sq-overlay animate-fade-up absolute top-full mt-2 right-0 z-50 min-w-[240px] max-h-[60vh] overflow-auto p-1 rounded-xl"
+      <PageHeader
+        title={welcomeTitle}
+        actions={
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <StatusChip tone="neutral" className="capitalize whitespace-nowrap">
+              {dateLabel}
+            </StatusChip>
+            <div className="relative" ref={stationDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsStationDropdownOpen((prev) => !prev)}
+                aria-haspopup="listbox"
+                aria-expanded={isStationDropdownOpen}
+                className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border max-w-[260px]"
               >
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={selectedStationName === null}
-                  onClick={() => applyStationFilter(null)}
-                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-[13px] font-medium rounded-lg transition-colors ${
-                    selectedStationName === null
-                      ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
-                      : 'text-foreground hover:bg-muted'
-                  }`}
+                <Icon name="map-pin" className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <span className="truncate">
+                  {selectedStationName ?? t('dashboard.allStations')}
+                </span>
+                <Icon name="chevron-down" className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 shrink-0 ${isStationDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {isStationDropdownOpen && (
+                <div
+                  role="listbox"
+                  className="sq-overlay animate-fade-up absolute top-full mt-2 right-0 z-50 min-w-[240px] max-h-[60vh] overflow-auto p-1 rounded-xl"
                 >
-                  <span className="truncate">{t('dashboard.allStations')}</span>
-                  <span className="shrink-0 text-[11px] tabular-nums opacity-70">
-                    {fleetVehicles.length}
-                  </span>
-                </button>
-                {stationsApi.length > 0 && (
-                  <div className="my-1 mx-2 h-px bg-border/60" aria-hidden />
-                )}
-                {stationsApi.map((s) => {
-                  const isActive = selectedStationName === s.name;
-                  const count = fleetVehicles.filter((v) => (v.station || '') === s.name).length;
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      role="option"
-                      aria-selected={isActive}
-                      onClick={() => applyStationFilter(s.name)}
-                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-[13px] font-medium rounded-lg transition-colors ${
-                        isActive
-                          ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
-                          : 'text-foreground hover:bg-muted'
-                      }`}
-                    >
-                      <span className="flex items-center gap-2 min-w-0">
-                        {isActive ? (
-                          <Icon name="check" className="w-3.5 h-3.5 shrink-0" />
-                        ) : (
-                          <span className="w-3.5 h-3.5 shrink-0" aria-hidden />
-                        )}
-                        <span className="truncate">{s.name}</span>
-                      </span>
-                      <span className="shrink-0 text-[11px] tabular-nums opacity-70">
-                        {count}
-                      </span>
-                    </button>
-                  );
-                })}
-                {stationsApi.length === 0 && (
-                  <div className="px-3 py-2 text-[12px] text-muted-foreground">
-                    {locale === 'de' ? 'Keine Standorte verfügbar' : 'No stations available'}
-                  </div>
-                )}
-              </div>
-            )}
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={selectedStationName === null}
+                    onClick={() => applyStationFilter(null)}
+                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-[13px] font-medium rounded-lg transition-colors ${
+                      selectedStationName === null
+                        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
+                        : 'text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <span className="truncate">{t('dashboard.allStations')}</span>
+                    <span className="shrink-0 text-[11px] tabular-nums opacity-70">
+                      {fleetVehicles.length}
+                    </span>
+                  </button>
+                  {stationsApi.length > 0 && (
+                    <div className="my-1 mx-2 h-px bg-border/60" aria-hidden />
+                  )}
+                  {stationsApi.map((s) => {
+                    const isActive = selectedStationName === s.name;
+                    const count = fleetVehicles.filter((v) => (v.station || '') === s.name).length;
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        role="option"
+                        aria-selected={isActive}
+                        onClick={() => applyStationFilter(s.name)}
+                        className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-[13px] font-medium rounded-lg transition-colors ${
+                          isActive
+                            ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
+                            : 'text-foreground hover:bg-muted'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2 min-w-0">
+                          {isActive ? (
+                            <Icon name="check" className="w-3.5 h-3.5 shrink-0" />
+                          ) : (
+                            <span className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                          )}
+                          <span className="truncate">{s.name}</span>
+                        </span>
+                        <span className="shrink-0 text-[11px] tabular-nums opacity-70">
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {stationsApi.length === 0 && (
+                    <div className="px-3 py-2 text-[12px] text-muted-foreground">
+                      {locale === 'de' ? 'Keine Standorte verfügbar' : 'No stations available'}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* V4.6.93 — Dashboard is Business-only. The legacy `activeTab === 'business'`
           / `'finances'` segmented control + conditional have been retired
@@ -615,51 +636,65 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpen
                 label in its subline (`MonthlyKpiTile`), so the header was
                 redundant, sat asymmetrically left-aligned with no right-side
                 counterpart, and ate vertical space without adding info. */}
+            {!invoicesLoaded ? (
+              <SkeletonMetricGrid count={4} />
+            ) : (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-              <MonthlyKpiTile
+              <MetricCard
                 label={t('dashboard.revenue')}
                 value={fmtMonthlyEUR(monthlyKpis.revenueCents)}
-                subtitle={t('dashboard.invoicesShort', { count: monthlyKpis.revenueCount })}
-                icon="arrow-up-right"
-                tone="success"
-                deltaPct={monthlyKpis.revenueDeltaPct}
-                deltaLabel={t('dashboard.vsLastMonth')}
-                monthLabel={monthlyKpis.monthLabel}
+                hint={`${monthlyKpis.monthLabel} · ${t('dashboard.invoicesShort', { count: monthlyKpis.revenueCount })}`}
+                icon={<Icon name="arrow-up-right" className="w-4 h-4" />}
+                status={kpiToneToStatus('success')}
+                trend={
+                  monthlyKpis.revenueDeltaPct != null
+                    ? {
+                        label: `${monthlyKpis.revenueDeltaPct >= 0 ? '+' : ''}${monthlyKpis.revenueDeltaPct.toFixed(1)}%`,
+                        direction: monthlyKpis.revenueDeltaPct >= 0 ? 'up' : 'down',
+                      }
+                    : undefined
+                }
               />
-              <MonthlyKpiTile
+              <MetricCard
                 label={t('dashboard.fleetStatus')}
                 value={String(filteredFleetVehicles.length)}
-                subtitle={`${availableVehicles.length} ${t('dashboard.available')}`}
-                icon="car"
-                tone="info"
-                deltaPct={null}
-                deltaLabel=""
-                monthLabel={monthlyKpis.monthLabel}
-                contextLabel={selectedStationName ?? t('dashboard.allStations')}
+                hint={`${selectedStationName ?? t('dashboard.allStations')} · ${availableVehicles.length} ${t('dashboard.available')}`}
+                icon={<Icon name="car" className="w-4 h-4" />}
+                status={kpiToneToStatus('info')}
               />
-              <MonthlyKpiTile
+              <MetricCard
                 label={t('dashboard.profit')}
                 value={fmtMonthlyEUR(monthlyKpis.profitCents)}
-                subtitle={t('dashboard.vsLastMonth')}
-                icon="wallet"
-                tone={monthlyKpis.profitCents >= 0 ? 'brand' : 'critical'}
-                deltaPct={monthlyKpis.profitDeltaPct}
-                deltaLabel={t('dashboard.vsLastMonth')}
-                monthLabel={monthlyKpis.monthLabel}
-                hideSubtitle
+                hint={monthlyKpis.monthLabel}
+                icon={<Icon name="wallet" className="w-4 h-4" />}
+                status={kpiToneToStatus(monthlyKpis.profitCents >= 0 ? 'brand' : 'critical')}
+                trend={
+                  monthlyKpis.profitDeltaPct != null
+                    ? {
+                        label: `${monthlyKpis.profitDeltaPct >= 0 ? '+' : ''}${monthlyKpis.profitDeltaPct.toFixed(1)}%`,
+                        direction: monthlyKpis.profitDeltaPct >= 0 ? 'up' : 'down',
+                      }
+                    : undefined
+                }
               />
-              <MonthlyKpiTile
+              <MetricCard
                 label={t('dashboard.expenses')}
                 value={fmtMonthlyEUR(monthlyKpis.expenseCents)}
-                subtitle={t('dashboard.invoicesShort', { count: monthlyKpis.expenseCount })}
-                icon="arrow-down-left"
-                tone="critical"
-                deltaPct={monthlyKpis.expenseDeltaPct}
-                deltaLabel={t('dashboard.vsLastMonth')}
-                deltaInverted
-                monthLabel={monthlyKpis.monthLabel}
+                hint={`${monthlyKpis.monthLabel} · ${t('dashboard.invoicesShort', { count: monthlyKpis.expenseCount })}`}
+                icon={<Icon name="arrow-down-left" className="w-4 h-4" />}
+                status={kpiToneToStatus('critical')}
+                trend={
+                  monthlyKpis.expenseDeltaPct != null
+                    ? {
+                        label: `${monthlyKpis.expenseDeltaPct >= 0 ? '+' : ''}${monthlyKpis.expenseDeltaPct.toFixed(1)}%`,
+                        direction: monthlyKpis.expenseDeltaPct >= 0 ? 'up' : 'down',
+                        invert: true,
+                      }
+                    : undefined
+                }
               />
             </div>
+            )}
           </div>
 
           {/* Row 1: AI Business Insights (left) + Fleet Status (right) */}
@@ -670,7 +705,7 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpen
                 Dashboard shows one attention control tower instead of three
                 competing surfaces with overlapping data. */}
             <BusinessInsightsBox
-              isDarkMode={isDarkMode}
+              isDarkMode={systemDark}
               onOpenVehicle={onOpenVehicleById}
               onOpenView={onOpenRentalView}
               notifications={dashboardNotifications}
@@ -756,7 +791,7 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpen
               <div className="px-1 pb-1">
                 <StatInlineDetail
                   activePopup={fleetStatusTab}
-                  isDarkMode={isDarkMode}
+                  isDarkMode={systemDark}
                   onClose={() => {}}
                   onVehicleSelect={onVehicleSelect}
                   onItemHover={onItemHover}
@@ -786,7 +821,7 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpen
               dashboard's own design tokens. The grid stays single-column on
               compact viewports so neither widget collapses. */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <ScheduleBox isDarkMode={isDarkMode} onOpenBookingById={onOpenBookingById} stationFilter={selectedStationName} />
+            <ScheduleBox isDarkMode={systemDark} onOpenBookingById={onOpenBookingById} stationFilter={selectedStationName} />
 
             {/* Today's Activity with tab switcher */}
             <div className="sq-card overflow-hidden animate-fade-up">
@@ -833,7 +868,7 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpen
               <div className="px-1 pb-1">
                 <StatInlineDetail
                   activePopup={todayTab}
-                  isDarkMode={isDarkMode}
+                  isDarkMode={systemDark}
                   onClose={() => {}}
                   onVehicleSelect={onVehicleSelect}
                   onItemHover={onItemHover}
@@ -855,80 +890,6 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpen
             </div>
 
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// V4.6.94 — Compact MTD KPI tile used by the Monthly KPI strip above Row 1.
-// Visually consistent with the existing dashboard cards (`sq-card`,
-// `sq-tone-*` icon badge, identical radius/shadow tokens) but at a tighter
-// vertical rhythm so the strip clearly reads as a secondary tier. Delta
-// is rendered as a small chip when a previous-month baseline exists; for
-// expenses we flip the colour mapping (`deltaInverted`) so a higher value
-// shows red, a lower one green.
-type KpiTone = 'success' | 'critical' | 'brand' | 'info';
-
-interface MonthlyKpiTileProps {
-  label: string;
-  value: string;
-  subtitle: string;
-  icon: IconName;
-  tone: KpiTone;
-  deltaPct: number | null;
-  deltaLabel: string;
-  deltaInverted?: boolean;
-  monthLabel: string;
-  contextLabel?: string;
-  hideSubtitle?: boolean;
-}
-
-function MonthlyKpiTile({
-  label,
-  value,
-  subtitle,
-  icon,
-  tone,
-  deltaPct,
-  deltaLabel,
-  deltaInverted,
-  monthLabel,
-  contextLabel,
-  hideSubtitle,
-}: MonthlyKpiTileProps) {
-  const hasDelta = deltaPct !== null && Number.isFinite(deltaPct);
-  const positive = hasDelta && (deltaPct as number) >= 0;
-  const goodDirection = deltaInverted ? !positive : positive;
-  return (
-    <div className="sq-card animate-fade-up p-3 flex items-center gap-3 min-w-0">
-      <div className={`sq-tone-${tone} w-9 h-9 rounded-xl flex items-center justify-center shrink-0`}>
-        <Icon name={icon} className="w-4 h-4" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2 mb-0.5">
-          <span className="text-[10.5px] font-semibold tracking-[0.04em] uppercase text-muted-foreground truncate">
-            {label}
-          </span>
-          {hasDelta && (
-            <span
-              title={deltaLabel}
-              className={`shrink-0 inline-flex items-center gap-0.5 text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-full ${
-                goodDirection ? 'sq-tone-success' : 'sq-tone-critical'
-              }`}
-            >
-              <Icon name={positive ? 'arrow-up-right' : 'arrow-down-right'} className="w-2.5 h-2.5" />
-              {`${(deltaPct as number) >= 0 ? '+' : ''}${(deltaPct as number).toFixed(1)}%`}
-            </span>
-          )}
-        </div>
-        <div className="text-[18px] leading-[1.1] font-bold tracking-[-0.02em] text-foreground tabular-nums truncate">
-          {value}
-        </div>
-        <div className="mt-0.5 text-[10.5px] text-muted-foreground truncate">
-          <span className="font-medium text-foreground/80 capitalize">{contextLabel ?? monthLabel}</span>
-          {!hideSubtitle && <span className="mx-1 opacity-60">·</span>}
-          {!hideSubtitle && <span>{subtitle}</span>}
         </div>
       </div>
     </div>

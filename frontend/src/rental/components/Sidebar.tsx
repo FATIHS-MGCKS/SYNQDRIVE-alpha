@@ -117,7 +117,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
     }`;
   };
 
-  const SectionHeader = ({
+  const NavSectionHeader = ({
     section,
     label,
     badge,
@@ -169,7 +169,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
 
       {/* INSIGHTS Section */}
       <div className="mt-5 mb-1">
-        <SectionHeader section="insights" label={t('nav.insights')} />
+        <NavSectionHeader section="insights" label={t('nav.insights')} />
       </div>
       {expandedSections.includes('insights') && (
         <nav className="space-y-0.5 mb-1 animate-fade-up">
@@ -188,7 +188,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
 
       {/* FINANCE Section */}
       <div className="mt-5 mb-1">
-        <SectionHeader section="finance" label={t('nav.finance')} />
+        <NavSectionHeader section="finance" label={t('nav.finance')} />
       </div>
       {expandedSections.includes('finance') && (
         <nav className="space-y-0.5 mb-1 animate-fade-up">
@@ -206,7 +206,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
 
       {/* TASKS Section */}
       <div className="mt-5 mb-1">
-        <SectionHeader section="tasks" label={t('nav.tasks')} />
+        <NavSectionHeader section="tasks" label={t('nav.tasks')} />
       </div>
       {expandedSections.includes('tasks') && (
         <nav className="space-y-0.5 mb-1 animate-fade-up">
@@ -221,7 +221,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
 
       {/* AUTOMATION Section */}
       <div className="mt-5 mb-1">
-        <SectionHeader section="automation" label={t('nav.automation')} />
+        <NavSectionHeader section="automation" label={t('nav.automation')} />
       </div>
       {expandedSections.includes('automation') && (
         <nav className="space-y-0.5 mb-1 animate-fade-up">
@@ -239,7 +239,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
 
       {/* INTEGRATIONS Section */}
       <div className="mt-5 mb-1">
-        <SectionHeader section="integrations" label={t('nav.integrations')} badge={t('nav.comingSoon')} />
+        <NavSectionHeader section="integrations" label={t('nav.integrations')} badge={t('nav.comingSoon')} />
       </div>
       {expandedSections.includes('integrations') && (
         <nav className="space-y-0.5 mb-1 animate-fade-up">
@@ -262,7 +262,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
 
       {/* ADMINISTRATION Section */}
       <div className="mt-5 mb-1">
-        <SectionHeader section="administration" label={t('nav.administration')} />
+        <NavSectionHeader section="administration" label={t('nav.administration')} />
       </div>
       {expandedSections.includes('administration') && (
         <nav className="space-y-0.5 mb-1 animate-fade-up">

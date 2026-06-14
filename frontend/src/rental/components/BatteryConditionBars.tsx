@@ -33,7 +33,6 @@ interface BatteryConditionBarsProps {
   status: AnyBatteryStatus | null | undefined;
   /** Override the bar count (CRITICAL still renders red). Defaults from status. */
   bars?: 0 | 1 | 2 | 3;
-  isDarkMode: boolean;
   size?: keyof typeof SIZES;
   /** Show the textual status label next to the bars. */
   showLabel?: boolean;
@@ -50,10 +49,18 @@ interface BatteryConditionBarsProps {
  * Used for the LV "Estimated Battery Health" indicator so the 12 V battery is
  * never shown as a workshop-verified SOH percentage.
  */
+const STATUS_CHIP: Record<AnyBatteryStatus, string> = {
+  GOOD: 'sq-chip-success',
+  WATCH: 'sq-chip-watch',
+  WARNING: 'sq-chip-warning',
+  CRITICAL: 'sq-chip-critical',
+  UNKNOWN: 'sq-chip-nodata',
+  UNSUPPORTED: 'sq-chip-nodata',
+};
+
 export function BatteryConditionBars({
   status,
   bars,
-  isDarkMode,
   size = 'md',
   showLabel = true,
   labelOverride,
@@ -62,7 +69,7 @@ export function BatteryConditionBars({
   const style = STATUS_STYLES[(status as AnyBatteryStatus) ?? 'UNKNOWN'] ?? STATUS_STYLES.UNKNOWN;
   const filled = bars ?? style.bars;
   const dims = SIZES[size];
-  const emptyBar = isDarkMode ? 'bg-white/10' : 'bg-black/10';
+  const emptyBar = 'bg-muted';
 
   return (
     <div className={`inline-flex items-center gap-2 ${className}`}>
@@ -75,7 +82,7 @@ export function BatteryConditionBars({
         ))}
       </div>
       {showLabel && (
-        <span className={`${dims.text} font-bold tracking-tight ${isDarkMode ? style.textDark : style.textLight}`}>
+        <span className={`${dims.text} font-bold tracking-tight ${STATUS_CHIP[(status as AnyBatteryStatus) ?? 'UNKNOWN'] ?? 'sq-chip-nodata'}`}>
           {labelOverride ?? style.label}
         </span>
       )}
@@ -87,16 +94,14 @@ export function BatteryConditionBars({
 export function RestingVoltageBadge({
   valueV,
   status,
-  isDarkMode,
   className = '',
 }: {
   valueV: number | null | undefined;
   status: BatteryRestingVoltageStatus | null | undefined;
-  isDarkMode: boolean;
   className?: string;
 }) {
   const style = STATUS_STYLES[(status as AnyBatteryStatus) ?? 'UNKNOWN'] ?? STATUS_STYLES.UNKNOWN;
-  const text = isDarkMode ? style.textDark : style.textLight;
+  const chip = STATUS_CHIP[(status as AnyBatteryStatus) ?? 'UNKNOWN'] ?? 'sq-chip-nodata';
   return (
     <span className={`inline-flex items-center gap-1.5 ${className}`}>
       <span className="text-xs font-bold text-foreground tabular-nums">
@@ -105,7 +110,7 @@ export function RestingVoltageBadge({
       {status && status !== 'UNKNOWN' && status !== 'UNSUPPORTED' && (
         <>
           <span className={`w-1.5 h-1.5 rounded-full ${style.fill}`} />
-          <span className={`text-[10px] font-bold uppercase tracking-wider ${text}`}>{style.label}</span>
+          <span className={`text-[10px] font-bold uppercase tracking-wider ${chip}`}>{style.label}</span>
         </>
       )}
     </span>

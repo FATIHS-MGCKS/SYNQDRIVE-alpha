@@ -102,7 +102,7 @@ describe('TasksService', () => {
   });
 
   it('does not duplicate a system task with an active dedupKey — it escalates in place', async () => {
-    prisma.orgTask.findUnique.mockResolvedValue(baseTask({ id: 'tX', dedupKey: 'health:brake:v1', status: 'OPEN' }));
+    prisma.orgTask.findFirst.mockResolvedValue(baseTask({ id: 'tX', dedupKey: 'health:brake:v1', status: 'OPEN' }));
     prisma.orgTask.update.mockResolvedValue(baseTask({ id: 'tX', priority: 'URGENT' }));
 
     await svc.upsertByDedup('org1', 'health:brake:v1', {
@@ -118,7 +118,7 @@ describe('TasksService', () => {
   });
 
   it('creates a fresh system task when no active dedup row exists', async () => {
-    prisma.orgTask.findUnique.mockResolvedValue(null);
+    prisma.orgTask.findFirst.mockResolvedValue(null);
     prisma.orgTask.create.mockResolvedValue(baseTask({ dedupKey: 'booking:pickup:b1', sourceType: 'BOOKING' }));
 
     await svc.upsertByDedup('org1', 'booking:pickup:b1', {

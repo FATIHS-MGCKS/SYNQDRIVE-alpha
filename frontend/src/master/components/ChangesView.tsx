@@ -35,6 +35,213 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'design-system-rollout-v486-complete-2026-06-14',
+    version: '4.8.6',
+    title: 'V4.8.6 — Design System Rollout (pattern library visible across product)',
+    summary: [
+      '**theme.css**: `.sq-3d-btn--ai` hardcoded purple hex replaced with `--status-ai` / `--status-ai-soft` tokens (light + dark).',
+      '**Rental surfaces migrated**: HealthErrorsView, BookingsView, CustomersView (+ detail/modal), NewBookingView, SettingsView, InsurancesView, FleetConditionView, FleetView, DashboardView — `isDarkMode` props removed; `PageHeader`, `DataCard`, `MetricCard`, `DataTable`, `DetailDrawer`, `EmptyState`, `Skeleton*`, `StatusChip`/`HealthStatusChip` from `frontend/src/components/patterns`.',
+      '**Master admin surfaces migrated**: PartsAccessoriesAdminView, InsurancesAdminView, ProspectsView, SystemMonitoringView, HighMobilityDataView, FleetConnectionView, OrganizationDetailView — token helpers + `PageHeader`/`MetricCard`/`StatusChip`.',
+      '**Deduped local components**: `EmptyState` in WorkflowAutomationView, DataAuthorizationTab, BusinessInsightsBox → shared pattern; `SectionHeader` renamed to `DocumentsSectionHeader` / `NavSectionHeader` (Sidebar) to avoid shadowing pattern exports; InsurancesView local `MetricCard` + `renderDetailDrawer` deleted.',
+      '**App.tsx** (rental + master): call sites for all migrated views drop `isDarkMode`. Child widgets that still need theme bridge use `useSyncExternalStore` on `document.documentElement.classList`.',
+    ],
+    reason:
+      'Make the SaaS redesign visible — roll the built pattern library and token layer into the heaviest hand-rolled pages without changing business logic or backend wiring.',
+    previousBehavior:
+      'Pattern library existed but was barely imported; main pages used ~1900+ `isDarkMode` ternaries, hardcoded gray/neutral Tailwind, and ad-hoc empty states / KPI tiles / detail drawers per view.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Frontend',
+    createdAt: '2026-06-15T01:00:00.000Z',
+  },
+  {
+    id: 'master-admin-design-system-rollout-2026-06-14',
+    version: '4.8.6',
+    title: 'Master admin views — design-system pattern rollout',
+    summary: [
+      '**PartsAccessoriesAdminView**, **InsurancesAdminView**, **ProspectsView**, **SystemMonitoringView**, **HighMobilityDataView**, **FleetConnectionView**, **OrganizationDetailView**: `isDarkMode` prop removed; token helpers (`CARD`, `INPUT`, `TAB_BAR`, `sq-tone-*`, `text-foreground`, `border-border`) replace gray/neutral ternaries.',
+      '**Patterns**: `PageHeader` on all seven views; `MetricCard` on Prospects KPI row (+ overview tabs where applicable); `StatusChip` for org/plan/health badges; `DataCard`/`DataTable`/`EmptyState` wired on list-heavy tabs.',
+      '**App.tsx** + **PlatformSettingsView**: call sites for the seven views (incl. `SystemMonitoringView` under Settings) drop `isDarkMode`.',
+    ],
+    reason:
+      'SynqDrive Design System Rollout — master admin surfaces use shared pattern components and CSS tokens instead of per-view dark-mode props.',
+    previousBehavior:
+      'Master admin views required `isDarkMode` from App; headers, KPI tiles, tables, and modals used hand-rolled light/dark Tailwind ternaries.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Master Admin',
+    createdAt: '2026-06-15T00:30:00.000Z',
+  },
+  {
+    id: 'new-booking-design-system-rollout-2026-06-14',
+    version: '4.8.6',
+    title: 'NewBookingView — design-system pattern rollout',
+    summary: [
+      '**NewBookingView**: `isDarkMode` prop removed (~100 ternaries → CSS tokens: `text-foreground`, `bg-muted`, `border-border`, `sq-tone-*`, `sq-chip`); no gradient CTAs — solid brand/status tokens instead.',
+      '**Patterns**: `PageHeader` (wizard title + back + selected-customer chip), `DataCard` via shared `card()` helper, `SectionHeader` on customer/vehicle/period/extras steps, `StatusChip` for corporate customer badge, `EmptyState` + `SkeletonCard` for customer search loading/empty.',
+      '**App.tsx**: `NewBookingView` call site drops `isDarkMode`. `BrandLogo` / `RentalHealthBadge` no longer receive theme prop; wizard steps, calendar, checkout sidebar, and add-customer modal are token-themed.',
+    ],
+    reason:
+      'SynqDrive Design System Rollout — the 5-step booking wizard uses shared pattern components and token classes instead of per-view dark-mode props.',
+    previousBehavior:
+      'NewBookingView required `isDarkMode` from App; step cards, vehicle picker, calendar popovers, and checkout summary used hand-rolled gray/neutral Tailwind ternaries and violet/emerald gradients.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Rental',
+    createdAt: '2026-06-14T23:59:30.000Z',
+  },
+  {
+    id: 'settings-insurances-design-system-rollout-2026-06-14',
+    version: '4.8.6',
+    title: 'SettingsView + InsurancesView — design-system pattern rollout',
+    summary: [
+      '**InsurancesView**: `isDarkMode` removed; `PageHeader`, `MetricCard` (+ `SkeletonMetricGrid` while overview loads), `DataCard` toolbar/list, `DetailDrawer` (replaces hand-rolled slide-over), `EmptyState`, `StatusChip` via `InsuranceStatusChip` / `inquiryStatusTone`; local `MetricCard`, `StatusBadge`, and `renderDetailDrawer` deleted.',
+      '**SettingsView**: internal tabs (`AccountInformationTab`, `CompanyProfileTab`, `FleetConnectionTab`, `BillingTab`, `StationsTab`) drop `isDarkMode`; `PageHeader` + `MetricCard` on Account; `ConnectivityStatusChip` replaces local fleet `StatusDot`; token-themed inputs/cards/modals across stations + fleet connectivity.',
+      '**App.tsx**: `SettingsView`, `StationsTab`, and `InsurancesView` call sites drop `isDarkMode`. Unmigrated child tabs (`UsersRolesTab`, `DataAuthorizationTab`, `LegalDocumentsTab`) still receive theme via `useDocumentDark()` bridge inside `SettingsView`.',
+    ],
+    reason:
+      'SynqDrive Design System Rollout — settings and fleet-insurance surfaces use shared pattern components and CSS tokens instead of per-view dark-mode props.',
+    previousBehavior:
+      'SettingsView/InsurancesView required `isDarkMode` from App; KPI tiles, status pills, and the insurance detail drawer used hand-rolled gray/neutral Tailwind ternaries.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Rental',
+    createdAt: '2026-06-14T23:59:00.000Z',
+  },
+  {
+    id: 'fleet-dashboard-design-system-rollout-2026-06-14',
+    version: '4.8.6',
+    title: 'FleetConditionView + FleetView + DashboardView — design-system pattern rollout',
+    summary: [
+      '**FleetConditionView**: `isDarkMode` removed; `PageHeader`, `MetricCard` (+ `SkeletonMetricGrid` while health loads), `HealthStatusChip` / `StatusChip`, `EmptyState`, `SkeletonCard` for on-demand condition tiles; filter/search/dropdowns token-themed; interactive condition tiles use `sq-card-elevated`.',
+      '**FleetView**: `isDarkMode` removed; `PageHeader` with station selector; vehicle rows `sq-card-elevated`; `HealthStatusChip` + `StatusChip` replace hand-rolled `sq-chip` pills; `SkeletonCard` list while fleet map loads; map/child badges read theme via `useSyncExternalStore`.',
+      '**DashboardView**: `isDarkMode` removed; `PageHeader` (welcome + date `StatusChip` + station filter); monthly KPI strip → `MetricCard` + `SkeletonMetricGrid`; child widgets (`BusinessInsightsBox`, `StatInlineDetail`, `ScheduleBox`) receive theme via `useSyncExternalStore`.',
+      '**App.tsx**: `DashboardView`, `FleetView`, and `FleetConditionView` call sites drop `isDarkMode`.',
+    ],
+    reason:
+      'SynqDrive Design System Rollout — fleet overview, fleet condition, and dashboard operational home surfaces use shared pattern components and CSS tokens instead of per-view dark-mode props.',
+    previousBehavior:
+      'FleetConditionView/FleetView/DashboardView required `isDarkMode` from App; KPI tiles, filter controls, and status pills used hand-rolled gray/neutral Tailwind ternaries.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Rental',
+    createdAt: '2026-06-14T23:55:00.000Z',
+  },
+  {
+    id: 'customers-design-system-rollout-2026-06-14',
+    version: '4.8.6',
+    title: 'CustomersView + CustomerDetail — design-system pattern rollout',
+    summary: [
+      '**CustomersView**: `isDarkMode` prop removed; `PageHeader`, `DataTable`, `StatusChip`, `EmptyState`, tokenized filter card + segment metrics (`sq-card`); driving-style column uses `formatDrivingStyleScore` + `StatusChip`; add-customer wizard fully token-themed.',
+      '**CustomerDetailView**: `isDarkMode` removed; `PageHeader` + `StatusChip` for status/risk/booking states; header actions + avatar use `sq-tone-*`; tables/tabs use `border-border` / `bg-muted` tokens.',
+      '**CustomerDetailModal**: dropped unused `isDarkMode` prop (already token-themed). **CustomerDocumentUploadBox**: token-only dropzone (supports Customers + NewBooking wizards).',
+      '**App.tsx** + **NewBookingView**: customer call sites no longer pass `isDarkMode` to customer surfaces.',
+    ],
+    reason:
+      'SynqDrive Design System Rollout — customer list, detail, quick-view modal, and KYC upload widget use shared pattern components and CSS tokens instead of per-view dark-mode props.',
+    previousBehavior:
+      'CustomersView/CustomerDetailView required `isDarkMode` from App; tables, pills, and the add-customer modal used hand-rolled gray/neutral Tailwind ternaries and gradient avatars.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Rental',
+    createdAt: '2026-06-14T23:45:00.000Z',
+  },
+  {
+    id: 'bookings-design-system-rollout-2026-06-14',
+    version: '4.8.6',
+    title: 'BookingsView — design-system pattern rollout',
+    summary: [
+      '**BookingsView**: `isDarkMode` prop removed (~100 ternaries → CSS tokens: `text-foreground`, `bg-muted`, `border-border`, `sq-tone-*`, `sq-chip` via `StatusChip`).',
+      '**Patterns**: `PageHeader`, `MetricCard` (+ `SkeletonMetricGrid` while loading), `SectionHeader`, `DataTable` (main booking list), `DetailDrawer` (quick booking preview), `EmptyState`, `StatusChip`.',
+      '**App.tsx**: `BookingsView` call site drops `isDarkMode`. Child sections (`BookingDocumentsSection`, `EntityTasksSection`) still receive theme via `useSyncExternalStore` on `document.documentElement.classList`.',
+    ],
+    reason:
+      'SynqDrive Design System Rollout — bookings calendar/list/detail surfaces use shared pattern components and token classes instead of per-view dark-mode props.',
+    previousBehavior:
+      'BookingsView required `isDarkMode` from App; KPI tiles, list cards, and inline booking preview used hand-rolled gray/neutral Tailwind ternaries.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Rental',
+    createdAt: '2026-06-14T22:30:00.000Z',
+  },
+  {
+    id: 'health-errors-design-system-rollout-2026-06-14',
+    version: '4.8.6',
+    title: 'HealthErrorsView — design-system pattern rollout',
+    summary: [
+      '**HealthErrorsView**: `isDarkMode` prop and all 114 usages removed; token classes (`sq-card`, `sq-tone-*`, `sq-chip-*`, `text-foreground`, `border-border`) replace gray/neutral/indigo/purple gradients.',
+      '**Patterns**: `PageHeader`, `DataCard` (VHC column), `HealthStatusChip`, `StatusChip`, `EmptyState`, `SkeletonCard` wired for header, overall status, DTC empty/loading, complaints/tire loading.',
+      '**Helpers**: `tireStatusStyle`/`brakeConditionStyle` use `sq-chip-*`/`sq-dot-*`; `rental-health-ui.ts` accent/pill/DTC tone helpers no longer take `isDarkMode`; `BatteryConditionBars`/`RestingVoltageBadge` tokenized.',
+      '**App.tsx**: `HealthErrorsView` call site drops `isDarkMode` prop.',
+    ],
+    reason:
+      'SynqDrive Design System Rollout — vehicle Health tab should be theme-aware via CSS tokens and shared pattern components, not per-view dark-mode props.',
+    previousBehavior:
+      'HealthErrorsView required `isDarkMode` from App shell; quick cards, modals, and DTC knowledge panels used duplicated light/dark Tailwind ternaries.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-14T22:30:00.000Z',
+  },
+  {
+    id: 'audit-fix-roadmap-v485-2026-06-14',
+    version: '4.8.5',
+    title: 'V4.8.5 Audit-fix roadmap — extraction gates, tenancy, dedup, documents, types',
+    summary: [
+      '**document-extraction**: `confirm()` nur bei `READY_FOR_REVIEW` + Plausibility-BLOCKER; Legacy-Upload disabled; Apply-Fehler propagieren; Invoice-`vendorId`-Matching.',
+      '**rental-health.controller**: `OrgScopingGuard` + `RolesGuard`; **tasks**: `@@unique([organizationId, dedupKey])` + org-scoped `upsertByDedup`; Fine/Invoice-Tasks deduped.',
+      '**dtc-knowledge**: stale `PROCESSING` (>30min) re-queueable; **booking-document-bundle**: Extra-km + Deposit auf Final Invoice; **documents.controller** `@Roles` auf Mutationen; atomische Nummerierung.',
+      '**vendors**: update/delete `where: { id, organizationId }`; VendorDetail lazy-load documents/service-history APIs; **Vehicle.healthStatus** deprecated (Schema-Kommentar).',
+      '**Types/UI**: `ConfirmedExtractionData`, `TaskAuthRequest`, Prisma-typed Task formatters; `PageHeader` in DocumentsView; Health Center AI-Badge auf `sq-tone-brand`.',
+    ],
+    reason:
+      'Read-only Audit (~73% clean) identifizierte kritische Sicherheits-/Integritätslücken und Health-Truth-Inkonsistenzen — dieser Block schließt den bestätigten Fix-Plan.',
+    previousBehavior:
+      'confirm ohne Status-Gate; RentalHealth ohne Org-Guard; globales dedupKey; DTC stuck PROCESSING; Mock-TopBar-Suche; Legacy healthStatus-Spalte als UI-Wahrheit.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Platform',
+    createdAt: '2026-06-14T21:00:00.000Z',
+  },
+  {
+    id: 'frontend-health-search-tasks-v4742-2026-06-14',
+    version: '4.7.42',
+    title: 'V4.7.42 Frontend — org-scoped search, brake/DTC canonical tones, Tasks WAITING',
+    summary: [
+      '**TopBar**: Mock-Suchdaten entfernt; debounced (300ms) org-scoped Fetch für customers/bookings/invoices/tasks/fines ab Query-Länge ≥2; client-seitige Filterung in `getSearchResults`.',
+      '**FleetConditionView** + **App.tsx VehicleHealthBoxWired** + **vehicle-insights-logic**: DTC- und Brems-Töne/Eskalation über Rental-Health `error_codes.state` bzw. `brakes.overallCondition` (mit %-Fallback).',
+      '**TasksView**: Status `Waiting`, Resume via `api.tasks.start`, org-Members für Assignee, `assignedUserId` beim Create; **VendorManagementView**: Mapbox `sessionToken` pro Suggestion; **PageHeader** in Tasks/Vendors; **DocumentUploadView** AI-Badge auf `sq-tone-info`.',
+    ],
+    reason:
+      'Mehrere Rental-Oberflächen nutzten noch Mock-Daten, %-Heuristiken oder globale Mapbox-Session-Tokens statt der kanonischen Backend-Verträge.',
+    previousBehavior:
+      'TopBar-Mocks; Bremsen/DTC nach %-Schwellen; Tasks ohne WAITING-UI; hardcodierte Assignees; Mapbox-Retrieve mit globalem sessionToken.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Rental Frontend',
+    createdAt: '2026-06-14T20:00:00.000Z',
+  },
+  {
+    id: 'battery-health-hardening-v484-2026-06-14',
+    version: '4.8.4',
+    title: 'V4.8.4 Battery / Tire / Task / DTC hardening — detector tests, EFB provenance, HV evidence, booking task close',
+    summary: [
+      '**tire-critical.detector.spec.ts**: Tests für Estimate→WARNING-Cap, gemessenes CRITICAL und Saison-Mismatch-WARNING.',
+      '**battery-status.ts**: EFB nutzt DEFAULT_RESTING_THRESHOLDS; `thresholdSource` nur noch bei AGM = BATTERY_SPEC.',
+      '**battery-critical.detector.ts**: HV-SOH-Pfad liest BatteryEvidence (Provider → Document/Workshop/Manual → Capacity) wie CanonicalBatteryHealthService.',
+      '**rental-health.types.ts**: `VehicleHealthStatus` Type-Alias; **task-automation**: schließt superseded Booking-Lifecycle-Tasks per `closeStaleBookingLifecycleTasks`.',
+      '**dtc-knowledge**: DTO + Mapping für `aiGenerated` und `sourceType`. Migration `20260614120300_battery_health_tables_guard` (IF NOT EXISTS).',
+    ],
+    reason:
+      'Schließt Lücken zwischen kanonischer Battery-/Tire-Logik, Detektoren, Task-Lifecycle und DTC-DTO-Provenance.',
+    previousBehavior:
+      'EFB fälschlich als BATTERY_SPEC markiert; HV-Detector ignorierte Document/Workshop-SOH; Booking-Phasen-Tasks blieben offen; DTC-DTO ohne AI/Quellen-Felder.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-14T20:30:00.000Z',
+  },
+  {
     id: 'vehicle-insights-rental-health-dtc-v4741-2026-06-14',
     version: '4.7.41',
     title: 'V4.7.41 Vehicle Insights — DTC-Eskalation an Rental-Health-V1',

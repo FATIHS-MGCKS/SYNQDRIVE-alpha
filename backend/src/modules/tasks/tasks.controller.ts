@@ -9,7 +9,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { TasksService } from './tasks.service';
+
+interface TaskAuthRequest extends Request {
+  user?: { id?: string };
+}
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import {
@@ -57,7 +62,7 @@ export class TasksController {
   }
 
   @Get('organizations/:orgId/tasks/summary')
-  async summary(@Param('orgId') orgId: string, @Req() req: any) {
+  async summary(@Param('orgId') orgId: string, @Req() req: TaskAuthRequest) {
     return this.tasksService.getDashboardSummary(orgId, req.user?.id);
   }
 
@@ -67,7 +72,7 @@ export class TasksController {
   }
 
   @Post('organizations/:orgId/tasks')
-  async create(@Param('orgId') orgId: string, @Req() req: any, @Body() body: CreateTaskDto) {
+  async create(@Param('orgId') orgId: string, @Req() req: TaskAuthRequest, @Body() body: CreateTaskDto) {
     return this.tasksService.createManualTask(
       orgId,
       {
@@ -96,7 +101,7 @@ export class TasksController {
   async update(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Req() req: any,
+    @Req() req: TaskAuthRequest,
     @Body() body: UpdateTaskDto,
   ) {
     return this.tasksService.updateTask(
@@ -120,19 +125,19 @@ export class TasksController {
   async assign(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Req() req: any,
+    @Req() req: TaskAuthRequest,
     @Body() body: AssignTaskDto,
   ) {
     return this.tasksService.assignTask(orgId, id, body.assignedUserId ?? null, req.user?.id);
   }
 
   @Patch('organizations/:orgId/tasks/:id/start')
-  async start(@Param('orgId') orgId: string, @Param('id') id: string, @Req() req: any) {
+  async start(@Param('orgId') orgId: string, @Param('id') id: string, @Req() req: TaskAuthRequest) {
     return this.tasksService.startTask(orgId, id, req.user?.id);
   }
 
   @Patch('organizations/:orgId/tasks/:id/waiting')
-  async waiting(@Param('orgId') orgId: string, @Param('id') id: string, @Req() req: any) {
+  async waiting(@Param('orgId') orgId: string, @Param('id') id: string, @Req() req: TaskAuthRequest) {
     return this.tasksService.moveTaskToWaiting(orgId, id, req.user?.id);
   }
 
@@ -140,7 +145,7 @@ export class TasksController {
   async complete(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Req() req: any,
+    @Req() req: TaskAuthRequest,
     @Body() body: CompleteTaskDto,
   ) {
     return this.tasksService.completeTask(
@@ -152,7 +157,7 @@ export class TasksController {
   }
 
   @Patch('organizations/:orgId/tasks/:id/cancel')
-  async cancel(@Param('orgId') orgId: string, @Param('id') id: string, @Req() req: any) {
+  async cancel(@Param('orgId') orgId: string, @Param('id') id: string, @Req() req: TaskAuthRequest) {
     return this.tasksService.cancelTask(orgId, id, req.user?.id);
   }
 
@@ -162,7 +167,7 @@ export class TasksController {
   async addComment(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Req() req: any,
+    @Req() req: TaskAuthRequest,
     @Body() body: AddCommentDto,
   ) {
     return this.tasksService.addComment(orgId, id, body.body, req.user?.id);
@@ -172,7 +177,7 @@ export class TasksController {
   async addChecklistItem(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Req() req: any,
+    @Req() req: TaskAuthRequest,
     @Body() body: ChecklistItemDto,
   ) {
     return this.tasksService.addChecklistItem(
@@ -188,7 +193,7 @@ export class TasksController {
     @Param('orgId') orgId: string,
     @Param('id') id: string,
     @Param('itemId') itemId: string,
-    @Req() req: any,
+    @Req() req: TaskAuthRequest,
     @Body() body: UpdateChecklistItemDto,
   ) {
     return this.tasksService.updateChecklistItem(orgId, id, itemId, body, req.user?.id);
@@ -198,7 +203,7 @@ export class TasksController {
   async addAttachment(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Req() req: any,
+    @Req() req: TaskAuthRequest,
     @Body() body: AddAttachmentDto,
   ) {
     return this.tasksService.addAttachment(orgId, id, body, req.user?.id);

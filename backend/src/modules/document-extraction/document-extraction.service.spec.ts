@@ -19,17 +19,22 @@ describe('DocumentExtractionService', () => {
         findMany: jest.fn(),
         ...prismaOverrides,
       },
-      vehicle: { findUnique: jest.fn() },
+      vehicle: {
+        findUnique: jest.fn().mockResolvedValue({ vin: null, licensePlate: null, mileageKm: null }),
+      },
+      vehicleLatestState: { findUnique: jest.fn().mockResolvedValue(null) },
     };
     const config = { get: jest.fn((_k: string, d?: unknown) => d) };
     const storage = { putObject: jest.fn(), getObject: jest.fn(), deleteObject: jest.fn() };
     const queue = { add: jest.fn() };
+    const plausibility = { runChecks: jest.fn().mockReturnValue({ overallStatus: 'OK', checks: [], recommendedHumanReviewNotes: [] }) };
     const svc = new DocumentExtractionService(
       prisma as any,
       config as any,
       storage as any,
       queue as any,
       applyService as any,
+      plausibility as any,
     );
     return { svc, prisma, applyService };
   }

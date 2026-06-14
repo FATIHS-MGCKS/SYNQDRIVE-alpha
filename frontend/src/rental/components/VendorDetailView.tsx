@@ -148,6 +148,12 @@ export function VendorDetailView({ isDarkMode, vendorId, onBack }: VendorDetailV
   const [audit, setAudit] = useState<VendorAuditEntry[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditLoaded, setAuditLoaded] = useState(false);
+  const [documents, setDocuments] = useState<Array<Record<string, unknown>>>([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [documentsLoaded, setDocumentsLoaded] = useState(false);
+  const [serviceHistory, setServiceHistory] = useState<Array<Record<string, unknown>>>([]);
+  const [serviceLoading, setServiceLoading] = useState(false);
+  const [serviceLoaded, setServiceLoaded] = useState(false);
 
   const cardClass = 'sq-card rounded-xl';
 
@@ -184,6 +190,26 @@ export function VendorDetailView({ isDarkMode, vendorId, onBack }: VendorDetailV
         .finally(() => { setAuditLoading(false); setAuditLoaded(true); });
     }
   }, [activeTab, orgId, vendorId, auditLoaded]);
+
+  useEffect(() => {
+    if (activeTab === 'documents' && orgId && !documentsLoaded) {
+      setDocumentsLoading(true);
+      api.vendors.documents(orgId, vendorId)
+        .then((rows) => setDocuments(Array.isArray(rows) ? rows : []))
+        .catch(() => setDocuments([]))
+        .finally(() => { setDocumentsLoading(false); setDocumentsLoaded(true); });
+    }
+  }, [activeTab, orgId, vendorId, documentsLoaded]);
+
+  useEffect(() => {
+    if (activeTab === 'service' && orgId && !serviceLoaded) {
+      setServiceLoading(true);
+      api.vendors.serviceHistory(orgId, vendorId)
+        .then((rows) => setServiceHistory(Array.isArray(rows) ? rows : []))
+        .catch(() => setServiceHistory([]))
+        .finally(() => { setServiceLoading(false); setServiceLoaded(true); });
+    }
+  }, [activeTab, orgId, vendorId, serviceLoaded]);
 
   // ── editing master data ──────────────────────────────
 
@@ -656,23 +682,65 @@ export function VendorDetailView({ isDarkMode, vendorId, onBack }: VendorDetailV
 
       {/* ── Documents tab ── */}
       {activeTab === 'documents' && (
-        <div className={`${cardClass} p-8 text-center`}>
-          <Icon name="file-text" className={`w-8 h-8 mx-auto mb-3 ${'text-muted-foreground/60'}`} />
-          <p className={`text-sm font-medium ${'text-foreground'}`}>No documents yet</p>
-          <p className={`mt-1 text-xs ${'text-muted-foreground'}`}>
-            Contracts, quotes and warranty documents linked to this vendor will appear here.
-          </p>
+        <div className={`${cardClass} p-5`}>
+          <h3 className={`text-xs font-semibold mb-4 flex items-center gap-2 ${'text-muted-foreground'}`}>
+            <Icon name="file-text" className="w-3.5 h-3.5" /> Documents
+          </h3>
+          {documentsLoading ? (
+            <div className="flex justify-center py-8"><Icon name="loader-2" className={`w-5 h-5 animate-spin ${'text-muted-foreground/60'}`} /></div>
+          ) : documents.length === 0 ? (
+            <div className="py-6 text-center">
+              <p className={`text-sm font-medium ${'text-foreground'}`}>No documents yet</p>
+              <p className={`mt-1 text-xs ${'text-muted-foreground'}`}>
+                Contracts, quotes and warranty documents linked to this vendor will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {documents.map((doc, idx) => (
+                <div key={String(doc.id ?? idx)} className="flex items-center justify-between gap-3 py-2 border-b border-border/50 last:border-0">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium text-foreground truncate">{String(doc.title ?? doc.name ?? 'Document')}</p>
+                    {doc.createdAt && (
+                      <p className="text-[10px] text-muted-foreground">{new Date(String(doc.createdAt)).toLocaleDateString('de-DE')}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {/* ── Service / Maintenance tab ── */}
       {activeTab === 'service' && (
-        <div className={`${cardClass} p-8 text-center`}>
-          <Icon name="wrench" className={`w-8 h-8 mx-auto mb-3 ${'text-muted-foreground/60'}`} />
-          <p className={`text-sm font-medium ${'text-foreground'}`}>No service history yet</p>
-          <p className={`mt-1 text-xs ${'text-muted-foreground'}`}>
-            Service and maintenance cases handled by this vendor will appear here once recorded.
-          </p>
+        <div className={`${cardClass} p-5`}>
+          <h3 className={`text-xs font-semibold mb-4 flex items-center gap-2 ${'text-muted-foreground'}`}>
+            <Icon name="wrench" className="w-3.5 h-3.5" /> Service History
+          </h3>
+          {serviceLoading ? (
+            <div className="flex justify-center py-8"><Icon name="loader-2" className={`w-5 h-5 animate-spin ${'text-muted-foreground/60'}`} /></div>
+          ) : serviceHistory.length === 0 ? (
+            <div className="py-6 text-center">
+              <p className={`text-sm font-medium ${'text-foreground'}`}>No service history yet</p>
+              <p className={`mt-1 text-xs ${'text-muted-foreground'}`}>
+                Service and maintenance cases handled by this vendor will appear here once recorded.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {serviceHistory.map((row, idx) => (
+                <div key={String(row.id ?? idx)} className="flex items-center justify-between gap-3 py-2 border-b border-border/50 last:border-0">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium text-foreground truncate">{String(row.title ?? row.description ?? 'Service')}</p>
+                    {row.eventDate && (
+                      <p className="text-[10px] text-muted-foreground">{new Date(String(row.eventDate)).toLocaleDateString('de-DE')}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

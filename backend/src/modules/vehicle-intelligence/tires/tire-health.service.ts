@@ -75,7 +75,7 @@ export interface TirePressureContext {
 }
 
 export interface TireReadContext {
-  hmTirePressure?: any | null;
+  hmTirePressure?: import('../../high-mobility/high-mobility-signal-usage.service').HmTirePressureSignals | null;
 }
 
 export interface TireHealthSummary {

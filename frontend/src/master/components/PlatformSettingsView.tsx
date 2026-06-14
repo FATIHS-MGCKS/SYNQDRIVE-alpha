@@ -121,7 +121,7 @@ export function PlatformSettingsView({ isDarkMode, activeTab = 'general', onTabC
 
       {/* API & Worker Monitoring */}
       {activeTab === 'monitoring' && (
-        <SystemMonitoringView isDarkMode={isDarkMode} />
+        <SystemMonitoringView />
       )}
     </div>
   );

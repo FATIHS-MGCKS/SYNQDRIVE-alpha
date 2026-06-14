@@ -34,7 +34,6 @@ export interface CustomerDocumentUploadBoxProps {
   url: string | null;
   slot: CustomerDocumentSlot;
   orgId: string | undefined;
-  isDarkMode: boolean;
   errorMessage?: string;
   onUploaded: (url: string) => void;
   onCleared: () => void;
@@ -45,7 +44,6 @@ export function CustomerDocumentUploadBox({
   url,
   slot,
   orgId,
-  isDarkMode,
   errorMessage,
   onUploaded,
   onCleared,
@@ -54,9 +52,8 @@ export function CustomerDocumentUploadBox({
   const [uploading, setUploading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const labelClass = `block text-xs font-semibold uppercase tracking-wider mb-1.5 ${
-    isDarkMode ? 'text-gray-500' : 'text-gray-400'
-  }`;
+  const labelClass =
+    'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
 
   const handleFile = useCallback(
     async (file: File | null | undefined) => {
@@ -87,34 +84,24 @@ export function CustomerDocumentUploadBox({
   const hasUrl = Boolean(url);
   const isImage = hasUrl && !/\.pdf($|\?)/i.test(url || '');
 
+  const dropzoneClass = uploading
+    ? 'border-[color:var(--brand)]/40 bg-[color:var(--brand-soft)]'
+    : hasUrl
+      ? 'border-[color:var(--status-positive)]/40 bg-[color:var(--status-positive-soft)]'
+      : errorMessage || localError
+        ? 'border-[color:var(--status-critical)]/40 bg-[color:var(--status-critical-soft)]'
+        : 'border-border bg-muted/30 hover:border-[color:var(--brand)]/40 hover:bg-[color:var(--brand-soft)]';
+
   return (
     <div>
       <label className={labelClass}>{label}</label>
       <div
-        className={`relative rounded-lg border-2 border-dashed p-3 text-center transition-all ${
-          uploading
-            ? isDarkMode
-              ? 'border-blue-500/40 bg-blue-500/5'
-              : 'border-blue-300 bg-blue-50/50'
-            : hasUrl
-              ? isDarkMode
-                ? 'border-emerald-500/40 bg-emerald-500/5'
-                : 'border-emerald-300 bg-emerald-50/50'
-              : errorMessage || localError
-                ? 'border-red-300 bg-red-50/30'
-                : isDarkMode
-                  ? 'border-neutral-700/50 bg-neutral-800/30 hover:border-blue-500/40 hover:bg-blue-500/5'
-                  : 'border-gray-200 bg-gray-50/50 hover:border-blue-300 hover:bg-blue-50/30'
-        }`}
+        className={`relative rounded-lg border-2 border-dashed p-3 text-center transition-all ${dropzoneClass}`}
       >
         {uploading ? (
           <div className="flex flex-col items-center gap-1.5 py-1">
-            <Icon name="loader-2" className="w-5 h-5 text-blue-500 animate-spin" />
-            <span
-              className={`text-xs font-semibold ${
-                isDarkMode ? 'text-blue-300' : 'text-blue-600'
-              }`}
-            >
+            <Icon name="loader-2" className="w-5 h-5 text-[color:var(--brand)] animate-spin" />
+            <span className="text-xs font-semibold text-[color:var(--brand-ink)]">
               Wird hochgeladen…
             </span>
           </div>
@@ -124,27 +111,19 @@ export function CustomerDocumentUploadBox({
               <img
                 src={url || ''}
                 alt={label}
-                className="h-16 w-auto max-w-full rounded-md object-contain border border-emerald-500/20"
+                className="h-16 w-auto max-w-full rounded-md object-contain border border-[color:var(--status-positive)]/20"
               />
             ) : (
               <div className="flex items-center gap-2">
-                <Icon name="file-text" className="w-5 h-5 text-emerald-500" />
-                <span
-                  className={`text-xs font-semibold ${
-                    isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
-                  }`}
-                >
+                <Icon name="file-text" className="w-5 h-5 text-[color:var(--status-positive)]" />
+                <span className="text-xs font-semibold text-[color:var(--status-positive)]">
                   PDF hochgeladen
                 </span>
               </div>
             )}
             <div className="flex items-center gap-2">
-              <Icon name="check-circle" className="w-3.5 h-3.5 text-emerald-500" />
-              <span
-                className={`text-[11px] font-semibold ${
-                  isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
-                }`}
-              >
+              <Icon name="check-circle" className="w-3.5 h-3.5 text-[color:var(--status-positive)]" />
+              <span className="text-[11px] font-semibold text-[color:var(--status-positive)]">
                 Hochgeladen
               </span>
               <button
@@ -153,11 +132,7 @@ export function CustomerDocumentUploadBox({
                   if (inputRef.current) inputRef.current.value = '';
                   onCleared();
                 }}
-                className={`inline-flex items-center gap-1 text-[11px] font-medium ${
-                  isDarkMode
-                    ? 'text-red-400 hover:text-red-300'
-                    : 'text-red-500 hover:text-red-600'
-                }`}
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-[color:var(--status-critical)] hover:opacity-80"
               >
                 <Icon name="trash-2" className="w-3 h-3" />
                 Entfernen
@@ -170,21 +145,11 @@ export function CustomerDocumentUploadBox({
             onClick={() => inputRef.current?.click()}
             className="flex flex-col items-center gap-1.5 w-full cursor-pointer py-1"
           >
-            <Icon name="camera"
-              className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}
-            />
-            <span
-              className={`text-xs font-medium ${
-                isDarkMode ? 'text-gray-400' : 'text-gray-500'
-              }`}
-            >
+            <Icon name="camera" className="w-5 h-5 text-muted-foreground" />
+            <span className="text-xs font-medium text-muted-foreground">
               Klicken zum Hochladen
             </span>
-            <span
-              className={`text-[10px] ${
-                isDarkMode ? 'text-gray-600' : 'text-gray-400'
-              }`}
-            >
+            <span className="text-[10px] text-muted-foreground/80">
               JPG, PNG oder PDF (max. 8 MB)
             </span>
           </button>
@@ -201,7 +166,7 @@ export function CustomerDocumentUploadBox({
         />
       </div>
       {(errorMessage || localError) && (
-        <p className="text-[11px] text-red-500 mt-1">
+        <p className="text-[11px] text-[color:var(--status-critical)] mt-1">
           {errorMessage || localError}
         </p>
       )}

@@ -795,6 +795,7 @@ model Vehicle {
   imageUrl                          String?           @map("image_url")
   status                            VehicleStatus     @default(AVAILABLE)
   cleaningStatus                    CleaningStatus    @default(CLEAN) @map("cleaning_status")
+  /// @deprecated Legacy admin-set column. Canonical health is RentalHealthService / VehicleHealthStatus — do not read for UI or booking gates.
   healthStatus                      HealthStatus      @default(GOOD) @map("health_status")
   notes                             String?
   leasingRateCents                  Int?              @map("leasing_rate_cents")
@@ -2147,7 +2148,7 @@ model OrgTask {
   // coarse origin domain (V4.8.3).
   source          String?      @map("source")
   sourceType      TaskSource   @default(MANUAL) @map("source_type")
-  dedupKey        String?      @unique @map("dedup_key")
+  dedupKey        String?      @map("dedup_key")
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
 
@@ -2179,6 +2180,7 @@ model OrgTask {
   @@index([organizationId, assignedTo])
   @@index([organizationId, dueDate])
   @@index([organizationId, source])
+  @@unique([organizationId, dedupKey], name: "org_tasks_org_dedup_key")
   @@map("org_tasks")
 }
 

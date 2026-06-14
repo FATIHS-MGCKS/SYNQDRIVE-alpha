@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { PageHeader, DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader } from '../../components/patterns';
 import {
   Radio, Search, RefreshCw, Plus, Trash2, CheckCircle2, XCircle,
   Clock, AlertTriangle, ChevronDown, ChevronUp, Loader2, Shield,
@@ -14,6 +15,17 @@ import type {
   HmStreamingReadinessDto
 } from '../../lib/api';
 import { toast } from 'sonner';
+
+/* ── Design-system token helpers ── */
+const CARD = 'sq-card overflow-hidden';
+const INPUT =
+  'w-full px-4 py-2.5 rounded-xl border border-border bg-muted/50 text-sm text-foreground transition-colors outline-none focus:border-[color:var(--brand)] placeholder:text-muted-foreground';
+const LABEL = 'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
+const HEAD = 'text-xs font-semibold uppercase tracking-wider text-muted-foreground';
+const TAB_BAR = 'sq-tab-bar flex gap-1 p-1 rounded-2xl overflow-x-auto w-fit';
+const TAB_ACTIVE = 'sq-tab-active flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap';
+const TAB_IDLE = 'sq-tab flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap text-muted-foreground hover:text-foreground';
+
 
 // ── Status badge helpers ────────────────────────────────────────────────────
 
@@ -130,18 +142,16 @@ function MqttStateBadge({ state }: { state: HmMqttConnectionState }) {
   );
 }
 
-// ── Vehicle card (row) ──────────────────────────────────────────────────────
+// ── Vehicle CARD (row) ──────────────────────────────────────────────────────
 
 function VehicleRow({
   vehicle,
-  isDarkMode,
   onRefresh,
   onRemove,
   onFetchHealth,
   onViewHistory,
 }: {
   vehicle: HmVehicleDto;
-  isDarkMode: boolean;
   onRefresh: (id: string) => Promise<void>;
   onRemove: (id: string, vin: string) => Promise<void>;
   onFetchHealth: (id: string) => Promise<void>;
@@ -167,8 +177,8 @@ function VehicleRow({
     try { await onRemove(vehicle.id, vehicle.vin); } finally { setLoading(null); setConfirmRemove(false); }
   };
 
-  const rowBg = isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200';
-  const mutedFg = isDarkMode ? 'text-neutral-500' : 'text-gray-400';
+  const rowBg = 'sq-CARD';
+  const mutedFg = 'text-muted-foreground';
 
   return (
     <div className={`rounded-xl border ${rowBg} overflow-hidden`}>
@@ -204,8 +214,8 @@ function VehicleRow({
         {/* Source mode / app container domain */}
         <span className={`text-[11px] font-medium px-2 py-0.5 rounded ${
           vehicle.sourceMode === 'HM_ONLY'
-            ? isDarkMode ? 'bg-violet-900/40 text-violet-400' : 'bg-violet-100 text-violet-700'
-            : isDarkMode ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500'
+            ? 'sq-tone-ai'
+            : 'bg-muted/50'
         }`}>
           {vehicle.sourceMode === 'DIMO_PLUS_HM'
             ? (vehicle.packageType === 'HEALTH' ? 'DIMO + HMH' : 'DIMO + HM')
@@ -226,7 +236,7 @@ function VehicleRow({
         <div className="flex items-center gap-1 ml-auto">
           <button
             onClick={() => onViewHistory(vehicle)}
-            className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}
+            className={`p-1.5 rounded-lg transition-colors hover:bg-muted text-muted-foreground`}
             title="Status history"
           >
             <Eye className="w-3.5 h-3.5" />
@@ -234,7 +244,7 @@ function VehicleRow({
           <button
             onClick={handleRefresh}
             disabled={loading === 'refresh'}
-            className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}
+            className={`p-1.5 rounded-lg transition-colors hover:bg-muted text-muted-foreground`}
             title="Refresh status"
           >
             {loading === 'refresh' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
@@ -243,7 +253,7 @@ function VehicleRow({
             <button
               onClick={handleFetchHealth}
               disabled={loading === 'health'}
-              className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-teal-400' : 'hover:bg-gray-100 text-teal-600'}`}
+              className={`p-1.5 rounded-lg transition-colors sq-chip-success`}
               title="Fetch health data"
             >
               {loading === 'health' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Activity className="w-3.5 h-3.5" />}
@@ -265,13 +275,13 @@ function VehicleRow({
           ) : (
             <button
               onClick={handleRemove}
-              className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-red-400' : 'hover:bg-gray-100 text-red-500'}`}
+              className={`p-1.5 rounded-lg transition-colors sq-tone-critical`}
               title="Remove vehicle"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
-          <button onClick={() => setExpanded(e => !e)} className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}>
+          <button onClick={() => setExpanded(e => !e)} className={`p-1.5 rounded-lg transition-colors hover:bg-muted text-muted-foreground`}>
             {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
         </div>
@@ -279,7 +289,7 @@ function VehicleRow({
 
       {/* Expanded detail */}
       {expanded && (
-        <div className={`px-4 py-3 border-t grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs ${isDarkMode ? 'border-neutral-800 bg-neutral-950' : 'border-gray-100 bg-gray-50'}`}>
+        <div className={`px-4 py-3 border-t grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs border-border`}>
           <div><div className={`font-medium mb-0.5 ${mutedFg}`}>Created</div>{fmt(vehicle.createdAt)}</div>
           <div><div className={`font-medium mb-0.5 ${mutedFg}`}>Clearance Requested</div>{fmt(vehicle.clearanceRequestedAt)}</div>
           <div><div className={`font-medium mb-0.5 ${mutedFg}`}>Approved At</div>{fmt(vehicle.clearanceApprovedAt)}</div>
@@ -310,7 +320,6 @@ function VehicleSection({
   title,
   icon: Icon,
   vehicles,
-  isDarkMode,
   onRefresh,
   onRemove,
   onFetchHealth,
@@ -320,24 +329,23 @@ function VehicleSection({
   title: string;
   icon: typeof Activity;
   vehicles: HmVehicleDto[];
-  isDarkMode: boolean;
   onRefresh: (id: string) => Promise<void>;
   onRemove: (id: string, vin: string) => Promise<void>;
   onFetchHealth: (id: string) => Promise<void>;
   onViewHistory: (v: HmVehicleDto) => void;
   badge?: React.ReactNode;
 }) {
-  const headerBg = isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200';
+  const headerBg = 'sq-CARD';
   return (
     <div>
       <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border mb-3 ${headerBg}`}>
         <Icon className="w-4 h-4 text-muted-foreground" />
         <span className="text-sm font-semibold">{title}</span>
         {badge}
-        <span className={`ml-auto text-xs ${isDarkMode ? 'text-neutral-500' : 'text-gray-400'}`}>{vehicles.length} vehicle{vehicles.length !== 1 ? 's' : ''}</span>
+        <span className={`ml-auto text-xs text-muted-foreground`}>{vehicles.length} vehicle{vehicles.length !== 1 ? 's' : ''}</span>
       </div>
       {vehicles.length === 0 ? (
-        <div className={`flex flex-col items-center justify-center py-8 rounded-xl border border-dashed text-center ${isDarkMode ? 'border-neutral-800 text-neutral-600' : 'border-gray-200 text-gray-400'}`}>
+        <div className={`flex flex-col items-center justify-center py-8 rounded-xl border border-dashed text-center border-border`}>
           <Package className="w-6 h-6 mb-2 opacity-40" />
           <div className="text-sm">No vehicles in this category</div>
         </div>
@@ -347,7 +355,6 @@ function VehicleSection({
             <VehicleRow
               key={v.id}
               vehicle={v}
-              isDarkMode={isDarkMode}
               onRefresh={onRefresh}
               onRemove={onRemove}
               onFetchHealth={onFetchHealth}
@@ -368,14 +375,11 @@ const KNOWN_BRANDS = [
   'Fiat','Volvo','Skoda','SEAT','Nissan','Mazda','Stellantis','Other'
 ];
 
-function AddVehicleModal({
-  isDarkMode,
-  onClose,
+function AddVehicleModal({ onClose,
   onAdd,
   prefillVin,
   prefillBrand,
 }: {
-  isDarkMode: boolean;
   onClose: () => void;
   onAdd: (vin: string, brand: string, pkg: HmPackageType) => Promise<void>;
   prefillVin?: string;
@@ -395,15 +399,13 @@ function AddVehicleModal({
   };
 
   const overlay = 'fixed inset-0 bg-black/50 backdrop-blur-[2px] z-50 flex items-center justify-center p-4';
-  const card = `w-full max-w-md rounded-xl border shadow-2xl p-6 ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'}`;
-  const inputCls = `w-full px-3 py-2 rounded-lg border text-sm ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white placeholder-neutral-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'} focus:outline-none focus:ring-2 focus:ring-blue-500/30`;
-  const labelCls = 'block text-xs font-medium mb-1.5 text-muted-foreground';
+  const CARD = `w-full max-w-md rounded-xl border shadow-2xl p-6 sq-CARD`;const LABEL = 'block text-xs font-medium mb-1.5 text-muted-foreground';
 
   return (
     <div className={overlay} onClick={onClose}>
-      <div className={card} onClick={e => e.stopPropagation()}>
+      <div className={CARD} onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-2 mb-5">
-          <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-100'}`}>
+          <div className={`p-1.5 rounded-lg bg-muted`}>
             <Plus className="w-4 h-4" />
           </div>
           <h3 className="text-sm font-semibold">Add Vehicle to High Mobility</h3>
@@ -411,18 +413,18 @@ function AddVehicleModal({
 
         <div className="space-y-4">
           <div>
-            <label className={labelCls}>VIN</label>
-            <input className={inputCls} value={vin} onChange={e => setVin(e.target.value.toUpperCase())} placeholder="e.g. WBA12345678901234" />
+            <label className={LABEL}>VIN</label>
+            <input className={INPUT} value={vin} onChange={e => setVin(e.target.value.toUpperCase())} placeholder="e.g. WBA12345678901234" />
           </div>
           <div>
-            <label className={labelCls}>Brand</label>
-            <select className={inputCls} value={brand} onChange={e => setBrand(e.target.value)}>
+            <label className={LABEL}>Brand</label>
+            <select className={INPUT} value={brand} onChange={e => setBrand(e.target.value)}>
               <option value="">Select brand…</option>
               {KNOWN_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
             </select>
           </div>
           <div>
-            <label className={labelCls}>Package Type</label>
+            <label className={LABEL}>Package Type</label>
             <div className="grid grid-cols-2 gap-2">
               {(['HEALTH', 'FULL_TELEMETRY'] as HmPackageType[]).map(p => (
                 <button
@@ -433,7 +435,7 @@ function AddVehicleModal({
                       ? p === 'HEALTH'
                         ? 'border-teal-500 bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-700'
                         : 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-700'
-                      : isDarkMode ? 'border-neutral-700 text-neutral-400 hover:border-neutral-600' : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                      : 'text-muted-foreground'
                   }`}
                 >
                   <span className="font-semibold">{p === 'HEALTH' ? 'Health' : 'Full Telemetry'}</span>
@@ -445,7 +447,7 @@ function AddVehicleModal({
         </div>
 
         <div className="flex gap-2 mt-6">
-          <button onClick={onClose} className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${isDarkMode ? 'border-neutral-700 text-neutral-300 hover:bg-neutral-800' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+          <button onClick={onClose} className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors border-border`}>
             Cancel
           </button>
           <button
@@ -466,11 +468,9 @@ function AddVehicleModal({
 
 function HistoryModal({
   vehicle,
-  isDarkMode,
   onClose,
 }: {
   vehicle: HmVehicleDto;
-  isDarkMode: boolean;
   onClose: () => void;
 }) {
   const [history, setHistory] = useState<HmStatusHistoryDto[]>([]);
@@ -484,17 +484,17 @@ function HistoryModal({
   }, [vehicle.id]);
 
   const overlay = 'fixed inset-0 bg-black/50 backdrop-blur-[2px] z-50 flex items-center justify-center p-4';
-  const card = `w-full max-w-lg rounded-xl border shadow-2xl ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'}`;
+  const CARD = `w-full max-w-lg rounded-xl border shadow-2xl sq-CARD`;
 
   return (
     <div className={overlay} onClick={onClose}>
-      <div className={card} onClick={e => e.stopPropagation()}>
-        <div className={`flex items-center justify-between px-5 py-4 border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
+      <div className={CARD} onClick={e => e.stopPropagation()}>
+        <div className={`flex items-center justify-between px-5 py-4 border-b border-border`}>
           <div>
             <h3 className="text-sm font-semibold">Status History</h3>
             <div className="text-xs text-muted-foreground mt-0.5 font-mono">{vehicle.vin}</div>
           </div>
-          <button onClick={onClose} className={`p-1.5 rounded-lg ${isDarkMode ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}>
+          <button onClick={onClose} className={`p-1.5 rounded-lg hover:bg-muted text-muted-foreground`}>
             <XCircle className="w-4 h-4" />
           </button>
         </div>
@@ -506,7 +506,7 @@ function HistoryModal({
           ) : (
             <div className="space-y-2">
               {history.map(h => (
-                <div key={h.id} className={`rounded-lg px-3 py-2.5 ${isDarkMode ? 'bg-neutral-950 border border-neutral-800' : 'bg-gray-50 border border-gray-100'}`}>
+                <div key={h.id} className={`rounded-lg px-3 py-2.5 border-border`}>
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-semibold font-mono">{h.eventType}</span>
                     <span className="text-[10px] text-muted-foreground">{new Date(h.createdAt).toLocaleString('de-DE')}</span>
@@ -530,11 +530,8 @@ function HistoryModal({
 
 // ── Eligibility Tab ─────────────────────────────────────────────────────────
 
-function EligibilityTab({
-  isDarkMode,
-  onAddToList,
+function EligibilityTab({ onAddToList,
 }: {
-  isDarkMode: boolean;
   onAddToList: (vin: string, brand: string) => void;
 }) {
   const [vin, setVin] = useState('');
@@ -561,8 +558,8 @@ function EligibilityTab({
     }
   };
 
-  const inputCls = `px-3 py-2 rounded-lg border text-sm ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white placeholder-neutral-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'} focus:outline-none focus:ring-2 focus:ring-blue-500/30`;
-  const cardCls = `rounded-xl border ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'}`;
+  const INPUT = `px-3 py-2 rounded-lg border text-sm border-border focus:outline-none focus:ring-2 focus:ring-blue-500/30`;
+  const cardCls = `rounded-xl border sq-CARD`;
 
   return (
     <div className="space-y-5">
@@ -576,7 +573,7 @@ function EligibilityTab({
           <div>
             <label className="block text-xs font-medium mb-1.5 text-muted-foreground">VIN</label>
             <input
-              className={`${inputCls} w-full`}
+              className={`${INPUT} w-full`}
               value={vin}
               onChange={e => setVin(e.target.value.toUpperCase())}
               placeholder="e.g. WBA12345678901234"
@@ -585,7 +582,7 @@ function EligibilityTab({
           </div>
           <div>
             <label className="block text-xs font-medium mb-1.5 text-muted-foreground">Brand</label>
-            <select className={`${inputCls} w-full`} value={brand} onChange={e => setBrand(e.target.value)}>
+            <select className={`${INPUT} w-full`} value={brand} onChange={e => setBrand(e.target.value)}>
               <option value="">Select brand…</option>
               {KNOWN_BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
             </select>
@@ -607,7 +604,7 @@ function EligibilityTab({
       {result && (
         <div className={`${cardCls} overflow-hidden`}>
           {/* Header */}
-          <div className={`px-5 py-4 flex items-start gap-4 border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
+          <div className={`px-5 py-4 flex items-start gap-4 border-b border-border`}>
             <div className={`p-2 rounded-lg ${result.eligibilityStatus === 'ELIGIBLE' ? 'bg-emerald-100 dark:bg-emerald-900/30' : result.eligibilityStatus === 'INELIGIBLE' ? 'bg-red-100 dark:bg-red-900/30' : (result as any).eligibilityStatus === 'NOT_APPLICABLE' ? 'bg-violet-100 dark:bg-violet-900/30' : 'bg-gray-100 dark:bg-neutral-800'}`}>
               {result.eligibilityStatus === 'ELIGIBLE'
                 ? <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -633,11 +630,11 @@ function EligibilityTab({
 
           {/* Capabilities */}
           {result.capabilities && Object.keys(result.capabilities).length > 0 && (
-            <div className={`px-5 py-3 border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
+            <div className={`px-5 py-3 border-b border-border`}>
               <div className="text-xs font-medium text-muted-foreground mb-2">Capabilities</div>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(result.capabilities).map(([k, v]) => (
-                  <span key={k} className={`text-[11px] px-2 py-0.5 rounded font-mono ${isDarkMode ? 'bg-neutral-800 text-neutral-300' : 'bg-gray-100 text-gray-700'}`}>
+                  <span key={k} className={`text-[11px] px-2 py-0.5 rounded font-mono bg-muted text-foreground`}>
                     {k}: {String(v)}
                   </span>
                 ))}
@@ -647,8 +644,8 @@ function EligibilityTab({
 
           {/* Routing note for VW Group / Porsche */}
           {(result as any).routingNote && (
-            <div className={`px-5 py-3 border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
-              <div className={`flex items-start gap-2 px-3 py-2 rounded-lg text-xs ${isDarkMode ? 'bg-violet-900/20 border border-violet-800/40 text-violet-300' : 'bg-violet-50 border border-violet-200 text-violet-700'}`}>
+            <div className={`px-5 py-3 border-b border-border`}>
+              <div className={`flex items-start gap-2 px-3 py-2 rounded-lg text-xs sq-tone-ai`}>
                 <Shield className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 <div>
                   <span className="font-semibold">OEM routing: </span>
@@ -683,7 +680,7 @@ function EligibilityTab({
             )}
             <button
               onClick={() => setShowRaw(s => !s)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${isDarkMode ? 'border-neutral-700 text-neutral-400 hover:bg-neutral-800' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors border-border`}
             >
               {showRaw ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               Raw Response
@@ -693,7 +690,7 @@ function EligibilityTab({
           {/* Raw debug payload */}
           {showRaw && result.rawResponse && (
             <div className={`px-5 pb-4`}>
-              <pre className={`text-[11px] font-mono p-3 rounded-lg overflow-x-auto ${isDarkMode ? 'bg-neutral-950 text-neutral-400' : 'bg-gray-50 text-gray-600'}`}>
+              <pre className={`text-[11px] font-mono p-3 rounded-lg overflow-x-auto bg-muted/50`}>
                 {JSON.stringify(result.rawResponse, null, 2)}
               </pre>
             </div>
@@ -706,10 +703,7 @@ function EligibilityTab({
 
 // ── Vehicle List Tab ────────────────────────────────────────────────────────
 
-function VehicleListTab({
-  isDarkMode,
-}: {
-  isDarkMode: boolean;
+function VehicleListTab({ }: {
 }) {
   const [data, setData] = useState<HmVehicleListDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -790,7 +784,7 @@ function VehicleListTab({
     setShowAdd(true);
   };
 
-  const selectCls = `px-2 py-1.5 rounded-lg border text-xs ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'} focus:outline-none`;
+  const selectCls = `px-2 py-1.5 rounded-lg border text-xs border-border focus:outline-none`;
 
   return (
     <div className="space-y-5">
@@ -822,7 +816,7 @@ function VehicleListTab({
             value={filterBrand}
             onChange={e => setFilterBrand(e.target.value)}
           />
-          <button onClick={load} className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}>
+          <button onClick={load} className={`p-1.5 rounded-lg transition-colors hover:bg-muted text-muted-foreground`}>
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -846,7 +840,6 @@ function VehicleListTab({
             title="HM Health-APP Vehicles"
             icon={Activity}
             vehicles={data?.health ?? []}
-            isDarkMode={isDarkMode}
             onRefresh={handleRefresh}
             onRemove={handleRemove}
             onFetchHealth={handleFetchHealth}
@@ -861,7 +854,6 @@ function VehicleListTab({
             title="HM Telemetry-APP Vehicles"
             icon={Zap}
             vehicles={data?.fullTelemetry ?? []}
-            isDarkMode={isDarkMode}
             onRefresh={handleRefresh}
             onRemove={handleRemove}
             onFetchHealth={handleFetchHealth}
@@ -877,7 +869,6 @@ function VehicleListTab({
 
       {showAdd && (
         <AddVehicleModal
-          isDarkMode={isDarkMode}
           onClose={() => setShowAdd(false)}
           onAdd={handleAdd}
           prefillVin={addVin}
@@ -887,7 +878,6 @@ function VehicleListTab({
       {historyVehicle && (
         <HistoryModal
           vehicle={historyVehicle}
-          isDarkMode={isDarkMode}
           onClose={() => setHistoryVehicle(null)}
         />
       )}
@@ -897,7 +887,7 @@ function VehicleListTab({
 
 // ── Dual-App MQTT Diagnostics Tab ────────────────────────────────────────────
 
-function DualAppStreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
+function DualAppStreamingTab() {
   const [activeApp, setActiveApp] = useState<'health' | 'telemetry'>('health');
   const [healthStatus, setHealthStatus] = useState<any>(null);
   const [telemetryStatus, setTelemetryStatus] = useState<any>(null);
@@ -906,8 +896,8 @@ function DualAppStreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
   const [loading, setLoading] = useState(true);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
 
-  const cardCls = `rounded-xl border ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'}`;
-  const mutedFg = isDarkMode ? 'text-neutral-500' : 'text-gray-400';
+  const cardCls = `rounded-xl border sq-CARD`;
+  const mutedFg = 'text-muted-foreground';
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -931,9 +921,9 @@ function DualAppStreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const tabBg = isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-100 border-gray-200';
-  const tabActive = isDarkMode ? 'bg-neutral-700 text-white' : 'bg-white text-gray-900 shadow-sm';
-  const tabInactive = isDarkMode ? 'text-neutral-400 hover:text-neutral-200' : 'text-gray-500 hover:text-gray-700';
+  const tabBg = 'sq-tab-bar';
+  const tabActive = TAB_ACTIVE;
+  const tabInactive = TAB_IDLE;
 
   const statusData = activeApp === 'health' ? healthStatus : telemetryStatus;
   const logs = activeApp === 'health' ? healthLogs : telemetryLogs;
@@ -962,7 +952,7 @@ function DualAppStreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
         </div>
         <button
           onClick={load}
-          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}
+          className={`p-1.5 rounded-lg transition-colors hover:bg-muted text-muted-foreground`}
         >
           {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
         </button>
@@ -972,7 +962,7 @@ function DualAppStreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
         <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
       ) : (
         <div className="space-y-4">
-          {/* Status card */}
+          {/* Status CARD */}
           <div className={`${cardCls} p-4`}>
             <div className="flex items-center gap-2 mb-3">
               <div className={`w-2 h-2 rounded-full ${statusData?.connectionState === 'CONNECTED' ? 'bg-emerald-500 animate-pulse' : statusData?.connectionState === 'CONNECTING' ? 'bg-yellow-500 animate-pulse' : 'bg-gray-400'}`} />
@@ -1003,7 +993,7 @@ function DualAppStreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
 
           {/* Stream logs */}
           <div className={cardCls}>
-            <div className={`flex items-center gap-2 px-4 py-3 border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
+            <div className={`flex items-center gap-2 px-4 py-3 border-b border-border`}>
               <Database className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-xs font-semibold">Recent Stream Logs</span>
               <span className={`ml-auto text-[10px] ${mutedFg}`}>{logs.length} entries</span>
@@ -1016,7 +1006,7 @@ function DualAppStreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
                 </div>
               ) : (
                 logs.map(log => (
-                  <div key={log.id} className={`px-4 py-2.5 ${isDarkMode ? 'hover:bg-neutral-800/50' : 'hover:bg-gray-50'} cursor-pointer transition-colors`} onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}>
+                  <div key={log.id} className={`px-4 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors`} onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${log.ingestStatus === 'STORED' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : log.ingestStatus === 'FAILED' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400'}`}>
                         {log.ingestStatus}
@@ -1027,7 +1017,7 @@ function DualAppStreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
                       <span className={`ml-auto text-[10px] ${mutedFg}`}>{log.createdAt ? new Date(log.createdAt).toLocaleTimeString('de-DE') : '—'}</span>
                     </div>
                     {expandedLog === log.id && log.normalizedSummaryJson && (
-                      <pre className={`mt-2 text-[10px] p-2 rounded overflow-auto max-h-32 ${isDarkMode ? 'bg-neutral-950 text-neutral-400' : 'bg-gray-50 text-gray-600'}`}>
+                      <pre className={`mt-2 text-[10px] p-2 rounded overflow-auto max-h-32 bg-muted/50`}>
                         {JSON.stringify(log.normalizedSummaryJson, null, 2)}
                       </pre>
                     )}
@@ -1047,7 +1037,7 @@ function DualAppStreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
 
 // ── Legacy Streaming Tab (retained for backward compat, not shown in tabs) ───
 
-function StreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
+function StreamingTab() {
   const [consumerStatus, setConsumerStatus] = useState<HmMqttConsumerStatusDto | null>(null);
   const [logs, setLogs] = useState<HmStreamSyncLogDto[]>([]);
   const [logTotal, setLogTotal] = useState(0);
@@ -1057,9 +1047,9 @@ function StreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterVin, setFilterVin] = useState('');
 
-  const cardCls = `rounded-xl border ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'}`;
-  const mutedFg = isDarkMode ? 'text-neutral-500' : 'text-gray-400';
-  const labelCls = `text-xs font-medium ${mutedFg}`;
+  const cardCls = `rounded-xl border sq-CARD`;
+  const mutedFg = 'text-muted-foreground';
+  const LABEL = `text-xs font-medium ${mutedFg}`;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1118,7 +1108,7 @@ function StreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
           <Wifi className="w-4 h-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold">MQTT V2 Consumer</h3>
           {consumerStatus && <MqttStateBadge state={consumerStatus.connectionState} />}
-          <button onClick={load} className={`ml-auto p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}>
+          <button onClick={load} className={`ml-auto p-1.5 rounded-lg transition-colors hover:bg-muted text-muted-foreground`}>
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -1128,32 +1118,32 @@ function StreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
         ) : consumerStatus ? (
           <div className="space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-              <div><div className={`${labelCls} mb-0.5`}>Environment</div><span className="font-mono font-medium">{consumerStatus.environment}</span></div>
-              <div><div className={`${labelCls} mb-0.5`}>Application ID</div><span className="font-mono">{consumerStatus.applicationId || '—'}</span></div>
-              <div><div className={`${labelCls} mb-0.5`}>Consumer Group</div><span className="font-mono text-[11px]">{consumerStatus.consumerGroup}</span></div>
-              <div><div className={`${labelCls} mb-0.5`}>MQTT Enabled</div>
+              <div><div className={`${LABEL} mb-0.5`}>Environment</div><span className="font-mono font-medium">{consumerStatus.environment}</span></div>
+              <div><div className={`${LABEL} mb-0.5`}>Application ID</div><span className="font-mono">{consumerStatus.applicationId || '—'}</span></div>
+              <div><div className={`${LABEL} mb-0.5`}>Consumer Group</div><span className="font-mono text-[11px]">{consumerStatus.consumerGroup}</span></div>
+              <div><div className={`${LABEL} mb-0.5`}>MQTT Enabled</div>
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${consumerStatus.mqttEnabled ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-gray-100 text-gray-500 dark:bg-neutral-800 dark:text-neutral-500'}`}>
                   {consumerStatus.mqttEnabled ? 'Yes' : 'No'}
                 </span>
               </div>
-              <div><div className={`${labelCls} mb-0.5`}>Cert Configured</div>
+              <div><div className={`${LABEL} mb-0.5`}>Cert Configured</div>
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${consumerStatus.certConfigured ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'}`}>
                   {consumerStatus.certConfigured ? 'Ready' : 'Missing'}
                 </span>
               </div>
-              <div><div className={`${labelCls} mb-0.5`}>Last Connected</div>{fmt(consumerStatus.lastConnectedAt)}</div>
-              <div><div className={`${labelCls} mb-0.5`}>Last Message</div>{fmt(consumerStatus.lastMessageAt)}</div>
-              <div><div className={`${labelCls} mb-0.5`}>Last Error</div>{fmt(consumerStatus.lastErrorAt)}</div>
+              <div><div className={`${LABEL} mb-0.5`}>Last Connected</div>{fmt(consumerStatus.lastConnectedAt)}</div>
+              <div><div className={`${LABEL} mb-0.5`}>Last Message</div>{fmt(consumerStatus.lastMessageAt)}</div>
+              <div><div className={`${LABEL} mb-0.5`}>Last Error</div>{fmt(consumerStatus.lastErrorAt)}</div>
             </div>
 
             {consumerStatus.lastErrorMessage && (
-              <div className={`text-xs px-3 py-2 rounded-lg ${isDarkMode ? 'bg-red-900/20 border border-red-800/40 text-red-400' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+              <div className={`text-xs px-3 py-2 rounded-lg sq-tone-critical`}>
                 <span className="font-medium">Last Error:</span> {consumerStatus.lastErrorMessage}
               </div>
             )}
 
             {!consumerStatus.mqttEnabled && (
-              <div className={`text-xs px-3 py-2 rounded-lg ${isDarkMode ? 'bg-yellow-900/20 border border-yellow-800/40 text-yellow-400' : 'bg-yellow-50 border border-yellow-200 text-yellow-700'}`}>
+              <div className={`text-xs px-3 py-2 rounded-lg sq-tone-watch`}>
                 Set <code className="font-mono">HM_MQTT_ENABLED=true</code> and configure certificate paths to enable MQTT V2 streaming.
               </div>
             )}
@@ -1177,7 +1167,7 @@ function StreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
       </div>
 
       {/* Architecture notice */}
-      <div className={`flex items-start gap-2.5 px-4 py-3 rounded-xl border text-xs ${isDarkMode ? 'bg-indigo-900/20 border-indigo-800/40 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-700'}`}>
+      <div className={`flex items-start gap-2.5 px-4 py-3 rounded-xl border text-xs sq-tone-info`}>
         <Database className="w-4 h-4 mt-0.5 shrink-0" />
         <div>
           <span className="font-semibold">Phase 2 architecture: </span>
@@ -1188,20 +1178,20 @@ function StreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
 
       {/* Stream Logs */}
       <div className={cardCls}>
-        <div className={`px-5 py-4 flex items-center gap-2 border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
+        <div className={`px-5 py-4 flex items-center gap-2 border-b border-border`}>
           <Terminal className="w-4 h-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold">Stream Ingest Logs</h3>
           <span className={`text-xs ${mutedFg}`}>({logTotal} total)</span>
           <div className="ml-auto flex items-center gap-2">
             <input
-              className={`px-2 py-1 rounded text-xs border ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white placeholder-neutral-500' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'} focus:outline-none`}
+              className={`px-2 py-1 rounded text-xs border border-border focus:outline-none`}
               placeholder="VIN…"
               value={filterVin}
               onChange={e => setFilterVin(e.target.value)}
               style={{ width: 100 }}
             />
             <select
-              className={`px-2 py-1 rounded text-xs border ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'} focus:outline-none`}
+              className={`px-2 py-1 rounded text-xs border border-border focus:outline-none`}
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value)}
             >
@@ -1210,7 +1200,7 @@ function StreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
               <option value="FAILED">Failed</option>
               <option value="DEDUPLICATED">Deduplicated</option>
             </select>
-            <button onClick={load} className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-neutral-400' : 'hover:bg-gray-100 text-gray-500'}`}>
+            <button onClick={load} className={`p-1.5 rounded-lg transition-colors hover:bg-muted text-muted-foreground`}>
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -1220,7 +1210,7 @@ function StreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
           {loading ? (
             <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
           ) : logs.length === 0 ? (
-            <div className={`flex flex-col items-center justify-center py-10 text-center ${isDarkMode ? 'text-neutral-600' : 'text-gray-400'}`}>
+            <div className={`flex flex-col items-center justify-center py-10 text-center text-muted-foreground`}>
               <SignalLow className="w-6 h-6 mb-2 opacity-40" />
               <div className="text-sm">No stream messages yet</div>
               <div className={`text-xs mt-1 ${mutedFg}`}>Messages will appear here once MQTT streaming is active</div>
@@ -1229,11 +1219,11 @@ function StreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
             <div key={log.id} className="px-4 py-3">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-mono text-xs font-semibold">{log.vin ?? '—'}</span>
-                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${isDarkMode ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500'}`}>{log.topic}</span>
+                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/50`}>{log.topic}</span>
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${INGEST_STATUS_COLOR[log.ingestStatus] ?? ''}`}>{log.ingestStatus}</span>
                 {log.isDuplicate && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 dark:bg-neutral-800 dark:text-neutral-500">DUPE</span>}
                 <span className={`ml-auto text-[10px] ${mutedFg}`}>{fmt(log.createdAt)}</span>
-                <button onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)} className={`p-1 rounded ${isDarkMode ? 'hover:bg-neutral-800 text-neutral-500' : 'hover:bg-gray-100 text-gray-400'}`}>
+                <button onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)} className={`p-1 rounded hover:bg-muted`}>
                   {expandedLog === log.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                 </button>
               </div>
@@ -1241,7 +1231,7 @@ function StreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
                 <div className="text-[11px] text-red-500 mt-1 font-mono">{log.errorMessage}</div>
               )}
               {expandedLog === log.id && log.normalizedSummaryJson && (
-                <pre className={`mt-2 text-[11px] font-mono p-2 rounded-lg overflow-x-auto ${isDarkMode ? 'bg-neutral-950 text-neutral-400' : 'bg-gray-50 text-gray-600'}`}>
+                <pre className={`mt-2 text-[11px] font-mono p-2 rounded-lg overflow-x-auto bg-muted/50`}>
                   {JSON.stringify(log.normalizedSummaryJson, null, 2)}
                 </pre>
               )}
@@ -1256,10 +1246,9 @@ function StreamingTab({ isDarkMode }: { isDarkMode: boolean }) {
 // ── Main View ───────────────────────────────────────────────────────────────
 
 interface Props {
-  isDarkMode: boolean;
 }
 
-export function HighMobilityDataView({ isDarkMode }: Props) {
+export function HighMobilityDataView() {
   const [tab, setTab] = useState<'vehicles' | 'eligibility' | 'streaming'>('vehicles');
   const [addVin, setAddVin] = useState('');
   const [addBrand, setAddBrand] = useState('');
@@ -1272,35 +1261,27 @@ export function HighMobilityDataView({ isDarkMode }: Props) {
     setTab('vehicles');
   };
 
-  const tabBg = isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-gray-100 border-gray-200';
-  const tabActive = isDarkMode ? 'bg-neutral-700 text-white' : 'bg-white text-gray-900 shadow-sm';
-  const tabInactive = isDarkMode ? 'text-neutral-400 hover:text-neutral-200' : 'text-gray-500 hover:text-gray-700';
+  const tabBg = 'sq-tab-bar';
+  const tabActive = TAB_ACTIVE;
+  const tabInactive = TAB_IDLE;
 
   return (
     <div className="flex flex-col h-full min-h-0 px-4 sm:px-6 py-5 space-y-5">
-      {/* Header */}
-      <div className="flex items-start gap-3 flex-wrap">
-        <div className={`p-2 rounded-xl ${isDarkMode ? 'bg-neutral-800' : 'bg-blue-50'}`}>
-          <Radio className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-        </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-lg font-bold">High Mobility</h1>
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-teal-900/40 text-teal-400' : 'bg-teal-100 text-teal-700'}`}>
-              HM Health-APP
-            </span>
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-indigo-900/40 text-indigo-400' : 'bg-indigo-100 text-indigo-700'}`}>
-              HM Telemetry-APP
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Dual-app MQTT V2 architecture — separate credentials, topics, consumers, and routing per app container
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="High Mobility"
+        eyebrow="Master Admin"
+        description="Dual-app MQTT V2 architecture — separate credentials, topics, consumers, and routing per app container"
+        icon={<Radio className="w-4 h-4" />}
+        meta={
+          <>
+            <StatusChip tone="success">HM Health-APP</StatusChip>
+            <StatusChip tone="info">HM Telemetry-APP</StatusChip>
+          </>
+        }
+      />
 
       {/* Domain rules notice */}
-      <div className={`flex items-start gap-2.5 px-4 py-3 rounded-xl border text-xs ${isDarkMode ? 'bg-blue-900/20 border-blue-800/40 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
+      <div className={`flex items-start gap-2.5 px-4 py-3 rounded-xl border text-xs sq-tone-info`}>
         <Shield className="w-4 h-4 mt-0.5 shrink-0" />
         <div>
           <span className="font-semibold">App container rules: </span>
@@ -1335,15 +1316,14 @@ export function HighMobilityDataView({ isDarkMode }: Props) {
 
       {/* Tab content */}
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {tab === 'vehicles' && <VehicleListTab isDarkMode={isDarkMode} />}
-        {tab === 'eligibility' && <EligibilityTab isDarkMode={isDarkMode} onAddToList={openAddFromEligibility} />}
-        {tab === 'streaming' && <DualAppStreamingTab isDarkMode={isDarkMode} />}
+        {tab === 'vehicles' && <VehicleListTab />}
+        {tab === 'eligibility' && <EligibilityTab onAddToList={openAddFromEligibility} />}
+        {tab === 'streaming' && <DualAppStreamingTab />}
       </div>
 
       {/* Add modal from eligibility redirect */}
       {showAdd && (
         <AddVehicleModal
-          isDarkMode={isDarkMode}
           onClose={() => setShowAdd(false)}
           prefillVin={addVin}
           prefillBrand={addBrand}

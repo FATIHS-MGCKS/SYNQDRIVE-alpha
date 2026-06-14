@@ -45,6 +45,8 @@ export interface DtcKnowledgeDto {
   sources?: DtcKnowledgeSourceRef[];
   lastVerifiedAt?: string | null;
   needsReview?: boolean;
+  aiGenerated?: boolean;
+  sourceType?: string | null;
   message?: string | null;
 }
 
@@ -84,4 +86,7 @@ export interface DtcEnrichmentJobData {
 }
 
 /** Statuses that mean "already handled" — must not be re-enqueued. */
-export const NON_REQUEUEABLE_STATUSES: DtcKnowledgeStatus[] = ['QUEUED', 'PROCESSING', 'READY'];
+export const NON_REQUEUEABLE_STATUSES: DtcKnowledgeStatus[] = ['QUEUED', 'READY'];
+
+/** PROCESSING rows older than this are treated as stale and may be re-queued. */
+export const DTC_PROCESSING_STALE_MS = 30 * 60 * 1000;

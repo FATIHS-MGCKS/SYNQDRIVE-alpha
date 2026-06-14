@@ -12,6 +12,7 @@ import {
 } from '../DashboardInsightsContext';
 import { useLanguage } from '../i18n/LanguageContext';
 import type { VehicleData } from '../data/vehicles';
+import { EmptyState } from '../../components/patterns';
 
 type NavigableView = 'bookings' | 'stations';
 
@@ -320,7 +321,12 @@ export function BusinessInsightsBox({ isDarkMode, onOpenVehicle, onOpenView, not
         <ErrorState isDarkMode={dm} onRetry={fetchInsights} />
       ) : activeTab === 'business' ? (
         businessInsights.length === 0 ? (
-          <EmptyState isDarkMode={dm} />
+          <EmptyState
+            icon={<Icon name="check-circle" className="w-5 h-5 text-[color:var(--status-positive)]" />}
+            title="No open items right now"
+            description="Insights will appear when action is needed"
+            compact
+          />
         ) : (
           <div className="space-y-2">
             {businessInsights.slice(0, 4).map((insight) => (
@@ -860,20 +866,6 @@ function LoadingState({ isDarkMode }: { isDarkMode: boolean }) {
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-function EmptyState({ isDarkMode }: { isDarkMode: boolean }) {
-  return (
-    <div className={`rounded-lg border p-6 text-center ${isDarkMode ? 'bg-neutral-800/30 border-neutral-700/30' : 'bg-gray-50/40 border-gray-200/40'}`}>
-      <Icon name="check-circle" className={`w-5 h-5 mx-auto mb-2 ${isDarkMode ? 'text-green-500/60' : 'text-green-500/50'}`} />
-      <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-        No open items right now
-      </p>
-      <p className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>
-        Insights will appear when action is needed
-      </p>
     </div>
   );
 }

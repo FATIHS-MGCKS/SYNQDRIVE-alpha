@@ -71,6 +71,23 @@ function brakeHealthPercent(brakes: BrakeHealthSummary | null): number | null {
   return Math.min(pad ?? 101, disc ?? 101);
 }
 
+type BrakeCanonicalLevel = 'critical' | 'warning' | 'watch' | 'good' | null;
+
+/** Canonical brake escalation from `overallCondition`, with % fallback when unknown. */
+export function brakeCanonicalLevel(brakes: BrakeHealthSummary | null): BrakeCanonicalLevel {
+  const cond = brakes?.overallCondition;
+  if (cond === 'CRITICAL') return 'critical';
+  if (cond === 'WARNING') return 'warning';
+  if (cond === 'WATCH') return 'watch';
+  if (cond === 'GOOD') return 'good';
+  const pct = brakeHealthPercent(brakes);
+  if (pct == null) return null;
+  if (pct < BRAKE_ACTION_PCT) return 'critical';
+  if (pct < BRAKE_LIMITED_PCT) return 'warning';
+  if (pct < BRAKE_MONITOR_PCT) return 'watch';
+  return 'good';
+}
+
 function batteryCondition(
   battery: BatteryHealthSummary | null,
 ): 'good' | 'watch' | 'attention' | 'calibrating' | 'unknown' | null {
@@ -94,21 +111,21 @@ export function deriveReadiness(input: InsightsInput): ReadinessLevel {
   if (tires?.actionState === 'REPLACE') return 'Action Needed';
 
   const tiresPct = tires?.overallPercent ?? null;
-  const brakesPct = brakeHealthPercent(brakes);
+  const brakeLevel = brakeCanonicalLevel(brakes);
   const svcKm = service?.serviceRemainingKm ?? null;
   const tuvMonths = service?.tuvRemainingMonths ?? null;
   const bokMonths = service?.bokraftRemainingMonths ?? null;
 
   if (
     (tiresPct != null && tiresPct < TIRE_ACTION_PCT) ||
-    (brakesPct != null && brakesPct < BRAKE_ACTION_PCT) ||
+    brakeLevel === 'critical' ||
     (svcKm != null && svcKm <= SERVICE_ACTION_KM)
   ) return 'Action Needed';
 
   if (
     (tiresPct != null && tiresPct < TIRE_LIMITED_PCT) ||
     tires?.actionState === 'PLAN_SERVICE' ||
-    (brakesPct != null && brakesPct < BRAKE_LIMITED_PCT) ||
+    brakeLevel === 'warning' ||
     (svcKm != null && svcKm < SERVICE_LIMITED_KM) ||
     (tuvMonths != null && tuvMonths < 1) ||
     (bokMonths != null && bokMonths < 1)
@@ -117,7 +134,7 @@ export function deriveReadiness(input: InsightsInput): ReadinessLevel {
   if (
     (tiresPct != null && tiresPct < TIRE_MONITOR_PCT) ||
     tires?.actionState === 'CHECK_SOON' ||
-    (brakesPct != null && brakesPct < BRAKE_MONITOR_PCT) ||
+    brakeLevel === 'watch' ||
     (svcKm != null && svcKm < SERVICE_MONITOR_KM) ||
     (service?.serviceRemainingMonths != null && service.serviceRemainingMonths < 2) ||
     (tuvMonths != null && tuvMonths < 3) ||
@@ -166,19 +183,19 @@ export function deriveDowntimeRisk(input: InsightsInput): DowntimeRiskLevel {
   const dtc = dtcEscalation(input);
 
   const tiresPct = tires?.overallPercent ?? null;
-  const brakesPct = brakeHealthPercent(brakes);
+  const brakeLevel = brakeCanonicalLevel(brakes);
   const svcKm = service?.serviceRemainingKm ?? null;
 
   if (
     dtc === 'critical' ||
     tires?.actionState === 'REPLACE' ||
     (tiresPct != null && tiresPct < TIRE_ACTION_PCT) ||
-    (brakesPct != null && brakesPct < BRAKE_ACTION_PCT)
+    brakeLevel === 'critical'
   ) return 'High';
 
   if (
     (tiresPct != null && tiresPct < TIRE_LIMITED_PCT) ||
-    (brakesPct != null && brakesPct < BRAKE_LIMITED_PCT) ||
+    brakeLevel === 'warning' ||
     (svcKm != null && svcKm < SERVICE_LIMITED_KM) ||
     batCondition === 'attention' ||
     dtc === 'warning'
@@ -196,7 +213,7 @@ export function deriveVerdict(
   input: InsightsInput,
 ): string {
   const { tires, brakes, service } = input;
-  const brakePct = brakeHealthPercent(brakes);
+  const brakeLevel = brakeCanonicalLevel(brakes);
   const dtc = dtcEscalation(input);
 
   if (dtc === 'critical') {
@@ -210,14 +227,14 @@ export function deriveVerdict(
 
   if (readiness === 'Action Needed') {
     if (tires && tires.overallPercent < TIRE_ACTION_PCT) return 'Tire wear below safe threshold — not fit for rental.';
-    if (brakePct != null && brakePct < BRAKE_ACTION_PCT) return 'Brake wear critical — remove from rotation until inspected.';
+    if (brakeLevel === 'critical') return 'Brake wear critical — remove from rotation until inspected.';
     if (service?.serviceRemainingKm != null && service.serviceRemainingKm <= SERVICE_ACTION_KM) return 'Service overdue — take off rotation until completed.';
     return 'Blocking condition detected — not recommended for active rental.';
   }
 
   if (readiness === 'Limited') {
     if (tires && tires.overallPercent < TIRE_LIMITED_PCT) return 'Usable — tire wear requires scheduling before the next booking.';
-    if (brakePct != null && brakePct < BRAKE_LIMITED_PCT) return 'Usable — brake wear requires prompt planning.';
+    if (brakeLevel === 'warning') return 'Usable — brake wear requires prompt planning.';
     if (service?.serviceRemainingKm != null && service.serviceRemainingKm < SERVICE_LIMITED_KM) return 'Usable — service due soon. Plan before the next booking window.';
     if (service?.tuvRemainingMonths != null && service.tuvRemainingMonths < 1) return 'TÜV deadline reached — book inspection immediately.';
     return 'Usable — maintenance required before the next booking window.';
@@ -227,7 +244,7 @@ export function deriveVerdict(
     const focus =
       service?.serviceRemainingKm != null && service.serviceRemainingKm < SERVICE_MONITOR_KM ? 'Service due soon'
       : tires && tires.overallPercent < TIRE_MONITOR_PCT ? 'Tire wear approaching limit'
-      : brakePct != null && brakePct < BRAKE_MONITOR_PCT ? 'Brake wear elevated'
+      : brakeLevel === 'watch' ? 'Brake wear elevated'
       : service?.tuvRemainingMonths != null && service.tuvRemainingMonths < 3 ? 'TÜV window approaching'
       : 'Maintenance interval approaching';
     return `Rental-ready. ${focus} — plan within the forecast window.`;
@@ -246,7 +263,7 @@ export function deriveNextAction(
   input: InsightsInput,
 ): string {
   const { tires, brakes, service } = input;
-  const brakePct = brakeHealthPercent(brakes);
+  const brakeLevel = brakeCanonicalLevel(brakes);
   const dtc = dtcEscalation(input);
 
   if (dtc === 'critical') return 'Clear fault codes before the next rental assignment.';
@@ -256,7 +273,7 @@ export function deriveNextAction(
 
   if (readiness === 'Limited') {
     if (service?.tuvRemainingMonths != null && service.tuvRemainingMonths < 1) return 'Book TÜV immediately — regulatory deadline reached.';
-    if (brakePct != null && brakePct < BRAKE_LIMITED_PCT) return 'Book brake inspection before the next busy window.';
+    if (brakeLevel === 'warning') return 'Book brake inspection before the next busy window.';
     if (tires?.overallPercent != null && tires.overallPercent < TIRE_LIMITED_PCT) return 'Assess tires — wear approaching operational limit.';
     return 'Schedule maintenance within the current booking window.';
   }
@@ -264,7 +281,7 @@ export function deriveNextAction(
   if (readiness === 'Monitor') {
     if (service?.tuvRemainingMonths != null && service.tuvRemainingMonths < 3) return 'Plan TÜV appointment within 2–3 months.';
     if (service?.serviceRemainingKm != null && service.serviceRemainingKm < SERVICE_MONITOR_KM) return 'Plan service before the next dense booking period.';
-    if (brakePct != null && brakePct < BRAKE_MONITOR_PCT) return 'Include brake check in the next downtime window.';
+    if (brakeLevel === 'watch') return 'Include brake check in the next downtime window.';
     return 'Plan service appointment within the upcoming booking window.';
   }
 

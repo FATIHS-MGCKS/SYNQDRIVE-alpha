@@ -1,4 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import {
+  BatteryEvidenceScope,
+  BatteryEvidenceSourceType,
+  BatteryEvidenceValueType,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   classifyCrankDrop,
@@ -51,6 +56,13 @@ export class BatteryCriticalDetector implements InsightDetector {
 
   private static readonly FRESHNESS_WINDOW_MS = 72 * 60 * 60 * 1000;
   private static readonly INITIAL_CALIBRATION = 'INITIAL_CALIBRATION';
+  private static readonly HV_PROVIDER_FRESH_MS = 45 * 24 * 60 * 60 * 1000;
+  private static readonly HV_REPORTED_FRESH_MS = 365 * 24 * 60 * 60 * 1000;
+  private static readonly HV_REPORTED_SOURCES: BatteryEvidenceSourceType[] = [
+    BatteryEvidenceSourceType.DOCUMENT_CONFIRMED,
+    BatteryEvidenceSourceType.WORKSHOP_MEASUREMENT,
+    BatteryEvidenceSourceType.MANUAL_REPORT,
+  ];
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -84,7 +96,7 @@ export class BatteryCriticalDetector implements InsightDetector {
 
     const vehicleIds = vehicles.map((v) => v.id);
 
-    const [snapshots, featuresRows, specRows, hvCurrentRows] = await Promise.all([
+    const [snapshots, featuresRows, specRows, hvCurrentRows, hvEvidenceRows] = await Promise.all([
       // Resting-voltage history within the freshness window. We keep the two
       // most recent QUALIFIED resting samples per vehicle for the
       // two-consecutive spam guard.
@@ -126,6 +138,28 @@ export class BatteryCriticalDetector implements InsightDetector {
           vehicleId: true,
           publishedSohPct: true,
           publicationState: true,
+        },
+      }),
+      // Workshop / document / manual / provider HV SOH — same evidence basis as
+      // CanonicalBatteryHealthService (no age/km fallback).
+      this.prisma.batteryEvidence.findMany({
+        where: {
+          vehicleId: { in: vehicleIds },
+          scope: BatteryEvidenceScope.HV,
+          valueType: BatteryEvidenceValueType.SOH_PERCENT,
+          sourceType: {
+            in: [
+              BatteryEvidenceSourceType.PROVIDER_REPORTED,
+              ...BatteryCriticalDetector.HV_REPORTED_SOURCES,
+            ],
+          },
+        },
+        orderBy: { observedAt: 'desc' },
+        select: {
+          vehicleId: true,
+          sourceType: true,
+          numericValue: true,
+          observedAt: true,
         },
       }),
     ]);
@@ -174,6 +208,35 @@ export class BatteryCriticalDetector implements InsightDetector {
         publishedSohPct: h.publishedSohPct ?? null,
         publicationState: (h.publicationState as string | null) ?? null,
       });
+    }
+
+    const hvProviderEvidenceByVehicle = new Map<
+      string,
+      { numericValue: number; observedAt: Date }
+    >();
+    const hvReportedEvidenceByVehicle = new Map<
+      string,
+      { numericValue: number; observedAt: Date }
+    >();
+    for (const row of hvEvidenceRows) {
+      if (row.sourceType === BatteryEvidenceSourceType.PROVIDER_REPORTED) {
+        if (!hvProviderEvidenceByVehicle.has(row.vehicleId)) {
+          hvProviderEvidenceByVehicle.set(row.vehicleId, {
+            numericValue: row.numericValue,
+            observedAt: row.observedAt,
+          });
+        }
+        continue;
+      }
+      if (
+        BatteryCriticalDetector.HV_REPORTED_SOURCES.includes(row.sourceType) &&
+        !hvReportedEvidenceByVehicle.has(row.vehicleId)
+      ) {
+        hvReportedEvidenceByVehicle.set(row.vehicleId, {
+          numericValue: row.numericValue,
+          observedAt: row.observedAt,
+        });
+      }
     }
 
     const candidates: InsightCandidate[] = [];
@@ -260,13 +323,36 @@ export class BatteryCriticalDetector implements InsightDetector {
       const isEv = v.fuelType === 'ELECTRIC' || v.fuelType === 'PLUGIN_HYBRID';
       if (!severity && isEv) {
         const hvCurrent = hvCurrentByVehicle.get(v.id);
-        const providerSoh = v.latestState?.tractionBatterySohPercent ?? null;
+        const providerEvidence = hvProviderEvidenceByVehicle.get(v.id);
+        const reportedEvidence = hvReportedEvidenceByVehicle.get(v.id);
+        const providerSohFromState = v.latestState?.tractionBatterySohPercent ?? null;
+        const providerSoh = providerEvidence?.numericValue ?? providerSohFromState;
+        const providerObservedAt =
+          providerEvidence?.observedAt ?? v.latestState?.lastSeenAt ?? null;
+        const providerFresh =
+          providerSoh != null &&
+          providerObservedAt != null &&
+          ctx.now.getTime() - providerObservedAt.getTime() <=
+            BatteryCriticalDetector.HV_PROVIDER_FRESH_MS;
+
+        const reportedSoh = reportedEvidence?.numericValue ?? null;
+        const reportedFresh =
+          reportedSoh != null &&
+          reportedEvidence != null &&
+          ctx.now.getTime() - reportedEvidence.observedAt.getTime() <=
+            BatteryCriticalDetector.HV_REPORTED_FRESH_MS;
+
         const capacitySoh =
           hvCurrent &&
           hvCurrent.publicationState !== BatteryCriticalDetector.INITIAL_CALIBRATION
             ? hvCurrent.publishedSohPct
             : null;
-        const hvSoh = providerSoh ?? capacitySoh ?? null;
+
+        const hvSoh = providerFresh
+          ? providerSoh
+          : reportedFresh
+            ? reportedSoh
+            : capacitySoh ?? null;
         const hvStatus = classifyHvSoh(hvSoh);
         if (hvSoh != null && (hvStatus === 'WARNING' || hvStatus === 'CRITICAL')) {
           severity =

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { PageHeader, DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader } from '../../components/patterns';
 import {
   Radio, Car, Signal, SignalZero, Clock, Wifi, Search, ChevronDown,
   AlertCircle, Globe, Zap, Building2, Activity, CheckCircle2, XCircle,
@@ -8,16 +9,26 @@ import {
 import { api, type AdminFleetConnectivityResponse, type AdminFleetConnectivityVehicle } from '../../lib/api';
 import { formatOdometerKmFloor } from '../../lib/formatVehicleDisplay';
 
-interface FleetConnectionViewProps {
-  isDarkMode: boolean;
-}
+/* ── Design-system token helpers ── */
+const CARD = 'sq-card overflow-hidden';
+const INPUT =
+  'w-full px-4 py-2.5 rounded-xl border border-border bg-muted/50 text-sm text-foreground transition-colors outline-none focus:border-[color:var(--brand)] placeholder:text-muted-foreground';
+const LABEL = 'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
+const HEAD = 'text-xs font-semibold uppercase tracking-wider text-muted-foreground';
+const TAB_BAR = 'sq-tab-bar flex gap-1 p-1 rounded-2xl overflow-x-auto w-fit';
+const TAB_ACTIVE = 'sq-tab-active flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap';
+const TAB_IDLE = 'sq-tab flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap text-muted-foreground hover:text-foreground';
 
-function StatusDot({ status, isDarkMode }: { status: AdminFleetConnectivityVehicle['connectionStatus']; isDarkMode: boolean }) {
+
+interface FleetConnectionViewProps {
+  }
+
+function StatusDot({ status }: { status: AdminFleetConnectivityVehicle['connectionStatus'];  }) {
   const cfg = {
-    online:        { color: 'bg-emerald-500', pulse: true,  label: 'Online',        badge: isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700' },
-    standby:       { color: 'bg-amber-500',   pulse: false, label: 'Standby',       badge: isDarkMode ? 'bg-amber-500/15 text-amber-400'     : 'bg-amber-50 text-amber-700' },
-    offline:       { color: 'bg-red-500',     pulse: false, label: 'Offline',       badge: isDarkMode ? 'bg-red-500/15 text-red-400'         : 'bg-red-50 text-red-700' },
-    not_connected: { color: 'bg-gray-400',    pulse: false, label: 'Not Connected', badge: isDarkMode ? 'bg-gray-500/15 text-gray-400'       : 'bg-gray-100 text-gray-500' },
+    online: { color: 'sq-dot-success', pulse: true, label: 'Online', badge: 'sq-chip-success' },
+    standby: { color: 'sq-dot-watch', pulse: false, label: 'Standby', badge: 'sq-chip-watch' },
+    offline: { color: 'sq-dot-critical', pulse: false, label: 'Offline', badge: 'sq-chip-critical' },
+    not_connected: { color: 'sq-dot-nodata', pulse: false, label: 'Not Connected', badge: 'sq-chip-neutral' },
   }[status];
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold ${cfg.badge}`}>
@@ -46,7 +57,7 @@ const SIGNAL_QUERIES: Record<string, string> = {
   DTC: 'signalsLatest(tokenId) { obdDTCList { value, timestamp } }',
 };
 
-function QueryConsole({ vehicle, isDarkMode, onClose }: { vehicle: AdminFleetConnectivityVehicle; isDarkMode: boolean; onClose: () => void }) {
+function QueryConsole({ vehicle, onClose }: { vehicle: AdminFleetConnectivityVehicle; onClose: () => void }) {
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -81,19 +92,19 @@ function QueryConsole({ vehicle, isDarkMode, onClose }: { vehicle: AdminFleetCon
     }
   }, [vehicle]);
 
-  const bg = isDarkMode ? 'bg-[#0d0d1a]' : 'bg-gray-50';
-  const cardBg = isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200';
-  const textP = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textM = isDarkMode ? 'text-gray-400' : 'text-gray-500';
+  const bg = 'bg-muted/30';
+  const cardBg = 'sq-CARD';
+  const textP = 'text-foreground';
+  const textM = 'text-muted-foreground';
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${isDarkMode ? 'bg-black/70' : 'bg-black/40'}`} onClick={onClose}>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50`} onClick={onClose}>
       <div className={`w-full max-w-2xl max-h-[80vh] flex flex-col rounded-2xl border shadow-2xl ${cardBg}`} onClick={e => e.stopPropagation()}>
-        <div className={`flex items-center justify-between px-5 py-3 border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-200'}`}>
+        <div className={`flex items-center justify-between px-5 py-3 border-b border-border`}>
           <div className="flex items-center gap-2">
-            <Terminal className={`w-4 h-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
+            <Terminal className={`w-4 h-4 text-[color:var(--brand)]`} />
             <span className={`text-sm font-bold ${textP}`}>Query Console</span>
-            <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${isDarkMode ? 'bg-neutral-800 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground`}>
               {vehicle.make} {vehicle.model} · Token #{vehicle.dimoTokenId ?? '—'}
             </span>
           </div>
@@ -101,7 +112,7 @@ function QueryConsole({ vehicle, isDarkMode, onClose }: { vehicle: AdminFleetCon
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           <div className="flex gap-2">
-            <button onClick={() => run('availableSignals')} className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border transition-colors ${isDarkMode ? 'border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10' : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}>
+            <button onClick={() => run('availableSignals')} className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold border transition-colors border-border text-[color:var(--brand)] hover:bg-muted/50`}>
               <span className="flex items-center gap-1"><Play className="w-3 h-3" /> List Available Signals</span>
             </button>
           </div>
@@ -112,14 +123,14 @@ function QueryConsole({ vehicle, isDarkMode, onClose }: { vehicle: AdminFleetCon
               onChange={e => setQuery(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && run(query)}
               placeholder="Enter DIMO GraphQL query or 'availableSignals'..."
-              className={`flex-1 px-3 py-2 rounded-xl text-xs font-mono border outline-none ${isDarkMode ? 'bg-neutral-800/60 border-neutral-700/50 text-white placeholder-gray-500' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'}`}
+              className={`flex-1 px-3 py-2 rounded-xl text-xs font-mono border outline-none bg-muted/50 border-border text-foreground placeholder:text-muted-foreground`}
             />
-            <button onClick={() => run(query)} disabled={loading || !query.trim()} className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors ${isDarkMode ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'} disabled:opacity-50`}>
+            <button onClick={() => run(query)} disabled={loading || !query.trim()} className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors text-[color:var(--status-info)] disabled:opacity-50`}>
               {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />} Run
             </button>
           </div>
           {result && (
-            <pre className={`p-3 rounded-xl text-[11px] font-mono overflow-x-auto max-h-60 ${isDarkMode ? 'bg-neutral-950 text-emerald-400 border border-neutral-800' : 'bg-gray-900 text-emerald-400 border border-gray-800'}`}>
+            <pre className={`p-3 rounded-xl text-[11px] font-mono overflow-x-auto max-h-60 text-[color:var(--status-positive)]`}>
               {result}
             </pre>
           )}
@@ -128,8 +139,8 @@ function QueryConsole({ vehicle, isDarkMode, onClose }: { vehicle: AdminFleetCon
               <p className={`text-[10px] uppercase font-semibold mb-2 ${textM}`}>History</p>
               <div className="space-y-2">
                 {history.map((h, i) => (
-                  <div key={i} className={`p-2 rounded-lg border cursor-pointer ${isDarkMode ? 'border-neutral-800 hover:bg-neutral-800/50' : 'border-gray-200 hover:bg-gray-50'}`} onClick={() => { setQuery(h.q); run(h.q); }}>
-                    <p className={`text-[10px] font-mono truncate ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>{h.q}</p>
+                  <div key={i} className={`p-2 rounded-lg border cursor-pointer border-border`} onClick={() => { setQuery(h.q); run(h.q); }}>
+                    <p className={`text-[10px] font-mono truncate text-[color:var(--brand)]`}>{h.q}</p>
                     <p className={`text-[10px] mt-0.5 ${textM}`}>{new Date(h.t).toLocaleTimeString('de-DE')}</p>
                   </div>
                 ))}
@@ -142,7 +153,7 @@ function QueryConsole({ vehicle, isDarkMode, onClose }: { vehicle: AdminFleetCon
   );
 }
 
-export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
+export function FleetConnectionView() {
   const [data, setData] = useState<AdminFleetConnectivityResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -162,11 +173,11 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
   }, []);
 
   const cardClass = `rounded-2xl p-5 shadow-sm border ${
-    isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+    'sq-card border-border'
   }`;
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-500';
-  const textMuted = isDarkMode ? 'text-gray-500' : 'text-gray-400';
+  const textPrimary = 'text-foreground';
+  const textSecondary = 'text-muted-foreground';
+  const textMuted = 'text-muted-foreground';
 
   const vehicles = useMemo(() => {
     if (!data) return [];
@@ -191,7 +202,7 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-32">
-        <div className={`w-10 h-10 border-2 border-t-transparent rounded-full animate-spin ${isDarkMode ? 'border-blue-400' : 'border-blue-500'}`} />
+        <div className={`w-10 h-10 border-2 border-t-transparent rounded-full animate-spin sq-tone-info`} />
         <p className={`text-xs mt-4 ${textSecondary}`}>Loading fleet connectivity diagnostics...</p>
       </div>
     );
@@ -200,7 +211,7 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
   if (error || !data) {
     return (
       <div className="flex flex-col items-center justify-center py-32">
-        <AlertCircle className={`w-12 h-12 mb-4 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`} />
+        <AlertCircle className={`w-12 h-12 mb-4 text-[color:var(--status-critical)]`} />
         <p className={`text-sm font-semibold ${textPrimary}`}>Could not load connectivity diagnostics</p>
         <p className={`text-xs mt-1 ${textSecondary}`}>Check your connection or try again later.</p>
       </div>
@@ -209,29 +220,23 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
 
   return (
     <div className="space-y-6">
-      {/* ─── Header ─── */}
-      <div>
-        <div className="flex items-center gap-3">
-          <div className={`p-2.5 rounded-xl ${isDarkMode ? 'bg-blue-500/15' : 'bg-blue-50'}`}>
-            <Radio className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-          </div>
-          <div>
-            <h2 className={`text-lg font-bold tracking-tight ${textPrimary}`}>Fleet Connection & Diagnostics</h2>
-            <p className={`text-xs mt-0.5 ${textSecondary}`}>Vehicle connectivity, data sources, signal coverage, and poll health</p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Fleet Connection & Diagnostics"
+        eyebrow="Master Admin"
+        description="Vehicle connectivity, data sources, signal coverage, and poll health"
+        icon={<Radio className="w-4 h-4" />}
+      />
 
       {/* ─── Summary Strip ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
         {[
-          { label: 'Total', value: s?.total ?? 0, icon: Car, cls: isDarkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600' },
-          { label: 'Online', value: s?.online ?? 0, icon: Signal, cls: isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-600' },
-          { label: 'Standby', value: s?.standby ?? 0, icon: Clock, cls: isDarkMode ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-600' },
-          { label: 'Offline', value: s?.offline ?? 0, icon: SignalZero, cls: isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600' },
-          { label: 'Not Connected', value: s?.notConnected ?? 0, icon: Wifi, cls: isDarkMode ? 'bg-gray-500/15 text-gray-400' : 'bg-gray-100 text-gray-500' },
-          { label: 'Telemetry', value: s?.withTelemetry ?? 0, icon: Activity, cls: isDarkMode ? 'bg-purple-500/15 text-purple-400' : 'bg-purple-50 text-purple-600' },
-          { label: 'Avg Coverage', value: `${s?.avgSignalCoverage ?? 0}%`, icon: Gauge, cls: isDarkMode ? 'bg-cyan-500/15 text-cyan-400' : 'bg-cyan-50 text-cyan-600' },
+          { label: 'Total', value: s?.total ?? 0, icon: Car, cls: 'sq-tone-info' },
+          { label: 'Online', value: s?.online ?? 0, icon: Signal, cls: 'sq-chip-success' },
+          { label: 'Standby', value: s?.standby ?? 0, icon: Clock, cls: 'sq-tone-watch' },
+          { label: 'Offline', value: s?.offline ?? 0, icon: SignalZero, cls: 'sq-tone-critical' },
+          { label: 'Not Connected', value: s?.notConnected ?? 0, icon: Wifi, cls: 'sq-chip-neutral' },
+          { label: 'Telemetry', value: s?.withTelemetry ?? 0, icon: Activity, cls: 'sq-tone-ai' },
+          { label: 'Avg Coverage', value: `${s?.avgSignalCoverage ?? 0}%`, icon: Gauge, cls: 'sq-tone-info' },
         ].map(stat => (
           <div key={stat.label} className={cardClass}>
             <div className="flex items-center gap-2.5">
@@ -250,7 +255,7 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
       {/* ─── Poll Health / Diagnostics Strip ─── */}
       <div className={cardClass}>
         <div className="flex items-center gap-2 mb-4">
-          <Activity className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+          <Activity className={`w-4 h-4 text-[color:var(--status-info)]`} />
           <h3 className={`text-sm font-semibold ${textPrimary}`}>Poll & Sync Health (24h)</h3>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
@@ -258,29 +263,29 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
             <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 ${textMuted}`}>Success Rate</p>
             <p className={`text-lg font-bold ${
               ph?.successRate == null ? textMuted
-              : ph.successRate >= 95 ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600')
-              : ph.successRate >= 80 ? (isDarkMode ? 'text-amber-400' : 'text-amber-600')
-              : (isDarkMode ? 'text-red-400' : 'text-red-600')
+              : ph.successRate >= 95 ? ('text-[color:var(--status-positive)]')
+              : ph.successRate >= 80 ? ('text-[color:var(--status-watch)]')
+              : ('text-[color:var(--status-critical)]')
             }`}>{ph?.successRate != null ? `${ph.successRate}%` : '—'}</p>
           </div>
           <div>
             <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 ${textMuted}`}>Successes</p>
             <div className="flex items-center gap-1.5">
-              <CheckCircle2 className={`w-3.5 h-3.5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-500'}`} />
+              <CheckCircle2 className={`w-3.5 h-3.5 text-[color:var(--status-positive)]`} />
               <p className={`text-lg font-bold ${textPrimary}`}>{ph?.success24h ?? 0}</p>
             </div>
           </div>
           <div>
             <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 ${textMuted}`}>Failures</p>
             <div className="flex items-center gap-1.5">
-              <XCircle className={`w-3.5 h-3.5 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`} />
+              <XCircle className={`w-3.5 h-3.5 text-[color:var(--status-critical)]`} />
               <p className={`text-lg font-bold ${textPrimary}`}>{ph?.failure24h ?? 0}</p>
             </div>
           </div>
           <div>
             <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 ${textMuted}`}>Timeouts</p>
             <div className="flex items-center gap-1.5">
-              <Clock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
+              <Clock className={`w-3.5 h-3.5 text-[color:var(--status-watch)]`} />
               <p className={`text-lg font-bold ${textPrimary}`}>{ph?.timeout24h ?? 0}</p>
             </div>
           </div>
@@ -296,7 +301,7 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
           </div>
           <div>
             <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 ${textMuted}`}>Last Error</p>
-            <p className={`text-[10px] font-mono truncate ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} title={ph?.lastFailureError ?? undefined}>
+            <p className={`text-[10px] font-mono truncate text-[color:var(--status-critical)]`} title={ph?.lastFailureError ?? undefined}>
               {ph?.lastFailureError ?? '—'}
             </p>
           </div>
@@ -312,11 +317,7 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
             placeholder="Search VIN, plate, make, model, serial, org..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className={`w-full pl-9 pr-3 py-2 rounded-xl text-xs border outline-none transition-all ${
-              isDarkMode
-                ? 'bg-neutral-800/60 border-neutral-700/50 text-white placeholder-gray-500 focus:border-blue-500/50'
-                : 'bg-white/80 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-400'
-            }`}
+            className={`w-full pl-9 pr-3 py-2 rounded-xl text-xs border border-border bg-muted/50 text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-[color:var(--brand)]`}
           />
         </div>
         <div className="flex gap-1.5">
@@ -327,7 +328,7 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 statusFilter === key
                   ? 'bg-blue-600 text-white shadow-sm'
-                  : isDarkMode ? 'bg-neutral-800/60 text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-600 hover:text-gray-900'
+                  : 'bg-muted text-muted-foreground hover:text-foreground'
               }`}
             >
               {label}
@@ -338,11 +339,11 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
 
       {/* ─── Vehicle List ─── */}
       {vehicles.length === 0 ? (
-        <div className={`${cardClass} flex flex-col items-center justify-center py-16 px-6 text-center border-dashed ${
-          isDarkMode ? '!border-neutral-600/60' : '!border-gray-300'
+        <div className={`${CARD} flex flex-col items-center justify-center py-16 px-6 text-center border-dashed ${
+          '!border-border'
         }`}>
-          <div className={`p-3 rounded-full mb-3 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-100'}`}>
-            <Car className={`w-8 h-8 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+          <div className={`p-3 rounded-full mb-3 bg-muted`}>
+            <Car className={`w-8 h-8 text-muted-foreground`} />
           </div>
           <p className={`text-sm font-semibold ${textPrimary}`}>
             {search || statusFilter !== 'all' ? 'No vehicles match your filters' : 'No vehicles registered'}
@@ -360,21 +361,21 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
             const ConnIcon = v.connectionType === 'Aftermarket Device' ? Wifi : v.connectionType === 'Synthetic Device' ? Globe : Zap;
             const d = v.diagnostics;
             return (
-              <div key={v.vehicleId} className={`${cardClass} transition-all duration-200 hover:shadow-lg cursor-pointer`} onClick={() => setExpandedId(isExpanded ? null : v.vehicleId)}>
+              <div key={v.vehicleId} className={`${CARD} transition-all duration-200 hover:shadow-lg cursor-pointer`} onClick={() => setExpandedId(isExpanded ? null : v.vehicleId)}>
                 {/* Compact row */}
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg shrink-0 ${
-                    v.connectionStatus === 'online' ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-600')
-                    : v.connectionStatus === 'standby' ? (isDarkMode ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-600')
-                    : v.connectionStatus === 'offline' ? (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600')
-                    : (isDarkMode ? 'bg-gray-500/15 text-gray-400' : 'bg-gray-100 text-gray-400')
+                    v.connectionStatus === 'online' ? ('sq-chip-success')
+                    : v.connectionStatus === 'standby' ? ('sq-tone-watch')
+                    : v.connectionStatus === 'offline' ? ('sq-tone-critical')
+                    : ('sq-chip-neutral')
                   }`}>
                     <ConnIcon className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className={`text-xs font-semibold truncate ${textPrimary}`}>{v.make} {v.model} {v.year ?? ''}</p>
-                      {v.licensePlate && <span className={`text-[10px] font-mono font-medium px-1.5 py-0.5 rounded ${isDarkMode ? 'bg-neutral-800 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>{v.licensePlate}</span>}
+                      {v.licensePlate && <span className={`text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-muted/50`}>{v.licensePlate}</span>}
                     </div>
                     <div className="flex items-center gap-3 mt-0.5">
                       <span className={`text-[10px] font-mono ${textMuted}`}>{v.vin}</span>
@@ -389,9 +390,9 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
                   <div className="flex items-center gap-3 shrink-0">
                     {/* Signal coverage badge */}
                     <div className={`hidden md:flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold ${
-                      v.signalCoverage >= 70 ? (isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600')
-                      : v.signalCoverage >= 40 ? (isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600')
-                      : (isDarkMode ? 'bg-gray-500/10 text-gray-400' : 'bg-gray-100 text-gray-500')
+                      v.signalCoverage >= 70 ? ('sq-tone-success')
+                      : v.signalCoverage >= 40 ? ('sq-tone-watch')
+                      : ('sq-chip-neutral')
                     }`}>
                       <Gauge className="w-3 h-3" />
                       {v.signalCoverage}%
@@ -399,19 +400,19 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
                     <div className="text-right hidden sm:block">
                       <p className={`text-[10px] ${textMuted}`}>Last Signal</p>
                       <p className={`text-xs font-medium ${
-                        v.freshnessLabel === 'Live' ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600')
+                        v.freshnessLabel === 'Live' ? ('text-[color:var(--status-positive)]')
                         : v.freshnessLabel === 'Unknown' ? textMuted
                         : textPrimary
                       }`}>{v.freshnessLabel}</p>
                     </div>
-                    <StatusDot status={v.connectionStatus} isDarkMode={isDarkMode} />
+                    <StatusDot status={v.connectionStatus} />
                     <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''} ${textMuted}`} />
                   </div>
                 </div>
 
                 {/* Expanded detail */}
                 {isExpanded && (
-                  <div className={`mt-4 pt-4 border-t ${isDarkMode ? 'border-neutral-700/50' : 'border-gray-200/50'}`} onClick={e => e.stopPropagation()}>
+                  <div className={`mt-4 pt-4 border-t border-border`} onClick={e => e.stopPropagation()}>
                     {/* Connection & Device */}
                     <div className="mb-5">
                       <h4 className={`text-[10px] uppercase tracking-wider font-bold mb-3 ${textMuted}`}>Connection & Device</h4>
@@ -437,7 +438,7 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
                     {/* OBD + jamming (latest telemetry snapshot) */}
                     <div className="mb-5">
                       <h4 className={`text-[10px] uppercase tracking-wider font-bold mb-3 ${textMuted}`}>OBD & cellular</h4>
-                      <div className={`rounded-xl border px-3 py-3 space-y-3 ${isDarkMode ? 'border-neutral-700/50 bg-neutral-800/40' : 'border-gray-200/60 bg-gray-50'}`}>
+                      <div className={`rounded-xl border px-3 py-3 space-y-3 border-border`}>
                         <div className="flex items-center gap-2">
                           {v.obdIsPluggedIn === true && <><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /><span className={`text-xs font-medium ${textPrimary}`}>OBD Device Plugged IN</span></>}
                           {v.obdIsPluggedIn === false && <><XCircle className="w-4 h-4 text-red-500 shrink-0" /><span className={`text-xs font-medium ${textPrimary}`}>OBD Device Plugged IN</span></>}
@@ -459,7 +460,7 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
                             )}
                           </button>
                           {jammingOpenId === v.vehicleId && (v.jammingDetectedCount ?? 0) > 0 && (
-                            <ul className={`mt-2 space-y-2 pl-3 border-l-2 ${isDarkMode ? 'border-amber-500/40' : 'border-amber-200'}`}>
+                            <ul className={`mt-2 space-y-2 pl-3 border-l-2 text-[color:var(--status-watch)]`}>
                               {(v.jammingIncidents ?? []).map((inc, i) => (
                                 <li key={i} className={`text-[10px] space-y-0.5 ${textSecondary}`}>
                                   <p><span className={textMuted}>When: </span>{inc.detectedAt ? new Date(inc.detectedAt).toLocaleString('de-DE') : '—'}</p>
@@ -478,21 +479,21 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
                       <h4 className={`text-[10px] uppercase tracking-wider font-bold mb-3 ${textMuted}`}>Status & Timing</h4>
                       {/* Status interpretation banner */}
                       <div className={`flex items-start gap-2 mb-4 px-3 py-2.5 rounded-lg text-xs ${
-                        v.connectionStatus === 'online' ? (isDarkMode ? 'bg-emerald-500/10 text-emerald-300' : 'bg-emerald-50 text-emerald-700')
-                        : v.connectionStatus === 'standby' ? (isDarkMode ? 'bg-amber-500/10 text-amber-300' : 'bg-amber-50 text-amber-700')
-                        : v.connectionStatus === 'offline' ? (isDarkMode ? 'bg-red-500/10 text-red-300' : 'bg-red-50 text-red-700')
-                        : (isDarkMode ? 'bg-gray-500/10 text-gray-400' : 'bg-gray-50 text-gray-600')
+                        v.connectionStatus === 'online' ? ('sq-tone-success')
+                        : v.connectionStatus === 'standby' ? ('sq-tone-watch')
+                        : v.connectionStatus === 'offline' ? ('sq-tone-critical')
+                        : ('sq-chip-neutral')
                       }`}>
-                        <StatusDot status={v.connectionStatus} isDarkMode={isDarkMode} />
+                        <StatusDot status={v.connectionStatus} />
                         <span className="mt-0.5">{v.statusNote}</span>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3">
                         {([
-                          ['Connection Status', <StatusDot key="s" status={v.connectionStatus} isDarkMode={isDarkMode} />],
+                          ['Connection Status', <StatusDot key="s" status={v.connectionStatus} />],
                           ['Last Signal', v.lastSeenAt ? new Date(v.lastSeenAt).toLocaleString('de-DE') : '—'],
                           ['Last Sync', v.lastSyncedAt ? new Date(v.lastSyncedAt).toLocaleString('de-DE') : '—'],
                           ['Data Freshness', v.freshnessLabel],
-                          ['Telemetry Available', v.hasTelemetry ? <span className={isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}>Yes</span> : <span className={textMuted}>No</span>],
+                          ['Telemetry Available', v.hasTelemetry ? <span className={'text-[color:var(--status-positive)]'}>Yes</span> : <span className={textMuted}>No</span>],
                           ['Odometer', formatOdometerKmFloor(v.odometerKm)],
                           ['Location', (v.latitude != null && v.longitude != null) ? `${v.latitude.toFixed(4)}, ${v.longitude.toFixed(4)}` : '—'],
                         ] as [string, React.ReactNode][]).map(([label, value]) => (
@@ -529,9 +530,9 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
                       <h4 className={`text-[10px] uppercase tracking-wider font-bold mb-3 ${textMuted}`}>
                         Signal Coverage
                         <span className={`ml-2 text-[10px] font-medium ${
-                          v.signalCoverage >= 70 ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600')
-                          : v.signalCoverage >= 40 ? (isDarkMode ? 'text-amber-400' : 'text-amber-600')
-                          : (isDarkMode ? 'text-gray-400' : 'text-gray-500')
+                          v.signalCoverage >= 70 ? ('text-[color:var(--status-positive)]')
+                          : v.signalCoverage >= 40 ? ('text-[color:var(--status-watch)]')
+                          : ('text-muted-foreground')
                         }`}>{v.signalCoverage}%</span>
                       </h4>
                       {v.availableSignals.length > 0 ? (
@@ -541,11 +542,11 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
                             const querySnippet = SIGNAL_QUERIES[sig];
                             return (
                               <span key={sig} className={`group relative inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-semibold ${
-                                isDarkMode ? 'bg-neutral-800/80 text-gray-300 border border-neutral-700' : 'bg-gray-50 text-gray-600 border border-gray-200/60'
+                                'border-border'
                               }`} title={querySnippet ? `Query: ${querySnippet}` : undefined}>
                                 <Icon className="w-3 h-3" />
                                 {sig}
-                                {querySnippet && <Code2 className={`w-2.5 h-2.5 opacity-40 group-hover:opacity-100 transition-opacity ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} />}
+                                {querySnippet && <Code2 className={`w-2.5 h-2.5 opacity-40 group-hover:opacity-100 transition-opacity text-[color:var(--brand)]`} />}
                               </span>
                             );
                           })}
@@ -554,7 +555,7 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
                         <p className={`text-xs ${textMuted}`}>No signal data available</p>
                       )}
                       {v.availableSignals.length > 0 && (
-                        <div className={`w-full h-1.5 rounded-full overflow-hidden mt-3 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-100'}`}>
+                        <div className={`w-full h-1.5 rounded-full overflow-hidden mt-3 bg-muted`}>
                           <div
                             className={`h-full rounded-full transition-all ${
                               v.signalCoverage >= 70 ? 'bg-emerald-500' : v.signalCoverage >= 40 ? 'bg-amber-500' : 'bg-gray-400'
@@ -572,15 +573,15 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
                         <div>
                           <p className={`text-[10px] uppercase tracking-wider font-semibold ${textMuted}`}>Successes</p>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            <CheckCircle2 className={`w-3 h-3 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-500'}`} />
+                            <CheckCircle2 className={`w-3 h-3 text-[color:var(--status-positive)]`} />
                             <p className={`text-xs font-bold ${textPrimary}`}>{d.pollSuccess24h}</p>
                           </div>
                         </div>
                         <div>
                           <p className={`text-[10px] uppercase tracking-wider font-semibold ${textMuted}`}>Failures</p>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            <XCircle className={`w-3 h-3 ${d.pollFailure24h > 0 ? (isDarkMode ? 'text-red-400' : 'text-red-500') : textMuted}`} />
-                            <p className={`text-xs font-bold ${d.pollFailure24h > 0 ? (isDarkMode ? 'text-red-400' : 'text-red-600') : textPrimary}`}>{d.pollFailure24h}</p>
+                            <XCircle className={`w-3 h-3 ${d.pollFailure24h > 0 ? ('text-[color:var(--status-critical)]') : textMuted}`} />
+                            <p className={`text-xs font-bold ${d.pollFailure24h > 0 ? ('text-[color:var(--status-critical)]') : textPrimary}`}>{d.pollFailure24h}</p>
                           </div>
                         </div>
                         <div>
@@ -589,7 +590,7 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
                         </div>
                         <div>
                           <p className={`text-[10px] uppercase tracking-wider font-semibold ${textMuted}`}>Last Failure</p>
-                          <p className={`text-xs font-medium mt-0.5 ${d.lastPollFailureAt ? (isDarkMode ? 'text-red-400' : 'text-red-600') : textPrimary}`}>{d.lastPollFailureAt ? new Date(d.lastPollFailureAt).toLocaleString('de-DE') : '—'}</p>
+                          <p className={`text-xs font-medium mt-0.5 ${d.lastPollFailureAt ? ('text-[color:var(--status-critical)]') : textPrimary}`}>{d.lastPollFailureAt ? new Date(d.lastPollFailureAt).toLocaleString('de-DE') : '—'}</p>
                         </div>
                         <div>
                           <p className={`text-[10px] uppercase tracking-wider font-semibold ${textMuted}`}>Last Duration</p>
@@ -597,20 +598,16 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
                         </div>
                         <div>
                           <p className={`text-[10px] uppercase tracking-wider font-semibold ${textMuted}`}>Last Error</p>
-                          <p className={`text-[10px] font-mono mt-0.5 truncate ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} title={d.lastPollError ?? undefined}>{d.lastPollError ?? '—'}</p>
+                          <p className={`text-[10px] font-mono mt-0.5 truncate text-[color:var(--status-critical)]`} title={d.lastPollError ?? undefined}>{d.lastPollError ?? '—'}</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Query Console Button */}
-                    <div className={`pt-4 border-t ${isDarkMode ? 'border-neutral-700/50' : 'border-gray-200/50'}`}>
+                    <div className={`pt-4 border-t border-border`}>
                       <button
                         onClick={() => setQueryConsoleVehicle(v)}
-                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-                          isDarkMode
-                            ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-600/30'
-                            : 'bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100'
-                        }`}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all sq-tone-brand border border-border hover:opacity-90"
                       >
                         <Terminal className="w-3.5 h-3.5" />
                         Open Query Console
@@ -628,7 +625,6 @@ export function FleetConnectionView({ isDarkMode }: FleetConnectionViewProps) {
       {queryConsoleVehicle && (
         <QueryConsole
           vehicle={queryConsoleVehicle}
-          isDarkMode={isDarkMode}
           onClose={() => setQueryConsoleVehicle(null)}
         />
       )}

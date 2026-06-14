@@ -1,5 +1,7 @@
 # SynqDrive — Current-State Architecture & Security Review
 
+> **Addendum (2026-06-14):** Audit-fix pass V4.8.5 closed critical gaps: document-extraction `confirm()` gated on `READY_FOR_REVIEW` + plausibility BLOCKERs; legacy no-file extraction disabled; `RentalHealthController` org-scoped; Tasks `dedupKey` composite-unique per org; DTC stale-`PROCESSING` recovery; canonical tire/brake/DTC health in Fleet surfaces; org-scoped vendor mutations + invoice `vendorId` backfill; `Vehicle.healthStatus` column deprecated in favour of `RentalHealthService` / `VehicleHealthStatus`. Euromaster/service-partners modules removed. See `ChangesView` V4.7.42 / V4.8.4+ for file-level detail. Sections below remain the April 2026 baseline — re-validate before relying on risk ratings.
+
 **Date:** 2026-04-10
 **Scope:** Backend, Database, Security, Privacy, Tenancy, Integrations, Pipelines, ISO-Readiness
 **Method:** Full codebase inspection (schema.prisma, all backend modules, workers, config, frontend structure)

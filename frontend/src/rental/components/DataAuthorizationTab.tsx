@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 
 import { api } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
+import { EmptyState } from '../../components/patterns';
 
 interface DataAuthorizationEntry {
   id: string;
@@ -410,7 +411,33 @@ export function DataAuthorizationTab({ isDarkMode, canWrite = true }: Props) {
           <p className={`text-xs ${textSecondary}`}>Autorisierungen werden geladen...</p>
         </div>
       ) : filtered.length === 0 ? (
-        <EmptyState hasFilters={hasActiveFilters} total={authorizations.length} />
+        hasActiveFilters ? (
+          <EmptyState
+            icon={<Icon name="search" className="w-8 h-8" />}
+            title="Keine Ergebnisse"
+            description="Keine Autorisierungen entsprechen Ihren aktuellen Filterkriterien. Passen Sie die Filter an oder setzen Sie die Suche zurück."
+          />
+        ) : (
+          <EmptyState
+            icon={<Icon name="shield" className="w-8 h-8" />}
+            title="Keine Datenautorisierungen"
+            description="Noch keine Datenautorisierungen vorhanden. Wenn Ökosystem-Module wie Versicherung, Teile & Zubehör oder Tankkarten Datenzugriff anfordern, werden die Autorisierungen hier sichtbar und verwaltbar."
+            action={
+              <div className="mt-2 p-4 rounded-xl border border-border/70 bg-muted/40 max-w-lg mx-auto text-left">
+                <div className="flex items-start gap-3">
+                  <Icon name="info" className="w-4 h-4 mt-0.5 shrink-0 text-[color:var(--brand)]" />
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">So funktioniert die Datenautorisierung</p>
+                    <p className="text-[11px] mt-1 text-muted-foreground">
+                      Wenn ein Ökosystem-Modul (z.B. Versicherung) Zugriff auf Ihre Organisations- oder Fahrzeugdaten benötigt, erscheint eine Autorisierungsanfrage.
+                      Hier sehen Sie alle erteilten, ausstehenden und widerrufenen Freigaben mit vollständigem Audit-Trail.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            }
+          />
+        )
       ) : (
         <div className="space-y-2">
           {filtered.map(auth => (
@@ -510,43 +537,6 @@ function DetailRow({ isDarkMode, label, value, icon }: { isDarkMode: boolean; la
         {icon && <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>{icon}</span>}
         <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>{value}</span>
       </div>
-    </div>
-  );
-}
-
-function EmptyState({ hasFilters, total }: { hasFilters: boolean; total: number }) {
-  return (
-    <div className="sq-card rounded-2xl p-12 shadow-[var(--shadow-1)] text-center">
-      <div className="sq-tone-brand w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-        <Icon name="shield" className="w-8 h-8" />
-      </div>
-      {hasFilters ? (
-        <>
-          <h3 className="text-base font-bold text-foreground">Keine Ergebnisse</h3>
-          <p className="text-xs mt-2 text-muted-foreground max-w-sm mx-auto">
-            Keine Autorisierungen entsprechen Ihren aktuellen Filterkriterien. Passen Sie die Filter an oder setzen Sie die Suche zurück.
-          </p>
-        </>
-      ) : (
-        <>
-          <h3 className="text-base font-bold text-foreground">Keine Datenautorisierungen</h3>
-          <p className="text-xs mt-2 text-muted-foreground max-w-md mx-auto">
-            Noch keine Datenautorisierungen vorhanden. Wenn Ökosystem-Module wie Versicherung, Teile & Zubehör oder Tankkarten Datenzugriff anfordern, werden die Autorisierungen hier sichtbar und verwaltbar.
-          </p>
-          <div className="mt-6 p-4 rounded-xl border border-border/70 bg-muted/40 max-w-lg mx-auto text-left">
-            <div className="flex items-start gap-3">
-              <Icon name="info" className="w-4 h-4 mt-0.5 shrink-0 text-[var(--brand)]" />
-              <div>
-                <p className="text-xs font-semibold text-foreground">So funktioniert die Datenautorisierung</p>
-                <p className="text-[11px] mt-1 text-muted-foreground">
-                  Wenn ein Ökosystem-Modul (z.B. Versicherung) Zugriff auf Ihre Organisations- oder Fahrzeugdaten benötigt, erscheint eine Autorisierungsanfrage. 
-                  Hier sehen Sie alle erteilten, ausstehenden und widerrufenen Freigaben mit vollständigem Audit-Trail.
-                </p>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 }

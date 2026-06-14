@@ -1,12 +1,18 @@
 
 import { Calendar, Car, TrendingUp, Wrench } from 'lucide-react';
 import { Icon } from './ui/Icon';
-import { useState, useRef, useMemo, useEffect, Component, type ReactNode, type ErrorInfo } from 'react';
+import { useState, useRef, useMemo, useEffect, useSyncExternalStore, Component, type ReactNode, type ErrorInfo } from 'react';
 import { MapboxMap } from '../../components/MapboxMap';
 import { VehicleData, getShortModel, isVehicleOffline, VEHICLE_OFFLINE_LABEL } from '../data/vehicles';
 import { getStatusColor } from '../../lib/vehicleMarker';
 import { BrandLogo, getBrandFromModel } from './BrandLogo';
 import { useRentalOrg } from '../RentalContext';
+import {
+  PageHeader,
+  HealthStatusChip,
+  StatusChip,
+  SkeletonCard,
+} from '../../components/patterns';
 // V4.6.76 Rental Health V1 � surface the rental_blocked pill inline so
 // dispatchers see at-a-glance which "Available" vehicles the backend gate
 // would actually reject.
@@ -79,7 +85,6 @@ class MapSafetyBoundary extends Component<
 }
 
 interface FleetViewProps {
-  isDarkMode: boolean;
   onVehicleSelect?: (vehicle: VehicleData) => void;
 }
 
@@ -221,25 +226,13 @@ function HealthPill({ vehicleId }: { vehicleId: string }) {
   }
   const title = reasons.join(' · ') || undefined;
   if (status === 'Good Health') {
-    return (
-      <span title={title} className="sq-chip sq-chip-success text-[9px] font-bold uppercase tracking-wide">
-        Healthy
-      </span>
-    );
+    return <HealthStatusChip state="good" label="Healthy" dot={false} title={title} />;
   }
   if (status === 'Warning') {
-    return (
-      <span title={title} className="sq-chip sq-chip-warning text-[9px] font-bold uppercase tracking-wide">
-        Warning
-      </span>
-    );
+    return <HealthStatusChip state="warning" label="Warning" dot={false} title={title} />;
   }
   if (status === 'Critical') {
-    return (
-      <span title={title} className="sq-chip sq-chip-critical text-[9px] font-bold uppercase tracking-wide">
-        Alert
-      </span>
-    );
+    return <HealthStatusChip state="critical" label="Alert" dot={false} title={title} />;
   }
   return null;
 }
@@ -317,7 +310,17 @@ function FleetAvailableAddressText({ v }: { v: VehicleData }) {
   );
 }
 
-export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
+export function FleetView({ onVehicleSelect }: FleetViewProps) {
+  const systemDark = useSyncExternalStore(
+    (onStoreChange) => {
+      const el = document.documentElement;
+      const obs = new MutationObserver(onStoreChange);
+      obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+      return () => obs.disconnect();
+    },
+    () => document.documentElement.classList.contains('dark'),
+    () => false,
+  );
   const { orgId } = useRentalOrg();
 
   const vehicles = useFleetMapStore(selectFleetMapVehicles);
@@ -592,54 +595,44 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
 
   return (
     <div className="space-y-5">
-      {/* V4.7.10 — Header rhythm matched 1:1 to the Dashboard
-          (`DashboardView.tsx > grid sm:items-end gap-2 sm:gap-3 mb-5`):
-          • `items-end` → H1 baseline now sits flush with the station
-            pill's text baseline, giving the band the same anchored
-            feel as the Dashboard greeting + station selector row.
-          • `gap-2 sm:gap-3` → identical inter-element gap profile.
-          • Outer `space-y-5` already mirrors Dashboard's `mb-5`
-            spacing under the header band, so no double-spacing here. */}
-      <div className="flex flex-wrap items-end justify-between gap-2 sm:gap-3">
-        <div className="animate-fade-up min-w-0">
-          <h1 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground truncate">
-            Fleet Overview
-          </h1>
-        </div>
-        <div className="relative">
-          <button
-            onClick={() => setIsStationOpen(!isStationOpen)}
-            className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-medium text-foreground transition-all hover:bg-muted hover:border-border"
-            aria-haspopup="listbox"
-            aria-expanded={isStationOpen}
-          >
-            <Icon name="map-pin" className="w-4 h-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Station</span>
-            <span className="text-foreground">{selectedStationLabel}</span>
-            <Icon name="chevron-down" className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${isStationOpen ? 'rotate-180' : ''}`} />
-          </button>
-          {isStationOpen && (
-            <div className="sq-overlay animate-fade-up absolute top-full mt-2 right-0 z-50 min-w-[220px] p-1 rounded-xl">
-              {stationOptions.map((station) => (
-                <button
-                  key={station.id}
-                  onClick={() => {
-                    setStationFilter(station.id);
-                    setIsStationOpen(false);
-                  }}
-                  className={`w-full px-3 py-2 text-left text-[12px] font-medium rounded-lg transition-colors ${
-                    station.id === selectedStation
-                      ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
-                      : 'text-foreground hover:bg-muted'
-                  }`}
-                >
-                  {station.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Fleet Overview"
+        actions={
+          <div className="relative">
+            <button
+              onClick={() => setIsStationOpen(!isStationOpen)}
+              className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-medium text-foreground transition-all hover:bg-muted hover:border-border"
+              aria-haspopup="listbox"
+              aria-expanded={isStationOpen}
+            >
+              <Icon name="map-pin" className="w-4 h-4 text-muted-foreground" />
+              <span className="text-muted-foreground">Station</span>
+              <span className="text-foreground">{selectedStationLabel}</span>
+              <Icon name="chevron-down" className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${isStationOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isStationOpen && (
+              <div className="sq-overlay animate-fade-up absolute top-full mt-2 right-0 z-50 min-w-[220px] p-1 rounded-xl">
+                {stationOptions.map((station) => (
+                  <button
+                    key={station.id}
+                    onClick={() => {
+                      setStationFilter(station.id);
+                      setIsStationOpen(false);
+                    }}
+                    className={`w-full px-3 py-2 text-left text-[12px] font-medium rounded-lg transition-colors ${
+                      station.id === selectedStation
+                        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
+                        : 'text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {station.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        }
+      />
 
       {error && (
         <div className="sq-tone-critical rounded-xl px-3 py-2 text-[12px] font-medium animate-fade-up">
@@ -662,7 +655,7 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
           ref={mapRef}
           className="bg-card border border-border/70 rounded-2xl overflow-hidden relative shadow-[var(--shadow-1)] h-[280px] lg:h-[640px] animate-fade-up"
         >
-          <MapSafetyBoundary isDarkMode={isDarkMode}>
+          <MapSafetyBoundary isDarkMode={systemDark}>
             <MapboxMap
               center={mapCenter}
               zoom={vehiclesWithCoords.length > 0 ? 12 : 5}
@@ -670,7 +663,7 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
               selectedVehicleId={selectedVehicleId}
               onVehicleClick={handleMapVehicleClick}
               className="w-full h-full"
-              isDarkMode={isDarkMode}
+              isDarkMode={systemDark}
               stations={stationsApi}
             />
           </MapSafetyBoundary>
@@ -701,8 +694,7 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
             {stationsApi.length > 0 && (
               <div className="flex items-center gap-1.5">
                 <span
-                  className="w-2.5 h-2.5 rounded-full border-[1.5px] border-dashed"
-                  style={{ borderColor: isDarkMode ? '#38bdf8' : '#0284c7' }}
+                  className="w-2.5 h-2.5 rounded-full border-[1.5px] border-dashed border-[color:var(--brand)]"
                 />
                 <span className="text-[10px] font-medium text-foreground/70">Station</span>
               </div>
@@ -794,6 +786,14 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
           {/* Active-tab content. The single visible list owns its own
               vertical scroll on lg+ so the outer page stops growing. */}
           <div className="px-3 pt-3 pb-3 flex-1 lg:overflow-y-auto">
+            {loading && vehicles.length === 0 ? (
+              <div className="space-y-2">
+                <SkeletonCard />
+                <SkeletonCard />
+                <SkeletonCard />
+              </div>
+            ) : (
+              <>
             {activeTab === 'Available' && (
               <div className="space-y-1.5">
                 {availableVehicles.length === 0 ? (
@@ -815,7 +815,7 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                 <div
                   key={v.id}
                   onClick={() => handleRowClick(v)}
-                  className={`rounded-xl p-2.5 border border-border/60 bg-card hover:bg-muted/40 hover:border-border transition-all cursor-pointer ${
+                  className={`sq-card-elevated p-2.5 cursor-pointer ${
                     offline ? 'opacity-60 grayscale' : ''
                   }`}
                 >
@@ -830,23 +830,20 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                     <div className="flex items-center gap-1 shrink-0">
                       <HealthPill vehicleId={v.id} />
                       {offline ? (
-                        <span
-                          className="sq-chip sq-chip-neutral text-[9px] font-bold uppercase tracking-wide"
-                          title={VEHICLE_OFFLINE_LABEL}
-                        >
+                        <StatusChip tone="neutral" title={VEHICLE_OFFLINE_LABEL} className="text-[9px] font-bold uppercase tracking-wide">
                           Not Ready
-                        </span>
+                        </StatusChip>
                       ) : isBlocked ? (
                         <RentalHealthBadge
                           health={health!}
-                          isDarkMode={isDarkMode}
+                          isDarkMode={systemDark}
                           size="sm"
                           showBlockingLabel
                         />
                       ) : (
-                        <span className="sq-chip sq-chip-success text-[9px] font-bold uppercase tracking-wide">
+                        <StatusChip tone="success" className="text-[9px] font-bold uppercase tracking-wide">
                           Ready
-                        </span>
+                        </StatusChip>
                       )}
                       <button
                         type="button"
@@ -886,7 +883,7 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                       <HomeAwayBadge
                         v={v}
                         stationLookup={stationLookup}
-                        isDarkMode={isDarkMode}
+                        isDarkMode={systemDark}
                       />
                       <span className="w-px h-3 shrink-0 bg-border/60" />
                       <FuelCell v={v} />
@@ -915,7 +912,7 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                 <div
                   key={v.id}
                   onClick={() => handleRowClick(v)}
-                  className="rounded-xl p-2.5 border border-border/60 bg-card hover:bg-muted/40 hover:border-border transition-all cursor-pointer"
+                  className="sq-card-elevated p-2.5 cursor-pointer"
                 >
                   <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
                     <div className="flex items-baseline gap-2 min-w-0 flex-1">
@@ -931,14 +928,13 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                     <div className="flex items-center gap-1 shrink-0">
                       <HealthPill vehicleId={v.id} />
                       {overdue ? (
-                        <span className="sq-chip sq-chip-critical text-[9px] font-bold uppercase tracking-wide">
-                          <Icon name="clock" className="w-2.5 h-2.5" />
+                        <StatusChip tone="critical" icon={<Icon name="clock" className="w-2.5 h-2.5" />} className="text-[9px] font-bold uppercase tracking-wide">
                           Overdue
-                        </span>
+                        </StatusChip>
                       ) : (
-                        <span className="sq-chip sq-chip-success text-[9px] font-bold uppercase tracking-wide">
+                        <StatusChip tone="success" className="text-[9px] font-bold uppercase tracking-wide">
                           On Time
-                        </span>
+                        </StatusChip>
                       )}
                       <button
                         type="button"
@@ -985,7 +981,7 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                 <div
                   key={v.id}
                   onClick={() => handleRowClick(v)}
-                  className="rounded-xl p-2.5 border border-border/60 bg-card hover:bg-muted/40 hover:border-border transition-all cursor-pointer"
+                  className="sq-card-elevated p-2.5 cursor-pointer"
                 >
                   <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
                     <div className="flex items-baseline gap-2 min-w-0 flex-1">
@@ -1003,19 +999,18 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                       {isBlocked ? (
                         <RentalHealthBadge
                           health={health!}
-                          isDarkMode={isDarkMode}
+                          isDarkMode={systemDark}
                           size="sm"
                           showBlockingLabel
                         />
                       ) : pickupOverdue ? (
-                        <span className="sq-chip sq-chip-critical text-[9px] font-bold uppercase tracking-wide">
-                          <Icon name="clock" className="w-2.5 h-2.5" />
-                          Pickup f�llig
-                        </span>
+                        <StatusChip tone="critical" icon={<Icon name="clock" className="w-2.5 h-2.5" />} className="text-[9px] font-bold uppercase tracking-wide">
+                          Pickup fällig
+                        </StatusChip>
                       ) : (
-                        <span className="sq-chip sq-chip-warning text-[9px] font-bold uppercase tracking-wide">
+                        <StatusChip tone="warning" className="text-[9px] font-bold uppercase tracking-wide">
                           Reserved
-                        </span>
+                        </StatusChip>
                       )}
                       <button
                         type="button"
@@ -1061,7 +1056,7 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                 <div
                   key={v.id}
                   onClick={() => handleRowClick(v)}
-                  className="rounded-xl p-2.5 border border-border/60 bg-card hover:bg-muted/40 hover:border-border transition-all cursor-pointer"
+                  className="sq-card-elevated p-2.5 cursor-pointer"
                 >
                   <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
                     <div className="flex items-baseline gap-2 min-w-0 flex-1">
@@ -1073,12 +1068,13 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <HealthPill vehicleId={v.id} />
-                      <span
-                        className={`sq-chip ${isUrgent ? 'sq-chip-critical' : 'sq-chip-warning'} text-[9px] font-bold uppercase tracking-wide`}
+                      <StatusChip
+                        tone={isUrgent ? 'critical' : 'warning'}
+                        icon={<Icon name="wrench" className="w-2.5 h-2.5" />}
+                        className="text-[9px] font-bold uppercase tracking-wide"
                       >
-                        <Icon name="wrench" className="w-2.5 h-2.5" />
                         {isUrgent ? 'Urgent' : 'Service'}
-                      </span>
+                      </StatusChip>
                       <button
                         type="button"
                         onClick={(e) => handleDetailClick(e, v)}
@@ -1107,6 +1103,8 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
               );
             })}
               </div>
+            )}
+              </>
             )}
           </div>
         </div>

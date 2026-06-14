@@ -318,7 +318,7 @@ export class InvoicesService {
     totalCents: number, currency: string, type: string, dueDate?: string,
   ) {
     const isIncoming = type.startsWith('INCOMING');
-    await this.tasksService.create(orgId, {
+    await this.tasksService.upsertByDedup(orgId, `invoice:unpaid:${invoiceId}`, {
       title: isIncoming
         ? `Eingangsrechnung bezahlen: ${title}`
         : `Zahlungseingang prüfen: ${title}`,
@@ -329,7 +329,7 @@ export class InvoicesService {
       sourceType: 'SYSTEM',
       priority: totalCents >= 50000 ? 'HIGH' : 'MEDIUM',
       invoiceId,
-      dueDate,
+      dueDate: dueDate ? new Date(dueDate) : undefined,
     });
   }
 

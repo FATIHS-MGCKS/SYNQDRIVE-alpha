@@ -1,6 +1,7 @@
 import { Icon } from './ui/Icon';
 import { VehicleData } from '../data/vehicles';
 import type { ReactNode } from 'react';
+import { PageHeader } from '../../components/patterns/page-header';
 
 interface DocumentsViewProps {
   isDarkMode: boolean;
@@ -73,19 +74,15 @@ export function DocumentsView({ isDarkMode, vehicle }: DocumentsViewProps) {
 
   return (
     <div className="space-y-5">
+      <PageHeader
+        eyebrow="Fahrzeug"
+        title="Fahrzeugakte"
+        description={vehicleSubtitle}
+        icon={<Icon name="file-text" className="w-4 h-4" />}
+        meta={<span className="text-[11px] text-muted-foreground truncate">{vehicleName}</span>}
+      />
       <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-start gap-3 min-w-0">
-            <div className="sq-tone-brand w-10 h-10 rounded-xl flex items-center justify-center shrink-0">
-              <Icon name="file-text" className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-[13px] font-semibold tracking-[-0.003em] text-foreground">Fahrzeugakte</h3>
-              <p className="text-[11px] mt-0.5 text-muted-foreground truncate">{vehicleName}</p>
-              <p className="text-[10px] mt-1 text-muted-foreground">{vehicleSubtitle}</p>
-            </div>
-          </div>
-
+        <div className="flex items-start justify-end gap-4 flex-wrap">
           <div className="grid grid-cols-3 gap-2 w-full sm:w-auto sm:min-w-[330px]">
             <SummaryMetric label="Dokumente" value="0/4" tone="warning" />
             <SummaryMetric label="Kosten" value={`${configuredCostLines}/5`} tone={configuredCostLines >= 3 ? 'success' : 'neutral'} />
@@ -96,7 +93,7 @@ export function DocumentsView({ isDarkMode, vehicle }: DocumentsViewProps) {
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] gap-3 items-start">
         <div className={`${cardClass} p-4 rounded-2xl`}>
-          <SectionHeader
+          <DocumentsSectionHeader
             icon="file-text"
             title="Dokumentenstatus"
             subtitle="Pflichtunterlagen pro Fahrzeug, priorisiert nach operativer Relevanz."
@@ -116,7 +113,7 @@ export function DocumentsView({ isDarkMode, vehicle }: DocumentsViewProps) {
         </div>
 
         <div className={`${cardClass} p-4 rounded-2xl`}>
-          <SectionHeader
+          <DocumentsSectionHeader
             icon="wallet"
             title="Monatliche Fixkosten"
             subtitle="Finanzielle Grundlast des Fahrzeugs auf einen Blick."
@@ -136,7 +133,7 @@ export function DocumentsView({ isDarkMode, vehicle }: DocumentsViewProps) {
       </div>
 
       <div className={`${cardClass} p-4 rounded-2xl`}>
-        <SectionHeader
+        <DocumentsSectionHeader
           icon="clipboard-list"
           title="Nachweise & Historie"
           subtitle="TÜV, Service und Reparaturen als ein gemeinsamer Verlauf statt getrennter leerer Tabellen."
@@ -169,7 +166,7 @@ function SummaryMetric({ label, value, tone }: { label: string; value: string; t
   );
 }
 
-function SectionHeader({
+function DocumentsSectionHeader({
   icon,
   fallbackIcon,
   title,

@@ -849,48 +849,48 @@
 }
 
 .sq-3d-btn--ai {
-  background: linear-gradient(180deg, var(--card) 0%, color-mix(in srgb, var(--card) 95%, #f3e8ff) 100%);
-  color: #9333ea;
-  border-color: color-mix(in srgb, #e9d5ff 80%, transparent);
+  background: linear-gradient(180deg, var(--card) 0%, color-mix(in srgb, var(--card) 95%, var(--status-ai-soft)) 100%);
+  color: var(--status-ai);
+  border-color: color-mix(in srgb, var(--status-ai-soft) 80%, transparent);
 }
 .dark .sq-3d-btn--ai {
-  background: linear-gradient(180deg, var(--card) 0%, color-mix(in srgb, var(--card) 90%, #3b0764) 100%);
-  color: #d8b4fe;
-  border-color: color-mix(in srgb, #581c87 80%, transparent);
+  background: linear-gradient(180deg, var(--card) 0%, color-mix(in srgb, var(--card) 90%, var(--status-ai-soft)) 100%);
+  color: color-mix(in srgb, var(--status-ai) 85%, white);
+  border-color: color-mix(in srgb, var(--status-ai) 45%, transparent);
 }
 .sq-3d-btn--ai:hover {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--card) 95%, #f3e8ff) 0%, color-mix(in srgb, var(--card) 85%, #f3e8ff) 100%);
-  box-shadow: 
-    0 4px 8px color-mix(in srgb, #9333ea 15%, transparent),
-    0 2px 4px color-mix(in srgb, #9333ea 10%, transparent),
+  background: linear-gradient(180deg, color-mix(in srgb, var(--card) 95%, var(--status-ai-soft)) 0%, color-mix(in srgb, var(--card) 85%, var(--status-ai-soft)) 100%);
+  box-shadow:
+    0 4px 8px color-mix(in srgb, var(--status-ai) 15%, transparent),
+    0 2px 4px color-mix(in srgb, var(--status-ai) 10%, transparent),
     inset 0 1px 1px color-mix(in srgb, white 20%, transparent),
     inset 0 -1px 1px color-mix(in srgb, black 5%, transparent);
 }
 .dark .sq-3d-btn--ai:hover {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--card) 95%, #3b0764) 0%, color-mix(in srgb, var(--card) 85%, #3b0764) 100%);
-  box-shadow: 
-    0 4px 8px color-mix(in srgb, #d8b4fe 10%, transparent),
-    0 2px 4px color-mix(in srgb, #d8b4fe 5%, transparent),
+  background: linear-gradient(180deg, color-mix(in srgb, var(--card) 95%, var(--status-ai-soft)) 0%, color-mix(in srgb, var(--card) 85%, var(--status-ai-soft)) 100%);
+  box-shadow:
+    0 4px 8px color-mix(in srgb, var(--status-ai) 10%, transparent),
+    0 2px 4px color-mix(in srgb, var(--status-ai) 5%, transparent),
     inset 0 1px 1px color-mix(in srgb, white 10%, transparent),
     inset 0 -1px 1px color-mix(in srgb, black 20%, transparent);
 }
 .sq-3d-btn--ai.active {
-  background: linear-gradient(180deg, #faf5ff 0%, #f3e8ff 100%);
-  border-color: #e9d5ff;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--status-ai-soft) 40%, var(--card)) 0%, var(--status-ai-soft) 100%);
+  border-color: color-mix(in srgb, var(--status-ai) 25%, transparent);
 }
 .dark .sq-3d-btn--ai.active {
-  background: linear-gradient(180deg, #3b0764 0%, #2e1065 100%);
-  border-color: #581c87;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--status-ai-soft) 60%, var(--card)) 0%, color-mix(in srgb, var(--status-ai-soft) 90%, var(--card)) 100%);
+  border-color: color-mix(in srgb, var(--status-ai) 40%, transparent);
 }
 .sq-3d-btn--ai .icon-wrapper {
-  background: color-mix(in srgb, #f3e8ff 80%, transparent);
-  box-shadow: inset 0 1px 2px color-mix(in srgb, #9333ea 20%, transparent);
-  color: #9333ea;
+  background: color-mix(in srgb, var(--status-ai-soft) 80%, transparent);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--status-ai) 20%, transparent);
+  color: var(--status-ai);
 }
 .dark .sq-3d-btn--ai .icon-wrapper {
-  background: color-mix(in srgb, #3b0764 80%, transparent);
+  background: color-mix(in srgb, var(--status-ai-soft) 80%, transparent);
   box-shadow: inset 0 1px 2px color-mix(in srgb, black 30%, transparent);
-  color: #d8b4fe;
+  color: color-mix(in srgb, var(--status-ai) 85%, white);
 }
 
 /* ── Primary brand CTA ── */

@@ -73,6 +73,7 @@ export class TaskAutomationService {
   }): Promise<void> {
     const { id, organizationId: orgId, vehicleId, customerId, status } = booking;
     const base = { vehicleId, bookingId: id, customerId } as const;
+    const activeDedupKeys = this.activeBookingLifecycleDedupKeys(id, status);
 
     if (status === 'CONFIRMED') {
       await this.safeUpsert(orgId, `booking:prep:${id}`, {
@@ -136,6 +137,32 @@ export class TaskAutomationService {
         source: 'BOOKING',
         sourceType: 'BOOKING',
       });
+    }
+
+    try {
+      await this.tasks.closeStaleBookingLifecycleTasks(orgId, id, activeDedupKeys);
+    } catch (err: any) {
+      this.logger.warn(
+        `closeStaleBookingLifecycleTasks failed for booking ${id} (org ${orgId}): ${err?.message ?? err}`,
+      );
+    }
+  }
+
+  /** Dedup keys that remain open for the booking's current lifecycle phase. */
+  private activeBookingLifecycleDedupKeys(bookingId: string, status: string): string[] {
+    switch (status) {
+      case 'CONFIRMED':
+        return [
+          `booking:prep:${bookingId}`,
+          `booking:clean:${bookingId}`,
+          `booking:document:${bookingId}`,
+        ];
+      case 'ACTIVE':
+        return [`booking:pickup:${bookingId}`];
+      case 'COMPLETED':
+        return [`booking:return:${bookingId}`, `booking:invoice:${bookingId}`];
+      default:
+        return [];
     }
   }
 

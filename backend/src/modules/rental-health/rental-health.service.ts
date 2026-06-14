@@ -270,22 +270,29 @@ export class RentalHealthService {
       };
     }
 
-    // Wear state — overallPercent is remaining usability, 0 = no tread left.
-    const remaining = summary.overallPercent;
+    // Wear state — prefer canonical overallStatus from tire-status.ts; fall back
+    // to overallPercent buckets only when the canonical status is unavailable.
+    const canonicalWear = this.mapTireStatusToHealth(summary.overallStatus);
     let wearState: HealthState;
     let wearReason: string;
-    if (remaining == null || !Number.isFinite(remaining)) {
-      wearState = 'unknown';
-      wearReason = 'Kein Reifenverschleiß-Signal';
-    } else if (remaining <= 10) {
-      wearState = 'critical';
-      wearReason = `Restnutzbarkeit ${Math.round(remaining)} %`;
-    } else if (remaining <= 30) {
-      wearState = 'warning';
-      wearReason = `Restnutzbarkeit ${Math.round(remaining)} %`;
+    if (canonicalWear != null) {
+      wearState = canonicalWear.state;
+      wearReason = canonicalWear.reason;
     } else {
-      wearState = 'good';
-      wearReason = `Restnutzbarkeit ${Math.round(remaining)} %`;
+      const remaining = summary.overallPercent;
+      if (remaining == null || !Number.isFinite(remaining)) {
+        wearState = 'unknown';
+        wearReason = 'Kein Reifenverschleiß-Signal';
+      } else if (remaining <= 10) {
+        wearState = 'critical';
+        wearReason = `Restnutzbarkeit ${Math.round(remaining)} %`;
+      } else if (remaining <= 30) {
+        wearState = 'warning';
+        wearReason = `Restnutzbarkeit ${Math.round(remaining)} %`;
+      } else {
+        wearState = 'good';
+        wearReason = `Restnutzbarkeit ${Math.round(remaining)} %`;
+      }
     }
 
     // Pressure state — pressureContext is always present on a summary.
@@ -788,6 +795,26 @@ export class RentalHealthService {
     }
 
     return reasons;
+  }
+
+  /** Maps canonical TireStatus → Rental-Health HealthState. */
+  private mapTireStatusToHealth(
+    status: string | null | undefined,
+  ): { state: HealthState; reason: string } | null {
+    switch (status) {
+      case 'CRITICAL':
+        return { state: 'critical', reason: 'Reifenverschleiß kritisch' };
+      case 'WARNING':
+        return { state: 'warning', reason: 'Reifenverschleiß Warnung' };
+      case 'WATCH':
+        return { state: 'warning', reason: 'Reifen beobachten' };
+      case 'GOOD':
+        return { state: 'good', reason: 'Reifen in Ordnung' };
+      case 'UNKNOWN':
+        return { state: 'unknown', reason: 'Reifenstatus unbekannt' };
+      default:
+        return null;
+    }
   }
 }
 

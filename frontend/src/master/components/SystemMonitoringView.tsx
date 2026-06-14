@@ -30,16 +30,20 @@ import {
   Globe,
 } from 'lucide-react';
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { PageHeader, DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader } from '../../components/patterns';
 import { api } from '../../lib/api';
 
-interface SystemMonitoringViewProps {
-  isDarkMode: boolean;
-}
+/* ── Design-system token helpers ── */
+const CARD = 'sq-card overflow-hidden';
+const INPUT =
+  'w-full px-4 py-2.5 rounded-xl border border-border bg-muted/50 text-sm text-foreground transition-colors outline-none focus:border-[color:var(--brand)] placeholder:text-muted-foreground';
+const LABEL = 'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
+const HEAD = 'text-xs font-semibold uppercase tracking-wider text-muted-foreground';
+const TAB_BAR = 'sq-tab-bar flex gap-1 p-1 rounded-2xl overflow-x-auto w-fit';
+const TAB_ACTIVE = 'sq-tab-active flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap';
+const TAB_IDLE = 'sq-tab flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap text-muted-foreground hover:text-foreground';
 
-const CARD_CLASS = (isDark: boolean) =>
-  `rounded-2xl shadow-sm border overflow-hidden ${
-    isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-  }`;
+
 
 const HEALTH_COLORS = {
   healthy: { bg: 'bg-emerald-500/15', text: 'text-emerald-600', border: 'border-emerald-500/30' },
@@ -102,27 +106,27 @@ interface TokenCardData {
   avgFetchDurationMs: number | null;
 }
 
-function TokenStatusCard({ data, isDarkMode }: { data: TokenCardData; isDarkMode: boolean }) {
+function TokenStatusCard({ data }: { data: TokenCardData;  }) {
   const s = TOKEN_STATUS_STYLE[data.status] ?? TOKEN_STATUS_STYLE.NEVER_ACQUIRED;
   const StatusIcon = s.icon;
   const successRate = data.totalFetches > 0 ? Math.round((data.totalSuccesses / data.totalFetches) * 100) : null;
 
   return (
-    <div className={`rounded-xl border p-4 ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/60' : 'bg-gray-50/80 border-gray-200'}`}>
+    <div className={`rounded-xl border p-4 sq-CARD`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${s.bgColor}`}>
             <StatusIcon className={`w-4 h-4 ${s.color}`} />
           </div>
           <div>
-            <p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>{data.label}</p>
+            <p className={`text-sm font-semibold text-foreground`}>{data.label}</p>
             <p className={`text-[11px] font-medium ${s.color}`}>{data.status}</p>
           </div>
         </div>
         {data.ttlRemainingSeconds != null && data.ttlRemainingSeconds > 0 && (
           <div className={`text-right`}>
-            <p className={`text-[10px] uppercase tracking-wider font-bold ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>TTL</p>
-            <p className={`text-sm font-bold tabular-nums ${data.ttlRemainingSeconds < 300 ? 'text-amber-500' : isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+            <p className={`text-[10px] uppercase tracking-wider font-bold text-muted-foreground`}>TTL</p>
+            <p className={`text-sm font-bold tabular-nums ${data.ttlRemainingSeconds < 300 ? 'text-amber-500' : 'text-foreground'}`}>
               {formatTtl(data.ttlRemainingSeconds)}
             </p>
           </div>
@@ -130,26 +134,26 @@ function TokenStatusCard({ data, isDarkMode }: { data: TokenCardData; isDarkMode
       </div>
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-        <div className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Last acquired</div>
-        <div className={`text-right font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{timeAgo(data.lastAcquiredAt)}</div>
+        <div className={'text-muted-foreground'}>Last acquired</div>
+        <div className={`text-right font-medium text-foreground`}>{timeAgo(data.lastAcquiredAt)}</div>
 
-        <div className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Expires at</div>
-        <div className={`text-right font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        <div className={'text-muted-foreground'}>Expires at</div>
+        <div className={`text-right font-medium text-foreground`}>
           {data.expiresAt ? new Date(data.expiresAt).toLocaleTimeString() : '—'}
         </div>
 
-        <div className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Fetches</div>
-        <div className={`text-right font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        <div className={'text-muted-foreground'}>Fetches</div>
+        <div className={`text-right font-medium text-foreground`}>
           {data.totalFetches} <span className="text-emerald-500">({data.totalSuccesses})</span> / <span className="text-red-500">{data.totalFailures}</span>
         </div>
 
-        <div className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Success rate</div>
-        <div className={`text-right font-medium ${successRate != null && successRate < 80 ? 'text-red-500' : isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        <div className={'text-muted-foreground'}>Success rate</div>
+        <div className={`text-right font-medium ${successRate != null && successRate < 80 ? 'text-red-500' : 'text-foreground'}`}>
           {successRate != null ? `${successRate}%` : '—'}
         </div>
 
-        <div className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Avg fetch time</div>
-        <div className={`text-right font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        <div className={'text-muted-foreground'}>Avg fetch time</div>
+        <div className={`text-right font-medium text-foreground`}>
           {data.avgFetchDurationMs != null ? `${data.avgFetchDurationMs} ms` : '—'}
         </div>
 
@@ -162,22 +166,20 @@ function TokenStatusCard({ data, isDarkMode }: { data: TokenCardData; isDarkMode
       </div>
 
       {data.lastError && (
-        <div className={`mt-3 p-2.5 rounded-lg text-xs ${isDarkMode ? 'bg-red-500/5 border border-red-500/20' : 'bg-red-50 border border-red-200/50'}`}>
+        <div className={`mt-3 p-2.5 rounded-lg text-xs sq-tone-critical border border-border`}>
           <div className="flex items-center gap-1.5 mb-1">
             <AlertCircle className="w-3 h-3 text-red-500 shrink-0" />
             <span className="text-red-500 font-semibold">Last error {data.lastErrorHttpStatus ? `(HTTP ${data.lastErrorHttpStatus})` : ''}</span>
-            <span className={`ml-auto ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{timeAgo(data.lastErrorAt)}</span>
+            <span className={`ml-auto text-muted-foreground`}>{timeAgo(data.lastErrorAt)}</span>
           </div>
-          <p className={`break-words ${isDarkMode ? 'text-red-400/80' : 'text-red-600/80'}`}>{data.lastError}</p>
+          <p className={`break-words text-[color:var(--status-critical)]`}>{data.lastError}</p>
         </div>
       )}
     </div>
   );
 }
 
-function TokenAuthHealthPanel({
-  isDarkMode,
-  tokenHealth,
+function TokenAuthHealthPanel({ tokenHealth,
   tokenHealthLoading,
   onRefresh,
   tokenEventFilter,
@@ -187,7 +189,6 @@ function TokenAuthHealthPanel({
   tokenConfigExpanded,
   setTokenConfigExpanded,
 }: {
-  isDarkMode: boolean;
   tokenHealth: any;
   tokenHealthLoading: boolean;
   onRefresh: () => void;
@@ -229,16 +230,16 @@ function TokenAuthHealthPanel({
   const overallStyle = HEALTH_COLORS[overallHealth as keyof typeof HEALTH_COLORS] ?? HEALTH_COLORS.healthy;
 
   return (
-    <div className={CARD_CLASS(isDarkMode)}>
+    <div className={CARD}>
       {/* Header */}
-      <div className={`px-5 py-3 border-b flex items-center justify-between ${isDarkMode ? 'border-neutral-800' : 'border-gray-200'}`}>
+      <div className={`px-5 py-3 border-b flex items-center justify-between border-border`}>
         <div className="flex items-center gap-3">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50'}`}>
-            <Key className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center sq-tone-info`}>
+            <Key className={`w-4 h-4 text-[color:var(--status-info)]`} />
           </div>
           <div>
-            <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Token & Auth Health</h2>
-            <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Developer JWT + Vehicle JWT lifecycle, diagnostics & event history</p>
+            <h2 className={`text-sm font-semibold text-foreground`}>Token & Auth Health</h2>
+            <p className={`text-xs mt-0.5 text-muted-foreground`}>Developer JWT + Vehicle JWT lifecycle, diagnostics & event history</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -250,7 +251,7 @@ function TokenAuthHealthPanel({
           <button
             onClick={onRefresh}
             disabled={tokenHealthLoading}
-            className={`p-1.5 rounded-lg ${isDarkMode ? 'hover:bg-neutral-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500'}`}
+            className={`p-1.5 rounded-lg hover:bg-muted text-muted-foreground`}
           >
             <RefreshCw className={`w-3.5 h-3.5 ${tokenHealthLoading ? 'animate-spin' : ''}`} />
           </button>
@@ -259,10 +260,10 @@ function TokenAuthHealthPanel({
 
       {tokenHealthLoading && !tokenHealth ? (
         <div className="p-8 flex justify-center">
-          <Loader2 className={`w-6 h-6 animate-spin ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+          <Loader2 className={`w-6 h-6 animate-spin text-[color:var(--status-info)]`} />
         </div>
       ) : !tokenHealth ? (
-        <div className={`p-6 text-center ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+        <div className={`p-6 text-center text-muted-foreground`}>
           <ShieldQuestion className="w-8 h-8 mx-auto mb-2 opacity-50" />
           <p className="text-sm">Token health data unavailable. The backend may not be running.</p>
         </div>
@@ -271,7 +272,6 @@ function TokenAuthHealthPanel({
           {/* Developer + Vehicle JWT status cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <TokenStatusCard
-              isDarkMode={isDarkMode}
               data={{
                 label: 'Developer JWT',
                 ...tokenHealth.developer,
@@ -280,7 +280,6 @@ function TokenAuthHealthPanel({
             {vehicleEntries.map(([tokenId, v]) => (
               <TokenStatusCard
                 key={tokenId}
-                isDarkMode={isDarkMode}
                 data={{
                   label: `Vehicle JWT #${tokenId}`,
                   ...v,
@@ -288,18 +287,18 @@ function TokenAuthHealthPanel({
               />
             ))}
             {vehicleEntries.length === 0 && (
-              <div className={`rounded-xl border p-4 flex items-center justify-center ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/60' : 'bg-gray-50/80 border-gray-200'}`}>
-                <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>No vehicle JWTs acquired yet</p>
+              <div className={`rounded-xl border p-4 flex items-center justify-center sq-CARD`}>
+                <p className={`text-xs text-muted-foreground`}>No vehicle JWTs acquired yet</p>
               </div>
             )}
           </div>
 
           {/* Event Log */}
-          <div className={`rounded-xl border overflow-hidden ${isDarkMode ? 'border-neutral-700/60' : 'border-gray-200'}`}>
-            <div className={`px-4 py-2.5 flex items-center justify-between ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-50'}`}>
+          <div className={`rounded-xl border overflow-hidden border-border`}>
+            <div className={`px-4 py-2.5 flex items-center justify-between bg-muted/50`}>
               <div className="flex items-center gap-2">
-                <Activity className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-                <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <Activity className={`w-3.5 h-3.5 text-muted-foreground`} />
+                <span className={`text-xs font-semibold text-foreground`}>
                   Event History ({filteredEvents.length})
                 </span>
               </div>
@@ -307,7 +306,7 @@ function TokenAuthHealthPanel({
                 <select
                   value={tokenEventFilter}
                   onChange={(e) => setTokenEventFilter(e.target.value)}
-                  className={`rounded-lg border px-2 py-1 text-[11px] ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-300' : 'bg-white border-gray-200 text-gray-700'}`}
+                  className={`rounded-lg border px-2 py-1 text-[11px] border-border`}
                 >
                   <option value="">All events</option>
                   <option value="DEVELOPER">Developer JWT</option>
@@ -319,21 +318,21 @@ function TokenAuthHealthPanel({
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className={isDarkMode ? 'bg-neutral-800/30' : 'bg-gray-50/50'}>
-                    <th className={`text-left px-3 py-2 font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Time</th>
-                    <th className={`text-left px-3 py-2 font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Type</th>
-                    <th className={`text-left px-3 py-2 font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Action</th>
-                    <th className={`text-left px-3 py-2 font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Token</th>
-                    <th className={`text-left px-3 py-2 font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Status</th>
-                    <th className={`text-left px-3 py-2 font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Duration</th>
-                    <th className={`text-left px-3 py-2 font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Source</th>
-                    <th className={`text-left px-3 py-2 font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Details</th>
+                  <tr className={'bg-muted/30'}>
+                    <th className={`text-left px-3 py-2 font-semibold text-muted-foreground`}>Time</th>
+                    <th className={`text-left px-3 py-2 font-semibold text-muted-foreground`}>Type</th>
+                    <th className={`text-left px-3 py-2 font-semibold text-muted-foreground`}>Action</th>
+                    <th className={`text-left px-3 py-2 font-semibold text-muted-foreground`}>Token</th>
+                    <th className={`text-left px-3 py-2 font-semibold text-muted-foreground`}>Status</th>
+                    <th className={`text-left px-3 py-2 font-semibold text-muted-foreground`}>Duration</th>
+                    <th className={`text-left px-3 py-2 font-semibold text-muted-foreground`}>Source</th>
+                    <th className={`text-left px-3 py-2 font-semibold text-muted-foreground`}>Details</th>
                   </tr>
                 </thead>
                 <tbody>
                   {visibleEvents.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className={`px-3 py-6 text-center ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                      <td colSpan={8} className={`px-3 py-6 text-center text-muted-foreground`}>
                         No token events recorded yet. Events appear after the first JWT fetch attempt.
                       </td>
                     </tr>
@@ -341,22 +340,22 @@ function TokenAuthHealthPanel({
                     visibleEvents.map((evt: any, i: number) => (
                       <tr
                         key={i}
-                        className={`border-t ${isDarkMode ? 'border-neutral-800/50 hover:bg-neutral-800/20' : 'border-gray-100 hover:bg-gray-50/50'}`}
+                        className={`border-t border-border hover:bg-muted/50`}
                       >
-                        <td className={`px-3 py-1.5 tabular-nums whitespace-nowrap ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <td className={`px-3 py-1.5 tabular-nums whitespace-nowrap text-muted-foreground`}>
                           {new Date(evt.timestamp).toLocaleTimeString()}
                         </td>
                         <td className="px-3 py-1.5">
                           <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${
                             evt.type === 'DEVELOPER_JWT'
-                              ? (isDarkMode ? 'bg-purple-500/10 text-purple-400' : 'bg-purple-50 text-purple-600')
-                              : (isDarkMode ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600')
+                              ? ('sq-tone-ai')
+                              : ('sq-chip-info')
                           }`}>
                             {evt.type === 'DEVELOPER_JWT' ? 'DEV' : 'VEH'}
                           </span>
                         </td>
-                        <td className={`px-3 py-1.5 font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{evt.action}</td>
-                        <td className={`px-3 py-1.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <td className={`px-3 py-1.5 font-medium text-foreground`}>{evt.action}</td>
+                        <td className={`px-3 py-1.5 text-muted-foreground`}>
                           {evt.tokenId != null ? `#${evt.tokenId}` : '—'}
                         </td>
                         <td className="px-3 py-1.5">
@@ -370,13 +369,13 @@ function TokenAuthHealthPanel({
                             </span>
                           )}
                         </td>
-                        <td className={`px-3 py-1.5 tabular-nums ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <td className={`px-3 py-1.5 tabular-nums text-muted-foreground`}>
                           {evt.durationMs != null ? `${evt.durationMs} ms` : '—'}
                         </td>
-                        <td className={`px-3 py-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                        <td className={`px-3 py-1.5 text-muted-foreground`}>
                           {evt.source ?? '—'}
                         </td>
-                        <td className={`px-3 py-1.5 max-w-[220px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                        <td className={`px-3 py-1.5 max-w-[220px] text-muted-foreground`}>
                           {evt.errorMessage ? (
                             <span className="text-red-500 truncate block" title={evt.errorMessage}>
                               {evt.httpStatus ? `HTTP ${evt.httpStatus}: ` : ''}{evt.errorMessage}
@@ -394,10 +393,10 @@ function TokenAuthHealthPanel({
               </table>
             </div>
             {filteredEvents.length > 15 && (
-              <div className={`px-4 py-2 border-t text-center ${isDarkMode ? 'border-neutral-800' : 'border-gray-200'}`}>
+              <div className={`px-4 py-2 border-t text-center border-border`}>
                 <button
                   onClick={() => setTokenEventExpanded(!tokenEventExpanded)}
-                  className={`text-xs font-medium flex items-center gap-1 mx-auto ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-500'}`}
+                  className={`text-xs font-medium flex items-center gap-1 mx-auto sq-tone-info`}
                 >
                   {tokenEventExpanded ? (
                     <>Show less <ChevronUp className="w-3 h-3" /></>
@@ -410,26 +409,26 @@ function TokenAuthHealthPanel({
           </div>
 
           {/* DIMO Endpoints & Config */}
-          <div className={`rounded-xl border overflow-hidden ${isDarkMode ? 'border-neutral-700/60' : 'border-gray-200'}`}>
+          <div className={`rounded-xl border overflow-hidden border-border`}>
             <button
               onClick={() => setTokenConfigExpanded(!tokenConfigExpanded)}
-              className={`w-full px-4 py-2.5 flex items-center justify-between ${isDarkMode ? 'bg-neutral-800 hover:bg-neutral-800/70' : 'bg-gray-50 hover:bg-gray-100'} transition-colors`}
+              className={`w-full px-4 py-2.5 flex items-center justify-between hover:bg-muted transition-colors`}
             >
               <div className="flex items-center gap-2">
-                <Settings2 className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-                <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>DIMO Endpoints & Configuration</span>
+                <Settings2 className={`w-3.5 h-3.5 text-muted-foreground`} />
+                <span className={`text-xs font-semibold text-foreground`}>DIMO Endpoints & Configuration</span>
               </div>
               {tokenConfigExpanded ? (
-                <ChevronUp className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                <ChevronUp className={`w-3.5 h-3.5 text-muted-foreground`} />
               ) : (
-                <ChevronDown className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground`} />
               )}
             </button>
             {tokenConfigExpanded && tokenHealth && (
               <div className="p-4 space-y-4">
                 {/* Endpoints */}
                 <div>
-                  <p className={`text-[10px] uppercase tracking-wider font-bold mb-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>API Endpoints</p>
+                  <p className={`text-[10px] uppercase tracking-wider font-bold mb-2 text-muted-foreground`}>API Endpoints</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {[
                       { label: 'Auth URL', value: tokenHealth.dimoEndpoints?.authUrl, icon: Shield },
@@ -439,12 +438,12 @@ function TokenAuthHealthPanel({
                     ].map((ep) => (
                       <div
                         key={ep.label}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${isDarkMode ? 'bg-neutral-800/30' : 'bg-gray-50'}`}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs bg-muted/50`}
                       >
-                        <ep.icon className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                        <ep.icon className={`w-3.5 h-3.5 shrink-0 text-muted-foreground`} />
                         <div className="min-w-0">
-                          <p className={`text-[10px] font-medium ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{ep.label}</p>
-                          <p className={`truncate font-mono ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{ep.value ?? '—'}</p>
+                          <p className={`text-[10px] font-medium text-muted-foreground`}>{ep.label}</p>
+                          <p className={`truncate font-mono text-foreground`}>{ep.value ?? '—'}</p>
                         </div>
                       </div>
                     ))}
@@ -452,7 +451,7 @@ function TokenAuthHealthPanel({
                 </div>
                 {/* Config */}
                 <div>
-                  <p className={`text-[10px] uppercase tracking-wider font-bold mb-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Authentication Config</p>
+                  <p className={`text-[10px] uppercase tracking-wider font-bold mb-2 text-muted-foreground`}>Authentication Config</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {[
                       { label: 'Client ID', value: tokenHealth.config?.clientId, icon: Hash },
@@ -464,13 +463,13 @@ function TokenAuthHealthPanel({
                     ].map((c) => (
                       <div
                         key={c.label}
-                        className={`px-3 py-2 rounded-lg text-xs ${isDarkMode ? 'bg-neutral-800/30' : 'bg-gray-50'}`}
+                        className={`px-3 py-2 rounded-lg text-xs bg-muted/50`}
                       >
                         <div className="flex items-center gap-1.5 mb-0.5">
-                          <c.icon className={`w-3 h-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                          <span className={`text-[10px] font-medium ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{c.label}</span>
+                          <c.icon className={`w-3 h-3 text-muted-foreground`} />
+                          <span className={`text-[10px] font-medium text-muted-foreground`}>{c.label}</span>
                         </div>
-                        <p className={`font-mono truncate ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{c.value}</p>
+                        <p className={`font-mono truncate text-foreground`}>{c.value}</p>
                       </div>
                     ))}
                   </div>
@@ -486,7 +485,7 @@ function TokenAuthHealthPanel({
 
 // ─── Main Monitoring View ──────────────────────────────────────────
 
-export function SystemMonitoringView({ isDarkMode }: SystemMonitoringViewProps) {
+export function SystemMonitoringView() {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<any>(null);
   const [workers, setWorkers] = useState<any[]>([]);
@@ -594,57 +593,43 @@ export function SystemMonitoringView({ isDarkMode }: SystemMonitoringViewProps) 
 
   return (
     <div className="space-y-4 pb-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-          <h1 className={`text-2xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-            System Monitoring
-          </h1>
-          <p className={`text-base mt-2 font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-            Visibility and control over polling, workers, and request health
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <input
-              type="datetime-local"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className={`rounded-2xl border px-4 py-2.5 text-sm font-bold ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-200' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`}
-            />
-            <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>–</span>
-            <input
-              type="datetime-local"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className={`rounded-2xl border px-4 py-2.5 text-sm font-bold ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-200' : 'bg-white border-gray-200 text-gray-900 shadow-sm'}`}
-            />
+      <PageHeader
+        title="System Monitoring"
+        eyebrow="Master Admin"
+        description="Visibility and control over polling, workers, and request health"
+        icon={<Activity className="w-4 h-4" />}
+        status={<StatusChip tone={health === 'healthy' ? 'success' : health === 'degraded' ? 'watch' : 'critical'}>{health}</StatusChip>}
+        actions={
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <input type="datetime-local" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="rounded-2xl border px-4 py-2.5 text-sm font-bold border-border" />
+              <span className="text-muted-foreground">–</span>
+              <input type="datetime-local" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="rounded-2xl border px-4 py-2.5 text-sm font-bold border-border" />
+            </div>
+            <label className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
+              <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} className="rounded border-border w-4 h-4" />
+              Auto-refresh 1m
+            </label>
+            <button
+              onClick={() => { loadAll(); loadPollLogs(); }}
+              disabled={loading}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-bold transition-all shadow-sm sq-cta disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
           </div>
-          <label className={`flex items-center gap-2 text-sm font-bold ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-            <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} className="rounded border-gray-300 w-4 h-4" />
-            Auto-refresh 1m
-          </label>
-          <button
-            onClick={() => { loadAll(); loadPollLogs(); }}
-            disabled={loading}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-bold transition-all shadow-sm ${
-              isDarkMode ? 'bg-neutral-800 hover:bg-neutral-700 text-gray-200' : 'bg-white hover:bg-gray-50 border border-gray-200 text-gray-800'
-            }`}
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {loading && !summary ? (
-        <div className={`${CARD_CLASS(isDarkMode)} p-12 flex items-center justify-center`}>
-          <Loader2 className={`w-8 h-8 animate-spin ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+        <div className={`${CARD} p-12 flex items-center justify-center`}>
+          <Loader2 className={`w-8 h-8 animate-spin text-[color:var(--status-info)]`} />
         </div>
       ) : (
         <>
           {/* System health strip */}
-          <div className={`${CARD_CLASS(isDarkMode)} p-5`}>
+          <div className={`${CARD} p-5`}>
             <div className="flex flex-wrap items-center gap-4">
               <div className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border ${healthStyle.bg} ${healthStyle.border}`}>
                 {health === 'healthy' && <CheckCircle className={`w-5 h-5 ${healthStyle.text}`} />}
@@ -652,7 +637,7 @@ export function SystemMonitoringView({ isDarkMode }: SystemMonitoringViewProps) 
                 {health === 'critical' && <XCircle className={`w-5 h-5 ${healthStyle.text}`} />}
                 <span className={`text-sm font-bold capitalize ${healthStyle.text}`}>System: {health}</span>
               </div>
-              <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+              <span className={`text-sm font-medium text-muted-foreground`}>
                 Providers · Polling · Workers · Tokens
               </span>
             </div>
@@ -674,39 +659,39 @@ export function SystemMonitoringView({ isDarkMode }: SystemMonitoringViewProps) 
               { label: 'Retries', value: summary?.retryCount ?? 0, icon: RefreshCw },
               { label: 'Stale vehicles', value: summary?.staleVehicles ?? 0, icon: AlertCircle, red: (summary?.staleVehicles ?? 0) > 0 },
             ].map(({ label, value, icon: Icon, green, red }) => (
-              <div key={label} className={`${CARD_CLASS(isDarkMode)} p-5 flex flex-col items-center justify-center text-center`}>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${red ? (isDarkMode ? 'bg-red-500/10' : 'bg-red-50') : green ? (isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50') : (isDarkMode ? 'bg-neutral-800' : 'bg-gray-100')}`}>
-                  <Icon className={`w-5 h-5 ${red ? 'text-red-500' : green ? 'text-emerald-500' : isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+              <div key={label} className={`${CARD} p-5 flex flex-col items-center justify-center text-center`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${red ? ('sq-tone-critical') : green ? ('sq-tone-success') : ('bg-muted')}`}>
+                  <Icon className={`w-5 h-5 ${red ? 'text-red-500' : green ? 'text-emerald-500' : 'text-muted-foreground'}`} />
                 </div>
-                <span className={`text-2xl font-extrabold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{value}</span>
-                <div className={`text-xs font-bold mt-1 uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{label}</div>
+                <span className={`text-2xl font-extrabold tracking-tight text-foreground`}>{value}</span>
+                <div className={`text-xs font-bold mt-1 uppercase tracking-wider text-muted-foreground`}>{label}</div>
               </div>
             ))}
           </div>
 
           {/* Alerts */}
           {alerts.length > 0 && (
-            <div className={CARD_CLASS(isDarkMode)}>
-              <div className={`px-5 py-3 border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-200'}`}>
-                <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Alerts & anomalies</h2>
+            <div className={CARD}>
+              <div className={`px-5 py-3 border-b border-border`}>
+                <h2 className={`text-sm font-semibold text-foreground`}>Alerts & anomalies</h2>
               </div>
               <div className="divide-y divide-gray-100">
                 {alerts.slice(0, 10).map((a, i) => (
                   <div
                     key={i}
-                    className={`px-5 py-3 flex items-start gap-3 ${isDarkMode ? 'hover:bg-neutral-800' : 'hover:bg-gray-50'}`}
+                    className={`px-5 py-3 flex items-start gap-3 hover:bg-muted/50`}
                   >
                     {a.severity === 'critical' && <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />}
                     {a.severity === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />}
                     {a.severity === 'info' && <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />}
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{a.title}</p>
-                      <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{a.summary}</p>
+                      <p className={`text-sm font-medium text-foreground`}>{a.title}</p>
+                      <p className={`text-xs mt-0.5 text-muted-foreground`}>{a.summary}</p>
                       {a.affectedComponent && (
-                        <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Affected: {a.affectedComponent}</p>
+                        <p className={`text-[10px] mt-1 text-muted-foreground`}>Affected: {a.affectedComponent}</p>
                       )}
                     </div>
-                    <span className={`text-[10px] shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                    <span className={`text-[10px] shrink-0 text-muted-foreground`}>
                       {a.lastSeen ? new Date(a.lastSeen).toLocaleString() : ''}
                     </span>
                   </div>
@@ -717,10 +702,10 @@ export function SystemMonitoringView({ isDarkMode }: SystemMonitoringViewProps) 
 
           {/* DIMO signal polling (by job type) */}
           {summary?.workers?.length > 0 && (
-            <div className={CARD_CLASS(isDarkMode)}>
-              <div className={`px-5 py-3 border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-200'}`}>
-                <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>DIMO signal polling</h2>
-                <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Per-signal job type: success rate and volume</p>
+            <div className={CARD}>
+              <div className={`px-5 py-3 border-b border-border`}>
+                <h2 className={`text-sm font-semibold text-foreground`}>DIMO signal polling</h2>
+                <p className={`text-xs mt-0.5 text-muted-foreground`}>Per-signal job type: success rate and volume</p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-5">
                 {summary.workers.filter((w: any) => w.total > 0).map((w: any) => {
@@ -729,42 +714,42 @@ export function SystemMonitoringView({ isDarkMode }: SystemMonitoringViewProps) 
                   return (
                     <div
                       key={w.name}
-                      className={`rounded-xl border p-4 ${isDarkMode ? 'bg-neutral-800/30 border-neutral-700' : 'bg-gray-50/80 border-gray-200'}`}
+                      className={`rounded-xl border p-4 border-border`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{w.name}</span>
+                        <span className={`text-sm font-medium text-foreground`}>{w.name}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-lg ${sc.bg} ${sc.text}`}>{w.status}</span>
                       </div>
-                      <div className={`mt-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <div className={`mt-2 text-xs text-muted-foreground`}>
                         {w.total} runs · {rate}% success
                       </div>
                     </div>
                   );
                 })}
                 {summary.workers.filter((w: any) => w.total > 0).length === 0 && (
-                  <p className={`col-span-full text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>No polling activity in the selected range.</p>
+                  <p className={`col-span-full text-sm text-muted-foreground`}>No polling activity in the selected range.</p>
                 )}
               </div>
             </div>
           )}
 
           {/* Workers */}
-          <div className={CARD_CLASS(isDarkMode)}>
-            <div className={`px-5 py-3 border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-200'}`}>
-              <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Workers</h2>
-              <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Background job processors and polling pipelines</p>
+          <div className={CARD}>
+            <div className={`px-5 py-3 border-b border-border`}>
+              <h2 className={`text-sm font-semibold text-foreground`}>Workers</h2>
+              <p className={`text-xs mt-0.5 text-muted-foreground`}>Background job processors and polling pipelines</p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className={isDarkMode ? 'bg-neutral-800' : 'bg-gray-50'}>
-                    <th className={`text-left px-5 py-3 font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Worker</th>
-                    <th className={`text-left px-5 py-3 font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Status</th>
-                    <th className={`text-left px-5 py-3 font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Jobs</th>
-                    <th className={`text-left px-5 py-3 font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Failed</th>
-                    <th className={`text-left px-5 py-3 font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Failure %</th>
-                    <th className={`text-left px-5 py-3 font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Last success</th>
-                    <th className={`text-left px-5 py-3 font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}></th>
+                  <tr className={'bg-muted/50'}>
+                    <th className={`text-left px-5 py-3 font-semibold text-foreground`}>Worker</th>
+                    <th className={`text-left px-5 py-3 font-semibold text-foreground`}>Status</th>
+                    <th className={`text-left px-5 py-3 font-semibold text-foreground`}>Jobs</th>
+                    <th className={`text-left px-5 py-3 font-semibold text-foreground`}>Failed</th>
+                    <th className={`text-left px-5 py-3 font-semibold text-foreground`}>Failure %</th>
+                    <th className={`text-left px-5 py-3 font-semibold text-foreground`}>Last success</th>
+                    <th className={`text-left px-5 py-3 font-semibold text-foreground`}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -773,27 +758,27 @@ export function SystemMonitoringView({ isDarkMode }: SystemMonitoringViewProps) 
                     return (
                       <tr
                         key={w.queueKey}
-                        className={`border-t ${isDarkMode ? 'border-neutral-800 hover:bg-neutral-800/30' : 'border-gray-100 hover:bg-gray-50'}`}
+                        className={`border-t border-border hover:bg-muted/50`}
                       >
                         <td className="px-5 py-3">
-                          <p className={`font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{w.name}</p>
-                          <p className={`text-[11px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{w.description}</p>
+                          <p className={`font-medium text-foreground`}>{w.name}</p>
+                          <p className={`text-[11px] text-muted-foreground`}>{w.description}</p>
                         </td>
                         <td className="px-5 py-3">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium ${sc.bg} ${sc.text}`}>
                             {w.status}
                           </span>
                         </td>
-                        <td className={`px-5 py-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{w.total}</td>
-                        <td className={`px-5 py-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{w.failed}</td>
-                        <td className={`px-5 py-3 ${w.failureRatio > 20 ? 'text-red-500' : isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{w.failureRatio}%</td>
-                        <td className={`px-5 py-3 text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                        <td className={`px-5 py-3 text-foreground`}>{w.total}</td>
+                        <td className={`px-5 py-3 text-foreground`}>{w.failed}</td>
+                        <td className={`px-5 py-3 ${w.failureRatio > 20 ? 'text-red-500' : 'text-foreground'}`}>{w.failureRatio}%</td>
+                        <td className={`px-5 py-3 text-xs text-muted-foreground`}>
                           {w.lastSuccessAt ? new Date(w.lastSuccessAt).toLocaleString() : '—'}
                         </td>
                         <td className="px-5 py-3">
                           <button
                             onClick={() => setDetailWorker(w)}
-                            className={`p-1 rounded-lg ${isDarkMode ? 'hover:bg-neutral-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500'}`}
+                            className={`p-1 rounded-lg hover:bg-muted text-muted-foreground`}
                           >
                             <ChevronRight className="w-4 h-4" />
                           </button>
@@ -808,7 +793,6 @@ export function SystemMonitoringView({ isDarkMode }: SystemMonitoringViewProps) 
 
           {/* Token & Auth Health – full diagnostic panel */}
           <TokenAuthHealthPanel
-            isDarkMode={isDarkMode}
             tokenHealth={tokenHealth}
             tokenHealthLoading={tokenHealthLoading}
             onRefresh={loadTokenHealth}
@@ -821,16 +805,16 @@ export function SystemMonitoringView({ isDarkMode }: SystemMonitoringViewProps) 
           />
 
           {/* API requests (poll logs) */}
-          <div className={CARD_CLASS(isDarkMode)}>
-            <div className={`px-5 py-3 border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-200'}`}>
-              <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>API requests (poll logs)</h2>
-              <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>DIMO and internal polling activity</p>
+          <div className={CARD}>
+            <div className={`px-5 py-3 border-b border-border`}>
+              <h2 className={`text-sm font-semibold text-foreground`}>API requests (poll logs)</h2>
+              <p className={`text-xs mt-0.5 text-muted-foreground`}>DIMO and internal polling activity</p>
             </div>
-            <div className={`p-4 flex flex-wrap gap-2 border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-200'}`}>
+            <div className={`p-4 flex flex-wrap gap-2 border-b border-border`}>
               <select
                 value={filterJobType}
                 onChange={(e) => { setFilterJobType(e.target.value); setPollPage(1); }}
-                className={`rounded-lg border px-3 py-1.5 text-sm ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-200' : 'bg-white border-gray-200 text-gray-800'}`}
+                className={`rounded-lg border px-3 py-1.5 text-sm border-border`}
               >
                 <option value="">All job types</option>
                 <option value="SNAPSHOT">SNAPSHOT</option>
@@ -843,7 +827,7 @@ export function SystemMonitoringView({ isDarkMode }: SystemMonitoringViewProps) 
               <select
                 value={filterStatus}
                 onChange={(e) => { setFilterStatus(e.target.value); setPollPage(1); }}
-                className={`rounded-lg border px-3 py-1.5 text-sm ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-200' : 'bg-white border-gray-200 text-gray-800'}`}
+                className={`rounded-lg border px-3 py-1.5 text-sm border-border`}
               >
                 <option value="">All statuses</option>
                 <option value="SUCCESS">SUCCESS</option>
@@ -855,25 +839,25 @@ export function SystemMonitoringView({ isDarkMode }: SystemMonitoringViewProps) 
             <div className="overflow-x-auto">
               {pollLogsLoading ? (
                 <div className="p-12 flex justify-center">
-                  <Loader2 className={`w-6 h-6 animate-spin ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                  <Loader2 className={`w-6 h-6 animate-spin text-[color:var(--status-info)]`} />
                 </div>
               ) : (
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className={isDarkMode ? 'bg-neutral-800' : 'bg-gray-50'}>
-                      <th className={`text-left px-5 py-3 font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Time</th>
-                      <th className={`text-left px-5 py-3 font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Job type</th>
-                      <th className={`text-left px-5 py-3 font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Vehicle</th>
-                      <th className={`text-left px-5 py-3 font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Status</th>
-                      <th className={`text-left px-5 py-3 font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Duration</th>
-                      <th className={`text-left px-5 py-3 font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Retries</th>
-                      <th className={`text-left px-5 py-3 font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}></th>
+                    <tr className={'bg-muted/50'}>
+                      <th className={`text-left px-5 py-3 font-semibold text-foreground`}>Time</th>
+                      <th className={`text-left px-5 py-3 font-semibold text-foreground`}>Job type</th>
+                      <th className={`text-left px-5 py-3 font-semibold text-foreground`}>Vehicle</th>
+                      <th className={`text-left px-5 py-3 font-semibold text-foreground`}>Status</th>
+                      <th className={`text-left px-5 py-3 font-semibold text-foreground`}>Duration</th>
+                      <th className={`text-left px-5 py-3 font-semibold text-foreground`}>Retries</th>
+                      <th className={`text-left px-5 py-3 font-semibold text-foreground`}></th>
                     </tr>
                   </thead>
                   <tbody>
                     {pollLogs.data.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className={`px-5 py-8 text-center ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                        <td colSpan={7} className={`px-5 py-8 text-center text-muted-foreground`}>
                           No poll logs in the selected range.
                         </td>
                       </tr>
@@ -881,13 +865,13 @@ export function SystemMonitoringView({ isDarkMode }: SystemMonitoringViewProps) 
                       pollLogs.data.map((log) => (
                         <tr
                           key={log.id}
-                          className={`border-t ${isDarkMode ? 'border-neutral-800 hover:bg-neutral-800/30' : 'border-gray-100 hover:bg-gray-50'}`}
+                          className={`border-t border-border hover:bg-muted/50`}
                         >
-                          <td className={`px-5 py-2.5 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          <td className={`px-5 py-2.5 text-xs text-muted-foreground`}>
                             {new Date(log.startedAt).toLocaleString()}
                           </td>
-                          <td className={`px-5 py-2.5 font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{log.jobType}</td>
-                          <td className={`px-5 py-2.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                          <td className={`px-5 py-2.5 font-medium text-foreground`}>{log.jobType}</td>
+                          <td className={`px-5 py-2.5 text-foreground`}>
                             {log.vehicleName || log.vin || log.vehicleId || '—'}
                           </td>
                           <td className="px-5 py-2.5">
@@ -897,20 +881,20 @@ export function SystemMonitoringView({ isDarkMode }: SystemMonitoringViewProps) 
                                   ? 'bg-emerald-500/15 text-emerald-600'
                                   : log.status === 'FAILURE' || log.status === 'TIMEOUT'
                                     ? 'bg-red-500/15 text-red-600'
-                                    : isDarkMode ? 'bg-neutral-700 text-gray-400' : 'bg-gray-200 text-gray-600'
+                                    : 'sq-chip-neutral'
                               }`}
                             >
                               {log.status}
                             </span>
                           </td>
-                          <td className={`px-5 py-2.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                          <td className={`px-5 py-2.5 text-foreground`}>
                             {log.durationMs != null ? `${log.durationMs} ms` : '—'}
                           </td>
-                          <td className={`px-5 py-2.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{log.retryCount ?? 0}</td>
+                          <td className={`px-5 py-2.5 text-foreground`}>{log.retryCount ?? 0}</td>
                           <td className="px-5 py-2.5">
                             <button
                               onClick={() => setDetailLog(log)}
-                              className={`p-1 rounded ${isDarkMode ? 'hover:bg-neutral-700 text-gray-400' : 'hover:bg-gray-200 text-gray-500'}`}
+                              className={`p-1 rounded hover:bg-muted text-muted-foreground`}
                             >
                               <ChevronRight className="w-4 h-4" />
                             </button>
@@ -923,22 +907,22 @@ export function SystemMonitoringView({ isDarkMode }: SystemMonitoringViewProps) 
               )}
             </div>
             {pollLogs.meta && pollLogs.meta.totalPages > 1 && (
-              <div className={`px-5 py-3 border-t flex items-center justify-between ${isDarkMode ? 'border-neutral-800' : 'border-gray-200'}`}>
-                <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+              <div className={`px-5 py-3 border-t flex items-center justify-between border-border`}>
+                <span className={`text-xs text-muted-foreground`}>
                   Page {pollLogs.meta.page} of {pollLogs.meta.totalPages} · {pollLogs.meta.total} total
                 </span>
                 <div className="flex gap-2">
                   <button
                     disabled={pollLogs.meta.page <= 1}
                     onClick={() => setPollPage((p) => p - 1)}
-                    className={`px-3 py-1 rounded-lg text-sm font-medium disabled:opacity-50 ${isDarkMode ? 'bg-neutral-800 text-gray-200' : 'bg-gray-100 text-gray-800'}`}
+                    className={`px-3 py-1 rounded-lg text-sm font-medium disabled:opacity-50 bg-muted/50`}
                   >
                     Previous
                   </button>
                   <button
                     disabled={pollLogs.meta.page >= pollLogs.meta.totalPages}
                     onClick={() => setPollPage((p) => p + 1)}
-                    className={`px-3 py-1 rounded-lg text-sm font-medium disabled:opacity-50 ${isDarkMode ? 'bg-neutral-800 text-gray-200' : 'bg-gray-100 text-gray-800'}`}
+                    className={`px-3 py-1 rounded-lg text-sm font-medium disabled:opacity-50 bg-muted/50`}
                   >
                     Next
                   </button>
@@ -953,23 +937,23 @@ export function SystemMonitoringView({ isDarkMode }: SystemMonitoringViewProps) 
       {detailLog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setDetailLog(null)}>
           <div
-            className={`${CARD_CLASS(isDarkMode)} max-w-lg w-full max-h-[80vh] overflow-auto`}
+            className={`${CARD} max-w-lg w-full max-h-[80vh] overflow-auto`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className={`flex items-center justify-between px-5 py-3 border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-200'}`}>
-              <h3 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Request detail</h3>
-              <button onClick={() => setDetailLog(null)} className={`p-1 rounded-lg ${isDarkMode ? 'hover:bg-neutral-700' : 'hover:bg-gray-200'}`}>
+            <div className={`flex items-center justify-between px-5 py-3 border-b border-border`}>
+              <h3 className={`text-sm font-semibold text-foreground`}>Request detail</h3>
+              <button onClick={() => setDetailLog(null)} className={`p-1 rounded-lg hover:bg-muted`}>
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="p-5 space-y-3 text-sm">
-              <div><span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Time</span><p className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>{new Date(detailLog.startedAt).toLocaleString()}</p></div>
-              <div><span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Job type</span><p className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>{detailLog.jobType}</p></div>
-              <div><span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Status</span><p className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>{detailLog.status}</p></div>
-              <div><span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Vehicle</span><p className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>{detailLog.vehicleName || detailLog.vin || detailLog.vehicleId || '—'}</p></div>
-              {detailLog.durationMs != null && <div><span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Duration</span><p className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>{detailLog.durationMs} ms</p></div>}
-              {detailLog.retryCount != null && <div><span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Retries</span><p className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>{detailLog.retryCount}</p></div>}
-              {detailLog.errorMessage && <div><span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Error</span><p className={`text-red-600 ${isDarkMode ? 'text-red-400' : ''}`}>{detailLog.errorMessage}</p></div>}
+              <div><span className={'text-muted-foreground'}>Time</span><p className={'text-foreground'}>{new Date(detailLog.startedAt).toLocaleString()}</p></div>
+              <div><span className={'text-muted-foreground'}>Job type</span><p className={'text-foreground'}>{detailLog.jobType}</p></div>
+              <div><span className={'text-muted-foreground'}>Status</span><p className={'text-foreground'}>{detailLog.status}</p></div>
+              <div><span className={'text-muted-foreground'}>Vehicle</span><p className={'text-foreground'}>{detailLog.vehicleName || detailLog.vin || detailLog.vehicleId || '—'}</p></div>
+              {detailLog.durationMs != null && <div><span className={'text-muted-foreground'}>Duration</span><p className={'text-foreground'}>{detailLog.durationMs} ms</p></div>}
+              {detailLog.retryCount != null && <div><span className={'text-muted-foreground'}>Retries</span><p className={'text-foreground'}>{detailLog.retryCount}</p></div>}
+              {detailLog.errorMessage && <div><span className={'text-muted-foreground'}>Error</span><p className={`text-red-600 text-[color:var(--status-critical)]`}>{detailLog.errorMessage}</p></div>}
             </div>
           </div>
         </div>
@@ -979,24 +963,24 @@ export function SystemMonitoringView({ isDarkMode }: SystemMonitoringViewProps) 
       {detailWorker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setDetailWorker(null)}>
           <div
-            className={`${CARD_CLASS(isDarkMode)} max-w-lg w-full max-h-[80vh] overflow-auto`}
+            className={`${CARD} max-w-lg w-full max-h-[80vh] overflow-auto`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className={`flex items-center justify-between px-5 py-3 border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-200'}`}>
-              <h3 className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{detailWorker.name}</h3>
-              <button onClick={() => setDetailWorker(null)} className={`p-1 rounded-lg ${isDarkMode ? 'hover:bg-neutral-700' : 'hover:bg-gray-200'}`}>
+            <div className={`flex items-center justify-between px-5 py-3 border-b border-border`}>
+              <h3 className={`text-sm font-semibold text-foreground`}>{detailWorker.name}</h3>
+              <button onClick={() => setDetailWorker(null)} className={`p-1 rounded-lg hover:bg-muted`}>
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="p-5 space-y-3 text-sm">
-              <p className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>{detailWorker.description}</p>
-              <div><span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Status</span><p className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>{detailWorker.status}</p></div>
-              <div><span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Jobs (period)</span><p className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>{detailWorker.total}</p></div>
-              <div><span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Failed</span><p className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>{detailWorker.failed}</p></div>
-              <div><span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Failure ratio</span><p className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>{detailWorker.failureRatio}%</p></div>
-              {detailWorker.lastSuccessAt && <div><span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Last success</span><p className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>{new Date(detailWorker.lastSuccessAt).toLocaleString()}</p></div>}
-              {detailWorker.lastFailedAt && <div><span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Last failure</span><p className={isDarkMode ? 'text-red-400' : 'text-red-600'}>{new Date(detailWorker.lastFailedAt).toLocaleString()}</p></div>}
-              {detailWorker.avgDurationMs > 0 && <div><span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Avg duration</span><p className={isDarkMode ? 'text-gray-200' : 'text-gray-800'}>{detailWorker.avgDurationMs} ms</p></div>}
+              <p className={'text-muted-foreground'}>{detailWorker.description}</p>
+              <div><span className={'text-muted-foreground'}>Status</span><p className={'text-foreground'}>{detailWorker.status}</p></div>
+              <div><span className={'text-muted-foreground'}>Jobs (period)</span><p className={'text-foreground'}>{detailWorker.total}</p></div>
+              <div><span className={'text-muted-foreground'}>Failed</span><p className={'text-foreground'}>{detailWorker.failed}</p></div>
+              <div><span className={'text-muted-foreground'}>Failure ratio</span><p className={'text-foreground'}>{detailWorker.failureRatio}%</p></div>
+              {detailWorker.lastSuccessAt && <div><span className={'text-muted-foreground'}>Last success</span><p className={'text-foreground'}>{new Date(detailWorker.lastSuccessAt).toLocaleString()}</p></div>}
+              {detailWorker.lastFailedAt && <div><span className={'text-muted-foreground'}>Last failure</span><p className={'text-[color:var(--status-critical)]'}>{new Date(detailWorker.lastFailedAt).toLocaleString()}</p></div>}
+              {detailWorker.avgDurationMs > 0 && <div><span className={'text-muted-foreground'}>Avg duration</span><p className={'text-foreground'}>{detailWorker.avgDurationMs} ms</p></div>}
             </div>
           </div>
         </div>

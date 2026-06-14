@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { PageHeader, DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader } from '../../components/patterns';
 import {
   LayoutDashboard, Building2, Users, FileText, ScrollText, HeartPulse, Shield,
   Search, Plus, RefreshCw, Settings2, CheckCircle, XCircle, AlertTriangle,
@@ -13,9 +14,19 @@ import type {
   InsuranceConnectionTestResult,
 } from '../../lib/api';
 
+/* ── Design-system token helpers ── */
+const CARD = 'sq-card overflow-hidden';
+const INPUT =
+  'w-full px-4 py-2.5 rounded-xl border border-border bg-muted/50 text-sm text-foreground transition-colors outline-none focus:border-[color:var(--brand)] placeholder:text-muted-foreground';
+const LABEL = 'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
+const HEAD = 'text-xs font-semibold uppercase tracking-wider text-muted-foreground';
+const TAB_BAR = 'sq-tab-bar flex gap-1 p-1 rounded-2xl overflow-x-auto w-fit';
+const TAB_ACTIVE = 'sq-tab-active flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap';
+const TAB_IDLE = 'sq-tab flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap text-muted-foreground hover:text-foreground';
+
+
 interface InsurancesAdminViewProps {
-  isDarkMode: boolean;
-}
+  }
 
 type TabId = 'overview' | 'partners' | 'contacts' | 'disclosure-templates' | 'inquiry-templates' | 'inquiries' | 'health';
 
@@ -54,19 +65,19 @@ function fmtDate(iso: string | null): string {
   return new Date(iso).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function Spinner({ isDarkMode }: { isDarkMode: boolean }) {
+function Spinner() {
   return (
     <div className="flex items-center justify-center py-20">
-      <Loader2 className={`w-7 h-7 animate-spin ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} />
+      <Loader2 className={`w-7 h-7 animate-spin text-[color:var(--brand)]`} />
     </div>
   );
 }
 
-function ErrorBanner({ isDarkMode, card, message, onRetry }: { isDarkMode: boolean; card: string; message: string; onRetry: () => void }) {
+function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className={`${card} p-6 flex items-center gap-4`}>
+    <div className={`${CARD} p-6 flex items-center gap-4`}>
       <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
-      <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} flex-1`}>{message}</p>
+      <p className={`text-sm text-muted-foreground flex-1`}>{message}</p>
       <button onClick={onRetry} className="text-xs font-semibold text-indigo-500 hover:underline flex items-center gap-1">
         <RefreshCw className="w-3.5 h-3.5" /> Retry
       </button>
@@ -78,40 +89,27 @@ function Badge({ label, color }: { label: string; color: string }) {
   return <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${color}`}>{label}</span>;
 }
 
-export function InsurancesAdminView({ isDarkMode }: InsurancesAdminViewProps) {
+export function InsurancesAdminView() {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
-
-  const card = `rounded-2xl shadow-sm border ${
-    isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-  }`;
-  const inputCls = `w-full px-4 py-2.5 rounded-xl border text-sm transition-colors outline-none ${
-    isDarkMode
-      ? 'bg-neutral-800 border-neutral-700 text-gray-200 focus:border-indigo-500/60 placeholder:text-gray-600'
-      : 'bg-gray-50 border-gray-200 text-gray-700 focus:border-indigo-400 placeholder:text-gray-400'
-  }`;
-  const labelCls = `block text-xs font-semibold uppercase tracking-wider mb-1.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`;
-  const headCls = `text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`;
 
   return (
     <div className="space-y-6 pb-8">
-      <div>
-        <h1 className={`text-2xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-          Insurance — Admin
-        </h1>
-        <p className={`text-sm mt-1.5 font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-          Partner registry, templates, inquiry monitoring, and diagnostics
-        </p>
-      </div>
+      <PageHeader
+        title="Insurance — Admin"
+        eyebrow="Master Admin"
+        description="Partner registry, templates, inquiry monitoring, and diagnostics"
+        icon={<Shield className="w-4 h-4" />}
+      />
 
-      <div className={`flex gap-1 p-1 rounded-2xl overflow-x-auto w-fit ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-100'}`}>
+      <div className={TAB_BAR}>
         {TABS.map(t => (
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
             className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
               activeTab === t.id
-                ? isDarkMode ? 'bg-neutral-700 text-white shadow-sm' : 'bg-white text-gray-900 shadow-sm'
-                : isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-card text-foreground shadow-sm ring-1 ring-border'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             <t.icon className="w-4 h-4" />
@@ -120,13 +118,13 @@ export function InsurancesAdminView({ isDarkMode }: InsurancesAdminViewProps) {
         ))}
       </div>
 
-      {activeTab === 'overview' && <OverviewTab isDarkMode={isDarkMode} card={card} />}
-      {activeTab === 'partners' && <PartnersTab isDarkMode={isDarkMode} card={card} inputCls={inputCls} labelCls={labelCls} headCls={headCls} />}
-      {activeTab === 'contacts' && <ContactsTab isDarkMode={isDarkMode} card={card} inputCls={inputCls} labelCls={labelCls} headCls={headCls} />}
-      {activeTab === 'disclosure-templates' && <DisclosureTemplatesTab isDarkMode={isDarkMode} card={card} inputCls={inputCls} labelCls={labelCls} headCls={headCls} />}
-      {activeTab === 'inquiry-templates' && <InquiryTemplatesTab isDarkMode={isDarkMode} card={card} inputCls={inputCls} labelCls={labelCls} headCls={headCls} />}
-      {activeTab === 'inquiries' && <InquiriesTab isDarkMode={isDarkMode} card={card} inputCls={inputCls} headCls={headCls} />}
-      {activeTab === 'health' && <HealthTab isDarkMode={isDarkMode} card={card} />}
+      {activeTab === 'overview' && <OverviewTab />}
+      {activeTab === 'partners' && <PartnersTab />}
+      {activeTab === 'contacts' && <ContactsTab />}
+      {activeTab === 'disclosure-templates' && <DisclosureTemplatesTab />}
+      {activeTab === 'inquiry-templates' && <InquiryTemplatesTab />}
+      {activeTab === 'inquiries' && <InquiriesTab />}
+      {activeTab === 'health' && <HealthTab />}
     </div>
   );
 }
@@ -134,7 +132,7 @@ export function InsurancesAdminView({ isDarkMode }: InsurancesAdminViewProps) {
 /* ═══════════════════════════════════════════════
    TAB 1 — Overview Dashboard
    ═══════════════════════════════════════════════ */
-function OverviewTab({ isDarkMode, card }: { isDarkMode: boolean; card: string }) {
+function OverviewTab() {
   const [health, setHealth] = useState<InsuranceHealthOverview | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -146,8 +144,8 @@ function OverviewTab({ isDarkMode, card }: { isDarkMode: boolean; card: string }
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <Spinner isDarkMode={isDarkMode} />;
-  if (!health) return <ErrorBanner isDarkMode={isDarkMode} card={card} message="Failed to load overview." onRetry={load} />;
+  if (loading) return <Spinner />;
+  if (!health) return <ErrorBanner message="Failed to load overview." onRetry={load} />;
 
   const stats: { label: string; value: number; color?: string; icon: typeof Shield }[] = [
     { label: 'Total Partners', value: health.totalPartners, icon: Building2 },
@@ -164,29 +162,29 @@ function OverviewTab({ isDarkMode, card }: { isDarkMode: boolean; card: string }
     <div className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
         {stats.map(s => (
-          <div key={s.label} className={`${card} p-5`}>
+          <div key={s.label} className={`${CARD} p-5`}>
             <div className="flex items-center justify-between mb-3">
-              <p className={`text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{s.label}</p>
-              <s.icon className={`w-4 h-4 ${s.color ?? (isDarkMode ? 'text-gray-600' : 'text-gray-300')}`} />
+              <p className={`text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>{s.label}</p>
+              <s.icon className={`w-4 h-4 ${s.color ?? ('text-muted-foreground')}`} />
             </div>
-            <p className={`text-2xl font-bold ${s.color ?? (isDarkMode ? 'text-white' : 'text-gray-900')}`}>{s.value}</p>
+            <p className={`text-2xl font-bold ${s.color ?? ('text-foreground')}`}>{s.value}</p>
           </div>
         ))}
       </div>
 
-      <div className={`${card} p-6`}>
-        <h3 className={`text-sm font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Partner Status</h3>
+      <div className={`${CARD} p-6`}>
+        <h3 className={`text-sm font-bold mb-4 text-foreground`}>Partner Status</h3>
         <div className="space-y-2">
           {health.partners.map(p => (
-            <div key={p.id} className={`flex items-center justify-between py-3 px-4 rounded-xl ${isDarkMode ? 'bg-neutral-900' : 'bg-gray-50'}`}>
+            <div key={p.id} className={`flex items-center justify-between py-3 px-4 rounded-xl bg-muted/50`}>
               <div className="flex items-center gap-3">
                 <span className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT[p.healthStatus] ?? STATUS_DOT.unknown}`} />
-                <span className={`text-sm font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{p.displayName}</span>
-                <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{p.key}</span>
+                <span className={`text-sm font-semibold text-foreground`}>{p.displayName}</span>
+                <span className={`text-xs text-muted-foreground`}>{p.key}</span>
               </div>
               <div className="flex items-center gap-4 text-xs">
-                <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>{p.communicationChannel}</span>
-                <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>{p.isEnabled ? 'Enabled' : 'Disabled'}</span>
+                <span className={'text-muted-foreground'}>{p.communicationChannel}</span>
+                <span className={'text-muted-foreground'}>{p.isEnabled ? 'Enabled' : 'Disabled'}</span>
                 <span className={`capitalize font-semibold ${STATUS_TEXT[p.healthStatus] ?? 'text-gray-400'}`}>{p.healthStatus}</span>
               </div>
             </div>
@@ -200,7 +198,7 @@ function OverviewTab({ isDarkMode, card }: { isDarkMode: boolean; card: string }
 /* ═══════════════════════════════════════════════
    TAB 2 — Partners Registry
    ═══════════════════════════════════════════════ */
-function PartnersTab({ isDarkMode, card, inputCls, labelCls, headCls }: { isDarkMode: boolean; card: string; inputCls: string; labelCls: string; headCls: string }) {
+function PartnersTab() {
   const [partners, setPartners] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editId, setEditId] = useState<string | null>(null);
@@ -267,7 +265,7 @@ function PartnersTab({ isDarkMode, card, inputCls, labelCls, headCls }: { isDark
     !search || p.displayName?.toLowerCase().includes(search.toLowerCase()) || p.key?.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (loading) return <Spinner isDarkMode={isDarkMode} />;
+  if (loading) return <Spinner />;
 
   const formOpen = showCreate || editId;
 
@@ -275,21 +273,21 @@ function PartnersTab({ isDarkMode, card, inputCls, labelCls, headCls }: { isDark
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search partners..." className={`${inputCls} pl-10`} />
+          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search partners..." className={`${INPUT} pl-10`} />
         </div>
         <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
           <Plus className="w-4 h-4" /> Add Partner
         </button>
-        <button onClick={load} className={`p-2.5 rounded-xl border transition-colors ${isDarkMode ? 'border-neutral-700 text-gray-400 hover:text-white' : 'border-gray-200 text-gray-400 hover:text-gray-700'}`}>
+        <button onClick={load} className={`p-2.5 rounded-xl border transition-colors border-border text-muted-foreground hover:text-foreground`}>
           <RefreshCw className="w-4 h-4" />
         </button>
       </div>
 
       {testResult && (
-        <div className={`${card} p-4 flex items-center gap-3`}>
+        <div className={`${CARD} p-4 flex items-center gap-3`}>
           {testResult.success ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : <XCircle className="w-5 h-5 text-red-500" />}
-          <span className={`text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+          <span className={`text-sm text-foreground`}>
             {testResult.success ? 'Connection OK' : 'Connection failed'} — {testResult.latencyMs}ms {testResult.message && `· ${testResult.message}`}
           </span>
           <button onClick={() => setTestResult(null)} className="ml-auto"><X className="w-4 h-4 text-gray-400" /></button>
@@ -297,75 +295,75 @@ function PartnersTab({ isDarkMode, card, inputCls, labelCls, headCls }: { isDark
       )}
 
       {formOpen && (
-        <div className={`${card} p-6 space-y-4`}>
+        <div className={`${CARD} p-6 space-y-4`}>
           <div className="flex items-center justify-between">
-            <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{editId ? 'Edit Partner' : 'New Partner'}</h3>
+            <h3 className={`text-sm font-bold text-foreground`}>{editId ? 'Edit Partner' : 'New Partner'}</h3>
             <button onClick={() => { setEditId(null); setShowCreate(false); }}><X className="w-4 h-4 text-gray-400" /></button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div><label className={labelCls}>Key</label><input value={form.key} onChange={e => setForm(f => ({ ...f, key: e.target.value }))} className={inputCls} placeholder="partner-key" /></div>
-            <div><label className={labelCls}>Display Name</label><input value={form.displayName} onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))} className={inputCls} /></div>
+            <div><label className={LABEL}>Key</label><input value={form.key} onChange={e => setForm(f => ({ ...f, key: e.target.value }))} className={INPUT} placeholder="partner-key" /></div>
+            <div><label className={LABEL}>Display Name</label><input value={form.displayName} onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))} className={INPUT} /></div>
             <div>
-              <label className={labelCls}>Channel</label>
-              <select value={form.communicationChannel} onChange={e => setForm(f => ({ ...f, communicationChannel: e.target.value }))} className={inputCls}>
+              <label className={LABEL}>Channel</label>
+              <select value={form.communicationChannel} onChange={e => setForm(f => ({ ...f, communicationChannel: e.target.value }))} className={INPUT}>
                 {CHANNELS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
           </div>
-          <div><label className={labelCls}>Description</label><textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className={inputCls} /></div>
+          <div><label className={LABEL}>Description</label><textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className={INPUT} /></div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Supported Inquiry Types</label>
+              <label className={LABEL}>Supported Inquiry Types</label>
               <div className="flex flex-wrap gap-1.5 mt-1">{INQUIRY_TYPES.map(t => (
-                <button key={t} onClick={() => toggleMulti('supportedInquiryTypes', t)} className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${form.supportedInquiryTypes?.includes(t) ? 'bg-indigo-600 text-white border-indigo-600' : isDarkMode ? 'border-neutral-700 text-gray-400' : 'border-gray-200 text-gray-500'}`}>{t.replace(/_/g, ' ')}</button>
+                <button key={t} onClick={() => toggleMulti('supportedInquiryTypes', t)} className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${form.supportedInquiryTypes?.includes(t) ? 'bg-indigo-600 text-white border-indigo-600' : 'border-border text-muted-foreground'}`}>{t.replace(/_/g, ' ')}</button>
               ))}</div>
             </div>
             <div>
-              <label className={labelCls}>Insurance Models</label>
+              <label className={LABEL}>Insurance Models</label>
               <div className="flex flex-wrap gap-1.5 mt-1">{INSURANCE_MODELS.map(m => (
-                <button key={m} onClick={() => toggleMulti('supportedInsuranceModels', m)} className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${form.supportedInsuranceModels?.includes(m) ? 'bg-indigo-600 text-white border-indigo-600' : isDarkMode ? 'border-neutral-700 text-gray-400' : 'border-gray-200 text-gray-500'}`}>{m.replace(/_/g, ' ')}</button>
+                <button key={m} onClick={() => toggleMulti('supportedInsuranceModels', m)} className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${form.supportedInsuranceModels?.includes(m) ? 'bg-indigo-600 text-white border-indigo-600' : 'border-border text-muted-foreground'}`}>{m.replace(/_/g, ' ')}</button>
               ))}</div>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Accepted Historical Data</label>
+              <label className={LABEL}>Accepted Historical Data</label>
               <div className="flex flex-wrap gap-1.5 mt-1">{DATA_TYPES.map(d => (
-                <button key={d} onClick={() => toggleMulti('acceptedHistoricalData', d)} className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${form.acceptedHistoricalData?.includes(d) ? 'bg-violet-600 text-white border-violet-600' : isDarkMode ? 'border-neutral-700 text-gray-400' : 'border-gray-200 text-gray-500'}`}>{d.replace(/_/g, ' ')}</button>
+                <button key={d} onClick={() => toggleMulti('acceptedHistoricalData', d)} className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${form.acceptedHistoricalData?.includes(d) ? 'bg-violet-600 text-white border-violet-600' : 'border-border text-muted-foreground'}`}>{d.replace(/_/g, ' ')}</button>
               ))}</div>
             </div>
             <div>
-              <label className={labelCls}>Accepted Live Data</label>
+              <label className={LABEL}>Accepted Live Data</label>
               <div className="flex flex-wrap gap-1.5 mt-1">{DATA_TYPES.map(d => (
-                <button key={d} onClick={() => toggleMulti('acceptedLiveData', d)} className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${form.acceptedLiveData?.includes(d) ? 'bg-violet-600 text-white border-violet-600' : isDarkMode ? 'border-neutral-700 text-gray-400' : 'border-gray-200 text-gray-500'}`}>{d.replace(/_/g, ' ')}</button>
+                <button key={d} onClick={() => toggleMulti('acceptedLiveData', d)} className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${form.acceptedLiveData?.includes(d) ? 'bg-violet-600 text-white border-violet-600' : 'border-border text-muted-foreground'}`}>{d.replace(/_/g, ' ')}</button>
               ))}</div>
             </div>
           </div>
           <div className="flex flex-wrap gap-5">
             {(['supportsDynamicInsurance', 'supportsUsageBased', 'supportsKilometerBased', 'supportsDrivingScoreBased'] as const).map(k => (
               <button key={k} onClick={() => setForm(f => ({ ...f, [k]: !f[k] }))} className="flex items-center gap-2">
-                {form[k] ? <ToggleRight className="w-5 h-5 text-indigo-500" /> : <ToggleLeft className={`w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />}
-                <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{k.replace(/^supports/, '').replace(/([A-Z])/g, ' $1').trim()}</span>
+                {form[k] ? <ToggleRight className="w-5 h-5 text-indigo-500" /> : <ToggleLeft className={`w-5 h-5 text-muted-foreground`} />}
+                <span className={`text-xs font-semibold text-muted-foreground`}>{k.replace(/^supports/, '').replace(/([A-Z])/g, ' $1').trim()}</span>
               </button>
             ))}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div><label className={labelCls}>SLA Info</label><input value={form.slaInfo} onChange={e => setForm(f => ({ ...f, slaInfo: e.target.value }))} className={inputCls} placeholder="e.g. 48h response" /></div>
+            <div><label className={LABEL}>SLA Info</label><input value={form.slaInfo} onChange={e => setForm(f => ({ ...f, slaInfo: e.target.value }))} className={INPUT} placeholder="e.g. 48h response" /></div>
             <div>
-              <label className={labelCls}>Environment</label>
-              <select value={form.environment} onChange={e => setForm(f => ({ ...f, environment: e.target.value }))} className={inputCls}>
+              <label className={LABEL}>Environment</label>
+              <select value={form.environment} onChange={e => setForm(f => ({ ...f, environment: e.target.value }))} className={INPUT}>
                 {ENVIRONMENTS.map(e => <option key={e} value={e}>{e}</option>)}
               </select>
             </div>
             <div className="flex items-end">
               <button onClick={() => setForm(f => ({ ...f, isEnabled: !f.isEnabled }))} className="flex items-center gap-2">
-                {form.isEnabled ? <ToggleRight className="w-5 h-5 text-emerald-500" /> : <ToggleLeft className={`w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />}
-                <span className={`text-sm font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>{form.isEnabled ? 'Enabled' : 'Disabled'}</span>
+                {form.isEnabled ? <ToggleRight className="w-5 h-5 text-emerald-500" /> : <ToggleLeft className={`w-5 h-5 text-muted-foreground`} />}
+                <span className={`text-sm font-semibold text-foreground`}>{form.isEnabled ? 'Enabled' : 'Disabled'}</span>
               </button>
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button onClick={() => { setEditId(null); setShowCreate(false); }} className={`px-4 py-2 rounded-xl text-sm font-semibold ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}>Cancel</button>
+            <button onClick={() => { setEditId(null); setShowCreate(false); }} className={`px-4 py-2 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground`}>Cancel</button>
             <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {editId ? 'Update' : 'Create'}
             </button>
@@ -373,27 +371,27 @@ function PartnersTab({ isDarkMode, card, inputCls, labelCls, headCls }: { isDark
         </div>
       )}
 
-      <div className={`${card} overflow-hidden`}>
+      <div className={`${CARD} overflow-hidden`}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className={`border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
+              <tr className={`border-b border-border`}>
                 {['Name', 'Key', 'Enabled', 'Channel', 'Models', 'Health', 'Last Tested', 'Actions'].map(h => (
-                  <th key={h} className={`px-5 py-3.5 text-left ${headCls}`}>{h}</th>
+                  <th key={h} className={`px-5 py-3.5 text-left ${HEAD}`}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.map(p => (
-                <tr key={p.id} className={`border-b transition-colors ${isDarkMode ? 'border-neutral-800 hover:bg-neutral-900' : 'border-gray-50 hover:bg-gray-50'}`}>
-                  <td className={`px-5 py-3 font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{p.displayName}</td>
-                  <td className={`px-5 py-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{p.key}</td>
+                <tr key={p.id} className={`border-b transition-colors border-border hover:bg-muted/50`}>
+                  <td className={`px-5 py-3 font-semibold text-foreground`}>{p.displayName}</td>
+                  <td className={`px-5 py-3 text-muted-foreground`}>{p.key}</td>
                   <td className="px-5 py-3">{p.isEnabled ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <XCircle className="w-4 h-4 text-gray-400" />}</td>
-                  <td className={`px-5 py-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{p.communicationChannel}</td>
+                  <td className={`px-5 py-3 text-muted-foreground`}>{p.communicationChannel}</td>
                   <td className="px-5 py-3">
                     <div className="flex flex-wrap gap-1">{(p.supportedInsuranceModels ?? []).slice(0, 3).map((m: string) => (
-                      <Badge key={m} label={m} color={isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'} />
-                    ))}{(p.supportedInsuranceModels ?? []).length > 3 && <Badge label={`+${p.supportedInsuranceModels.length - 3}`} color={isDarkMode ? 'bg-neutral-800 text-gray-400' : 'bg-gray-100 text-gray-500'} />}</div>
+                      <Badge key={m} label={m} color={'sq-tone-brand'} />
+                    ))}{(p.supportedInsuranceModels ?? []).length > 3 && <Badge label={`+${p.supportedInsuranceModels.length - 3}`} color={'sq-chip-neutral'} />}</div>
                   </td>
                   <td className="px-5 py-3">
                     <span className="flex items-center gap-1.5">
@@ -401,11 +399,11 @@ function PartnersTab({ isDarkMode, card, inputCls, labelCls, headCls }: { isDark
                       <span className={`text-xs font-semibold capitalize ${STATUS_TEXT[p.healthStatus] ?? 'text-gray-400'}`}>{p.healthStatus}</span>
                     </span>
                   </td>
-                  <td className={`px-5 py-3 text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{fmtDate(p.lastTestedAt ?? null)}</td>
+                  <td className={`px-5 py-3 text-xs text-muted-foreground`}>{fmtDate(p.lastTestedAt ?? null)}</td>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => openEdit(p)} className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800' : 'hover:bg-gray-100'}`}><Settings2 className="w-3.5 h-3.5 text-gray-400" /></button>
-                      <button onClick={() => handleTest(p.id)} disabled={testingId === p.id} className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800' : 'hover:bg-gray-100'}`}>
+                      <button onClick={() => openEdit(p)} className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}><Settings2 className="w-3.5 h-3.5 text-gray-400" /></button>
+                      <button onClick={() => handleTest(p.id)} disabled={testingId === p.id} className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}>
                         {testingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" /> : <TestTube className="w-3.5 h-3.5 text-gray-400" />}
                       </button>
                     </div>
@@ -413,7 +411,7 @@ function PartnersTab({ isDarkMode, card, inputCls, labelCls, headCls }: { isDark
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={8} className={`text-center py-12 text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>No partners found.</td></tr>
+                <tr><td colSpan={8} className={`text-center py-12 text-sm text-muted-foreground`}>No partners found.</td></tr>
               )}
             </tbody>
           </table>
@@ -426,7 +424,7 @@ function PartnersTab({ isDarkMode, card, inputCls, labelCls, headCls }: { isDark
 /* ═══════════════════════════════════════════════
    TAB 3 — Contacts
    ═══════════════════════════════════════════════ */
-function ContactsTab({ isDarkMode, card, inputCls, labelCls, headCls }: { isDarkMode: boolean; card: string; inputCls: string; labelCls: string; headCls: string }) {
+function ContactsTab() {
   const [partners, setPartners] = useState<any[]>([]);
   const [selectedPartnerId, setSelectedPartnerId] = useState('');
   const [contacts, setContacts] = useState<InsurancePartnerContactEntry[]>([]);
@@ -472,7 +470,7 @@ function ContactsTab({ isDarkMode, card, inputCls, labelCls, headCls }: { isDark
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex-1 min-w-[220px]">
-          <select value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)} className={inputCls}>
+          <select value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)} className={INPUT}>
             <option value="">Select partner…</option>
             {partners.map((p: any) => <option key={p.id} value={p.id}>{p.displayName}</option>)}
           </select>
@@ -485,38 +483,38 @@ function ContactsTab({ isDarkMode, card, inputCls, labelCls, headCls }: { isDark
       </div>
 
       {!selectedPartnerId && (
-        <div className={`${card} p-12 text-center`}>
-          <Users className={`w-8 h-8 mx-auto mb-3 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
-          <p className={`text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Select a partner to view contacts</p>
+        <div className={`${CARD} p-12 text-center`}>
+          <Users className={`w-8 h-8 mx-auto mb-3 text-muted-foreground`} />
+          <p className={`text-sm text-muted-foreground`}>Select a partner to view contacts</p>
         </div>
       )}
 
-      {selectedPartnerId && loading && <Spinner isDarkMode={isDarkMode} />}
+      {selectedPartnerId && loading && <Spinner />}
 
       {formOpen && (
-        <div className={`${card} p-6 space-y-4`}>
+        <div className={`${CARD} p-6 space-y-4`}>
           <div className="flex items-center justify-between">
-            <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{editId ? 'Edit Contact' : 'New Contact'}</h3>
+            <h3 className={`text-sm font-bold text-foreground`}>{editId ? 'Edit Contact' : 'New Contact'}</h3>
             <button onClick={() => { setEditId(null); setShowCreate(false); }}><X className="w-4 h-4 text-gray-400" /></button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div><label className={labelCls}>Full Name</label><input value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} className={inputCls} /></div>
-            <div><label className={labelCls}>Role Title</label><input value={form.roleTitle} onChange={e => setForm(f => ({ ...f, roleTitle: e.target.value }))} className={inputCls} /></div>
-            <div><label className={labelCls}>Department</label><input value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} className={inputCls} /></div>
+            <div><label className={LABEL}>Full Name</label><input value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} className={INPUT} /></div>
+            <div><label className={LABEL}>Role Title</label><input value={form.roleTitle} onChange={e => setForm(f => ({ ...f, roleTitle: e.target.value }))} className={INPUT} /></div>
+            <div><label className={LABEL}>Department</label><input value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} className={INPUT} /></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div><label className={labelCls}>Email</label><input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={inputCls} /></div>
-            <div><label className={labelCls}>Phone</label><input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={inputCls} /></div>
+            <div><label className={LABEL}>Email</label><input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={INPUT} /></div>
+            <div><label className={LABEL}>Phone</label><input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={INPUT} /></div>
             <div className="flex items-end gap-3">
               <button onClick={() => setForm(f => ({ ...f, isPrimary: !f.isPrimary }))} className="flex items-center gap-2">
-                {form.isPrimary ? <ToggleRight className="w-5 h-5 text-indigo-500" /> : <ToggleLeft className={`w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />}
-                <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Primary Contact</span>
+                {form.isPrimary ? <ToggleRight className="w-5 h-5 text-indigo-500" /> : <ToggleLeft className={`w-5 h-5 text-muted-foreground`} />}
+                <span className={`text-xs font-semibold text-muted-foreground`}>Primary Contact</span>
               </button>
             </div>
           </div>
-          <div><label className={labelCls}>Notes</label><textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className={inputCls} /></div>
+          <div><label className={LABEL}>Notes</label><textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className={INPUT} /></div>
           <div className="flex justify-end gap-3 pt-2">
-            <button onClick={() => { setEditId(null); setShowCreate(false); }} className={`px-4 py-2 rounded-xl text-sm font-semibold ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}>Cancel</button>
+            <button onClick={() => { setEditId(null); setShowCreate(false); }} className={`px-4 py-2 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground`}>Cancel</button>
             <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save
             </button>
@@ -525,32 +523,32 @@ function ContactsTab({ isDarkMode, card, inputCls, labelCls, headCls }: { isDark
       )}
 
       {selectedPartnerId && !loading && (
-        <div className={`${card} overflow-hidden`}>
+        <div className={`${CARD} overflow-hidden`}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className={`border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
+                <tr className={`border-b border-border`}>
                   {['Name', 'Role', 'Department', 'Email', 'Phone', 'Primary', 'Actions'].map(h => (
-                    <th key={h} className={`px-5 py-3.5 text-left ${headCls}`}>{h}</th>
+                    <th key={h} className={`px-5 py-3.5 text-left ${HEAD}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {contacts.map(c => (
-                  <tr key={c.id} className={`border-b transition-colors ${isDarkMode ? 'border-neutral-800 hover:bg-neutral-900' : 'border-gray-50 hover:bg-gray-50'}`}>
-                    <td className={`px-5 py-3 font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{c.fullName}</td>
-                    <td className={`px-5 py-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{c.roleTitle ?? '—'}</td>
-                    <td className={`px-5 py-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{c.department ?? '—'}</td>
-                    <td className="px-5 py-3"><span className={`flex items-center gap-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}><Mail className="w-3.5 h-3.5" />{c.email ?? '—'}</span></td>
-                    <td className="px-5 py-3"><span className={`flex items-center gap-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}><Phone className="w-3.5 h-3.5" />{c.phone ?? '—'}</span></td>
+                  <tr key={c.id} className={`border-b transition-colors border-border hover:bg-muted/50`}>
+                    <td className={`px-5 py-3 font-semibold text-foreground`}>{c.fullName}</td>
+                    <td className={`px-5 py-3 text-muted-foreground`}>{c.roleTitle ?? '—'}</td>
+                    <td className={`px-5 py-3 text-muted-foreground`}>{c.department ?? '—'}</td>
+                    <td className="px-5 py-3"><span className={`flex items-center gap-1.5 text-muted-foreground`}><Mail className="w-3.5 h-3.5" />{c.email ?? '—'}</span></td>
+                    <td className="px-5 py-3"><span className={`flex items-center gap-1.5 text-muted-foreground`}><Phone className="w-3.5 h-3.5" />{c.phone ?? '—'}</span></td>
                     <td className="px-5 py-3">{c.isPrimary ? <Badge label="Primary" color="bg-indigo-500/20 text-indigo-400" /> : <span className="text-gray-500">—</span>}</td>
                     <td className="px-5 py-3">
-                      <button onClick={() => openEdit(c)} className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800' : 'hover:bg-gray-100'}`}><Settings2 className="w-3.5 h-3.5 text-gray-400" /></button>
+                      <button onClick={() => openEdit(c)} className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}><Settings2 className="w-3.5 h-3.5 text-gray-400" /></button>
                     </td>
                   </tr>
                 ))}
                 {contacts.length === 0 && (
-                  <tr><td colSpan={7} className={`text-center py-12 text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>No contacts found.</td></tr>
+                  <tr><td colSpan={7} className={`text-center py-12 text-sm text-muted-foreground`}>No contacts found.</td></tr>
                 )}
               </tbody>
             </table>
@@ -564,7 +562,7 @@ function ContactsTab({ isDarkMode, card, inputCls, labelCls, headCls }: { isDark
 /* ═══════════════════════════════════════════════
    TAB 4 — Disclosure Templates
    ═══════════════════════════════════════════════ */
-function DisclosureTemplatesTab({ isDarkMode, card, inputCls, labelCls, headCls }: { isDarkMode: boolean; card: string; inputCls: string; labelCls: string; headCls: string }) {
+function DisclosureTemplatesTab() {
   const [templates, setTemplates] = useState<InsuranceDisclosureTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [editId, setEditId] = useState<string | null>(null);
@@ -598,7 +596,7 @@ function DisclosureTemplatesTab({ isDarkMode, card, inputCls, labelCls, headCls 
     setSaving(false);
   };
 
-  if (loading) return <Spinner isDarkMode={isDarkMode} />;
+  if (loading) return <Spinner />;
 
   const formOpen = showCreate || editId;
 
@@ -608,31 +606,31 @@ function DisclosureTemplatesTab({ isDarkMode, card, inputCls, labelCls, headCls 
         <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
           <Plus className="w-4 h-4" /> New Disclosure Template
         </button>
-        <button onClick={load} className={`p-2.5 rounded-xl border transition-colors ${isDarkMode ? 'border-neutral-700 text-gray-400 hover:text-white' : 'border-gray-200 text-gray-400 hover:text-gray-700'}`}>
+        <button onClick={load} className={`p-2.5 rounded-xl border transition-colors border-border text-muted-foreground hover:text-foreground`}>
           <RefreshCw className="w-4 h-4" />
         </button>
       </div>
 
       {formOpen && (
-        <div className={`${card} p-6 space-y-4`}>
+        <div className={`${CARD} p-6 space-y-4`}>
           <div className="flex items-center justify-between">
-            <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{editId ? 'Edit Disclosure' : 'New Disclosure'}</h3>
+            <h3 className={`text-sm font-bold text-foreground`}>{editId ? 'Edit Disclosure' : 'New Disclosure'}</h3>
             <button onClick={() => { setEditId(null); setShowCreate(false); }}><X className="w-4 h-4 text-gray-400" /></button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div><label className={labelCls}>Title</label><input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className={inputCls} /></div>
-            <div><label className={labelCls}>Insurer Key (optional)</label><input value={form.insurerKey} onChange={e => setForm(f => ({ ...f, insurerKey: e.target.value }))} className={inputCls} placeholder="Leave empty for global" /></div>
-            <div><label className={labelCls}>Inquiry Type (optional)</label><input value={form.inquiryType} onChange={e => setForm(f => ({ ...f, inquiryType: e.target.value }))} className={inputCls} placeholder="Leave empty for all types" /></div>
+            <div><label className={LABEL}>Title</label><input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className={INPUT} /></div>
+            <div><label className={LABEL}>Insurer Key (optional)</label><input value={form.insurerKey} onChange={e => setForm(f => ({ ...f, insurerKey: e.target.value }))} className={INPUT} placeholder="Leave empty for global" /></div>
+            <div><label className={LABEL}>Inquiry Type (optional)</label><input value={form.inquiryType} onChange={e => setForm(f => ({ ...f, inquiryType: e.target.value }))} className={INPUT} placeholder="Leave empty for all types" /></div>
           </div>
-          <div><label className={labelCls}>Body</label><textarea value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} rows={6} className={inputCls} placeholder="Disclosure / consent notice text…" /></div>
+          <div><label className={LABEL}>Body</label><textarea value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} rows={6} className={INPUT} placeholder="Disclosure / consent notice text…" /></div>
           <div className="flex items-center gap-4">
             <button onClick={() => setForm(f => ({ ...f, isActive: !f.isActive }))} className="flex items-center gap-2">
-              {form.isActive ? <ToggleRight className="w-5 h-5 text-emerald-500" /> : <ToggleLeft className={`w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />}
-              <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{form.isActive ? 'Active' : 'Inactive'}</span>
+              {form.isActive ? <ToggleRight className="w-5 h-5 text-emerald-500" /> : <ToggleLeft className={`w-5 h-5 text-muted-foreground`} />}
+              <span className={`text-xs font-semibold text-muted-foreground`}>{form.isActive ? 'Active' : 'Inactive'}</span>
             </button>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button onClick={() => { setEditId(null); setShowCreate(false); }} className={`px-4 py-2 rounded-xl text-sm font-semibold ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}>Cancel</button>
+            <button onClick={() => { setEditId(null); setShowCreate(false); }} className={`px-4 py-2 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground`}>Cancel</button>
             <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save
             </button>
@@ -640,32 +638,32 @@ function DisclosureTemplatesTab({ isDarkMode, card, inputCls, labelCls, headCls 
         </div>
       )}
 
-      <div className={`${card} overflow-hidden`}>
+      <div className={`${CARD} overflow-hidden`}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className={`border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
+              <tr className={`border-b border-border`}>
                 {['Title', 'Version', 'Insurer Key', 'Inquiry Type', 'Active', 'Effective From', 'Actions'].map(h => (
-                  <th key={h} className={`px-5 py-3.5 text-left ${headCls}`}>{h}</th>
+                  <th key={h} className={`px-5 py-3.5 text-left ${HEAD}`}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {templates.map(t => (
-                <tr key={t.id} className={`border-b transition-colors ${isDarkMode ? 'border-neutral-800 hover:bg-neutral-900' : 'border-gray-50 hover:bg-gray-50'}`}>
-                  <td className={`px-5 py-3 font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{t.title}</td>
-                  <td className={`px-5 py-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>v{t.version}</td>
-                  <td className={`px-5 py-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{t.insurerKey ?? 'Global'}</td>
-                  <td className={`px-5 py-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{t.inquiryType ?? 'All'}</td>
-                  <td className="px-5 py-3">{t.isActive ? <Badge label="Active" color="bg-emerald-500/20 text-emerald-400" /> : <Badge label="Inactive" color={isDarkMode ? 'bg-neutral-800 text-gray-500' : 'bg-gray-100 text-gray-400'} />}</td>
-                  <td className={`px-5 py-3 text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{fmtDate(t.effectiveFrom)}</td>
+                <tr key={t.id} className={`border-b transition-colors border-border hover:bg-muted/50`}>
+                  <td className={`px-5 py-3 font-semibold text-foreground`}>{t.title}</td>
+                  <td className={`px-5 py-3 text-muted-foreground`}>v{t.version}</td>
+                  <td className={`px-5 py-3 text-muted-foreground`}>{t.insurerKey ?? 'Global'}</td>
+                  <td className={`px-5 py-3 text-muted-foreground`}>{t.inquiryType ?? 'All'}</td>
+                  <td className="px-5 py-3">{t.isActive ? <Badge label="Active" color="bg-emerald-500/20 text-emerald-400" /> : <Badge label="Inactive" color={'sq-chip-neutral'} />}</td>
+                  <td className={`px-5 py-3 text-xs text-muted-foreground`}>{fmtDate(t.effectiveFrom)}</td>
                   <td className="px-5 py-3">
-                    <button onClick={() => openEdit(t)} className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800' : 'hover:bg-gray-100'}`}><Settings2 className="w-3.5 h-3.5 text-gray-400" /></button>
+                    <button onClick={() => openEdit(t)} className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}><Settings2 className="w-3.5 h-3.5 text-gray-400" /></button>
                   </td>
                 </tr>
               ))}
               {templates.length === 0 && (
-                <tr><td colSpan={7} className={`text-center py-12 text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>No disclosure templates found.</td></tr>
+                <tr><td colSpan={7} className={`text-center py-12 text-sm text-muted-foreground`}>No disclosure templates found.</td></tr>
               )}
             </tbody>
           </table>
@@ -678,7 +676,7 @@ function DisclosureTemplatesTab({ isDarkMode, card, inputCls, labelCls, headCls 
 /* ═══════════════════════════════════════════════
    TAB 5 — Inquiry Templates
    ═══════════════════════════════════════════════ */
-function InquiryTemplatesTab({ isDarkMode, card, inputCls, labelCls, headCls }: { isDarkMode: boolean; card: string; inputCls: string; labelCls: string; headCls: string }) {
+function InquiryTemplatesTab() {
   const [templates, setTemplates] = useState<InsuranceInquiryTemplateEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [editId, setEditId] = useState<string | null>(null);
@@ -712,7 +710,7 @@ function InquiryTemplatesTab({ isDarkMode, card, inputCls, labelCls, headCls }: 
     setSaving(false);
   };
 
-  if (loading) return <Spinner isDarkMode={isDarkMode} />;
+  if (loading) return <Spinner />;
 
   const formOpen = showCreate || editId;
 
@@ -722,45 +720,45 @@ function InquiryTemplatesTab({ isDarkMode, card, inputCls, labelCls, headCls }: 
         <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
           <Plus className="w-4 h-4" /> New Inquiry Template
         </button>
-        <button onClick={load} className={`p-2.5 rounded-xl border transition-colors ${isDarkMode ? 'border-neutral-700 text-gray-400 hover:text-white' : 'border-gray-200 text-gray-400 hover:text-gray-700'}`}>
+        <button onClick={load} className={`p-2.5 rounded-xl border transition-colors border-border text-muted-foreground hover:text-foreground`}>
           <RefreshCw className="w-4 h-4" />
         </button>
       </div>
 
       {formOpen && (
-        <div className={`${card} p-6 space-y-4`}>
+        <div className={`${CARD} p-6 space-y-4`}>
           <div className="flex items-center justify-between">
-            <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{editId ? 'Edit Template' : 'New Template'}</h3>
+            <h3 className={`text-sm font-bold text-foreground`}>{editId ? 'Edit Template' : 'New Template'}</h3>
             <button onClick={() => { setEditId(null); setShowCreate(false); }}><X className="w-4 h-4 text-gray-400" /></button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-2"><label className={labelCls}>Subject Template</label><input value={form.subjectTemplate} onChange={e => setForm(f => ({ ...f, subjectTemplate: e.target.value }))} className={inputCls} placeholder="Insurance inquiry for {{make}} {{model}} ({{year}})" /></div>
+            <div className="md:col-span-2"><label className={LABEL}>Subject Template</label><input value={form.subjectTemplate} onChange={e => setForm(f => ({ ...f, subjectTemplate: e.target.value }))} className={INPUT} placeholder="Insurance inquiry for {{make}} {{model}} ({{year}})" /></div>
             <div>
-              <label className={labelCls}>Inquiry Type</label>
-              <select value={form.inquiryType} onChange={e => setForm(f => ({ ...f, inquiryType: e.target.value }))} className={inputCls}>
+              <label className={LABEL}>Inquiry Type</label>
+              <select value={form.inquiryType} onChange={e => setForm(f => ({ ...f, inquiryType: e.target.value }))} className={INPUT}>
                 <option value="">All types</option>
                 {INQUIRY_TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
               </select>
             </div>
           </div>
           <div>
-            <label className={labelCls}>Body Template</label>
-            <textarea value={form.bodyTemplate} onChange={e => setForm(f => ({ ...f, bodyTemplate: e.target.value }))} rows={8} className={inputCls} placeholder="Use placeholders: {{make}}, {{model}}, {{year}}, {{vin}}, {{inquiryType}}, {{driverName}}, {{mileage}}" />
-            <p className={`text-[11px] mt-1.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>
+            <label className={LABEL}>Body Template</label>
+            <textarea value={form.bodyTemplate} onChange={e => setForm(f => ({ ...f, bodyTemplate: e.target.value }))} rows={8} className={INPUT} placeholder="Use placeholders: {{make}}, {{model}}, {{year}}, {{vin}}, {{inquiryType}}, {{driverName}}, {{mileage}}" />
+            <p className={`text-[11px] mt-1.5 text-muted-foreground`}>
               Available: {'{{make}}, {{model}}, {{year}}, {{vin}}, {{inquiryType}}, {{driverName}}, {{mileage}}, {{licensePlate}}'}
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div><label className={labelCls}>Insurer Key (optional)</label><input value={form.insurerKey} onChange={e => setForm(f => ({ ...f, insurerKey: e.target.value }))} className={inputCls} placeholder="Leave empty for global" /></div>
+            <div><label className={LABEL}>Insurer Key (optional)</label><input value={form.insurerKey} onChange={e => setForm(f => ({ ...f, insurerKey: e.target.value }))} className={INPUT} placeholder="Leave empty for global" /></div>
             <div className="flex items-end">
               <button onClick={() => setForm(f => ({ ...f, isActive: !f.isActive }))} className="flex items-center gap-2">
-                {form.isActive ? <ToggleRight className="w-5 h-5 text-emerald-500" /> : <ToggleLeft className={`w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />}
-                <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{form.isActive ? 'Active' : 'Inactive'}</span>
+                {form.isActive ? <ToggleRight className="w-5 h-5 text-emerald-500" /> : <ToggleLeft className={`w-5 h-5 text-muted-foreground`} />}
+                <span className={`text-xs font-semibold text-muted-foreground`}>{form.isActive ? 'Active' : 'Inactive'}</span>
               </button>
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button onClick={() => { setEditId(null); setShowCreate(false); }} className={`px-4 py-2 rounded-xl text-sm font-semibold ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}`}>Cancel</button>
+            <button onClick={() => { setEditId(null); setShowCreate(false); }} className={`px-4 py-2 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground`}>Cancel</button>
             <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save
             </button>
@@ -768,31 +766,31 @@ function InquiryTemplatesTab({ isDarkMode, card, inputCls, labelCls, headCls }: 
         </div>
       )}
 
-      <div className={`${card} overflow-hidden`}>
+      <div className={`${CARD} overflow-hidden`}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className={`border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
+              <tr className={`border-b border-border`}>
                 {['Subject', 'Inquiry Type', 'Insurer Key', 'Version', 'Active', 'Actions'].map(h => (
-                  <th key={h} className={`px-5 py-3.5 text-left ${headCls}`}>{h}</th>
+                  <th key={h} className={`px-5 py-3.5 text-left ${HEAD}`}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {templates.map(t => (
-                <tr key={t.id} className={`border-b transition-colors ${isDarkMode ? 'border-neutral-800 hover:bg-neutral-900' : 'border-gray-50 hover:bg-gray-50'}`}>
-                  <td className={`px-5 py-3 font-semibold max-w-xs truncate ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{t.subjectTemplate}</td>
-                  <td className={`px-5 py-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{t.inquiryType ?? 'All'}</td>
-                  <td className={`px-5 py-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{t.insurerKey ?? 'Global'}</td>
-                  <td className={`px-5 py-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>v{t.version}</td>
-                  <td className="px-5 py-3">{t.isActive ? <Badge label="Active" color="bg-emerald-500/20 text-emerald-400" /> : <Badge label="Inactive" color={isDarkMode ? 'bg-neutral-800 text-gray-500' : 'bg-gray-100 text-gray-400'} />}</td>
+                <tr key={t.id} className={`border-b transition-colors border-border hover:bg-muted/50`}>
+                  <td className={`px-5 py-3 font-semibold max-w-xs truncate text-foreground`}>{t.subjectTemplate}</td>
+                  <td className={`px-5 py-3 text-muted-foreground`}>{t.inquiryType ?? 'All'}</td>
+                  <td className={`px-5 py-3 text-muted-foreground`}>{t.insurerKey ?? 'Global'}</td>
+                  <td className={`px-5 py-3 text-muted-foreground`}>v{t.version}</td>
+                  <td className="px-5 py-3">{t.isActive ? <Badge label="Active" color="bg-emerald-500/20 text-emerald-400" /> : <Badge label="Inactive" color={'sq-chip-neutral'} />}</td>
                   <td className="px-5 py-3">
-                    <button onClick={() => openEdit(t)} className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800' : 'hover:bg-gray-100'}`}><Settings2 className="w-3.5 h-3.5 text-gray-400" /></button>
+                    <button onClick={() => openEdit(t)} className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}><Settings2 className="w-3.5 h-3.5 text-gray-400" /></button>
                   </td>
                 </tr>
               ))}
               {templates.length === 0 && (
-                <tr><td colSpan={6} className={`text-center py-12 text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>No inquiry templates found.</td></tr>
+                <tr><td colSpan={6} className={`text-center py-12 text-sm text-muted-foreground`}>No inquiry templates found.</td></tr>
               )}
             </tbody>
           </table>
@@ -805,7 +803,7 @@ function InquiryTemplatesTab({ isDarkMode, card, inputCls, labelCls, headCls }: 
 /* ═══════════════════════════════════════════════
    TAB 6 — Inquiry Monitoring
    ═══════════════════════════════════════════════ */
-function InquiriesTab({ isDarkMode, card, inputCls, headCls }: { isDarkMode: boolean; card: string; inputCls: string; headCls: string }) {
+function InquiriesTab() {
   const [rows, setRows] = useState<InsuranceInquiryRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -834,78 +832,78 @@ function InquiriesTab({ isDarkMode, card, inputCls, headCls }: { isDarkMode: boo
     if (s === 'DELIVERED' || s === 'SENT') return 'text-emerald-500';
     if (s === 'FAILED') return 'text-red-500';
     if (s === 'PENDING') return 'text-amber-500';
-    return isDarkMode ? 'text-gray-400' : 'text-gray-500';
+    return 'text-muted-foreground';
   };
 
   const statusColor = (s: string) => {
     if (s === 'COMPLETED' || s === 'SENT') return 'bg-emerald-500/20 text-emerald-400';
     if (s === 'FAILED' || s === 'ERROR') return 'bg-red-500/20 text-red-400';
     if (s === 'PENDING' || s === 'IN_PROGRESS') return 'bg-amber-500/20 text-amber-400';
-    return isDarkMode ? 'bg-neutral-800 text-gray-400' : 'bg-gray-100 text-gray-500';
+    return 'sq-chip-neutral';
   };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[180px]">
-          <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} className={inputCls}>
+          <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} className={INPUT}>
             <option value="">All statuses</option>
             {['PENDING', 'IN_PROGRESS', 'SENT', 'COMPLETED', 'FAILED', 'ERROR'].map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div className="relative flex-1 min-w-[180px]">
-          <input value={orgFilter} onChange={e => { setOrgFilter(e.target.value); setPage(1); }} placeholder="Filter by Organization ID…" className={inputCls} />
+          <input value={orgFilter} onChange={e => { setOrgFilter(e.target.value); setPage(1); }} placeholder="Filter by Organization ID…" className={INPUT} />
         </div>
-        <button onClick={load} className={`p-2.5 rounded-xl border transition-colors ${isDarkMode ? 'border-neutral-700 text-gray-400 hover:text-white' : 'border-gray-200 text-gray-400 hover:text-gray-700'}`}>
+        <button onClick={load} className={`p-2.5 rounded-xl border transition-colors border-border text-muted-foreground hover:text-foreground`}>
           <RefreshCw className="w-4 h-4" />
         </button>
       </div>
 
-      {loading ? <Spinner isDarkMode={isDarkMode} /> : (
-        <div className={`${card} overflow-hidden`}>
+      {loading ? <Spinner /> : (
+        <div className={`${CARD} overflow-hidden`}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className={`border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
+                <tr className={`border-b border-border`}>
                   {['Type', 'Vehicle', 'Status', 'Recipients', 'Delivery', 'Created', ''].map(h => (
-                    <th key={h} className={`px-5 py-3.5 text-left ${headCls}`}>{h}</th>
+                    <th key={h} className={`px-5 py-3.5 text-left ${HEAD}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {rows.map(r => (
                   <>
-                    <tr key={r.id} className={`border-b transition-colors cursor-pointer ${isDarkMode ? 'border-neutral-800 hover:bg-neutral-900' : 'border-gray-50 hover:bg-gray-50'}`} onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}>
-                      <td className={`px-5 py-3 font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{r.inquiryType.replace(/_/g, ' ')}</td>
-                      <td className={`px-5 py-3 text-xs font-mono ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{r.vehicleId.slice(0, 8)}…</td>
+                    <tr key={r.id} className={`border-b transition-colors cursor-pointer border-border hover:bg-muted/50`} onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}>
+                      <td className={`px-5 py-3 font-semibold text-foreground`}>{r.inquiryType.replace(/_/g, ' ')}</td>
+                      <td className={`px-5 py-3 text-xs font-mono text-muted-foreground`}>{r.vehicleId.slice(0, 8)}…</td>
                       <td className="px-5 py-3"><Badge label={r.status} color={statusColor(r.status)} /></td>
-                      <td className={`px-5 py-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{r.recipients?.length ?? 0}</td>
+                      <td className={`px-5 py-3 text-muted-foreground`}>{r.recipients?.length ?? 0}</td>
                       <td className="px-5 py-3">
                         <div className="flex gap-1.5">{(r.recipients ?? []).slice(0, 3).map(rec => (
                           <span key={rec.id} className={`text-[10px] font-bold ${deliveryColor(rec.deliveryStatus)}`}>{rec.deliveryStatus}</span>
                         ))}</div>
                       </td>
-                      <td className={`px-5 py-3 text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{fmtDate(r.createdAt)}</td>
+                      <td className={`px-5 py-3 text-xs text-muted-foreground`}>{fmtDate(r.createdAt)}</td>
                       <td className="px-5 py-3">{expandedId === r.id ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}</td>
                     </tr>
                     {expandedId === r.id && (
-                      <tr key={`${r.id}-detail`} className={isDarkMode ? 'bg-neutral-950' : 'bg-gray-50/30'}>
+                      <tr key={`${r.id}-detail`} className={'bg-muted/30'}>
                         <td colSpan={7} className="px-5 py-4">
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs mb-3">
-                            <div><span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Org: </span><span className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>{r.organizationId.slice(0, 8)}…</span></div>
-                            <div><span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Correlation: </span><span className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>{r.correlationId.slice(0, 12)}…</span></div>
-                            <div><span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Models: </span><span className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>{(r.selectedInsuranceModels ?? []).join(', ') || '—'}</span></div>
-                            <div><span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>User: </span><span className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>{r.userId.slice(0, 8)}…</span></div>
+                            <div><span className={'text-muted-foreground'}>Org: </span><span className={'text-muted-foreground'}>{r.organizationId.slice(0, 8)}…</span></div>
+                            <div><span className={'text-muted-foreground'}>Correlation: </span><span className={'text-muted-foreground'}>{r.correlationId.slice(0, 12)}…</span></div>
+                            <div><span className={'text-muted-foreground'}>Models: </span><span className={'text-muted-foreground'}>{(r.selectedInsuranceModels ?? []).join(', ') || '—'}</span></div>
+                            <div><span className={'text-muted-foreground'}>User: </span><span className={'text-muted-foreground'}>{r.userId.slice(0, 8)}…</span></div>
                           </div>
                           {(r.recipients ?? []).length > 0 && (
                             <div className="space-y-1.5">
-                              <p className={`text-[11px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Recipients</p>
+                              <p className={`text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Recipients</p>
                               {r.recipients.map(rec => (
-                                <div key={rec.id} className={`flex items-center gap-3 text-xs py-1.5 px-3 rounded-lg ${isDarkMode ? 'bg-neutral-900' : 'bg-white'}`}>
-                                  <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>{rec.insurerId.slice(0, 8)}…</span>
-                                  <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>{rec.channelType}</span>
+                                <div key={rec.id} className={`flex items-center gap-3 text-xs py-1.5 px-3 rounded-lg bg-muted/50`}>
+                                  <span className={'text-foreground'}>{rec.insurerId.slice(0, 8)}…</span>
+                                  <span className={'text-muted-foreground'}>{rec.channelType}</span>
                                   <span className={`font-bold ${deliveryColor(rec.deliveryStatus)}`}>{rec.deliveryStatus}</span>
-                                  <span className={isDarkMode ? 'text-gray-600' : 'text-gray-400'}>{fmtDate(rec.sentAt)}</span>
+                                  <span className={'text-muted-foreground'}>{fmtDate(rec.sentAt)}</span>
                                 </div>
                               ))}
                             </div>
@@ -916,19 +914,19 @@ function InquiriesTab({ isDarkMode, card, inputCls, headCls }: { isDarkMode: boo
                   </>
                 ))}
                 {rows.length === 0 && (
-                  <tr><td colSpan={7} className={`text-center py-12 text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>No inquiries found.</td></tr>
+                  <tr><td colSpan={7} className={`text-center py-12 text-sm text-muted-foreground`}>No inquiries found.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
 
           {totalPages > 1 && (
-            <div className={`flex items-center justify-between px-5 py-3 border-t ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
-              <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{total} total inquiries</span>
+            <div className={`flex items-center justify-between px-5 py-3 border-t border-border`}>
+              <span className={`text-xs text-muted-foreground`}>{total} total inquiries</span>
               <div className="flex items-center gap-2">
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className={`p-1.5 rounded-lg disabled:opacity-30 ${isDarkMode ? 'hover:bg-neutral-800' : 'hover:bg-gray-100'}`}><ChevronLeft className="w-4 h-4 text-gray-400" /></button>
-                <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{page} / {totalPages}</span>
-                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className={`p-1.5 rounded-lg disabled:opacity-30 ${isDarkMode ? 'hover:bg-neutral-800' : 'hover:bg-gray-100'}`}><ChevronRight className="w-4 h-4 text-gray-400" /></button>
+                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className={`p-1.5 rounded-lg disabled:opacity-30 hover:bg-muted`}><ChevronLeft className="w-4 h-4 text-gray-400" /></button>
+                <span className={`text-xs font-semibold text-muted-foreground`}>{page} / {totalPages}</span>
+                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className={`p-1.5 rounded-lg disabled:opacity-30 hover:bg-muted`}><ChevronRight className="w-4 h-4 text-gray-400" /></button>
               </div>
             </div>
           )}
@@ -941,7 +939,7 @@ function InquiriesTab({ isDarkMode, card, inputCls, headCls }: { isDarkMode: boo
 /* ═══════════════════════════════════════════════
    TAB 7 — Health & Diagnostics
    ═══════════════════════════════════════════════ */
-function HealthTab({ isDarkMode, card }: { isDarkMode: boolean; card: string }) {
+function HealthTab() {
   const [health, setHealth] = useState<InsuranceHealthOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [testingId, setTestingId] = useState<string | null>(null);
@@ -961,8 +959,8 @@ function HealthTab({ isDarkMode, card }: { isDarkMode: boolean; card: string }) 
     await load();
   };
 
-  if (loading) return <Spinner isDarkMode={isDarkMode} />;
-  if (!health) return <ErrorBanner isDarkMode={isDarkMode} card={card} message="Failed to load health data." onRetry={load} />;
+  if (loading) return <Spinner />;
+  if (!health) return <ErrorBanner message="Failed to load health data." onRetry={load} />;
 
   const summary = [
     { label: 'Healthy', value: health.healthyPartners, color: 'text-emerald-500', dot: 'bg-emerald-500' },
@@ -978,12 +976,12 @@ function HealthTab({ isDarkMode, card }: { isDarkMode: boolean; card: string }) 
             <div key={s.label} className="flex items-center gap-2">
               <span className={`w-3 h-3 rounded-full ${s.dot}`} />
               <span className={`text-sm font-bold ${s.color}`}>{s.value}</span>
-              <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{s.label}</span>
+              <span className={`text-xs text-muted-foreground`}>{s.label}</span>
             </div>
           ))}
         </div>
         <div className="flex-1" />
-        <button onClick={load} className={`p-2.5 rounded-xl border transition-colors ${isDarkMode ? 'border-neutral-700 text-gray-400 hover:text-white' : 'border-gray-200 text-gray-400 hover:text-gray-700'}`}>
+        <button onClick={load} className={`p-2.5 rounded-xl border transition-colors border-border text-muted-foreground hover:text-foreground`}>
           <RefreshCw className="w-4 h-4" />
         </button>
       </div>
@@ -994,39 +992,39 @@ function HealthTab({ isDarkMode, card }: { isDarkMode: boolean; card: string }) 
           const statusTxt = STATUS_TEXT[p.healthStatus] ?? 'text-gray-400';
 
           return (
-            <div key={p.id} className={`${card} p-5 space-y-3`}>
+            <div key={p.id} className={`${CARD} p-5 space-y-3`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <span className={`w-3 h-3 rounded-full ${statusDot}`} />
-                  <span className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{p.displayName}</span>
+                  <span className={`text-sm font-bold text-foreground`}>{p.displayName}</span>
                 </div>
                 <span className={`text-[10px] font-bold uppercase tracking-wide ${statusTxt}`}>{p.healthStatus}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
-                  <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Channel</span>
-                  <p className={`font-semibold mt-0.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{p.communicationChannel}</p>
+                  <span className={'text-muted-foreground'}>Channel</span>
+                  <p className={`font-semibold mt-0.5 text-muted-foreground`}>{p.communicationChannel}</p>
                 </div>
                 <div>
-                  <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Enabled</span>
+                  <span className={'text-muted-foreground'}>Enabled</span>
                   <p className={`font-semibold mt-0.5 ${p.isEnabled ? 'text-emerald-500' : 'text-gray-500'}`}>{p.isEnabled ? 'Yes' : 'No'}</p>
                 </div>
                 <div>
-                  <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Last Tested</span>
-                  <p className={`font-semibold mt-0.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{fmtDate(p.lastTestedAt)}</p>
+                  <span className={'text-muted-foreground'}>Last Tested</span>
+                  <p className={`font-semibold mt-0.5 text-muted-foreground`}>{fmtDate(p.lastTestedAt)}</p>
                 </div>
                 <div>
-                  <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Last Success</span>
-                  <p className={`font-semibold mt-0.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{fmtDate(p.lastSuccessAt)}</p>
+                  <span className={'text-muted-foreground'}>Last Success</span>
+                  <p className={`font-semibold mt-0.5 text-muted-foreground`}>{fmtDate(p.lastSuccessAt)}</p>
                 </div>
                 <div>
-                  <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Last Failure</span>
-                  <p className={`font-semibold mt-0.5 ${p.lastFailureAt ? 'text-red-400' : isDarkMode ? 'text-gray-600' : 'text-gray-300'}`}>{fmtDate(p.lastFailureAt)}</p>
+                  <span className={'text-muted-foreground'}>Last Failure</span>
+                  <p className={`font-semibold mt-0.5 ${p.lastFailureAt ? 'text-red-400' : 'text-muted-foreground'}`}>{fmtDate(p.lastFailureAt)}</p>
                 </div>
                 {p.lastFailureReason && (
                   <div className="col-span-2">
-                    <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Failure Reason</span>
+                    <span className={'text-muted-foreground'}>Failure Reason</span>
                     <p className="font-semibold mt-0.5 text-red-400 truncate">{p.lastFailureReason}</p>
                   </div>
                 )}
@@ -1036,7 +1034,7 @@ function HealthTab({ isDarkMode, card }: { isDarkMode: boolean; card: string }) 
                 onClick={() => handleTest(p.id)}
                 disabled={testingId === p.id}
                 className={`w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-colors ${
-                  isDarkMode ? 'bg-neutral-800 hover:bg-neutral-700 text-gray-300' : 'bg-gray-50 hover:bg-gray-100 text-gray-600'
+                  'bg-muted hover:bg-muted/80 text-muted-foreground'
                 } disabled:opacity-50`}
               >
                 {testingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TestTube className="w-3.5 h-3.5" />}
@@ -1048,9 +1046,9 @@ function HealthTab({ isDarkMode, card }: { isDarkMode: boolean; card: string }) 
       </div>
 
       {health.partners.length === 0 && (
-        <div className={`${card} p-12 text-center`}>
-          <HeartPulse className={`w-8 h-8 mx-auto mb-3 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
-          <p className={`text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>No partners configured yet.</p>
+        <div className={`${CARD} p-12 text-center`}>
+          <HeartPulse className={`w-8 h-8 mx-auto mb-3 text-muted-foreground`} />
+          <p className={`text-sm text-muted-foreground`}>No partners configured yet.</p>
         </div>
       )}
     </div>

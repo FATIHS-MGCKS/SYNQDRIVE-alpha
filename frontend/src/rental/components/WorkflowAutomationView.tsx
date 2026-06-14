@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 
 import { api } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
+import { EmptyState } from '../../components/patterns';
 
 // ─── Types ───────────────────────────────────────
 
@@ -630,7 +631,40 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
           <p className={`text-xs ${textSecondary}`}>Loading workflows...</p>
         </div>
       ) : filtered.length === 0 ? (
-        <EmptyState isDarkMode={isDarkMode} canWrite={canWrite} hasWorkflows={workflows.length > 0} onCreateNew={() => openBuilder()} onShowTemplates={() => setShowTemplates(true)} />
+        workflows.length > 0 ? (
+          <EmptyState
+            icon={<Icon name="search" className="w-8 h-8" />}
+            title="No workflows match your filters"
+            description="Try adjusting your search or filter criteria"
+            compact
+          />
+        ) : (
+          <EmptyState
+            icon={<Icon name="zap" className="w-6 h-6" />}
+            title="No workflows yet"
+            description="Create your first automation to streamline fleet operations — from return protocols and cleaning workflows to geofence alerts and AI-powered actions."
+            action={
+              canWrite ? (
+                <div className="flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowTemplates(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border text-foreground hover:bg-muted"
+                  >
+                    <Icon name="layers" className="w-3.5 h-3.5" /> Browse Templates
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openBuilder()}
+                    className="sq-cta flex items-center gap-1.5 px-3 py-1.5 text-xs"
+                  >
+                    <Icon name="plus" className="w-3.5 h-3.5" /> New Workflow
+                  </button>
+                </div>
+              ) : undefined
+            }
+          />
+        )
       ) : (
         <div className="space-y-1.5">
           {filtered.map((wf) => (
@@ -734,55 +768,6 @@ function WorkflowRow({ wf, isDarkMode, canWrite, onOpen, onEdit, onToggle, onDup
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-// ─── EmptyState ──────────────────────────────────
-
-function EmptyState({ isDarkMode, canWrite, hasWorkflows, onCreateNew, onShowTemplates }: {
-  isDarkMode: boolean; canWrite: boolean; hasWorkflows: boolean; onCreateNew: () => void; onShowTemplates: () => void;
-}) {
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-500';
-  const cardBg = isDarkMode ? 'bg-[#1e1e2e]' : 'bg-white';
-  const cardBorder = isDarkMode ? 'border-gray-700/50' : 'border-gray-200';
-
-  if (hasWorkflows) {
-    return (
-      <div className={`${cardBg} border ${cardBorder} rounded-xl p-8 text-center`}>
-        <Icon name="search" className={`w-8 h-8 mx-auto mb-2 ${textSecondary}`} />
-        <p className={`text-sm font-medium ${textPrimary}`}>No workflows match your filters</p>
-        <p className={`text-xs mt-1 ${textSecondary}`}>Try adjusting your search or filter criteria</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`${cardBg} border ${cardBorder} rounded-xl p-10 text-center`}>
-      <div className={`w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-50'}`}>
-        <Icon name="zap" className={`w-6 h-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-      </div>
-      <p className={`text-sm font-semibold ${textPrimary}`}>No workflows yet</p>
-      <p className={`text-xs mt-1 ${textSecondary} max-w-md mx-auto`}>
-        Create your first automation to streamline fleet operations — from return protocols and cleaning workflows to geofence alerts and AI-powered actions.
-      </p>
-      {canWrite && (
-        <div className="flex items-center justify-center gap-2 mt-4">
-          <button
-            onClick={onShowTemplates}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-white/5' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-          >
-            <Icon name="layers" className="w-3.5 h-3.5" /> Browse Templates
-          </button>
-          <button
-            onClick={onCreateNew}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700"
-          >
-            <Icon name="plus" className="w-3.5 h-3.5" /> New Workflow
-          </button>
-        </div>
-      )}
     </div>
   );
 }

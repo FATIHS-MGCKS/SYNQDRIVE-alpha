@@ -115,7 +115,7 @@ export class VendorsService {
     // Only master-data fields are persisted. Vehicle links are never touched
     // here — they are managed exclusively via the link endpoints.
     await this.prisma.vendor.update({
-      where: { id },
+      where: { id, organizationId: orgId },
       data: {
         name: dto.name,
         category: dto.category,
@@ -158,7 +158,7 @@ export class VendorsService {
 
   async remove(orgId: string, id: string, actor?: VendorAuditActor) {
     const vendor = await this.assertVendor(orgId, id);
-    await this.prisma.vendor.delete({ where: { id } });
+    await this.prisma.vendor.delete({ where: { id, organizationId: orgId } });
 
     void this.audit.critical({
       ...actor,

@@ -41,6 +41,9 @@ export interface VehicleHealth {
   generated_at: string; // ISO 8601
 }
 
+/** Alias for the canonical per-vehicle health aggregate; {@link RentalHealthService} is the VehicleHealthStatus aggregator. */
+export type VehicleHealthStatus = VehicleHealth;
+
 // ── Internal helpers ─────────────────────────────────────────────────────────
 
 /** Stale threshold for the per-module data_stale flag. */

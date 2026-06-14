@@ -1,6 +1,6 @@
 import { Building2, Car, Clock, CreditCard, Database, Globe, Signal, SignalZero, User, UserCog, Wifi, Zap } from 'lucide-react';
 import { Icon } from './ui/Icon';
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 
 import { getStoredUser } from '../../lib/auth';
 import { useRentalOrg } from '../RentalContext';
@@ -10,6 +10,26 @@ import { formatOdometerKmFloor } from '../../lib/formatVehicleDisplay';
 import { UsersRolesTab } from './UsersRolesTab';
 import { DataAuthorizationTab } from './DataAuthorizationTab';
 import { LegalDocumentsTab } from './LegalDocumentsTab';
+import {
+  PageHeader,
+  DataCard,
+  MetricCard,
+  EmptyState,
+  StatusChip,
+  SectionHeader,
+} from '../../components/patterns';
+
+function useDocumentDark(): boolean {
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      const observer = new MutationObserver(onStoreChange);
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+      return () => observer.disconnect();
+    },
+    () => document.documentElement.classList.contains('dark'),
+    () => false,
+  );
+}
 
 function getInitials(name: string | null, email: string): string {
   if (name && name.trim()) {
@@ -22,7 +42,6 @@ function getInitials(name: string | null, email: string): string {
 }
 
 interface SettingsViewProps {
-  isDarkMode: boolean;
   activeTab?: SettingsTab;
   onTabChange?: (tab: SettingsTab) => void;
 }
@@ -32,7 +51,7 @@ type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billi
 // ============================================
 // ACCOUNT INFORMATION TAB
 // ============================================
-function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
+function AccountInformationTab() {
   const storedUser = getStoredUser();
   const { orgName, userRole, userPermissions } = useRentalOrg();
   const [isEditing, setIsEditing] = useState(false);
@@ -68,11 +87,7 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
   const [showPasswordChange, setShowPasswordChange] = useState(false);
 
   const cardClass = 'sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]';
-  const inputClass = `w-full px-3 py-2.5 rounded-xl border text-xs transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 ${
-    isDarkMode
-      ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20'
-      : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20'
-  } outline-none`;
+  const inputClass = 'w-full px-3 py-2.5 rounded-xl border border-border/70 bg-card text-xs text-foreground placeholder:text-muted-foreground transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 outline-none focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]';
   const labelClass = 'block text-[11px] font-semibold mb-1.5 text-muted-foreground';
   const textPrimary = 'text-foreground';
   const textSecondary = 'text-muted-foreground';
@@ -138,44 +153,40 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-5">
-      {/* Header */}
-      <div className="min-h-8 flex items-center justify-between gap-4 flex-wrap">
-        <div className="min-w-0">
-          <h2 className="text-[22px] leading-tight font-semibold tracking-[-0.018em] text-foreground">Account Information</h2>
-          <p className="text-[13px] mt-1 text-muted-foreground">
-            Verwalten Sie Profil, Sicherheit, Sitzungen und persönliche Benachrichtigungen an einer Stelle.
-          </p>
-        </div>
-        <button
-          onClick={() => setIsEditing(!isEditing)}
-          className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200 active:scale-[0.98] ${
-            isEditing
-              ? 'bg-[var(--brand)] text-[var(--brand-foreground)] hover:bg-[var(--brand-hover)] shadow-[var(--shadow-1)]'
-              : isDarkMode
-                ? 'bg-neutral-800/60 border border-neutral-700/50 text-gray-300 hover:bg-neutral-700/60'
-                : 'bg-white/80 border border-gray-200 text-gray-700 hover:bg-white hover:shadow-md'
-          }`}
-        >
-          {isEditing ? <><Icon name="save" className="w-4 h-4" /> Änderungen speichern</> : <><Icon name="edit-3" className="w-4 h-4" /> Profil bearbeiten</>}
-        </button>
-      </div>
+      <PageHeader
+        title="Account Information"
+        description="Verwalten Sie Profil, Sicherheit, Sitzungen und persönliche Benachrichtigungen an einer Stelle."
+        actions={
+          <button
+            type="button"
+            onClick={() => setIsEditing(!isEditing)}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200 active:scale-[0.98] ${
+              isEditing
+                ? 'bg-[var(--brand)] text-[var(--brand-foreground)] hover:bg-[var(--brand-hover)] shadow-[var(--shadow-1)]'
+                : 'border border-border/60 bg-card text-foreground hover:bg-muted'
+            }`}
+          >
+            {isEditing ? <><Icon name="save" className="w-4 h-4" /> Änderungen speichern</> : <><Icon name="edit-3" className="w-4 h-4" /> Profil bearbeiten</>}
+          </button>
+        }
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         {summaryCards.map((card) => (
-          <div key={card.label} className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-2)]">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{card.label}</p>
-                <p className="mt-2 text-[20px] leading-none font-semibold tracking-[-0.02em] text-foreground tabular-nums truncate">
-                  {card.value}
-                </p>
-                <p className="mt-1 text-[11px] text-muted-foreground truncate">{card.meta}</p>
-              </div>
-              <div className={`${card.tone} w-10 h-10 rounded-xl flex items-center justify-center shrink-0`}>
-                <Icon name={card.icon} className="w-5 h-5" />
-              </div>
-            </div>
-          </div>
+          <MetricCard
+            key={card.label}
+            label={card.label}
+            value={card.value}
+            hint={card.meta}
+            icon={<Icon name={card.icon} className="w-4 h-4" />}
+            status={
+              card.tone === 'sq-tone-success' ? 'success'
+              : card.tone === 'sq-tone-warning' ? 'warning'
+              : card.tone === 'sq-tone-brand' ? 'info'
+              : card.tone === 'sq-tone-info' ? 'info'
+              : 'neutral'
+            }
+          />
         ))}
       </div>
 
@@ -205,7 +216,7 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
                 <Icon name="crown" className="w-3 h-3" /> {roleLabel}
               </div>
             </div>
-            <div className={`mt-5 pt-5 border-t space-y-3 ${isDarkMode ? 'border-neutral-700/40' : 'border-gray-200/60'}`}>
+            <div className={`mt-5 pt-5 border-t space-y-3 ${'border-border/60'}`}>
               <div className="flex items-center gap-3">
                 <div className="sq-tone-neutral w-8 h-8 rounded-lg flex items-center justify-center shrink-0"><Icon name="mail" className="w-4 h-4" /></div>
                 <span className={`text-xs ${textSecondary}`}>{accountData.email || 'Keine E-Mail hinterlegt'}</span>
@@ -235,7 +246,7 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
               <span className="sq-tone-success px-2 py-1 rounded-lg text-[10px] font-semibold">Protected</span>
             </div>
             <div className="space-y-3">
-              <div className={`flex items-center justify-between p-3 rounded-xl border ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/30' : 'bg-muted/40 border-border'}`}>
+              <div className={`flex items-center justify-between p-3 rounded-xl border ${'bg-muted/40 border-border'}`}>
                 <div className="flex items-center gap-3">
                   <div className="sq-tone-neutral w-9 h-9 rounded-xl flex items-center justify-center shrink-0"><Icon name="key" className="w-4 h-4" /></div>
                   <div>
@@ -246,7 +257,7 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
                 <button
                   onClick={() => setShowPasswordChange(!showPasswordChange)}
                   className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
-                    isDarkMode ? 'text-blue-400 hover:bg-blue-600/10' : 'text-[var(--brand)] hover:bg-[var(--brand-soft)]'
+                    'text-[color:var(--brand)] hover:bg-[color:var(--brand-soft)]'
                   }`}
                 >
                   Ändern
@@ -271,7 +282,7 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
                   </button>
                 </div>
               )}
-              <div className={`flex items-center justify-between p-3 rounded-xl border ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/30' : 'bg-muted/40 border-border'}`}>
+              <div className={`flex items-center justify-between p-3 rounded-xl border ${'bg-muted/40 border-border'}`}>
                 <div className="flex items-center gap-3">
                   <div className="sq-tone-success w-9 h-9 rounded-xl flex items-center justify-center shrink-0"><Icon name="shield-check" className="w-4 h-4" /></div>
                   <div>
@@ -281,7 +292,7 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
                 </div>
                 <span className="text-xs font-semibold px-2.5 py-1 rounded-lg sq-tone-success">Aktiv</span>
               </div>
-              <div className={`flex items-center justify-between p-3 rounded-xl border ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/30' : 'bg-muted/40 border-border'}`}>
+              <div className={`flex items-center justify-between p-3 rounded-xl border ${'bg-muted/40 border-border'}`}>
                 <div className="flex items-center gap-3">
                   <div className="sq-tone-info w-9 h-9 rounded-xl flex items-center justify-center shrink-0"><Icon name="clock" className="w-4 h-4" /></div>
                   <div>
@@ -441,7 +452,7 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
                 { key: 'bookingAlerts' as const, label: 'Buchungs-Alerts', desc: 'Neue Buchungen und Stornierungen' },
                 { key: 'maintenanceAlerts' as const, label: 'Wartungs-Alerts', desc: 'Anstehende Wartungstermine' },
               ].map((item) => (
-                <div key={item.key} className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-colors ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/30' : 'bg-muted/40 border-border'}`}>
+                <div key={item.key} className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-colors ${'bg-muted/40 border-border'}`}>
                   <div>
                     <p className={`text-xs font-medium ${textPrimary}`}>{item.label}</p>
                     <p className={`text-xs ${textSecondary}`}>{item.desc}</p>
@@ -451,7 +462,7 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
                     className={`relative w-10 h-6 rounded-full transition-colors duration-200 shrink-0 ${
                       accountData.notifications[item.key]
                         ? 'bg-[var(--brand)]'
-                        : isDarkMode ? 'bg-neutral-700' : 'bg-gray-300'
+                        : 'bg-muted'
                     }`}
                   >
                     <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
@@ -470,7 +481,7 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
                 <h3 className={`text-[14px] font-semibold tracking-[-0.01em] ${textPrimary}`}>Aktive Sitzungen</h3>
                 <p className={`text-[11px] ${textSecondary}`}>Gerätezugriffe und aktuelle Session</p>
               </div>
-              <button className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors text-red-500 hover:bg-red-50 ${isDarkMode ? 'hover:bg-red-500/10' : ''}`}>
+              <button className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors text-red-500 hover:bg-red-50 ${'hover:bg-[color:var(--status-critical-soft)]'}`}>
                 Alle anderen abmelden
               </button>
             </div>
@@ -478,7 +489,7 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
               {[
                 { device: 'Current browser', location: organizationLabel, time: 'Aktuelle Sitzung', current: true },
               ].map((session, i) => (
-                <div key={i} className={`flex items-center justify-between p-3 rounded-xl border ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/30' : 'bg-muted/40 border-border'}`}>
+                <div key={i} className={`flex items-center justify-between p-3 rounded-xl border ${'bg-muted/40 border-border'}`}>
                   <div className="flex items-center gap-3">
                     <div className="sq-tone-info w-9 h-9 rounded-xl flex items-center justify-center shrink-0">
                       <Icon name="globe" className="w-4 h-4" />
@@ -491,7 +502,7 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
                   {session.current ? (
                     <span className="text-xs font-semibold px-2 py-0.5 rounded-lg sq-tone-success">Aktuell</span>
                   ) : (
-                    <button className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${isDarkMode ? 'text-gray-500 hover:bg-neutral-700' : 'text-gray-400 hover:bg-gray-100'}`}>
+                    <button className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${'text-muted-foreground hover:bg-muted'}`}>
                       Abmelden
                     </button>
                   )}
@@ -550,7 +561,7 @@ function emptyCompanyProfileData(): CompanyProfileData {
   };
 }
 
-function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?: string }) {
+function CompanyProfileTab({ orgId }: { orgId?: string }) {
   const { setOrgBranding, hasPermission, userRole } = useRentalOrg();
   const canEditProfile = userRole === 'ORG_ADMIN' || hasPermission('settings', 'write');
 
@@ -707,9 +718,7 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
 
   const cardClass = 'sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]';
   const inputClass = `w-full px-3 py-2.5 rounded-xl border text-xs transition-all duration-200 ${
-    isDarkMode
-      ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20'
-      : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20'
+    'border-border/70 bg-card text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]'
   } outline-none`;
   const inputClassView = `${inputClass} ${!isEditing ? 'cursor-default opacity-90' : ''}`;
   const labelClass = 'block text-[11px] font-semibold mb-1.5 text-muted-foreground';
@@ -822,9 +831,7 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
           }${
             isEditing
               ? 'bg-[var(--brand)] text-[var(--brand-foreground)] hover:bg-[var(--brand-hover)] shadow-[var(--shadow-1)]'
-              : isDarkMode
-                ? 'bg-neutral-800/60 border border-neutral-700/50 text-gray-300 hover:bg-neutral-700/60'
-                : 'bg-white/80 border border-gray-200 text-gray-700 hover:bg-white hover:shadow-md'
+              : 'sq-btn-secondary'
           }`}
         >
           {primaryButtonIcon} {primaryButtonLabel}
@@ -998,7 +1005,7 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
           </div>
 
           {/* Manager Section */}
-          <div className={`mt-6 pt-6 border-t ${isDarkMode ? 'border-neutral-700/40' : 'border-gray-200/60'}`}>
+          <div className={`mt-6 pt-6 border-t ${'border-border/60'}`}>
             <div className="flex items-center justify-between gap-3 mb-3">
               <div>
                 <h4 className={`text-[13px] font-semibold ${textPrimary}`}>Geschäftsführer / Ansprechpartner</h4>
@@ -1052,9 +1059,7 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
                   className={`p-1.5 rounded-lg transition-colors ${
                     logoUploading
                       ? 'opacity-50 cursor-not-allowed'
-                      : isDarkMode
-                        ? 'text-gray-400 hover:text-red-400 hover:bg-red-500/10'
-                        : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
+                      : 'text-muted-foreground hover:text-[color:var(--status-critical)] hover:bg-[color:var(--status-critical-soft)]'
                   }`}
                   title="Logo entfernen"
                   aria-label="Logo entfernen"
@@ -1077,7 +1082,7 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
 
             <div
               className={`border rounded-2xl p-5 text-center transition-colors ${
-                isDarkMode ? 'border-neutral-700/50 bg-neutral-800/30' : 'border-border bg-muted/40'
+                'border-border bg-muted/40'
               }`}
             >
               <div
@@ -1148,7 +1153,7 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
             <p className={`text-xs mb-3 ${textSecondary}`}>Geschäftsdokumente, die Kunden bei der Buchungsbestätigung angezeigt werden.</p>
             {businessDocuments.length === 0 ? (
               <div className={`text-xs py-6 text-center rounded-2xl border border-dashed ${
-                isDarkMode ? 'border-neutral-700/50 text-gray-500 bg-neutral-800/20' : 'border-border text-muted-foreground bg-muted/40'
+                'border-border text-muted-foreground bg-muted/40'
               }`}>
                 <div className="sq-tone-neutral w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center">
                   <Icon name="file-text" className="w-5 h-5" />
@@ -1160,9 +1165,9 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
               <div className="space-y-2">
                 {businessDocuments.map((doc, i) => (
                   <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border ${
-                    isDarkMode ? 'bg-neutral-800/40 border-neutral-700/30' : 'bg-gray-50/80 border-gray-100'
+                    'bg-muted/50 border-border'
                   }`}>
-                    <Icon name="file-text" className={`w-5 h-5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                    <Icon name="file-text" className={`w-5 h-5 flex-shrink-0 ${'text-[color:var(--brand)]'}`} />
                     <div className="flex-1 min-w-0">
                       <p className={`text-xs font-medium truncate ${textPrimary}`}>{doc.name}</p>
                       <p className={`text-xs ${textSecondary}`}>{doc.size} · {doc.date}</p>
@@ -1185,22 +1190,21 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
 // FLEET CONNECTION TAB
 // ============================================
 
-function StatusDot({ status, isDarkMode }: { status: FleetConnectivityVehicle['connectionStatus']; isDarkMode: boolean }) {
-  const cfg = {
-    online:        { color: 'bg-emerald-500', pulse: true,  label: 'Online',        badge: isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700' },
-    standby:       { color: 'bg-amber-500',   pulse: false, label: 'Standby',       badge: isDarkMode ? 'bg-amber-500/15 text-amber-400'     : 'bg-amber-50 text-amber-700' },
-    offline:       { color: 'bg-red-500',     pulse: false, label: 'Offline',       badge: isDarkMode ? 'bg-red-500/15 text-red-400'         : 'bg-red-50 text-red-700' },
-    not_connected: { color: 'bg-gray-400',    pulse: false, label: 'Not Connected', badge: isDarkMode ? 'bg-gray-500/15 text-gray-400'       : 'bg-gray-100 text-gray-500' },
-  }[status];
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold ${cfg.badge}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${cfg.color} ${cfg.pulse ? 'animate-pulse' : ''}`} />
-      {cfg.label}
-    </span>
-  );
+function ConnectivityStatusChip({ status }: { status: FleetConnectivityVehicle['connectionStatus'] }) {
+  const tone =
+    status === 'online' ? 'success'
+    : status === 'standby' ? 'watch'
+    : status === 'offline' ? 'critical'
+    : 'noData';
+  const label =
+    status === 'online' ? 'Online'
+    : status === 'standby' ? 'Standby'
+    : status === 'offline' ? 'Offline'
+    : 'Not Connected';
+  return <StatusChip tone={tone} dot={status === 'online'}>{label}</StatusChip>;
 }
 
-function FleetConnectionTab({ isDarkMode }: { isDarkMode: boolean }) {
+function FleetConnectionTab() {
   const { orgId } = useRentalOrg();
   const [data, setData] = useState<FleetConnectivityResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1275,7 +1279,7 @@ function FleetConnectionTab({ isDarkMode }: { isDarkMode: boolean }) {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24">
-        <div className={`w-8 h-8 border-2 border-t-transparent rounded-full animate-spin ${isDarkMode ? 'border-blue-400' : 'border-blue-500'}`} />
+        <div className={`w-8 h-8 border-2 border-t-transparent rounded-full animate-spin ${'border-[color:var(--brand)]'}`} />
         <p className={`text-xs mt-3 ${textSecondary}`}>Loading fleet connectivity...</p>
       </div>
     );
@@ -1284,7 +1288,7 @@ function FleetConnectionTab({ isDarkMode }: { isDarkMode: boolean }) {
   if (error || !data) {
     return (
       <div className="flex flex-col items-center justify-center py-24">
-        <Icon name="alert-circle" className={`w-10 h-10 mb-3 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`} />
+        <Icon name="alert-circle" className={`w-10 h-10 mb-3 ${'text-[color:var(--status-critical)]'}`} />
         <p className={`text-sm font-semibold ${textPrimary}`}>Could not load connectivity data</p>
         <p className={`text-xs mt-1 ${textSecondary}`}>Check your connection or try again later.</p>
       </div>
@@ -1294,20 +1298,18 @@ function FleetConnectionTab({ isDarkMode }: { isDarkMode: boolean }) {
   return (
     <div className="max-w-[1600px] mx-auto space-y-5">
       {/* Header */}
-      <div className="min-h-8 flex items-start justify-between gap-4 flex-wrap">
-        <div className="min-w-0">
-          <h2 className="text-[22px] leading-tight font-semibold tracking-[-0.018em] text-foreground">Fleet Connectivity</h2>
-          <p className="text-[13px] mt-1 text-muted-foreground">
-            Vehicle connection status, data sources, OBD mapping and device signal quality in one operational view.
-          </p>
-        </div>
-        <span className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold ${
-          (s?.offline ?? 0) > 0 || (s?.notConnected ?? 0) > 0 ? 'sq-tone-warning' : 'sq-tone-success'
-        }`}>
-          <Icon name={(s?.offline ?? 0) > 0 || (s?.notConnected ?? 0) > 0 ? 'alert-triangle' : 'check-circle-2'} className="w-4 h-4" />
-          {(s?.offline ?? 0) > 0 || (s?.notConnected ?? 0) > 0 ? 'Action needed' : 'Fleet connected'}
-        </span>
-      </div>
+      <PageHeader
+        title="Fleet Connectivity"
+        description="Vehicle connection status, data sources, OBD mapping and device signal quality in one operational view."
+        status={
+          <span className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold ${
+            (s?.offline ?? 0) > 0 || (s?.notConnected ?? 0) > 0 ? 'sq-tone-warning' : 'sq-tone-success'
+          }`}>
+            <Icon name={(s?.offline ?? 0) > 0 || (s?.notConnected ?? 0) > 0 ? 'alert-triangle' : 'check-circle-2'} className="w-4 h-4" />
+            {(s?.offline ?? 0) > 0 || (s?.notConnected ?? 0) > 0 ? 'Action needed' : 'Fleet connected'}
+          </span>
+        }
+      />
 
       {/* Summary Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
@@ -1398,7 +1400,7 @@ function FleetConnectionTab({ isDarkMode }: { isDarkMode: boolean }) {
       {/* Vehicle List */}
       {vehicles.length === 0 ? (
         <div className={`${cardClass} flex flex-col items-center justify-center py-14 px-6 text-center border-dashed ${
-          isDarkMode ? '!border-neutral-600/60' : '!border-border/80'
+          '!border-border/80'
         }`}>
           <div className="sq-tone-neutral w-12 h-12 rounded-2xl mb-3 flex items-center justify-center">
             <Icon name="car" className="w-6 h-6" />
@@ -1443,31 +1445,31 @@ function FleetConnectionTab({ isDarkMode }: { isDarkMode: boolean }) {
                     <div className="text-right hidden sm:block">
                       <p className={`text-[10px] ${textMuted}`}>Last Signal</p>
                       <p className={`text-xs font-medium ${
-                        v.freshnessLabel === 'Live' ? (isDarkMode ? 'text-emerald-400' : 'text-emerald-600')
+                        v.freshnessLabel === 'Live' ? ('text-[color:var(--status-positive)]')
                         : v.freshnessLabel === 'Unknown' ? textMuted
                         : textPrimary
                       }`}>{v.freshnessLabel}</p>
                     </div>
-                    <StatusDot status={v.connectionStatus} isDarkMode={isDarkMode} />
+                    <ConnectivityStatusChip status={v.connectionStatus} />
                     <Icon name="chevron-down" className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''} ${textMuted}`} />
                   </div>
                 </div>
 
                 {/* Expanded detail */}
                 {isExpanded && (
-                  <div className={`mt-4 pt-4 border-t ${isDarkMode ? 'border-neutral-700/50' : 'border-gray-200/50'}`} onClick={e => e.stopPropagation()}>
+                  <div className={`mt-4 pt-4 border-t ${'border-border/50'}`} onClick={e => e.stopPropagation()}>
                     {/* Status Interpretation */}
                     <div className={`flex items-start gap-2 mb-4 px-3 py-2.5 rounded-lg text-xs ${
-                      v.connectionStatus === 'online' ? (isDarkMode ? 'bg-emerald-500/10 text-emerald-300' : 'bg-emerald-50 text-emerald-700')
-                      : v.connectionStatus === 'standby' ? (isDarkMode ? 'bg-amber-500/10 text-amber-300' : 'bg-amber-50 text-amber-700')
-                      : v.connectionStatus === 'offline' ? (isDarkMode ? 'bg-red-500/10 text-red-300' : 'bg-red-50 text-red-700')
-                      : (isDarkMode ? 'bg-gray-500/10 text-gray-400' : 'bg-gray-50 text-gray-600')
+                      v.connectionStatus === 'online' ? ('sq-tone-success')
+                      : v.connectionStatus === 'standby' ? ('sq-tone-watch')
+                      : v.connectionStatus === 'offline' ? ('sq-tone-critical')
+                      : ('sq-tone-neutral')
                     }`}>
-                      <StatusDot status={v.connectionStatus} isDarkMode={isDarkMode} />
+                      <ConnectivityStatusChip status={v.connectionStatus} />
                       <span className="mt-0.5">{v.statusNote}</span>
                     </div>
 
-                    <div className={`mb-4 rounded-xl border px-3 py-3 space-y-3 ${isDarkMode ? 'border-neutral-700/50 bg-neutral-800/40' : 'border-gray-200/60 bg-gray-50/80'}`}>
+                    <div className={`mb-4 rounded-xl border px-3 py-3 space-y-3 ${'border-border/60 bg-muted/50'}`}>
                       <p className={`text-[10px] uppercase tracking-wider font-bold ${textMuted}`}>OBD & cellular</p>
                       <div className="flex items-center gap-2">
                         {v.obdIsPluggedIn === true && <><Icon name="check-circle-2" className="w-4 h-4 text-emerald-500 shrink-0" /><span className={`text-xs font-medium ${textPrimary}`}>OBD Device Plugged IN</span></>}
@@ -1490,7 +1492,7 @@ function FleetConnectionTab({ isDarkMode }: { isDarkMode: boolean }) {
                           )}
                         </button>
                         {jammingOpenId === v.vehicleId && (v.jammingDetectedCount ?? 0) > 0 && (
-                          <ul className={`mt-2 space-y-2 pl-3 border-l-2 ${isDarkMode ? 'border-amber-500/40' : 'border-amber-200'}`}>
+                          <ul className={`mt-2 space-y-2 pl-3 border-l-2 ${'border-[color:var(--status-watch-soft)]'}`}>
                             {(v.jammingIncidents ?? []).map((inc, i) => (
                               <li key={i} className={`text-[10px] space-y-0.5 ${textSecondary}`}>
                                 <p><span className={textMuted}>When: </span>{inc.detectedAt ? new Date(inc.detectedAt).toLocaleString('de-DE') : '—'}</p>
@@ -1588,7 +1590,7 @@ const EMPTY_STATION_FORM: StationFormState = {
   status: 'ACTIVE',
 };
 
-export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
+export function StationsTab() {
   const { orgId } = useRentalOrg();
 
   const [stations, setStations] = useState<import('../../lib/api').Station[]>([]);
@@ -2067,34 +2069,30 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
         <div
           className={`rounded-xl border p-3 ${
             backfillError
-              ? isDarkMode
-                ? 'bg-red-500/10 border-red-500/30'
-                : 'bg-red-50 border-red-200'
-              : isDarkMode
-                ? 'bg-emerald-500/10 border-emerald-500/30'
-                : 'bg-emerald-50 border-emerald-200'
+              ? 'sq-tone-critical border border-border'
+              : 'sq-tone-success border border-border'
           }`}
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               {backfillError ? (
                 <>
-                  <p className={`text-xs font-semibold ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>
+                  <p className={`text-xs font-semibold ${'text-[color:var(--status-critical)]'}`}>
                     Geocoding fehlgeschlagen
                   </p>
-                  <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-red-300/80' : 'text-red-600/90'}`}>
+                  <p className={`text-[11px] mt-0.5 ${'text-[color:var(--status-critical)]'}`}>
                     {backfillError}
                   </p>
                 </>
               ) : backfillResult ? (
                 <>
-                  <p className={`text-xs font-semibold ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                  <p className={`text-xs font-semibold ${'text-[color:var(--status-positive)]'}`}>
                     Backfill abgeschlossen — {backfillResult.totalGeocoded} geocodiert
                     {backfillResult.totalFailed > 0 && `, ${backfillResult.totalFailed} fehlgeschlagen`}
                     {backfillResult.totalSkipped > 0 && `, ${backfillResult.totalSkipped} übersprungen`}
                   </p>
                   {backfillResult.results.length > 0 && (
-                    <ul className={`mt-1.5 space-y-0.5 text-[10.5px] ${isDarkMode ? 'text-emerald-200/85' : 'text-emerald-700/90'}`}>
+                    <ul className={`mt-1.5 space-y-0.5 text-[10.5px] ${'text-[color:var(--status-positive)]'}`}>
                       {backfillResult.results.slice(0, 8).map((r) => (
                         <li key={r.stationId} className="flex items-center gap-2">
                           {r.status === 'geocoded' && <Icon name="check-circle" className="w-3 h-3 shrink-0" />}
@@ -2174,9 +2172,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
       {error && (
         <div
           className={`flex items-center gap-2 p-3 rounded-lg border text-xs ${
-            isDarkMode
-              ? 'bg-red-500/10 border-red-500/30 text-red-300'
-              : 'bg-red-50 border-red-200 text-red-700'
+            'sq-tone-critical border border-border'
           }`}
         >
           <Icon name="alert-circle" className="w-4 h-4" />
@@ -2242,13 +2238,13 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
         >
           <div
             className={`w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl ${
-              isDarkMode ? 'bg-neutral-900 border border-neutral-700' : 'bg-white border border-gray-200'
+              'bg-card border border-border'
             }`}
             onClick={(e) => e.stopPropagation()}
           >
             <div
               className={`sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b ${
-                isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+                'bg-card border-border'
               }`}
             >
               <div>
@@ -2265,7 +2261,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                 onClick={closeModal}
                 disabled={saving}
                 className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
-                  isDarkMode ? 'hover:bg-neutral-800' : 'hover:bg-gray-100'
+                  'hover:bg-muted'
                 }`}
               >
                 <Icon name="x" className={`w-5 h-5 ${textSecondary}`} />
@@ -2289,7 +2285,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                 {suggestOpen && (suggestLoading || suggestions.length > 0) && (
                   <div
                     className={`absolute z-20 mt-1 w-full rounded-lg border shadow-2xl max-h-64 overflow-y-auto ${
-                      isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-white border-gray-200'
+                      'bg-card border-border'
                     }`}
                   >
                     {suggestLoading ? (
@@ -2304,11 +2300,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                           type="button"
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => pickSuggestion(s)}
-                          className={`w-full text-left px-3 py-2.5 text-xs border-b last:border-b-0 transition-colors ${
-                            isDarkMode
-                              ? 'border-neutral-700 hover:bg-neutral-700/60 text-gray-200'
-                              : 'border-gray-100 hover:bg-gray-50 text-gray-700'
-                          }`}
+                          className="w-full text-left px-3 py-2.5 text-xs border-b border-border last:border-b-0 transition-colors hover:bg-muted text-foreground"
                         >
                           <div className="font-medium flex items-center gap-1.5">
                             <Icon name="map-pin" className="w-3.5 h-3.5 text-blue-500" /> {s.mainText}
@@ -2375,23 +2367,19 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                   paste coordinates from Google Maps if Mapbox returns the
                   wrong building (rare but possible for big complexes). */}
               <div
-                className={`rounded-xl border p-3.5 ${
-                  isDarkMode
-                    ? 'bg-neutral-900/40 border-neutral-700'
-                    : 'bg-gray-50/60 border-gray-200'
-                }`}
+                className="rounded-xl border border-border bg-muted/40 p-3.5"
               >
                 <div className="flex items-center gap-2 mb-2.5">
                   <div
                     className={`p-1.5 rounded-lg shrink-0 ${
-                      isDarkMode ? 'bg-neutral-800 text-gray-300' : 'bg-white text-gray-600'
+                      'bg-muted text-muted-foreground'
                     }`}
                   >
                     <Icon name="map-pin" className="w-3.5 h-3.5" />
                   </div>
                   <div className="min-w-0">
                     <label className={`block text-[11px] font-semibold uppercase tracking-wider ${
-                      isDarkMode ? 'text-gray-200' : 'text-gray-800'
+                      'text-foreground'
                     }`}>
                       Koordinaten {form.latitude != null && form.longitude != null && (
                         <span className="ml-2 text-[9px] font-normal normal-case tracking-normal text-emerald-500">
@@ -2466,24 +2454,20 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
 
               {/* Geofence radius — defines the "at home" zone for this station */}
               <div
-                className={`rounded-xl border p-3.5 ${
-                  isDarkMode
-                    ? 'bg-blue-500/5 border-blue-500/25'
-                    : 'bg-blue-50/40 border-blue-100'
-                }`}
+                className="rounded-xl border border-border bg-[color:var(--brand-soft)] p-3.5"
               >
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <div
                       className={`p-1.5 rounded-lg shrink-0 ${
-                        isDarkMode ? 'bg-blue-500/15 text-blue-300' : 'bg-blue-100 text-blue-600'
+                        'sq-tone-brand'
                       }`}
                     >
                       <Icon name="crosshair" className="w-3.5 h-3.5" />
                     </div>
                     <div className="min-w-0">
                       <label className={`block text-[11px] font-semibold uppercase tracking-wider ${
-                        isDarkMode ? 'text-gray-200' : 'text-gray-800'
+                        'text-foreground'
                       }`}>
                         Geofence-Umkreis (Home-Zone)
                       </label>
@@ -2518,9 +2502,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                       }}
                       placeholder={String(STATION_RADIUS_DEFAULT_M)}
                       className={`w-20 px-2 py-1.5 rounded-md border text-[11px] tabular-nums text-right transition-all duration-200 ${
-                        isDarkMode
-                          ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20'
-                          : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20'
+                        'border-border/70 bg-card text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]'
                       } outline-none`}
                     />
                     <span className={`text-[11px] font-semibold ${textSecondary}`}>m</span>
@@ -2547,8 +2529,8 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                       onClick={() => setForm({ ...form, radiusMeters: 100 })}
                       className={`px-2 py-0.5 rounded-full font-semibold transition-colors ${
                         form.radiusMeters === 100
-                          ? isDarkMode ? 'bg-blue-500/30 text-blue-200' : 'bg-blue-100 text-blue-700'
-                          : isDarkMode ? 'bg-neutral-800 text-gray-400 hover:bg-neutral-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          ? 'sq-tone-brand'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
                       }`}
                     >
                       Parkplatz · 100m
@@ -2558,8 +2540,8 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                       onClick={() => setForm({ ...form, radiusMeters: 250 })}
                       className={`px-2 py-0.5 rounded-full font-semibold transition-colors ${
                         form.radiusMeters === 250
-                          ? isDarkMode ? 'bg-blue-500/30 text-blue-200' : 'bg-blue-100 text-blue-700'
-                          : isDarkMode ? 'bg-neutral-800 text-gray-400 hover:bg-neutral-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          ? 'sq-tone-brand'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
                       }`}
                     >
                       Filiale · 250m
@@ -2569,8 +2551,8 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                       onClick={() => setForm({ ...form, radiusMeters: 1000 })}
                       className={`px-2 py-0.5 rounded-full font-semibold transition-colors ${
                         form.radiusMeters === 1000
-                          ? isDarkMode ? 'bg-blue-500/30 text-blue-200' : 'bg-blue-100 text-blue-700'
-                          : isDarkMode ? 'bg-neutral-800 text-gray-400 hover:bg-neutral-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          ? 'sq-tone-brand'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
                       }`}
                     >
                       Gelände · 1km
@@ -2581,7 +2563,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                 {(form.latitude == null || form.longitude == null) && (
                   <p
                     className={`mt-2 text-[10.5px] flex items-start gap-1.5 ${
-                      isDarkMode ? 'text-amber-300' : 'text-amber-700'
+                      'text-[color:var(--status-watch)]'
                     }`}
                   >
                     <Icon name="alert-circle" className="w-3 h-3 shrink-0 mt-0.5" />
@@ -2666,9 +2648,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                             ? st === 'ACTIVE'
                               ? 'bg-emerald-600 text-white border-emerald-600'
                               : 'bg-neutral-500 text-white border-neutral-500'
-                            : isDarkMode
-                              ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-700/60'
-                              : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                            : 'border border-border/60 bg-card text-foreground hover:bg-muted'
                         }`}
                       >
                         {st === 'ACTIVE' ? 'Aktiv' : 'Inaktiv'}
@@ -2688,9 +2668,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
               {formError && (
                 <div
                   className={`flex items-center gap-2 p-3 rounded-lg border text-xs ${
-                    isDarkMode
-                      ? 'bg-red-500/10 border-red-500/30 text-red-300'
-                      : 'bg-red-50 border-red-200 text-red-700'
+                    'sq-tone-critical border border-border'
                   }`}
                 >
                   <Icon name="alert-circle" className="w-4 h-4" />
@@ -2701,16 +2679,14 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
 
             <div
               className={`sticky bottom-0 flex items-center justify-end gap-2 px-5 py-4 border-t ${
-                isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+                'bg-card border-border'
               }`}
             >
               <button
                 onClick={closeModal}
                 disabled={saving}
                 className={`px-4 py-2.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-50 ${
-                  isDarkMode
-                    ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-700/60'
-                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                  'border border-border/60 bg-card text-foreground hover:bg-muted'
                 }`}
               >
                 Abbrechen
@@ -2744,12 +2720,12 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
         >
           <div
             className={`w-full max-w-md rounded-2xl shadow-2xl p-5 ${
-              isDarkMode ? 'bg-neutral-900 border border-neutral-700' : 'bg-white border border-gray-200'
+              'bg-card border border-border'
             }`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-3 mb-4">
-              <div className={`p-2.5 rounded-lg ${isDarkMode ? 'bg-red-500/15' : 'bg-red-50'}`}>
+              <div className={`p-2.5 rounded-lg ${'sq-tone-critical'}`}>
                 <Icon name="alert-circle" className="w-5 h-5 text-red-500" />
               </div>
               <div>
@@ -2771,9 +2747,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                 onClick={() => setDeletingId(null)}
                 disabled={deleting}
                 className={`px-4 py-2.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-50 ${
-                  isDarkMode
-                    ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-700/60'
-                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                  'border border-border/60 bg-card text-foreground hover:bg-muted'
                 }`}
               >
                 Abbrechen
@@ -2806,14 +2780,14 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
         >
           <div
             className={`w-full max-w-3xl max-h-[88vh] flex flex-col rounded-2xl shadow-2xl ${
-              isDarkMode ? 'bg-neutral-900 border border-neutral-700' : 'bg-white border border-gray-200'
+              'bg-card border border-border'
             }`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div
               className={`flex items-start justify-between px-5 py-4 border-b ${
-                isDarkMode ? 'border-neutral-700' : 'border-gray-200'
+                'border-border'
               }`}
             >
               <div className="min-w-0">
@@ -2837,7 +2811,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                 onClick={closeAssign}
                 disabled={assignSaving}
                 className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
-                  isDarkMode ? 'hover:bg-neutral-800' : 'hover:bg-gray-100'
+                  'hover:bg-muted'
                 }`}
               >
                 <Icon name="x" className={`w-5 h-5 ${textSecondary}`} />
@@ -2847,7 +2821,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
             {/* Filter / search bar */}
             <div
               className={`px-5 py-3 border-b flex flex-wrap items-center gap-2 ${
-                isDarkMode ? 'border-neutral-700' : 'border-gray-200'
+                'border-border'
               }`}
             >
               <div className="relative flex-1 min-w-[220px]">
@@ -2858,9 +2832,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                   value={assignSearch}
                   onChange={(e) => setAssignSearch(e.target.value)}
                   className={`w-full pl-9 pr-3 py-2 rounded-lg border text-xs transition-all duration-200 ${
-                    isDarkMode
-                      ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20'
-                      : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20'
+                    'border-border/70 bg-card text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]'
                   } outline-none`}
                 />
               </div>
@@ -2879,9 +2851,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                       className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors ${
                         active
                           ? 'bg-blue-600 text-white border-blue-600'
-                          : isDarkMode
-                            ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-700/60'
-                            : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                          : 'border border-border/60 bg-card text-foreground hover:bg-muted'
                       }`}
                     >
                       {opt.label}
@@ -2901,9 +2871,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
               ) : assignError ? (
                 <div
                   className={`flex items-center gap-2 p-3 rounded-lg border text-xs ${
-                    isDarkMode
-                      ? 'bg-red-500/10 border-red-500/30 text-red-300'
-                      : 'bg-red-50 border-red-200 text-red-700'
+                    'sq-tone-critical border border-border'
                   }`}
                 >
                   <Icon name="alert-circle" className="w-4 h-4" /> {assignError}
@@ -2933,12 +2901,8 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                         key={v.id}
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-colors ${
                           checked
-                            ? isDarkMode
-                              ? 'bg-blue-500/10 border-blue-500/40'
-                              : 'bg-blue-50 border-blue-200'
-                            : isDarkMode
-                              ? 'bg-neutral-800/40 border-neutral-700 hover:bg-neutral-800'
-                              : 'bg-white border-gray-200 hover:bg-gray-50'
+                            ? 'bg-[color:var(--brand-soft)] border-[color:var(--brand)]/40'
+                            : 'bg-card border-border hover:bg-muted/50'
                         }`}
                       >
                         <input
@@ -2948,7 +2912,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                           className="w-4 h-4 accent-blue-600 cursor-pointer shrink-0"
                         />
                         <div className={`p-1.5 rounded-lg shrink-0 ${
-                          isDarkMode ? 'bg-neutral-700/60' : 'bg-gray-100'
+                          'bg-muted'
                         }`}>
                           <Icon name="car" className={`w-3.5 h-3.5 ${textSecondary}`} />
                         </div>
@@ -2966,32 +2930,20 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                             <span className={textSecondary}>Aktuell:</span>
                             {v.stationId === null ? (
                               <span
-                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-semibold ${
-                                  isDarkMode
-                                    ? 'bg-amber-500/15 text-amber-300'
-                                    : 'bg-amber-50 text-amber-700'
-                                }`}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-semibold sq-tone-watch"
                               >
                                 ohne Station
                               </span>
                             ) : v.stationId === assignStation.id ? (
                               <span
-                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-semibold ${
-                                  isDarkMode
-                                    ? 'bg-emerald-500/15 text-emerald-300'
-                                    : 'bg-emerald-50 text-emerald-700'
-                                }`}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-semibold sq-tone-success"
                               >
                                 <Icon name="check-circle" className="w-2.5 h-2.5" />
                                 {assignStation.name}
                               </span>
                             ) : (
                               <span
-                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-semibold ${
-                                  isDarkMode
-                                    ? 'bg-neutral-700/60 text-gray-300'
-                                    : 'bg-gray-100 text-gray-700'
-                                }`}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-semibold sq-tone-neutral"
                               >
                                 <Icon name="map-pin" className="w-2.5 h-2.5" />
                                 {v.stationName ?? 'Andere'}
@@ -3000,11 +2952,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                             {atHome === true && (
                               <span
                                 title={`GPS-Position im ${assignStation.radiusMeters}m-Radius dieser Station`}
-                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-semibold ${
-                                  isDarkMode
-                                    ? 'bg-blue-500/15 text-blue-300'
-                                    : 'bg-blue-50 text-blue-700'
-                                }`}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-semibold sq-tone-brand"
                               >
                                 <Icon name="crosshair" className="w-2.5 h-2.5" />
                                 vor Ort
@@ -3015,7 +2963,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                         {willMove && (
                           <span
                             className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full shrink-0 ${
-                              isDarkMode ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-700'
+                              'sq-tone-brand'
                             }`}
                           >
                             Wird verschoben
@@ -3024,7 +2972,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                         {willDetach && (
                           <span
                             className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full shrink-0 ${
-                              isDarkMode ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700'
+                              'sq-tone-watch'
                             }`}
                           >
                             Wird entfernt
@@ -3040,7 +2988,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
             {/* Footer */}
             <div
               className={`flex items-center justify-between gap-2 px-5 py-3 border-t ${
-                isDarkMode ? 'border-neutral-700' : 'border-gray-200'
+                'border-border'
               }`}
             >
               <span className={`text-[11px] ${textSecondary}`}>
@@ -3053,9 +3001,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                   onClick={closeAssign}
                   disabled={assignSaving}
                   className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-50 ${
-                    isDarkMode
-                      ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-700/60'
-                      : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                    'border border-border/60 bg-card text-foreground hover:bg-muted'
                   }`}
                 >
                   Abbrechen
@@ -3339,7 +3285,7 @@ function formatLastActive(iso: string | null): string {
 // ============================================
 // BILLING & SUBSCRIPTIONS TAB
 // ============================================
-function BillingTab({ isDarkMode }: { isDarkMode: boolean }) {
+function BillingTab() {
   type BillingSubscriptionDto = {
     id: string;
     plan?: string | null;
@@ -3372,7 +3318,7 @@ function BillingTab({ isDarkMode }: { isDarkMode: boolean }) {
   const [invoiceStatus, setInvoiceStatus] = useState<'all' | 'paid' | 'pending' | 'overdue'>('all');
 
   const cardClass = 'sq-card rounded-2xl p-5 shadow-[var(--shadow-1)]';
-  const spinnerClass = isDarkMode ? 'border-blue-400' : 'border-blue-500';
+  const spinnerClass = 'border-[color:var(--brand)]';
   const inputClass =
     'w-full px-3 py-2.5 rounded-xl border border-border/70 bg-card text-xs text-foreground placeholder:text-muted-foreground transition-all duration-200 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]';
   const planCatalog = [
@@ -3757,21 +3703,22 @@ function BillingTab({ isDarkMode }: { isDarkMode: boolean }) {
 // ============================================
 // MAIN SETTINGS VIEW
 // ============================================
-export function SettingsView({ isDarkMode, activeTab: controlledTab = 'company', onTabChange }: SettingsViewProps) {
+export function SettingsView({ activeTab: controlledTab = 'company', onTabChange }: SettingsViewProps) {
   const { orgId, hasPermission } = useRentalOrg();
   const activeTab = controlledTab;
   const canWriteDataAuth = hasPermission('data-authorization', 'write');
+  const bridgeDark = useDocumentDark();
 
   return (
     <div className="space-y-5">
       {/* Tab Content */}
-      {activeTab === 'account' && <AccountInformationTab isDarkMode={isDarkMode} />}
-      {activeTab === 'company' && <CompanyProfileTab isDarkMode={isDarkMode} orgId={orgId} />}
-      {activeTab === 'fleet-connection' && <FleetConnectionTab isDarkMode={isDarkMode} />}
-      {activeTab === 'users' && <UsersRolesTab isDarkMode={isDarkMode} orgId={orgId} />}
-      {activeTab === 'billing' && <BillingTab isDarkMode={isDarkMode} />}
-      {activeTab === 'data-authorization' && <DataAuthorizationTab isDarkMode={isDarkMode} canWrite={canWriteDataAuth} />}
-      {activeTab === 'legal-documents' && <LegalDocumentsTab isDarkMode={isDarkMode} />}
+      {activeTab === 'account' && <AccountInformationTab />}
+      {activeTab === 'company' && <CompanyProfileTab orgId={orgId} />}
+      {activeTab === 'fleet-connection' && <FleetConnectionTab />}
+      {activeTab === 'users' && <UsersRolesTab isDarkMode={bridgeDark} orgId={orgId} />}
+      {activeTab === 'billing' && <BillingTab />}
+      {activeTab === 'data-authorization' && <DataAuthorizationTab isDarkMode={bridgeDark} canWrite={canWriteDataAuth} />}
+      {activeTab === 'legal-documents' && <LegalDocumentsTab isDarkMode={bridgeDark} />}
     </div>
   );
 }

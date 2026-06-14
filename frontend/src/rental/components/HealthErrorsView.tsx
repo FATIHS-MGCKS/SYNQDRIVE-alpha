@@ -22,9 +22,20 @@ import {
   serviceCardBorderFromRentalState,
 } from '../rental-health-ui';
 import { BatteryConditionBars, RestingVoltageBadge } from './BatteryConditionBars';
+import {
+  PageHeader,
+  SectionHeader,
+  DataCard,
+  MetricCard,
+  EmptyState,
+  SkeletonCard,
+  HealthStatusChip,
+  StatusChip,
+  PriorityBadge,
+  StatusDot,
+} from '../../components/patterns';
 
 interface HealthErrorsViewProps {
-  isDarkMode: boolean;
   vehicleId?: string;
   fuelType?: string;
 }
@@ -47,19 +58,18 @@ function formatMaxDecimals(value: number | null | undefined, maxDecimals = 2, fa
  */
 function tireStatusStyle(
   status: string | null | undefined,
-  isDarkMode: boolean,
 ): { dot: string; pill: string; label: string } {
   switch (status) {
     case 'GOOD':
-      return { dot: 'bg-emerald-500', pill: isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700', label: 'Good' };
+      return { dot: 'sq-dot-success', pill: 'sq-chip-success', label: 'Good' };
     case 'WATCH':
-      return { dot: 'bg-amber-500', pill: isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700', label: 'Watch' };
+      return { dot: 'sq-dot-watch', pill: 'sq-chip-watch', label: 'Watch' };
     case 'WARNING':
-      return { dot: 'bg-orange-500', pill: isDarkMode ? 'bg-orange-500/10 text-orange-400' : 'bg-orange-50 text-orange-700', label: 'Warning' };
+      return { dot: 'sq-dot-warning', pill: 'sq-chip-warning', label: 'Warning' };
     case 'CRITICAL':
-      return { dot: 'bg-red-500', pill: isDarkMode ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-700', label: 'Critical' };
+      return { dot: 'sq-dot-critical', pill: 'sq-chip-critical', label: 'Critical' };
     default:
-      return { dot: 'bg-gray-400', pill: isDarkMode ? 'bg-muted text-muted-foreground' : 'bg-muted text-muted-foreground', label: 'Unknown' };
+      return { dot: 'sq-dot-nodata', pill: 'sq-chip-nodata', label: 'Unknown' };
   }
 }
 
@@ -108,7 +118,7 @@ function formatMeasuredAgo(iso: string | null | undefined): string | null {
   return `${months} mo ago`;
 }
 
-export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErrorsViewProps) {
+export function HealthErrorsView({ vehicleId, fuelType }: HealthErrorsViewProps) {
   const isEv = fuelType === 'Electric' || fuelType === 'PHEV';
   const { orgId, userRole } = useRentalOrg();
   const { health: rentalHealth, loading: rentalHealthLoading } = useEffectiveHealth(vehicleId ?? null);
@@ -434,24 +444,24 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
     };
     const urgCls = (u?: string) =>
       ({
-        CRITICAL: isDarkMode ? 'bg-red-500/20 text-red-300' : 'bg-red-100 text-red-700',
-        HIGH: isDarkMode ? 'bg-orange-500/20 text-orange-300' : 'bg-orange-100 text-orange-700',
-        MEDIUM: isDarkMode ? 'bg-yellow-500/15 text-yellow-400' : 'bg-yellow-100 text-yellow-700',
-        LOW: isDarkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-100 text-blue-700',
-      }[u ?? 'UNKNOWN'] ?? (isDarkMode ? 'bg-neutral-700 text-gray-300' : 'bg-gray-100 text-gray-600'));
+        CRITICAL: 'sq-chip-critical',
+        HIGH: 'sq-chip-warning',
+        MEDIUM: 'sq-chip-watch',
+        LOW: 'sq-chip-info',
+      }[u ?? 'UNKNOWN'] ?? ('sq-chip-neutral'));
     const recCls = (r?: string) =>
       ({
-        DO_NOT_RENT: isDarkMode ? 'bg-red-500/20 text-red-300' : 'bg-red-100 text-red-700',
-        BLOCK_UNTIL_INSPECTED: isDarkMode ? 'bg-orange-500/20 text-orange-300' : 'bg-orange-100 text-orange-700',
-        CHECK_BEFORE_NEXT_RENTAL: isDarkMode ? 'bg-yellow-500/15 text-yellow-400' : 'bg-yellow-100 text-yellow-700',
-        RENTABLE: isDarkMode ? 'bg-green-500/15 text-green-400' : 'bg-green-100 text-green-700',
-      }[r ?? 'UNKNOWN'] ?? (isDarkMode ? 'bg-neutral-700 text-gray-300' : 'bg-gray-100 text-gray-600'));
+        DO_NOT_RENT: 'sq-chip-critical',
+        BLOCK_UNTIL_INSPECTED: 'sq-chip-warning',
+        CHECK_BEFORE_NEXT_RENTAL: 'sq-chip-watch',
+        RENTABLE: 'sq-chip-success',
+      }[r ?? 'UNKNOWN'] ?? ('sq-chip-neutral'));
     const label = (text: string) => (
       <p className={`text-[10px] uppercase tracking-wider mb-1 text-muted-foreground/70`}>{text}</p>
     );
     const wrap = (inner: ReactNode) => (
-      <div className={`mt-3 ml-5 pt-3 border-t ${isDarkMode ? 'border-indigo-500/20' : 'border-indigo-200/60'}`}>
-        <p className={`text-[9px] uppercase tracking-widest font-bold mb-2 ${isDarkMode ? 'text-indigo-300/80' : 'text-indigo-700/80'}`}>
+      <div className={`mt-3 ml-5 pt-3 border-t ${'border-border'}`}>
+        <p className={`text-[9px] uppercase tracking-widest font-bold mb-2 ${'text-[color:var(--brand)]'}`}>
           AI-Einschätzung · DTC Knowledge
         </p>
         {inner}
@@ -474,7 +484,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
       return wrap(
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <AlertTriangle className={`w-3.5 h-3.5 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
+            <AlertTriangle className={`w-3.5 h-3.5 ${'text-[color:var(--status-watch)]'}`} />
             <p className="text-xs text-muted-foreground">Erklärung konnte noch nicht erstellt werden.</p>
           </div>
           {isOrgAdmin && (
@@ -482,7 +492,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               type="button"
               onClick={() => handleRetryKnowledge(dtc.code)}
               disabled={!!dtcRetrying[dtc.code]}
-              className={`text-[11px] px-2 py-1 rounded-md font-medium ${isDarkMode ? 'bg-neutral-800 text-gray-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} disabled:opacity-50`}
+              className={`text-[11px] px-2 py-1 rounded-md font-medium ${'bg-muted text-foreground hover:bg-muted/80'} disabled:opacity-50`}
             >
               {dtcRetrying[dtc.code] ? 'Wird erneut versucht …' : 'Erneut versuchen'}
             </button>
@@ -503,19 +513,19 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
       <div>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <Wrench className={`w-3.5 h-3.5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
+            <Wrench className={`w-3.5 h-3.5 ${'text-[color:var(--brand)]'}`} />
             <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">SynqDrive DTC Knowledge Base</span>
             {k.source === 'VEHICLE_SPECIFIC' && (
-              <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${isDarkMode ? 'bg-indigo-500/15 text-indigo-300' : 'bg-indigo-100 text-indigo-700'}`}>Fahrzeugspezifisch</span>
+              <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${'sq-tone-brand'}`}>Fahrzeugspezifisch</span>
             )}
             {k.needsReview && (
-              <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${isDarkMode ? 'bg-amber-500/15 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>Prüfung empfohlen</span>
+              <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${'sq-chip-watch'}`}>Prüfung empfohlen</span>
             )}
           </div>
           <button
             type="button"
             onClick={() => setExpandedErrorIndex(isExpanded ? null : index)}
-            className={`text-[11px] font-medium shrink-0 ${isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'}`}
+            className={`text-[11px] font-medium shrink-0 ${'text-[color:var(--brand)] hover:opacity-80'}`}
           >
             {isExpanded ? 'Weniger' : 'Mehr anzeigen'}
           </button>
@@ -571,7 +581,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   {sources.map((s, si) => (
                     <li key={si} className="text-xs">
                       {s.url ? (
-                        <a href={s.url} target="_blank" rel="noopener noreferrer" className={`underline ${isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'}`}>
+                        <a href={s.url} target="_blank" rel="noopener noreferrer" className={`underline ${'text-[color:var(--brand)] hover:opacity-80'}`}>
                           {s.title || s.url}
                         </a>
                       ) : (
@@ -592,7 +602,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 type="button"
                 onClick={() => handleRetryKnowledge(dtc.code)}
                 disabled={!!dtcRetrying[dtc.code]}
-                className={`text-[11px] px-2 py-1 rounded-md font-medium ${isDarkMode ? 'bg-neutral-800 text-gray-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} disabled:opacity-50`}
+                className={`text-[11px] px-2 py-1 rounded-md font-medium ${'bg-muted text-foreground hover:bg-muted/80'} disabled:opacity-50`}
               >
                 {dtcRetrying[dtc.code] ? 'Aktualisiere …' : 'Neu generieren'}
               </button>
@@ -1251,6 +1261,22 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
 
   return (
     <div className="relative">
+      <PageHeader
+        title="Vehicle Health"
+        eyebrow="Health Center"
+        description="AI-assisted diagnostics, live tell-tales, and module health for this vehicle."
+        icon={<Icon name="activity" className="w-4 h-4" />}
+        actions={
+          <button
+            type="button"
+            onClick={refreshHealth}
+            className="p-1.5 rounded-full transition-colors hover:bg-muted text-muted-foreground"
+            title="Refresh health data"
+          >
+            {healthLoading ? <Icon name="loader-2" className="w-4 h-4 animate-spin" /> : <Icon name="refresh-cw" className="w-4 h-4" />}
+          </button>
+        }
+      />
       <div
         className="grid grid-cols-[1.4fr_2.55fr] gap-3 transition-all duration-500 ease-out origin-center items-start"
         style={{
@@ -1261,19 +1287,13 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         }}
       >
         {/* ─── Vehicle Health Center – col 1, spans 2 rows ─── */}
-        <div className="bg-card border border-border/60 rounded-xl shadow-sm p-5 flex flex-col relative overflow-hidden">
-          {/* Subtle gradient background flair */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 blur-3xl rounded-full pointer-events-none" />
-          
-          <div className="flex items-center gap-3 mb-5 relative z-10">
-            <div className={`p-2 rounded-xl border ${isDarkMode ? 'bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border-indigo-500/10 text-indigo-300' : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-100 text-indigo-600'}`}>
+        <DataCard className="flex flex-col relative overflow-hidden p-0" bodyClassName="p-5 flex flex-col flex-1">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="sq-tone-brand p-2 rounded-xl">
               <Icon name="sparkles" className="w-4 h-4" />
             </div>
             <h3 className="text-[10px] font-semibold tracking-tight text-foreground">Vehicle Health Center</h3>
-            <span className={`ml-auto px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest border ${isDarkMode ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border-indigo-500/20 text-indigo-300' : 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 text-indigo-600'}`}>Powered by AI</span>
-            <button onClick={refreshHealth} className={`p-1.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
-              {healthLoading ? <Icon name="loader-2" className="w-4 h-4 animate-spin" /> : <Icon name="refresh-cw" className="w-4 h-4" />}
-            </button>
+            <span className="ml-auto sq-tone-brand px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest">Powered by AI</span>
           </div>
           <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar relative z-10">
 
@@ -1281,12 +1301,12 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             {(() => {
               const status = vhcStatus;
               const cfg = {
-                LOADING:          { bg: isDarkMode ? 'bg-neutral-800/60 border-neutral-700/50' : 'bg-gray-50 border-gray-200', dot: 'bg-gray-400', ping: 'bg-gray-300', text: isDarkMode ? 'text-gray-400' : 'text-gray-600', sub: isDarkMode ? 'text-gray-400/80' : 'text-gray-500', label: 'Lädt…' },
-                GOOD:             { bg: isDarkMode ? 'bg-gradient-to-b from-green-500/5 to-green-500/5 border-green-500/10' : 'bg-gradient-to-b from-green-500/5 to-green-500/5 border-green-500/20', dot: 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]', ping: 'bg-green-300', text: isDarkMode ? 'text-green-300' : 'text-green-800', sub: isDarkMode ? 'text-green-200/80' : 'text-green-700', label: 'Gut' },
-                ATTENTION_NEEDED: { bg: isDarkMode ? 'bg-gradient-to-b from-amber-500/10 to-amber-500/5 border-amber-500/20' : 'bg-gradient-to-b from-amber-500/10 to-amber-500/5 border-amber-500/20', dot: 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]', ping: 'bg-amber-400', text: isDarkMode ? 'text-amber-300' : 'text-amber-800', sub: isDarkMode ? 'text-amber-200/80' : 'text-amber-800/80', label: 'Warnung' },
-                CRITICAL:         { bg: isDarkMode ? 'bg-gradient-to-b from-red-500/10 to-red-500/5 border-red-500/20' : 'bg-gradient-to-b from-red-500/10 to-red-500/5 border-red-500/20', dot: 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]', ping: 'bg-red-400', text: isDarkMode ? 'text-red-300' : 'text-red-800', sub: isDarkMode ? 'text-red-200/80' : 'text-red-800/80', label: 'Kritisch' },
-                NO_RECENT_DATA:   { bg: isDarkMode ? 'bg-gradient-to-b from-neutral-800/60 to-neutral-800/40 border-neutral-700/50' : 'bg-gradient-to-b from-neutral-500/10 to-neutral-500/5 border-neutral-500/20', dot: 'bg-gray-400', ping: 'bg-gray-300', text: isDarkMode ? 'text-gray-400' : 'text-gray-600', sub: isDarkMode ? 'text-gray-400/80' : 'text-gray-500', label: 'Begrenzte Daten' },
-              }[status] ?? { bg: isDarkMode ? 'bg-neutral-800/60 border-neutral-700/50' : 'bg-gray-50 border-gray-200', dot: 'bg-gray-400', ping: 'bg-gray-300', text: 'text-muted-foreground', sub: 'text-muted-foreground', label: '—' };
+                LOADING:          { bg: 'sq-tone-nodata border border-border', dot: 'bg-gray-400', ping: 'bg-gray-300', text: 'text-muted-foreground', sub: 'text-muted-foreground', label: 'Lädt…' },
+                GOOD:             { bg: 'sq-tone-success border border-border', dot: 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]', ping: 'bg-green-300', text: 'text-[color:var(--status-positive)]', sub: 'text-[color:var(--status-positive)]', label: 'Gut' },
+                ATTENTION_NEEDED: { bg: 'sq-tone-watch border border-border', dot: 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]', ping: 'bg-amber-400', text: 'text-[color:var(--status-watch)]', sub: 'text-[color:var(--status-watch)]', label: 'Warnung' },
+                CRITICAL:         { bg: 'sq-tone-critical border border-border', dot: 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]', ping: 'bg-red-400', text: 'text-[color:var(--status-critical)]', sub: 'text-[color:var(--status-critical)]', label: 'Kritisch' },
+                NO_RECENT_DATA:   { bg: 'sq-tone-nodata border border-border', dot: 'bg-gray-400', ping: 'bg-gray-300', text: 'text-muted-foreground', sub: 'text-muted-foreground', label: 'Begrenzte Daten' },
+              }[status] ?? { bg: 'sq-tone-nodata border border-border', dot: 'bg-gray-400', ping: 'bg-gray-300', text: 'text-muted-foreground', sub: 'text-muted-foreground', label: '—' };
 
               const aiSummaryText = aiHealthCare?.summaryText ?? hs?.overallStatus?.shortSummary ?? 'Keine Analyse verfügbar.';
               const critCount = rentalFindings.filter((f) => f.severity === 'critical').length;
@@ -1314,12 +1334,17 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                       <div className={`relative w-3 h-3 rounded-full ${cfg.dot}`} />
                     </div>
                     <span className={`font-bold text-[10px] tracking-tight ${cfg.text}`}>{cfg.label}</span>
-                    <span className={`ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-widest border ${
-                      status === 'GOOD' ? 'border-green-500/20 text-green-600 dark:text-green-400 bg-green-500/10' :
-                      status === 'CRITICAL' ? 'border-red-500/20 text-red-600 dark:text-red-400 bg-red-500/10' :
-                      status === 'ATTENTION_NEEDED' ? 'border-amber-500/20 text-amber-600 dark:text-amber-400 bg-amber-500/10' :
-                      'border-border text-muted-foreground bg-muted/50'
-                    }`}>{status === 'ATTENTION_NEEDED' ? 'Warning' : status.replace(/_/g, ' ')}</span>
+                    <HealthStatusChip
+                      className="ml-auto text-[10px] uppercase tracking-widest"
+                      state={
+                        status === 'GOOD' ? 'good'
+                        : status === 'CRITICAL' ? 'critical'
+                        : status === 'ATTENTION_NEEDED' ? 'watch'
+                        : status === 'NO_RECENT_DATA' ? 'no_data'
+                        : 'unknown'
+                      }
+                      label={status === 'ATTENTION_NEEDED' ? 'Warning' : status.replace(/_/g, ' ')}
+                    />
                   </div>
                   <p className={`text-[10px] ml-8 leading-relaxed font-medium ${cfg.sub}`}>{summaryText}</p>
                   {reasons.length > 0 && (
@@ -1340,8 +1365,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             {rentalFindings.length > 0 && (
               <div className={`sq-glass rounded-2xl p-5 ${
                 hasCriticalFinding
-                  ? isDarkMode ? 'bg-gradient-to-b from-red-500/10 to-red-500/5 border-red-500/20' : 'bg-gradient-to-b from-red-500/10 to-red-500/5 border-red-500/20'
-                  : isDarkMode ? 'bg-gradient-to-b from-amber-500/10 to-amber-500/5 border-amber-500/20' : 'bg-gradient-to-b from-amber-500/10 to-amber-500/5 border-amber-500/20'
+                  ? 'sq-tone-critical border border-border'
+                  : 'sq-tone-watch border border-border'
               }`}>
                 <div className="flex items-center gap-2 mb-4">
                   <div className={`p-1.5 rounded-lg ${hasCriticalFinding ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-500'}`}>
@@ -1349,13 +1374,13 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   </div>
                   <span className={`font-bold text-[10px] tracking-tight ${
                     hasCriticalFinding
-                      ? isDarkMode ? 'text-red-300' : 'text-red-800'
-                      : isDarkMode ? 'text-amber-300' : 'text-amber-800'
+                      ? 'text-[color:var(--status-critical)]'
+                      : 'text-[color:var(--status-watch)]'
                   }`}>{hasCriticalFinding ? 'Sofortige Aufmerksamkeit' : 'Warnungen'}</span>
                   <span className={`ml-auto text-[9px] font-bold px-2.5 py-1 rounded-full ${
                     hasCriticalFinding
-                      ? isDarkMode ? 'bg-red-500/20 text-red-300' : 'bg-red-500/10 text-red-700'
-                      : isDarkMode ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-500/10 text-amber-700'
+                      ? 'sq-chip-critical'
+                      : 'sq-chip-watch'
                   }`}>{rentalFindings.length}</span>
                 </div>
                 <ul className="space-y-2.5">
@@ -1371,17 +1396,14 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                       : f.icon === 'bell' ? AlertTriangle
                       : AlertTriangle;
                     const tint = isCrit
-                      ? isDarkMode ? 'text-red-400 bg-red-500/15 ring-1 ring-red-500/20' : 'text-red-600 bg-red-100 ring-1 ring-red-200'
-                      : isDarkMode ? 'text-amber-400 bg-amber-500/15 ring-1 ring-amber-500/20' : 'text-amber-600 bg-amber-100 ring-1 ring-amber-200';
+                      ? 'sq-tone-critical ring-1 ring-border'
+                      : 'sq-tone-watch ring-1 ring-border';
                     const titleColor = isCrit
-                      ? isDarkMode ? 'text-red-300' : 'text-red-800'
-                      : isDarkMode ? 'text-amber-300' : 'text-amber-800';
+                      ? 'text-[color:var(--status-critical)]'
+                      : 'text-[color:var(--status-watch)]';
                     const detailColor = isCrit
-                      ? isDarkMode ? 'text-red-200/80' : 'text-red-700/80'
-                      : isDarkMode ? 'text-amber-200/80' : 'text-amber-700/80';
-                    const badgeBg = isCrit
-                      ? isDarkMode ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-red-100 text-red-700 border-red-200'
-                      : isDarkMode ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-amber-100 text-amber-700 border-amber-200';
+                      ? 'text-[color:var(--status-critical)]'
+                      : 'text-[color:var(--status-watch)]';
                     return (
                       <li
                         key={f.id}
@@ -1394,9 +1416,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                         <div className="flex-1 min-w-0 pt-0.5">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             <span className={`text-[10px] font-semibold tracking-tight ${titleColor}`}>{f.title}</span>
-                            <span className={`px-2 py-0.5 rounded uppercase tracking-widest text-[9px] font-bold border ${badgeBg}`}>
+                            <StatusChip tone={isCrit ? 'critical' : 'watch'} className="text-[9px] uppercase tracking-widest">
                               {isCrit ? 'Kritisch' : 'Warnung'}
-                            </span>
+                            </StatusChip>
                           </div>
                           <p className={`text-[10px] leading-relaxed font-medium ${detailColor}`}>{f.detail}</p>
                         </div>
@@ -1412,18 +1434,18 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             {aiHealthCare?.hmHealthActive && (
               <div className={`sq-glass rounded-2xl p-5 ${
                 aiHealthCare.hmFreshnessStatus === 'stale'
-                  ? isDarkMode ? 'bg-gradient-to-b from-amber-500/10 to-amber-500/5 border-amber-500/20' : 'bg-gradient-to-b from-amber-500/10 to-amber-500/5 border-amber-500/20'
-                  : isDarkMode ? 'bg-gradient-to-b from-purple-500/10 to-purple-500/5 border-purple-500/20' : 'bg-gradient-to-b from-purple-500/10 to-purple-500/5 border-purple-500/20'
+                  ? 'sq-tone-watch border border-border'
+                  : 'sq-tone-ai border border-border'
               }`}>
                 <div className="flex items-center gap-3 mb-4">
                   <div className={`p-1.5 rounded-lg ${
                     aiHealthCare.hmFreshnessStatus === 'stale'
-                      ? isDarkMode ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-600'
-                      : isDarkMode ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-100 text-purple-600'
+                      ? 'sq-tone-watch'
+                      : 'sq-tone-ai'
                   }`}>
                     <Icon name="activity" className="w-4 h-4" />
                   </div>
-                  <span className={`font-bold text-[10px] tracking-tight ${isDarkMode ? 'text-purple-300' : 'text-purple-800'}`}>Tacho Warnleuchten</span>
+                  <span className={`font-bold text-[10px] tracking-tight ${'text-[color:var(--status-ai)]'}`}>Tacho Warnleuchten</span>
                   {aiHealthCare.hmFreshnessStatus === 'stale' && (
                     <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[8px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
                       <Icon name="alert-triangle" className="w-2.5 h-2.5" />
@@ -1447,7 +1469,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 </div>
                 {aiHealthCare.hmLastErrorAt && aiHealthCare.hmLastErrorMessage && (
                   <div className={`mb-4 rounded-xl px-4 py-3 text-xs font-medium border shadow-sm ${
-                    isDarkMode ? 'bg-red-500/10 border-red-500/20 text-red-300' : 'bg-red-50 border-red-200 text-red-800'
+                    'sq-tone-critical border border-border'
                   }`}>
                     <div className="flex items-center gap-2 mb-1">
                       <Icon name="alert-circle" className="w-3.5 h-3.5" />
@@ -1458,7 +1480,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 )}
                 {!aiHealthCare.hmLastErrorAt && aiHealthCare.hmFreshnessStatus === 'no_data' && (
                   <div className={`mb-4 rounded-xl px-4 py-3 text-xs font-medium border shadow-sm ${
-                    isDarkMode ? 'bg-blue-500/10 border-blue-500/20 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-800'
+                    'sq-tone-info border border-border'
                   }`}>
                     <div className="flex items-center gap-2 mb-1">
                       <Icon name="zap" className="w-3.5 h-3.5" />
@@ -1531,14 +1553,14 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   };
                   const iconTintFor = (tone: Tone) => {
                     if (tone === 'alert') return 'text-amber-500';
-                    if (tone === 'ok') return isDarkMode ? 'text-emerald-400' : 'text-emerald-500';
+                    if (tone === 'ok') return 'text-[color:var(--status-positive)]';
                     if (tone === 'muted') return 'text-gray-300 dark:text-gray-600';
-                    return isDarkMode ? 'text-gray-400' : 'text-gray-500';
+                    return 'text-muted-foreground';
                   };
                   const iconBgFor = (tone: Tone) => {
-                    if (tone === 'alert') return isDarkMode ? 'bg-amber-500/20 ring-1 ring-amber-500/30' : 'bg-amber-100 ring-1 ring-amber-200';
-                    if (tone === 'ok') return isDarkMode ? 'bg-emerald-500/10 ring-1 ring-emerald-500/20' : 'bg-emerald-50 ring-1 ring-emerald-100';
-                    return isDarkMode ? 'bg-white/[0.03] ring-1 ring-white/5' : 'bg-black/[0.03] ring-1 ring-black/5';
+                    if (tone === 'alert') return 'sq-tone-watch ring-1 ring-border';
+                    if (tone === 'ok') return 'sq-tone-success ring-1 ring-border';
+                    return 'bg-muted/40 ring-1 ring-border';
                   };
                   return (
                 <div className="space-y-1">
@@ -1554,7 +1576,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     const isLow = aiHealthCare.hmIndicators?.oilLevel?.status === 'LOW';
                     return (
                       <div className="flex items-center gap-3.5 p-2 -mx-2 rounded-xl transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm border ${isLow ? (isDarkMode ? 'bg-amber-500/20 border-amber-500/30' : 'bg-amber-100 border-amber-200') : (isDarkMode ? 'bg-white/[0.03] border-white/5' : 'bg-black/[0.03] border-black/5')}`}>
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm border ${isLow ? ('sq-tone-watch border border-border') : ('bg-muted/40 border border-border')}`}>
                           {/* Min Oil Level — Figma: TA284qaiR287FrPzedlr58, node 2:98 */}
                           <img
                             src={tellTaleOilIcon}
@@ -1662,7 +1684,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             )}
 
           </div>
-        </div>
+        </DataCard>
 
         {/* ─── Right Column: Quick Cards ─── */}
         <div className="grid grid-cols-3 gap-3 h-fit auto-rows-fr">
@@ -1673,10 +1695,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
           const isStale = s?.isStale ?? false;
           const faultCount = s?.activeFaultCount ?? (dtcStatus === 'active_faults' ? activeDtcCount : 0);
           const checkedAt = s?.lastCheckedAt ?? lastDtcChecked;
-          const accent = quickCardAccentFromRentalState(
-            rentalHealth?.modules.error_codes.state,
-            isDarkMode,
-          );
+          const accent = quickCardAccentFromRentalState(rentalHealth?.modules.error_codes.state);
           return (
             <div onClick={() => openModal(setShowErrorCodes)} className={`${quickCardClass} order-1`}>
               {/* Subtle gradient backdrop */}
@@ -1699,17 +1718,17 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 )}
                 {dtcStatus === 'stale' && (
                   <>
-                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center mb-2 shadow-sm ${isDarkMode ? 'bg-amber-500/15 ring-1 ring-amber-500/20' : 'bg-amber-50 ring-1 ring-amber-100'}`}>
-                      <Icon name="alert-triangle" className={`w-4 h-4 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center mb-2 shadow-sm ${'sq-tone-watch ring-1 ring-border'}`}>
+                      <Icon name="alert-triangle" className={`w-4 h-4 ${'text-[color:var(--status-watch)]'}`} />
                     </div>
-                    <p className={`text-[10px] font-semibold text-center ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>Daten veraltet / Abruf fehlgeschlagen</p>
+                    <p className={`text-[10px] font-semibold text-center ${'text-[color:var(--status-watch)]'}`}>Daten veraltet / Abruf fehlgeschlagen</p>
                   </>
                 )}
                 {(dtcStatus === 'clean' || dtcStatus === 'active_faults') && (
                   <>
-                    <div className={`text-[40px] font-black tracking-tighter leading-none ${faultCount > 0 ? accent.countText : isDarkMode ? 'text-foreground' : 'text-foreground'}`}>{faultCount}</div>
+                    <div className={`text-[40px] font-black tracking-tighter leading-none ${faultCount > 0 ? accent.countText : 'text-foreground'}`}>{faultCount}</div>
                     {faultCount === 0 && (
-                      <div className={`mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
+                      <div className={`mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${'sq-chip-success'}`}>
                         <Icon name="check-circle" className="w-2.5 h-2.5" /> Keine Fehler
                       </div>
                     )}
@@ -1722,8 +1741,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 )}
               </div>
               <div className={`${quickCardFooterClass} flex items-center gap-1.5`}>
-                {isStale && <Icon name="alert-triangle" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-amber-500' : 'text-amber-400'}`} />}
-                <p className={`text-[10px] font-medium ${isStale ? (isDarkMode ? 'text-amber-500' : 'text-amber-400') : 'text-muted-foreground'}`}>
+                {isStale && <Icon name="alert-triangle" className={`w-3 h-3 shrink-0 ${'text-[color:var(--status-watch)]'}`} />}
+                <p className={`text-[10px] font-medium ${isStale ? ('text-[color:var(--status-watch)]') : 'text-muted-foreground'}`}>
                   {checkedAt ? formatRelativeTime(checkedAt) : '—'}
                 </p>
               </div>
@@ -1735,10 +1754,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         <div onClick={() => openModal(setShowBattery)} className={`${quickCardClass} order-4`}>
           <style>{`@keyframes calibDots { 0%,20%{opacity:.2} 50%{opacity:1} 100%{opacity:.2} }`}</style>
           {(() => {
-            const batteryAccent = quickCardAccentFromRentalState(
-              rentalHealth?.modules.battery.state,
-              isDarkMode,
-            );
+            const batteryAccent = quickCardAccentFromRentalState(rentalHealth?.modules.battery.state);
             return (
               <>
           {/* Subtle gradient backdrop */}
@@ -1753,9 +1769,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 <span
                   title="Dashboard-Warnleuchte leuchtet — Lichtmaschine und Ladezustand prüfen"
                   className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border animate-pulse ${
-                    isDarkMode
-                      ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-                      : 'bg-amber-50 text-amber-700 border-amber-200'
+                    'sq-chip-watch border border-border'
                   }`}
                 >
                   <img src={tellTaleBatteryIcon} alt="" aria-hidden="true" className="w-3 h-3 object-contain" />
@@ -1780,22 +1794,21 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             ) : lvIsCalibrating ? (
               <>
                 <div className="mb-1.5 flex items-center gap-1.5">
-                  <span className={`text-xs font-medium ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                  <span className={`text-xs font-medium ${'text-[color:var(--status-info)]'}`}>
                     Sammelt Messwerte
                   </span>
                   <span className="inline-flex">
-                    {[0, 1, 2].map(i => <span key={i} className={`inline-block w-1 h-1 rounded-full mx-0.5 ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}
+                    {[0, 1, 2].map(i => <span key={i} className={`inline-block w-1 h-1 rounded-full mx-0.5 ${'bg-[color:var(--status-info)]'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}
                   </span>
                 </div>
                 {calibrationEstimate != null ? (
                   <div className="flex items-center gap-1.5 mb-1.5" title={lvEstimatedTooltip}>
                     <BatteryConditionBars
                       status={calibrationEstimate >= 80 ? 'GOOD' : calibrationEstimate >= 60 ? 'WATCH' : calibrationEstimate >= 40 ? 'WARNING' : 'CRITICAL'}
-                      isDarkMode={isDarkMode}
                       size="sm"
                       showLabel={false}
                     />
-                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${isDarkMode ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-200'}`}>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${'sq-chip-info border border-border'}`}>
                       Schätzung
                     </span>
                   </div>
@@ -1815,11 +1828,10 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     <BatteryConditionBars
                       status={lvEstimatedStatus}
                       bars={lvEstimatedBars}
-                      isDarkMode={isDarkMode}
                       size="md"
                     />
                     {lvIsStabilizing && (
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border ${isDarkMode ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>Estimated</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border ${'sq-chip-watch border border-border'}`}>Estimated</span>
                     )}
                   </div>
                 </div>
@@ -1829,7 +1841,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     Resting Voltage{lvBatteryTypeLabel ? ` · ${lvBatteryTypeLabel}` : ''}
                   </p>
                   {lvRestingValue != null ? (
-                    <RestingVoltageBadge valueV={lvRestingValue} status={lvRestingStatus} isDarkMode={isDarkMode} />
+                    <RestingVoltageBadge valueV={lvRestingValue} status={lvRestingStatus} />
                   ) : (
                     <p className={`text-[10px] font-medium text-muted-foreground`}>
                       Live voltage: <span className={`font-bold text-foreground tabular-nums`}>{voltageDisplay}</span>
@@ -1840,8 +1852,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 {!lvIsStabilizing && (batteryCondition === 'watch' || batteryCondition === 'attention') && (
                   <div className={`mt-2 rounded-lg px-2.5 py-2 border text-[9px] leading-snug font-medium ${
                     batteryCondition === 'attention'
-                      ? (isDarkMode ? 'bg-red-500/10 border-red-500/30 text-red-300' : 'bg-red-50 border-red-200 text-red-700')
-                      : (isDarkMode ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-700')
+                      ? ('sq-tone-critical border border-border')
+                      : ('sq-tone-watch border border-border')
                   }`}>
                     {batteryCondition === 'attention'
                       ? 'Batteriespannung kritisch — Austausch empfohlen.'
@@ -1852,7 +1864,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             )}
             {aiHealthCare?.indicators?.batteryWarningLight === true && (
               <div className={`mt-2 rounded-md px-2 py-1.5 border text-[10px] leading-snug flex items-start gap-1.5 ${
-                isDarkMode ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-700'
+                'sq-tone-watch border border-border'
               }`}>
                 <img src={tellTaleBatteryIcon} alt="" aria-hidden="true" className="w-3.5 h-3.5 shrink-0 mt-0.5 object-contain" />
                 <span><span className="font-semibold">Warnleuchte aktiv</span> — Dashboard meldet Batterie-Warnung. Lichtmaschine und Ladezustand prüfen.</span>
@@ -1939,11 +1951,11 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
           const tuvOverdue = si?.tuvOverdue === true;
           const tuvColor =
             !hasTuv || tuvDays == null
-              ? isDarkMode ? 'text-gray-500' : 'text-gray-400'
+              ? 'text-muted-foreground'
               : tuvOverdue || tuvDays <= 30
-                ? isDarkMode ? 'text-red-400' : 'text-red-600'
+                ? 'text-[color:var(--status-critical)]'
                 : tuvDays <= 60
-                  ? isDarkMode ? 'text-amber-400' : 'text-amber-600'
+                  ? 'text-[color:var(--status-watch)]'
                   : 'text-foreground';
 
           const hasBok = si?.bokraftValidTill != null;
@@ -1952,20 +1964,17 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
           const bokOverdue = si?.bokraftOverdue === true;
           const bokColor =
             !hasBok || bokDays == null
-              ? isDarkMode ? 'text-gray-500' : 'text-gray-400'
+              ? 'text-muted-foreground'
               : bokOverdue || bokDays <= 30
-                ? isDarkMode ? 'text-red-400' : 'text-red-600'
+                ? 'text-[color:var(--status-critical)]'
                 : bokDays <= 60
-                  ? isDarkMode ? 'text-amber-400' : 'text-amber-600'
+                  ? 'text-[color:var(--status-watch)]'
                   : 'text-foreground';
 
           const borderHighlight = serviceCardBorderFromRentalState(
             rentalHealth?.modules.service_compliance.state,
           );
-          const serviceAccent = quickCardAccentFromRentalState(
-            rentalHealth?.modules.service_compliance.state,
-            isDarkMode,
-          );
+          const serviceAccent = quickCardAccentFromRentalState(rentalHealth?.modules.service_compliance.state);
 
           return (
             <div onClick={() => openModal(setShowService)} className={`${quickCardClass} order-3 ${borderHighlight}`}>
@@ -2039,12 +2048,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
           // Canonical condition is the single source of truth (estimates cap at
           // WARNING; CRITICAL only from a real measured/documented safety signal).
           const condition = bhs?.overallCondition ?? 'UNKNOWN';
-          const style = brakeConditionStyle(condition, isDarkMode);
+          const style = brakeConditionStyle(condition);
           const hasData = condition !== 'UNKNOWN';
-          const brakeAccent = quickCardAccentFromRentalState(
-            rentalHealth?.modules.brakes.state,
-            isDarkMode,
-          );
+          const brakeAccent = quickCardAccentFromRentalState(rentalHealth?.modules.brakes.state);
           const basisLabel = bhs?.dataBasis ? BRAKE_BASIS_LABEL[bhs.dataBasis] : null;
           const confLabel = bhs?.confidenceLevel ? BRAKE_CONFIDENCE_LABEL[bhs.confidenceLevel] : null;
           const frontRange = formatBrakeKmRange(bhs?.estimatedFrontRemainingKmMin, bhs?.estimatedFrontRemainingKmMax);
@@ -2113,7 +2119,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
           const activeSetup = resolveActiveSetup(tiresData);
           // ── Canonical read model (single source of truth — measured vs estimated honesty) ──
           const canonStatus = th?.overallStatus ?? null;
-          const canonStyle = tireStatusStyle(canonStatus, isDarkMode);
+          const canonStyle = tireStatusStyle(canonStatus);
           const displayMm = th?.displayTreadMm ?? th?.lowestTreadMm ?? null;
           const lowestPos = th?.lowestTreadPosition ?? null;
           const displayMode = th?.displayMode ?? (th?.measurementState === 'measured' ? 'MEASURED' : th?.measurementState ? 'ESTIMATED' : null);
@@ -2121,21 +2127,18 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
           const lastMeasuredAt = th?.lastMeasurementAt ?? th?.latestMeasurementAt ?? null;
           const estRemKm = th?.estimatedRemainingKm ?? remKm;
           const topRec = th?.recommendations?.find((r) => r && r.trim().length > 0) ?? null;
-          const tireAccent = quickCardAccentFromRentalState(
-            rentalHealth?.modules.tires.state,
-            isDarkMode,
-          );
+          const tireAccent = quickCardAccentFromRentalState(rentalHealth?.modules.tires.state);
           return (
             <div onClick={() => { setTireActionError(null); openModal(setShowTires); loadTireDetail(); }} className={`${quickCardClass} order-5 ${!hasTireData ? 'opacity-60' : ''}`}>
               {/* Subtle gradient backdrop */}
               <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none ${tireAccent.backdrop}`} />
               <div className={quickCardHeaderClass}>
                 <div className="flex items-center gap-2">
-                  <div className={`p-1.5 rounded-lg ${!hasTireData ? (isDarkMode ? 'bg-muted text-muted-foreground' : 'bg-muted text-muted-foreground') : tireAccent.iconBox}`}>
+                  <div className={`p-1.5 rounded-lg ${!hasTireData ? ('bg-muted text-muted-foreground') : tireAccent.iconBox}`}>
                     <Icon name="circle" className="w-3.5 h-3.5" />
                   </div>
                   <h3 className={quickCardTitleClass}>Tires</h3>
-                  {hasTireData && <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-sm">ML</span>}
+                  {hasTireData && <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest sq-tone-ai shadow-sm">ML</span>}
                   {hasAlerts && <span className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)] animate-pulse" />}
                 </div>
                 <Icon name="chevron-right" className={`w-4 h-4 text-muted-foreground transition-transform group-hover:translate-x-0.5`} />
@@ -2147,9 +2150,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     <span className="text-xs font-bold text-muted-foreground tracking-tight">% Tread</span>
                     {th?.actionState && th.actionState !== 'KEEP_DRIVING' && (
                       <span className={`ml-auto px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border ${
-                        th.actionState === 'REPLACE' ? (isDarkMode ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-red-50 text-red-700 border-red-200') :
-                        th.actionState === 'PLAN_SERVICE' ? (isDarkMode ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-amber-50 text-amber-700 border-amber-200') :
-                        (isDarkMode ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' : 'bg-blue-50 text-blue-700 border-blue-200')
+                        th.actionState === 'REPLACE' ? ('sq-chip-critical border border-border') :
+                        th.actionState === 'PLAN_SERVICE' ? ('sq-chip-watch border border-border') :
+                        ('sq-chip-info border border-border')
                       }`}>
                         {formatEnumLabel(th.actionState)}
                       </span>
@@ -2169,9 +2172,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     </div>
                   ) : (
                     <div className={`mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest w-fit ${
-                      pct >= 50 ? (isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700') :
-                      pct >= 25 ? (isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700') :
-                      (isDarkMode ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-700')
+                      pct >= 50 ? ('sq-chip-success') :
+                      pct >= 25 ? ('sq-chip-watch') :
+                      ('sq-chip-critical')
                     }`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${
                         pct >= 50 ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]' :
@@ -2192,16 +2195,16 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider ${
                         displayMode === 'MEASURED'
-                          ? (isDarkMode ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-700')
-                          : (isDarkMode ? 'bg-violet-500/10 text-violet-400' : 'bg-violet-50 text-violet-700')
+                          ? ('sq-chip-info')
+                          : ('sq-tone-ai')
                       }`}>
                         {displayMode === 'MEASURED' ? 'Measured' : displayMode === 'ESTIMATED' ? 'Estimated' : 'Unknown'}
                       </span>
                       {confLevel && (
                         <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider ${
-                          confLevel === 'HIGH' ? (isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700') :
-                          confLevel === 'MEDIUM' ? (isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700') :
-                          (isDarkMode ? 'bg-orange-500/10 text-orange-400' : 'bg-orange-50 text-orange-700')
+                          confLevel === 'HIGH' ? ('sq-chip-success') :
+                          confLevel === 'MEDIUM' ? ('sq-chip-watch') :
+                          ('sq-chip-warning')
                         }`}>
                           Conf: {confLevel}
                         </span>
@@ -2214,7 +2217,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     </p>
                   )}
                   {topRec && (
-                    <p className={`text-[10px] mt-1 font-medium ${isDarkMode ? 'text-blue-400/80' : 'text-blue-600/80'} line-clamp-2`}>
+                    <p className={`text-[10px] mt-1 font-medium ${'text-[color:var(--status-info)]'} line-clamp-2`}>
                       {topRec}
                     </p>
                   )}
@@ -2245,9 +2248,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     })() : '—'}
                   </p>
                   <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest ${
-                    hmTirePressure.overallStatus === 'OK' ? (isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700') :
-                    hmTirePressure.overallStatus === 'ISSUE' ? (isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700') :
-                    (isDarkMode ? 'bg-muted text-muted-foreground' : 'bg-muted text-muted-foreground')
+                    hmTirePressure.overallStatus === 'OK' ? ('sq-chip-success') :
+                    hmTirePressure.overallStatus === 'ISSUE' ? ('sq-chip-watch') :
+                    ('bg-muted text-muted-foreground')
                   }`}>
                     {hmTirePressure.overallStatus === 'OK' ? <><Icon name="check-circle" className="w-2.5 h-2.5" /> Pressure OK</> :
                      hmTirePressure.overallStatus === 'ISSUE' ? <><Icon name="alert-triangle" className="w-2.5 h-2.5" /> Pressure Warning</> :
@@ -2281,7 +2284,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-base font-semibold text-foreground">HV Battery</h3>
                 <div className="flex items-center gap-1">
-                  <Icon name="zap" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-500'}`} />
+                  <Icon name="zap" className={`w-3.5 h-3.5 ${'text-[color:var(--status-positive)]'}`} />
                   <Icon name="chevron-right" className={`w-4 h-4 text-muted-foreground`} />
                 </div>
               </div>
@@ -2292,9 +2295,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                       {soh != null ? (
                         <span className={`text-sm font-bold tracking-tight text-foreground`}>~{soh}% SOH</span>
                       ) : (
-                        <span className={`text-sm font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>Calibrating</span>
+                        <span className={`text-sm font-semibold ${'text-[color:var(--status-info)]'}`}>Calibrating</span>
                       )}
-                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${isDarkMode ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>Schätzung</span>
+                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${'sq-chip-info border border-border'}`}>Schätzung</span>
                     </div>
                     {soh != null && (
                       <div className={`w-full h-1.5 rounded-full overflow-hidden mb-1 bg-muted`}>
@@ -2313,11 +2316,11 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     <div className="flex items-center gap-1.5 mb-1">
                       <span className={`text-sm font-bold tracking-tight text-foreground`}>{`${hvStabilizing ? '~' : ''}${soh}% SOH`}</span>
                       {hvStabilizing && (
-                        <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${isDarkMode ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>Estimated</span>
+                        <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${'sq-chip-watch border border-border'}`}>Estimated</span>
                       )}
                     </div>
                     <div className={`w-full h-1.5 rounded-full overflow-hidden mb-2 bg-muted`}>
-                      <div className={`h-full ${hvStabilizing ? (isDarkMode ? 'bg-amber-500/60' : 'bg-amber-400') : barColor} rounded-full transition-all`} style={{ width: `${soh}%` }} />
+                      <div className={`h-full ${hvStabilizing ? ('bg-[color:var(--status-watch)]') : barColor} rounded-full transition-all`} style={{ width: `${soh}%` }} />
                     </div>
                     <p className={`text-xs text-muted-foreground`}>{hvStabilizing ? 'Estimated SOH · Stabilizing' : (interp?.label ?? '—')}</p>
                   </>
@@ -2336,7 +2339,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none ${activeComplaints > 0 ? 'bg-amber-500/10' : 'bg-emerald-500/8'}`} />
               <div className={quickCardHeaderClass}>
                 <div className="flex items-center gap-2">
-                  <div className={`p-1.5 rounded-lg ${activeComplaints > 0 ? (isDarkMode ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-600') : (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-600')}`}>
+                  <div className={`p-1.5 rounded-lg ${activeComplaints > 0 ? ('sq-tone-watch') : ('sq-tone-success')}`}>
                     <Icon name="clipboard-list" className="w-3.5 h-3.5" />
                   </div>
                   <h3 className={quickCardTitleClass}>Complaints</h3>
@@ -2345,13 +2348,13 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               </div>
               <div className={`${quickCardBodyClass} items-center`}>
                 {complaintsLoading ? (
-                  <Icon name="loader-2" className={`w-6 h-6 animate-spin text-muted-foreground`} />
+                  <SkeletonCard className="w-full" />
                 ) : (
                   <>
                     <div className={`text-[40px] font-black tracking-tighter leading-none ${activeComplaints > 0 ? 'text-amber-500 drop-shadow-[0_0_12px_rgba(245,158,11,0.3)]' : 'text-foreground'}`}>{activeComplaints}</div>
                     <div className={`mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${
-                      activeComplaints === 0 ? (isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700') :
-                      (isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700')
+                      activeComplaints === 0 ? ('sq-chip-success') :
+                      ('sq-chip-watch')
                     }`}>
                       {activeComplaints === 0 ? <><Icon name="check-circle" className="w-2.5 h-2.5" /> Alles klar</> : <><Icon name="alert-circle" className="w-2.5 h-2.5" /> {activeComplaints === 1 ? 'Active' : 'Active'}</>}
                     </div>
@@ -2377,17 +2380,17 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => closeModal(setShowErrorCodes)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
           <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl rounded-xl p-5 shadow-lg transition-all duration-500 ease-out max-h-[85vh] overflow-y-auto bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
-            <button onClick={() => closeModal(setShowErrorCodes)} className={`absolute top-6 right-6 p-1.5 rounded-full transition-colors ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}><Icon name="x" className="w-5 h-5" /></button>
+            <button onClick={() => closeModal(setShowErrorCodes)} className={`absolute top-6 right-6 p-1.5 rounded-full transition-colors ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
 
             {/* Modal header */}
             <div className="mb-4">
               <h2 className="text-base font-semibold mb-1 text-foreground">Error Codes</h2>
               {rentalHealth?.modules.error_codes && (
-                <div className={`mb-3 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 ${isDarkMode ? 'bg-muted/40 border-border' : 'bg-muted/30 border-border'}`}>
+                <div className={`mb-3 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 ${'bg-muted/40 border-border'}`}>
                   <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                     Betriebsstatus (Fleet Health)
                   </span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide ${rentalStatePillClasses(rentalHealth.modules.error_codes.state, isDarkMode)}`}>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide ${rentalStatePillClasses(rentalHealth.modules.error_codes.state)}`}>
                     {rentalStateLabelDe(rentalHealth.modules.error_codes.state)}
                   </span>
                   <span className="text-[11px] text-muted-foreground">{rentalHealth.modules.error_codes.reason}</span>
@@ -2397,17 +2400,14 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 const d = dtcDetail;
                 const s = dtcSummary;
                 const cs = d?.currentFaults?.status ?? s?.status;
-                const errorAccent = quickCardAccentFromRentalState(
-                  rentalHealth?.modules.error_codes.state,
-                  isDarkMode,
-                );
+                const errorAccent = quickCardAccentFromRentalState(rentalHealth?.modules.error_codes.state);
                 if (!cs || cs === 'unavailable') return (
                   <p className={`text-sm text-muted-foreground`}>No DTC check has been performed yet</p>
                 );
                 if (cs === 'stale') return (
                   <div className="flex items-center gap-2">
-                    <Icon name="alert-triangle" className={`w-4 h-4 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
-                    <p className={`text-sm ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>DTC status outdated — last successful check {formatRelativeTime(d?.monitoring?.lastSuccessfulCheckAt ?? s?.lastSuccessfulCheckAt)}</p>
+                    <Icon name="alert-triangle" className={`w-4 h-4 ${'text-[color:var(--status-watch)]'}`} />
+                    <p className={`text-sm ${'text-[color:var(--status-watch)]'}`}>DTC status outdated — last successful check {formatRelativeTime(d?.monitoring?.lastSuccessfulCheckAt ?? s?.lastSuccessfulCheckAt)}</p>
                   </div>
                 );
                 const count = d?.currentFaults?.activeFaults?.length ?? s?.activeFaultCount ?? 0;
@@ -2429,28 +2429,23 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 );
                 return (
                   <div className="flex items-center gap-2">
-                    <Icon name="check-circle" className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-500'}`} />
-                    <p className={`text-sm ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>No active fault codes</p>
+                    <Icon name="check-circle" className={`w-4 h-4 ${'text-[color:var(--status-positive)]'}`} />
+                    <p className={`text-sm ${'text-[color:var(--status-positive)]'}`}>No active fault codes</p>
                     {d?.monitoring?.lastSuccessfulCheckAt && <span className={`ml-auto text-xs text-muted-foreground/70`}>Last check {formatRelativeTime(d.monitoring.lastSuccessfulCheckAt)}</span>}
                   </div>
                 );
               })()}
             </div>
 
-            {dtcDetailLoading && (
-              <div className={`flex items-center gap-3 py-6 justify-center text-muted-foreground`}>
-                <Icon name="loader-2" className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Loading diagnostic data…</span>
-              </div>
-            )}
+            {dtcDetailLoading && <SkeletonCard className="mb-4" />}
 
             {!dtcDetailLoading && (() => {
               const d = dtcDetail;
               const sevCls = (sev: string) => ({
-                high: isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-100 text-red-600',
-                medium: isDarkMode ? 'bg-yellow-500/15 text-yellow-400' : 'bg-yellow-100 text-yellow-700',
-                low: isDarkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-100 text-blue-600',
-              }[sev] ?? (isDarkMode ? 'bg-neutral-700 text-gray-400' : 'bg-gray-100 text-gray-500'));
+                high: 'sq-chip-critical',
+                medium: 'sq-chip-watch',
+                low: 'sq-chip-info',
+              }[sev] ?? ('sq-chip-neutral'));
 
               return (
                 <>
@@ -2459,31 +2454,31 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     <h3 className={`text-xs font-bold uppercase tracking-widest mb-4 text-muted-foreground`}>A — Current Fault Status</h3>
 
                     {(!d || d.currentFaults.status === 'unavailable') && (
-                      <div className={`flex items-center gap-3 p-4 rounded-lg border bg-muted border-border`}>
-                        <Icon name="clock" className={`w-5 h-5 shrink-0 text-muted-foreground/60`} />
-                        <div>
-                          <p className={`text-sm font-medium text-muted-foreground`}>No DTC data available</p>
-                          <p className={`text-xs text-muted-foreground/70`}>The first DTC poll runs every 3 hours — no check has been performed yet</p>
-                        </div>
-                      </div>
+                      <EmptyState
+                        compact
+                        icon={<Icon name="clock" className="w-5 h-5" />}
+                        title="No DTC data available"
+                        description="The first DTC poll runs every 3 hours — no check has been performed yet"
+                        className="rounded-lg border bg-muted border-border py-6"
+                      />
                     )}
 
                     {d?.currentFaults.status === 'stale' && (
-                      <div className={`flex items-center gap-3 p-4 rounded-lg border ${isDarkMode ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50 border-amber-200/60'}`}>
-                        <Icon name="alert-triangle" className={`w-5 h-5 shrink-0 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
+                      <div className={`flex items-center gap-3 p-4 rounded-lg border ${'sq-tone-watch border border-border'}`}>
+                        <Icon name="alert-triangle" className={`w-5 h-5 shrink-0 ${'text-[color:var(--status-watch)]'}`} />
                         <div>
-                          <p className={`text-sm font-semibold ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>Current DTC status is outdated</p>
-                          <p className={`text-xs ${isDarkMode ? 'text-amber-400/70' : 'text-amber-600/70'}`}>The displayed DTC state may not reflect the actual vehicle condition. Wait for the next successful check.</p>
+                          <p className={`text-sm font-semibold ${'text-[color:var(--status-watch)]'}`}>Current DTC status is outdated</p>
+                          <p className={`text-xs ${'text-[color:var(--status-watch)]'}`}>The displayed DTC state may not reflect the actual vehicle condition. Wait for the next successful check.</p>
                         </div>
                       </div>
                     )}
 
                     {d?.currentFaults.status === 'clean' && (
-                      <div className={`flex items-center gap-3 p-4 rounded-lg border ${isDarkMode ? 'bg-green-500/5 border-green-500/15' : 'bg-green-50 border-green-200/60'}`}>
-                        <Icon name="check-circle" className={`w-5 h-5 shrink-0 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+                      <div className={`flex items-center gap-3 p-4 rounded-lg border ${'sq-tone-success border border-border'}`}>
+                        <Icon name="check-circle" className={`w-5 h-5 shrink-0 ${'text-[color:var(--status-positive)]'}`} />
                         <div>
-                          <p className={`text-sm font-semibold ${isDarkMode ? 'text-green-300' : 'text-green-800'}`}>No Active Fault Codes</p>
-                          <p className={`text-xs ${isDarkMode ? 'text-green-400/60' : 'text-green-700/60'}`}>Vehicle diagnostics are clear as of the last successful check</p>
+                          <p className={`text-sm font-semibold ${'text-[color:var(--status-positive)]'}`}>No Active Fault Codes</p>
+                          <p className={`text-xs ${'text-[color:var(--status-positive)]'}`}>Vehicle diagnostics are clear as of the last successful check</p>
                         </div>
                       </div>
                     )}
@@ -2491,7 +2486,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     {d?.currentFaults.status === 'active_faults' && d.currentFaults.activeFaults.length > 0 && (
                       <div className="space-y-2">
                         {d.currentFaults.activeFaults.map((dtc: any, i: number) => {
-                          const faultTone = dtcFaultCardTone(dtc.severity, isDarkMode);
+                          const faultTone = dtcFaultCardTone(dtc.severity);
                           return (
                           <div key={dtc.id ?? i} className={`p-4 rounded-lg border ${faultTone.card}`}>
                             <div className="flex items-center gap-3 mb-2 flex-wrap">
@@ -2500,7 +2495,6 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                               <span className={`text-xs flex-1 font-medium text-foreground min-w-[120px]`}>{dtc.label}</span>
                               <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${rentalStatePillClasses(
                                 rentalHealth?.modules.error_codes.state,
-                                isDarkMode,
                               )}`} title="Fleet Health Modulstatus">
                                 Betrieb: {rentalStateLabelDe(rentalHealth?.modules.error_codes.state)}
                               </span>
@@ -2550,12 +2544,12 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                         {/* Table rows */}
                         {d.history.map((item: any, idx: number) => (
                           <div key={item.id ?? idx} className={`grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-3 px-4 py-3 items-center text-xs border-t border-border hover:bg-muted/50 transition-colors`}>
-                            <span className={`font-bold font-mono text-[11px] ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>{item.code}</span>
+                            <span className={`font-bold font-mono text-[11px] ${'text-[color:var(--brand)]'}`}>{item.code}</span>
                             <span className={`truncate text-foreground/80`}>{item.label}</span>
                             <span className={`text-[10px] text-muted-foreground`}>{item.category}</span>
                             <span className={`text-[10px] tabular-nums text-muted-foreground`}>{item.firstSeenAt ? new Date(item.firstSeenAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}</span>
                             <span className={`text-[10px] tabular-nums text-muted-foreground`}>{item.lastSeenAt ? new Date(item.lastSeenAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}</span>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${item.isActive ? (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-100 text-red-600') : item.clearedAt ? (isDarkMode ? 'bg-green-500/15 text-green-400' : 'bg-green-100 text-green-600') : (isDarkMode ? 'bg-neutral-700 text-gray-400' : 'bg-gray-100 text-gray-500')}`}>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${item.isActive ? ('sq-chip-critical') : item.clearedAt ? ('sq-chip-success') : ('sq-chip-neutral')}`}>
                               {item.isActive ? 'Active' : item.clearedAt ? 'Cleared' : 'Historical'}
                             </span>
                           </div>
@@ -2586,15 +2580,15 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                       {d?.monitoring?.pollError && (
                         <div className={`mt-4 pt-4 border-t border-border`}>
                           <p className={`text-[10px] uppercase tracking-wider mb-1 text-muted-foreground/70`}>Last Error</p>
-                          <p className={`text-xs font-mono ${isDarkMode ? 'text-red-400/80' : 'text-red-600/80'}`}>{d.monitoring.pollError}</p>
+                          <p className={`text-xs font-mono ${'text-[color:var(--status-critical)]'}`}>{d.monitoring.pollError}</p>
                         </div>
                       )}
                       <div className={`mt-4 pt-4 border-t border-border`}>
                         <div className="flex items-center gap-2">
                           {d?.monitoring?.isStale
-                            ? <Icon name="alert-triangle" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
-                            : <Icon name="check-circle" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-green-400' : 'text-green-500'}`} />}
-                          <p className={`text-xs ${d?.monitoring?.isStale ? (isDarkMode ? 'text-amber-400' : 'text-amber-600') : (isDarkMode ? 'text-green-400' : 'text-green-600')}`}>
+                            ? <Icon name="alert-triangle" className={`w-3.5 h-3.5 ${'text-[color:var(--status-watch)]'}`} />
+                            : <Icon name="check-circle" className={`w-3.5 h-3.5 ${'text-[color:var(--status-positive)]'}`} />}
+                          <p className={`text-xs ${d?.monitoring?.isStale ? ('text-[color:var(--status-watch)]') : ('text-[color:var(--status-positive)]')}`}>
                             {d?.monitoring?.isStale
                               ? 'Monitoring data is stale — no fresh DTC check available'
                               : 'Monitoring is active — data is within the freshness window'}
@@ -2620,7 +2614,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             className={`relative w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out bg-card border border-border`}
             style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}
           >
-            <button type="button" onClick={() => closeModal(setShowComplaintsModal)} className={`absolute top-5 right-5 p-1.5 rounded-full transition-colors z-10 ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}><Icon name="x" className="w-5 h-5" /></button>
+            <button type="button" onClick={() => closeModal(setShowComplaintsModal)} className={`absolute top-5 right-5 p-1.5 rounded-full transition-colors z-10 ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
             <div className="mb-4">
               <h2 className="text-base font-semibold mb-1 text-foreground">Complaint List</h2>
               <p className={`text-xs text-muted-foreground`}>Driver / staff technical observations (return protocol, inspections)</p>
@@ -2633,19 +2627,19 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 onChange={(e) => setComplaintForm((f) => ({ ...f, description: e.target.value }))}
                 placeholder="Describe the issue…"
                 rows={3}
-                className={`w-full rounded-xl px-3 py-2 text-sm border outline-none mb-2 ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white placeholder-gray-600' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'}`}
+                className={`w-full rounded-xl px-3 py-2 text-sm border outline-none mb-2 ${'bg-background border border-border text-foreground placeholder:text-muted-foreground'}`}
               />
               <div className="grid grid-cols-2 gap-2 mb-2">
                 <input
                   value={complaintForm.region}
                   onChange={(e) => setComplaintForm((f) => ({ ...f, region: e.target.value }))}
                   placeholder="Affected region (e.g. front axle)"
-                  className={`rounded-xl px-3 py-2 text-xs border outline-none ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white placeholder-gray-600' : 'bg-white border-gray-200'}`}
+                  className={`rounded-xl px-3 py-2 text-xs border outline-none ${'bg-background border border-border text-foreground placeholder:text-muted-foreground'}`}
                 />
                 <select
                   value={complaintForm.urgency}
                   onChange={(e) => setComplaintForm((f) => ({ ...f, urgency: e.target.value }))}
-                  className={`rounded-xl px-3 py-2 text-xs border outline-none ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white' : 'bg-white border-gray-200'}`}
+                  className={`rounded-xl px-3 py-2 text-xs border outline-none ${'bg-background border border-border text-foreground'}`}
                 >
                   {(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const).map((u) => (
                     <option key={u} value={u}>{u}</option>
@@ -2656,7 +2650,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 type="button"
                 disabled={submittingComplaint || !complaintForm.description.trim() || !orgId}
                 onClick={() => void submitComplaint()}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold ${isDarkMode ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'} disabled:opacity-50`}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold ${'sq-tone-brand text-white hover:opacity-90'} disabled:opacity-50`}
               >
                 {submittingComplaint ? <Icon name="loader-2" className="w-4 h-4 animate-spin inline" /> : 'Save complaint'}
               </button>
@@ -2670,7 +2664,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 complaints.filter((c) => c.status === 'ACTIVE').map((c) => (
                   <div key={c.id} className={`rounded-xl p-3 border bg-muted border-border`}>
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className={`text-[10px] font-bold uppercase ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>{c.urgency}</span>
+                      <span className={`text-[10px] font-bold uppercase ${'text-[color:var(--status-watch)]'}`}>{c.urgency}</span>
                       <span className={`text-[10px] text-muted-foreground`}>{new Date(c.createdAt).toLocaleString('de-DE')}</span>
                     </div>
                     <p className={`text-sm text-foreground`}>{c.description}</p>
@@ -2699,7 +2693,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     {c.region && <p className={`text-xs mt-1 text-muted-foreground`}>Region: {c.region}</p>}
                     <div className="flex items-center gap-2 mt-1">
                       {c.createdByUserId && <span className={`text-[10px] text-muted-foreground/70`}>By: {c.createdByUserId}</span>}
-                      {c.resolvedAt && <span className={`text-[10px] ${isDarkMode ? 'text-green-600' : 'text-green-500'}`}>Resolved: {new Date(c.resolvedAt).toLocaleDateString('de-DE')}</span>}
+                      {c.resolvedAt && <span className={`text-[10px] ${'text-[color:var(--status-positive)]'}`}>Resolved: {new Date(c.resolvedAt).toLocaleDateString('de-DE')}</span>}
                     </div>
                   </div>
                 ))
@@ -2715,13 +2709,13 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => closeModal(setShowBattery)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
           <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
-            <button onClick={() => closeModal(setShowBattery)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}><Icon name="x" className="w-5 h-5" /></button>
+            <button onClick={() => closeModal(setShowBattery)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
 
             {/* Header + condition badge */}
             <div className="flex items-center gap-3 mb-5">
               <h2 className={`text-sm font-semibold tracking-tight text-foreground`}>Battery Health</h2>
               {lvNoBatteryDetected ? (
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'bg-neutral-800 text-gray-400' : 'bg-gray-100 text-gray-600'}`}>Not detected</span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${'sq-chip-neutral'}`}>Not detected</span>
               ) : lvIsCalibrating ? (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700">Calibrating</span>
               ) : lvIsStabilizing ? (
@@ -2733,13 +2727,13 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               )}
               {!lvNoBatteryDetected && !lvIsCalibrating && bSummary?.trendDirection && bSummary.trendDirection !== 'unknown' && (
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                  bSummary.trendDirection === 'stable' ? (isDarkMode ? 'bg-neutral-700 text-gray-300' : 'bg-gray-100 text-gray-600') :
+                  bSummary.trendDirection === 'stable' ? ('sq-chip-neutral') :
                   bSummary.trendDirection === 'improving' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
                 }`}>{bSummary.trendDirection === 'stable' ? 'Stable' : bSummary.trendDirection === 'improving' ? 'Improving' : 'Declining'}</span>
               )}
               {/* Maturity info in detail view */}
               {bSummary?.currentState?.maturityConfidence && (
-                <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${isDarkMode ? 'bg-neutral-800 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${'sq-chip-neutral'}`}>
                   Confidence: {bSummary.currentState.maturityConfidence}
                 </span>
               )}
@@ -2747,16 +2741,16 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
 
             {/* Current state cards */}
             <div className="flex gap-3 mb-5">
-              <div className={`flex-1 rounded-lg px-4 py-3 ${isDarkMode ? 'bg-indigo-500/15' : 'bg-indigo-50'}`}>
-                <div className="flex items-center gap-1.5 mb-1"><Icon name="battery-charging" className={`w-3 h-3 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} /><span className={`text-[10px] uppercase tracking-wider font-semibold ${isDarkMode ? 'text-indigo-300' : 'text-indigo-500'}`}>Voltage</span></div>
+              <div className={`flex-1 rounded-lg px-4 py-3 ${'sq-tone-brand'}`}>
+                <div className="flex items-center gap-1.5 mb-1"><Icon name="battery-charging" className={`w-3 h-3 ${'text-[color:var(--brand)]'}`} /><span className={`text-[10px] uppercase tracking-wider font-semibold ${'text-[color:var(--brand)]'}`}>Voltage</span></div>
                 <div className="flex items-baseline gap-1"><span className={`text-sm font-bold text-foreground`}>{voltageDisplay}</span><span className={`text-xs text-muted-foreground`}>V</span></div>
               </div>
               <div className={`flex-1 rounded-lg px-4 py-3 bg-muted`}>
                 <div className="flex items-center gap-1.5 mb-1"><Icon name="clock" className={`w-3 h-3 text-muted-foreground`} /><span className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Last Check</span></div>
                 <div className="flex items-baseline gap-1"><span className={`text-sm font-bold text-foreground`}>{batteryLastCheckedAgo || '—'}</span></div>
               </div>
-              <div className={`flex-1 rounded-lg px-4 py-3 ${bSummary?.currentState.temperatureC != null && bSummary.currentState.temperatureC < 5 ? (isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50') : isDarkMode ? 'bg-neutral-800' : 'bg-gray-100'}`}>
-                <div className="flex items-center gap-1.5 mb-1"><Icon name="thermometer" className={`w-3 h-3 ${bSummary?.currentState.temperatureC != null && bSummary.currentState.temperatureC < 5 ? (isDarkMode ? 'text-blue-400' : 'text-blue-500') : (isDarkMode ? 'text-gray-400' : 'text-gray-500')}`} /><span className={`text-[10px] uppercase tracking-wider font-semibold ${bSummary?.currentState.temperatureC != null && bSummary.currentState.temperatureC < 5 ? (isDarkMode ? 'text-blue-300' : 'text-blue-500') : (isDarkMode ? 'text-gray-400' : 'text-gray-500')}`}>Temperature</span></div>
+              <div className={`flex-1 rounded-lg px-4 py-3 ${bSummary?.currentState.temperatureC != null && bSummary.currentState.temperatureC < 5 ? ('sq-tone-info') : 'bg-muted'}`}>
+                <div className="flex items-center gap-1.5 mb-1"><Icon name="thermometer" className={`w-3 h-3 ${bSummary?.currentState.temperatureC != null && bSummary.currentState.temperatureC < 5 ? ('text-[color:var(--status-info)]') : ('text-muted-foreground')}`} /><span className={`text-[10px] uppercase tracking-wider font-semibold ${bSummary?.currentState.temperatureC != null && bSummary.currentState.temperatureC < 5 ? ('text-[color:var(--status-info)]') : ('text-muted-foreground')}`}>Temperature</span></div>
                 <div className="flex items-baseline gap-1"><span className={`text-sm font-bold text-foreground`}>{bSummary?.currentState.temperatureC != null ? `${bSummary.currentState.temperatureC}°C` : '—'}</span></div>
               </div>
             </div>
@@ -2765,8 +2759,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               bSummary?.currentTelemetry?.rangeKm != null ||
               bSummary?.currentTelemetry?.chargingPowerKw != null ||
               bSummary?.currentTelemetry?.chargingState != null) && (
-              <div className={`rounded-lg p-4 mb-5 ${isDarkMode ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-emerald-50 border border-emerald-100'}`}>
-                <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`}>
+              <div className={`rounded-lg p-4 mb-5 ${'sq-tone-success border border-border'}`}>
+                <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${'text-[color:var(--status-positive)]'}`}>
                   Current Battery State (Not Health)
                 </p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -2812,7 +2806,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             {(() => {
               if (lvNoBatteryDetected) {
                 return (
-                  <div className={`rounded-lg px-5 py-4 mb-5 ${isDarkMode ? 'bg-neutral-800/60' : 'bg-gray-100'}`}>
+                  <div className={`rounded-lg px-5 py-4 mb-5 ${'bg-muted/60'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Estimated Battery Health</p>
                       <span className={`text-sm font-semibold text-foreground`}>No LV Battery detected</span>
@@ -2825,33 +2819,33 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               }
               if (lvIsCalibrating) {
                 return (
-                  <div className={`rounded-lg px-5 py-4 mb-5 ${isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50'}`}>
+                  <div className={`rounded-lg px-5 py-4 mb-5 ${'sq-tone-info'}`}>
                     <div className="flex items-center justify-between mb-2">
-                      <p className={`text-[10px] uppercase tracking-wider font-semibold ${isDarkMode ? 'text-blue-300' : 'text-blue-500'}`}>Estimated Battery Health</p>
+                      <p className={`text-[10px] uppercase tracking-wider font-semibold ${'text-[color:var(--status-info)]'}`}>Estimated Battery Health</p>
                       <div className="flex items-center gap-1.5">
-                        <span className={`text-sm font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>Calibrating</span>
-                        <span className="inline-flex">{[0,1,2].map(i => <span key={i} className={`inline-block w-1.5 h-1.5 rounded-full mx-0.5 ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}</span>
+                        <span className={`text-sm font-semibold ${'text-[color:var(--status-info)]'}`}>Calibrating</span>
+                        <span className="inline-flex">{[0,1,2].map(i => <span key={i} className={`inline-block w-1.5 h-1.5 rounded-full mx-0.5 ${'bg-[color:var(--status-info)]'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}</span>
                       </div>
                     </div>
-                    <p className={`text-[10px] ${isDarkMode ? 'text-blue-400/70' : 'text-blue-700/80'}`}>{calibrationStatusText}</p>
-                    {calibrationMetricsText && <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-blue-400/60' : 'text-blue-600/70'}`}>{calibrationMetricsText}</p>}
-                    {calibrationFreshnessText && <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-amber-300/80' : 'text-amber-700/80'}`}>{calibrationFreshnessText}</p>}
+                    <p className={`text-[10px] ${'text-[color:var(--status-info)]'}`}>{calibrationStatusText}</p>
+                    {calibrationMetricsText && <p className={`text-[10px] mt-1 ${'text-[color:var(--status-info)]'}`}>{calibrationMetricsText}</p>}
+                    {calibrationFreshnessText && <p className={`text-[10px] mt-1 ${'text-[color:var(--status-watch)]'}`}>{calibrationFreshnessText}</p>}
                     {lvCalibration && (
                       <div className="grid grid-cols-2 gap-3 mt-3">
-                        <div className={`rounded-lg px-3 py-2 ${isDarkMode ? 'bg-blue-500/10' : 'bg-white/70'}`}>
+                        <div className={`rounded-lg px-3 py-2 ${'bg-muted/50'}`}>
                           <p className="text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">Tage</p>
                           <p className="text-sm font-bold text-foreground">{formatCalibrationDays(lvCalibration.daysSinceFirstMeasurement)}/{lvCalibration.minimumDaysForStabilizing}</p>
                         </div>
-                        <div className={`rounded-lg px-3 py-2 ${isDarkMode ? 'bg-blue-500/10' : 'bg-white/70'}`}>
+                        <div className={`rounded-lg px-3 py-2 ${'bg-muted/50'}`}>
                           <p className="text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">Events</p>
                           <p className="text-sm font-bold text-foreground">{lvCalibration.qualifiedEventCount}/{lvCalibration.minimumQualifiedEventsForStabilizing}</p>
                         </div>
-                        <div className={`rounded-lg px-3 py-2 ${isDarkMode ? 'bg-blue-500/10' : 'bg-white/70'}`}>
+                        <div className={`rounded-lg px-3 py-2 ${'bg-muted/50'}`}>
                           <p className="text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">Ruhe</p>
                           <p className="text-sm font-bold text-foreground">{lvCalibration.restObservationCount}/{lvCalibration.minimumRestObservationsForStabilizing}</p>
                         </div>
                         {lvCalibration.minimumCrankObservationsForStabilizing > 0 && (
-                          <div className={`rounded-lg px-3 py-2 ${isDarkMode ? 'bg-blue-500/10' : 'bg-white/70'}`}>
+                          <div className={`rounded-lg px-3 py-2 ${'bg-muted/50'}`}>
                             <p className="text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">Starts</p>
                             <p className="text-sm font-bold text-foreground">{lvCalibration.crankObservationCount}/{lvCalibration.minimumCrankObservationsForStabilizing}</p>
                           </div>
@@ -2864,17 +2858,17 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               const lvAggStatus = bSummary?.lv?.healthStatus
                 ?? (lvEstimatedStatus !== 'UNKNOWN' ? lvEstimatedStatus : 'UNKNOWN');
               const bgCol =
-                lvAggStatus === 'GOOD' ? (isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50') :
-                lvAggStatus === 'WATCH' ? (isDarkMode ? 'bg-amber-500/10' : 'bg-amber-50') :
-                lvAggStatus === 'WARNING' ? (isDarkMode ? 'bg-orange-500/10' : 'bg-orange-50') :
-                lvAggStatus === 'CRITICAL' ? (isDarkMode ? 'bg-red-500/10' : 'bg-red-50') :
-                (isDarkMode ? 'bg-neutral-800/60' : 'bg-gray-100');
+                lvAggStatus === 'GOOD' ? ('sq-tone-success') :
+                lvAggStatus === 'WATCH' ? ('sq-tone-watch') :
+                lvAggStatus === 'WARNING' ? ('sq-tone-warning') :
+                lvAggStatus === 'CRITICAL' ? ('sq-tone-critical') :
+                ('bg-muted/60');
               return (
                 <div className={`rounded-lg px-5 py-4 mb-5 ${bgCol}`}>
                   {/* Estimated Battery Health — behaviour-derived 3-bar indicator. */}
                   <div className="flex items-center justify-between mb-2" title={lvEstimatedTooltip}>
                     <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Estimated Battery Health</p>
-                    <BatteryConditionBars status={lvEstimatedStatus} bars={lvEstimatedBars} isDarkMode={isDarkMode} size="md" />
+                    <BatteryConditionBars status={lvEstimatedStatus} bars={lvEstimatedBars} size="md" />
                   </div>
                   {/* Resting Voltage — current rest/charge state, separate from health. */}
                   <div className="flex items-center justify-between pt-2 border-t border-border/40">
@@ -2882,15 +2876,15 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                       Resting Voltage{lvBatteryTypeLabel ? ` · ${lvBatteryTypeLabel}` : ''}
                     </p>
                     {lvRestingValue != null ? (
-                      <RestingVoltageBadge valueV={lvRestingValue} status={lvRestingStatus} isDarkMode={isDarkMode} />
+                      <RestingVoltageBadge valueV={lvRestingValue} status={lvRestingStatus} />
                     ) : (
                       <span className="text-xs font-bold text-muted-foreground">Not available</span>
                     )}
                   </div>
-                  <p className={`text-[9px] mt-2 leading-snug ${isDarkMode ? 'text-muted-foreground/70' : 'text-muted-foreground/80'}`}>
+                  <p className={`text-[9px] mt-2 leading-snug ${'text-muted-foreground/70'}`}>
                     {lvEstimatedTooltip}
                   </p>
-                  {lvIsStabilizing && <p className={`text-[9px] mt-1.5 ${isDarkMode ? 'text-amber-400/60' : 'text-amber-600/60'}`}>Estimate is stabilizing — may refine over the next few days</p>}
+                  {lvIsStabilizing && <p className={`text-[9px] mt-1.5 ${'text-[color:var(--status-watch)]/60'}`}>Estimate is stabilizing — may refine over the next few days</p>}
                 </div>
               );
             })()}
@@ -2898,9 +2892,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             {/* Voltage Trend Chart */}
             <div className={`rounded-lg p-5 mb-5 bg-muted`}>
               <div className="flex justify-center mb-4">
-                <div className={`inline-flex rounded-full p-0.5 ${isDarkMode ? 'bg-neutral-700' : 'bg-gray-100'}`}>
-                  <button onClick={() => setBatteryChartTab('woche')} className={`px-5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${batteryChartTab === 'woche' ? isDarkMode ? 'bg-neutral-600 text-white shadow-sm' : 'bg-white text-gray-900 shadow-sm' : isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Week</button>
-                  <button onClick={() => setBatteryChartTab('monat')} className={`px-5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${batteryChartTab === 'monat' ? isDarkMode ? 'bg-neutral-600 text-white shadow-sm' : 'bg-white text-gray-900 shadow-sm' : isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Month</button>
+                <div className={`inline-flex rounded-full p-0.5 ${'bg-muted'}`}>
+                  <button onClick={() => setBatteryChartTab('woche')} className={`px-5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${batteryChartTab === 'woche' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>Week</button>
+                  <button onClick={() => setBatteryChartTab('monat')} className={`px-5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${batteryChartTab === 'monat' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>Month</button>
                 </div>
               </div>
               <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-center text-muted-foreground`}>Voltage Trend</p>
@@ -2912,39 +2906,39 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     <ReferenceArea y1={11} y2={13} fill="#22c55e" fillOpacity={0.2} />
                     <ReferenceArea y1={9} y2={11} fill="#f59e0b" fillOpacity={0.15} />
                     <ReferenceArea y1={6} y2={9} fill="#ef4444" fillOpacity={0.15} />
-                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: isDarkMode ? '#9ca3af' : '#6b7280' }} />
-                    <YAxis domain={[6, 18]} axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: isDarkMode ? '#6b7280' : '#9ca3af' }} label={{ value: 'Volt', angle: -90, position: 'insideLeft', offset: 15, style: { fontSize: 9, fill: isDarkMode ? '#6b7280' : '#9ca3af' } }} />
-                    <Tooltip cursor={{ stroke: isDarkMode ? '#4b5563' : '#d1d5db', strokeWidth: 1, strokeDasharray: '4 4' }} content={({ active, payload }) => {
+                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
+                    <YAxis domain={[6, 18]} axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: 'var(--muted-foreground)' }} label={{ value: 'Volt', angle: -90, position: 'insideLeft', offset: 15, style: { fontSize: 9, fill: 'var(--muted-foreground)' } }} />
+                    <Tooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1, strokeDasharray: '4 4' }} content={({ active, payload }) => {
                       if (active && payload && payload.length) {
                         const d = payload[0].payload;
                         const v = d.volt;
                         const st = v >= 11 && v <= 13 ? 'Good' : v >= 9 && v <= 14 ? 'Warning' : 'Critical';
                         const sc = st === 'Good' ? 'text-green-500' : st === 'Warning' ? 'text-amber-500' : 'text-red-500';
-                        const sb = st === 'Good' ? isDarkMode ? 'bg-green-500/15' : 'bg-green-100' : st === 'Warning' ? isDarkMode ? 'bg-amber-500/15' : 'bg-amber-100' : isDarkMode ? 'bg-red-500/15' : 'bg-red-100';
+                        const sb = st === 'Good' ? 'sq-tone-success' : st === 'Warning' ? 'sq-tone-watch' : 'sq-tone-critical';
                         return (<div className="rounded-lg px-3 py-2.5 shadow-lg border border-border bg-popover text-popover-foreground"><div className="flex items-center gap-2 mb-1.5"><span className={`text-xs font-semibold text-foreground`}>{d.day}</span><span className={`text-[10px] text-muted-foreground`}>{d.time}</span></div><div className="flex items-baseline gap-1.5"><span className={`text-sm font-bold text-foreground`}>{v.toFixed(1)}</span><span className={`text-[10px] text-muted-foreground`}>V</span></div><div className={`mt-1.5 inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${sb} ${sc}`}>{st}</div></div>);
                       }
                       return null;
                     }} />
-                    <Line type="monotone" dataKey="volt" stroke={isDarkMode ? '#e5e7eb' : '#374151'} strokeWidth={2.5} dot={{ r: 4, fill: isDarkMode ? '#e5e7eb' : '#fff', stroke: isDarkMode ? '#9ca3af' : '#374151', strokeWidth: 2 }} activeDot={{ r: 6, fill: isDarkMode ? '#818cf8' : '#6366f1', stroke: isDarkMode ? '#e5e7eb' : '#fff', strokeWidth: 2.5 }} />
+                    <Line type="monotone" dataKey="volt" stroke='var(--foreground)' strokeWidth={2.5} dot={{ r: 4, fill: 'var(--foreground)', stroke: 'var(--muted-foreground)', strokeWidth: 2 }} activeDot={{ r: 6, fill: 'var(--brand)', stroke: 'var(--card)', strokeWidth: 2.5 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
               <div className="flex items-center justify-center gap-3 mt-2">
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-500" /><span className={`text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Good (11–13V)</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-400" /><span className={`text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Warning</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500" /><span className={`text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Critical</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-500" /><span className={`text-[10px] ${'text-muted-foreground'}`}>Good (11–13V)</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-400" /><span className={`text-[10px] ${'text-muted-foreground'}`}>Warning</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500" /><span className={`text-[10px] ${'text-muted-foreground'}`}>Critical</span></div>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3 mb-5">
               {/* Watchpoints */}
               {bSummary && bSummary.watchpoints.length > 0 && (
-                <div className={`rounded-lg p-5 ${isDarkMode ? 'bg-amber-500/5 border border-amber-500/20' : 'bg-amber-50 border border-amber-200/60'}`}>
-                  <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>Watchpoints</p>
+                <div className={`rounded-lg p-5 ${'sq-tone-watch border border-border'}`}>
+                  <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 ${'text-[color:var(--status-watch)]'}`}>Watchpoints</p>
                   <div className="space-y-2">
                     {bSummary.watchpoints.map((w, i) => (
                       <div key={i} className="flex items-start gap-2">
-                        <Icon name="alert-triangle" className={`w-3 h-3 mt-0.5 shrink-0 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
+                        <Icon name="alert-triangle" className={`w-3 h-3 mt-0.5 shrink-0 ${'text-[color:var(--status-watch)]'}`} />
                         <p className={`text-xs leading-relaxed text-foreground/80`}>{w}</p>
                       </div>
                     ))}
@@ -2954,12 +2948,12 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
 
               {/* Recommendations */}
               {bSummary && bSummary.recommendations.length > 0 && (
-                <div className={`rounded-lg p-5 ${isDarkMode ? 'bg-blue-500/5 border border-blue-500/20' : 'bg-blue-50 border border-blue-200/60'}`}>
-                  <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>Recommendations</p>
+                <div className={`rounded-lg p-5 ${'sq-tone-info border border-border'}`}>
+                  <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 ${'text-[color:var(--status-info)]'}`}>Recommendations</p>
                   <div className="space-y-2">
                     {bSummary.recommendations.map((r, i) => (
                       <div key={i} className="flex items-start gap-2">
-                        <Icon name="check-circle" className={`w-3 h-3 mt-0.5 shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                        <Icon name="check-circle" className={`w-3 h-3 mt-0.5 shrink-0 ${'text-[color:var(--status-info)]'}`} />
                         <p className={`text-xs leading-relaxed text-foreground/80`}>{r}</p>
                       </div>
                     ))}
@@ -2979,7 +2973,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   { label: 'Data Source', value: bSummary?.specs?.sourceType ? bSummary.specs.sourceType.toLowerCase() : '—' },
                 ].map((spec) => (
                   <div key={spec.label} className="flex items-center justify-between py-2">
-                    <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{spec.label}</span>
+                    <span className={`text-xs ${'text-muted-foreground'}`}>{spec.label}</span>
                     <span className={`text-xs font-semibold capitalize text-foreground`}>{spec.value}</span>
                   </div>
                 ))}
@@ -2997,7 +2991,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     bSummary?.currentState.chargingVoltage != null ? { l: 'Charging Voltage', v: `${bSummary.currentState.chargingVoltage} V` } : null,
                   ].filter(Boolean).map((r: any) => (
                     <div key={r.l} className="flex items-center justify-between py-2">
-                      <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{r.l}</span>
+                      <span className={`text-xs ${'text-muted-foreground'}`}>{r.l}</span>
                       <span className={`text-xs font-semibold text-foreground`}>{r.v}</span>
                     </div>
                   ))}
@@ -3043,7 +3037,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => closeModal(setShowService)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
           <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
-            <button onClick={() => closeModal(setShowService)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}><Icon name="x" className="w-5 h-5" /></button>
+            <button onClick={() => closeModal(setShowService)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
             <h2 className={`text-sm font-semibold tracking-tight mb-5 text-foreground`}>Service Info</h2>
 
             {/* Next Service */}
@@ -3053,15 +3047,15 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               const imminent = si?.serviceDueImminently === true && !overdue;
 
               const panelBg = overdue
-                ? isDarkMode ? 'bg-red-500/10' : 'bg-red-50'
+                ? 'sq-tone-critical'
                 : imminent
-                  ? isDarkMode ? 'bg-amber-500/10' : 'bg-amber-50'
-                  : isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50';
+                  ? 'sq-tone-watch'
+                  : 'sq-tone-info';
               const headerText = overdue
-                ? isDarkMode ? 'text-red-300' : 'text-red-800'
+                ? 'text-[color:var(--status-critical)]'
                 : imminent
-                  ? isDarkMode ? 'text-amber-300' : 'text-amber-800'
-                  : isDarkMode ? 'text-blue-300' : 'text-blue-900';
+                  ? 'text-[color:var(--status-watch)]'
+                  : 'text-[color:var(--status-info)]';
               const bodyText = overdue
                 ? 'text-red-700 dark:text-red-300'
                 : imminent
@@ -3109,7 +3103,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   <p className={`text-sm font-bold mb-1 ${bodyText}`}>{bodyValue}</p>
                   <p className={`text-xs mb-3 text-muted-foreground`}>whichever comes first</p>
                   {si?.serviceRemainingPercent != null && (
-                    <div className={`w-full h-2 rounded-full overflow-hidden ${isDarkMode ? 'bg-neutral-700' : 'bg-blue-200'}`}>
+                    <div className={`w-full h-2 rounded-full overflow-hidden ${'bg-muted'}`}>
                       <div
                         className={`h-full rounded-full transition-all ${
                           overdue
@@ -3170,7 +3164,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   { l: 'Interval (km)', v: serviceInfo?.intervalKm ? `every ${serviceInfo.intervalKm.toLocaleString()} km` : '—' },
                   { l: 'Interval (months)', v: serviceInfo?.intervalMonths ? `every ${serviceInfo.intervalMonths} months` : '—' },
                 ].map(s => (
-                  <div key={s.l} className="flex items-center justify-between py-2.5"><span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{s.l}</span><span className={`text-xs font-semibold text-foreground`}>{s.v}</span></div>
+                  <div key={s.l} className="flex items-center justify-between py-2.5"><span className={`text-xs ${'text-muted-foreground'}`}>{s.l}</span><span className={`text-xs font-semibold text-foreground`}>{s.v}</span></div>
                 ))}
               </div>
             </div>
@@ -3218,7 +3212,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                               ? 'text-red-500'
                               : days != null && days <= 180
                                 ? 'text-orange-500'
-                                : isDarkMode ? 'text-green-400' : 'text-green-600';
+                                : 'text-[color:var(--status-positive)]';
                           const label = days == null
                             ? '—'
                             : tuvOverdue
@@ -3264,7 +3258,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                               ? 'text-red-500'
                               : days != null && days <= 120
                                 ? 'text-orange-500'
-                                : isDarkMode ? 'text-green-400' : 'text-green-600';
+                                : 'text-[color:var(--status-positive)]';
                           const label = days == null
                             ? '—'
                             : bokOverdue
@@ -3303,14 +3297,13 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { if (!showBrakeEntry) closeModal(setShowBrakes); }}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
           <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
-            <button onClick={() => closeModal(setShowBrakes)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}><Icon name="x" className="w-5 h-5" /></button>
+            <button onClick={() => closeModal(setShowBrakes)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
 
             {(() => {
               const bhs = brakeHealthSummary;
               const bhd = brakeHealthDetail;
               const stateClass = bhs?.stateClass ?? 'NO_BASELINE';
               const v2 = stateClass === 'MEASURED' || stateClass === 'ESTIMATED';
-              const d = isDarkMode;
               const cardBg = 'bg-muted';
               const hSec = 'text-xs font-bold uppercase tracking-wider mb-3 text-muted-foreground';
               const lbl = 'text-[10px] uppercase tracking-wider font-semibold text-muted-foreground';
@@ -3319,25 +3312,17 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
 
               const mkBar = (pct: number) => {
                 const c = pct >= 60 ? 'bg-green-500' : pct >= 30 ? 'bg-amber-500' : 'bg-red-500';
-                return <div className={`w-full h-1.5 rounded-full overflow-hidden mt-1.5 ${d ? 'bg-neutral-700' : 'bg-gray-100'}`}><div className={`h-full rounded-full transition-all ${c}`} style={{ width: `${Math.min(pct, 100)}%` }} /></div>;
+                return <div className={`w-full h-1.5 rounded-full overflow-hidden mt-1.5 'bg-muted'`}><div className={`h-full rounded-full transition-all ${c}`} style={{ width: `${Math.min(pct, 100)}%` }} /></div>;
               };
 
               const statusBadgeCls =
                 stateClass === 'MEASURED'
-                  ? d
-                    ? 'bg-green-500/10 text-green-400'
-                    : 'bg-green-100 text-green-700'
+                  ? 'sq-chip-success'
                   : stateClass === 'ESTIMATED'
-                    ? d
-                      ? 'bg-blue-500/10 text-blue-400'
-                      : 'bg-blue-100 text-blue-700'
+                    ? 'sq-chip-info'
                     : stateClass === 'WARNING_ONLY'
-                      ? d
-                        ? 'bg-amber-500/10 text-amber-400'
-                        : 'bg-amber-100 text-amber-700'
-                      : d
-                        ? 'bg-gray-500/10 text-gray-400'
-                        : 'bg-gray-100 text-gray-600';
+                      ? 'sq-chip-watch'
+                      : 'sq-chip-nodata';
               const statusLabel =
                 stateClass === 'MEASURED'
                   ? 'Measured'
@@ -3350,7 +3335,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               const axleCard = (label: string, est: any | null | undefined) => {
                 if (!est) return null;
                 const pct = est.healthPct ?? 0;
-                const statusColor = pct >= 60 ? (d ? 'text-green-400' : 'text-green-600') : pct >= 30 ? (d ? 'text-amber-400' : 'text-amber-600') : (d ? 'text-red-400' : 'text-red-600');
+                const statusColor = pct >= 60 ? 'text-[color:var(--status-positive)]' : pct >= 30 ? 'text-[color:var(--status-watch)]' : 'text-[color:var(--status-critical)]';
                 return (
                   <div className={`rounded-xl p-4 ${cardBg}`}>
                     <p className={`${lbl} mb-2`}>{label}</p>
@@ -3375,9 +3360,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusBadgeCls}`}>{statusLabel}</span>
                     {bhs?.confidence && (
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                        bhs.confidence.label === 'High' ? (d ? 'bg-green-500/10 text-green-400' : 'bg-green-50 text-green-600')
-                        : bhs.confidence.label === 'Medium' ? (d ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600')
-                        : (d ? 'bg-gray-500/10 text-gray-400' : 'bg-gray-100 text-gray-500')
+                        bhs.confidence.label === 'High' ? 'sq-chip-success'
+                        : bhs.confidence.label === 'Medium' ? 'sq-chip-watch'
+                        : 'sq-chip-nodata'
                       }`}>{bhs.confidence.label} confidence ({bhs.confidence.score})</span>
                     )}
                   </div>
@@ -3392,7 +3377,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   {/* ── Canonical condition (evidence-based read model — measured vs estimated honesty) ── */}
                   {bhs && (bhs.overallCondition !== 'UNKNOWN' || bhs.reasons.length > 0 || bhs.openAlerts.length > 0) && (() => {
                     const overall = bhs.overallCondition ?? 'UNKNOWN';
-                    const oStyle = brakeConditionStyle(overall, d);
+                    const oStyle = brakeConditionStyle(overall);
                     const axleRow = (
                       title: string,
                       cond: string,
@@ -3401,7 +3386,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                       min: number | null,
                       max: number | null,
                     ) => {
-                      const s = brakeConditionStyle(cond, d);
+                      const s = brakeConditionStyle(cond);
                       const range = formatBrakeKmRange(min, max);
                       return (
                         <div className={`rounded-xl p-3 ${cardBg}`}>
@@ -3418,8 +3403,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                       <div className="mb-4">
                         <div className="flex items-center gap-2 mb-3 flex-wrap">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${oStyle.pill}`}><span className={`w-2 h-2 rounded-full ${oStyle.dot}`} />{oStyle.label}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${d ? 'bg-neutral-800 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{BRAKE_BASIS_LABEL[bhs.dataBasis] ?? 'Unknown'} basis</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${d ? 'bg-neutral-800 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{BRAKE_CONFIDENCE_LABEL[bhs.confidenceLevel] ?? 'Unknown'} confidence</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold 'sq-chip-neutral'`}>{BRAKE_BASIS_LABEL[bhs.dataBasis] ?? 'Unknown'} basis</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold 'sq-chip-neutral'`}>{BRAKE_CONFIDENCE_LABEL[bhs.confidenceLevel] ?? 'Unknown'} confidence</span>
                         </div>
                         <div className="grid grid-cols-2 gap-3 mb-3">
                           {axleRow('Front Axle', bhs.frontAxleCondition, bhs.frontDataBasis, bhs.frontConfidence, bhs.estimatedFrontRemainingKmMin, bhs.estimatedFrontRemainingKmMax)}
@@ -3451,7 +3436,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                           <div className="mb-3 space-y-1.5">
                             <h3 className={hSec}>Open Alerts</h3>
                             {bhs.openAlerts.map((a, i) => (
-                              <div key={i} className={`flex items-start gap-2 rounded-lg px-3 py-2 ${a.severity === 'critical' ? (d ? 'bg-red-500/10' : 'bg-red-50') : a.severity === 'warning' ? (d ? 'bg-amber-500/10' : 'bg-amber-50') : (d ? 'bg-blue-500/10' : 'bg-blue-50')}`}>
+                              <div key={i} className={`flex items-start gap-2 rounded-lg px-3 py-2 ${a.severity === 'critical' ? 'sq-tone-critical' : a.severity === 'warning' ? 'sq-tone-watch' : 'sq-tone-info'}`}>
                                 <span className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${a.severity === 'critical' ? 'bg-red-500' : a.severity === 'warning' ? 'bg-amber-500' : 'bg-blue-500'}`} />
                                 <p className="text-[11px] text-foreground">{a.message}</p>
                               </div>
@@ -3481,21 +3466,21 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   {/* ── NOT INITIALIZED STATE ── */}
                   {!v2 && (
                     <>
-                      <div className={`rounded-xl p-4 mb-4 border ${d ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50/50 border-amber-200/60'}`}>
-                        <h3 className={`text-sm font-bold mb-2 ${d ? 'text-amber-300' : 'text-amber-800'}`}>Brake tracking not initialized</h3>
-                        <p className={`text-xs leading-relaxed mb-3 ${d ? 'text-amber-400/80' : 'text-amber-700'}`}>
+                      <div className={`rounded-xl p-4 mb-4 border 'sq-tone-watch border border-border'`}>
+                        <h3 className={`text-sm font-bold mb-2 'text-[color:var(--status-watch)]'`}>Brake tracking not initialized</h3>
+                        <p className={`text-xs leading-relaxed mb-3 'text-[color:var(--status-watch)]'`}>
                           Brake wear estimation starts after a documented brake service or confirmed workshop report. Without a known starting pad/disc thickness, no reliable estimation is possible. Pre-anchor driving data is being collected but will NOT be used retroactively — tracking starts clean from the service anchor odometer.
                         </p>
                         {(bhs?.baselineWarnings?.length ?? 0) > 0 && (
                           <div className="mb-3 space-y-1">
                             {bhs?.baselineWarnings?.slice(0, 3).map((w, idx) => (
-                              <p key={idx} className={`text-[10px] ${d ? 'text-amber-300' : 'text-amber-800'}`}>- {w}</p>
+                              <p key={idx} className={`text-[10px] 'text-[color:var(--status-watch)]'`}>- {w}</p>
                             ))}
                           </div>
                         )}
                         <div className="flex gap-2">
-                          <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('manual'); }} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${d ? 'bg-violet-500/15 text-violet-400 hover:bg-violet-500/25' : 'bg-violet-50 text-violet-700 hover:bg-violet-100'}`}><Icon name="plus" className="w-3.5 h-3.5" /> Add Brake Service</button>
-                          <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('upload'); }} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${d ? 'bg-blue-500/15 text-blue-400 hover:bg-blue-500/25' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}><Icon name="upload" className="w-3.5 h-3.5" /> AI Upload Report</button>
+                          <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('manual'); }} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors 'sq-tone-ai hover:opacity-90'`}><Icon name="plus" className="w-3.5 h-3.5" /> Add Brake Service</button>
+                          <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('upload'); }} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors 'sq-tone-info hover:opacity-90'`}><Icon name="upload" className="w-3.5 h-3.5" /> AI Upload Report</button>
                         </div>
                       </div>
                       <p className={`text-[10px] mb-4 text-muted-foreground/70`}>Driving and braking behavior is already being collected via the Driving Impact Engine and will be available once brake tracking is initialized.</p>
@@ -3525,12 +3510,12 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     <div className="mb-4 space-y-2">
                       {bhd.alerts.map((a, i) => (
                         <div key={i} className={`rounded-lg px-4 py-2.5 flex items-start gap-2 ${
-                          a.severity === 'critical' ? (d ? 'bg-red-500/10 border border-red-500/20' : 'bg-red-50 border border-red-200')
-                          : a.severity === 'warning' ? (d ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-amber-50 border border-amber-200')
-                          : (d ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200')
+                          a.severity === 'critical' ? 'sq-tone-critical border border-border'
+                          : a.severity === 'warning' ? 'sq-tone-watch border border-border'
+                          : 'sq-tone-info border border-border'
                         }`}>
-                          {a.severity === 'critical' ? <Icon name="shield-alert" className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${d ? 'text-red-400' : 'text-red-600'}`} /> : <Icon name="alert-triangle" className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${a.severity === 'warning' ? (d ? 'text-amber-400' : 'text-amber-600') : (d ? 'text-blue-400' : 'text-blue-600')}`} />}
-                          <span className={`text-xs ${d ? 'text-neutral-300' : 'text-gray-700'}`}>{a.message}</span>
+                          {a.severity === 'critical' ? <Icon name="shield-alert" className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[color:var(--status-critical)]" /> : <Icon name="alert-triangle" className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${a.severity === 'warning' ? 'text-[color:var(--status-watch)]' : 'text-[color:var(--status-info)]'}`} />}
+                          <span className={`text-xs 'text-foreground'`}>{a.message}</span>
                         </div>
                       ))}
                     </div>
@@ -3588,24 +3573,24 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   <div className="mb-4">
                     <h3 className={hSec}>Brake History</h3>
                     {(bhd?.history ?? []).length > 0 ? (
-                      <div className={`rounded-xl overflow-hidden ${d ? 'bg-neutral-800/40' : 'bg-white'}`}>
+                      <div className={`rounded-xl overflow-hidden 'bg-card'`}>
                         {(bhd?.history ?? []).map((item: any, i: number, arr: any[]) => (
-                          <div key={item.id} className={`flex items-center px-4 py-3 ${i < arr.length - 1 ? d ? 'border-b border-neutral-700/50' : 'border-b border-gray-100' : ''}`}>
-                            <div className={`w-7 h-7 rounded-full flex items-center justify-center mr-3 shrink-0 ${d ? 'bg-green-500/10' : 'bg-green-50'}`}>
-                              <Icon name="wrench" className={`w-3 h-3 ${d ? 'text-green-400' : 'text-green-600'}`} />
+                          <div key={item.id} className={`flex items-center px-4 py-3 ${i < arr.length - 1 ? 'border-b border-border' : ''}`}>
+                            <div className={`w-7 h-7 rounded-full flex items-center justify-center mr-3 shrink-0 'sq-tone-success'`}>
+                              <Icon name="wrench" className={`w-3 h-3 'text-[color:var(--status-positive)]'`} />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className={`text-xs font-semibold text-foreground`}>{item.serviceKind ? String(item.serviceKind).replace(/_/g, ' ') : 'Brake Service'}</p>
                               <p className={`text-[10px] text-muted-foreground`}>{new Date(item.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}{item.workshopName ? ` · ${item.workshopName}` : ''}</p>
-                              {item.notes && <p className={`text-[9px] mt-0.5 ${d ? 'text-gray-600' : 'text-gray-300'}`}>{item.notes}</p>}
+                              {item.notes && <p className={`text-[9px] mt-0.5 'text-muted-foreground'`}>{item.notes}</p>}
                             </div>
                             {item.odometerKm != null && <span className={`text-[10px] font-medium mr-2 text-muted-foreground`}>{item.odometerKm.toLocaleString('de-DE')} km</span>}
-                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${d ? 'bg-green-500/10 text-green-400' : 'bg-green-50 text-green-700'}`}>Serviced</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold 'sq-chip-success'`}>Serviced</span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className={`rounded-xl p-5 text-center ${d ? 'bg-neutral-800/40' : 'bg-white'}`}>
+                      <div className={`rounded-xl p-5 text-center 'bg-card'`}>
                         <p className={`text-xs text-muted-foreground`}>No brake service events recorded yet.</p>
                       </div>
                     )}
@@ -3616,37 +3601,37 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     <h3 className={hSec}>Actions</h3>
                     {!showBrakeEntry && (
                       <div className="flex gap-2 mb-3">
-                        <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('manual'); }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${d ? 'bg-violet-500/10 text-violet-400 hover:bg-violet-500/20' : 'bg-violet-50 text-violet-700 hover:bg-violet-100'}`}><Icon name="plus" className="w-3 h-3" /> Add Brake Service</button>
-                        <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('upload'); }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${d ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}><Icon name="upload" className="w-3 h-3" /> AI Upload Report</button>
+                        <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('manual'); }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors 'sq-tone-ai hover:opacity-90'`}><Icon name="plus" className="w-3 h-3" /> Add Brake Service</button>
+                        <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('upload'); }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors 'sq-tone-info hover:opacity-90'`}><Icon name="upload" className="w-3 h-3" /> AI Upload Report</button>
                       </div>
                     )}
                     {showBrakeEntry && brakeEntryMode === 'manual' && (
                       <div className={`rounded-xl p-4 ${cardBg}`}>
                         <div className="grid grid-cols-2 gap-3 mb-3">
-                          <div><label className={`block ${lbl} mb-1`}>Date *</label><input type="date" value={brakeForm.date} onChange={e => setBrakeForm(p => ({ ...p, date: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border ${d ? 'bg-neutral-900 border-neutral-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} /></div>
-                          <div><label className={`block ${lbl} mb-1`}>Odometer (km)</label><input type="number" value={brakeForm.odometerKm} onChange={e => setBrakeForm(p => ({ ...p, odometerKm: e.target.value }))} placeholder="Current mileage" className={`w-full px-3 py-2 rounded-lg text-xs border ${d ? 'bg-neutral-900 border-neutral-700 text-white placeholder-gray-600' : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400'}`} /></div>
-                          <div><label className={`block ${lbl} mb-1`}>Workshop</label><input type="text" value={brakeForm.workshopName} onChange={e => setBrakeForm(p => ({ ...p, workshopName: e.target.value }))} placeholder="Optional" className={`w-full px-3 py-2 rounded-lg text-xs border ${d ? 'bg-neutral-900 border-neutral-700 text-white placeholder-gray-600' : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400'}`} /></div>
-                          <div><label className={`block ${lbl} mb-1`}>Notes</label><input type="text" value={brakeForm.notes} onChange={e => setBrakeForm(p => ({ ...p, notes: e.target.value }))} placeholder="e.g. Front pads + discs" className={`w-full px-3 py-2 rounded-lg text-xs border ${d ? 'bg-neutral-900 border-neutral-700 text-white placeholder-gray-600' : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400'}`} /></div>
+                          <div><label className={`block ${lbl} mb-1`}>Date *</label><input type="date" value={brakeForm.date} onChange={e => setBrakeForm(p => ({ ...p, date: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground'`} /></div>
+                          <div><label className={`block ${lbl} mb-1`}>Odometer (km)</label><input type="number" value={brakeForm.odometerKm} onChange={e => setBrakeForm(p => ({ ...p, odometerKm: e.target.value }))} placeholder="Current mileage" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
+                          <div><label className={`block ${lbl} mb-1`}>Workshop</label><input type="text" value={brakeForm.workshopName} onChange={e => setBrakeForm(p => ({ ...p, workshopName: e.target.value }))} placeholder="Optional" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
+                          <div><label className={`block ${lbl} mb-1`}>Notes</label><input type="text" value={brakeForm.notes} onChange={e => setBrakeForm(p => ({ ...p, notes: e.target.value }))} placeholder="e.g. Front pads + discs" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
                         </div>
                         <p className={`${lbl} mt-2 mb-2`}>New Component Specs (optional — enables V2 tracking)</p>
                         <div className="grid grid-cols-4 gap-3 mb-3">
-                          <div><label className={`block ${lbl} mb-1`}>Front Pad mm</label><input type="number" step="0.1" value={brakeForm.frontPadMm} onChange={e => setBrakeForm(p => ({ ...p, frontPadMm: e.target.value }))} placeholder="12" className={`w-full px-3 py-2 rounded-lg text-xs border ${d ? 'bg-neutral-900 border-neutral-700 text-white placeholder-gray-600' : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400'}`} /></div>
-                          <div><label className={`block ${lbl} mb-1`}>Rear Pad mm</label><input type="number" step="0.1" value={brakeForm.rearPadMm} onChange={e => setBrakeForm(p => ({ ...p, rearPadMm: e.target.value }))} placeholder="10" className={`w-full px-3 py-2 rounded-lg text-xs border ${d ? 'bg-neutral-900 border-neutral-700 text-white placeholder-gray-600' : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400'}`} /></div>
-                          <div><label className={`block ${lbl} mb-1`}>Front Rotor W mm</label><input type="number" step="0.1" value={brakeForm.frontRotorWidthMm} onChange={e => setBrakeForm(p => ({ ...p, frontRotorWidthMm: e.target.value }))} placeholder="28" className={`w-full px-3 py-2 rounded-lg text-xs border ${d ? 'bg-neutral-900 border-neutral-700 text-white placeholder-gray-600' : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400'}`} /></div>
-                          <div><label className={`block ${lbl} mb-1`}>Rear Rotor W mm</label><input type="number" step="0.1" value={brakeForm.rearRotorWidthMm} onChange={e => setBrakeForm(p => ({ ...p, rearRotorWidthMm: e.target.value }))} placeholder="22" className={`w-full px-3 py-2 rounded-lg text-xs border ${d ? 'bg-neutral-900 border-neutral-700 text-white placeholder-gray-600' : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400'}`} /></div>
+                          <div><label className={`block ${lbl} mb-1`}>Front Pad mm</label><input type="number" step="0.1" value={brakeForm.frontPadMm} onChange={e => setBrakeForm(p => ({ ...p, frontPadMm: e.target.value }))} placeholder="12" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
+                          <div><label className={`block ${lbl} mb-1`}>Rear Pad mm</label><input type="number" step="0.1" value={brakeForm.rearPadMm} onChange={e => setBrakeForm(p => ({ ...p, rearPadMm: e.target.value }))} placeholder="10" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
+                          <div><label className={`block ${lbl} mb-1`}>Front Rotor W mm</label><input type="number" step="0.1" value={brakeForm.frontRotorWidthMm} onChange={e => setBrakeForm(p => ({ ...p, frontRotorWidthMm: e.target.value }))} placeholder="28" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
+                          <div><label className={`block ${lbl} mb-1`}>Rear Rotor W mm</label><input type="number" step="0.1" value={brakeForm.rearRotorWidthMm} onChange={e => setBrakeForm(p => ({ ...p, rearRotorWidthMm: e.target.value }))} placeholder="22" className={`w-full px-3 py-2 rounded-lg text-xs border 'bg-background border border-border text-foreground placeholder:text-muted-foreground'`} /></div>
                         </div>
                         <div className="flex items-center gap-2">
                           <button onClick={handleLogBrakeChange} disabled={submittingBrake || !brakeForm.date} className="px-4 py-2 rounded-lg text-xs font-semibold bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 transition-colors">{submittingBrake ? 'Saving...' : 'Save Brake Service'}</button>
-                          <button onClick={() => { setShowBrakeEntry(false); setBrakeEntryMode(null); }} className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${d ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`}>Cancel</button>
+                          <button onClick={() => { setShowBrakeEntry(false); setBrakeEntryMode(null); }} className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors 'text-muted-foreground hover:text-foreground'`}>Cancel</button>
                         </div>
                       </div>
                     )}
                     {showBrakeEntry && brakeEntryMode === 'upload' && (
                       <div className={`rounded-xl p-5 text-center ${cardBg}`}>
-                        <Icon name="upload" className={`w-6 h-6 mx-auto mb-2 ${d ? 'text-blue-400' : 'text-blue-500'}`} />
+                        <Icon name="upload" className={`w-6 h-6 mx-auto mb-2 'text-[color:var(--status-info)]'`} />
                         <p className={`text-xs font-semibold mb-1 text-foreground`}>Upload Brake Service Document</p>
                         <p className={`text-[10px] mb-3 text-muted-foreground`}>Go to the AI Upload page to upload a brake service invoice or workshop report. Extracted data will be reviewed and confirmed before being applied.</p>
-                        <button onClick={() => { setShowBrakeEntry(false); setBrakeEntryMode(null); }} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${d ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`}>Close</button>
+                        <button onClick={() => { setShowBrakeEntry(false); setBrakeEntryMode(null); }} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors 'text-muted-foreground hover:text-foreground'`}>Close</button>
                       </div>
                     )}
                   </div>
@@ -3663,11 +3648,11 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                           </div>
                           <div>
                             <p className={lbl}>DI Engine</p>
-                            <p className={`text-xs font-semibold mt-1.5 ${bhd.drivingImpactAvailable ? (d ? 'text-green-400' : 'text-green-600') : (d ? 'text-gray-500' : 'text-gray-400')}`}>{bhd.drivingImpactAvailable ? 'Connected' : 'No data'}</p>
+                            <p className={`text-xs font-semibold mt-1.5 ${bhd.drivingImpactAvailable ? 'text-[color:var(--status-positive)]' : 'text-muted-foreground'}`}>{bhd.drivingImpactAvailable ? 'Connected' : 'No data'}</p>
                           </div>
                           <div>
                             <p className={lbl}>Model</p>
-                            <p className={`text-xs font-semibold mt-1.5 ${d ? 'text-gray-400' : 'text-gray-600'}`}>Anchor-based V2</p>
+                            <p className={`text-xs font-semibold mt-1.5 'text-muted-foreground'`}>Anchor-based V2</p>
                           </div>
                         </div>
                       </div>
@@ -3686,27 +3671,27 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { if (!showMeasurement && !showRotation && !showTireChange && !showEditSetup) closeModal(setShowTires); }}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
           <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
-            <button onClick={() => closeModal(setShowTires)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}><Icon name="x" className="w-5 h-5" /></button>
+            <button onClick={() => closeModal(setShowTires)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
 
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
               <h2 className={`text-sm font-semibold tracking-tight text-foreground`}>Tire Health</h2>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-violet-500 to-purple-600 text-white">ML</span>
-              {tireDetail?.factors.regressionActive && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${isDarkMode ? 'bg-cyan-500/10 text-cyan-400' : 'bg-cyan-50 text-cyan-700'}`}>Regression</span>}
-              {tireDetail?.factors.isStaggered && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700'}`}>Staggered</span>}
-              {tireDetail && tireDetail.factors.regenBrakingFactorFront < 1 && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${isDarkMode ? 'bg-green-500/10 text-green-400' : 'bg-green-50 text-green-700'}`}><Icon name="zap" className="w-3 h-3 inline -mt-0.5 mr-0.5" />Regen{tireDetail.factors.driveType ? ` (${tireDetail.factors.driveType})` : ''}</span>}
-              {(tireDetail?.factors?.calibrationCount ?? 0) > 0 && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${isDarkMode ? 'bg-purple-500/10 text-purple-400' : 'bg-purple-50 text-purple-700'}`}>{tireDetail?.factors?.calibrationCount}× calibrated</span>}
+              {tireDetail?.factors.regressionActive && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${'sq-chip-info'}`}>Regression</span>}
+              {tireDetail?.factors.isStaggered && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${'sq-chip-watch'}`}>Staggered</span>}
+              {tireDetail && tireDetail.factors.regenBrakingFactorFront < 1 && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${'sq-chip-success'}`}><Icon name="zap" className="w-3 h-3 inline -mt-0.5 mr-0.5" />Regen{tireDetail.factors.driveType ? ` (${tireDetail.factors.driveType})` : ''}</span>}
+              {(tireDetail?.factors?.calibrationCount ?? 0) > 0 && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${'sq-tone-ai'}`}>{tireDetail?.factors?.calibrationCount}× calibrated</span>}
             </div>
 
             {/* Canonical Tire Status (single source of truth) */}
             {(() => {
               const cs = tireDetail?.summary ?? tireHealth;
               if (!cs?.overallStatus) return null;
-              const style = tireStatusStyle(cs.overallStatus, isDarkMode);
+              const style = tireStatusStyle(cs.overallStatus);
               const mm = cs.displayTreadMm ?? cs.lowestTreadMm ?? null;
               const mode = cs.displayMode ?? null;
               return (
-                <div className={`rounded-xl p-3 mb-3 border ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/50' : 'bg-gray-50 border-gray-200'}`}>
+                <div className={`rounded-xl p-3 mb-3 border ${'bg-muted/50 border border-border'}`}>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                     <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${style.pill}`}>{style.label}</span>
                     {mm != null && (
@@ -3718,14 +3703,14 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     {mode && (
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
                         mode === 'MEASURED'
-                          ? (isDarkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-700')
-                          : (isDarkMode ? 'bg-violet-500/15 text-violet-400' : 'bg-violet-50 text-violet-700')
+                          ? ('sq-chip-info')
+                          : ('sq-tone-ai')
                       }`}>
                         {mode === 'MEASURED' ? 'Measured' : mode === 'ESTIMATED' ? 'Estimated' : 'Unknown'}
                       </span>
                     )}
                     {cs.confidence && (
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${isDarkMode ? 'bg-neutral-700/60 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${'sq-chip-neutral'}`}>
                         Confidence: {cs.confidence}
                       </span>
                     )}
@@ -3740,7 +3725,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     <ul className="mt-2 space-y-1">
                       {(cs.recommendations ?? []).slice(0, 3).map((rec, i) => (
                         <li key={i} className="text-[11px] flex items-start gap-2 text-muted-foreground">
-                          <span className={`mt-1.5 w-1 h-1 rounded-full shrink-0 ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`} />
+                          <span className={`mt-1.5 w-1 h-1 rounded-full shrink-0 ${'bg-[color:var(--status-info)]'}`} />
                           {rec}
                         </li>
                       ))}
@@ -3756,8 +3741,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               if (!conf) return null;
               const score = conf.confidenceScore ?? 0;
               const label = conf.confidenceLabel ?? 'Low';
-              const bg = label === 'High' ? (isDarkMode ? 'bg-green-500/10 border-green-800/30' : 'bg-green-50 border-green-200') : label === 'Medium' ? (isDarkMode ? 'bg-amber-500/10 border-amber-800/30' : 'bg-amber-50 border-amber-200') : (isDarkMode ? 'bg-red-500/10 border-red-800/30' : 'bg-red-50 border-red-200');
-              const tc = label === 'High' ? (isDarkMode ? 'text-green-400' : 'text-green-700') : label === 'Medium' ? (isDarkMode ? 'text-amber-400' : 'text-amber-700') : (isDarkMode ? 'text-red-400' : 'text-red-700');
+              const bg = label === 'High' ? ('sq-tone-success border border-border') : label === 'Medium' ? ('sq-tone-watch border border-border') : ('sq-tone-critical border border-border');
+              const tc = label === 'High' ? ('text-[color:var(--status-positive)]') : label === 'Medium' ? ('text-[color:var(--status-watch)]') : ('text-[color:var(--status-critical)]');
               return (
                 <div className={`rounded-xl p-3 mb-5 border ${bg}`}>
                   <div className="flex items-center justify-between">
@@ -3774,7 +3759,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
 
             {/* HM Tire Pressure Section */}
             {hmTirePressure && (
-              <div className={`rounded-xl p-4 mb-5 border ${isDarkMode ? 'bg-purple-500/5 border-purple-500/15' : 'bg-purple-50/60 border-purple-100'}`}>
+              <div className={`rounded-xl p-4 mb-5 border ${'sq-tone-ai border border-border'}`}>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400">HM</span>
                   <h4 className="text-xs font-semibold text-foreground">Live Tire Pressure</h4>
@@ -3797,7 +3782,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   ].map(({ label, pressure, status }) => {
                     const isIssue = status && (status.toLowerCase().includes('low') || status.toLowerCase().includes('warn') || status === 'ALERT');
                     return (
-                      <div key={label} className={`rounded-lg p-2.5 border ${isIssue ? (isDarkMode ? 'border-amber-500/30 bg-amber-500/5' : 'border-amber-200 bg-amber-50') : (isDarkMode ? 'border-border bg-muted/30' : 'border-border bg-white/50')}`}>
+                      <div key={label} className={`rounded-lg p-2.5 border ${isIssue ? ('border-border sq-tone-watch') : ('border-border bg-muted/30')}`}>
                         <p className="text-[10px] font-semibold text-muted-foreground mb-1">{label}</p>
                         <div className="flex items-baseline gap-1">
                           <span className={`text-sm font-bold ${isIssue ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'}`}>
@@ -3817,26 +3802,26 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             {(tireDetail?.alerts ?? tireHealth?.alerts ?? []).filter((a: TireAlert) => a.severity !== 'info').length > 0 && (
               <div className="space-y-2 mb-5">
                 {(tireDetail?.alerts ?? tireHealth?.alerts ?? []).filter((a: TireAlert) => a.severity !== 'info').map((alert: TireAlert, i: number) => (
-                  <div key={i} className={`rounded-xl px-3 py-2.5 flex items-center gap-2 ${alert.severity === 'critical' ? (isDarkMode ? 'bg-red-500/10 border border-red-800/30' : 'bg-red-50 border border-red-200') : (isDarkMode ? 'bg-amber-500/10 border border-amber-800/30' : 'bg-amber-50 border border-amber-200')}`}>
+                  <div key={i} className={`rounded-xl px-3 py-2.5 flex items-center gap-2 ${alert.severity === 'critical' ? ('sq-tone-critical border border-border') : ('sq-tone-watch border border-border')}`}>
                     <Icon name="alert-triangle" className={`w-3.5 h-3.5 shrink-0 ${alert.severity === 'critical' ? 'text-red-500' : 'text-amber-500'}`} />
-                    <span className={`text-xs ${alert.severity === 'critical' ? (isDarkMode ? 'text-red-300' : 'text-red-700') : (isDarkMode ? 'text-amber-300' : 'text-amber-700')}`}>{alert.message}</span>
+                    <span className={`text-xs ${alert.severity === 'critical' ? ('text-[color:var(--status-critical)]') : ('text-[color:var(--status-watch)]')}`}>{alert.message}</span>
                   </div>
                 ))}
               </div>
             )}
 
             {tireHealth?.actionState && (
-              <div className={`rounded-xl px-4 py-3 mb-5 ${isDarkMode ? 'bg-neutral-800/50 border border-neutral-700/60' : 'bg-gray-50 border border-gray-200'}`}>
+              <div className={`rounded-xl px-4 py-3 mb-5 ${'bg-muted/50 border border-border'}`}>
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Operational Action</span>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                     tireHealth.actionState === 'REPLACE'
-                      ? isDarkMode ? 'bg-red-500/20 text-red-300' : 'bg-red-100 text-red-700'
+                      ? 'sq-chip-critical'
                       : tireHealth.actionState === 'PLAN_SERVICE'
-                      ? isDarkMode ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700'
+                      ? 'sq-chip-watch'
                       : tireHealth.actionState === 'CHECK_SOON'
-                      ? isDarkMode ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-700'
-                      : isDarkMode ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700'
+                      ? 'sq-chip-info'
+                      : 'sq-chip-success'
                   }`}>
                     {formatEnumLabel(tireHealth.actionState)}
                   </span>
@@ -3845,7 +3830,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   <p className="text-[11px] mt-2 text-muted-foreground">{tireHealth.actionReasons?.[0]}</p>
                 )}
                 {(tireHealth.dataQualityWarnings ?? []).length > 0 && (
-                  <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-amber-400/80' : 'text-amber-700/80'}`}>
+                  <p className={`text-[10px] mt-1 ${'text-[color:var(--status-watch)]'}`}>
                     Data warning: {tireHealth.dataQualityWarnings?.[0]}
                   </p>
                 )}
@@ -3853,15 +3838,15 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             )}
 
             {/* Tab navigation */}
-            <div className={`flex gap-1 mb-5 p-1 rounded-xl ${isDarkMode ? 'bg-neutral-800/60' : 'bg-gray-100'}`}>
+            <div className={`flex gap-1 mb-5 p-1 rounded-xl ${'bg-muted/60'}`}>
               {(['overview', 'history', 'factors'] as const).map(tab => (
-                <button key={tab} onClick={() => setTireModalTab(tab)} className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tireModalTab === tab ? (isDarkMode ? 'bg-neutral-700 text-white shadow-sm' : 'bg-white text-gray-900 shadow-sm') : (isDarkMode ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600')}`}>
+                <button key={tab} onClick={() => setTireModalTab(tab)} className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tireModalTab === tab ? 'bg-card text-foreground shadow-sm' : ('text-muted-foreground hover:text-foreground')}`}>
                   {tab === 'overview' ? 'Overview' : tab === 'history' ? 'Rotation History' : 'Wear Factors'}
                 </button>
               ))}
             </div>
 
-            {tireDetailLoading && <div className="flex justify-center py-8"><Icon name="loader-2" className="w-6 h-6 animate-spin text-blue-500" /></div>}
+            {tireDetailLoading && <SkeletonCard className="my-4" />}
 
             {/* ── OVERVIEW TAB ── */}
             {tireModalTab === 'overview' && !tireDetailLoading && (
@@ -3871,11 +3856,11 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   const active = resolveActiveSetup(tiresData);
                   const hasIncomplete = active && (!active.brandModelFront || !active.frontDimension || !active.tireSeason);
                   if (!active) return (
-                    <div className={`rounded-lg p-4 text-center mb-5 border-2 border-dashed ${isDarkMode ? 'bg-neutral-800/40 border-amber-500/20' : 'bg-amber-50/50 border-amber-200'}`}>
-                      <Icon name="circle" className={`w-8 h-8 mx-auto mb-2 ${isDarkMode ? 'text-amber-500/60' : 'text-amber-400'}`} />
-                      <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>No active Tracking</p>
+                    <div className={`rounded-lg p-4 text-center mb-5 border-2 border-dashed ${'sq-tone-watch border border-border'}`}>
+                      <Icon name="circle" className={`w-8 h-8 mx-auto mb-2 ${'text-[color:var(--status-watch)]/60'}`} />
+                      <p className={`text-sm font-semibold mb-1 ${'text-[color:var(--status-watch)]'}`}>No active Tracking</p>
                       <p className={`text-xs text-muted-foreground`}>please provide Tire Information</p>
-                      <button onClick={handleOpenEditSetup} className={`mt-3 px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${isDarkMode ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
+                      <button onClick={handleOpenEditSetup} className={`mt-3 px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${'sq-tone-info hover:opacity-90'}`}>
                         <Icon name="pen-tool" className="w-3 h-3 inline -mt-0.5 mr-1" />Add Tire Setup
                       </button>
                     </div>
@@ -3886,11 +3871,11 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                         <div className="flex items-center gap-3">
                           <Icon name="circle" className={`w-4 h-4 text-muted-foreground`} />
                           <h3 className={`text-xs font-bold uppercase tracking-wider text-muted-foreground`}>Active Set</h3>
-                          {active.tireSeason && <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${isDarkMode ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-700'}`}>{active.tireSeason.replace('_', ' ')}</span>}
+                          {active.tireSeason && <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${'sq-chip-info'}`}>{active.tireSeason.replace('_', ' ')}</span>}
                           {tireHealth?.totalKmOnSet ? <span className={`text-[10px] text-muted-foreground`}>{Math.round(tireHealth.totalKmOnSet).toLocaleString('de-DE')} km on set</span> : null}
-                          {hasIncomplete && <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700'}`}>Incomplete</span>}
+                          {hasIncomplete && <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${'sq-chip-watch'}`}>Incomplete</span>}
                         </div>
-                        <button onClick={handleOpenEditSetup} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-colors ${isDarkMode ? 'text-blue-400 hover:bg-blue-500/10' : 'text-blue-600 hover:bg-blue-50'}`}>
+                        <button onClick={handleOpenEditSetup} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-colors ${'text-[color:var(--status-info)] hover:bg-muted'}`}>
                           <Icon name="pen-tool" className="w-3 h-3" />Edit
                         </button>
                       </div>
@@ -3907,38 +3892,38 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Front Brand / Model</label>
-                              <input type="text" value={editSetupForm.brandModelFront} onChange={e => setEditSetupForm(p => ({ ...p, brandModelFront: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'}`} placeholder="e.g. Continental PremiumContact 6" />
+                              <input type="text" value={editSetupForm.brandModelFront} onChange={e => setEditSetupForm(p => ({ ...p, brandModelFront: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'}`} placeholder="e.g. Continental PremiumContact 6" />
                             </div>
                             <div>
                               <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Rear Brand / Model</label>
-                              <input type="text" value={editSetupForm.brandModelRear} onChange={e => setEditSetupForm(p => ({ ...p, brandModelRear: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'}`} placeholder="Same as front if identical" />
+                              <input type="text" value={editSetupForm.brandModelRear} onChange={e => setEditSetupForm(p => ({ ...p, brandModelRear: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'}`} placeholder="Same as front if identical" />
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Front Dimension</label>
-                              <input type="text" value={editSetupForm.frontDimension} onChange={e => setEditSetupForm(p => ({ ...p, frontDimension: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'}`} placeholder="e.g. 225/45 R17" />
+                              <input type="text" value={editSetupForm.frontDimension} onChange={e => setEditSetupForm(p => ({ ...p, frontDimension: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'}`} placeholder="e.g. 225/45 R17" />
                             </div>
                             <div>
                               <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Rear Dimension</label>
-                              <input type="text" value={editSetupForm.rearDimension} onChange={e => setEditSetupForm(p => ({ ...p, rearDimension: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'}`} placeholder="Same as front if identical" />
+                              <input type="text" value={editSetupForm.rearDimension} onChange={e => setEditSetupForm(p => ({ ...p, rearDimension: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'}`} placeholder="Same as front if identical" />
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Load Index</label>
-                              <input type="text" value={editSetupForm.loadIndex} onChange={e => setEditSetupForm(p => ({ ...p, loadIndex: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'}`} placeholder="e.g. 94" />
+                              <input type="text" value={editSetupForm.loadIndex} onChange={e => setEditSetupForm(p => ({ ...p, loadIndex: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'}`} placeholder="e.g. 94" />
                             </div>
                             <div>
                               <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Speed Index</label>
-                              <input type="text" value={editSetupForm.speedIndex} onChange={e => setEditSetupForm(p => ({ ...p, speedIndex: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'}`} placeholder="e.g. V" />
+                              <input type="text" value={editSetupForm.speedIndex} onChange={e => setEditSetupForm(p => ({ ...p, speedIndex: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors outline-none ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'}`} placeholder="e.g. V" />
                             </div>
                           </div>
                           <div>
                             <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Season</label>
                             <div className="flex gap-2">
                               {[{ val: 'SUMMER', label: 'Summer', icon: Sun }, { val: 'WINTER', label: 'Winter', icon: Snowflake }, { val: 'ALL_SEASON', label: 'All Season', icon: Wind }].map(opt => (
-                                <button key={opt.val} onClick={() => setEditSetupForm(p => ({ ...p, tireSeason: p.tireSeason === opt.val ? '' : opt.val }))} className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border-2 transition-all ${editSetupForm.tireSeason === opt.val ? (isDarkMode ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-blue-400 bg-blue-50 text-blue-700') : (isDarkMode ? 'border-neutral-700 text-gray-500 hover:border-neutral-600' : 'border-gray-200 text-gray-400 hover:border-gray-300')}`}>
+                                <button key={opt.val} onClick={() => setEditSetupForm(p => ({ ...p, tireSeason: p.tireSeason === opt.val ? '' : opt.val }))} className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border-2 transition-all ${editSetupForm.tireSeason === opt.val ? 'border-[color:var(--brand)] sq-tone-brand' : 'border-border text-muted-foreground hover:border-border/80'}`}>
                                   <opt.icon className="w-3.5 h-3.5" />{opt.label}
                                 </button>
                               ))}
@@ -3948,13 +3933,13 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                             <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1.5 text-muted-foreground`}>Tire Condition</label>
                             <div className="flex gap-2">
                               {[{ val: 'NEW_INSTALLED' as const, label: 'Newly Installed' }, { val: 'ALREADY_MOUNTED' as const, label: 'Already Mounted (Used)' }].map(opt => (
-                                <button key={opt.val} onClick={() => setEditSetupForm(p => ({ ...p, tireCondition: p.tireCondition === opt.val ? '' : opt.val }))} className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold border-2 transition-all ${editSetupForm.tireCondition === opt.val ? (isDarkMode ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-blue-400 bg-blue-50 text-blue-700') : (isDarkMode ? 'border-neutral-700 text-gray-500 hover:border-neutral-600' : 'border-gray-200 text-gray-400 hover:border-gray-300')}`}>
+                                <button key={opt.val} onClick={() => setEditSetupForm(p => ({ ...p, tireCondition: p.tireCondition === opt.val ? '' : opt.val }))} className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold border-2 transition-all ${editSetupForm.tireCondition === opt.val ? 'border-[color:var(--brand)] sq-tone-brand' : 'border-border text-muted-foreground hover:border-border/80'}`}>
                                   {opt.label}
                                 </button>
                               ))}
                             </div>
                             {editSetupForm.tireCondition === 'ALREADY_MOUNTED' && (
-                              <p className={`text-[9px] mt-1 ${isDarkMode ? 'text-amber-400/80' : 'text-amber-600'}`}>Used tires: please enter current per-wheel tread depths below for accurate estimates.</p>
+                              <p className={`text-[9px] mt-1 ${'text-[color:var(--status-watch)]'}`}>Used tires: please enter current per-wheel tread depths below for accurate estimates.</p>
                             )}
                           </div>
                           <div>
@@ -3963,7 +3948,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                               {[{ key: 'treadFL', label: 'FL' }, { key: 'treadFR', label: 'FR' }, { key: 'treadBL', label: 'RL' }, { key: 'treadBR', label: 'RR' }].map(f => (
                                 <div key={f.key}>
                                   <span className={`text-[9px] font-semibold block mb-0.5 text-center text-muted-foreground/60`}>{f.label}</span>
-                                  <input type="number" step="0.1" min="0" max="12" value={(editSetupForm as any)[f.key]} onChange={e => setEditSetupForm(p => ({ ...p, [f.key]: e.target.value }))} className={`w-full px-2 py-1.5 rounded-lg text-xs text-center font-medium border transition-colors outline-none ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'}`} placeholder="mm" />
+                                  <input type="number" step="0.1" min="0" max="12" value={(editSetupForm as any)[f.key]} onChange={e => setEditSetupForm(p => ({ ...p, [f.key]: e.target.value }))} className={`w-full px-2 py-1.5 rounded-lg text-xs text-center font-medium border transition-colors outline-none ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'}`} placeholder="mm" />
                                 </div>
                               ))}
                             </div>
@@ -3972,7 +3957,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                           <div className={`rounded-xl p-3 border bg-muted border-border`}>
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
-                                <Icon name="bot" className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+                                <Icon name="bot" className={`w-4 h-4 ${'text-[color:var(--status-ai)]'}`} />
                                 <span className={`text-[10px] font-bold uppercase tracking-wider text-muted-foreground`}>AI Tire Intelligence</span>
                               </div>
                               {!aiTireLoading && !aiTireResult && (
@@ -3983,13 +3968,13 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
                                       aiTireSpecFieldsReady
                                         ? 'bg-purple-500 hover:bg-purple-600 text-white'
-                                        : isDarkMode ? 'bg-neutral-700 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                        : 'bg-muted text-muted-foreground cursor-not-allowed'
                                     }`}
                                   >
                                     <Icon name="sparkles" className="w-3 h-3" />Fetch AI Tire Spec
                                   </button>
                                   {!aiTireSpecFieldsReady && (
-                                    <div className={`absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[9px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 ${isDarkMode ? 'bg-neutral-700 text-gray-300' : 'bg-gray-800 text-white'}`}>
+                                    <div className={`absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[9px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 ${'bg-popover text-popover-foreground'}`}>
                                       Fill Brand/Model, Dimension, Load &amp; Speed Index first
                                     </div>
                                   )}
@@ -4002,7 +3987,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                               <div className={`rounded-lg p-3 bg-muted`}>
                                 <div className="flex items-center gap-2 mb-2">
                                   <Icon name="loader-2" className="w-4 h-4 animate-spin text-purple-500" />
-                                  <span className={`text-xs font-semibold ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>
+                                  <span className={`text-xs font-semibold ${'text-[color:var(--status-ai)]'}`}>
                                     {aiTireCountdown > 0 ? 'Fetching AI Tire Spec...' : 'Taking longer than expected...'}
                                   </span>
                                 </div>
@@ -4010,7 +3995,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                                   <p className={`text-[10px] mb-2 text-muted-foreground`}>Estimated time remaining: {aiTireCountdown}s</p>
                                 )}
                                 {aiTireCountdown === 0 && aiTireLoading && (
-                                  <p className={`text-[10px] mb-2 ${isDarkMode ? 'text-amber-400/70' : 'text-amber-600'}`}>Still processing — please wait...</p>
+                                  <p className={`text-[10px] mb-2 ${'text-[color:var(--status-watch)]'}`}>Still processing — please wait...</p>
                                 )}
                                 <div className={`w-full h-1.5 rounded-full overflow-hidden bg-muted`}>
                                   <div className="h-full bg-purple-500 rounded-full transition-all duration-1000" style={{ width: `${Math.max(5, aiTireCountdown > 0 ? ((30 - aiTireCountdown) / 30) * 90 : 95)}%` }} />
@@ -4031,15 +4016,15 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
 
                             {/* Error state */}
                             {!aiTireLoading && aiTireError && (
-                              <div className={`rounded-lg p-3 ${isDarkMode ? 'bg-red-500/10 border border-red-800/20' : 'bg-red-50 border border-red-200'}`}>
+                              <div className={`rounded-lg p-3 ${'sq-tone-critical border border-border'}`}>
                                 <div className="flex items-center gap-2 mb-1">
                                   <Icon name="alert-triangle" className="w-3.5 h-3.5 text-red-500" />
-                                  <span className={`text-xs font-semibold ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>Fetch failed</span>
+                                  <span className={`text-xs font-semibold ${'text-[color:var(--status-critical)]'}`}>Fetch failed</span>
                                 </div>
-                                <p className={`text-[10px] mb-2 ${isDarkMode ? 'text-red-400/70' : 'text-red-600'}`}>{aiTireError}</p>
+                                <p className={`text-[10px] mb-2 ${'text-[color:var(--status-critical)]'}`}>{aiTireError}</p>
                                 <div className="flex gap-2">
                                   <button onClick={handleFetchAiTireSpec} className="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-purple-500 hover:bg-purple-600 text-white transition-colors">Retry</button>
-                                  <button onClick={handleDiscardAiTireSpec} className={`px-2.5 py-1 rounded-lg text-[10px] font-medium transition-colors ${isDarkMode ? 'text-gray-400 hover:bg-neutral-800' : 'text-gray-500 hover:bg-gray-100'}`}>Dismiss</button>
+                                  <button onClick={handleDiscardAiTireSpec} className={`px-2.5 py-1 rounded-lg text-[10px] font-medium transition-colors ${'text-muted-foreground hover:bg-muted'}`}>Dismiss</button>
                                 </div>
                               </div>
                             )}
@@ -4049,25 +4034,25 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                               <div className={`rounded-lg p-3 bg-muted border border-border`}>
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center gap-2">
-                                    <Icon name="sparkles" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-                                    <span className={`text-xs font-semibold ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>AI Tire Spec Result</span>
+                                    <Icon name="sparkles" className={`w-3.5 h-3.5 ${'text-[color:var(--status-ai)]'}`} />
+                                    <span className={`text-xs font-semibold ${'text-[color:var(--status-ai)]'}`}>AI Tire Spec Result</span>
                                   </div>
                                   {(() => {
                                     const conf = typeof aiTireResult.confidenceScore === 'number' ? aiTireResult.confidenceScore : null;
                                     if (conf == null) return null;
                                     const isLow = conf < 50;
                                     return (
-                                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${isLow ? (isDarkMode ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700') : (isDarkMode ? 'bg-green-500/15 text-green-400' : 'bg-green-50 text-green-700')}`}>
+                                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${isLow ? 'sq-chip-watch' : 'sq-chip-success'}`}>
                                         {isLow ? 'Low Confidence' : 'Matched'} ({conf}%)
                                       </span>
                                     );
                                   })()}
                                 </div>
                                 {aiTireDegraded && (
-                                  <p className={`text-[9px] mb-2 ${isDarkMode ? 'text-amber-400/80' : 'text-amber-600'}`}>Partial result — some fields could not be determined.</p>
+                                  <p className={`text-[9px] mb-2 ${'text-[color:var(--status-watch)]'}`}>Partial result — some fields could not be determined.</p>
                                 )}
                                 {typeof aiTireResult.confidenceScore === 'number' && (aiTireResult.confidenceScore as number) < 50 && (
-                                  <p className={`text-[9px] mb-2 ${isDarkMode ? 'text-amber-400/80' : 'text-amber-600'}`}>Low confidence match — review carefully before applying.</p>
+                                  <p className={`text-[9px] mb-2 ${'text-[color:var(--status-watch)]'}`}>Low confidence match — review carefully before applying.</p>
                                 )}
                                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                                   {[
@@ -4106,7 +4091,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                                   <button onClick={handleFetchAiTireSpec} disabled={aiTireLoading} className="px-3 py-1.5 rounded-lg text-[10px] font-semibold bg-purple-500 hover:bg-purple-600 text-white transition-colors">
                                     <Icon name="refresh-cw" className="w-3 h-3 inline -mt-0.5 mr-1" />Retry
                                   </button>
-                                  <button onClick={handleDiscardAiTireSpec} className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-colors ${isDarkMode ? 'text-gray-400 hover:bg-neutral-800' : 'text-gray-500 hover:bg-gray-100'}`}>Discard</button>
+                                  <button onClick={handleDiscardAiTireSpec} className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-colors ${'text-muted-foreground hover:bg-muted'}`}>Discard</button>
                                 </div>
                               </div>
                             )}
@@ -4120,7 +4105,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                           </div>
 
                           <div className="flex gap-2 justify-end pt-1">
-                            <button onClick={() => setShowEditSetup(false)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isDarkMode ? 'text-gray-400 hover:bg-neutral-800' : 'text-gray-500 hover:bg-gray-100'}`}>Cancel</button>
+                            <button onClick={() => setShowEditSetup(false)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${'text-muted-foreground hover:bg-muted'}`}>Cancel</button>
                             <button onClick={handleSaveEditSetup} disabled={submittingEditSetup} className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white transition-colors disabled:opacity-50 flex items-center gap-1.5">
                               {submittingEditSetup && <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />}Save Setup
                             </button>
@@ -4137,14 +4122,14 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   {(() => {
                     const pct = tireDetail?.summary.overallPercent ?? tireWear?.overallPercent ?? null;
                     const remKm = tireDetail?.summary.overallRemainingKm ?? tireWear?.estimatedRemainingKm ?? null;
-                    const barBg = pct != null ? (pct >= 50 ? (isDarkMode ? 'bg-green-500/10' : 'bg-green-50') : pct >= 25 ? (isDarkMode ? 'bg-amber-500/10' : 'bg-amber-50') : (isDarkMode ? 'bg-red-500/10' : 'bg-red-50')) : (isDarkMode ? 'bg-neutral-800/60' : 'bg-gray-50');
+                    const barBg = pct != null ? (pct >= 50 ? ('sq-tone-success') : pct >= 25 ? ('sq-tone-watch') : ('sq-tone-critical')) : ('bg-muted/60');
                     const barFg = pct != null ? (pct >= 50 ? 'bg-green-500' : pct >= 25 ? 'bg-amber-500' : 'bg-red-500') : 'bg-gray-300';
                     return (
                       <div className={`rounded-lg p-4 ${barBg}`}>
                         {pct != null ? (<>
                           <p className={`text-2xl font-bold mb-1 text-foreground`}>{pct}%</p>
                           <div className={`w-full h-2 rounded-full overflow-hidden mb-2 bg-muted`}><div className={`h-full ${barFg} rounded-full transition-all`} style={{ width: `${pct}%` }} /></div>
-                          <p className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Estimated Tread Life</p>
+                          <p className={`text-xs font-semibold ${'text-muted-foreground'}`}>Estimated Tread Life</p>
                           {remKm != null && <p className={`text-[11px] text-muted-foreground`}>ca. {remKm.toLocaleString('de-DE')} km remaining</p>}
                           {tireDetail?.summary.wearRateMmPer1000km != null && <p className={`text-[10px] mt-1 text-muted-foreground/60`}>Wear: {tireDetail.summary.wearRateMmPer1000km.toFixed(2)} mm / 1000 km</p>}
                           {tireWear && <div className="mt-3 flex gap-3">
@@ -4170,14 +4155,14 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                         const top = w.position.startsWith('F');
                         const left = w.position.endsWith('L');
                         const mm = w.treadMm;
-                        const treadColor = mm >= 4 ? (isDarkMode ? 'text-green-400' : 'text-green-600') : mm >= 2.5 ? (isDarkMode ? 'text-amber-400' : 'text-amber-600') : (isDarkMode ? 'text-red-400' : 'text-red-600');
+                        const treadColor = mm >= 4 ? ('text-[color:var(--status-positive)]') : mm >= 2.5 ? ('text-[color:var(--status-watch)]') : ('text-[color:var(--status-critical)]');
                         return (
                           <div key={w.position} className={`absolute flex flex-col items-center ${top ? 'top-0' : 'bottom-0'} ${left ? 'left-0' : 'right-0'}`}>
-                            {top && <svg width="22" height="32" viewBox="0 0 24 36" fill="none"><rect x="2" y="2" width="20" height="32" rx="4" className={isDarkMode ? 'stroke-gray-500' : 'stroke-gray-400'} strokeWidth="1.5" /><line x1="6" y1="10" x2="18" y2="10" className={isDarkMode ? 'stroke-gray-600' : 'stroke-gray-300'} strokeWidth="1" /><line x1="6" y1="18" x2="18" y2="18" className={isDarkMode ? 'stroke-gray-600' : 'stroke-gray-300'} strokeWidth="1" /><line x1="6" y1="26" x2="18" y2="26" className={isDarkMode ? 'stroke-gray-600' : 'stroke-gray-300'} strokeWidth="1" /></svg>}
+                            {top && <svg width="22" height="32" viewBox="0 0 24 36" fill="none"><rect x="2" y="2" width="20" height="32" rx="4" className={'stroke-muted-foreground'} strokeWidth="1.5" /><line x1="6" y1="10" x2="18" y2="10" className={'stroke-border'} strokeWidth="1" /><line x1="6" y1="18" x2="18" y2="18" className={'stroke-border'} strokeWidth="1" /><line x1="6" y1="26" x2="18" y2="26" className={'stroke-border'} strokeWidth="1" /></svg>}
                             <p className={`text-sm font-bold ${treadColor}`}>{mm > 0 ? `${mm.toFixed(1)} mm` : '—'}</p>
                             <p className={`text-[9px] font-medium text-muted-foreground`}>{w.position}</p>
                             {w.wearPercent != null && <p className={`text-[8px] text-muted-foreground/60`}>{w.wearPercent}%</p>}
-                            {!top && <svg width="22" height="32" viewBox="0 0 24 36" fill="none"><rect x="2" y="2" width="20" height="32" rx="4" className={isDarkMode ? 'stroke-gray-500' : 'stroke-gray-400'} strokeWidth="1.5" /><line x1="6" y1="10" x2="18" y2="10" className={isDarkMode ? 'stroke-gray-600' : 'stroke-gray-300'} strokeWidth="1" /><line x1="6" y1="18" x2="18" y2="18" className={isDarkMode ? 'stroke-gray-600' : 'stroke-gray-300'} strokeWidth="1" /><line x1="6" y1="26" x2="18" y2="26" className={isDarkMode ? 'stroke-gray-600' : 'stroke-gray-300'} strokeWidth="1" /></svg>}
+                            {!top && <svg width="22" height="32" viewBox="0 0 24 36" fill="none"><rect x="2" y="2" width="20" height="32" rx="4" className={'stroke-muted-foreground'} strokeWidth="1.5" /><line x1="6" y1="10" x2="18" y2="10" className={'stroke-border'} strokeWidth="1" /><line x1="6" y1="18" x2="18" y2="18" className={'stroke-border'} strokeWidth="1" /><line x1="6" y1="26" x2="18" y2="26" className={'stroke-border'} strokeWidth="1" /></svg>}
                           </div>
                         );
                       })}
@@ -4196,24 +4181,24 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   <div className={`rounded-lg p-4 mb-5 bg-muted`}>
                     <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-muted-foreground`}>Usage Distribution</p>
                     <div className="flex gap-1 mb-3 h-2 rounded-full overflow-hidden">
-                      {tireDetail.usageSplit.city > 0 && <div className={`${isDarkMode ? 'bg-amber-500' : 'bg-amber-400'} rounded-full`} style={{ width: `${tireDetail.usageSplit.city}%` }} />}
-                      {tireDetail.usageSplit.highway > 0 && <div className={`${isDarkMode ? 'bg-blue-500' : 'bg-blue-400'} rounded-full`} style={{ width: `${tireDetail.usageSplit.highway}%` }} />}
-                      {tireDetail.usageSplit.rural > 0 && <div className={`${isDarkMode ? 'bg-green-500' : 'bg-green-400'} rounded-full`} style={{ width: `${tireDetail.usageSplit.rural}%` }} />}
+                      {tireDetail.usageSplit.city > 0 && <div className={`${'bg-[color:var(--status-watch)]'} rounded-full`} style={{ width: `${tireDetail.usageSplit.city}%` }} />}
+                      {tireDetail.usageSplit.highway > 0 && <div className={`${'bg-[color:var(--status-info)]'} rounded-full`} style={{ width: `${tireDetail.usageSplit.highway}%` }} />}
+                      {tireDetail.usageSplit.rural > 0 && <div className={`${'bg-[color:var(--status-positive)]'} rounded-full`} style={{ width: `${tireDetail.usageSplit.rural}%` }} />}
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-center">
-                      <div><p className={`text-sm font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>{tireDetail.usageSplit.city}%</p><p className={`text-[10px] uppercase tracking-wider text-muted-foreground`}>City</p></div>
-                      <div><p className={`text-sm font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>{tireDetail.usageSplit.highway}%</p><p className={`text-[10px] uppercase tracking-wider text-muted-foreground`}>Highway</p></div>
-                      <div><p className={`text-sm font-bold ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{tireDetail.usageSplit.rural}%</p><p className={`text-[10px] uppercase tracking-wider text-muted-foreground`}>Rural</p></div>
+                      <div><p className={`text-sm font-bold ${'text-[color:var(--status-watch)]'}`}>{tireDetail.usageSplit.city}%</p><p className={`text-[10px] uppercase tracking-wider text-muted-foreground`}>City</p></div>
+                      <div><p className={`text-sm font-bold ${'text-[color:var(--status-info)]'}`}>{tireDetail.usageSplit.highway}%</p><p className={`text-[10px] uppercase tracking-wider text-muted-foreground`}>Highway</p></div>
+                      <div><p className={`text-sm font-bold ${'text-[color:var(--status-positive)]'}`}>{tireDetail.usageSplit.rural}%</p><p className={`text-[10px] uppercase tracking-wider text-muted-foreground`}>Rural</p></div>
                     </div>
                   </div>
                 )}
 
                 {/* Action Error Banner */}
                 {tireActionError && (
-                  <div className={`rounded-xl px-4 py-3 mb-4 flex items-center gap-2 ${isDarkMode ? 'bg-red-500/10 border border-red-800/30' : 'bg-red-50 border border-red-200'}`}>
+                  <div className={`rounded-xl px-4 py-3 mb-4 flex items-center gap-2 ${'sq-tone-critical border border-border'}`}>
                     <Icon name="alert-triangle" className="w-4 h-4 text-red-500 shrink-0" />
-                    <span className={`text-xs ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>{tireActionError}</span>
-                    <button onClick={() => setTireActionError(null)} className={`ml-auto p-0.5 rounded ${isDarkMode ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}><Icon name="x" className="w-3 h-3" /></button>
+                    <span className={`text-xs ${'text-[color:var(--status-critical)]'}`}>{tireActionError}</span>
+                    <button onClick={() => setTireActionError(null)} className={`ml-auto p-0.5 rounded ${'text-muted-foreground hover:text-foreground'}`}><Icon name="x" className="w-3 h-3" /></button>
                   </div>
                 )}
 
@@ -4225,11 +4210,11 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   </div>
                   {showMeasurement && !measurementMode && (
                     <div className="flex gap-3">
-                      <button onClick={() => setMeasurementMode('manual')} className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed transition-all hover:scale-[1.02] ${isDarkMode ? 'border-neutral-600 hover:border-blue-500/50 hover:bg-blue-500/5' : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'}`}>
-                        <Icon name="ruler" className={`w-6 h-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} /><p className={`text-xs font-semibold text-foreground`}>Manual Entry</p><p className={`text-[10px] text-center text-muted-foreground`}>Enter measured tread values</p>
+                      <button onClick={() => setMeasurementMode('manual')} className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed transition-all hover:scale-[1.02] ${'border-border hover:border-[color:var(--brand)] hover:bg-muted/50'}`}>
+                        <Icon name="ruler" className={`w-6 h-6 ${'text-[color:var(--status-info)]'}`} /><p className={`text-xs font-semibold text-foreground`}>Manual Entry</p><p className={`text-[10px] text-center text-muted-foreground`}>Enter measured tread values</p>
                       </button>
-                      <button onClick={() => setMeasurementMode('upload')} className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed transition-all hover:scale-[1.02] ${isDarkMode ? 'border-neutral-600 hover:border-purple-500/50 hover:bg-purple-500/5' : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50/50'}`}>
-                        <Icon name="upload" className={`w-6 h-6 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} /><p className={`text-xs font-semibold text-foreground`}>AI Upload</p><p className={`text-[10px] text-center text-muted-foreground`}>Upload checkup sheet</p>
+                      <button onClick={() => setMeasurementMode('upload')} className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed transition-all hover:scale-[1.02] ${'border-border hover:border-[color:var(--status-ai)] hover:bg-muted/50'}`}>
+                        <Icon name="upload" className={`w-6 h-6 ${'text-[color:var(--status-ai)]'}`} /><p className={`text-xs font-semibold text-foreground`}>AI Upload</p><p className={`text-[10px] text-center text-muted-foreground`}>Upload checkup sheet</p>
                       </button>
                     </div>
                   )}
@@ -4237,21 +4222,21 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     <div>
                       <div className="grid grid-cols-2 gap-3 mb-3">
                         {[{ key: 'fl', label: 'Front Left (mm)' }, { key: 'fr', label: 'Front Right (mm)' }, { key: 'rl', label: 'Rear Left (mm)' }, { key: 'rr', label: 'Rear Right (mm)' }].map(f => (
-                          <div key={f.key}><label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>{f.label}</label><input type="number" step="0.1" min="0" max="12" value={(manualMeasurement as any)[f.key]} onChange={e => setManualMeasurement(prev => ({ ...prev, [f.key]: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'} outline-none`} placeholder="e.g. 5.2" /></div>
+                          <div key={f.key}><label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>{f.label}</label><input type="number" step="0.1" min="0" max="12" value={(manualMeasurement as any)[f.key]} onChange={e => setManualMeasurement(prev => ({ ...prev, [f.key]: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'} outline-none`} placeholder="e.g. 5.2" /></div>
                         ))}
                       </div>
                       <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div><label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Odometer (km)</label><input type="number" value={manualMeasurement.odometer} onChange={e => setManualMeasurement(prev => ({ ...prev, odometer: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'} outline-none`} placeholder="Current odometer" /></div>
-                        <div><label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Workshop</label><input type="text" value={manualMeasurement.workshop} onChange={e => setManualMeasurement(prev => ({ ...prev, workshop: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white focus:border-blue-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-400'} outline-none`} placeholder="Workshop name (optional)" /></div>
+                        <div><label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Odometer (km)</label><input type="number" value={manualMeasurement.odometer} onChange={e => setManualMeasurement(prev => ({ ...prev, odometer: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'} outline-none`} placeholder="Current odometer" /></div>
+                        <div><label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Workshop</label><input type="text" value={manualMeasurement.workshop} onChange={e => setManualMeasurement(prev => ({ ...prev, workshop: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${'bg-background border border-border text-foreground focus:border-[color:var(--brand)]'} outline-none`} placeholder="Workshop name (optional)" /></div>
                       </div>
                       <div className="flex gap-2 justify-end">
-                        <button onClick={() => { setShowMeasurement(false); setMeasurementMode(null); }} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isDarkMode ? 'text-gray-400 hover:bg-neutral-800' : 'text-gray-500 hover:bg-gray-100'}`}>Cancel</button>
+                        <button onClick={() => { setShowMeasurement(false); setMeasurementMode(null); }} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${'text-muted-foreground hover:bg-muted'}`}>Cancel</button>
                         <button onClick={handleSubmitMeasurement} disabled={submittingMeasurement} className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white transition-colors disabled:opacity-50 flex items-center gap-1.5">{submittingMeasurement && <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />}Confirm & Calibrate</button>
                       </div>
                     </div>
                   )}
                   {showMeasurement && measurementMode === 'upload' && (
-                    <div className={`text-center py-6 border-2 border-dashed rounded-xl ${isDarkMode ? 'border-neutral-600' : 'border-gray-200'}`}>
+                    <div className={`text-center py-6 border-2 border-dashed rounded-xl ${'border-border'}`}>
                       <Icon name="upload" className={`w-8 h-8 mx-auto mb-2 text-muted-foreground`} />
                       <p className={`text-xs font-semibold mb-1 text-foreground`}>Use Document Upload for AI extraction</p>
                       <p className={`text-[10px] mb-3 text-muted-foreground`}>This tire modal no longer performs direct file upload.</p>
@@ -4266,8 +4251,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
 
                 {/* Rotation Dialog */}
                 {showRotation && (
-                  <div className={`rounded-lg p-5 mb-5 border-2 ${isDarkMode ? 'bg-neutral-800/60 border-blue-500/30' : 'bg-white border-blue-200'}`}>
-                    <h3 className={`text-xs font-semibold uppercase tracking-wider mb-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>Rotate Tires</h3>
+                  <div className={`rounded-lg p-5 mb-5 border-2 ${'bg-card border border-border'}`}>
+                    <h3 className={`text-xs font-semibold uppercase tracking-wider mb-4 ${'text-[color:var(--status-info)]'}`}>Rotate Tires</h3>
                     <div className="grid grid-cols-2 gap-3 mb-4">
                       {[
                         { val: 'front_to_rear', label: 'Front ↔ Rear', desc: 'Swap front and rear axles' },
@@ -4275,18 +4260,18 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                         { val: 'side_swap', label: 'Side Swap', desc: 'Left ↔ Right per axle' },
                         { val: 'full_rotation', label: 'Full Rotation', desc: 'Circular 4-position rotation' },
                       ].map(opt => (
-                        <button key={opt.val} onClick={() => setRotationTemplate(opt.val)} className={`p-3 rounded-xl border-2 text-left transition-all ${rotationTemplate === opt.val ? (isDarkMode ? 'border-blue-500 bg-blue-500/10' : 'border-blue-400 bg-blue-50') : (isDarkMode ? 'border-neutral-700 hover:border-neutral-600' : 'border-gray-200 hover:border-gray-300')}`}>
+                        <button key={opt.val} onClick={() => setRotationTemplate(opt.val)} className={`p-3 rounded-xl border-2 text-left transition-all ${rotationTemplate === opt.val ? ('border-[color:var(--brand)] sq-tone-brand') : ('border-border hover:border-border/80')}`}>
                           <p className={`text-xs font-semibold text-foreground`}>{opt.label}</p>
                           <p className={`text-[10px] text-muted-foreground`}>{opt.desc}</p>
                         </button>
                       ))}
                     </div>
                     <div className="grid grid-cols-2 gap-3 mb-4">
-                      <div><label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Odometer (km)</label><input type="number" value={rotationOdometer} onChange={e => setRotationOdometer(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs border ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'} outline-none`} placeholder="Current odometer" /></div>
-                      <div><label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Notes</label><input type="text" value={rotationNotes} onChange={e => setRotationNotes(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs border ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'} outline-none`} placeholder="Optional notes" /></div>
+                      <div><label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Odometer (km)</label><input type="number" value={rotationOdometer} onChange={e => setRotationOdometer(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs border ${'bg-background border border-border text-foreground'} outline-none`} placeholder="Current odometer" /></div>
+                      <div><label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Notes</label><input type="text" value={rotationNotes} onChange={e => setRotationNotes(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs border ${'bg-background border border-border text-foreground'} outline-none`} placeholder="Optional notes" /></div>
                     </div>
                     <div className="flex gap-2 justify-end">
-                      <button onClick={() => setShowRotation(false)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${isDarkMode ? 'text-gray-400 hover:bg-neutral-800' : 'text-gray-500 hover:bg-gray-100'}`}>Cancel</button>
+                      <button onClick={() => setShowRotation(false)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${'text-muted-foreground hover:bg-muted'}`}>Cancel</button>
                       <button onClick={handleRotateTires} disabled={submittingRotation} className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 flex items-center gap-1.5">{submittingRotation && <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />}Confirm Rotation</button>
                     </div>
                   </div>
@@ -4294,8 +4279,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
 
                 {/* Tire Change Dialog */}
                 {showTireChange && (
-                  <div className={`rounded-lg p-5 mb-5 border-2 ${isDarkMode ? 'bg-neutral-800/60 border-red-500/30' : 'bg-white border-red-200'}`}>
-                    <h3 className={`text-xs font-semibold uppercase tracking-wider mb-4 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>Tire Replacement & Stored Sets</h3>
+                  <div className={`rounded-lg p-5 mb-5 border-2 ${'bg-card border border-border'}`}>
+                    <h3 className={`text-xs font-semibold uppercase tracking-wider mb-4 ${'text-[color:var(--status-critical)]'}`}>Tire Replacement & Stored Sets</h3>
 
                     <div className="grid grid-cols-3 gap-2 mb-4">
                       {([
@@ -4311,12 +4296,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                           }}
                           className={`p-2 rounded-lg border text-left ${
                             tireChangeScope === opt.key
-                              ? isDarkMode
-                                ? 'border-red-400 bg-red-500/10'
-                                : 'border-red-400 bg-red-50'
-                              : isDarkMode
-                              ? 'border-neutral-700 hover:border-neutral-600'
-                              : 'border-gray-200 hover:border-gray-300'
+                              ? 'border-red-400 bg-red-500/10'
+                              : 'border-border hover:border-border/80'
                           }`}
                         >
                           <p className="text-[11px] font-semibold text-foreground">{opt.label}</p>
@@ -4335,12 +4316,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                             }}
                             className={`px-3 py-2 rounded-lg text-xs font-semibold border ${
                               tireChangePositions.includes(pos)
-                                ? isDarkMode
-                                  ? 'border-red-400 bg-red-500/10 text-red-300'
-                                  : 'border-red-400 bg-red-50 text-red-700'
-                                : isDarkMode
-                                ? 'border-neutral-700 text-gray-300'
-                                : 'border-gray-200 text-gray-700'
+                                ? 'border-red-400 bg-red-500/10 text-red-300'
+                                : 'border-border text-foreground'
                             }`}
                           >
                             {pos}
@@ -4355,12 +4332,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                           onClick={() => setTireChangePositions(['FRONT_AXLE'])}
                           className={`px-3 py-2 rounded-lg text-xs font-semibold border ${
                             tireChangePositions.includes('FRONT_AXLE')
-                              ? isDarkMode
-                                ? 'border-red-400 bg-red-500/10 text-red-300'
-                                : 'border-red-400 bg-red-50 text-red-700'
-                              : isDarkMode
-                              ? 'border-neutral-700 text-gray-300'
-                              : 'border-gray-200 text-gray-700'
+                              ? 'border-red-400 bg-red-500/10 text-red-300'
+                              : 'border-border text-foreground'
                           }`}
                         >
                           Front axle
@@ -4369,12 +4342,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                           onClick={() => setTireChangePositions(['REAR_AXLE'])}
                           className={`px-3 py-2 rounded-lg text-xs font-semibold border ${
                             tireChangePositions.includes('REAR_AXLE')
-                              ? isDarkMode
-                                ? 'border-red-400 bg-red-500/10 text-red-300'
-                                : 'border-red-400 bg-red-50 text-red-700'
-                              : isDarkMode
-                              ? 'border-neutral-700 text-gray-300'
-                              : 'border-gray-200 text-gray-700'
+                              ? 'border-red-400 bg-red-500/10 text-red-300'
+                              : 'border-border text-foreground'
                           }`}
                         >
                           Rear axle
@@ -4385,16 +4354,16 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     <div className="grid grid-cols-2 gap-3 mb-4">
                       <div>
                         <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Odometer (km)</label>
-                        <input type="number" value={tireChangeOdometer} onChange={e => setTireChangeOdometer(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs border ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'} outline-none`} placeholder="Current odometer" />
+                        <input type="number" value={tireChangeOdometer} onChange={e => setTireChangeOdometer(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs border ${'bg-background border border-border text-foreground'} outline-none`} placeholder="Current odometer" />
                       </div>
                       <div>
                         <label className={`text-[10px] uppercase tracking-wider font-semibold block mb-1 text-muted-foreground`}>Notes</label>
-                        <input type="text" value={tireChangeNotes} onChange={e => setTireChangeNotes(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs border ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'} outline-none`} placeholder="Optional workshop notes" />
+                        <input type="text" value={tireChangeNotes} onChange={e => setTireChangeNotes(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs border ${'bg-background border border-border text-foreground'} outline-none`} placeholder="Optional workshop notes" />
                       </div>
                     </div>
 
                     <div className="flex gap-2 justify-end mb-5">
-                      <button onClick={() => setShowTireChange(false)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${isDarkMode ? 'text-gray-400 hover:bg-neutral-800' : 'text-gray-500 hover:bg-gray-100'}`}>Cancel</button>
+                      <button onClick={() => setShowTireChange(false)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${'text-muted-foreground hover:bg-muted'}`}>Cancel</button>
                       <button
                         onClick={handleConfirmTireChange}
                         disabled={
@@ -4414,7 +4383,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                       const storedSetups = setups.filter((s: any) => s?.status === 'STORED');
                       if (storedSetups.length === 0) return null;
                       return (
-                        <div className={`pt-4 border-t ${isDarkMode ? 'border-neutral-700' : 'border-gray-200'}`}>
+                        <div className={`pt-4 border-t ${'border-border'}`}>
                           <p className="text-[10px] uppercase tracking-wider font-semibold mb-2 text-muted-foreground">Activate Stored Set</p>
                           <div className="space-y-2 mb-3">
                             {storedSetups.map((s: any) => (
@@ -4423,12 +4392,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                                 onClick={() => setActivatingStoredSetId(s.id)}
                                 className={`w-full text-left px-3 py-2 rounded-lg border text-xs ${
                                   activatingStoredSetId === s.id
-                                    ? isDarkMode
-                                      ? 'border-blue-400 bg-blue-500/10'
-                                      : 'border-blue-400 bg-blue-50'
-                                    : isDarkMode
-                                    ? 'border-neutral-700'
-                                    : 'border-gray-200'
+                                    ? 'border-blue-400 bg-blue-500/10'
+                                    : 'border-border'
                                 }`}
                               >
                                 <p className="font-semibold text-foreground">{s.name ?? s.brandModelFront ?? 'Stored set'}</p>
@@ -4441,7 +4406,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                               type="number"
                               value={storedActivationOdometer}
                               onChange={(e) => setStoredActivationOdometer(e.target.value)}
-                              className={`flex-1 px-3 py-2 rounded-lg text-xs border ${isDarkMode ? 'bg-neutral-900 border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'} outline-none`}
+                              className={`flex-1 px-3 py-2 rounded-lg text-xs border ${'bg-background border border-border text-foreground'} outline-none`}
                               placeholder="Odometer for activation"
                             />
                             <button
@@ -4475,7 +4440,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className={`text-sm font-bold text-foreground`}>{new Date(entry.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric', year: '2-digit' })}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${entry.changeType === 'ROTATION' ? (isDarkMode ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-700') : entry.changeType === 'TIRE_CHANGE' ? (isDarkMode ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-700') : (isDarkMode ? 'bg-green-500/10 text-green-400' : 'bg-green-50 text-green-700')}`}>{entry.changeType.replace('_', ' ')}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${entry.changeType === 'ROTATION' ? ('sq-chip-info') : entry.changeType === 'TIRE_CHANGE' ? ('sq-chip-critical') : ('sq-chip-success')}`}>{entry.changeType.replace('_', ' ')}</span>
                             {entry.odometerKm != null && <span className={`text-[10px] text-muted-foreground`}>{entry.odometerKm.toLocaleString()} km</span>}
                           </div>
                           {entry.rotationTemplate && <p className={`text-xs mt-0.5 text-muted-foreground`}>Pattern: {entry.rotationTemplate.replace(/_/g, ' ')}</p>}
@@ -4501,9 +4466,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                       {(tireDetail?.measurements ?? []).map((m: any) => (
                         <div key={m.id} className={`rounded-xl p-3 bg-muted`}>
                           <div className="flex items-center gap-2 mb-2">
-                            <Icon name="ruler" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                            <Icon name="ruler" className={`w-3.5 h-3.5 ${'text-[color:var(--status-info)]'}`} />
                             <span className={`text-xs font-semibold text-foreground`}>{new Date(m.date).toLocaleDateString('de-DE')}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-medium ${isDarkMode ? 'bg-neutral-600 text-gray-300' : 'bg-gray-200 text-gray-600'}`}>{m.source}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-medium ${'sq-chip-neutral'}`}>{m.source}</span>
                             {m.odometerKm != null && <span className={`text-[10px] text-muted-foreground`}>{m.odometerKm.toLocaleString()} km</span>}
                             {m.workshopName && <span className={`text-[10px] text-muted-foreground`}>{m.workshopName}</span>}
                           </div>
@@ -4540,7 +4505,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     { icon: Zap, label: 'Regen Rear', val: tireDetail.factors.regenBrakingFactorRear, desc: (v: number) => v < 0.85 ? 'Strong regen' : v < 1 ? 'Moderate regen' : 'No regen', warn: () => false },
                   ].map(f => (
                     <div key={f.label} className="flex items-start gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${f.warn(f.val) ? (isDarkMode ? 'bg-amber-500/10' : 'bg-amber-50') : (isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50')}`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${f.warn(f.val) ? ('sq-tone-watch') : ('sq-tone-info')}`}>
                         <f.icon className={`w-4 h-4 ${f.warn(f.val) ? 'text-amber-500' : 'text-blue-500'}`} />
                       </div>
                       <div className="min-w-0">
@@ -4573,7 +4538,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 <div className={`mt-4 pt-3 border-t border-border grid grid-cols-3 gap-3`}>
                   <div>
                     <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Model</p>
-                    <p className={`text-xs font-bold ${tireDetail.factors.regressionActive ? (isDarkMode ? 'text-cyan-400' : 'text-cyan-600') : 'text-foreground'}`}>
+                    <p className={`text-xs font-bold ${tireDetail.factors.regressionActive ? ('text-[color:var(--status-info)]') : 'text-foreground'}`}>
                       {tireDetail.factors.regressionActive ? `Regression (R²: ${tireDetail.factors.regressionConfidence.toFixed(2)})` : 'Formula-based'}
                     </p>
                   </div>
@@ -4605,17 +4570,17 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                       <div><p className={`text-[9px] uppercase text-muted-foreground/70`}>Replace Threshold</p><p className={`text-[10px] font-semibold capitalize text-foreground/80`}>{tireDetail.explainability.replacementThresholdSource.replace(/_/g, ' ')}</p></div>
                     </div>
                     {tireDetail.explainability.topWearDrivers.length > 0 && (
-                      <div className="mb-2"><p className={`text-[9px] uppercase text-muted-foreground/70`}>Top Wear Drivers</p><p className={`text-[10px] font-semibold capitalize ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>{tireDetail.explainability.topWearDrivers.join(', ')}</p></div>
+                      <div className="mb-2"><p className={`text-[9px] uppercase text-muted-foreground/70`}>Top Wear Drivers</p><p className={`text-[10px] font-semibold capitalize ${'text-[color:var(--status-watch)]'}`}>{tireDetail.explainability.topWearDrivers.join(', ')}</p></div>
                     )}
                     {tireDetail.explainability.possibleCauseHints.length > 0 && (
-                      <div className={`rounded-lg p-2.5 mt-2 ${isDarkMode ? 'bg-amber-500/10' : 'bg-amber-50'}`}>
+                      <div className={`rounded-lg p-2.5 mt-2 ${'sq-tone-watch'}`}>
                         {tireDetail.explainability.possibleCauseHints.map((h, i) => (
-                          <p key={i} className={`text-[10px] ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>• {h}</p>
+                          <p key={i} className={`text-[10px] ${'text-[color:var(--status-watch)]'}`}>• {h}</p>
                         ))}
                       </div>
                     )}
                     {tireDetail.factors.tireSpecMatched && (
-                      <p className={`text-[9px] mt-2 ${isDarkMode ? 'text-blue-400/70' : 'text-blue-600/70'}`}>AI Tire Spec matched — model-aware intelligence active (confidence: {tireDetail.explainability.tireSpecConfidence}%)</p>
+                      <p className={`text-[9px] mt-2 ${'text-[color:var(--status-info)]'}`}>AI Tire Spec matched — model-aware intelligence active (confidence: {tireDetail.explainability.tireSpecConfidence}%)</p>
                     )}
                   </div>
                 )}
@@ -4678,7 +4643,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     <p className={`text-xs text-muted-foreground`}>Traction Battery Intelligence</p>
                   </div>
                 </div>
-                <button onClick={() => closeModal(setShowHvBattery)} className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}><Icon name="x" className="w-5 h-5" /></button>
+                <button onClick={() => closeModal(setShowHvBattery)} className={`p-2 rounded-xl transition-colors ${'hover:bg-muted text-muted-foreground'}`}><Icon name="x" className="w-5 h-5" /></button>
               </div>
             </div>
 
@@ -4696,13 +4661,13 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   )}
                 </div>
                 {hvBatteryStatus?.publicationState === 'INITIAL_CALIBRATION' ? (
-                  <div className={`rounded-xl p-4 ${isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50'}`}>
+                  <div className={`rounded-xl p-4 ${'sq-tone-info'}`}>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-sm font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>Initial calibration in progress</span>
-                      <span className="inline-flex">{[0,1,2].map(i => <span key={i} className={`inline-block w-1.5 h-1.5 rounded-full mx-0.5 ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}</span>
+                      <span className={`text-sm font-semibold ${'text-[color:var(--status-info)]'}`}>Initial calibration in progress</span>
+                      <span className="inline-flex">{[0,1,2].map(i => <span key={i} className={`inline-block w-1.5 h-1.5 rounded-full mx-0.5 ${'bg-[color:var(--status-info)]'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}</span>
                     </div>
-                    <p className={`text-[10px] ${isDarkMode ? 'text-blue-400/60' : 'text-blue-500/60'}`}>Collecting charge and discharge data for accurate battery health estimation</p>
-                    <p className={`text-[9px] mt-1 ${isDarkMode ? 'text-blue-400/50' : 'text-blue-500/50'}`}>No reliable HV SOH data yet — SOH is only reported from provider, capacity measurement or a workshop report.</p>
+                    <p className={`text-[10px] ${'text-[color:var(--status-info)]/60'}`}>Collecting charge and discharge data for accurate battery health estimation</p>
+                    <p className={`text-[9px] mt-1 ${'text-[color:var(--status-info)]'}`}>No reliable HV SOH data yet — SOH is only reported from provider, capacity measurement or a workshop report.</p>
                     <div className="grid grid-cols-2 gap-3 mt-3">
                       <div className="text-center">
                         <div className={`text-2xl font-black text-foreground`}>{hvBatteryStatus?.currentSocPercent != null ? `${formatMaxDecimals(hvBatteryStatus.currentSocPercent)}%` : '—'}</div>
@@ -4738,20 +4703,20 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     {/* Maturity / method info */}
                     {hvBatteryStatus?.publicationMethod && (
                       <div className={`flex items-center gap-3 mt-3 text-muted-foreground`}>
-                        <span className="text-[10px]">Method: <strong className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>{hvBatteryStatus.publicationMethod.replace(/_/g, ' ')}</strong></span>
-                        {hvBatteryStatus.maturityConfidence && <span className="text-[10px]">Confidence: <strong className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>{hvBatteryStatus.maturityConfidence}</strong></span>}
-                        {hvBatteryStatus.validEstimateCount != null && <span className="text-[10px]">Estimates: <strong className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>{hvBatteryStatus.validEstimateCount}</strong></span>}
+                        <span className="text-[10px]">Method: <strong className={'text-muted-foreground'}>{hvBatteryStatus.publicationMethod.replace(/_/g, ' ')}</strong></span>
+                        {hvBatteryStatus.maturityConfidence && <span className="text-[10px]">Confidence: <strong className={'text-muted-foreground'}>{hvBatteryStatus.maturityConfidence}</strong></span>}
+                        {hvBatteryStatus.validEstimateCount != null && <span className="text-[10px]">Estimates: <strong className={'text-muted-foreground'}>{hvBatteryStatus.validEstimateCount}</strong></span>}
                       </div>
                     )}
                   </>
                 )}
                 {hvBatteryStatus?.publicationState !== 'INITIAL_CALIBRATION' && hvBatteryStatus?.sohInterpretation && (
                   <div className={`mt-4 rounded-xl p-3 ${
-                    hvBatteryStatus.sohInterpretation.color === 'green' ? (isDarkMode ? 'bg-green-500/10' : 'bg-green-50') :
-                    hvBatteryStatus.sohInterpretation.color === 'amber' ? (isDarkMode ? 'bg-amber-500/10' : 'bg-amber-50') :
-                    hvBatteryStatus.sohInterpretation.color === 'orange' ? (isDarkMode ? 'bg-orange-500/10' : 'bg-orange-50') :
-                    hvBatteryStatus.sohInterpretation.color === 'red' ? (isDarkMode ? 'bg-red-500/10' : 'bg-red-50') :
-                    (isDarkMode ? 'bg-neutral-800' : 'bg-gray-100')
+                    hvBatteryStatus.sohInterpretation.color === 'green' ? ('sq-tone-success') :
+                    hvBatteryStatus.sohInterpretation.color === 'amber' ? ('sq-tone-watch') :
+                    hvBatteryStatus.sohInterpretation.color === 'orange' ? ('sq-tone-warning') :
+                    hvBatteryStatus.sohInterpretation.color === 'red' ? ('sq-tone-critical') :
+                    ('bg-muted')
                   }`}>
                     <div className="flex items-center gap-2 mb-1">
                       <span className={`text-xs font-bold ${
@@ -4759,11 +4724,11 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                         hvBatteryStatus.sohInterpretation.color === 'amber' ? 'text-amber-500' :
                         hvBatteryStatus.sohInterpretation.color === 'orange' ? 'text-orange-500' :
                         hvBatteryStatus.sohInterpretation.color === 'red' ? 'text-red-500' :
-                        (isDarkMode ? 'text-gray-400' : 'text-gray-500')
+                        ('text-muted-foreground')
                       }`}>{hvBatteryStatus.sohInterpretation.label}</span>
                       <span className={`text-[10px] text-muted-foreground/70`}>via {hvBatteryStatus.sohMethod?.replace(/_/g, ' ')}</span>
                     </div>
-                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{hvBatteryStatus.sohInterpretation.description}</p>
+                    <p className={`text-xs ${'text-muted-foreground'}`}>{hvBatteryStatus.sohInterpretation.description}</p>
                   </div>
                 )}
               </div>
@@ -4792,7 +4757,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                       <div key={i} className={`rounded-xl p-3 bg-muted`}>
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
-                            <Icon name="battery-charging" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-500'}`} />
+                            <Icon name="battery-charging" className={`w-3.5 h-3.5 ${'text-[color:var(--status-positive)]'}`} />
                             <span className={`text-xs font-semibold text-foreground`}>
                               {new Date(s.startTime).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })}
                             </span>
@@ -4800,7 +4765,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                               {new Date(s.startTime).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <span className={`text-xs font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                          <span className={`text-xs font-bold ${'text-[color:var(--status-positive)]'}`}>
                             {formatMaxDecimals(s.startSoc)}% → {formatMaxDecimals(s.endSoc)}%
                           </span>
                         </div>
@@ -4839,9 +4804,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                         soh: t.sohPercent,
                         soc: t.socPercent,
                       }))}>
-                        <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke={isDarkMode ? '#555' : '#bbb'} />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} stroke={isDarkMode ? '#555' : '#bbb'} />
-                        <Tooltip contentStyle={{ background: isDarkMode ? '#1c1c1c' : '#fff', border: 'none', borderRadius: 12, fontSize: 11 }} />
+                        <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke='var(--muted-foreground)' />
+                        <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} stroke='var(--muted-foreground)' />
+                        <Tooltip contentStyle={{ background: 'var(--card)', border: 'none', borderRadius: 12, fontSize: 11 }} />
                         <Line type="monotone" dataKey="soh" stroke="#10b981" strokeWidth={2} dot={false} name="SOH %" />
                         <Line type="monotone" dataKey="soc" stroke="#6366f1" strokeWidth={1.5} dot={false} name="SoC %" strokeDasharray="4 2" />
                       </LineChart>

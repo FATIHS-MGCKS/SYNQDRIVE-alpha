@@ -1,10 +1,18 @@
 import { Building2, Search, Plus, Upload, Download, Sparkles, MapPin, Table2, Map, X, ExternalLink, Phone, Mail, Globe, ChevronRight, User, MessageSquare, ArrowUpDown, Send, CheckCircle, Clock, AlertTriangle, XCircle, Star, Tag, FileText, ArrowRight, Users } from 'lucide-react';
 import { useState, useMemo } from 'react';
+import { PageHeader, DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader } from '../../components/patterns';
 import { toast } from 'sonner';
 
-interface ProspectsViewProps {
-  isDarkMode: boolean;
-}
+/* ── Design-system token helpers ── */
+const CARD = 'sq-card overflow-hidden';
+const INPUT =
+  'w-full px-4 py-2.5 rounded-xl border border-border bg-muted/50 text-sm text-foreground transition-colors outline-none focus:border-[color:var(--brand)] placeholder:text-muted-foreground';
+const LABEL = 'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
+const HEAD = 'text-xs font-semibold uppercase tracking-wider text-muted-foreground';
+const TAB_BAR = 'sq-tab-bar flex gap-1 p-1 rounded-2xl overflow-x-auto w-fit';
+const TAB_ACTIVE = 'sq-tab-active flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap';
+const TAB_IDLE = 'sq-tab flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap text-muted-foreground hover:text-foreground';
+
 
 // === DATA TYPES ===
 type ProspectStatus = 'New' | 'Enriched' | 'Ready to Contact' | 'Contacted' | 'Replied' | 'Qualified' | 'Not Interested' | 'Converted';
@@ -72,7 +80,7 @@ const priorityColors: Record<ProspectPriority, string> = {
 };
 
 // === COMPONENT ===
-export function ProspectsView({ isDarkMode }: ProspectsViewProps) {
+export function ProspectsView() {
   const [prospects, setProspects] = useState<Prospect[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
@@ -182,70 +190,64 @@ export function ProspectsView({ isDarkMode }: ProspectsViewProps) {
     }, 2000);
   };
 
-  const cardClass = `rounded-2xl shadow-sm border ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'}`;
-  const inputClass = `w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-200 focus:border-indigo-500/50' : 'bg-gray-50 border-gray-200 text-gray-700 focus:border-indigo-300'}`;
-  const selectClass = `px-3 py-2.5 rounded-xl border text-sm font-medium appearance-none cursor-pointer ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-700'}`;
-  const thClass = `text-left px-3 py-3 text-xs font-semibold uppercase tracking-wider cursor-pointer select-none ${isDarkMode ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`;
+  const inputClass = INPUT;
+  const selectClass = `px-3 py-2.5 rounded-xl border text-sm font-medium appearance-none cursor-pointer border-border`;
+  const thClass = `text-left px-3 py-3 text-xs font-semibold uppercase tracking-wider cursor-pointer select-none text-muted-foreground hover:text-foreground`;
 
   return (
     <div className="space-y-4 pb-6">
-      {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <h1 className={`text-2xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Prospects</h1>
-          <p className={`text-base mt-2 font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Manage potential partner companies, leads, and outreach opportunities</p>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <button onClick={() => { setShowImportModal(true); setImportStep('upload'); setImportFile(null); }} className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-bold border transition-all ${isDarkMode ? 'border-neutral-700 text-gray-300 hover:bg-neutral-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}><Upload className="w-5 h-5" />Import CSV</button>
-          <button onClick={handleAiEnrich} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-2xl text-sm font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"><Sparkles className="w-5 h-5" />AI Enrich</button>
-          <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-2xl text-sm font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"><Plus className="w-5 h-5" />New Prospect</button>
-        </div>
-      </div>
+      <PageHeader
+        title="Prospects"
+        description="Manage potential partner companies, leads, and outreach opportunities"
+        icon={<Building2 className="w-4 h-4" />}
+        actions={
+          <div className="flex items-center gap-3 flex-wrap">
+            <button onClick={() => { setShowImportModal(true); setImportStep('upload'); setImportFile(null); }} className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-bold border border-border transition-all"><Upload className="w-5 h-5" />Import CSV</button>
+            <button onClick={handleAiEnrich} className="flex items-center gap-2 px-5 py-2.5 sq-cta text-sm font-bold"><Sparkles className="w-5 h-5" />AI Enrich</button>
+            <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 px-5 py-2.5 sq-cta text-sm font-bold"><Plus className="w-5 h-5" />New Prospect</button>
+          </div>
+        }
+      />
 
       {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
-          { label: 'Total', count: prospects.length, color: isDarkMode ? 'text-white' : 'text-gray-900', bg: isDarkMode ? 'bg-neutral-800' : 'bg-gray-100' },
-          { label: 'High Priority', count: prospects.filter(p => p.priority === 'High').length, color: 'text-red-500', bg: isDarkMode ? 'bg-red-500/10' : 'bg-red-50' },
-          { label: 'Qualified', count: prospects.filter(p => p.status === 'Qualified').length, color: 'text-green-500', bg: isDarkMode ? 'bg-green-500/10' : 'bg-green-50' },
-          { label: 'Unassigned', count: prospects.filter(p => !p.assignedTo).length, color: 'text-amber-500', bg: isDarkMode ? 'bg-amber-500/10' : 'bg-amber-50' },
-          { label: 'Converted', count: prospects.filter(p => p.status === 'Converted').length, color: 'text-emerald-500', bg: isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50' },
+          { label: 'Total', count: prospects.length, status: undefined },
+          { label: 'High Priority', count: prospects.filter(p => p.priority === 'High').length, status: 'critical' as const },
+          { label: 'Qualified', count: prospects.filter(p => p.status === 'Qualified').length, status: 'success' as const },
+          { label: 'Unassigned', count: prospects.filter(p => !p.assignedTo).length, status: 'watch' as const },
+          { label: 'Converted', count: prospects.filter(p => p.status === 'Converted').length, status: 'success' as const },
         ].map(k => (
-          <div key={k.label} className={`${cardClass} p-4 flex flex-col items-center justify-center text-center`}>
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${k.bg}`}>
-              <p className={`text-2xl font-extrabold ${k.color}`}>{k.count}</p>
-            </div>
-            <p className={`text-sm font-bold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{k.label}</p>
-          </div>
+          <MetricCard key={k.label} label={k.label} value={k.count} status={k.status} />
         ))}
       </div>
 
       {/* FILTERS & VIEW TOGGLE */}
-      <div className={`${cardClass} p-4`}>
+      <div className={`${CARD} p-4`}>
         <div className="flex flex-col lg:flex-row gap-4 justify-between">
           <div className="flex flex-wrap gap-3 flex-1">
-            <div className={`flex items-center gap-2 flex-1 min-w-[200px] px-4 py-3 rounded-2xl border ${isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50/50 border-gray-200'}`}>
-              <Search className={`w-5 h-5 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-              <input type="text" placeholder="Search prospects..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={`flex-1 bg-transparent outline-none text-sm font-medium ${isDarkMode ? 'text-gray-200 placeholder:text-gray-500' : 'text-gray-700 placeholder:text-gray-400'}`} />
+            <div className={`flex items-center gap-2 flex-1 min-w-[200px] px-4 py-3 rounded-2xl border border-border`}>
+              <Search className={`w-5 h-5 shrink-0 text-muted-foreground`} />
+              <input type="text" placeholder="Search prospects..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={`flex-1 bg-transparent outline-none text-sm font-medium bg-muted/50`} />
             </div>
-            <select value={filterType} onChange={e => setFilterType(e.target.value)} className={`px-4 py-3 rounded-2xl border text-sm font-bold appearance-none cursor-pointer ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-200' : 'bg-gray-50/50 border-gray-200 text-gray-700'}`}><option value="all">All Types</option>{uniqueTypes.map(t => <option key={t} value={t}>{t}</option>)}</select>
-            <select value={filterCity} onChange={e => setFilterCity(e.target.value)} className={`px-4 py-3 rounded-2xl border text-sm font-bold appearance-none cursor-pointer ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-200' : 'bg-gray-50/50 border-gray-200 text-gray-700'}`}><option value="all">All Cities</option>{uniqueCities.map(c => <option key={c} value={c}>{c}</option>)}</select>
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={`px-4 py-3 rounded-2xl border text-sm font-bold appearance-none cursor-pointer ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-200' : 'bg-gray-50/50 border-gray-200 text-gray-700'}`}><option value="all">All Status</option>{(['New','Enriched','Ready to Contact','Contacted','Replied','Qualified','Not Interested','Converted'] as ProspectStatus[]).map(s => <option key={s} value={s}>{s}</option>)}</select>
-            <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)} className={`px-4 py-3 rounded-2xl border text-sm font-bold appearance-none cursor-pointer ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-200' : 'bg-gray-50/50 border-gray-200 text-gray-700'}`}><option value="all">All Priority</option><option>Low</option><option>Medium</option><option>High</option></select>
+            <select value={filterType} onChange={e => setFilterType(e.target.value)} className={`px-4 py-3 rounded-2xl border text-sm font-bold appearance-none cursor-pointer border-border`}><option value="all">All Types</option>{uniqueTypes.map(t => <option key={t} value={t}>{t}</option>)}</select>
+            <select value={filterCity} onChange={e => setFilterCity(e.target.value)} className={`px-4 py-3 rounded-2xl border text-sm font-bold appearance-none cursor-pointer border-border`}><option value="all">All Cities</option>{uniqueCities.map(c => <option key={c} value={c}>{c}</option>)}</select>
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={`px-4 py-3 rounded-2xl border text-sm font-bold appearance-none cursor-pointer border-border`}><option value="all">All Status</option>{(['New','Enriched','Ready to Contact','Contacted','Replied','Qualified','Not Interested','Converted'] as ProspectStatus[]).map(s => <option key={s} value={s}>{s}</option>)}</select>
+            <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)} className={`px-4 py-3 rounded-2xl border text-sm font-bold appearance-none cursor-pointer border-border`}><option value="all">All Priority</option><option>Low</option><option>Medium</option><option>High</option></select>
           </div>
-          <div className={`flex gap-1 p-1.5 rounded-2xl shrink-0 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-100/80'}`}>
-            <button onClick={() => setViewMode('table')} className={`px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'table' ? (isDarkMode ? 'bg-neutral-700 text-white shadow-sm' : 'bg-white text-gray-900 shadow-sm') : (isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700')}`}><Table2 className="w-4 h-4" />Table</button>
-            <button onClick={() => setViewMode('map')} className={`px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'map' ? (isDarkMode ? 'bg-neutral-700 text-white shadow-sm' : 'bg-white text-gray-900 shadow-sm') : (isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700')}`}><Map className="w-4 h-4" />Map</button>
+          <div className={`flex gap-1 p-1.5 rounded-2xl shrink-0 bg-muted`}>
+            <button onClick={() => setViewMode('table')} className={`px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'table' ? ('bg-CARD text-foreground shadow-sm ring-1 ring-border') : ('text-muted-foreground hover:text-foreground')}`}><Table2 className="w-4 h-4" />Table</button>
+            <button onClick={() => setViewMode('map')} className={`px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'map' ? ('bg-CARD text-foreground shadow-sm ring-1 ring-border') : ('text-muted-foreground hover:text-foreground')}`}><Map className="w-4 h-4" />Map</button>
           </div>
         </div>
       </div>
 
       {/* TABLE VIEW */}
       {viewMode === 'table' && (
-        <div className={`${cardClass} overflow-hidden`}>
+        <div className={`${CARD} overflow-hidden`}>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead><tr className={`border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
+              <thead><tr className={`border-b border-border`}>
                 <th onClick={() => toggleSort('companyName')} className={`${thClass} pl-6`}><span className="flex items-center gap-1">Company <ArrowUpDown className="w-3 h-3" /></span></th>
                 <th className={thClass}>Type</th>
                 <th onClick={() => toggleSort('city')} className={thClass}><span className="flex items-center gap-1">City <ArrowUpDown className="w-3 h-3" /></span></th>
@@ -257,15 +259,15 @@ export function ProspectsView({ isDarkMode }: ProspectsViewProps) {
               </tr></thead>
               <tbody>
                 {filtered.map(p => (
-                  <tr key={p.id} onClick={() => setSelectedProspect(p)} className={`border-b last:border-b-0 transition-colors cursor-pointer ${isDarkMode ? 'border-neutral-800 hover:bg-neutral-800' : 'border-gray-50 hover:bg-gray-50'} ${selectedProspect?.id === p.id ? (isDarkMode ? 'bg-indigo-500/10' : 'bg-indigo-50/50') : ''}`}>
-                    <td className="pl-6 pr-4 py-3.5"><p className={`text-sm font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{p.companyName}</p><p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{p.email}</p></td>
-                    <td className={`px-4 py-3.5 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{p.businessType}</td>
-                    <td className={`px-4 py-3.5 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{p.city}</td>
-                    <td className={`px-4 py-3.5 text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>{p.fleetSizeEstimate || '—'}</td>
+                  <tr key={p.id} onClick={() => setSelectedProspect(p)} className={`border-b last:border-b-0 transition-colors cursor-pointer border-border hover:bg-muted/50 ${selectedProspect?.id === p.id ? ('sq-tone-info') : ''}`}>
+                    <td className="pl-6 pr-4 py-3.5"><p className={`text-sm font-semibold text-foreground`}>{p.companyName}</p><p className={`text-xs text-muted-foreground`}>{p.email}</p></td>
+                    <td className={`px-4 py-3.5 text-sm text-muted-foreground`}>{p.businessType}</td>
+                    <td className={`px-4 py-3.5 text-sm text-muted-foreground`}>{p.city}</td>
+                    <td className={`px-4 py-3.5 text-sm font-medium text-foreground`}>{p.fleetSizeEstimate || '—'}</td>
                     <td className="px-4 py-3.5"><span className={`px-2 py-0.5 rounded-lg text-[11px] font-semibold border ${statusColors[p.status]}`}>{p.status}</span></td>
                     <td className="px-4 py-3.5"><span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${priorityColors[p.priority]}`}>{p.priority}</span></td>
-                    <td className={`px-4 py-3.5 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{p.assignedTo || <span className="text-amber-500 text-xs font-semibold">Unassigned</span>}</td>
-                    <td className={`px-4 py-3.5 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{p.nextAction}</td>
+                    <td className={`px-4 py-3.5 text-sm text-muted-foreground`}>{p.assignedTo || <span className="text-amber-500 text-xs font-semibold">Unassigned</span>}</td>
+                    <td className={`px-4 py-3.5 text-sm text-muted-foreground`}>{p.nextAction}</td>
                   </tr>
                 ))}
               </tbody>
@@ -276,13 +278,13 @@ export function ProspectsView({ isDarkMode }: ProspectsViewProps) {
 
       {/* MAP VIEW */}
       {viewMode === 'map' && (
-        <div className={`${cardClass} p-4`}>
-          <div className={`relative w-full h-[500px] rounded-2xl overflow-hidden ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-100'}`}>
+        <div className={`${CARD} p-4`}>
+          <div className={`relative w-full h-[500px] rounded-2xl overflow-hidden bg-muted`}>
             {/* Simplified map representation */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="relative w-full h-full">
                 {/* Germany outline placeholder */}
-                <div className={`absolute inset-4 rounded-2xl border-2 border-dashed ${isDarkMode ? 'border-neutral-700' : 'border-gray-300'}`} />
+                <div className={`absolute inset-4 rounded-2xl border-2 border-dashed border-border`} />
                 {/* City pins */}
                 {filtered.map(p => {
                   const x = ((p.lng - 6) / 8) * 80 + 10;
@@ -293,7 +295,7 @@ export function ProspectsView({ isDarkMode }: ProspectsViewProps) {
                       <div className={`relative ${selectedProspect?.id === p.id ? 'scale-125' : 'hover:scale-110'} transition-transform`}>
                         <MapPin className={`w-7 h-7 drop-shadow-lg ${p.priority === 'High' ? 'text-red-500 fill-red-500' : p.priority === 'Medium' ? 'text-amber-500 fill-amber-500' : 'text-blue-500 fill-blue-500'}`} />
                       </div>
-                      <div className={`absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg text-[10px] font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-lg ${isDarkMode ? 'bg-neutral-800 text-gray-200' : 'bg-white text-gray-800'}`}>
+                      <div className={`absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg text-[10px] font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-lg bg-muted/50`}>
                         {p.companyName}
                       </div>
                     </button>
@@ -302,7 +304,7 @@ export function ProspectsView({ isDarkMode }: ProspectsViewProps) {
               </div>
             </div>
             {/* Legend */}
-            <div className={`absolute bottom-4 left-4 px-3 py-2 rounded-xl backdrop-blur-sm ${isDarkMode ? 'bg-neutral-900' : 'bg-white'}`}>
+            <div className={`absolute bottom-4 left-4 px-3 py-2 rounded-xl backdrop-blur-sm bg-muted/50`}>
               <div className="flex items-center gap-3 text-[10px] font-semibold">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" />High</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" />Medium</span>
@@ -317,15 +319,15 @@ export function ProspectsView({ isDarkMode }: ProspectsViewProps) {
       {selectedProspect && (
         <div className="fixed inset-y-0 right-0 w-full sm:w-[480px] z-[90] flex" onClick={() => setSelectedProspect(null)}>
           <div className="flex-1" />
-          <div className={`w-full sm:w-[480px] h-full border-l shadow-2xl overflow-y-auto ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'}`} onClick={e => e.stopPropagation()}>
+          <div className={`w-full sm:w-[480px] h-full border-l shadow-2xl overflow-y-auto sq-CARD`} onClick={e => e.stopPropagation()}>
             <div className="px-5 py-3">
               {/* Close & Header */}
               <div className="flex items-start justify-between mb-5">
                 <div>
-                  <h2 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{selectedProspect.companyName}</h2>
-                  <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{selectedProspect.businessType} · {selectedProspect.city}</p>
+                  <h2 className={`text-base font-bold text-foreground`}>{selectedProspect.companyName}</h2>
+                  <p className={`text-sm text-muted-foreground`}>{selectedProspect.businessType} · {selectedProspect.city}</p>
                 </div>
-                <button onClick={() => setSelectedProspect(null)} className={`p-2 rounded-xl ${isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}><X className="w-5 h-5" /></button>
+                <button onClick={() => setSelectedProspect(null)} className={`p-2 rounded-xl hover:bg-muted`}><X className="w-5 h-5" /></button>
               </div>
 
               {/* Status & Priority */}
@@ -338,53 +340,53 @@ export function ProspectsView({ isDarkMode }: ProspectsViewProps) {
               </div>
 
               {/* Contact Info */}
-              <div className={`p-4 rounded-2xl border mb-4 space-y-2.5 ${isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-gray-200'}`}>
-                <div className="flex items-center gap-2"><Mail className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} /><span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{selectedProspect.email}</span></div>
-                <div className="flex items-center gap-2"><Phone className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} /><span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{selectedProspect.phone}</span></div>
-                <div className="flex items-center gap-2"><Globe className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} /><a href={`https://${selectedProspect.website}`} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-500 hover:underline flex items-center gap-1">{selectedProspect.website} <ExternalLink className="w-3 h-3" /></a></div>
-                <div className="flex items-center gap-2"><Users className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} /><span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Est. fleet: {selectedProspect.fleetSizeEstimate || '—'} vehicles</span></div>
-                <div className="flex items-center gap-2"><User className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} /><span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Assigned: {selectedProspect.assignedTo || 'Unassigned'}</span></div>
+              <div className={`p-4 rounded-2xl border mb-4 space-y-2.5 bg-muted/50 border-border`}>
+                <div className="flex items-center gap-2"><Mail className={`w-3.5 h-3.5 text-muted-foreground`} /><span className={`text-sm text-foreground`}>{selectedProspect.email}</span></div>
+                <div className="flex items-center gap-2"><Phone className={`w-3.5 h-3.5 text-muted-foreground`} /><span className={`text-sm text-foreground`}>{selectedProspect.phone}</span></div>
+                <div className="flex items-center gap-2"><Globe className={`w-3.5 h-3.5 text-muted-foreground`} /><a href={`https://${selectedProspect.website}`} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-500 hover:underline flex items-center gap-1">{selectedProspect.website} <ExternalLink className="w-3 h-3" /></a></div>
+                <div className="flex items-center gap-2"><Users className={`w-3.5 h-3.5 text-muted-foreground`} /><span className={`text-sm text-foreground`}>Est. fleet: {selectedProspect.fleetSizeEstimate || '—'} vehicles</span></div>
+                <div className="flex items-center gap-2"><User className={`w-3.5 h-3.5 text-muted-foreground`} /><span className={`text-sm text-foreground`}>Assigned: {selectedProspect.assignedTo || 'Unassigned'}</span></div>
               </div>
 
               {/* Tags */}
               {selectedProspect.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-4">
                   {selectedProspect.tags.map(tag => (
-                    <span key={tag} className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${isDarkMode ? 'bg-neutral-800 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>{tag}</span>
+                    <span key={tag} className={`px-2 py-0.5 rounded-md text-[10px] font-semibold sq-chip-neutral`}>{tag}</span>
                   ))}
                 </div>
               )}
 
               {/* AI Summary */}
-              <div className={`p-4 rounded-2xl border mb-4 ${isDarkMode ? 'bg-purple-900/10 border-purple-800/30' : 'bg-purple-50/60 border-purple-200/50'}`}>
-                <div className="flex items-center gap-2 mb-3"><Sparkles className="w-4 h-4 text-purple-500" /><h4 className={`text-sm font-bold ${isDarkMode ? 'text-purple-300' : 'text-purple-800'}`}>AI Summary</h4></div>
+              <div className={`p-4 rounded-2xl border mb-4 sq-tone-ai border border-border`}>
+                <div className="flex items-center gap-2 mb-3"><Sparkles className="w-4 h-4 text-purple-500" /><h4 className={`text-sm font-bold sq-tone-ai`}>AI Summary</h4></div>
                 <div className="space-y-2 text-xs">
-                  <div><span className={`font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Category:</span> <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>{selectedProspect.aiSummary.category}</span></div>
-                  <div><span className={`font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Product Fit:</span> <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>{selectedProspect.aiSummary.productFit}</span></div>
-                  <div><span className={`font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Use Case:</span> <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>{selectedProspect.aiSummary.useCase}</span></div>
-                  <div><span className={`font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Outreach Angle:</span> <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>{selectedProspect.aiSummary.outreachAngle}</span></div>
+                  <div><span className={`font-semibold text-muted-foreground`}>Category:</span> <span className={'text-muted-foreground'}>{selectedProspect.aiSummary.category}</span></div>
+                  <div><span className={`font-semibold text-muted-foreground`}>Product Fit:</span> <span className={'text-muted-foreground'}>{selectedProspect.aiSummary.productFit}</span></div>
+                  <div><span className={`font-semibold text-muted-foreground`}>Use Case:</span> <span className={'text-muted-foreground'}>{selectedProspect.aiSummary.useCase}</span></div>
+                  <div><span className={`font-semibold text-muted-foreground`}>Outreach Angle:</span> <span className={'text-muted-foreground'}>{selectedProspect.aiSummary.outreachAngle}</span></div>
                 </div>
               </div>
 
               {/* Actions */}
               <div className="flex flex-wrap gap-2 mb-5">
-                <button onClick={() => updateProspectStatus(selectedProspect.id, 'Contacted')} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${isDarkMode ? 'border-neutral-700 text-gray-300 hover:bg-neutral-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}><Send className="w-3 h-3" />Mark Contacted</button>
+                <button onClick={() => updateProspectStatus(selectedProspect.id, 'Contacted')} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all border-border`}><Send className="w-3 h-3" />Mark Contacted</button>
                 <button onClick={() => handleConvert(selectedProspect)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-gradient-to-br from-green-500 to-green-600 text-white shadow hover:shadow-lg transition-all"><ArrowRight className="w-3 h-3" />Convert to Org</button>
-                <a href={`https://${selectedProspect.website}`} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${isDarkMode ? 'border-neutral-700 text-gray-300 hover:bg-neutral-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}><ExternalLink className="w-3 h-3" />Open Website</a>
+                <a href={`https://${selectedProspect.website}`} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all border-border`}><ExternalLink className="w-3 h-3" />Open Website</a>
               </div>
 
               {/* Add Note */}
               <div className="mb-4">
-                <h4 className={`text-sm font-bold mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Notes</h4>
+                <h4 className={`text-sm font-bold mb-2 text-foreground`}>Notes</h4>
                 <div className="flex gap-2 mb-3">
-                  <input value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Add a note..." onKeyDown={e => e.key === 'Enter' && addNote()} className={`flex-1 px-3 py-2 rounded-xl border text-sm outline-none ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-200' : 'bg-gray-50 border-gray-200 text-gray-700'}`} />
+                  <input value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Add a note..." onKeyDown={e => e.key === 'Enter' && addNote()} className={`flex-1 px-3 py-2 rounded-xl border text-sm outline-none border-border`} />
                   <button onClick={addNote} disabled={!newNote.trim()} className={`px-3 py-2 rounded-xl text-sm font-semibold bg-indigo-500 text-white ${!newNote.trim() ? 'opacity-50' : 'hover:bg-indigo-600'}`}>Add</button>
                 </div>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
                   {selectedProspect.notes.map(note => (
-                    <div key={note.id} className={`p-3 rounded-xl border ${isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-gray-200'}`}>
-                      <p className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{note.text}</p>
-                      <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>{note.author} · {note.date}</p>
+                    <div key={note.id} className={`p-3 rounded-xl border bg-muted/50 border-border`}>
+                      <p className={`text-xs text-foreground`}>{note.text}</p>
+                      <p className={`text-[10px] mt-1 text-muted-foreground`}>{note.author} · {note.date}</p>
                     </div>
                   ))}
                 </div>
@@ -392,14 +394,14 @@ export function ProspectsView({ isDarkMode }: ProspectsViewProps) {
 
               {/* Activity History */}
               <div>
-                <h4 className={`text-sm font-bold mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>Outreach History</h4>
+                <h4 className={`text-sm font-bold mb-2 text-foreground`}>Outreach History</h4>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
                   {selectedProspect.activity.map(act => (
                     <div key={act.id} className="flex items-start gap-2">
-                      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${isDarkMode ? 'bg-gray-600' : 'bg-gray-300'}`} />
+                      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 bg-muted-foreground/40`} />
                       <div>
-                        <p className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{act.action}</p>
-                        <p className={`text-[10px] ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>{act.date} · {act.by}</p>
+                        <p className={`text-xs text-muted-foreground`}>{act.action}</p>
+                        <p className={`text-[10px] text-muted-foreground`}>{act.date} · {act.by}</p>
                       </div>
                     </div>
                   ))}
@@ -413,32 +415,32 @@ export function ProspectsView({ isDarkMode }: ProspectsViewProps) {
       {/* === ADD PROSPECT MODAL === */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100]">
-          <div className={`max-w-lg w-full mx-4 rounded-2xl p-8 shadow-2xl border ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`}>
+          <div className={`max-w-lg w-full mx-4 rounded-2xl p-8 shadow-2xl border sq-CARD border-border`}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Add Prospect</h2>
-              <button onClick={() => setShowAddModal(false)} className={`p-2 rounded-xl ${isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}><X className="w-5 h-5" /></button>
+              <h2 className={`text-base font-bold text-foreground`}>Add Prospect</h2>
+              <button onClick={() => setShowAddModal(false)} className={`p-2 rounded-xl hover:bg-muted`}><X className="w-5 h-5" /></button>
             </div>
             <div className="space-y-4">
-              <div><label className={`block text-sm font-semibold mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Company Name *</label><input value={addForm.companyName} onChange={e => setAddForm(f => ({ ...f, companyName: e.target.value }))} className={inputClass} /></div>
+              <div><label className={`block text-sm font-semibold mb-1 text-foreground`}>Company Name *</label><input value={addForm.companyName} onChange={e => setAddForm(f => ({ ...f, companyName: e.target.value }))} className={inputClass} /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className={`block text-sm font-semibold mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Business Type</label><select value={addForm.businessType} onChange={e => setAddForm(f => ({ ...f, businessType: e.target.value }))} className={inputClass}><option>Taxi Company</option><option>Rental Company</option><option>Fleet Operator</option><option>Logistics Company</option><option>Courier Service</option><option>Shuttle Service</option><option>Medical Transport</option><option>Driving School</option><option>Car Sharing</option><option>Workshop Partner</option></select></div>
-                <div><label className={`block text-sm font-semibold mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Priority</label><select value={addForm.priority} onChange={e => setAddForm(f => ({ ...f, priority: e.target.value as ProspectPriority }))} className={inputClass}><option>Low</option><option>Medium</option><option>High</option></select></div>
+                <div><label className={`block text-sm font-semibold mb-1 text-foreground`}>Business Type</label><select value={addForm.businessType} onChange={e => setAddForm(f => ({ ...f, businessType: e.target.value }))} className={inputClass}><option>Taxi Company</option><option>Rental Company</option><option>Fleet Operator</option><option>Logistics Company</option><option>Courier Service</option><option>Shuttle Service</option><option>Medical Transport</option><option>Driving School</option><option>Car Sharing</option><option>Workshop Partner</option></select></div>
+                <div><label className={`block text-sm font-semibold mb-1 text-foreground`}>Priority</label><select value={addForm.priority} onChange={e => setAddForm(f => ({ ...f, priority: e.target.value as ProspectPriority }))} className={inputClass}><option>Low</option><option>Medium</option><option>High</option></select></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className={`block text-sm font-semibold mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>City</label><input value={addForm.city} onChange={e => setAddForm(f => ({ ...f, city: e.target.value }))} className={inputClass} /></div>
-                <div><label className={`block text-sm font-semibold mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Country</label><input value={addForm.country} onChange={e => setAddForm(f => ({ ...f, country: e.target.value }))} className={inputClass} /></div>
+                <div><label className={`block text-sm font-semibold mb-1 text-foreground`}>City</label><input value={addForm.city} onChange={e => setAddForm(f => ({ ...f, city: e.target.value }))} className={inputClass} /></div>
+                <div><label className={`block text-sm font-semibold mb-1 text-foreground`}>Country</label><input value={addForm.country} onChange={e => setAddForm(f => ({ ...f, country: e.target.value }))} className={inputClass} /></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className={`block text-sm font-semibold mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Email</label><input value={addForm.email} onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))} className={inputClass} type="email" /></div>
-                <div><label className={`block text-sm font-semibold mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Phone</label><input value={addForm.phone} onChange={e => setAddForm(f => ({ ...f, phone: e.target.value }))} className={inputClass} /></div>
+                <div><label className={`block text-sm font-semibold mb-1 text-foreground`}>Email</label><input value={addForm.email} onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))} className={inputClass} type="email" /></div>
+                <div><label className={`block text-sm font-semibold mb-1 text-foreground`}>Phone</label><input value={addForm.phone} onChange={e => setAddForm(f => ({ ...f, phone: e.target.value }))} className={inputClass} /></div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className={`block text-sm font-semibold mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Website</label><input value={addForm.website} onChange={e => setAddForm(f => ({ ...f, website: e.target.value }))} className={inputClass} /></div>
-                <div><label className={`block text-sm font-semibold mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Fleet Size Estimate</label><input value={addForm.fleetSizeEstimate} onChange={e => setAddForm(f => ({ ...f, fleetSizeEstimate: e.target.value }))} className={inputClass} type="number" /></div>
+                <div><label className={`block text-sm font-semibold mb-1 text-foreground`}>Website</label><input value={addForm.website} onChange={e => setAddForm(f => ({ ...f, website: e.target.value }))} className={inputClass} /></div>
+                <div><label className={`block text-sm font-semibold mb-1 text-foreground`}>Fleet Size Estimate</label><input value={addForm.fleetSizeEstimate} onChange={e => setAddForm(f => ({ ...f, fleetSizeEstimate: e.target.value }))} className={inputClass} type="number" /></div>
               </div>
             </div>
             <div className="flex gap-3 mt-8">
-              <button onClick={() => setShowAddModal(false)} className={`flex-1 px-4 py-2.5 rounded-xl font-semibold ${isDarkMode ? 'bg-neutral-800 text-gray-300 border border-neutral-700' : 'bg-gray-100 text-gray-700 border border-gray-200'}`}>Cancel</button>
+              <button onClick={() => setShowAddModal(false)} className={`flex-1 px-4 py-2.5 rounded-xl font-semibold border-border`}>Cancel</button>
               <button onClick={handleAddProspect} disabled={!addForm.companyName} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl font-semibold shadow-lg ${!addForm.companyName ? 'opacity-50' : 'hover:shadow-xl'}`}><Plus className="w-4 h-4" />Add Prospect</button>
             </div>
           </div>
@@ -448,10 +450,10 @@ export function ProspectsView({ isDarkMode }: ProspectsViewProps) {
       {/* === IMPORT CSV MODAL === */}
       {showImportModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100]">
-          <div className={`max-w-lg w-full mx-4 rounded-2xl p-8 shadow-2xl border ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`}>
+          <div className={`max-w-lg w-full mx-4 rounded-2xl p-8 shadow-2xl border sq-CARD border-border`}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Import CSV</h2>
-              <button onClick={() => setShowImportModal(false)} className={`p-2 rounded-xl ${isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}><X className="w-5 h-5" /></button>
+              <h2 className={`text-base font-bold text-foreground`}>Import CSV</h2>
+              <button onClick={() => setShowImportModal(false)} className={`p-2 rounded-xl hover:bg-muted`}><X className="w-5 h-5" /></button>
             </div>
 
             {importStep === 'upload' && (
@@ -461,20 +463,20 @@ export function ProspectsView({ isDarkMode }: ProspectsViewProps) {
                   onDragLeave={() => setImportDragOver(false)}
                   onDrop={e => { e.preventDefault(); setImportDragOver(false); setImportFile('prospects_batch_13.csv'); }}
                   onClick={() => setImportFile('prospects_batch_13.csv')}
-                  className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all ${importDragOver ? 'border-indigo-500 bg-indigo-50/50' : isDarkMode ? 'border-neutral-700 hover:border-neutral-600' : 'border-gray-300 hover:border-gray-400'}`}
+                  className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all ${importDragOver ? 'border-indigo-500 bg-indigo-50/50' : 'text-muted-foreground'}`}
                 >
-                  <Upload className={`w-10 h-10 mx-auto mb-3 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
-                  <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Drop CSV file here or click to browse</p>
-                  <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Supports .csv files up to 10MB</p>
+                  <Upload className={`w-10 h-10 mx-auto mb-3 text-muted-foreground`} />
+                  <p className={`text-sm font-medium text-muted-foreground`}>Drop CSV file here or click to browse</p>
+                  <p className={`text-xs mt-1 text-muted-foreground`}>Supports .csv files up to 10MB</p>
                 </div>
                 {importFile && (
-                  <div className={`mt-4 p-3 rounded-xl border flex items-center justify-between ${isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-gray-200'}`}>
-                    <div className="flex items-center gap-2"><FileText className="w-4 h-4 text-indigo-500" /><span className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>{importFile}</span></div>
+                  <div className={`mt-4 p-3 rounded-xl border flex items-center justify-between bg-muted/50 border-border`}>
+                    <div className="flex items-center gap-2"><FileText className="w-4 h-4 text-indigo-500" /><span className={`text-sm font-medium text-foreground`}>{importFile}</span></div>
                     <span className="text-xs text-green-600 font-semibold">Valid</span>
                   </div>
                 )}
                 <div className="flex gap-3 mt-6">
-                  <button onClick={() => setShowImportModal(false)} className={`flex-1 px-4 py-2.5 rounded-xl font-semibold ${isDarkMode ? 'bg-neutral-800 text-gray-300 border border-neutral-700' : 'bg-gray-100 text-gray-700 border border-gray-200'}`}>Cancel</button>
+                  <button onClick={() => setShowImportModal(false)} className={`flex-1 px-4 py-2.5 rounded-xl font-semibold border-border`}>Cancel</button>
                   <button onClick={() => setImportStep('mapping')} disabled={!importFile} className={`flex-1 px-4 py-2.5 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl font-semibold shadow-lg ${!importFile ? 'opacity-50' : 'hover:shadow-xl'}`}>Next: Preview</button>
                 </div>
               </>
@@ -482,22 +484,22 @@ export function ProspectsView({ isDarkMode }: ProspectsViewProps) {
 
             {importStep === 'mapping' && (
               <>
-                <p className={`text-sm mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Field mapping preview for <span className="font-semibold">{importFile}</span></p>
-                <div className={`rounded-2xl border overflow-hidden mb-4 ${isDarkMode ? 'border-neutral-700' : 'border-gray-200'}`}>
+                <p className={`text-sm mb-4 text-muted-foreground`}>Field mapping preview for <span className="font-semibold">{importFile}</span></p>
+                <div className={`rounded-2xl border overflow-hidden mb-4 border-border`}>
                   <table className="w-full text-sm">
-                    <thead><tr className={`${isDarkMode ? 'bg-neutral-800' : 'bg-gray-50'}`}><th className={`text-left px-4 py-2 text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>CSV Column</th><th className={`text-left px-4 py-2 text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Maps To</th><th className={`text-left px-4 py-2 text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Preview</th></tr></thead>
+                    <thead><tr className={`bg-muted/50`}><th className={`text-left px-4 py-2 text-xs font-semibold text-muted-foreground`}>CSV Column</th><th className={`text-left px-4 py-2 text-xs font-semibold text-muted-foreground`}>Maps To</th><th className={`text-left px-4 py-2 text-xs font-semibold text-muted-foreground`}>Preview</th></tr></thead>
                     <tbody>
                       {[['company_name','Company Name','RapidFleet Dortmund'],['type','Business Type','Logistics Company'],['city','City','Dortmund'],['email','Email','fleet@rapidfleet.de'],['phone','Phone','+49 231 1234567'],['fleet_est','Fleet Size','55']].map(([col,field,preview]) => (
-                        <tr key={col} className={`border-t ${isDarkMode ? 'border-neutral-700' : 'border-gray-100'}`}><td className={`px-4 py-2 font-mono text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{col}</td><td className={`px-4 py-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>{field}</td><td className={`px-4 py-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{preview}</td></tr>
+                        <tr key={col} className={`border-t border-border`}><td className={`px-4 py-2 font-mono text-xs text-muted-foreground`}>{col}</td><td className={`px-4 py-2 text-foreground`}>{field}</td><td className={`px-4 py-2 text-muted-foreground`}>{preview}</td></tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-                <div className={`p-3 rounded-xl border mb-4 ${isDarkMode ? 'bg-amber-900/15 border-amber-800/30' : 'bg-amber-50/80 border-amber-200/50'}`}>
+                <div className={`p-3 rounded-xl border mb-4 sq-tone-watch border border-border`}>
                   <p className="text-xs text-amber-700 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 shrink-0" />1 potential duplicate detected (CityRide Essen → similar to existing entry). Will be skipped.</p>
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={() => setImportStep('upload')} className={`flex-1 px-4 py-2.5 rounded-xl font-semibold ${isDarkMode ? 'bg-neutral-800 text-gray-300 border border-neutral-700' : 'bg-gray-100 text-gray-700 border border-gray-200'}`}>Back</button>
+                  <button onClick={() => setImportStep('upload')} className={`flex-1 px-4 py-2.5 rounded-xl font-semibold border-border`}>Back</button>
                   <button onClick={handleImport} className="flex-1 px-4 py-2.5 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl">Import 2 Prospects</button>
                 </div>
               </>
@@ -507,13 +509,13 @@ export function ProspectsView({ isDarkMode }: ProspectsViewProps) {
               <>
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3"><CheckCircle className="w-8 h-8 text-green-500" /></div>
-                  <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Import Complete</h3>
+                  <h3 className={`text-lg font-bold text-foreground`}>Import Complete</h3>
                 </div>
                 <div className="grid grid-cols-2 gap-3 mb-6">
                   {[['Imported','2','text-green-600'],['Skipped','0','text-gray-500'],['Duplicates','1','text-amber-600'],['Errors','0','text-red-600']].map(([label,count,color]) => (
-                    <div key={label} className={`p-3 rounded-xl border text-center ${isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50 border-gray-200'}`}>
+                    <div key={label} className={`p-3 rounded-xl border text-center bg-muted/50 border-border`}>
                       <p className={`text-2xl font-bold ${color}`}>{count}</p>
-                      <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{label}</p>
+                      <p className={`text-xs text-muted-foreground`}>{label}</p>
                     </div>
                   ))}
                 </div>

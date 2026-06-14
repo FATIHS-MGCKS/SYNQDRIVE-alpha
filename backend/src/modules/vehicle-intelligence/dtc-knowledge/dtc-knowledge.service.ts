@@ -18,6 +18,7 @@ import {
   DtcVehicleContext,
   DTC_ENRICHMENT_JOB,
   NON_REQUEUEABLE_STATUSES,
+  DTC_PROCESSING_STALE_MS,
 } from './dtc-knowledge.types';
 
 const PENDING_MESSAGE = 'AI-Erklärung wird vorbereitet.';
@@ -220,7 +221,7 @@ export class DtcKnowledgeService {
     language: string,
     requeueFailed: boolean,
   ): Promise<void> {
-    if (!this.shouldQueue(generic.enrichmentStatus, requeueFailed)) return;
+    if (!this.shouldQueue(generic.enrichmentStatus, requeueFailed, generic.lastEnrichmentAttemptAt)) return;
 
     await this.prisma.dtcKnowledge.update({
       where: { id: generic.id },
@@ -242,7 +243,7 @@ export class DtcKnowledgeService {
     language: string,
     requeueFailed: boolean,
   ): Promise<void> {
-    if (!this.shouldQueue(vk.enrichmentStatus, requeueFailed)) return;
+    if (!this.shouldQueue(vk.enrichmentStatus, requeueFailed, vk.lastEnrichmentAttemptAt)) return;
 
     await this.prisma.dtcVehicleKnowledge.update({
       where: { id: vk.id },
@@ -265,7 +266,16 @@ export class DtcKnowledgeService {
     await this.enqueue(DTC_ENRICHMENT_JOB.VEHICLE, data, jobId);
   }
 
-  private shouldQueue(status: string, requeueFailed: boolean): boolean {
+  private shouldQueue(
+    status: string,
+    requeueFailed: boolean,
+    lastEnrichmentAttemptAt?: Date | null,
+  ): boolean {
+    if (status === 'PROCESSING') {
+      const last = lastEnrichmentAttemptAt?.getTime() ?? 0;
+      const stale = !last || Date.now() - last > DTC_PROCESSING_STALE_MS;
+      return stale;
+    }
     if (NON_REQUEUEABLE_STATUSES.includes(status as any)) return false;
     if (status === 'FAILED' && !requeueFailed) return false;
     return true; // MISSING (always) or FAILED (only on explicit retry)
@@ -352,6 +362,8 @@ export class DtcKnowledgeService {
       sources: this.asSources(g.sources),
       lastVerifiedAt: g.lastVerifiedAt?.toISOString() ?? null,
       needsReview: g.needsReview,
+      aiGenerated: g.aiGenerated,
+      sourceType: g.sourceType,
     };
   }
 
@@ -376,6 +388,8 @@ export class DtcKnowledgeService {
       sources: this.asSources(vk.sources ?? g?.sources ?? null),
       lastVerifiedAt: (vk.lastVerifiedAt ?? g?.lastVerifiedAt)?.toISOString() ?? null,
       needsReview: vk.needsReview || (g?.needsReview ?? false),
+      aiGenerated: vk.aiGenerated ?? g?.aiGenerated ?? false,
+      sourceType: vk.sourceType ?? g?.sourceType ?? null,
     };
   }
 

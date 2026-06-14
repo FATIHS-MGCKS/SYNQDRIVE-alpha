@@ -6,6 +6,8 @@ import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
 import { customerStatusUiToApi } from '../lib/entityMappers';
 import { CustomerDocumentUploadBox } from './CustomerDocumentUploadBox';
+import { PageHeader, StatusChip } from '../../components/patterns';
+import type { StatusTone } from '../../components/patterns';
 
 
 // ---------------------------------------------------------------------------
@@ -63,7 +65,6 @@ interface Customer {
 
 interface CustomerDetailViewProps {
   customer: Customer;
-  isDarkMode: boolean;
   onBack: () => void;
   onUpdateCustomer?: (updatedCustomer: Customer) => void;
 }
@@ -303,7 +304,6 @@ function useCustomerDrivingAggregate(
 
 export function CustomerDetailView({
   customer,
-  isDarkMode,
   onBack,
   onUpdateCustomer,
 }: CustomerDetailViewProps) {
@@ -394,12 +394,12 @@ export function CustomerDetailView({
   const idVerified = detail?.idVerified ?? customer.idVerified;
   const licenseVerified = detail?.licenseVerified ?? customer.licenseVerified;
 
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-500';
-  const textTertiary = isDarkMode ? 'text-gray-500' : 'text-gray-400';
-  const borderColor = isDarkMode ? 'border-neutral-700' : 'border-gray-200';
-  const cardBg = isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200';
-  const rowHover = isDarkMode ? 'hover:bg-neutral-800/60' : 'hover:bg-blue-50/30';
+  const textPrimary = 'text-foreground';
+  const textSecondary = 'text-muted-foreground';
+  const textTertiary = 'text-muted-foreground';
+  const borderColor = 'border-border';
+  const cardBg = 'rounded-lg border border-border bg-card';
+  const rowHover = 'hover:bg-muted/60';
   const thClass = `text-left text-xs uppercase tracking-wider font-semibold px-3 py-2 ${textTertiary}`;
   const tdClass = `px-3 py-2 text-xs`;
 
@@ -447,62 +447,36 @@ export function CustomerDetailView({
     }
   };
 
-  const StatusPill = ({ status }: { status: string }) => {
-    const s: Record<string, string> = {
-      'Active': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-      'Under Review': 'bg-amber-100 text-amber-700 border-amber-200',
-      'Suspended': 'bg-red-100 text-red-700 border-red-200',
-      'Blocked': 'bg-gray-200 text-gray-700 border-gray-300',
-    };
-    return (
-      <span
-        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
-          s[status] || 'bg-gray-100 text-gray-600 border-gray-200'
-        }`}
-      >
-        {status}
-      </span>
-    );
+  const customerStatusTone = (status: string): StatusTone => {
+    if (status === 'Active') return 'success';
+    if (status === 'Under Review') return 'warning';
+    if (status === 'Suspended') return 'critical';
+    return 'neutral';
   };
 
-  const RiskPill = ({ level }: { level: string }) => {
-    // V4.6.95 — neutral 'Not Assessed' state replaces the previous fake
-    // "Low Risk" default. No green pill unless an actual assessment was made.
-    const s: Record<string, string> = {
-      'Not Assessed': 'bg-gray-100 text-gray-600 border-gray-200',
-      'Low Risk': 'bg-green-50 text-green-700 border-green-200',
-      'Medium Risk': 'bg-amber-50 text-amber-700 border-amber-200',
-      'High Risk': 'bg-red-50 text-red-700 border-red-200',
-    };
-    return (
-      <span
-        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
-          s[level] || 'bg-gray-100 text-gray-600 border-gray-200'
-        }`}
-      >
-        {level}
-      </span>
-    );
+  const customerRiskTone = (level: string): StatusTone => {
+    if (level === 'Not Assessed') return 'noData';
+    if (level === 'Low Risk') return 'success';
+    if (level === 'Medium Risk') return 'warning';
+    return 'critical';
   };
 
-  const BookingStatusPill = ({ status }: { status: string }) => {
-    const s: Record<string, string> = {
-      'Completed': 'bg-blue-100 text-blue-700',
-      'Active': 'bg-emerald-100 text-emerald-700',
-      'Confirmed': 'bg-sky-100 text-sky-700',
-      'Pending': 'bg-amber-100 text-amber-700',
-      'Cancelled': 'bg-gray-200 text-gray-600',
-    };
-    return (
-      <span
-        className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold ${
-          s[status] || 'bg-gray-100 text-gray-600'
-        }`}
-      >
-        {status}
-      </span>
-    );
+  const bookingStatusTone = (status: string): StatusTone => {
+    if (status === 'Completed') return 'info';
+    if (status === 'Active') return 'success';
+    if (status === 'Confirmed') return 'info';
+    if (status === 'Pending') return 'warning';
+    return 'neutral';
   };
+
+  const customerAvatarTone =
+    customer.status === 'Active'
+      ? 'sq-tone-brand'
+      : customer.status === 'Under Review'
+        ? 'sq-tone-warning'
+        : customer.status === 'Suspended'
+          ? 'sq-tone-critical'
+          : 'sq-tone-neutral';
 
   const tabs: { key: DetailTab; label: string }[] = [
     { key: 'overview', label: 'Overview' },
@@ -516,109 +490,82 @@ export function CustomerDetailView({
 
   return (
     <div className="space-y-5">
-      {/* Header with Back Button */}
-      <div className="flex items-center gap-3 mb-3">
-        <button
-          onClick={onBack}
-          className={`p-3 rounded-lg transition-all duration-200 ${
-            isDarkMode
-              ? 'hover:bg-neutral-800 text-gray-400 hover:text-white'
-              : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'
-          }`}
-        >
-          <Icon name="arrow-left" className="w-5 h-5" />
-        </button>
-        <div className="flex items-center gap-3">
-          <div
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
-              isDarkMode ? 'bg-neutral-800/60' : 'bg-gray-100/80'
-            }`}
-          >
-            <Icon name="hash" className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-            <span
-              className={`text-xs font-mono font-semibold ${
-                isDarkMode ? 'text-gray-300' : 'text-gray-700'
-              }`}
+      <PageHeader
+        eyebrow={(
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onBack}
+              className="p-1.5 rounded-lg transition-all hover:bg-muted text-muted-foreground hover:text-foreground"
             >
-              CID-{shortId}
+              <Icon name="arrow-left" className="w-4 h-4" />
+            </button>
+            <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-muted/60">
+              <Icon name="hash" className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs font-mono font-semibold text-foreground">CID-{shortId}</span>
             </span>
           </div>
-          <h1 className={`text-lg font-bold ${textPrimary}`}>Customer Details</h1>
-          <span
-            className={`text-xs px-3 py-1.5 rounded-full font-semibold flex items-center gap-1.5 ${
-              customer.status === 'Active'
-                ? 'bg-green-100 text-green-700'
-                : customer.status === 'Suspended' || customer.status === 'Blocked'
-                ? 'bg-red-100 text-red-700'
-                : 'bg-amber-100 text-amber-700'
-            }`}
-          >
-            {customer.status === 'Active' && (
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-            )}
-            {customer.status === 'Suspended' && <Icon name="ban" className="w-5 h-5" />}
-            {customer.status === 'Blocked' && <Icon name="x-circle" className="w-5 h-5" />}
-            {customer.status === 'Under Review' && <Icon name="clock" className="w-5 h-5" />}
+        )}
+        title="Customer Details"
+        status={(
+          <StatusChip tone={customerStatusTone(customer.status)} dot>
             {customer.status}
-          </span>
-        </div>
-        <div className="ml-auto flex items-center gap-2.5">
-          {customer.status === 'Active' ? (
-            <button
-              onClick={() => changeStatus('Suspended')}
-              disabled={statusSaving}
-              className={`px-3 py-2 rounded-lg text-white text-xs font-semibold transition-all shadow-sm ${
-                statusSaving ? 'bg-red-300 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'
-              }`}
-            >
-              {statusSaving ? 'Speichert…' : 'Suspend Customer'}
-            </button>
-          ) : customer.status === 'Suspended' || customer.status === 'Blocked' ? (
-            <button
-              onClick={() => changeStatus('Active')}
-              disabled={statusSaving}
-              className={`px-3 py-2 rounded-lg text-white text-xs font-semibold transition-all shadow-sm ${
-                statusSaving ? 'bg-green-300 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'
-              }`}
-            >
-              {statusSaving ? 'Speichert…' : 'Reactivate'}
-            </button>
-          ) : (
-            <button
-              onClick={() => changeStatus('Active')}
-              disabled={statusSaving}
-              className={`px-3 py-2 rounded-lg text-white text-xs font-semibold transition-all shadow-sm ${
-                statusSaving ? 'bg-amber-300 cursor-not-allowed' : 'bg-amber-500 hover:bg-amber-600'
-              }`}
-            >
-              {statusSaving ? 'Speichert…' : 'Complete Review'}
-            </button>
-          )}
-          {customer.phone && (
-            <a
-              href={`tel:${customer.phone.replace(/\s/g, '')}`}
-              className="px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold transition-all shadow-sm flex items-center gap-2 no-underline"
-            >
-              <Icon name="phone" className="w-3.5 h-3.5" />
-              Contact
-            </a>
-          )}
-        </div>
-      </div>
+          </StatusChip>
+        )}
+        actions={(
+          <>
+            {customer.status === 'Active' ? (
+              <button
+                type="button"
+                onClick={() => changeStatus('Suspended')}
+                disabled={statusSaving}
+                className={`sq-press px-3 py-2 rounded-xl text-[10px] font-semibold transition-all sq-tone-critical ${
+                  statusSaving ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
+                }`}
+              >
+                {statusSaving ? 'Speichert…' : 'Suspend Customer'}
+              </button>
+            ) : customer.status === 'Suspended' || customer.status === 'Blocked' ? (
+              <button
+                type="button"
+                onClick={() => changeStatus('Active')}
+                disabled={statusSaving}
+                className={`sq-press px-3 py-2 rounded-xl text-[10px] font-semibold transition-all sq-tone-success ${
+                  statusSaving ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
+                }`}
+              >
+                {statusSaving ? 'Speichert…' : 'Reactivate'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => changeStatus('Active')}
+                disabled={statusSaving}
+                className={`sq-press px-3 py-2 rounded-xl text-[10px] font-semibold transition-all sq-tone-warning ${
+                  statusSaving ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
+                }`}
+              >
+                {statusSaving ? 'Speichert…' : 'Complete Review'}
+              </button>
+            )}
+            {customer.phone && (
+              <a
+                href={`tel:${customer.phone.replace(/\s/g, '')}`}
+                className="sq-press px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-semibold text-foreground transition-all hover:bg-muted flex items-center gap-2 no-underline"
+              >
+                <Icon name="phone" className="w-3.5 h-3.5 text-[color:var(--brand)]" />
+                Contact
+              </a>
+            )}
+          </>
+        )}
+      />
 
       {/* Customer Identity */}
-      <div className={`rounded-lg border p-4 ${cardBg}`}>
+      <div className={cardBg + ' p-4'}>
         <div className="flex items-center gap-3 mb-3">
           <div
-            className={`w-14 h-14 rounded-lg flex items-center justify-center text-xs font-bold text-white ${
-              customer.status === 'Active'
-                ? 'bg-gradient-to-br from-blue-500 to-blue-600'
-                : customer.status === 'Under Review'
-                ? 'bg-gradient-to-br from-amber-500 to-amber-600'
-                : customer.status === 'Suspended'
-                ? 'bg-gradient-to-br from-red-500 to-red-600'
-                : 'bg-gradient-to-br from-gray-500 to-gray-600'
-            }`}
+            className={`w-14 h-14 rounded-lg flex items-center justify-center text-xs font-bold ${customerAvatarTone}`}
           >
             {customer.name
               .split(' ')
@@ -634,21 +581,21 @@ export function CustomerDetailView({
                 <span className={`text-xs ${textSecondary}`}>({customer.name})</span>
               )}
               {idVerified && licenseVerified ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200">
-                  <Icon name="check-circle" className="w-3 h-3" /> Verified
-                </span>
+                <StatusChip tone="success" icon={<Icon name="check-circle" className="w-3 h-3" />}>
+                  Verified
+                </StatusChip>
               ) : (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">
-                  <Icon name="clock" className="w-3 h-3" /> Unverified
-                </span>
+                <StatusChip tone="warning" icon={<Icon name="clock" className="w-3 h-3" />}>
+                  Unverified
+                </StatusChip>
               )}
             </div>
             <div className="flex items-center gap-2.5 mt-1">
               <span className={`text-xs font-mono ${textSecondary}`}>CID-{shortId}</span>
               <span className={textTertiary}>·</span>
-              <RiskPill level={customer.riskLevel} />
+              <StatusChip tone={customerRiskTone(customer.riskLevel)}>{customer.riskLevel}</StatusChip>
               <span className={textTertiary}>·</span>
-              <StatusPill status={customer.status} />
+              <StatusChip tone={customerStatusTone(customer.status)}>{customer.status}</StatusChip>
             </div>
           </div>
         </div>
@@ -661,12 +608,8 @@ export function CustomerDetailView({
               onClick={() => setActiveTab(tab.key)}
               className={`px-3 py-2 text-xs font-medium rounded-lg transition-all ${
                 activeTab === tab.key
-                  ? isDarkMode
-                    ? 'bg-neutral-800 text-white shadow-sm'
-                    : 'bg-white text-gray-900 shadow-sm border border-gray-200'
-                  : isDarkMode
-                  ? 'text-gray-400 hover:text-gray-200 hover:bg-neutral-800/50'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100/60'
+                  ? 'bg-card text-foreground shadow-sm border border-border'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
               }`}
             >
               {tab.label}
@@ -839,7 +782,7 @@ export function CustomerDetailView({
                           r="28"
                           fill="none"
                           strokeWidth="5"
-                          className={isDarkMode ? 'stroke-neutral-700' : 'stroke-gray-200'}
+                          className="stroke-border"
                         />
                         {combinedScore != null && (
                           <circle
@@ -888,9 +831,7 @@ export function CustomerDetailView({
                     </div>
                   </div>
                   <div
-                    className={`p-3 rounded-lg text-center ${
-                      isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50'
-                    }`}
+                    className="p-3 rounded-lg text-center bg-muted/50"
                   >
                     {drivingAgg.analysisCount === 0 ? (
                       <span className={`text-[11px] ${textTertiary}`}>
@@ -942,9 +883,7 @@ export function CustomerDetailView({
                       <table className="w-full">
                         <thead>
                           <tr
-                            className={`border-b ${borderColor} ${
-                              isDarkMode ? 'bg-neutral-800/30' : 'bg-gray-50/50'
-                            }`}
+                            className={`border-b ${borderColor} bg-muted/30`}
                           >
                             <th className={thClass}>Date</th>
                             <th className={thClass}>Type</th>
@@ -953,9 +892,7 @@ export function CustomerDetailView({
                           </tr>
                         </thead>
                         <tbody
-                          className={`divide-y ${
-                            isDarkMode ? 'divide-neutral-700/30' : 'divide-gray-100'
-                          }`}
+                          className="divide-y divide-border/60"
                         >
                           {fines.slice(0, 3).map((f: any) => (
                             <tr key={f.id}>
@@ -1082,9 +1019,7 @@ export function CustomerDetailView({
                 <table className="w-full">
                   <thead>
                     <tr
-                      className={`border-b ${borderColor} ${
-                        isDarkMode ? 'bg-neutral-800/30' : 'bg-gray-50/50'
-                      }`}
+                        className={`border-b ${borderColor} bg-muted/30`}
                     >
                       <th className={thClass}>Booking ID</th>
                       <th className={thClass}>Vehicle</th>
@@ -1096,7 +1031,7 @@ export function CustomerDetailView({
                     </tr>
                   </thead>
                   <tbody
-                    className={`divide-y ${isDarkMode ? 'divide-neutral-800' : 'divide-gray-100'}`}
+                    className="divide-y divide-border"
                   >
                     {bookings.map((b) => {
                       const statusLabel = bookingStatusLabel(b.status);
@@ -1132,7 +1067,7 @@ export function CustomerDetailView({
                           </td>
                           <td className={`${tdClass} ${textSecondary}`}>{durationLabel}</td>
                           <td className={tdClass}>
-                            <BookingStatusPill status={statusLabel} />
+                            <StatusChip tone={bookingStatusTone(statusLabel)}>{statusLabel}</StatusChip>
                           </td>
                           <td className={`${tdClass} font-semibold ${textPrimary}`}>
                             {priceCents > 0
@@ -1185,7 +1120,7 @@ export function CustomerDetailView({
                           r="42"
                           fill="none"
                           strokeWidth="6"
-                          className={isDarkMode ? 'stroke-neutral-700' : 'stroke-gray-200'}
+                          className="stroke-border"
                         />
                         {combinedScore != null && (
                           <circle
@@ -1233,29 +1168,16 @@ export function CustomerDetailView({
                           : ''}
                       </p>
                       {!hasEnoughData && (
-                        <div
-                          className={`inline-flex items-center gap-1.5 mb-3 px-2 py-0.5 rounded-md text-[11px] font-medium ${
-                            isDarkMode
-                              ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30'
-                              : 'bg-amber-50 text-amber-700 border border-amber-200'
-                          }`}
-                        >
-                          <Icon name="alert-triangle" className="w-3 h-3" />
+                        <StatusChip tone="warning" icon={<Icon name="alert-triangle" className="w-3 h-3" />} className="mb-3">
                           Not enough scored trip data
-                        </div>
+                        </StatusChip>
                       )}
                       {hasEnoughData && dataConfidence && (
-                        <div
-                          className={`inline-flex items-center gap-1.5 mb-3 px-2 py-0.5 rounded-md text-[11px] font-medium ${
-                            isDarkMode
-                              ? 'bg-neutral-800 text-gray-300 border border-neutral-700'
-                              : 'bg-gray-50 text-gray-600 border border-gray-200'
-                          }`}
-                        >
+                        <StatusChip tone="neutral" className="mb-3">
                           Data confidence:{' '}
                           {dataConfidence.charAt(0).toUpperCase() +
                             dataConfidence.slice(1)}
-                        </div>
+                        </StatusChip>
                       )}
                       <div className="grid grid-cols-3 gap-3">
                         {[
@@ -1283,9 +1205,7 @@ export function CustomerDetailView({
                         ].map((item) => (
                           <div
                             key={item.label}
-                            className={`p-2.5 rounded-lg ${
-                              isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50'
-                            }`}
+                            className="p-2.5 rounded-lg bg-muted/50"
                           >
                             <span
                               className={`text-xs uppercase tracking-wider ${textTertiary}`}
@@ -1333,13 +1253,7 @@ export function CustomerDetailView({
                   </div>
                 </div>
 
-                <div
-                  className={`rounded-lg border p-3 text-xs flex items-center gap-2 ${
-                    isDarkMode
-                      ? 'bg-blue-900/15 border-blue-500/30 text-blue-300'
-                      : 'bg-blue-50/60 border-blue-200/60 text-blue-700'
-                  }`}
-                >
+                <div className="rounded-lg border border-border p-3 text-xs flex items-center gap-2 sq-tone-info">
                   <Icon name="info" className="w-4 h-4 shrink-0" />
                   <span>
                     Für Event-Breakdown pro Trip / Vehicle öffnen Sie die Rental Driving
@@ -1362,9 +1276,7 @@ export function CustomerDetailView({
                   <table className="w-full">
                     <thead>
                       <tr
-                        className={`border-b ${borderColor} ${
-                          isDarkMode ? 'bg-neutral-800/30' : 'bg-gray-50/50'
-                        }`}
+                        className={`border-b ${borderColor} bg-muted/30`}
                       >
                         <th className={thClass}>Title</th>
                         <th className={thClass}>Date</th>
@@ -1375,9 +1287,7 @@ export function CustomerDetailView({
                       </tr>
                     </thead>
                     <tbody
-                      className={`divide-y ${
-                        isDarkMode ? 'divide-neutral-800' : 'divide-gray-100'
-                      }`}
+                        className="divide-y divide-border"
                     >
                       {fines.map((f: any) => (
                         <tr key={f.id} className={`transition-colors ${rowHover}`}>
@@ -1397,15 +1307,21 @@ export function CustomerDetailView({
                             {formatCurrencyCents(f.amountCents, f.currency)}
                           </td>
                           <td className={tdClass}>
-                            <BookingStatusPill
-                              status={
+                            <StatusChip
+                              tone={bookingStatusTone(
                                 f.status === 'RESOLVED' || f.status === 'CLOSED'
                                   ? 'Completed'
                                   : f.status === 'MATCHED'
+                                    ? 'Active'
+                                    : 'Pending',
+                              )}
+                            >
+                              {f.status === 'RESOLVED' || f.status === 'CLOSED'
+                                ? 'Completed'
+                                : f.status === 'MATCHED'
                                   ? 'Active'
-                                  : 'Pending'
-                              }
-                            />
+                                  : 'Pending'}
+                            </StatusChip>
                           </td>
                         </tr>
                       ))}
@@ -1451,13 +1367,7 @@ export function CustomerDetailView({
             {/* KYC Status */}
             <div
               className={`flex items-center gap-3 p-4 rounded-lg border ${
-                idVerified && licenseVerified
-                  ? isDarkMode
-                    ? 'bg-green-900/20 border-green-700/30'
-                    : 'bg-green-50 border-green-200/60'
-                  : isDarkMode
-                  ? 'bg-amber-900/20 border-amber-700/30'
-                  : 'bg-amber-50 border-amber-200/60'
+                idVerified && licenseVerified ? 'sq-tone-success border-current/30' : 'sq-tone-warning border-current/30'
               }`}
             >
               {idVerified && licenseVerified ? (
@@ -1502,7 +1412,6 @@ export function CustomerDetailView({
                       label={doc.label}
                       slot={doc.slot}
                       orgId={orgId}
-                      isDarkMode={isDarkMode}
                       url={doc.url}
                       onUploaded={(url) => persistDocument(doc.slot, url)}
                       onCleared={() => persistDocument(doc.slot, null)}
@@ -1520,9 +1429,7 @@ export function CustomerDetailView({
               <table className="w-full">
                 <thead>
                   <tr
-                    className={`border-b ${borderColor} ${
-                      isDarkMode ? 'bg-neutral-800/30' : 'bg-gray-50/50'
-                    }`}
+                        className={`border-b ${borderColor} bg-muted/30`}
                   >
                     <th className={thClass}>Document</th>
                     <th className={thClass}>Type</th>
@@ -1531,7 +1438,7 @@ export function CustomerDetailView({
                   </tr>
                 </thead>
                 <tbody
-                  className={`divide-y ${isDarkMode ? 'divide-neutral-800' : 'divide-gray-100'}`}
+                  className="divide-y divide-border"
                 >
                   {kycDocs.map((doc) => (
                     <tr key={doc.slot} className={`transition-colors ${rowHover}`}>
@@ -1600,9 +1507,7 @@ export function CustomerDetailView({
                   <table className="w-full">
                     <thead>
                       <tr
-                        className={`border-b ${borderColor} ${
-                          isDarkMode ? 'bg-neutral-800/30' : 'bg-gray-50/50'
-                        }`}
+                        className={`border-b ${borderColor} bg-muted/30`}
                       >
                         <th className={thClass}>Nr.</th>
                         <th className={thClass}>Date</th>
@@ -1613,9 +1518,7 @@ export function CustomerDetailView({
                       </tr>
                     </thead>
                     <tbody
-                      className={`divide-y ${
-                        isDarkMode ? 'divide-neutral-800' : 'divide-gray-100'
-                      }`}
+                        className="divide-y divide-border"
                     >
                       {invoices.map((inv: any) => (
                         <tr key={inv.id} className={`transition-colors ${rowHover}`}>
@@ -1639,15 +1542,21 @@ export function CustomerDetailView({
                             {formatCurrencyCents(inv.totalCents, inv.currency)}
                           </td>
                           <td className={tdClass}>
-                            <BookingStatusPill
-                              status={
+                            <StatusChip
+                              tone={bookingStatusTone(
                                 inv.status === 'PAID'
                                   ? 'Completed'
                                   : inv.status === 'OVERDUE'
+                                    ? 'Pending'
+                                    : 'Active',
+                              )}
+                            >
+                              {inv.status === 'PAID'
+                                ? 'Completed'
+                                : inv.status === 'OVERDUE'
                                   ? 'Pending'
-                                  : 'Active'
-                              }
-                            />
+                                  : 'Active'}
+                            </StatusChip>
                             {inv.status === 'OVERDUE' && (
                               <span className="ml-1 text-[10px] text-red-500 font-semibold">
                                 Overdue

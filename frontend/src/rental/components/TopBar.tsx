@@ -5,7 +5,9 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { clearAuth, getStoredUser } from '../../lib/auth';
 import { VehicleData } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
+import { useRentalOrg } from '../RentalContext';
 import { useLanguage, type Locale } from '../i18n/LanguageContext';
+import { api } from '../../lib/api';
 
 // V4.6.86 — flags replaced with ISO-2 code pills (anti-emoji, per design direction).
 const languages = [
@@ -108,6 +110,7 @@ const settingsTabKeys: Record<SettingsTab, TranslationKey> = {
 export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', settingsTab, selectedVehicle, activeBookingRef, detailCustomerId, onViewChange, onVehicleSelect, onSettingsTabChange, onFinanceTabChange, onTasksTabChange }: TopBarProps) {
   const { locale, setLocale, t } = useLanguage();
   const { fleetVehicles } = useFleetVehicles();
+  const { orgId } = useRentalOrg();
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(() => languages.find(l => l.code === locale) || languages[0]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -135,39 +138,43 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
     ? (currentView as ViewType)
     : 'dashboard';
 
-  // Mock searchable data
-  const mockCustomers = [
-    { id: 'c1', name: 'Alexander Schmidt', email: 'a.schmidt@email.de', license: 'B-AS-1234' },
-    { id: 'c2', name: 'Maria Weber', email: 'm.weber@email.de', license: 'M-MW-5678' },
-    { id: 'c3', name: 'Thomas Müller', email: 't.mueller@email.de', license: 'HH-TM-9012' },
-    { id: 'c4', name: 'Sophie Fischer', email: 's.fischer@email.de', license: 'K-SF-3456' },
-    { id: 'c5', name: 'Lukas Becker', email: 'l.becker@email.de', license: 'S-LB-7890' },
-  ];
+  const [searchCustomers, setSearchCustomers] = useState<any[]>([]);
+  const [searchBookings, setSearchBookings] = useState<any[]>([]);
+  const [searchInvoices, setSearchInvoices] = useState<any[]>([]);
+  const [searchTasks, setSearchTasks] = useState<any[]>([]);
+  const [searchFines, setSearchFines] = useState<any[]>([]);
 
-  const mockBookings = [
-    { id: 'BK-2026-001', customer: 'Alexander Schmidt', vehicle: 'Mercedes AMG GT', status: 'Active' },
-    { id: 'BK-2026-002', customer: 'Maria Weber', vehicle: 'VW Touareg', status: 'Reserved' },
-    { id: 'BK-2026-003', customer: 'Thomas Müller', vehicle: 'Tesla Model S', status: 'Completed' },
-    { id: 'BK-2026-004', customer: 'Sophie Fischer', vehicle: 'Hyundai Tucson', status: 'Active' },
-  ];
-
-  const mockInvoices = [
-    { id: 'INV-2026-0041', customer: 'Alexander Schmidt', amount: '€1,240.00', status: 'Paid' },
-    { id: 'INV-2026-0042', customer: 'Maria Weber', amount: '€890.50', status: 'Open' },
-    { id: 'INV-2026-0043', customer: 'Thomas Müller', amount: '€2,150.00', status: 'Overdue' },
-  ];
-
-  const mockTasks = [
-    { id: 'TSK-001', title: 'Oil Change — Mercedes AMG GT', priority: 'High', status: 'Open' },
-    { id: 'TSK-002', title: 'Tire Rotation — VW Touareg', priority: 'Medium', status: 'In Progress' },
-    { id: 'TSK-003', title: 'Interior Cleaning — Tesla Model S', priority: 'Low', status: 'Open' },
-    { id: 'TSK-004', title: 'Brake Inspection — Hyundai Tucson', priority: 'High', status: 'Overdue' },
-  ];
-
-  const mockFines = [
-    { id: 'FINE-001', vehicle: 'Mercedes AMG GT', amount: '€35.00', reason: 'Parking violation' },
-    { id: 'FINE-002', vehicle: 'VW Touareg', amount: '€120.00', reason: 'Speed limit exceeded' },
-  ];
+  useEffect(() => {
+    if (!orgId || searchQuery.trim().length < 2) {
+      setSearchCustomers([]);
+      setSearchBookings([]);
+      setSearchInvoices([]);
+      setSearchTasks([]);
+      setSearchFines([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      Promise.all([
+        (api.customers.list as (id: string) => Promise<any>)(orgId).then((r) => (Array.isArray(r) ? r : r?.data ?? [])).catch(() => []),
+        api.bookings.list(orgId).catch(() => []),
+        api.invoices.list(orgId).catch(() => []),
+        api.tasks.list(orgId).catch(() => []),
+        api.fines.list(orgId).catch(() => []),
+      ]).then(([customers, bookings, invoices, tasks, fines]) => {
+        if (cancelled) return;
+        setSearchCustomers(Array.isArray(customers) ? customers : []);
+        setSearchBookings(Array.isArray(bookings) ? bookings : []);
+        setSearchInvoices(Array.isArray(invoices) ? invoices : []);
+        setSearchTasks(Array.isArray(tasks) ? tasks : []);
+        setSearchFines(Array.isArray(fines) ? fines : []);
+      });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [searchQuery, orgId]);
 
   const navigationItems = [
     { view: 'dashboard' as ViewType, label: 'Dashboard', icon: Home, category: 'Operations' },
@@ -198,38 +205,60 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
       }
     });
 
-    // Customers
-    mockCustomers.forEach(c => {
-      if (c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.license.toLowerCase().includes(q)) {
-        results.push({ type: 'customer', id: c.id, title: c.name, subtitle: `${c.email} · ${c.license}`, category: 'Customers' });
+    // Customers (org-scoped API, client-filtered)
+    searchCustomers.forEach(c => {
+      const name = c.name ?? `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim();
+      const email = c.email ?? '';
+      const license = c.licenseNumber ?? c.license ?? '';
+      const haystack = [name, email, license].join(' ').toLowerCase();
+      if (haystack.includes(q)) {
+        results.push({ type: 'customer', id: c.id, title: name || email || c.id, subtitle: [email, license].filter(Boolean).join(' · '), category: 'Customers' });
       }
     });
 
     // Bookings
-    mockBookings.forEach(b => {
-      if (b.id.toLowerCase().includes(q) || b.customer.toLowerCase().includes(q) || b.vehicle.toLowerCase().includes(q)) {
-        results.push({ type: 'booking', id: b.id, title: b.id, subtitle: `${b.customer} · ${b.vehicle} · ${b.status}`, category: 'Bookings' });
+    searchBookings.forEach(b => {
+      const ref = b.bookingNumber ?? b.reference ?? b.id ?? '';
+      const customer = b.customerName ?? b.customer ?? '';
+      const vehicle = b.vehicleName ?? b.vehicle ?? '';
+      const status = b.status ?? '';
+      const haystack = [ref, customer, vehicle, status].join(' ').toLowerCase();
+      if (haystack.includes(q)) {
+        results.push({ type: 'booking', id: b.id, title: String(ref), subtitle: [customer, vehicle, status].filter(Boolean).join(' · '), category: 'Bookings' });
       }
     });
 
     // Invoices
-    mockInvoices.forEach(inv => {
-      if (inv.id.toLowerCase().includes(q) || inv.customer.toLowerCase().includes(q) || inv.amount.toLowerCase().includes(q)) {
-        results.push({ type: 'invoice', id: inv.id, title: inv.id, subtitle: `${inv.customer} · ${inv.amount} · ${inv.status}`, category: 'Invoices' });
+    searchInvoices.forEach(inv => {
+      const ref = inv.invoiceNumber != null ? `#${inv.invoiceNumber}` : inv.id ?? '';
+      const customer = inv.customerName ?? inv.customer ?? '';
+      const amount = inv.totalCents != null ? `€${(inv.totalCents / 100).toFixed(2)}` : inv.amount ?? '';
+      const status = inv.status ?? '';
+      const haystack = [String(ref), customer, amount, status].join(' ').toLowerCase();
+      if (haystack.includes(q)) {
+        results.push({ type: 'invoice', id: inv.id, title: String(ref), subtitle: [customer, amount, status].filter(Boolean).join(' · '), category: 'Invoices' });
       }
     });
 
     // Tasks
-    mockTasks.forEach(t => {
-      if (t.title.toLowerCase().includes(q) || t.id.toLowerCase().includes(q)) {
-        results.push({ type: 'task', id: t.id, title: t.title, subtitle: `${t.priority} · ${t.status}`, category: 'Tasks' });
+    searchTasks.forEach(t => {
+      const title = t.title ?? '';
+      const priority = t.priority ?? '';
+      const status = t.status ?? '';
+      const haystack = [title, t.id, priority, status].join(' ').toLowerCase();
+      if (haystack.includes(q)) {
+        results.push({ type: 'task', id: t.id, title, subtitle: [priority, status].filter(Boolean).join(' · '), category: 'Tasks' });
       }
     });
 
     // Fines
-    mockFines.forEach(f => {
-      if (f.vehicle.toLowerCase().includes(q) || f.id.toLowerCase().includes(q) || f.reason.toLowerCase().includes(q)) {
-        results.push({ type: 'fine', id: f.id, title: f.reason, subtitle: `${f.vehicle} · ${f.amount}`, category: 'Fines' });
+    searchFines.forEach(f => {
+      const reason = f.title ?? f.reason ?? f.offenseType ?? 'Fine';
+      const vehicle = f.vehicleLabel ?? f.vehicleId ?? '';
+      const amount = f.amountCents != null ? `€${(f.amountCents / 100).toFixed(2)}` : '';
+      const haystack = [reason, vehicle, f.id].join(' ').toLowerCase();
+      if (haystack.includes(q)) {
+        results.push({ type: 'fine', id: f.id, title: reason, subtitle: [vehicle, amount].filter(Boolean).join(' · '), category: 'Fines' });
       }
     });
 
@@ -241,7 +270,7 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
     });
 
     return results.slice(0, 12);
-  }, [searchQuery]);
+  }, [searchQuery, fleetVehicles, searchCustomers, searchBookings, searchInvoices, searchTasks, searchFines]);
 
   const searchResults = getSearchResults();
 
