@@ -401,6 +401,61 @@ export const TIRE_HEALTH_CONFIG = {
     maxTreadJumpMm: 2.0,
   },
 
+  // ── Canonical tread STATUS bands (mm-based, season-aware) ─────────────────
+  //
+  // These drive the honest GOOD/WATCH/WARNING/CRITICAL status surfaced to the
+  // UI, Fleet Condition, VehicleHealth and the tire alert detector. They are
+  // intentionally separate from `replaceThresholds` (which the wear MODEL uses
+  // for remaining-km / operational-replacement math) — status is about road
+  // safety, the model is about projection. Legal minimum is always CRITICAL.
+  //
+  //   GOOD     : tread >  good
+  //   WATCH    : watch <  tread <= good
+  //   WARNING  : warning(=legal 1.6) < tread <= watch
+  //   CRITICAL : tread <= legalMinTreadMm (1.6)
+  treadStatusBands: {
+    SUMMER: { good: 4.0, watch: 3.0 },
+    ALL_SEASON: { good: 4.0, watch: 3.0 },
+    WINTER: { good: 5.0, watch: 4.0 },
+    TRACK: { good: 4.0, watch: 3.0 },
+    OTHER: { good: 4.0, watch: 3.0 },
+  } as Record<string, { good: number; watch: number }>,
+
+  defaultTreadStatusBand: { good: 4.0, watch: 3.0 },
+
+  // ── Confidence level (HIGH/MEDIUM/LOW/UNKNOWN) day/km gates ────────────────
+  // A real measurement that is recent → HIGH; older but still plausible →
+  // MEDIUM; no recent measurement (pure estimate) → LOW; no usable data →
+  // UNKNOWN. Centralised so the read model and the detector agree.
+  confidenceLevels: {
+    highMaxMeasurementAgeDays: 30,
+    highMaxKmSinceMeasurement: 3000,
+    mediumMaxMeasurementAgeDays: 180,
+    mediumMaxKmSinceMeasurement: 15000,
+  },
+
+  // ── Measurement freshness / overdue ───────────────────────────────────────
+  measurementFreshness: {
+    overdueDays: 180,
+    staleDays: 365,
+  },
+
+  // ── Tire age (DOT) ────────────────────────────────────────────────────────
+  // Rubber ages regardless of tread. 6y → advisory, 10y → strong replace hint.
+  tireAge: {
+    warnYears: 6,
+    criticalYears: 10,
+  },
+
+  // ── Season (month-based) status ───────────────────────────────────────────
+  // Encapsulated so weather/temperature can later replace the simple month
+  // windows without touching consumers. Northern-hemisphere DACH default:
+  // winter season = Oct–Mar (O.b.i.s.O. rule territory), summer = May–Sep.
+  seasonCalendar: {
+    winterMonths: [10, 11, 12, 1, 2, 3], // 1-based months
+    summerMonths: [5, 6, 7, 8, 9],
+  },
+
   snapshotIntervalDays: 1,
   recalculationCooldownMs: 60000,
 } as const;

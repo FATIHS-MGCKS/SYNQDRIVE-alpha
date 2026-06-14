@@ -1,7 +1,8 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
 import mapboxgl from 'mapbox-gl';
-import type { FeatureCollection, Point } from 'geojson';
+import type { FeatureCollection, Feature, Point, Polygon } from 'geojson';
 import type { FleetMapFeatureProperties } from '../rental/stores/useFleetMapStore';
+import { circlePolygon, isValidCoord } from '../lib/geospatial';
 
 // Inject mapbox-gl CSS once at module load time without relying on bundler CSS pipeline
 if (typeof document !== 'undefined' && !document.getElementById('mapbox-gl-css')) {
@@ -31,9 +32,37 @@ const CLUSTER_COUNT_LAYER_ID = 'synq-fleet-cluster-count';
 const VEHICLE_LAYER_ID = 'synq-fleet-vehicles-layer';
 const VEHICLE_LABEL_LAYER_ID = 'synq-fleet-vehicle-labels';
 const SELECTED_LAYER_ID = 'synq-fleet-selected-vehicle';
+// V4.7.10 — Station geofence overlay: a polygon (radiusMeters) per station +
+// a pin marker at the station centroid. Polygon source is rendered *under*
+// the vehicle layers so vehicle pins always stay clickable on top.
+const STATIONS_GEOFENCE_SOURCE_ID = 'synq-stations-geofences';
+const STATIONS_PIN_SOURCE_ID = 'synq-stations-pins';
+const STATIONS_GEOFENCE_FILL_LAYER_ID = 'synq-stations-geofence-fill';
+const STATIONS_GEOFENCE_LINE_LAYER_ID = 'synq-stations-geofence-line';
+const STATIONS_PIN_CIRCLE_LAYER_ID = 'synq-stations-pin-circle';
+const STATIONS_PIN_LABEL_LAYER_ID = 'synq-stations-pin-label';
 const DEFAULT_CENTER: [number, number] = [9.4797, 51.3127];
 
 type FleetFeatureCollection = FeatureCollection<Point, FleetMapFeatureProperties>;
+
+interface StationLike {
+  id: string;
+  name: string;
+  latitude: number | null;
+  longitude: number | null;
+  radiusMeters: number | null;
+}
+
+interface StationGeofenceProperties {
+  stationId: string;
+  stationName: string;
+  radiusMeters: number;
+}
+
+interface StationPinProperties {
+  stationId: string;
+  stationName: string;
+}
 
 interface MapboxMapProps {
   center?: [number, number];
@@ -44,6 +73,14 @@ interface MapboxMapProps {
   className?: string;
   isDarkMode?: boolean;
   interactive?: boolean;
+  /**
+   * Optional list of stations to render as geofence circles + pin markers.
+   * Stations missing coordinates or a positive radius are silently skipped
+   * so the loader can pass the raw `api.stations.list()` result without
+   * pre-filtering. The geofence polygons are computed in metres via
+   * {@link circlePolygon} so they remain meter-accurate at every zoom level.
+   */
+  stations?: StationLike[];
 }
 
 function sanitizeCenter(center: [number, number]): [number, number] {
@@ -61,14 +98,60 @@ export function MapboxMap({
   className = '',
   isDarkMode = false,
   interactive = true,
+  stations,
 }: MapboxMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const onVehicleClickRef = useRef(onVehicleClick);
   const sourceSignatureRef = useRef('');
+  const stationsSignatureRef = useRef('');
   const [loaded, setLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const hasFittedRef = useRef(false);
+
+  // V4.7.10 — Pre-compute the station geofence + pin GeoJSON once per
+  // `stations` change. Stations without valid coords or a positive radius
+  // are dropped here so the layer-update effect stays trivial.
+  const stationsGeo = useMemo(() => {
+    const geofenceFeatures: Array<Feature<Polygon, StationGeofenceProperties>> = [];
+    const pinFeatures: Array<Feature<Point, StationPinProperties>> = [];
+    if (!stations || stations.length === 0) {
+      return {
+        geofences: { type: 'FeatureCollection' as const, features: geofenceFeatures },
+        pins: { type: 'FeatureCollection' as const, features: pinFeatures },
+        signature: '',
+      };
+    }
+    const parts: string[] = [];
+    for (const s of stations) {
+      if (!isValidCoord(s.latitude, s.longitude)) continue;
+      const lng = s.longitude as number;
+      const lat = s.latitude as number;
+      const radius = s.radiusMeters ?? 0;
+      if (radius > 0) {
+        geofenceFeatures.push({
+          type: 'Feature',
+          geometry: circlePolygon([lng, lat], radius),
+          properties: {
+            stationId: s.id,
+            stationName: s.name,
+            radiusMeters: radius,
+          },
+        });
+      }
+      pinFeatures.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [lng, lat] },
+        properties: { stationId: s.id, stationName: s.name },
+      });
+      parts.push(`${s.id}:${lng.toFixed(6)}:${lat.toFixed(6)}:${radius}`);
+    }
+    return {
+      geofences: { type: 'FeatureCollection' as const, features: geofenceFeatures },
+      pins: { type: 'FeatureCollection' as const, features: pinFeatures },
+      signature: parts.join('|'),
+    };
+  }, [stations]);
 
   useEffect(() => {
     onVehicleClickRef.current = onVehicleClick;
@@ -126,6 +209,73 @@ export function MapboxMap({
 
     map.on('load', () => {
       setLoaded(true);
+
+      // V4.7.10 — Stations layers are added *first* so they render below the
+      // vehicle cluster + pin layers. Mapbox draws layers in insertion order;
+      // this keeps geofence circles as a soft background and never lets them
+      // intercept clicks meant for vehicle markers.
+      map.addSource(STATIONS_GEOFENCE_SOURCE_ID, {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      });
+      map.addSource(STATIONS_PIN_SOURCE_ID, {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      });
+
+      map.addLayer({
+        id: STATIONS_GEOFENCE_FILL_LAYER_ID,
+        type: 'fill',
+        source: STATIONS_GEOFENCE_SOURCE_ID,
+        paint: {
+          'fill-color': isDarkMode ? '#38bdf8' : '#0ea5e9',
+          'fill-opacity': isDarkMode ? 0.1 : 0.08,
+        },
+      });
+      map.addLayer({
+        id: STATIONS_GEOFENCE_LINE_LAYER_ID,
+        type: 'line',
+        source: STATIONS_GEOFENCE_SOURCE_ID,
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': isDarkMode ? '#38bdf8' : '#0284c7',
+          'line-width': 1.5,
+          'line-opacity': isDarkMode ? 0.55 : 0.45,
+          'line-dasharray': [2, 2],
+        },
+      });
+      map.addLayer({
+        id: STATIONS_PIN_CIRCLE_LAYER_ID,
+        type: 'circle',
+        source: STATIONS_PIN_SOURCE_ID,
+        paint: {
+          'circle-radius': 5,
+          'circle-color': isDarkMode ? '#0ea5e9' : '#0284c7',
+          'circle-stroke-width': 2,
+          'circle-stroke-color': isDarkMode ? '#0f172a' : '#ffffff',
+        },
+      });
+      map.addLayer({
+        id: STATIONS_PIN_LABEL_LAYER_ID,
+        type: 'symbol',
+        source: STATIONS_PIN_SOURCE_ID,
+        // Hide labels at low zoom to avoid label collisions with the
+        // vehicle pin labels; reveal them once the user zooms into a city.
+        minzoom: 11,
+        layout: {
+          'text-field': ['coalesce', ['get', 'stationName'], ''],
+          'text-size': 10,
+          'text-offset': [0, -1.4],
+          'text-anchor': 'bottom',
+          'text-allow-overlap': false,
+          'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+        },
+        paint: {
+          'text-color': isDarkMode ? '#7dd3fc' : '#0369a1',
+          'text-halo-color': isDarkMode ? '#0f172a' : '#ffffff',
+          'text-halo-width': 1.4,
+        },
+      });
 
       map.addSource(SOURCE_ID, {
         type: 'geojson',
@@ -316,6 +466,25 @@ export function MapboxMap({
       ['==', ['get', 'vehicleId'], selectedVehicleId ?? ''],
     ]);
   }, [selectedVehicleId, loaded]);
+
+  // V4.7.10 — Push station geofence + pin GeoJSON whenever it changes.
+  // Signature-gated like the vehicle source so identical re-renders don't
+  // cause Mapbox to recompute layouts unnecessarily.
+  useEffect(() => {
+    if (!loaded || !mapRef.current) return;
+    const map = mapRef.current;
+    const geofenceSrc = map.getSource(STATIONS_GEOFENCE_SOURCE_ID) as
+      | mapboxgl.GeoJSONSource
+      | undefined;
+    const pinSrc = map.getSource(STATIONS_PIN_SOURCE_ID) as
+      | mapboxgl.GeoJSONSource
+      | undefined;
+    if (!geofenceSrc || !pinSrc) return;
+    if (stationsGeo.signature === stationsSignatureRef.current) return;
+    geofenceSrc.setData(stationsGeo.geofences);
+    pinSrc.setData(stationsGeo.pins);
+    stationsSignatureRef.current = stationsGeo.signature;
+  }, [stationsGeo, loaded]);
 
   if (!MAPBOX_TOKEN) {
     return (

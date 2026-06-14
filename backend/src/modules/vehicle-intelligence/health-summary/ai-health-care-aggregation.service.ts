@@ -241,6 +241,13 @@ export class AiHealthCareAggregationService {
       escalate('CRITICAL', `Kritischer Reifenzustand: ${criticalTireAlerts[0].message}`);
     }
 
+    // Brakes: a CRITICAL canonical condition is only produced by a real safety
+    // signal (measured critical pad, brake DTC, critical fluid, immediate
+    // replacement) — surface it as CRITICAL here too.
+    if (brakeHealth?.overallCondition === 'CRITICAL') {
+      escalate('CRITICAL', brakeHealth.recommendations?.[0] ?? 'Kritischer Bremszustand');
+    }
+
     // ── ATTENTION_NEEDED checks ─────────────────────────────────────────
     if (hmSignals?.brakeLiningPreWarning === true) {
       escalate('ATTENTION_NEEDED', 'Bremsbelag Vorwarnung aktiv');
@@ -255,11 +262,10 @@ export class AiHealthCareAggregationService {
     if (dtcSummary?.status === 'active_faults' && (dtcSummary.activeFaultCount ?? 0) > 0) {
       escalate('ATTENTION_NEEDED', `${dtcSummary.activeFaultCount} aktive${(dtcSummary.activeFaultCount ?? 0) > 1 ? '' : 'r'} Fehlercode${(dtcSummary.activeFaultCount ?? 0) > 1 ? 's' : ''} erkannt`);
     }
-    if (brakeHealth?.hasAlert === true) {
+    if (brakeHealth?.overallCondition === 'WARNING' || brakeHealth?.overallCondition === 'WATCH') {
+      escalate('ATTENTION_NEEDED', brakeHealth.recommendations?.[0] ?? 'Bremsanlage benötigt Aufmerksamkeit');
+    } else if (brakeHealth?.hasAlert === true) {
       escalate('ATTENTION_NEEDED', 'Bremsanlage benötigt Aufmerksamkeit');
-    }
-    if (brakeHealth?.pads?.healthPercent != null && brakeHealth.pads.healthPercent < 25) {
-      escalate('ATTENTION_NEEDED', `Bremsbelagverschleiß: ${Math.round(brakeHealth.pads.healthPercent)}% verbleibend`);
     }
     const tireWarningAlerts = tireHealth?.alerts?.filter(a => a.severity === 'warning') ?? [];
     if (tireWarningAlerts.length > 0) {
@@ -268,20 +274,26 @@ export class AiHealthCareAggregationService {
     if (tireHealth != null && tireHealth.overallPercent < 35) {
       escalate('ATTENTION_NEEDED', `Reifenverschleiß: ${Math.round(tireHealth.overallPercent)}% verbleibend`);
     }
-    const batterySoh = this.getUserFacingBatterySoh(batterySummary);
-    if (batterySoh.value != null && batterySoh.value < 70) {
-      escalate(
-        'ATTENTION_NEEDED',
-        batterySoh.isEstimate
-          ? `Batterie SOH niedrig (Schätzung): ~${Math.round(batterySoh.value)}%`
-          : `Batterie SOH niedrig: ${Math.round(batterySoh.value)}%`,
-      );
+    // LV is reported as "Estimated Battery Health" (behaviour-derived), never
+    // as a workshop SOH. We escalate on the aggregated LV status, not a raw %.
+    const lvStatus = batterySummary?.lv?.healthStatus ?? null;
+    if (lvStatus === 'WARNING' || lvStatus === 'CRITICAL') {
+      escalate('ATTENTION_NEEDED', 'Geschätzte 12V-Batteriegesundheit niedrig');
+    }
+    // HV traction SOH is a real SOH % — escalate when reliably below the band.
+    const hvStatus = batterySummary?.hv?.healthStatus ?? null;
+    const hvSoh = batterySummary?.hv?.sohPct ?? null;
+    if (hvSoh != null && (hvStatus === 'WARNING' || hvStatus === 'CRITICAL')) {
+      escalate('ATTENTION_NEEDED', `HV-Batteriegesundheit niedrig: ${Math.round(hvSoh)}%`);
     }
 
     // ── EXCELLENT promotion ─────────────────────────────────────────────
     if (worst === 'GOOD') {
       const hasGoodDtc = !dtcSummary || dtcSummary.status === 'clean';
-      const hasGoodBrake = !brakeHealth || (!brakeHealth.hasAlert && (brakeHealth.pads?.healthPercent ?? 100) >= 60);
+      const hasGoodBrake =
+        !brakeHealth ||
+        (!brakeHealth.hasAlert &&
+          (brakeHealth.overallCondition === 'GOOD' || brakeHealth.overallCondition === 'UNKNOWN'));
       const hasGoodTire = !tireHealth || (tireHealth.overallPercent >= 60 && tireHealth.alerts.every(a => a.severity === 'info'));
       const hasGoodHm = !hmSignals || (
         hmSignals.limpModeActive === false &&
@@ -312,32 +324,6 @@ export class AiHealthCareAggregationService {
     }
 
     return { aiStatus: worst, reasons };
-  }
-
-  private getUserFacingBatterySoh(
-    batterySummary: Awaited<ReturnType<CanonicalBatteryHealthService['getSummary']>> | null,
-  ): { value: number | null; isEstimate: boolean } {
-    if (!batterySummary?.lv) {
-      return { value: null, isEstimate: false };
-    }
-
-    if (
-      batterySummary.lv.status === 'calibrating' ||
-      batterySummary.lv.status === 'stabilizing'
-    ) {
-      return {
-        value:
-          batterySummary.lv.estimatedHealthPercent ??
-          batterySummary.lv.healthPercent ??
-          null,
-        isEstimate: true,
-      };
-    }
-
-    return {
-      value: batterySummary.lv.healthPercent ?? null,
-      isEstimate: false,
-    };
   }
 
   // ── Oil level display builder ─────────────────────────────────────────────

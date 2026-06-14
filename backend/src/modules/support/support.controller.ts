@@ -19,6 +19,7 @@ import { existsSync, mkdirSync } from 'fs';
 import { SupportService } from './support.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { StorageService } from '@shared/storage/storage.service';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { PaginationParams } from '@shared/utils/pagination';
 import { TicketStatus, TicketPriority } from '@prisma/client';
@@ -35,7 +36,10 @@ if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
 
 @Controller()
 export class SupportController {
-  constructor(private readonly supportService: SupportService) {}
+  constructor(
+    private readonly supportService: SupportService,
+    private readonly storage: StorageService,
+  ) {}
 
   // ─── Admin routes (Master Admin) ─────────────────
 
@@ -197,6 +201,7 @@ export class SupportController {
   )
   async uploadFile(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('No file uploaded');
-    return { url: `/uploads/support/${file.filename}` };
+    const url = await this.storage.finalizeUpload('support', file);
+    return { url };
   }
 }

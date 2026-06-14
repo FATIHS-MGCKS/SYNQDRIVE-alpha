@@ -1,12 +1,7 @@
+import { Activity, AlertCircle, Briefcase, Building2, Calendar, Car, Clock, CreditCard, Crown, Eye, FileText, Globe, Headphones, LayoutDashboard, ListTodo, Lock, Mail, MapPin, MessageSquare, Monitor, Phone, Shield, Smartphone, Tag, Upload, UserCog, Users, Wifi, Zap, type LucideIcon } from 'lucide-react';
+import { Icon } from './ui/Icon';
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import {
-  Search, UserPlus, Mail, Crown, Shield, UserCog, Users, Eye,
-  Edit3, Trash2, X, ChevronRight, ChevronLeft, Check, Copy, RefreshCw,
-  MapPin, Phone, Smartphone, Globe, Clock, Calendar, Key, Lock,
-  AlertCircle, CheckCircle, Monitor, Wifi, Car, Building2,
-  LayoutDashboard, FileText, BarChart3, Activity, Tag, ListTodo,
-  Briefcase, CreditCard, Headphones, MessageSquare, Zap, Upload,
-} from 'lucide-react';
+
 import { api } from '../../lib/api';
 
 // ────────────────────────────────────────────────
@@ -59,15 +54,15 @@ type WizardStep = 'role' | 'personal' | 'settings' | 'permissions' | 'account';
 // Permission module definitions
 // ────────────────────────────────────────────────
 
-const PERMISSION_MODULES = [
+type PermissionModule = { key: string; label: string; icon: LucideIcon; group: string };
+
+const PERMISSION_MODULES: PermissionModule[] = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, group: 'Operations' },
   { key: 'bookings', label: 'Bookings', icon: Calendar, group: 'Operations' },
   { key: 'fleet', label: 'Fleet', icon: Car, group: 'Operations' },
   { key: 'customers', label: 'Customers', icon: Users, group: 'Operations' },
   { key: 'stations', label: 'Stations', icon: MapPin, group: 'Operations' },
-  { key: 'analytics', label: 'Analytics', icon: BarChart3, group: 'Insights' },
   { key: 'fleet-condition', label: 'Fleet Condition', icon: Activity, group: 'Insights' },
-  { key: 'driving-analysis', label: 'Driving Analysis', icon: Activity, group: 'Insights' },
   { key: 'invoices', label: 'Invoices', icon: FileText, group: 'Finance' },
   { key: 'fines', label: 'Fines', icon: AlertCircle, group: 'Finance' },
   { key: 'price-tariffs', label: 'Pricing & Tariffs', icon: Tag, group: 'Finance' },
@@ -82,7 +77,7 @@ const PERMISSION_MODULES = [
   { key: 'data-authorization', label: 'Data Authorization Access', icon: Lock, group: 'Administration' },
   { key: 'billing', label: 'Billing & Subscription', icon: CreditCard, group: 'Administration' },
   { key: 'support', label: 'Help Center', icon: Headphones, group: 'Support' },
-] as const;
+];
 
 type PermKey = (typeof PERMISSION_MODULES)[number]['key'];
 
@@ -177,20 +172,29 @@ export function UsersRolesTab({ isDarkMode, orgId }: UsersRolesTabProps) {
   useEffect(() => { loadUsers(); loadStations(); }, [loadUsers, loadStations]);
 
   // ── Styling constants ────
-  const cardClass = `rounded-xl p-5 shadow-sm border ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`;
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-500';
-  const inputClass = `w-full px-3 py-2.5 rounded-lg border text-xs transition-all duration-200 ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20'} outline-none`;
-  const labelClass = `block text-[11px] font-semibold mb-1.5 ${textSecondary} uppercase tracking-wider`;
-  const btnPrimary = 'px-4 py-2.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20';
-  const btnSecondary = `px-4 py-2.5 rounded-lg text-xs font-semibold transition-colors border ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-700/60' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`;
-  const btnDanger = 'px-4 py-2.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 transition-colors';
+  const cardClass = 'sq-card rounded-2xl p-5 shadow-[var(--shadow-1)]';
+  const textPrimary = 'text-foreground';
+  const textSecondary = 'text-muted-foreground';
+  const inputClass = 'w-full px-3 py-2.5 rounded-xl border border-border/70 bg-card text-xs text-foreground placeholder:text-muted-foreground transition-all duration-200 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]';
+  const btnPrimary = 'px-4 py-2.5 bg-[var(--brand)] text-[var(--brand-foreground)] rounded-xl text-xs font-semibold hover:bg-[var(--brand-hover)] transition-colors shadow-[var(--shadow-2)] active:scale-[0.98]';
+  const btnSecondary = 'px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors border border-border/70 bg-card text-foreground hover:bg-muted/60';
+  const btnDanger = 'px-4 py-2.5 bg-red-600 text-white rounded-xl text-xs font-semibold hover:bg-red-700 transition-colors active:scale-[0.98]';
 
-  const roleColors: Record<string, string> = isDarkMode
-    ? { 'Org Admin': 'bg-purple-500/20 text-purple-400 border-purple-500/30', 'Sub Admin': 'bg-blue-500/20 text-blue-400 border-blue-500/30', 'Worker': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', 'Driver': 'bg-amber-500/20 text-amber-400 border-amber-500/30' }
-    : { 'Org Admin': 'bg-purple-100 text-purple-700 border-purple-200', 'Sub Admin': 'bg-blue-100 text-blue-700 border-blue-200', 'Worker': 'bg-emerald-100 text-emerald-700 border-emerald-200', 'Driver': 'bg-amber-100 text-amber-700 border-amber-200' };
+  const roleColors: Record<string, string> = {
+    'Org Admin': 'sq-tone-brand border-transparent',
+    'Sub Admin': 'sq-tone-info border-transparent',
+    Worker: 'sq-tone-success border-transparent',
+    Driver: 'sq-tone-warning border-transparent',
+  };
 
   const roleIcons: Record<string, typeof Crown> = { 'Org Admin': Crown, 'Sub Admin': Shield, 'Worker': UserCog, 'Driver': Car };
+  const roleOptions = [
+    { key: 'all', label: 'All users', shortLabel: 'Alle', description: 'Alle aktiven Memberships', icon: Users, tone: 'sq-tone-neutral' },
+    { key: 'Org Admin', label: 'Org Admin', shortLabel: 'Org Admin', description: 'Vollzugriff auf Organisation', icon: Crown, tone: 'sq-tone-brand' },
+    { key: 'Sub Admin', label: 'Sub Admin', shortLabel: 'Sub Admin', description: 'Standort- oder Bereichsleitung', icon: Shield, tone: 'sq-tone-info' },
+    { key: 'Worker', label: 'Worker', shortLabel: 'Worker', description: 'Operative Rollen mit Scope', icon: UserCog, tone: 'sq-tone-success' },
+    { key: 'Driver', label: 'Driver', shortLabel: 'Driver', description: 'Fahrerzugriff, falls vorhanden', icon: Car, tone: 'sq-tone-warning' },
+  ];
 
   const filteredUsers = useMemo(() =>
     users.filter(u => {
@@ -205,6 +209,24 @@ export function UsersRolesTab({ isDarkMode, orgId }: UsersRolesTabProps) {
     users.forEach(u => { c[u.role] = (c[u.role] || 0) + 1; });
     return c;
   }, [users]);
+  const visibleRoleOptions = roleOptions.filter(o => o.key !== 'Driver' || (roleCounts.Driver ?? 0) > 0 || roleFilter === 'Driver');
+  const activeRoleOption = visibleRoleOptions.find(o => o.key === roleFilter) ?? roleOptions[0];
+  const ActiveRoleIcon = activeRoleOption.icon;
+  const activeUserCount = useMemo(() => users.filter(u => u.status === 'Active').length, [users]);
+  const invitedUserCount = useMemo(() => users.filter(u => u.status === 'Invited').length, [users]);
+  const adminUserCount = (roleCounts['Org Admin'] ?? 0) + (roleCounts['Sub Admin'] ?? 0);
+  const scopedUserCount = useMemo(() => users.filter(u => Boolean(u.stationScope?.trim())).length, [users]);
+  const hasActiveFilters = searchTerm.trim().length > 0 || roleFilter !== 'all';
+  const clearFilters = () => {
+    setSearchTerm('');
+    setRoleFilter('all');
+  };
+  const summaryCards = [
+    { label: 'Users', value: users.length, meta: `${filteredUsers.length} shown`, icon: Users, tone: 'sq-tone-neutral', filter: 'all' },
+    { label: 'Active', value: activeUserCount, meta: `${invitedUserCount} invited`, icon: Activity, tone: activeUserCount > 0 ? 'sq-tone-success' : 'sq-tone-neutral', filter: 'all' },
+    { label: 'Admins', value: adminUserCount, meta: `${roleCounts['Org Admin'] ?? 0} org admins`, icon: Shield, tone: adminUserCount > 0 ? 'sq-tone-brand' : 'sq-tone-neutral', filter: 'Org Admin' },
+    { label: 'Station Scope', value: scopedUserCount, meta: `${stations.length} stations`, icon: MapPin, tone: scopedUserCount > 0 ? 'sq-tone-info' : 'sq-tone-neutral', filter: 'all' },
+  ];
 
   // ────────────────────────────────────────────────
   // DELETE handler
@@ -224,41 +246,118 @@ export function UsersRolesTab({ isDarkMode, orgId }: UsersRolesTabProps) {
   // RENDER
   // ────────────────────────────────────────────────
   return (
-    <div className="space-y-5 relative">
+    <div className="max-w-[1600px] mx-auto space-y-5 relative">
       {/* Toast */}
       {toast && (
         <div className={`fixed top-6 right-6 z-[100] px-4 py-3 rounded-xl text-xs font-semibold shadow-2xl flex items-center gap-2 animate-in slide-in-from-top-2 ${toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
-          {toast.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          {toast.type === 'success' ? <Icon name="check-circle" className="w-4 h-4" /> : <Icon name="alert-circle" className="w-4 h-4" />}
           {toast.message}
         </div>
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className={`text-lg font-bold tracking-tight ${textPrimary}`}>Users & Roles</h2>
-          <p className={`text-xs mt-1 ${textSecondary}`}>
-            {users.length} Benutzer · {users.filter(u => u.status === 'Active').length} aktiv
-            {stations.length > 0 && ` · ${stations.length} Standorte`}
+      <div className="min-h-8 flex items-start justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <h2 className="text-[22px] leading-tight font-semibold tracking-[-0.018em] text-foreground">Users & Roles</h2>
+          <p className="text-[13px] mt-1 text-muted-foreground">
+            Manage organization users, role scopes, station access and permission presets from one workspace.
           </p>
         </div>
         <button onClick={() => setShowWizard(true)} className={btnPrimary + ' flex items-center gap-2'}>
-          <UserPlus className="w-4 h-4" /> Benutzer erstellen
+          <Icon name="user-plus" className="w-4 h-4" /> Benutzer erstellen
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 max-w-sm">
-          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
-          <input type="text" placeholder="Suchen nach Name oder E-Mail..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className={`${inputClass} !pl-10`} />
-        </div>
-        <div className="flex gap-1.5 flex-wrap">
-          {['all', 'Org Admin', 'Sub Admin', 'Worker'].map(r => (
-            <button key={r} onClick={() => setRoleFilter(r)} className={`px-3 py-2 rounded-lg text-xs font-medium transition-all border ${roleFilter === r ? (isDarkMode ? 'bg-blue-600/20 text-blue-400 border-blue-500/30' : 'bg-blue-50 text-blue-600 border-blue-200') : (isDarkMode ? 'text-gray-400 border-neutral-700 hover:bg-neutral-800' : 'text-gray-600 border-gray-200 hover:bg-gray-50')}`}>
-              {r === 'all' ? 'Alle' : r} {roleCounts[r] !== undefined ? `(${roleCounts[r]})` : ''}
+      {/* Summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        {summaryCards.map(card => {
+          const CardIcon = card.icon;
+          const active = roleFilter === card.filter && (card.filter !== 'all' || searchTerm.trim() === '');
+          return (
+            <button
+              key={card.label}
+              type="button"
+              onClick={() => setRoleFilter(card.filter)}
+              aria-pressed={active}
+              className={`${cardClass} text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-2)] active:scale-[0.99] ${
+                active ? 'ring-1 ring-[var(--brand)]' : ''
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-[0.08em] font-semibold text-muted-foreground">{card.label}</p>
+                  <p className="mt-2 text-[22px] leading-none font-semibold tracking-[-0.02em] text-foreground tabular-nums">{card.value}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground truncate">{card.meta}</p>
+                </div>
+                <div className={`${card.tone} w-10 h-10 rounded-xl flex items-center justify-center shrink-0`}>
+                  <CardIcon className="w-5 h-5" />
+                </div>
+              </div>
             </button>
-          ))}
+          );
+        })}
+      </div>
+
+      {/* Filters */}
+      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+        <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
+          <div>
+            <p className="text-[13px] font-semibold text-foreground">Search & Role Scope</p>
+            <p className="text-[11px] text-muted-foreground">
+              Showing {filteredUsers.length} of {users.length} users · active scope: {activeRoleOption.label}
+            </p>
+          </div>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-colors text-[var(--brand)] hover:bg-[var(--brand-soft)]"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-3">
+          <div className="relative">
+            <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Suchen nach Name oder E-Mail..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className={`${inputClass} !pl-9`}
+            />
+          </div>
+          <select
+            value={roleFilter}
+            onChange={e => setRoleFilter(e.target.value)}
+            className={inputClass}
+          >
+            {visibleRoleOptions.map(option => (
+              <option key={option.key} value={option.key}>
+                {option.shortLabel} ({roleCounts[option.key] ?? 0})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="mt-3 flex items-center gap-2 flex-wrap">
+          <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold ${activeRoleOption.tone}`}>
+            <ActiveRoleIcon className="w-3 h-3" />
+            {activeRoleOption.description}
+          </span>
+          {searchTerm.trim() && (
+            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold sq-tone-info">
+              Search: {searchTerm.trim()}
+            </span>
+          )}
+          {stations.length > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold sq-tone-neutral">
+              <Icon name="map-pin" className="w-3 h-3" />
+              {stations.length} Standorte
+            </span>
+          )}
         </div>
       </div>
 
@@ -266,11 +365,11 @@ export function UsersRolesTab({ isDarkMode, orgId }: UsersRolesTabProps) {
       <div className={cardClass}>
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <RefreshCw className={`w-5 h-5 animate-spin ${textSecondary}`} />
+            <Icon name="refresh-cw" className={`w-5 h-5 animate-spin ${textSecondary}`} />
           </div>
         ) : filteredUsers.length === 0 ? (
           <div className="text-center py-12">
-            <Users className={`w-10 h-10 mx-auto mb-3 ${textSecondary} opacity-40`} />
+            <Icon name="users" className={`w-10 h-10 mx-auto mb-3 ${textSecondary} opacity-40`} />
             <p className={`text-sm font-medium ${textPrimary}`}>Keine Benutzer gefunden</p>
             <p className={`text-xs mt-1 ${textSecondary}`}>{searchTerm || roleFilter !== 'all' ? 'Versuchen Sie andere Filter.' : 'Erstellen Sie den ersten Benutzer.'}</p>
           </div>
@@ -326,7 +425,7 @@ export function UsersRolesTab({ isDarkMode, orgId }: UsersRolesTabProps) {
                       </td>
                       <td className={`px-4 py-3 text-xs ${textSecondary}`}>{formatDate(user.lastLoginAt || user.lastActive)}</td>
                       <td className="px-4 py-3 text-right">
-                        <ChevronRight className={`w-4 h-4 inline ${textSecondary} opacity-0 group-hover:opacity-100 transition-opacity`} />
+                        <Icon name="chevron-right" className={`w-4 h-4 inline ${textSecondary} opacity-0 group-hover:opacity-100 transition-opacity`} />
                       </td>
                     </tr>
                   );
@@ -385,7 +484,7 @@ export function UsersRolesTab({ isDarkMode, orgId }: UsersRolesTabProps) {
           <div className={`${cardClass} max-w-sm w-full mx-4`} onClick={e => e.stopPropagation()}>
             <div className="text-center">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Trash2 className="w-6 h-6 text-red-600" />
+                <Icon name="trash-2" className="w-6 h-6 text-red-600" />
               </div>
               <h3 className={`text-sm font-bold ${textPrimary}`}>Benutzer entfernen?</h3>
               <p className={`text-xs mt-2 ${textSecondary}`}>Der Benutzer wird aus der Organisation entfernt. Diese Aktion kann nicht rückgängig gemacht werden.</p>
@@ -510,7 +609,7 @@ function CreateUserWizard({ isDarkMode, orgId, stations, onClose, onCreated, onE
             <p className={`text-xs mt-0.5 ${textSecondary}`}>Schritt {currentIdx + 1} von {steps.length} — {stepLabels[step]}</p>
           </div>
           <button onClick={onClose} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-700 text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}>
-            <X className="w-5 h-5" />
+            <Icon name="x" className="w-5 h-5" />
           </button>
         </div>
 
@@ -519,7 +618,7 @@ function CreateUserWizard({ isDarkMode, orgId, stations, onClose, onCreated, onE
           {steps.map((s, i) => (
             <div key={s} className="flex items-center flex-1">
               <div className={`flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-bold transition-all ${i < currentIdx ? 'bg-emerald-500 text-white' : i === currentIdx ? 'bg-blue-600 text-white ring-4 ring-blue-600/20' : isDarkMode ? 'bg-neutral-800 text-gray-500 border border-neutral-700' : 'bg-gray-100 text-gray-400 border border-gray-200'}`}>
-                {i < currentIdx ? <Check className="w-3.5 h-3.5" /> : i + 1}
+                {i < currentIdx ? <Icon name="check" className="w-3.5 h-3.5" /> : i + 1}
               </div>
               {i < steps.length - 1 && (
                 <div className={`flex-1 h-0.5 mx-1 rounded ${i < currentIdx ? 'bg-emerald-500' : isDarkMode ? 'bg-neutral-700' : 'bg-gray-200'}`} />
@@ -545,7 +644,7 @@ function CreateUserWizard({ isDarkMode, orgId, stations, onClose, onCreated, onE
                   <p className={`text-sm font-bold ${textPrimary}`}>{r.label}</p>
                   <p className={`text-xs mt-0.5 ${textSecondary}`}>{r.desc}</p>
                 </div>
-                {role === r.key && <Check className={`w-5 h-5 text-${r.color}-500 mt-1`} />}
+                {role === r.key && <Icon name="check" className={`w-5 h-5 text-${r.color}-500 mt-1`} />}
               </button>
             ))}
           </div>
@@ -650,7 +749,7 @@ function CreateUserWizard({ isDarkMode, orgId, stations, onClose, onCreated, onE
             {role === 'ORG_ADMIN' ? (
               <div className={`rounded-xl p-4 ${isDarkMode ? 'bg-purple-500/10 border border-purple-500/20' : 'bg-purple-50 border border-purple-200'}`}>
                 <div className="flex items-center gap-2 mb-1">
-                  <Crown className="w-4 h-4 text-purple-500" />
+                  <Icon name="crown" className="w-4 h-4 text-purple-500" />
                   <p className={`text-xs font-bold ${textPrimary}`}>Vollzugriff</p>
                 </div>
                 <p className={`text-xs ${textSecondary}`}>Org Admins haben automatisch vollen Lese- und Schreibzugriff auf alle Module und den Field Agent App.</p>
@@ -660,7 +759,7 @@ function CreateUserWizard({ isDarkMode, orgId, stations, onClose, onCreated, onE
                 {/* Field Agent toggle */}
                 <div className={`flex items-center justify-between p-3 rounded-xl border ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700' : 'bg-gray-50 border-gray-200'}`}>
                   <div className="flex items-center gap-3">
-                    <Smartphone className={`w-4 h-4 ${fieldAgentAccess ? 'text-blue-500' : textSecondary}`} />
+                    <Icon name="smartphone" className={`w-4 h-4 ${fieldAgentAccess ? 'text-blue-500' : textSecondary}`} />
                     <div>
                       <p className={`text-xs font-semibold ${textPrimary}`}>Field Agent App Zugang</p>
                       <p className={`text-[11px] ${textSecondary}`}>Zugriff auf die mobile Field Agent App</p>
@@ -688,12 +787,12 @@ function CreateUserWizard({ isDarkMode, orgId, stations, onClose, onCreated, onE
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => setAccountMethod('password')} className={`p-4 rounded-xl border-2 text-left transition-all ${accountMethod === 'password' ? (isDarkMode ? 'border-blue-500 bg-blue-500/10' : 'border-blue-500 bg-blue-50') : isDarkMode ? 'border-neutral-700 hover:border-neutral-600' : 'border-gray-200 hover:border-gray-300'}`}>
-                <Key className={`w-5 h-5 mb-2 ${accountMethod === 'password' ? 'text-blue-500' : textSecondary}`} />
+                <Icon name="key" className={`w-5 h-5 mb-2 ${accountMethod === 'password' ? 'text-blue-500' : textSecondary}`} />
                 <p className={`text-xs font-bold ${textPrimary}`}>Einmal-Passwort</p>
                 <p className={`text-[11px] mt-0.5 ${textSecondary}`}>Generiertes Passwort, muss beim ersten Login geändert werden</p>
               </button>
               <button onClick={() => setAccountMethod('invite')} className={`p-4 rounded-xl border-2 text-left transition-all ${accountMethod === 'invite' ? (isDarkMode ? 'border-blue-500 bg-blue-500/10' : 'border-blue-500 bg-blue-50') : isDarkMode ? 'border-neutral-700 hover:border-neutral-600' : 'border-gray-200 hover:border-gray-300'}`}>
-                <Mail className={`w-5 h-5 mb-2 ${accountMethod === 'invite' ? 'text-blue-500' : textSecondary}`} />
+                <Icon name="mail" className={`w-5 h-5 mb-2 ${accountMethod === 'invite' ? 'text-blue-500' : textSecondary}`} />
                 <p className={`text-xs font-bold ${textPrimary}`}>E-Mail Einladung</p>
                 <p className={`text-[11px] mt-0.5 ${textSecondary}`}>Benutzer erhält eine Einladung per E-Mail</p>
               </button>
@@ -705,14 +804,14 @@ function CreateUserWizard({ isDarkMode, orgId, stations, onClose, onCreated, onE
                 <div className="flex items-center gap-2">
                   <code className={`flex-1 px-3 py-2.5 rounded-lg text-xs font-mono tracking-wider ${isDarkMode ? 'bg-neutral-900 text-emerald-400 border border-neutral-700' : 'bg-white text-emerald-700 border border-gray-200'}`}>{generatedPassword}</code>
                   <button onClick={() => { navigator.clipboard.writeText(generatedPassword); setCopiedPw(true); setTimeout(() => setCopiedPw(false), 2000); }} className={`p-2.5 rounded-lg transition-colors ${copiedPw ? 'bg-emerald-500 text-white' : isDarkMode ? 'bg-neutral-700 text-gray-300 hover:bg-neutral-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
-                    {copiedPw ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {copiedPw ? <Icon name="check" className="w-4 h-4" /> : <Icon name="copy" className="w-4 h-4" />}
                   </button>
                   <button onClick={() => setGeneratedPassword(generatePassword())} className={`p-2.5 rounded-lg transition-colors ${isDarkMode ? 'bg-neutral-700 text-gray-300 hover:bg-neutral-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
-                    <RefreshCw className="w-4 h-4" />
+                    <Icon name="refresh-cw" className="w-4 h-4" />
                   </button>
                 </div>
                 <p className={`text-[11px] mt-2 ${isDarkMode ? 'text-amber-400/80' : 'text-amber-600'} flex items-center gap-1`}>
-                  <AlertCircle className="w-3 h-3" /> Der Benutzer muss dieses Passwort beim ersten Login ändern.
+                  <Icon name="alert-circle" className="w-3 h-3" /> Der Benutzer muss dieses Passwort beim ersten Login ändern.
                 </p>
               </div>
             )}
@@ -748,15 +847,15 @@ function CreateUserWizard({ isDarkMode, orgId, stations, onClose, onCreated, onE
         {/* Navigation */}
         <div className="flex items-center justify-between mt-6 pt-4 border-t" style={{ borderColor: isDarkMode ? 'rgb(64 64 64 / 0.5)' : 'rgb(229 231 235 / 0.5)' }}>
           <button onClick={() => currentIdx > 0 ? setStep(steps[currentIdx - 1]) : onClose()} className={`px-4 py-2.5 rounded-lg text-xs font-semibold transition-colors border flex items-center gap-1.5 ${isDarkMode ? 'border-neutral-700 text-gray-400 hover:bg-neutral-800' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-            <ChevronLeft className="w-3.5 h-3.5" /> {currentIdx > 0 ? 'Zurück' : 'Abbrechen'}
+            <Icon name="chevron-left" className="w-3.5 h-3.5" /> {currentIdx > 0 ? 'Zurück' : 'Abbrechen'}
           </button>
           {currentIdx < steps.length - 1 ? (
             <button onClick={() => setStep(steps[currentIdx + 1])} disabled={!canNext} className="px-4 py-2.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5">
-              Weiter <ChevronRight className="w-3.5 h-3.5" />
+              Weiter <Icon name="chevron-right" className="w-3.5 h-3.5" />
             </button>
           ) : (
             <button onClick={handleSubmit} disabled={saving} className="px-5 py-2.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center gap-1.5">
-              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+              {saving ? <Icon name="refresh-cw" className="w-3.5 h-3.5 animate-spin" /> : <Icon name="check" className="w-3.5 h-3.5" />}
               Benutzer erstellen
             </button>
           )}
@@ -818,7 +917,7 @@ function PermissionMatrix({ isDarkMode, permissions, onChange, disabled }: {
 
   const CheckBox = ({ checked, onClick, accent }: { checked: boolean; onClick: () => void; accent?: boolean }) => (
     <button onClick={onClick} disabled={disabled} className={`w-5 h-5 rounded flex items-center justify-center transition-all border ${checked ? (accent ? 'bg-blue-600 border-blue-600 text-white' : 'bg-emerald-600 border-emerald-600 text-white') : isDarkMode ? 'border-neutral-600 hover:border-neutral-500 bg-neutral-800' : 'border-gray-300 hover:border-gray-400 bg-white'} ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
-      {checked && <Check className="w-3 h-3" />}
+      {checked && <Icon name="check" className="w-3 h-3" />}
     </button>
   );
 
@@ -927,20 +1026,20 @@ function UserDetailDrawer({ isDarkMode, user, orgId, stations, onClose, onEdit, 
               </div>
             </div>
             <button onClick={onClose} className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-neutral-800 text-gray-500' : 'hover:bg-gray-200 text-gray-400'}`}>
-              <X className="w-5 h-5" />
+              <Icon name="x" className="w-5 h-5" />
             </button>
           </div>
 
           {/* Actions */}
           <div className="flex gap-2">
             <button onClick={onEdit} className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors border ${isDarkMode ? 'border-neutral-700 text-gray-300 hover:bg-neutral-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
-              <Edit3 className="w-3.5 h-3.5" /> Bearbeiten
+              <Icon name="edit-3" className="w-3.5 h-3.5" /> Bearbeiten
             </button>
             <button onClick={onPasswordChange} className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors border ${isDarkMode ? 'border-neutral-700 text-gray-300 hover:bg-neutral-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
-              <Key className="w-3.5 h-3.5" /> Passwort
+              <Icon name="key" className="w-3.5 h-3.5" /> Passwort
             </button>
             <button onClick={onDelete} className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors border border-red-500/30 text-red-500 hover:bg-red-500/10`}>
-              <Trash2 className="w-3.5 h-3.5" />
+              <Icon name="trash-2" className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -1083,7 +1182,7 @@ function EditUserDrawer({ isDarkMode, user, orgId, stations, onClose, onSaved, o
           <div className="flex items-center justify-between mb-4">
             <h3 className={`text-base font-bold ${textPrimary}`}>Benutzer bearbeiten</h3>
             <button onClick={onClose} className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-neutral-800 text-gray-500' : 'hover:bg-gray-200 text-gray-400'}`}>
-              <X className="w-5 h-5" />
+              <Icon name="x" className="w-5 h-5" />
             </button>
           </div>
 
@@ -1152,13 +1251,13 @@ function EditUserDrawer({ isDarkMode, user, orgId, stations, onClose, onSaved, o
           {sectionTitle('Berechtigungen')}
           {role === 'ORG_ADMIN' ? (
             <div className={`rounded-xl p-3 ${isDarkMode ? 'bg-purple-500/10 border border-purple-500/20' : 'bg-purple-50 border border-purple-200'}`}>
-              <p className={`text-xs ${textSecondary}`}><Crown className="w-3.5 h-3.5 inline text-purple-500 mr-1" />Org Admins haben automatisch Vollzugriff.</p>
+              <p className={`text-xs ${textSecondary}`}><Icon name="crown" className="w-3.5 h-3.5 inline text-purple-500 mr-1" />Org Admins haben automatisch Vollzugriff.</p>
             </div>
           ) : (
             <>
               <div className={`flex items-center justify-between p-3 rounded-xl mb-3 border ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700' : 'bg-gray-50 border-gray-200'}`}>
                 <div className="flex items-center gap-2">
-                  <Smartphone className={`w-4 h-4 ${fieldAgentAccess ? 'text-blue-500' : textSecondary}`} />
+                  <Icon name="smartphone" className={`w-4 h-4 ${fieldAgentAccess ? 'text-blue-500' : textSecondary}`} />
                   <span className={`text-xs font-semibold ${textPrimary}`}>Field Agent App</span>
                 </div>
                 <button onClick={() => setFieldAgentAccess(!fieldAgentAccess)} className={`w-10 h-5 rounded-full transition-colors relative ${fieldAgentAccess ? 'bg-blue-600' : isDarkMode ? 'bg-neutral-700' : 'bg-gray-300'}`}>
@@ -1175,7 +1274,7 @@ function EditUserDrawer({ isDarkMode, user, orgId, stations, onClose, onSaved, o
               Abbrechen
             </button>
             <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
-              {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Speichern
+              {saving ? <Icon name="refresh-cw" className="w-3.5 h-3.5 animate-spin" /> : <Icon name="check" className="w-3.5 h-3.5" />} Speichern
             </button>
           </div>
         </div>
@@ -1234,13 +1333,13 @@ function PasswordChangeModal({ isDarkMode, orgId, userId, onClose, onSuccess, on
             <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} className={inputClass} placeholder="Passwort wiederholen" />
           </div>
           <button onClick={handleGenerate} className={`text-xs font-medium ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'} flex items-center gap-1`}>
-            <RefreshCw className="w-3 h-3" /> Sicheres Passwort generieren
+            <Icon name="refresh-cw" className="w-3 h-3" /> Sicheres Passwort generieren
           </button>
           {generated && (
             <div className={`px-3 py-2 rounded-lg text-xs font-mono ${isDarkMode ? 'bg-neutral-800 text-emerald-400' : 'bg-gray-100 text-emerald-700'}`}>{generated}</div>
           )}
           <p className={`text-[11px] ${isDarkMode ? 'text-amber-400/80' : 'text-amber-600'} flex items-center gap-1`}>
-            <AlertCircle className="w-3 h-3" /> Der Benutzer wird aufgefordert, das Passwort beim nächsten Login zu ändern.
+            <Icon name="alert-circle" className="w-3 h-3" /> Der Benutzer wird aufgefordert, das Passwort beim nächsten Login zu ändern.
           </p>
         </div>
         <div className="flex gap-3 mt-5">

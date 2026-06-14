@@ -13,6 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { VehiclesService } from './vehicles.service';
+import { VehicleExteriorImagesService } from './vehicle-exterior-images.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { VehicleOwnershipGuard } from '@shared/auth/vehicle-ownership.guard';
@@ -27,10 +28,34 @@ import {
   FuelType,
 } from '@prisma/client';
 
+type VehicleExteriorView = 'FRONT' | 'LEFT' | 'RIGHT' | 'REAR' | 'ROOF';
+
+const ALLOWED_EXTERIOR_VIEWS: ReadonlySet<VehicleExteriorView> =
+  new Set<VehicleExteriorView>([
+    'FRONT' as VehicleExteriorView,
+    'LEFT' as VehicleExteriorView,
+    'RIGHT' as VehicleExteriorView,
+    'REAR' as VehicleExteriorView,
+    'ROOF' as VehicleExteriorView,
+  ]);
+
+function parseExteriorView(value: string): VehicleExteriorView {
+  const upper = (value || '').toUpperCase() as VehicleExteriorView;
+  if (!ALLOWED_EXTERIOR_VIEWS.has(upper)) {
+    throw new BadRequestException(
+      `Unknown exterior view '${value}'. Expected one of FRONT, LEFT, RIGHT, REAR, ROOF.`,
+    );
+  }
+  return upper;
+}
+
 @Controller()
 @UseGuards(RolesGuard)
 export class VehiclesController {
-  constructor(private readonly vehiclesService: VehiclesService) {}
+  constructor(
+    private readonly vehiclesService: VehiclesService,
+    private readonly exteriorImagesService: VehicleExteriorImagesService,
+  ) {}
 
   // ── Admin (platform-wide) ─────────────────────────────────────────
 
@@ -315,5 +340,137 @@ export class VehiclesController {
         ? undefined
         : req?.user?.organizationId;
     return this.vehiclesService.delete(vehicleId, orgId);
+  }
+
+  // ── Exterior Images (Damage Map) ─────────────────────────────────
+  //
+  // V4.7.50 — Five canonical exterior photo slots per vehicle (FRONT, LEFT,
+  // RIGHT, REAR, ROOF). Master-Admin operators upload these either during
+  // vehicle registration (`VehicleRegistrationModal`) or post-hoc on the
+  // Master-Admin vehicle detail drawer (`PlatformVehiclesView`). The Rental
+  // `DamagesView` reads them via the org-scoped/vehicle-scoped GET below to
+  // render a vehicle-specific damage map carousel.
+
+  @Get('admin/vehicles/:vehicleId/exterior-images')
+  @Roles('MASTER_ADMIN')
+  async listExteriorImagesAdmin(@Param('vehicleId') vehicleId: string) {
+    return this.exteriorImagesService.listByVehicle(vehicleId);
+  }
+
+  @Get('admin/vehicles/:vehicleId/exterior-images/effective')
+  @Roles('MASTER_ADMIN')
+  async listEffectiveExteriorImagesAdmin(@Param('vehicleId') vehicleId: string) {
+    return this.exteriorImagesService.listEffectiveByVehicle(vehicleId);
+  }
+
+  @Get('admin/vehicle-exterior-model-images')
+  @Roles('MASTER_ADMIN')
+  async listExteriorModelImages(
+    @Query('make') make?: string,
+    @Query('model') model?: string,
+  ) {
+    if (make && model) {
+      return this.exteriorImagesService.listByModel(make, model);
+    }
+    return this.exteriorImagesService.listAvailableModels();
+  }
+
+  @Put('admin/vehicle-exterior-model-images/:view')
+  @Roles('MASTER_ADMIN')
+  async upsertExteriorModelImage(
+    @Param('view') view: string,
+    @Body()
+    body: {
+      make: string;
+      model: string;
+      imageData: string;
+      caption?: string | null;
+      sourceVehicleId?: string | null;
+    },
+    @Req() req: any,
+  ) {
+    return this.exteriorImagesService.upsertModelImage(
+      body?.make,
+      body?.model,
+      parseExteriorView(view),
+      body?.imageData,
+      body?.caption ?? null,
+      body?.sourceVehicleId ?? null,
+      req?.user?.id ?? null,
+    );
+  }
+
+  @Put('admin/vehicles/:vehicleId/exterior-images/:view')
+  @Roles('MASTER_ADMIN')
+  async upsertExteriorImageAdmin(
+    @Param('vehicleId') vehicleId: string,
+    @Param('view') view: string,
+    @Body() body: { imageData: string; caption?: string | null },
+    @Req() req: any,
+  ) {
+    return this.exteriorImagesService.upsert(
+      vehicleId,
+      parseExteriorView(view),
+      body?.imageData,
+      body?.caption ?? null,
+      req?.user?.id ?? null,
+    );
+  }
+
+  @Post('admin/vehicles/:vehicleId/exterior-images/:view/save-as-model')
+  @Roles('MASTER_ADMIN')
+  async saveExteriorImageAsModelTemplate(
+    @Param('vehicleId') vehicleId: string,
+    @Param('view') view: string,
+    @Req() req: any,
+  ) {
+    return this.exteriorImagesService.saveVehicleImageAsModelTemplate(
+      vehicleId,
+      parseExteriorView(view),
+      req?.user?.id ?? null,
+    );
+  }
+
+  @Post('admin/vehicles/:vehicleId/exterior-images/:view/apply-model')
+  @Roles('MASTER_ADMIN')
+  async applyExteriorModelImageToVehicle(
+    @Param('vehicleId') vehicleId: string,
+    @Param('view') view: string,
+    @Body() body: { modelKey: string },
+    @Req() req: any,
+  ) {
+    return this.exteriorImagesService.applyModelTemplateToVehicle(
+      vehicleId,
+      parseExteriorView(view),
+      body?.modelKey,
+      req?.user?.id ?? null,
+    );
+  }
+
+  @Delete('admin/vehicles/:vehicleId/exterior-images/:view')
+  @Roles('MASTER_ADMIN')
+  async deleteExteriorImageAdmin(
+    @Param('vehicleId') vehicleId: string,
+    @Param('view') view: string,
+  ) {
+    await this.exteriorImagesService.delete(
+      vehicleId,
+      parseExteriorView(view),
+    );
+    return { success: true };
+  }
+
+  // Read-only access for any authenticated user with vehicle ownership
+  // (Rental Damages page consumes this to render the damage map carousel).
+  @Get('vehicles/:vehicleId/exterior-images/effective')
+  @UseGuards(VehicleOwnershipGuard)
+  async listEffectiveExteriorImages(@Param('vehicleId') vehicleId: string) {
+    return this.exteriorImagesService.listEffectiveByVehicle(vehicleId);
+  }
+
+  @Get('vehicles/:vehicleId/exterior-images')
+  @UseGuards(VehicleOwnershipGuard)
+  async listExteriorImages(@Param('vehicleId') vehicleId: string) {
+    return this.exteriorImagesService.listByVehicle(vehicleId);
   }
 }

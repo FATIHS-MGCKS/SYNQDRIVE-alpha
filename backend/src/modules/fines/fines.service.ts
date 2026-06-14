@@ -137,8 +137,12 @@ export class FinesService {
       title: `Bußgeld bearbeiten: ${data.title}`,
       description: `Bußgeld "${data.title}" (${(data.amountCents / 100).toFixed(2)} ${data.currency || 'EUR'}) muss geprüft und weiterverarbeitet werden.${customerId ? ' Kunde wurde automatisch zugeordnet.' : ' Kunde konnte nicht automatisch zugeordnet werden – bitte manuell prüfen.'}`,
       category: 'fine',
+      type: 'CUSTOMER_FOLLOWUP',
+      source: 'FINE',
+      sourceType: 'SYSTEM',
       priority: data.amountCents >= 10000 ? 'HIGH' : 'MEDIUM',
       vehicleId: data.vehicleId,
+      customerId: customerId ?? undefined,
       fineId: fine.id,
       dueDate: data.dueDate,
     });

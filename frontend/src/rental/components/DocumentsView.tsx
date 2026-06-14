@@ -1,5 +1,6 @@
-import { FileText, DollarSign, Shield, Car, Receipt, ClipboardList, Wrench, Download } from 'lucide-react';
+import { Icon } from './ui/Icon';
 import { VehicleData } from '../data/vehicles';
+import type { ReactNode } from 'react';
 
 interface DocumentsViewProps {
   isDarkMode: boolean;
@@ -21,65 +22,112 @@ export function DocumentsView({ isDarkMode, vehicle }: DocumentsViewProps) {
       : 'bg-white border-gray-200'
   }`;
 
-  const thClass = `text-left text-xs uppercase tracking-wider font-semibold pb-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`;
-  const tdClass = `py-2 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`;
-
   const dash = '—';
+  const vehicleName = vehicle ? [vehicle.make, vehicle.model].filter(Boolean).join(' ') : 'Kein Fahrzeug ausgewählt';
+  const vehicleSubtitle = vehicle ? [vehicle.license, vehicle.station].filter(Boolean).join(' · ') : 'Wähle ein Fahrzeug aus, um Dokumente und Fixkosten zu prüfen.';
   const monthlyLines = [
-    { label: 'Leasing/Finanzierung', value: vehicle?.leasingRate ?? dash },
-    { label: 'Versicherung (mtl.)', value: vehicle?.insuranceCost ?? dash },
-    { label: 'Kfz-Steuer (mtl.)', value: vehicle?.taxCost ?? dash },
-    { label: 'Wartung & Service (Ø)', value: dash },
-    { label: 'Reparaturen (Ø)', value: dash },
+    { label: 'Leasing/Finanzierung', value: vehicle?.leasingRate ?? dash, tone: 'info' as const },
+    { label: 'Versicherung', value: vehicle?.insuranceCost ?? dash, tone: 'success' as const },
+    { label: 'Kfz-Steuer', value: vehicle?.taxCost ?? dash, tone: 'warning' as const },
+    { label: 'Wartung & Service (Ø)', value: dash, tone: 'neutral' as const },
+    { label: 'Reparaturen (Ø)', value: dash, tone: 'neutral' as const },
+  ];
+  const configuredCostLines = monthlyLines.filter((line) => line.value !== dash && line.value !== '').length;
+
+  const documentCards = [
+    {
+      title: 'Leasing/Finanzierung',
+      description: 'Vertrag, Laufzeit, Rate und Restwert',
+      icon: 'receipt',
+      tone: 'info' as const,
+      action: 'Vertrag hinzufügen',
+    },
+    {
+      title: 'Versicherung',
+      description: 'Police, Deckung und Selbstbeteiligung',
+      icon: 'shield',
+      tone: 'success' as const,
+      action: 'Police hinzufügen',
+    },
+    {
+      title: 'Kfz-Steuer',
+      description: 'Bescheid und jährliche Steuerlast',
+      icon: 'dollar-sign',
+      tone: 'warning' as const,
+      action: 'Bescheid hinzufügen',
+    },
+    {
+      title: 'Zulassung',
+      description: 'Fahrzeugschein und Halterdaten',
+      icon: 'car',
+      tone: 'brand' as const,
+      action: 'Dokument hinzufügen',
+    },
   ];
 
-  const emptyStateClass = `text-xs text-center py-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`;
+  const evidenceSections = [
+    { title: 'TÜV / HU', subtitle: 'Prüftermine und Ergebnisnachweise', icon: 'clipboard-check', tone: 'success' as const, rows: tuvHistory.length },
+    { title: 'Service', subtitle: 'Inspektionen, Ölwechsel und Wartung', icon: 'wrench', tone: 'info' as const, rows: serviceHistory.length },
+    { title: 'Reparaturen', subtitle: 'Werkstattrechnungen und Schadenbelege', icon: 'file-signature', tone: 'critical' as const, rows: repairHistory.length },
+  ];
 
   return (
     <div className="space-y-5">
-      {/* Top Row: Fahrzeug Dokumente + Monatliche Fixkosten */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Fahrzeug Dokumente */}
-        <div className={`${cardClass} p-4`}>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
-              <FileText className="w-4.5 h-4.5 text-gray-600" />
+      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="sq-tone-brand w-10 h-10 rounded-xl flex items-center justify-center shrink-0">
+              <Icon name="file-text" className="w-5 h-5" />
             </div>
-            <h3 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Fahrzeug Dokumente</h3>
+            <div className="min-w-0">
+              <h3 className="text-[13px] font-semibold tracking-[-0.003em] text-foreground">Fahrzeugakte</h3>
+              <p className="text-[11px] mt-0.5 text-muted-foreground truncate">{vehicleName}</p>
+              <p className="text-[10px] mt-1 text-muted-foreground">{vehicleSubtitle}</p>
+            </div>
           </div>
-          <p className={emptyStateClass}>No data available</p>
-          <button
-            type="button"
-            disabled
-            className={`w-full flex items-center justify-center gap-2 py-3 rounded-lg border text-xs font-medium transition-all opacity-50 cursor-not-allowed ${
-              isDarkMode
-                ? 'bg-neutral-800 border-neutral-700 text-gray-500'
-                : 'bg-white border-gray-200 text-gray-400'
-            }`}
-          >
-            <Download className="w-5 h-5" />
-            Alle Dokumente anzeigen
-          </button>
+
+          <div className="grid grid-cols-3 gap-2 w-full sm:w-auto sm:min-w-[330px]">
+            <SummaryMetric label="Dokumente" value="0/4" tone="warning" />
+            <SummaryMetric label="Kosten" value={`${configuredCostLines}/5`} tone={configuredCostLines >= 3 ? 'success' : 'neutral'} />
+            <SummaryMetric label="Nachweise" value={`${tuvHistory.length + serviceHistory.length + repairHistory.length}`} tone="neutral" />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] gap-3 items-start">
+        <div className={`${cardClass} p-4 rounded-2xl`}>
+          <SectionHeader
+            icon="file-text"
+            title="Dokumentenstatus"
+            subtitle="Pflichtunterlagen pro Fahrzeug, priorisiert nach operativer Relevanz."
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-4">
+            {documentCards.map((doc) => (
+              <DocumentTile
+                key={doc.title}
+                icon={doc.icon}
+                title={doc.title}
+                description={doc.description}
+                action={doc.action}
+                tone={doc.tone}
+              />
+            ))}
+          </div>
         </div>
 
-        {/* Monatliche Fixkosten */}
-        <div className={`${cardClass} p-4 border-l-4 ${isDarkMode ? 'border-l-green-500/50' : 'border-l-green-400'}`}>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center">
-              <DollarSign className="w-4.5 h-4.5 text-green-600" />
-            </div>
-            <h3 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Monatliche Fixkosten</h3>
-          </div>
-          <div className="space-y-3.5">
+        <div className={`${cardClass} p-4 rounded-2xl`}>
+          <SectionHeader
+            icon="wallet"
+            title="Monatliche Fixkosten"
+            subtitle="Finanzielle Grundlast des Fahrzeugs auf einen Blick."
+          />
+          <div className="mt-4 space-y-2.5">
             {monthlyLines.map((item) => (
-              <div key={item.label} className="flex items-center justify-between">
-                <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{item.label}</span>
-                <span className={`text-xs font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{item.value}</span>
-              </div>
+              <CostRow key={item.label} label={item.label} value={item.value} tone={item.tone} />
             ))}
-            <div className={`pt-3 mt-1 border-t flex items-center justify-between ${isDarkMode ? 'border-neutral-700' : 'border-gray-200'}`}>
-              <span className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Gesamt pro Monat</span>
-              <span className={`text-[10px] font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+            <div className={`pt-3 mt-3 border-t flex items-center justify-between ${isDarkMode ? 'border-neutral-700' : 'border-gray-200'}`}>
+              <span className="text-[11px] font-semibold text-foreground">Gesamt pro Monat</span>
+              <span className="text-[13px] font-bold tabular-nums text-foreground">
                 {vehicle?.totalMonthlyCost ?? dash}
               </span>
             </div>
@@ -87,229 +135,158 @@ export function DocumentsView({ isDarkMode, vehicle }: DocumentsViewProps) {
         </div>
       </div>
 
-      {/* Middle Row: 4 Document Cards */}
-      <div className="grid grid-cols-4 gap-3">
-        {/* Leasing/Finanzierung */}
-        <div className={`${cardClass} p-4 border-l-4 ${isDarkMode ? 'border-l-blue-500/50' : 'border-l-blue-400'}`}>
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-5 h-5 rounded-lg bg-blue-100 flex items-center justify-center">
-              <Receipt className="w-5 h-5 text-blue-600" />
-            </div>
-            <h4 className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Leasing/Finanzierung</h4>
-          </div>
-          <p className={`${emptyStateClass} mb-3`}>No data available</p>
-          <button
-            type="button"
-            disabled
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-green-500/50 text-white text-xs font-semibold cursor-not-allowed opacity-60"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Vertrag herunterladen
-          </button>
-        </div>
-
-        {/* Versicherung */}
-        <div className={`${cardClass} p-4 border-l-4 ${isDarkMode ? 'border-l-green-500/50' : 'border-l-green-400'}`}>
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-5 h-5 rounded-lg bg-green-100 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-green-600" />
-            </div>
-            <h4 className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Versicherung</h4>
-          </div>
-          <p className={`${emptyStateClass} mb-3`}>No data available</p>
-          <button
-            type="button"
-            disabled
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-green-500/50 text-white text-xs font-semibold cursor-not-allowed opacity-60"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Police herunterladen
-          </button>
-        </div>
-
-        {/* Kfz-Steuer */}
-        <div className={`${cardClass} p-4 border-l-4 ${isDarkMode ? 'border-l-amber-500/50' : 'border-l-amber-400'}`}>
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-5 h-5 rounded-lg bg-amber-100 flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-amber-600" />
-            </div>
-            <h4 className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Kfz-Steuer</h4>
-          </div>
-          <p className={`${emptyStateClass} mb-3`}>No data available</p>
-          <button
-            type="button"
-            disabled
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-amber-500/50 text-white text-xs font-semibold cursor-not-allowed opacity-60"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Bescheid herunterladen
-          </button>
-        </div>
-
-        {/* Zulassungspapiere */}
-        <div className={`${cardClass} p-4 border-l-4 ${isDarkMode ? 'border-l-purple-500/50' : 'border-l-purple-400'}`}>
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-5 h-5 rounded-lg bg-purple-100 flex items-center justify-center">
-              <Car className="w-5 h-5 text-purple-600" />
-            </div>
-            <h4 className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Zulassungspapiere</h4>
-          </div>
-          <p className={`${emptyStateClass} mb-3`}>No data available</p>
-          <button
-            type="button"
-            disabled
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-500/50 text-white text-xs font-semibold cursor-not-allowed opacity-60"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Dokumente herunterladen
-          </button>
+      <div className={`${cardClass} p-4 rounded-2xl`}>
+        <SectionHeader
+          icon="clipboard-list"
+          title="Nachweise & Historie"
+          subtitle="TÜV, Service und Reparaturen als ein gemeinsamer Verlauf statt getrennter leerer Tabellen."
+        />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 mt-4">
+          {evidenceSections.map((section) => (
+            <EvidenceCard key={section.title} {...section} />
+          ))}
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Bottom Row: TÜV, Service, Reparatur */}
-      <div className="grid grid-cols-3 gap-3">
-        {/* TÜV Nachweise */}
-        <div className={`${cardClass} p-4`}>
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-5 h-5 rounded-lg bg-green-100 flex items-center justify-center">
-              <ClipboardList className="w-5 h-5 text-green-600" />
-            </div>
-            <h4 className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>TÜV Nachweise</h4>
-          </div>
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th className={thClass}>Datum</th>
-                <th className={thClass}>Prüforg.</th>
-                <th className={thClass}>KM-Stand</th>
-                <th className={thClass}>Ergebnis</th>
-                <th className={thClass}>Nächste HU</th>
-                <th className={thClass}>Dokument</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${isDarkMode ? 'divide-neutral-800' : 'divide-gray-100'}`}>
-              {tuvHistory.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className={`${tdClass} py-8 text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    No data available
-                  </td>
-                </tr>
-              ) : (
-                tuvHistory.map((row, i) => (
-                  <tr key={i}>
-                    <td className={tdClass}>{row.date}</td>
-                    <td className={tdClass}>{row.org}</td>
-                    <td className={tdClass}>{row.km}</td>
-                    <td className="py-2">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">
-                        {row.result}
-                      </span>
-                    </td>
-                    <td className={tdClass}>{row.next}</td>
-                    <td className="py-2">
-                      <button type="button" className="text-red-400 hover:text-red-600 transition-colors">
-                        <Download className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+function toneClass(tone: 'brand' | 'info' | 'success' | 'warning' | 'critical' | 'neutral') {
+  if (tone === 'brand') return 'sq-tone-brand';
+  if (tone === 'info') return 'sq-tone-info';
+  if (tone === 'success') return 'sq-tone-success';
+  if (tone === 'warning') return 'sq-tone-warning';
+  if (tone === 'critical') return 'sq-tone-critical';
+  return 'sq-tone-neutral';
+}
+
+function SummaryMetric({ label, value, tone }: { label: string; value: string; tone: 'success' | 'warning' | 'neutral' }) {
+  return (
+    <div className={`rounded-xl px-3 py-2 ${toneClass(tone)}`}>
+      <p className="text-[16px] leading-none font-bold tabular-nums">{value}</p>
+      <p className="text-[9px] mt-1 font-semibold uppercase tracking-wider opacity-75">{label}</p>
+    </div>
+  );
+}
+
+function SectionHeader({
+  icon,
+  fallbackIcon,
+  title,
+  subtitle,
+}: {
+  icon: string;
+  fallbackIcon?: string;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start gap-2.5 min-w-0">
+        <div className="sq-tone-neutral w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
+          <Icon name={icon || fallbackIcon || 'file-text'} className="w-4 h-4" />
         </div>
-
-        {/* Service Nachweise */}
-        <div className={`${cardClass} p-4`}>
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-5 h-5 rounded-lg bg-blue-100 flex items-center justify-center">
-              <Wrench className="w-5 h-5 text-blue-600" />
-            </div>
-            <h4 className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Service Nachweise</h4>
-          </div>
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th className={thClass}>Datum</th>
-                <th className={thClass}>Art</th>
-                <th className={thClass}>Werkstatt</th>
-                <th className={thClass}>KM-Stand</th>
-                <th className={thClass}>Kosten</th>
-                <th className={thClass}>Dokument</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${isDarkMode ? 'divide-neutral-800' : 'divide-gray-100'}`}>
-              {serviceHistory.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className={`${tdClass} py-8 text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    No data available
-                  </td>
-                </tr>
-              ) : (
-                serviceHistory.map((row, i) => (
-                  <tr key={i}>
-                    <td className={tdClass}>{row.date}</td>
-                    <td className={tdClass}>{row.art}</td>
-                    <td className={tdClass}>{row.workshop}</td>
-                    <td className={tdClass}>{row.km}</td>
-                    <td className={tdClass}>{row.cost}</td>
-                    <td className="py-2">
-                      <button type="button" className="text-red-400 hover:text-red-600 transition-colors">
-                        <Download className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Reparatur Nachweise */}
-        <div className={`${cardClass} p-4`}>
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-5 h-5 rounded-lg bg-red-100 flex items-center justify-center">
-              <Wrench className="w-5 h-5 text-red-600" />
-            </div>
-            <h4 className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Reparatur Nachweise</h4>
-          </div>
-          <table className="w-full">
-            <thead>
-              <tr>
-                <th className={thClass}>Datum</th>
-                <th className={thClass}>Reparatur</th>
-                <th className={thClass}>Werkstatt</th>
-                <th className={thClass}>KM-Stand</th>
-                <th className={thClass}>Kosten</th>
-                <th className={thClass}>Dokument</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${isDarkMode ? 'divide-neutral-800' : 'divide-gray-100'}`}>
-              {repairHistory.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className={`${tdClass} py-8 text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    No data available
-                  </td>
-                </tr>
-              ) : (
-                repairHistory.map((row, i) => (
-                  <tr key={i}>
-                    <td className={tdClass}>{row.date}</td>
-                    <td className={tdClass}>{row.repair}</td>
-                    <td className={tdClass}>{row.workshop}</td>
-                    <td className={tdClass}>{row.km}</td>
-                    <td className={tdClass}>{row.cost}</td>
-                    <td className="py-2">
-                      <button type="button" className="text-red-400 hover:text-red-600 transition-colors">
-                        <Download className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="min-w-0">
+          <h4 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">{title}</h4>
+          <p className="text-[10px] mt-0.5 text-muted-foreground">{subtitle}</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function DocumentTile({
+  icon,
+  title,
+  description,
+  action,
+  tone,
+}: {
+  icon: string;
+  title: string;
+  description: string;
+  action: string;
+  tone: 'brand' | 'info' | 'success' | 'warning';
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-muted/30 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2.5 min-w-0">
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${toneClass(tone)}`}>
+            <Icon name={icon} className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-foreground">{title}</p>
+            <p className="text-[10px] mt-0.5 text-muted-foreground">{description}</p>
+          </div>
+        </div>
+        <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-amber-100 text-amber-700 shrink-0">Fehlt</span>
+      </div>
+      <button
+        type="button"
+        disabled
+        className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card/70 px-2.5 py-2 text-[10px] font-semibold text-muted-foreground opacity-60 cursor-not-allowed"
+      >
+        <Icon name="upload" className="w-3.5 h-3.5" />
+        {action}
+      </button>
+    </div>
+  );
+}
+
+function CostRow({ label, value, tone }: { label: string; value: string; tone: 'info' | 'success' | 'warning' | 'neutral' }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className={`w-2 h-2 rounded-full shrink-0 ${toneClass(tone)}`} />
+        <span className="text-[10px] font-medium text-muted-foreground truncate">{label}</span>
+      </div>
+      <span className="text-[11px] font-semibold tabular-nums text-foreground">{value}</span>
+    </div>
+  );
+}
+
+function EvidenceCard({
+  title,
+  subtitle,
+  icon,
+  tone,
+  rows,
+}: {
+  title: string;
+  subtitle: string;
+  icon: string;
+  tone: 'info' | 'success' | 'critical';
+  rows: number;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-muted/30 p-3 min-h-[150px] flex flex-col">
+      <div className="flex items-start justify-between gap-3">
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${toneClass(tone)}`}>
+          <Icon name={icon} className="w-4 h-4" />
+        </div>
+        <span className="text-[10px] font-semibold text-muted-foreground tabular-nums">{rows} Einträge</span>
+      </div>
+      <div className="mt-3">
+        <p className="text-[11px] font-semibold text-foreground">{title}</p>
+        <p className="text-[10px] mt-0.5 text-muted-foreground">{subtitle}</p>
+      </div>
+      <div className="mt-auto pt-4">
+        {rows === 0 ? (
+          <EmptyInline icon="file" text="Noch keine Nachweise hinterlegt" />
+        ) : (
+          <button type="button" className="text-[10px] font-semibold text-[color:var(--brand)]">Verlauf anzeigen</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmptyInline({ icon, text }: { icon: string; text: ReactNode }) {
+  return (
+    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+      <Icon name={icon} className="w-3.5 h-3.5" />
+      <span>{text}</span>
     </div>
   );
 }

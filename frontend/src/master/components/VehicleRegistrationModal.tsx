@@ -1,9 +1,14 @@
-import { X, Sparkles, ChevronDown, ChevronUp, Save, AlertCircle, CheckCircle2, XCircle, Loader2, Bot, Pencil, Radio, Search, Link2, Shield } from 'lucide-react';
+import { X, Sparkles, ChevronDown, ChevronUp, Save, AlertCircle, CheckCircle2, XCircle, Loader2, Bot, Pencil, Radio, Search, Link2, Shield, Camera } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api, streamAiSpecs, streamAiTireSpecs } from '../../lib/api';
 import type { AgentStep, AiSpecsStreamEvent, AiTireSpecsStreamEvent, HmAvailabilityDto } from '../../lib/api';
 import type { DimoVehicle, Organization, RegisteredVehicle } from '../data/platform-data';
 import { aiWorkerData, getAiWorkerKey, generateId } from '../data/platform-data';
+import {
+  ExteriorImagesEditor,
+  flushBufferedExteriorImages,
+  type ExteriorImageBufferEntry,
+} from './ExteriorImagesEditor';
 
 interface VehicleRegistrationModalProps {
   isDarkMode: boolean;
@@ -46,7 +51,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
       ? { vin: dimoVehicle.vin, make: dimoVehicle.make, model: dimoVehicle.model, year: dimoVehicle.year, odometer: dimoVehicle.odometer }
       : { vin: '', make: '', model: '', year: 0, odometer: 0 };
 
-  const [expandedSections, setExpandedSections] = useState<string[]>(['assignment', 'technical', 'battery', 'brakes', 'tires', 'service', 'history', 'hm', 'hardware']);
+  const [expandedSections, setExpandedSections] = useState<string[]>(['assignment', 'technical', 'battery', 'brakes', 'tires', 'service', 'history', 'exterior', 'hm', 'hardware']);
   const [aiLoading, setAiLoading] = useState(!isEditMode);
   const [aiDegraded, setAiDegraded] = useState(false);
   const [aiErrorDetail, setAiErrorDetail] = useState('');
@@ -165,6 +170,12 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   const [hmAvailabilityLoading, setHmAvailabilityLoading] = useState(false);
   const [hmActivating, setHmActivating] = useState(false);
   const [hmActivated, setHmActivated] = useState(false);
+
+  // V4.7.50 — Exterior photos (Damage Map). In edit mode the editor talks to
+  // the API directly via the existing vehicleId. In create mode we buffer
+  // the chosen files in memory and flush them after the registration POST
+  // returns the new vehicleId.
+  const [bufferedExteriorImages, setBufferedExteriorImages] = useState<ExteriorImageBufferEntry[]>([]);
 
   const prefillFromExisting = (v: RegisteredVehicle) => {
     setHardwareType((v.hardwareType as 'LTE_R1' | 'SMART5' | 'UNKNOWN') ?? 'UNKNOWN');
@@ -571,6 +582,14 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
         await Promise.resolve(onUpdate(rv));
       } else {
         await Promise.resolve(onRegister(rv));
+        // V4.7.50 — flush buffered exterior photos (best-effort) once we
+        // know the new vehicleId. We use the locally-generated id from
+        // `buildVehicle()`; if the parent persisted under a different id
+        // this will silently no-op for failed uploads, which the user can
+        // re-do later from PlatformVehiclesView → Exterior Photos.
+        if (bufferedExteriorImages.length > 0 && rv.id) {
+          await flushBufferedExteriorImages(rv.id, bufferedExteriorImages);
+        }
       }
       onClose();
     } finally {
@@ -1132,9 +1151,27 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
           )}
 
           {/* ═══════════════════════════════════════════════
-              SECTION 8 — High Mobility Data
+              SECTION 8 — Exterior Photos (Damage Map)
              ═══════════════════════════════════════════════ */}
-          {sectionHeader('hm', '8', 'High Mobility Data')}
+          {sectionHeader('exterior', '8', 'Exterior Photos (Damage Map)', <Camera className={`w-3.5 h-3.5 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />)}
+          {expandedSections.includes('exterior') && (
+            <div className="pl-1 pb-3">
+              <ExteriorImagesEditor
+                isDarkMode={isDarkMode}
+                vehicleId={isEditMode ? existingVehicle.id : null}
+                vehicleMake={vehicleIdentity.make}
+                vehicleModel={vehicleIdentity.model}
+                title="Five canonical views"
+                subtitle="Upload one photo per view (front, left, right, rear, roof). They drive the Rental damage map carousel."
+                onBufferedChange={setBufferedExteriorImages}
+              />
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════
+              SECTION 9 — High Mobility Data
+             ═══════════════════════════════════════════════ */}
+          {sectionHeader('hm', '9', 'High Mobility Data')}
           {expandedSections.includes('hm') && (
             <div className="pl-1 pb-3 space-y-3">
               {/* Loading state */}
@@ -1239,9 +1276,9 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
             </div>
           )}
           {/* ═══════════════════════════════════════════════
-               SECTION 9 — Hardware Type (V3)
+               SECTION 10 — Hardware Type (V3)
                ═══════════════════════════════════════════════ */}
-          {sectionHeader('hardware', '9', 'Hardware Type (V3)')}
+          {sectionHeader('hardware', '10', 'Hardware Type (V3)')}
           {expandedSections.includes('hardware') && (
             <div className="pl-1 pb-3 space-y-3">
               <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>

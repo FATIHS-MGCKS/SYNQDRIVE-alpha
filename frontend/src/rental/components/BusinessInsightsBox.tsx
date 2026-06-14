@@ -1,22 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import {
-  AlertTriangle,
-  ArrowRight,
-  Bell,
-  Calendar,
-  CheckCircle,
-  ChevronDown,
-  Clock,
-  ExternalLink,
-  Info,
-  Loader2,
-  MapPin,
-  MessageSquare,
-  Sparkles,
-  Wrench,
-  Zap,
-  type LucideIcon,
-} from 'lucide-react';
+import { Icon, type IconName } from './ui/Icon';
 import { useFleetVehicles } from '../FleetContext';
 import {
   useDashboardInsights,
@@ -50,7 +33,7 @@ export interface DashboardNotificationItem {
 // ─── Severity config ─────────────────────────────────────────────────
 
 interface SeverityStyle {
-  icon: LucideIcon;
+  icon: IconName;
   label: string;
   card: { light: string; dark: string };
   badge: { light: string; dark: string };
@@ -60,7 +43,7 @@ interface SeverityStyle {
 
 const SEVERITY_CONFIG: Record<InsightSeverity, SeverityStyle> = {
   CRITICAL: {
-    icon: AlertTriangle,
+    icon: 'alert-triangle',
     label: 'Critical',
     card: {
       light: 'bg-red-50/60 border-red-200/40',
@@ -74,7 +57,7 @@ const SEVERITY_CONFIG: Record<InsightSeverity, SeverityStyle> = {
     text: { light: 'text-red-700', dark: 'text-red-400' },
   },
   WARNING: {
-    icon: Clock,
+    icon: 'clock',
     label: 'Attention',
     card: {
       light: 'bg-orange-50/60 border-orange-200/40',
@@ -88,7 +71,7 @@ const SEVERITY_CONFIG: Record<InsightSeverity, SeverityStyle> = {
     text: { light: 'text-orange-700', dark: 'text-orange-400' },
   },
   OPPORTUNITY: {
-    icon: Calendar,
+    icon: 'calendar',
     label: 'Opportunity',
     card: {
       light: 'bg-blue-50/60 border-blue-200/40',
@@ -102,7 +85,7 @@ const SEVERITY_CONFIG: Record<InsightSeverity, SeverityStyle> = {
     text: { light: 'text-blue-700', dark: 'text-blue-400' },
   },
   INFO: {
-    icon: Info,
+    icon: 'info',
     label: 'Info',
     card: {
       light: 'bg-gray-50/60 border-gray-200/40',
@@ -277,7 +260,7 @@ export function BusinessInsightsBox({ isDarkMode, onOpenVehicle, onOpenView, not
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2.5">
           <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${dm ? 'bg-blue-600/20' : 'bg-blue-100/80'}`}>
-            <Sparkles className={`w-4 h-4 ${dm ? 'text-blue-400' : 'text-blue-600'}`} />
+            <Icon name="sparkles" className={`w-4 h-4 ${dm ? 'text-blue-400' : 'text-blue-600'}`} />
           </div>
           <div>
             <h3 className={`text-[12px] font-semibold tracking-[-0.003em] leading-tight ${dm ? 'text-white' : 'text-gray-900'}`}>
@@ -410,7 +393,7 @@ function VehicleAlertsList({ alerts, isDarkMode, locale, onOpenVehicle }: Vehicl
           dm ? 'bg-emerald-500/5 border-emerald-800/30 text-emerald-400' : 'bg-emerald-50/60 border-emerald-200/40 text-emerald-600'
         }`}
       >
-        <CheckCircle className="w-4 h-4 shrink-0" />
+        <Icon name="check-circle" className="w-4 h-4 shrink-0" />
         <div>
           <div className="text-xs font-semibold">
             {locale === 'de' ? 'Alle Fahrzeuge in Ordnung' : 'All vehicles healthy'}
@@ -490,7 +473,7 @@ function VehicleAlertsList({ alerts, isDarkMode, locale, onOpenVehicle }: Vehicl
             </p>
             {alert.station && (
               <div className={`mt-1 flex items-center gap-1 text-[10px] ${dm ? 'text-gray-500' : 'text-gray-500'}`}>
-                <MapPin className="w-3 h-3" />
+                <Icon name="map-pin" className="w-3 h-3" />
                 <span className="truncate">{alert.station}</span>
               </div>
             )}
@@ -519,7 +502,7 @@ function NotificationsList({ notifications, isDarkMode, emptyLabel }: Notificati
           dm ? 'bg-neutral-800/30 border-neutral-700/30' : 'bg-gray-50/40 border-gray-200/40'
         }`}
       >
-        <Bell className={`w-4 h-4 ${dm ? 'text-gray-600' : 'text-gray-400'}`} />
+        <Icon name="bell" className={`w-4 h-4 ${dm ? 'text-gray-600' : 'text-gray-400'}`} />
         <p className={`text-[11px] ${dm ? 'text-gray-500' : 'text-gray-500'}`}>{emptyLabel}</p>
       </div>
     );
@@ -529,7 +512,6 @@ function NotificationsList({ notifications, isDarkMode, emptyLabel }: Notificati
     <ul className="space-y-2">
       {notifications.slice(0, 6).map((n, i) => {
         const iconStyles = NOTIFICATION_ICON[n.type];
-        const Icon = iconStyles.icon;
         return (
           <li
             key={i}
@@ -544,7 +526,7 @@ function NotificationsList({ notifications, isDarkMode, emptyLabel }: Notificati
                 dm ? iconStyles.bgDark : iconStyles.bgLight
               }`}
             >
-              <Icon className={`w-3 h-3 ${dm ? iconStyles.iconDark : iconStyles.iconLight}`} />
+              <Icon name={iconStyles.icon} className={`w-3 h-3 ${dm ? iconStyles.iconDark : iconStyles.iconLight}`} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
@@ -566,18 +548,18 @@ function NotificationsList({ notifications, isDarkMode, emptyLabel }: Notificati
 }
 
 const NOTIFICATION_ICON: Record<DashboardNotificationItem['type'], {
-  icon: LucideIcon;
+  icon: IconName;
   bgLight: string;
   bgDark: string;
   iconLight: string;
   iconDark: string;
 }> = {
-  alert: { icon: AlertTriangle, bgLight: 'bg-red-100', bgDark: 'bg-red-500/15', iconLight: 'text-red-500', iconDark: 'text-red-400' },
-  booking: { icon: Calendar, bgLight: 'bg-blue-100', bgDark: 'bg-blue-500/15', iconLight: 'text-blue-500', iconDark: 'text-blue-400' },
-  return: { icon: CheckCircle, bgLight: 'bg-green-100', bgDark: 'bg-green-500/15', iconLight: 'text-green-500', iconDark: 'text-green-400' },
-  maintenance: { icon: Wrench, bgLight: 'bg-amber-100', bgDark: 'bg-amber-500/15', iconLight: 'text-amber-500', iconDark: 'text-amber-400' },
-  feedback: { icon: MessageSquare, bgLight: 'bg-violet-100', bgDark: 'bg-violet-500/15', iconLight: 'text-violet-500', iconDark: 'text-violet-400' },
-  system: { icon: Zap, bgLight: 'bg-muted', bgDark: 'bg-neutral-700/40', iconLight: 'text-muted-foreground', iconDark: 'text-gray-400' },
+  alert: { icon: 'alert-triangle', bgLight: 'bg-red-100', bgDark: 'bg-red-500/15', iconLight: 'text-red-500', iconDark: 'text-red-400' },
+  booking: { icon: 'calendar', bgLight: 'bg-blue-100', bgDark: 'bg-blue-500/15', iconLight: 'text-blue-500', iconDark: 'text-blue-400' },
+  return: { icon: 'check-circle', bgLight: 'bg-green-100', bgDark: 'bg-green-500/15', iconLight: 'text-green-500', iconDark: 'text-green-400' },
+  maintenance: { icon: 'wrench', bgLight: 'bg-amber-100', bgDark: 'bg-amber-500/15', iconLight: 'text-amber-500', iconDark: 'text-amber-400' },
+  feedback: { icon: 'message-square', bgLight: 'bg-violet-100', bgDark: 'bg-violet-500/15', iconLight: 'text-violet-500', iconDark: 'text-violet-400' },
+  system: { icon: 'zap', bgLight: 'bg-muted', bgDark: 'bg-neutral-700/40', iconLight: 'text-muted-foreground', iconDark: 'text-gray-400' },
 };
 
 // ─── Insight Row ─────────────────────────────────────────────────────
@@ -594,7 +576,6 @@ interface InsightRowProps {
 
 function InsightRow({ insight, isDarkMode, isExpanded, onToggle, fleetById, onOpenVehicle, onOpenView }: InsightRowProps) {
   const severity = SEVERITY_CONFIG[insight.severity] ?? SEVERITY_CONFIG.INFO;
-  const SeverityIcon = severity.icon;
   const dm = isDarkMode;
 
   const entityIds = insight.entityIds ?? [];
@@ -639,7 +620,7 @@ function InsightRow({ insight, isDarkMode, isExpanded, onToggle, fleetById, onOp
       <div className="p-3">
         <div className="flex items-start gap-2.5">
           <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${dm ? 'bg-black/20' : 'bg-white'}`}>
-            <SeverityIcon className={`w-3.5 h-3.5 ${dm ? severity.icon_color.dark : severity.icon_color.light}`} />
+            <Icon name={severity.icon} className={`w-3.5 h-3.5 ${dm ? severity.icon_color.dark : severity.icon_color.light}`} />
           </div>
 
           <div className="flex-1 min-w-0">
@@ -661,7 +642,7 @@ function InsightRow({ insight, isDarkMode, isExpanded, onToggle, fleetById, onOp
                 <span className={`text-[10px] font-medium ${dm ? 'text-gray-500' : 'text-gray-400'}`}>
                   {isExpanded ? 'Hide details' : insight.actionLabel || 'View details'}
                 </span>
-                <ChevronDown
+                <Icon name="chevron-down"
                   className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''} ${dm ? 'text-gray-600' : 'text-gray-400'}`}
                 />
               </div>
@@ -807,7 +788,7 @@ function ExpandedVehicleList({
               title={canOpen ? 'Fahrzeug öffnen' : 'Fahrzeug nicht in Flotte gefunden'}
             >
               Öffnen
-              <ArrowRight className="w-3 h-3" />
+              <Icon name="arrow-right" className="w-3 h-3" />
             </button>
           </li>
         );
@@ -853,7 +834,7 @@ function ExpandedGenericBlock({
           }`}
         >
           {insight.actionLabel ?? (targetView === 'stations' ? 'Open station' : 'Open bookings')}
-          <ExternalLink className="w-3 h-3" />
+          <Icon name="external-link" className="w-3 h-3" />
         </button>
       )}
     </div>
@@ -886,7 +867,7 @@ function LoadingState({ isDarkMode }: { isDarkMode: boolean }) {
 function EmptyState({ isDarkMode }: { isDarkMode: boolean }) {
   return (
     <div className={`rounded-lg border p-6 text-center ${isDarkMode ? 'bg-neutral-800/30 border-neutral-700/30' : 'bg-gray-50/40 border-gray-200/40'}`}>
-      <CheckCircle className={`w-5 h-5 mx-auto mb-2 ${isDarkMode ? 'text-green-500/60' : 'text-green-500/50'}`} />
+      <Icon name="check-circle" className={`w-5 h-5 mx-auto mb-2 ${isDarkMode ? 'text-green-500/60' : 'text-green-500/50'}`} />
       <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
         No open items right now
       </p>
@@ -906,7 +887,7 @@ function FinancialEmptyState({ isDarkMode, locale }: { isDarkMode: boolean; loca
           : 'bg-emerald-50/60 border-emerald-200/40 text-emerald-600'
       }`}
     >
-      <CheckCircle className="w-4 h-4 shrink-0" />
+      <Icon name="check-circle" className="w-4 h-4 shrink-0" />
       <div>
         <div className="text-xs font-semibold">
           {locale === 'de' ? 'Keine finanziellen Auffälligkeiten' : 'No financial alerts'}
@@ -1053,5 +1034,3 @@ function numericOr(value: unknown, fallback: number | null): number | null {
   return fallback;
 }
 
-// Suppress unused import warning until we need a lightweight inline spinner.
-void Loader2;

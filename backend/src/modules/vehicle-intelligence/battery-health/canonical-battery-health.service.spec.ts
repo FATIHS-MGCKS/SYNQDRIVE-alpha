@@ -28,6 +28,7 @@ describe('CanonicalBatteryHealthService', () => {
     const batteryEvidenceService = {
       listRecent: jest.fn(),
       getLatest: jest.fn(),
+      getLatestAmongSources: jest.fn(),
     } as any;
 
     const svc = new CanonicalBatteryHealthService(
@@ -106,6 +107,7 @@ describe('CanonicalBatteryHealthService', () => {
 
     batteryEvidenceService.listRecent.mockResolvedValue([]);
     batteryEvidenceService.getLatest.mockResolvedValue(null);
+    batteryEvidenceService.getLatestAmongSources.mockResolvedValue(null);
 
     return {
       svc,
@@ -260,5 +262,82 @@ describe('CanonicalBatteryHealthService', () => {
     const summary = await svc.getSummary('veh-1');
     expect(summary?.lv.telemetry.voltageV).toBe(12.6);
     expect(summary?.lv.telemetry.voltageSource).toBe('resting_snapshot');
+  });
+
+  it('exposes LV Estimated Battery Health as a 3-bar indicator (no SOH %)', async () => {
+    const { svc } = buildService();
+    const summary = await svc.getSummary('veh-1');
+    // Published V2 score 80 → GOOD → 3 bars.
+    expect(summary?.lv.estimatedHealth.status).toBe('GOOD');
+    expect(summary?.lv.estimatedHealth.bars).toBe(3);
+    expect(summary?.lv.estimatedHealth.displayMode).toBe('BARS');
+    expect(summary?.lv.estimatedHealth.label).toBe('Estimated Battery Health');
+  });
+
+  it('classifies LV resting voltage with default (unknown battery type) bands', async () => {
+    const { svc } = buildService();
+    // restingVoltage 12.4 with no battery spec → DEFAULT band → 12.2–12.49 = WATCH.
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.lv.restingVoltage.valueV).toBe(12.4);
+    expect(summary?.lv.restingVoltage.status).toBe('WATCH');
+    expect(summary?.lv.restingVoltage.thresholdSource).toBe('DEFAULT');
+  });
+
+  it('uses AGM bands from the battery spec for resting voltage', async () => {
+    const { svc } = buildService();
+    const prisma = (svc as any).prisma;
+    prisma.vehicleBatterySpec.findFirst.mockResolvedValue({
+      batteryType: 'AGM',
+      batteryAmpere: 80,
+      batteryVolt: 12,
+      sourceType: 'MANUAL',
+      createdAt: now,
+    });
+    const summary = await svc.getSummary('veh-1');
+    // AGM: 12.4 is in 12.30–12.59 → WATCH, thresholdSource BATTERY_SPEC.
+    expect(summary?.lv.restingVoltage.status).toBe('WATCH');
+    expect(summary?.lv.restingVoltage.thresholdSource).toBe('BATTERY_SPEC');
+    expect(summary?.lv.restingVoltage.batteryType).toBe('AGM');
+  });
+
+  it('reports HV SOH as unavailable when no reliable basis exists (no fake %)', async () => {
+    const { svc, hvBatteryHealthService } = buildService();
+    const prisma = (svc as any).prisma;
+    prisma.vehicleLatestState.findUnique.mockResolvedValue({
+      lastSeenAt: now,
+      lvBatteryVoltage: 12.4,
+      evSoc: 66,
+      rangeKm: 278,
+      tractionBatterySohPercent: null,
+      tractionBatteryTemperatureC: 24,
+      tractionBatteryChargingPowerKw: 11,
+      tractionBatteryIsCharging: true,
+      tractionBatteryChargingCableConnected: true,
+      tractionBatteryCurrentVoltage: 351,
+      tractionBatteryGrossCapacityKwh: 76,
+      tractionBatteryCurrentEnergyKwh: 50,
+      tractionBatteryAddedEnergyKwh: 6,
+    });
+    hvBatteryHealthService.getHvBatteryStatus.mockResolvedValue({
+      publishedSohPercent: null,
+      rawSohPercent: null,
+      sohPercent: null,
+      sohMethod: 'insufficient_data',
+      maturityConfidence: 'none',
+      publicationState: SohPublicationState.INITIAL_CALIBRATION,
+      currentSocPercent: 66,
+      estimatedRangeKm: 278,
+      snapshotCount: 1,
+      sohInterpretation: { label: 'Unknown', color: 'gray', description: '' },
+      chargingSessions: [],
+      recentTrend: [],
+    });
+
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.hv.healthPercent).toBeNull();
+    expect(summary?.hv.healthStatus).toBe('UNKNOWN');
+    expect(summary?.hv.status).toBe('estimate_unavailable');
+    expect(summary?.hv.sohSource).toBeNull();
+    expect(summary?.hv.noFallbackSoh).toBe(true);
   });
 });

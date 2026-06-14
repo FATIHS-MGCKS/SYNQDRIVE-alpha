@@ -53,7 +53,7 @@ function relativeTime(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-export function RightSidebar({ isDarkMode, onViewChange }: RightSidebarProps) {
+export function RightSidebar({ onViewChange }: RightSidebarProps) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [tickets, setTickets] = useState<any[]>([]);
   const [healthy, setHealthy] = useState(true);
@@ -73,26 +73,25 @@ export function RightSidebar({ isDarkMode, onViewChange }: RightSidebarProps) {
     .filter(a => activityFilter === 'all' || a.entity === activityFilter)
     .slice(0, 8);
 
-  const bg = 'bg-sidebar';
   const card = 'bg-card border-border';
   const heading = 'text-foreground';
   const muted = 'text-muted-foreground';
-  const body = isDarkMode ? 'text-gray-300' : 'text-gray-600';
+  const body = 'text-foreground/80';
   const divider = 'bg-border';
 
   if (loading) {
     return (
-      <div className={`hidden lg:flex w-[300px] h-screen border-l border-sidebar-border flex-col items-center justify-center shrink-0 ${bg}`}>
+      <div className="hidden lg:flex w-[300px] h-screen border-l border-sidebar-border flex-col items-center justify-center shrink-0 bg-sidebar">
         <Loader2 className={`w-5 h-5 animate-spin ${muted}`} />
       </div>
     );
   }
 
   const quickStats = [
-    { label: 'Active Orgs', value: stats?.activeOrganizations ?? 0, icon: Building2, color: isDarkMode ? 'text-blue-400' : 'text-blue-500' },
-    { label: 'Vehicles', value: stats?.totalVehicles ?? 0, icon: Car, color: isDarkMode ? 'text-indigo-400' : 'text-indigo-500' },
-    { label: 'Users', value: stats?.totalUsers ?? 0, icon: Users, color: isDarkMode ? 'text-purple-400' : 'text-purple-500' },
-    { label: 'MRR', value: formatMrr(stats?.totalRevenueMrr ?? 0), icon: CreditCard, color: isDarkMode ? 'text-emerald-400' : 'text-emerald-500', isString: true },
+    { label: 'Active Orgs', value: stats?.activeOrganizations ?? 0, icon: Building2 },
+    { label: 'Vehicles', value: stats?.totalVehicles ?? 0, icon: Car },
+    { label: 'Users', value: stats?.totalUsers ?? 0, icon: Users },
+    { label: 'MRR', value: formatMrr(stats?.totalRevenueMrr ?? 0), icon: CreditCard, isString: true },
   ];
 
   const filterButtons: { key: ActivityFilter; label: string }[] = [
@@ -102,25 +101,26 @@ export function RightSidebar({ isDarkMode, onViewChange }: RightSidebarProps) {
     { key: 'USER', label: 'User' },
   ];
 
-  const statusDot: Record<string, string> = {
-    Open: 'bg-blue-500',
-    'In Progress': 'bg-amber-500',
-    Waiting: 'bg-purple-500',
+  // Vertical status bar tones (info / watch / ai) — semantic, theme-aware.
+  const statusBar: Record<string, string> = {
+    Open: 'bg-[color:var(--status-info)]',
+    'In Progress': 'bg-[color:var(--status-watch)]',
+    Waiting: 'bg-[color:var(--status-ai)]',
   };
 
   return (
-    <div className={`hidden lg:flex w-[300px] h-screen border-l border-sidebar-border flex-col shrink-0 overflow-y-auto ${bg}`}>
+    <div className="hidden lg:flex w-[300px] h-screen border-l border-sidebar-border flex-col shrink-0 overflow-y-auto bg-sidebar">
       <div className="px-4 py-4 space-y-3">
 
         {/* 1. Platform Status */}
         <div className="flex items-center justify-between">
           <h3 className={`text-sm font-bold ${heading}`}>Platform Status</h3>
           {healthy ? (
-            <span className="flex items-center gap-1 text-[10px] font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+            <span className="sq-chip sq-chip-success !text-[10px] !font-semibold">
               <CheckCircle className="w-2.5 h-2.5" /> Operational
             </span>
           ) : (
-            <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+            <span className="sq-chip sq-chip-watch !text-[10px] !font-semibold">
               <AlertTriangle className="w-2.5 h-2.5" /> Degraded
             </span>
           )}
@@ -133,7 +133,7 @@ export function RightSidebar({ isDarkMode, onViewChange }: RightSidebarProps) {
             return (
               <div key={s.label} className={`p-2.5 rounded-lg border ${card}`}>
                 <div className="flex items-center gap-2 mb-1.5">
-                  <Icon className={`w-3.5 h-3.5 ${s.color}`} />
+                  <Icon className="w-3.5 h-3.5 text-muted-foreground" />
                   <span className={`text-[10px] font-medium ${muted}`}>{s.label}</span>
                 </div>
                 <p className={`text-base font-semibold ${heading}`}>
@@ -151,7 +151,7 @@ export function RightSidebar({ isDarkMode, onViewChange }: RightSidebarProps) {
           <div className="flex items-center justify-between mb-3">
             <h3 className={`text-sm font-bold ${heading}`}>Live Activity</h3>
             <div className="flex items-center gap-1">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              <span className="sq-dot sq-dot-success animate-online-pulse" />
               <span className={`text-[10px] font-medium ${muted}`}>Live</span>
             </div>
           </div>
@@ -163,8 +163,8 @@ export function RightSidebar({ isDarkMode, onViewChange }: RightSidebarProps) {
                 onClick={() => setActivityFilter(f.key)}
                 className={`px-3 py-1 rounded-full text-[10px] font-semibold transition-all ${
                   activityFilter === f.key
-                    ? isDarkMode ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-50 text-indigo-700'
-                    : isDarkMode ? 'bg-neutral-800 text-gray-500 hover:text-gray-300' : 'bg-gray-100 text-gray-500 hover:text-gray-700'
+                    ? 'sq-tone-brand'
+                    : 'bg-muted text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {f.label}
@@ -179,8 +179,8 @@ export function RightSidebar({ isDarkMode, onViewChange }: RightSidebarProps) {
             {filteredActivity.map(item => {
               const Icon = ENTITY_ICONS[item.entity] ?? Activity;
               return (
-                <div key={item.id} className={`flex items-start gap-3 p-2 rounded-md transition-colors ${isDarkMode ? 'hover:bg-neutral-800/50' : 'hover:bg-gray-100/60'}`}>
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-100'}`}>
+                <div key={item.id} className="flex items-start gap-3 p-2 rounded-md transition-colors hover:bg-muted/60">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-muted">
                     <Icon className={`w-3.5 h-3.5 ${body}`} />
                   </div>
                   <div className="flex-1 min-w-0 pt-0.5">
@@ -199,11 +199,11 @@ export function RightSidebar({ isDarkMode, onViewChange }: RightSidebarProps) {
         <div>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Headphones className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+              <Headphones className="w-4 h-4 text-[color:var(--status-info)]" />
               <h3 className={`text-sm font-bold ${heading}`}>Open Tickets</h3>
             </div>
             {tickets.length > 0 && (
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-700'}`}>
+              <span className="sq-chip sq-chip-info !text-[10px] !font-semibold">
                 {tickets.length}
               </span>
             )}
@@ -214,11 +214,11 @@ export function RightSidebar({ isDarkMode, onViewChange }: RightSidebarProps) {
           ) : (
             <div className="space-y-2">
               {tickets.map((t: any) => (
-                <div key={t.id} className={`flex items-center gap-3 p-2 rounded-md border cursor-pointer transition-all hover:shadow-sm ${card} ${isDarkMode ? 'hover:bg-neutral-800/80' : 'hover:bg-white'}`}>
-                  <div className={`w-1.5 h-5 rounded-full shrink-0 ${statusDot[t.status] || 'bg-blue-500'}`} />
+                <div key={t.id} className={`flex items-center gap-3 p-2 rounded-md border cursor-pointer transition-all hover:shadow-sm hover:bg-muted/60 ${card}`}>
+                  <div className={`w-1.5 h-5 rounded-full shrink-0 ${statusBar[t.status] || 'bg-[color:var(--status-info)]'}`} />
                   <div className="flex-1 min-w-0">
-                    <p className={`text-[11px] font-semibold truncate ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-                      <span className={isDarkMode ? 'text-blue-400' : 'text-blue-600'}>#{t.ticketNumber}</span> {t.subject}
+                    <p className="text-[11px] font-semibold truncate text-foreground">
+                      <span className="text-[color:var(--status-info)]">#{t.ticketNumber}</span> {t.subject}
                     </p>
                     <p className={`text-[10px] ${muted}`}>{t.status}</p>
                   </div>
@@ -231,7 +231,7 @@ export function RightSidebar({ isDarkMode, onViewChange }: RightSidebarProps) {
           {tickets.length > 0 && (
             <button
               onClick={() => onViewChange?.('support')}
-              className={`mt-3 flex items-center gap-1 text-[11px] font-semibold transition-colors ${isDarkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+              className="mt-3 flex items-center gap-1 text-[11px] font-semibold transition-colors text-[color:var(--brand)] hover:opacity-80"
             >
               View All <ChevronRight className="w-3 h-3" />
             </button>

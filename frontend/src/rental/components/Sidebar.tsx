@@ -1,11 +1,11 @@
-import { LayoutDashboard, Briefcase, DollarSign, Calendar, Car, AlertTriangle, Users, CheckSquare, FileText, AlertCircle, Tag, BarChart3, Settings, Building2, Wifi, MapPin, UserCog, CreditCard, Plus, Upload, ChevronDown, Bell, MessageSquare, LayoutGrid, ListTodo, Menu, X, Shield, Package, Lock, HelpCircle, Zap, Phone, Wrench, Truck, Activity, Headphones, ChevronRight, User, PanelLeftClose, PanelLeftOpen, Gauge } from 'lucide-react';
+import { LayoutDashboard, Briefcase, DollarSign, Calendar, Car, AlertTriangle, Users, CheckSquare, FileText, AlertCircle, Tag, Settings, Building2, Wifi, MapPin, UserCog, CreditCard, Plus, Upload, ChevronDown, Bell, MessageSquare, LayoutGrid, ListTodo, Menu, X, Shield, Package, Lock, HelpCircle, Zap, Phone, Truck, Activity, Headphones, ChevronRight, User, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 // auth import removed — logout moved to TopBar account menu
 import synqdriveLogoLight from '../../assets/synqdrive-logo-light.png';
 import synqdriveLogoDark from '../../assets/synqdrive-logo-dark.png';
 
-type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization';
+type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents';
 
 interface SidebarProps {
   isDarkMode: boolean;
@@ -21,7 +21,17 @@ interface SidebarProps {
 
 export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, currentView, onViewChange, settingsTab, onSettingsTabChange, isCollapsed = false, onToggleCollapse }: SidebarProps) {
   const { t } = useLanguage();
-  const [expandedSections, setExpandedSections] = useState<string[]>([]);
+  const sectionForView = (view?: string): string | null => {
+    if (view === 'financial-insights' || view === 'fleet-condition') return 'insights';
+    if (view === 'invoices' || view === 'fines' || view === 'price-tariffs') return 'finance';
+    if (view === 'tasks' || view === 'vendor-management' || view === 'vendor-detail') return 'tasks';
+    if (view === 'workflow-automation' || view === 'ai-voice-assistant' || view === 'whatsapp-business') return 'automation';
+    if (view === 'insurances' || view === 'parts-accessories') return 'integrations';
+    if (view === 'settings') return 'administration';
+    return null;
+  };
+  const currentSection = sectionForView(currentView);
+  const [expandedSections, setExpandedSections] = useState<string[]>(() => currentSection ? [currentSection] : ['insights']);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const synqdriveLogo = isDarkMode ? synqdriveLogoDark : synqdriveLogoLight;
 
@@ -40,6 +50,15 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // V4.7.31/V4.7.35 — keep the active parent section visible AND collapse
+  // stale parent sections when navigation moves into a different category.
+  // This keeps the left rail focused: at most one active upper category
+  // stays open after a page change.
+  useEffect(() => {
+    if (!currentSection) return;
+    setExpandedSections([currentSection]);
+  }, [currentSection]);
+
   const toggleSection = (section: string) => {
     if (expandedSections.includes(section)) {
       setExpandedSections(expandedSections.filter(s => s !== section));
@@ -51,23 +70,23 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
   // V4.6.88 — Sidebar nav labels promoted to 13/600 per shared typography rules.
   // V4.6.91 — type scale tightened in left sidebar only: top-level + sub nav
   //           items both ride at 12/600 (was 13/600), section labels drop to
-  //           10/700 (was 11/700). `!` prefix is required because the unlayered
+  //           10/900 with the preview-approved slate tint. `!` prefix is required because the unlayered
   //           `.sq-nav-rail` / `.sq-section-label` rules in theme.css outrank
   //           Tailwind utility classes.
   // Active state now picks up a slightly richer Soft-Blue-Tint surface so
   // selected sections feel branded, not just highlighted.
   const navBtnClass = (isActive: boolean) =>
-    `sq-nav-rail w-full flex items-center gap-2.5 px-2.5 py-[7px] rounded-md transition-all duration-200 ease-out !text-[12px] font-semibold tracking-[-0.003em] ${
+    `sq-nav-rail w-full flex items-center gap-2.5 px-2.5 py-[8px] rounded-lg transition-all duration-200 ease-out !text-[12px] font-semibold tracking-[-0.003em] group ${
       isActive
-        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] active'
-        : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] active ring-1 ring-[color:var(--brand-soft)] shadow-[var(--shadow-1)]'
+        : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground hover:translate-x-[1px]'
     }`;
 
   const subNavBtnClass = (isActive: boolean) =>
-    `sq-nav-rail w-full flex items-center gap-2.5 pl-4 pr-2.5 py-[6px] rounded-md transition-all duration-200 ease-out !text-[12px] font-medium ${
+    `sq-nav-rail w-full flex items-center gap-2.5 pl-4 pr-2.5 py-[7px] rounded-lg transition-all duration-200 ease-out !text-[12px] font-medium group ${
       isActive
-        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] active'
-        : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] active ring-1 ring-[color:var(--brand-soft)] shadow-[var(--shadow-1)]'
+        : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground hover:translate-x-[1px]'
     }`;
 
   const collapsedBtnClass = (isActive: boolean) =>
@@ -84,14 +103,50 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
     </div>
   );
 
-  const sectionHeaderClass = `w-full flex items-center justify-between px-2.5 py-1 rounded-md cursor-pointer group transition-colors duration-150 hover:bg-accent/30`;
+  const sectionLabelClass = 'sq-section-label !text-[10px] !font-black !text-[rgba(100,116,139,0.9)]';
 
-  // The navigation content (shared between desktop sidebar and mobile menu)
-  const NavigationContent = ({ isMobile = false }: { isMobile?: boolean }) => (
+  const sectionHeaderClass = (section: string) => {
+    const isOpen = expandedSections.includes(section);
+    const isActive = currentSection === section;
+    return `w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg cursor-pointer group transition-all duration-150 ${
+      isActive
+        ? 'bg-[color:var(--brand-soft)]/70 text-[color:var(--brand-ink)]'
+        : isOpen
+          ? 'bg-accent/25 text-foreground'
+          : 'text-muted-foreground hover:bg-accent/30 hover:text-foreground'
+    }`;
+  };
+
+  const SectionHeader = ({
+    section,
+    label,
+    badge,
+  }: {
+    section: string;
+    label: string;
+    badge?: string;
+  }) => {
+    const isOpen = expandedSections.includes(section);
+    return (
+      <button onClick={() => toggleSection(section)} className={sectionHeaderClass(section)}>
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className={`${sectionLabelClass} truncate`}>{label}</span>
+          {badge && (
+            <span className="sq-chip sq-chip-neutral !text-[8.5px] !px-1.5 !py-[1px]">{badge}</span>
+          )}
+        </div>
+        <ChevronRight className={`w-3 h-3 shrink-0 transition-transform duration-200 ease-out text-muted-foreground/60 ${isOpen ? 'rotate-90' : ''}`} />
+      </button>
+    );
+  };
+
+  // Shared desktop/mobile navigation. Keep this as a render function so React
+  // does not remount the whole nav on each sidebar render and replay animations.
+  const renderNavigationContent = (isMobile = false) => (
     <>
       {/* OPERATIONS Section — always visible */}
-      <div className={`sq-section-label !text-[10px] mb-2 px-2.5 ${isMobile ? 'mt-3' : 'mt-1'}`}>
-        {t('nav.operations')}
+      <div className={`mb-2 flex items-center justify-between px-2.5 ${isMobile ? 'mt-3' : 'mt-1'}`}>
+        <span className={sectionLabelClass}>{t('nav.operations')}</span>
       </div>
 
       <nav className="space-y-0.5 mb-1">
@@ -114,25 +169,16 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
 
       {/* INSIGHTS Section */}
       <div className="mt-5 mb-1">
-        <button onClick={() => toggleSection('insights')} className={sectionHeaderClass}>
-          <span className="sq-section-label !text-[10px]">{t('nav.insights')}</span>
-          <ChevronRight className={`w-3 h-3 transition-transform duration-200 ease-out text-muted-foreground/60 ${expandedSections.includes('insights') ? 'rotate-90' : ''}`} />
-        </button>
+        <SectionHeader section="insights" label={t('nav.insights')} />
       </div>
       {expandedSections.includes('insights') && (
         <nav className="space-y-0.5 mb-1 animate-fade-up">
-          <button onClick={() => handleViewChange('rental-driving-analysis')} className={subNavBtnClass(currentView === 'rental-driving-analysis')}>
-            <Gauge className="w-[14px] h-[14px] shrink-0" /><span>Rental Driving Analysis</span>
-          </button>
           {/* V4.6.93 — `Financial Insights` is the dashboard-finances replacement.
               Real `/organizations/:orgId/invoices*` data is aggregated inside
               `FinancialInsightsView`, which now lives next to the other
               insights pages instead of inside the Dashboard. */}
           <button onClick={() => handleViewChange('financial-insights')} className={subNavBtnClass(currentView === 'financial-insights')}>
             <DollarSign className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.financialInsights')}</span>
-          </button>
-          <button onClick={() => handleViewChange('analytics')} className={subNavBtnClass(currentView === 'analytics')}>
-            <BarChart3 className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.analytics')}</span>
           </button>
           <button onClick={() => handleViewChange('fleet-condition')} className={subNavBtnClass(currentView === 'fleet-condition')}>
             <Activity className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.fleetCondition')}</span>
@@ -142,10 +188,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
 
       {/* FINANCE Section */}
       <div className="mt-5 mb-1">
-        <button onClick={() => toggleSection('finance')} className={sectionHeaderClass}>
-          <span className="sq-section-label !text-[10px]">{t('nav.finance')}</span>
-          <ChevronRight className={`w-3 h-3 transition-transform duration-200 ease-out text-muted-foreground/60 ${expandedSections.includes('finance') ? 'rotate-90' : ''}`} />
-        </button>
+        <SectionHeader section="finance" label={t('nav.finance')} />
       </div>
       {expandedSections.includes('finance') && (
         <nav className="space-y-0.5 mb-1 animate-fade-up">
@@ -163,10 +206,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
 
       {/* TASKS Section */}
       <div className="mt-5 mb-1">
-        <button onClick={() => toggleSection('tasks')} className={sectionHeaderClass}>
-          <span className="sq-section-label !text-[10px]">{t('nav.tasks')}</span>
-          <ChevronRight className={`w-3 h-3 transition-transform duration-200 ease-out text-muted-foreground/60 ${expandedSections.includes('tasks') ? 'rotate-90' : ''}`} />
-        </button>
+        <SectionHeader section="tasks" label={t('nav.tasks')} />
       </div>
       {expandedSections.includes('tasks') && (
         <nav className="space-y-0.5 mb-1 animate-fade-up">
@@ -181,12 +221,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
 
       {/* AUTOMATION Section */}
       <div className="mt-5 mb-1">
-        <button onClick={() => toggleSection('automation')} className={sectionHeaderClass}>
-          <div className="flex items-center gap-1.5">
-            <span className="sq-section-label !text-[10px]">{t('nav.automation')}</span>
-          </div>
-          <ChevronRight className={`w-3 h-3 transition-transform duration-200 ease-out text-muted-foreground/60 ${expandedSections.includes('automation') ? 'rotate-90' : ''}`} />
-        </button>
+        <SectionHeader section="automation" label={t('nav.automation')} />
       </div>
       {expandedSections.includes('automation') && (
         <nav className="space-y-0.5 mb-1 animate-fade-up">
@@ -204,13 +239,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
 
       {/* INTEGRATIONS Section */}
       <div className="mt-5 mb-1">
-        <button onClick={() => toggleSection('integrations')} className={sectionHeaderClass}>
-          <div className="flex items-center gap-1.5">
-            <span className="sq-section-label !text-[10px]">{t('nav.integrations')}</span>
-            <span className="sq-chip sq-chip-neutral !text-[8.5px] !px-1.5 !py-[1px]">{t('nav.comingSoon')}</span>
-          </div>
-          <ChevronRight className={`w-3 h-3 transition-transform duration-200 ease-out text-muted-foreground/60 ${expandedSections.includes('integrations') ? 'rotate-90' : ''}`} />
-        </button>
+        <SectionHeader section="integrations" label={t('nav.integrations')} badge={t('nav.comingSoon')} />
       </div>
       {expandedSections.includes('integrations') && (
         <nav className="space-y-0.5 mb-1 animate-fade-up">
@@ -219,9 +248,6 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
           </button>
           <button onClick={() => handleViewChange('parts-accessories')} className={subNavBtnClass(currentView === 'parts-accessories')}>
             <Package className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.partsAccessories')}</span>
-          </button>
-          <button onClick={() => handleViewChange('service-maintenance')} className={subNavBtnClass(currentView === 'service-maintenance')}>
-            <Wrench className="w-[14px] h-[14px] shrink-0" /><span>Service & Maintenance</span>
           </button>
           <button className={`${subNavBtnClass(false)} opacity-50 cursor-not-allowed`} disabled>
             <CreditCard className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.fuelCards')}</span>
@@ -236,10 +262,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
 
       {/* ADMINISTRATION Section */}
       <div className="mt-5 mb-1">
-        <button onClick={() => toggleSection('administration')} className={sectionHeaderClass}>
-          <span className="sq-section-label !text-[10px]">{t('nav.administration')}</span>
-          <ChevronRight className={`w-3 h-3 transition-transform duration-200 ease-out text-muted-foreground/60 ${expandedSections.includes('administration') ? 'rotate-90' : ''}`} />
-        </button>
+        <SectionHeader section="administration" label={t('nav.administration')} />
       </div>
       {expandedSections.includes('administration') && (
         <nav className="space-y-0.5 mb-1 animate-fade-up">
@@ -257,6 +280,9 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
           </button>
           <button onClick={() => { onSettingsTabChange?.('data-authorization'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'data-authorization')}>
             <Lock className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.dataAuthorization')}</span>
+          </button>
+          <button onClick={() => { onSettingsTabChange?.('legal-documents'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'legal-documents')}>
+            <FileText className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.legalDocuments')}</span>
           </button>
           <button onClick={() => { onSettingsTabChange?.('billing'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'billing')}>
             <CreditCard className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.billingSubscription')}</span>
@@ -281,16 +307,16 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
           + restrained neo-press secondary tiles. Hierarchy is now clear: one primary,
           one positive, two neutral. */}
       <div className="pb-2">
-        <div className="sq-section-label !text-[10px] mb-2 px-1 text-center">
+        <div className={`${sectionLabelClass} mb-2 px-1 text-center`}>
           {t('nav.quickActions')}
         </div>
         <div className="grid grid-cols-2 gap-2">
           {/* New Booking — primary brand CTA */}
           <button
             onClick={() => { onNewBookingClick?.(); setMobileMenuOpen(false); }}
-            className="sq-cta group flex items-center gap-1.5 px-2 py-2 rounded-lg text-[10.5px] font-semibold"
+            className="sq-3d-btn sq-3d-btn--primary group flex items-center gap-1.5 px-2 py-2 rounded-lg text-[10.5px] font-semibold"
           >
-            <span className="w-5 h-5 rounded-md bg-white/20 inline-flex items-center justify-center shrink-0">
+            <span className="icon-wrapper w-5 h-5 rounded-md inline-flex items-center justify-center shrink-0 transition-all duration-200">
               <Plus className="w-3 h-3" />
             </span>
             <span className="truncate">{t('nav.newBooking')}</span>
@@ -299,9 +325,9 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
           {/* New Task — positive tonal action */}
           <button
             onClick={() => { onNewTaskClick?.(); setMobileMenuOpen(false); }}
-            className="sq-press group flex items-center gap-1.5 px-2 py-2 rounded-lg text-[10.5px] font-semibold transition-all duration-200 ease-out sq-tone-success hover:brightness-[1.04] hover:-translate-y-px active:translate-y-0"
+            className="sq-3d-btn sq-3d-btn--success group flex items-center gap-1.5 px-2 py-2 rounded-lg text-[10.5px] font-semibold"
           >
-            <span className="w-5 h-5 rounded-md bg-[color:var(--status-positive)]/15 inline-flex items-center justify-center shrink-0">
+            <span className="icon-wrapper w-5 h-5 rounded-md inline-flex items-center justify-center shrink-0 transition-all duration-200">
               <CheckSquare className="w-3 h-3" />
             </span>
             <span className="truncate">{t('nav.newTask')}</span>
@@ -310,13 +336,9 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
           {/* Upload Document — neutral neo-press */}
           <button
             onClick={() => handleViewChange('document-upload')}
-            className={`sq-neo-press group flex items-center gap-1.5 px-2 py-2 rounded-lg text-[10.5px] font-medium transition-colors ${
-              currentView === 'document-upload'
-                ? 'text-[color:var(--brand)] bg-[color:var(--brand-soft)]'
-                : 'text-foreground/80 hover:text-foreground'
-            }`}
+            className={`sq-3d-btn sq-3d-btn--neutral group flex items-center gap-1.5 px-2 py-2 rounded-lg text-[10.5px] font-medium ${currentView === 'document-upload' ? 'active' : ''}`}
           >
-            <span className="w-5 h-5 rounded-md bg-muted inline-flex items-center justify-center shrink-0">
+            <span className="icon-wrapper w-5 h-5 rounded-md inline-flex items-center justify-center shrink-0 transition-all duration-200">
               <Upload className="w-3 h-3" />
             </span>
             <span className="truncate">{t('nav.upload')}</span>
@@ -325,13 +347,9 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
           {/* AI Fleet Assistant — brand-tinted neo-press (replaces purple gradient) */}
           <button
             onClick={() => handleViewChange('ai-assistant')}
-            className={`sq-neo-press group flex items-center gap-1.5 px-2 py-2 rounded-lg text-[10.5px] font-medium transition-colors ${
-              currentView === 'ai-assistant'
-                ? 'text-[color:var(--brand)] bg-[color:var(--brand-soft)]'
-                : 'text-foreground/80 hover:text-foreground'
-            }`}
+            className={`sq-3d-btn sq-3d-btn--ai group flex items-center gap-1.5 px-2 py-2 rounded-lg text-[10.5px] font-medium ${currentView === 'ai-assistant' ? 'active' : ''}`}
           >
-            <span className="w-5 h-5 rounded-md bg-muted inline-flex items-center justify-center shrink-0">
+            <span className="icon-wrapper w-5 h-5 rounded-md inline-flex items-center justify-center shrink-0 transition-all duration-200">
               <MessageSquare className="w-3 h-3" />
             </span>
             <span className="truncate">{t('nav.aiAssistant')}</span>
@@ -376,7 +394,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
             className="px-3 pb-6 overflow-y-auto border-t border-sidebar-border"
             style={{ maxHeight: 'calc(100vh - 4rem)' }}
           >
-            <NavigationContent isMobile />
+            {renderNavigationContent(true)}
           </div>
         </div>
       </div>
@@ -392,14 +410,14 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
 
       {/* ===== DESKTOP SIDEBAR ===== */}
       <div className={`hidden lg:flex h-screen border-r border-sidebar-border flex-col shrink-0 transition-all duration-300 ease-in-out bg-sidebar ${
-        isCollapsed ? 'w-[52px]' : 'w-[220px]'
+        isCollapsed ? 'w-[52px]' : 'w-[260px]'
       }`}>
         {!isCollapsed && (
           <div className="relative flex items-center justify-center border-b border-sidebar-border transition-all duration-300 shrink-0 px-[30px] py-[30px]">
             {/* V4.6.90 — refreshed SYNQDRIVE wordmark (new iconic X-badge + larger type weight)
                 has an aspect ratio of ~5.7:1 (1024x180). h-[27px] keeps the horizontal footprint
                 at ~154px so the brand row stays visually identical to the previous logo inside
-                the 220px sidebar. */}
+                the 260px sidebar. */}
             <img src={synqdriveLogo} alt="SYNQDRIVE" className="h-[27px] w-auto object-contain" />
           </div>
         )}
@@ -442,10 +460,6 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
               <button onClick={() => handleViewChange('financial-insights')} className={collapsedBtnClass(currentView === 'financial-insights')}>
                 <DollarSign className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.financialInsights')} />
-              </button>
-              <button onClick={() => handleViewChange('analytics')} className={collapsedBtnClass(currentView === 'analytics')}>
-                <BarChart3 className="w-[14px] h-[14px]" />
-                <CollapsedTooltip label={t('nav.analytics')} />
               </button>
               <button onClick={() => handleViewChange('fleet-condition')} className={collapsedBtnClass(currentView === 'fleet-condition')}>
                 <Activity className="w-[14px] h-[14px]" />
@@ -498,7 +512,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
             <div className="mt-auto pt-3 w-full flex flex-col items-center gap-1.5 border-t border-sidebar-border">
               <button
                 onClick={() => onNewBookingClick?.()}
-                className="sq-cta w-8 h-8 rounded-lg flex items-center justify-center relative group"
+                className="sq-3d-btn sq-3d-btn--primary w-8 h-8 rounded-lg flex items-center justify-center relative group"
                 aria-label={t('nav.newBooking')}
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -506,7 +520,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
               </button>
               <button
                 onClick={() => onNewTaskClick?.()}
-                className="sq-press w-8 h-8 rounded-lg flex items-center justify-center relative group sq-tone-success transition-all duration-200 ease-out hover:-translate-y-px"
+                className="sq-3d-btn sq-3d-btn--success w-8 h-8 rounded-lg flex items-center justify-center relative group"
                 aria-label={t('nav.newTask')}
               >
                 <CheckSquare className="w-3.5 h-3.5" />
@@ -522,30 +536,28 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
               scrollbarColor: isDarkMode ? 'rgba(100,100,100,0.3) transparent' : 'rgba(209, 213, 219, 0.5) transparent'
             }}
           >
-            <div className="max-w-[220px] mx-auto">
-              <NavigationContent />
+            <div className="max-w-[260px] mx-auto">
+              {renderNavigationContent()}
             </div>
           </div>
         )}
 
         <div className={`sq-sidebar-footer shrink-0 ${isCollapsed ? 'px-2 py-3' : 'px-[18px] py-3'}`}>
-          <div className={`flex ${isCollapsed ? 'justify-center' : 'justify-end'}`}>
-            <button
-              onClick={onToggleCollapse}
-              className={`sq-sidebar-footer__toggle ${isCollapsed ? 'sq-sidebar-footer__toggle--icon-only relative group' : 'sq-sidebar-footer__toggle--mirrored'}`}
-              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              <span className="sq-sidebar-footer__icon">
-                {isCollapsed ? (
-                  <PanelLeftOpen className="w-3.5 h-3.5" />
-                ) : (
-                  <PanelLeftClose className="w-3.5 h-3.5" />
-                )}
-              </span>
-              {!isCollapsed && <span className="sq-sidebar-footer__label">Collapse</span>}
-              {isCollapsed && <CollapsedTooltip label="Expand sidebar" />}
-            </button>
-          </div>
+          <button
+            onClick={onToggleCollapse}
+            className={`sq-sidebar-footer__toggle ${isCollapsed ? 'sq-sidebar-footer__toggle--icon-only relative group' : ''}`}
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <span className="sq-sidebar-footer__icon">
+              {isCollapsed ? (
+                <PanelLeftOpen className="w-4 h-4" />
+              ) : (
+                <PanelLeftClose className="w-4 h-4" />
+              )}
+            </span>
+            {!isCollapsed && <span className="sq-sidebar-footer__label">Collapse</span>}
+            {isCollapsed && <CollapsedTooltip label="Expand sidebar" />}
+          </button>
         </div>
       </div>
     </>

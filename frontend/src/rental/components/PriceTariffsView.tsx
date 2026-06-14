@@ -1,5 +1,6 @@
+import { Icon } from './ui/Icon';
 import { useState, useEffect } from 'react';
-import { Search, Car, Save, Check, X, ChevronDown, Plus, Trash2, Shield, Package, Gauge, Tag, ChevronRight, Settings, Pencil } from 'lucide-react';
+
 import {
   VehicleTariff, MileagePackage, InsuranceOption, ExtraOption,
   VehicleCategory, getVehicleCategory, categoryConfig, buildTariffs, formatCurrency
@@ -44,6 +45,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [filterStation, setFilterStation] = useState<string>('all');
   const [showStationFilter, setShowStationFilter] = useState(false);
+  const [showCategoryFilter, setShowCategoryFilter] = useState(false);
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [editingCategory, setEditingCategory] = useState<{ id: string; name: string } | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -116,6 +118,21 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
     categoryCounts[catName] = tariffs.filter(t => (t.categories ?? [t.category]).includes(catName)).length;
   }
   const totalAssignments = allCategoryNames.reduce((sum, c) => sum + (categoryCounts[c] || 0), 0);
+  const avgDailyRate =
+    tariffs.length > 0
+      ? tariffs.reduce((sum, tariff) => sum + (tariff.daily?.rate ?? 0), 0) / tariffs.length
+      : 0;
+  const electricCount = categoryCounts.Electric ?? 0;
+  const activeCategoryLabel = selectedCategory === 'All' ? 'All groups' : selectedCategory;
+  const activeStationLabel = filterStation === 'all' ? 'All stations' : filterStation;
+  const hasActiveFilters = Boolean(searchQuery) || selectedCategory !== 'All' || filterStation !== 'all';
+  const clearFilters = () => {
+    setSearchQuery('');
+    setFilterStation('all');
+    setSelectedCategory('All');
+    setShowStationFilter(false);
+    setShowCategoryFilter(false);
+  };
 
   const startEditing = (vehicleId: string) => {
     const t = getTariff(vehicleId);
@@ -195,7 +212,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
   };
 
   return (
-    <div className="relative" onClick={() => setShowStationFilter(false)}>
+    <div className="relative" onClick={() => { setShowStationFilter(false); setShowCategoryFilter(false); }}>
       <div
         className="space-y-5 transition-all duration-500 ease-out origin-center"
         style={{
@@ -206,95 +223,112 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
         }}
       >
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className={`text-lg font-bold tracking-tight ${textPrimary}`}>Price Tariffs</h1>
-          <p className={`text-xs mt-1 ${textSecondary}`}>Manage rental rates, mileage limits, km packages and insurance options</p>
+      <div className="flex min-h-8 flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground">
+            Price Tariffs
+          </h1>
         </div>
-        <div className={`flex items-center gap-3 px-3 py-2 rounded-lg border ${cardClass}`}>
-          <Tag className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-          <div>
-            <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>{fleetVehicles.length} Vehicles</span>
-            {totalAssignments > fleetVehicles.length && (
-              <span className={`text-[10px] ml-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>({totalAssignments} group assignments)</span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Category Quick-Select */}
-      <div className="flex gap-2 flex-wrap">
-        {['All', ...allCategoryNames].map(cat => {
-          const cfg = categoryConfig[cat as VehicleCategory];
-          const isBuiltIn = builtInCategories.includes(cat as VehicleCategory);
-          const customCat = customCategories.find(c => c.name === cat);
-          const isActive = selectedCategory === cat;
-          const count = categoryCounts[cat] ?? 0;
-          const activeRing = isActive ? (isDarkMode ? 'ring-2 ring-blue-500/30 border-blue-500/60' : 'ring-2 ring-blue-400/30 border-blue-400/60') : '';
-
-          return (
-            <div key={cat} className="relative group">
-              <button
-                onClick={() => setSelectedCategory((selectedCategory === cat && cat !== 'All' ? 'All' : cat) as VehicleCategory)}
-                className={`rounded-lg border px-4 py-3 cursor-pointer transition-all duration-200 text-left ${
-                  isActive
-                    ? `${isDarkMode ? 'bg-neutral-900/60' : 'bg-white/80'} ${activeRing}`
-                    : isDarkMode
-                      ? 'bg-neutral-900 border-neutral-700 hover:border-neutral-600'
-                      : 'bg-white border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-3 mb-1">
-                  <p className={`text-xs font-semibold ${textPrimary}`}>{cat === 'All' ? 'All Vehicles' : cat}</p>
-                  <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${
-                    cfg ? (isDarkMode ? cfg.darkBg + ' ' + cfg.darkText : cfg.bg + ' ' + cfg.text) : (isDarkMode ? 'bg-neutral-800 text-gray-300' : 'bg-gray-100 text-gray-600')
-                  }`}>{count}</span>
-                </div>
-              </button>
-              {/* Edit/Delete for custom categories */}
-              {customCat && (
-                <div className="absolute -top-1 -right-1 hidden group-hover:flex gap-0.5">
-                  <button onClick={(e) => { e.stopPropagation(); setEditingCategory({ id: customCat.id, name: customCat.name }); }}
-                    className={`p-0.5 rounded ${isDarkMode ? 'bg-neutral-700 text-gray-300 hover:bg-neutral-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}>
-                    <Pencil className="w-2.5 h-2.5" />
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); deleteCategory(customCat.id); }}
-                    className={`p-0.5 rounded ${isDarkMode ? 'bg-red-900/60 text-red-400 hover:bg-red-900' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}>
-                    <X className="w-2.5 h-2.5" />
-                  </button>
-                </div>
-              )}
-              {/* Edit for built-in categories (except All) */}
-              {isBuiltIn && cat !== 'All' && (
-                <div className="absolute -top-1 -right-1 hidden group-hover:flex gap-0.5">
-                  <button onClick={(e) => { e.stopPropagation(); deleteCategory(cat); }}
-                    className="hidden" />
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Add Category Button */}
         {showAddCategory ? (
-          <div className={`rounded-lg border px-3 py-2 flex items-center gap-2 ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`} onClick={e => e.stopPropagation()}>
-            <input type="text" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)}
+          <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card px-2 py-1.5 shadow-[var(--shadow-1)]" onClick={e => e.stopPropagation()}>
+            <input
+              type="text"
+              value={newCategoryName}
+              onChange={e => setNewCategoryName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') addCategory(); if (e.key === 'Escape') { setShowAddCategory(false); setNewCategoryName(''); } }}
-              placeholder="Category name..."
+              placeholder="Group name..."
               autoFocus
-              className={`w-24 text-xs px-2 py-1 rounded border outline-none ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'}`} />
-            <button onClick={addCategory} className={`p-1 rounded ${isDarkMode ? 'text-green-400 hover:bg-green-900/30' : 'text-green-600 hover:bg-green-50'}`}><Check className="w-3.5 h-3.5" /></button>
-            <button onClick={() => { setShowAddCategory(false); setNewCategoryName(''); }} className={`p-1 rounded ${isDarkMode ? 'text-gray-400 hover:bg-neutral-700' : 'text-gray-500 hover:bg-gray-100'}`}><X className="w-3.5 h-3.5" /></button>
+              className={`w-32 rounded-lg border px-2 py-1.5 text-xs outline-none ${
+                isDarkMode
+                  ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500'
+                  : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+              }`}
+            />
+            <button type="button" onClick={addCategory} className="sq-press rounded-lg p-1.5 sq-tone-success">
+              <Icon name="check" className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowAddCategory(false); setNewCategoryName(''); }}
+              className="sq-press rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
+            >
+              <Icon name="x" className="h-3.5 w-3.5" />
+            </button>
           </div>
         ) : (
-          <button onClick={() => setShowAddCategory(true)}
-            className={`rounded-lg border px-4 py-3 cursor-pointer transition-all border-dashed flex items-center gap-2 ${
-              isDarkMode ? 'border-neutral-700 text-gray-500 hover:border-neutral-600 hover:text-gray-400' : 'border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-500'
-            }`}>
-            <Plus className="w-3.5 h-3.5" />
-            <span className="text-xs font-medium">Add Group</span>
+          <button
+            type="button"
+            onClick={(event) => { event.stopPropagation(); setShowAddCategory(true); }}
+            className="sq-press flex items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-2 text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
+          >
+            <Icon name="plus" className="h-4 w-4 text-[color:var(--brand)]" />
+            Add Group
           </button>
         )}
+      </div>
+
+      {/* Segment metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        {[
+          {
+            label: 'Vehicles',
+            value: fleetVehicles.length,
+            helper: `${filteredVehicles.length} currently visible`,
+            icon: 'car',
+            action: () => clearFilters(),
+            active: !hasActiveFilters,
+            tone: 'sq-tone-neutral',
+          },
+          {
+            label: 'Groups',
+            value: allCategoryNames.length,
+            helper: `${totalAssignments} assignments`,
+            icon: 'tags',
+            action: () => setShowCategoryFilter(true),
+            active: selectedCategory !== 'All',
+            tone: 'sq-tone-brand',
+          },
+          {
+            label: 'Avg day rate',
+            value: formatCurrency(avgDailyRate),
+            helper: 'fleet baseline',
+            icon: 'gauge',
+            action: () => {},
+            active: false,
+            tone: 'sq-tone-warning',
+          },
+          {
+            label: 'Electric',
+            value: electricCount,
+            helper: `${categoryCounts.Premium ?? 0} premium vehicles`,
+            icon: 'zap',
+            action: () => setSelectedCategory(selectedCategory === 'Electric' ? 'All' : 'Electric'),
+            active: selectedCategory === 'Electric',
+            tone: electricCount > 0 ? 'sq-tone-success' : 'sq-tone-neutral',
+          },
+        ].map(metric => (
+          <button
+            key={metric.label}
+            type="button"
+            onClick={(event) => { event.stopPropagation(); metric.action(); }}
+            className={`group sq-card sq-press rounded-2xl p-4 text-left shadow-[var(--shadow-1)] transition-all ${
+              metric.active ? 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_22%,transparent)]' : 'hover:bg-muted/35'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold text-muted-foreground">{metric.label}</p>
+                <p className="mt-1 truncate text-[20px] font-bold leading-none tracking-[-0.03em] text-foreground tabular-nums">
+                  {metric.value}
+                </p>
+                <p className="mt-2 truncate text-[10px] font-medium text-muted-foreground">{metric.helper}</p>
+              </div>
+              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${metric.tone}`}>
+                <Icon name={metric.icon as any} className="h-4 w-4" />
+              </span>
+            </div>
+          </button>
+        ))}
       </div>
 
       {/* Rename Category Modal */}
@@ -314,62 +348,198 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
       )}
 
       {/* Search and Filters */}
-      <div className={`${cardClass} p-4`}>
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 ${textTertiary}`} />
+      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Icon name="filter" className="h-4 w-4 text-muted-foreground" />
+            <div className="min-w-0">
+              <h2 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">Filters</h2>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                Showing {filteredVehicles.length} of {fleetVehicles.length} vehicles
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {selectedCategory !== 'All' && (
+              <button
+                type="button"
+                onClick={(event) => { event.stopPropagation(); setSelectedCategory('All'); }}
+                className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-brand"
+              >
+                {activeCategoryLabel} active ×
+              </button>
+            )}
+            {filterStation !== 'all' && (
+              <button
+                type="button"
+                onClick={(event) => { event.stopPropagation(); setFilterStation('all'); }}
+                className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-warning"
+              >
+                {activeStationLabel} active ×
+              </button>
+            )}
+            {searchQuery && (
+              <span className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-neutral">
+                Search active
+              </span>
+            )}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={(event) => { event.stopPropagation(); clearFilters(); }}
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-semibold transition-all ${
+                  isDarkMode
+                    ? 'bg-red-900/30 border-red-700/50 text-red-400 hover:bg-red-900/50'
+                    : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
+                }`}
+              >
+                <Icon name="x" className="h-3.5 w-3.5" />
+                Clear filters
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-[240px] flex-1">
+            <Icon name="search" className={`absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
             <input
               type="text"
               placeholder="Search vehicles by model or license plate..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               onClick={e => e.stopPropagation()}
-              className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-xs outline-none transition-all ${
+              className={`w-full rounded-lg border py-2.5 pl-10 pr-4 text-xs outline-none transition-all ${
                 isDarkMode
                   ? 'bg-neutral-800 border-neutral-700 text-gray-200 placeholder-gray-500 focus:border-blue-500/50'
                   : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-300'
               }`}
             />
           </div>
+
           <div className="relative">
             <button
-              onClick={e => { e.stopPropagation(); setShowStationFilter(!showStationFilter); }}
-              className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-xs font-medium transition-all ${
+              type="button"
+              onClick={e => { e.stopPropagation(); setShowCategoryFilter(!showCategoryFilter); setShowStationFilter(false); }}
+              className={`flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-all ${
+                selectedCategory !== 'All'
+                  ? isDarkMode ? 'bg-blue-900/30 border-blue-700/50 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-700'
+                  : isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-800' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <span>{activeCategoryLabel}</span>
+              <Icon name="chevron-down" className={`h-3.5 w-3.5 transition-transform ${showCategoryFilter ? 'rotate-180' : ''}`} />
+            </button>
+            {showCategoryFilter && (
+              <div
+                onClick={event => event.stopPropagation()}
+                className={`absolute left-0 top-full z-50 mt-2 min-w-[250px] overflow-hidden rounded-lg border shadow-xl ${
+                  isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+                }`}
+              >
+                {(['All', ...allCategoryNames] as string[]).map(cat => {
+                  const customCat = customCategories.find(c => c.name === cat);
+                  return (
+                    <div key={cat} className={`flex items-center transition-colors ${
+                      selectedCategory === cat
+                        ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
+                        : isDarkMode ? 'text-gray-300 hover:bg-neutral-800' : 'text-gray-700 hover:bg-gray-50'
+                    }`}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategory(cat as VehicleCategory);
+                          setShowCategoryFilter(false);
+                        }}
+                        className="flex min-w-0 flex-1 items-center justify-between gap-3 px-3 py-2.5 text-left text-xs font-medium"
+                      >
+                        <span className="truncate">{cat === 'All' ? 'All groups' : cat}</span>
+                        <span className="rounded-md px-1.5 py-0.5 text-[10px] font-bold tabular-nums sq-tone-neutral">
+                          {categoryCounts[cat] ?? 0}
+                        </span>
+                      </button>
+                      {customCat && (
+                        <div className="flex shrink-0 items-center pr-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingCategory({ id: customCat.id, name: customCat.name });
+                              setShowCategoryFilter(false);
+                            }}
+                            className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                            title="Rename group"
+                          >
+                            <Icon name="pencil" className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteCategory(customCat.id)}
+                            className="rounded-md p-1 text-red-500 hover:bg-red-500/10"
+                            title="Delete group"
+                          >
+                            <Icon name="x" className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); setShowStationFilter(!showStationFilter); setShowCategoryFilter(false); }}
+              className={`flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-all ${
                 filterStation !== 'all'
                   ? isDarkMode ? 'bg-blue-900/30 border-blue-700/50 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-700'
                   : isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-800' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
               }`}
             >
-              <span>{filterStation === 'all' ? 'Station' : filterStation}</span>
-              <ChevronDown className={`w-3 h-3 transition-transform ${showStationFilter ? 'rotate-180' : ''}`} />
+              <span>{activeStationLabel}</span>
+              <Icon name="chevron-down" className={`h-3.5 w-3.5 transition-transform ${showStationFilter ? 'rotate-180' : ''}`} />
             </button>
             {showStationFilter && (
-              <div className={`absolute top-full mt-2 right-0 z-50 min-w-[200px] rounded-lg border shadow-xl overflow-hidden ${
-                isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
-              }`}>
-                <button onClick={() => { setFilterStation('all'); setShowStationFilter(false); }}
-                  className={`w-full px-3 py-2.5 text-left text-xs font-medium transition-colors ${
-                    filterStation === 'all' ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600' : isDarkMode ? 'text-gray-300 hover:bg-neutral-800' : 'text-gray-700 hover:bg-gray-50'
-                  }`}>All Stations</button>
-                {stations.map(s => (
-                  <button key={s} onClick={() => { setFilterStation(s); setShowStationFilter(false); }}
-                    className={`w-full px-3 py-2.5 text-left text-xs font-medium transition-colors ${
-                      filterStation === s ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600' : isDarkMode ? 'text-gray-300 hover:bg-neutral-800' : 'text-gray-700 hover:bg-gray-50'
-                    }`}>{s}</button>
+              <div
+                onClick={event => event.stopPropagation()}
+                className={`absolute right-0 top-full z-50 mt-2 min-w-[210px] overflow-hidden rounded-lg border shadow-xl sm:left-0 sm:right-auto ${
+                  isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => { setFilterStation('all'); setShowStationFilter(false); }}
+                  className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-xs font-medium transition-colors ${
+                    filterStation === 'all'
+                      ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
+                      : isDarkMode ? 'text-gray-300 hover:bg-neutral-800' : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <span>All stations</span>
+                  <span className="rounded-md px-1.5 py-0.5 text-[10px] font-bold tabular-nums sq-tone-neutral">{fleetVehicles.length}</span>
+                </button>
+                {stations.map(station => (
+                  <button
+                    key={station}
+                    type="button"
+                    onClick={() => { setFilterStation(station); setShowStationFilter(false); }}
+                    className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-xs font-medium transition-colors ${
+                      filterStation === station
+                        ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
+                        : isDarkMode ? 'text-gray-300 hover:bg-neutral-800' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="truncate">{station}</span>
+                    <span className="rounded-md px-1.5 py-0.5 text-[10px] font-bold tabular-nums sq-tone-neutral">
+                      {fleetVehicles.filter(vehicle => vehicle.station === station).length}
+                    </span>
+                  </button>
                 ))}
               </div>
             )}
           </div>
-          {(searchQuery || filterStation !== 'all' || selectedCategory !== 'All') && (
-            <button
-              onClick={() => { setSearchQuery(''); setFilterStation('all'); setSelectedCategory('All'); }}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
-                isDarkMode ? 'bg-red-900/30 border-red-700/50 text-red-400 hover:bg-red-900/50' : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
-              }`}
-            >
-              <X className="w-3 h-3" /> Clear
-            </button>
-          )}
         </div>
       </div>
 
@@ -395,7 +565,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                 {/* Vehicle Info */}
                 <div className="flex items-center gap-3 w-[260px]">
                   <div className={`w-5 h-5 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-neutral-800/80' : 'bg-gray-100'}`}>
-                    <Car className={`w-4.5 h-4.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                    <Icon name="car" className={`w-4.5 h-4.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                   </div>
                   <div>
                     <p className={`text-xs font-semibold ${textPrimary}`}>{vehicle.model}</p>
@@ -444,7 +614,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                     <p className={`text-xs uppercase tracking-wider font-semibold ${textTertiary}`}>Extra km</p>
                     <p className={`text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>{formatCurrency(tariff.extraKmPrice)}</p>
                   </div>
-                  <ChevronRight className={`w-5 h-5 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''} ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                  <Icon name="chevron-right" className={`w-5 h-5 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''} ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
                 </div>
               </div>
 
@@ -455,7 +625,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                     {/* Pricing Details */}
                     <div>
                       <div className="flex items-center gap-2 mb-3">
-                        <Gauge className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                        <Icon name="gauge" className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
                         <h3 className={`text-base font-semibold ${textPrimary}`}>Pricing & Km Limits</h3>
                       </div>
                       <div className="space-y-2.5">
@@ -482,7 +652,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                     {/* Mileage Packages */}
                     <div>
                       <div className="flex items-center gap-2 mb-3">
-                        <Package className={`w-5 h-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                        <Icon name="package" className={`w-5 h-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
                         <h3 className={`text-base font-semibold ${textPrimary}`}>Mileage Packages</h3>
                       </div>
                       <div className="space-y-2">
@@ -504,7 +674,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                     {/* Insurance Options */}
                     <div>
                       <div className="flex items-center gap-2 mb-3">
-                        <Shield className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+                        <Icon name="shield" className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
                         <h3 className={`text-base font-semibold ${textPrimary}`}>Additional Insurance</h3>
                       </div>
                       <div className="space-y-2">
@@ -525,7 +695,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                   <div className="flex justify-end mt-4 pt-4 border-t border-dashed" style={{ borderColor: isDarkMode ? 'rgba(64,64,64,0.5)' : 'rgba(200,200,200,0.6)' }}>
                     {justSaved ? (
                       <div className="flex items-center gap-1.5 text-emerald-500">
-                        <Check className="w-5 h-5" />
+                        <Icon name="check" className="w-5 h-5" />
                         <span className="text-[10px] font-medium">Saved</span>
                       </div>
                     ) : (
@@ -533,7 +703,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                         onClick={e => { e.stopPropagation(); startEditing(vehicle.id); }}
                         className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-sm hover:shadow-md transition-all text-xs font-semibold"
                       >
-                        <Settings className="w-3.5 h-3.5" />
+                        <Icon name="settings" className="w-3.5 h-3.5" />
                         Configure Tariff
                       </button>
                     )}
@@ -547,7 +717,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
 
       {filteredVehicles.length === 0 && (
         <div className={`${cardClass} py-12 text-center`}>
-          <Car className={`w-5 h-5 mx-auto mb-3 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+          <Icon name="car" className={`w-5 h-5 mx-auto mb-3 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
           <p className={`text-xs font-medium ${textSecondary}`}>No vehicles match your filters</p>
         </div>
       )}
@@ -589,7 +759,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                     <p className={`text-xs mt-0.5 ${textSecondary}`}>{vehicle.model} Â· {vehicle.license}</p>
                   </div>
                   <button onClick={cancelEditing} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
-                    <X className="w-5 h-5" />
+                    <Icon name="x" className="w-5 h-5" />
                   </button>
                 </div>
               </div>
@@ -598,7 +768,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                 {/* Group Assignment */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
-                    <Tag className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                    <Icon name="tag" className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
                     <h3 className={`text-base font-semibold ${textPrimary}`}>Groups</h3>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -618,7 +788,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                                     : (isDarkMode ? 'bg-blue-900/30 text-blue-400 border-blue-500/50' : 'bg-blue-50 text-blue-700 border-blue-300')
                               : isDarkMode ? 'bg-neutral-800 text-gray-500 border-neutral-700/50 hover:text-gray-300' : 'bg-gray-50 text-gray-400 border-gray-200 hover:text-gray-600'
                           }`}>
-                          {catName}{isIn && <Check className="inline w-3 h-3 ml-1" />}
+                          {catName}{isIn && <Icon name="check" className="inline w-3 h-3 ml-1" />}
                         </button>
                       );
                     })}
@@ -628,7 +798,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                 {/* Pricing & Km Limits */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
-                    <Gauge className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                    <Icon name="gauge" className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
                     <h3 className={`text-base font-semibold ${textPrimary}`}>Pricing & Kilometer Limits</h3>
                   </div>
                   <div className="space-y-3">
@@ -682,7 +852,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <Package className={`w-5 h-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                      <Icon name="package" className={`w-5 h-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
                       <h3 className={`text-base font-semibold ${textPrimary}`}>Mileage Packages</h3>
                     </div>
                     <button onClick={addMileagePackage}
@@ -690,7 +860,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                         isDarkMode ? 'bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                       }`}
                     >
-                      <Plus className="w-3 h-3" /> Add Package
+                      <Icon name="plus" className="w-3 h-3" /> Add Package
                     </button>
                   </div>
                   <div className="space-y-2">
@@ -723,7 +893,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                         <button onClick={() => removeMileagePackage(pkg.id)}
                           className={`mt-4 p-2 rounded-lg transition-colors ${isDarkMode ? 'text-red-400 hover:bg-red-900/30' : 'text-red-500 hover:bg-red-50'}`}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Icon name="trash-2" className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     ))}
@@ -737,7 +907,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <Shield className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+                      <Icon name="shield" className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
                       <h3 className={`text-base font-semibold ${textPrimary}`}>Additional Insurance</h3>
                     </div>
                     <button onClick={addInsurance}
@@ -745,7 +915,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                         isDarkMode ? 'bg-purple-900/30 text-purple-400 hover:bg-purple-900/50' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
                       }`}
                     >
-                      <Plus className="w-3 h-3" /> Add Insurance
+                      <Icon name="plus" className="w-3 h-3" /> Add Insurance
                     </button>
                   </div>
                   <div className="space-y-2">
@@ -770,7 +940,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                           <button onClick={() => removeInsurance(ins.id)}
                             className={`mt-4 p-2 rounded-lg transition-colors ${isDarkMode ? 'text-red-400 hover:bg-red-900/30' : 'text-red-500 hover:bg-red-50'}`}
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Icon name="trash-2" className="w-3.5 h-3.5" />
                           </button>
                         </div>
                         <div className="mt-2">
@@ -800,7 +970,7 @@ export function PriceTariffsView({ isDarkMode, tariffs: externalTariffs, onTarif
                 <button onClick={saveEditing}
                   className="flex items-center gap-2 px-3 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md hover:shadow-lg transition-all text-xs font-semibold"
                 >
-                  <Save className="w-5 h-5" />
+                  <Icon name="save" className="w-5 h-5" />
                   Save Tariff
                 </button>
               </div>

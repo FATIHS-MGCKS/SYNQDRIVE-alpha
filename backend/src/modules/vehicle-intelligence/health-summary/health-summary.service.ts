@@ -3,6 +3,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { DtcService } from '../dtc/dtc.service';
 import { BrakeHealthService } from '../brakes/brake-health.service';
 import { TiresService } from '../tires/tires.service';
+import { TireHealthService } from '../tires/tire-health.service';
 import { ServiceEventsService } from '../service-events/service-events.service';
 import { TripsService } from '../trips/trips.service';
 import { DrivingEventsService } from '../driving-events/driving-events.service';
@@ -30,7 +31,18 @@ export interface HealthSummaryAgentInput {
       hasAlert: boolean;
       hasData: boolean;
     } | null;
-    tires: { treadPercentEstimate: number | null; hasSetups: boolean; hasMeasurements: boolean; hasData: boolean } | null;
+    tires: {
+      treadPercentEstimate: number | null;
+      // Canonical tire truth (TireHealthService.getSummary → tire-status.ts).
+      status: string;
+      displayTreadMm: number | null;
+      displayMode: string;
+      lowestTreadPosition: string | null;
+      confidence: string;
+      hasSetups: boolean;
+      hasMeasurements: boolean;
+      hasData: boolean;
+    } | null;
     serviceInfo: {
       lastServiceAt: string | null;
       lastOdometerKm: number | null;
@@ -81,6 +93,7 @@ export class HealthSummaryService {
     private readonly canonicalBatteryHealthService: CanonicalBatteryHealthService,
     private readonly brakeHealthService: BrakeHealthService,
     private readonly tiresService: TiresService,
+    private readonly tireHealthService: TireHealthService,
     private readonly serviceEventsService: ServiceEventsService,
     private readonly tripsService: TripsService,
     private readonly drivingEventsService: DrivingEventsService,
@@ -127,6 +140,7 @@ export class HealthSummaryService {
       batterySummary,
       brakeSummary,
       tireSetups,
+      tireSummary,
       serviceEventsPaginated,
       tripStats,
       recentTrips,
@@ -136,6 +150,9 @@ export class HealthSummaryService {
       this.canonicalBatteryHealthService.getSummary(vehicleId).catch(() => null),
       this.brakeHealthService.getSummary(vehicleId).catch(() => null),
       this.tiresService.findSetupsByVehicle(vehicleId).catch(() => []),
+      // Canonical tire truth — single source for tread status/percent. No
+      // parallel tread-percent math in this service anymore.
+      this.tireHealthService.getSummary(vehicleId).catch(() => null),
       this.serviceEventsService.findByVehicle(vehicleId, { page: 1, limit: 50 }).catch(() => ({ data: [] })),
       this.tripsService.getStats(vehicleId).catch(() => ({
         avgDrivingScore: null,
@@ -161,39 +178,17 @@ export class HealthSummaryService {
     const lastOil = oilEvents[0] ?? null;
     const hasBrakeService = serviceEvents.some((e: any) => e.eventType === 'BRAKE_SERVICE');
 
-    let tireTreadPercent: number | null = null;
-    type TireSetupShape = {
-      status?: string;
-      removedAt?: Date | null;
-      measurements?: Array<{ frontLeftMm?: number; frontRightMm?: number; rearLeftMm?: number; rearRightMm?: number }>;
-      initialTreadDepthMm?: number;
-      initialTreadFrontMm?: number;
-      initialTreadRearMm?: number;
-      tireSeason?: string;
-      overallHealthPercent?: number;
-    };
+    // Tire tread truth comes ONLY from the canonical TireHealthService summary
+    // (which centralises the season-aware thresholds in tire-health.config /
+    // tire-status). This service no longer re-derives tread percent — that
+    // removed the second, drifting source of truth.
+    type TireSetupShape = { status?: string; removedAt?: Date | null; measurements?: unknown[] };
+    const tireTreadPercent: number | null =
+      tireSummary?.overallPercent != null ? Math.round(tireSummary.overallPercent) : null;
     const activeSetup = (tireSetups as TireSetupShape[])?.find(
       (s) => s.status === 'ACTIVE' && s.removedAt == null,
     );
     const firstSetup: TireSetupShape | undefined = activeSetup ?? (tireSetups?.[0] as TireSetupShape | undefined);
-    if (firstSetup?.overallHealthPercent != null) {
-      tireTreadPercent = Math.round(firstSetup.overallHealthPercent);
-    } else if (firstSetup?.measurements?.length) {
-      const m = firstSetup.measurements[0];
-      const replaceThreshold = firstSetup.tireSeason === 'WINTER' ? 4.0 : 3.0;
-      const initFront = firstSetup.initialTreadFrontMm ?? firstSetup.initialTreadDepthMm ?? 8;
-      const initRear = firstSetup.initialTreadRearMm ?? firstSetup.initialTreadDepthMm ?? 8;
-      const frontVals = [m.frontLeftMm, m.frontRightMm].filter((x): x is number => typeof x === 'number');
-      const rearVals = [m.rearLeftMm, m.rearRightMm].filter((x): x is number => typeof x === 'number');
-      const frontAvg = frontVals.length > 0 ? frontVals.reduce((a, b) => a + b, 0) / frontVals.length : null;
-      const rearAvg = rearVals.length > 0 ? rearVals.reduce((a, b) => a + b, 0) / rearVals.length : null;
-      const usableFront = initFront - replaceThreshold;
-      const usableRear = initRear - replaceThreshold;
-      const frontPct = frontAvg != null && usableFront > 0 ? Math.max(0, Math.min(100, Math.round((frontAvg - replaceThreshold) / usableFront * 100))) : null;
-      const rearPct = rearAvg != null && usableRear > 0 ? Math.max(0, Math.min(100, Math.round((rearAvg - replaceThreshold) / usableRear * 100))) : null;
-      if (frontPct != null && rearPct != null) tireTreadPercent = Math.round((frontPct + rearPct) / 2);
-      else tireTreadPercent = frontPct ?? rearPct ?? null;
-    }
 
     let cityPct: number | null = null;
     let highwayPct: number | null = null;
@@ -288,9 +283,14 @@ export class HealthSummaryService {
         },
         tires: {
           treadPercentEstimate: tireTreadPercent,
+          status: tireSummary?.overallStatus ?? 'UNKNOWN',
+          displayTreadMm: tireSummary?.displayTreadMm ?? null,
+          displayMode: tireSummary?.displayMode ?? 'UNKNOWN',
+          lowestTreadPosition: tireSummary?.lowestTreadPosition ?? null,
+          confidence: tireSummary?.confidence ?? 'UNKNOWN',
           hasSetups: Array.isArray(tireSetups) && tireSetups.length > 0,
           hasMeasurements: firstSetup?.measurements != null && firstSetup.measurements.length > 0,
-          hasData: tireTreadPercent != null,
+          hasData: tireSummary != null && tireSummary.overallStatus !== 'UNKNOWN',
         },
         serviceInfo: (() => {
           // Compute remaining days/km and overdue flags from the same
@@ -374,13 +374,13 @@ export class HealthSummaryService {
     const maintenanceFocus: Array<{ area: string; priority: 'low' | 'medium' | 'high'; reason: string }> = [];
 
     if (m.battery?.hasData && (m.battery.sohPercent ?? 0) >= 75) {
-      positives.push(`Battery state of health is ${m.battery.sohPercent}% — within normal range.`);
+      positives.push(`Estimated 12V battery health is within normal range.`);
     } else if (m.battery?.hasData && (m.battery.sohPercent ?? 0) < 50) {
-      watchpoints.push('Battery-SOH unter 50% — Startschwierigkeiten wahrscheinlich, Austausch empfohlen.');
-      maintenanceFocus.push({ area: 'battery', priority: 'high', reason: 'Low state of health' });
+      watchpoints.push('Geschätzte 12V-Batteriegesundheit kritisch — Startschwierigkeiten wahrscheinlich, Austausch empfohlen.');
+      maintenanceFocus.push({ area: 'battery', priority: 'high', reason: 'Low estimated battery health' });
     } else if (m.battery?.hasData && (m.battery.sohPercent ?? 0) < 75) {
-      watchpoints.push('Battery-SOH unter 75% — Startschwierigkeiten möglich, beobachten.');
-      maintenanceFocus.push({ area: 'battery', priority: 'medium', reason: 'Declining state of health' });
+      watchpoints.push('Geschätzte 12V-Batteriegesundheit niedrig — Startschwierigkeiten möglich, beobachten.');
+      maintenanceFocus.push({ area: 'battery', priority: 'medium', reason: 'Declining estimated battery health' });
     }
 
     if (m.errorCodes?.hasData && m.errorCodes.activeCount === 0) {
@@ -467,7 +467,7 @@ export class HealthSummaryService {
       futureItems.push('Monitor tire tread; plan replacement before it falls below 25%.');
     }
     if (m.battery?.hasData && (m.battery.sohPercent ?? 100) < 75 && (m.battery.sohPercent ?? 0) >= 50) {
-      futureItems.push('Battery capacity is declining; recheck in a few months.');
+      futureItems.push('Estimated 12V battery health is declining; recheck in a few months.');
     }
 
     if (input.dataQuality.missing.length > 3) {

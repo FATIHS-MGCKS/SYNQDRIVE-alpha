@@ -214,7 +214,12 @@ enum BrakeServiceSource {
 
 enum DocumentExtractionStatus {
   PENDING
+  QUEUED
+  PROCESSING
+  READY_FOR_REVIEW
   CONFIRMED
+  APPLIED
+  FAILED
   REJECTED
 }
 
@@ -334,8 +339,12 @@ enum InsightType {
   SERVICE_WINDOW
   SERVICE_BEFORE_BOOKING
   BATTERY_CRITICAL
+  TIRE_CRITICAL
+  BRAKE_CRITICAL
   SERVICE_OVERDUE
   PICKUP_OVERDUE
+  TUV_OVERDUE
+  BOKRAFT_OVERDUE
 }
 
 enum InsightSeverity {
@@ -452,6 +461,8 @@ enum ActivityEntity {
   TASK // org task
   INVOICE // org invoice
   FINE // fine record
+  VENDOR // external service provider / supplier
+  VENDOR_VEHICLE_LINK // vendor ↔ vehicle relationship
 }
 
 enum DrivingEventType {
@@ -592,10 +603,12 @@ model Organization {
   insightPolicy             TenantInsightPolicy?
   insightRuns               DashboardInsightRun[]
   insights                  DashboardInsight[]
-  servicePartnerAssignments TenantServicePartnerAssignment[]
-  partnerDataAuthorizations PartnerDataAuthorization[]
-  partnerServiceCases       PartnerServiceCase[]
   providerConsents          VehicleProviderConsent[]
+  generatedDocuments        GeneratedDocument[]
+  legalDocuments            OrganizationLegalDocument[]
+  bookingDocumentBundles    BookingDocumentBundle[]
+  bookingDeposits           BookingDeposit[]
+  rentalContracts           RentalContract[]
 
   @@index([status])
   @@map("organizations")
@@ -847,12 +860,14 @@ model Vehicle {
   hvBatteryHealthCurrent HvBatteryHealthCurrent?
   batteryFeatures        BatteryFeatures?
   batteryEvidence        BatteryEvidence[]
+  brakeEvidence          BrakeEvidence[]
   brakeTripMetrics       BrakeTripMetric[]
   brakeHealthCurrent     BrakeHealthCurrent?
   dtcEvents              VehicleDtcEvent[]
   tripDrivingImpacts     TripDrivingImpact[]
   drivingImpactCurrent   VehicleDrivingImpactCurrent?
   damages                VehicleDamage[]
+  exteriorImages         VehicleExteriorImage[]
   rentalDrivingAnalyses  RentalDrivingAnalysis[]
   trips                  VehicleTrip[]
   tripDetectionState     VehicleTripDetectionState?
@@ -864,7 +879,6 @@ model Vehicle {
   documentExtractions    VehicleDocumentExtraction[]
   vendorVehicles         VendorVehicle[]
   complaints             VehicleComplaint[]
-  partnerServiceCases    PartnerServiceCase[]
   dataSourceLinks        VehicleDataSourceLink[]
   hmSignalGroupStates    HmSignalGroupState[]
   providerConsents       VehicleProviderConsent[]
@@ -1404,6 +1418,7 @@ model VehicleServiceEvent {
 
   vehicle         Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   batteryEvidence BatteryEvidence[]
+  brakeEvidence   BrakeEvidence[]
 
   @@index([vehicleId])
   @@index([eventDate])
@@ -1422,15 +1437,28 @@ model VehicleDocumentExtraction {
   status         DocumentExtractionStatus @default(PENDING) @map("status")
   sourceFileName String?                  @map("source_file_name")
   sourceFileUrl  String?                  @map("source_file_url")
-  extractedData  Json?                    @map("extracted_data")
-  confirmedData  Json?                    @map("confirmed_data")
-  appliedAt      DateTime?                @map("applied_at")
-  serviceEventId String?                  @map("service_event_id")
-  createdAt      DateTime                 @default(now()) @map("created_at")
-  updatedAt      DateTime                 @updatedAt @map("updated_at")
+  // Private object-storage key for the stored upload (NOT publicly served).
+  // sourceFileUrl is kept for backward compatibility / domain apply links.
+  objectKey       String?  @map("object_key")
+  storageProvider String?  @map("storage_provider")
+  mimeType        String?  @map("mime_type")
+  sizeBytes       Int?     @map("size_bytes")
+  extractedData   Json?    @map("extracted_data")
+  // Plausibility result produced by the worker (informational; never blocks storage).
+  plausibility    Json?    @map("plausibility")
+  confirmedData   Json?    @map("confirmed_data")
+  errorMessage    String?  @map("error_message")
+  queuedAt        DateTime? @map("queued_at")
+  processedAt     DateTime? @map("processed_at")
+  appliedAt       DateTime? @map("applied_at")
+  createdById     String?  @map("created_by_id")
+  serviceEventId  String?  @map("service_event_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   vehicle         Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   batteryEvidence BatteryEvidence[]
+  brakeEvidence   BrakeEvidence[]
 
   @@index([vehicleId])
   @@index([status])
@@ -2034,6 +2062,7 @@ model Fine {
 enum TaskStatus {
   OPEN
   IN_PROGRESS
+  WAITING
   DONE
   CANCELLED
 }
@@ -2045,37 +2074,181 @@ enum TaskPriority {
   URGENT
 }
 
+// V4.8.3 — Task Action Layer. Canonical task taxonomy. Operationally typed so
+// UI, automation and templates can branch on a stable value instead of the
+// legacy free-form `category` string (which is kept for backward compat).
+enum TaskType {
+  VEHICLE_SERVICE
+  VEHICLE_INSPECTION
+  TIRE_CHECK
+  BRAKE_CHECK
+  BATTERY_CHECK
+  VEHICLE_CLEANING
+  BOOKING_PREPARATION
+  BOOKING_PICKUP
+  BOOKING_RETURN
+  DOCUMENT_REVIEW
+  INVOICE_REQUIRED
+  CUSTOMER_FOLLOWUP
+  REPAIR
+  CUSTOM
+}
+
+// Origin domain of a task. Coarser than the free-form `source` string (which
+// keeps the exact detector provenance like INSIGHT_SERVICE for the auto-close
+// whitelist); `sourceType` is the stable category used by API/UI filters.
+enum TaskSource {
+  MANUAL
+  SYSTEM
+  ALERT
+  HEALTH
+  BOOKING
+  DOCUMENT
+  VENDOR
+}
+
 model OrgTask {
   id              String       @id @default(uuid())
   organizationId  String       @map("organization_id")
   title           String
   description     String?
   category        String?
+  type            TaskType     @default(CUSTOM)
   status          TaskStatus   @default(OPEN)
   priority        TaskPriority @default(MEDIUM)
+  // Canonical link targets. All optional — a task may link to a vehicle, a
+  // booking, a customer, a vendor, an alert (DashboardInsight) or a document,
+  // but never has to have all of them. Stored as plain scoped ids (org
+  // ownership validated in TasksService) mirroring OrgInvoice's link columns.
   vehicleId       String?      @map("vehicle_id")
+  bookingId       String?      @map("booking_id")
+  customerId      String?      @map("customer_id")
+  vendorId        String?      @map("vendor_id")
+  alertId         String?      @map("alert_id")
+  documentId      String?      @map("document_id")
   fineId          String?      @map("fine_id")
   invoiceId       String?      @map("invoice_id")
   assignedTo      String?      @map("assigned_to")
   dueDate         DateTime?    @map("due_date")
+  startedAt       DateTime?    @map("started_at")
   completedAt     DateTime?    @map("completed_at")
+  cancelledAt     DateTime?    @map("cancelled_at")
+  estimatedCostCents Int?      @map("estimated_cost_cents")
+  actualCostCents    Int?      @map("actual_cost_cents")
+  resolutionNote  String?      @map("resolution_note")
+  metadata        Json?
   createdByUserId String?      @map("created_by_user_id")
   updatedByUserId String?      @map("updated_by_user_id")
+  // V4.7.59 — Auto-task provenance. `source` distinguishes operator-created
+  // tasks (null) from system-generated ones (e.g. INSIGHT_SERVICE,
+  // INSIGHT_COMPLIANCE). `dedupKey` is the idempotency key the Insight→Task
+  // bridge uses to upsert/escalate a single task per (vehicle, condition)
+  // instead of duplicating it on every insight run. `sourceType` is the
+  // coarse origin domain (V4.8.3).
+  source          String?      @map("source")
+  sourceType      TaskSource   @default(MANUAL) @map("source_type")
+  dedupKey        String?      @unique @map("dedup_key")
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
 
-  fine    Fine?       @relation(fields: [fineId], references: [id], onDelete: SetNull)
-  invoice OrgInvoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  fine          Fine?               @relation(fields: [fineId], references: [id], onDelete: SetNull)
+  invoice       OrgInvoice?         @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  checklistItems TaskChecklistItem[]
+  comments      TaskComment[]
+  attachments   TaskAttachment[]
+  events        TaskEvent[]
 
   @@index([organizationId])
   @@index([status])
+  @@index([priority])
+  @@index([type])
+  @@index([sourceType])
+  @@index([dueDate])
   @@index([fineId])
   @@index([invoiceId])
+  @@index([vehicleId])
+  @@index([bookingId])
+  @@index([customerId])
+  @@index([vendorId])
+  @@index([alertId])
+  @@index([documentId])
+  @@index([assignedTo])
   @@index([createdByUserId])
   // Task list is per-org filtered by status; dueDate is the common sort.
   @@index([organizationId, status])
+  @@index([organizationId, assignedTo])
   @@index([organizationId, dueDate])
+  @@index([organizationId, source])
   @@map("org_tasks")
+}
+
+// ─── Task child resources (V4.8.3) ───────────────────────────────────────
+
+model TaskChecklistItem {
+  id                String    @id @default(uuid())
+  taskId            String    @map("task_id")
+  title             String
+  description       String?
+  sortOrder         Int       @default(0) @map("sort_order")
+  isDone            Boolean   @default(false) @map("is_done")
+  completedAt       DateTime? @map("completed_at")
+  completedByUserId String?   @map("completed_by_user_id")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  task OrgTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_checklist_items")
+}
+
+model TaskComment {
+  id        String   @id @default(uuid())
+  taskId    String   @map("task_id")
+  userId    String?  @map("user_id")
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  task OrgTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_comments")
+}
+
+model TaskAttachment {
+  id               String   @id @default(uuid())
+  taskId           String   @map("task_id")
+  fileUrl          String   @map("file_url")
+  fileName         String?  @map("file_name")
+  mimeType         String?  @map("mime_type")
+  size             Int?
+  uploadedByUserId String?  @map("uploaded_by_user_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  task OrgTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_attachments")
+}
+
+// Immutable timeline of what happened to a task (status changes, assignment,
+// comments, completion). `type` is a free string so new event kinds don't need
+// a migration.
+model TaskEvent {
+  id           String   @id @default(uuid())
+  taskId       String   @map("task_id")
+  type         String
+  actorUserId  String?  @map("actor_user_id")
+  oldValue     String?  @map("old_value")
+  newValue     String?  @map("new_value")
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  task OrgTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_events")
 }
 
 // ------------------------------------------------
@@ -2085,6 +2258,7 @@ model OrgTask {
 enum OrgInvoiceType {
   OUTGOING_BOOKING
   OUTGOING_MANUAL
+  OUTGOING_FINAL
   INCOMING_VENDOR
   INCOMING_UPLOADED
 }
@@ -2103,6 +2277,7 @@ model OrgInvoice {
   organizationId String           @map("organization_id")
   type           OrgInvoiceType
   customerId     String?          @map("customer_id")
+  vendorId       String?          @map("vendor_id")
   vendorName     String?          @map("vendor_name")
   bookingId      String?          @map("booking_id")
   vehicleId      String?          @map("vehicle_id")
@@ -2124,10 +2299,12 @@ model OrgInvoice {
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
 
-  tasks OrgTask[]
+  tasks  OrgTask[]
+  vendor Vendor?  @relation(fields: [vendorId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([customerId])
+  @@index([vendorId])
   @@index([bookingId])
   @@index([status])
   @@index([type])
@@ -2136,6 +2313,165 @@ model OrgInvoice {
   @@index([organizationId, status])
   @@index([organizationId, invoiceDate])
   @@map("org_invoices")
+}
+
+// ------------------------------------------------
+// BOOKING DOCUMENT LIFECYCLE
+// ------------------------------------------------
+// Central document engine: business modules (bookings, invoices, handover)
+// own the data; these models own document rendering metadata, uploaded legal
+// versions, and the per-booking bundle that tracks which documents exist.
+// Status fields use plain strings (values documented inline) to keep the
+// migration small and consistent with other recent additions. Cross-entity
+// links to Booking/Customer/Vehicle/Invoice/Handover are kept as scalar id
+// columns + indexes (no Prisma relations) to avoid migration friction.
+
+model GeneratedDocument {
+  id                 String       @id @default(uuid())
+  organizationId     String       @map("organization_id")
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documentType       String       @map("document_type") // BOOKING_INVOICE, DEPOSIT_RECEIPT, RENTAL_CONTRACT, TERMS_AND_CONDITIONS, WITHDRAWAL_INFORMATION, HANDOVER_PICKUP, HANDOVER_RETURN, FINAL_INVOICE
+  origin             String       @default("GENERATED") // GENERATED, STATIC_LEGAL, UPLOADED_REFERENCE
+  status             String       @default("GENERATED") // DRAFT, GENERATED, SENT, VOID, FAILED
+  bookingId          String?      @map("booking_id")
+  customerId         String?      @map("customer_id")
+  vehicleId          String?      @map("vehicle_id")
+  invoiceId          String?      @map("invoice_id")
+  handoverProtocolId String?      @map("handover_protocol_id")
+  rentalContractId   String?      @map("rental_contract_id")
+  depositId          String?      @map("deposit_id")
+  legalDocumentId    String?      @map("legal_document_id")
+  title              String
+  documentNumber     String?      @map("document_number")
+  fileName           String       @map("file_name")
+  mimeType           String       @default("application/pdf") @map("mime_type")
+  storageProvider    String       @default("local") @map("storage_provider")
+  objectKey          String       @map("object_key")
+  sizeBytes          Int?         @map("size_bytes")
+  checksum           String?
+  templateKey        String?      @map("template_key")
+  templateVersion    String?      @map("template_version")
+  legalVersionLabel  String?      @map("legal_version_label")
+  generatedAt        DateTime?    @map("generated_at")
+  generatedByUserId  String?      @map("generated_by_user_id")
+  sentAt             DateTime?    @map("sent_at")
+  signedAt           DateTime?    @map("signed_at")
+  voidedAt           DateTime?    @map("voided_at")
+  metadata           Json?
+  snapshot           Json?
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([bookingId])
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([invoiceId])
+  @@index([documentType])
+  @@index([status])
+  @@map("generated_documents")
+}
+
+model OrganizationLegalDocument {
+  id               String       @id @default(uuid())
+  organizationId   String       @map("organization_id")
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documentType     String       @map("document_type") // TERMS_AND_CONDITIONS, WITHDRAWAL_INFORMATION
+  title            String
+  versionLabel     String       @map("version_label")
+  language         String       @default("de")
+  status           String       @default("DRAFT") // DRAFT, ACTIVE, ARCHIVED
+  fileName         String       @map("file_name")
+  mimeType         String       @default("application/pdf") @map("mime_type")
+  storageProvider  String       @default("local") @map("storage_provider")
+  objectKey        String       @map("object_key")
+  checksum         String?
+  sizeBytes        Int?         @map("size_bytes")
+  activeFrom       DateTime?    @map("active_from")
+  uploadedByUserId String?      @map("uploaded_by_user_id")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([organizationId, documentType, status])
+  @@map("organization_legal_documents")
+}
+
+model BookingDocumentBundle {
+  id                       String       @id @default(uuid())
+  organizationId           String       @map("organization_id")
+  organization             Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookingId                String       @unique @map("booking_id")
+  status                   String       @default("PENDING") // PENDING, PARTIAL, COMPLETE, FAILED
+  bookingInvoiceDocumentId String?      @map("booking_invoice_document_id")
+  depositReceiptDocumentId String?      @map("deposit_receipt_document_id")
+  rentalContractDocumentId String?      @map("rental_contract_document_id")
+  termsDocumentId          String?      @map("terms_document_id")
+  withdrawalDocumentId     String?      @map("withdrawal_document_id")
+  pickupProtocolDocumentId String?      @map("pickup_protocol_document_id")
+  returnProtocolDocumentId String?      @map("return_protocol_document_id")
+  finalInvoiceDocumentId   String?      @map("final_invoice_document_id")
+  generatedAt              DateTime?    @map("generated_at")
+  lastError                String?      @map("last_error")
+  createdAt                DateTime     @default(now()) @map("created_at")
+  updatedAt                DateTime     @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([bookingId])
+  @@index([status])
+  @@map("booking_document_bundles")
+}
+
+model BookingDeposit {
+  id                  String       @id @default(uuid())
+  organizationId      String       @map("organization_id")
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookingId           String       @unique @map("booking_id")
+  customerId          String?      @map("customer_id")
+  amountCents         Int          @map("amount_cents")
+  currency            String       @default("EUR")
+  status              String       @default("REQUESTED") // REQUESTED, RECEIVED, PARTIALLY_USED, REFUNDED, PARTIALLY_REFUNDED, FORFEITED
+  paymentMethod       String?      @map("payment_method")
+  receivedAt          DateTime?    @map("received_at")
+  refundedAt          DateTime?    @map("refunded_at")
+  retainedAmountCents Int          @default(0) @map("retained_amount_cents")
+  refundAmountCents   Int          @default(0) @map("refund_amount_cents")
+  reason              String?
+  receiptDocumentId   String?      @map("receipt_document_id")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([bookingId])
+  @@index([customerId])
+  @@index([status])
+  @@map("booking_deposits")
+}
+
+model RentalContract {
+  id                  String       @id @default(uuid())
+  organizationId      String       @map("organization_id")
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookingId           String       @unique @map("booking_id")
+  customerId          String?      @map("customer_id")
+  vehicleId           String?      @map("vehicle_id")
+  contractNumber      String?      @map("contract_number")
+  status              String       @default("DRAFT") // DRAFT, GENERATED, SIGNED, CANCELLED
+  termsDocumentId     String?      @map("terms_document_id")
+  withdrawalDocumentId String?     @map("withdrawal_document_id")
+  generatedDocumentId String?      @map("generated_document_id")
+  snapshot            Json?
+  generatedAt         DateTime?    @map("generated_at")
+  signedAt            DateTime?    @map("signed_at")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([bookingId])
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([status])
+  @@map("rental_contracts")
 }
 
 // ------------------------------------------------
@@ -2373,6 +2709,88 @@ model BatteryEvidence {
 }
 
 // ------------------------------------------------
+// BRAKE EVIDENCE (evidence-based brake condition)
+// ------------------------------------------------
+// Provenance store for real brake observations. Only MEASURED / DOCUMENTED /
+// SENSOR / MANUAL sources may carry real mm values; TELEMATICS_ESTIMATION never
+// invents wheel mm. Mirrors the BatteryEvidence pattern and feeds the canonical
+// BrakeHealthService read model (data basis, confidence, CRITICAL safety
+// signals) without becoming a second wear truth.
+
+enum BrakeEvidenceSource {
+  MANUAL_MEASUREMENT
+  WORKSHOP_REPORT
+  AI_UPLOAD
+  SERVICE_INVOICE
+  INSPECTION_PROTOCOL
+  DTC_SIGNAL
+  BRAKE_WEAR_SENSOR
+  TELEMATICS_ESTIMATION
+}
+
+enum BrakeAxle {
+  FRONT
+  REAR
+  UNKNOWN
+}
+
+enum BrakeWheelPosition {
+  FRONT_LEFT
+  FRONT_RIGHT
+  REAR_LEFT
+  REAR_RIGHT
+}
+
+enum BrakeComponentStatus {
+  GOOD
+  WATCH
+  WARNING
+  CRITICAL
+  UNKNOWN
+}
+
+enum BrakeEvidenceConfidence {
+  HIGH
+  MEDIUM
+  LOW
+  UNKNOWN
+}
+
+model BrakeEvidence {
+  id                   String                   @id @default(uuid())
+  vehicleId            String                   @map("vehicle_id")
+  source               BrakeEvidenceSource
+  axle                 BrakeAxle                @default(UNKNOWN)
+  wheelPosition        BrakeWheelPosition?      @map("wheel_position")
+  measuredPadMm        Float?                   @map("measured_pad_mm")
+  measuredDiscMm       Float?                   @map("measured_disc_mm")
+  discCondition        BrakeComponentStatus?    @map("disc_condition")
+  brakeFluidStatus     BrakeComponentStatus?    @map("brake_fluid_status")
+  /// Confirmed "replace immediately" flag from a workshop/AI document.
+  immediateReplacement Boolean?                 @map("immediate_replacement")
+  /// Optional DTC severity when source = DTC_SIGNAL (INFO/WARNING/CRITICAL).
+  dtcSeverity          String?                  @map("dtc_severity")
+  mileageAtMeasurementKm Int?                   @map("mileage_at_measurement_km")
+  measuredAt           DateTime?                @map("measured_at")
+  confidence           BrakeEvidenceConfidence  @default(UNKNOWN)
+  notes                String?
+  documentExtractionId String?                  @map("document_extraction_id")
+  serviceEventId       String?                  @map("service_event_id")
+  createdById          String?                  @map("created_by_id")
+  createdAt            DateTime                 @default(now()) @map("created_at")
+
+  vehicle            Vehicle                    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  documentExtraction VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
+  serviceEvent       VehicleServiceEvent?       @relation(fields: [serviceEventId], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId, axle, measuredAt])
+  @@index([vehicleId, source, measuredAt])
+  @@index([documentExtractionId])
+  @@index([serviceEventId])
+  @@map("brake_evidence")
+}
+
+// ------------------------------------------------
 // BRAKE TRIP METRICS
 // ------------------------------------------------
 
@@ -2506,6 +2924,87 @@ model VehicleDtcEvent {
 }
 
 // ------------------------------------------------
+// DTC KNOWLEDGE BASE (AI-enriched, reusable)
+// ------------------------------------------------
+// Two compact tables only — generic per-code knowledge and optional
+// make/model/year/fuel-specific knowledge. Queue/job state lives in the
+// `enrichmentStatus` fields (NO separate job table by design). Stores only
+// short, summarized, reusable knowledge — never raw web pages, HTML dumps,
+// long prompts, or full AI transcripts. Status fields use plain strings to
+// keep the migration small (values documented inline).
+
+model DtcKnowledge {
+  id                      String    @id @default(uuid())
+  code                    String
+  normalizedCode          String    @map("normalized_code")
+  language                String    @default("de")
+  systemCategory          String?   @map("system_category") // POWERTRAIN, BODY, CHASSIS, NETWORK, UNKNOWN
+  standardType            String?   @map("standard_type") // GENERIC, MANUFACTURER_SPECIFIC, UNKNOWN
+  title                   String?
+  shortDescription        String?   @map("short_description")
+  possibleCauses          Json?     @map("possible_causes")
+  possibleEffects         Json?     @map("possible_effects")
+  technicalUrgency        String?   @map("technical_urgency") // LOW, MEDIUM, HIGH, CRITICAL, UNKNOWN
+  rentalUrgency           String?   @map("rental_urgency") // LOW, MEDIUM, HIGH, CRITICAL, UNKNOWN
+  rentalRecommendation    String?   @map("rental_recommendation") // RENTABLE, CHECK_BEFORE_NEXT_RENTAL, BLOCK_UNTIL_INSPECTED, DO_NOT_RENT, UNKNOWN
+  recommendedAction       String?   @map("recommended_action")
+  sourceType              String?   @map("source_type") // SAE, WEB, MIXED, AI_GENERATED, UNKNOWN
+  sources                 Json?
+  enrichmentStatus        String    @default("MISSING") @map("enrichment_status") // MISSING, QUEUED, PROCESSING, READY, FAILED
+  aiGenerated             Boolean   @default(false) @map("ai_generated")
+  needsReview             Boolean   @default(false) @map("needs_review")
+  lastVerifiedAt          DateTime? @map("last_verified_at")
+  lastEnrichmentAttemptAt DateTime? @map("last_enrichment_attempt_at")
+  enrichmentError         String?   @map("enrichment_error")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+
+  vehicleKnowledge DtcVehicleKnowledge[]
+
+  @@unique([normalizedCode, language])
+  @@index([normalizedCode])
+  @@index([enrichmentStatus])
+  @@map("dtc_knowledge")
+}
+
+model DtcVehicleKnowledge {
+  id             String        @id @default(uuid())
+  dtcKnowledgeId String?       @map("dtc_knowledge_id")
+  dtcKnowledge   DtcKnowledge? @relation(fields: [dtcKnowledgeId], references: [id], onDelete: SetNull)
+
+  code           String
+  normalizedCode String  @map("normalized_code")
+  language       String  @default("de")
+  make           String?
+  model          String?
+  year           Int?
+  fuelType       String? @map("fuel_type")
+  engineCode     String? @map("engine_code")
+
+  vehicleSpecificTitle        String?   @map("vehicle_specific_title")
+  vehicleSpecificDescription  String?   @map("vehicle_specific_description")
+  vehicleSpecificEffects      Json?     @map("vehicle_specific_effects")
+  vehicleSpecificUrgency      String?   @map("vehicle_specific_urgency") // LOW, MEDIUM, HIGH, CRITICAL, UNKNOWN
+  vehicleRentalRecommendation String?   @map("vehicle_rental_recommendation") // RENTABLE, CHECK_BEFORE_NEXT_RENTAL, BLOCK_UNTIL_INSPECTED, DO_NOT_RENT, UNKNOWN
+  recommendedAction           String?   @map("recommended_action")
+  sourceType                  String?   @map("source_type") // WEB, OEM, MIXED, AI_GENERATED, UNKNOWN
+  sources                     Json?
+  enrichmentStatus            String    @default("MISSING") @map("enrichment_status") // MISSING, QUEUED, PROCESSING, READY, FAILED
+  aiGenerated                 Boolean   @default(false) @map("ai_generated")
+  needsReview                 Boolean   @default(false) @map("needs_review")
+  lastVerifiedAt              DateTime? @map("last_verified_at")
+  lastEnrichmentAttemptAt     DateTime? @map("last_enrichment_attempt_at")
+  enrichmentError             String?   @map("enrichment_error")
+  createdAt                   DateTime  @default(now()) @map("created_at")
+  updatedAt                   DateTime  @updatedAt @map("updated_at")
+
+  @@index([normalizedCode])
+  @@index([normalizedCode, make, model, year])
+  @@index([enrichmentStatus])
+  @@map("dtc_vehicle_knowledge")
+}
+
+// ------------------------------------------------
 // VEHICLE DAMAGES
 // ------------------------------------------------
 
@@ -2543,6 +3042,60 @@ model VehicleDamageImage {
 
   @@index([damageId])
   @@map("vehicle_damage_images")
+}
+
+// ------------------------------------------------
+// VEHICLE EXTERIOR IMAGES (Damage Map)
+// ------------------------------------------------
+//
+// V4.7.50 — Five canonical exterior photo slots per vehicle (FRONT, LEFT,
+// RIGHT, REAR, ROOF) used by the Rental Damages page to render a vehicle-
+// specific damage map carousel. Uploaded by Master-Admin operators either
+// during vehicle registration (VehicleRegistrationModal) or post-hoc on
+// the Master-Admin vehicle detail drawer (PlatformVehiclesView). Damage
+// pins are overlaid by the Rental UI per active view.
+enum VehicleExteriorView {
+  FRONT
+  LEFT
+  RIGHT
+  REAR
+  ROOF
+}
+
+model VehicleExteriorImage {
+  id               String              @id @default(uuid())
+  vehicleId        String              @map("vehicle_id")
+  view             VehicleExteriorView
+  imageData        String              @map("image_data") // base64 data URI
+  caption          String?
+  uploadedByUserId String?             @map("uploaded_by_user_id")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, view])
+  @@index([vehicleId])
+  @@map("vehicle_exterior_images")
+}
+
+model VehicleExteriorModelImage {
+  id               String              @id @default(uuid())
+  modelKey         String              @map("model_key")
+  make             String
+  model            String
+  view             VehicleExteriorView
+  imageData        String              @map("image_data") // compressed base64 data URI
+  caption          String?
+  sourceVehicleId  String?             @map("source_vehicle_id")
+  uploadedByUserId String?             @map("uploaded_by_user_id")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  @@unique([modelKey, view])
+  @@index([modelKey])
+  @@index([make, model])
+  @@map("vehicle_exterior_model_images")
 }
 
 // ------------------------------------------------
@@ -2853,41 +3406,69 @@ enum VendorCategory {
   TUV_STATION
   ONLINE_SUPPLIER
   OTHER
+  // Extended (vendor management overhaul) — full external-provider coverage
+  INSURANCE
+  APPRAISER
+  TOWING
+  DEALERSHIP
+  OEM_SERVICE
 }
 
+// Business type of the vendor (kept for backward compatibility with existing UI).
 enum VendorSourceType {
   LOCAL_BUSINESS
   ONLINE_VENDOR
 }
 
+// Origin of the vendor record: created manually vs. prefilled from a Mapbox POI.
+enum VendorSource {
+  MANUAL
+  MAPBOX
+}
+
+// Relationship a vendor has to a specific vehicle.
+enum VendorVehicleRelationType {
+  PRIMARY_WORKSHOP
+  TIRE_PARTNER
+  BODY_SHOP
+  GLASS_REPAIR
+  CLEANING_PARTNER
+  INSPECTION_PARTNER
+  OTHER
+}
+
 model Vendor {
-  id             String           @id @default(uuid())
-  organizationId String           @map("organization_id")
-  name           String
-  category       VendorCategory   @default(WORKSHOP)
-  sourceType     VendorSourceType @default(LOCAL_BUSINESS) @map("source_type")
-  street         String?
-  city           String?
-  postalCode     String?          @map("postal_code")
-  country        String?
-  latitude       Float?
-  longitude      Float?
-  website        String?
-  phone          String?
-  email          String?
-  notes          String?
-  serviceAreas   String[]         @default([]) @map("service_areas")
-  contactName    String?          @map("contact_name")
-  contactRole    String?          @map("contact_role")
-  contactPhone   String?          @map("contact_phone")
-  contactEmail   String?          @map("contact_email")
-  contactNotes   String?          @map("contact_notes")
-  isActive       Boolean          @default(true) @map("is_active")
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
+  id              String           @id @default(uuid())
+  organizationId  String           @map("organization_id")
+  name            String
+  category        VendorCategory   @default(WORKSHOP)
+  sourceType      VendorSourceType @default(LOCAL_BUSINESS) @map("source_type")
+  source          VendorSource     @default(MANUAL)
+  externalPlaceId String?          @map("external_place_id")
+  street          String?
+  addressLine2    String?          @map("address_line2")
+  city            String?
+  postalCode      String?          @map("postal_code")
+  country         String?
+  latitude        Float?
+  longitude       Float?
+  website         String?
+  phone           String?
+  email           String?
+  notes           String?
+  serviceAreas    String[]         @default([]) @map("service_areas")
+  contactName     String?          @map("contact_name")
+  contactRole     String?          @map("contact_role")
+  contactPhone    String?          @map("contact_phone")
+  contactEmail    String?          @map("contact_email")
+  contactNotes    String?          @map("contact_notes")
+  isActive        Boolean          @default(true) @map("is_active")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
 
   organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vendorVehicles VendorVehicle[]
+  invoices       OrgInvoice[]
 
   @@index([organizationId])
   @@index([category])
@@ -2895,11 +3476,17 @@ model Vendor {
 }
 
 model VendorVehicle {
-  id        String   @id @default(uuid())
-  vendorId  String   @map("vendor_id")
-  vehicleId String   @map("vehicle_id")
-  notes     String?
-  createdAt DateTime @default(now()) @map("created_at")
+  id           String                    @id @default(uuid())
+  vendorId     String                    @map("vendor_id")
+  vehicleId    String                    @map("vehicle_id")
+  relationType VendorVehicleRelationType @default(OTHER) @map("relation_type")
+  isPreferred  Boolean                   @default(false) @map("is_preferred")
+  priority     Int?
+  validFrom    DateTime?                 @map("valid_from")
+  validUntil   DateTime?                 @map("valid_until")
+  notes        String?
+  createdAt    DateTime                  @default(now()) @map("created_at")
+  updatedAt    DateTime                  @updatedAt @map("updated_at")
 
   vendor  Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
@@ -4049,170 +4636,6 @@ model DashboardInsight {
   @@index([dedupeKey])
   @@index([type])
   @@map("dashboard_insights")
-}
-
-// ------------------------------------------------
-// SERVICE & MAINTENANCE PARTNERS
-// ------------------------------------------------
-
-enum ServicePartnerProvider {
-  EUROMASTER
-  ADAC
-}
-
-enum ServicePartnerCategory {
-  SERVICE_MAINTENANCE
-}
-
-enum ServicePartnerGlobalStatus {
-  ACTIVE
-  PREPARED
-  INACTIVE
-}
-
-enum PartnerAssignmentMode {
-  MANUAL_ONLY
-  PREPARED
-  ACTIVE
-  READ_ONLY
-  FULL_ACCESS
-}
-
-enum PartnerAssignmentStatus {
-  ACTIVE
-  INACTIVE
-  SUSPENDED
-}
-
-enum PartnerDataAuthStatus {
-  GRANTED
-  REVOKED
-  PENDING
-}
-
-enum ServiceCaseType {
-  MAINTENANCE
-  TIRE_SERVICE
-  INSPECTION
-  ASSISTANCE
-  BREAKDOWN
-  OTHER
-}
-
-enum ServiceCaseStatus {
-  DRAFT
-  REQUESTED
-  BOOKED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-
-model ServicePartner {
-  id           String                     @id @default(uuid())
-  provider     ServicePartnerProvider     @unique
-  name         String
-  category     ServicePartnerCategory     @default(SERVICE_MAINTENANCE)
-  globalStatus ServicePartnerGlobalStatus @default(PREPARED) @map("global_status")
-  description  String?
-  logoUrl      String?                    @map("logo_url")
-  websiteUrl   String?                    @map("website_url")
-  capabilities Json?
-  configSchema Json?                      @map("config_schema")
-  apiBaseUrl   String?                    @map("api_base_url")
-  createdAt    DateTime                   @default(now()) @map("created_at")
-  updatedAt    DateTime                   @updatedAt @map("updated_at")
-
-  assignments        TenantServicePartnerAssignment[]
-  dataAuthorizations PartnerDataAuthorization[]
-  serviceCases       PartnerServiceCase[]
-
-  @@map("service_partners")
-}
-
-model TenantServicePartnerAssignment {
-  id              String                  @id @default(uuid())
-  organizationId  String                  @map("organization_id")
-  partnerId       String                  @map("partner_id")
-  status          PartnerAssignmentStatus @default(INACTIVE)
-  mode            PartnerAssignmentMode   @default(MANUAL_ONLY)
-  enabledFeatures Json?                   @map("enabled_features")
-  configJson      Json?                   @map("config_json")
-  credentials     Json?
-  connectedAt     DateTime?               @map("connected_at")
-  createdAt       DateTime                @default(now()) @map("created_at")
-  updatedAt       DateTime                @updatedAt @map("updated_at")
-
-  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  partner      ServicePartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-
-  @@unique([organizationId, partnerId])
-  @@index([organizationId])
-  @@map("tenant_service_partner_assignments")
-}
-
-model PartnerDataAuthorization {
-  id               String                @id @default(uuid())
-  organizationId   String                @map("organization_id")
-  partnerId        String                @map("partner_id")
-  status           PartnerDataAuthStatus @default(PENDING)
-  grantedScopes    Json                  @map("granted_scopes")
-  grantedBy        String?               @map("granted_by")
-  grantedAt        DateTime?             @map("granted_at")
-  revokedAt        DateTime?             @map("revoked_at")
-  notes            String?
-  consentReference String?               @map("consent_reference")
-  createdAt        DateTime              @default(now()) @map("created_at")
-  updatedAt        DateTime              @updatedAt @map("updated_at")
-
-  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  partner      ServicePartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-
-  @@unique([organizationId, partnerId])
-  @@index([organizationId])
-  @@map("partner_data_authorizations")
-}
-
-model PartnerServiceCase {
-  id                String            @id @default(uuid())
-  organizationId    String            @map("organization_id")
-  partnerId         String            @map("partner_id")
-  vehicleId         String?           @map("vehicle_id")
-  type              ServiceCaseType   @default(MAINTENANCE)
-  status            ServiceCaseStatus @default(DRAFT)
-  title             String
-  description       String?
-  externalReference String?           @map("external_reference")
-  metadata          Json?
-  scheduledAt       DateTime?         @map("scheduled_at")
-  completedAt       DateTime?         @map("completed_at")
-  createdBy         String?           @map("created_by")
-  createdAt         DateTime          @default(now()) @map("created_at")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
-
-  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  partner      ServicePartner            @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle?                  @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  events       PartnerServiceCaseEvent[]
-
-  @@index([organizationId])
-  @@index([partnerId])
-  @@index([vehicleId])
-  @@index([status])
-  @@map("partner_service_cases")
-}
-
-model PartnerServiceCaseEvent {
-  id        String   @id @default(uuid())
-  caseId    String   @map("case_id")
-  type      String
-  payload   Json?
-  createdAt DateTime @default(now()) @map("created_at")
-
-  serviceCase PartnerServiceCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
-
-  @@index([caseId])
-  @@map("partner_service_case_events")
 }
 
 // ── AI Tire Spec Job (persisted job lifecycle for AI tire intelligence fetch) ──

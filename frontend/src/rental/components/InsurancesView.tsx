@@ -1,10 +1,6 @@
+import { Icon } from './ui/Icon';
 import { useState, useEffect, useCallback } from 'react';
-import {
-  Shield, ShieldCheck, ShieldAlert, ShieldX, ShieldQuestion, Search, Filter, ArrowUpDown,
-  ChevronRight, ChevronLeft, ChevronDown, Loader2, AlertCircle, Check, Clock,
-  Car, FileText, ExternalLink, Send, Eye, X, Info, Plus, Zap, BarChart3,
-  Activity, Target, Radio, RefreshCw, Building2, Calendar, MapPin,
-} from 'lucide-react';
+
 import { api } from '../../lib/api';
 import type {
   InsuranceFleetOverview, InsuranceFleetVehicle, InsurancePartnerSummary,
@@ -145,11 +141,11 @@ function statusColors(s: string, dk: boolean): { bg: string; text: string; borde
 
 function statusIcon(s: string) {
   switch (s) {
-    case 'ACTIVE': return <ShieldCheck className="w-4 h-4" />;
-    case 'EXPIRING_SOON': return <ShieldAlert className="w-4 h-4" />;
-    case 'EXPIRED': return <ShieldX className="w-4 h-4" />;
-    case 'PENDING_INQUIRY': return <Clock className="w-4 h-4" />;
-    default: return <ShieldQuestion className="w-4 h-4" />;
+    case 'ACTIVE': return <Icon name="shield-check" className="w-4 h-4" />;
+    case 'EXPIRING_SOON': return <Icon name="shield-alert" className="w-4 h-4" />;
+    case 'EXPIRED': return <Icon name="shield-x" className="w-4 h-4" />;
+    case 'PENDING_INQUIRY': return <Icon name="clock" className="w-4 h-4" />;
+    default: return <Icon name="shield-question" className="w-4 h-4" />;
   }
 }
 
@@ -395,17 +391,17 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
     if (loadingOverview) {
       return (
         <div className="flex items-center justify-center py-32">
-          <Loader2 className={`w-8 h-8 animate-spin ${textMuted}`} />
+          <Icon name="loader-2" className={`w-8 h-8 animate-spin ${textMuted}`} />
         </div>
       );
     }
     if (!overview) {
       return (
         <div className="flex flex-col items-center justify-center py-32 gap-3">
-          <AlertCircle className={`w-10 h-10 ${textMuted}`} />
+          <Icon name="alert-circle" className={`w-10 h-10 ${textMuted}`} />
           <p className={textSecondary}>Failed to load fleet insurance data.</p>
           <button onClick={loadOverview} className={`${btnSecondary} px-4 py-2 rounded-lg text-sm flex items-center gap-2`}>
-            <RefreshCw className="w-4 h-4" /> Retry
+            <Icon name="refresh-cw" className="w-4 h-4" /> Retry
           </button>
         </div>
       );
@@ -415,18 +411,18 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
       <>
         {/* ── Summary metrics ─────────────────────────────── */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-          <MetricCard icon={<Shield className="w-5 h-5 text-indigo-400" />} label="Total Vehicles" value={s.total} color={dk ? 'bg-indigo-500/15' : 'bg-indigo-50'} />
-          <MetricCard icon={<ShieldCheck className="w-5 h-5 text-emerald-400" />} label="Insured" value={s.insured} color={dk ? 'bg-emerald-500/15' : 'bg-emerald-50'} />
-          <MetricCard icon={<ShieldAlert className="w-5 h-5 text-amber-400" />} label="Expiring Soon" value={s.expiringSoon} color={dk ? 'bg-amber-500/15' : 'bg-amber-50'} />
-          <MetricCard icon={<ShieldX className="w-5 h-5 text-red-400" />} label="Expired" value={s.expired} color={dk ? 'bg-red-500/15' : 'bg-red-50'} />
-          <MetricCard icon={<ShieldQuestion className="w-5 h-5 text-neutral-400" />} label="Missing" value={s.missing} color={dk ? 'bg-neutral-500/15' : 'bg-gray-100'} />
-          <MetricCard icon={<Clock className="w-5 h-5 text-blue-400" />} label="Pending Inquiries" value={s.pendingInquiry} color={dk ? 'bg-blue-500/15' : 'bg-blue-50'} />
+          <MetricCard icon={<Icon name="shield" className="w-5 h-5 text-indigo-400" />} label="Total Vehicles" value={s.total} color={dk ? 'bg-indigo-500/15' : 'bg-indigo-50'} />
+          <MetricCard icon={<Icon name="shield-check" className="w-5 h-5 text-emerald-400" />} label="Insured" value={s.insured} color={dk ? 'bg-emerald-500/15' : 'bg-emerald-50'} />
+          <MetricCard icon={<Icon name="shield-alert" className="w-5 h-5 text-amber-400" />} label="Expiring Soon" value={s.expiringSoon} color={dk ? 'bg-amber-500/15' : 'bg-amber-50'} />
+          <MetricCard icon={<Icon name="shield-x" className="w-5 h-5 text-red-400" />} label="Expired" value={s.expired} color={dk ? 'bg-red-500/15' : 'bg-red-50'} />
+          <MetricCard icon={<Icon name="shield-question" className="w-5 h-5 text-neutral-400" />} label="Missing" value={s.missing} color={dk ? 'bg-neutral-500/15' : 'bg-gray-100'} />
+          <MetricCard icon={<Icon name="clock" className="w-5 h-5 text-blue-400" />} label="Pending Inquiries" value={s.pendingInquiry} color={dk ? 'bg-blue-500/15' : 'bg-blue-50'} />
         </div>
 
         {/* ── Toolbar ─────────────────────────────────────── */}
         <div className={`${cardBg} border ${cardBorder} rounded-xl p-4 mb-4 flex flex-wrap items-center gap-3`}>
           <div className="relative flex-1 min-w-[200px]">
-            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textMuted}`} />
+            <Icon name="search" className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textMuted}`} />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -438,16 +434,16 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
           {/* Filter dropdown */}
           <div className="relative">
             <button onClick={() => { setFilterOpen(!filterOpen); setSortOpen(false); }} className={`${btnSecondary} px-3 py-2 rounded-lg text-sm flex items-center gap-2`}>
-              <Filter className="w-4 h-4" />
+              <Icon name="filter" className="w-4 h-4" />
               {statusFilter === 'all' ? 'All Statuses' : statusLabel(statusFilter)}
-              <ChevronDown className="w-3.5 h-3.5" />
+              <Icon name="chevron-down" className="w-3.5 h-3.5" />
             </button>
             {filterOpen && (
               <div className={`absolute right-0 top-full mt-1 z-30 min-w-[180px] ${cardBg} border ${cardBorder} rounded-xl shadow-xl py-1`}>
                 {(['all', 'ACTIVE', 'EXPIRING_SOON', 'EXPIRED', 'MISSING', 'PENDING_INQUIRY'] as StatusFilter[]).map(f => (
                   <button key={f} onClick={() => { setStatusFilter(f); setFilterOpen(false); }}
                     className={`w-full text-left px-4 py-2 text-sm ${hoverRow} ${statusFilter === f ? (dk ? 'text-indigo-400' : 'text-indigo-600') : textPrimary} flex items-center gap-2`}>
-                    {statusFilter === f && <Check className="w-3.5 h-3.5" />}
+                    {statusFilter === f && <Icon name="check" className="w-3.5 h-3.5" />}
                     {f === 'all' ? 'All Statuses' : statusLabel(f)}
                   </button>
                 ))}
@@ -458,16 +454,16 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
           {/* Sort dropdown */}
           <div className="relative">
             <button onClick={() => { setSortOpen(!sortOpen); setFilterOpen(false); }} className={`${btnSecondary} px-3 py-2 rounded-lg text-sm flex items-center gap-2`}>
-              <ArrowUpDown className="w-4 h-4" />
+              <Icon name="arrow-up-down" className="w-4 h-4" />
               Sort
-              <ChevronDown className="w-3.5 h-3.5" />
+              <Icon name="chevron-down" className="w-3.5 h-3.5" />
             </button>
             {sortOpen && (
               <div className={`absolute right-0 top-full mt-1 z-30 min-w-[170px] ${cardBg} border ${cardBorder} rounded-xl shadow-xl py-1`}>
                 {([['status', 'By Status'], ['expiry', 'By Expiry Date'], ['vehicle', 'By Vehicle']] as [SortKey, string][]).map(([k, l]) => (
                   <button key={k} onClick={() => { setSortKey(k); setSortOpen(false); }}
                     className={`w-full text-left px-4 py-2 text-sm ${hoverRow} ${sortKey === k ? (dk ? 'text-indigo-400' : 'text-indigo-600') : textPrimary} flex items-center gap-2`}>
-                    {sortKey === k && <Check className="w-3.5 h-3.5" />}
+                    {sortKey === k && <Icon name="check" className="w-3.5 h-3.5" />}
                     {l}
                   </button>
                 ))}
@@ -476,7 +472,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
           </div>
 
           <button onClick={() => startInquiry()} className={`${btnPrimary} px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2`}>
-            <Plus className="w-4 h-4" /> New Inquiry
+            <Icon name="plus" className="w-4 h-4" /> New Inquiry
           </button>
         </div>
 
@@ -484,7 +480,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
         <div className={`${cardBg} border ${cardBorder} rounded-xl overflow-hidden`}>
           {filteredVehicles.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-2">
-              <Car className={`w-8 h-8 ${textMuted}`} />
+              <Icon name="car" className={`w-8 h-8 ${textMuted}`} />
               <p className={`text-sm ${textSecondary}`}>No vehicles match your filters.</p>
             </div>
           ) : (
@@ -498,14 +494,14 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
                       {/* Left: vehicle info */}
                       <div className="flex items-center gap-4 min-w-0 flex-1">
                         <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${dk ? 'bg-white/5' : 'bg-gray-100'}`}>
-                          <Car className={`w-5 h-5 ${textSecondary}`} />
+                          <Icon name="car" className={`w-5 h-5 ${textSecondary}`} />
                         </div>
                         <div className="min-w-0">
                           <div className={`font-semibold text-sm ${textPrimary} truncate`}>
                             {v.vehicle.make} {v.vehicle.model} <span className={textMuted}>({v.vehicle.year})</span>
                           </div>
                           <div className={`text-xs ${textSecondary} flex items-center gap-3 mt-0.5 flex-wrap`}>
-                            {v.vehicle.licensePlate && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{v.vehicle.licensePlate}</span>}
+                            {v.vehicle.licensePlate && <span className="flex items-center gap-1"><Icon name="map-pin" className="w-3 h-3" />{v.vehicle.licensePlate}</span>}
                             {v.vehicle.vin && <span className="font-mono truncate max-w-[140px]">{v.vehicle.vin}</span>}
                           </div>
                         </div>
@@ -517,20 +513,20 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
                         {v.insurance && !isMissing && (
                           <div className={`mt-2 text-xs ${textSecondary} space-y-0.5`}>
                             {v.insurance.insurerName && (
-                              <div className="flex items-center gap-1.5"><Building2 className="w-3 h-3" /> {v.insurance.insurerName}</div>
+                              <div className="flex items-center gap-1.5"><Icon name="building-2" className="w-3 h-3" /> {v.insurance.insurerName}</div>
                             )}
                             {v.insurance.policyNumber && (
-                              <div className="flex items-center gap-1.5"><FileText className="w-3 h-3" /> {v.insurance.policyNumber}</div>
+                              <div className="flex items-center gap-1.5"><Icon name="file-text" className="w-3 h-3" /> {v.insurance.policyNumber}</div>
                             )}
                             <div className="flex items-center gap-1.5">
-                              <Calendar className="w-3 h-3" />
+                              <Icon name="calendar" className="w-3 h-3" />
                               {fmtDate(v.insurance.validFrom)} — {fmtDate(v.insurance.validUntil)}
                             </div>
                           </div>
                         )}
                         {isMissing && (
                           <div className={`mt-2 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${dk ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-red-50 text-red-600 border border-red-200'}`}>
-                            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                            <Icon name="alert-circle" className="w-3.5 h-3.5 flex-shrink-0" />
                             No insurance document stored for this vehicle.
                           </div>
                         )}
@@ -541,16 +537,16 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
                         {isMissing && onNavigateToVehicleDocuments && (
                           <button onClick={() => onNavigateToVehicleDocuments(v.vehicle.id)}
                             className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 ${dk ? 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border border-amber-500/20' : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'}`}>
-                            <FileText className="w-3.5 h-3.5" /> Upload Insurance
+                            <Icon name="file-text" className="w-3.5 h-3.5" /> Upload Insurance
                           </button>
                         )}
                         <button onClick={() => openDetail(v)}
                           className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 ${btnSecondary}`}>
-                          <Eye className="w-3.5 h-3.5" /> Detail
+                          <Icon name="eye" className="w-3.5 h-3.5" /> Detail
                         </button>
                         <button onClick={() => startInquiry(v)}
                           className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 ${btnPrimary}`}>
-                          <Send className="w-3.5 h-3.5" /> Inquiry
+                          <Icon name="send" className="w-3.5 h-3.5" /> Inquiry
                         </button>
                       </div>
                     </div>
@@ -586,7 +582,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
           return (
             <div key={i} className="flex items-center flex-1 last:flex-initial">
               <div className="flex flex-col items-center gap-1">
-                <div className={circleClass}>{done ? <Check className="w-4 h-4" /> : i + 1}</div>
+                <div className={circleClass}>{done ? <Icon name="check" className="w-4 h-4" /> : i + 1}</div>
                 <span className={`text-[10px] whitespace-nowrap ${active ? (dk ? 'text-indigo-400' : 'text-indigo-600') : done ? (dk ? 'text-indigo-300' : 'text-indigo-500') : textMuted}`}>
                   {label}
                 </span>
@@ -612,7 +608,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
         <h3 className={`text-lg font-semibold ${textPrimary} mb-1`}>Select a Vehicle</h3>
         <p className={`text-sm ${textSecondary} mb-4`}>Choose the vehicle you want to request insurance for.</p>
         <div className="relative mb-4">
-          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textMuted}`} />
+          <Icon name="search" className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textMuted}`} />
           <input value={vehicleSearch} onChange={e => setVehicleSearch(e.target.value)} placeholder="Search vehicles…"
             className={`w-full pl-10 pr-4 py-2.5 rounded-lg text-sm ${inputBg} border ${inputBorder} ${textPrimary} placeholder:${textMuted} focus:outline-none focus:ring-2 focus:ring-indigo-500/40`}
           />
@@ -627,7 +623,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
                     ? `border-indigo-500 ${dk ? 'bg-indigo-500/10' : 'bg-indigo-50'} ring-2 ring-indigo-500/30`
                     : `${cardBorder} border ${dk ? 'bg-white/[0.02] hover:bg-white/5' : 'bg-white hover:bg-gray-50'}`}`}>
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${sel ? (dk ? 'bg-indigo-500/20' : 'bg-indigo-100') : (dk ? 'bg-white/5' : 'bg-gray-100')}`}>
-                  <Car className={`w-5 h-5 ${sel ? 'text-indigo-400' : textSecondary}`} />
+                  <Icon name="car" className={`w-5 h-5 ${sel ? 'text-indigo-400' : textSecondary}`} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className={`text-sm font-medium ${textPrimary}`}>{v.vehicle.make} {v.vehicle.model} ({v.vehicle.year})</div>
@@ -637,7 +633,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
                   </div>
                 </div>
                 <StatusBadge status={v.status} />
-                {sel && <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0"><Check className="w-3.5 h-3.5 text-white" /></div>}
+                {sel && <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0"><Icon name="check" className="w-3.5 h-3.5 text-white" /></div>}
               </button>
             );
           })}
@@ -656,7 +652,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
       if (partners.length === 0 && !loadingPartners) loadPartners();
       return (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className={`w-6 h-6 animate-spin ${textMuted}`} />
+          <Icon name="loader-2" className={`w-6 h-6 animate-spin ${textMuted}`} />
         </div>
       );
     }
@@ -676,7 +672,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className={`font-semibold text-sm ${textPrimary} flex items-center gap-2`}>
-                      <Building2 className="w-4 h-4 flex-shrink-0" />
+                      <Icon name="building-2" className="w-4 h-4 flex-shrink-0" />
                       {p.displayName}
                     </div>
                     {p.description && <div className={`text-xs ${textSecondary} mt-1 line-clamp-2`}>{p.description}</div>}
@@ -692,7 +688,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
                   </div>
                   <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all
                     ${sel ? 'bg-indigo-600 border-indigo-600' : `${dk ? 'border-white/20' : 'border-gray-300'}`}`}>
-                    {sel && <Check className="w-3.5 h-3.5 text-white" />}
+                    {sel && <Icon name="check" className="w-3.5 h-3.5 text-white" />}
                   </div>
                 </div>
               </button>
@@ -758,7 +754,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
                         : `${cardBorder} border ${dk ? 'bg-white/[0.02] hover:bg-white/5' : 'bg-white hover:bg-gray-50'}`}`}>
                     <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all
                       ${sel ? 'bg-indigo-600 border-indigo-600' : (dk ? 'border-white/20' : 'border-gray-300')}`}>
-                      {sel && <Check className="w-3 h-3 text-white" />}
+                      {sel && <Icon name="check" className="w-3 h-3 text-white" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -797,7 +793,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
                 {sel && <div className="w-2 h-2 rounded-full bg-white" />}
               </div>
               <div className="flex items-center gap-2">
-                <Calendar className={`w-4 h-4 ${sel ? 'text-indigo-400' : textMuted}`} />
+                <Icon name="calendar" className={`w-4 h-4 ${sel ? 'text-indigo-400' : textMuted}`} />
                 <span className={`text-sm font-medium ${textPrimary}`}>{opt.label}</span>
               </div>
             </button>
@@ -829,7 +825,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
       <h3 className={`text-lg font-semibold ${textPrimary} mb-1`}>Live Data Sharing</h3>
       <p className={`text-sm ${textSecondary} mb-2`}>Select ongoing data categories to share with insurers.</p>
       <div className={`p-3 rounded-lg mb-4 flex items-start gap-2 text-xs ${dk ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-        <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+        <Icon name="info" className="w-4 h-4 flex-shrink-0 mt-0.5" />
         <span>You are authorizing ongoing sharing of these data categories with the selected insurance partners. You can revoke sharing permissions at any time from the vehicle detail view.</span>
       </div>
       <div className="grid gap-2 md:grid-cols-2 mb-6">
@@ -843,7 +839,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
                   : `${cardBorder} border ${dk ? 'bg-white/[0.02] hover:bg-white/5' : 'bg-white hover:bg-gray-50'}`}`}>
               <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all
                 ${sel ? 'bg-indigo-600 border-indigo-600' : (dk ? 'border-white/20' : 'border-gray-300')}`}>
-                {sel && <Check className="w-3 h-3 text-white" />}
+                {sel && <Icon name="check" className="w-3 h-3 text-white" />}
               </div>
               <div>
                 <div className={`text-sm font-medium ${textPrimary}`}>{opt.label}</div>
@@ -913,7 +909,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
         <h3 className={`text-lg font-semibold ${textPrimary} mb-1`}>Review Your Inquiry</h3>
         <p className={`text-sm ${textSecondary} mb-4`}>Review all selections before submitting to insurers.</p>
         <div className="grid gap-4 md:grid-cols-2">
-          <SectionCard title="Vehicle" icon={<Car className="w-4 h-4 text-indigo-400" />}>
+          <SectionCard title="Vehicle" icon={<Icon name="car" className="w-4 h-4 text-indigo-400" />}>
             {selectedVehicle && (
               <div className={`text-sm ${textPrimary}`}>
                 <div className="font-medium">{selectedVehicle.vehicle.make} {selectedVehicle.vehicle.model} ({selectedVehicle.vehicle.year})</div>
@@ -925,7 +921,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
             )}
           </SectionCard>
 
-          <SectionCard title="Insurance Partners" icon={<Building2 className="w-4 h-4 text-indigo-400" />}>
+          <SectionCard title="Insurance Partners" icon={<Icon name="building-2" className="w-4 h-4 text-indigo-400" />}>
             <div className="flex flex-wrap gap-1.5">
               {selectedPartners.map(p => (
                 <span key={p.id} className={`text-xs px-2 py-1 rounded-full ${dk ? 'bg-indigo-500/15 text-indigo-300' : 'bg-indigo-50 text-indigo-700'}`}>
@@ -935,17 +931,17 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
             </div>
           </SectionCard>
 
-          <SectionCard title="Purpose" icon={<Target className="w-4 h-4 text-indigo-400" />}>
+          <SectionCard title="Purpose" icon={<Icon name="target" className="w-4 h-4 text-indigo-400" />}>
             <div className={`text-sm ${textPrimary}`}>{purposeLabel}</div>
           </SectionCard>
 
-          <SectionCard title="Time Range" icon={<Calendar className="w-4 h-4 text-indigo-400" />}>
+          <SectionCard title="Time Range" icon={<Icon name="calendar" className="w-4 h-4 text-indigo-400" />}>
             <div className={`text-sm ${textPrimary}`}>
               {timeRange === 'custom' ? `${fmtDate(customFrom)} — ${fmtDate(customTo)}` : rangeLabel}
             </div>
           </SectionCard>
 
-          <SectionCard title="Historical Data" icon={<BarChart3 className="w-4 h-4 text-indigo-400" />}>
+          <SectionCard title="Historical Data" icon={<Icon name="bar-chart-3" className="w-4 h-4 text-indigo-400" />}>
             <div className="flex flex-wrap gap-1.5">
               {historicalLabels.map(l => (
                 <span key={l} className={`text-xs px-2 py-1 rounded-full ${dk ? 'bg-white/10 text-neutral-300' : 'bg-gray-100 text-gray-700'}`}>{l}</span>
@@ -953,7 +949,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
             </div>
           </SectionCard>
 
-          <SectionCard title="Live Data Sharing" icon={<Activity className="w-4 h-4 text-indigo-400" />}>
+          <SectionCard title="Live Data Sharing" icon={<Icon name="activity" className="w-4 h-4 text-indigo-400" />}>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {liveLabels.map(l => (
                 <span key={l} className={`text-xs px-2 py-1 rounded-full ${dk ? 'bg-white/10 text-neutral-300' : 'bg-gray-100 text-gray-700'}`}>{l}</span>
@@ -965,11 +961,11 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
 
         {/* Disclosure */}
         {loadingDisclosure ? (
-          <div className="flex items-center gap-2 mt-4"><Loader2 className={`w-4 h-4 animate-spin ${textMuted}`} /><span className={`text-sm ${textSecondary}`}>Loading disclosure…</span></div>
+          <div className="flex items-center gap-2 mt-4"><Icon name="loader-2" className={`w-4 h-4 animate-spin ${textMuted}`} /><span className={`text-sm ${textSecondary}`}>Loading disclosure…</span></div>
         ) : disclosure && (
           <div className={`mt-4 p-4 rounded-xl border ${dk ? 'bg-white/[0.02] border-white/10' : 'bg-gray-50 border-gray-200'}`}>
             <div className={`flex items-center gap-2 text-sm font-semibold ${textPrimary} mb-2`}>
-              <FileText className="w-4 h-4 text-indigo-400" />
+              <Icon name="file-text" className="w-4 h-4 text-indigo-400" />
               Data Disclosure Notice
             </div>
             <div className={`text-xs leading-relaxed ${textSecondary}`}>{disclosure.body}</div>
@@ -988,7 +984,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <div className="relative">
             <div className={`w-16 h-16 rounded-full ${dk ? 'bg-indigo-500/15' : 'bg-indigo-50'} flex items-center justify-center`}>
-              <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+              <Icon name="loader-2" className="w-8 h-8 animate-spin text-indigo-500" />
             </div>
           </div>
           <div className={`text-lg font-semibold ${textPrimary}`}>Submitting Inquiry…</div>
@@ -1000,7 +996,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
       return (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <div className={`w-16 h-16 rounded-full ${dk ? 'bg-red-500/15' : 'bg-red-50'} flex items-center justify-center`}>
-            <AlertCircle className="w-8 h-8 text-red-500" />
+            <Icon name="alert-circle" className="w-8 h-8 text-red-500" />
           </div>
           <div className={`text-lg font-semibold ${textPrimary}`}>Submission Failed</div>
           <p className={`text-sm ${textSecondary}`}>Something went wrong. Please try again.</p>
@@ -1014,7 +1010,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
       <div>
         <div className="flex flex-col items-center py-8 gap-3">
           <div className={`w-16 h-16 rounded-full flex items-center justify-center ${allOk ? (dk ? 'bg-emerald-500/15' : 'bg-emerald-50') : (dk ? 'bg-amber-500/15' : 'bg-amber-50')}`}>
-            {allOk ? <ShieldCheck className="w-8 h-8 text-emerald-500" /> : <ShieldAlert className="w-8 h-8 text-amber-500" />}
+            {allOk ? <Icon name="shield-check" className="w-8 h-8 text-emerald-500" /> : <Icon name="shield-alert" className="w-8 h-8 text-amber-500" />}
           </div>
           <div className={`text-lg font-semibold ${textPrimary}`}>{allOk ? 'Inquiry Submitted Successfully' : 'Inquiry Partially Submitted'}</div>
           <p className={`text-sm ${textSecondary} text-center max-w-md`}>
@@ -1031,7 +1027,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
               ? (dk ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200')
               : (dk ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-200')}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${r.success ? 'bg-emerald-500/20' : 'bg-red-500/20'}`}>
-                {r.success ? <Check className="w-4 h-4 text-emerald-400" /> : <X className="w-4 h-4 text-red-400" />}
+                {r.success ? <Icon name="check" className="w-4 h-4 text-emerald-400" /> : <Icon name="x" className="w-4 h-4 text-red-400" />}
               </div>
               <div className="flex-1">
                 <div className={`text-sm font-medium ${textPrimary}`}>{r.insurerName}</div>
@@ -1046,10 +1042,10 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
 
         <div className="flex justify-center gap-3 mt-8">
           <button onClick={() => { setMainView('overview'); loadOverview(); }} className={`${btnSecondary} px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2`}>
-            <ChevronLeft className="w-4 h-4" /> Back to Overview
+            <Icon name="chevron-left" className="w-4 h-4" /> Back to Overview
           </button>
           <button onClick={() => startInquiry()} className={`${btnPrimary} px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2`}>
-            <Plus className="w-4 h-4" /> New Inquiry
+            <Icon name="plus" className="w-4 h-4" /> New Inquiry
           </button>
         </div>
       </div>
@@ -1087,19 +1083,19 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
           <button
             onClick={() => { if (step === 0) { setMainView('overview'); } else { setStep(s => s - 1); } }}
             className={`${btnSecondary} px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2`}>
-            <ChevronLeft className="w-4 h-4" />
+            <Icon name="chevron-left" className="w-4 h-4" />
             {step === 0 ? 'Cancel' : 'Back'}
           </button>
           {step === 6 ? (
             <button onClick={handleSubmit} disabled={submitting}
               className={`${btnPrimary} px-6 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-50`}>
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {submitting ? <Icon name="loader-2" className="w-4 h-4 animate-spin" /> : <Icon name="send" className="w-4 h-4" />}
               Submit Inquiry
             </button>
           ) : (
             <button onClick={handleNext} disabled={!canAdvance()}
               className={`${btnPrimary} px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}>
-              Next <ChevronRight className="w-4 h-4" />
+              Next <Icon name="chevron-right" className="w-4 h-4" />
             </button>
           )}
         </div>
@@ -1125,20 +1121,20 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
           <div className={`flex items-center justify-between p-5 border-b ${dk ? 'border-white/10' : 'border-gray-200'}`}>
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${dk ? 'bg-white/5' : 'bg-gray-100'}`}>
-                <Car className={`w-5 h-5 ${textSecondary}`} />
+                <Icon name="car" className={`w-5 h-5 ${textSecondary}`} />
               </div>
               <div>
                 <div className={`font-semibold text-sm ${textPrimary}`}>{v.vehicle.make} {v.vehicle.model}</div>
                 <div className={`text-xs ${textSecondary}`}>{v.vehicle.year} · {v.vehicle.licensePlate ?? '—'}</div>
               </div>
             </div>
-            <button onClick={() => setDetailVehicle(null)} className={`p-2 rounded-lg ${hoverRow}`}><X className={`w-5 h-5 ${textSecondary}`} /></button>
+            <button onClick={() => setDetailVehicle(null)} className={`p-2 rounded-lg ${hoverRow}`}><Icon name="x" className={`w-5 h-5 ${textSecondary}`} /></button>
           </div>
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
             {detailLoading ? (
-              <div className="flex items-center justify-center py-16"><Loader2 className={`w-6 h-6 animate-spin ${textMuted}`} /></div>
+              <div className="flex items-center justify-center py-16"><Icon name="loader-2" className={`w-6 h-6 animate-spin ${textMuted}`} /></div>
             ) : (
               <>
                 {/* Vehicle summary card */}
@@ -1186,13 +1182,13 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
                   ) : (
                     <div className="space-y-3">
                       <div className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium ${dk ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-red-50 text-red-600 border border-red-200'}`}>
-                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                        <Icon name="alert-circle" className="w-4 h-4 flex-shrink-0" />
                         No insurance record on file.
                       </div>
                       {onNavigateToVehicleDocuments && (
                         <button onClick={() => { onNavigateToVehicleDocuments(v.vehicle.id); setDetailVehicle(null); }}
                           className={`${btnPrimary} w-full py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2`}>
-                          <FileText className="w-4 h-4" /> Upload Insurance Document
+                          <Icon name="file-text" className="w-4 h-4" /> Upload Insurance Document
                         </button>
                       )}
                     </div>
@@ -1251,7 +1247,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
                 {/* Actions */}
                 <button onClick={() => { setDetailVehicle(null); startInquiry(v); }}
                   className={`${btnPrimary} w-full py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2`}>
-                  <Send className="w-4 h-4" /> Send Insurance Inquiry
+                  <Icon name="send" className="w-4 h-4" /> Send Insurance Inquiry
                 </button>
               </>
             )}
@@ -1271,14 +1267,14 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className={`text-2xl font-bold ${textPrimary} flex items-center gap-2.5`}>
-            <Shield className="w-7 h-7 text-indigo-500" />
+            <Icon name="shield" className="w-7 h-7 text-indigo-500" />
             Fleet Insurance
           </h1>
           <p className={`text-sm ${textSecondary} mt-1`}>Manage fleet insurance coverage, inquiries, and data sharing.</p>
         </div>
         {mainView === 'overview' && (
           <button onClick={loadOverview} className={`${btnSecondary} px-3 py-2 rounded-lg text-sm flex items-center gap-2`}>
-            <RefreshCw className={`w-4 h-4 ${loadingOverview ? 'animate-spin' : ''}`} /> Refresh
+            <Icon name="refresh-cw" className={`w-4 h-4 ${loadingOverview ? 'animate-spin' : ''}`} /> Refresh
           </button>
         )}
       </div>
@@ -1291,7 +1287,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
               ? `${dk ? 'bg-white/10 text-white' : 'bg-white text-gray-900 shadow-sm'}`
               : `${textSecondary} hover:${dk ? 'text-white' : 'text-gray-700'}`
           }`}>
-          <span className="flex items-center gap-2"><Shield className="w-4 h-4" /> Overview</span>
+          <span className="flex items-center gap-2"><Icon name="shield" className="w-4 h-4" /> Overview</span>
         </button>
         <button onClick={() => startInquiry()}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -1299,7 +1295,7 @@ export function InsurancesView({ isDarkMode: dk, onNavigateToVehicleDocuments }:
               ? `${dk ? 'bg-white/10 text-white' : 'bg-white text-gray-900 shadow-sm'}`
               : `${textSecondary} hover:${dk ? 'text-white' : 'text-gray-700'}`
           }`}>
-          <span className="flex items-center gap-2"><Send className="w-4 h-4" /> New Inquiry</span>
+          <span className="flex items-center gap-2"><Icon name="send" className="w-4 h-4" /> New Inquiry</span>
         </button>
       </div>
 

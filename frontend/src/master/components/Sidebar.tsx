@@ -5,7 +5,7 @@ import {
   Settings, BarChart3, Globe,
   Code2, FileText, Phone,
   ChevronRight, Menu, X, Plus, UserPlus,
-  MapPin, Gauge, BookOpen, Wrench, ShieldCheck
+  MapPin, Gauge, BookOpen, ShieldCheck
 } from 'lucide-react';
 import { useState } from 'react';
 import synqdriveLogoDark from '../../assets/synqdrive-logo-dark.png';
@@ -32,8 +32,7 @@ export type MasterView =
   | 'health-tracking'
   | 'trip-detection-logic'
   | 'performance-logic'
-  | 'vehicle-logbook'
-  | 'service-maintenance';
+  | 'vehicle-logbook';
 
 interface SidebarProps {
   isDarkMode: boolean;
@@ -66,29 +65,25 @@ export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, on
   const activeSettings = (tab: string) => currentView === 'settings' && settingsTab === tab;
 
   const itemCls = (on: boolean) =>
-    `w-full flex items-center gap-3 px-2.5 py-1.5 rounded-md text-xs transition-colors duration-150 ${
+    `sq-nav-rail w-full flex items-center gap-3 px-2.5 py-1.5 rounded-md !text-xs transition-all duration-200 ${
       on
-        ? 'bg-accent text-foreground font-medium'
-        : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] active font-medium'
+        : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground hover:translate-x-[1px]'
     }`;
 
   const icon = 'w-4 h-4 shrink-0';
 
   const sectionLabel = (text: string) => (
-    <div className="text-[10px] font-bold uppercase tracking-[0.12em] px-3 mt-5 mb-2 text-muted-foreground">
-      {text}
-    </div>
+    <div className="sq-section-label px-3 mt-5 mb-2">{text}</div>
   );
 
   const collapsibleHeader = (key: string, label: string) => (
     <button
       onClick={() => toggle(key)}
-      className="w-full flex items-center justify-between px-3 py-1.5 mt-4 mb-1 group"
+      className="w-full flex items-center justify-between px-3 py-1.5 mt-4 mb-1 rounded-md group transition-colors duration-150 hover:bg-accent/40"
     >
-      <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-        {label}
-      </span>
-      <ChevronRight className={`w-3 h-3 transition-transform duration-200 text-muted-foreground ${expanded[key] ? 'rotate-90' : ''}`} />
+      <span className="sq-section-label">{label}</span>
+      <ChevronRight className={`w-3 h-3 transition-transform duration-200 text-muted-foreground/60 ${expanded[key] ? 'rotate-90' : ''}`} />
     </button>
   );
 
@@ -151,9 +146,6 @@ export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, on
           <button onClick={() => go('voice-assistant')} className={itemCls(active('voice-assistant'))}>
             <Phone className={icon} /><span>Voice Assistant</span>
           </button>
-          <button onClick={() => go('service-maintenance')} className={itemCls(active('service-maintenance'))}>
-            <Wrench className={icon} /><span>Service & Maintenance</span>
-          </button>
           <button onClick={() => go('high-mobility')} className={itemCls(active('high-mobility'))}>
             <Radio className={icon} /><span>High Mobility</span>
           </button>
@@ -209,33 +201,29 @@ export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, on
 
       {/* ── QUICK ACTIONS ── */}
       <div className="pb-3">
-        <div className="text-[9px] font-bold uppercase tracking-[0.12em] mb-2.5 px-1 text-center text-muted-foreground">
+        <div className="sq-section-label mb-2.5 px-1 text-center">
           Quick Actions
         </div>
         <div className="grid grid-cols-2 gap-1">
           <QuickAction
-            isDarkMode={isDarkMode}
             label="New Org"
             Icon={Plus}
-            variant="indigo"
+            variant="brand"
             onClick={() => go('organizations')}
           />
           <QuickAction
-            isDarkMode={isDarkMode}
             label="Invite User"
             Icon={UserPlus}
-            variant="emerald"
+            variant="success"
             onClick={() => go('users')}
           />
           <QuickAction
-            isDarkMode={isDarkMode}
             label="Support"
             Icon={Headphones}
             variant="neutral"
             onClick={() => go('support')}
           />
           <QuickAction
-            isDarkMode={isDarkMode}
             label="Activity"
             Icon={Activity}
             variant="neutral"
@@ -286,7 +274,7 @@ export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, on
         {/* Logo */}
         <div className="px-4 py-3 flex flex-col items-center gap-1.5 border-b border-sidebar-border">
           <img src={logo} alt="SynqDrive" className="h-7 w-auto object-contain" />
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] px-2.5 py-0.5 rounded-full bg-red-900/30 text-red-400">
+          <span className="sq-chip sq-chip-critical !text-[10px] !font-bold uppercase tracking-[0.16em]">
             Master Admin
           </span>
         </div>
@@ -303,36 +291,30 @@ export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, on
   );
 }
 
-/* ── Quick Action Button ── */
+/* ── Quick Action Button ──
+   Token-based tones (brand / success / neutral) — theme-aware in light +
+   dark with no hardcoded indigo/emerald/gray. */
 
-type QAVariant = 'indigo' | 'emerald' | 'neutral';
+type QAVariant = 'brand' | 'success' | 'neutral';
 
 function QuickAction({
-  isDarkMode, label, Icon, variant, onClick,
+  label, Icon, variant, onClick,
 }: {
-  isDarkMode: boolean;
   label: string;
   Icon: React.ComponentType<{ className?: string }>;
   variant: QAVariant;
   onClick: () => void;
 }) {
-  const base = 'flex items-center justify-center gap-1.5 px-1.5 rounded-md text-[11px] font-medium transition-all duration-150 active:scale-[0.97]';
-  const h = 'h-[30px]';
+  const base = 'flex h-[30px] items-center justify-center gap-1.5 px-1.5 rounded-md text-[11px] font-semibold transition-all duration-150 active:scale-[0.97]';
 
   const colors: Record<QAVariant, string> = {
-    indigo: isDarkMode
-      ? 'bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/30'
-      : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100',
-    emerald: isDarkMode
-      ? 'bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30'
-      : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100',
-    neutral: isDarkMode
-      ? 'bg-white/[0.05] text-slate-400 hover:bg-white/[0.1] hover:text-slate-200'
-      : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+    brand: 'sq-tone-brand hover:opacity-90',
+    success: 'sq-tone-success hover:opacity-90',
+    neutral: 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground',
   };
 
   return (
-    <button onClick={onClick} className={`${base} ${h} ${colors[variant]}`}>
+    <button onClick={onClick} className={`${base} ${colors[variant]}`}>
       <Icon className="w-3.5 h-3.5 shrink-0" />
       <span>{label}</span>
     </button>

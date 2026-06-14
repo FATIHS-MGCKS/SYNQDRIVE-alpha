@@ -1,5 +1,6 @@
+import { Icon } from './ui/Icon';
 import { useCallback, useRef, useState } from 'react';
-import { Camera, CheckCircle, FileText, Loader2, Trash2 } from 'lucide-react';
+
 import { toast } from 'sonner';
 import { api } from '../../lib/api';
 
@@ -108,7 +109,7 @@ export function CustomerDocumentUploadBox({
       >
         {uploading ? (
           <div className="flex flex-col items-center gap-1.5 py-1">
-            <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+            <Icon name="loader-2" className="w-5 h-5 text-blue-500 animate-spin" />
             <span
               className={`text-xs font-semibold ${
                 isDarkMode ? 'text-blue-300' : 'text-blue-600'
@@ -127,7 +128,7 @@ export function CustomerDocumentUploadBox({
               />
             ) : (
               <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-emerald-500" />
+                <Icon name="file-text" className="w-5 h-5 text-emerald-500" />
                 <span
                   className={`text-xs font-semibold ${
                     isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
@@ -138,7 +139,7 @@ export function CustomerDocumentUploadBox({
               </div>
             )}
             <div className="flex items-center gap-2">
-              <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+              <Icon name="check-circle" className="w-3.5 h-3.5 text-emerald-500" />
               <span
                 className={`text-[11px] font-semibold ${
                   isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
@@ -158,7 +159,7 @@ export function CustomerDocumentUploadBox({
                     : 'text-red-500 hover:text-red-600'
                 }`}
               >
-                <Trash2 className="w-3 h-3" />
+                <Icon name="trash-2" className="w-3 h-3" />
                 Entfernen
               </button>
             </div>
@@ -169,7 +170,7 @@ export function CustomerDocumentUploadBox({
             onClick={() => inputRef.current?.click()}
             className="flex flex-col items-center gap-1.5 w-full cursor-pointer py-1"
           >
-            <Camera
+            <Icon name="camera"
               className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}
             />
             <span

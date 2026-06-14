@@ -1,12 +1,7 @@
+import { Building2, Car, Clock, CreditCard, Database, Globe, Signal, SignalZero, User, UserCog, Wifi, Zap } from 'lucide-react';
+import { Icon } from './ui/Icon';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import {
-  Building2, Wifi, MapPin, UserCog, CreditCard, Upload, Trash2, Plus,
-  Edit3, Save, X, Search, ChevronDown, Check, Signal, SignalZero,
-  Download, ExternalLink, Shield, Crown, Eye, Mail, Phone, Globe,
-  Clock, FileText, Image, AlertCircle, CheckCircle, CheckCircle2, XCircle, Users, Zap, Star,
-  Database, Lock, ToggleLeft, ToggleRight, Key, ShieldCheck, FileCheck,
-  User, Camera, Smartphone, MapPin as MapPinIcon, Car, Loader2, Crosshair, RefreshCw
-} from 'lucide-react';
+
 import { getStoredUser } from '../../lib/auth';
 import { useRentalOrg } from '../RentalContext';
 import { api, type FleetConnectivityResponse, type FleetConnectivityVehicle } from '../../lib/api';
@@ -14,6 +9,7 @@ import { isVehicleAtHomeStation } from '../../lib/geospatial';
 import { formatOdometerKmFloor } from '../../lib/formatVehicleDisplay';
 import { UsersRolesTab } from './UsersRolesTab';
 import { DataAuthorizationTab } from './DataAuthorizationTab';
+import { LegalDocumentsTab } from './LegalDocumentsTab';
 
 function getInitials(name: string | null, email: string): string {
   if (name && name.trim()) {
@@ -31,13 +27,14 @@ interface SettingsViewProps {
   onTabChange?: (tab: SettingsTab) => void;
 }
 
-type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization';
+type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents';
 
 // ============================================
 // ACCOUNT INFORMATION TAB
 // ============================================
 function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
   const storedUser = getStoredUser();
+  const { orgName, userRole, userPermissions } = useRentalOrg();
   const [isEditing, setIsEditing] = useState(false);
   const [accountData, setAccountData] = useState(() => {
     const u = getStoredUser();
@@ -48,11 +45,11 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
       firstName,
       lastName,
       email: u?.email ?? '',
-      phone: '+49 30 1234567',
-      mobile: '+49 170 9876543',
-      position: 'Geschäftsführer',
-      department: 'Management',
-      location: 'Berlin Central',
+      phone: '',
+      mobile: '',
+      position: u?.membershipRole ?? u?.platformRole ?? '',
+      department: u?.organizationName ?? '',
+      location: '',
       language: 'Deutsch',
       timezone: 'Europe/Berlin (CET)',
       dateFormat: 'DD.MM.YYYY',
@@ -70,17 +67,15 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
   const accountInitials = getInitials(storedUser?.name ?? null, storedUser?.email ?? '');
   const [showPasswordChange, setShowPasswordChange] = useState(false);
 
-  const cardClass = `rounded-lg p-4 shadow-sm border ${
-    isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
-  }`;
-  const inputClass = `w-full px-3 py-2.5 rounded-lg border text-xs transition-all duration-200 ${
+  const cardClass = 'sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]';
+  const inputClass = `w-full px-3 py-2.5 rounded-xl border text-xs transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 ${
     isDarkMode
       ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20'
       : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20'
   } outline-none`;
-  const labelClass = `block text-xs font-semibold mb-1.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`;
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-500';
+  const labelClass = 'block text-[11px] font-semibold mb-1.5 text-muted-foreground';
+  const textPrimary = 'text-foreground';
+  const textSecondary = 'text-muted-foreground';
 
   const toggleNotification = (key: keyof typeof accountData.notifications) => {
     setAccountData({
@@ -89,26 +84,99 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
     });
   };
 
+  const accountName = `${accountData.firstName} ${accountData.lastName}`.trim() || storedUser?.email || 'User';
+  const roleLabel = userRole || storedUser?.membershipRole || storedUser?.platformRole || 'Member';
+  const organizationLabel = orgName || storedUser?.organizationName || accountData.department || 'No organization';
+  const permissionCount = useMemo(() => {
+    if (!userPermissions) return 0;
+    return Object.values(userPermissions).filter((p) => p?.read || p?.write).length;
+  }, [userPermissions]);
+  const enabledNotifications = Object.values(accountData.notifications).filter(Boolean).length;
+  const profileCompleteness = useMemo(() => {
+    const fields = [
+      accountData.firstName,
+      accountData.lastName,
+      accountData.email,
+      accountData.position,
+      accountData.department || organizationLabel,
+      accountData.language,
+      accountData.timezone,
+    ];
+    return Math.round((fields.filter(Boolean).length / fields.length) * 100);
+  }, [accountData, organizationLabel]);
+
+  const summaryCards = [
+    {
+      label: 'Profile',
+      value: `${profileCompleteness}%`,
+      meta: isEditing ? 'Editing draft' : 'Ready',
+      icon: 'user',
+      tone: profileCompleteness >= 80 ? 'sq-tone-success' : 'sq-tone-warning',
+    },
+    {
+      label: 'Role',
+      value: roleLabel,
+      meta: organizationLabel,
+      icon: 'shield-check',
+      tone: 'sq-tone-brand',
+    },
+    {
+      label: 'Access',
+      value: permissionCount,
+      meta: permissionCount === 1 ? 'permission group' : 'permission groups',
+      icon: 'key',
+      tone: 'sq-tone-info',
+    },
+    {
+      label: 'Alerts',
+      value: enabledNotifications,
+      meta: 'enabled channels',
+      icon: 'bell',
+      tone: 'sq-tone-neutral',
+    },
+  ];
+
   return (
-    <div className="space-y-5">
+    <div className="max-w-[1600px] mx-auto space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className={`text-lg font-bold tracking-tight ${textPrimary}`}>Account Information</h2>
-          <p className={`text-xs mt-1 ${textSecondary}`}>Verwalten Sie Ihr persönliches Profil und Ihre Einstellungen</p>
+      <div className="min-h-8 flex items-center justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <h2 className="text-[22px] leading-tight font-semibold tracking-[-0.018em] text-foreground">Account Information</h2>
+          <p className="text-[13px] mt-1 text-muted-foreground">
+            Verwalten Sie Profil, Sicherheit, Sitzungen und persönliche Benachrichtigungen an einer Stelle.
+          </p>
         </div>
         <button
           onClick={() => setIsEditing(!isEditing)}
-          className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+          className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200 active:scale-[0.98] ${
             isEditing
-              ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/25'
+              ? 'bg-[var(--brand)] text-[var(--brand-foreground)] hover:bg-[var(--brand-hover)] shadow-[var(--shadow-1)]'
               : isDarkMode
                 ? 'bg-neutral-800/60 border border-neutral-700/50 text-gray-300 hover:bg-neutral-700/60'
                 : 'bg-white/80 border border-gray-200 text-gray-700 hover:bg-white hover:shadow-md'
           }`}
         >
-          {isEditing ? <><Save className="w-5 h-5" /> Änderungen speichern</> : <><Edit3 className="w-5 h-5" /> Profil bearbeiten</>}
+          {isEditing ? <><Icon name="save" className="w-4 h-4" /> Änderungen speichern</> : <><Icon name="edit-3" className="w-4 h-4" /> Profil bearbeiten</>}
         </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        {summaryCards.map((card) => (
+          <div key={card.label} className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-2)]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{card.label}</p>
+                <p className="mt-2 text-[20px] leading-none font-semibold tracking-[-0.02em] text-foreground tabular-nums truncate">
+                  {card.value}
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground truncate">{card.meta}</p>
+              </div>
+              <div className={`${card.tone} w-10 h-10 rounded-xl flex items-center justify-center shrink-0`}>
+                <Icon name={card.icon} className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
@@ -118,63 +186,67 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
           <div className={cardClass}>
             <div className="flex flex-col items-center text-center">
               <div className="relative mb-3">
-                <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-indigo-500/30">
+                <div className="w-24 h-24 sq-tone-brand rounded-3xl flex items-center justify-center text-[24px] font-semibold tracking-[-0.04em] shadow-[var(--shadow-2)]">
                   {accountInitials}
                 </div>
                 {isEditing && (
-                  <button className="absolute -bottom-1 -right-1 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-blue-700 transition-colors">
-                    <Camera className="w-3.5 h-3.5" />
+                  <button className="absolute -bottom-1 -right-1 w-7 h-7 rounded-xl flex items-center justify-center text-white shadow-lg bg-[var(--brand)] hover:bg-[var(--brand-hover)] transition-colors">
+                    <Icon name="camera" className="w-3.5 h-3.5" />
                   </button>
                 )}
-                <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center">
-                  <Check className="w-3 h-3 text-white" />
+                <div className="absolute -top-1 -right-1 w-6 h-6 sq-tone-success rounded-xl border-2 border-background flex items-center justify-center">
+                  <Icon name="check" className="w-3 h-3" />
                 </div>
               </div>
-              <h3 className={`text-base font-bold ${textPrimary}`}>{accountData.firstName} {accountData.lastName}</h3>
-              <p className={`text-xs ${textSecondary}`}>{accountData.position}</p>
-              <p className={`text-xs mt-0.5 ${textSecondary}`}>{accountData.department}</p>
-              <div className={`mt-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                isDarkMode ? 'bg-purple-500/15 text-purple-400' : 'bg-purple-100 text-purple-700'
-              }`}>
-                <Crown className="w-3 h-3" /> Owner
+              <h3 className={`text-[16px] font-semibold tracking-[-0.01em] ${textPrimary}`}>{accountName}</h3>
+              <p className={`text-[12px] ${textSecondary}`}>{accountData.position || roleLabel}</p>
+              <p className={`text-[11px] mt-0.5 ${textSecondary}`}>{organizationLabel}</p>
+              <div className="mt-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold sq-tone-brand">
+                <Icon name="crown" className="w-3 h-3" /> {roleLabel}
               </div>
             </div>
             <div className={`mt-5 pt-5 border-t space-y-3 ${isDarkMode ? 'border-neutral-700/40' : 'border-gray-200/60'}`}>
               <div className="flex items-center gap-3">
-                <Mail className={`w-5 h-5 ${textSecondary}`} />
-                <span className={`text-xs ${textSecondary}`}>{accountData.email}</span>
+                <div className="sq-tone-neutral w-8 h-8 rounded-lg flex items-center justify-center shrink-0"><Icon name="mail" className="w-4 h-4" /></div>
+                <span className={`text-xs ${textSecondary}`}>{accountData.email || 'Keine E-Mail hinterlegt'}</span>
               </div>
               <div className="flex items-center gap-3">
-                <Phone className={`w-5 h-5 ${textSecondary}`} />
-                <span className={`text-xs ${textSecondary}`}>{accountData.phone}</span>
+                <div className="sq-tone-neutral w-8 h-8 rounded-lg flex items-center justify-center shrink-0"><Icon name="phone" className="w-4 h-4" /></div>
+                <span className={`text-xs ${textSecondary}`}>{accountData.phone || 'Telefon nicht hinterlegt'}</span>
               </div>
               <div className="flex items-center gap-3">
-                <Smartphone className={`w-5 h-5 ${textSecondary}`} />
-                <span className={`text-xs ${textSecondary}`}>{accountData.mobile}</span>
+                <div className="sq-tone-neutral w-8 h-8 rounded-lg flex items-center justify-center shrink-0"><Icon name="smartphone" className="w-4 h-4" /></div>
+                <span className={`text-xs ${textSecondary}`}>{accountData.mobile || 'Mobilnummer nicht hinterlegt'}</span>
               </div>
               <div className="flex items-center gap-3">
-                <MapPinIcon className={`w-5 h-5 ${textSecondary}`} />
-                <span className={`text-xs ${textSecondary}`}>{accountData.location}</span>
+                <div className="sq-tone-neutral w-8 h-8 rounded-lg flex items-center justify-center shrink-0"><Icon name="map-pin" className="w-4 h-4" /></div>
+                <span className={`text-xs ${textSecondary}`}>{accountData.location || 'Standort nicht gesetzt'}</span>
               </div>
             </div>
           </div>
 
           {/* Security */}
           <div className={cardClass}>
-            <h3 className={`text-base font-semibold mb-3 ${textPrimary}`}>Sicherheit</h3>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <h3 className={`text-[14px] font-semibold tracking-[-0.01em] ${textPrimary}`}>Sicherheit</h3>
+                <p className={`text-[11px] ${textSecondary}`}>Login, 2FA und Sitzungsstatus</p>
+              </div>
+              <span className="sq-tone-success px-2 py-1 rounded-lg text-[10px] font-semibold">Protected</span>
+            </div>
             <div className="space-y-3">
-              <div className={`flex items-center justify-between p-3 rounded-lg border ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/30' : 'bg-gray-50/80 border-gray-100'}`}>
+              <div className={`flex items-center justify-between p-3 rounded-xl border ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/30' : 'bg-muted/40 border-border'}`}>
                 <div className="flex items-center gap-3">
-                  <Key className={`w-5 h-5 ${textSecondary}`} />
+                  <div className="sq-tone-neutral w-9 h-9 rounded-xl flex items-center justify-center shrink-0"><Icon name="key" className="w-4 h-4" /></div>
                   <div>
                     <p className={`text-xs font-medium ${textPrimary}`}>Passwort</p>
-                    <p className={`text-xs ${textSecondary}`}>Zuletzt geändert vor 45 Tagen</p>
+                    <p className={`text-xs ${textSecondary}`}>Änderung über gesicherten Dialog</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowPasswordChange(!showPasswordChange)}
-                  className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
-                    isDarkMode ? 'text-blue-400 hover:bg-blue-600/10' : 'text-blue-600 hover:bg-blue-50'
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                    isDarkMode ? 'text-blue-400 hover:bg-blue-600/10' : 'text-[var(--brand)] hover:bg-[var(--brand-soft)]'
                   }`}
                 >
                   Ändern
@@ -199,22 +271,22 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
                   </button>
                 </div>
               )}
-              <div className={`flex items-center justify-between p-3 rounded-lg border ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/30' : 'bg-gray-50/80 border-gray-100'}`}>
+              <div className={`flex items-center justify-between p-3 rounded-xl border ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/30' : 'bg-muted/40 border-border'}`}>
                 <div className="flex items-center gap-3">
-                  <ShieldCheck className={`w-5 h-5 ${textSecondary}`} />
+                  <div className="sq-tone-success w-9 h-9 rounded-xl flex items-center justify-center shrink-0"><Icon name="shield-check" className="w-4 h-4" /></div>
                   <div>
                     <p className={`text-xs font-medium ${textPrimary}`}>Zwei-Faktor-Authentifizierung</p>
                     <p className={`text-xs ${textSecondary}`}>Zusätzliche Sicherheitsebene</p>
                   </div>
                 </div>
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>Aktiv</span>
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-lg sq-tone-success">Aktiv</span>
               </div>
-              <div className={`flex items-center justify-between p-3 rounded-lg border ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/30' : 'bg-gray-50/80 border-gray-100'}`}>
+              <div className={`flex items-center justify-between p-3 rounded-xl border ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/30' : 'bg-muted/40 border-border'}`}>
                 <div className="flex items-center gap-3">
-                  <Clock className={`w-5 h-5 ${textSecondary}`} />
+                  <div className="sq-tone-info w-9 h-9 rounded-xl flex items-center justify-center shrink-0"><Icon name="clock" className="w-4 h-4" /></div>
                   <div>
                     <p className={`text-xs font-medium ${textPrimary}`}>Letzte Anmeldung</p>
-                    <p className={`text-xs ${textSecondary}`}>07.03.2026, 09:14 · Berlin, DE</p>
+                    <p className={`text-xs ${textSecondary}`}>Aktuelle Session · Browser</p>
                   </div>
                 </div>
               </div>
@@ -226,7 +298,15 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
         <div className="lg:col-span-2 space-y-5">
           {/* Personal Information */}
           <div className={cardClass}>
-            <h3 className={`text-base font-semibold mb-3 ${textPrimary}`}>Persönliche Informationen</h3>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <h3 className={`text-[14px] font-semibold tracking-[-0.01em] ${textPrimary}`}>Persönliche Informationen</h3>
+                <p className={`text-[11px] ${textSecondary}`}>Basisdaten aus Login-Profil und lokalen Einstellungen</p>
+              </div>
+              <span className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${isEditing ? 'sq-tone-warning' : 'sq-tone-neutral'}`}>
+                {isEditing ? 'Bearbeitung aktiv' : 'Read only'}
+              </span>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Vorname</label>
@@ -288,7 +368,13 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
 
           {/* Preferences */}
           <div className={cardClass}>
-            <h3 className={`text-base font-semibold mb-3 ${textPrimary}`}>Einstellungen</h3>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <h3 className={`text-[14px] font-semibold tracking-[-0.01em] ${textPrimary}`}>Einstellungen</h3>
+                <p className={`text-[11px] ${textSecondary}`}>Sprache, Zeitzone und Datumsformat für operative Ansichten</p>
+              </div>
+              <span className="sq-tone-neutral px-2 py-1 rounded-lg text-[10px] font-semibold">{accountData.language}</span>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div>
                 <label className={labelClass}>Sprache</label>
@@ -328,7 +414,24 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
 
           {/* Notifications */}
           <div className={cardClass}>
-            <h3 className={`text-base font-semibold mb-3 ${textPrimary}`}>Benachrichtigungen</h3>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <h3 className={`text-[14px] font-semibold tracking-[-0.01em] ${textPrimary}`}>Benachrichtigungen</h3>
+                <p className={`text-[11px] ${textSecondary}`}>{enabledNotifications} Kanäle aktiv</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAccountData({
+                  ...accountData,
+                  notifications: Object.fromEntries(
+                    Object.keys(accountData.notifications).map((key) => [key, true]),
+                  ) as typeof accountData.notifications,
+                })}
+                className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-colors text-[var(--brand)] hover:bg-[var(--brand-soft)]"
+              >
+                Alle aktivieren
+              </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {[
                 { key: 'email' as const, label: 'E-Mail-Benachrichtigungen', desc: 'Wichtige Updates per E-Mail erhalten' },
@@ -338,16 +441,16 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
                 { key: 'bookingAlerts' as const, label: 'Buchungs-Alerts', desc: 'Neue Buchungen und Stornierungen' },
                 { key: 'maintenanceAlerts' as const, label: 'Wartungs-Alerts', desc: 'Anstehende Wartungstermine' },
               ].map((item) => (
-                <div key={item.key} className={`flex items-center justify-between p-3 rounded-lg border ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/30' : 'bg-gray-50/80 border-gray-100'}`}>
+                <div key={item.key} className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-colors ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/30' : 'bg-muted/40 border-border'}`}>
                   <div>
                     <p className={`text-xs font-medium ${textPrimary}`}>{item.label}</p>
                     <p className={`text-xs ${textSecondary}`}>{item.desc}</p>
                   </div>
                   <button
                     onClick={() => toggleNotification(item.key)}
-                    className={`relative w-10 h-6 rounded-full transition-colors duration-200 ${
+                    className={`relative w-10 h-6 rounded-full transition-colors duration-200 shrink-0 ${
                       accountData.notifications[item.key]
-                        ? 'bg-blue-600'
+                        ? 'bg-[var(--brand)]'
                         : isDarkMode ? 'bg-neutral-700' : 'bg-gray-300'
                     }`}
                   >
@@ -363,21 +466,22 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
           {/* Active Sessions */}
           <div className={cardClass}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className={`text-base font-semibold ${textPrimary}`}>Aktive Sitzungen</h3>
-              <button className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors text-red-500 hover:bg-red-50 ${isDarkMode ? 'hover:bg-red-500/10' : ''}`}>
+              <div>
+                <h3 className={`text-[14px] font-semibold tracking-[-0.01em] ${textPrimary}`}>Aktive Sitzungen</h3>
+                <p className={`text-[11px] ${textSecondary}`}>Gerätezugriffe und aktuelle Session</p>
+              </div>
+              <button className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors text-red-500 hover:bg-red-50 ${isDarkMode ? 'hover:bg-red-500/10' : ''}`}>
                 Alle anderen abmelden
               </button>
             </div>
             <div className="space-y-2">
               {[
-                { device: 'MacBook Pro – Chrome', location: 'Berlin, DE', time: 'Aktuelle Sitzung', current: true },
-                { device: 'iPhone 15 Pro – Safari', location: 'Berlin, DE', time: 'Vor 2 Stunden', current: false },
-                { device: 'iPad Air – Safari', location: 'München, DE', time: 'Vor 3 Tagen', current: false },
+                { device: 'Current browser', location: organizationLabel, time: 'Aktuelle Sitzung', current: true },
               ].map((session, i) => (
-                <div key={i} className={`flex items-center justify-between p-3 rounded-lg border ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/30' : 'bg-gray-50/80 border-gray-100'}`}>
+                <div key={i} className={`flex items-center justify-between p-3 rounded-xl border ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/30' : 'bg-muted/40 border-border'}`}>
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-neutral-700/50' : 'bg-gray-100'}`}>
-                      <Globe className={`w-5 h-5 ${textSecondary}`} />
+                    <div className="sq-tone-info w-9 h-9 rounded-xl flex items-center justify-center shrink-0">
+                      <Icon name="globe" className="w-4 h-4" />
                     </div>
                     <div>
                       <p className={`text-xs font-medium ${textPrimary}`}>{session.device}</p>
@@ -385,7 +489,7 @@ function AccountInformationTab({ isDarkMode }: { isDarkMode: boolean }) {
                     </div>
                   </div>
                   {session.current ? (
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-100 text-emerald-700'}`}>Aktuell</span>
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-lg sq-tone-success">Aktuell</span>
                   ) : (
                     <button className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${isDarkMode ? 'text-gray-500 hover:bg-neutral-700' : 'text-gray-400 hover:bg-gray-100'}`}>
                       Abmelden
@@ -601,20 +705,67 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
 
   const placeholder = '\u2014';
 
-  const cardClass = `rounded-lg p-4 shadow-sm border ${
-    isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
-  }`;
-  const inputClass = `w-full px-3 py-2.5 rounded-lg border text-xs transition-all duration-200 ${
+  const cardClass = 'sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]';
+  const inputClass = `w-full px-3 py-2.5 rounded-xl border text-xs transition-all duration-200 ${
     isDarkMode
       ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20'
       : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20'
   } outline-none`;
   const inputClassView = `${inputClass} ${!isEditing ? 'cursor-default opacity-90' : ''}`;
-  const labelClass = `block text-xs font-semibold mb-1.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`;
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-500';
+  const labelClass = 'block text-[11px] font-semibold mb-1.5 text-muted-foreground';
+  const textPrimary = 'text-foreground';
+  const textSecondary = 'text-muted-foreground';
 
   const businessDocuments: Array<{ name: string; size: string; date: string }> = [];
+
+  const profileCompleteness = useMemo(() => {
+    const fields = [
+      companyData.name,
+      companyData.address,
+      companyData.city,
+      companyData.country,
+      companyData.email,
+      companyData.phone,
+      companyData.manager,
+      companyData.managerEmail,
+      companyData.timezone,
+      companyData.language,
+    ];
+    return Math.round((fields.filter(Boolean).length / fields.length) * 100);
+  }, [companyData]);
+  const addressLine = [companyData.zip, companyData.city, companyData.country].filter(Boolean).join(' · ') || 'No address data';
+  const contactReady = Boolean(companyData.email || companyData.phone || companyData.website);
+  const localizationReady = Boolean(companyData.timezone || companyData.language);
+  const summaryCards = [
+    {
+      label: 'Profile',
+      value: `${profileCompleteness}%`,
+      meta: profileCompleteness >= 80 ? 'Complete' : 'Needs details',
+      icon: 'building-2',
+      tone: profileCompleteness >= 80 ? 'sq-tone-success' : 'sq-tone-warning',
+    },
+    {
+      label: 'Branding',
+      value: logoUrl ? 'Logo' : 'Missing',
+      meta: logoUrl ? 'Shown in app chrome' : 'Upload recommended',
+      icon: 'image',
+      tone: logoUrl ? 'sq-tone-success' : 'sq-tone-neutral',
+    },
+    {
+      label: 'Contact',
+      value: contactReady ? 'Ready' : 'Open',
+      meta: companyData.email || companyData.phone || 'No contact channel',
+      icon: 'mail',
+      tone: contactReady ? 'sq-tone-info' : 'sq-tone-warning',
+    },
+    {
+      label: 'Locale',
+      value: localizationReady ? 'Set' : 'Open',
+      meta: companyData.timezone || companyData.language || 'Timezone missing',
+      icon: 'globe',
+      tone: localizationReady ? 'sq-tone-brand' : 'sq-tone-neutral',
+    },
+  ];
 
   const primaryButtonDisabled =
     !canEditProfile || saving || (!isEditing && loading) || (!orgId?.trim());
@@ -624,23 +775,25 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
       ? 'Save Changes'
       : 'Edit Profile';
   const primaryButtonIcon = saving ? (
-    <Loader2 className="w-5 h-5 animate-spin" />
+    <Icon name="loader-2" className="w-5 h-5 animate-spin" />
   ) : isEditing ? (
-    <Save className="w-5 h-5" />
+    <Icon name="save" className="w-5 h-5" />
   ) : (
-    <Edit3 className="w-5 h-5" />
+    <Icon name="edit-3" className="w-5 h-5" />
   );
 
   return (
-    <div className="space-y-5">
+    <div className="max-w-[1600px] mx-auto space-y-5">
       {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className={`text-lg font-bold tracking-tight ${textPrimary}`}>Company Profile</h2>
-          <p className={`text-xs mt-1 ${textSecondary}`}>Verwalten Sie Ihre Unternehmensdaten und Dokumente</p>
+      <div className="min-h-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-[22px] leading-tight font-semibold tracking-[-0.018em] text-foreground">Company Profile</h2>
+          <p className="text-[13px] mt-1 text-muted-foreground">
+            Verwalten Sie Unternehmensdaten, Branding und Buchungsdokumente mit dem bestehenden Organisationsprofil.
+          </p>
           {loading && (
             <p className={`text-xs mt-1 ${textSecondary} flex items-center gap-1.5`}>
-              <Loader2 className="w-3 h-3 animate-spin" /> Profil wird geladen…
+              <Icon name="loader-2" className="w-3 h-3 animate-spin" /> Profil wird geladen…
             </p>
           )}
           {!loading && loadError && (
@@ -664,11 +817,11 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
           type="button"
           onClick={handlePrimaryAction}
           disabled={primaryButtonDisabled}
-          className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+          className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200 active:scale-[0.98] ${
             primaryButtonDisabled ? 'opacity-50 cursor-not-allowed ' : ''
           }${
             isEditing
-              ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/25'
+              ? 'bg-[var(--brand)] text-[var(--brand-foreground)] hover:bg-[var(--brand-hover)] shadow-[var(--shadow-1)]'
               : isDarkMode
                 ? 'bg-neutral-800/60 border border-neutral-700/50 text-gray-300 hover:bg-neutral-700/60'
                 : 'bg-white/80 border border-gray-200 text-gray-700 hover:bg-white hover:shadow-md'
@@ -678,10 +831,37 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
         </button>
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        {summaryCards.map((card) => (
+          <div key={card.label} className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-2)]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{card.label}</p>
+                <p className="mt-2 text-[20px] leading-none font-semibold tracking-[-0.02em] text-foreground tabular-nums truncate">
+                  {card.value}
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground truncate">{card.meta}</p>
+              </div>
+              <div className={`${card.tone} w-10 h-10 rounded-xl flex items-center justify-center shrink-0`}>
+                <Icon name={card.icon} className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {/* Company Information */}
         <div className={`lg:col-span-2 ${cardClass}`}>
-          <h3 className={`text-base font-semibold mb-3 ${textPrimary}`}>Unternehmensinformationen</h3>
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div>
+              <h3 className={`text-[14px] font-semibold tracking-[-0.01em] ${textPrimary}`}>Unternehmensinformationen</h3>
+              <p className={`text-[11px] mt-0.5 ${textSecondary}`}>{addressLine}</p>
+            </div>
+            <span className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${isEditing ? 'sq-tone-warning' : 'sq-tone-neutral'}`}>
+              {isEditing ? 'Bearbeitung aktiv' : 'Read only'}
+            </span>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="col-span-2">
               <label className={labelClass}>Firmenname</label>
@@ -819,7 +999,15 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
 
           {/* Manager Section */}
           <div className={`mt-6 pt-6 border-t ${isDarkMode ? 'border-neutral-700/40' : 'border-gray-200/60'}`}>
-            <h4 className={`text-xs font-semibold mb-3 ${textPrimary}`}>Geschäftsführer / Ansprechpartner</h4>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <h4 className={`text-[13px] font-semibold ${textPrimary}`}>Geschäftsführer / Ansprechpartner</h4>
+                <p className={`text-[11px] ${textSecondary}`}>Kontaktperson für Vertrags- und Betriebsfragen</p>
+              </div>
+              <span className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${companyData.manager || companyData.managerEmail ? 'sq-tone-success' : 'sq-tone-neutral'}`}>
+                {companyData.manager || companyData.managerEmail ? 'Hinterlegt' : 'Offen'}
+              </span>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className={labelClass}>Name</label>
@@ -851,8 +1039,11 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
         <div className="space-y-5">
           {/* Company Logo — used by the right-sidebar branding header. */}
           <div className={cardClass}>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className={`text-base font-semibold ${textPrimary}`}>Firmenlogo</h3>
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h3 className={`text-[14px] font-semibold tracking-[-0.01em] ${textPrimary}`}>Firmenlogo</h3>
+                <p className={`text-[11px] ${textSecondary}`}>Wird in Sidebar und App-Chrome angezeigt</p>
+              </div>
               {logoUrl && canEditProfile && (
                 <button
                   type="button"
@@ -868,7 +1059,7 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
                   title="Logo entfernen"
                   aria-label="Logo entfernen"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Icon name="trash-2" className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
@@ -885,14 +1076,12 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
             />
 
             <div
-              className={`border-2 border-dashed rounded-lg p-6 text-center ${
-                isDarkMode ? 'border-neutral-700/50 bg-neutral-800/30' : 'border-gray-200 bg-gray-50/50'
+              className={`border rounded-2xl p-5 text-center transition-colors ${
+                isDarkMode ? 'border-neutral-700/50 bg-neutral-800/30' : 'border-border bg-muted/40'
               }`}
             >
               <div
-                className={`w-20 h-20 mx-auto mb-3 rounded-lg flex items-center justify-center overflow-hidden ${
-                  isDarkMode ? 'bg-neutral-700/50' : 'bg-gray-100'
-                }`}
+                className="w-24 h-24 mx-auto mb-3 rounded-2xl sq-tone-neutral flex items-center justify-center overflow-hidden"
               >
                 {logoUrl && !logoBroken ? (
                   <img
@@ -902,10 +1091,10 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
                     onError={() => setLogoBroken(true)}
                   />
                 ) : (
-                  <Image className={`w-5 h-5 ${textSecondary}`} />
+                  <Icon name="image" className={`w-5 h-5 ${textSecondary}`} />
                 )}
               </div>
-              <p className={`text-xs font-medium mb-1 ${textPrimary}`}>
+              <p className={`text-[13px] font-semibold mb-1 ${textPrimary}`}>
                 {logoUrl ? 'Logo aktualisieren' : 'Logo hochladen'}
               </p>
               <p className={`text-xs ${textSecondary}`}>PNG, JPG, SVG oder WebP bis 2 MB</p>
@@ -913,19 +1102,19 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={!canEditProfile || logoUploading || !orgId?.trim()}
-                className={`mt-3 inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
+                className={`mt-3 inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl transition-colors active:scale-[0.98] ${
                   !canEditProfile || logoUploading || !orgId?.trim()
-                    ? 'opacity-50 cursor-not-allowed bg-blue-600 text-white'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                    ? 'opacity-50 cursor-not-allowed bg-[var(--brand)] text-[var(--brand-foreground)]'
+                    : 'bg-[var(--brand)] text-[var(--brand-foreground)] hover:bg-[var(--brand-hover)]'
                 }`}
               >
                 {logoUploading ? (
                   <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Lädt hoch…
+                    <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> Lädt hoch…
                   </>
                 ) : (
                   <>
-                    <Upload className="w-3.5 h-3.5" /> Datei auswählen
+                    <Icon name="upload" className="w-3.5 h-3.5" /> Datei auswählen
                   </>
                 )}
               </button>
@@ -942,32 +1131,44 @@ function CompanyProfileTab({ isDarkMode, orgId }: { isDarkMode: boolean; orgId?:
 
           {/* Business Documents */}
           <div className={cardClass}>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className={`text-base font-semibold ${textPrimary}`}>Dokumente</h3>
-              <button className="p-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors">
-                <Plus className="w-3.5 h-3.5" />
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h3 className={`text-[14px] font-semibold tracking-[-0.01em] ${textPrimary}`}>Dokumente</h3>
+                <p className={`text-[11px] ${textSecondary}`}>Buchungsbestätigung und Kundenunterlagen</p>
+              </div>
+              <button
+                type="button"
+                disabled
+                title="Dokument-Upload ist noch nicht angebunden"
+                className="p-1.5 rounded-lg bg-[var(--brand-soft)] text-[var(--brand)] opacity-60 cursor-not-allowed"
+              >
+                <Icon name="plus" className="w-3.5 h-3.5" />
               </button>
             </div>
-            <p className={`text-xs mb-3 ${textSecondary}`}>Geschäftsdokumente die Kunden bei der Buchungsbestätigung angezeigt werden.</p>
+            <p className={`text-xs mb-3 ${textSecondary}`}>Geschäftsdokumente, die Kunden bei der Buchungsbestätigung angezeigt werden.</p>
             {businessDocuments.length === 0 ? (
-              <p className={`text-xs py-6 text-center rounded-lg border border-dashed ${
-                isDarkMode ? 'border-neutral-700/50 text-gray-500 bg-neutral-800/20' : 'border-gray-200 text-gray-500 bg-gray-50/50'
+              <div className={`text-xs py-6 text-center rounded-2xl border border-dashed ${
+                isDarkMode ? 'border-neutral-700/50 text-gray-500 bg-neutral-800/20' : 'border-border text-muted-foreground bg-muted/40'
               }`}>
-                Noch keine Dokumente hinterlegt.
-              </p>
+                <div className="sq-tone-neutral w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center">
+                  <Icon name="file-text" className="w-5 h-5" />
+                </div>
+                <p className="font-semibold text-foreground">Noch keine Dokumente hinterlegt</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">Der Upload wird aktiviert, sobald ein Dokumenten-Endpoint vorhanden ist.</p>
+              </div>
             ) : (
               <div className="space-y-2">
                 {businessDocuments.map((doc, i) => (
                   <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border ${
                     isDarkMode ? 'bg-neutral-800/40 border-neutral-700/30' : 'bg-gray-50/80 border-gray-100'
                   }`}>
-                    <FileText className={`w-5 h-5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                    <Icon name="file-text" className={`w-5 h-5 flex-shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
                     <div className="flex-1 min-w-0">
                       <p className={`text-xs font-medium truncate ${textPrimary}`}>{doc.name}</p>
                       <p className={`text-xs ${textSecondary}`}>{doc.size} · {doc.date}</p>
                     </div>
                     <button type="button" className={`p-1 rounded-lg hover:bg-red-100 hover:text-red-500 transition-colors ${textSecondary}`}>
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Icon name="trash-2" className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
@@ -1019,19 +1220,17 @@ function FleetConnectionTab({ isDarkMode }: { isDarkMode: boolean }) {
       .finally(() => setLoading(false));
   }, [orgId]);
 
-  const cardClass = `rounded-lg p-4 shadow-sm border ${
-    isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
-  }`;
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-500';
-  const textMuted = isDarkMode ? 'text-gray-500' : 'text-gray-400';
+  const cardClass = 'sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]';
+  const textPrimary = 'text-foreground';
+  const textSecondary = 'text-muted-foreground';
+  const textMuted = 'text-muted-foreground';
 
   const vehicles = useMemo(() => {
     if (!data) return [];
     let list = data.vehicles;
     if (statusFilter !== 'all') list = list.filter(v => v.connectionStatus === statusFilter);
     if (search.trim()) {
-      const q = search.toLowerCase();
+      const q = search.trim().toLowerCase();
       list = list.filter(v =>
         v.vin?.toLowerCase().includes(q) ||
         v.licensePlate?.toLowerCase().includes(q) ||
@@ -1044,6 +1243,34 @@ function FleetConnectionTab({ isDarkMode }: { isDarkMode: boolean }) {
   }, [data, statusFilter, search]);
 
   const s = data?.summary;
+  const statusOptions: { key: typeof statusFilter; label: string; description: string }[] = [
+    { key: 'all', label: 'All vehicles', description: 'Every registered vehicle' },
+    { key: 'online', label: 'Online', description: 'Fresh signal and active data source' },
+    { key: 'standby', label: 'Standby', description: 'Known vehicle with stale or paused signal' },
+    { key: 'offline', label: 'Offline', description: 'No fresh connection currently available' },
+    { key: 'not_connected', label: 'No connection', description: 'Registered but not mapped to a data source' },
+  ];
+  const statusCount = (key: typeof statusFilter) => {
+    if (!s) return 0;
+    if (key === 'all') return s.total ?? 0;
+    if (key === 'online') return s.online ?? 0;
+    if (key === 'standby') return s.standby ?? 0;
+    if (key === 'offline') return s.offline ?? 0;
+    return s.notConnected ?? 0;
+  };
+  const activeStatus = statusOptions.find(o => o.key === statusFilter) ?? statusOptions[0];
+  const hasActiveFilters = statusFilter !== 'all' || search.trim().length > 0;
+  const clearFilters = () => {
+    setStatusFilter('all');
+    setSearch('');
+  };
+  const summaryCards = [
+    { label: 'Total Vehicles', value: s?.total ?? 0, filter: 'all' as const, icon: Car, tone: 'sq-tone-neutral', meta: `${vehicles.length} currently shown` },
+    { label: 'Online', value: s?.online ?? 0, filter: 'online' as const, icon: Signal, tone: 'sq-tone-success', meta: 'Fresh operational feed' },
+    { label: 'Standby', value: s?.standby ?? 0, filter: 'standby' as const, icon: Clock, tone: 'sq-tone-warning', meta: 'Needs attention soon' },
+    { label: 'Offline', value: s?.offline ?? 0, filter: 'offline' as const, icon: SignalZero, tone: 'sq-tone-critical', meta: `${s?.notConnected ?? 0} not connected` },
+    { label: 'No Connection', value: s?.notConnected ?? 0, filter: 'not_connected' as const, icon: Wifi, tone: 'sq-tone-neutral', meta: 'Missing source mapping' },
+  ];
 
   if (loading) {
     return (
@@ -1057,7 +1284,7 @@ function FleetConnectionTab({ isDarkMode }: { isDarkMode: boolean }) {
   if (error || !data) {
     return (
       <div className="flex flex-col items-center justify-center py-24">
-        <AlertCircle className={`w-10 h-10 mb-3 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`} />
+        <Icon name="alert-circle" className={`w-10 h-10 mb-3 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`} />
         <p className={`text-sm font-semibold ${textPrimary}`}>Could not load connectivity data</p>
         <p className={`text-xs mt-1 ${textSecondary}`}>Check your connection or try again later.</p>
       </div>
@@ -1065,76 +1292,116 @@ function FleetConnectionTab({ isDarkMode }: { isDarkMode: boolean }) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="max-w-[1600px] mx-auto space-y-5">
       {/* Header */}
-      <div>
-        <h2 className={`text-lg font-bold tracking-tight ${textPrimary}`}>Fleet Connectivity</h2>
-        <p className={`text-xs mt-0.5 ${textSecondary}`}>Vehicle connection status, data sources, and device mapping</p>
+      <div className="min-h-8 flex items-start justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <h2 className="text-[22px] leading-tight font-semibold tracking-[-0.018em] text-foreground">Fleet Connectivity</h2>
+          <p className="text-[13px] mt-1 text-muted-foreground">
+            Vehicle connection status, data sources, OBD mapping and device signal quality in one operational view.
+          </p>
+        </div>
+        <span className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold ${
+          (s?.offline ?? 0) > 0 || (s?.notConnected ?? 0) > 0 ? 'sq-tone-warning' : 'sq-tone-success'
+        }`}>
+          <Icon name={(s?.offline ?? 0) > 0 || (s?.notConnected ?? 0) > 0 ? 'alert-triangle' : 'check-circle-2'} className="w-4 h-4" />
+          {(s?.offline ?? 0) > 0 || (s?.notConnected ?? 0) > 0 ? 'Action needed' : 'Fleet connected'}
+        </span>
       </div>
 
       {/* Summary Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        {[
-          { label: 'Total Vehicles', value: s?.total ?? 0, icon: Car, colorClass: isDarkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600' },
-          { label: 'Online', value: s?.online ?? 0, icon: Signal, colorClass: isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-600' },
-          { label: 'Standby', value: s?.standby ?? 0, icon: Clock, colorClass: isDarkMode ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-600' },
-          { label: 'Offline', value: s?.offline ?? 0, icon: SignalZero, colorClass: isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600' },
-          { label: 'Not Connected', value: s?.notConnected ?? 0, icon: Wifi, colorClass: isDarkMode ? 'bg-gray-500/15 text-gray-400' : 'bg-gray-100 text-gray-500' },
-        ].map(stat => (
-          <div key={stat.label} className={cardClass}>
-            <div className="flex items-center gap-2.5">
-              <div className={`p-2 rounded-lg ${stat.colorClass}`}>
-                <stat.icon className="w-4 h-4" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
+        {summaryCards.map(stat => {
+          const active = statusFilter === stat.filter;
+          return (
+            <button
+              type="button"
+              key={stat.label}
+              onClick={() => setStatusFilter(stat.filter)}
+              aria-pressed={active}
+              className={`${cardClass} text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-2)] active:scale-[0.99] ${
+                active ? 'ring-1 ring-[var(--brand)]' : ''
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-[0.08em] font-semibold text-muted-foreground">{stat.label}</p>
+                  <p className="mt-2 text-[22px] leading-none font-semibold tracking-[-0.02em] text-foreground tabular-nums">{stat.value}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground truncate">{stat.meta}</p>
+                </div>
+                <div className={`${stat.tone} w-10 h-10 rounded-xl flex items-center justify-center shrink-0`}>
+                  <stat.icon className="w-5 h-5" />
+                </div>
               </div>
-              <div>
-                <p className={`text-[10px] uppercase tracking-wider font-semibold ${textMuted}`}>{stat.label}</p>
-                <p className={`text-lg font-bold ${textPrimary}`}>{stat.value}</p>
-              </div>
-            </div>
-          </div>
-        ))}
+            </button>
+          );
+        })}
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 max-w-xs">
-          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${textMuted}`} />
-          <input
-            type="text"
-            placeholder="Search VIN, plate, make, model, serial..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className={`w-full pl-9 pr-3 py-2 rounded-lg text-xs border outline-none transition-all ${
-              isDarkMode
-                ? 'bg-neutral-800/60 border-neutral-700/50 text-white placeholder-gray-500 focus:border-blue-500/50'
-                : 'bg-white/80 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-400'
-            }`}
-          />
-        </div>
-        <div className="flex gap-1.5">
-          {([['all', 'All'], ['online', 'Online'], ['standby', 'Standby'], ['offline', 'Offline'], ['not_connected', 'No Connection']] as const).map(([key, label]) => (
+      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+        <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
+          <div>
+            <p className="text-[13px] font-semibold text-foreground">Search & Filters</p>
+            <p className="text-[11px] text-muted-foreground">
+              Showing {vehicles.length} of {s?.total ?? 0} vehicles · active scope: {activeStatus.label}
+            </p>
+          </div>
+          {hasActiveFilters && (
             <button
-              key={key}
-              onClick={() => setStatusFilter(key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                statusFilter === key
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : isDarkMode ? 'bg-neutral-800/60 text-gray-400 hover:text-white' : 'bg-gray-100 text-gray-600 hover:text-gray-900'
-              }`}
+              type="button"
+              onClick={clearFilters}
+              className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-colors text-[var(--brand)] hover:bg-[var(--brand-soft)]"
             >
-              {label}
+              Clear filters
             </button>
-          ))}
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-3">
+          <div className="relative">
+            <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search VIN, plate, make, model, serial..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl text-xs border border-border/70 bg-card text-foreground placeholder:text-muted-foreground outline-none transition-all focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+            className="w-full px-3 py-2.5 rounded-xl border border-border/70 bg-card text-xs font-semibold text-foreground outline-none transition-all focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]"
+          >
+            {statusOptions.map(option => (
+              <option key={option.key} value={option.key}>
+                {option.label} ({statusCount(option.key)})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="mt-3 flex items-center gap-2 flex-wrap">
+          <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold sq-tone-neutral">
+            <Icon name="filter" className="w-3 h-3" />
+            {activeStatus.description}
+          </span>
+          {search.trim() && (
+            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold sq-tone-info">
+              Search: {search.trim()}
+            </span>
+          )}
         </div>
       </div>
 
       {/* Vehicle List */}
       {vehicles.length === 0 ? (
         <div className={`${cardClass} flex flex-col items-center justify-center py-14 px-6 text-center border-dashed ${
-          isDarkMode ? '!border-neutral-600/60' : '!border-gray-300/80'
+          isDarkMode ? '!border-neutral-600/60' : '!border-border/80'
         }`}>
-          <div className={`p-3 rounded-full mb-3 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-100'}`}>
-            <Car className={`w-8 h-8 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+          <div className="sq-tone-neutral w-12 h-12 rounded-2xl mb-3 flex items-center justify-center">
+            <Icon name="car" className="w-6 h-6" />
           </div>
           <p className={`text-sm font-semibold ${textPrimary}`}>
             {search || statusFilter !== 'all' ? 'No vehicles match your filters' : 'No connected vehicles'}
@@ -1150,22 +1417,22 @@ function FleetConnectionTab({ isDarkMode }: { isDarkMode: boolean }) {
           {vehicles.map(v => {
             const isExpanded = expandedId === v.vehicleId;
             const ConnIcon = v.connectionType === 'Aftermarket Device' ? Wifi : v.connectionType === 'Synthetic Device' ? Globe : Zap;
+            const statusTone =
+              v.connectionStatus === 'online' ? 'sq-tone-success'
+              : v.connectionStatus === 'standby' ? 'sq-tone-warning'
+              : v.connectionStatus === 'offline' ? 'sq-tone-critical'
+              : 'sq-tone-neutral';
             return (
-              <div key={v.vehicleId} className={`${cardClass} transition-all duration-200 hover:shadow-lg cursor-pointer`} onClick={() => setExpandedId(isExpanded ? null : v.vehicleId)}>
+              <div key={v.vehicleId} className={`${cardClass} transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-2)] cursor-pointer`} onClick={() => setExpandedId(isExpanded ? null : v.vehicleId)}>
                 {/* Compact row */}
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg shrink-0 ${
-                    v.connectionStatus === 'online' ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-600')
-                    : v.connectionStatus === 'standby' ? (isDarkMode ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-600')
-                    : v.connectionStatus === 'offline' ? (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600')
-                    : (isDarkMode ? 'bg-gray-500/15 text-gray-400' : 'bg-gray-100 text-gray-400')
-                  }`}>
+                  <div className={`${statusTone} w-10 h-10 rounded-xl flex items-center justify-center shrink-0`}>
                     <ConnIcon className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className={`text-xs font-semibold truncate ${textPrimary}`}>{v.make} {v.model} {v.year ?? ''}</p>
-                      {v.licensePlate && <span className={`text-[10px] font-mono font-medium px-1.5 py-0.5 rounded ${isDarkMode ? 'bg-neutral-800 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>{v.licensePlate}</span>}
+                      {v.licensePlate && <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded-lg sq-tone-neutral">{v.licensePlate}</span>}
                     </div>
                     <div className="flex items-center gap-3 mt-0.5">
                       <span className={`text-[10px] font-mono ${textMuted}`}>{v.vin}</span>
@@ -1182,7 +1449,7 @@ function FleetConnectionTab({ isDarkMode }: { isDarkMode: boolean }) {
                       }`}>{v.freshnessLabel}</p>
                     </div>
                     <StatusDot status={v.connectionStatus} isDarkMode={isDarkMode} />
-                    <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''} ${textMuted}`} />
+                    <Icon name="chevron-down" className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''} ${textMuted}`} />
                   </div>
                 </div>
 
@@ -1203,8 +1470,8 @@ function FleetConnectionTab({ isDarkMode }: { isDarkMode: boolean }) {
                     <div className={`mb-4 rounded-xl border px-3 py-3 space-y-3 ${isDarkMode ? 'border-neutral-700/50 bg-neutral-800/40' : 'border-gray-200/60 bg-gray-50/80'}`}>
                       <p className={`text-[10px] uppercase tracking-wider font-bold ${textMuted}`}>OBD & cellular</p>
                       <div className="flex items-center gap-2">
-                        {v.obdIsPluggedIn === true && <><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /><span className={`text-xs font-medium ${textPrimary}`}>OBD Device Plugged IN</span></>}
-                        {v.obdIsPluggedIn === false && <><XCircle className="w-4 h-4 text-red-500 shrink-0" /><span className={`text-xs font-medium ${textPrimary}`}>OBD Device Plugged IN</span></>}
+                        {v.obdIsPluggedIn === true && <><Icon name="check-circle-2" className="w-4 h-4 text-emerald-500 shrink-0" /><span className={`text-xs font-medium ${textPrimary}`}>OBD Device Plugged IN</span></>}
+                        {v.obdIsPluggedIn === false && <><Icon name="x-circle" className="w-4 h-4 text-red-500 shrink-0" /><span className={`text-xs font-medium ${textPrimary}`}>OBD Device Plugged IN</span></>}
                         {v.obdIsPluggedIn == null && <span className={`text-xs ${textMuted}`}>OBD plug-in: no snapshot data</span>}
                       </div>
                       <div>
@@ -1219,7 +1486,7 @@ function FleetConnectionTab({ isDarkMode }: { isDarkMode: boolean }) {
                         >
                           <span className={`text-xs font-semibold ${textPrimary}`}>{v.jammingDetectedCount ?? 0} Jamming detected</span>
                           {(v.jammingDetectedCount ?? 0) > 0 && (
-                            <ChevronDown className={`w-3.5 h-3.5 ${textMuted} transition-transform ${jammingOpenId === v.vehicleId ? 'rotate-180' : ''}`} />
+                            <Icon name="chevron-down" className={`w-3.5 h-3.5 ${textMuted} transition-transform ${jammingOpenId === v.vehicleId ? 'rotate-180' : ''}`} />
                           )}
                         </button>
                         {jammingOpenId === v.vehicleId && (v.jammingDetectedCount ?? 0) > 0 && (
@@ -1329,6 +1596,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [stationScope, setStationScope] = useState<'all' | 'active' | 'assigned' | 'setup'>('all');
 
   // Modal state (create or edit)
   const [modalOpen, setModalOpen] = useState(false);
@@ -1385,19 +1653,13 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
   const [backfillError, setBackfillError] = useState<string | null>(null);
 
   // ─────────────────────────── styling ───────────────────────────
-  const cardClass = `rounded-xl p-4 shadow-sm border ${
-    isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
-  }`;
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-500';
-  const inputClass = `w-full px-3 py-2.5 rounded-lg border text-xs transition-all duration-200 ${
-    isDarkMode
-      ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20'
-      : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20'
-  } outline-none`;
-  const labelClass = `block text-[11px] font-semibold mb-1.5 uppercase tracking-wider ${
-    isDarkMode ? 'text-gray-400' : 'text-gray-500'
-  }`;
+  const cardClass = 'sq-card rounded-xl p-4 shadow-[var(--shadow-1)]';
+  const textPrimary = 'text-foreground';
+  const textSecondary = 'text-muted-foreground';
+  const inputClass =
+    'w-full px-3 py-2.5 rounded-lg border border-border/70 bg-card text-xs text-foreground placeholder:text-muted-foreground transition-all duration-200 outline-none focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]';
+  const labelClass =
+    'block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-muted-foreground';
 
   // ─────────────────────────── data loading ───────────────────────────
   const load = useCallback(async () => {
@@ -1450,15 +1712,18 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
   // ─────────────────────────── filtering ───────────────────────────
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return stations;
     return stations.filter((s) => {
+      if (stationScope === 'active' && s.status !== 'ACTIVE') return false;
+      if (stationScope === 'assigned' && (s.vehicleCount ?? 0) <= 0) return false;
+      if (stationScope === 'setup' && s.latitude != null && s.longitude != null) return false;
+      if (!q) return true;
       const haystack = [s.name, s.city, s.address, s.managerName, s.phone, s.email]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [stations, search]);
+  }, [stations, search, stationScope]);
 
   // ─────────────────────────── form helpers ───────────────────────────
   const openCreate = () => {
@@ -1748,41 +2013,25 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
     stats?.activeStations ?? stations.filter((s) => s.status === 'ACTIVE').length;
   const totalVehicles =
     stats?.totalVehicles ?? stations.reduce((sum, s) => sum + s.vehicleCount, 0);
-  const unassigned = stats?.unassignedVehicles ?? 0;
 
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h2 className={`text-lg font-bold tracking-tight ${textPrimary}`}>
+      <div className="flex flex-wrap items-end justify-between gap-2 sm:gap-3">
+        <div className="animate-fade-up min-w-0">
+          <h2 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground truncate">
             Stations &amp; Branches
           </h2>
-          <p className={`text-xs mt-1 ${textSecondary}`}>
-            {totalStations} Standorte · {activeStations} aktiv · {totalVehicles} Fahrzeuge zugewiesen
-            {unassigned > 0 && (
-              <>
-                {' · '}
-                <span className="text-amber-500 font-medium">
-                  {unassigned} ohne Station
-                </span>
-              </>
-            )}
-          </p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
+            <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="Suche nach Name, Stadt, Manager…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className={`pl-9 pr-3 py-2.5 rounded-lg border text-xs w-60 transition-all duration-200 ${
-                isDarkMode
-                  ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20'
-                  : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20'
-              } outline-none`}
+              className={`${inputClass} w-60 pl-9`}
             />
           </div>
           {stationsMissingCoords > 0 && (
@@ -1791,25 +2040,21 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
               onClick={runBackfill}
               disabled={backfillRunning}
               title={`${stationsMissingCoords} Station${stationsMissingCoords === 1 ? '' : 'en'} ohne Koordinaten — jetzt automatisch über Mapbox geocodieren`}
-              className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-50 ${
-                isDarkMode
-                  ? 'bg-amber-500/10 border-amber-500/40 text-amber-200 hover:bg-amber-500/15'
-                  : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
-              }`}
+              className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-semibold transition-all disabled:opacity-50 sq-tone-warning hover:opacity-90"
             >
               {backfillRunning ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Icon name="loader-2" className="w-4 h-4 animate-spin" />
               ) : (
-                <RefreshCw className="w-4 h-4" />
+                <Icon name="refresh-cw" className="w-4 h-4" />
               )}
               Koordinaten nachziehen ({stationsMissingCoords})
             </button>
           )}
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 px-3 py-2.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25"
+            className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
           >
-            <Plus className="w-4 h-4" /> Standort hinzufügen
+            <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" /> Standort hinzufügen
           </button>
         </div>
       </div>
@@ -1852,9 +2097,9 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                     <ul className={`mt-1.5 space-y-0.5 text-[10.5px] ${isDarkMode ? 'text-emerald-200/85' : 'text-emerald-700/90'}`}>
                       {backfillResult.results.slice(0, 8).map((r) => (
                         <li key={r.stationId} className="flex items-center gap-2">
-                          {r.status === 'geocoded' && <CheckCircle className="w-3 h-3 shrink-0" />}
-                          {r.status === 'failed' && <XCircle className="w-3 h-3 shrink-0 text-red-400" />}
-                          {r.status === 'skipped' && <AlertCircle className="w-3 h-3 shrink-0 text-amber-400" />}
+                          {r.status === 'geocoded' && <Icon name="check-circle" className="w-3 h-3 shrink-0" />}
+                          {r.status === 'failed' && <Icon name="x-circle" className="w-3 h-3 shrink-0 text-red-400" />}
+                          {r.status === 'skipped' && <Icon name="alert-circle" className="w-3 h-3 shrink-0 text-amber-400" />}
                           <span className="font-semibold">{r.stationName}</span>
                           {r.status === 'geocoded' && r.latitude != null && r.longitude != null && (
                             <span className="font-mono opacity-80">
@@ -1878,12 +2123,10 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                 setBackfillResult(null);
                 setBackfillError(null);
               }}
-              className={`p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${
-                isDarkMode ? 'text-gray-400' : 'text-gray-500'
-              }`}
+              className="p-1 rounded-md text-muted-foreground hover:bg-muted transition-colors"
               aria-label="Hinweis schließen"
             >
-              <X className="w-3.5 h-3.5" />
+              <Icon name="x" className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -1891,34 +2134,38 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
 
       {/* Stats strip */}
       {!loading && stations.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <StationStatPill
-            icon={<MapPin className="w-4 h-4" />}
-            label="Standorte"
+            icon={<Icon name="map-pin" className="w-4 h-4" />}
+            label="Alle"
             value={totalStations}
-            isDarkMode={isDarkMode}
-            accent="blue"
+            tone="brand"
+            active={stationScope === 'all'}
+            onClick={() => setStationScope('all')}
           />
           <StationStatPill
-            icon={<CheckCircle className="w-4 h-4" />}
+            icon={<Icon name="check-circle" className="w-4 h-4" />}
             label="Aktiv"
             value={activeStations}
-            isDarkMode={isDarkMode}
-            accent="emerald"
+            tone="success"
+            active={stationScope === 'active'}
+            onClick={() => setStationScope('active')}
           />
           <StationStatPill
-            icon={<Car className="w-4 h-4" />}
-            label="Fahrzeuge zugewiesen"
+            icon={<Icon name="car" className="w-4 h-4" />}
+            label="Fahrzeuge"
             value={totalVehicles}
-            isDarkMode={isDarkMode}
-            accent="violet"
+            tone="neutral"
+            active={stationScope === 'assigned'}
+            onClick={() => setStationScope('assigned')}
           />
           <StationStatPill
-            icon={<AlertCircle className="w-4 h-4" />}
-            label="Ohne Station"
-            value={unassigned}
-            isDarkMode={isDarkMode}
-            accent={unassigned > 0 ? 'amber' : 'gray'}
+            icon={<Icon name="alert-circle" className="w-4 h-4" />}
+            label="Setup"
+            value={stationsMissingCoords}
+            tone={stationsMissingCoords > 0 ? 'warning' : 'neutral'}
+            active={stationScope === 'setup'}
+            onClick={() => setStationScope('setup')}
           />
         </div>
       )}
@@ -1932,7 +2179,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
               : 'bg-red-50 border-red-200 text-red-700'
           }`}
         >
-          <AlertCircle className="w-4 h-4" />
+          <Icon name="alert-circle" className="w-4 h-4" />
           {error}
           <button
             onClick={load}
@@ -1946,18 +2193,14 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
       {/* Loading */}
       {loading ? (
         <div className={`${cardClass} flex items-center justify-center py-12`}>
-          <Loader2 className="w-5 h-5 animate-spin text-blue-500 mr-2" />
+          <Icon name="loader-2" className="w-5 h-5 animate-spin text-[color:var(--brand)] mr-2" />
           <span className={`text-xs ${textSecondary}`}>Standorte werden geladen…</span>
         </div>
       ) : stations.length === 0 ? (
         // Empty state
-        <div
-          className={`${cardClass} flex flex-col items-center justify-center py-16 px-6 text-center border-dashed ${
-            isDarkMode ? 'border-neutral-600/60' : 'border-gray-300/80'
-          }`}
-        >
-          <div className={`p-4 rounded-full mb-3 ${isDarkMode ? 'bg-neutral-800/80' : 'bg-gray-100'}`}>
-            <MapPin className={`w-10 h-10 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+        <div className={`${cardClass} flex flex-col items-center justify-center py-16 px-6 text-center border-dashed`}>
+          <div className="p-4 rounded-full mb-3 sq-tone-brand">
+            <Icon name="map-pin" className="w-10 h-10" />
           </div>
           <p className={`text-sm font-semibold ${textPrimary}`}>Noch keine Standorte</p>
           <p className={`text-xs mt-1 max-w-sm ${textSecondary}`}>
@@ -1965,9 +2208,9 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
           </p>
           <button
             onClick={openCreate}
-            className="mt-4 flex items-center gap-2 px-3 py-2.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25"
+            className="sq-press mt-4 flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
           >
-            <Plus className="w-4 h-4" /> Standort hinzufügen
+            <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" /> Standort hinzufügen
           </button>
         </div>
       ) : filtered.length === 0 ? (
@@ -1981,7 +2224,6 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
             <StationCard
               key={station.id}
               station={station}
-              isDarkMode={isDarkMode}
               onEdit={() => openEdit(station)}
               onDelete={() => setDeletingId(station.id)}
               onToggleStatus={() => toggleStatus(station)}
@@ -2026,7 +2268,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                   isDarkMode ? 'hover:bg-neutral-800' : 'hover:bg-gray-100'
                 }`}
               >
-                <X className={`w-5 h-5 ${textSecondary}`} />
+                <Icon name="x" className={`w-5 h-5 ${textSecondary}`} />
               </button>
             </div>
 
@@ -2052,7 +2294,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                   >
                     {suggestLoading ? (
                       <div className={`px-3 py-2.5 text-xs flex items-center gap-2 ${textSecondary}`}>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />
                         Suche Standorte…
                       </div>
                     ) : (
@@ -2069,7 +2311,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                           }`}
                         >
                           <div className="font-medium flex items-center gap-1.5">
-                            <MapPin className="w-3.5 h-3.5 text-blue-500" /> {s.mainText}
+                            <Icon name="map-pin" className="w-3.5 h-3.5 text-blue-500" /> {s.mainText}
                           </div>
                           {s.secondaryText && (
                             <div className={`${textSecondary} text-[11px] mt-0.5 ml-5`}>
@@ -2145,7 +2387,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                       isDarkMode ? 'bg-neutral-800 text-gray-300' : 'bg-white text-gray-600'
                     }`}
                   >
-                    <MapPinIcon className="w-3.5 h-3.5" />
+                    <Icon name="map-pin" className="w-3.5 h-3.5" />
                   </div>
                   <div className="min-w-0">
                     <label className={`block text-[11px] font-semibold uppercase tracking-wider ${
@@ -2237,7 +2479,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                         isDarkMode ? 'bg-blue-500/15 text-blue-300' : 'bg-blue-100 text-blue-600'
                       }`}
                     >
-                      <Crosshair className="w-3.5 h-3.5" />
+                      <Icon name="crosshair" className="w-3.5 h-3.5" />
                     </div>
                     <div className="min-w-0">
                       <label className={`block text-[11px] font-semibold uppercase tracking-wider ${
@@ -2342,7 +2584,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                       isDarkMode ? 'text-amber-300' : 'text-amber-700'
                     }`}
                   >
-                    <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
+                    <Icon name="alert-circle" className="w-3 h-3 shrink-0 mt-0.5" />
                     <span>
                       Hinweis: Der Umkreis greift erst, wenn die Station Koordinaten hat.
                       Beim Speichern werden Lat/Lng automatisch aus der Adresse berechnet —
@@ -2451,7 +2693,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                       : 'bg-red-50 border-red-200 text-red-700'
                   }`}
                 >
-                  <AlertCircle className="w-4 h-4" />
+                  <Icon name="alert-circle" className="w-4 h-4" />
                   {formError}
                 </div>
               )}
@@ -2480,11 +2722,11 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
               >
                 {saving ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Speichere…
+                    <Icon name="loader-2" className="w-4 h-4 animate-spin" /> Speichere…
                   </>
                 ) : (
                   <>
-                    <Save className="w-4 h-4" />
+                    <Icon name="save" className="w-4 h-4" />
                     {editingId ? 'Aktualisieren' : 'Standort anlegen'}
                   </>
                 )}
@@ -2508,7 +2750,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
           >
             <div className="flex items-start gap-3 mb-4">
               <div className={`p-2.5 rounded-lg ${isDarkMode ? 'bg-red-500/15' : 'bg-red-50'}`}>
-                <AlertCircle className="w-5 h-5 text-red-500" />
+                <Icon name="alert-circle" className="w-5 h-5 text-red-500" />
               </div>
               <div>
                 <h3 className={`text-sm font-semibold ${textPrimary}`}>Standort löschen?</h3>
@@ -2543,11 +2785,11 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
               >
                 {deleting ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Lösche…
+                    <Icon name="loader-2" className="w-4 h-4 animate-spin" /> Lösche…
                   </>
                 ) : (
                   <>
-                    <Trash2 className="w-4 h-4" /> Löschen
+                    <Icon name="trash-2" className="w-4 h-4" /> Löschen
                   </>
                 )}
               </button>
@@ -2576,7 +2818,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
             >
               <div className="min-w-0">
                 <h3 className={`text-base font-semibold flex items-center gap-2 ${textPrimary}`}>
-                  <Car className="w-4 h-4 text-blue-500" />
+                  <Icon name="car" className="w-4 h-4 text-blue-500" />
                   Fahrzeuge zuweisen
                 </h3>
                 <p className={`text-[11px] mt-0.5 truncate ${textSecondary}`}>
@@ -2598,7 +2840,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                   isDarkMode ? 'hover:bg-neutral-800' : 'hover:bg-gray-100'
                 }`}
               >
-                <X className={`w-5 h-5 ${textSecondary}`} />
+                <Icon name="x" className={`w-5 h-5 ${textSecondary}`} />
               </button>
             </div>
 
@@ -2609,7 +2851,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
               }`}
             >
               <div className="relative flex-1 min-w-[220px]">
-                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
+                <Icon name="search" className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
                 <input
                   type="text"
                   placeholder="Suche nach Kennzeichen, Modell, Standort…"
@@ -2653,7 +2895,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
             <div className="flex-1 overflow-y-auto p-3">
               {assignLoading ? (
                 <div className={`flex items-center justify-center py-12 ${textSecondary}`}>
-                  <Loader2 className="w-5 h-5 animate-spin text-blue-500 mr-2" />
+                  <Icon name="loader-2" className="w-5 h-5 animate-spin text-blue-500 mr-2" />
                   <span className="text-xs">Fahrzeuge werden geladen…</span>
                 </div>
               ) : assignError ? (
@@ -2664,7 +2906,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                       : 'bg-red-50 border-red-200 text-red-700'
                   }`}
                 >
-                  <AlertCircle className="w-4 h-4" /> {assignError}
+                  <Icon name="alert-circle" className="w-4 h-4" /> {assignError}
                 </div>
               ) : assignVehicles.length === 0 ? (
                 <div className={`text-center py-10 text-xs ${textSecondary}`}>
@@ -2708,7 +2950,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                         <div className={`p-1.5 rounded-lg shrink-0 ${
                           isDarkMode ? 'bg-neutral-700/60' : 'bg-gray-100'
                         }`}>
-                          <Car className={`w-3.5 h-3.5 ${textSecondary}`} />
+                          <Icon name="car" className={`w-3.5 h-3.5 ${textSecondary}`} />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -2740,7 +2982,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                                     : 'bg-emerald-50 text-emerald-700'
                                 }`}
                               >
-                                <CheckCircle className="w-2.5 h-2.5" />
+                                <Icon name="check-circle" className="w-2.5 h-2.5" />
                                 {assignStation.name}
                               </span>
                             ) : (
@@ -2751,7 +2993,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                                     : 'bg-gray-100 text-gray-700'
                                 }`}
                               >
-                                <MapPin className="w-2.5 h-2.5" />
+                                <Icon name="map-pin" className="w-2.5 h-2.5" />
                                 {v.stationName ?? 'Andere'}
                               </span>
                             )}
@@ -2764,7 +3006,7 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                                     : 'bg-blue-50 text-blue-700'
                                 }`}
                               >
-                                <Crosshair className="w-2.5 h-2.5" />
+                                <Icon name="crosshair" className="w-2.5 h-2.5" />
                                 vor Ort
                               </span>
                             )}
@@ -2825,11 +3067,11 @@ export function StationsTab({ isDarkMode }: { isDarkMode: boolean }) {
                 >
                   {assignSaving ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> Speichere…
+                      <Icon name="loader-2" className="w-4 h-4 animate-spin" /> Speichere…
                     </>
                   ) : (
                     <>
-                      <Save className="w-4 h-4" /> Zuweisung speichern
+                      <Icon name="save" className="w-4 h-4" /> Zuweisung speichern
                     </>
                   )}
                 </button>
@@ -2846,46 +3088,57 @@ function StationStatPill({
   icon,
   label,
   value,
-  isDarkMode,
-  accent,
+  tone,
+  active,
+  onClick,
 }: {
   icon: React.ReactNode;
   label: string;
   value: number;
-  isDarkMode: boolean;
-  accent: 'blue' | 'emerald' | 'violet' | 'amber' | 'gray';
+  tone: 'brand' | 'success' | 'warning' | 'critical' | 'neutral';
+  active: boolean;
+  onClick: () => void;
 }) {
-  const accentMap = {
-    blue: isDarkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-600',
-    emerald: isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-600',
-    violet: isDarkMode ? 'bg-violet-500/15 text-violet-400' : 'bg-violet-50 text-violet-600',
-    amber: isDarkMode ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-600',
-    gray: isDarkMode ? 'bg-neutral-700/40 text-gray-400' : 'bg-gray-100 text-gray-500',
-  } as const;
+  const toneClass =
+    tone === 'brand'
+      ? 'sq-tone-brand'
+      : tone === 'success'
+        ? 'sq-tone-success'
+        : tone === 'warning'
+          ? 'sq-tone-warning'
+          : tone === 'critical'
+            ? 'sq-tone-critical'
+            : 'sq-tone-neutral';
   return (
-    <div
-      className={`rounded-xl p-3.5 border flex items-center gap-3 ${
-        isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`rounded-xl p-3 text-left transition-all duration-200 ${toneClass} ${
+        active
+          ? 'shadow-[inset_0_0_0_1px_currentColor,0_6px_14px_rgba(15,23,42,0.12)]'
+          : 'opacity-80 hover:opacity-100 hover:shadow-sm'
       }`}
     >
-      <div className={`p-2 rounded-lg ${accentMap[accent]}`}>{icon}</div>
-      <div>
-        <div className={`text-[11px] font-medium uppercase tracking-wider ${
-          isDarkMode ? 'text-gray-400' : 'text-gray-500'
-        }`}>
-          {label}
+      <div className="flex items-start justify-between gap-3 w-full">
+        <div>
+          <div className="text-[18px] leading-none font-bold tabular-nums">
+            {value}
+          </div>
+          <div className="text-[9px] mt-1 font-semibold uppercase tracking-wider opacity-75">
+            {label}
+          </div>
         </div>
-        <div className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-          {value}
+        <div className="shrink-0 opacity-80">
+          {icon}
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
 function StationCard({
   station,
-  isDarkMode,
   onEdit,
   onDelete,
   onToggleStatus,
@@ -2893,18 +3146,14 @@ function StationCard({
   toggling,
 }: {
   station: import('../../lib/api').Station;
-  isDarkMode: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onToggleStatus: () => void;
   onAssign: () => void;
   toggling: boolean;
 }) {
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-500';
-  const cardClass = `rounded-xl p-4 shadow-sm border ${
-    isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
-  }`;
+  const textPrimary = 'text-foreground';
+  const textSecondary = 'text-muted-foreground';
 
   const isActive = station.status === 'ACTIVE';
   const addressLine = [station.address, station.postalCode, station.city]
@@ -2912,12 +3161,12 @@ function StationCard({
     .join(', ');
 
   return (
-    <div className={`${cardClass} hover:shadow-lg transition-all duration-300`}>
+    <div className="rounded-xl p-4 border border-border/60 bg-card hover:bg-muted/40 hover:border-border transition-all duration-200">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         {/* Left: identity */}
         <div className="flex items-start gap-3 min-w-0 flex-1">
-          <div className={`p-3 rounded-lg shrink-0 ${isDarkMode ? 'bg-blue-600/15' : 'bg-blue-50'}`}>
-            <MapPin className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+          <div className="p-3 rounded-lg shrink-0 sq-tone-brand">
+            <Icon name="map-pin" className="w-5 h-5" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
@@ -2925,12 +3174,8 @@ function StationCard({
               <span
                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                   isActive
-                    ? isDarkMode
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-emerald-100/80 text-emerald-700'
-                    : isDarkMode
-                      ? 'bg-neutral-700/50 text-gray-400'
-                      : 'bg-gray-100 text-gray-600'
+                    ? 'sq-tone-success'
+                    : 'sq-tone-neutral'
                 }`}
               >
                 <span
@@ -2947,7 +3192,7 @@ function StationCard({
             <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1">
               {station.openingHours && (
                 <span className={`text-[11px] flex items-center gap-1 ${textSecondary}`}>
-                  <Clock className="w-3 h-3" /> {station.openingHours}
+                  <Icon name="clock" className="w-3 h-3" /> {station.openingHours}
                 </span>
               )}
               {station.radiusMeters != null && (
@@ -2960,10 +3205,10 @@ function StationCard({
                   className={`text-[11px] flex items-center gap-1 ${
                     station.latitude != null && station.longitude != null
                       ? textSecondary
-                      : isDarkMode ? 'text-amber-300/90' : 'text-amber-700/90'
+                      : 'text-[color:var(--status-attention)]'
                   }`}
                 >
-                  <Crosshair className="w-3 h-3" />
+                  <Icon name="crosshair" className="w-3 h-3" />
                   Umkreis{' '}
                   <span className="font-semibold tabular-nums">
                     {station.radiusMeters >= 1000
@@ -3025,45 +3270,37 @@ function StationCard({
           <button
             onClick={onAssign}
             title="Fahrzeuge zu diesem Standort zuweisen"
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors mr-1 ${
-              isDarkMode
-                ? 'bg-blue-500/15 text-blue-300 hover:bg-blue-500/25'
-                : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-            }`}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors mr-1 sq-tone-brand hover:opacity-90"
           >
-            <Car className="w-3.5 h-3.5" /> Fahrzeuge zuweisen
+            <Icon name="car" className="w-3.5 h-3.5" /> Fahrzeuge zuweisen
           </button>
           <button
             onClick={onToggleStatus}
             disabled={toggling}
             title={isActive ? 'Deaktivieren' : 'Aktivieren'}
-            className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
-              isDarkMode ? 'hover:bg-neutral-700' : 'hover:bg-gray-100'
-            }`}
+            className="p-2 rounded-lg transition-colors disabled:opacity-50 hover:bg-muted"
           >
             {toggling ? (
-              <Loader2 className={`w-4 h-4 animate-spin ${textSecondary}`} />
+              <Icon name="loader-2" className={`w-4 h-4 animate-spin ${textSecondary}`} />
             ) : isActive ? (
-              <ToggleRight className={`w-5 h-5 text-emerald-500`} />
+              <Icon name="toggle-right" className={`w-5 h-5 text-emerald-500`} />
             ) : (
-              <ToggleLeft className={`w-5 h-5 ${textSecondary}`} />
+              <Icon name="toggle-left" className={`w-5 h-5 ${textSecondary}`} />
             )}
           </button>
           <button
             onClick={onEdit}
             title="Bearbeiten"
-            className={`p-2 rounded-lg transition-colors ${
-              isDarkMode ? 'hover:bg-neutral-700' : 'hover:bg-gray-100'
-            }`}
+            className="p-2 rounded-lg transition-colors hover:bg-muted"
           >
-            <Edit3 className={`w-4 h-4 ${textSecondary}`} />
+            <Icon name="edit-3" className={`w-4 h-4 ${textSecondary}`} />
           </button>
           <button
             onClick={onDelete}
             title="Löschen"
             className="p-2 rounded-lg hover:bg-red-100 hover:text-red-500 transition-colors"
           >
-            <Trash2 className={`w-4 h-4 ${textSecondary}`} />
+            <Icon name="trash-2" className={`w-4 h-4 ${textSecondary}`} />
           </button>
         </div>
       </div>
@@ -3071,7 +3308,7 @@ function StationCard({
       {station.notes && (
         <p
           className={`text-[11px] mt-3 pt-3 border-t italic ${
-            isDarkMode ? 'border-neutral-700 text-gray-400' : 'border-gray-100 text-gray-500'
+            'border-border/50 text-muted-foreground'
           }`}
         >
           {station.notes}
@@ -3103,183 +3340,416 @@ function formatLastActive(iso: string | null): string {
 // BILLING & SUBSCRIPTIONS TAB
 // ============================================
 function BillingTab({ isDarkMode }: { isDarkMode: boolean }) {
-  const cardClass = `rounded-lg p-4 shadow-sm border ${
-    isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
-  }`;
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-500';
+  type BillingSubscriptionDto = {
+    id: string;
+    plan?: string | null;
+    status?: string | null;
+    mrr?: number | null;
+    currentPeriodStart?: string | null;
+    currentPeriodEnd?: string | null;
+    invoices?: BillingInvoiceDto[];
+  };
+  type BillingInvoiceDto = {
+    id: string;
+    amount?: number | null;
+    amountCents?: number | null;
+    status?: string | null;
+    date?: string | null;
+    invoiceDate?: string | null;
+    dueDate?: string | null;
+    paidAt?: string | null;
+    invoicePdfUrl?: string | null;
+    stripeInvoiceId?: string | null;
+    plan?: string | null;
+  };
 
-  const invoices = [
-    { id: 'INV-2026-006', date: '01.02.2026', amount: '€249,00', status: 'Bezahlt', period: 'Februar 2026' },
-    { id: 'INV-2026-005', date: '01.01.2026', amount: '€249,00', status: 'Bezahlt', period: 'Januar 2026' },
-    { id: 'INV-2025-012', date: '01.12.2025', amount: '€249,00', status: 'Bezahlt', period: 'Dezember 2025' },
-    { id: 'INV-2025-011', date: '01.11.2025', amount: '€199,00', status: 'Bezahlt', period: 'November 2025' },
-    { id: 'INV-2025-010', date: '01.10.2025', amount: '€199,00', status: 'Bezahlt', period: 'Oktober 2025' },
-    { id: 'INV-2025-009', date: '01.09.2025', amount: '€199,00', status: 'Bezahlt', period: 'September 2025' },
+  const { orgId } = useRentalOrg();
+  const [subscription, setSubscription] = useState<BillingSubscriptionDto | null>(null);
+  const [invoices, setInvoices] = useState<BillingInvoiceDto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [invoiceSearch, setInvoiceSearch] = useState('');
+  const [invoiceStatus, setInvoiceStatus] = useState<'all' | 'paid' | 'pending' | 'overdue'>('all');
+
+  const cardClass = 'sq-card rounded-2xl p-5 shadow-[var(--shadow-1)]';
+  const spinnerClass = isDarkMode ? 'border-blue-400' : 'border-blue-500';
+  const inputClass =
+    'w-full px-3 py-2.5 rounded-xl border border-border/70 bg-card text-xs text-foreground placeholder:text-muted-foreground transition-all duration-200 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]';
+  const planCatalog = [
+    { name: 'Starter', aliases: ['Starter'], price: '€24,99', desc: 'Bis 4 Fahrzeuge', features: ['Bis 4 Fahrzeuge', '2 Benutzer', 'Basis-Telematik', 'E-Mail Support'], tone: 'sq-tone-neutral' },
+    { name: 'Professional', aliases: ['Professional', 'Business'], price: '€20,99', desc: 'Bis 12 Fahrzeuge', features: ['Bis 12 Fahrzeuge', '10 Benutzer', 'Erweiterte Telematik', 'AI Insights', 'Prioritäts-Support', 'API Zugang'], tone: 'sq-tone-brand' },
+    { name: 'Enterprise', aliases: ['Enterprise', 'Custom'], price: '€18,99', desc: 'Ab 12+ Fahrzeuge', features: ['Ab 12+ Fahrzeuge', 'Unbegrenzte Benutzer', 'Premium Telematik', 'AI Fleet Assistant', 'Dedizierter Support', 'Custom Integrationen'], tone: 'sq-tone-success' },
   ];
 
-  const plans = [
-    { name: 'Starter', price: '€99', desc: 'Bis 5 Fahrzeuge', features: ['5 Fahrzeuge', '2 Benutzer', 'Basis-Telematik', 'E-Mail Support'], current: false },
-    { name: 'Professional', price: '€249', desc: 'Bis 25 Fahrzeuge', features: ['25 Fahrzeuge', '10 Benutzer', 'Erweiterte Telematik', 'AI Insights', 'Prioritäts-Support', 'API Zugang'], current: true },
-    { name: 'Enterprise', price: 'Individuell', desc: 'Unbegrenzt', features: ['Unbegrenzte Fahrzeuge', 'Unbegrenzte Benutzer', 'Premium Telematik', 'AI Fleet Assistant', 'Dedizierter Support', 'Custom Integrationen', 'SLA Garantie'], current: false },
+  useEffect(() => {
+    let cancelled = false;
+    if (!orgId) {
+      setSubscription(null);
+      setInvoices([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    Promise.all([
+      api.billing.orgSubscriptions().catch(() => null),
+      api.billing.orgInvoices().catch(() => null),
+    ])
+      .then(([subscriptionResult, invoiceResult]) => {
+        if (cancelled) return;
+        const nextSubscription = Array.isArray(subscriptionResult)
+          ? (subscriptionResult[0] ?? null)
+          : (subscriptionResult as BillingSubscriptionDto | null);
+        const invoiceList = Array.isArray(invoiceResult)
+          ? invoiceResult
+          : Array.isArray((invoiceResult as { data?: BillingInvoiceDto[] } | null)?.data)
+            ? ((invoiceResult as { data: BillingInvoiceDto[] }).data)
+            : [];
+        setSubscription(nextSubscription);
+        setInvoices(invoiceList.length > 0 ? invoiceList : (nextSubscription?.invoices ?? []));
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setError((e as Error).message || 'Billing data could not be loaded');
+        setSubscription(null);
+        setInvoices([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [orgId]);
+
+  const formatMoney = (value: number | null | undefined) =>
+    typeof value === 'number'
+      ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value)
+      : '—';
+  const invoiceAmount = (invoice: BillingInvoiceDto) =>
+    typeof invoice.amount === 'number'
+      ? invoice.amount
+      : typeof invoice.amountCents === 'number'
+        ? invoice.amountCents / 100
+        : null;
+  const formatDateShort = (iso: string | null | undefined) => {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    } catch {
+      return iso;
+    }
+  };
+  const normalizeStatus = (status: string | null | undefined) => (status ?? 'Pending').toLowerCase();
+  const statusLabel = (status: string | null | undefined) => {
+    const normalized = normalizeStatus(status);
+    if (normalized === 'paid') return 'Bezahlt';
+    if (normalized === 'overdue' || normalized === 'uncollectible') return 'Überfällig';
+    if (normalized === 'open' || normalized === 'pending' || normalized === 'draft') return 'Offen';
+    return status ?? 'Offen';
+  };
+  const statusTone = (status: string | null | undefined) => {
+    const normalized = normalizeStatus(status);
+    if (normalized === 'paid') return 'sq-tone-success';
+    if (normalized === 'overdue' || normalized === 'uncollectible') return 'sq-tone-critical';
+    return 'sq-tone-warning';
+  };
+
+  const currentPlanName = subscription?.plan ?? null;
+  const currentPlan = planCatalog.find(plan => plan.aliases.some(alias => alias.toLowerCase() === currentPlanName?.toLowerCase())) ?? null;
+  const currentMrr = subscription?.mrr ?? (invoices[0] ? invoiceAmount(invoices[0]) : null);
+  const paidInvoiceCount = invoices.filter(invoice => normalizeStatus(invoice.status) === 'paid').length;
+  const openInvoiceCount = invoices.filter(invoice => normalizeStatus(invoice.status) !== 'paid').length;
+  const filteredInvoices = useMemo(() => {
+    const q = invoiceSearch.trim().toLowerCase();
+    return invoices.filter(invoice => {
+      const normalized = normalizeStatus(invoice.status);
+      if (invoiceStatus === 'paid' && normalized !== 'paid') return false;
+      if (invoiceStatus === 'pending' && !['open', 'pending', 'draft'].includes(normalized)) return false;
+      if (invoiceStatus === 'overdue' && !['overdue', 'uncollectible'].includes(normalized)) return false;
+      if (!q) return true;
+      return [invoice.id, invoice.stripeInvoiceId, invoice.plan, statusLabel(invoice.status)]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(q);
+    });
+  }, [invoices, invoiceSearch, invoiceStatus]);
+  const hasActiveFilters = invoiceSearch.trim().length > 0 || invoiceStatus !== 'all';
+  const clearFilters = () => {
+    setInvoiceSearch('');
+    setInvoiceStatus('all');
+  };
+  const statusOptions = [
+    { key: 'all', label: 'All invoices', count: invoices.length },
+    { key: 'paid', label: 'Paid', count: paidInvoiceCount },
+    { key: 'pending', label: 'Open', count: invoices.filter(invoice => ['open', 'pending', 'draft'].includes(normalizeStatus(invoice.status))).length },
+    { key: 'overdue', label: 'Overdue', count: invoices.filter(invoice => ['overdue', 'uncollectible'].includes(normalizeStatus(invoice.status))).length },
+  ] as const;
+  const activeStatus = statusOptions.find(option => option.key === invoiceStatus) ?? statusOptions[0];
+  const summaryCards = [
+    { label: 'Current Plan', value: currentPlan?.name ?? 'Setup', meta: subscription?.status ?? 'No subscription record', icon: CreditCard, tone: subscription ? 'sq-tone-brand' : 'sq-tone-warning' },
+    { label: 'Monthly', value: formatMoney(currentMrr), meta: 'MRR from Billing API', icon: Database, tone: currentMrr ? 'sq-tone-success' : 'sq-tone-neutral' },
+    { label: 'Renewal', value: formatDateShort(subscription?.currentPeriodEnd), meta: subscription?.currentPeriodStart ? `Since ${formatDateShort(subscription.currentPeriodStart)}` : 'No period synced', icon: Clock, tone: subscription?.currentPeriodEnd ? 'sq-tone-info' : 'sq-tone-neutral' },
+    { label: 'Invoices', value: invoices.length, meta: `${openInvoiceCount} open · ${paidInvoiceCount} paid`, icon: UserCog, tone: openInvoiceCount > 0 ? 'sq-tone-warning' : 'sq-tone-success' },
   ];
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h2 className={`text-lg font-bold tracking-tight ${textPrimary}`}>Billing & Subscriptions</h2>
-        <p className={`text-xs mt-1 ${textSecondary}`}>Ihr aktuelles Abo, Zahlungsmethode und Rechnungsverlauf</p>
+    <div className="max-w-[1600px] mx-auto space-y-5">
+      <div className="min-h-8 flex items-start justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <h2 className="text-[22px] leading-tight font-semibold tracking-[-0.018em] text-foreground">Billing & Subscriptions</h2>
+          <p className="text-[13px] mt-1 text-muted-foreground">
+            Tenant-scoped subscription status, billing period and invoice history from the existing Billing API.
+          </p>
+        </div>
+        <span className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold ${subscription ? 'sq-tone-success' : 'sq-tone-warning'}`}>
+          <Icon name={subscription ? 'check-circle-2' : 'alert-circle'} className="w-4 h-4" />
+          {subscription ? 'Billing synced' : 'Billing setup needed'}
+        </span>
       </div>
 
-      {/* Plans */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {[
-          { name: 'Starter', price: '€24,99', desc: 'Bis 4 Fahrzeuge', features: ['Bis 4 Fahrzeuge', '2 Benutzer', 'Basis-Telematik', 'E-Mail Support'], current: false },
-          { name: 'Professional', price: '€20,99', desc: 'Bis 12 Fahrzeuge', features: ['Bis 12 Fahrzeuge', '10 Benutzer', 'Erweiterte Telematik', 'AI Insights', 'Prioritäts-Support', 'API Zugang'], current: true },
-          { name: 'Enterprise', price: '€18,99', desc: 'Ab 12+ Fahrzeuge', features: ['Ab 12+ Fahrzeuge', 'Unbegrenzte Benutzer', 'Premium Telematik', 'AI Fleet Assistant', 'Dedizierter Support', 'Custom Integrationen'], current: false },
-        ].map((plan) => (
-          <div key={plan.name} className={`${cardClass} relative ${plan.current ? 'ring-2 ring-blue-500/50 !border-blue-400/50' : ''}`}>
-            {plan.current && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded-full">
-                Aktueller Plan
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-24">
+          <div className={`w-8 h-8 border-2 border-t-transparent rounded-full animate-spin ${spinnerClass}`} />
+          <p className="text-xs mt-3 text-muted-foreground">Loading billing data...</p>
+        </div>
+      ) : (
+        <>
+          {error && (
+            <div className="rounded-2xl p-4 sq-tone-critical text-xs font-semibold">
+              <Icon name="alert-circle" className="w-4 h-4 inline mr-2" />
+              {error}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+            {summaryCards.map(card => {
+              const CardIcon = card.icon;
+              return (
+                <div key={card.label} className={`${cardClass} transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-2)]`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[11px] uppercase tracking-[0.08em] font-semibold text-muted-foreground">{card.label}</p>
+                      <p className="mt-2 text-[22px] leading-none font-semibold tracking-[-0.02em] text-foreground tabular-nums truncate">{card.value}</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground truncate">{card.meta}</p>
+                    </div>
+                    <div className={`${card.tone} w-10 h-10 rounded-xl flex items-center justify-center shrink-0`}>
+                      <CardIcon className="w-5 h-5" />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)] gap-4">
+            <div className="space-y-4">
+              <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+                <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+                  <div>
+                    <p className="text-[13px] font-semibold text-foreground">Plan Workspace</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Current plan is derived from `GET /billing/subscriptions`; catalog prices are display-only until checkout is connected.
+                    </p>
+                  </div>
+                  {currentPlan && (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold sq-tone-brand">
+                      <Icon name="check" className="w-3 h-3" />
+                      {currentPlan.name}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
+                  {planCatalog.map(plan => {
+                    const isCurrent = plan.aliases.some(alias => alias.toLowerCase() === currentPlanName?.toLowerCase());
+                    return (
+                      <div key={plan.name} className={`rounded-2xl border border-border/70 bg-card/70 p-4 transition-all ${isCurrent ? 'ring-1 ring-[var(--brand)] shadow-[var(--shadow-2)]' : 'hover:bg-muted/30'}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">{plan.name}</h3>
+                            <p className="mt-1 text-[11px] text-muted-foreground">{plan.desc}</p>
+                          </div>
+                          <div className={`${plan.tone} w-9 h-9 rounded-xl flex items-center justify-center`}>
+                            <Icon name={isCurrent ? 'check-circle-2' : 'credit-card'} className="w-4 h-4" />
+                          </div>
+                        </div>
+                        <div className="mt-4">
+                          <span className="text-[26px] leading-none font-semibold tracking-[-0.03em] text-foreground tabular-nums">{plan.price}</span>
+                          <span className="block mt-1 text-[11px] text-muted-foreground">pro Fahrzeug / Monat</span>
+                        </div>
+                        <ul className="mt-4 space-y-2">
+                          {plan.features.map(feature => (
+                            <li key={feature} className="flex items-start gap-2 text-xs text-muted-foreground">
+                              <Icon name="check-circle" className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[var(--brand)]" />
+                              <span>{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <button
+                          type="button"
+                          disabled
+                          title={isCurrent ? 'Aktueller Plan' : 'Planwechsel-Flow ist noch nicht angebunden'}
+                          className={`mt-4 w-full py-2.5 rounded-xl text-xs font-semibold transition-colors ${
+                            isCurrent
+                              ? 'sq-tone-success cursor-default'
+                              : 'border border-border/70 bg-muted/40 text-muted-foreground cursor-not-allowed'
+                          }`}
+                        >
+                          {isCurrent ? 'Aktueller Plan' : plan.name === 'Enterprise' ? 'Kontakt über Support' : 'Upgrade vorbereiten'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className={cardClass}>
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div>
+                    <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-foreground">Subscription Summary</h3>
+                    <p className="text-[11px] text-muted-foreground">Live status from tenant billing scope</p>
+                  </div>
+                  <span className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${subscription ? 'sq-tone-success' : 'sq-tone-warning'}`}>
+                    {subscription?.status ?? 'Missing'}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {[
+                    { label: 'Plan', value: currentPlan?.name ?? subscription?.plan ?? '—' },
+                    { label: 'Monthly recurring', value: formatMoney(currentMrr) },
+                    { label: 'Current period start', value: formatDateShort(subscription?.currentPeriodStart) },
+                    { label: 'Current period end', value: formatDateShort(subscription?.currentPeriodEnd) },
+                    { label: 'Subscription ID', value: subscription?.id ?? '—' },
+                  ].map(item => (
+                    <div key={item.label} className="flex items-center justify-between gap-3 py-1.5 border-b border-border/40 last:border-b-0">
+                      <span className="text-xs text-muted-foreground">{item.label}</span>
+                      <span className="text-xs font-semibold text-foreground text-right truncate">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className={cardClass}>
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-foreground">Zahlungsmethode</h3>
+                    <p className="text-[11px] text-muted-foreground">Stripe payment method is not exposed by the current tenant endpoint.</p>
+                  </div>
+                  <span className="px-2 py-1 rounded-lg text-[10px] font-semibold sq-tone-neutral">Not synced</span>
+                </div>
+                <div className="rounded-2xl border border-dashed border-border/70 bg-muted/30 p-4 text-center">
+                  <div className="sq-tone-neutral w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center">
+                    <Icon name="credit-card" className="w-5 h-5" />
+                  </div>
+                  <p className="text-xs font-semibold text-foreground">Keine Zahlungsmethode im API-Response</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">Die alte Demo-Mastercard wurde entfernt, damit hier keine falschen Zahlungsdaten angezeigt werden.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+            <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
+              <div>
+                <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-foreground">Rechnungsverlauf</h3>
+                <p className="text-[11px] text-muted-foreground">
+                  Showing {filteredInvoices.length} of {invoices.length} invoices · active scope: {activeStatus.label}
+                </p>
+              </div>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-colors text-[var(--brand)] hover:bg-[var(--brand-soft)]"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_220px] gap-3 mb-4">
+              <div className="relative">
+                <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input
+                  value={invoiceSearch}
+                  onChange={e => setInvoiceSearch(e.target.value)}
+                  placeholder="Search invoice ID, Stripe ID or plan..."
+                  className={`${inputClass} !pl-9`}
+                />
+              </div>
+              <select
+                value={invoiceStatus}
+                onChange={e => setInvoiceStatus(e.target.value as typeof invoiceStatus)}
+                className={inputClass}
+              >
+                {statusOptions.map(option => (
+                  <option key={option.key} value={option.key}>{option.label} ({option.count})</option>
+                ))}
+              </select>
+            </div>
+
+            {filteredInvoices.length === 0 ? (
+              <div className="text-center py-12 rounded-2xl border border-dashed border-border/70 bg-muted/30">
+                <div className="sq-tone-neutral w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center">
+                  <Icon name="file-text" className="w-6 h-6" />
+                </div>
+                <p className="text-sm font-semibold text-foreground">Keine Rechnungen gefunden</p>
+                <p className="text-xs mt-1 text-muted-foreground">
+                  {hasActiveFilters ? 'Passe Suche oder Statusfilter an.' : 'Sobald Billing-Rechnungen synchronisiert sind, erscheinen sie hier.'}
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-xl">
+                <table className="w-full min-w-[720px]">
+                  <thead>
+                    <tr className="bg-muted/40">
+                      <th className="text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Rechnungs-Nr.</th>
+                      <th className="text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Plan</th>
+                      <th className="text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Datum</th>
+                      <th className="text-right px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Betrag</th>
+                      <th className="text-center px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Status</th>
+                      <th className="text-right px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Download</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredInvoices.map(invoice => {
+                      const pdfUrl = invoice.invoicePdfUrl;
+                      return (
+                        <tr key={invoice.id} className="border-t border-border/50 transition-colors hover:bg-muted/30">
+                          <td className="px-3 py-2.5 text-xs font-mono font-medium text-foreground">{invoice.stripeInvoiceId ?? invoice.id}</td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground">{invoice.plan ?? currentPlan?.name ?? '—'}</td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground">{formatDateShort(invoice.date ?? invoice.invoiceDate)}</td>
+                          <td className="px-3 py-2.5 text-xs font-semibold text-right text-foreground">{formatMoney(invoiceAmount(invoice))}</td>
+                          <td className="px-3 py-2.5 text-center">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold ${statusTone(invoice.status)}`}>
+                              <Icon name={normalizeStatus(invoice.status) === 'paid' ? 'check' : 'clock'} className="w-3 h-3" /> {statusLabel(invoice.status)}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-right">
+                            {pdfUrl ? (
+                              <a href={pdfUrl} target="_blank" rel="noreferrer" className="inline-flex p-1.5 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Rechnung herunterladen">
+                                <Icon name="download" className="w-5 h-5" />
+                              </a>
+                            ) : (
+                              <span className="inline-flex p-1.5 rounded-lg text-muted-foreground/50" title="Kein PDF hinterlegt">
+                                <Icon name="download" className="w-5 h-5" />
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
-            <div className="text-center mb-3 pt-2">
-              <h3 className={`text-base font-bold ${textPrimary}`}>{plan.name}</h3>
-              <div className={`mt-2 ${plan.current ? 'text-blue-600' : textPrimary}`}>
-                <span className="text-3xl font-bold">{plan.price}</span>
-                <span className={`text-xs font-normal ${textSecondary} block mt-0.5`}>pro Fahrzeug / Monat</span>
-              </div>
-              <p className={`text-xs mt-3 ${textSecondary}`}>{plan.desc}</p>
-            </div>
-            <ul className="space-y-2 mb-3">
-              {plan.features.map((f) => (
-                <li key={f} className={`flex items-center gap-2 text-xs ${textSecondary}`}>
-                  <CheckCircle className={`w-3.5 h-3.5 flex-shrink-0 ${plan.current ? 'text-blue-500' : 'text-emerald-500'}`} />
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <button className={`w-full py-2.5 rounded-lg text-xs font-medium transition-all duration-200 ${
-              plan.current
-                ? isDarkMode ? 'bg-neutral-800 text-gray-400 cursor-default' : 'bg-gray-100 text-gray-400 cursor-default'
-                : plan.name === 'Enterprise'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 shadow-lg shadow-purple-500/25'
-                  : isDarkMode
-                    ? 'bg-neutral-800 border border-neutral-700 text-gray-300 hover:bg-neutral-700'
-                    : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:shadow-md'
-            }`}>
-              {plan.current ? 'Aktueller Plan' : plan.name === 'Enterprise' ? 'Kontakt aufnehmen' : 'Upgraden'}
-            </button>
           </div>
-        ))}
-      </div>
-
-      {/* Payment Method & Next Invoice */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {/* Payment Method */}
-        <div className={cardClass}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className={`text-base font-semibold ${textPrimary}`}>Zahlungsmethode</h3>
-            <button className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
-              isDarkMode ? 'text-blue-400 hover:bg-blue-600/10' : 'text-blue-600 hover:bg-blue-50'
-            }`}>Ändern</button>
-          </div>
-          <div className={`flex items-center gap-3 p-4 rounded-lg border ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/40' : 'bg-gray-50/80 border-gray-100'}`}>
-            <div className="w-14 h-10 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center">
-              <span className="text-white text-[10px] font-bold">MC</span>
-            </div>
-            <div className="flex-1">
-              <p className={`text-xs font-semibold ${textPrimary}`}>Mastercard ···· 4829</p>
-              <p className={`text-xs ${textSecondary}`}>Gültig bis 08/2028</p>
-            </div>
-            <CheckCircle className="w-5 h-5 text-emerald-500" />
-          </div>
-          <div className={`mt-4 flex items-center gap-3 p-3 rounded-lg ${isDarkMode ? 'bg-blue-600/10' : 'bg-blue-50/80'}`}>
-            <AlertCircle className="w-5 h-5 text-blue-500" />
-            <p className={`text-xs ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>
-              Nächste Abbuchung: <span className="font-semibold">€249,00</span> am <span className="font-semibold">01.03.2026</span>
-            </p>
-          </div>
-        </div>
-
-        {/* Subscription Summary */}
-        <div className={cardClass}>
-          <h3 className={`text-base font-semibold mb-3 ${textPrimary}`}>Abo-Zusammenfassung</h3>
-          <div className="space-y-3">
-            {[
-              { label: 'Plan', value: 'Professional' },
-              { label: 'Fahrzeuge', value: '10 / 25 genutzt' },
-              { label: 'Benutzer', value: '9 / 10 genutzt' },
-              { label: 'Abrechnungszyklus', value: 'Monatlich' },
-              { label: 'Nächste Verlängerung', value: '01.03.2026' },
-              { label: 'Mitglied seit', value: 'September 2025' },
-            ].map((item) => (
-              <div key={item.label} className={`flex items-center justify-between py-1.5 ${isDarkMode ? 'border-neutral-700/20' : 'border-gray-100/50'}`}>
-                <span className={`text-xs ${textSecondary}`}>{item.label}</span>
-                <span className={`text-xs font-semibold ${textPrimary}`}>{item.value}</span>
-              </div>
-            ))}
-          </div>
-          <div className={`mt-4 pt-4 border-t ${isDarkMode ? 'border-neutral-700/40' : 'border-gray-200/60'}`}>
-            <div className="flex items-center justify-between">
-              <span className={`text-xs ${textSecondary}`}>Fahrzeug-Auslastung</span>
-              <span className={`text-xs font-semibold ${textPrimary}`}>40%</span>
-            </div>
-            <div className={`w-full h-2 rounded-full mt-2 ${isDarkMode ? 'bg-neutral-700/50' : 'bg-gray-200/80'}`}>
-              <div className="h-2 rounded-full bg-blue-500" style={{ width: '40%' }} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Invoice History */}
-      <div className={cardClass}>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className={`text-base font-semibold ${textPrimary}`}>Rechnungsverlauf</h3>
-          <button className={`flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
-            isDarkMode ? 'text-blue-400 hover:bg-blue-600/10' : 'text-blue-600 hover:bg-blue-50'
-          }`}>
-            <Download className="w-3.5 h-3.5" /> Alle exportieren
-          </button>
-        </div>
-        <div className="overflow-x-auto rounded-lg">
-          <table className="w-full min-w-[640px]">
-            <thead>
-              <tr className={isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'}>
-                <th className={`text-left px-3 py-2 text-xs font-semibold ${textSecondary}`}>Rechnungs-Nr.</th>
-                <th className={`text-left px-3 py-2 text-xs font-semibold ${textSecondary}`}>Zeitraum</th>
-                <th className={`text-left px-3 py-2 text-xs font-semibold ${textSecondary}`}>Datum</th>
-                <th className={`text-right px-3 py-2 text-xs font-semibold ${textSecondary}`}>Betrag</th>
-                <th className={`text-center px-3 py-2 text-xs font-semibold ${textSecondary}`}>Status</th>
-                <th className={`text-right px-3 py-2 text-xs font-semibold ${textSecondary}`}>Download</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoices.map((inv) => (
-                <tr key={inv.id} className={`border-t ${isDarkMode ? 'border-neutral-700/30' : 'border-gray-100'}`}>
-                  <td className={`px-3 py-2.5 text-xs font-mono font-medium ${textPrimary}`}>{inv.id}</td>
-                  <td className={`px-3 py-2.5 text-xs ${textSecondary}`}>{inv.period}</td>
-                  <td className={`px-3 py-2.5 text-xs ${textSecondary}`}>{inv.date}</td>
-                  <td className={`px-3 py-2.5 text-xs font-semibold text-right ${textPrimary}`}>{inv.amount}</td>
-                  <td className="px-3 py-2.5 text-center">
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                      isDarkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100/80 text-emerald-700'
-                    }`}>
-                      <Check className="w-3 h-3" /> {inv.status}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2.5 text-right">
-                    <button className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-700 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
-                      <Download className="w-5 h-5" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }
@@ -3290,44 +3760,10 @@ function BillingTab({ isDarkMode }: { isDarkMode: boolean }) {
 export function SettingsView({ isDarkMode, activeTab: controlledTab = 'company', onTabChange }: SettingsViewProps) {
   const { orgId, hasPermission } = useRentalOrg();
   const activeTab = controlledTab;
-  const setActiveTab = (tab: SettingsTab) => onTabChange?.(tab);
   const canWriteDataAuth = hasPermission('data-authorization', 'write');
-
-  const tabs: { id: SettingsTab; label: string; icon: typeof Building2 }[] = [
-    { id: 'account', label: 'Account', icon: User },
-    { id: 'company', label: 'Company Profile', icon: Building2 },
-    { id: 'fleet-connection', label: 'Fleet Connection', icon: Wifi },
-    { id: 'users', label: 'Users & Roles', icon: UserCog },
-    { id: 'billing', label: 'Billing & Subscriptions', icon: CreditCard },
-    { id: 'data-authorization', label: 'Data Authorization', icon: Database },
-  ];
 
   return (
     <div className="space-y-5">
-      {/* Settings Tab Navigation */}
-      <div className={`rounded-lg p-1.5 border flex gap-1 ${
-        isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-gray-100 border-gray-200'
-      }`}>
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 ${
-              activeTab === tab.id
-                ? isDarkMode
-                  ? 'bg-neutral-800 text-white shadow-sm'
-                  : 'bg-white text-gray-900 shadow-sm'
-                : isDarkMode
-                  ? 'text-gray-400 hover:text-gray-200 hover:bg-neutral-800/50'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
-            }`}
-          >
-            <tab.icon className="w-5 h-5" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
       {/* Tab Content */}
       {activeTab === 'account' && <AccountInformationTab isDarkMode={isDarkMode} />}
       {activeTab === 'company' && <CompanyProfileTab isDarkMode={isDarkMode} orgId={orgId} />}
@@ -3335,6 +3771,7 @@ export function SettingsView({ isDarkMode, activeTab: controlledTab = 'company',
       {activeTab === 'users' && <UsersRolesTab isDarkMode={isDarkMode} orgId={orgId} />}
       {activeTab === 'billing' && <BillingTab isDarkMode={isDarkMode} />}
       {activeTab === 'data-authorization' && <DataAuthorizationTab isDarkMode={isDarkMode} canWrite={canWriteDataAuth} />}
+      {activeTab === 'legal-documents' && <LegalDocumentsTab isDarkMode={isDarkMode} />}
     </div>
   );
 }

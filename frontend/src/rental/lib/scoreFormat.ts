@@ -7,8 +7,7 @@
 //
 // These helpers are the single rendering source of truth for both scalars
 // across `TripsView`, `CustomersView`, `CustomerDetailView`,
-// `CustomerDetailModal`, `BookingsView`, `RentalDrivingAnalysisView`, and
-// `NewBookingView`.
+// `CustomerDetailModal`, `BookingsView`, and `NewBookingView`.
 
 export const SCORE_EM_DASH = '—';
 

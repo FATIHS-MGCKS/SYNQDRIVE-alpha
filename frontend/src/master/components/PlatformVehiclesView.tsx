@@ -1,7 +1,8 @@
-import { Car, Search, Building2, CheckCircle, AlertTriangle, Wrench, Wifi, WifiOff, Plus, Zap, X, Battery, Disc3, Gauge, ClipboardList, Fuel, RefreshCw, RotateCcw, Pencil, Shield, Loader2, Radio } from 'lucide-react';
+import { Car, Search, Building2, CheckCircle, AlertTriangle, Wrench, Wifi, WifiOff, Plus, Zap, X, Battery, Disc3, Gauge, ClipboardList, Fuel, RefreshCw, RotateCcw, Pencil, Shield, Loader2, Radio, Camera } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import type { RegisteredVehicle, DimoVehicle, Organization } from '../data/platform-data';
 import { VehicleRegistrationModal } from './VehicleRegistrationModal';
+import { ExteriorImagesEditor } from './ExteriorImagesEditor';
 import { api } from '@/lib/api';
 import type { HmVehicleStatusDto, HmVehicleDto } from '@/lib/api';
 
@@ -665,6 +666,19 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
                     {field('Last Brake Pad Change', v.lastBrakePadChange)}
                     {field('Last Brake Rotor Change', v.lastBrakeRotorChange)}
                   </div>
+                </div>
+
+                {/* Exterior Photos (Damage Map) — V4.7.50 */}
+                <div className={sectionClass}>
+                  {sectionTitle(<Camera className="w-4 h-4 text-amber-500" />, 'Exterior Photos')}
+                  <ExteriorImagesEditor
+                    isDarkMode={isDarkMode}
+                    vehicleId={v.id}
+                    vehicleMake={v.make}
+                    vehicleModel={v.model}
+                    title="Damage map photos"
+                    subtitle="Front, left, right, rear and roof — drives the Rental damage map carousel for this vehicle."
+                  />
                 </div>
 
                 {/* === HIGH MOBILITY SECTION === */}

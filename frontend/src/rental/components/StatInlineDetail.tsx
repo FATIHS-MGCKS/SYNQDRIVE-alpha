@@ -1,9 +1,8 @@
+import { Icon } from './ui/Icon';
 import { useMemo } from 'react';
-import { Car, Calendar, TrendingUp, Clock, Wrench, AlertTriangle, CheckCircle, ChevronRight, MapPin, Fuel, Users, Sparkles, ShieldAlert, Gauge, X, OctagonAlert, FileSignature } from 'lucide-react';
-import { VehicleData } from '../data/vehicles';
-import { useFleetVehicles } from '../FleetContext';
-import { useRentalOrg } from '../RentalContext';
-import { useFleetHealthMap } from '../hooks/useVehicleHealth';
+
+import { VehicleData, isVehicleOffline, VEHICLE_OFFLINE_LABEL } from '../data/vehicles';
+import { useFleetVehicles, useEffectiveHealth } from '../FleetContext';
 import { RentalHealthBadge } from './rental-health/RentalHealthBadge';
 import type { Station, VehicleHealthResponse } from '../../lib/api';
 import { useAddress } from '../../lib/useAddress';
@@ -64,7 +63,7 @@ function FuelStripe({ v, isDarkMode }: { v: VehicleData; isDarkMode: boolean }) 
   if (value == null) {
     return (
       <div className="flex items-center gap-1.5">
-        <Fuel className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+        <Icon name="fuel" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
         <div className={`w-12 h-1 rounded-full overflow-hidden shrink-0 ${isDarkMode ? 'bg-neutral-700' : 'bg-gray-100'}`} />
         <span className={`text-[10px] font-semibold shrink-0 w-8 text-right tabular-nums ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>—</span>
       </div>
@@ -79,7 +78,7 @@ function FuelStripe({ v, isDarkMode }: { v: VehicleData; isDarkMode: boolean }) 
     'text-[color:var(--status-critical)] drop-shadow-[0_0_4px_color-mix(in_srgb,var(--status-critical)_55%,transparent)]';
   return (
     <div className="flex items-center gap-1.5">
-      <Fuel
+      <Icon name="fuel"
         className={`w-3 h-3 shrink-0 transition-colors ${
           isCriticallyLow ? criticalCls : idleIconCls
         }`}
@@ -286,7 +285,6 @@ interface StatInlineDetailProps {
 
 export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSelect, onItemHover, pickupItems, returnItems, pickupNeedsCleaning, pickupAlerts, returnErrors, returnKmExceeded, returnAlerts, borderColor, hideHeader, onConfirmPickup, onConfirmReturn, onOpenBookingById, stations }: StatInlineDetailProps) {
   const { fleetVehicles } = useFleetVehicles();
-  const { orgId } = useRentalOrg();
 
   // V4.7.04/V4.7.06 — Pre-build the byId / byName indices once per
   // `stations` change so each vehicle card resolves its assigned station
@@ -296,39 +294,17 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
   // can be reused by FleetView (Operations → Fleet status cards).
   const stationLookup = useMemo(() => buildStationLookup(stations), [stations]);
 
-  // V4.6.86 — The Dashboard popups used to only show the generic
-  // `v.healthStatus` dot, which ignored the authoritative `rental_blocked`
-  // flag that the Fleet page surfaces via `<RentalHealthBadge
-  // showBlockingLabel />`. A vehicle with e.g. an expired TÜV or a
-  // critical SoH would therefore appear "Ready" on the Dashboard even
-  // though the rental-health gate blocks handover. We now consume the
-  // same `useFleetHealthMap` the Fleet page uses and render the blocking
-  // pill on every non-Maintenance card row. Scoped to popups that
-  // actually render vehicle cards (Available / Reserved / Active Rented /
-  // In Maintenance) — the Pick Up / Return Today popups read booking
-  // items, not fleet vehicles, and don't need a per-row fetch.
-  const needsHealth =
-    activePopup === 'Available' ||
-    activePopup === 'Reserved' ||
-    activePopup === 'Active Rented' ||
-    activePopup === 'In Maintenance';
-  const relevantVehicleIds = useMemo(() => {
-    if (!needsHealth) return [] as string[];
-    const targetStatus =
-      activePopup === 'In Maintenance' ? 'Maintenance' : activePopup;
-    return fleetVehicles
-      .filter((v) => v.status === targetStatus)
-      .map((v) => v.id)
-      .filter((id): id is string => !!id);
-  }, [needsHealth, activePopup, fleetVehicles]);
-  const { map: healthMap } = useFleetHealthMap(
-    needsHealth ? orgId : null,
-    relevantVehicleIds,
-  );
+  // V4.7.23 — Single source of truth: the canonical Rental-Health-V1
+  // map is shared via the FleetProvider. Every Dashboard popup card now
+  // reads the same status as FleetView, FleetCondition and the Vehicle
+  // Detail header — no more drift between surfaces. The earlier per-popup
+  // `useFleetHealthMap` call (V4.6.86) is gone; we just consume the
+  // already-loaded map.
+  const { healthMap } = useFleetVehicles();
 
   const closeBtn = (
     <button onClick={(e) => { e.stopPropagation(); onClose(); }} className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
-      <X className="w-4 h-4" />
+      <Icon name="x" className="w-4 h-4" />
     </button>
   );
 
@@ -374,12 +350,49 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
   // cluster. Removing the helper keeps the icon-color matrix and the
   // badge-color matrix from drifting apart.
 
+  // V4.7.23 / V4.7.24 — Canonical health chip for the Dashboard Fleet
+  // Status popups. Reads the SAME Rental-Health-V1 map every other
+  // Rental surface uses. Renders a pill ONLY when the vehicle is in
+  // Warning or Critical state — Healthy / Unknown / Loading collapse to
+  // nothing so the popup cards stop carrying empty placeholder chips.
+  // Per user feedback (2026-05-02): „nur noch bei dashboard fleet status
+  // die leeren badges entfernen, wenn warning oder alerts gibt sollten
+  // die badges angezeigt werden ansonsten keine schongar nicht leere
+  // badges."
+  const HealthChip = ({ vehicleId }: { vehicleId: string | undefined }) => {
+    const { status, health } = useEffectiveHealth(vehicleId ?? null);
+    if (status !== 'Critical' && status !== 'Warning') return null;
+
+    const reasons: string[] = [];
+    if (health?.rental_blocked && health.blocking_reasons.length > 0) {
+      reasons.push(`Blocked: ${health.blocking_reasons.join(' · ')}`);
+    }
+    if (health) {
+      for (const [name, mod] of Object.entries(health.modules)) {
+        if (mod.state === 'critical' || mod.state === 'warning') {
+          reasons.push(`${name.replace(/_/g, ' ')}: ${mod.reason}`);
+        }
+      }
+    }
+    const title = reasons.join(' · ') || undefined;
+    const base =
+      'shrink-0 inline-block min-w-[60px] text-center px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide';
+    if (status === 'Critical') {
+      return (
+        <span title={title} className={`${base} ${isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700'}`}>
+          Alert
+        </span>
+      );
+    }
+    return (
+      <span title={title} className={`${base} ${isDarkMode ? 'bg-yellow-500/15 text-yellow-400' : 'bg-yellow-50 text-yellow-700'}`}>
+        Warning
+      </span>
+    );
+  };
+
   // V4.6.86 — Rental-blocking pill. Renders the same "Nicht vermietbar"
-  // badge the Fleet page shows next to `v.license` so the Dashboard
-  // popups can no longer hide an operational block from dispatchers.
-  // Returns `null` when the vehicle is not rental-blocked or the health
-  // data has not loaded yet — the generic `v.healthStatus` pill
-  // continues to render in that case.
+  // badge the Fleet page shows next to `v.license`.
   const BlockingBadge = ({ vehicleId }: { vehicleId: string | undefined }) => {
     const health: VehicleHealthResponse | null = vehicleId
       ? healthMap.get(vehicleId) ?? null
@@ -404,7 +417,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
           <>
             {!hideHeader && <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center"><Car className="w-4 h-4 text-blue-600" /></div>
+                <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center"><Icon name="car" className="w-4 h-4 text-blue-600" /></div>
                 <div>
                   <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Available Vehicles</h3>
                   <p className={`text-[11px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{vehicles.length} vehicles ready for rental</p>
@@ -421,8 +434,12 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                   ? healthMap.get(v.id) ?? null
                   : null;
                 const isBlocked = !!vHealth?.rental_blocked;
+                // V4.7.62 — Offline (Last Signal ≥ 1 day) → "Not Ready"
+                // + greyed card + explicit "Vehicle Offline - Check
+                // Device" line, mirroring the Fleet-page Fleet-Status box.
+                const offline = isVehicleOffline(v);
                 return (
-                <div key={v.id} onClick={vehicleClick(v)} onMouseEnter={() => onItemHover?.(v.model)} onMouseLeave={() => onItemHover?.(null)} className={`rounded-xl p-3 border transition-all hover:shadow-sm cursor-pointer ${cardClass}`}>
+                <div key={v.id} onClick={vehicleClick(v)} onMouseEnter={() => onItemHover?.(v.model)} onMouseLeave={() => onItemHover?.(null)} className={`rounded-xl p-3 border transition-all hover:shadow-sm cursor-pointer ${cardClass} ${offline ? 'opacity-60 grayscale' : ''}`}>
                   {/* Row 1: License + MMY + Clean / Health / Ready badges + chevron.
                       V4.6.88 — Clean & Health switched from icons to pill badges
                       that share the same visual language as the Ready badge so
@@ -454,29 +471,20 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                       >
                         {v.cleaningStatus === 'Clean' ? 'Clean' : 'Dirty'}
                       </span>
-                      <span
-                        className={`shrink-0 inline-block min-w-[60px] text-center px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${
-                          v.healthStatus === 'Good Health'
-                            ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
-                            : v.healthStatus === 'Warning'
-                              ? (isDarkMode ? 'bg-yellow-500/15 text-yellow-400' : 'bg-yellow-50 text-yellow-700')
-                              : (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
-                        }`}
-                        title={v.healthStatus}
-                      >
-                        {v.healthStatus === 'Good Health' ? 'Healthy' : v.healthStatus === 'Warning' ? 'Warning' : 'Alert'}
-                      </span>
+                      <HealthChip vehicleId={v.id} />
                       <span
                         className={`shrink-0 inline-block w-[72px] text-center px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${
-                          !isBlocked
-                            ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
-                            : (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
+                          offline
+                            ? (isDarkMode ? 'bg-neutral-700/60 text-gray-300' : 'bg-gray-100 text-gray-500')
+                            : !isBlocked
+                              ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
+                              : (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
                         }`}
-                        title={!isBlocked ? 'Ready for rental' : 'Not ready — rental blocked'}
+                        title={offline ? VEHICLE_OFFLINE_LABEL : !isBlocked ? 'Ready for rental' : 'Not ready — rental blocked'}
                       >
-                        {!isBlocked ? 'Ready' : 'Not Ready'}
+                        {!offline && !isBlocked ? 'Ready' : 'Not Ready'}
                       </span>
-                      <ChevronRight className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                      <Icon name="chevron-right" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
                     </div>
                   </div>
                   {/* Row 2: Location · Home/Away · Fuel · Odometer — Ready moved to header row.
@@ -486,17 +494,26 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                       seiner zugewiesenen Station steht. Bei fehlender
                       Station, fehlenden Koordinaten oder fehlendem GPS-Fix
                       wird gar nichts gerendert (kein false-positive AWAY). */}
-                  <div className={`flex items-center gap-1.5 pt-1.5 border-t min-w-0 overflow-hidden ${isDarkMode ? 'border-neutral-700/40' : 'border-gray-100'}`}>
-                    <MapPin className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                    <div className="truncate min-w-0 flex-1 text-[10px]">
-                      <VehicleAddress v={v} isDarkMode={isDarkMode} />
+                  {offline ? (
+                    <div className={`flex items-center gap-1.5 pt-1.5 border-t min-w-0 overflow-hidden ${isDarkMode ? 'border-neutral-700/40' : 'border-gray-100'}`}>
+                      <Icon name="wifi-off" className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                      <span className={`truncate min-w-0 flex-1 text-[10px] font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        {VEHICLE_OFFLINE_LABEL}
+                      </span>
                     </div>
-                    <HomeAwayBadge v={v} stationLookup={stationLookup} isDarkMode={isDarkMode} />
-                    <div className={`w-px h-3 shrink-0 ${isDarkMode ? 'bg-neutral-700' : 'bg-gray-200'}`} />
-                    <FuelStripe v={v} isDarkMode={isDarkMode} />
-                    <div className={`w-px h-3 shrink-0 ${isDarkMode ? 'bg-neutral-700' : 'bg-gray-200'}`} />
-                    <OdometerText v={v} isDarkMode={isDarkMode} />
-                  </div>
+                  ) : (
+                    <div className={`flex items-center gap-1.5 pt-1.5 border-t min-w-0 overflow-hidden ${isDarkMode ? 'border-neutral-700/40' : 'border-gray-100'}`}>
+                      <Icon name="map-pin" className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                      <div className="truncate min-w-0 flex-1 text-[10px]">
+                        <VehicleAddress v={v} isDarkMode={isDarkMode} />
+                      </div>
+                      <HomeAwayBadge v={v} stationLookup={stationLookup} isDarkMode={isDarkMode} />
+                      <div className={`w-px h-3 shrink-0 ${isDarkMode ? 'bg-neutral-700' : 'bg-gray-200'}`} />
+                      <FuelStripe v={v} isDarkMode={isDarkMode} />
+                      <div className={`w-px h-3 shrink-0 ${isDarkMode ? 'bg-neutral-700' : 'bg-gray-200'}`} />
+                      <OdometerText v={v} isDarkMode={isDarkMode} />
+                    </div>
+                  )}
                 </div>
                 );
               })}
@@ -528,7 +545,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
           <>
             {!hideHeader && <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-purple-100 flex items-center justify-center"><Calendar className="w-4 h-4 text-purple-600" /></div>
+                <div className="w-9 h-9 rounded-xl bg-purple-100 flex items-center justify-center"><Icon name="calendar" className="w-4 h-4 text-purple-600" /></div>
                 <div>
                   <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Reserved Vehicles</h3>
                   <p className={`text-[11px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{vehicles.length} reserved{overdueCount > 0 ? ` · ${overdueCount} überfällig` : ''}</p>
@@ -599,18 +616,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         <BlockingBadge vehicleId={v.id} />
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <span
-                          className={`shrink-0 inline-block min-w-[60px] text-center px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${
-                            v.healthStatus === 'Good Health'
-                              ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
-                              : v.healthStatus === 'Warning'
-                                ? (isDarkMode ? 'bg-yellow-500/15 text-yellow-400' : 'bg-yellow-50 text-yellow-700')
-                                : (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
-                          }`}
-                          title={v.healthStatus}
-                        >
-                          {v.healthStatus === 'Good Health' ? 'Healthy' : v.healthStatus === 'Warning' ? 'Warning' : 'Alert'}
-                        </span>
+                        <HealthChip vehicleId={v.id} />
                         {/* V4.7.00 — Bucket-Pill „RESERVED" / „OVERDUE +Xh Ym".
                             Reserved-State: einsegment, lila, w-[72px] analog
                             Available's Ready-Pille. Overdue-State: 2-Segment-
@@ -647,7 +653,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                             </span>
                           )}
                         </span>
-                        <ChevronRight className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                        <Icon name="chevron-right" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
                       </div>
                     </div>
                     {/* Row 2: Pickup-Station + Pickup-Time | FuelStripe | OdometerText
@@ -659,7 +665,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         Reservierungs-Dauer, damit kein Detail verloren
                         geht. */}
                     <div className={`flex items-center gap-1.5 pt-1.5 border-t min-w-0 overflow-hidden ${isDarkMode ? 'border-neutral-700/40' : 'border-gray-100'}`}>
-                      <MapPin className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                      <Icon name="map-pin" className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                       <div
                         className={`truncate min-w-0 flex-1 text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}
                         title={footerTooltip}
@@ -703,7 +709,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
           <>
             {!hideHeader && <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center"><TrendingUp className="w-4 h-4 text-green-600" /></div>
+                <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center"><Icon name="trending-up" className="w-4 h-4 text-green-600" /></div>
                 <div>
                   <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Active Rentals</h3>
                   <p className={`text-[11px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{vehicles.length} vehicles currently rented{overdueCount > 0 ? ` · ${overdueCount} überfällig` : ''}</p>
@@ -743,18 +749,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         <BlockingBadge vehicleId={v.id} />
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <span
-                          className={`shrink-0 inline-block min-w-[60px] text-center px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${
-                            v.healthStatus === 'Good Health'
-                              ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
-                              : v.healthStatus === 'Warning'
-                                ? (isDarkMode ? 'bg-yellow-500/15 text-yellow-400' : 'bg-yellow-50 text-yellow-700')
-                                : (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
-                          }`}
-                          title={v.healthStatus}
-                        >
-                          {v.healthStatus === 'Good Health' ? 'Healthy' : v.healthStatus === 'Warning' ? 'Warning' : 'Alert'}
-                        </span>
+                        <HealthChip vehicleId={v.id} />
                         {/* V4.6.97 — Overdue-State + Magnitude in einem
                             kompakten Badge-Cluster. Das OVERDUE-Label bleibt
                             konsistent zum ON TIME-Pendant; die Verspätungs-
@@ -789,7 +784,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                             </span>
                           )}
                         </span>
-                        <ChevronRight className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                        <Icon name="chevron-right" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
                       </div>
                     </div>
                     {/* Row 2: Customer · BK-Ref · Return time
@@ -812,7 +807,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         tragend wirkt. */}
                     <div className="flex items-center gap-2 mb-1.5 min-w-0 text-[10.5px]">
                       <span className={`inline-flex items-center gap-1 truncate min-w-0 ${isOverdue ? 'flex-1' : 'max-w-[55%]'} ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                        <Users className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                        <Icon name="users" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                         <span className="truncate font-medium">{v.activeCustomerName || 'Nicht zugeordnet'}</span>
                       </span>
                       {(() => {
@@ -848,7 +843,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                           className={`ml-auto inline-flex items-center gap-1 ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`}
                           title="Geplante Rückgabezeit"
                         >
-                          <Calendar className="w-3 h-3 shrink-0" />
+                          <Icon name="calendar" className="w-3 h-3 shrink-0" />
                           <span className="font-semibold whitespace-nowrap">
                             Rückgabe {v.activeReturnAt ? formatFleetDateTime(v.activeReturnAt) : '—'}
                           </span>
@@ -858,7 +853,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                     {/* Row 3: Time progress + Km progress mini bars */}
                     <div className="flex items-center gap-3 mb-1.5">
                       <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                        <Clock className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                        <Icon name="clock" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                         <div className={`flex-1 h-1 rounded-full overflow-hidden ${isDarkMode ? 'bg-neutral-700' : 'bg-gray-100'}`}>
                           <div
                             className={`h-full rounded-full ${
@@ -878,7 +873,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                        <Gauge className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                        <Icon name="gauge" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                         <div className={`flex-1 h-1 rounded-full overflow-hidden ${isDarkMode ? 'bg-neutral-700' : 'bg-gray-100'}`}>
                           <div
                             className={`h-full rounded-full ${
@@ -904,7 +899,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         Fahrzeug schon zurück an seiner Station?" auf einen
                         Blick (Return-Inspector-Workflow). */}
                     <div className={`flex items-center gap-1.5 pt-1.5 border-t min-w-0 overflow-hidden ${isDarkMode ? 'border-neutral-700/40' : 'border-gray-100'}`}>
-                      <MapPin className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                      <Icon name="map-pin" className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                       <div className="truncate min-w-0 flex-1 text-[10px]">
                         <VehicleAddress v={v} isDarkMode={isDarkMode} />
                       </div>
@@ -928,7 +923,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
           <>
             {!hideHeader && <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center"><Clock className="w-4 h-4 text-orange-600" /></div>
+                <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center"><Icon name="clock" className="w-4 h-4 text-orange-600" /></div>
                 <div>
                   <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Pick Ups Today</h3>
                   <p className={`text-[11px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{pickupItems.filter(p => p.done).length} of {pickupItems.length} completed</p>
@@ -948,7 +943,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                 <div className={`flex items-center gap-2 mb-2 px-3 py-2 rounded-xl ${
                   isDarkMode ? 'bg-rose-900/20 border border-rose-800/40' : 'bg-rose-50 border border-rose-200/70'
                 }`}>
-                  <OctagonAlert className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-rose-400' : 'text-rose-500'}`} />
+                  <Icon name="octagon-alert" className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-rose-400' : 'text-rose-500'}`} />
                   <span className={`text-[11px] font-medium ${isDarkMode ? 'text-rose-300' : 'text-rose-700'}`}>
                     {overdueCount} überfällige{overdueCount === 1 ? 'r' : ''} Pickup{overdueCount === 1 ? '' : 's'} — bitte nachtragen oder als No-Show markieren
                   </span>
@@ -957,7 +952,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
             })()}
             {(pickupNeedsCleaning > 0 || pickupAlerts > 0) && (
               <div className={`flex items-center gap-2 mb-3 px-3 py-2 rounded-xl ${isDarkMode ? 'bg-amber-900/20 border border-amber-800/30' : 'bg-amber-50 border border-amber-200/60'}`}>
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <Icon name="alert-triangle" className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                 <span className={`text-[11px] font-medium ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
                   {pickupNeedsCleaning > 0 && `${pickupNeedsCleaning} vehicle${pickupNeedsCleaning > 1 ? 's' : ''} needs cleaning`}
                   {pickupNeedsCleaning > 0 && pickupAlerts > 0 && ' · '}
@@ -986,7 +981,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                   <div key={i} onClick={(e) => { e.stopPropagation(); if (linkedVehicle) { onVehicleSelect?.(linkedVehicle); onClose(); } }} onMouseEnter={() => onItemHover?.(p.vehicle)} onMouseLeave={() => onItemHover?.(null)} className={`rounded-lg p-3 border transition-all ${linkedVehicle ? 'cursor-pointer hover:shadow-sm' : ''} ${(!p.done && (hasAlertOrError || showOverdue)) ? 'border-l-[3px]' : ''} ${p.done ? (isDarkMode ? 'bg-green-900/10 border-green-800/30' : 'bg-green-50/60 border-green-200/50') : showOverdue ? (isDarkMode ? 'bg-rose-900/15 border-rose-800/40 border-l-rose-500' : 'bg-rose-50/50 border-rose-200/70 border-l-rose-500') : hasAlertOrError ? (isDarkMode ? 'bg-red-900/10 border-red-800/30 border-l-red-500' : 'bg-red-50/40 border-red-200/60 border-l-red-500') : hasIssues ? (isDarkMode ? 'bg-amber-900/10 border-amber-800/30' : 'bg-amber-50/40 border-amber-200/60') : cardClass}`}>
                     <div className="flex items-center gap-3">
                       <span className={`text-[12px] font-bold w-10 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{p.time}</span>
-                      {p.done ? <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" /> : showOverdue ? <div className="relative shrink-0"><OctagonAlert className="w-3.5 h-3.5 text-rose-500" /><div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-rose-500 rounded-full animate-ping opacity-75" /></div> : hasAlertOrError ? <div className="relative shrink-0"><AlertTriangle className="w-3.5 h-3.5 text-red-500" /><div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full animate-ping opacity-75" /></div> : <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${isDarkMode ? 'border-neutral-600' : 'border-gray-300'}`} />}
+                      {p.done ? <Icon name="check-circle" className="w-3.5 h-3.5 text-green-500 shrink-0" /> : showOverdue ? <div className="relative shrink-0"><Icon name="octagon-alert" className="w-3.5 h-3.5 text-rose-500" /><div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-rose-500 rounded-full animate-ping opacity-75" /></div> : hasAlertOrError ? <div className="relative shrink-0"><Icon name="alert-triangle" className="w-3.5 h-3.5 text-red-500" /><div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full animate-ping opacity-75" /></div> : <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${isDarkMode ? 'border-neutral-600' : 'border-gray-300'}`} />}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className={`text-[12px] font-semibold ${p.done ? (isDarkMode ? 'text-gray-500 line-through' : 'text-gray-400 line-through') : showOverdue ? (isDarkMode ? 'text-rose-300' : 'text-rose-700') : hasAlertOrError ? (isDarkMode ? 'text-red-400' : 'text-red-700') : (isDarkMode ? 'text-white' : 'text-gray-900')}`}>{p.vehicle} ({p.plate})</span>
@@ -994,7 +989,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                             <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${
                               isDarkMode ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' : 'bg-rose-100 text-rose-700 border border-rose-200'
                             }`}>
-                              <Clock className="w-2.5 h-2.5" />
+                              <Icon name="clock" className="w-2.5 h-2.5" />
                               Überfällig · {overdueLabel}
                             </span>
                           )}
@@ -1003,9 +998,9 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         <div className={`text-[11px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{p.customer} · {p.station}</div>
                         {!p.done && hasIssues && (
                           <div className="flex items-center gap-1 mt-1 flex-wrap">
-                            {p.needsCleaning && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-amber-100 text-amber-700"><Sparkles className="w-2.5 h-2.5" />Cleaning</span>}
-                            {p.hasAlert && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-100 text-red-700"><AlertTriangle className="w-2.5 h-2.5" />Alert</span>}
-                            {p.hasError && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-100 text-red-700"><ShieldAlert className="w-2.5 h-2.5" />Error</span>}
+                            {p.needsCleaning && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-amber-100 text-amber-700"><Icon name="sparkles" className="w-2.5 h-2.5" />Cleaning</span>}
+                            {p.hasAlert && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-100 text-red-700"><Icon name="alert-triangle" className="w-2.5 h-2.5" />Alert</span>}
+                            {p.hasError && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-100 text-red-700"><Icon name="shield-alert" className="w-2.5 h-2.5" />Error</span>}
                           </div>
                         )}
                       </div>
@@ -1021,11 +1016,11 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                           }`}
                           title={showOverdue ? 'Pickup jetzt nachtragen' : 'Pickup bestätigen'}
                         >
-                          <FileSignature className="w-3 h-3" />
+                          <Icon name="file-signature" className="w-3 h-3" />
                           {showOverdue ? 'Nachtragen' : 'Übergabe'}
                         </button>
                       ) : (
-                        <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${linkedVehicle ? (isDarkMode ? 'text-gray-500' : 'text-gray-400') : (isDarkMode ? 'text-gray-700' : 'text-gray-200')}`} />
+                        <Icon name="chevron-right" className={`w-3.5 h-3.5 shrink-0 ${linkedVehicle ? (isDarkMode ? 'text-gray-500' : 'text-gray-400') : (isDarkMode ? 'text-gray-700' : 'text-gray-200')}`} />
                       )}
                     </div>
                   </div>
@@ -1042,7 +1037,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
           <>
             {!hideHeader && <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center"><Clock className="w-4 h-4 text-orange-600" /></div>
+                <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center"><Icon name="clock" className="w-4 h-4 text-orange-600" /></div>
                 <div>
                   <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Returns Today</h3>
                   <p className={`text-[11px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{returnItems.filter(r => r.done).length} of {returnItems.length} completed</p>
@@ -1052,7 +1047,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
             </div>}
             {(returnErrors > 0 || returnKmExceeded > 0 || returnAlerts > 0) && (
               <div className={`flex items-center gap-2 mb-3 px-3 py-2 rounded-xl ${isDarkMode ? 'bg-red-900/20 border border-red-800/30' : 'bg-red-50 border border-red-200/60'}`}>
-                <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                <Icon name="alert-triangle" className="w-3.5 h-3.5 text-red-500 shrink-0" />
                 <span className={`text-[11px] font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>
                   {returnErrors > 0 && `${returnErrors} error code${returnErrors > 1 ? 's' : ''}`}
                   {returnErrors > 0 && returnKmExceeded > 0 && ' · '}
@@ -1072,7 +1067,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                   <div key={i} onClick={(e) => { e.stopPropagation(); if (linkedVehicle) { onVehicleSelect?.(linkedVehicle); onClose(); } }} onMouseEnter={() => onItemHover?.(r.vehicle)} onMouseLeave={() => onItemHover?.(null)} className={`rounded-lg p-3 border transition-all ${linkedVehicle ? 'cursor-pointer hover:shadow-sm' : ''} ${!r.done && hasAlertOrError ? 'border-l-[3px]' : ''} ${r.done ? (isDarkMode ? 'bg-green-900/10 border-green-800/30' : 'bg-green-50/60 border-green-200/50') : hasAlertOrError ? (isDarkMode ? 'bg-red-900/10 border-red-800/30 border-l-red-500' : 'bg-red-50/40 border-red-200/60 border-l-red-500') : hasIssues ? (isDarkMode ? 'bg-amber-900/10 border-amber-800/30' : 'bg-amber-50/40 border-amber-200/60') : cardClass}`}>
                     <div className="flex items-center gap-3">
                       <span className={`text-[12px] font-bold w-10 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{r.time}</span>
-                      {r.done ? <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" /> : hasAlertOrError ? <div className="relative shrink-0"><AlertTriangle className="w-3.5 h-3.5 text-red-500" /><div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full animate-ping opacity-75" /></div> : <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${isDarkMode ? 'border-neutral-600' : 'border-gray-300'}`} />}
+                      {r.done ? <Icon name="check-circle" className="w-3.5 h-3.5 text-green-500 shrink-0" /> : hasAlertOrError ? <div className="relative shrink-0"><Icon name="alert-triangle" className="w-3.5 h-3.5 text-red-500" /><div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full animate-ping opacity-75" /></div> : <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${isDarkMode ? 'border-neutral-600' : 'border-gray-300'}`} />}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className={`text-[12px] font-semibold ${r.done ? (isDarkMode ? 'text-gray-500 line-through' : 'text-gray-400 line-through') : hasAlertOrError ? (isDarkMode ? 'text-red-400' : 'text-red-700') : (isDarkMode ? 'text-white' : 'text-gray-900')}`}>{r.vehicle} ({r.plate})</span>
@@ -1081,9 +1076,9 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         <div className={`text-[11px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{r.customer} · {r.station}</div>
                         {!r.done && hasIssues && (
                           <div className="flex items-center gap-1 mt-1 flex-wrap">
-                            {r.hasError && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-100 text-red-700"><ShieldAlert className="w-2.5 h-2.5" />Error</span>}
-                            {r.kmExceeded && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-100 text-red-700"><Gauge className="w-2.5 h-2.5" />km exceeded</span>}
-                            {r.hasAlert && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-orange-100 text-orange-700"><AlertTriangle className="w-2.5 h-2.5" />Alert</span>}
+                            {r.hasError && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-100 text-red-700"><Icon name="shield-alert" className="w-2.5 h-2.5" />Error</span>}
+                            {r.kmExceeded && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-100 text-red-700"><Icon name="gauge" className="w-2.5 h-2.5" />km exceeded</span>}
+                            {r.hasAlert && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-orange-100 text-orange-700"><Icon name="alert-triangle" className="w-2.5 h-2.5" />Alert</span>}
                           </div>
                         )}
                       </div>
@@ -1094,11 +1089,11 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm shrink-0"
                           title="Rückgabe bestätigen"
                         >
-                          <FileSignature className="w-3 h-3" />
+                          <Icon name="file-signature" className="w-3 h-3" />
                           Rückgabe
                         </button>
                       ) : (
-                        <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${linkedVehicle ? (isDarkMode ? 'text-gray-500' : 'text-gray-400') : (isDarkMode ? 'text-gray-700' : 'text-gray-200')}`} />
+                        <Icon name="chevron-right" className={`w-3.5 h-3.5 shrink-0 ${linkedVehicle ? (isDarkMode ? 'text-gray-500' : 'text-gray-400') : (isDarkMode ? 'text-gray-700' : 'text-gray-200')}`} />
                       )}
                     </div>
                   </div>
@@ -1124,7 +1119,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
           <>
             {!hideHeader && <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center"><Wrench className="w-4 h-4 text-red-600" /></div>
+                <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center"><Icon name="wrench" className="w-4 h-4 text-red-600" /></div>
                 <div>
                   <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>In Maintenance</h3>
                   <p className={`text-[11px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{vehicles.length} vehicles in workshop{unplannedCount > 0 ? ` · ${unplannedCount} ungeplant` : ''}</p>
@@ -1162,18 +1157,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         >
                           {isClean ? 'Clean' : 'Dirty'}
                         </span>
-                        <span
-                          className={`shrink-0 inline-block min-w-[60px] text-center px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${
-                            v.healthStatus === 'Good Health'
-                              ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
-                              : v.healthStatus === 'Warning'
-                                ? (isDarkMode ? 'bg-yellow-500/15 text-yellow-400' : 'bg-yellow-50 text-yellow-700')
-                                : (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
-                          }`}
-                          title={v.healthStatus}
-                        >
-                          {v.healthStatus === 'Good Health' ? 'Healthy' : v.healthStatus === 'Warning' ? 'Warning' : 'Alert'}
-                        </span>
+                        <HealthChip vehicleId={v.id} />
                         <span
                           className={`shrink-0 inline-block w-[72px] text-center px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${
                             isPlanned
@@ -1186,13 +1170,13 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         >
                           {bucketLabel}
                         </span>
-                        <ChevronRight className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                        <Icon name="chevron-right" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
                       </div>
                     </div>
                     {/* Row 2: Reason · (urgent flag) */}
                     <div className="flex items-center gap-2 mb-1.5 min-w-0 text-[10.5px]">
                       <span className={`inline-flex items-center gap-1 truncate min-w-0 flex-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                        <Wrench className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                        <Icon name="wrench" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                         <span className="truncate font-semibold">
                           {reasonLabel !== '—' ? reasonLabel : 'In Wartung'}
                         </span>
@@ -1201,7 +1185,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         <span className={`shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${
                           isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700'
                         }`}>
-                          <AlertTriangle className="w-2.5 h-2.5" />
+                          <Icon name="alert-triangle" className="w-2.5 h-2.5" />
                           Dringend
                         </span>
                       )}
@@ -1212,7 +1196,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         in der Werkstatt der eigenen Station steht oder
                         extern (Vendor / Auswärtsservice). */}
                     <div className={`flex items-center gap-1.5 pt-1.5 border-t min-w-0 overflow-hidden ${isDarkMode ? 'border-neutral-700/40' : 'border-gray-100'}`}>
-                      <MapPin className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                      <Icon name="map-pin" className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                       <div className="truncate min-w-0 flex-1 text-[10px]">
                         <VehicleAddress v={v} isDarkMode={isDarkMode} />
                       </div>

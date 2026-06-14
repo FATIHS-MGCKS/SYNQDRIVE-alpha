@@ -28,6 +28,12 @@ import * as crypto from 'crypto';
 export class RequestLoggingInterceptor implements NestInterceptor {
   private readonly logger = new Logger('HTTP');
 
+  // In production, successful (2xx/3xx) requests are NOT logged by default to
+  // keep log volume bounded — only client (4xx) and server (5xx) errors are.
+  // Set HTTP_LOG_SUCCESS=true to restore per-request success logging in prod.
+  private readonly isProd = (process.env.NODE_ENV || 'development') === 'production';
+  private readonly logSuccess = process.env.HTTP_LOG_SUCCESS === 'true';
+
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const http = context.switchToHttp();
     const req = http.getRequest<any>();
@@ -50,6 +56,11 @@ export class RequestLoggingInterceptor implements NestInterceptor {
   }
 
   private log(req: any, res: any, requestId: string, startMs: number) {
+    // Drop noisy success logs in production unless explicitly opted in.
+    if (this.isProd && !this.logSuccess && res.statusCode < 400) {
+      return;
+    }
+
     const durationMs = Date.now() - startMs;
     const user = req.user;
 

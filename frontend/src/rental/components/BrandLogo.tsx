@@ -1,11 +1,26 @@
+import { useEffect, useState } from 'react';
+
 interface BrandLogoProps {
   brand: string;
   size?: number;
   isDarkMode?: boolean;
 }
 
-export function getBrandFromModel(model: string | null | undefined): string {
-  const lower = (model ?? '').toLowerCase();
+/** Accepts a free-text model string, a `make + model` string, or an object from fleet API rows. */
+export type BrandSource = string | null | undefined | { make?: string | null; model?: string | null };
+
+function normalizeBrandHaystack(source: BrandSource): string {
+  if (source == null) return '';
+  if (typeof source === 'object') {
+    return `${source.make ?? ''} ${source.model ?? ''}`.replace(/\s+/g, ' ').trim();
+  }
+  return String(source).replace(/\s+/g, ' ').trim();
+}
+
+export function getBrandFromModel(source: BrandSource): string {
+  const haystack = normalizeBrandHaystack(source);
+  if (!haystack) return 'generic';
+  const lower = haystack.toLowerCase();
   if (lower.startsWith('volkswagen') || lower.startsWith('vw ')) return 'volkswagen';
   if (lower.startsWith('tesla')) return 'tesla';
   if (lower.startsWith('bmw')) return 'bmw';
@@ -90,8 +105,13 @@ function FallbackIcon({ size, isDarkMode }: { size: number; isDarkMode: boolean 
 
 export function BrandLogo({ brand, size = 36, isDarkMode = false }: BrandLogoProps) {
   const slug = brandSlugMap[brand];
+  const [imgFailed, setImgFailed] = useState(false);
 
-  if (!slug) {
+  useEffect(() => {
+    setImgFailed(false);
+  }, [brand]);
+
+  if (!slug || imgFailed) {
     return <FallbackIcon size={size} isDarkMode={isDarkMode} />;
   }
 
@@ -103,15 +123,16 @@ export function BrandLogo({ brand, size = 36, isDarkMode = false }: BrandLogoPro
       alt={brand}
       width={size}
       height={size}
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
       style={{
         width: size,
         height: size,
         objectFit: 'contain',
         filter: isDarkMode ? 'brightness(0) invert(1)' : 'none',
       }}
-      onError={(e) => {
-        (e.currentTarget as HTMLImageElement).style.display = 'none';
-      }}
+      onError={() => setImgFailed(true)}
     />
   );
 }

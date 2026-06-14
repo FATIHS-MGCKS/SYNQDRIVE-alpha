@@ -1,10 +1,7 @@
+import { AlertCircle, CheckCircle2, Clock, CreditCard, Database, Globe, Package, Shield, Truck, XCircle, Zap } from 'lucide-react';
+import { Icon } from './ui/Icon';
 import { useState, useEffect, useMemo } from 'react';
-import {
-  Shield, Search, Filter, ChevronDown, ChevronRight, X, CheckCircle2,
-  XCircle, Clock, AlertCircle, Eye, ShieldOff, ShieldCheck, Building2,
-  Car, Database, Globe, FileText, Zap, CreditCard, Package, Truck,
-  Lock, ArrowLeft, Calendar, User, Info, RotateCcw,
-} from 'lucide-react';
+
 import { api } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
 
@@ -109,10 +106,10 @@ export function DataAuthorizationTab({ isDarkMode, canWrite = true }: Props) {
   const [showRevokeConfirm, setShowRevokeConfirm] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const cardClass = `rounded-2xl shadow-sm border ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`;
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-500';
-  const inputClass = `w-full px-3 py-2.5 rounded-xl border text-xs transition-all ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500 focus:border-blue-500/50' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-400'} outline-none`;
+  const cardClass = 'sq-card rounded-2xl shadow-[var(--shadow-1)]';
+  const textPrimary = 'text-foreground';
+  const textSecondary = 'text-muted-foreground';
+  const inputClass = 'w-full px-3 py-2.5 rounded-xl border border-border/70 bg-card text-xs text-foreground placeholder:text-muted-foreground transition-all outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]';
 
   const load = async () => {
     if (!orgId) return;
@@ -148,6 +145,34 @@ export function DataAuthorizationTab({ isDarkMode, canWrite = true }: Props) {
   }, [authorizations, statusFilter, moduleFilter, scopeFilter, searchTerm]);
 
   const modules = useMemo(() => [...new Set(authorizations.map(a => a.moduleOrigin))], [authorizations]);
+  const hasActiveFilters = statusFilter !== 'all' || moduleFilter !== 'all' || scopeFilter !== 'all' || searchTerm.trim().length > 0;
+  const clearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setModuleFilter('all');
+    setScopeFilter('all');
+  };
+  const statusOptions = [
+    { value: 'all', label: 'Alle Status', count: stats.total, tone: 'sq-tone-neutral', description: 'Alle erteilten und angefragten Datenfreigaben' },
+    { value: 'ACTIVE', label: 'Aktiv', count: stats.active, tone: 'sq-tone-success', description: 'Aktive Datenzugriffe mit laufender Freigabe' },
+    { value: 'PENDING', label: 'Ausstehend', count: stats.pending, tone: 'sq-tone-warning', description: 'Noch nicht genehmigte Datenzugriffe' },
+    { value: 'REVOKED', label: 'Widerrufen', count: stats.revoked, tone: 'sq-tone-critical', description: 'Beendete Freigaben mit Audit-Trail' },
+    { value: 'EXPIRED', label: 'Abgelaufen', count: stats.expired, tone: 'sq-tone-neutral', description: 'Zeitlich abgelaufene Autorisierungen' },
+  ];
+  const scopeOptions = [
+    { value: 'all', label: 'Alle Bereiche' },
+    { value: 'ORGANIZATION', label: 'Organisation' },
+    { value: 'VEHICLE', label: 'Fahrzeug' },
+  ];
+  const activeStatusOption = statusOptions.find(o => o.value === statusFilter) ?? statusOptions[0];
+  const activeModuleLabel = moduleFilter === 'all' ? 'Alle Module' : moduleFilter;
+  const activeScopeLabel = scopeOptions.find(o => o.value === scopeFilter)?.label ?? 'Alle Bereiche';
+  const summaryCards = [
+    { label: 'Gesamt', value: stats.total, icon: Database, tone: 'sq-tone-neutral', filter: 'all', meta: `${filtered.length} sichtbar` },
+    { label: 'Aktiv', value: stats.active, icon: CheckCircle2, tone: 'sq-tone-success', filter: 'ACTIVE', meta: 'laufende Freigaben' },
+    { label: 'Ausstehend', value: stats.pending, icon: Clock, tone: 'sq-tone-warning', filter: 'PENDING', meta: 'wartet auf Entscheidung' },
+    { label: 'Widerrufen', value: stats.revoked, icon: XCircle, tone: 'sq-tone-critical', filter: 'REVOKED', meta: `${stats.expired} abgelaufen` },
+  ];
 
   const handleRevoke = async (id: string) => {
     if (!orgId) return;
@@ -185,7 +210,7 @@ export function DataAuthorizationTab({ isDarkMode, canWrite = true }: Props) {
     return (
       <div className="space-y-5">
         <button onClick={() => setSelectedAuth(null)} className={`flex items-center gap-2 text-xs font-medium ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'} transition-colors`}>
-          <ArrowLeft className="w-4 h-4" /> Zurück zur Übersicht
+          <Icon name="arrow-left" className="w-4 h-4" /> Zurück zur Übersicht
         </button>
 
         <div className={`${cardClass} p-6`}>
@@ -206,12 +231,12 @@ export function DataAuthorizationTab({ isDarkMode, canWrite = true }: Props) {
               </span>
               {canWrite && selectedAuth.statusKey === 'ACTIVE' && (
                 <button onClick={() => setShowRevokeConfirm(selectedAuth.id)} className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-xl text-xs font-medium hover:bg-red-700 transition-colors">
-                  <ShieldOff className="w-4 h-4" /> Widerrufen
+                  <Icon name="shield-off" className="w-4 h-4" /> Widerrufen
                 </button>
               )}
               {canWrite && selectedAuth.statusKey === 'PENDING' && (
                 <button onClick={() => handleGrant(selectedAuth.id)} className="flex items-center gap-2 px-3 py-2 bg-emerald-600 text-white rounded-xl text-xs font-medium hover:bg-emerald-700 transition-colors">
-                  <ShieldCheck className="w-4 h-4" /> Genehmigen
+                  <Icon name="shield-check" className="w-4 h-4" /> Genehmigen
                 </button>
               )}
             </div>
@@ -228,7 +253,7 @@ export function DataAuthorizationTab({ isDarkMode, canWrite = true }: Props) {
             </DetailSection>
 
             <DetailSection isDarkMode={isDarkMode} title="Umfang & Geltungsbereich">
-              <DetailRow isDarkMode={isDarkMode} label="Geltungsbereich" value={selectedAuth.scope} icon={selectedAuth.scopeKey === 'VEHICLE' ? <Car className="w-3.5 h-3.5" /> : <Building2 className="w-3.5 h-3.5" />} />
+              <DetailRow isDarkMode={isDarkMode} label="Geltungsbereich" value={selectedAuth.scope} icon={selectedAuth.scopeKey === 'VEHICLE' ? <Icon name="car" className="w-3.5 h-3.5" /> : <Icon name="building-2" className="w-3.5 h-3.5" />} />
               {selectedAuth.vehicleIds && (selectedAuth.vehicleIds as string[]).length > 0 && (
                 <DetailRow isDarkMode={isDarkMode} label="Fahrzeuge" value={`${(selectedAuth.vehicleIds as string[]).length} Fahrzeug(e)`} />
               )}
@@ -253,13 +278,13 @@ export function DataAuthorizationTab({ isDarkMode, canWrite = true }: Props) {
                 <DetailRow isDarkMode={isDarkMode} label="Genehmigt am" value={formatDate(selectedAuth.grantedAt)} />
               )}
               {selectedAuth.grantedByName && (
-                <DetailRow isDarkMode={isDarkMode} label="Genehmigt von" value={selectedAuth.grantedByName} icon={<User className="w-3.5 h-3.5" />} />
+                <DetailRow isDarkMode={isDarkMode} label="Genehmigt von" value={selectedAuth.grantedByName} icon={<Icon name="user" className="w-3.5 h-3.5" />} />
               )}
               {selectedAuth.revokedAt && (
                 <DetailRow isDarkMode={isDarkMode} label="Widerrufen am" value={formatDate(selectedAuth.revokedAt)} />
               )}
               {selectedAuth.revokedByName && (
-                <DetailRow isDarkMode={isDarkMode} label="Widerrufen von" value={selectedAuth.revokedByName} icon={<User className="w-3.5 h-3.5" />} />
+                <DetailRow isDarkMode={isDarkMode} label="Widerrufen von" value={selectedAuth.revokedByName} icon={<Icon name="user" className="w-3.5 h-3.5" />} />
               )}
             </DetailSection>
           </div>
@@ -282,52 +307,110 @@ export function DataAuthorizationTab({ isDarkMode, canWrite = true }: Props) {
   // ─── List View ────────────────────────────────────────────────
 
   return (
-    <div className="space-y-5">
+    <div className="max-w-[1600px] mx-auto space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className={`text-lg font-bold tracking-tight ${textPrimary}`}>Datenautorisierung</h2>
-          <p className={`text-xs mt-1 ${textSecondary}`}>Verwalten Sie alle erteilten Datenzugriffe und -freigaben für Ihr Unternehmen</p>
+      <div className="min-h-8 flex items-start justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <h2 className="text-[22px] leading-tight font-semibold tracking-[-0.018em] text-foreground">Datenautorisierung</h2>
+          <p className="text-[13px] mt-1 text-muted-foreground">
+            Verwalten Sie Datenzugriffe, Freigaben, Widerrufe und Audit-Trails für Ihr Unternehmen.
+          </p>
         </div>
         {canWrite && (
-          <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25">
-            <Shield className="w-4 h-4" /> Autorisierung erstellen
+          <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 px-4 py-2.5 bg-[var(--brand)] text-[var(--brand-foreground)] rounded-xl text-xs font-semibold hover:bg-[var(--brand-hover)] transition-colors shadow-[var(--shadow-2)] active:scale-[0.98]">
+            <Icon name="shield" className="w-4 h-4" /> Autorisierung erstellen
           </button>
         )}
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-5 gap-3">
-        <StatCard isDarkMode={isDarkMode} label="Gesamt" value={stats.total} icon={<Database className="w-4 h-4" />} color="blue" />
-        <StatCard isDarkMode={isDarkMode} label="Aktiv" value={stats.active} icon={<CheckCircle2 className="w-4 h-4" />} color="emerald" />
-        <StatCard isDarkMode={isDarkMode} label="Ausstehend" value={stats.pending} icon={<Clock className="w-4 h-4" />} color="amber" />
-        <StatCard isDarkMode={isDarkMode} label="Widerrufen" value={stats.revoked} icon={<XCircle className="w-4 h-4" />} color="red" />
-        <StatCard isDarkMode={isDarkMode} label="Abgelaufen" value={stats.expired} icon={<AlertCircle className="w-4 h-4" />} color="gray" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        {summaryCards.map(card => {
+          const CardIcon = card.icon;
+          const active = statusFilter === card.filter;
+          return (
+            <button
+              key={card.label}
+              type="button"
+              onClick={() => setStatusFilter(card.filter)}
+              aria-pressed={active}
+              className={`${cardClass} p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-2)] active:scale-[0.99] ${
+                active ? 'ring-1 ring-[var(--brand)]' : ''
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-[0.08em] font-semibold text-muted-foreground">{card.label}</p>
+                  <p className="mt-2 text-[22px] leading-none font-semibold tracking-[-0.02em] text-foreground tabular-nums">{card.value}</p>
+                  <p className="mt-1 text-[11px] text-muted-foreground truncate">{card.meta}</p>
+                </div>
+                <div className={`${card.tone} w-10 h-10 rounded-xl flex items-center justify-center shrink-0`}>
+                  <CardIcon className="w-5 h-5" />
+                </div>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       {/* Filters */}
       <div className={`${cardClass} p-4`}>
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
-            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Suche nach Empfänger, Modul, Zweck..." className={`${inputClass} pl-9`} />
+        <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
+          <div>
+            <p className="text-[13px] font-semibold text-foreground">Search & Authorization Scope</p>
+            <p className="text-[11px] text-muted-foreground">
+              Showing {filtered.length} of {authorizations.length} authorizations · {activeStatusOption.label} · {activeModuleLabel} · {activeScopeLabel}
+            </p>
           </div>
-          <FilterSelect isDarkMode={isDarkMode} value={statusFilter} onChange={setStatusFilter} options={[{ value: 'all', label: 'Alle Status' }, { value: 'ACTIVE', label: 'Aktiv' }, { value: 'PENDING', label: 'Ausstehend' }, { value: 'REVOKED', label: 'Widerrufen' }, { value: 'EXPIRED', label: 'Abgelaufen' }]} />
-          {modules.length > 0 && (
-            <FilterSelect isDarkMode={isDarkMode} value={moduleFilter} onChange={setModuleFilter} options={[{ value: 'all', label: 'Alle Module' }, ...modules.map(m => ({ value: m, label: m }))]} />
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-colors text-[var(--brand)] hover:bg-[var(--brand-soft)]"
+            >
+              Clear filters
+            </button>
           )}
-          <FilterSelect isDarkMode={isDarkMode} value={scopeFilter} onChange={setScopeFilter} options={[{ value: 'all', label: 'Alle Bereiche' }, { value: 'ORGANIZATION', label: 'Organisation' }, { value: 'VEHICLE', label: 'Fahrzeug' }]} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_210px_210px_180px] gap-3">
+          <div className="relative">
+            <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Suche nach Empfänger, Modul, Zweck..." className={`${inputClass} !pl-9`} />
+          </div>
+          <FilterSelect value={statusFilter} onChange={setStatusFilter} options={statusOptions.map(o => ({ value: o.value, label: `${o.label} (${o.count})` }))} />
+          {modules.length > 0 && (
+            <FilterSelect value={moduleFilter} onChange={setModuleFilter} options={[{ value: 'all', label: 'Alle Module' }, ...modules.map(m => ({ value: m, label: m }))]} />
+          )}
+          <FilterSelect value={scopeFilter} onChange={setScopeFilter} options={scopeOptions} />
+        </div>
+
+        <div className="mt-3 flex items-center gap-2 flex-wrap">
+          <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold ${activeStatusOption.tone}`}>
+            <Icon name="filter" className="w-3 h-3" />
+            {activeStatusOption.description}
+          </span>
+          {searchTerm.trim() && (
+            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold sq-tone-info">
+              Search: {searchTerm.trim()}
+            </span>
+          )}
+          {moduleFilter !== 'all' && (
+            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold sq-tone-brand">
+              Module: {moduleFilter}
+            </span>
+          )}
         </div>
       </div>
 
       {/* List */}
       {loading ? (
         <div className={`${cardClass} p-12 text-center`}>
-          <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-3" />
+          <div className="animate-spin w-8 h-8 border-2 border-[var(--brand)] border-t-transparent rounded-full mx-auto mb-3" />
           <p className={`text-xs ${textSecondary}`}>Autorisierungen werden geladen...</p>
         </div>
       ) : filtered.length === 0 ? (
-        <EmptyState isDarkMode={isDarkMode} hasFilters={statusFilter !== 'all' || moduleFilter !== 'all' || scopeFilter !== 'all' || !!searchTerm} total={authorizations.length} />
+        <EmptyState hasFilters={hasActiveFilters} total={authorizations.length} />
       ) : (
         <div className="space-y-2">
           {filtered.map(auth => (
@@ -349,33 +432,9 @@ export function DataAuthorizationTab({ isDarkMode, canWrite = true }: Props) {
 
 // ─── Sub-components ─────────────────────────────────────────────
 
-function StatCard({ isDarkMode, label, value, icon, color }: { isDarkMode: boolean; label: string; value: number; icon: React.ReactNode; color: string }) {
-  const colors: Record<string, { bg: string; bgDark: string; text: string; textDark: string }> = {
-    blue: { bg: 'bg-blue-50', bgDark: 'bg-blue-500/15', text: 'text-blue-600', textDark: 'text-blue-400' },
-    emerald: { bg: 'bg-emerald-50', bgDark: 'bg-emerald-500/15', text: 'text-emerald-600', textDark: 'text-emerald-400' },
-    amber: { bg: 'bg-amber-50', bgDark: 'bg-amber-500/15', text: 'text-amber-600', textDark: 'text-amber-400' },
-    red: { bg: 'bg-red-50', bgDark: 'bg-red-500/15', text: 'text-red-600', textDark: 'text-red-400' },
-    gray: { bg: 'bg-gray-50', bgDark: 'bg-gray-500/15', text: 'text-gray-600', textDark: 'text-gray-400' },
-  };
-  const c = colors[color] || colors.blue;
+function FilterSelect({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
   return (
-    <div className={`rounded-2xl p-4 shadow-sm border ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`}>
-      <div className="flex items-center gap-3">
-        <div className={`p-2.5 rounded-xl ${isDarkMode ? c.bgDark : c.bg}`}>
-          <span className={isDarkMode ? c.textDark : c.text}>{icon}</span>
-        </div>
-        <div>
-          <p className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{value}</p>
-          <p className={`text-[11px] font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{label}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FilterSelect({ isDarkMode, value, onChange, options }: { isDarkMode: boolean; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
-  return (
-    <select value={value} onChange={e => onChange(e.target.value)} className={`px-3 py-2.5 rounded-xl border text-xs font-medium transition-all outline-none cursor-pointer ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-700'}`}>
+    <select value={value} onChange={e => onChange(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-border/70 bg-card text-xs font-semibold text-foreground transition-all outline-none cursor-pointer focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]">
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   );
@@ -386,13 +445,13 @@ function AuthorizationRow({ auth, isDarkMode, onSelect, onRevoke }: { auth: Data
   const StatusIcon = sc.icon;
   const mc = MODULE_COLORS[auth.moduleOrigin];
   const ModIcon = MODULE_ICONS[auth.moduleOrigin] || Database;
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-500';
+  const textPrimary = 'text-foreground';
+  const textSecondary = 'text-muted-foreground';
 
   return (
-    <div className={`rounded-2xl p-4 shadow-sm border transition-all duration-200 hover:shadow-[0_12px_40px_rgb(0,0,0,0.08)] cursor-pointer ${isDarkMode ? 'bg-neutral-900 border-neutral-700 hover:border-neutral-600/70' : 'bg-white border-gray-200 hover:border-gray-300'}`} onClick={onSelect}>
+    <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-2)] cursor-pointer" onClick={onSelect}>
       <div className="flex items-center gap-4">
-        <div className={`p-2.5 rounded-xl shrink-0 ${mc ? (isDarkMode ? mc.bgDark : mc.bg) : (isDarkMode ? 'bg-neutral-800' : 'bg-gray-100')}`}>
+        <div className={`p-2.5 rounded-xl shrink-0 ${mc ? (isDarkMode ? mc.bgDark : mc.bg) : 'sq-tone-neutral'}`}>
           <ModIcon className={`w-5 h-5 ${mc ? (isDarkMode ? mc.textDark : mc.text) : textSecondary}`} />
         </div>
 
@@ -418,16 +477,16 @@ function AuthorizationRow({ auth, isDarkMode, onSelect, onRevoke }: { auth: Data
             <p className={`text-[10px] ${textSecondary}`}>{formatDate(auth.grantedAt || auth.createdAt)}</p>
           </div>
           {(auth.dataCategories as string[]).length > 0 && (
-            <span className={`px-2 py-1 rounded-lg text-[10px] font-medium ${isDarkMode ? 'bg-neutral-800 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+            <span className="px-2 py-1 rounded-lg text-[10px] font-medium sq-tone-neutral">
               {(auth.dataCategories as string[]).length} Kategorie{(auth.dataCategories as string[]).length !== 1 ? 'n' : ''}
             </span>
           )}
           {onRevoke && auth.statusKey === 'ACTIVE' && (
             <button onClick={e => { e.stopPropagation(); onRevoke(); }} className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'hover:bg-red-500/15 text-gray-500 hover:text-red-400' : 'hover:bg-red-50 text-gray-400 hover:text-red-500'}`} title="Widerrufen">
-              <ShieldOff className="w-4 h-4" />
+              <Icon name="shield-off" className="w-4 h-4" />
             </button>
           )}
-          <ChevronRight className={`w-4 h-4 ${textSecondary}`} />
+          <Icon name="chevron-right" className={`w-4 h-4 ${textSecondary}`} />
         </div>
       </div>
     </div>
@@ -455,31 +514,31 @@ function DetailRow({ isDarkMode, label, value, icon }: { isDarkMode: boolean; la
   );
 }
 
-function EmptyState({ isDarkMode, hasFilters, total }: { isDarkMode: boolean; hasFilters: boolean; total: number }) {
+function EmptyState({ hasFilters, total }: { hasFilters: boolean; total: number }) {
   return (
-    <div className={`rounded-2xl p-12 shadow-sm border text-center ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`}>
-      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ${isDarkMode ? 'bg-blue-500/15' : 'bg-blue-50'}`}>
-        <Shield className={`w-8 h-8 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+    <div className="sq-card rounded-2xl p-12 shadow-[var(--shadow-1)] text-center">
+      <div className="sq-tone-brand w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <Icon name="shield" className="w-8 h-8" />
       </div>
       {hasFilters ? (
         <>
-          <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Keine Ergebnisse</h3>
-          <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} max-w-sm mx-auto`}>
+          <h3 className="text-base font-bold text-foreground">Keine Ergebnisse</h3>
+          <p className="text-xs mt-2 text-muted-foreground max-w-sm mx-auto">
             Keine Autorisierungen entsprechen Ihren aktuellen Filterkriterien. Passen Sie die Filter an oder setzen Sie die Suche zurück.
           </p>
         </>
       ) : (
         <>
-          <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Keine Datenautorisierungen</h3>
-          <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} max-w-md mx-auto`}>
+          <h3 className="text-base font-bold text-foreground">Keine Datenautorisierungen</h3>
+          <p className="text-xs mt-2 text-muted-foreground max-w-md mx-auto">
             Noch keine Datenautorisierungen vorhanden. Wenn Ökosystem-Module wie Versicherung, Teile & Zubehör oder Tankkarten Datenzugriff anfordern, werden die Autorisierungen hier sichtbar und verwaltbar.
           </p>
-          <div className={`mt-6 p-4 rounded-xl border max-w-lg mx-auto text-left ${isDarkMode ? 'bg-neutral-800/50 border-neutral-700' : 'bg-blue-50/50 border-blue-200/50'}`}>
+          <div className="mt-6 p-4 rounded-xl border border-border/70 bg-muted/40 max-w-lg mx-auto text-left">
             <div className="flex items-start gap-3">
-              <Info className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+              <Icon name="info" className="w-4 h-4 mt-0.5 shrink-0 text-[var(--brand)]" />
               <div>
-                <p className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>So funktioniert die Datenautorisierung</p>
-                <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                <p className="text-xs font-semibold text-foreground">So funktioniert die Datenautorisierung</p>
+                <p className="text-[11px] mt-1 text-muted-foreground">
                   Wenn ein Ökosystem-Modul (z.B. Versicherung) Zugriff auf Ihre Organisations- oder Fahrzeugdaten benötigt, erscheint eine Autorisierungsanfrage. 
                   Hier sehen Sie alle erteilten, ausstehenden und widerrufenen Freigaben mit vollständigem Audit-Trail.
                 </p>
@@ -498,7 +557,7 @@ function RevokeConfirmDialog({ isDarkMode, entity, onConfirm, onCancel }: { isDa
       <div className={`w-full max-w-md rounded-2xl p-6 shadow-2xl border ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`} onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2.5 rounded-xl bg-red-100">
-            <ShieldOff className="w-5 h-5 text-red-600" />
+            <Icon name="shield-off" className="w-5 h-5 text-red-600" />
           </div>
           <div>
             <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Autorisierung widerrufen</h3>
@@ -581,7 +640,7 @@ function CreateAuthorizationModal({ isDarkMode, orgId, onClose, onCreated }: { i
         <div className={`sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`}>
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-xl ${isDarkMode ? 'bg-blue-500/15' : 'bg-blue-50'}`}>
-              <Shield className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+              <Icon name="shield" className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
             </div>
             <div>
               <h3 className={`text-base font-bold ${textPrimary}`}>Neue Datenautorisierung</h3>
@@ -589,7 +648,7 @@ function CreateAuthorizationModal({ isDarkMode, orgId, onClose, onCreated }: { i
             </div>
           </div>
           <button onClick={onClose} className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
-            <X className="w-5 h-5" />
+            <Icon name="x" className="w-5 h-5" />
           </button>
         </div>
 

@@ -85,6 +85,43 @@ export function isVehicleAtHomeStation(
 }
 
 /**
+ * Build a closed polygon ring (GeoJSON `Polygon` coordinates) approximating a
+ * circle of `radiusMeters` around `center` ([lng, lat]).
+ *
+ * Why this exists:
+ *  Mapbox's `circle` paint property uses **pixels**, not meters, so a radius
+ *  drawn that way doesn't represent a real-world geofence. We instead emit a
+ *  many-sided polygon (default 64 vertices) sampled around the center using a
+ *  spherical Earth approximation. The result tracks the geofence in meters at
+ *  every zoom level and looks visually like a smooth circle.
+ *
+ *  Used by Fleet Map → station geofence overlay (`MapboxMap.tsx`).
+ */
+export function circlePolygon(
+  center: [number, number],
+  radiusMeters: number,
+  steps: number = 64,
+): GeoJSON.Polygon {
+  const [lng, lat] = center;
+  const safeRadius = Math.max(1, radiusMeters);
+  const safeSteps = Math.max(8, Math.floor(steps));
+  const latRad = (lat * Math.PI) / 180;
+  const cosLat = Math.cos(latRad) || 1e-6;
+  const ring: Array<[number, number]> = [];
+  for (let i = 0; i < safeSteps; i++) {
+    const bearing = (i / safeSteps) * 2 * Math.PI;
+    const dLat = (safeRadius * Math.cos(bearing)) / EARTH_RADIUS_M;
+    const dLng = (safeRadius * Math.sin(bearing)) / (EARTH_RADIUS_M * cosLat);
+    ring.push([
+      lng + (dLng * 180) / Math.PI,
+      lat + (dLat * 180) / Math.PI,
+    ]);
+  }
+  ring.push(ring[0]);
+  return { type: 'Polygon', coordinates: [ring] };
+}
+
+/**
  * Interpolate a point between a and b by fraction t in [0, 1].
  * Returns [lng, lat].
  */

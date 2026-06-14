@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { HmNormalizedTelemetryDto, HmStreamSyncLogDto } from './dto/high-mobility.dto';
 import { extractHmSignalValue, resolveHmSignalEntry } from './high-mobility-mqtt-payload.util';
+import { capRawPayload } from '@shared/utils/json-payload.util';
 
 /**
  * HighMobilityTelemetryAppIngestionService
@@ -261,7 +262,7 @@ export class HighMobilityTelemetryAppIngestionService {
       .catch(() => null);
 
     const prevRaw = (existing?.rawSignalsJson as Record<string, any> | null) ?? {};
-    const mergedRaw = { ...prevRaw, ...(normalized.rawSignals ?? {}) };
+    const mergedRaw = capRawPayload({ ...prevRaw, ...(normalized.rawSignals ?? {}) });
 
     const base = {
       hmVehicleId: hmVehicleId ?? undefined, lastMessageId: messageId, lastReceivedAt: receivedAt,

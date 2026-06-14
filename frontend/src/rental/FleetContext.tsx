@@ -1,8 +1,19 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { api } from '../lib/api';
+import type { VehicleHealthResponse, RentalHealthState } from '../lib/api';
 import { useRentalOrg } from './RentalContext';
+import { useFleetHealthMap } from './hooks/useVehicleHealth';
 import type { VehicleData, VehicleOnlineStatus, VehicleDisplayState, VehicleDisplayIgnition, FleetMaintenanceReasonCode } from './data/vehicles';
+
+export type EffectiveHealthStatus = 'Critical' | 'Warning' | 'Good Health' | 'Unknown';
+
+export function statusFromRentalHealth(state: RentalHealthState | undefined): EffectiveHealthStatus {
+  if (state === 'critical') return 'Critical';
+  if (state === 'warning') return 'Warning';
+  if (state === 'good') return 'Good Health';
+  return 'Unknown';
+}
 
 const FLEET_REFRESH_MS = 30_000;
 
@@ -116,6 +127,18 @@ interface FleetContextValue {
   refresh: () => Promise<void>;
   /** Seconds until next automatic refresh (0–30). */
   countdown: number;
+  /**
+   * V4.7.23 — Canonical Rental-Health-V1 map keyed by vehicleId.
+   *
+   * This is the single source of truth for per-vehicle health across every
+   * Rental surface (FleetView, FleetCondition, Dashboard popups, Vehicle
+   * Detail header). Loaded once via the batched `useFleetHealthMap` hook
+   * and shared through the FleetProvider, so we never end up with two
+   * surfaces showing different colours for the same vehicle.
+   */
+  healthMap: Map<string, VehicleHealthResponse>;
+  healthLoading: boolean;
+  reloadHealth: () => void;
 }
 
 const FleetCtx = createContext<FleetContextValue>({
@@ -123,6 +146,9 @@ const FleetCtx = createContext<FleetContextValue>({
   loading: true,
   refresh: async () => {},
   countdown: 30,
+  healthMap: new Map(),
+  healthLoading: false,
+  reloadHealth: () => {},
 });
 
 export function FleetProvider({ children }: { children: ReactNode }) {
@@ -133,6 +159,10 @@ export function FleetProvider({ children }: { children: ReactNode }) {
   const lastRefreshRef = useRef(Date.now());
   const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fleetVehicleIds = useMemo(() => fleetVehicles.map(v => v.id), [fleetVehicles]);
+  const { map: healthMap, loading: healthLoading, reload: reloadHealth } =
+    useFleetHealthMap(orgId, fleetVehicleIds);
 
   const refresh = useCallback(async () => {
     if (!orgId) {
@@ -183,7 +213,7 @@ export function FleetProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <FleetCtx.Provider value={{ fleetVehicles, loading, refresh, countdown }}>
+    <FleetCtx.Provider value={{ fleetVehicles, loading, refresh, countdown, healthMap, healthLoading, reloadHealth }}>
       {children}
     </FleetCtx.Provider>
   );
@@ -191,4 +221,24 @@ export function FleetProvider({ children }: { children: ReactNode }) {
 
 export function useFleetVehicles() {
   return useContext(FleetCtx);
+}
+
+/**
+ * Canonical per-vehicle health hook — reads the shared FleetProvider map.
+ * Use this everywhere a UI surface needs the rental-health status; do not
+ * fall back to the stale `vehicle.healthStatus` column.
+ */
+export function useEffectiveHealth(vehicleId: string | null | undefined): {
+  status: EffectiveHealthStatus;
+  health: VehicleHealthResponse | null;
+  loading: boolean;
+} {
+  const { healthMap, healthLoading } = useContext(FleetCtx);
+  if (!vehicleId) return { status: 'Unknown', health: null, loading: healthLoading };
+  const health = healthMap.get(vehicleId) ?? null;
+  return {
+    status: statusFromRentalHealth(health?.overall_state),
+    health,
+    loading: healthLoading,
+  };
 }

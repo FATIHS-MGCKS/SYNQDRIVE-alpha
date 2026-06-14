@@ -144,17 +144,6 @@ export interface HmCompatibilityCheckResponse {
   generatedAt: string;
 }
 
-/** Response from GET /vehicles/register/ai-specs (DIMO Agents flow). */
-export interface EuromasterAccessInfo {
-  enabled: boolean;
-  assigned: boolean;
-  liveApiEnabled: boolean;
-  manualMode: boolean;
-  dataAuthGranted: boolean;
-  grantedScopes: string[];
-  mode: string;
-}
-
 export interface AiSpecsResponse {
   success: boolean;
   degraded: boolean;
@@ -316,6 +305,84 @@ export function streamAiTireSpecs(
   return controller;
 }
 
+// ── AI Assistant chat stream (mirrors streamAiSpecs, POST + SSE) ───────────
+
+export type ChatStreamEvent =
+  | { event: 'status'; data: { agentReady: boolean } }
+  | { event: 'progress'; data: { type: string; content: string } }
+  | { event: 'result'; data: ChatMessageResponse }
+  | { event: 'error'; data: { message: string } };
+
+/**
+ * Stream a chat message to the AI Assistant via SSE. The backend keeps the
+ * connection alive while the DIMO agent works (tool calls / telemetry lookups),
+ * avoiding the 504 gateway timeout of the synchronous endpoint.
+ * Returns an AbortController the caller can use to cancel.
+ */
+export function streamChatMessage(
+  orgId: string,
+  content: string,
+  onEvent: (evt: ChatStreamEvent) => void,
+  onDone: () => void,
+): AbortController {
+  const url = `${BASE_URL}/organizations/${orgId}/chat/message/stream`;
+  const controller = new AbortController();
+  const token = getToken();
+
+  fetch(url, {
+    method: 'POST',
+    signal: controller.signal,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ content }),
+  })
+    .then(async (res) => {
+      if (!res.ok || !res.body) {
+        onEvent({ event: 'error', data: { message: `HTTP ${res.status}` } });
+        onDone();
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() || '';
+
+        for (const part of parts) {
+          let eventName = 'message';
+          let eventData = '';
+          for (const line of part.split('\n')) {
+            if (line.startsWith('event:')) eventName = line.slice(6).trim();
+            else if (line.startsWith('data:')) eventData = line.slice(5).trim();
+          }
+          if (!eventData) continue;
+          try {
+            const parsed = JSON.parse(eventData);
+            onEvent({ event: eventName, data: parsed } as ChatStreamEvent);
+          } catch { /* skip malformed events */ }
+        }
+      }
+      onDone();
+    })
+    .catch((err) => {
+      if (err.name === 'AbortError') return;
+      onEvent({ event: 'error', data: { message: err.message || 'Network error' } });
+      onDone();
+    });
+
+  return controller;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -376,6 +443,230 @@ function put<T>(path: string, body: unknown) {
 
 function del<T>(path: string) {
   return request<T>(path, { method: 'DELETE' });
+}
+
+// ── Task Action Layer types (V4.8.3) ────────────────────────────────────────
+// Mirrors the backend TasksService read model. `isOverdue` is derived
+// server-side (dueDate < now && status not terminal) and must be used as-is.
+export type ApiTaskStatus = 'OPEN' | 'IN_PROGRESS' | 'WAITING' | 'DONE' | 'CANCELLED';
+export type ApiTaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type ApiTaskType =
+  | 'VEHICLE_SERVICE'
+  | 'VEHICLE_INSPECTION'
+  | 'TIRE_CHECK'
+  | 'BRAKE_CHECK'
+  | 'BATTERY_CHECK'
+  | 'VEHICLE_CLEANING'
+  | 'BOOKING_PREPARATION'
+  | 'BOOKING_PICKUP'
+  | 'BOOKING_RETURN'
+  | 'DOCUMENT_REVIEW'
+  | 'INVOICE_REQUIRED'
+  | 'CUSTOMER_FOLLOWUP'
+  | 'REPAIR'
+  | 'CUSTOM';
+export type ApiTaskSource = 'MANUAL' | 'SYSTEM' | 'ALERT' | 'HEALTH' | 'BOOKING' | 'DOCUMENT' | 'VENDOR';
+
+export interface ApiTaskChecklistItem {
+  id: string;
+  title: string;
+  description: string;
+  sortOrder: number;
+  isDone: boolean;
+  completedAt: string | null;
+  completedByUserId: string | null;
+}
+export interface ApiTaskComment {
+  id: string;
+  userId: string | null;
+  body: string;
+  createdAt: string;
+}
+export interface ApiTaskAttachment {
+  id: string;
+  fileUrl: string;
+  fileName: string | null;
+  mimeType: string | null;
+  size: number | null;
+  uploadedByUserId: string | null;
+  createdAt: string;
+}
+export interface ApiTaskEvent {
+  id: string;
+  type: string;
+  actorUserId: string | null;
+  oldValue: string | null;
+  newValue: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}
+export interface ApiTask {
+  id: string;
+  organizationId: string;
+  title: string;
+  description: string;
+  category: string;
+  type: ApiTaskType;
+  status: ApiTaskStatus;
+  priority: ApiTaskPriority;
+  source: string | null;
+  sourceType: ApiTaskSource;
+  dedupKey: string | null;
+  vehicleId: string | null;
+  bookingId: string | null;
+  customerId: string | null;
+  vendorId: string | null;
+  alertId: string | null;
+  documentId: string | null;
+  fineId: string | null;
+  invoiceId: string | null;
+  assignedTo: string | null;
+  estimatedCostCents: number | null;
+  actualCostCents: number | null;
+  resolutionNote: string | null;
+  metadata: Record<string, unknown> | null;
+  isOverdue: boolean;
+  dueDate: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  checklist?: ApiTaskChecklistItem[];
+  comments?: ApiTaskComment[];
+  attachments?: ApiTaskAttachment[];
+  timeline?: ApiTaskEvent[];
+}
+export interface ApiTaskSummary {
+  open: number;
+  active: number;
+  inProgress: number;
+  waiting: number;
+  done: number;
+  cancelled: number;
+  dueToday: number;
+  overdue: number;
+  critical: number;
+  assignedToMe: number;
+  byStatus: Record<string, number>;
+  byPriority: Record<string, number>;
+}
+export interface TaskListFilters {
+  status?: ApiTaskStatus;
+  priority?: ApiTaskPriority;
+  type?: ApiTaskType;
+  source?: ApiTaskSource;
+  assignedUserId?: string;
+  vehicleId?: string;
+  bookingId?: string;
+  customerId?: string;
+  vendorId?: string;
+  alertId?: string;
+  documentId?: string;
+  dueFrom?: string;
+  dueTo?: string;
+  overdue?: boolean;
+  search?: string;
+}
+export interface CreateTaskPayload {
+  title: string;
+  description?: string;
+  type: ApiTaskType;
+  source?: ApiTaskSource;
+  priority?: ApiTaskPriority;
+  category?: string;
+  dueDate?: string;
+  assignedUserId?: string;
+  vehicleId?: string;
+  bookingId?: string;
+  customerId?: string;
+  vendorId?: string;
+  alertId?: string;
+  documentId?: string;
+  estimatedCostCents?: number;
+  checklist?: Array<{ title: string; description?: string; sortOrder?: number }>;
+}
+
+// ── Authenticated binary download (private documents) ───────────────────────
+// Generated PDFs + uploaded legal documents are NOT public — they require the
+// Bearer token. We fetch them as a Blob and open via an object URL so the
+// browser can preview/download without ever exposing a public file URL.
+async function fetchBlob(path: string): Promise<Blob> {
+  const token = getToken();
+  const res = await fetch(`${BASE_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (res.status === 401) {
+    clearAuth();
+    window.location.href = '/login';
+    throw new Error('Session expired');
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.message || `API error ${res.status} (${path})`);
+  }
+  return res.blob();
+}
+
+/** Opens an authenticated document in a new tab (preview/download). */
+export async function openAuthedDocument(path: string): Promise<void> {
+  const blob = await fetchBlob(path);
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank', 'noopener');
+  if (!win) {
+    // Popup blocked — fall back to a forced download.
+    const a = window.document.createElement('a');
+    a.href = url;
+    a.download = '';
+    a.click();
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+// ── Booking Document Lifecycle types (mirror backend DTOs) ──────────────────
+export type DocumentBundleStatus = 'PENDING' | 'PARTIAL' | 'COMPLETE' | 'FAILED';
+
+export interface GeneratedDocumentDto {
+  id: string;
+  documentType: string;
+  origin: string;
+  status: string;
+  title: string;
+  documentNumber: string | null;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number | null;
+  bookingId: string | null;
+  invoiceId: string | null;
+  legalVersionLabel: string | null;
+  generatedAt: string | null;
+  createdAt: string;
+}
+
+export interface BookingDocumentBundleView {
+  bundle: {
+    id: string;
+    bookingId: string;
+    status: DocumentBundleStatus;
+    generatedAt: string | null;
+    lastError: string | null;
+  };
+  documents: GeneratedDocumentDto[];
+  legal: { termsAttached: boolean; withdrawalAttached: boolean; missing: string[] };
+  warnings: string[];
+}
+
+export interface LegalDocumentDto {
+  id: string;
+  documentType: string;
+  title: string;
+  versionLabel: string;
+  language: string;
+  status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  fileName: string;
+  sizeBytes: number | null;
+  activeFrom: string | null;
+  createdAt: string;
 }
 
 // V4.6.95 — `ASSIGNED_USER` / `USER` removed alongside the unused user-score
@@ -740,6 +1031,74 @@ export const api = {
     deregister: (vehicleId: string) => post<{ success: boolean; deregisteredVehicle: any }>(`/admin/vehicles/${vehicleId}/deregister`, {}),
     getAiSpecs: (params?: { vin?: string; tokenId?: string; dimoVehicleId?: string; make?: string; model?: string; year?: string }) =>
       get<AiSpecsResponse>('/vehicles/register/ai-specs' + buildQuery(params ?? {})),
+
+    // V4.7.50 — Exterior images (Damage Map): five canonical views per vehicle
+    // (FRONT/LEFT/RIGHT/REAR/ROOF). Master-Admin uploads from
+    // VehicleRegistrationModal or PlatformVehiclesView; Rental DamagesView
+    // consumes the read-only list to render its damage-map carousel.
+    exteriorImages: {
+      list: (vehicleId: string) =>
+        get<VehicleExteriorImageDto[]>(`/vehicles/${vehicleId}/exterior-images`),
+      listEffective: (vehicleId: string) =>
+        get<VehicleExteriorImageEffectiveResponse>(
+          `/vehicles/${vehicleId}/exterior-images/effective`,
+        ),
+      listAdmin: (vehicleId: string) =>
+        get<VehicleExteriorImageDto[]>(`/admin/vehicles/${vehicleId}/exterior-images`),
+      listEffectiveAdmin: (vehicleId: string) =>
+        get<VehicleExteriorImageEffectiveResponse>(
+          `/admin/vehicles/${vehicleId}/exterior-images/effective`,
+        ),
+      listModelTemplates: (params?: { make?: string | null; model?: string | null }) =>
+        get<VehicleExteriorModelImageDto[] | VehicleExteriorModelTemplateSummary[]>(
+          '/admin/vehicle-exterior-model-images' +
+            buildQuery({
+              ...(params?.make ? { make: params.make } : {}),
+              ...(params?.model ? { model: params.model } : {}),
+            }),
+        ),
+      upsertModelTemplate: (
+        view: VehicleExteriorViewKey,
+        body: {
+          make: string;
+          model: string;
+          imageData: string;
+          caption?: string | null;
+          sourceVehicleId?: string | null;
+        },
+      ) =>
+        put<VehicleExteriorModelImageDto>(
+          `/admin/vehicle-exterior-model-images/${view}`,
+          body,
+        ),
+      saveAsModelTemplate: (vehicleId: string, view: VehicleExteriorViewKey) =>
+        post<VehicleExteriorModelImageDto>(
+          `/admin/vehicles/${vehicleId}/exterior-images/${view}/save-as-model`,
+          {},
+        ),
+      applyModelTemplate: (
+        vehicleId: string,
+        view: VehicleExteriorViewKey,
+        body: { modelKey: string },
+      ) =>
+        post<VehicleExteriorImageDto>(
+          `/admin/vehicles/${vehicleId}/exterior-images/${view}/apply-model`,
+          body,
+        ),
+      upsert: (
+        vehicleId: string,
+        view: VehicleExteriorViewKey,
+        body: { imageData: string; caption?: string | null },
+      ) =>
+        put<VehicleExteriorImageDto>(
+          `/admin/vehicles/${vehicleId}/exterior-images/${view}`,
+          body,
+        ),
+      delete: (vehicleId: string, view: VehicleExteriorViewKey) =>
+        del<{ success: boolean }>(
+          `/admin/vehicles/${vehicleId}/exterior-images/${view}`,
+        ),
+    },
   },
   dimo: {
     vehicles: () => get<any[]>('/admin/dimo/vehicles'),
@@ -818,6 +1177,62 @@ export const api = {
     createReturnHandover: (orgId: string, bookingId: string, data: any) =>
       post<any>(`/organizations/${orgId}/bookings/${bookingId}/handover/return`, data),
   },
+  // Booking Document Lifecycle — generated PDFs (invoice, deposit receipt,
+  // rental contract, handover protocols, final invoice) + downloads.
+  documents: {
+    listForBooking: (orgId: string, bookingId: string) =>
+      get<BookingDocumentBundleView>(`/organizations/${orgId}/bookings/${bookingId}/documents`),
+    generateInitialBundle: (orgId: string, bookingId: string) =>
+      post<BookingDocumentBundleView>(
+        `/organizations/${orgId}/bookings/${bookingId}/documents/generate-initial-bundle`,
+        {},
+      ),
+    regenerate: (orgId: string, bookingId: string, documentType: string) =>
+      post<BookingDocumentBundleView>(
+        `/organizations/${orgId}/bookings/${bookingId}/documents/regenerate/${documentType}`,
+        {},
+      ),
+    metadata: (orgId: string, documentId: string) =>
+      get<GeneratedDocumentDto>(`/organizations/${orgId}/documents/${documentId}/metadata`),
+    void: (orgId: string, documentId: string) =>
+      post<GeneratedDocumentDto>(`/organizations/${orgId}/documents/${documentId}/void`, {}),
+    /** Opens the stored PDF (authenticated) in a new tab. */
+    open: (orgId: string, documentId: string) =>
+      openAuthedDocument(`/organizations/${orgId}/documents/${documentId}/download`),
+  },
+  // Administration → Legal Documents (AGB / Widerrufsbelehrung): upload +
+  // versioning. Mutations are ORG_ADMIN-gated server-side.
+  legalDocuments: {
+    list: (orgId: string) => get<LegalDocumentDto[]>(`/organizations/${orgId}/legal-documents`),
+    activate: (orgId: string, id: string) =>
+      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/activate`, {}),
+    archive: (orgId: string, id: string) =>
+      post<LegalDocumentDto>(`/organizations/${orgId}/legal-documents/${id}/archive`, {}),
+    open: (orgId: string, id: string) =>
+      openAuthedDocument(`/organizations/${orgId}/legal-documents/${id}/download`),
+    upload: async (
+      orgId: string,
+      params: { documentType: string; versionLabel: string; title?: string; language?: string; file: File },
+    ) => {
+      const form = new FormData();
+      form.append('file', params.file);
+      form.append('documentType', params.documentType);
+      form.append('versionLabel', params.versionLabel);
+      if (params.title) form.append('title', params.title);
+      if (params.language) form.append('language', params.language);
+      const token = getToken();
+      const res = await fetch(`${BASE_URL}/organizations/${orgId}/legal-documents/upload`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || `API error ${res.status}`);
+      }
+      return res.json() as Promise<LegalDocumentDto>;
+    },
+  },
   // V4.6.76 Rental Health V1 — canonical 5-state vehicle health with
   // rental_blocked gate. The backend aggregates Battery/Tires/Brakes/
   // DTC/Service-Info/Complaints/OEM-Alerts into one deterministic shape.
@@ -859,73 +1274,6 @@ export const api = {
         createdAt: string;
       }>;
     }>(`/organizations/${orgId}/dashboard-insights`),
-  },
-  servicePartners: {
-    list: (orgId: string) => get<any[]>(`/organizations/${orgId}/service-partners`),
-    assignments: (orgId: string) => get<any[]>(`/organizations/${orgId}/service-partners/assignments`),
-    assign: (orgId: string, partnerId: string, mode?: string) =>
-      post<any>(`/organizations/${orgId}/service-partners/assignments/${partnerId}`, { mode: mode ?? 'MANUAL_ONLY' }),
-    updateAssignment: (orgId: string, partnerId: string, data: Record<string, unknown>) =>
-      patch<any>(`/organizations/${orgId}/service-partners/assignments/${partnerId}`, data),
-    removeAssignment: (orgId: string, partnerId: string) =>
-      del<any>(`/organizations/${orgId}/service-partners/assignments/${partnerId}`),
-    getDataAuth: (orgId: string, partnerId: string) =>
-      get<any>(`/organizations/${orgId}/service-partners/data-auth/${partnerId}`),
-    grantDataAuth: (orgId: string, partnerId: string, scopes: string[], grantedBy: string, notes?: string) =>
-      post<any>(`/organizations/${orgId}/service-partners/data-auth/${partnerId}/grant`, { scopes, grantedBy, notes }),
-    revokeDataAuth: (orgId: string, partnerId: string) =>
-      post<any>(`/organizations/${orgId}/service-partners/data-auth/${partnerId}/revoke`, {}),
-    cases: (orgId: string, filters?: { partnerId?: string; vehicleId?: string; status?: string }) => {
-      const params = new URLSearchParams();
-      if (filters?.partnerId) params.set('partnerId', filters.partnerId);
-      if (filters?.vehicleId) params.set('vehicleId', filters.vehicleId);
-      if (filters?.status) params.set('status', filters.status);
-      const qs = params.toString();
-      return get<any[]>(`/organizations/${orgId}/service-partners/cases${qs ? `?${qs}` : ''}`);
-    },
-    caseById: (orgId: string, caseId: string) =>
-      get<any>(`/organizations/${orgId}/service-partners/cases/${caseId}`),
-    createCase: (orgId: string, data: Record<string, unknown>) =>
-      post<any>(`/organizations/${orgId}/service-partners/cases`, data),
-    updateCaseStatus: (orgId: string, caseId: string, status: string, note?: string) =>
-      patch<any>(`/organizations/${orgId}/service-partners/cases/${caseId}/status`, { status, note }),
-    euromasterAppointment: (orgId: string, data: Record<string, unknown>) =>
-      post<any>(`/organizations/${orgId}/service-partners/euromaster/appointment`, data),
-    euromasterAccess: (orgId: string) =>
-      get<EuromasterAccessInfo>(`/organizations/${orgId}/service-partners/euromaster/access`),
-    euromasterTireService: (orgId: string, data: Record<string, unknown>) =>
-      post<any>(`/organizations/${orgId}/service-partners/euromaster/tire-service`, data),
-    euromasterBranches: (orgId: string, params?: { lat?: number; lng?: number; postalCode?: string; radius?: number }) => {
-      const q = new URLSearchParams();
-      if (params?.lat != null) q.set('lat', String(params.lat));
-      if (params?.lng != null) q.set('lng', String(params.lng));
-      if (params?.postalCode) q.set('postalCode', params.postalCode);
-      if (params?.radius != null) q.set('radius', String(params.radius));
-      const qs = q.toString();
-      return get<any[]>(`/organizations/${orgId}/service-partners/euromaster/branches${qs ? `?${qs}` : ''}`);
-    },
-    euromasterSyncCase: (orgId: string, caseId: string) =>
-      post<any>(`/organizations/${orgId}/service-partners/euromaster/cases/${caseId}/sync`, {}),
-  },
-  servicePartnersAdmin: {
-    list: () => get<any[]>('/admin/service-partners'),
-    stats: () => get<any>('/admin/service-partners/stats'),
-    detail: (provider: string) => get<any>(`/admin/service-partners/detail/${provider}`),
-    updatePartner: (provider: string, data: Record<string, unknown>) =>
-      patch<any>(`/admin/service-partners/${provider}`, data),
-    assignments: () => get<any[]>('/admin/service-partners/assignments'),
-    adminAssign: (orgId: string, partnerId: string, mode?: string) =>
-      post<any>(`/admin/service-partners/assignments/${orgId}/${partnerId}`, { mode }),
-    updateAssignment: (orgId: string, partnerId: string, data: { status?: string; mode?: string; enabledFeatures?: string[] }) =>
-      patch<any>(`/admin/service-partners/assignments/${orgId}/${partnerId}`, data),
-    dataAuthorizations: () => get<any[]>('/admin/service-partners/data-authorizations'),
-    grantAuth: (orgId: string, partnerId: string, scopes: string[], grantedBy: string, notes?: string) =>
-      post<any>(`/admin/service-partners/data-authorizations/${orgId}/${partnerId}/grant`, { scopes, grantedBy, notes }),
-    revokeAuth: (orgId: string, partnerId: string) =>
-      del<any>(`/admin/service-partners/data-authorizations/${orgId}/${partnerId}`),
-    authSummary: (partnerId: string) => get<any[]>(`/admin/service-partners/auth-summary/${partnerId}`),
-    cases: (limit?: number) => get<any[]>(`/admin/service-partners/cases${limit ? `?limit=${limit}` : ''}`),
-    seed: () => post<any>('/admin/service-partners/seed', {}),
   },
   rentalDrivingAnalyses: {
     // V4.6.95 — `bookingId` filter added so the booking detail card in
@@ -1035,16 +1383,38 @@ export const api = {
   vendors: {
     list: (orgId: string) => get<Vendor[]>(`/organizations/${orgId}/vendors`),
     get: (orgId: string, id: string) => get<Vendor>(`/organizations/${orgId}/vendors/${id}`),
-    create: (orgId: string, data: any) => post<Vendor>(`/organizations/${orgId}/vendors`, data),
-    update: (orgId: string, id: string, data: any) => patch<Vendor>(`/organizations/${orgId}/vendors/${id}`, data),
+    create: (orgId: string, data: VendorInput) => post<Vendor>(`/organizations/${orgId}/vendors`, data),
+    update: (orgId: string, id: string, data: Partial<VendorInput>) =>
+      patch<Vendor>(`/organizations/${orgId}/vendors/${id}`, data),
     delete: (orgId: string, id: string) => del<void>(`/organizations/${orgId}/vendors/${id}`),
     stats: (orgId: string) => get<any>(`/organizations/${orgId}/vendors/stats`),
-    searchPlaces: (orgId: string, q: string) => get<PlaceSuggestion[]>(`/organizations/${orgId}/vendors/search-places?q=${encodeURIComponent(q)}`),
-    placeDetails: (orgId: string, placeId: string) => get<PlaceDetails>(`/organizations/${orgId}/vendors/place-details/${placeId}`),
-    linkVehicle: (orgId: string, vendorId: string, vehicleId: string, notes?: string) =>
-      post<any>(`/organizations/${orgId}/vendors/${vendorId}/vehicles`, { vehicleId, notes }),
-    unlinkVehicle: (orgId: string, vendorId: string, vehicleId: string) =>
-      del<void>(`/organizations/${orgId}/vendors/${vendorId}/vehicles/${vehicleId}`),
+    // Mapbox POI search (server-side token proxy): suggest + retrieve.
+    searchMapbox: (orgId: string, query: string, opts?: { country?: string; limit?: number }) => {
+      const q = new URLSearchParams({ query });
+      if (opts?.country) q.set('country', opts.country);
+      if (opts?.limit != null) q.set('limit', String(opts.limit));
+      return get<VendorMapboxSearchResult>(`/organizations/${orgId}/vendors/search/mapbox?${q.toString()}`);
+    },
+    mapboxRetrieve: (orgId: string, mapboxId: string, sessionToken: string) =>
+      get<VendorMapboxPrefill | null>(
+        `/organizations/${orgId}/vendors/search/mapbox/${encodeURIComponent(mapboxId)}?sessionToken=${encodeURIComponent(sessionToken)}`,
+      ),
+    // Vehicle links — managed independently of vendor master data.
+    linkVehicle: (orgId: string, vendorId: string, data: VendorVehicleLinkInput) =>
+      post<VendorLinkedVehicle>(`/organizations/${orgId}/vendors/${vendorId}/vehicles`, data),
+    updateLink: (orgId: string, vendorId: string, linkId: string, data: VendorVehicleLinkUpdate) =>
+      patch<VendorLinkedVehicle>(`/organizations/${orgId}/vendors/${vendorId}/vehicles/${linkId}`, data),
+    unlinkVehicle: (orgId: string, vendorId: string, linkId: string) =>
+      del<void>(`/organizations/${orgId}/vendors/${vendorId}/vehicles/${linkId}`),
+    // Detail-page data.
+    invoices: (orgId: string, vendorId: string) =>
+      get<VendorInvoiceRow[]>(`/organizations/${orgId}/vendors/${vendorId}/invoices`),
+    audit: (orgId: string, vendorId: string) =>
+      get<VendorAuditEntry[]>(`/organizations/${orgId}/vendors/${vendorId}/audit`),
+    documents: (orgId: string, vendorId: string) =>
+      get<any[]>(`/organizations/${orgId}/vendors/${vendorId}/documents`),
+    serviceHistory: (orgId: string, vendorId: string) =>
+      get<any[]>(`/organizations/${orgId}/vendors/${vendorId}/service-history`),
   },
   dataAuthorizations: {
     list: (orgId: string, params?: { status?: string; moduleOrigin?: string; scope?: string }) => {
@@ -1136,10 +1506,47 @@ export const api = {
     },
   },
   tasks: {
-    list: (orgId: string) => get<any[]>(`/organizations/${orgId}/tasks`),
-    get: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/tasks/${id}`),
-    create: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/tasks`, data),
-    update: (orgId: string, id: string, data: any) => patch<any>(`/organizations/${orgId}/tasks/${id}`, data),
+    list: (orgId: string, filters?: TaskListFilters) => {
+      const q = new URLSearchParams();
+      if (filters) {
+        for (const [k, v] of Object.entries(filters)) {
+          if (v !== undefined && v !== null && v !== '') q.set(k, String(v));
+        }
+      }
+      const qs = q.toString();
+      return get<ApiTask[]>(`/organizations/${orgId}/tasks${qs ? `?${qs}` : ''}`);
+    },
+    summary: (orgId: string) => get<ApiTaskSummary>(`/organizations/${orgId}/tasks/summary`),
+    get: (orgId: string, id: string) => get<ApiTask>(`/organizations/${orgId}/tasks/${id}`),
+    create: (orgId: string, data: CreateTaskPayload) => post<ApiTask>(`/organizations/${orgId}/tasks`, data),
+    update: (
+      orgId: string,
+      id: string,
+      data: Partial<Pick<CreateTaskPayload, 'title' | 'description' | 'category' | 'priority' | 'dueDate' | 'assignedUserId' | 'estimatedCostCents'>> & { actualCostCents?: number },
+    ) => patch<ApiTask>(`/organizations/${orgId}/tasks/${id}`, data),
+    assign: (orgId: string, id: string, assignedUserId: string | null) =>
+      patch<ApiTask>(`/organizations/${orgId}/tasks/${id}/assign`, { assignedUserId }),
+    start: (orgId: string, id: string) => patch<ApiTask>(`/organizations/${orgId}/tasks/${id}/start`, {}),
+    waiting: (orgId: string, id: string) => patch<ApiTask>(`/organizations/${orgId}/tasks/${id}/waiting`, {}),
+    complete: (orgId: string, id: string, data?: { resolutionNote?: string; actualCostCents?: number }) =>
+      patch<ApiTask>(`/organizations/${orgId}/tasks/${id}/complete`, data ?? {}),
+    cancel: (orgId: string, id: string) => patch<ApiTask>(`/organizations/${orgId}/tasks/${id}/cancel`, {}),
+    addComment: (orgId: string, id: string, body: string) =>
+      post<ApiTask>(`/organizations/${orgId}/tasks/${id}/comments`, { body }),
+    addChecklistItem: (orgId: string, id: string, item: { title: string; description?: string; sortOrder?: number }) =>
+      post<ApiTask>(`/organizations/${orgId}/tasks/${id}/checklist`, item),
+    updateChecklistItem: (
+      orgId: string,
+      id: string,
+      itemId: string,
+      patchData: { title?: string; description?: string; sortOrder?: number; isDone?: boolean },
+    ) => patch<ApiTask>(`/organizations/${orgId}/tasks/${id}/checklist/${itemId}`, patchData),
+    addAttachment: (orgId: string, id: string, data: { fileUrl: string; fileName?: string; mimeType?: string; size?: number }) =>
+      post<ApiTask>(`/organizations/${orgId}/tasks/${id}/attachments`, data),
+    forVehicle: (orgId: string, vehicleId: string) => get<ApiTask[]>(`/organizations/${orgId}/vehicles/${vehicleId}/tasks`),
+    forBooking: (orgId: string, bookingId: string) => get<ApiTask[]>(`/organizations/${orgId}/bookings/${bookingId}/tasks`),
+    forVendor: (orgId: string, vendorId: string) => get<ApiTask[]>(`/organizations/${orgId}/vendors/${vendorId}/tasks`),
+    forCustomer: (orgId: string, customerId: string) => get<ApiTask[]>(`/organizations/${orgId}/customers/${customerId}/tasks`),
   },
   invoices: {
     list: (orgId: string, params?: { type?: string; status?: string }) => {
@@ -1263,6 +1670,12 @@ export const api = {
     dtcStats: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/dtc/stats`),
     dtcSummary: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/dtc/summary`),
     dtcDetail: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/dtc/detail`),
+    // Internal/admin retry of AI knowledge enrichment for a single DTC code.
+    dtcKnowledgeRetry: (vehicleId: string, code: string) =>
+      post<{ code: string; knowledge: DtcKnowledgeDto }>(
+        `/vehicles/${vehicleId}/dtc/${encodeURIComponent(code)}/knowledge/retry`,
+        {},
+      ),
     trips: (vehicleId: string, params?: { from?: string; to?: string; driver?: string }) =>
       get<VehicleTripAnalytics[]>(`/vehicles/${vehicleId}/trips` + buildQuery(params)),
     tripStats: (vehicleId: string) => get<VehicleTripStats>(`/vehicles/${vehicleId}/trips/stats`),
@@ -1356,8 +1769,42 @@ export const api = {
     hmRefreshTirePressure: (vehicleId: string) => post<{ ok: boolean }>(`/vehicles/${vehicleId}/hm-vehicle-health/refresh-tire-pressure`, {}),
     hmRefreshAiHealthCare: (vehicleId: string) => post<{ ok: boolean }>(`/vehicles/${vehicleId}/hm-vehicle-health/refresh-ai-health-care`, {}),
     documentExtractions: (vehicleId: string) => get<any[]>(`/vehicles/${vehicleId}/document-extractions`),
+    getDocumentExtraction: (vehicleId: string, extractionId: string) =>
+      get<any>(`/vehicles/${vehicleId}/document-extractions/${extractionId}`),
     createDocumentExtraction: (vehicleId: string, data: any) => post<any>(`/vehicles/${vehicleId}/document-extractions`, data),
     confirmDocumentExtraction: (vehicleId: string, extractionId: string, data: any) => post<any>(`/vehicles/${vehicleId}/document-extractions/${extractionId}/confirm`, data),
+    retryDocumentExtraction: (vehicleId: string, extractionId: string) =>
+      post<any>(`/vehicles/${vehicleId}/document-extractions/${extractionId}/retry`, {}),
+    // Real multipart upload → stores file, creates QUEUED record, enqueues the
+    // AI extraction job. Returns { id, status, documentType }.
+    uploadDocumentExtraction: async (
+      vehicleId: string,
+      file: File,
+      documentType: string,
+      source?: string,
+    ) => {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('documentType', documentType);
+      if (source) form.append('source', source);
+      const token = localStorage.getItem('synqdrive_token');
+      const res = await fetch(`${BASE_URL}/vehicles/${vehicleId}/document-extractions/upload`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      });
+      if (!res.ok) {
+        let message = `Upload failed (${res.status})`;
+        try {
+          const body = (await res.json()) as { message?: string };
+          if (body?.message) message = body.message;
+        } catch {
+          /* keep default message */
+        }
+        throw new Error(message);
+      }
+      return (await res.json()) as { id: string; status: string; documentType: string };
+    },
   },
   partsAccessories: {
     providers: () => get<PartsProviderSummary[]>('/parts-accessories/providers'),
@@ -1732,6 +2179,8 @@ export interface TireWearAnalysis {
 
 export interface TireAlert {
   type: string;
+  /** Canonical, stable alert code consumers can switch on (see backend tire-status.ts). */
+  code?: string;
   severity: 'info' | 'warning' | 'critical';
   message: string;
   position?: string;
@@ -1757,6 +2206,11 @@ export interface TirePressureContext {
   overallStatus: 'OK' | 'ISSUE' | 'STALE' | 'UNKNOWN';
   warningHints: string[];
 }
+
+/** Canonical tire status taxonomy (see backend tire-status.ts). */
+export type TireCanonicalStatus = 'GOOD' | 'WATCH' | 'WARNING' | 'CRITICAL' | 'UNKNOWN';
+export type TireDisplayMode = 'MEASURED' | 'ESTIMATED' | 'UNKNOWN';
+export type TireConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
 
 export interface TireHealthSummaryResponse {
   overallPercent: number;
@@ -1790,6 +2244,22 @@ export interface TireHealthSummaryResponse {
   dataQualityWarnings?: string[];
   pressureContext?: TirePressureContext;
   latestMeasurementAt?: string | null;
+  // ── Canonical read model (single source of truth, mm-based) ────────────────
+  overallStatus?: TireCanonicalStatus;
+  displayMode?: TireDisplayMode;
+  confidence?: TireConfidenceLevel;
+  lowestTreadMm?: number | null;
+  lowestTreadPosition?: string | null;
+  measuredTreadMm?: number | null;
+  estimatedTreadMm?: number | null;
+  displayTreadMm?: number | null;
+  lastMeasurementAt?: string | null;
+  measurementAgeDays?: number | null;
+  estimatedRemainingKm?: number | null;
+  pressureStatus?: TireCanonicalStatus;
+  seasonStatus?: TireCanonicalStatus;
+  unevenWearStatus?: TireCanonicalStatus;
+  recommendations?: string[];
 }
 
 export interface TireWheelEstimate {
@@ -1895,17 +2365,51 @@ export type BatteryRuntimeCondition =
   | 'calibrating'
   | 'unknown';
 
+// GOOD/WATCH/WARNING/CRITICAL classification scale used by the canonical
+// battery service (see backend battery-status.ts). LV uses it for the
+// "Estimated Battery Health" 3-bar indicator and the resting-voltage status;
+// HV uses it for the real SOH bands.
+export type BatteryHealthStatus = 'GOOD' | 'WATCH' | 'WARNING' | 'CRITICAL' | 'UNKNOWN';
+export type BatteryRestingVoltageStatus = BatteryHealthStatus | 'UNSUPPORTED';
+export type BatteryAggregateStatus = BatteryHealthStatus | 'UNSUPPORTED';
+export type HvSohSource = 'PROVIDER' | 'CAPACITY_ESTIMATE' | 'DOCUMENT' | 'MANUAL';
+
 export interface BatteryFreshness {
   observedAt: string | null;
   ageMs: number | null;
   isFresh: boolean;
 }
 
+// LV "Estimated Battery Health" — behaviour-derived, rendered as 3 bars, never
+// presented as a workshop-verified SOH percentage.
+export interface LvEstimatedHealth {
+  status: BatteryHealthStatus;
+  scorePct: number | null;
+  displayMode: 'BARS';
+  bars: 0 | 1 | 2 | 3;
+  label: string;
+  confidence: string | null;
+  calibrationStatus: SohPublicationState | string | null;
+}
+
+// LV resting-voltage state from battery-spec-aware thresholds.
+export interface LvRestingVoltage {
+  valueV: number | null;
+  status: BatteryRestingVoltageStatus;
+  thresholdSource: 'BATTERY_SPEC' | 'DEFAULT' | 'UNSUPPORTED';
+  batteryType: string | null;
+  measurementContext: string | null;
+}
+
 export interface CanonicalLvBatterySection {
   status: BatteryRuntimeStatus;
+  // Aggregated LV health on the GOOD/WATCH/WARNING/CRITICAL scale.
+  healthStatus?: BatteryAggregateStatus;
   condition: BatteryRuntimeCondition;
   healthPercent: number | null;
   estimatedHealthPercent: number | null;
+  estimatedHealth?: LvEstimatedHealth;
+  restingVoltage?: LvRestingVoltage;
   method: string | null;
   confidence: string | null;
   freshness: BatteryFreshness;
@@ -1923,8 +2427,14 @@ export interface CanonicalLvBatterySection {
 
 export interface CanonicalHvBatterySection {
   status: BatteryRuntimeStatus;
+  // Real SOH band on the GOOD/WATCH/WARNING/CRITICAL scale.
+  healthStatus?: BatteryHealthStatus;
   condition: BatteryRuntimeCondition;
   healthPercent: number | null;
+  // Real SOH only — provider/capacity/document/manual. No age/km fallback.
+  sohPct?: number | null;
+  sohSource?: HvSohSource | null;
+  noFallbackSoh?: boolean;
   method: string | null;
   confidence: string | null;
   freshness: BatteryFreshness;
@@ -2228,6 +2738,28 @@ export interface BrakeServiceLifecycleResult {
   message: string;
 }
 
+// ── Canonical evidence-based brake read model (single source of truth) ───────
+export type BrakeCondition = 'GOOD' | 'WATCH' | 'WARNING' | 'CRITICAL' | 'UNKNOWN';
+export type BrakeDataBasis = 'MEASURED' | 'DOCUMENTED' | 'SENSOR' | 'ESTIMATED' | 'UNKNOWN';
+export type BrakeConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
+export type BrakeAlertCode =
+  | 'BRAKE_PAD_WARNING'
+  | 'BRAKE_PAD_CRITICAL'
+  | 'BRAKE_DISC_WARNING'
+  | 'BRAKE_DISC_CRITICAL'
+  | 'BRAKE_SYSTEM_DTC'
+  | 'BRAKE_FLUID_WARNING'
+  | 'BRAKE_INSPECTION_OVERDUE'
+  | 'BRAKE_HEALTH_LOW_CONFIDENCE'
+  | 'BRAKE_GENERIC';
+
+export interface BrakeCanonicalAlert {
+  code: BrakeAlertCode;
+  severity: 'info' | 'warning' | 'critical';
+  message: string;
+  axle?: 'FRONT' | 'REAR' | 'UNKNOWN';
+}
+
 export interface BrakeHealthSummary {
   isInitialized: boolean;
   stateClass: BrakeStateClass;
@@ -2254,6 +2786,31 @@ export interface BrakeHealthSummary {
   provenanceWarnings: string[];
   hasAlert?: boolean;
   legacyHeuristic?: { available: boolean; note: string };
+
+  // ── Canonical read model (honest condition / data basis / confidence) ──────
+  overallCondition: BrakeCondition;
+  dataBasis: BrakeDataBasis;
+  confidenceLevel: BrakeConfidenceLevel;
+  frontAxleCondition: BrakeCondition;
+  rearAxleCondition: BrakeCondition;
+  frontDataBasis: BrakeDataBasis;
+  rearDataBasis: BrakeDataBasis;
+  frontConfidence: BrakeConfidenceLevel;
+  rearConfidence: BrakeConfidenceLevel;
+  estimatedFrontRemainingKmMin: number | null;
+  estimatedFrontRemainingKmMax: number | null;
+  estimatedRearRemainingKmMin: number | null;
+  estimatedRearRemainingKmMax: number | null;
+  nextInspectionRecommendedInKm: number | null;
+  estimatedReplacementDueInKm: number | null;
+  reasons: string[];
+  recommendations: string[];
+  openAlerts: BrakeCanonicalAlert[];
+  lastMeasurementAt: string | null;
+  lastMeasurementMileageKm: number | null;
+  lastServiceAt: string | null;
+  lastServiceMileageKm: number | null;
+  updatedAt: string | null;
 }
 
 export interface BrakeHealthDetail {
@@ -2375,6 +2932,39 @@ export interface TripProfile {
   avgHighway: number | null;
   avgCountry: number | null;
   avgTemp: number | null;
+}
+
+// ── DTC Knowledge Base ────────────────────────────────────────────────────────
+export type DtcKnowledgeStatus = 'MISSING' | 'QUEUED' | 'PROCESSING' | 'READY' | 'FAILED';
+export type DtcKnowledgeSource =
+  | 'VEHICLE_SPECIFIC'
+  | 'GENERIC'
+  | 'PENDING'
+  | 'FAILED'
+  | 'MISSING';
+export type DtcUrgency = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'UNKNOWN';
+export type DtcRentalRecommendation =
+  | 'RENTABLE'
+  | 'CHECK_BEFORE_NEXT_RENTAL'
+  | 'BLOCK_UNTIL_INSPECTED'
+  | 'DO_NOT_RENT'
+  | 'UNKNOWN';
+
+export interface DtcKnowledgeDto {
+  status: DtcKnowledgeStatus;
+  source: DtcKnowledgeSource;
+  title?: string | null;
+  shortDescription?: string | null;
+  possibleCauses?: string[];
+  possibleEffects?: string[];
+  technicalUrgency?: DtcUrgency;
+  rentalUrgency?: DtcUrgency;
+  rentalRecommendation?: DtcRentalRecommendation;
+  recommendedAction?: string | null;
+  sources?: Array<{ type?: string; title?: string; url?: string }>;
+  lastVerifiedAt?: string | null;
+  needsReview?: boolean;
+  message?: string | null;
 }
 
 export interface JammingIncidentDto {
@@ -2534,6 +3124,67 @@ export interface VehicleComplaint {
   resolvedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+// V4.7.50 — Exterior images (Damage Map): five canonical views per vehicle.
+// Backed by `vehicle_exterior_images` (one row per (vehicleId, view) tuple).
+export type VehicleExteriorViewKey = 'FRONT' | 'LEFT' | 'RIGHT' | 'REAR' | 'ROOF';
+
+export interface VehicleExteriorImageDto {
+  id: string;
+  vehicleId: string;
+  view: VehicleExteriorViewKey;
+  imageData: string;
+  caption: string | null;
+  uploadedByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VehicleExteriorModelImageDto {
+  id: string;
+  modelKey: string;
+  make: string;
+  model: string;
+  view: VehicleExteriorViewKey;
+  imageData: string;
+  caption: string | null;
+  sourceVehicleId: string | null;
+  uploadedByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VehicleExteriorEffectiveImageDto {
+  id: string;
+  view: VehicleExteriorViewKey;
+  imageData: string;
+  caption: string | null;
+  uploadedByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  source: 'vehicle' | 'model';
+  vehicleId?: string;
+  modelKey?: string;
+  make?: string;
+  model?: string;
+  sourceVehicleId?: string | null;
+}
+
+export interface VehicleExteriorModelTemplateSummary {
+  modelKey: string;
+  make: string;
+  model: string;
+  views: VehicleExteriorViewKey[];
+  count: number;
+  updatedAt: string;
+}
+
+export interface VehicleExteriorImageEffectiveResponse {
+  vehicle: VehicleExteriorImageDto[];
+  model: VehicleExteriorModelImageDto[];
+  effective: VehicleExteriorEffectiveImageDto[];
+  modelKey: string | null;
 }
 
 export interface AdminFleetConnectivityResponse {
@@ -2699,14 +3350,22 @@ export interface AiHealthCareResponse extends HealthSummaryResponse {
   hmLastErrorMessage?: string | null;
 }
 
-// ── Vendor / Service Partner types ──────────────────────
+// ── Vendor types ────────────────────────────────────────
 
 export type VendorCategory =
   | 'WORKSHOP' | 'SERVICE_PARTNER' | 'PAINT_SHOP' | 'BODY_REPAIR'
   | 'AUTO_GLASS' | 'TIRE_DEALER' | 'PARTS_DEALER' | 'DETAILING'
-  | 'TUV_STATION' | 'ONLINE_SUPPLIER' | 'OTHER';
+  | 'TUV_STATION' | 'ONLINE_SUPPLIER' | 'OTHER'
+  | 'INSURANCE' | 'APPRAISER' | 'TOWING' | 'DEALERSHIP' | 'OEM_SERVICE';
 
 export type VendorSourceType = 'LOCAL_BUSINESS' | 'ONLINE_VENDOR';
+
+/** Origin of the vendor record (manual vs prefilled from a Mapbox POI). */
+export type VendorSource = 'MANUAL' | 'MAPBOX';
+
+export type VendorVehicleRelationType =
+  | 'PRIMARY_WORKSHOP' | 'TIRE_PARTNER' | 'BODY_SHOP' | 'GLASS_REPAIR'
+  | 'CLEANING_PARTNER' | 'INSPECTION_PARTNER' | 'OTHER';
 
 export interface VendorLinkedVehicle {
   id: string;
@@ -2714,9 +3373,15 @@ export interface VendorLinkedVehicle {
   model: string;
   licensePlate: string | null;
   year: number | null;
-  vin?: string;
-  vendorVehicleId?: string;
-  notes?: string | null;
+  vin?: string | null;
+  /** Id of the VendorVehicle link row (used for update/unlink). */
+  vendorVehicleId: string;
+  relationType: VendorVehicleRelationType;
+  isPreferred: boolean;
+  priority: number | null;
+  validFrom: string | null;
+  validUntil: string | null;
+  notes: string | null;
 }
 
 export interface Vendor {
@@ -2725,7 +3390,10 @@ export interface Vendor {
   name: string;
   category: VendorCategory;
   sourceType: VendorSourceType;
+  source: VendorSource;
+  externalPlaceId: string | null;
   street: string | null;
+  addressLine2: string | null;
   city: string | null;
   postalCode: string | null;
   country: string | null;
@@ -2744,29 +3412,102 @@ export interface Vendor {
   isActive: boolean;
   linkedVehicles: VendorLinkedVehicle[];
   linkedVehicleCount: number;
+  invoiceCount: number;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface PlaceSuggestion {
-  placeId: string;
+/** Payload for create/update vendor master data (no vehicle links). */
+export interface VendorInput {
   name: string;
-  address: string;
-  description: string;
+  category?: VendorCategory;
+  sourceType?: VendorSourceType;
+  source?: VendorSource;
+  externalPlaceId?: string | null;
+  street?: string | null;
+  addressLine2?: string | null;
+  city?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  website?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  notes?: string | null;
+  serviceAreas?: string[];
+  contactName?: string | null;
+  contactRole?: string | null;
+  contactPhone?: string | null;
+  contactEmail?: string | null;
+  contactNotes?: string | null;
+  isActive?: boolean;
 }
 
-export interface PlaceDetails {
+export interface VendorVehicleLinkInput {
+  vehicleId: string;
+  relationType?: VendorVehicleRelationType;
+  isPreferred?: boolean;
+  priority?: number | null;
+  validFrom?: string | null;
+  validUntil?: string | null;
+  notes?: string | null;
+}
+
+export type VendorVehicleLinkUpdate = Omit<VendorVehicleLinkInput, 'vehicleId'>;
+
+// ── Mapbox POI vendor search ────────────────────────────
+export interface VendorMapboxSuggestion {
+  mapboxId: string;
+  name: string;
+  category: VendorCategory;
+  fullAddress: string | null;
+  placeFormatted: string | null;
+}
+
+export interface VendorMapboxSearchResult {
+  sessionToken: string;
+  suggestions: VendorMapboxSuggestion[];
+}
+
+export interface VendorMapboxPrefill {
   name: string | null;
   street: string | null;
-  city: string | null;
   postalCode: string | null;
+  city: string | null;
   country: string | null;
-  phone: string | null;
-  website: string | null;
   latitude: number | null;
   longitude: number | null;
-  googleMapsUrl: string | null;
-  types: string[];
+  phone: string | null;
+  website: string | null;
+  category: VendorCategory;
+  externalPlaceId: string | null;
+  source: 'MAPBOX';
+}
+
+export interface VendorInvoiceRow {
+  id: string;
+  invoiceNumber: number;
+  type: string;
+  title: string;
+  vehicleId: string | null;
+  totalCents: number;
+  currency: string;
+  status: string;
+  invoiceDate: string;
+  dueDate: string | null;
+}
+
+export interface VendorAuditEntry {
+  id: string;
+  action: string;
+  entity: string;
+  entityId: string | null;
+  description: string;
+  changeSummary: string | null;
+  level: string | null;
+  userId: string | null;
+  createdAt: string;
 }
 
 // ── Stations & Branches ─────────────────────────────────────────────────────

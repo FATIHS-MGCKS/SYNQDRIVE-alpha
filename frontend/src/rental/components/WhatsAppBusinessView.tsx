@@ -1,11 +1,7 @@
+import { AlertCircle, Bot, Eye, FileText, Hash, Headphones, MessageCircle, PenLine, Settings, Shield, ShoppingCart, Sparkles, TrendingUp, Truck, type LucideIcon } from 'lucide-react';
+import { Icon } from './ui/Icon';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  Phone, Wifi, WifiOff, Bot, Shield, MessageSquare, Send, Sparkles,
-  Settings, CheckCircle2, AlertCircle, Clock, User, Users, ChevronRight,
-  ToggleLeft, ToggleRight, RefreshCw, ArrowLeft, Loader2, Search,
-  Zap, FileText, Headphones, ShoppingCart, Truck, Eye, PenLine,
-  MessageCircle, Hash, TrendingUp, X, Plus, ChevronDown,
-} from 'lucide-react';
+
 import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
 import type { WhatsAppConfig, WhatsAppConversation, WhatsAppMsg, WhatsAppStats } from '../../lib/api';
@@ -16,11 +12,17 @@ interface WhatsAppBusinessViewProps {
 
 type Tab = 'overview' | 'conversations' | 'settings';
 
-const AI_MODE_LABELS: Record<string, { label: string; description: string; icon: any; color: string }> = {
-  OFF: { label: 'AI Off', description: 'No AI involvement in messaging', icon: Eye, color: 'gray' },
-  SUGGEST_ONLY: { label: 'Suggest Only', description: 'AI suggests replies for human review', icon: PenLine, color: 'blue' },
-  AUTO_SIMPLE: { label: 'Auto Simple', description: 'AI sends simple replies automatically', icon: Bot, color: 'amber' },
-  FULL: { label: 'Full Autonomy', description: 'AI handles conversations with full capability', icon: Sparkles, color: 'emerald' },
+const SECTION_OPTIONS: { key: Tab; label: string; desc: string; icon: LucideIcon; tone: string }[] = [
+  { key: 'overview', label: 'Overview', desc: 'Connection, readiness and channel status', icon: TrendingUp, tone: 'sq-tone-brand' },
+  { key: 'conversations', label: 'Conversations', desc: 'Customer messages, AI suggestions and replies', icon: MessageCircle, tone: 'sq-tone-success' },
+  { key: 'settings', label: 'Configuration', desc: 'AI mode, permissions and escalation rules', icon: Settings, tone: 'sq-tone-neutral' },
+];
+
+const AI_MODE_LABELS: Record<string, { label: string; description: string; icon: LucideIcon; tone: string }> = {
+  OFF: { label: 'AI Off', description: 'No AI involvement in messaging', icon: Eye, tone: 'sq-tone-neutral' },
+  SUGGEST_ONLY: { label: 'Suggest Only', description: 'AI suggests replies for human review', icon: PenLine, tone: 'sq-tone-brand' },
+  AUTO_SIMPLE: { label: 'Auto Simple', description: 'AI sends simple replies automatically', icon: Bot, tone: 'sq-tone-warning' },
+  FULL: { label: 'Full Autonomy', description: 'AI handles conversations with full capability', icon: Sparkles, tone: 'sq-tone-success' },
 };
 
 export function WhatsAppBusinessView({ isDarkMode }: WhatsAppBusinessViewProps) {
@@ -48,10 +50,10 @@ export function WhatsAppBusinessView({ isDarkMode }: WhatsAppBusinessViewProps) 
   const [savingConfig, setSavingConfig] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const cardClass = `rounded-xl border shadow-sm ${isDarkMode ? 'bg-[#1a1a2e]/80 border-white/[0.06]' : 'bg-white border-gray-200/60'}`;
-  const labelClass = `text-[10px] font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`;
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-500';
+  const cardClass = 'sq-card rounded-2xl shadow-[var(--shadow-1)]';
+  const labelClass = 'text-[10px] font-semibold text-muted-foreground';
+  const textPrimary = 'text-foreground';
+  const textSecondary = 'text-muted-foreground';
   const inputClass = `w-full px-3 py-2 text-[11px] rounded-lg border ${isDarkMode ? 'bg-white/5 border-white/10 text-white placeholder-gray-600' : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400'} focus:outline-none focus:ring-1 focus:ring-green-500/40`;
 
   const load = useCallback(async () => {
@@ -172,10 +174,10 @@ export function WhatsAppBusinessView({ isDarkMode }: WhatsAppBusinessViewProps) 
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className={`w-6 h-6 animate-spin ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
-          <span className={`text-[11px] ${textSecondary}`}>Loading WhatsApp Business…</span>
+      <div className="mx-auto flex h-[60vh] max-w-[1600px] items-center justify-center">
+        <div className="sq-card flex items-center gap-3 rounded-2xl px-5 py-4 shadow-[var(--shadow-1)]">
+          <Icon name="loader-2" className="h-5 w-5 animate-spin text-muted-foreground" />
+          <span className="text-xs font-semibold text-muted-foreground">Loading WhatsApp Business...</span>
         </div>
       </div>
     );
@@ -184,48 +186,180 @@ export function WhatsAppBusinessView({ isDarkMode }: WhatsAppBusinessViewProps) 
   const isConnected = config?.isConnected ?? false;
   const isActive = config?.isActive ?? false;
   const aiMode = config?.aiMode ?? 'OFF';
+  const modeInfo = AI_MODE_LABELS[aiMode] || AI_MODE_LABELS.OFF;
+  const statusLabel = isConnected ? (isActive ? 'Active' : 'Paused') : 'Disconnected';
+  const activeSection = SECTION_OPTIONS.find(section => section.key === tab) ?? SECTION_OPTIONS[0];
+  const ActiveSectionIcon = activeSection.icon;
+  const readinessItems = [isConnected, isActive, aiMode !== 'OFF'];
+  const readyCount = readinessItems.filter(Boolean).length;
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-[1600px] mx-auto space-y-5">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isDarkMode ? 'bg-green-500/10' : 'bg-green-50'}`}>
-            <Phone className={`w-4.5 h-4.5 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
-          </div>
-          <div>
-            <h1 className={`text-[15px] font-bold ${textPrimary}`}>WhatsApp Business</h1>
-            <p className={`text-[10px] ${textSecondary}`}>AI-powered messaging for your organization</p>
-          </div>
+      <div className="flex min-h-8 flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground">
+            WhatsApp Business
+          </h1>
+          <p className="mt-1 text-[10px] font-medium text-muted-foreground">
+            AI-powered messaging for your organization
+          </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`flex items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-semibold ${
+            isConnected ? (isActive ? 'sq-tone-success' : 'sq-tone-warning') : 'sq-tone-critical'
+          }`}>
+            <span className={`h-2 w-2 rounded-full ${isConnected ? (isActive ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500') : 'bg-red-500'}`} />
+            {statusLabel}
+          </span>
           {isConnected && (
-            <button onClick={() => { setSimModal(true); }} className={`px-3 py-1.5 rounded-lg text-[10px] font-medium flex items-center gap-1.5 ${isDarkMode ? 'bg-white/5 hover:bg-white/10 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'} transition-colors`}>
-              <Plus className="w-3 h-3" /> Simulate Message
+            <button
+              type="button"
+              onClick={() => { setSimModal(true); }}
+              className="sq-press flex items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-2 text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
+            >
+              <Icon name="plus" className="h-4 w-4" />
+              Simulate Message
             </button>
           )}
-          <button onClick={load} className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-white/5 text-gray-400' : 'hover:bg-gray-100 text-gray-500'} transition-colors`}>
-            <RefreshCw className="w-3.5 h-3.5" />
+          <button
+            type="button"
+            onClick={load}
+            className="sq-press flex h-8 w-8 items-center justify-center rounded-xl border border-border/60 bg-card text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
+            aria-label="Refresh WhatsApp Business"
+          >
+            <Icon name="refresh-cw" className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className={`flex gap-1 p-1 rounded-xl ${isDarkMode ? 'bg-white/[0.03]' : 'bg-gray-100/60'}`}>
-        {([
-          { id: 'overview' as Tab, label: 'Overview', icon: TrendingUp },
-          { id: 'conversations' as Tab, label: 'Conversations', icon: MessageCircle, count: stats?.unreadTotal },
-          { id: 'settings' as Tab, label: 'Configuration', icon: Settings },
-        ]).map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)} className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-semibold transition-all ${tab === t.id
-            ? isDarkMode ? 'bg-white/10 text-white shadow-sm' : 'bg-white text-gray-900 shadow-sm'
-            : isDarkMode ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
-          }`}>
-            <t.icon className="w-3.5 h-3.5" />
-            {t.label}
-            {t.count ? <span className="ml-1 px-1.5 py-0.5 rounded-full text-[8px] font-bold bg-green-500 text-white">{t.count}</span> : null}
-          </button>
-        ))}
+      {/* Segment metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        {[
+          {
+            label: 'Connection',
+            value: statusLabel,
+            helper: config?.phoneNumber || 'account not connected',
+            icon: MessageCircle,
+            tone: isConnected ? (isActive ? 'sq-tone-success' : 'sq-tone-warning') : 'sq-tone-critical',
+            action: () => setTab('overview'),
+            active: tab === 'overview',
+          },
+          {
+            label: 'Conversations',
+            value: stats?.totalConversations ?? 0,
+            helper: `${stats?.openConversations ?? 0} open`,
+            icon: MessageCircle,
+            tone: 'sq-tone-brand',
+            action: () => setTab('conversations'),
+            active: tab === 'conversations',
+          },
+          {
+            label: 'Unread',
+            value: stats?.unreadTotal ?? 0,
+            helper: `${stats?.totalMessages ?? 0} total messages`,
+            icon: AlertCircle,
+            tone: (stats?.unreadTotal ?? 0) > 0 ? 'sq-tone-warning' : 'sq-tone-neutral',
+            action: () => setTab('conversations'),
+            active: false,
+          },
+          {
+            label: 'AI Mode',
+            value: modeInfo.label,
+            helper: `${readyCount}/3 readiness checks`,
+            icon: modeInfo.icon,
+            tone: modeInfo.tone,
+            action: () => setTab('settings'),
+            active: tab === 'settings',
+          },
+        ].map(metric => {
+          const MetricIcon = metric.icon;
+          return (
+            <button
+              key={metric.label}
+              type="button"
+              onClick={metric.action}
+              className={`group sq-card sq-press rounded-2xl p-4 text-left shadow-[var(--shadow-1)] transition-all ${
+                metric.active ? 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_22%,transparent)]' : 'hover:bg-muted/35'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold text-muted-foreground">{metric.label}</p>
+                  <p className="mt-1 truncate text-[20px] font-bold leading-none tracking-[-0.03em] text-foreground tabular-nums">
+                    {metric.value}
+                  </p>
+                  <p className="mt-2 truncate text-[10px] font-medium text-muted-foreground">{metric.helper}</p>
+                </div>
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${metric.tone}`}>
+                  <MetricIcon className="h-4 w-4" />
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Workspace selector */}
+      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${activeSection.tone}`}>
+              <ActiveSectionIcon className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">Workspace</h2>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">{activeSection.desc}</p>
+            </div>
+          </div>
+          <span className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-brand">
+            {activeSection.label} active
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-[260px] flex-1">
+            <select
+              value={tab}
+              onChange={event => setTab(event.target.value as Tab)}
+              className={`w-full appearance-none rounded-lg border py-2.5 pl-3.5 pr-10 text-xs font-medium outline-none transition-all ${
+                isDarkMode
+                  ? 'bg-neutral-800 border-neutral-700 text-gray-200 focus:border-blue-500/50'
+                  : 'bg-white border-gray-200 text-gray-900 focus:border-blue-300'
+              }`}
+            >
+              {SECTION_OPTIONS.map(section => (
+                <option key={section.key} value={section.key}>{section.label}</option>
+              ))}
+            </select>
+            <Icon name="chevron-down" className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {SECTION_OPTIONS.map(section => {
+              const SectionIcon = section.icon;
+              const selected = tab === section.key;
+              return (
+                <button
+                  key={section.key}
+                  type="button"
+                  onClick={() => setTab(section.key)}
+                  className={`sq-press flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[10px] font-semibold transition-all ${
+                    selected
+                      ? isDarkMode ? 'bg-blue-900/30 border-blue-700/50 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-700'
+                      : isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-800' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <SectionIcon className="h-3.5 w-3.5" />
+                  {section.label}
+                  {section.key === 'conversations' && (stats?.unreadTotal ?? 0) > 0 && (
+                    <span className="rounded-md px-1.5 py-0.5 text-[9px] font-bold tabular-nums sq-tone-warning">
+                      {stats?.unreadTotal}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {tab === 'overview' && <OverviewTab isDarkMode={isDarkMode} config={config} stats={stats} cardClass={cardClass} labelClass={labelClass} textPrimary={textPrimary} textSecondary={textSecondary} onConnect={() => setConnectModal(true)} onDisconnect={handleDisconnect} onToggleActive={() => handleConfigSave({ isActive: !isActive } as any)} />}
@@ -238,7 +372,7 @@ export function WhatsAppBusinessView({ isDarkMode }: WhatsAppBusinessViewProps) 
           <div className={`w-full max-w-md rounded-2xl p-6 ${isDarkMode ? 'bg-[#1a1a2e]' : 'bg-white'} shadow-2xl`}>
             <div className="flex items-center gap-3 mb-5">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDarkMode ? 'bg-green-500/10' : 'bg-green-50'}`}>
-                <Phone className={`w-5 h-5 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+                <Icon name="phone" className={`w-5 h-5 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
               </div>
               <div>
                 <h2 className={`text-sm font-bold ${textPrimary}`}>Connect WhatsApp Business</h2>
@@ -269,7 +403,7 @@ export function WhatsAppBusinessView({ isDarkMode }: WhatsAppBusinessViewProps) 
           <div className={`w-full max-w-md rounded-2xl p-6 ${isDarkMode ? 'bg-[#1a1a2e]' : 'bg-white'} shadow-2xl`}>
             <div className="flex items-center gap-3 mb-5">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50'}`}>
-                <MessageSquare className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                <Icon name="message-square" className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
               </div>
               <div>
                 <h2 className={`text-sm font-bold ${textPrimary}`}>Simulate Incoming Message</h2>
@@ -323,8 +457,8 @@ function OverviewTab({ isDarkMode, config, stats, cardClass, labelClass, textPri
               : isDarkMode ? 'bg-gray-800/60' : 'bg-gray-100'
             }`}>
               {isConnected
-                ? <Wifi className={`w-6 h-6 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
-                : <WifiOff className={`w-6 h-6 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />
+                ? <Icon name="wifi" className={`w-6 h-6 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+                : <Icon name="wifi-off" className={`w-6 h-6 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />
               }
             </div>
             <div>
@@ -354,7 +488,7 @@ function OverviewTab({ isDarkMode, config, stats, cardClass, labelClass, textPri
                 ? isDarkMode ? 'bg-green-500/10 text-green-400 hover:bg-green-500/20' : 'bg-green-50 text-green-600 hover:bg-green-100'
                 : isDarkMode ? 'bg-white/5 text-gray-400 hover:bg-white/10' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
               }`}>
-                {isActive ? <ToggleRight className="w-3.5 h-3.5" /> : <ToggleLeft className="w-3.5 h-3.5" />}
+                {isActive ? <Icon name="toggle-right" className="w-3.5 h-3.5" /> : <Icon name="toggle-left" className="w-3.5 h-3.5" />}
                 {isActive ? 'Active' : 'Paused'}
               </button>
             )}
@@ -371,21 +505,19 @@ function OverviewTab({ isDarkMode, config, stats, cardClass, labelClass, textPri
       {/* Status Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'AI Mode', value: modeInfo.label, icon: modeInfo.icon, color: modeInfo.color },
-          { label: 'Conversations', value: String(stats?.totalConversations ?? 0), sub: `${stats?.openConversations ?? 0} open`, icon: MessageCircle, color: 'blue' },
-          { label: 'Messages', value: String(stats?.totalMessages ?? 0), sub: `${stats?.aiMessages ?? 0} by AI`, icon: Hash, color: 'purple' },
-          { label: 'Unread', value: String(stats?.unreadTotal ?? 0), icon: AlertCircle, color: stats?.unreadTotal ? 'amber' : 'gray' },
+          { label: 'AI Mode', value: modeInfo.label, icon: modeInfo.icon, tone: modeInfo.tone },
+          { label: 'Conversations', value: String(stats?.totalConversations ?? 0), sub: `${stats?.openConversations ?? 0} open`, icon: MessageCircle, tone: 'sq-tone-brand' },
+          { label: 'Messages', value: String(stats?.totalMessages ?? 0), sub: `${stats?.aiMessages ?? 0} by AI`, icon: Hash, tone: 'sq-tone-neutral' },
+          { label: 'Unread', value: String(stats?.unreadTotal ?? 0), icon: AlertCircle, tone: stats?.unreadTotal ? 'sq-tone-warning' : 'sq-tone-neutral' },
         ].map((item, i) => (
           <div key={i} className={`${cardClass} p-4`}>
             <div className="flex items-center justify-between mb-2">
               <span className={labelClass}>{item.label}</span>
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                isDarkMode ? `bg-${item.color}-500/10` : `bg-${item.color}-50`
-              }`}>
-                <item.icon className={`w-3.5 h-3.5 ${isDarkMode ? `text-${item.color}-400` : `text-${item.color}-600`}`} />
+              <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${item.tone}`}>
+                <item.icon className="h-4 w-4" />
               </div>
             </div>
-            <div className={`text-lg font-bold ${textPrimary}`}>{item.value}</div>
+            <div className={`text-lg font-bold tabular-nums ${textPrimary}`}>{item.value}</div>
             {item.sub && <div className={`text-[10px] ${textSecondary} mt-0.5`}>{item.sub}</div>}
           </div>
         ))}
@@ -403,8 +535,8 @@ function OverviewTab({ isDarkMode, config, stats, cardClass, labelClass, textPri
           ].map((item, i) => (
             <div key={i} className="flex items-center gap-2.5">
               {item.ok
-                ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                : <AlertCircle className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />}
+                ? <Icon name="check-circle-2" className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                : <Icon name="alert-circle" className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />}
               <span className={`text-[11px] ${item.ok ? textPrimary : textSecondary}`}>{item.label}</span>
             </div>
           ))}
@@ -451,7 +583,7 @@ function ConversationsTab({ isDarkMode, config, conversations, selectedConvo, me
   if (!isConnected) {
     return (
       <div className={`${cardClass} p-10 text-center`}>
-        <WifiOff className={`w-8 h-8 mx-auto mb-3 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />
+        <Icon name="wifi-off" className={`w-8 h-8 mx-auto mb-3 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />
         <h3 className={`text-sm font-bold ${textPrimary} mb-1`}>Not Connected</h3>
         <p className={`text-[11px] ${textSecondary}`}>Connect your WhatsApp Business account from the Overview tab to start messaging.</p>
       </div>
@@ -465,14 +597,14 @@ function ConversationsTab({ isDarkMode, config, conversations, selectedConvo, me
         <div className={`w-[320px] shrink-0 border-r flex flex-col ${isDarkMode ? 'border-white/[0.06]' : 'border-gray-200/60'} ${selectedConvo ? 'hidden lg:flex' : 'flex'}`}>
           <div className={`p-3 border-b ${isDarkMode ? 'border-white/[0.06]' : 'border-gray-200/60'}`}>
             <div className="relative">
-              <Search className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${textSecondary}`} />
+              <Icon name="search" className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${textSecondary}`} />
               <input value={searchQuery} onChange={(e) => onSearchChange(e.target.value)} placeholder="Search conversations…" className={`${inputClass} pl-8`} />
             </div>
           </div>
           <div className="flex-1 overflow-y-auto">
             {conversations.length === 0 ? (
               <div className="p-6 text-center">
-                <MessageCircle className={`w-6 h-6 mx-auto mb-2 ${isDarkMode ? 'text-gray-700' : 'text-gray-300'}`} />
+                <Icon name="message-circle" className={`w-6 h-6 mx-auto mb-2 ${isDarkMode ? 'text-gray-700' : 'text-gray-300'}`} />
                 <p className={`text-[11px] ${textSecondary}`}>No conversations yet</p>
                 <p className={`text-[10px] ${textSecondary} mt-1`}>Simulate an incoming message to get started</p>
               </div>
@@ -505,7 +637,7 @@ function ConversationsTab({ isDarkMode, config, conversations, selectedConvo, me
               {/* Conversation Header */}
               <div className={`px-4 py-3 border-b flex items-center gap-3 ${isDarkMode ? 'border-white/[0.06]' : 'border-gray-200/60'}`}>
                 <button onClick={onBack} className={`lg:hidden p-1 rounded-lg ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-100'}`}>
-                  <ArrowLeft className="w-4 h-4" />
+                  <Icon name="arrow-left" className="w-4 h-4" />
                 </button>
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${isDarkMode ? 'bg-green-500/10 text-green-400' : 'bg-green-100 text-green-700'}`}>
                   {(selectedConvo.contactName || selectedConvo.contactPhone).charAt(0).toUpperCase()}
@@ -519,10 +651,10 @@ function ConversationsTab({ isDarkMode, config, conversations, selectedConvo, me
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {msgLoading ? (
-                  <div className="flex justify-center py-10"><Loader2 className={`w-5 h-5 animate-spin ${textSecondary}`} /></div>
+                  <div className="flex justify-center py-10"><Icon name="loader-2" className={`w-5 h-5 animate-spin ${textSecondary}`} /></div>
                 ) : messages.length === 0 ? (
                   <div className="text-center py-10">
-                    <MessageSquare className={`w-6 h-6 mx-auto mb-2 ${isDarkMode ? 'text-gray-700' : 'text-gray-300'}`} />
+                    <Icon name="message-square" className={`w-6 h-6 mx-auto mb-2 ${isDarkMode ? 'text-gray-700' : 'text-gray-300'}`} />
                     <p className={`text-[11px] ${textSecondary}`}>No messages in this conversation</p>
                   </div>
                 ) : (
@@ -537,7 +669,7 @@ function ConversationsTab({ isDarkMode, config, conversations, selectedConvo, me
               {aiSuggestion && (
                 <div className={`mx-4 mb-2 p-3 rounded-xl border ${isDarkMode ? 'bg-purple-500/5 border-purple-500/20' : 'bg-purple-50 border-purple-100'}`}>
                   <div className="flex items-center gap-1.5 mb-1.5">
-                    <Sparkles className={`w-3 h-3 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+                    <Icon name="sparkles" className={`w-3 h-3 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
                     <span className={`text-[10px] font-semibold ${isDarkMode ? 'text-purple-400' : 'text-purple-700'}`}>AI Suggested Reply</span>
                   </div>
                   <p className={`text-[11px] ${textPrimary} mb-2`}>{aiSuggestion}</p>
@@ -553,11 +685,11 @@ function ConversationsTab({ isDarkMode, config, conversations, selectedConvo, me
               <div className={`p-3 border-t ${isDarkMode ? 'border-white/[0.06]' : 'border-gray-200/60'}`}>
                 <div className="flex items-end gap-2">
                   <button onClick={onAiSuggest} disabled={aiLoading} className={`shrink-0 p-2 rounded-lg transition-colors ${isDarkMode ? 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20' : 'bg-purple-50 text-purple-600 hover:bg-purple-100'} disabled:opacity-40`} title="Get AI suggestion">
-                    {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    {aiLoading ? <Icon name="loader-2" className="w-4 h-4 animate-spin" /> : <Icon name="sparkles" className="w-4 h-4" />}
                   </button>
                   <textarea value={input} onChange={(e) => onInputChange(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(); } }} placeholder="Type a message…" rows={1} className={`flex-1 ${inputClass} resize-none max-h-20`} />
                   <button onClick={onSend} disabled={!input.trim() || sending} className="shrink-0 p-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-40">
-                    {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    {sending ? <Icon name="loader-2" className="w-4 h-4 animate-spin" /> : <Icon name="send" className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
@@ -565,7 +697,7 @@ function ConversationsTab({ isDarkMode, config, conversations, selectedConvo, me
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                <MessageCircle className={`w-10 h-10 mx-auto mb-3 ${isDarkMode ? 'text-gray-700' : 'text-gray-300'}`} />
+                <Icon name="message-circle" className={`w-10 h-10 mx-auto mb-3 ${isDarkMode ? 'text-gray-700' : 'text-gray-300'}`} />
                 <h3 className={`text-sm font-bold ${textPrimary} mb-1`}>Select a Conversation</h3>
                 <p className={`text-[11px] ${textSecondary}`}>Choose a conversation from the list to view messages</p>
               </div>
@@ -593,7 +725,7 @@ function MessageBubble({ msg, isDarkMode, textSecondary }: { msg: WhatsAppMsg; i
       }`}>
         {isAi && (
           <div className="flex items-center gap-1 mb-1">
-            <Bot className={`w-3 h-3 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+            <Icon name="bot" className={`w-3 h-3 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
             <span className={`text-[9px] font-semibold ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>AI Assistant</span>
           </div>
         )}
@@ -645,7 +777,7 @@ function SettingsTab({ isDarkMode, config, saving, cardClass, labelClass, textPr
                     ? isDarkMode ? 'text-green-400' : 'text-green-600'
                     : textSecondary
                   }`} />
-                  {active && <CheckCircle2 className="w-3 h-3 text-green-500 ml-auto" />}
+                  {active && <Icon name="check-circle-2" className="w-3 h-3 text-green-500 ml-auto" />}
                 </div>
                 <div className={`text-[11px] font-semibold ${textPrimary}`}>{info.label}</div>
                 <div className={`text-[10px] ${textSecondary} mt-0.5 leading-snug`}>{info.description}</div>
@@ -688,7 +820,7 @@ function SettingsTab({ isDarkMode, config, saving, cardClass, labelClass, textPr
 
       {/* Safety Notice */}
       <div className={`${cardClass} p-4 flex items-start gap-3`}>
-        <Shield className={`w-4 h-4 shrink-0 mt-0.5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+        <Icon name="shield" className={`w-4 h-4 shrink-0 mt-0.5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
         <div>
           <h4 className={`text-[11px] font-semibold ${textPrimary}`}>Safety & Control</h4>
           <p className={`text-[10px] ${textSecondary} mt-0.5 leading-snug`}>

@@ -7,7 +7,10 @@ const mockPrisma = {
   brakeHealthCurrent: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
   tripDrivingImpact: { findMany: jest.fn().mockResolvedValue([]) },
   vehicleBrakeReferenceSpec: { findMany: jest.fn().mockResolvedValue([]) },
-  vehicleServiceEvent: { findMany: jest.fn().mockResolvedValue([]) },
+  vehicleServiceEvent: {
+    findMany: jest.fn().mockResolvedValue([]),
+    findFirst: jest.fn().mockResolvedValue(null),
+  },
   vehicle: { findUnique: jest.fn().mockResolvedValue({ fuelType: 'GASOLINE', brakeForceFrontPercent: null, organizationId: null }) },
   vehicleLatestState: { findUnique: jest.fn().mockResolvedValue({ odometerKm: 50000, brakePadPercent: null, lastSeenAt: new Date('2026-04-13T10:00:00Z') }) },
 } as any;
@@ -16,7 +19,16 @@ const mockDI = {
   getVehicleImpactForBrake: jest.fn().mockResolvedValue(null),
 } as any;
 
-const svc = new BrakeHealthService(mockPrisma, mockDI);
+const mockBrakeEvidence = {
+  listRecent: jest.fn().mockResolvedValue([]),
+  getLatest: jest.fn().mockResolvedValue(null),
+  getLatestMeasurement: jest.fn().mockResolvedValue(null),
+  getLatestSafetySignal: jest.fn().mockResolvedValue(null),
+  record: jest.fn().mockResolvedValue(null),
+  recordMany: jest.fn().mockResolvedValue({ count: 0 }),
+} as any;
+
+const svc = new BrakeHealthService(mockPrisma, mockDI, mockBrakeEvidence);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  PAD WEAR MODEL (spec §10)
@@ -334,6 +346,139 @@ describe('getSummary', () => {
     expect(r.discs?.healthPercent).toBe(88);
     expect(r.confidence?.label).toBe('Medium');
     expect(r.hasAlert).toBe(false);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  CANONICAL READ MODEL (evidence-based honesty)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('canonical read model', () => {
+  const baseCurrent = {
+    isInitialized: true,
+    anchorOdometerKm: 40000,
+    anchorServiceDate: new Date('2025-06-01T00:00:00Z'),
+    frontPadAnchorMm: 12,
+    rearPadAnchorMm: 10,
+    frontDiscAnchorMm: 28,
+    rearDiscAnchorMm: 26,
+    padsHealthPct: 60,
+    padsRemainingKm: 8000,
+    discsHealthPct: 80,
+    discsRemainingKm: 20000,
+    distanceSinceAnchorKm: 8000,
+    modeledDistanceKm: 7200,
+    modeledTripCount: 44,
+    modelCoverageRatio: 0.9,
+    modelingSource: 'trip_impacts',
+    baselineWarnings: [],
+    confidenceScore: 62,
+    confidenceLabel: 'Medium',
+    hasAlert: false,
+    updatedAt: new Date('2026-06-01T00:00:00Z'),
+  };
+
+  it('a pure estimate (no evidence) caps at WARNING and never CRITICAL', async () => {
+    mockPrisma.brakeHealthCurrent.findUnique.mockResolvedValueOnce({
+      ...baseCurrent,
+      // Front axle modeled near end-of-life — but it is an ESTIMATE only.
+      frontPadHealthPct: 5,
+      frontDiscHealthPct: 40,
+      rearPadHealthPct: 60,
+      rearDiscHealthPct: 70,
+      frontPadRemainingKm: 800,
+      frontDiscRemainingKm: 4000,
+      rearPadRemainingKm: 9000,
+      rearDiscRemainingKm: 12000,
+    });
+    mockPrisma.vehicleServiceEvent.findFirst.mockResolvedValueOnce(null);
+    mockBrakeEvidence.listRecent.mockResolvedValueOnce([]);
+
+    const r = await svc.getSummary('v1');
+    expect(r.overallCondition).toBe('WARNING'); // capped — not CRITICAL
+    expect(r.frontDataBasis).toBe('ESTIMATED');
+    expect(r.estimatedFrontRemainingKmMin).not.toBeNull();
+    expect(r.estimatedFrontRemainingKmMax).not.toBeNull();
+    // No fake measured timestamp invented from an estimate.
+    expect(r.lastMeasurementAt).toBeNull();
+  });
+
+  it('a measured-critical pad overrides the estimate → CRITICAL + MEASURED basis', async () => {
+    mockPrisma.brakeHealthCurrent.findUnique.mockResolvedValueOnce({
+      ...baseCurrent,
+      // Healthy estimate …
+      frontPadHealthPct: 80,
+      frontDiscHealthPct: 85,
+      rearPadHealthPct: 80,
+      rearDiscHealthPct: 85,
+      frontPadRemainingKm: 12000,
+      frontDiscRemainingKm: 20000,
+      rearPadRemainingKm: 12000,
+      rearDiscRemainingKm: 20000,
+    });
+    mockPrisma.vehicleServiceEvent.findFirst.mockResolvedValueOnce(null);
+    // … but a fresh manual measurement says the front pad is at 1.5 mm (≤ critical 2.0).
+    mockBrakeEvidence.listRecent.mockResolvedValueOnce([
+      {
+        id: 'e1',
+        vehicleId: 'v1',
+        source: 'MANUAL_MEASUREMENT',
+        axle: 'FRONT',
+        measuredPadMm: 1.5,
+        measuredDiscMm: null,
+        discCondition: null,
+        brakeFluidStatus: null,
+        dtcSeverity: null,
+        immediateReplacement: null,
+        mileageAtMeasurementKm: 50000,
+        measuredAt: new Date('2026-05-20T00:00:00Z'),
+        createdAt: new Date('2026-05-20T00:00:00Z'),
+      },
+    ]);
+
+    const r = await svc.getSummary('v1');
+    expect(r.overallCondition).toBe('CRITICAL');
+    expect(r.frontDataBasis).toBe('MEASURED');
+    expect(r.frontAxleCondition).toBe('CRITICAL');
+    expect(r.lastMeasurementAt).not.toBeNull();
+    expect(r.lastMeasurementMileageKm).toBe(50000);
+    expect(r.openAlerts.some((a) => a.code === 'BRAKE_PAD_CRITICAL')).toBe(true);
+  });
+
+  it('a critical brake-fluid safety signal drives CRITICAL', async () => {
+    mockPrisma.brakeHealthCurrent.findUnique.mockResolvedValueOnce({
+      ...baseCurrent,
+      frontPadHealthPct: 80,
+      frontDiscHealthPct: 85,
+      rearPadHealthPct: 80,
+      rearDiscHealthPct: 85,
+      frontPadRemainingKm: 12000,
+      frontDiscRemainingKm: 20000,
+      rearPadRemainingKm: 12000,
+      rearDiscRemainingKm: 20000,
+    });
+    mockPrisma.vehicleServiceEvent.findFirst.mockResolvedValueOnce(null);
+    mockBrakeEvidence.listRecent.mockResolvedValueOnce([
+      {
+        id: 'e2',
+        vehicleId: 'v1',
+        source: 'WORKSHOP_REPORT',
+        axle: 'UNKNOWN',
+        measuredPadMm: null,
+        measuredDiscMm: null,
+        discCondition: null,
+        brakeFluidStatus: 'CRITICAL',
+        dtcSeverity: null,
+        immediateReplacement: null,
+        mileageAtMeasurementKm: null,
+        measuredAt: new Date('2026-05-25T00:00:00Z'),
+        createdAt: new Date('2026-05-25T00:00:00Z'),
+      },
+    ]);
+
+    const r = await svc.getSummary('v1');
+    expect(r.overallCondition).toBe('CRITICAL');
+    expect(r.openAlerts.some((a) => a.code === 'BRAKE_FLUID_WARNING')).toBe(true);
   });
 });
 

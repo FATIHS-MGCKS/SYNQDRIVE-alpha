@@ -7,7 +7,6 @@ export const en = {
   'nav.customers': 'Customers',
   'nav.stations': 'Stations',
   'nav.insights': 'Insights',
-  'nav.analytics': 'Analytics',
   'nav.fleetCondition': 'Fleet Condition',
   'nav.financialInsights': 'Financial Insights',
   'nav.finance': 'Finance',
@@ -34,6 +33,7 @@ export const en = {
   'nav.usersRoles': 'Users & Roles',
   'nav.fleetConnectivity': 'Fleet Connectivity',
   'nav.dataAuthorization': 'Data Authorization',
+  'nav.legalDocuments': 'Legal Documents',
   'nav.billingSubscription': 'Billing & Subscription',
   'nav.support': 'Support',
   'nav.helpCenter': 'Help Center',
@@ -59,7 +59,6 @@ export const en = {
   'view.trips': 'Trips',
   'view.dashboard': 'Dashboard',
   'view.bookings': 'Bookings',
-  'view.drivingInsights': 'Driving Insights',
   'view.healthErrors': 'Health & Errors',
   'view.fleet': 'Fleet',
   'view.damages': 'Damages',
@@ -71,7 +70,6 @@ export const en = {
   'view.invoices': 'Invoices',
   'view.fines': 'Fines & OCR',
   'view.priceTariffs': 'Pricing & Tariffs',
-  'view.analytics': 'Analytics',
   'view.fleetCondition': 'Fleet Condition',
   'view.settings': 'Settings',
   'view.newBooking': 'New Booking',
@@ -93,6 +91,7 @@ export const en = {
   'settingsTab.users': 'Users & Roles',
   'settingsTab.billing': 'Billing & Subscription',
   'settingsTab.dataAuthorization': 'Data Authorization',
+  'settingsTab.legalDocuments': 'Legal Documents',
 
   // ─── Finance Tabs ───
   'financeTab.invoices': 'Invoices',
@@ -346,7 +345,6 @@ export const en = {
   // ─── Vehicle Detail ───
   'vehicle.overview': 'Overview',
   'vehicle.trips': 'Trips',
-  'vehicle.drivingInsights': 'Driving Insights',
   'vehicle.healthErrors': 'Health & Errors',
   'vehicle.damages': 'Damages',
   'vehicle.documents': 'Documents',
@@ -477,14 +475,6 @@ export const en = {
   'settings.connectedVehicles': 'Connected Vehicles',
   'settings.dataSync': 'Data Sync',
 
-  // ─── Analytics ───
-  'analytics.title': 'Fleet Analytics',
-  'analytics.fleetScore': 'Fleet Score',
-  'analytics.totalRevenue': 'Total Revenue',
-  'analytics.avgUtilization': 'Avg. Utilization',
-  'analytics.totalBookings': 'Total Bookings',
-  'analytics.avgRating': 'Avg. Rating',
-
   // ─── Fleet Condition ───
   'fleetCondition.title': 'Fleet Condition',
   'fleetCondition.healthScore': 'Health Score',
@@ -511,30 +501,6 @@ export const en = {
   'newTaskModal.vehicleAssignment': 'Vehicle & Assignment',
   'newTaskModal.scheduling': 'Scheduling',
 
-  // ─── Driving Insights ───
-  'drivingInsights.drivingScore': 'Driving Score',
-  'drivingInsights.outOf100': 'out of 100',
-  'drivingInsights.riskProfile': 'Risk Profile',
-  'drivingInsights.needsImprovement': 'Needs Improvement',
-  'drivingInsights.scoreBreakdown': 'Score Breakdown',
-  'drivingInsights.safeDriving': 'Safe Driving',
-  'drivingInsights.efficiency': 'Efficiency',
-  'drivingInsights.tripDistribution': 'Trip Distribution',
-  'drivingInsights.keyKpis': 'Key KPIs',
-  'drivingInsights.avgSpeed': 'Avg. Speed',
-  'drivingInsights.avgDistance': 'Avg. Distance',
-  'drivingInsights.aiAnalysis': 'AI Driving Analysis',
-  'drivingInsights.basedOnTrips': 'Based on {count} trips over the last {days} days',
-  'drivingInsights.strengths': 'Strengths',
-  'drivingInsights.areasForImprovement': 'Areas for Improvement',
-  'drivingInsights.recommendations': 'Recommendations',
-  'drivingInsights.drivingBehavior': 'Driving Behavior',
-  'drivingInsights.abuseDetection': 'Abuse Detection',
-  'drivingInsights.totalEvents': 'Total Events',
-  'drivingInsights.safe': 'Safe',
-  'drivingInsights.moderate': 'Moderate',
-  'drivingInsights.aggressive': 'Aggressive',
-  'drivingInsights.highRisk': 'High Risk',
 
   // ─── Trips ───
   'trips.tripHistory': 'Trip History',
@@ -594,10 +560,6 @@ export const en = {
   'customerDetail.customerAlerts': 'Customer Alerts',
   'customerDetail.customerNotes': 'Customer Notes',
   'customerDetail.drivingScore': 'Driving Score',
-
-  // ─── Operations View ───
-  'operationsTab.analytics': 'Analytics',
-  'operationsTab.fleetCondition': 'Fleet Condition',
 
   // ─── Document Upload ───
   'docUpload.title': 'Document Upload',

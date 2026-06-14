@@ -1,6 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { DimoAgentsService } from './dimo-agents.service';
+import { DimoAgentsService, SendMessageResult } from './dimo-agents.service';
+
+export interface ChatMessageResult {
+  id?: string;
+  role: string;
+  content: string;
+  createdAt: Date;
+}
 
 interface FleetVehicleInfo {
   vehicleId: string;
@@ -65,55 +72,142 @@ export class ChatService {
     return { agentName: record.agentName, dimoAgentId: record.dimoAgentId };
   }
 
-  async sendMessage(orgId: string, content: string): Promise<{ role: string; content: string; createdAt: Date }> {
-    let agent: { agentName: string; dimoAgentId: string };
-    try {
-      agent = await this.ensureAgent(orgId);
-    } catch (err: any) {
-      this.logger.error(`[Chat] ensureAgent failed for org ${orgId}: ${err.message}`);
-      const errorMsg = "I'm sorry, I couldn't connect to the AI agent right now. Please try again in a moment.";
-      const saved = await this.prisma.chatMessage.create({
-        data: { organizationId: orgId, role: 'assistant', content: errorMsg },
-      }).catch(() => ({ createdAt: new Date() }));
-      return { role: 'assistant', content: errorMsg, createdAt: saved.createdAt };
+  /**
+   * Non-streaming send (used by WhatsApp AI suggestions and as a programmatic
+   * fallback). Internally uses the DIMO SSE stream endpoint to avoid the 504
+   * gateway timeouts that the synchronous /message endpoint returns for any
+   * request that requires real agent work (tool calls / telemetry lookups).
+   */
+  async sendMessage(orgId: string, content: string): Promise<ChatMessageResult> {
+    const { agent, error } = await this.ensureAgentSafe(orgId);
+    if (!agent) return this.persistAssistant(orgId, error as string);
+
+    await this.saveUserMessage(orgId, content);
+    const { enrichedMessage, tokenIds } = await this.buildContext(orgId, content);
+
+    const result = await this.sendWithRetry(orgId, agent, enrichedMessage, tokenIds);
+
+    if (!result.success) {
+      return this.persistAssistant(
+        orgId,
+        `I'm sorry, I couldn't process your request right now. ${result.error || 'Please try again later.'}`,
+      );
     }
 
-    await this.prisma.chatMessage.create({
-      data: { organizationId: orgId, role: 'user', content },
-    }).catch(() => {});
+    return this.persistAssistant(orgId, result.response || 'No response received.');
+  }
 
+  /**
+   * Streaming send for the AI Assistant UI. Emits SSE events:
+   *  - `status`   { agentReady }        — agent confirmed/created
+   *  - `progress` { type, content }     — live "thinking"/tool-call activity
+   *  - `result`   ChatMessageResult     — final persisted assistant message
+   *  - `error`    { message }           — only for truly unexpected failures
+   * Friendly/degraded outcomes are returned via `result` (already persisted),
+   * mirroring the non-streaming contract.
+   */
+  async streamMessage(
+    orgId: string,
+    content: string,
+    emit: (event: string, data: unknown) => void,
+    isClosed: () => boolean,
+  ): Promise<void> {
+    const { agent, error } = await this.ensureAgentSafe(orgId);
+    if (!agent) {
+      const saved = await this.persistAssistant(orgId, error as string);
+      if (!isClosed()) emit('result', this.toResultDto(saved));
+      return;
+    }
+    if (!isClosed()) emit('status', { agentReady: true });
+
+    await this.saveUserMessage(orgId, content);
+    const { enrichedMessage, tokenIds } = await this.buildContext(orgId, content);
+
+    const result = await this.sendWithRetry(orgId, agent, enrichedMessage, tokenIds, (chunk) => {
+      if (!isClosed()) emit('progress', chunk);
+    });
+
+    const text = result.success
+      ? result.response || 'No response received.'
+      : `I'm sorry, I couldn't process your request right now. ${result.error || 'Please try again later.'}`;
+
+    const saved = await this.persistAssistant(orgId, text);
+    if (!isClosed()) emit('result', this.toResultDto(saved));
+  }
+
+  // ── shared orchestration helpers ────────────────────────────────────────
+
+  /** Ensure an agent exists; on failure returns a friendly error string. */
+  private async ensureAgentSafe(
+    orgId: string,
+  ): Promise<{ agent?: { agentName: string; dimoAgentId: string }; error?: string }> {
+    try {
+      const agent = await this.ensureAgent(orgId);
+      return { agent };
+    } catch (err: any) {
+      this.logger.error(`[Chat] ensureAgent failed for org ${orgId}: ${err.message}`);
+      return { error: "I'm sorry, I couldn't connect to the AI agent right now. Please try again in a moment." };
+    }
+  }
+
+  /** Build the fleet-enriched message + token IDs for the agent. */
+  private async buildContext(
+    orgId: string,
+    content: string,
+  ): Promise<{ enrichedMessage: string; tokenIds: number[] }> {
     const fleet = await this.getOrgFleetInfo(orgId);
     const tokenIds = fleet.map((v) => v.tokenId).filter((t): t is number => t != null);
     const enrichedMessage = this.buildEnrichedMessage(content, fleet);
+    return { enrichedMessage, tokenIds };
+  }
 
-    let result = await this.agentsService.sendMessage(agent.dimoAgentId, enrichedMessage, tokenIds);
+  private async saveUserMessage(orgId: string, content: string): Promise<void> {
+    await this.prisma.chatMessage
+      .create({ data: { organizationId: orgId, role: 'user', content } })
+      .catch(() => {});
+  }
+
+  /**
+   * Send via the DIMO SSE stream endpoint with one automatic agent-recreation
+   * retry if the agent expired (404/410). `onChunk` forwards live activity.
+   */
+  private async sendWithRetry(
+    orgId: string,
+    agent: { agentName: string; dimoAgentId: string },
+    enrichedMessage: string,
+    tokenIds: number[],
+    onChunk?: (event: { type: string; content: string }) => void,
+  ): Promise<SendMessageResult> {
+    let result = await this.agentsService.sendMessageStream(agent.dimoAgentId, enrichedMessage, tokenIds, onChunk);
 
     if (!result.success && (result.statusCode === 404 || result.statusCode === 410)) {
       this.logger.warn(`[Chat] Agent ${agent.dimoAgentId} expired, recreating...`);
       await this.prisma.organizationChatAgent.delete({ where: { organizationId: orgId } }).catch(() => {});
       try {
         const newAgent = await this.ensureAgent(orgId);
-        result = await this.agentsService.sendMessage(newAgent.dimoAgentId, enrichedMessage, tokenIds);
+        result = await this.agentsService.sendMessageStream(newAgent.dimoAgentId, enrichedMessage, tokenIds, onChunk);
       } catch (retryErr: any) {
         this.logger.error(`[Chat] Agent re-creation failed: ${retryErr.message}`);
         result = { success: false, error: 'Agent temporarily unavailable. Please try again.' };
       }
     }
 
-    if (!result.success) {
-      const errorMsg = `I'm sorry, I couldn't process your request right now. ${result.error || 'Please try again later.'}`;
-      const saved = await this.prisma.chatMessage.create({
-        data: { organizationId: orgId, role: 'assistant', content: errorMsg },
-      }).catch(() => ({ createdAt: new Date() }));
-      return { role: 'assistant', content: errorMsg, createdAt: saved.createdAt };
-    }
+    return result;
+  }
 
-    const responseText = result.response || 'No response received.';
-    const saved = await this.prisma.chatMessage.create({
-      data: { organizationId: orgId, role: 'assistant', content: responseText },
-    }).catch(() => ({ createdAt: new Date() }));
+  /** Persist an assistant message and return the canonical result shape. */
+  private async persistAssistant(orgId: string, content: string): Promise<ChatMessageResult> {
+    const saved = await this.prisma.chatMessage
+      .create({
+        data: { organizationId: orgId, role: 'assistant', content },
+        select: { id: true, createdAt: true },
+      })
+      .catch(() => ({ id: undefined as string | undefined, createdAt: new Date() }));
+    return { id: saved.id, role: 'assistant', content, createdAt: saved.createdAt };
+  }
 
-    return { role: 'assistant', content: responseText, createdAt: saved.createdAt };
+  private toResultDto(msg: ChatMessageResult) {
+    return { id: msg.id, role: msg.role, content: msg.content, createdAt: msg.createdAt.toISOString() };
   }
 
   async getHistory(orgId: string, limit = 100, before?: string) {

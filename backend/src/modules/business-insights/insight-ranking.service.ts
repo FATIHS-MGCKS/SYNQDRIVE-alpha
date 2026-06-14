@@ -20,6 +20,16 @@ const TYPE_OPERATIONAL_WEIGHT: Record<InsightType, number> = {
   // vehicle at pickup). Sits below TIGHT_HANDOVER so acute customer-facing
   // handover risks still take the top slot.
   [InsightType.BATTERY_CRITICAL]: 13,
+  // Tire-critical: a tire at/below the legal minimum (1.6 mm) makes the
+  // vehicle legally non-operable and is an acute safety risk — ranked on par
+  // with battery-critical. The detector's own graduated severity (WATCH never
+  // alerts, WARNING vs CRITICAL) keeps "plan replacement" below "replace now".
+  [InsightType.TIRE_CRITICAL]: 13,
+  // Brake-critical: a safety-relevant brake condition (measured critical pad,
+  // brake DTC, critical fluid, confirmed immediate replacement) is an acute
+  // safety risk — ranked on par with tire/battery critical. The detector caps
+  // pure estimates at WARNING so "plan service" stays below "replace now".
+  [InsightType.BRAKE_CRITICAL]: 13,
   // Service overdue: a lapsed manufacturer service threatens warranty,
   // operational safety, and upcoming bookings. Ranked just above
   // SERVICE_BEFORE_BOOKING because "already overdue" beats "must be
@@ -34,6 +44,12 @@ const TYPE_OPERATIONAL_WEIGHT: Record<InsightType, number> = {
   // keep a 45-min late pickup below a 3-day-stuck booking on the
   // dashboard ordering.
   [InsightType.PICKUP_OVERDUE]: 15,
+  // TÜV / BOKraft overdue: statutory compliance — an overdue inspection makes
+  // the vehicle legally non-operable, so it ranks at par with service-overdue.
+  // The detector's own severity (WARNING ≤60d vs CRITICAL overdue) handles the
+  // imminent-vs-lapsed ordering.
+  [InsightType.TUV_OVERDUE]: 13,
+  [InsightType.BOKRAFT_OVERDUE]: 13,
 };
 
 @Injectable()

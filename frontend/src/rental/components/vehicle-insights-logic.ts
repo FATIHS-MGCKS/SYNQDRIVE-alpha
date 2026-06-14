@@ -4,6 +4,7 @@ import type {
   ServiceInfoStatus,
   OilChangeStatus,
   BrakeHealthSummary,
+  RentalHealthState,
 } from '../../lib/api';
 import { type PlanningItem, runForecastEngine } from './vehicle-forecast-engine';
 
@@ -15,6 +16,8 @@ export interface InsightsInput {
   battery: BatteryHealthSummary | null;
   service: ServiceInfoStatus | null;
   dtcCount: number;
+  /** Rental-Health `modules.error_codes.state` — canonical DTC escalation */
+  errorCodesState?: RentalHealthState | null;
   /** Optional: passed through to the forecast engine for oil service planning */
   oil?: OilChangeStatus | null;
 }
@@ -51,6 +54,15 @@ const SERVICE_ACTION_KM = 500;
 const SERVICE_LIMITED_KM = 2_000;
 const SERVICE_MONITOR_KM = 4_500;
 
+/** Align DTC escalation with Rental-Health-V1 (`evaluateErrorCodes`). */
+function dtcEscalation(input: InsightsInput): 'critical' | 'warning' | 'none' {
+  const state = input.errorCodesState;
+  if (state === 'critical') return 'critical';
+  if (state === 'warning') return 'warning';
+  if (input.dtcCount > 0 && (state == null || state === 'unknown')) return 'warning';
+  return 'none';
+}
+
 function brakeHealthPercent(brakes: BrakeHealthSummary | null): number | null {
   if (!brakes) return null;
   const pad = brakes.pads?.healthPercent ?? null;
@@ -74,10 +86,11 @@ function batteryStatus(battery: BatteryHealthSummary | null): string | null {
 // ── Readiness ─────────────────────────────────────────────────────────────────
 
 export function deriveReadiness(input: InsightsInput): ReadinessLevel {
-  const { tires, brakes, battery, service, dtcCount } = input;
+  const { tires, brakes, battery, service } = input;
   const batCondition = batteryCondition(battery);
+  const dtc = dtcEscalation(input);
 
-  if (dtcCount > 0) return 'Action Needed';
+  if (dtc === 'critical') return 'Action Needed';
   if (tires?.actionState === 'REPLACE') return 'Action Needed';
 
   const tiresPct = tires?.overallPercent ?? null;
@@ -109,7 +122,8 @@ export function deriveReadiness(input: InsightsInput): ReadinessLevel {
     (service?.serviceRemainingMonths != null && service.serviceRemainingMonths < 2) ||
     (tuvMonths != null && tuvMonths < 3) ||
     (bokMonths != null && bokMonths < 3) ||
-    batCondition === 'attention'
+    batCondition === 'attention' ||
+    dtc === 'warning'
   ) return 'Monitor';
 
   return 'Ready';
@@ -147,15 +161,16 @@ export function deriveCostOutlook(input: InsightsInput): CostOutlookLevel {
 // ── Downtime Risk ─────────────────────────────────────────────────────────────
 
 export function deriveDowntimeRisk(input: InsightsInput): DowntimeRiskLevel {
-  const { tires, brakes, battery, service, dtcCount } = input;
+  const { tires, brakes, battery, service } = input;
   const batCondition = batteryCondition(battery);
+  const dtc = dtcEscalation(input);
 
   const tiresPct = tires?.overallPercent ?? null;
   const brakesPct = brakeHealthPercent(brakes);
   const svcKm = service?.serviceRemainingKm ?? null;
 
   if (
-    dtcCount > 0 ||
+    dtc === 'critical' ||
     tires?.actionState === 'REPLACE' ||
     (tiresPct != null && tiresPct < TIRE_ACTION_PCT) ||
     (brakesPct != null && brakesPct < BRAKE_ACTION_PCT)
@@ -165,7 +180,8 @@ export function deriveDowntimeRisk(input: InsightsInput): DowntimeRiskLevel {
     (tiresPct != null && tiresPct < TIRE_LIMITED_PCT) ||
     (brakesPct != null && brakesPct < BRAKE_LIMITED_PCT) ||
     (svcKm != null && svcKm < SERVICE_LIMITED_KM) ||
-    batCondition === 'attention'
+    batCondition === 'attention' ||
+    dtc === 'warning'
   ) return 'Medium';
 
   return 'Low';
@@ -179,11 +195,17 @@ export function deriveVerdict(
   _downtimeRisk: DowntimeRiskLevel,
   input: InsightsInput,
 ): string {
-  const { tires, brakes, service, dtcCount } = input;
+  const { tires, brakes, service } = input;
   const brakePct = brakeHealthPercent(brakes);
+  const dtc = dtcEscalation(input);
 
-  if (dtcCount > 0) {
-    return `${dtcCount} active fault code${dtcCount > 1 ? 's' : ''} — inspection required before next rental.`;
+  if (dtc === 'critical') {
+    const n = input.dtcCount;
+    return `${n} active fault code${n > 1 ? 's' : ''} — inspection required before next rental.`;
+  }
+  if (dtc === 'warning') {
+    const n = input.dtcCount;
+    return `${n} active fault code${n > 1 ? 's' : ''} — review before next rental assignment.`;
   }
 
   if (readiness === 'Action Needed') {
@@ -223,10 +245,12 @@ export function deriveNextAction(
   _downtimeRisk: DowntimeRiskLevel,
   input: InsightsInput,
 ): string {
-  const { tires, brakes, service, dtcCount } = input;
+  const { tires, brakes, service } = input;
   const brakePct = brakeHealthPercent(brakes);
+  const dtc = dtcEscalation(input);
 
-  if (dtcCount > 0) return 'Clear fault codes before the next rental assignment.';
+  if (dtc === 'critical') return 'Clear fault codes before the next rental assignment.';
+  if (dtc === 'warning') return 'Review active fault codes before the next assignment.';
 
   if (readiness === 'Action Needed') return 'Pull from rotation — resolve blocking condition first.';
 

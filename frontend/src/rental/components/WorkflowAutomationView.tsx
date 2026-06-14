@@ -1,12 +1,7 @@
+import { Bell, Bot, Calendar, Car, ClipboardList, CreditCard, Edit3, Headphones, Layers, MapPin, Pause, Play, Shield, Sparkles, Truck, Wrench, Zap } from 'lucide-react';
+import { Icon } from './ui/Icon';
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import {
-  Zap, Search, Filter, ChevronDown, ChevronRight, X, Plus, Play, Pause,
-  Copy, Trash2, Edit3, Eye, ArrowLeft, CheckCircle2, Clock, AlertCircle,
-  Car, MapPin, Sparkles, Wrench, FileText, CreditCard, Headphones,
-  Shield, Bot, Bell, ClipboardList, ToggleLeft, ToggleRight,
-  Target, Settings, ArrowRight, ChevronUp, RefreshCw, Layers,
-  Info, Building2, Truck, Calendar,
-} from 'lucide-react';
+
 import { api } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
 
@@ -487,15 +482,15 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
               onClick={() => setShowTemplates(!showTemplates)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${hoverBg} transition-colors`}
             >
-              <Layers className="w-3.5 h-3.5" />
+              <Icon name="layers" className="w-3.5 h-3.5" />
               Templates
-              {showTemplates ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              {showTemplates ? <Icon name="chevron-up" className="w-3 h-3" /> : <Icon name="chevron-down" className="w-3 h-3" />}
             </button>
             <button
               onClick={() => openBuilder()}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Icon name="plus" className="w-3.5 h-3.5" />
               New Workflow
             </button>
           </div>
@@ -533,14 +528,14 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
         <div className={`${cardBg} border ${cardBorder} rounded-xl p-4`}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Sparkles className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+              <Icon name="sparkles" className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
               <span className={`text-sm font-semibold ${textPrimary}`}>Starter Templates</span>
               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isDarkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>
                 {STARTER_TEMPLATES.length} ready
               </span>
             </div>
             <button onClick={() => setShowTemplates(false)} className={`p-1 rounded ${hoverBg}`}>
-              <X className={`w-3.5 h-3.5 ${textSecondary}`} />
+              <Icon name="x" className={`w-3.5 h-3.5 ${textSecondary}`} />
             </button>
           </div>
           <div className="grid grid-cols-3 gap-2">
@@ -582,7 +577,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
       {/* Filters */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 min-w-[200px] max-w-xs">
-          <Search className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${textSecondary}`} />
+          <Icon name="search" className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${textSecondary}`} />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -591,7 +586,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
           />
         </div>
         <div className="flex items-center gap-1">
-          <Filter className={`w-3 h-3 ${textSecondary}`} />
+          <Icon name="filter" className={`w-3 h-3 ${textSecondary}`} />
           {[
             { key: 'all', label: 'All' },
             { key: 'ACTIVE', label: 'Active' },
@@ -631,7 +626,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
       {/* Workflow List */}
       {loading ? (
         <div className={`${cardBg} border ${cardBorder} rounded-xl p-12 text-center`}>
-          <RefreshCw className={`w-6 h-6 mx-auto mb-2 animate-spin ${textSecondary}`} />
+          <Icon name="refresh-cw" className={`w-6 h-6 mx-auto mb-2 animate-spin ${textSecondary}`} />
           <p className={`text-xs ${textSecondary}`}>Loading workflows...</p>
         </div>
       ) : filtered.length === 0 ? (
@@ -704,15 +699,15 @@ function WorkflowRow({ wf, isDarkMode, canWrite, onOpen, onEdit, onToggle, onDup
           </div>
           <div className={`flex items-center gap-3 mt-0.5 text-[10px] ${textSecondary}`}>
             <span className="flex items-center gap-1">
-              <Target className="w-3 h-3" /> {getTriggerLabel(wf.trigger?.type)}
+              <Icon name="target" className="w-3 h-3" /> {getTriggerLabel(wf.trigger?.type)}
             </span>
             <span className="flex items-center gap-1">
-              <Zap className="w-3 h-3" /> {wf.actions?.length || 0} action{(wf.actions?.length || 0) !== 1 ? 's' : ''}
+              <Icon name="zap" className="w-3 h-3" /> {wf.actions?.length || 0} action{(wf.actions?.length || 0) !== 1 ? 's' : ''}
             </span>
             <span>{cat.label}</span>
             {wf.lastTriggeredAt && (
               <span className="flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Last: {relativeTime(wf.lastTriggeredAt)}
+                <Icon name="clock" className="w-3 h-3" /> Last: {relativeTime(wf.lastTriggeredAt)}
               </span>
             )}
           </div>
@@ -721,21 +716,21 @@ function WorkflowRow({ wf, isDarkMode, canWrite, onOpen, onEdit, onToggle, onDup
           {canWrite && (
             <>
               <button onClick={onToggle} className={`p-1.5 rounded-md ${hoverBg}`} title={wf.status === 'ACTIVE' ? 'Disable' : 'Enable'}>
-                {wf.status === 'ACTIVE' ? <Pause className="w-3.5 h-3.5 text-amber-500" /> : <Play className="w-3.5 h-3.5 text-green-500" />}
+                {wf.status === 'ACTIVE' ? <Icon name="pause" className="w-3.5 h-3.5 text-amber-500" /> : <Icon name="play" className="w-3.5 h-3.5 text-green-500" />}
               </button>
               <button onClick={onEdit} className={`p-1.5 rounded-md ${hoverBg}`} title="Edit">
-                <Edit3 className={`w-3.5 h-3.5 ${textSecondary}`} />
+                <Icon name="edit-3" className={`w-3.5 h-3.5 ${textSecondary}`} />
               </button>
               <button onClick={onDuplicate} className={`p-1.5 rounded-md ${hoverBg}`} title="Duplicate">
-                <Copy className={`w-3.5 h-3.5 ${textSecondary}`} />
+                <Icon name="copy" className={`w-3.5 h-3.5 ${textSecondary}`} />
               </button>
               <button onClick={onDelete} className={`p-1.5 rounded-md ${hoverBg}`} title="Delete">
-                <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                <Icon name="trash-2" className="w-3.5 h-3.5 text-red-400" />
               </button>
             </>
           )}
           <button onClick={onOpen} className={`p-1.5 rounded-md ${hoverBg}`} title="Details">
-            <Eye className={`w-3.5 h-3.5 ${textSecondary}`} />
+            <Icon name="eye" className={`w-3.5 h-3.5 ${textSecondary}`} />
           </button>
         </div>
       </div>
@@ -756,7 +751,7 @@ function EmptyState({ isDarkMode, canWrite, hasWorkflows, onCreateNew, onShowTem
   if (hasWorkflows) {
     return (
       <div className={`${cardBg} border ${cardBorder} rounded-xl p-8 text-center`}>
-        <Search className={`w-8 h-8 mx-auto mb-2 ${textSecondary}`} />
+        <Icon name="search" className={`w-8 h-8 mx-auto mb-2 ${textSecondary}`} />
         <p className={`text-sm font-medium ${textPrimary}`}>No workflows match your filters</p>
         <p className={`text-xs mt-1 ${textSecondary}`}>Try adjusting your search or filter criteria</p>
       </div>
@@ -766,7 +761,7 @@ function EmptyState({ isDarkMode, canWrite, hasWorkflows, onCreateNew, onShowTem
   return (
     <div className={`${cardBg} border ${cardBorder} rounded-xl p-10 text-center`}>
       <div className={`w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-50'}`}>
-        <Zap className={`w-6 h-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+        <Icon name="zap" className={`w-6 h-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
       </div>
       <p className={`text-sm font-semibold ${textPrimary}`}>No workflows yet</p>
       <p className={`text-xs mt-1 ${textSecondary} max-w-md mx-auto`}>
@@ -778,13 +773,13 @@ function EmptyState({ isDarkMode, canWrite, hasWorkflows, onCreateNew, onShowTem
             onClick={onShowTemplates}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border ${isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-white/5' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
           >
-            <Layers className="w-3.5 h-3.5" /> Browse Templates
+            <Icon name="layers" className="w-3.5 h-3.5" /> Browse Templates
           </button>
           <button
             onClick={onCreateNew}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700"
           >
-            <Plus className="w-3.5 h-3.5" /> New Workflow
+            <Icon name="plus" className="w-3.5 h-3.5" /> New Workflow
           </button>
         </div>
       )}
@@ -825,7 +820,7 @@ function DetailView({ wf, isDarkMode, canWrite, onBack, onEdit, onToggle, onDupl
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button onClick={onBack} className={`p-1.5 rounded-lg ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-100'}`}>
-            <ArrowLeft className={`w-4 h-4 ${textSecondary}`} />
+            <Icon name="arrow-left" className={`w-4 h-4 ${textSecondary}`} />
           </button>
           <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-white/5' : 'bg-gray-50'}`}>
             <CatIcon className={`w-5 h-5 ${catColors[cat.color]}`} />
@@ -844,16 +839,16 @@ function DetailView({ wf, isDarkMode, canWrite, onBack, onEdit, onToggle, onDupl
         {canWrite && (
           <div className="flex items-center gap-1.5">
             <button onClick={onToggle} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
-              {wf.status === 'ACTIVE' ? <><Pause className="w-3.5 h-3.5 text-amber-500" /> Disable</> : <><Play className="w-3.5 h-3.5 text-green-500" /> Enable</>}
+              {wf.status === 'ACTIVE' ? <><Icon name="pause" className="w-3.5 h-3.5 text-amber-500" /> Disable</> : <><Icon name="play" className="w-3.5 h-3.5 text-green-500" /> Enable</>}
             </button>
             <button onClick={onEdit} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700">
-              <Edit3 className="w-3.5 h-3.5" /> Edit
+              <Icon name="edit-3" className="w-3.5 h-3.5" /> Edit
             </button>
             <button onClick={onDuplicate} className={`p-1.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
-              <Copy className={`w-3.5 h-3.5 ${textSecondary}`} />
+              <Icon name="copy" className={`w-3.5 h-3.5 ${textSecondary}`} />
             </button>
             <button onClick={onDelete} className={`p-1.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
-              <Trash2 className="w-3.5 h-3.5 text-red-400" />
+              <Icon name="trash-2" className="w-3.5 h-3.5 text-red-400" />
             </button>
           </div>
         )}
@@ -862,7 +857,7 @@ function DetailView({ wf, isDarkMode, canWrite, onBack, onEdit, onToggle, onDupl
       {/* AI Warning */}
       {isAi && (
         <div className={`flex items-start gap-2 p-3 rounded-xl border ${isDarkMode ? 'bg-purple-900/10 border-purple-800/30' : 'bg-purple-50 border-purple-200'}`}>
-          <Shield className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+          <Icon name="shield" className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
           <div>
             <p className={`text-xs font-semibold ${isDarkMode ? 'text-purple-300' : 'text-purple-800'}`}>AI Permission Workflow</p>
             <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>
@@ -895,7 +890,7 @@ function DetailView({ wf, isDarkMode, canWrite, onBack, onEdit, onToggle, onDupl
           <p className={`text-xs font-semibold ${textPrimary} mb-3`}>Workflow Logic</p>
           {/* Trigger */}
           <div className={`flex items-start gap-2 mb-3 p-2 rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-gray-50'}`}>
-            <Target className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+            <Icon name="target" className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
             <div>
               <p className={labelClass}>Trigger</p>
               <p className={`text-xs font-medium ${textPrimary}`}>{getTriggerLabel(wf.trigger?.type)}</p>
@@ -912,7 +907,7 @@ function DetailView({ wf, isDarkMode, canWrite, onBack, onEdit, onToggle, onDupl
               <p className={`${labelClass} mb-1`}>Conditions</p>
               {wf.conditions.map((c: ConditionDef, i: number) => (
                 <div key={i} className={`flex items-center gap-1.5 text-[11px] ${textSecondary} mb-0.5`}>
-                  <Filter className="w-3 h-3" />
+                  <Icon name="filter" className="w-3 h-3" />
                   <span>{getFieldLabel(c.field)} {getOperatorLabel(c.operator)} <strong className={textPrimary}>{String(c.value)}</strong></span>
                 </div>
               ))}
@@ -997,7 +992,7 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <button onClick={onCancel} className={`p-1.5 rounded-lg ${hoverBg}`}>
-            <ArrowLeft className={`w-4 h-4 ${textSecondary}`} />
+            <Icon name="arrow-left" className={`w-4 h-4 ${textSecondary}`} />
           </button>
           <h2 className={`text-lg font-bold ${textPrimary}`}>{data.id ? 'Edit Workflow' : 'Create Workflow'}</h2>
         </div>
@@ -1027,7 +1022,7 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
       {/* AI Warning */}
       {isAiAction && (
         <div className={`flex items-start gap-2 p-3 rounded-xl border ${isDarkMode ? 'bg-purple-900/10 border-purple-800/30' : 'bg-purple-50 border-purple-200'}`}>
-          <Shield className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+          <Icon name="shield" className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
           <div>
             <p className={`text-xs font-semibold ${isDarkMode ? 'text-purple-300' : 'text-purple-800'}`}>AI Actions Detected</p>
             <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>
@@ -1092,7 +1087,7 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
           {/* Trigger */}
           <div className={sectionClass}>
             <div className="flex items-center gap-2 mb-3">
-              <Target className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+              <Icon name="target" className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
               <p className={`text-xs font-semibold ${textPrimary}`}>Trigger</p>
             </div>
             <select
@@ -1118,12 +1113,12 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
           <div className={sectionClass}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Filter className={`w-4 h-4 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
+                <Icon name="filter" className={`w-4 h-4 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
                 <p className={`text-xs font-semibold ${textPrimary}`}>Conditions</p>
                 <span className={`text-[9px] ${textSecondary}`}>optional</span>
               </div>
               <button onClick={addCondition} className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium ${isDarkMode ? 'text-blue-400 hover:bg-blue-900/20' : 'text-blue-600 hover:bg-blue-50'}`}>
-                <Plus className="w-3 h-3" /> Add
+                <Icon name="plus" className="w-3 h-3" /> Add
               </button>
             </div>
             {((data.conditions || []) as ConditionDef[]).length === 0 ? (
@@ -1139,7 +1134,7 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
                       {CONDITION_OPERATORS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
                     </select>
                     <input value={String(c.value)} onChange={(e) => updateCondition(i, { value: e.target.value })} placeholder="Value" className={`w-24 px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`} />
-                    <button onClick={() => removeCondition(i)} className="p-0.5"><X className="w-3 h-3 text-red-400" /></button>
+                    <button onClick={() => removeCondition(i)} className="p-0.5"><Icon name="x" className="w-3 h-3 text-red-400" /></button>
                   </div>
                 ))}
               </div>
@@ -1150,11 +1145,11 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
           <div className={sectionClass}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Zap className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+                <Icon name="zap" className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
                 <p className={`text-xs font-semibold ${textPrimary}`}>Actions</p>
               </div>
               <button onClick={addAction} className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium ${isDarkMode ? 'text-blue-400 hover:bg-blue-900/20' : 'text-blue-600 hover:bg-blue-50'}`}>
-                <Plus className="w-3 h-3" /> Add
+                <Icon name="plus" className="w-3 h-3" /> Add
               </button>
             </div>
             {((data.actions || []) as ActionDef[]).length === 0 ? (
@@ -1170,7 +1165,7 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
                         <select value={a.type} onChange={(e) => updateAction(i, { type: e.target.value, config: {} })} className={`flex-1 px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
                           {ACTION_TYPES.map((at) => <option key={at.key} value={at.key}>{at.label}</option>)}
                         </select>
-                        <button onClick={() => removeAction(i)} className="p-0.5"><X className="w-3 h-3 text-red-400" /></button>
+                        <button onClick={() => removeAction(i)} className="p-0.5"><Icon name="x" className="w-3 h-3 text-red-400" /></button>
                       </div>
                       <ActionConfigEditor action={a} onChange={(updated) => updateAction(i, updated)} isDarkMode={isDarkMode} />
                     </div>

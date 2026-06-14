@@ -1,10 +1,7 @@
+import { AlertTriangle, ArrowUpRight, BarChart3, Clock, FileText, HelpCircle, MessageSquare, Phone, PhoneCall, PhoneIncoming, PhoneOff, PhoneOutgoing, Play, Settings, Shield, UserCheck, Zap, type LucideIcon } from 'lucide-react';
+import { Icon } from './ui/Icon';
 import { useState, useEffect, useCallback } from 'react';
-import {
-  Phone, Mic, Settings, Shield, Clock, BarChart3, MessageSquare, Play, Square,
-  CheckCircle2, XCircle, AlertTriangle, ChevronRight, Volume2, Globe, Bot,
-  PhoneCall, PhoneOff, PhoneIncoming, PhoneOutgoing, UserCheck, ArrowUpRight,
-  Loader2, RefreshCw, Save, Power, PowerOff, HelpCircle, FileText, Zap
-} from 'lucide-react';
+
 import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
 import type { VoiceAssistantData, VoiceAssistantReadiness, VoiceOption, VoiceConversationEntry } from '../../lib/api';
@@ -12,6 +9,17 @@ import type { VoiceAssistantData, VoiceAssistantReadiness, VoiceOption, VoiceCon
 interface Props { isDarkMode: boolean; }
 
 type Tab = 'overview' | 'config' | 'permissions' | 'escalation' | 'telephony' | 'test' | 'analytics' | 'logs';
+
+const SECTION_OPTIONS: { key: Tab; label: string; desc: string; icon: LucideIcon; tone: string }[] = [
+  { key: 'overview', label: 'Overview', desc: 'Status, readiness and assistant setup', icon: BarChart3, tone: 'sq-tone-brand' },
+  { key: 'config', label: 'Configuration', desc: 'Voice, language, prompts and context', icon: Settings, tone: 'sq-tone-neutral' },
+  { key: 'permissions', label: 'Permissions', desc: 'Allowed actions and responsibilities', icon: Shield, tone: 'sq-tone-success' },
+  { key: 'escalation', label: 'Escalation', desc: 'Handover rules, triggers and hours', icon: ArrowUpRight, tone: 'sq-tone-warning' },
+  { key: 'telephony', label: 'Telephony', desc: 'Phone number and call routing', icon: Phone, tone: 'sq-tone-brand' },
+  { key: 'test', label: 'Test', desc: 'Run an ElevenLabs test session', icon: Play, tone: 'sq-tone-neutral' },
+  { key: 'analytics', label: 'Analytics', desc: 'Call volume and talk time metrics', icon: BarChart3, tone: 'sq-tone-success' },
+  { key: 'logs', label: 'Conversations', desc: 'Synced conversation history', icon: FileText, tone: 'sq-tone-neutral' },
+];
 
 export function VoiceAssistantView({ isDarkMode }: Props) {
   const { orgId } = useRentalOrg();
@@ -111,12 +119,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
   const setD = (key: string, value: any) => setDraft(prev => ({ ...prev, [key]: value }));
   const hasDraft = Object.keys(draft).length > 0;
 
-  const glass = isDarkMode
-    ? 'bg-neutral-900 border border-neutral-800'
-    : 'bg-white border border-gray-200';
-  const card = isDarkMode
-    ? 'bg-neutral-800 border border-neutral-700 rounded-xl'
-    : 'bg-white border border-gray-200/60 rounded-xl shadow-sm';
+  const card = 'sq-card rounded-2xl shadow-[var(--shadow-1)]';
   const inputCls = `w-full px-3 py-2 rounded-lg text-xs outline-none transition-colors ${
     isDarkMode
       ? 'bg-neutral-800 border border-neutral-700 text-gray-200 focus:border-purple-500/50'
@@ -125,91 +128,188 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
   const textareaCls = `${inputCls} resize-none`;
   const labelCls = `block text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`;
 
-  const tabs: { key: Tab; label: string; icon: any }[] = [
-    { key: 'overview', label: 'Overview', icon: BarChart3 },
-    { key: 'config', label: 'Configuration', icon: Settings },
-    { key: 'permissions', label: 'Permissions', icon: Shield },
-    { key: 'escalation', label: 'Escalation', icon: ArrowUpRight },
-    { key: 'telephony', label: 'Telephony', icon: Phone },
-    { key: 'test', label: 'Test', icon: Play },
-    { key: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { key: 'logs', label: 'Conversations', icon: FileText },
-  ];
+  const isActive = assistant?.status === 'ACTIVE';
+  const statusLabel = isActive ? 'Active' : assistant?.status === 'INACTIVE' ? 'Inactive' : 'Draft';
+  const activeSection = SECTION_OPTIONS.find(section => section.key === tab) ?? SECTION_OPTIONS[0];
+  const ActiveSectionIcon = activeSection.icon;
+  const readyChecks = readiness?.checks.filter(check => check.ok).length ?? 0;
+  const totalChecks = readiness?.checks.length ?? 0;
+  const avgDurationSeconds = assistant && assistant.answeredCalls > 0
+    ? Math.round((assistant.totalTalkMinutes / assistant.answeredCalls) * 60)
+    : 0;
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <Loader2 className={`w-6 h-6 animate-spin ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
+      <div className="mx-auto flex h-[60vh] max-w-[1600px] items-center justify-center">
+        <div className="sq-card flex items-center gap-3 rounded-2xl px-5 py-4 shadow-[var(--shadow-1)]">
+          <Icon name="loader-2" className="h-5 w-5 animate-spin text-muted-foreground" />
+          <span className="text-xs font-semibold text-muted-foreground">Loading voice assistant...</span>
+        </div>
       </div>
     );
   }
 
-  const isActive = assistant?.status === 'ACTIVE';
-
   return (
-    <div className="max-w-[1400px] mx-auto space-y-4">
+    <div className="max-w-[1600px] mx-auto space-y-5">
       {/* Header */}
-      <div className={`${glass} rounded-2xl p-5`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isDarkMode ? 'bg-purple-500/15' : 'bg-purple-100'}`}>
-              <Bot className={`w-6 h-6 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-            </div>
-            <div>
-              <h1 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                AI Voice Assistant
-              </h1>
-              <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                Powered by ElevenLabs Conversational AI
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold ${
+      <div className="flex min-h-8 flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground">
+            AI Voice Assistant
+          </h1>
+          <p className="mt-1 text-[10px] font-medium text-muted-foreground">
+            Powered by ElevenLabs Conversational AI
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`flex items-center gap-2 rounded-xl px-3 py-2 text-[10px] font-semibold ${
+            isActive
+              ? 'sq-tone-success'
+              : assistant?.status === 'INACTIVE'
+                ? 'sq-tone-critical'
+                : 'sq-tone-warning'
+          }`}>
+            <span className={`h-2 w-2 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : assistant?.status === 'INACTIVE' ? 'bg-red-500' : 'bg-amber-500'}`} />
+            {statusLabel}
+          </span>
+          <button
+            type="button"
+            onClick={toggleActive}
+            disabled={saving}
+            className={`sq-press flex items-center gap-2 rounded-xl border px-3 py-2 text-[10px] font-semibold transition-all disabled:opacity-60 ${
               isActive
-                ? isDarkMode ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                : assistant?.status === 'INACTIVE'
-                  ? isDarkMode ? 'bg-red-500/15 text-red-400 border border-red-500/20' : 'bg-red-50 text-red-600 border border-red-200'
-                  : isDarkMode ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20' : 'bg-amber-50 text-amber-600 border border-amber-200'
-            }`}>
-              <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : assistant?.status === 'INACTIVE' ? 'bg-red-500' : 'bg-amber-500'}`} />
-              {isActive ? 'Active' : assistant?.status === 'INACTIVE' ? 'Inactive' : 'Draft'}
-            </div>
-            <button
-              onClick={toggleActive}
-              disabled={saving}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-                isActive
-                  ? isDarkMode ? 'bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/20' : 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200'
-                  : isDarkMode ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200'
-              }`}
-            >
-              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : isActive ? <PowerOff className="w-3.5 h-3.5" /> : <Power className="w-3.5 h-3.5" />}
-              {isActive ? 'Deactivate' : 'Activate'}
-            </button>
-          </div>
+                ? isDarkMode ? 'bg-red-900/30 border-red-700/50 text-red-400 hover:bg-red-900/50' : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
+                : isDarkMode ? 'bg-emerald-900/30 border-emerald-700/50 text-emerald-400 hover:bg-emerald-900/50' : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+            }`}
+          >
+            {saving ? <Icon name="loader-2" className="h-4 w-4 animate-spin" /> : isActive ? <Icon name="power-off" className="h-4 w-4" /> : <Icon name="power" className="h-4 w-4" />}
+            {isActive ? 'Deactivate' : 'Activate'}
+          </button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className={`${glass} rounded-2xl px-3 py-2 flex gap-1 overflow-x-auto`}>
-        {tabs.map(t => {
-          const Icon = t.icon;
+      {/* Segment metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        {[
+          {
+            label: 'Status',
+            value: statusLabel,
+            helper: assistant?.elevenLabsAgentId ? 'agent provisioned' : 'agent not provisioned',
+            icon: Zap,
+            tone: isActive ? 'sq-tone-success' : assistant?.status === 'INACTIVE' ? 'sq-tone-critical' : 'sq-tone-warning',
+            action: () => setTab('overview'),
+            active: tab === 'overview',
+          },
+          {
+            label: 'Total Calls',
+            value: assistant?.totalCalls ?? 0,
+            helper: `${assistant?.answeredCalls ?? 0} answered`,
+            icon: PhoneCall,
+            tone: 'sq-tone-brand',
+            action: () => setTab('analytics'),
+            active: tab === 'analytics',
+          },
+          {
+            label: 'Readiness',
+            value: `${readyChecks}/${totalChecks || 0}`,
+            helper: readiness?.ready ? 'ready to activate' : 'configuration needed',
+            icon: Shield,
+            tone: readiness?.ready ? 'sq-tone-success' : 'sq-tone-warning',
+            action: () => setTab('overview'),
+            active: false,
+          },
+          {
+            label: 'Avg Duration',
+            value: `${avgDurationSeconds}s`,
+            helper: `${(assistant?.totalTalkMinutes ?? 0).toFixed(1)} talk minutes`,
+            icon: Clock,
+            tone: 'sq-tone-neutral',
+            action: () => setTab('analytics'),
+            active: false,
+          },
+        ].map(metric => {
+          const MetricIcon = metric.icon;
           return (
             <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-                tab === t.key
-                  ? isDarkMode ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-purple-50 text-purple-700 border border-purple-200'
-                  : isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800 border border-transparent' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50 border border-transparent'
+              key={metric.label}
+              type="button"
+              onClick={metric.action}
+              className={`group sq-card sq-press rounded-2xl p-4 text-left shadow-[var(--shadow-1)] transition-all ${
+                metric.active ? 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_22%,transparent)]' : 'hover:bg-muted/35'
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
-              {t.label}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold text-muted-foreground">{metric.label}</p>
+                  <p className="mt-1 truncate text-[20px] font-bold leading-none tracking-[-0.03em] text-foreground tabular-nums">
+                    {metric.value}
+                  </p>
+                  <p className="mt-2 truncate text-[10px] font-medium text-muted-foreground">{metric.helper}</p>
+                </div>
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${metric.tone}`}>
+                  <MetricIcon className="h-4 w-4" />
+                </span>
+              </div>
             </button>
           );
         })}
+      </div>
+
+      {/* Workspace selector */}
+      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${activeSection.tone}`}>
+              <ActiveSectionIcon className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">Workspace</h2>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">{activeSection.desc}</p>
+            </div>
+          </div>
+          <span className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-brand">
+            {activeSection.label} active
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-[260px] flex-1">
+            <select
+              value={tab}
+              onChange={event => setTab(event.target.value as Tab)}
+              className={`w-full appearance-none rounded-lg border py-2.5 pl-3.5 pr-10 text-xs font-medium outline-none transition-all ${
+                isDarkMode
+                  ? 'bg-neutral-800 border-neutral-700 text-gray-200 focus:border-blue-500/50'
+                  : 'bg-white border-gray-200 text-gray-900 focus:border-blue-300'
+              }`}
+            >
+              {SECTION_OPTIONS.map(section => (
+                <option key={section.key} value={section.key}>{section.label}</option>
+              ))}
+            </select>
+            <Icon name="chevron-down" className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {SECTION_OPTIONS.slice(0, 4).map(section => {
+              const SectionIcon = section.icon;
+              const selected = tab === section.key;
+              return (
+                <button
+                  key={section.key}
+                  type="button"
+                  onClick={() => setTab(section.key)}
+                  className={`sq-press flex items-center gap-1.5 rounded-lg border px-2.5 py-2 text-[10px] font-semibold transition-all ${
+                    selected
+                      ? isDarkMode ? 'bg-blue-900/30 border-blue-700/50 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-700'
+                      : isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-800' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <SectionIcon className="h-3.5 w-3.5" />
+                  {section.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Tab Content */}
@@ -243,7 +343,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
             <div className="space-y-1.5">
               {readiness?.checks.map(c => (
                 <div key={c.key} className={`flex items-center gap-2 p-2 rounded-lg ${isDarkMode ? 'bg-neutral-900/50' : 'bg-gray-50/80'}`}>
-                  {c.ok ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <XCircle className="w-3.5 h-3.5 text-red-400" />}
+                  {c.ok ? <Icon name="check-circle-2" className="w-3.5 h-3.5 text-emerald-500" /> : <Icon name="x-circle" className="w-3.5 h-3.5 text-red-400" />}
                   <span className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{c.label}</span>
                 </div>
               ))}
@@ -286,7 +386,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
             <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Assistant Configuration</h3>
             {hasDraft && (
               <button onClick={() => save()} disabled={saving} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${isDarkMode ? 'bg-purple-500/20 text-purple-300 hover:bg-purple-500/30' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}`}>
-                {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} Save Changes
+                {saving ? <Icon name="loader-2" className="w-3 h-3 animate-spin" /> : <Icon name="save" className="w-3 h-3" />} Save Changes
               </button>
             )}
           </div>
@@ -374,7 +474,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
             <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Permissions & Responsibilities</h3>
             {hasDraft && (
               <button onClick={() => save()} disabled={saving} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${isDarkMode ? 'bg-purple-500/20 text-purple-300 hover:bg-purple-500/30' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}`}>
-                {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} Save
+                {saving ? <Icon name="loader-2" className="w-3 h-3 animate-spin" /> : <Icon name="save" className="w-3 h-3" />} Save
               </button>
             )}
           </div>
@@ -409,7 +509,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
             <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Escalation & Handover</h3>
             {hasDraft && (
               <button onClick={() => save()} disabled={saving} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${isDarkMode ? 'bg-purple-500/20 text-purple-300 hover:bg-purple-500/30' : 'bg-purple-50 text-purple-700 hover:bg-purple-100'}`}>
-                {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} Save
+                {saving ? <Icon name="loader-2" className="w-3 h-3 animate-spin" /> : <Icon name="save" className="w-3 h-3" />} Save
               </button>
             )}
           </div>
@@ -478,7 +578,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-neutral-900/50' : 'bg-gray-50/80'}`}>
               <div className="flex items-center gap-2 mb-3">
-                <Phone className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
+                <Icon name="phone" className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
                 <span className={`text-xs font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Phone Number</span>
               </div>
               <p className={`text-lg font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -490,7 +590,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
             </div>
             <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-neutral-900/50' : 'bg-gray-50/80'}`}>
               <div className="flex items-center gap-2 mb-3">
-                <Zap className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
+                <Icon name="zap" className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
                 <span className={`text-xs font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Connection Status</span>
               </div>
               <p className={`text-lg font-bold mb-1 ${assistant?.elevenLabsAgentId ? 'text-emerald-500' : isDarkMode ? 'text-amber-400' : 'text-amber-500'}`}>
@@ -526,7 +626,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
           <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Test Your Assistant</h3>
           {!assistant?.elevenLabsAgentId ? (
             <div className={`p-6 rounded-xl text-center ${isDarkMode ? 'bg-neutral-900/50' : 'bg-gray-50/80'}`}>
-              <Bot className={`w-10 h-10 mx-auto mb-3 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+              <Icon name="bot" className={`w-10 h-10 mx-auto mb-3 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
               <p className={`text-xs font-semibold mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Agent Not Provisioned</p>
               <p className={`text-[10px] ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>Activate the assistant first to enable testing.</p>
             </div>
@@ -543,7 +643,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
                     isDarkMode ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/20' : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200'
                   }`}
                 >
-                  {testLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
+                  {testLoading ? <Icon name="loader-2" className="w-4 h-4 animate-spin" /> : <Icon name="mic" className="w-4 h-4" />}
                   Start Test Session
                 </button>
               </div>
@@ -564,34 +664,40 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
       )}
 
       {tab === 'analytics' && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
           {[
-            { label: 'Total Calls', value: assistant?.totalCalls ?? 0, icon: PhoneCall, color: 'purple' },
-            { label: 'Answered', value: assistant?.answeredCalls ?? 0, icon: PhoneIncoming, color: 'emerald' },
-            { label: 'Missed', value: assistant?.missedCalls ?? 0, icon: PhoneOff, color: 'red' },
-            { label: 'Escalated', value: assistant?.escalatedCalls ?? 0, icon: ArrowUpRight, color: 'amber' },
+            { label: 'Total Calls', value: assistant?.totalCalls ?? 0, icon: PhoneCall, tone: 'sq-tone-brand' },
+            { label: 'Answered', value: assistant?.answeredCalls ?? 0, icon: PhoneIncoming, tone: 'sq-tone-success' },
+            { label: 'Missed', value: assistant?.missedCalls ?? 0, icon: PhoneOff, tone: (assistant?.missedCalls ?? 0) > 0 ? 'sq-tone-critical' : 'sq-tone-neutral' },
+            { label: 'Escalated', value: assistant?.escalatedCalls ?? 0, icon: ArrowUpRight, tone: (assistant?.escalatedCalls ?? 0) > 0 ? 'sq-tone-warning' : 'sq-tone-neutral' },
           ].map(m => (
             <div key={m.label} className={`${card} p-4`}>
-              <div className="flex items-center gap-2 mb-2">
-                <m.icon className={`w-4 h-4 text-${m.color}-500`} />
-                <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{m.label}</span>
+              <div className="mb-2 flex items-center gap-2">
+                <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${m.tone}`}>
+                  <m.icon className="h-4 w-4" />
+                </span>
+                <span className="text-[10px] font-semibold text-muted-foreground">{m.label}</span>
               </div>
-              <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{m.value}</p>
+              <p className="text-2xl font-bold text-foreground tabular-nums">{m.value}</p>
             </div>
           ))}
           <div className={`${card} p-4 col-span-2`}>
             <div className="flex items-center gap-2 mb-2">
-              <Clock className={`w-4 h-4 text-purple-500`} />
-              <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Total Talk Time</span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl sq-tone-brand">
+                <Icon name="clock" className="h-4 w-4" />
+              </span>
+              <span className="text-[10px] font-semibold text-muted-foreground">Total Talk Time</span>
             </div>
-            <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{(assistant?.totalTalkMinutes ?? 0).toFixed(1)} min</p>
+            <p className="text-2xl font-bold text-foreground tabular-nums">{(assistant?.totalTalkMinutes ?? 0).toFixed(1)} min</p>
           </div>
           <div className={`${card} p-4 col-span-2`}>
             <div className="flex items-center gap-2 mb-2">
-              <BarChart3 className={`w-4 h-4 text-purple-500`} />
-              <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Avg Duration</span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl sq-tone-neutral">
+                <Icon name="bar-chart-3" className="h-4 w-4" />
+              </span>
+              <span className="text-[10px] font-semibold text-muted-foreground">Avg Duration</span>
             </div>
-            <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            <p className="text-2xl font-bold text-foreground tabular-nums">
               {assistant && assistant.answeredCalls > 0 ? ((assistant.totalTalkMinutes / assistant.answeredCalls) * 60).toFixed(0) : '0'}s
             </p>
           </div>
@@ -603,12 +709,12 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
           <div className="flex items-center justify-between">
             <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Conversation Logs</h3>
             <button onClick={syncLogs} disabled={saving} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${isDarkMode ? 'bg-neutral-800 text-gray-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Sync from ElevenLabs
+              {saving ? <Icon name="loader-2" className="w-3 h-3 animate-spin" /> : <Icon name="refresh-cw" className="w-3 h-3" />} Sync from ElevenLabs
             </button>
           </div>
           {conversations.length === 0 ? (
             <div className={`p-8 rounded-xl text-center ${isDarkMode ? 'bg-neutral-900/50' : 'bg-gray-50/80'}`}>
-              <FileText className={`w-8 h-8 mx-auto mb-2 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+              <Icon name="file-text" className={`w-8 h-8 mx-auto mb-2 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
               <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>No conversations yet</p>
             </div>
           ) : (
@@ -617,7 +723,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
                 <div key={c.id} className={`p-3 rounded-lg ${isDarkMode ? 'bg-neutral-900/50 hover:bg-neutral-800' : 'bg-gray-50/80 hover:bg-gray-100/80'} transition-colors`}>
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
-                      {c.direction === 'inbound' ? <PhoneIncoming className="w-3 h-3 text-emerald-500" /> : <PhoneOutgoing className="w-3 h-3 text-blue-500" />}
+                      {c.direction === 'inbound' ? <Icon name="phone-incoming" className="w-3 h-3 text-emerald-500" /> : <Icon name="phone-outgoing" className="w-3 h-3 text-blue-500" />}
                       <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
                         {c.callerNumber || 'Unknown Caller'}
                       </span>

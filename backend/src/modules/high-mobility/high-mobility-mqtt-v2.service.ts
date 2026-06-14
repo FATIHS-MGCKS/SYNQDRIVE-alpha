@@ -149,7 +149,9 @@ export class HighMobilityMqttV2Service {
     s.lastDataTopLevelKeys = meta.dataTopLevelKeys;
 
     const keysStr = meta.dataTopLevelKeys.slice(0, 12).join(', ') + (meta.dataTopLevelKeys.length > 12 ? '…' : '');
-    this.logger.log(
+    // Per-message log — high frequency. Kept at debug so production log levels
+    // (error/warn/log) suppress it; flip LOG_LEVEL to include debug to trace.
+    this.logger.debug(
       `[HM MQTT V2][${app}] message #${s.messagesReceivedTotal} ` +
         `msgId=${meta.messageId ?? 'n/a'} vin=${meta.vin ?? 'n/a'} ver=${meta.version ?? 'n/a'} ` +
         `data.groups=[${keysStr || '—'}]`,

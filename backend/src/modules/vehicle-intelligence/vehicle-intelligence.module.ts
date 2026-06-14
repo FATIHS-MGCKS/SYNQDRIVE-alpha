@@ -8,10 +8,15 @@ import { TireHealthService } from './tires/tire-health.service';
 import { TireLifecycleService } from './tires/tire-lifecycle.service';
 import { BrakesService } from './brakes/brakes.service';
 import { BrakeHealthService } from './brakes/brake-health.service';
+import { BrakeEvidenceService } from './brakes/brake-evidence.service';
 import { BrakeLifecycleService } from './brakes/brake-lifecycle.service';
 import { ServiceEventsService } from './service-events/service-events.service';
 import { EnrichmentJobsService } from './enrichment-jobs/enrichment-jobs.service';
 import { DtcService } from './dtc/dtc.service';
+import { DtcKnowledgeService } from './dtc-knowledge/dtc-knowledge.service';
+import { DtcKnowledgeEnrichmentService } from './dtc-knowledge/dtc-knowledge-enrichment.service';
+import { DtcAiResearchService } from './dtc-knowledge/dtc-ai-research.service';
+import { DTC_RESEARCH_PORT } from './dtc-knowledge/dtc-research.port';
 import { DrivingEventsService } from './driving-events/driving-events.service';
 import { TripsService } from './trips/trips.service';
 import { TripDetectionOrchestrationService } from './trips/trip-detection-orchestration.service';
@@ -64,6 +69,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
       { name: QUEUE_NAMES.TRIP_TRACKING },
       { name: QUEUE_NAMES.TRIP_BEHAVIOR_ENRICHMENT },
       { name: QUEUE_NAMES.DRIVING_IMPACT_COMPUTE },
+      { name: QUEUE_NAMES.DTC_KNOWLEDGE_ENRICHMENT },
     ),
   ],
   controllers: [VehicleIntelligenceController],
@@ -75,10 +81,15 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     TireLifecycleService,
     BrakesService,
     BrakeHealthService,
+    BrakeEvidenceService,
     BrakeLifecycleService,
     ServiceEventsService,
     EnrichmentJobsService,
     DtcService,
+    DtcKnowledgeService,
+    DtcKnowledgeEnrichmentService,
+    DtcAiResearchService,
+    { provide: DTC_RESEARCH_PORT, useExisting: DtcAiResearchService },
     DrivingEventsService,
     TripsService,
     TripDetectionOrchestrationService,
@@ -131,10 +142,13 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     TireLifecycleService,
     BrakesService,
     BrakeHealthService,
+    BrakeEvidenceService,
     BrakeLifecycleService,
     ServiceEventsService,
     EnrichmentJobsService,
     DtcService,
+    DtcKnowledgeService,
+    DtcKnowledgeEnrichmentService,
     DrivingEventsService,
     TripsService,
     TripDetectionOrchestrationService,

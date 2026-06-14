@@ -5,6 +5,7 @@ import { InsightRankingService } from './insight-ranking.service';
 import { InsightGroupingService } from './insight-grouping.service';
 import { InsightFormatterService } from './insight-formatter.service';
 import { DashboardInsightsRepository } from './dashboard-insights.repository';
+import { InsightTaskBridgeService } from './insight-task-bridge.service';
 import { BusinessInsightsScheduler } from './business-insights-scheduler.service';
 import { BusinessInsightsTriggerService } from './business-insights-trigger.service';
 
@@ -15,13 +16,18 @@ import { LowUtilizationDetector } from './detectors/low-utilization.detector';
 import { ServiceWindowDetector } from './detectors/service-window.detector';
 import { ServiceBeforeBookingDetector } from './detectors/service-before-booking.detector';
 import { BatteryCriticalDetector } from './detectors/battery-critical.detector';
+import { TireCriticalDetector } from './detectors/tire-critical.detector';
+import { BrakeCriticalDetector } from './detectors/brake-critical.detector';
 import { ServiceOverdueDetector } from './detectors/service-overdue.detector';
+import { ComplianceOverdueDetector } from './detectors/compliance-overdue.detector';
 import { PickupOverdueDetector } from './detectors/pickup-overdue.detector';
 
 import { DashboardInsightsController } from './dashboard-insights.controller';
 import { InternalBusinessInsightsController } from './internal-business-insights.controller';
+import { TasksModule } from '../tasks/tasks.module';
 
 @Module({
+  imports: [TasksModule],
   controllers: [DashboardInsightsController, InternalBusinessInsightsController],
   providers: [
     BusinessInsightsService,
@@ -30,6 +36,7 @@ import { InternalBusinessInsightsController } from './internal-business-insights
     InsightGroupingService,
     InsightFormatterService,
     DashboardInsightsRepository,
+    InsightTaskBridgeService,
     BusinessInsightsScheduler,
     BusinessInsightsTriggerService,
     TightHandoverDetector,
@@ -39,7 +46,10 @@ import { InternalBusinessInsightsController } from './internal-business-insights
     ServiceWindowDetector,
     ServiceBeforeBookingDetector,
     BatteryCriticalDetector,
+    TireCriticalDetector,
+    BrakeCriticalDetector,
     ServiceOverdueDetector,
+    ComplianceOverdueDetector,
     PickupOverdueDetector,
   ],
   exports: [BusinessInsightsService, BusinessInsightsTriggerService],

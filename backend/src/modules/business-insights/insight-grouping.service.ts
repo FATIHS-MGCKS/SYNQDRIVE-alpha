@@ -6,10 +6,18 @@ const GROUP_TEMPLATES: Partial<Record<InsightType, (count: number) => string>> =
   [InsightType.SERVICE_WINDOW]: (n) => `${n} vehicles have free windows available for service.`,
   [InsightType.BATTERY_CRITICAL]: (n) =>
     `${n} Fahrzeuge mit kritischer Batterie — Startschwierigkeiten möglich.`,
+  [InsightType.TIRE_CRITICAL]: (n) =>
+    `${n} Fahrzeuge mit kritischem Reifenzustand — Profiltiefe prüfen, Austausch empfohlen.`,
+  [InsightType.BRAKE_CRITICAL]: (n) =>
+    `${n} Fahrzeuge mit kritischem Bremszustand — Bremsen prüfen, Service empfohlen.`,
   [InsightType.SERVICE_OVERDUE]: (n) =>
     `${n} Fahrzeuge mit überfälligem Service — Werkstatttermine zeitnah vereinbaren.`,
   [InsightType.PICKUP_OVERDUE]: (n) =>
     `${n} Buchungen mit überfälligem Pickup — Pickup nachtragen oder No-Show markieren.`,
+  [InsightType.TUV_OVERDUE]: (n) =>
+    `${n} Fahrzeuge mit fälligem/überfälligem TÜV — Termine zeitnah vereinbaren.`,
+  [InsightType.BOKRAFT_OVERDUE]: (n) =>
+    `${n} Fahrzeuge mit fälliger/überfälliger BOKraft-Prüfung — Termine zeitnah vereinbaren.`,
 };
 
 @Injectable()

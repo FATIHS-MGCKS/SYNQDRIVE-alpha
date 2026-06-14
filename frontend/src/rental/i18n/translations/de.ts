@@ -9,7 +9,6 @@ export const de: Record<TranslationKey, string> = {
   'nav.customers': 'Kunden',
   'nav.stations': 'Standorte',
   'nav.insights': 'Auswertungen',
-  'nav.analytics': 'Analyse',
   'nav.fleetCondition': 'Flottenzustand',
   'nav.financialInsights': 'Finanz-Auswertungen',
   'nav.finance': 'Finanzen',
@@ -36,6 +35,7 @@ export const de: Record<TranslationKey, string> = {
   'nav.usersRoles': 'Benutzer & Rollen',
   'nav.fleetConnectivity': 'Flottenkonnektivitaet',
   'nav.dataAuthorization': 'Datenberechtigung',
+  'nav.legalDocuments': 'Rechtliche Dokumente',
   'nav.billingSubscription': 'Abrechnung & Abonnement',
   'nav.support': 'Support',
   'nav.helpCenter': 'Hilfe-Center',
@@ -61,7 +61,6 @@ export const de: Record<TranslationKey, string> = {
   'view.trips': 'Fahrten',
   'view.dashboard': 'Dashboard',
   'view.bookings': 'Buchungen',
-  'view.drivingInsights': 'Fahranalyse',
   'view.healthErrors': 'Gesundheit & Fehler',
   'view.fleet': 'Flotte',
   'view.damages': 'Schaeden',
@@ -73,7 +72,6 @@ export const de: Record<TranslationKey, string> = {
   'view.invoices': 'Rechnungen',
   'view.fines': 'Bussen & OCR',
   'view.priceTariffs': 'Preise & Tarife',
-  'view.analytics': 'Analyse',
   'view.fleetCondition': 'Flottenzustand',
   'view.settings': 'Einstellungen',
   'view.newBooking': 'Neue Buchung',
@@ -166,6 +164,7 @@ export const de: Record<TranslationKey, string> = {
   'settingsTab.users': 'Benutzer & Rollen',
   'settingsTab.billing': 'Abrechnung & Abonnement',
   'settingsTab.dataAuthorization': 'Datenberechtigung',
+  'settingsTab.legalDocuments': 'Rechtliche Dokumente',
 
   // ─── Finance Tabs ───
   'financeTab.invoices': 'Rechnungen',
@@ -419,7 +418,6 @@ export const de: Record<TranslationKey, string> = {
   // ─── Vehicle Detail ───
   'vehicle.overview': 'Uebersicht',
   'vehicle.trips': 'Fahrten',
-  'vehicle.drivingInsights': 'Fahranalyse',
   'vehicle.healthErrors': 'Gesundheit & Fehler',
   'vehicle.damages': 'Schaeden',
   'vehicle.documents': 'Dokumente',
@@ -550,14 +548,6 @@ export const de: Record<TranslationKey, string> = {
   'settings.connectedVehicles': 'Verbundene Fahrzeuge',
   'settings.dataSync': 'Datensynchronisation',
 
-  // ─── Analytics ───
-  'analytics.title': 'Flottenanalyse',
-  'analytics.fleetScore': 'Flottenbewertung',
-  'analytics.totalRevenue': 'Gesamtumsatz',
-  'analytics.avgUtilization': 'Durchschn. Auslastung',
-  'analytics.totalBookings': 'Buchungen gesamt',
-  'analytics.avgRating': 'Durchschn. Bewertung',
-
   // ─── Fleet Condition ───
   'fleetCondition.title': 'Flottenzustand',
   'fleetCondition.healthScore': 'Gesundheitswert',
@@ -584,30 +574,6 @@ export const de: Record<TranslationKey, string> = {
   'newTaskModal.vehicleAssignment': 'Fahrzeug & Zuweisung',
   'newTaskModal.scheduling': 'Zeitplanung',
 
-  // ─── Driving Insights ───
-  'drivingInsights.drivingScore': 'Fahrbewertung',
-  'drivingInsights.outOf100': 'von 100',
-  'drivingInsights.riskProfile': 'Risikoprofil',
-  'drivingInsights.needsImprovement': 'Verbesserung noetig',
-  'drivingInsights.scoreBreakdown': 'Bewertungsaufschluesselung',
-  'drivingInsights.safeDriving': 'Sicheres Fahren',
-  'drivingInsights.efficiency': 'Effizienz',
-  'drivingInsights.tripDistribution': 'Fahrtenverteilung',
-  'drivingInsights.keyKpis': 'Kennzahlen',
-  'drivingInsights.avgSpeed': 'Durchschn. Geschw.',
-  'drivingInsights.avgDistance': 'Durchschn. Distanz',
-  'drivingInsights.aiAnalysis': 'KI-Fahranalyse',
-  'drivingInsights.basedOnTrips': 'Basierend auf {count} Fahrten der letzten {days} Tage',
-  'drivingInsights.strengths': 'Staerken',
-  'drivingInsights.areasForImprovement': 'Verbesserungspotenzial',
-  'drivingInsights.recommendations': 'Empfehlungen',
-  'drivingInsights.drivingBehavior': 'Fahrverhalten',
-  'drivingInsights.abuseDetection': 'Missbrauchserkennung',
-  'drivingInsights.totalEvents': 'Ereignisse gesamt',
-  'drivingInsights.safe': 'Sicher',
-  'drivingInsights.moderate': 'Moderat',
-  'drivingInsights.aggressive': 'Aggressiv',
-  'drivingInsights.highRisk': 'Hohes Risiko',
 
   // ─── Trips ───
   'trips.tripHistory': 'Fahrtenhistorie',
@@ -667,10 +633,6 @@ export const de: Record<TranslationKey, string> = {
   'customerDetail.customerAlerts': 'Kundenwarnungen',
   'customerDetail.customerNotes': 'Kundennotizen',
   'customerDetail.drivingScore': 'Fahrbewertung',
-
-  // ─── Operations View ───
-  'operationsTab.analytics': 'Analyse',
-  'operationsTab.fleetCondition': 'Flottenzustand',
 
   // ─── Document Upload ───
   'docUpload.title': 'Dokumenten-Upload',

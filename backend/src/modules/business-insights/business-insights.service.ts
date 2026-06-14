@@ -5,6 +5,7 @@ import { InsightRankingService } from './insight-ranking.service';
 import { InsightGroupingService } from './insight-grouping.service';
 import { InsightFormatterService } from './insight-formatter.service';
 import { DashboardInsightsRepository } from './dashboard-insights.repository';
+import { InsightTaskBridgeService } from './insight-task-bridge.service';
 import { DetectorContext, InsightCandidate, InsightDetector } from './insight.types';
 
 import { TightHandoverDetector } from './detectors/tight-handover.detector';
@@ -14,7 +15,10 @@ import { LowUtilizationDetector } from './detectors/low-utilization.detector';
 import { ServiceWindowDetector } from './detectors/service-window.detector';
 import { ServiceBeforeBookingDetector } from './detectors/service-before-booking.detector';
 import { BatteryCriticalDetector } from './detectors/battery-critical.detector';
+import { TireCriticalDetector } from './detectors/tire-critical.detector';
+import { BrakeCriticalDetector } from './detectors/brake-critical.detector';
 import { ServiceOverdueDetector } from './detectors/service-overdue.detector';
+import { ComplianceOverdueDetector } from './detectors/compliance-overdue.detector';
 import { PickupOverdueDetector } from './detectors/pickup-overdue.detector';
 
 @Injectable()
@@ -29,6 +33,7 @@ export class BusinessInsightsService {
     private readonly grouping: InsightGroupingService,
     private readonly formatter: InsightFormatterService,
     private readonly repo: DashboardInsightsRepository,
+    private readonly bridge: InsightTaskBridgeService,
     tightHandover: TightHandoverDetector,
     returnInspection: ReturnNeedsInspectionDetector,
     stationShortage: StationShortageDetector,
@@ -36,7 +41,10 @@ export class BusinessInsightsService {
     serviceWindow: ServiceWindowDetector,
     serviceBeforeBooking: ServiceBeforeBookingDetector,
     batteryCritical: BatteryCriticalDetector,
+    tireCritical: TireCriticalDetector,
+    brakeCritical: BrakeCriticalDetector,
     serviceOverdue: ServiceOverdueDetector,
+    complianceOverdue: ComplianceOverdueDetector,
     pickupOverdue: PickupOverdueDetector,
   ) {
     this.detectors = [
@@ -47,7 +55,10 @@ export class BusinessInsightsService {
       serviceWindow,
       serviceBeforeBooking,
       batteryCritical,
+      tireCritical,
+      brakeCritical,
       serviceOverdue,
+      complianceOverdue,
       pickupOverdue,
     ];
   }
@@ -105,6 +116,19 @@ export class BusinessInsightsService {
 
       await this.repo.publishInsights(organizationId, run.id, formatted);
       await this.repo.completeRun(run.id, allCandidates.length, formatted.length);
+
+      // Materialize actionable per-vehicle candidates into escalating OrgTasks.
+      // Uses the raw (pre-group, pre-limit) candidate list so every overdue
+      // vehicle gets a task — not just the top-N published dashboard insights.
+      // Isolated in its own try/catch: a bridge failure must never tear down a
+      // successful insights run.
+      try {
+        await this.bridge.materialize(organizationId, allCandidates);
+      } catch (bridgeErr: any) {
+        this.logger.warn(
+          `Insight→Task bridge failed for org ${organizationId}: ${bridgeErr?.message ?? bridgeErr}`,
+        );
+      }
 
       this.logger.log(
         `Insights run [${trigger}] for org ${organizationId}: ${allCandidates.length} candidates → ${grouped.length} grouped → ${formatted.length} published`,

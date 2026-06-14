@@ -25,8 +25,11 @@ import { BatteryEvidenceService } from './battery-evidence.service';
  *   ΔSoC = change in state of charge
  *   Estimated Capacity = ΔEnergy / (|ΔSoC| / 100)
  *
- * When direct energy measurement is unavailable, a conservative
- * age+mileage degradation model is applied as fallback.
+ * V4.8 Battery overhaul — the previous age+mileage degradation fallback has
+ * been removed. HV SOH is now only produced from a real data basis (provider
+ * SOH, capacity/energy measurement, or a workshop/document report). When no
+ * such basis exists the SOH is reported as unavailable (`insufficient_data`)
+ * instead of a fabricated pseudo-precise percentage.
  */
 @Injectable()
 export class HvBatteryHealthService {
@@ -43,8 +46,6 @@ export class HvBatteryHealthService {
       select: {
         fuelType: true,
         hvBatteryCapacityKwh: true,
-        year: true,
-        mileageKm: true,
       },
     });
 
@@ -80,7 +81,7 @@ export class HvBatteryHealthService {
       take: 100,
     });
 
-    const sohResult = this.calculateSoh(nominalCapacity, snapshots, vehicle.year, latestState?.odometerKm ?? vehicle.mileageKm);
+    const sohResult = this.calculateSoh(nominalCapacity, snapshots);
 
     const chargingSessions = this.deriveChargingSessions(snapshots);
 
@@ -185,8 +186,6 @@ export class HvBatteryHealthService {
   private calculateSoh(
     nominalCapacity: number | null,
     snapshots: { socPercent: number; energyUsedKwh: number | null; estimatedCapacityKwh: number | null; odometerKm: number | null; recordedAt: Date }[],
-    vehicleYear: number | null,
-    currentOdometerKm: number | null,
   ): { sohPercent: number | null; estimatedCapacity: number | null; method: string } {
     // Method 1: Use stored estimated capacity values from snapshots
     const capacityEstimates = snapshots
@@ -223,19 +222,8 @@ export class HvBatteryHealthService {
       }
     }
 
-    // Method 3: Conservative degradation model (fallback)
-    if (nominalCapacity && nominalCapacity > 0) {
-      const ageYears = vehicleYear ? new Date().getFullYear() - vehicleYear : 0;
-      const mileageK = (currentOdometerKm ?? 0) / 1000;
-      // ~2% degradation per year + ~0.5% per 10,000 km (conservative EV assumption)
-      const ageDegradation = ageYears * 2;
-      const mileageDegradation = (mileageK / 10) * 0.5;
-      const totalDegradation = Math.min(40, ageDegradation + mileageDegradation);
-      const soh = Math.max(60, Math.round(100 - totalDegradation));
-      const estimated = Math.round((nominalCapacity * soh) / 100 * 10) / 10;
-      return { sohPercent: soh, estimatedCapacity: estimated, method: 'degradation_model' };
-    }
-
+    // No age/km fallback model. Without a measured capacity / energy basis the
+    // HV SOH is genuinely unavailable — we never fabricate a percentage.
     return { sohPercent: null, estimatedCapacity: null, method: 'insufficient_data' };
   }
 
@@ -325,7 +313,7 @@ export class HvBatteryHealthService {
   private async upsertPublicationState(vehicleId: string): Promise<void> {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
-      select: { hvBatteryCapacityKwh: true, year: true, mileageKm: true },
+      select: { hvBatteryCapacityKwh: true },
     });
     if (!vehicle) return;
 
@@ -335,17 +323,7 @@ export class HvBatteryHealthService {
       take: 100,
     });
 
-    const latestState = await this.prisma.vehicleLatestState.findUnique({
-      where: { vehicleId },
-      select: { odometerKm: true },
-    });
-
-    const sohResult = this.calculateSoh(
-      vehicle.hvBatteryCapacityKwh,
-      snapshots,
-      vehicle.year,
-      latestState?.odometerKm ?? vehicle.mileageKm,
-    );
+    const sohResult = this.calculateSoh(vehicle.hvBatteryCapacityKwh, snapshots);
 
     const rawSoh = sohResult.sohPercent;
     if (rawSoh == null) return;

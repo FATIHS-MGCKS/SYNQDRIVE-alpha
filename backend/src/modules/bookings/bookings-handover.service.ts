@@ -1,5 +1,7 @@
 import {
   Injectable,
+  Inject,
+  forwardRef,
   BadRequestException,
   NotFoundException,
   ConflictException,
@@ -15,6 +17,7 @@ import {
   CreateHandoverProtocolPayload,
   HandoverProtocolDto,
 } from './handover.types';
+import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // Enforces the booking lifecycle at the service layer:
@@ -28,7 +31,13 @@ import {
 // the dashboard without a second write.
 @Injectable()
 export class BookingsHandoverService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    // Booking Document Lifecycle — generates handover protocol PDFs (and, on
+    // return, the final invoice) after a successful handover. Fire-and-forget.
+    @Inject(forwardRef(() => BookingDocumentBundleService))
+    private readonly bookingDocumentBundleService: BookingDocumentBundleService,
+  ) {}
 
   async createHandover(
     orgId: string,
@@ -180,6 +189,22 @@ export class BookingsHandoverService {
         return [created, booking2] as const;
       },
     );
+
+    // After a successful handover, generate the protocol PDF (and, on return,
+    // the final invoice + PDF). Fire-and-forget: existing handover behaviour and
+    // status transitions above are never affected by document generation.
+    if (kind === 'PICKUP') {
+      this.bookingDocumentBundleService
+        .generatePickupProtocolDocument(orgId, bookingId, protocol.id, payload.performedByUserId ?? null)
+        .catch(() => {});
+    } else {
+      this.bookingDocumentBundleService
+        .generateReturnProtocolDocument(orgId, bookingId, protocol.id, payload.performedByUserId ?? null)
+        .catch(() => {});
+      this.bookingDocumentBundleService
+        .generateFinalInvoiceAndDocument(orgId, bookingId, payload.performedByUserId ?? null)
+        .catch(() => {});
+    }
 
     return {
       booking: { id: updatedBooking.id, status: updatedBooking.status },

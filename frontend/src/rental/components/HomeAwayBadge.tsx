@@ -1,4 +1,5 @@
-import { Home as HomeIcon, HelpCircle } from 'lucide-react';
+
+import { Icon, type IconName } from './ui/Icon';
 import type { Station } from '../../lib/api';
 import { isVehicleAtHomeStation } from '../../lib/geospatial';
 import type { VehicleData } from '../data/vehicles';
@@ -124,7 +125,7 @@ export function HomeAwayBadge({ v, stationLookup, isDarkMode, compact = false }:
           ? 'bg-amber-500/10 text-amber-400'
           : 'bg-amber-50 text-amber-700';
 
-  const Icon = state === 'unknown' ? HelpCircle : HomeIcon;
+  const iconName: IconName = state === 'unknown' ? 'help-circle' : 'home';
 
   if (compact) {
     return (
@@ -133,7 +134,7 @@ export function HomeAwayBadge({ v, stationLookup, isDarkMode, compact = false }:
         title={`${label === '—' ? 'Geofence-Status unbekannt' : label} — ${title}`}
         aria-label={`Geofence: ${label === '—' ? 'unbekannt' : label}`}
       >
-        <Icon className="w-3 h-3 shrink-0" strokeWidth={2.5} />
+        <Icon name={iconName} className="w-3 h-3 shrink-0" />
       </span>
     );
   }
@@ -143,7 +144,7 @@ export function HomeAwayBadge({ v, stationLookup, isDarkMode, compact = false }:
       className={`shrink-0 inline-flex items-center justify-center gap-0.5 w-[56px] px-1 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${palette}`}
       title={title}
     >
-      <Icon className="w-2.5 h-2.5 shrink-0" strokeWidth={2.5} />
+      <Icon name={iconName} className="w-2.5 h-2.5 shrink-0" />
       <span className="leading-none">{label}</span>
     </span>
   );

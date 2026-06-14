@@ -1,6 +1,32 @@
-import { useState, useEffect, useRef } from 'react';
-import { Search, ChevronDown, Plus, X, ListTodo, Clock, CheckCircle, AlertTriangle, Wrench, Sparkles, Car, Calendar, User, MapPin, Flag, Eye, MoreHorizontal, ChevronRight, ChevronLeft, Filter, ArrowUpDown, CircleDot, Timer, FileText, Shield, Camera } from 'lucide-react';
+import { AlertTriangle, Calendar, Camera, Car, CheckCircle, CircleDot, Clock, Eye, FileText, ListTodo, Shield, Sparkles, Timer, Wrench } from 'lucide-react';
+import { Icon } from './ui/Icon';
+import { useState, useEffect, useMemo, useRef } from 'react';
+
 import { useFleetVehicles } from '../FleetContext';
+import { useRentalOrg } from '../RentalContext';
+import { api } from '../../lib/api';
+import type { ApiTask, ApiTaskType, CreateTaskPayload } from '../../lib/api';
+
+// View category → canonical backend TaskType.
+const CATEGORY_TO_TASK_TYPE: Record<string, ApiTaskType> = {
+  Cleaning: 'VEHICLE_CLEANING',
+  Maintenance: 'VEHICLE_SERVICE',
+  Repair: 'REPAIR',
+  Inspection: 'VEHICLE_INSPECTION',
+  Damage: 'REPAIR',
+  'TÜV': 'VEHICLE_INSPECTION',
+  Insurance: 'CUSTOM',
+  Documents: 'DOCUMENT_REVIEW',
+  'Tire Change': 'TIRE_CHECK',
+  'Oil Change': 'VEHICLE_SERVICE',
+};
+
+const VIEW_PRIORITY_TO_API: Record<string, CreateTaskPayload['priority']> = {
+  Low: 'LOW',
+  Medium: 'MEDIUM',
+  High: 'HIGH',
+  Critical: 'URGENT',
+};
 
 interface TasksViewProps {
   isDarkMode: boolean;
@@ -33,8 +59,60 @@ interface Task {
   notes?: string;
 }
 
-// Simulated task data removed - load from API when available
-const taskData: Task[] = [];
+// ─── Backend (OrgTask) → view-model mapping ──────────────────────────
+// Tasks now come from GET /organizations/:org/tasks. The backend stores
+// enum values (status OPEN/IN_PROGRESS/DONE/CANCELLED, priority
+// LOW/MEDIUM/HIGH/URGENT) and a free-form category; we map them onto the
+// display vocabulary this view already uses.
+interface BackendTask {
+  id: string;
+  title: string;
+  description?: string | null;
+  category?: string | null;
+  status: string;
+  priority: string;
+  vehicleId?: string | null;
+  assignedTo?: string | null;
+  source?: string | null;
+  dueDate?: string | null;
+  completedAt?: string | null;
+  createdAt?: string | null;
+}
+
+const KNOWN_CATEGORIES: TaskCategory[] = ['Cleaning', 'Maintenance', 'Repair', 'Inspection', 'Damage', 'TÜV', 'Insurance', 'Documents', 'Tire Change', 'Oil Change'];
+
+function mapCategory(c?: string | null): TaskCategory {
+  if (c && (KNOWN_CATEGORIES as string[]).includes(c)) return c as TaskCategory;
+  // Auto-task categories that have no exact display bucket.
+  if (c === 'BOKraft' || c === 'Service') return 'Inspection';
+  return 'Maintenance';
+}
+
+function mapPriority(p?: string): TaskPriority {
+  switch ((p || '').toUpperCase()) {
+    case 'URGENT': return 'Critical';
+    case 'HIGH': return 'High';
+    case 'LOW': return 'Low';
+    default: return 'Medium';
+  }
+}
+
+function fmtDate(iso?: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function mapStatus(status: string, dueIso?: string | null): TaskStatus {
+  const s = (status || '').toUpperCase();
+  if (s === 'DONE' || s === 'CANCELLED') return 'Completed';
+  if (dueIso) {
+    const due = new Date(dueIso);
+    if (!Number.isNaN(due.getTime()) && due.getTime() < Date.now()) return 'Overdue';
+  }
+  return s === 'IN_PROGRESS' ? 'In Progress' : 'Open';
+}
 
 const categoryIcons: Record<TaskCategory, typeof Wrench> = {
   'Cleaning': Sparkles,
@@ -49,20 +127,7 @@ const categoryIcons: Record<TaskCategory, typeof Wrench> = {
   'Oil Change': Timer,
 };
 
-const categoryColors: Record<TaskCategory, { bg: string; text: string }> = {
-  'Cleaning': { bg: 'bg-blue-100', text: 'text-blue-600' },
-  'Maintenance': { bg: 'bg-orange-100', text: 'text-orange-600' },
-  'Repair': { bg: 'bg-red-100', text: 'text-red-600' },
-  'Inspection': { bg: 'bg-purple-100', text: 'text-purple-600' },
-  'Damage': { bg: 'bg-rose-100', text: 'text-rose-600' },
-  'TÜV': { bg: 'bg-emerald-100', text: 'text-emerald-600' },
-  'Insurance': { bg: 'bg-teal-100', text: 'text-teal-600' },
-  'Documents': { bg: 'bg-gray-100', text: 'text-gray-600' },
-  'Tire Change': { bg: 'bg-amber-100', text: 'text-amber-600' },
-  'Oil Change': { bg: 'bg-yellow-100', text: 'text-yellow-700' },
-};
-
-export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, highlightedTaskId, onHighlightConsumed }: TasksViewProps) {
+export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTaskId, onHighlightConsumed }: TasksViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -90,6 +155,101 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
   const [taskFormErrors, setTaskFormErrors] = useState<Record<string, string>>({});
   const [flashingTaskId, setFlashingTaskId] = useState<string | null>(null);
   const taskRowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
+  const { fleetVehicles } = useFleetVehicles();
+  const { orgId } = useRentalOrg();
+  const [rawTasks, setRawTasks] = useState<BackendTask[]>([]);
+  const [mutating, setMutating] = useState(false);
+  // Full server detail for the open task (checklist / comments / timeline).
+  const [detailFull, setDetailFull] = useState<ApiTask | null>(null);
+
+  const loadTasks = useRef<() => void>(() => {});
+  loadTasks.current = () => {
+    if (!orgId) return;
+    api.tasks
+      .list(orgId)
+      .then((rows) => setRawTasks(Array.isArray(rows) ? (rows as unknown as BackendTask[]) : []))
+      .catch(() => setRawTasks([]));
+  };
+
+  // Load org tasks from the API (replaces the previous empty mock array).
+  // V4.7.59 auto-tasks (source INSIGHT_*) show up here alongside manual ones.
+  useEffect(() => {
+    if (!orgId) return;
+    let cancelled = false;
+    api.tasks.list(orgId)
+      .then((rows) => { if (!cancelled) setRawTasks(Array.isArray(rows) ? (rows as unknown as BackendTask[]) : []); })
+      .catch(() => { if (!cancelled) setRawTasks([]); });
+    return () => { cancelled = true; };
+  }, [orgId]);
+
+  // Run a task mutation, then refresh the list + the open detail.
+  const runTaskAction = async (fn: () => Promise<ApiTask>) => {
+    if (mutating) return;
+    setMutating(true);
+    try {
+      const updated = await fn();
+      loadTasks.current();
+      if (updated && detailFull && updated.id === detailFull.id) setDetailFull(updated);
+    } catch (err) {
+      console.error('Task action failed', err);
+    } finally {
+      setMutating(false);
+    }
+  };
+
+  const RESOLUTION_REQUIRED: ApiTaskType[] = [
+    'REPAIR', 'BRAKE_CHECK', 'TIRE_CHECK', 'BATTERY_CHECK', 'VEHICLE_SERVICE', 'VEHICLE_INSPECTION',
+  ];
+
+  const handleComplete = async () => {
+    if (!orgId || !detailFull) return;
+    let resolutionNote: string | undefined;
+    if (RESOLUTION_REQUIRED.includes(detailFull.type)) {
+      const entered = window.prompt('Abschluss-Notiz (erforderlich):', detailFull.resolutionNote ?? '');
+      if (entered === null || !entered.trim()) return;
+      resolutionNote = entered.trim();
+    }
+    await runTaskAction(() => api.tasks.complete(orgId, detailFull.id, resolutionNote ? { resolutionNote } : undefined));
+    closeTaskDetail();
+  };
+
+  const handleCancelTask = async () => {
+    if (!orgId || !detailFull) return;
+    await runTaskAction(() => api.tasks.cancel(orgId, detailFull.id));
+    closeTaskDetail();
+  };
+
+  const toggleChecklistItem = (itemId: string, isDone: boolean) => {
+    if (!orgId || !detailFull) return;
+    void runTaskAction(() => api.tasks.updateChecklistItem(orgId, detailFull.id, itemId, { isDone }));
+  };
+
+  // Enrich with vehicle metadata from the shared fleet context.
+  const tasks = useMemo<Task[]>(() => {
+    const vById = new Map(fleetVehicles.map((v) => [v.id, v]));
+    return rawTasks.map((t) => {
+      const veh = t.vehicleId ? vById.get(t.vehicleId) : undefined;
+      const isAuto = !!t.source && t.source.startsWith('INSIGHT_');
+      return {
+        id: t.id,
+        title: t.title,
+        description: t.description || '',
+        category: mapCategory(t.category),
+        status: mapStatus(t.status, t.dueDate),
+        priority: mapPriority(t.priority),
+        vehicleId: t.vehicleId || '',
+        vehicleLicense: veh?.license || '',
+        vehicleModel: veh?.model || '',
+        station: veh?.station || '',
+        assignedTo: t.assignedTo || (isAuto ? 'System' : 'Unassigned'),
+        createdDate: fmtDate(t.createdAt),
+        dueDate: fmtDate(t.dueDate),
+        completedDate: t.completedAt ? fmtDate(t.completedAt) : undefined,
+        estimatedDuration: '—',
+        notes: isAuto ? 'Automatisch erzeugt durch SynqDrive Insights.' : undefined,
+      };
+    });
+  }, [rawTasks, fleetVehicles]);
 
   const openNewTask = () => {
     setIsNewTaskOpen(true);
@@ -110,6 +270,10 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
 
   const openTaskDetail = (task: Task) => {
     setSelectedTask(task);
+    setDetailFull(null);
+    if (orgId) {
+      api.tasks.get(orgId, task.id).then(setDetailFull).catch(() => setDetailFull(null));
+    }
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         setIsDetailAnimating(true);
@@ -122,6 +286,7 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
     setIsDetailClosing(true);
     setTimeout(() => {
       setSelectedTask(null);
+      setDetailFull(null);
       setIsDetailClosing(false);
     }, 400);
   };
@@ -156,7 +321,7 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
       }
 
       // Open detail panel
-      const task = taskData.find((t) => t.id === highlightedTaskId);
+      const task = tasks.find((t) => t.id === highlightedTaskId);
       if (task) {
         openTaskDetail(task);
       }
@@ -171,7 +336,7 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
 
     // Cleanup: cancel pending timers if highlight changes or component
     // unmounts before they fire. Without this the timers keep a reference
-    // to taskRowRefs / taskData and can setState after unmount.
+    // to taskRowRefs / tasks and can setState after unmount.
     return () => {
       clearTimeout(scrollTimer);
       clearTimeout(flashTimer);
@@ -213,7 +378,30 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
   };
 
   const handleSubmitTask = () => {
-    closeNewTask();
+    if (!orgId || mutating) {
+      closeNewTask();
+      return;
+    }
+    const vehicle = fleetVehicles.find((v) => v.license === newTask.vehicleLicense);
+    const payload: CreateTaskPayload = {
+      title: newTask.title.trim(),
+      description: newTask.description.trim() || undefined,
+      type: CATEGORY_TO_TASK_TYPE[newTask.category] ?? 'CUSTOM',
+      source: 'MANUAL',
+      priority: VIEW_PRIORITY_TO_API[newTask.priority] ?? 'MEDIUM',
+      category: newTask.category,
+      dueDate: newTask.dueDate ? new Date(newTask.dueDate).toISOString() : undefined,
+      vehicleId: vehicle?.id,
+    };
+    setMutating(true);
+    api.tasks
+      .create(orgId, payload)
+      .then(() => loadTasks.current())
+      .catch((err) => console.error('Create task failed', err))
+      .finally(() => {
+        setMutating(false);
+        closeNewTask();
+      });
   };
 
   const closeAllDropdowns = (except?: string) => {
@@ -225,7 +413,7 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
     if (except !== 'assignee') setIsAssigneeOpen(false);
   };
 
-  const filtered = taskData.filter(t => {
+  const filtered = tasks.filter(t => {
     const matchesSearch = searchQuery === '' ||
       t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.vehicleLicense.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -251,96 +439,129 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
     return a.dueDate.split('.').reverse().join('').localeCompare(b.dueDate.split('.').reverse().join(''));
   });
 
-  const openCount = taskData.filter(t => t.status === 'Open').length;
-  const inProgressCount = taskData.filter(t => t.status === 'In Progress').length;
-  const completedCount = taskData.filter(t => t.status === 'Completed').length;
-  const overdueCount = taskData.filter(t => t.status === 'Overdue').length;
+  const openCount = tasks.filter(t => t.status === 'Open').length;
+  const inProgressCount = tasks.filter(t => t.status === 'In Progress').length;
+  const completedCount = tasks.filter(t => t.status === 'Completed').length;
+  const overdueCount = tasks.filter(t => t.status === 'Overdue').length;
+  const uniqueVehicles = fleetVehicles.length > 0
+    ? fleetVehicles.map(v => ({ value: v.license, label: `${v.license} – ${v.model}` }))
+    : [...new Set(tasks.map(t => t.vehicleLicense))].filter(Boolean).map(license => {
+        const task = tasks.find(t => t.vehicleLicense === license)!;
+        return { value: license, label: `${license} – ${task.vehicleModel.split(' ').slice(0, 2).join(' ')}` };
+      });
+
+  const uniqueAssignees = [...new Set(tasks.map(t => t.assignedTo))].filter(Boolean).map(assignee => {
+    return { value: assignee, label: assignee };
+  });
 
   const hasFilters = statusFilter !== 'all' || priorityFilter !== 'all' || categoryFilter !== 'all' || vehicleFilter !== 'all' || assigneeFilter !== 'all' || searchQuery !== '';
+  const statusCount = (status: string) =>
+    status === 'all' ? tasks.length : tasks.filter(t => t.status === status).length;
+  const priorityCount = (priority: string) =>
+    priority === 'all' ? tasks.length : tasks.filter(t => t.priority === priority).length;
+  const categoryCount = (category: string) =>
+    category === 'all' ? tasks.length : tasks.filter(t => t.category === category).length;
+  const vehicleCount = (vehicle: string) =>
+    vehicle === 'all' ? tasks.length : tasks.filter(t => t.vehicleLicense === vehicle).length;
+  const assigneeCount = (assignee: string) =>
+    assignee === 'all' ? tasks.length : tasks.filter(t => t.assignedTo === assignee).length;
+  const activeStatusLabel = statusFilter === 'all' ? 'All Status' : statusFilter;
+  const activePriorityLabel = priorityFilter === 'all' ? 'All Priorities' : priorityFilter;
+  const activeCategoryLabel = categoryFilter === 'all' ? 'All Categories' : categoryFilter;
+  const activeVehicleLabel =
+    vehicleFilter === 'all'
+      ? 'All Vehicles'
+      : uniqueVehicles.find(v => v.value === vehicleFilter)?.label ?? vehicleFilter;
+  const activeAssigneeLabel = assigneeFilter === 'all' ? 'All Assignees' : assigneeFilter;
+  const activeSortLabel =
+    sortBy === 'dueDate'
+      ? 'Due Date'
+      : sortBy === 'priority'
+        ? 'Priority'
+        : sortBy === 'status'
+          ? 'Status'
+          : 'Newest First';
+  const clearFilters = () => {
+    setStatusFilter('all');
+    setPriorityFilter('all');
+    setCategoryFilter('all');
+    setVehicleFilter('all');
+    setAssigneeFilter('all');
+    setSearchQuery('');
+    closeAllDropdowns();
+  };
 
-  const cardClass = `rounded-lg border shadow-sm ${
-    isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
-  }`;
-  const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-500';
-  const textTertiary = isDarkMode ? 'text-gray-500' : 'text-gray-400';
+  const cardClass = 'sq-card rounded-lg';
+  const textPrimary = 'text-foreground';
+  const textSecondary = 'text-muted-foreground';
+  const textTertiary = 'text-muted-foreground/70';
 
   const StatusPill = ({ status }: { status: TaskStatus }) => {
     const s: Record<TaskStatus, string> = {
-      'Open': 'bg-blue-100 text-blue-700 border-blue-200',
-      'In Progress': 'bg-amber-100 text-amber-700 border-amber-200',
-      'Completed': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-      'Overdue': 'bg-red-100 text-red-700 border-red-200',
+      'Open': 'sq-tone-neutral border-current/15',
+      'In Progress': 'sq-tone-info border-current/15',
+      'Completed': 'sq-tone-success border-current/15',
+      'Overdue': 'sq-tone-critical border-current/15',
     };
     return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${s[status]}`}>{status}</span>;
   };
 
   const PriorityPill = ({ priority }: { priority: TaskPriority }) => {
     const s: Record<TaskPriority, string> = {
-      'Low': 'bg-gray-100 text-gray-600 border-gray-200',
-      'Medium': 'bg-amber-50 text-amber-700 border-amber-200',
-      'High': 'bg-orange-100 text-orange-700 border-orange-200',
-      'Critical': 'bg-red-100 text-red-700 border-red-200',
+      'Low': 'sq-tone-neutral border-current/15',
+      'Medium': 'sq-tone-watch border-current/15',
+      'High': 'sq-tone-warning border-current/15',
+      'Critical': 'sq-tone-critical border-current/15',
     };
     return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${s[priority]}`}>{priority}</span>;
   };
 
   const CategoryBadge = ({ category }: { category: TaskCategory }) => {
     const Icon = categoryIcons[category];
-    const colors = categoryColors[category];
     return (
       <div className="flex items-center gap-1.5">
-        <div className={`w-5 h-5 rounded-lg ${colors.bg} flex items-center justify-center`}>
-          <Icon className={`w-3 h-3 ${colors.text}`} />
+        <div className="w-5 h-5 rounded-lg bg-muted flex items-center justify-center">
+          <Icon className="w-3 h-3 text-muted-foreground" />
         </div>
-        <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{category}</span>
+        <span className="text-xs font-medium text-foreground/80">{category}</span>
       </div>
     );
   };
 
   const DropdownFilter = ({ label, value, options, isOpen, onToggle, onSelect }: {
-    label: string; value: string; options: { value: string; label: string }[];
+    label: string; value: string; options: { value: string; label: string; count?: number }[];
     isOpen: boolean; onToggle: () => void; onSelect: (v: string) => void;
   }) => (
     <div className="relative">
-      <button onClick={onToggle} className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
+      <button onClick={onToggle} className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg border text-xs font-medium transition-all ${
         value !== 'all'
-          ? isDarkMode ? 'bg-blue-900/30 border-blue-700/50 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-700'
-          : isDarkMode ? 'bg-neutral-800/60 border-neutral-700/50 text-gray-300 hover:bg-neutral-800' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+          ? 'bg-[color:var(--brand-soft)] border-transparent text-[color:var(--brand-ink)]'
+          : 'bg-card border-border text-foreground hover:bg-muted'
       }`}>
         <span>{value === 'all' ? label : options.find(o => o.value === value)?.label}</span>
-        <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <Icon name="chevron-down" className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
-        <div className={`absolute top-full mt-2 left-0 z-50 min-w-[180px] rounded-lg border shadow-xl overflow-hidden ${
-          isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
-        }`}>
+        <div className="sq-overlay absolute top-full mt-2 left-0 z-50 min-w-[180px] overflow-hidden">
           {options.map(o => (
             <button key={o.value} onClick={() => { onSelect(o.value); onToggle(); }}
-              className={`w-full px-3 py-2.5 text-left text-xs font-medium transition-colors ${
+              className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-xs font-medium transition-colors ${
                 o.value === value
-                  ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
-                  : isDarkMode ? 'text-gray-300 hover:bg-neutral-800' : 'text-gray-700 hover:bg-gray-50'
+                  ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
+                  : 'text-foreground hover:bg-muted'
               }`}>
-              {o.label}
+              <span className="truncate">{o.label}</span>
+              {typeof o.count === 'number' && (
+                <span className="rounded-md px-1.5 py-0.5 text-[10px] font-bold tabular-nums sq-tone-neutral">
+                  {o.count}
+                </span>
+              )}
             </button>
           ))}
         </div>
       )}
     </div>
   );
-
-  const { fleetVehicles } = useFleetVehicles();
-  const uniqueVehicles = fleetVehicles.length > 0
-    ? fleetVehicles.map(v => ({ value: v.license, label: `${v.license} – ${v.model}` }))
-    : [...new Set(taskData.map(t => t.vehicleLicense))].map(license => {
-        const task = taskData.find(t => t.vehicleLicense === license)!;
-        return { value: license, label: `${license} – ${task.vehicleModel.split(' ').slice(0, 2).join(' ')}` };
-      });
-
-  const uniqueAssignees = [...new Set(taskData.map(t => t.assignedTo))].map(assignee => {
-    return { value: assignee, label: assignee };
-  });
 
   return (
     <div className="relative">
@@ -355,80 +576,151 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
         }}
       >
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className={`text-lg font-bold tracking-tight ${textPrimary}`}>Task Management</h1>
-          <p className={`text-xs mt-1 ${textSecondary}`}>Manage all fleet tasks, maintenance, inspections and repairs</p>
+      <div className="flex min-h-8 flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground">
+            Task Management
+          </h1>
         </div>
-        <button className="flex items-center gap-2 px-3 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white rounded-lg shadow-md hover:shadow-lg transition-all text-xs font-semibold"
-          onClick={openNewTask}>
-          <Plus className="w-5 h-5" />
+        <button
+          type="button"
+          className="sq-press flex items-center gap-2 rounded-xl bg-[color:var(--brand)] px-3 py-2 text-[10px] font-semibold text-white shadow-[var(--shadow-1)] transition-all hover:opacity-90"
+          onClick={openNewTask}
+        >
+          <Icon name="plus" className="h-4 w-4" />
           New Task
         </button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-3">
+      {/* Segment metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {[
-          { label: 'Open Tasks', value: openCount, icon: ListTodo, color: 'blue', bg: 'bg-blue-100', text: 'text-blue-600', filterVal: 'Open' },
-          { label: 'In Progress', value: inProgressCount, icon: Clock, color: 'amber', bg: 'bg-amber-100', text: 'text-amber-600', filterVal: 'In Progress' },
-          { label: 'Completed', value: completedCount, icon: CheckCircle, color: 'emerald', bg: 'bg-emerald-100', text: 'text-emerald-600', filterVal: 'Completed' },
-          { label: 'Overdue', value: overdueCount, icon: AlertTriangle, color: 'red', bg: 'bg-red-100', text: 'text-red-600', filterVal: 'Overdue' },
+          {
+            label: 'Open',
+            value: openCount,
+            helper: `${inProgressCount} in progress`,
+            icon: ListTodo,
+            tone: 'sq-tone-brand',
+            filterVal: 'Open',
+          },
+          {
+            label: 'In Progress',
+            value: inProgressCount,
+            helper: `${filtered.length} currently visible`,
+            icon: Clock,
+            tone: 'sq-tone-warning',
+            filterVal: 'In Progress',
+          },
+          {
+            label: 'Completed',
+            value: completedCount,
+            helper: 'closed work orders',
+            icon: CheckCircle,
+            tone: 'sq-tone-success',
+            filterVal: 'Completed',
+          },
+          {
+            label: 'Overdue',
+            value: overdueCount,
+            helper: overdueCount > 0 ? 'needs attention' : 'no overdue tasks',
+            icon: AlertTriangle,
+            tone: overdueCount > 0 ? 'sq-tone-critical' : 'sq-tone-neutral',
+            filterVal: 'Overdue',
+          },
         ].map(card => {
           const isActive = statusFilter === card.filterVal;
+          const MetricIcon = card.icon;
           return (
             <button
               key={card.label}
+              type="button"
               onClick={() => setStatusFilter(isActive ? 'all' : card.filterVal)}
-              className={`rounded-lg border shadow-sm p-4 text-left cursor-pointer transition-all duration-200 ${
-                isActive
-                  ? card.color === 'blue'
-                    ? isDarkMode
-                      ? 'bg-neutral-900 border-blue-500/60 ring-2 ring-blue-500/30'
-                      : 'bg-white border-blue-400/60 ring-2 ring-blue-400/30'
-                    : card.color === 'amber'
-                    ? isDarkMode
-                      ? 'bg-neutral-900 border-amber-500/60 ring-2 ring-amber-500/30'
-                      : 'bg-white border-amber-400/60 ring-2 ring-amber-400/30'
-                    : card.color === 'emerald'
-                    ? isDarkMode
-                      ? 'bg-neutral-900 border-emerald-500/60 ring-2 ring-emerald-500/30'
-                      : 'bg-white border-emerald-400/60 ring-2 ring-emerald-400/30'
-                    : isDarkMode
-                      ? 'bg-neutral-900 border-red-500/60 ring-2 ring-red-500/30'
-                      : 'bg-white border-red-400/60 ring-2 ring-red-400/30'
-                  : isDarkMode
-                    ? 'bg-neutral-900 border-neutral-700/50 hover:border-neutral-600/70 hover:shadow-md'
-                    : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-md'
+              className={`group sq-card sq-press rounded-2xl p-4 text-left shadow-[var(--shadow-1)] transition-all ${
+                isActive ? 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_22%,transparent)]' : 'hover:bg-muted/35'
               }`}
             >
-              <div className="flex items-center justify-between mb-3">
-                <span className={`text-xs uppercase tracking-wider font-semibold ${textTertiary}`}>{card.label}</span>
-                <div className={`w-5 h-5 rounded-lg ${card.bg} flex items-center justify-center`}>
-                  <card.icon className={`w-5 h-5 ${card.text}`} />
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold text-muted-foreground">{card.label}</p>
+                  <p className="mt-1 truncate text-[20px] font-bold leading-none tracking-[-0.03em] text-foreground tabular-nums">
+                    {card.value}
+                  </p>
+                  <p className="mt-2 truncate text-[10px] font-medium text-muted-foreground">{card.helper}</p>
                 </div>
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${card.tone}`}>
+                  <MetricIcon className="h-4 w-4" />
+                </span>
               </div>
-              <p className={`text-3xl font-bold ${textPrimary}`}>{card.value}</p>
             </button>
           );
         })}
       </div>
 
       {/* Search & Filters */}
-      <div className={`${cardClass} p-4`}>
+      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Icon name="filter" className="h-4 w-4 text-muted-foreground" />
+            <div className="min-w-0">
+              <h2 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">Filters</h2>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                Showing {sorted.length} of {tasks.length} tasks
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {statusFilter !== 'all' && (
+              <button type="button" onClick={() => setStatusFilter('all')} className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-brand">
+                {activeStatusLabel} active ×
+              </button>
+            )}
+            {priorityFilter !== 'all' && (
+              <button type="button" onClick={() => setPriorityFilter('all')} className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-warning">
+                {activePriorityLabel} active ×
+              </button>
+            )}
+            {categoryFilter !== 'all' && (
+              <button type="button" onClick={() => setCategoryFilter('all')} className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-neutral">
+                {activeCategoryLabel} active ×
+              </button>
+            )}
+            {vehicleFilter !== 'all' && (
+              <button type="button" onClick={() => setVehicleFilter('all')} className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-neutral">
+                Vehicle active ×
+              </button>
+            )}
+            {assigneeFilter !== 'all' && (
+              <button type="button" onClick={() => setAssigneeFilter('all')} className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-neutral">
+                Assignee active ×
+              </button>
+            )}
+            {searchQuery && (
+              <span className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-neutral">
+                Search active
+              </span>
+            )}
+            {hasFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="flex items-center gap-1.5 rounded-lg border border-transparent px-2.5 py-1.5 text-[10px] font-semibold transition-all sq-tone-critical hover:opacity-90"
+              >
+                <Icon name="x" className="h-3.5 w-3.5" />
+                Clear filters
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex-1 min-w-[240px] relative">
-            <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 ${textTertiary}`} />
+            <Icon name="search" className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 ${textTertiary}`} />
             <input
               type="text"
               placeholder="Search tasks, vehicles, assignees..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-xs outline-none transition-all ${
-                isDarkMode
-                  ? 'bg-neutral-800/60 border-neutral-700/50 text-gray-200 placeholder-gray-500 focus:border-blue-500/50'
-                  : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-300'
-              }`}
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground outline-none transition-all text-xs focus:border-[color:var(--brand)]"
             />
           </div>
           <DropdownFilter
@@ -436,11 +728,11 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
             onToggle={() => { closeAllDropdowns('status'); setIsStatusOpen(!isStatusOpen); }}
             onSelect={setStatusFilter}
             options={[
-              { value: 'all', label: 'All Status' },
-              { value: 'Open', label: 'Open' },
-              { value: 'In Progress', label: 'In Progress' },
-              { value: 'Completed', label: 'Completed' },
-              { value: 'Overdue', label: 'Overdue' },
+              { value: 'all', label: 'All Status', count: statusCount('all') },
+              { value: 'Open', label: 'Open', count: statusCount('Open') },
+              { value: 'In Progress', label: 'In Progress', count: statusCount('In Progress') },
+              { value: 'Completed', label: 'Completed', count: statusCount('Completed') },
+              { value: 'Overdue', label: 'Overdue', count: statusCount('Overdue') },
             ]}
           />
           <DropdownFilter
@@ -448,11 +740,11 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
             onToggle={() => { closeAllDropdowns('priority'); setIsPriorityOpen(!isPriorityOpen); }}
             onSelect={setPriorityFilter}
             options={[
-              { value: 'all', label: 'All Priorities' },
-              { value: 'Critical', label: 'Critical' },
-              { value: 'High', label: 'High' },
-              { value: 'Medium', label: 'Medium' },
-              { value: 'Low', label: 'Low' },
+              { value: 'all', label: 'All Priorities', count: priorityCount('all') },
+              { value: 'Critical', label: 'Critical', count: priorityCount('Critical') },
+              { value: 'High', label: 'High', count: priorityCount('High') },
+              { value: 'Medium', label: 'Medium', count: priorityCount('Medium') },
+              { value: 'Low', label: 'Low', count: priorityCount('Low') },
             ]}
           />
           <DropdownFilter
@@ -460,35 +752,31 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
             onToggle={() => { closeAllDropdowns('category'); setIsCategoryOpen(!isCategoryOpen); }}
             onSelect={setCategoryFilter}
             options={[
-              { value: 'all', label: 'All Categories' },
-              ...(['Cleaning', 'Maintenance', 'Repair', 'Inspection', 'Damage', 'TÜV', 'Insurance', 'Documents', 'Tire Change', 'Oil Change'] as TaskCategory[]).map(c => ({ value: c, label: c })),
+              { value: 'all', label: 'All Categories', count: categoryCount('all') },
+              ...(['Cleaning', 'Maintenance', 'Repair', 'Inspection', 'Damage', 'TÜV', 'Insurance', 'Documents', 'Tire Change', 'Oil Change'] as TaskCategory[]).map(c => ({ value: c, label: c, count: categoryCount(c) })),
             ]}
           />
           <DropdownFilter
             label="Vehicle" value={vehicleFilter} isOpen={isVehicleOpen}
             onToggle={() => { closeAllDropdowns('vehicle'); setIsVehicleOpen(!isVehicleOpen); }}
             onSelect={setVehicleFilter}
-            options={[{ value: 'all', label: 'All Vehicles' }, ...uniqueVehicles]}
+            options={[{ value: 'all', label: 'All Vehicles', count: vehicleCount('all') }, ...uniqueVehicles.map(v => ({ ...v, count: vehicleCount(v.value) }))]}
           />
           <DropdownFilter
             label="Assignee" value={assigneeFilter} isOpen={isAssigneeOpen}
             onToggle={() => { closeAllDropdowns('assignee'); setIsAssigneeOpen(!isAssigneeOpen); }}
             onSelect={setAssigneeFilter}
-            options={[{ value: 'all', label: 'All Assignees' }, ...uniqueAssignees]}
+            options={[{ value: 'all', label: 'All Assignees', count: assigneeCount('all') }, ...uniqueAssignees.map(a => ({ ...a, count: assigneeCount(a.value) }))]}
           />
           {/* Sort */}
           <div className="relative">
             <button onClick={() => { closeAllDropdowns('sort'); setIsSortOpen(!isSortOpen); }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
-                isDarkMode ? 'bg-neutral-800/60 border-neutral-700/50 text-gray-300 hover:bg-neutral-800' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-              }`}>
-              <ArrowUpDown className="w-3 h-3" />
-              <span>Sort</span>
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card text-foreground hover:bg-muted text-xs font-medium transition-all">
+              <Icon name="arrow-up-down" className="w-3 h-3" />
+              <span>Sort: {activeSortLabel}</span>
             </button>
             {isSortOpen && (
-              <div className={`absolute top-full mt-2 right-0 z-50 min-w-[160px] rounded-lg border shadow-xl overflow-hidden ${
-                isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
-              }`}>
+              <div className="sq-overlay absolute top-full mt-2 right-0 z-50 min-w-[160px] overflow-hidden">
                 {[
                   { value: 'dueDate', label: 'Due Date' },
                   { value: 'priority', label: 'Priority' },
@@ -498,8 +786,8 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                   <button key={o.value} onClick={() => { setSortBy(o.value as any); setIsSortOpen(false); }}
                     className={`w-full px-3 py-2.5 text-left text-xs font-medium transition-colors ${
                       sortBy === o.value
-                        ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
-                        : isDarkMode ? 'text-gray-300 hover:bg-neutral-800' : 'text-gray-700 hover:bg-gray-50'
+                        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
+                        : 'text-foreground hover:bg-muted'
                     }`}>
                     {o.label}
                   </button>
@@ -507,15 +795,6 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
               </div>
             )}
           </div>
-          {hasFilters && (
-            <button onClick={() => { setStatusFilter('all'); setPriorityFilter('all'); setCategoryFilter('all'); setVehicleFilter('all'); setAssigneeFilter('all'); setSearchQuery(''); }}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
-                isDarkMode ? 'bg-red-900/30 border-red-700/50 text-red-400 hover:bg-red-900/50' : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
-              }`}>
-              <X className="w-3 h-3" />
-              Clear
-            </button>
-          )}
         </div>
       </div>
 
@@ -523,16 +802,14 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
       <div className={`${cardClass} overflow-hidden`}>
         <table className="w-full">
           <thead>
-            <tr className={`border-b ${isDarkMode ? 'border-neutral-700/50' : 'border-gray-200/60'}`}>
+            <tr className="border-b border-border">
               {['Task', 'Category', 'Vehicle', 'Station', 'Assigned To', 'Due Date', 'Priority', 'Status', ''].map(h => (
                 <th key={h} className={`text-left text-xs uppercase tracking-wider font-semibold px-3 py-3 ${textTertiary}`}>{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody className={`divide-y ${isDarkMode ? 'divide-neutral-800' : 'divide-gray-100'}`}>
+          <tbody className="divide-y divide-border/60">
             {sorted.map(task => {
-              const colors = categoryColors[task.category];
-              const Icon = categoryIcons[task.category];
               const isOverdue = task.status === 'Overdue';
               const isCritical = task.priority === 'Critical';
               return (
@@ -541,16 +818,16 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                   onClick={() => openTaskDetail(task)}
                   className={`cursor-pointer transition-all duration-500 ${
                     flashingTaskId === task.id
-                      ? isDarkMode ? 'bg-blue-500/20 ring-1 ring-blue-500/40' : 'bg-blue-100/80 ring-1 ring-blue-300'
-                      : isDarkMode ? 'hover:bg-neutral-800/60' : 'hover:bg-blue-50/40'
+                      ? 'bg-[color:var(--brand-soft)] ring-1 ring-[color:var(--brand-soft)]'
+                      : 'hover:bg-muted/60'
                   } ${
-                    isOverdue && flashingTaskId !== task.id ? (isDarkMode ? 'bg-red-950/10' : 'bg-red-50/30') : ''
+                    isOverdue && flashingTaskId !== task.id ? 'bg-[color:var(--status-critical-soft)]' : ''
                   }`}>
                   <td className="px-3 py-2.5">
                     <div>
                       <div className="flex items-center gap-2">
                         <span className={`text-[11px] font-mono ${textTertiary}`}>{task.id}</span>
-                        {isCritical && <AlertTriangle className="w-3 h-3 text-red-500" />}
+                        {isCritical && <Icon name="alert-triangle" className="w-3 h-3 text-[color:var(--status-critical)]" />}
                       </div>
                       <p className={`text-xs font-semibold mt-0.5 ${textPrimary}`}>{task.title}</p>
                     </div>
@@ -567,14 +844,14 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white bg-gradient-to-br from-blue-500 to-blue-600`}>
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-brand text-brand-foreground`}>
                         {task.assignedTo.split(' ').map(n => n[0]).join('')}
                       </div>
                       <span className={`text-xs ${textSecondary}`}>{task.assignedTo}</span>
                     </div>
                   </td>
                   <td className="px-3 py-2.5">
-                    <span className={`text-xs font-medium ${isOverdue ? 'text-red-500' : textPrimary}`}>{task.dueDate}</span>
+                    <span className={`text-xs font-medium ${isOverdue ? 'text-[color:var(--status-critical)]' : textPrimary}`}>{task.dueDate}</span>
                     <p className={`text-[11px] ${textTertiary}`}>{task.estimatedDuration}</p>
                   </td>
                   <td className="px-3 py-2.5">
@@ -584,7 +861,7 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                     <StatusPill status={task.status} />
                   </td>
                   <td className="px-3 py-2.5">
-                    <ChevronRight className={`w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                    <Icon name="chevron-right" className="w-5 h-5 text-muted-foreground/50" />
                   </td>
                 </tr>
               );
@@ -593,7 +870,7 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
         </table>
         {sorted.length === 0 && (
           <div className="py-12 text-center">
-            <ListTodo className={`w-5 h-5 mx-auto mb-3 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+            <Icon name="list-todo" className="w-5 h-5 mx-auto mb-3 text-muted-foreground/50" />
             <p className={`text-xs font-medium ${textSecondary}`}>No tasks match your filters</p>
           </div>
         )}
@@ -601,7 +878,7 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
 
       {/* Results Count */}
       <div className="flex items-center justify-between">
-        <p className={`text-xs ${textTertiary}`}>Showing {sorted.length} of {taskData.length} tasks</p>
+        <p className={`text-xs ${textTertiary}`}>Showing {sorted.length} of {tasks.length} tasks</p>
       </div>
 
       </div>{/* End of main content wrapper */}
@@ -617,7 +894,7 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
           />
           <div onClick={(e) => e.stopPropagation()}
             className={`relative w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-3xl border shadow-2xl transition-all duration-500 ease-out ${
-            isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+            'bg-card border-border'
           }`}
             style={{
               transform: isDetailAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)',
@@ -627,9 +904,7 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                 : '0 10px 30px -12px rgba(0, 0, 0, 0)',
             }}>
             {/* Header */}
-            <div className={`sticky top-0 z-10 px-8 pt-7 pb-5 border-b ${
-              isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-100'
-            }`}>
+            <div className="sticky top-0 z-10 px-8 pt-7 pb-5 border-b bg-card border-border">
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -640,24 +915,36 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                   <h2 className={`text-base font-bold ${textPrimary}`}>{selectedTask.title}</h2>
                 </div>
                 <div className="flex items-center gap-2">
-                  {selectedTask.status === 'Open' && (
-                    <button className="px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold transition-all shadow-sm">
+                  {detailFull && detailFull.status === 'OPEN' && (
+                    <button
+                      disabled={mutating}
+                      onClick={() => runTaskAction(() => api.tasks.start(orgId!, detailFull.id))}
+                      className="px-3 py-2 rounded-lg bg-brand hover:bg-[color:var(--brand-hover)] text-brand-foreground text-xs font-semibold transition-all shadow-sm disabled:opacity-50"
+                    >
                       Start Task
                     </button>
                   )}
-                  {selectedTask.status === 'In Progress' && (
-                    <button className="px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold transition-all shadow-sm">
+                  {detailFull && (detailFull.status === 'OPEN' || detailFull.status === 'IN_PROGRESS' || detailFull.status === 'WAITING') && (
+                    <button
+                      disabled={mutating}
+                      onClick={handleComplete}
+                      className="px-3 py-2 rounded-lg bg-[color:var(--status-positive)] hover:opacity-90 text-white text-xs font-semibold transition-all shadow-sm disabled:opacity-50"
+                    >
                       Complete
                     </button>
                   )}
-                  {selectedTask.status === 'Overdue' && (
-                    <button className="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold transition-all shadow-sm">
-                      Reschedule
+                  {detailFull && detailFull.status === 'IN_PROGRESS' && (
+                    <button
+                      disabled={mutating}
+                      onClick={() => runTaskAction(() => api.tasks.waiting(orgId!, detailFull.id))}
+                      className="px-3 py-2 rounded-lg bg-[color:var(--status-watch)] hover:opacity-90 text-white text-xs font-semibold transition-all shadow-sm disabled:opacity-50"
+                    >
+                      Set Waiting
                     </button>
                   )}
                   <button onClick={closeTaskDetail}
-                    className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
-                    <X className="w-5 h-5" />
+                    className="p-2 rounded-lg transition-colors hover:bg-muted text-muted-foreground">
+                    <Icon name="x" className="w-5 h-5" />
                   </button>
                 </div>
               </div>
@@ -672,7 +959,7 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
 
               {/* Info Grid */}
               <div className="grid grid-cols-2 gap-3">
-                <div className={`rounded-lg border p-4 ${isDarkMode ? 'bg-neutral-800/50 border-neutral-700/50' : 'bg-gray-50/80 border-gray-200/50'}`}>
+                <div className={`rounded-lg border p-4 ${'bg-muted/40 border-border'}`}>
                   <h4 className={`text-xs uppercase tracking-wider font-semibold mb-3 ${textTertiary}`}>Task Details</h4>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -685,12 +972,12 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                     </div>
                     <div className="flex items-center justify-between">
                       <span className={`text-xs ${textSecondary}`}>Due Date</span>
-                      <span className={`text-xs font-medium ${selectedTask.status === 'Overdue' ? 'text-red-500' : textPrimary}`}>{selectedTask.dueDate}</span>
+                      <span className={`text-xs font-medium ${selectedTask.status === 'Overdue' ? 'text-[color:var(--status-critical)]' : textPrimary}`}>{selectedTask.dueDate}</span>
                     </div>
                     {selectedTask.completedDate && (
                       <div className="flex items-center justify-between">
                         <span className={`text-xs ${textSecondary}`}>Completed</span>
-                        <span className="text-[10px] font-medium text-emerald-600">{selectedTask.completedDate}</span>
+                        <span className="text-[10px] font-medium text-[color:var(--status-positive)]">{selectedTask.completedDate}</span>
                       </div>
                     )}
                     <div className="flex items-center justify-between">
@@ -700,13 +987,13 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                   </div>
                 </div>
 
-                <div className={`rounded-lg border p-4 ${isDarkMode ? 'bg-neutral-800/50 border-neutral-700/50' : 'bg-gray-50/80 border-gray-200/50'}`}>
+                <div className={`rounded-lg border p-4 ${'bg-muted/40 border-border'}`}>
                   <h4 className={`text-xs uppercase tracking-wider font-semibold mb-3 ${textTertiary}`}>Assignment</h4>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className={`text-xs ${textSecondary}`}>Assigned To</span>
                       <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white bg-gradient-to-br from-blue-500 to-blue-600">
+                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-brand text-brand-foreground">
                           {selectedTask.assignedTo.split(' ').map(n => n[0]).join('')}
                         </div>
                         <span className={`text-xs font-medium ${textPrimary}`}>{selectedTask.assignedTo}</span>
@@ -721,11 +1008,9 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
               </div>
 
               {/* Vehicle Info */}
-              <div className={`rounded-lg border p-4 border-l-4 ${
-                isDarkMode ? 'bg-neutral-800/50 border-neutral-700/50 border-l-blue-500' : 'bg-blue-50/50 border-blue-200/50 border-l-blue-400'
-              }`}>
+              <div className="rounded-lg border p-4 border-l-4 bg-[color:var(--brand-soft)]/50 border-border border-l-[color:var(--brand)]">
                 <div className="flex items-center gap-3">
-                  <Car className="w-5 h-5 text-blue-500" />
+                  <Icon name="car" className="w-5 h-5 text-[color:var(--brand)]" />
                   <div>
                     <p className={`text-xs uppercase tracking-wider font-semibold ${textTertiary}`}>Linked Vehicle</p>
                     <p className={`text-xs font-semibold mt-0.5 ${textPrimary}`}>{selectedTask.vehicleModel}</p>
@@ -736,38 +1021,76 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
 
               {/* Notes */}
               {selectedTask.notes && (
-                <div className={`rounded-lg border p-4 border-l-4 ${
-                  isDarkMode ? 'bg-amber-900/20 border-neutral-700/50 border-l-amber-500' : 'bg-amber-50/60 border-amber-200/50 border-l-amber-400'
-                }`}>
+                <div className="rounded-lg border p-4 border-l-4 bg-[color:var(--status-watch-soft)] border-border border-l-[color:var(--status-watch)]">
                   <div className="flex items-start gap-3">
-                    <FileText className="w-5 h-5 mt-0.5 text-amber-500" />
+                    <Icon name="file-text" className="w-5 h-5 mt-0.5 text-[color:var(--status-watch)]" />
                     <div>
                       <p className={`text-xs uppercase tracking-wider font-semibold ${textTertiary}`}>Notes</p>
-                      <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{selectedTask.notes}</p>
+                      <p className={`text-xs mt-1 ${'text-foreground/80'}`}>{selectedTask.notes}</p>
                     </div>
                   </div>
                 </div>
               )}
 
+              {/* Checklist (from server detail) */}
+              {detailFull && detailFull.checklist && detailFull.checklist.length > 0 && (
+                <div>
+                  <h4 className={`text-xs uppercase tracking-wider font-semibold mb-2 ${textTertiary}`}>Checklist</h4>
+                  <div className="space-y-1.5">
+                    {detailFull.checklist.map((item) => (
+                      <label key={item.id} className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 cursor-pointer ${'bg-muted/40 border-border'}`}>
+                        <input
+                          type="checkbox"
+                          checked={item.isDone}
+                          disabled={mutating || detailFull.status === 'DONE' || detailFull.status === 'CANCELLED'}
+                          onChange={(e) => toggleChecklistItem(item.id, e.target.checked)}
+                          className="w-4 h-4 rounded accent-[color:var(--status-positive)]"
+                        />
+                        <span className={`text-xs ${item.isDone ? 'line-through ' + textTertiary : textPrimary}`}>{item.title}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Resolution note (when completed) */}
+              {detailFull && detailFull.resolutionNote && (
+                <div className="rounded-lg border p-4 border-l-4 bg-[color:var(--status-positive-soft)] border-border border-l-[color:var(--status-positive)]">
+                  <p className={`text-xs uppercase tracking-wider font-semibold ${textTertiary}`}>Resolution</p>
+                  <p className={`text-xs mt-1 ${'text-foreground/80'}`}>{detailFull.resolutionNote}</p>
+                </div>
+              )}
+
+              {/* Timeline (from server detail) */}
+              {detailFull && detailFull.timeline && detailFull.timeline.length > 0 && (
+                <div>
+                  <h4 className={`text-xs uppercase tracking-wider font-semibold mb-2 ${textTertiary}`}>Timeline</h4>
+                  <div className="space-y-1.5">
+                    {detailFull.timeline.slice(0, 8).map((ev) => (
+                      <div key={ev.id} className="flex items-center justify-between text-[11px]">
+                        <span className={textSecondary}>
+                          {ev.type.replace(/_/g, ' ')}{ev.oldValue || ev.newValue ? `: ${ev.oldValue ?? '—'} → ${ev.newValue ?? '—'}` : ''}
+                        </span>
+                        <span className={textTertiary}>{fmtDate(ev.createdAt)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Action Buttons */}
-              <div className="flex items-center gap-3 pt-2">
-                <button className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border text-xs font-semibold transition-all ${
-                  isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-700' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                }`}>
-                  <User className="w-5 h-5" />
-                  Reassign
-                </button>
-                <button className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border text-xs font-semibold transition-all ${
-                  isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-700' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                }`}>
-                  <Calendar className="w-5 h-5" />
-                  Reschedule
-                </button>
-                <button className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-all shadow-sm">
-                  <X className="w-5 h-5" />
-                  Cancel Task
-                </button>
-              </div>
+              {detailFull && detailFull.status !== 'DONE' && detailFull.status !== 'CANCELLED' && (
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    disabled={mutating}
+                    onClick={handleCancelTask}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-[color:var(--status-critical)] hover:opacity-90 text-white text-xs font-semibold transition-all shadow-sm disabled:opacity-50"
+                  >
+                    <Icon name="x" className="w-5 h-5" />
+                    Cancel Task
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -781,18 +1104,14 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
           { label: 'Zeitplan', icon: Calendar },
           { label: 'Zusammenfassung', icon: CheckCircle },
         ];
-        const inputClass = `w-full px-3 py-2.5 rounded-lg border text-xs outline-none transition-all ${
-          isDarkMode
-            ? 'bg-neutral-800/60 border-neutral-700/50 text-gray-200 placeholder-gray-500 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20'
-            : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20'
-        }`;
-        const labelClass = `block text-xs font-semibold uppercase tracking-wider mb-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`;
+        const inputClass = 'w-full px-3 py-2.5 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground outline-none transition-all text-xs focus:border-[color:var(--brand)] focus:ring-1 focus:ring-[color:var(--brand-soft)]';
+        const labelClass = 'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
         const sectionTitle = (icon: any, title: string) => {
           const Icon = icon;
           return (
             <div className="flex items-center gap-2.5 mb-3">
-              <div className={`w-5 h-5 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-emerald-500/15' : 'bg-emerald-50'}`}>
-                <Icon className="w-5 h-5 text-emerald-500" />
+              <div className="w-5 h-5 rounded-lg flex items-center justify-center sq-tone-brand">
+                <Icon className="w-5 h-5 text-[color:var(--brand)]" />
               </div>
               <h3 className={`text-base font-bold ${textPrimary}`}>{title}</h3>
             </div>
@@ -820,31 +1139,29 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
             />
             <div onClick={(e) => e.stopPropagation()}
               className={`relative w-full max-w-[680px] max-h-[85vh] flex flex-col rounded-lg border shadow-2xl transition-all duration-500 ease-out ${
-                isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+                'bg-card border-border'
               }`}
               style={{
                 transform: isNewTaskAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)',
                 opacity: isNewTaskAnimating ? 1 : 0,
                 boxShadow: isNewTaskAnimating
-                  ? '0 25px 60px -12px rgba(0, 0, 0, 0.35), 0 0 40px -8px rgba(16, 185, 129, 0.15)'
+                  ? '0 25px 60px -12px rgba(0, 0, 0, 0.35), 0 0 40px -8px rgba(37, 99, 235, 0.15)'
                   : '0 10px 30px -12px rgba(0, 0, 0, 0)',
               }}>
               {/* Header */}
-              <div className={`flex items-center justify-between px-7 py-3 border-b shrink-0 ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
+              <div className={`flex items-center justify-between px-7 py-3 border-b shrink-0 ${'border-border'}`}>
                 <div>
                   <h2 className={`text-lg font-bold ${textPrimary}`}>Neuen Task anlegen</h2>
                   <p className={`text-xs mt-0.5 ${textTertiary}`}>Erstellt am {today} · Alle Pflichtfelder ausfüllen</p>
                 </div>
                 <button onClick={closeNewTask}
-                  className={`w-5 h-5 rounded-lg flex items-center justify-center transition-colors ${
-                    isDarkMode ? 'hover:bg-neutral-800 text-gray-500' : 'hover:bg-gray-100 text-gray-400'
-                  }`}>
-                  <X className="w-5 h-5" />
+                  className="w-5 h-5 rounded-lg flex items-center justify-center transition-colors hover:bg-muted text-muted-foreground">
+                  <Icon name="x" className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Step Indicator */}
-              <div className={`flex items-center gap-1 px-7 py-3 border-b shrink-0 ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
+              <div className={`flex items-center gap-1 px-7 py-3 border-b shrink-0 ${'border-border'}`}>
                 {steps.map((s, i) => {
                   const StepIcon = s.icon;
                   const isActive = i === taskStep;
@@ -854,16 +1171,16 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                       <button onClick={() => { if (isDone) setTaskStep(i); }}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                           isActive
-                            ? isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
+                            ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
                             : isDone
-                              ? isDarkMode ? 'text-emerald-400 cursor-pointer hover:bg-emerald-500/10' : 'text-emerald-600 cursor-pointer hover:bg-emerald-50'
-                              : isDarkMode ? 'text-gray-600' : 'text-gray-300'
+                              ? 'text-[color:var(--brand)] cursor-pointer hover:bg-[color:var(--brand-soft)]'
+                              : 'text-muted-foreground/50'
                         }`}>
-                        {isDone ? <CheckCircle className="w-3.5 h-3.5" /> : <StepIcon className="w-3.5 h-3.5" />}
+                        {isDone ? <Icon name="check-circle" className="w-3.5 h-3.5" /> : <StepIcon className="w-3.5 h-3.5" />}
                         <span className="hidden sm:inline">{s.label}</span>
                       </button>
                       {i < steps.length - 1 && (
-                        <div className={`flex-1 h-px mx-2 ${isDone ? 'bg-emerald-400/40' : isDarkMode ? 'bg-neutral-800' : 'bg-gray-200'}`} />
+                        <div className={`flex-1 h-px mx-2 ${isDone ? 'bg-[color:var(--brand)]/40' : 'bg-border'}`} />
                       )}
                     </div>
                   );
@@ -879,13 +1196,13 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                       <label className={labelClass}>Titel *</label>
                       <input type="text" placeholder="z.B. Ölwechsel Mercedes AMG GT" value={newTask.title}
                         onChange={e => setNewTask({ ...newTask, title: e.target.value })} className={inputClass} />
-                      {taskFormErrors.title && <p className="text-[11px] text-red-500 mt-1">{taskFormErrors.title}</p>}
+                      {taskFormErrors.title && <p className="text-[11px] text-[color:var(--status-critical)] mt-1">{taskFormErrors.title}</p>}
                     </div>
                     <div>
                       <label className={labelClass}>Beschreibung *</label>
                       <textarea rows={3} placeholder="Detaillierte Beschreibung der Aufgabe..." value={newTask.description}
                         onChange={e => setNewTask({ ...newTask, description: e.target.value })} className={`${inputClass} resize-none`} />
-                      {taskFormErrors.description && <p className="text-[11px] text-red-500 mt-1">{taskFormErrors.description}</p>}
+                      {taskFormErrors.description && <p className="text-[11px] text-[color:var(--status-critical)] mt-1">{taskFormErrors.description}</p>}
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
@@ -898,11 +1215,12 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                         <label className={labelClass}>Priorität</label>
                         <div className="flex gap-1.5">
                           {allPriorities.map(p => {
+                            const unselected = 'bg-card border-border text-muted-foreground';
                             const colors: Record<TaskPriority, string> = {
-                              'Low': newTask.priority === p ? 'bg-gray-500 text-white border-gray-500' : isDarkMode ? 'bg-neutral-800/60 border-neutral-700/50 text-gray-400' : 'bg-white border-gray-200 text-gray-500',
-                              'Medium': newTask.priority === p ? 'bg-amber-500 text-white border-amber-500' : isDarkMode ? 'bg-neutral-800/60 border-neutral-700/50 text-gray-400' : 'bg-white border-gray-200 text-gray-500',
-                              'High': newTask.priority === p ? 'bg-orange-500 text-white border-orange-500' : isDarkMode ? 'bg-neutral-800/60 border-neutral-700/50 text-gray-400' : 'bg-white border-gray-200 text-gray-500',
-                              'Critical': newTask.priority === p ? 'bg-red-500 text-white border-red-500' : isDarkMode ? 'bg-neutral-800/60 border-neutral-700/50 text-gray-400' : 'bg-white border-gray-200 text-gray-500',
+                              'Low': newTask.priority === p ? 'bg-[color:var(--status-nodata)] text-white border-transparent' : unselected,
+                              'Medium': newTask.priority === p ? 'bg-[color:var(--status-watch)] text-white border-transparent' : unselected,
+                              'High': newTask.priority === p ? 'bg-[color:var(--status-warning)] text-white border-transparent' : unselected,
+                              'Critical': newTask.priority === p ? 'bg-[color:var(--status-critical)] text-white border-transparent' : unselected,
                             };
                             return (
                               <button key={p} onClick={() => setNewTask({ ...newTask, priority: p })}
@@ -926,7 +1244,7 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                         <option value="">Fahrzeug auswählen...</option>
                         {uniqueVehicles.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
                       </select>
-                      {taskFormErrors.vehicleLicense && <p className="text-[11px] text-red-500 mt-1">{taskFormErrors.vehicleLicense}</p>}
+                      {taskFormErrors.vehicleLicense && <p className="text-[11px] text-[color:var(--status-critical)] mt-1">{taskFormErrors.vehicleLicense}</p>}
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
@@ -935,7 +1253,7 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                           <option value="">Mitarbeiter wählen...</option>
                           {assigneesList.map(a => <option key={a} value={a}>{a}</option>)}
                         </select>
-                        {taskFormErrors.assignedTo && <p className="text-[11px] text-red-500 mt-1">{taskFormErrors.assignedTo}</p>}
+                        {taskFormErrors.assignedTo && <p className="text-[11px] text-[color:var(--status-critical)] mt-1">{taskFormErrors.assignedTo}</p>}
                       </div>
                       <div>
                         <label className={labelClass}>Station *</label>
@@ -943,7 +1261,7 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                           <option value="">{stationsList.length === 0 ? 'No stations' : 'Station wählen...'}</option>
                           {stationsList.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
-                        {taskFormErrors.station && <p className="text-[11px] text-red-500 mt-1">{taskFormErrors.station}</p>}
+                        {taskFormErrors.station && <p className="text-[11px] text-[color:var(--status-critical)] mt-1">{taskFormErrors.station}</p>}
                       </div>
                     </div>
                   </div>
@@ -952,10 +1270,10 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                 {taskStep === 2 && (
                   <div className="space-y-4">
                     {sectionTitle(Calendar, 'Zeitplan & Ersteller')}
-                    <div className={`rounded-lg p-3.5 mb-1 ${isDarkMode ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200/60'}`}>
+                    <div className="rounded-lg p-3.5 mb-1 border border-transparent sq-tone-info">
                       <div className="flex items-start gap-2.5">
-                        <Clock className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
-                        <p className={`text-xs ${isDarkMode ? 'text-blue-300/80' : 'text-blue-700'}`}>
+                        <Icon name="clock" className="w-5 h-5 mt-0.5 shrink-0" />
+                        <p className="text-xs">
                           Erstellungsdatum: <span className="font-semibold">{today}</span> – wird automatisch gesetzt.
                         </p>
                       </div>
@@ -965,7 +1283,7 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                         <label className={labelClass}>Fälligkeitsdatum *</label>
                         <input type="date" value={newTask.dueDate}
                           onChange={e => setNewTask({ ...newTask, dueDate: e.target.value })} className={inputClass} />
-                        {taskFormErrors.dueDate && <p className="text-[11px] text-red-500 mt-1">{taskFormErrors.dueDate}</p>}
+                        {taskFormErrors.dueDate && <p className="text-[11px] text-[color:var(--status-critical)] mt-1">{taskFormErrors.dueDate}</p>}
                       </div>
                       <div>
                         <label className={labelClass}>Geschätzte Dauer *</label>
@@ -975,19 +1293,19 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                             <option key={d} value={d}>{d}</option>
                           ))}
                         </select>
-                        {taskFormErrors.estimatedDuration && <p className="text-[11px] text-red-500 mt-1">{taskFormErrors.estimatedDuration}</p>}
+                        {taskFormErrors.estimatedDuration && <p className="text-[11px] text-[color:var(--status-critical)] mt-1">{taskFormErrors.estimatedDuration}</p>}
                       </div>
                     </div>
                     <div>
                       <label className={labelClass}>Erstellt von *</label>
                       <div className="relative">
-                        <User className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                        <Icon name="user" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50" />
                         <select value={newTask.createdBy} onChange={e => setNewTask({ ...newTask, createdBy: e.target.value })} className={`${inputClass} pl-9`}>
                           <option value="">Ersteller wählen...</option>
                           {assigneesList.map(a => <option key={a} value={a}>{a}</option>)}
                         </select>
                       </div>
-                      {taskFormErrors.createdBy && <p className="text-[11px] text-red-500 mt-1">{taskFormErrors.createdBy}</p>}
+                      {taskFormErrors.createdBy && <p className="text-[11px] text-[color:var(--status-critical)] mt-1">{taskFormErrors.createdBy}</p>}
                     </div>
                   </div>
                 )}
@@ -996,7 +1314,7 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                   <div className="space-y-5">
                     {sectionTitle(CheckCircle, 'Zusammenfassung & Prüfung')}
                     <div className={`rounded-lg border p-4 space-y-0 divide-y ${
-                      isDarkMode ? 'bg-neutral-800/40 border-neutral-700/50 divide-neutral-800' : 'bg-gray-50/50 border-gray-200/60 divide-gray-100'
+                      'bg-muted/40 border-border divide-border/60'
                     }`}>
                       <SummaryRow label="Titel" value={newTask.title} />
                       <SummaryRow label="Beschreibung" value={newTask.description} />
@@ -1010,14 +1328,14 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
                       </div>
                     </div>
                     <div className={`rounded-lg border p-4 space-y-0 divide-y ${
-                      isDarkMode ? 'bg-neutral-800/40 border-neutral-700/50 divide-neutral-800' : 'bg-gray-50/50 border-gray-200/60 divide-gray-100'
+                      'bg-muted/40 border-border divide-border/60'
                     }`}>
                       <SummaryRow label="Fahrzeug" value={newTask.vehicleLicense ? (uniqueVehicles.find(v => v.value === newTask.vehicleLicense)?.label || newTask.vehicleLicense) : ''} />
                       <SummaryRow label="Zugewiesen an" value={newTask.assignedTo} />
                       <SummaryRow label="Station" value={newTask.station} />
                     </div>
                     <div className={`rounded-lg border p-4 space-y-0 divide-y ${
-                      isDarkMode ? 'bg-neutral-800/40 border-neutral-700/50 divide-neutral-800' : 'bg-gray-50/50 border-gray-200/60 divide-gray-100'
+                      'bg-muted/40 border-border divide-border/60'
                     }`}>
                       <SummaryRow label="Erstellt am" value={today} />
                       <SummaryRow label="Erstellt von" value={newTask.createdBy} />
@@ -1036,33 +1354,29 @@ export function TasksView({ isDarkMode, autoOpenNewTask, onAutoOpenConsumed, hig
               </div>
 
               {/* Footer */}
-              <div className={`flex items-center justify-between px-7 py-3 border-t shrink-0 ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
+              <div className={`flex items-center justify-between px-7 py-3 border-t shrink-0 ${'border-border'}`}>
                 <button onClick={closeNewTask}
-                  className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                    isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                  }`}>
+                  className="px-3 py-2 rounded-lg text-xs font-medium transition-all text-muted-foreground hover:text-foreground hover:bg-muted">
                   Abbrechen
                 </button>
                 <div className="flex items-center gap-2.5">
                   {taskStep > 0 && (
                     <button onClick={() => setTaskStep(taskStep - 1)}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
-                        isDarkMode ? 'bg-neutral-800/60 border-neutral-700/50 text-gray-300 hover:bg-neutral-800' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                      }`}>
-                      <ChevronLeft className="w-3.5 h-3.5" />
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-card text-foreground hover:bg-muted text-xs font-medium transition-all">
+                      <Icon name="chevron-left" className="w-3.5 h-3.5" />
                       Zurück
                     </button>
                   )}
                   {taskStep < 3 ? (
                     <button onClick={handleTaskNextStep}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white text-xs font-semibold shadow-md hover:shadow-lg transition-all">
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand hover:bg-[color:var(--brand-hover)] text-brand-foreground text-xs font-semibold shadow-md hover:shadow-lg transition-all">
                       Weiter
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <Icon name="chevron-right" className="w-3.5 h-3.5" />
                     </button>
                   ) : (
                     <button onClick={handleSubmitTask}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white text-xs font-semibold shadow-md hover:shadow-lg transition-all">
-                      <CheckCircle className="w-3.5 h-3.5" />
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand hover:bg-[color:var(--brand-hover)] text-brand-foreground text-xs font-semibold shadow-md hover:shadow-lg transition-all">
+                      <Icon name="check-circle" className="w-3.5 h-3.5" />
                       Task anlegen
                     </button>
                   )}

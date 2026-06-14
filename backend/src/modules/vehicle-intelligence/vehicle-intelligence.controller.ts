@@ -20,6 +20,8 @@ import { BrakeLifecycleService } from './brakes/brake-lifecycle.service';
 import { ServiceEventsService } from './service-events/service-events.service';
 import { EnrichmentJobsService } from './enrichment-jobs/enrichment-jobs.service';
 import { DtcService } from './dtc/dtc.service';
+import { DtcKnowledgeService } from './dtc-knowledge/dtc-knowledge.service';
+import { DtcVehicleContext } from './dtc-knowledge/dtc-knowledge.types';
 import { TripsService } from './trips/trips.service';
 import { TripBehaviorEnrichmentService } from './trips/trip-behavior-enrichment.service';
 import { TripEnrichmentOrchestratorService } from './trips/trip-enrichment-orchestrator.service';
@@ -32,11 +34,7 @@ import { BatteryHealthService } from './battery-health/battery-health.service';
 import { HvBatteryHealthService } from './battery-health/hv-battery-health.service';
 import { BatteryV2Service } from './battery-health/battery-v2.service';
 import { CanonicalBatteryHealthService } from './battery-health/canonical-battery-health.service';
-import {
-  BatteryEvidenceService,
-  BatteryEvidenceWriteInput,
-} from './battery-health/battery-evidence.service';
-import { normalizeBatteryDocumentConfirm } from './battery-health/battery-document-confirmation.util';
+import { BatteryEvidenceService } from './battery-health/battery-evidence.service';
 import { HealthSummaryService } from './health-summary/health-summary.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
 import { HmVehicleActivationService } from '../high-mobility/high-mobility-vehicle-activation.service';
@@ -45,9 +43,6 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { VehicleOwnershipGuard } from '@shared/auth/vehicle-ownership.guard';
 import { PaginationParams } from '@shared/utils/pagination';
 import {
-  BatteryEvidenceScope,
-  BatteryEvidenceSourceType,
-  BatteryEvidenceValueType,
   Prisma,
   TripAssignmentSubjectType,
   TireSetupStatus,
@@ -57,6 +52,22 @@ import { Inject, forwardRef, Logger } from '@nestjs/common';
 import { InvoicesService } from '@modules/invoices/invoices.service';
 import { AiTireSpecJobService } from '@modules/dimo/ai-tire-spec-job.service';
 import { normalizeAiTireSpecResult, buildPersistedAiTireSpec, validateAiTireSpec } from './tires/ai-tire-spec-normalizer';
+import {
+  CreateTireSetupDto,
+  AddTireMeasurementDto,
+  CalibrationMeasurementDto,
+  TireHealthMeasurementDto,
+  RotateTiresDto,
+  ChangeTiresDto,
+  ActivateStoredSetDto,
+  ApplyAiTireSpecDto,
+} from './tires/dto/tire-mutation.dto';
+import {
+  InitializeBrakeHealthDto,
+  RecordBrakeServiceDto,
+  CreateBrakeSpecDto,
+  UpdateBrakeSpecDto,
+} from './brakes/dto/brake-mutation.dto';
 
 @Controller('vehicles/:vehicleId')
 @UseGuards(RolesGuard, VehicleOwnershipGuard)
@@ -75,6 +86,7 @@ export class VehicleIntelligenceController {
     private readonly serviceEventsService: ServiceEventsService,
     private readonly enrichmentJobsService: EnrichmentJobsService,
     private readonly dtcService: DtcService,
+    private readonly dtcKnowledgeService: DtcKnowledgeService,
     private readonly tripsService: TripsService,
     private readonly tripAnalyticsCanonicalService: TripAnalyticsCanonicalService,
     private readonly energyEventsService: EnergyEventsService,
@@ -161,21 +173,21 @@ export class VehicleIntelligenceController {
   @Post('tires')
   async createTireSetup(
     @Param('vehicleId') vehicleId: string,
-    @Body() body: Omit<Prisma.VehicleTireSetupCreateInput, 'vehicle'>,
+    @Body() body: CreateTireSetupDto,
   ) {
     return this.tireLifecycleService.installTireSet(vehicleId, {
-      name: (body as any).name,
-      brandModelFront: (body as any).brandModelFront,
-      brandModelRear: (body as any).brandModelRear,
-      frontDimension: (body as any).frontDimension,
-      rearDimension: (body as any).rearDimension,
-      tireSeason: (body as any).tireSeason,
-      initialTreadDepthMm: (body as any).initialTreadDepthMm,
-      initialTreadFrontMm: (body as any).initialTreadFrontMm,
-      initialTreadRearMm: (body as any).initialTreadRearMm,
-      tireCondition: (body as any).tireCondition,
-      odometerKm: (body as any).installedOdometerKm,
-      notes: (body as any).notes,
+      name: body.name,
+      brandModelFront: body.brandModelFront,
+      brandModelRear: body.brandModelRear,
+      frontDimension: body.frontDimension,
+      rearDimension: body.rearDimension,
+      tireSeason: body.tireSeason,
+      initialTreadDepthMm: body.initialTreadDepthMm,
+      initialTreadFrontMm: body.initialTreadFrontMm,
+      initialTreadRearMm: body.initialTreadRearMm,
+      tireCondition: body.tireCondition,
+      odometerKm: body.installedOdometerKm,
+      notes: body.notes,
       archiveCurrent: false,
     });
   }
@@ -184,23 +196,19 @@ export class VehicleIntelligenceController {
   async addTireMeasurement(
     @Param('vehicleId') vehicleId: string,
     @Param('tireSetupId') tireSetupId: string,
-    @Body()
-    body: Omit<
-      Prisma.VehicleTireTreadMeasurementCreateInput,
-      'tireSetup' | 'vehicleId'
-    >,
+    @Body() body: AddTireMeasurementDto,
   ) {
     return this.tireLifecycleService.recordMeasurement({
       vehicleId,
       tireSetupId,
-      frontLeftMm: (body as any).frontLeftMm,
-      frontRightMm: (body as any).frontRightMm,
-      rearLeftMm: (body as any).rearLeftMm,
-      rearRightMm: (body as any).rearRightMm,
-      odometerKm: (body as any).odometerAtMeasurement,
-      measuredAt: (body as any).measuredAt,
-      source: (body as any).source,
-      workshopName: (body as any).workshopName,
+      frontLeftMm: body.frontLeftMm,
+      frontRightMm: body.frontRightMm,
+      rearLeftMm: body.rearLeftMm,
+      rearRightMm: body.rearRightMm,
+      odometerKm: body.odometerAtMeasurement,
+      measuredAt: body.measuredAt,
+      source: body.source,
+      workshopName: body.workshopName,
       shouldCalibrate: true,
       triggerRecalculate: true,
     });
@@ -210,16 +218,7 @@ export class VehicleIntelligenceController {
   async addCalibrationMeasurement(
     @Param('vehicleId') vehicleId: string,
     @Param('tireSetupId') tireSetupId: string,
-    @Body() body: {
-      frontLeftMm?: number;
-      frontRightMm?: number;
-      rearLeftMm?: number;
-      rearRightMm?: number;
-      odometerAtMeasurement?: number;
-      source: string;
-      workshopName?: string;
-      measuredAt?: string;
-    },
+    @Body() body: CalibrationMeasurementDto,
   ) {
     return this.tireLifecycleService.recordMeasurement({
       vehicleId,
@@ -241,7 +240,7 @@ export class VehicleIntelligenceController {
   @Post('tires/ai-spec/apply')
   async applyAiTireSpec(
     @Param('vehicleId') vehicleId: string,
-    @Body() body: { jobId?: string; aiTireSpec?: Record<string, unknown> },
+    @Body() body: ApplyAiTireSpecDto,
   ) {
     // Job-based flow (preferred): apply from a completed AiTireSpecJob
     if (body.jobId) {
@@ -319,11 +318,7 @@ export class VehicleIntelligenceController {
   @Post('tires/rotate')
   async rotateTires(
     @Param('vehicleId') vehicleId: string,
-    @Body() body: {
-      template: string;
-      odometerKm?: number;
-      notes?: string;
-    },
+    @Body() body: RotateTiresDto,
   ) {
     return this.tireLifecycleService.rotateTires(vehicleId, body);
   }
@@ -331,24 +326,7 @@ export class VehicleIntelligenceController {
   @Post('tires/change')
   async changeTires(
     @Param('vehicleId') vehicleId: string,
-    @Body() body: {
-      scope: 'single' | 'axle' | 'full_set';
-      positions?: string[];
-      newSetup?: {
-        brandModelFront?: string;
-        brandModelRear?: string;
-        frontDimension?: string;
-        rearDimension?: string;
-        tireSeason?: string;
-        initialTreadDepthMm?: number;
-        initialTreadFrontMm?: number;
-        initialTreadRearMm?: number;
-        name?: string;
-      };
-      odometerKm?: number;
-      notes?: string;
-      workshopName?: string;
-    },
+    @Body() body: ChangeTiresDto,
   ) {
     return this.tireLifecycleService.replaceTires({ vehicleId, ...body });
   }
@@ -356,11 +334,7 @@ export class VehicleIntelligenceController {
   @Post('tires/activate-stored-set')
   async activateStoredTireSet(
     @Param('vehicleId') vehicleId: string,
-    @Body() body: {
-      storedSetupId?: string;
-      odometerKm?: number;
-      notes?: string;
-    },
+    @Body() body: ActivateStoredSetDto,
   ) {
     return this.tireLifecycleService.activateStoredSet({ vehicleId, ...body });
   }
@@ -368,15 +342,7 @@ export class VehicleIntelligenceController {
   @Post('tires/measurement')
   async addTireHealthMeasurement(
     @Param('vehicleId') vehicleId: string,
-    @Body() body: {
-      frontLeftMm?: number;
-      frontRightMm?: number;
-      rearLeftMm?: number;
-      rearRightMm?: number;
-      odometerKm?: number;
-      workshopName?: string;
-      source?: string;
-    },
+    @Body() body: TireHealthMeasurementDto,
   ) {
     return this.tireLifecycleService.recordMeasurement({
       vehicleId,
@@ -406,7 +372,7 @@ export class VehicleIntelligenceController {
   @Post('brakes')
   async createBrakeSpec(
     @Param('vehicleId') vehicleId: string,
-    @Body() body: Omit<Prisma.VehicleBrakeReferenceSpecCreateInput, 'vehicle'>,
+    @Body() body: CreateBrakeSpecDto,
   ) {
     return this.brakesService.create(vehicleId, body);
   }
@@ -414,7 +380,7 @@ export class VehicleIntelligenceController {
   @Patch('brakes/:id')
   async updateBrakeSpec(
     @Param('id') id: string,
-    @Body() body: Prisma.VehicleBrakeReferenceSpecUpdateInput,
+    @Body() body: UpdateBrakeSpecDto,
   ) {
     return this.brakesService.update(id, body);
   }
@@ -625,19 +591,7 @@ export class VehicleIntelligenceController {
   @Post('brake-health/initialize')
   async initializeBrakeHealth(
     @Param('vehicleId') vehicleId: string,
-    @Body() body: {
-      serviceDate: string;
-      odometerKm?: number;
-      frontPadMm?: number;
-      rearPadMm?: number;
-      frontRotorWidthMm?: number;
-      rearRotorWidthMm?: number;
-      kind?: 'inspection_only' | 'pads_service' | 'discs_service' | 'brake_fluid_service' | 'full_brake_service';
-      scope?: Array<'front_pads' | 'rear_pads' | 'front_discs' | 'rear_discs'>;
-      workshopName?: string;
-      notes?: string;
-      source?: 'manual' | 'ai_document' | 'api';
-    },
+    @Body() body: InitializeBrakeHealthDto,
   ) {
     return this.brakeLifecycleService.recordService({
       vehicleId,
@@ -661,23 +615,7 @@ export class VehicleIntelligenceController {
   @Post('brake-health/service')
   async recordBrakeLifecycleService(
     @Param('vehicleId') vehicleId: string,
-    @Body() body: {
-      serviceDate: string;
-      odometerKm?: number;
-      workshopName?: string;
-      notes?: string;
-      source?: 'manual' | 'ai_document' | 'api';
-      kind?: 'inspection_only' | 'pads_service' | 'discs_service' | 'brake_fluid_service' | 'full_brake_service';
-      scope?: Array<'front_pads' | 'rear_pads' | 'front_discs' | 'rear_discs'>;
-      measured?: {
-        frontPadMm?: number;
-        rearPadMm?: number;
-        frontDiscMm?: number;
-        rearDiscMm?: number;
-      };
-      initializeIfPossible?: boolean;
-      documentUrl?: string;
-    },
+    @Body() body: RecordBrakeServiceDto,
   ) {
     return this.brakeLifecycleService.recordService({
       vehicleId,
@@ -785,10 +723,89 @@ export class VehicleIntelligenceController {
     return this.dtcService.getSummary(vehicleId);
   }
 
-  /** Full detail payload for the DTC Detail Modal (3 sections). */
+  /**
+   * Full detail payload for the DTC Detail Modal (3 sections).
+   *
+   * The base DTC logic (currentFaults / history / monitoring) runs UNCHANGED via
+   * DtcService.getDetail. We then attach an AI-enriched `knowledge` object to
+   * each active fault (enqueuing background enrichment for missing codes) and,
+   * cheaply, to history rows that already have READY generic knowledge (no
+   * enqueue). Enrichment failures never affect DTC display — the whole step is
+   * wrapped in try/catch and degrades to no/partial knowledge.
+   */
   @Get('dtc/detail')
   async getDtcDetail(@Param('vehicleId') vehicleId: string) {
-    return this.dtcService.getDetail(vehicleId);
+    const detail = await this.dtcService.getDetail(vehicleId);
+    try {
+      const vehicle = await this.prisma.vehicle.findUnique({
+        where: { id: vehicleId },
+        select: { make: true, model: true, year: true, fuelType: true },
+      });
+      const ctx: DtcVehicleContext = {
+        make: vehicle?.make ?? null,
+        model: vehicle?.model ?? null,
+        year: vehicle?.year ?? null,
+        fuelType: vehicle?.fuelType ? String(vehicle.fuelType) : null,
+      };
+
+      // Active faults → ensure enrichment + attach knowledge (enqueues missing).
+      const activeFaults: Array<{ code: string; knowledge?: unknown }> =
+        detail?.currentFaults?.activeFaults ?? [];
+      await Promise.all(
+        activeFaults.map(async (fault) => {
+          fault.knowledge = await this.dtcKnowledgeService.getOrQueueForActiveFault(
+            fault.code,
+            ctx,
+          );
+        }),
+      );
+
+      // History → attach existing READY generic knowledge only (never enqueue).
+      const history: Array<{ code: string; knowledge?: unknown }> = detail?.history ?? [];
+      if (history.length > 0) {
+        const readyMap = await this.dtcKnowledgeService.getReadyGenericByCodes(
+          history.map((h) => h.code),
+        );
+        for (const row of history) {
+          const norm = this.dtcKnowledgeService.normalizeDtcCode(row.code);
+          const k = norm ? readyMap.get(norm) : undefined;
+          if (k) row.knowledge = k;
+        }
+      }
+    } catch (err) {
+      this.logger.warn(
+        `DTC knowledge attach failed for vehicle ${vehicleId}: ${(err as Error).message}`,
+      );
+    }
+    return detail;
+  }
+
+  /**
+   * Internal/admin retry for a single DTC's knowledge enrichment. Auth +
+   * vehicle-ownership are enforced by the controller-level guards. Re-queues
+   * even FAILED rows and returns the refreshed knowledge DTO.
+   */
+  @Post('dtc/:code/knowledge/retry')
+  async retryDtcKnowledge(
+    @Param('vehicleId') vehicleId: string,
+    @Param('code') code: string,
+  ) {
+    const normalized = this.dtcKnowledgeService.normalizeDtcCode(code);
+    if (!normalized) {
+      throw new BadRequestException(`Invalid DTC code: ${code}`);
+    }
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { make: true, model: true, year: true, fuelType: true },
+    });
+    const ctx: DtcVehicleContext = {
+      make: vehicle?.make ?? null,
+      model: vehicle?.model ?? null,
+      year: vehicle?.year ?? null,
+      fuelType: vehicle?.fuelType ? String(vehicle.fuelType) : null,
+    };
+    const knowledge = await this.dtcKnowledgeService.retry(normalized, ctx);
+    return { code: normalized, knowledge };
   }
 
   @Get('dtc')
@@ -1600,429 +1617,11 @@ export class VehicleIntelligenceController {
   }
 
   // --- Document Extraction ---
-  @Get('document-extractions')
-  async getDocumentExtractions(@Param('vehicleId') vehicleId: string) {
-    return this.prisma.vehicleDocumentExtraction.findMany({
-      where: { vehicleId },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
-  }
-
-  @Post('document-extractions')
-  async createDocumentExtraction(
-    @Param('vehicleId') vehicleId: string,
-    @Body() body: { documentType: string; extractedData: any; sourceFileName?: string; sourceFileUrl?: string },
-  ) {
-    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId }, select: { organizationId: true } });
-    return this.prisma.vehicleDocumentExtraction.create({
-      data: {
-        vehicleId,
-        organizationId: vehicle?.organizationId ?? null,
-        documentType: body.documentType as any,
-        extractedData: body.extractedData,
-        sourceFileName: body.sourceFileName,
-        sourceFileUrl: body.sourceFileUrl,
-        status: 'PENDING',
-      },
-    });
-  }
-
-  @Post('document-extractions/:extractionId/confirm')
-  async confirmDocumentExtraction(
-    @Param('vehicleId') vehicleId: string,
-    @Param('extractionId') extractionId: string,
-    @Body() body: { confirmedData: any },
-  ) {
-    // Cross-vehicle IDOR guard: prevent applying an extraction from vehicle A
-    // to vehicle B even within the same organization. VehicleOwnershipGuard
-    // only validates the vehicleId in the path — the extractionId is not
-    // implicitly scoped to that vehicle.
-    const existing = await this.prisma.vehicleDocumentExtraction.findUnique({
-      where: { id: extractionId },
-      select: { id: true, vehicleId: true, documentType: true, sourceFileUrl: true },
-    });
-    if (!existing) {
-      throw new NotFoundException('Document extraction not found');
-    }
-    if (existing.vehicleId !== vehicleId) {
-      throw new NotFoundException('Document extraction not found');
-    }
-
-    const extraction = await this.prisma.vehicleDocumentExtraction.update({
-      where: { id: extractionId },
-      data: { confirmedData: body.confirmedData, status: 'CONFIRMED', appliedAt: new Date() },
-    });
-
-    const d = body.confirmedData;
-    const docType = extraction.documentType;
-
-    // Locale-aware numeric parser: accepts numbers and strings.
-    // Handles German decimal commas ("5,5" → 5.5) which parseFloat silently truncates.
-    const toNum = (v: unknown): number | undefined => {
-      if (typeof v === 'number' && Number.isFinite(v)) return v;
-      if (typeof v === 'string' && v.trim().length > 0) {
-        const normalized = v.trim().replace(',', '.');
-        const parsed = Number(normalized);
-        if (Number.isFinite(parsed)) return parsed;
-      }
-      return undefined;
-    };
-    const toInt = (v: unknown): number | undefined => {
-      const n = toNum(v);
-      return n != null ? Math.round(n) : undefined;
-    };
-
-    if (docType === 'BRAKE') {
-      const serviceDateRaw =
-        (typeof d?.eventDate === 'string' && d.eventDate) ||
-        (typeof d?.serviceDate === 'string' && d.serviceDate) ||
-        new Date().toISOString();
-      const notes =
-        (typeof d?.notes === 'string' && d.notes.trim()) ||
-        (typeof d?.description === 'string' && d.description.trim()) ||
-        undefined;
-      const kind =
-        d?.serviceKind === 'inspection_only' ||
-        d?.serviceKind === 'pads_service' ||
-        d?.serviceKind === 'discs_service' ||
-        d?.serviceKind === 'brake_fluid_service' ||
-        d?.serviceKind === 'full_brake_service'
-          ? d.serviceKind
-          : 'full_brake_service';
-      const rawScope = Array.isArray(d?.scope)
-        ? d.scope
-        : Array.isArray(d?.serviceScope)
-          ? d.serviceScope
-          : typeof d?.scopeCsv === 'string'
-            ? d.scopeCsv
-                .split(',')
-                .map((s: string) => s.trim())
-                .filter(Boolean)
-            : [];
-      const scope = rawScope.filter(
-        (s: unknown): s is 'front_pads' | 'rear_pads' | 'front_discs' | 'rear_discs' =>
-          s === 'front_pads' || s === 'rear_pads' || s === 'front_discs' || s === 'rear_discs',
-      );
-
-      const lifecycle = await this.brakeLifecycleService.recordService({
-        vehicleId,
-        serviceDate: serviceDateRaw,
-        odometerKm: toNum(d?.odometerKm),
-        workshopName:
-          (typeof d?.workshopName === 'string' && d.workshopName.trim()) || undefined,
-        notes,
-        source: 'ai_document',
-        kind,
-        scope,
-        measured: {
-          frontPadMm: toNum(d?.frontPadMm ?? d?.measured?.frontPadMm),
-          rearPadMm: toNum(d?.rearPadMm ?? d?.measured?.rearPadMm),
-          frontDiscMm: toNum(
-            d?.frontDiscMm ?? d?.frontRotorWidthMm ?? d?.measured?.frontDiscMm,
-          ),
-          rearDiscMm: toNum(
-            d?.rearDiscMm ?? d?.rearRotorWidthMm ?? d?.measured?.rearDiscMm,
-          ),
-        },
-        initializeIfPossible: true,
-        documentUrl: extraction.sourceFileUrl ?? undefined,
-      });
-
-      const updated = await this.prisma.vehicleDocumentExtraction.update({
-        where: { id: extractionId },
-        data: { serviceEventId: lifecycle.serviceEventId },
-      });
-
-      return {
-        ...updated,
-        applyResult: lifecycle,
-      };
-    }
-
-    if (['SERVICE', 'OIL_CHANGE', 'TUV_REPORT', 'BOKRAFT_REPORT'].includes(docType)) {
-      const typeMap: Record<string, string> = {
-        SERVICE: 'FULL_SERVICE', OIL_CHANGE: 'OIL_CHANGE',
-        TUV_REPORT: 'TUV_INSPECTION', BOKRAFT_REPORT: 'BOKRAFT_INSPECTION',
-      };
-      const eventType = typeMap[docType] ?? 'OTHER';
-      const odometerKmParsed = toInt(d?.odometerKm);
-      const costCentsParsed = toInt(d?.costCents);
-      const svcEvent = await this.prisma.vehicleServiceEvent.create({
-        data: {
-          vehicleId,
-          eventType: eventType as any,
-          eventDate: d.eventDate ? new Date(d.eventDate) : new Date(),
-          odometerKm: odometerKmParsed,
-          workshopName: d.workshopName || undefined,
-          notes: d.notes || d.description || undefined,
-          costCents: costCentsParsed,
-          documentUrl: extraction.sourceFileUrl,
-        },
-      });
-      await this.prisma.vehicleDocumentExtraction.update({
-        where: { id: extractionId },
-        data: { serviceEventId: svcEvent.id },
-      });
-
-      if (docType === 'OIL_CHANGE' && d.eventDate) {
-        await this.prisma.vehicle.update({
-          where: { id: vehicleId },
-          data: {
-            lastOilChangeDate: new Date(d.eventDate),
-            ...(odometerKmParsed != null ? { lastOilChangeOdometerKm: odometerKmParsed } : {}),
-          },
-        });
-      }
-      if (docType === 'SERVICE' && d.eventDate) {
-        await this.prisma.vehicle.update({
-          where: { id: vehicleId },
-          data: {
-            lastServiceDate: new Date(d.eventDate),
-            ...(odometerKmParsed != null ? { lastServiceOdometerKm: odometerKmParsed } : {}),
-          },
-        });
-      }
-      if (docType === 'TUV_REPORT' && d.eventDate) {
-        const tuvDate = new Date(d.eventDate);
-        const nextTuv = new Date(tuvDate);
-        nextTuv.setFullYear(nextTuv.getFullYear() + 2);
-        await this.prisma.vehicle.update({ where: { id: vehicleId }, data: { lastTuvDate: tuvDate, nextTuvDate: nextTuv } });
-      }
-      if (docType === 'BOKRAFT_REPORT' && d.eventDate) {
-        const bkDate = new Date(d.eventDate);
-        const nextBk = new Date(bkDate);
-        nextBk.setFullYear(nextBk.getFullYear() + 1);
-        await this.prisma.vehicle.update({ where: { id: vehicleId }, data: { lastBokraftDate: bkDate, nextBokraftDate: nextBk } });
-      }
-    }
-
-    if (docType === 'BATTERY') {
-      const normalized = normalizeBatteryDocumentConfirm(
-        d as Record<string, unknown>,
-      );
-      const observedAt = normalized.observedAt;
-      const scope = normalized.scope;
-      const isReplacement = normalized.isReplacement;
-
-      let serviceEventId: string | null = null;
-      if (isReplacement) {
-        const svcEvent = await this.prisma.vehicleServiceEvent.create({
-          data: {
-            vehicleId,
-            eventType: 'BATTERY_REPLACEMENT',
-            eventDate: observedAt,
-            odometerKm: normalized.odometerKm != null
-              ? Math.round(normalized.odometerKm)
-              : undefined,
-            workshopName: d?.workshopName || undefined,
-            notes: d?.notes || d?.description || undefined,
-            costCents: toInt(d?.costCents),
-            documentUrl: extraction.sourceFileUrl,
-          },
-        });
-        serviceEventId = svcEvent.id;
-        await this.prisma.vehicleDocumentExtraction.update({
-          where: { id: extractionId },
-          data: { serviceEventId: svcEvent.id },
-        });
-      }
-
-      const sourceType = isReplacement
-        ? BatteryEvidenceSourceType.WORKSHOP_MEASUREMENT
-        : BatteryEvidenceSourceType.DOCUMENT_CONFIRMED;
-
-      const sohPercent = normalized.sohPercent;
-      const voltageV = normalized.voltageV;
-      const restingVoltage = normalized.restingVoltage;
-      const crankingVoltage = normalized.crankingVoltage;
-      const chargingVoltage = normalized.chargingVoltage;
-      const temperatureC = normalized.temperatureC;
-
-      const isLv = scope === BatteryEvidenceScope.LV;
-      const evidenceEntries: BatteryEvidenceWriteInput[] = [
-        {
-          vehicleId,
-          scope,
-          sourceType,
-          valueType: BatteryEvidenceValueType.SOH_PERCENT,
-          numericValue: sohPercent,
-          unit: 'percent',
-          observedAt,
-          provider: 'document_confirmed',
-          confidence: 'document_confirmed',
-          quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
-          documentExtractionId: extraction.id,
-          serviceEventId,
-        },
-        {
-          vehicleId,
-          scope,
-          sourceType,
-          valueType: BatteryEvidenceValueType.VOLTAGE_V,
-          numericValue: voltageV,
-          unit: 'V',
-          observedAt,
-          provider: 'document_confirmed',
-          confidence: 'document_confirmed',
-          quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
-          documentExtractionId: extraction.id,
-          serviceEventId,
-        },
-        {
-          vehicleId,
-          scope,
-          sourceType,
-          valueType: BatteryEvidenceValueType.BATTERY_TEMPERATURE_C,
-          numericValue: temperatureC,
-          unit: 'celsius',
-          observedAt,
-          provider: 'document_confirmed',
-          confidence: 'document_confirmed',
-          quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
-          documentExtractionId: extraction.id,
-          serviceEventId,
-        },
-      ];
-
-      // Resting/cranking/charging voltages are LV-only concepts.
-      // Only record them when the document actually describes the LV battery.
-      if (isLv) {
-        evidenceEntries.push(
-          {
-            vehicleId,
-            scope,
-            sourceType,
-            valueType: BatteryEvidenceValueType.RESTING_VOLTAGE_V,
-            numericValue: restingVoltage,
-            unit: 'V',
-            observedAt,
-            provider: 'document_confirmed',
-            confidence: 'document_confirmed',
-            quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
-            documentExtractionId: extraction.id,
-            serviceEventId,
-          },
-          {
-            vehicleId,
-            scope,
-            sourceType,
-            valueType: BatteryEvidenceValueType.CRANKING_VOLTAGE_V,
-            numericValue: crankingVoltage,
-            unit: 'V',
-            observedAt,
-            provider: 'document_confirmed',
-            confidence: 'document_confirmed',
-            quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
-            documentExtractionId: extraction.id,
-            serviceEventId,
-          },
-          {
-            vehicleId,
-            scope,
-            sourceType,
-            valueType: BatteryEvidenceValueType.CHARGING_VOLTAGE_V,
-            numericValue: chargingVoltage,
-            unit: 'V',
-            observedAt,
-            provider: 'document_confirmed',
-            confidence: 'document_confirmed',
-            quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
-            documentExtractionId: extraction.id,
-            serviceEventId,
-          },
-        );
-      }
-
-      await this.batteryEvidenceService.recordMany(evidenceEntries);
-
-      // Keep legacy LV history only when the document actually contains LV voltage evidence.
-      //
-      // Only RESTING / generic VOLTAGE are valid inputs to the voltage→SOH estimator.
-      // Cranking voltage (typically ~9–11 V) and charging voltage (typically ~13.8–14.4 V)
-      // do NOT represent OCV and would produce misleading 0 % / 100 % SOH values.
-      if (isLv && (voltageV != null || restingVoltage != null)) {
-        const lvReferenceVoltage = restingVoltage ?? voltageV;
-        if (lvReferenceVoltage != null) {
-          await this.batteryHealthService.recordSnapshot({
-            vehicleId,
-            voltageV: lvReferenceVoltage,
-            temperatureC: temperatureC ?? undefined,
-            restingVoltage: restingVoltage ?? undefined,
-            crankingVoltage: crankingVoltage ?? undefined,
-            chargingVoltage: chargingVoltage ?? undefined,
-            observedAt,
-            sourceType,
-            provider: 'document_confirmed',
-            quality: isReplacement ? 'workshop_measurement' : 'document_confirmed',
-            documentExtractionId: extraction.id,
-            serviceEventId: serviceEventId ?? undefined,
-          });
-        }
-      }
-    }
-
-    if (docType === 'TIRE' && d?.treadDepthMm && typeof d.treadDepthMm === 'object') {
-      // Use toNum to correctly parse "5,5" (German decimal comma) and to treat
-      // a literal "0" as a valid measurement rather than dropping it via truthy check.
-      await this.tireLifecycleService
-        .recordMeasurement({
-          vehicleId,
-          frontLeftMm: toNum(d.treadDepthMm?.fl),
-          frontRightMm: toNum(d.treadDepthMm?.fr),
-          rearLeftMm: toNum(d.treadDepthMm?.rl),
-          rearRightMm: toNum(d.treadDepthMm?.rr),
-          odometerKm: toNum(d?.odometerKm),
-          source: 'ai_confirmed',
-          linkedExtractionId: extraction.id,
-          linkedDocumentUrl: extraction.sourceFileUrl ?? undefined,
-          quality: 'measured',
-          shouldCalibrate: true,
-          triggerRecalculate: true,
-        })
-        .catch((err: any) => {
-          this.logger.warn(`Tire extraction measurement failed: ${err?.message ?? 'unknown error'}`);
-        });
-    }
-
-    if (docType === 'DAMAGE' || docType === 'ACCIDENT') {
-      await this.prisma.vehicleDamage.create({
-        data: {
-          vehicleId,
-          damageType: (d.damageType as any) || 'SCRATCH',
-          description: d.description || `${docType} report`,
-          severity: (d.severity as any) || 'MODERATE',
-        },
-      });
-    }
-
-    if (docType === 'INVOICE') {
-      const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId }, select: { organizationId: true } });
-      if (vehicle?.organizationId) {
-        const totalCentsParsed = toInt(d?.totalCents) ?? toInt(d?.costCents) ?? 0;
-        await this.invoicesService.create(vehicle.organizationId, {
-          type: 'INCOMING_UPLOADED',
-          vehicleId,
-          title: d.title || d.invoiceTitle || 'Hochgeladene Rechnung',
-          description: d.description || '',
-          vendorName: d.vendorName || d.workshopName || '',
-          totalCents: totalCentsParsed,
-          invoiceDate: d.invoiceDate || d.eventDate || new Date().toISOString(),
-          dueDate: d.dueDate || undefined,
-          imageUrl: extraction.sourceFileUrl || undefined,
-          extractedData: d,
-          status: 'SENT',
-        }).catch((err: any) => {
-          this.logger.warn(`Invoice creation from extraction failed: ${err?.message ?? 'unknown error'}`);
-        });
-      }
-    }
-
-    return this.prisma.vehicleDocumentExtraction.findUnique({
-      where: { id: extractionId },
-    });
-  }
-
+  // NOTE: all `document-extractions` routes (list / get / upload / confirm /
+  // retry / delete-file) now live in DocumentExtractionModule
+  // (DocumentExtractionController + DocumentExtractionService). The confirm/apply
+  // logic was extracted into DocumentExtractionApplyService. Kept here only as a
+  // pointer to avoid future duplicate route definitions.
   // --- Oil Change Status ---
   @Get('oil-change-status')
   async getOilChangeStatus(@Param('vehicleId') vehicleId: string) {

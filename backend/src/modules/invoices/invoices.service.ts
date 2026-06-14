@@ -16,7 +16,13 @@ export class InvoicesService {
       invoiceNumber: inv.invoiceNumber,
       type: inv.type,
       customerId: inv.customerId || null,
-      vendorName: inv.vendorName || null,
+      vendorId: inv.vendorId || null,
+      // vendorName is a snapshot/backward-compat field; fall back to the linked
+      // vendor's current name when the snapshot is empty.
+      vendorName:
+        inv.vendorName ||
+        (inv.vendor as { name?: string } | undefined)?.name ||
+        null,
       bookingId: inv.bookingId || null,
       vehicleId: inv.vehicleId || null,
       title: inv.title,
@@ -48,7 +54,7 @@ export class InvoicesService {
     const invoices = await this.prisma.orgInvoice.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: { tasks: true },
+      include: { tasks: true, vendor: { select: { id: true, name: true } } },
     });
     return invoices.map((inv) => {
       const formatted = this.format(inv as unknown as Record<string, unknown>);
@@ -63,6 +69,7 @@ export class InvoicesService {
     const invoices = await this.prisma.orgInvoice.findMany({
       where: { organizationId: orgId, customerId },
       orderBy: { invoiceDate: 'desc' },
+      include: { vendor: { select: { id: true, name: true } } },
     });
     return invoices.map((inv) => this.format(inv as unknown as Record<string, unknown>));
   }
@@ -73,11 +80,11 @@ export class InvoicesService {
     const inv = orgId
       ? await this.prisma.orgInvoice.findFirst({
           where: { id, organizationId: orgId },
-          include: { tasks: true },
+          include: { tasks: true, vendor: { select: { id: true, name: true } } },
         })
       : await this.prisma.orgInvoice.findUnique({
           where: { id },
-          include: { tasks: true },
+          include: { tasks: true, vendor: { select: { id: true, name: true } } },
         });
     if (!inv) throw new NotFoundException('Invoice not found');
     const formatted = this.format(inv as unknown as Record<string, unknown>);
@@ -88,8 +95,9 @@ export class InvoicesService {
   }
 
   async create(orgId: string, data: {
-    type: 'OUTGOING_BOOKING' | 'OUTGOING_MANUAL' | 'INCOMING_VENDOR' | 'INCOMING_UPLOADED';
+    type: 'OUTGOING_BOOKING' | 'OUTGOING_MANUAL' | 'OUTGOING_FINAL' | 'INCOMING_VENDOR' | 'INCOMING_UPLOADED';
     customerId?: string;
+    vendorId?: string;
     vendorName?: string;
     bookingId?: string;
     vehicleId?: string;
@@ -108,12 +116,16 @@ export class InvoicesService {
     extractedData?: Record<string, unknown>;
     notes?: string;
   }) {
+    // Snapshot the vendor name when a vendor relation is set (tenant-checked).
+    const vendorName = await this.resolveVendorName(orgId, data.vendorId, data.vendorName);
+
     const invoice = await this.prisma.orgInvoice.create({
       data: {
         organizationId: orgId,
         type: data.type,
         customerId: data.customerId,
-        vendorName: data.vendorName,
+        vendorId: data.vendorId,
+        vendorName,
         bookingId: data.bookingId,
         vehicleId: data.vehicleId,
         title: data.title,
@@ -150,6 +162,7 @@ export class InvoicesService {
     totalCents?: number;
     dueDate?: string;
     status?: string;
+    vendorId?: string | null;
     vendorName?: string;
     customerId?: string;
     notes?: string;
@@ -163,6 +176,11 @@ export class InvoicesService {
         select: { id: true },
       });
       if (!existing) throw new NotFoundException('Invoice not found');
+    }
+    // Validate vendor tenancy + refresh the name snapshot when (re)assigning.
+    if (data.vendorId && orgId) {
+      const resolvedName = await this.resolveVendorName(orgId, data.vendorId, data.vendorName);
+      if (resolvedName && data.vendorName === undefined) data.vendorName = resolvedName;
     }
     const updateData: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(data)) {
@@ -276,6 +294,25 @@ export class InvoicesService {
     };
   }
 
+  /**
+   * Validates that a vendorId (if supplied) belongs to the org and returns the
+   * vendor-name snapshot to persist. Prefers an explicit vendorName; otherwise
+   * falls back to the linked vendor's current name. Throws on cross-tenant ids.
+   */
+  private async resolveVendorName(
+    orgId: string,
+    vendorId?: string | null,
+    vendorName?: string,
+  ): Promise<string | undefined> {
+    if (!vendorId) return vendorName;
+    const vendor = await this.prisma.vendor.findFirst({
+      where: { id: vendorId, organizationId: orgId },
+      select: { name: true },
+    });
+    if (!vendor) throw new NotFoundException('Vendor not found in this organization');
+    return vendorName ?? vendor.name;
+  }
+
   private async createUnpaidTask(
     orgId: string, invoiceId: string, title: string,
     totalCents: number, currency: string, type: string, dueDate?: string,
@@ -287,6 +324,9 @@ export class InvoicesService {
         : `Zahlungseingang prüfen: ${title}`,
       description: `Rechnung "${title}" (${(totalCents / 100).toFixed(2)} ${currency}) ist noch unbezahlt.`,
       category: 'invoice',
+      type: 'INVOICE_REQUIRED',
+      source: 'INVOICE',
+      sourceType: 'SYSTEM',
       priority: totalCents >= 50000 ? 'HIGH' : 'MEDIUM',
       invoiceId,
       dueDate,

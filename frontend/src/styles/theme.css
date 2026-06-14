@@ -96,15 +96,33 @@
   --accent-indigo-soft: var(--brand-soft);
   --accent-indigo-glow: var(--brand-glow);
 
-  /* ── Semantic status palette — richer but restrained ── */
+  /* ── Semantic status palette — richer but restrained ──
+     One canonical scale shared by every module (health, tasks, bookings,
+     finance, telemetry). Colour always carries meaning, never decoration:
+       positive = good / healthy / paid / online      → green
+       watch    = attention / due soon                 → amber
+       warning  = needs action soon                    → orange (distinct!)
+       critical = overdue / fault / blocked            → red
+       info     = informational / in progress          → blue
+       nodata   = not measured / disabled              → slate
+       ai       = estimated / automation / assistant   → restrained violet */
   --status-positive: #16A34A;
   --status-positive-soft: rgba(34, 197, 94, 0.12);
   --status-attention: #D97706;
   --status-attention-soft: rgba(245, 158, 11, 0.14);
+  /* `watch` is the canonical name for the amber attention tone */
+  --status-watch: var(--status-attention);
+  --status-watch-soft: var(--status-attention-soft);
+  --status-warning: #EA580C;
+  --status-warning-soft: rgba(234, 88, 12, 0.12);
   --status-critical: #DC2626;
   --status-critical-soft: rgba(239, 68, 68, 0.12);
   --status-info: #2563EB;
   --status-info-soft: rgba(37, 99, 235, 0.12);
+  --status-nodata: #64748B;
+  --status-nodata-soft: rgba(100, 116, 139, 0.10);
+  --status-ai: #7C3AED;
+  --status-ai-soft: rgba(124, 58, 237, 0.10);
 
   /* ── Elevation — blue-tinted soft shadows (light) ──
      Shadows carry a faint navy hue so cards sit on the cool canvas
@@ -195,10 +213,18 @@
   --status-positive-soft: rgba(34, 197, 94, 0.18);
   --status-attention: #FBBF24;
   --status-attention-soft: rgba(245, 158, 11, 0.18);
+  --status-watch: var(--status-attention);
+  --status-watch-soft: var(--status-attention-soft);
+  --status-warning: #FB923C;
+  --status-warning-soft: rgba(251, 146, 60, 0.18);
   --status-critical: #F87171;
   --status-critical-soft: rgba(239, 68, 68, 0.18);
   --status-info: #60A5FA;
   --status-info-soft: rgba(96, 165, 250, 0.18);
+  --status-nodata: #94A3B8;
+  --status-nodata-soft: rgba(148, 163, 184, 0.16);
+  --status-ai: #A78BFA;
+  --status-ai-soft: rgba(167, 139, 250, 0.18);
 
   /* ── Elevation — dark ── */
   --shadow-xs:      0 1px 2px rgba(0, 0, 0, 0.25);
@@ -266,6 +292,25 @@
 
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
+
+  /* Semantic status colours exposed as Tailwind utilities
+     (text-status-warning, bg-status-positive-soft, border-status-critical …). */
+  --color-status-positive: var(--status-positive);
+  --color-status-positive-soft: var(--status-positive-soft);
+  --color-status-watch: var(--status-watch);
+  --color-status-watch-soft: var(--status-watch-soft);
+  --color-status-attention: var(--status-attention);
+  --color-status-attention-soft: var(--status-attention-soft);
+  --color-status-warning: var(--status-warning);
+  --color-status-warning-soft: var(--status-warning-soft);
+  --color-status-critical: var(--status-critical);
+  --color-status-critical-soft: var(--status-critical-soft);
+  --color-status-info: var(--status-info);
+  --color-status-info-soft: var(--status-info-soft);
+  --color-status-nodata: var(--status-nodata);
+  --color-status-nodata-soft: var(--status-nodata-soft);
+  --color-status-ai: var(--status-ai);
+  --color-status-ai-soft: var(--status-ai-soft);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -585,7 +630,7 @@
 .sq-tab-bar button {
   border-radius: calc(var(--radius) - 1px);
   padding: 5px 12px;
-  font-size: var(--text-body-sm);
+  font-size: 11px;
   font-weight: var(--font-weight-semibold);
   color: var(--muted-foreground);
   letter-spacing: -0.003em;
@@ -631,103 +676,47 @@
 .sq-sidebar-footer {
   position: relative;
   border-top: 1px solid var(--sidebar-border);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--sidebar) 82%, transparent) 0%,
-      color-mix(in srgb, var(--sidebar) 94%, var(--card) 6%) 100%
-    );
-}
-.sq-sidebar-footer::before {
-  content: '';
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  top: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in srgb, var(--brand-soft) 55%, var(--border) 45%),
-    transparent
-  );
-  opacity: 0.85;
-  pointer-events: none;
+  background: transparent;
 }
 .sq-sidebar-footer__toggle {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 8px;
-  min-width: 120px;
-  min-height: 36px;
-  padding: 4px 12px 4px 4px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  background: color-mix(in srgb, var(--card) 86%, var(--sidebar) 14%);
-  box-shadow: var(--shadow-xs);
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--muted-foreground);
-  backdrop-filter: blur(10px) saturate(130%);
-  -webkit-backdrop-filter: blur(10px) saturate(130%);
-  transition:
-    transform var(--dur-fast) var(--ease-out-soft),
-    box-shadow var(--dur-base) var(--ease-out-soft),
-    border-color var(--dur-base) var(--ease-out-soft),
-    background var(--dur-base) var(--ease-out-soft),
-    color var(--dur-fast) var(--ease-out-soft);
+  transition: all var(--dur-fast) var(--ease-out-soft);
+  cursor: pointer;
 }
 .sq-sidebar-footer__toggle:hover {
-  transform: translateY(-1px);
   color: var(--foreground);
-  border-color: color-mix(in srgb, var(--brand) 16%, var(--border) 84%);
-  background: color-mix(in srgb, var(--card) 90%, var(--brand-soft) 10%);
-  box-shadow: var(--shadow-sm);
+  background: color-mix(in srgb, var(--muted) 60%, transparent);
 }
 .sq-sidebar-footer__toggle:active {
-  transform: translateY(0) scale(0.99);
+  transform: scale(0.98);
 }
 .sq-sidebar-footer__toggle--icon-only {
   width: 36px;
-  min-width: 36px;
-  justify-content: center;
-  padding: 4px;
-  gap: 0;
-}
-.sq-sidebar-footer__toggle--mirrored {
-  flex-direction: row-reverse;
-  justify-content: flex-start;
-  padding: 4px 4px 4px 12px;
+  height: 36px;
+  padding: 0;
+  margin: 0 auto;
 }
 .sq-sidebar-footer__icon {
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
-  background: color-mix(in srgb, var(--muted) 86%, transparent);
-  color: color-mix(in srgb, var(--foreground) 74%, var(--muted-foreground) 26%);
-  transition:
-    background var(--dur-base) var(--ease-out-soft),
-    border-color var(--dur-base) var(--ease-out-soft),
-    color var(--dur-fast) var(--ease-out-soft);
-}
-.sq-sidebar-footer__toggle:hover .sq-sidebar-footer__icon {
-  background: var(--brand-soft);
-  border-color: color-mix(in srgb, var(--brand-soft) 72%, transparent);
-  color: var(--brand);
+  transition: color var(--dur-fast) var(--ease-out-soft);
 }
 .sq-sidebar-footer__label {
-  flex: 1 1 auto;
-  font-size: var(--text-meta);
-  font-weight: var(--font-weight-semibold);
+  font-size: 13px;
+  font-weight: 500;
   letter-spacing: 0.01em;
   white-space: nowrap;
-  text-align: left;
-}
-.sq-sidebar-footer__toggle--mirrored .sq-sidebar-footer__label {
-  text-align: right;
 }
 
 /* ── Neumorphic pressable button (restrained — primary CTA, active tab only) ── */
@@ -760,6 +749,148 @@
   box-shadow:
     inset 0 2px 4px rgba(16, 24, 40, 0.06),
     0 0 0 rgba(0, 0, 0, 0);
+}
+
+/* ── Premium 3D Quick Action Buttons ── */
+.sq-3d-btn {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+  box-shadow: 
+    0 2px 4px color-mix(in srgb, var(--foreground) 4%, transparent),
+    0 1px 2px color-mix(in srgb, var(--foreground) 2%, transparent),
+    inset 0 1px 1px color-mix(in srgb, white 15%, transparent),
+    inset 0 -1px 1px color-mix(in srgb, black 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: linear-gradient(180deg, var(--card) 0%, color-mix(in srgb, var(--card) 96%, var(--muted)) 100%);
+  color: var(--foreground);
+}
+
+.sq-3d-btn:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 
+    0 4px 8px color-mix(in srgb, var(--foreground) 6%, transparent),
+    0 2px 4px color-mix(in srgb, var(--foreground) 4%, transparent),
+    inset 0 1px 1px color-mix(in srgb, white 20%, transparent),
+    inset 0 -1px 1px color-mix(in srgb, black 5%, transparent);
+}
+
+.sq-3d-btn:active {
+  transform: translateY(1px);
+  box-shadow: 
+    0 1px 1px color-mix(in srgb, var(--foreground) 2%, transparent),
+    inset 0 2px 4px color-mix(in srgb, black 8%, transparent);
+}
+
+.sq-3d-btn .icon-wrapper {
+  box-shadow: inset 0 1px 2px color-mix(in srgb, black 10%, transparent), 0 1px 1px color-mix(in srgb, white 10%, transparent);
+}
+
+.sq-3d-btn--primary {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand) 90%, white) 0%, var(--brand) 100%);
+  color: white;
+  border-color: color-mix(in srgb, var(--brand) 80%, black);
+  box-shadow: 
+    0 2px 6px color-mix(in srgb, var(--brand) 30%, transparent),
+    inset 0 1px 1px color-mix(in srgb, white 30%, transparent),
+    inset 0 -1px 2px color-mix(in srgb, black 20%, transparent);
+}
+.sq-3d-btn--primary:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand) 95%, white) 0%, color-mix(in srgb, var(--brand) 95%, black) 100%);
+  box-shadow: 
+    0 4px 10px color-mix(in srgb, var(--brand) 40%, transparent),
+    inset 0 1px 1px color-mix(in srgb, white 40%, transparent),
+    inset 0 -1px 2px color-mix(in srgb, black 20%, transparent);
+}
+.sq-3d-btn--primary .icon-wrapper {
+  background: color-mix(in srgb, white 20%, transparent);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, black 15%, transparent);
+  color: white;
+}
+
+.sq-3d-btn--success {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--status-positive) 90%, white) 0%, var(--status-positive) 100%);
+  color: white;
+  border-color: color-mix(in srgb, var(--status-positive) 80%, black);
+  box-shadow: 
+    0 2px 6px color-mix(in srgb, var(--status-positive) 30%, transparent),
+    inset 0 1px 1px color-mix(in srgb, white 30%, transparent),
+    inset 0 -1px 2px color-mix(in srgb, black 20%, transparent);
+}
+.sq-3d-btn--success:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--status-positive) 95%, white) 0%, color-mix(in srgb, var(--status-positive) 95%, black) 100%);
+  box-shadow: 
+    0 4px 10px color-mix(in srgb, var(--status-positive) 40%, transparent),
+    inset 0 1px 1px color-mix(in srgb, white 40%, transparent),
+    inset 0 -1px 2px color-mix(in srgb, black 20%, transparent);
+}
+.sq-3d-btn--success .icon-wrapper {
+  background: color-mix(in srgb, white 20%, transparent);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, black 15%, transparent);
+  color: white;
+}
+
+.sq-3d-btn--neutral {
+  color: var(--muted-foreground);
+}
+.sq-3d-btn--neutral:hover {
+  color: var(--foreground);
+}
+.sq-3d-btn--neutral.active {
+  background: linear-gradient(180deg, var(--card) 0%, color-mix(in srgb, var(--card) 90%, var(--brand-soft)) 100%);
+  color: var(--brand);
+  border-color: color-mix(in srgb, var(--brand) 30%, transparent);
+}
+.sq-3d-btn--neutral .icon-wrapper {
+  background: var(--muted);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, black 5%, transparent), 0 1px 0 color-mix(in srgb, white 10%, transparent);
+  color: inherit;
+}
+
+.sq-3d-btn--ai {
+  background: linear-gradient(180deg, var(--card) 0%, color-mix(in srgb, var(--card) 95%, #f3e8ff) 100%);
+  color: #9333ea;
+  border-color: color-mix(in srgb, #e9d5ff 80%, transparent);
+}
+.dark .sq-3d-btn--ai {
+  background: linear-gradient(180deg, var(--card) 0%, color-mix(in srgb, var(--card) 90%, #3b0764) 100%);
+  color: #d8b4fe;
+  border-color: color-mix(in srgb, #581c87 80%, transparent);
+}
+.sq-3d-btn--ai:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--card) 95%, #f3e8ff) 0%, color-mix(in srgb, var(--card) 85%, #f3e8ff) 100%);
+  box-shadow: 
+    0 4px 8px color-mix(in srgb, #9333ea 15%, transparent),
+    0 2px 4px color-mix(in srgb, #9333ea 10%, transparent),
+    inset 0 1px 1px color-mix(in srgb, white 20%, transparent),
+    inset 0 -1px 1px color-mix(in srgb, black 5%, transparent);
+}
+.dark .sq-3d-btn--ai:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--card) 95%, #3b0764) 0%, color-mix(in srgb, var(--card) 85%, #3b0764) 100%);
+  box-shadow: 
+    0 4px 8px color-mix(in srgb, #d8b4fe 10%, transparent),
+    0 2px 4px color-mix(in srgb, #d8b4fe 5%, transparent),
+    inset 0 1px 1px color-mix(in srgb, white 10%, transparent),
+    inset 0 -1px 1px color-mix(in srgb, black 20%, transparent);
+}
+.sq-3d-btn--ai.active {
+  background: linear-gradient(180deg, #faf5ff 0%, #f3e8ff 100%);
+  border-color: #e9d5ff;
+}
+.dark .sq-3d-btn--ai.active {
+  background: linear-gradient(180deg, #3b0764 0%, #2e1065 100%);
+  border-color: #581c87;
+}
+.sq-3d-btn--ai .icon-wrapper {
+  background: color-mix(in srgb, #f3e8ff 80%, transparent);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, #9333ea 20%, transparent);
+  color: #9333ea;
+}
+.dark .sq-3d-btn--ai .icon-wrapper {
+  background: color-mix(in srgb, #3b0764 80%, transparent);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, black 30%, transparent);
+  color: #d8b4fe;
 }
 
 /* ── Primary brand CTA ── */
@@ -806,17 +937,33 @@
 }
 .sq-chip-info     { background: var(--status-info-soft);     color: var(--status-info); }
 .sq-chip-success  { background: var(--status-positive-soft); color: var(--status-positive); }
-.sq-chip-warning  { background: var(--status-attention-soft); color: var(--status-attention); }
+.sq-chip-watch    { background: var(--status-watch-soft);    color: var(--status-watch); }
+.sq-chip-warning  { background: var(--status-warning-soft);  color: var(--status-warning); }
 .sq-chip-critical { background: var(--status-critical-soft); color: var(--status-critical); }
 .sq-chip-neutral  { background: var(--muted); color: var(--muted-foreground); }
+.sq-chip-nodata   { background: var(--status-nodata-soft);   color: var(--status-nodata); }
+.sq-chip-ai       { background: var(--status-ai-soft);       color: var(--status-ai); }
 
 /* ── Tonal tint utilities — pair bg + fg without forcing chip layout ── */
 .sq-tone-info     { background: var(--status-info-soft);     color: var(--status-info); }
 .sq-tone-success  { background: var(--status-positive-soft); color: var(--status-positive); }
-.sq-tone-warning  { background: var(--status-attention-soft); color: var(--status-attention); }
+.sq-tone-watch    { background: var(--status-watch-soft);    color: var(--status-watch); }
+.sq-tone-warning  { background: var(--status-warning-soft);  color: var(--status-warning); }
 .sq-tone-critical { background: var(--status-critical-soft); color: var(--status-critical); }
 .sq-tone-neutral  { background: var(--muted); color: var(--muted-foreground); }
+.sq-tone-nodata   { background: var(--status-nodata-soft);   color: var(--status-nodata); }
+.sq-tone-ai       { background: var(--status-ai-soft);       color: var(--status-ai); }
 .sq-tone-brand    { background: var(--brand-soft); color: var(--brand); }
+
+/* ── Solid status dots — tiny indicators that read at a glance ── */
+.sq-dot { display: inline-block; width: 7px; height: 7px; border-radius: 9999px; flex: none; }
+.sq-dot-success  { background: var(--status-positive); }
+.sq-dot-watch    { background: var(--status-watch); }
+.sq-dot-warning  { background: var(--status-warning); }
+.sq-dot-critical { background: var(--status-critical); }
+.sq-dot-info     { background: var(--status-info); }
+.sq-dot-nodata   { background: var(--status-nodata); }
+.sq-dot-ai       { background: var(--status-ai); }
 
 /* ── Active-nav rail indicator (used by left sidebar) ──
    V4.6.88: nav labels baked to 13/600 so sidebars stay consistent
@@ -889,4 +1036,51 @@
     inset 0 1px 0 var(--glass-edge-highlight),
     inset 0 -1px 0 var(--glass-edge-catch),
     var(--shadow-lg);
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   Accessibility — Reduced Motion + Reduced Transparency
+   ───────────────────────────────────────────────────────
+   Honour OS-level preferences. Motion collapses to instant,
+   and frosted-glass surfaces fall back to solid panels so the
+   UI stays legible for users who opt out of blur/translucency.
+   ═══════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Keep state changes visible but remove the looping/“alive” effects. */
+  .animate-online-pulse,
+  .animate-live-glow,
+  .animate-value-flash,
+  .animate-fade-up,
+  .animate-fade-in {
+    animation: none !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .sq-glass,
+  .glass-card,
+  .glass-panel,
+  .sq-map-liquid-glass {
+    background: var(--card) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .sq-backdrop {
+    background: rgba(16, 24, 40, 0.72) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .dark .sq-backdrop {
+    background: rgba(0, 0, 0, 0.82) !important;
+  }
 }

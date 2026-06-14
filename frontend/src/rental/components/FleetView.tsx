@@ -1,14 +1,19 @@
-import { MapPin, ChevronDown, ChevronRight, Car, Heart, AlertTriangle, OctagonAlert, RefreshCw, Fuel, Gauge, Clock, Wrench, Calendar, TrendingUp } from 'lucide-react';
+
+import { Calendar, Car, TrendingUp, Wrench } from 'lucide-react';
+import { Icon } from './ui/Icon';
 import { useState, useRef, useMemo, useEffect, Component, type ReactNode, type ErrorInfo } from 'react';
 import { MapboxMap } from '../../components/MapboxMap';
-import { VehicleData, getShortModel } from '../data/vehicles';
+import { VehicleData, getShortModel, isVehicleOffline, VEHICLE_OFFLINE_LABEL } from '../data/vehicles';
 import { getStatusColor } from '../../lib/vehicleMarker';
 import { BrandLogo, getBrandFromModel } from './BrandLogo';
 import { useRentalOrg } from '../RentalContext';
 // V4.6.76 Rental Health V1 � surface the rental_blocked pill inline so
 // dispatchers see at-a-glance which "Available" vehicles the backend gate
 // would actually reject.
-import { useFleetHealthMap } from '../hooks/useVehicleHealth';
+// V4.7.23 — Pull the canonical Rental-Health-V1 map from the FleetProvider
+// so the health pills here, in FleetCondition, the Dashboard popups and
+// the Vehicle-Detail header all read the SAME truth.
+import { useFleetVehicles, useEffectiveHealth } from '../FleetContext';
 import { RentalHealthBadge } from './rental-health/RentalHealthBadge';
 import {
   formatOdometerKmFloor,
@@ -63,7 +68,7 @@ class MapSafetyBoundary extends Component<
         <div className="text-center px-4">
           <p className="text-xs font-semibold text-muted-foreground">Map unavailable</p>
           {this.state.errorMessage && (
-            <p className="mt-1 text-[10px] font-mono text-red-500 break-all max-w-xs">
+            <p className="mt-1 text-[10px] font-mono text-[color:var(--status-critical)] break-all max-w-xs">
               {this.state.errorMessage}
             </p>
           )}
@@ -101,15 +106,15 @@ function VehicleThumb({ v, isDarkMode }: { v: VehicleData; isDarkMode?: boolean 
   }
   return (
     <div className="w-8 h-8 rounded flex items-center justify-center bg-muted text-muted-foreground">
-      <Car className="w-4 h-4" />
+      <Icon name="car" className="w-4 h-4" />
     </div>
   );
 }
 
 function HealthFleetIcon({ status }: { status?: string }) {
-  if (status === 'Good Health') return <Heart className="w-3.5 h-3.5 text-[color:var(--status-positive)]" />;
-  if (status === 'Warning') return <AlertTriangle className="w-3.5 h-3.5 text-[color:var(--status-attention)]" />;
-  if (status === 'Critical') return <OctagonAlert className="w-3.5 h-3.5 text-[color:var(--status-critical)]" />;
+  if (status === 'Good Health') return <Icon name="heart" className="w-3.5 h-3.5 text-[color:var(--status-positive)]" />;
+  if (status === 'Warning') return <Icon name="alert-triangle" className="w-3.5 h-3.5 text-[color:var(--status-attention)]" />;
+  if (status === 'Critical') return <Icon name="octagon-alert" className="w-3.5 h-3.5 text-[color:var(--status-critical)]" />;
   return <span className="text-[10px] text-muted-foreground">�</span>;
 }
 
@@ -135,7 +140,7 @@ function FuelCell({ v }: { v: VehicleData }) {
   if (canonical == null || !Number.isFinite(canonical)) {
     return (
       <div className="flex items-center gap-1.5">
-        <Fuel className="w-3 h-3 text-muted-foreground shrink-0" />
+        <Icon name="fuel" className="w-3 h-3 text-muted-foreground shrink-0" />
         <span className="text-[10px] text-muted-foreground">�</span>
       </div>
     );
@@ -159,7 +164,7 @@ function FuelCell({ v }: { v: VehicleData }) {
   const fuelLabel = v.isElectric ? 'SoC' : 'Tank';
   return (
     <div className="flex items-center gap-1.5">
-      <Fuel
+      <Icon name="fuel"
         className={`w-3 h-3 shrink-0 transition-colors ${
           isCriticallyLow
             ? 'text-[color:var(--status-critical)] drop-shadow-[0_0_4px_color-mix(in_srgb,var(--status-critical)_55%,transparent)]'
@@ -188,7 +193,7 @@ function OdometerCell({ v }: { v: VehicleData }) {
   const km = v.odometerKm ?? null;
   return (
     <div className="flex items-center gap-1.5 shrink-0">
-      <Gauge className="w-3 h-3 text-muted-foreground shrink-0" />
+      <Icon name="gauge" className="w-3 h-3 text-muted-foreground shrink-0" />
       <span className="text-[10px] font-semibold tabular-nums text-muted-foreground">
         {formatOdometerKmFloor(km)}
       </span>
@@ -196,29 +201,42 @@ function OdometerCell({ v }: { v: VehicleData }) {
   );
 }
 
-// V4.7.02 — Compact health pill mirroring `StatInlineDetail`'s 9px/700
-// uppercase chip rhythm so the FleetView cards read with the same
-// typographic weight as the Dashboard's Fleet Status box. Returns null
-// when the canonical `healthStatus` is unknown so we don't print an
-// empty chip slot.
-function HealthPill({ status }: { status?: string }) {
+// V4.7.23 — Health pill now reads the canonical Rental-Health-V1 status
+// from the shared FleetProvider map (single source of truth), not the
+// stale `vehicle.healthStatus` column. Tooltip surfaces blocking/module
+// reasons so dispatchers can see why a vehicle is amber/red without
+// drilling into Fleet Condition.
+function HealthPill({ vehicleId }: { vehicleId: string }) {
+  const { status, health } = useEffectiveHealth(vehicleId);
+  const reasons: string[] = [];
+  if (health?.rental_blocked && health.blocking_reasons.length > 0) {
+    reasons.push(`Blocked: ${health.blocking_reasons.join(' · ')}`);
+  }
+  if (health) {
+    for (const [name, mod] of Object.entries(health.modules)) {
+      if (mod.state === 'critical' || mod.state === 'warning') {
+        reasons.push(`${name.replace(/_/g, ' ')}: ${mod.reason}`);
+      }
+    }
+  }
+  const title = reasons.join(' · ') || undefined;
   if (status === 'Good Health') {
     return (
-      <span className="sq-chip sq-chip-success text-[9px] font-bold uppercase tracking-wide">
+      <span title={title} className="sq-chip sq-chip-success text-[9px] font-bold uppercase tracking-wide">
         Healthy
       </span>
     );
   }
   if (status === 'Warning') {
     return (
-      <span className="sq-chip sq-chip-warning text-[9px] font-bold uppercase tracking-wide">
+      <span title={title} className="sq-chip sq-chip-warning text-[9px] font-bold uppercase tracking-wide">
         Warning
       </span>
     );
   }
   if (status === 'Critical') {
     return (
-      <span className="sq-chip sq-chip-critical text-[9px] font-bold uppercase tracking-wide">
+      <span title={title} className="sq-chip sq-chip-critical text-[9px] font-bold uppercase tracking-wide">
         Alert
       </span>
     );
@@ -234,7 +252,7 @@ function MaintenanceReasonCell({ v }: { v: VehicleData }) {
   const isUrgent = v.maintenanceUrgency === 'urgent';
   return (
     <div className="flex items-center gap-1.5">
-      <Wrench
+      <Icon name="wrench"
         className={`w-3 h-3 shrink-0 ${
           isUrgent ? 'text-[color:var(--status-critical)]' : 'text-[color:var(--status-attention)]'
         }`}
@@ -268,7 +286,7 @@ function AddressCell({ v }: { v: VehicleData }) {
       className="flex items-center gap-1.5 text-[11px] text-muted-foreground max-w-[180px]"
       title={text}
     >
-      <MapPin className="w-3 h-3 shrink-0" />
+      <Icon name="map-pin" className="w-3 h-3 shrink-0" />
       <span className="truncate">{text}</span>
     </div>
   );
@@ -320,14 +338,11 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
     return vehicles.filter((v) => v.stationId === stationId);
   }, [vehicles, stationId]);
 
-  // V4.6.76 Rental Health V1 � fetch the canonical health for the current
-  // station filter. Same map drives the "Nicht vermietbar" pill below and
-  // a subtle warning icon for Fleet-wide critical states.
-  const fleetVehicleIds = useMemo(
-    () => filtered.map((v) => v.id).filter(Boolean),
-    [filtered],
-  );
-  const { map: healthMap } = useFleetHealthMap(orgId, fleetVehicleIds);
+  // V4.6.76 Rental Health V1 / V4.7.23 — single shared health map from
+  // the FleetProvider. Same data drives this "Nicht vermietbar" pill,
+  // the FleetCondition badges, the Dashboard popups and the Vehicle
+  // Detail header. No separate fetch per surface anymore.
+  const { healthMap } = useFleetVehicles();
 
   // V4.7.06 — Fetch the org's station catalogue (with `latitude`,
   // `longitude` and `radiusMeters`) so we can render the HOME/AWAY/UNKNOWN
@@ -594,14 +609,14 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
         <div className="relative">
           <button
             onClick={() => setIsStationOpen(!isStationOpen)}
-            className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[12px] font-medium text-foreground transition-all hover:bg-muted hover:border-border"
+            className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-medium text-foreground transition-all hover:bg-muted hover:border-border"
             aria-haspopup="listbox"
             aria-expanded={isStationOpen}
           >
-            <MapPin className="w-4 h-4 text-muted-foreground" />
+            <Icon name="map-pin" className="w-4 h-4 text-muted-foreground" />
             <span className="text-muted-foreground">Station</span>
             <span className="text-foreground">{selectedStationLabel}</span>
-            <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${isStationOpen ? 'rotate-180' : ''}`} />
+            <Icon name="chevron-down" className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${isStationOpen ? 'rotate-180' : ''}`} />
           </button>
           {isStationOpen && (
             <div className="sq-overlay animate-fade-up absolute top-full mt-2 right-0 z-50 min-w-[220px] p-1 rounded-xl">
@@ -656,11 +671,12 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
               onVehicleClick={handleMapVehicleClick}
               className="w-full h-full"
               isDarkMode={isDarkMode}
+              stations={stationsApi}
             />
           </MapSafetyBoundary>
           {/* Refresh countdown overlay */}
           <div className="sq-overlay absolute top-3 right-3 z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-muted-foreground">
-            <RefreshCw className={`w-3 h-3 text-[color:var(--brand)] ${loading ? 'animate-spin' : ''}`} />
+            <Icon name="refresh-cw" className={`w-3 h-3 text-[color:var(--brand)] ${loading ? 'animate-spin' : ''}`} />
             <span className="text-[10px] font-semibold tabular-nums">
               {loading ? 'Updating…' : `${countdown}s`}
             </span>
@@ -679,6 +695,18 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                 </div>
               );
             })}
+            {/* V4.7.10 — Station geofence legend entry. Mirrors the
+                dashed-circle style used in MapboxMap so operators can
+                associate the blue ring overlay with their stations. */}
+            {stationsApi.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="w-2.5 h-2.5 rounded-full border-[1.5px] border-dashed"
+                  style={{ borderColor: isDarkMode ? '#38bdf8' : '#0284c7' }}
+                />
+                <span className="text-[10px] font-medium text-foreground/70">Station</span>
+              </div>
+            )}
           </div>
           {vehiclesWithCoords.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -752,7 +780,7 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                     {tab.warn > 0 && (
                       <span
                         title={tab.warnTitle}
-                        className="text-[10px] min-w-[16px] h-[16px] px-1 flex items-center justify-center rounded-full font-bold tabular-nums bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0"
+                        className="text-[10px] min-w-[16px] h-[16px] px-1 flex items-center justify-center rounded-full font-bold tabular-nums sq-tone-watch shrink-0"
                       >
                         {tab.warn}
                       </span>
@@ -776,11 +804,20 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                 {availableVehicles.map((v) => {
               const health = healthMap.get(v.id) ?? null;
               const isBlocked = !!health?.rental_blocked;
+              // V4.7.62 — Offline (Last Signal ≥ 1 day) takes visual
+              // precedence over Ready/blocked: the dispatcher can no
+              // longer trust this vehicle's telemetry, so it must read as
+              // "Not Ready" and never be presented as a clean rental
+              // candidate. The row is slightly greyed out but stays
+              // clickable so the device issue can be inspected.
+              const offline = isVehicleOffline(v);
               return (
                 <div
                   key={v.id}
                   onClick={() => handleRowClick(v)}
-                  className="rounded-xl p-2.5 border border-border/60 bg-card hover:bg-muted/40 hover:border-border transition-all cursor-pointer"
+                  className={`rounded-xl p-2.5 border border-border/60 bg-card hover:bg-muted/40 hover:border-border transition-all cursor-pointer ${
+                    offline ? 'opacity-60 grayscale' : ''
+                  }`}
                 >
                   <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
                     <div className="flex items-baseline gap-2 min-w-0 flex-1">
@@ -791,8 +828,15 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                       </span>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <HealthPill status={v.healthStatus} />
-                      {isBlocked ? (
+                      <HealthPill vehicleId={v.id} />
+                      {offline ? (
+                        <span
+                          className="sq-chip sq-chip-neutral text-[9px] font-bold uppercase tracking-wide"
+                          title={VEHICLE_OFFLINE_LABEL}
+                        >
+                          Not Ready
+                        </span>
+                      ) : isBlocked ? (
                         <RentalHealthBadge
                           health={health!}
                           isDarkMode={isDarkMode}
@@ -810,7 +854,7 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                         className="p-0.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         aria-label="Open vehicle details"
                       >
-                        <ChevronRight className="w-3.5 h-3.5" />
+                        <Icon name="chevron-right" className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
@@ -824,20 +868,32 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                       die operative Sprache Dashboard ↔ FleetView
                       identisch bleibt. Damit erkennt der Disponent auf
                       einen Blick, wo das Fahrzeug physisch steht und ob
-                      es in seiner zugewiesenen Station ist. */}
-                  <div className="flex items-center gap-1.5 pt-1.5 border-t border-border/40 min-w-0 overflow-hidden">
-                    <MapPin className="w-2.5 h-2.5 shrink-0 text-muted-foreground" />
-                    <FleetAvailableAddressText v={v} />
-                    <HomeAwayBadge
-                      v={v}
-                      stationLookup={stationLookup}
-                      isDarkMode={isDarkMode}
-                    />
-                    <span className="w-px h-3 shrink-0 bg-border/60" />
-                    <FuelCell v={v} />
-                    <span className="w-px h-3 shrink-0 bg-border/60" />
-                    <OdometerCell v={v} />
-                  </div>
+                      es in seiner zugewiesenen Station ist.
+                      V4.7.62 — Bei Offline (Last Signal ≥ 1 Tag) ersetzt
+                      eine klare „Vehicle Offline - Check Device"-Zeile die
+                      (jetzt veralteten) Adress-/Tank-/Kilometer-Werte. */}
+                  {offline ? (
+                    <div className="flex items-center gap-1.5 pt-1.5 border-t border-border/40 min-w-0 overflow-hidden">
+                      <Icon name="wifi-off" className="w-2.5 h-2.5 shrink-0 text-muted-foreground" />
+                      <span className="truncate min-w-0 flex-1 text-[10px] font-semibold text-muted-foreground">
+                        {VEHICLE_OFFLINE_LABEL}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 pt-1.5 border-t border-border/40 min-w-0 overflow-hidden">
+                      <Icon name="map-pin" className="w-2.5 h-2.5 shrink-0 text-muted-foreground" />
+                      <FleetAvailableAddressText v={v} />
+                      <HomeAwayBadge
+                        v={v}
+                        stationLookup={stationLookup}
+                        isDarkMode={isDarkMode}
+                      />
+                      <span className="w-px h-3 shrink-0 bg-border/60" />
+                      <FuelCell v={v} />
+                      <span className="w-px h-3 shrink-0 bg-border/60" />
+                      <OdometerCell v={v} />
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -873,10 +929,10 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                       </span>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <HealthPill status={v.healthStatus} />
+                      <HealthPill vehicleId={v.id} />
                       {overdue ? (
                         <span className="sq-chip sq-chip-critical text-[9px] font-bold uppercase tracking-wide">
-                          <Clock className="w-2.5 h-2.5" />
+                          <Icon name="clock" className="w-2.5 h-2.5" />
                           Overdue
                         </span>
                       ) : (
@@ -890,12 +946,12 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                         className="p-0.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         aria-label="Open vehicle details"
                       >
-                        <ChevronRight className="w-3.5 h-3.5" />
+                        <Icon name="chevron-right" className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 pt-1.5 border-t border-border/40 min-w-0 overflow-hidden">
-                    <Clock className="w-2.5 h-2.5 shrink-0 text-muted-foreground" />
+                    <Icon name="clock" className="w-2.5 h-2.5 shrink-0 text-muted-foreground" />
                     <span
                       className="truncate min-w-0 flex-1 text-[10px] text-muted-foreground"
                       title={[returnText, returnStation, kmText].filter(Boolean).join(' � ')}
@@ -943,7 +999,7 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                       </span>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <HealthPill status={v.healthStatus} />
+                      <HealthPill vehicleId={v.id} />
                       {isBlocked ? (
                         <RentalHealthBadge
                           health={health!}
@@ -953,7 +1009,7 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                         />
                       ) : pickupOverdue ? (
                         <span className="sq-chip sq-chip-critical text-[9px] font-bold uppercase tracking-wide">
-                          <Clock className="w-2.5 h-2.5" />
+                          <Icon name="clock" className="w-2.5 h-2.5" />
                           Pickup f�llig
                         </span>
                       ) : (
@@ -967,12 +1023,12 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                         className="p-0.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         aria-label="Open vehicle details"
                       >
-                        <ChevronRight className="w-3.5 h-3.5" />
+                        <Icon name="chevron-right" className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 pt-1.5 border-t border-border/40 min-w-0 overflow-hidden">
-                    <Clock className="w-2.5 h-2.5 shrink-0 text-muted-foreground" />
+                    <Icon name="clock" className="w-2.5 h-2.5 shrink-0 text-muted-foreground" />
                     <span
                       className="truncate min-w-0 flex-1 text-[10px] text-muted-foreground"
                       title={[pickupText, stationLabel].filter(Boolean).join(' � ')}
@@ -1016,11 +1072,11 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                       </span>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <HealthPill status={v.healthStatus} />
+                      <HealthPill vehicleId={v.id} />
                       <span
                         className={`sq-chip ${isUrgent ? 'sq-chip-critical' : 'sq-chip-warning'} text-[9px] font-bold uppercase tracking-wide`}
                       >
-                        <Wrench className="w-2.5 h-2.5" />
+                        <Icon name="wrench" className="w-2.5 h-2.5" />
                         {isUrgent ? 'Urgent' : 'Service'}
                       </span>
                       <button
@@ -1029,7 +1085,7 @@ export function FleetView({ isDarkMode, onVehicleSelect }: FleetViewProps) {
                         className="p-0.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         aria-label="Open vehicle details"
                       >
-                        <ChevronRight className="w-3.5 h-3.5" />
+                        <Icon name="chevron-right" className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>

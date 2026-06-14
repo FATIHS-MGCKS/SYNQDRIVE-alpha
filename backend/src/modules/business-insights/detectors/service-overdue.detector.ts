@@ -56,6 +56,9 @@ export class ServiceOverdueDetector implements InsightDetector {
         serviceIntervalManufacturerMonths: true,
         lastServiceDate: true,
         lastServiceOdometerKm: true,
+        // Operator-entered override — takes precedence over the manufacturer
+        // interval baseline, mirroring RentalHealthService.computeServiceOverdue.
+        nextServiceDueDate: true,
         latestState: {
           select: { odometerKm: true },
         },
@@ -109,19 +112,33 @@ export class ServiceOverdueDetector implements InsightDetector {
       const intervalKm = v.serviceIntervalManufacturerKm ?? null;
       const currentOdo = v.latestState?.odometerKm ?? null;
 
-      // Without both a baseline and an interval we cannot reason about
-      // remaining distance/time — skip the vehicle rather than fabricating
-      // a state.
-      if (!baselineDate) continue;
+      // We need at least one signal to reason about remaining time/distance:
+      // an operator-entered `nextServiceDueDate`, or a service baseline.
+      // Without either, skip the vehicle rather than fabricating a state.
+      if (!baselineDate && v.nextServiceDueDate == null) continue;
 
       let remainingDays: number | null = null;
       let remainingKm: number | null = null;
-      if (intervalMonths != null && intervalMonths > 0) {
+      // The concrete (or implied) due date — surfaced in timeContext so the
+      // Insight→Task bridge can set a meaningful task dueDate.
+      let dueDate: Date | null = null;
+
+      // Precedence matches RentalHealthService.computeServiceOverdue:
+      // explicit nextServiceDueDate first, then manufacturer interval.
+      if (v.nextServiceDueDate != null) {
+        dueDate = new Date(v.nextServiceDueDate);
+        remainingDays = Math.floor(
+          (dueDate.getTime() - ctx.now.getTime()) / MS_PER_DAY,
+        );
+      } else if (intervalMonths != null && intervalMonths > 0 && baselineDate) {
         const intervalDays = Math.round(intervalMonths * DAYS_PER_MONTH);
         const elapsedDays = Math.floor(
           (ctx.now.getTime() - new Date(baselineDate).getTime()) / MS_PER_DAY,
         );
         remainingDays = intervalDays - elapsedDays;
+        dueDate = new Date(
+          new Date(baselineDate).getTime() + intervalDays * MS_PER_DAY,
+        );
       }
       if (
         baselineOdo != null &&
@@ -188,8 +205,16 @@ export class ServiceOverdueDetector implements InsightDetector {
       }
 
       // Always include the data source so operators know whether this came
-      // from a service baseline (manufacturer interval) or HM live data.
-      reasons.push('Quelle: Manufacturer-Interval + letzter Service');
+      // from an operator override or a manufacturer-interval baseline.
+      reasons.push(
+        v.nextServiceDueDate != null
+          ? 'Quelle: Operator-Termin (nextServiceDueDate)'
+          : 'Quelle: Manufacturer-Interval + letzter Service',
+      );
+
+      const timeContext: Record<string, string> = {};
+      if (baselineDate) timeContext.baselineDate = new Date(baselineDate).toISOString();
+      if (dueDate) timeContext.dueDate = dueDate.toISOString();
 
       candidates.push({
         type: this.type,
@@ -201,9 +226,7 @@ export class ServiceOverdueDetector implements InsightDetector {
         actionType: 'navigate_vehicle',
         entityScope: InsightEntityScope.VEHICLE,
         entityIds: [v.id],
-        timeContext: {
-          baselineDate: new Date(baselineDate).toISOString(),
-        },
+        timeContext,
         metrics: {
           remainingDays: remainingDays ?? 'unknown',
           remainingKm: remainingKm ?? 'unknown',

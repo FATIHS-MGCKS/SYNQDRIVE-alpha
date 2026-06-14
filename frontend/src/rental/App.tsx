@@ -1,5 +1,6 @@
-import { Circle, MapPin, Gauge, Droplet, Gauge as Odometer, Calendar, ClipboardList, Sparkles, Wrench, FileText, AlertTriangle, Disc, Camera, Settings, Home, CheckCircle, Heart, XCircle, ChevronDown, User, X, ArrowLeft, Maximize2, Minimize2, MessageSquare, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
-import { useState, useEffect, useRef, useCallback } from 'react';
+
+import { Icon } from './components/ui/Icon';
+import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import {
   api,
   type TireHealthSummaryResponse,
@@ -14,21 +15,16 @@ import { NewTaskModal } from './components/NewTaskModal';
 import { TripsView } from './components/TripsView';
 import { DashboardView } from './components/DashboardView';
 import { BookingsView } from './components/BookingsView';
-import { RentalDrivingAnalysisView } from './components/RentalDrivingAnalysisView';
 import { FinancialInsightsView } from './components/FinancialInsightsView';
 import { HealthErrorsView } from './components/HealthErrorsView';
 import { FleetView } from './components/FleetView';
 import { DamagesView } from './components/DamagesView';
 import { DocumentsView } from './components/DocumentsView';
 import { CustomersView } from './components/CustomersView';
-// TasksView, InvoicesView, FinesView, PriceTariffsView, AnalyticsView
-// are now rendered via OperationsView
 import { SettingsView, StationsTab } from './components/SettingsView';
 import { NewBookingView } from './components/NewBookingView';
-import { OperationsView } from './components/OperationsView';
-import type { OperationsTab } from './components/OperationsView';
 import { FleetConditionDetailView } from './components/FleetConditionDetailView';
-import type { ConditionCategory } from './components/FleetConditionView';
+import { FleetConditionView, type ConditionCategory } from './components/FleetConditionView';
 import { FinanceView } from './components/FinanceView';
 import type { FinanceTab } from './components/FinanceView';
 import { TasksSectionView } from './components/TasksSectionView';
@@ -41,7 +37,8 @@ import { BrandLogo, getBrandFromModel } from './components/BrandLogo';
 import { VehicleData } from './data/vehicles';
 import { VehicleTariff, buildTariffs } from './data/tariffs';
 import { RentalProvider, useRentalOrg } from './RentalContext';
-import { FleetProvider, useFleetVehicles } from './FleetContext';
+import { FleetProvider, useFleetVehicles, useEffectiveHealth } from './FleetContext';
+import { collectRentalHealthReasons } from './rental-health-ui';
 import { DashboardInsightsProvider } from './DashboardInsightsContext';
 import { HandoverProvider } from './HandoverContext';
 import { Toaster } from 'sonner';
@@ -49,7 +46,6 @@ import { LiveMapOverview } from './components/LiveMapOverview';
 import { useLiveVehicleTelemetry } from './hooks/useLiveVehicleTelemetry';
 import { useVehicleLiveMapStore } from './stores/useVehicleLiveMapStore';
 import { useShallow } from 'zustand/react/shallow';
-import { RightSidebar } from './components/RightSidebar';
 import { LanguageProvider } from './i18n/LanguageContext';
 import { DocumentUploadView } from './components/DocumentUploadView';
 import { AIAssistantView } from './components/AIAssistantView';
@@ -59,7 +55,6 @@ import { WorkflowAutomationView } from './components/WorkflowAutomationView';
 import { WhatsAppBusinessView } from './components/WhatsAppBusinessView';
 import { PartsAccessoriesView } from './components/PartsAccessoriesView';
 import { InsurancesView } from './components/InsurancesView';
-import { ServiceMaintenanceView } from './components/ServiceMaintenanceView';
 import { VoiceAssistantView } from './components/VoiceAssistantView';
 import { VehicleInsightsCard } from './components/VehicleInsightsCard';
 import { AppErrorBoundary } from '../components/AppErrorBoundary';
@@ -91,6 +86,12 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
   const [aiHealthCare, setAiHealthCare] = useState<AiHealthCareResponse | null>(null);
 
   const vehicleId = selectedVehicle?.id ?? null;
+  const { status: rentalStatus, health: rentalHealth, loading: rentalHealthLoading } =
+    useEffectiveHealth(vehicleId);
+  const rentalReasons = collectRentalHealthReasons(rentalHealth);
+  const rentalCriticalCount = rentalReasons.filter((r) => r.state === 'critical').length;
+  const rentalWarningCount = rentalReasons.filter((r) => r.state === 'warning').length;
+  const errorCodesRentalState = rentalHealth?.modules.error_codes?.state;
 
   useEffect(() => {
     if (!vehicleId) {
@@ -144,38 +145,73 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
   const untrackedCount = 3 - trackedValues.length;
   const trackedCount = trackedValues.length;
 
-  const healthScore = trackedValues.length > 0
-    ? Math.round(trackedValues.reduce((a, b) => a + b, 0) / trackedValues.length)
-    : -1;
-  const healthProgress = healthScore < 0 ? 0 : Math.min(Math.max(healthScore, 0), 100);
-  const overallStatusLabel =
-    healthScore < 0 ? 'Insufficient Data' : healthScore >= 80 ? 'Good Health' : healthScore >= 60 ? 'Fair Health' : 'Poor Health';
-  const overallAccent = healthScore < 0 ? 'bg-slate-400' : healthScore >= 80 ? 'bg-emerald-500' : healthScore >= 60 ? 'bg-amber-500' : 'bg-red-500';
-  const overallProgress = healthScore < 0 ? (dm ? 'bg-neutral-700' : 'bg-slate-200') : healthScore >= 80 ? 'bg-emerald-500' : healthScore >= 60 ? 'bg-amber-500' : 'bg-red-500';
-  const overallBadge = healthScore < 0
-    ? dm ? 'bg-neutral-800/90 text-neutral-300 ring-neutral-700/80' : 'bg-slate-50 text-slate-500 ring-slate-200'
-    : healthScore >= 80
-    ? dm ? 'bg-emerald-500/10 text-emerald-300 ring-emerald-500/25' : 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-    : healthScore >= 60
-    ? dm ? 'bg-amber-500/10 text-amber-300 ring-amber-500/25' : 'bg-amber-50 text-amber-700 ring-amber-200'
-    : dm ? 'bg-red-500/10 text-red-300 ring-red-500/25' : 'bg-red-50 text-red-700 ring-red-200';
-  // Critical/Monitor counts: tires/brakes use the generic wear scale, battery
-  // uses the canonical condition so Dashboard and Health Tab agree.
+  // Critical / due-soon counts drive the overall status. Brakes use the generic
+  // wear scale; battery and tires use their canonical status so Dashboard and
+  // Health Tab always agree on the same green/amber/red state for a vehicle.
+  const tireCanon = tires?.overallStatus ?? null;
   const brakeCritical = brakesTracked && brakesVal < 30;
-  const tireCritical = tiresTracked && tiresVal < 30;
+  const tireCritical = tiresTracked && (tireCanon ? tireCanon === 'CRITICAL' : tiresVal < 30);
   const batteryCriticalFlag = batteryTracked && batteryCondition === 'attention';
   const brakeDueSoon = brakesTracked && brakesVal >= 30 && brakesVal < 60;
-  const tireDueSoon = tiresTracked && tiresVal >= 30 && tiresVal < 60;
+  const tireDueSoon = tiresTracked && (tireCanon ? (tireCanon === 'WARNING' || tireCanon === 'WATCH') : (tiresVal >= 30 && tiresVal < 60));
   const batteryDueSoonFlag = batteryTracked && batteryCondition === 'watch';
-  const criticalCount = [brakeCritical, tireCritical, batteryCriticalFlag].filter(Boolean).length;
-  const dueSoonCount = [brakeDueSoon, tireDueSoon, batteryDueSoonFlag].filter(Boolean).length;
+  const localCriticalCount = [brakeCritical, tireCritical, batteryCriticalFlag].filter(Boolean).length;
+  const localDueSoonCount = [brakeDueSoon, tireDueSoon, batteryDueSoonFlag].filter(Boolean).length;
+  const statCriticalCount = rentalHealth ? rentalCriticalCount : localCriticalCount;
+  const statWarningCount = rentalHealth ? rentalWarningCount : localDueSoonCount;
+
+  // Overall badge + summary tiles use Rental-Health-V1 (same map as Dashboard,
+  // FleetView, header chip and Health tab) — not binary "any DTC = critical".
+  type OverallState = 'insufficient' | 'good' | 'warning' | 'critical';
+  const overallState: OverallState = (() => {
+    if (rentalHealthLoading && !rentalHealth) return 'insufficient';
+    if (rentalStatus === 'Critical') return 'critical';
+    if (rentalStatus === 'Warning') return 'warning';
+    if (rentalStatus === 'Good Health') return 'good';
+    if (trackedCount === 0) return 'insufficient';
+    return 'good';
+  })();
+  const overallStatusLabel = (() => {
+    if (rentalHealthLoading && !rentalHealth) return 'Loading…';
+    if (rentalStatus === 'Critical') return 'Critical';
+    if (rentalStatus === 'Warning') return 'Warning';
+    if (rentalStatus === 'Good Health') return 'Good Health';
+    if (trackedCount === 0) return 'Insufficient Data';
+    return 'Good Health';
+  })();
+  const overallTitle = (() => {
+    const parts: string[] = [];
+    if (rentalHealth?.rental_blocked && rentalHealth.blocking_reasons.length > 0) {
+      parts.push(`Blocked: ${rentalHealth.blocking_reasons.join(' · ')}`);
+    }
+    for (const r of rentalReasons) {
+      parts.push(`${r.label}: ${r.reason}`);
+    }
+    return parts.join(' · ') || undefined;
+  })();
+  const overallDot =
+    overallState === 'insufficient'
+      ? 'bg-[color:var(--status-nodata)]'
+      : overallState === 'good'
+      ? 'bg-[color:var(--status-positive)]'
+      : overallState === 'warning'
+      ? 'bg-[color:var(--status-watch)]'
+      : 'bg-[color:var(--status-critical)]';
+  const overallAccentRing =
+    overallState === 'insufficient'
+      ? 'sq-tone-nodata ring-[color:var(--status-nodata-soft)]'
+      : overallState === 'good'
+      ? 'sq-tone-success ring-[color:var(--status-positive-soft)]'
+      : overallState === 'warning'
+      ? 'sq-tone-watch ring-[color:var(--status-watch-soft)]'
+      : 'sq-tone-critical ring-[color:var(--status-critical-soft)]';
 
   const getStatus = (v: number, tracked: boolean) => {
-    if (!tracked) return { label: 'No Data', labelColor: dm ? 'text-gray-500' : 'text-gray-400', bar: dm ? 'bg-neutral-700' : 'bg-gray-200' };
-    if (v >= 80) return { label: 'Excellent', labelColor: 'text-green-600', bar: 'bg-green-500' };
-    if (v >= 60) return { label: 'Monitor', labelColor: 'text-yellow-600', bar: 'bg-yellow-500' };
-    if (v >= 30) return { label: 'Due soon', labelColor: 'text-orange-500', bar: 'bg-orange-500' };
-    return { label: 'Critical', labelColor: 'text-red-600', bar: 'bg-red-500' };
+    if (!tracked) return { label: 'No Data', labelColor: 'text-muted-foreground', bar: 'bg-muted' };
+    if (v >= 80) return { label: 'Excellent', labelColor: 'text-[color:var(--status-positive)]', bar: 'bg-[color:var(--status-positive)]' };
+    if (v >= 60) return { label: 'Monitor', labelColor: 'text-[color:var(--status-watch)]', bar: 'bg-[color:var(--status-watch)]' };
+    if (v >= 30) return { label: 'Due soon', labelColor: 'text-[color:var(--status-warning)]', bar: 'bg-[color:var(--status-warning)]' };
+    return { label: 'Critical', labelColor: 'text-[color:var(--status-critical)]', bar: 'bg-[color:var(--status-critical)]' };
   };
 
   // Battery uses the canonical condition from the backend
@@ -194,18 +230,18 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
     condition: string | null | undefined,
     voltageV: number | null | undefined,
   ) => {
-    if (!tracked) return { label: 'No Data', labelColor: dm ? 'text-gray-500' : 'text-gray-400', bar: dm ? 'bg-neutral-700' : 'bg-gray-200' };
-    if (condition === 'good') return { label: 'Healthy', labelColor: 'text-green-600', bar: 'bg-green-500' };
-    if (condition === 'watch') return { label: 'Monitor', labelColor: 'text-amber-600', bar: 'bg-amber-500' };
-    if (condition === 'attention') return { label: 'Attention', labelColor: 'text-red-600', bar: 'bg-red-500' };
+    if (!tracked) return { label: 'No Data', labelColor: 'text-muted-foreground', bar: 'bg-muted' };
+    if (condition === 'good') return { label: 'Healthy', labelColor: 'text-[color:var(--status-positive)]', bar: 'bg-[color:var(--status-positive)]' };
+    if (condition === 'watch') return { label: 'Monitor', labelColor: 'text-[color:var(--status-watch)]', bar: 'bg-[color:var(--status-watch)]' };
+    if (condition === 'attention') return { label: 'Attention', labelColor: 'text-[color:var(--status-critical)]', bar: 'bg-[color:var(--status-critical)]' };
     if (voltageV != null) {
-      if (voltageV < 12.0) return { label: 'Attention', labelColor: 'text-red-600', bar: 'bg-red-500' };
-      if (voltageV < 12.4) return { label: 'Monitor', labelColor: 'text-amber-600', bar: 'bg-amber-500' };
-      return { label: 'Healthy', labelColor: 'text-green-600', bar: 'bg-green-500' };
+      if (voltageV < 12.0) return { label: 'Attention', labelColor: 'text-[color:var(--status-critical)]', bar: 'bg-[color:var(--status-critical)]' };
+      if (voltageV < 12.4) return { label: 'Monitor', labelColor: 'text-[color:var(--status-watch)]', bar: 'bg-[color:var(--status-watch)]' };
+      return { label: 'Healthy', labelColor: 'text-[color:var(--status-positive)]', bar: 'bg-[color:var(--status-positive)]' };
     }
-    if (v < 50) return { label: 'Attention', labelColor: 'text-red-600', bar: 'bg-red-500' };
-    if (v < 75) return { label: 'Monitor', labelColor: 'text-amber-600', bar: 'bg-amber-500' };
-    return { label: 'Healthy', labelColor: 'text-green-600', bar: 'bg-green-500' };
+    if (v < 50) return { label: 'Attention', labelColor: 'text-[color:var(--status-critical)]', bar: 'bg-[color:var(--status-critical)]' };
+    if (v < 75) return { label: 'Monitor', labelColor: 'text-[color:var(--status-watch)]', bar: 'bg-[color:var(--status-watch)]' };
+    return { label: 'Healthy', labelColor: 'text-[color:var(--status-positive)]', bar: 'bg-[color:var(--status-positive)]' };
   };
 
   const brakesDetail = (() => {
@@ -279,101 +315,84 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
   const tuvDate = service?.tuvValidTill ? new Date(service.tuvValidTill).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : null;
   const tuvOverdue = service?.tuvOverdue === true;
   const tuvDays = service?.tuvRemainingDays ?? null;
+  const tuvImminent = !tuvOverdue && tuvDays != null && tuvDays >= 0 && tuvDays <= 60;
+  const bokraftDate = service?.bokraftValidTill
+    ? new Date(service.bokraftValidTill).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    : null;
+  const bokraftOverdue = service?.bokraftOverdue === true;
+  const bokraftDays = service?.bokraftRemainingDays ?? null;
+  const bokraftImminent = !bokraftOverdue && bokraftDays != null && bokraftDays >= 0 && bokraftDays <= 60;
 
-  const divider = <div className={`border-t my-3 ${dm ? 'border-neutral-700/80' : 'border-gray-100'}`} />;
+  const divider = <div className="border-t my-3 border-border" />;
 
   return (
-    <div className={`group relative overflow-hidden rounded-[18px] p-[1px] shadow-[var(--shadow-2)] transition-[box-shadow,transform] duration-300 ease-[var(--ease-out-soft)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-hover)] ${
-      dm
-        ? 'bg-gradient-to-br from-blue-500/25 via-neutral-800/80 to-emerald-500/20'
-        : 'bg-gradient-to-br from-blue-500/20 via-white to-emerald-500/10'
+    <div className={`group relative flex h-full flex-col rounded-xl p-3 border transition-shadow duration-300 ease-[var(--ease-out-soft)] hover:shadow-md ${
+      'border-border bg-card text-foreground shadow-sm'
     }`}>
-      <div className={`pointer-events-none absolute -right-12 -top-12 h-28 w-28 rounded-full blur-2xl ${
-        dm ? 'bg-blue-400/10' : 'bg-blue-500/10'
-      }`} />
-      <div className={`relative flex h-full flex-col rounded-[17px] p-3 ${
-        dm
-          ? 'border border-white/10 bg-neutral-950/95 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
-          : 'border border-white/80 bg-white/95 text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]'
-      }`}>
       <style>{`
         @keyframes barFillUp { from { width: 0%; } }
         @keyframes calibDots { 0%,20%{opacity:.2} 50%{opacity:1} 100%{opacity:.2} }
       `}</style>
 
-      <div className={`relative mb-2.5 overflow-hidden rounded-[14px] border p-2.5 ${
-        dm ? 'border-white/10 bg-white/[0.04]' : 'border-slate-200/80 bg-slate-50/80'
-      }`}>
-        <div className="mb-2 flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h3 className={`text-[10.5px] font-bold uppercase tracking-[0.12em] ${dm ? 'text-neutral-400' : 'text-slate-500'}`}>Vehicle Health</h3>
-            <div className="mt-0.5 flex items-baseline gap-1">
-              <span className={`font-mono text-[24px] font-bold leading-none tracking-[-0.04em] tabular-nums ${dm ? 'text-white' : 'text-slate-950'}`}>
-                {healthScore < 0 ? '—' : healthScore}
-              </span>
-              <span className={`text-[10px] font-semibold ${dm ? 'text-neutral-500' : 'text-slate-400'}`}>%</span>
-            </div>
-          </div>
-          <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold ring-1 ${overallBadge}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${overallAccent}`} />
+      <div className="mb-2.5 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <h3 className={`text-[11px] font-bold tracking-[-0.01em] ${'text-foreground'}`}>Vehicle Health</h3>
+          <span
+            title={overallTitle}
+            className={`inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[9.5px] font-bold ring-1 ${overallAccentRing}`}
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${overallDot}`} />
             {overallStatusLabel}
           </span>
         </div>
-        <div className={`h-2 overflow-hidden rounded-full ${dm ? 'bg-neutral-800' : 'bg-white shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05)]'}`}>
-          <div
-            className={`h-full rounded-full ${overallProgress} shadow-[0_0_12px_rgba(37,99,235,0.18)]`}
-            style={{ width: `${healthProgress}%`, animation: 'barFillUp 0.7s cubic-bezier(0.16,1,0.3,1) both' }}
-          />
-        </div>
-        <div className={`mt-1.5 flex items-center justify-between text-[9.5px] font-semibold ${dm ? 'text-neutral-500' : 'text-slate-500'}`}>
-          <span>{trackedCount}/3 tracked</span>
-          <span>{untrackedCount > 0 ? `${untrackedCount} missing` : 'complete'}</span>
-        </div>
+        <span className={`shrink-0 text-[10px] font-semibold ${'text-muted-foreground'}`}>
+          {trackedCount}/3 tracked
+        </span>
       </div>
 
-      <div className="mb-2 grid grid-cols-3 gap-1.5">
+      <div className="mb-2.5 grid grid-cols-3 gap-1.5">
         {([
           {
             label: 'Critical',
-            value: criticalCount,
-            tone: criticalCount > 0
-              ? dm ? 'border-red-500/25 bg-red-500/10 text-red-300' : 'border-red-200 bg-red-50 text-red-700'
-              : dm ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300' : 'border-emerald-100 bg-emerald-50/80 text-emerald-700',
+            value: statCriticalCount,
+            tone: statCriticalCount > 0
+              ? 'border-transparent sq-tone-critical'
+              : 'border-transparent sq-tone-success',
           },
           {
             label: 'Due soon',
-            value: dueSoonCount,
-            tone: dueSoonCount > 0
-              ? dm ? 'border-amber-500/25 bg-amber-500/10 text-amber-300' : 'border-amber-200 bg-amber-50 text-amber-700'
-              : dm ? 'border-white/10 bg-white/[0.03] text-neutral-400' : 'border-slate-100 bg-slate-50 text-slate-500',
+            value: statWarningCount,
+            tone: statWarningCount > 0
+              ? 'border-transparent sq-tone-watch'
+              : 'border-border bg-muted/40 text-muted-foreground',
           },
           {
             label: 'Faults',
             value: dtcCount,
-            tone: dtcCount > 0
-              ? dm ? 'border-red-500/25 bg-red-500/10 text-red-300' : 'border-red-200 bg-red-50 text-red-700'
-              : dm ? 'border-white/10 bg-white/[0.03] text-neutral-400' : 'border-slate-100 bg-slate-50 text-slate-500',
+            tone:
+              dtcCount === 0
+                ? 'border-border bg-muted/40 text-muted-foreground'
+                : errorCodesRentalState === 'critical'
+                  ? 'border-transparent sq-tone-critical'
+                  : 'border-transparent sq-tone-watch',
           },
         ] as const).map((stat) => (
           <div key={stat.label} className={`rounded-[10px] border px-1.5 py-1.5 text-center ${stat.tone}`}>
             <div className="font-mono text-[15px] font-bold leading-none tabular-nums">{stat.value}</div>
-            <div className="mt-0.5 truncate text-[8.5px] font-semibold leading-none tracking-[-0.01em]">{stat.label}</div>
+            <div className="mt-0.5 truncate text-[9px] font-semibold leading-none tracking-[-0.01em]">{stat.label}</div>
           </div>
         ))}
       </div>
       {untrackedCount > 0 && (
-        <div className={`mb-2 flex items-start gap-1.5 rounded-[11px] border px-2 py-1.5 ${dm ? 'bg-blue-500/5 border-blue-500/20' : 'bg-blue-50/70 border-blue-100'}`}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={dm ? 'text-blue-400' : 'text-blue-500'}>
+        <div className="mb-2 flex items-start gap-1.5 rounded-[10px] border border-transparent px-2 py-1.5 sq-tone-info">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-px shrink-0">
             <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
           </svg>
-          <span className={`text-[9.5px] leading-snug ${dm ? 'text-blue-300/80' : 'text-blue-700'}`}>
-            {untrackedCount} of 3 health dimensions have no data yet. Enable tracking to get more accurate results.
+          <span className="text-[9.5px] leading-snug">
+            {untrackedCount} of 3 health dimensions untracked — enable tracking for accurate results.
           </span>
         </div>
       )}
-      <p className={`mb-1 text-[9.5px] font-semibold tracking-[0.02em] ${dm ? 'text-neutral-500' : 'text-slate-400'}`}>
-        Diagnostics · Wear trends · Service status
-      </p>
 
       {divider}
 
@@ -386,27 +405,22 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
           const st = item.key === 'battery'
             ? getBatteryStatus(item.value, item.tracked, batteryCondition, voltage)
             : getStatus(item.value, item.tracked);
+          // The 12V battery never shows an SOH %; its status word (with colour)
+          // already conveys watch/attention, so it gets no separate badge.
           const showBadge =
-            !isCalibrating && !isStabilizing && !isUntracked && (
-              item.key === 'battery'
-                ? (batteryCondition === 'watch' || batteryCondition === 'attention')
-                : item.value < 60
-            );
+            !isCalibrating && !isStabilizing && !isUntracked &&
+            item.key !== 'battery' && item.value < 60;
           return (
-            <div key={item.key} className={`rounded-[13px] border px-2 py-2 transition-colors ${
-              dm ? 'border-white/10 bg-white/[0.025]' : 'border-slate-100 bg-slate-50/70'
-            } ${isUntracked ? 'opacity-70' : ''}`}>
+            <div key={item.key} className={`rounded-[13px] border border-border bg-muted/40 px-2 py-2 transition-colors ${isUntracked ? 'opacity-70' : ''}`}>
               <div className="flex gap-2.5 items-center">
-              <div className={`w-8 h-8 rounded-[10px] border flex items-center justify-center flex-shrink-0 ${
-                dm ? 'border-white/10 bg-white/[0.04]' : 'border-white bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
-              } ${item.iconBg}`}>
+              <div className={`w-8 h-8 rounded-[10px] border border-border bg-card flex items-center justify-center flex-shrink-0 ${item.iconBg}`}>
                 {item.icon}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <span className={`text-[11.5px] font-bold flex-1 tracking-[-0.01em] ${dm ? 'text-gray-100' : 'text-slate-800'}`}>{item.label}</span>
+                  <span className={`text-[10px] font-bold flex-1 tracking-[-0.01em] ${'text-foreground'}`}>{item.label}</span>
                   {isCalibrating && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${dm ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-600'}`}>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${'sq-tone-info border-transparent'}`}>
                       Calibrating
                       <span className="inline-flex ml-0.5">
                         {[0, 1, 2].map(i => <span key={i} className="inline-block w-1 h-1 rounded-full mx-px" style={{ backgroundColor: 'currentColor', animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}
@@ -414,57 +428,60 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
                     </span>
                   )}
                   {isStabilizing && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${dm ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>Estimated</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${'sq-tone-watch border-transparent'}`}>Estimated</span>
                   )}
                   {isUntracked && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${dm ? 'bg-neutral-700 border-neutral-600 text-gray-400' : 'bg-gray-100 border-gray-200 text-gray-500'}`}>No Data</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${'sq-tone-neutral border-transparent'}`}>No Data</span>
                   )}
                   {showBadge && (
                     <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${
                       item.key === 'battery'
                         ? (batteryCondition === 'attention'
-                            ? 'bg-red-50 border-red-200 text-red-600'
-                            : 'bg-amber-50 border-amber-200 text-amber-700')
-                        : (item.value < 30 ? 'bg-red-50 border-red-200 text-red-600' : 'bg-amber-50 border-amber-200 text-amber-700')
+                            ? 'sq-tone-critical border-transparent'
+                            : 'sq-tone-watch border-transparent')
+                        : (item.value < 30 ? 'sq-tone-critical border-transparent' : 'sq-tone-watch border-transparent')
                     }`}>{st.label}</span>
                   )}
                   {isCalibrating ? (
-                    <span className={`font-mono text-xs ${dm ? 'text-gray-500' : 'text-gray-400'}`}>—</span>
+                    <span className={`font-mono text-xs ${'text-muted-foreground'}`}>—</span>
                   ) : isUntracked ? (
-                    <span className={`font-mono text-xs ${dm ? 'text-gray-500' : 'text-gray-400'}`}>—</span>
+                    <span className={`font-mono text-xs ${'text-muted-foreground'}`}>—</span>
+                  ) : item.key === 'battery' ? (
+                    // LV "Estimated Battery Health" — status word, not an SOH %.
+                    <span className={`text-[10px] font-bold tracking-[-0.01em] ${st.labelColor}`}>{isStabilizing ? `~${st.label}` : st.label}</span>
                   ) : (
-                    <span className={`font-mono text-[12px] font-bold tabular-nums ${isStabilizing ? (dm ? 'text-gray-300' : 'text-gray-600') : dm ? 'text-white' : 'text-slate-950'}`}>{item.value > 0 ? `${isStabilizing ? '~' : ''}${Math.round(item.value)}%` : '—'}</span>
+                    <span className={`font-mono text-[10px] font-bold tabular-nums ${isStabilizing ? 'text-foreground/70' : 'text-foreground'}`}>{item.value > 0 ? `${isStabilizing ? '~' : ''}${Math.round(item.value)}%` : '—'}</span>
                   )}
                 </div>
                 {isCalibrating ? (
-                  <div className={`w-full rounded-full h-2 overflow-hidden ${dm ? 'bg-neutral-800' : 'bg-white shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05)]'}`}>
-                    <div className={`h-full rounded-full ${dm ? 'bg-blue-500/30' : 'bg-blue-200'}`} style={{ width: '30%', animation: `barFillUp 2s cubic-bezier(0.16,1,0.3,1) infinite alternate` }} />
+                  <div className={`w-full rounded-full h-2 overflow-hidden ${'bg-muted'}`}>
+                    <div className="h-full rounded-full bg-[color:var(--status-info-soft)]" style={{ width: '30%', animation: `barFillUp 2s cubic-bezier(0.16,1,0.3,1) infinite alternate` }} />
                   </div>
                 ) : isUntracked ? (
-                  <div className={`w-full rounded-full h-2 ${dm ? 'bg-neutral-800' : 'bg-white shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05)]'}`}>
-                    <div className={`h-full rounded-full ${dm ? 'bg-neutral-700' : 'bg-slate-200'}`} style={{ width: '100%' }} />
+                  <div className={`w-full rounded-full h-2 ${'bg-muted'}`}>
+                    <div className="h-full rounded-full bg-muted" style={{ width: '100%' }} />
                   </div>
                 ) : (
-                  <div className={`w-full rounded-full h-2 overflow-hidden ${dm ? 'bg-neutral-800' : 'bg-white shadow-[inset_0_0_0_1px_rgba(15,23,42,0.05)]'}`}>
-                    <div className={`h-full rounded-full ${isStabilizing ? (dm ? 'bg-amber-500/60' : 'bg-amber-400') : st.bar}`}
+                  <div className={`w-full rounded-full h-2 overflow-hidden ${'bg-muted'}`}>
+                    <div className={`h-full rounded-full ${isStabilizing ? 'bg-[color:var(--status-watch)]' : st.bar}`}
                       style={{ width: `${Math.min(item.value, 100)}%`, animation: `barFillUp 0.8s cubic-bezier(0.16,1,0.3,1) ${idx * 0.15}s both` }}
                     />
                   </div>
                 )}
                 <div className="flex items-baseline gap-1 mt-0.5">
                   {isCalibrating ? (
-                    <span className={`text-[10px] ${dm ? 'text-blue-400/70' : 'text-blue-500'}`}>Initial calibration in progress</span>
+                    <span className="text-[10px] text-[color:var(--status-info)]">Initial calibration in progress</span>
                   ) : isStabilizing ? (
                     <>
-                      <span className={`text-[10px] font-semibold ${dm ? 'text-amber-400/80' : 'text-amber-600'}`}>Estimated SOH</span>
-                      <span className={`text-[10px] ${dm ? 'text-gray-500' : 'text-gray-400'}`}>· {item.detail}</span>
+                      <span className="text-[10px] font-semibold text-[color:var(--status-watch)]">Estimated SOH</span>
+                      <span className={`text-[10px] ${'text-muted-foreground'}`}>· {item.detail}</span>
                     </>
                   ) : isUntracked ? (
-                    <span className={`text-[10px] ${dm ? 'text-gray-500' : 'text-gray-400'}`}>Enable tracking for accurate health data</span>
+                    <span className={`text-[10px] ${'text-muted-foreground'}`}>Enable tracking for accurate health data</span>
                   ) : (
                     <>
                       <span className={`text-[10px] font-semibold ${st.labelColor}`}>{item.value > 0 ? st.label : ''}</span>
-                      <span className={`text-[10px] ${dm ? 'text-gray-500' : 'text-gray-400'}`}>· {item.detail}</span>
+                      <span className={`text-[10px] ${'text-muted-foreground'}`}>· {item.detail}</span>
                     </>
                   )}
                 </div>
@@ -529,34 +546,34 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
         })();
 
         const iconBgFor = (tone: Tone): string => {
-          if (tone === 'alert') return dm ? 'bg-amber-500/20' : 'bg-amber-50';
-          if (tone === 'ok') return dm ? 'bg-emerald-500/10' : 'bg-emerald-50';
-          if (tone === 'muted') return dm ? 'bg-neutral-800' : 'bg-gray-100';
-          return dm ? 'bg-neutral-800' : 'bg-gray-100';
+          if (tone === 'alert') return 'bg-[color:var(--status-watch-soft)]';
+          if (tone === 'ok') return 'bg-[color:var(--status-positive-soft)]';
+          if (tone === 'muted') return 'bg-muted';
+          return 'bg-muted';
         };
 
         return (
           <>
             <div className="mb-2">
               <div className="flex items-center gap-1.5 mb-2">
-                <span className={`text-[11px] font-semibold ${dm ? 'text-gray-100' : 'text-gray-800'}`}>Tacho Warnleuchten</span>
+                <span className={`text-[10px] font-semibold ${'text-foreground'}`}>Tacho Warnleuchten</span>
                 {activeAlerts > 0 ? (
-                  <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${dm ? 'bg-amber-500/15 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-700'}`}>
+                  <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${'sq-tone-watch'}`}>
                     {activeAlerts} aktiv
                   </span>
                 ) : (
-                  <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${dm ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold border sq-tone-success">
                     Alle aus
                   </span>
                 )}
                 {freshness === 'stale' && (
-                  <span className="inline-flex items-center gap-0.5 text-[9px] font-medium text-amber-600 dark:text-amber-400">
-                    <AlertTriangle className="w-2.5 h-2.5" />
+                  <span className="inline-flex items-center gap-0.5 text-[9px] font-medium text-[color:var(--status-watch)]">
+                    <Icon name="alert-triangle" className="w-2.5 h-2.5" />
                     Veraltet
                   </span>
                 )}
                 {lastUpdateLabel && freshness !== 'stale' && (
-                  <span className={`ml-auto text-[9px] ${dm ? 'text-gray-500' : 'text-gray-400'}`}>{lastUpdateLabel}</span>
+                  <span className={`ml-auto text-[9px] ${'text-muted-foreground'}`}>{lastUpdateLabel}</span>
                 )}
               </div>
               <div className="grid grid-cols-5 gap-1.5">
@@ -568,8 +585,8 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
                     title={`${it.label}: ${it.text}`}
                     className={`group flex flex-col items-center gap-1 px-1 py-1.5 rounded-lg border transition-colors ${
                       it.tone === 'alert'
-                        ? dm ? 'border-amber-500/30 hover:bg-amber-500/10' : 'border-amber-200 hover:bg-amber-50'
-                        : dm ? 'border-neutral-700/70 hover:bg-neutral-800/60' : 'border-gray-100 hover:bg-gray-50'
+                        ? 'border-[color:var(--status-watch-soft)] hover:bg-[color:var(--status-watch-soft)]'
+                        : 'border-border hover:bg-muted'
                     }`}
                   >
                     <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${iconBgFor(it.tone)}`}>
@@ -584,8 +601,8 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
                     </div>
                     <span className={`text-[9px] leading-none truncate w-full text-center ${
                       it.tone === 'alert'
-                        ? dm ? 'text-amber-300 font-semibold' : 'text-amber-700 font-semibold'
-                        : dm ? 'text-gray-400' : 'text-gray-500'
+                        ? 'text-[color:var(--status-watch)] font-semibold'
+                        : 'text-muted-foreground'
                     }`}>{it.label}</span>
                   </button>
                 ))}
@@ -596,68 +613,139 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
         );
       })()}
 
-      {/* Service Info (integrated)
-          Emphasizes critical state: overdue → red label + icon + overdue copy,
-          imminent (≤7d / ≤500km) → amber. The label text is precise (Tage/km)
-          so operators see "Überfällig seit 48 Tagen" instead of a rounded
-          "-2 months" that hides the urgency. */}
-      <div className="grid grid-cols-2 gap-x-3">
-        <div>
-          <div className="flex items-center gap-1 mb-1">
-            <Wrench className={`w-3 h-3 flex-shrink-0 ${svcOverdue ? 'text-red-500' : svcImminent ? 'text-amber-500' : 'text-blue-500'}`} />
-            <span className={`text-[11px] font-semibold ${svcOverdue ? 'text-red-600 dark:text-red-400' : svcImminent ? 'text-amber-600 dark:text-amber-400' : dm ? 'text-white' : 'text-gray-800'}`}>
-              Maintenance{svcOverdue ? ' — Überfällig' : svcImminent ? ' — Fällig' : ''}
-            </span>
-          </div>
-          <div className="flex items-start gap-1">
-            <Calendar className={`w-3 h-3 mt-px flex-shrink-0 ${svcOverdue ? 'text-red-400' : svcImminent ? 'text-amber-400' : 'text-violet-400'}`} />
-            <span className={`text-[10px] leading-snug ${dm ? 'text-gray-400' : 'text-gray-500'}`}>
-              {svcOverdue ? (
-                <>
-                  Service: <span className="font-semibold text-red-600 dark:text-red-400">
-                    überfällig seit {svcOverdueDays != null ? `${svcOverdueDays} Tagen` : ''}
-                    {svcOverdueDays != null && svcOverdueKm != null ? ' / ' : ''}
-                    {svcOverdueKm != null ? `${svcOverdueKm.toLocaleString('de-DE')} km` : ''}
-                  </span>
-                </>
-              ) : svcRemDays != null ? (
-                <>
-                  Next: <span className={`font-semibold ${svcImminent ? 'text-amber-600 dark:text-amber-400' : dm ? 'text-gray-200' : 'text-gray-700'}`}>
-                    {svcRemDays <= 90 ? `in ${svcRemDays} Tagen` : `in ${svcRemMonths ?? Math.round(svcRemDays / 30)} Monaten`}
-                  </span>
-                  {svcRemKm != null && svcRemKm >= 0 && <><br />{svcRemKm.toLocaleString('de-DE')} km</>}
-                </>
-              ) : service?.lastServiceDate ? (
-                <>Last: <span className={`font-semibold ${dm ? 'text-gray-200' : 'text-gray-700'}`}>{new Date(service.lastServiceDate).toLocaleDateString('de-DE')}</span></>
-              ) : (
-                <span className={dm ? 'text-gray-600' : 'text-gray-400'}>No tracking</span>
-              )}
-            </span>
-          </div>
-        </div>
-        <div>
-          <div className="flex items-center gap-1 mb-1">
-            <Calendar className={`w-3 h-3 flex-shrink-0 ${tuvOverdue ? 'text-red-500' : 'text-blue-500'}`} />
-            <span className={`text-[11px] font-semibold ${tuvOverdue ? 'text-red-600 dark:text-red-400' : dm ? 'text-white' : 'text-gray-800'}`}>
-              Inspection{tuvOverdue ? ' — Abgelaufen' : ''}
-            </span>
-          </div>
-          <div className="flex items-start gap-1">
-            <Calendar className={`w-3 h-3 mt-px flex-shrink-0 ${tuvOverdue ? 'text-red-400' : 'text-violet-400'}`} />
-            <span className={`text-[10px] leading-snug ${dm ? 'text-gray-400' : 'text-gray-500'}`}>
-              {tuvDate ? (
-                <>TÜV: <span className={`font-semibold ${
-                  tuvOverdue ? 'text-red-600 dark:text-red-400' :
-                  (tuvDays ?? 9999) <= 60 ? 'text-red-500' :
-                  (tuvDays ?? 9999) <= 180 ? 'text-amber-500' :
-                  dm ? 'text-gray-200' : 'text-gray-700'
-                }`}>{tuvDate}</span></>
-              ) : (
-                <span className={dm ? 'text-gray-600' : 'text-gray-400'}>No tracking</span>
-              )}
-            </span>
-          </div>
-        </div>
+      {/* Compliance & Service Tracking
+          Three discrete tracking dimensions from the health module:
+          Service (manufacturer maintenance interval), TÜV (HU/AU
+          Hauptuntersuchung) and BOKraft (commercial passenger transport
+          permit). Each tile uses the same critical/imminent/normal tone
+          logic so operators can scan all three deadlines at a glance. */}
+      <div className="grid grid-cols-3 gap-1.5">
+        {(() => {
+          type Tone = 'critical' | 'imminent' | 'normal' | 'muted';
+          const toneRing = (tone: Tone): string => {
+            if (tone === 'critical') return 'border-transparent bg-[color:var(--status-critical-soft)]';
+            if (tone === 'imminent') return 'border-transparent bg-[color:var(--status-watch-soft)]';
+            if (tone === 'muted') return 'border-border bg-muted/40';
+            return 'border-border bg-card';
+          };
+          const toneIcon = (tone: Tone): string => {
+            if (tone === 'critical') return 'text-[color:var(--status-critical)]';
+            if (tone === 'imminent') return 'text-[color:var(--status-watch)]';
+            if (tone === 'muted') return 'text-muted-foreground';
+            return 'text-[color:var(--brand)]';
+          };
+          const toneTitle = (tone: Tone): string => {
+            if (tone === 'critical') return 'text-[color:var(--status-critical)]';
+            if (tone === 'imminent') return 'text-[color:var(--status-watch)]';
+            if (tone === 'muted') return 'text-muted-foreground';
+            return 'text-foreground';
+          };
+          const toneValue = (tone: Tone): string => {
+            if (tone === 'critical') return 'text-[color:var(--status-critical)]';
+            if (tone === 'imminent') return 'text-[color:var(--status-watch)]';
+            if (tone === 'muted') return 'text-muted-foreground';
+            return 'text-foreground/90';
+          };
+
+          const svcTone: Tone = svcOverdue ? 'critical' : svcImminent ? 'imminent' : (svcRemDays != null || service?.lastServiceDate) ? 'normal' : 'muted';
+          const tuvTone: Tone = tuvOverdue ? 'critical' : tuvImminent ? 'imminent' : tuvDate ? 'normal' : 'muted';
+          const bokraftTone: Tone = bokraftOverdue ? 'critical' : bokraftImminent ? 'imminent' : bokraftDate ? 'normal' : 'muted';
+
+          const svcStatusText = (() => {
+            if (svcOverdue) {
+              const parts: string[] = [];
+              if (svcOverdueDays != null) parts.push(`${svcOverdueDays}d`);
+              if (svcOverdueKm != null) parts.push(`${svcOverdueKm.toLocaleString('de-DE')} km`);
+              return parts.length ? `−${parts.join(' / ')}` : 'Überfällig';
+            }
+            if (svcRemDays != null) {
+              if (svcRemDays <= 90) return `in ${svcRemDays} T`;
+              return `in ${svcRemMonths ?? Math.round(svcRemDays / 30)} M`;
+            }
+            if (service?.lastServiceDate) return `zuletzt ${new Date(service.lastServiceDate).toLocaleDateString('de-DE', { month: '2-digit', year: '2-digit' })}`;
+            return 'Kein Tracking';
+          })();
+          const svcSubText = (() => {
+            if (svcOverdue) return 'überfällig';
+            if (svcRemKm != null && svcRemKm >= 0) return `${svcRemKm.toLocaleString('de-DE')} km`;
+            if (service?.intervalMonths != null) return `Intervall ${service.intervalMonths} M`;
+            return 'Service';
+          })();
+
+          const tuvStatusText = (() => {
+            if (tuvOverdue && tuvDays != null) return `−${Math.abs(tuvDays)} T`;
+            if (tuvOverdue) return 'Abgelaufen';
+            if (tuvDate) return tuvDate;
+            return 'Kein Tracking';
+          })();
+          const tuvSubText = (() => {
+            if (tuvOverdue) return 'HU abgelaufen';
+            if (tuvDays != null && tuvDays >= 0) return `noch ${tuvDays} T`;
+            return 'Hauptuntersuchung';
+          })();
+
+          const bokraftStatusText = (() => {
+            if (bokraftOverdue && bokraftDays != null) return `−${Math.abs(bokraftDays)} T`;
+            if (bokraftOverdue) return 'Abgelaufen';
+            if (bokraftDate) return bokraftDate;
+            return 'Kein Tracking';
+          })();
+          const bokraftSubText = (() => {
+            if (bokraftOverdue) return 'BOKraft abgelaufen';
+            if (bokraftDays != null && bokraftDays >= 0) return `noch ${bokraftDays} T`;
+            return 'Personenbeförderung';
+          })();
+
+          const items: Array<{
+            key: string;
+            label: string;
+            icon: ReactNode;
+            tone: Tone;
+            status: string;
+            sub: string;
+          }> = [
+            {
+              key: 'service',
+              label: 'Service',
+              icon: <Icon name="wrench" className={`w-3 h-3 ${toneIcon(svcTone)}`} />,
+              tone: svcTone,
+              status: svcStatusText,
+              sub: svcSubText,
+            },
+            {
+              key: 'tuv',
+              label: 'TÜV',
+              icon: <Icon name="clipboard-list" className={`w-3 h-3 ${toneIcon(tuvTone)}`} />,
+              tone: tuvTone,
+              status: tuvStatusText,
+              sub: tuvSubText,
+            },
+            {
+              key: 'bokraft',
+              label: 'BOKraft',
+              icon: <Icon name="file-text" className={`w-3 h-3 ${toneIcon(bokraftTone)}`} />,
+              tone: bokraftTone,
+              status: bokraftStatusText,
+              sub: bokraftSubText,
+            },
+          ];
+
+          return items.map(it => (
+            <div
+              key={it.key}
+              className={`rounded-[10px] border px-2 py-1.5 transition-colors ${toneRing(it.tone)} ${it.tone === 'muted' ? 'opacity-80' : ''}`}
+            >
+              <div className="mb-1 flex items-center gap-1">
+                {it.icon}
+                <span className={`text-[10px] font-bold tracking-[-0.01em] ${toneTitle(it.tone)}`}>{it.label}</span>
+              </div>
+              <div className={`text-[10.5px] font-bold leading-none tabular-nums ${toneValue(it.tone)}`}>{it.status}</div>
+              <div className={`mt-0.5 truncate text-[9px] leading-none ${'text-muted-foreground'}`} title={it.sub}>
+                {it.sub}
+              </div>
+            </div>
+          ));
+        })()}
       </div>
 
       {divider}
@@ -666,23 +754,16 @@ function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, 
       <div className="pt-1">
         <button
           onClick={onViewDetails}
-          className={`group flex w-full items-center justify-between rounded-[12px] px-2.5 py-2 text-[11px] font-bold transition-[background-color,color,transform] duration-300 ease-[var(--ease-out-soft)] active:scale-[0.99] ${
-            dm
-              ? 'bg-blue-500/10 text-blue-300 hover:bg-blue-500/15'
-              : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-          }`}
+          className="group flex w-full items-center justify-between rounded-[12px] px-2.5 py-2 text-[11px] font-bold transition-[background-color,color,transform] duration-300 ease-[var(--ease-out-soft)] active:scale-[0.99] sq-tone-brand hover:opacity-90"
         >
           <span>View Health Details</span>
-          <span className={`flex h-5 w-5 items-center justify-center rounded-full transition-transform duration-300 ease-[var(--ease-out-soft)] group-hover:translate-x-0.5 ${
-            dm ? 'bg-blue-400/15' : 'bg-white/80'
-          }`}>
+          <span className="flex h-5 w-5 items-center justify-center rounded-full transition-transform duration-300 ease-[var(--ease-out-soft)] group-hover:translate-x-0.5 bg-[color:var(--card)]/70">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
               strokeLinecap="round" strokeLinejoin="round">
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </span>
         </button>
-      </div>
       </div>
     </div>
   );
@@ -713,7 +794,7 @@ function VehicleLiveTelemetryBinder({
   return null;
 }
 
-function VehicleConnectionBadge({ isDarkMode }: { isDarkMode: boolean }) {
+function VehicleConnectionBadge() {
   const { onlineStatus, lastSignal } = useVehicleLiveMapStore(
     useShallow((state) => ({
       onlineStatus: state.onlineStatus,
@@ -743,18 +824,16 @@ function VehicleConnectionBadge({ isDarkMode }: { isDarkMode: boolean }) {
   }
   const dotColor =
     connState === 'online'
-      ? 'text-green-500 fill-green-500 animate-online-pulse'
+      ? 'text-[color:var(--status-positive)] fill-[color:var(--status-positive)] animate-online-pulse'
       : connState === 'standby'
-      ? 'text-amber-500 fill-amber-500'
-      : 'text-gray-400 fill-gray-400';
+      ? 'text-[color:var(--status-watch)] fill-[color:var(--status-watch)]'
+      : 'text-muted-foreground fill-[color:var(--status-nodata)]';
   const labelColor =
     connState === 'online'
-      ? 'text-green-700'
+      ? 'text-[color:var(--status-positive)]'
       : connState === 'standby'
-      ? isDarkMode
-        ? 'text-amber-400'
-        : 'text-amber-600'
-      : 'text-gray-500';
+      ? 'text-[color:var(--status-watch)]'
+      : 'text-muted-foreground';
   const label =
     connState === 'online'
       ? 'Online'
@@ -765,23 +844,15 @@ function VehicleConnectionBadge({ isDarkMode }: { isDarkMode: boolean }) {
   return (
     <div className="flex items-center gap-2 px-2.5 py-1 rounded-md border border-border bg-card shadow-sm">
       <div className="flex items-center gap-1.5">
-        <Circle className={`w-2 h-2 ${dotColor}`} />
-        <span className={`text-[12px] font-semibold tracking-[-0.003em] ${labelColor}`}>{label}</span>
+        <Icon name="circle" className={`w-2 h-2 ${dotColor}`} />
+        <span className={`text-[10px] font-semibold tracking-[-0.003em] ${labelColor}`}>{label}</span>
       </div>
-      <div className={`w-px h-4 ${isDarkMode ? 'bg-gray-600' : 'bg-gray-300'}`}></div>
+      <div className="w-px h-4 bg-border"></div>
       <div className="flex items-center gap-1">
-        <span
-          className={`text-[10.5px] font-semibold ${
-            isDarkMode ? 'text-gray-400' : 'text-gray-500'
-          }`}
-        >
+        <span className="text-[10.5px] font-semibold text-muted-foreground">
           Last Signal
         </span>
-        <span
-          className={`text-[10.5px] font-bold tabular-nums ${
-            isDarkMode ? 'text-gray-200' : 'text-gray-900'
-          }`}
-        >
+        <span className="text-[10.5px] font-bold tabular-nums text-foreground">
           {timeAgo}
         </span>
       </div>
@@ -828,63 +899,53 @@ function OverviewLiveMapCard({
           isDarkMode={isDarkMode}
         />
 
-        <div className="absolute bottom-0 left-0 right-0 p-3 opacity-85 group-hover:opacity-100 transition-opacity duration-700 ease-[var(--ease-out-soft)]">
-          <div
-            className="sq-map-liquid-glass rounded-[18px] p-2.5"
-          >
+        <div className="absolute bottom-0 left-0 right-0 p-2 opacity-85 group-hover:opacity-100 transition-opacity duration-700 ease-[var(--ease-out-soft)]">
+          <div className="sq-map-liquid-glass rounded-xl p-1.5">
             {(() => {
               const stateLabel = liveTelemetry.displayState;
               const stateColor =
                 stateLabel === 'MOVING'
-                  ? isDarkMode
-                    ? 'text-green-400'
-                    : 'text-green-700'
+                  ? 'text-[color:var(--status-positive)]'
                   : stateLabel === 'IDLE'
-                  ? isDarkMode
-                    ? 'text-amber-400'
-                    : 'text-amber-600'
-                  : isDarkMode
-                  ? 'text-gray-400'
-                  : 'text-gray-500';
+                  ? 'text-[color:var(--status-watch)]'
+                  : 'text-muted-foreground';
               return (
-                <div className="grid grid-cols-3 gap-1.5">
-                  <div className="sq-map-liquid-tile flex flex-col items-center rounded-[12px] px-1 py-2">
-                    <Circle className="w-3.5 h-3.5 text-blue-500 mb-0.5" />
-                    <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                <div className="grid grid-cols-3 gap-1">
+                  <div className="sq-map-liquid-tile flex flex-col items-center justify-center rounded-[10px] px-1 py-1">
+                    <Icon name="circle" className={`w-2.5 h-2.5 mb-0.5 ${stateColor}`} />
+                    <span className={`text-[8px] mb-0 ${'text-muted-foreground'}`}>
                       State
                     </span>
-                    <span className={`text-sm font-bold ${stateColor}`}>{stateLabel}</span>
+                    <span className={`text-[10px] font-bold ${stateColor}`}>{stateLabel}</span>
                   </div>
 
-                  <div className="sq-map-liquid-tile flex flex-col items-center rounded-[12px] px-1 py-2">
-                    <Droplet
-                      className={`w-3.5 h-3.5 mb-0.5 ${
-                        selectedVehicle?.isElectric ? 'text-emerald-500' : 'text-green-500'
-                      }`}
+                  <div className="sq-map-liquid-tile flex flex-col items-center justify-center rounded-[10px] px-1 py-1">
+                    <Icon name="droplet"
+                      className="w-2.5 h-2.5 mb-0.5 text-[color:var(--status-positive)]"
                     />
-                    <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    <span className={`text-[8px] mb-0 ${'text-muted-foreground'}`}>
                       {selectedVehicle?.isElectric ? 'Energy' : 'Fuel'}
                     </span>
-                    <span className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <span className={`text-[10px] font-bold ${'text-foreground'}`}>
                       {Math.round(
                         selectedVehicle?.isElectric
                           ? (liveTelemetry.snapshot?.battery ?? selectedVehicle?.battery ?? 0)
                           : (liveTelemetry.snapshot?.fuel ?? selectedVehicle?.fuel ?? 0),
                       )}
-                      <span className="text-[10px] font-normal text-gray-500">%</span>
+                      <span className="text-[8px] font-normal text-muted-foreground">%</span>
                     </span>
                   </div>
 
-                  <div className="sq-map-liquid-tile flex flex-col items-center rounded-[12px] px-1 py-2">
-                    <Odometer className="w-3.5 h-3.5 text-gray-500 mb-0.5" />
-                    <span className={`text-[10px] mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <div className="sq-map-liquid-tile flex flex-col items-center justify-center rounded-[10px] px-1 py-1">
+                    <Icon name="gauge" className="w-2.5 h-2.5 text-muted-foreground mb-0.5" />
+                    <span className={`text-[8px] mb-0 ${'text-muted-foreground'}`}>
                       Odometer
                     </span>
-                    <span className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <span className={`text-[10px] font-bold ${'text-foreground'}`}>
                       {selectedVehicle
                         ? (liveTelemetry.snapshot?.odometer ?? selectedVehicle.odometer).toLocaleString('de-DE')
                         : '—'}{' '}
-                      <span className="text-[10px] font-normal text-gray-500">km</span>
+                      <span className="text-[8px] font-normal text-muted-foreground">km</span>
                     </span>
                   </div>
                 </div>
@@ -919,6 +980,53 @@ function VehicleHealthBoxTelemetryBridge({
   );
 }
 
+// V4.7.23 — Vehicle-Detail header health chip. Reads the canonical
+// Rental-Health-V1 status from the shared FleetProvider map so the
+// header pill never disagrees with FleetView, FleetCondition or the
+// Dashboard popups. Falls back to a neutral "Loading…" pill while the
+// batched health request is in flight.
+function VehicleHealthChip({ vehicleId }: { vehicleId: string | null }) {
+  const { status, health } = useEffectiveHealth(vehicleId);
+  const reasons: string[] = [];
+  if (health?.rental_blocked && health.blocking_reasons.length > 0) {
+    reasons.push(`Blocked: ${health.blocking_reasons.join(' · ')}`);
+  }
+  if (health) {
+    for (const [name, mod] of Object.entries(health.modules)) {
+      if (mod.state === 'critical' || mod.state === 'warning') {
+        reasons.push(`${name.replace(/_/g, ' ')}: ${mod.reason}`);
+      }
+    }
+  }
+  const title = reasons.join(' · ') || undefined;
+  if (status === 'Critical') {
+    return (
+      <span title={title} className="sq-chip sq-chip-critical">
+        <Icon name="heart" className="w-3 h-3" /> Critical
+      </span>
+    );
+  }
+  if (status === 'Warning') {
+    return (
+      <span title={title} className="sq-chip sq-chip-warning">
+        <Icon name="heart" className="w-3 h-3" /> Warning
+      </span>
+    );
+  }
+  if (status === 'Good Health') {
+    return (
+      <span title={title} className="sq-chip sq-chip-success">
+        <Icon name="heart" className="w-3 h-3" /> Good Health
+      </span>
+    );
+  }
+  return (
+    <span title="Loading rental health…" className="sq-chip sq-chip-neutral">
+      <Icon name="heart" className="w-3 h-3" /> Loading…
+    </span>
+  );
+}
+
 function RentalAppContent() {
   const { orgId } = useRentalOrg();
   const { fleetVehicles, loading: fleetLoading, refresh: refreshFleet } = useFleetVehicles();
@@ -929,7 +1037,7 @@ function RentalAppContent() {
   const [isCleaningDropdownOpen, setIsCleaningDropdownOpen] = useState(false);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [autoOpenNewTask, setAutoOpenNewTask] = useState(false);
-  const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-management' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'analytics' | 'rental-driving-analysis' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'vehicle-bookings' | 'vehicle-tasks' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'fleet-condition' | 'fleet-condition-detail' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'service-maintenance' | 'ai-voice-assistant'>('dashboard');
+  const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-management' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'vehicle-bookings' | 'vehicle-tasks' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'fleet-condition' | 'fleet-condition-detail' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant'>('dashboard');
   const [detailCustomer, setDetailCustomer] = useState<any>(null);
   const [detailVendorId, setDetailVendorId] = useState<string | null>(null);
   // V4.6.99 — Pending Booking-Detail-Id für die Cross-View-Navigation
@@ -938,8 +1046,7 @@ function RentalAppContent() {
   // konsumiert das Feld in einem useEffect und setzt anschliessend
   // `setPendingBookingDetailId(null)` über den Reset-Callback zurück.
   const [pendingBookingDetailId, setPendingBookingDetailId] = useState<string | null>(null);
-  const [settingsTab, setSettingsTab] = useState<'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization'>('company');
-  const [operationsTab, setOperationsTab] = useState<OperationsTab>('analytics');
+  const [settingsTab, setSettingsTab] = useState<'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents'>('company');
   const [conditionDrillVehicleId, setConditionDrillVehicleId] = useState<string | null>(null);
   const [conditionDrillCategory, setConditionDrillCategory] = useState<ConditionCategory>('tires');
   const [financeTab, setFinanceTab] = useState<FinanceTab>('invoices');
@@ -954,10 +1061,10 @@ function RentalAppContent() {
     selectedVehicle?.id && VEHICLE_DETAIL_VIEWS.has(currentView)
       ? selectedVehicle.id
       : null;
+  const showVehicleDetailChrome = VEHICLE_DETAIL_VIEWS.has(currentView);
   const [activeBookingRef, setActiveBookingRef] = useState<string | null>(null);
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(false);
   
   // Tariff state (shared between PriceTariffsView and NewBookingView)
   const [tariffs, setTariffs] = useState<VehicleTariff[]>([]);
@@ -982,35 +1089,25 @@ function RentalAppContent() {
   // Shared new bookings (created in NewBookingView, shown in BookingsView)
   const [createdBookings, setCreatedBookings] = useState<any[]>([]);
 
-  // Monotonic counter bumped whenever bookings are created / updated /
-  // cancelled. Persistent components (e.g. the RightSidebar calendar and
-  // schedule list) use this as a refetch trigger so newly created bookings
-  // with a today pickup/return show up immediately without a page reload.
-  // Also triggers a FleetContext refresh so the backend-derived vehicle
-  // status (Available/Reserved/Active Rented) reflects the new commitment
-  // state inside the next render instead of waiting up to 30s for the
-  // scheduled fleet poll to pick it up.
-  const [bookingsVersion, setBookingsVersion] = useState(0);
+  // Triggers a FleetContext refresh whenever bookings are created / updated /
+  // cancelled so the backend-derived vehicle status (Available/Reserved/
+  // Active Rented) reflects the new commitment state inside the next render
+  // instead of waiting up to 30s for the scheduled fleet poll to pick it up.
   const bumpBookingsVersion = () => {
-    setBookingsVersion(v => v + 1);
     refreshFleet().catch(() => {});
   };
 
   // V4.6.75 — HandoverProvider broadcasts `handover:completed` after the
-  // pickup or return protocol has been written. Bump bookingsVersion +
-  // refresh fleet so BookingsView, DashboardView and the RightSidebar
-  // reflect the new booking status + vehicle availability immediately.
+  // pickup or return protocol has been written. Refresh fleet so BookingsView
+  // and DashboardView reflect the new booking status + vehicle availability
+  // immediately.
   useEffect(() => {
     const onHandover = () => {
-      setBookingsVersion(v => v + 1);
       refreshFleet().catch(() => {});
     };
     window.addEventListener('handover:completed', onHandover as EventListener);
     return () => window.removeEventListener('handover:completed', onHandover as EventListener);
   }, [refreshFleet]);
-
-  // Hovered vehicle for cross-component highlighting (StatInlineDetail <-> RightSidebar)
-  const [hoveredVehicle, setHoveredVehicle] = useState<string | null>(null);
 
   // Station state
   const [isMapExpanded, setIsMapExpanded] = useState(false);
@@ -1156,13 +1253,14 @@ function RentalAppContent() {
         onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
       />
       <div className="flex-1 flex flex-col overflow-hidden pt-16 lg:pt-0">
-        {/* V4.6.86 — larger gutters + more breathable top/bottom rhythm. Max-width grows slightly
-            on ultra-wide screens so dashboards/tables don't cramp against the right sidebar. */}
-        <div className="flex-1 overflow-auto px-5 sm:px-7 lg:px-[50px] pt-4 lg:pt-6 pb-8 text-foreground">
+        {/* Larger gutters + breathable top/bottom rhythm. The content column is
+            centered (mx-auto) inside the full remaining width so the left/right
+            margins stay symmetric now that the right sidebar is gone. */}
+        <div className="flex-1 overflow-auto px-5 sm:px-7 lg:px-[100px] pt-4 lg:pt-6 pb-8 text-foreground">
           <div className="max-w-[1440px] mx-auto text-[13px]">
             <TopBar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} currentView={currentView} settingsTab={settingsTab} selectedVehicle={selectedVehicle} activeBookingRef={activeBookingRef} detailCustomerId={detailCustomerId} onViewChange={setCurrentView} onVehicleSelect={setSelectedVehicle} onSettingsTabChange={setSettingsTab} onFinanceTabChange={setFinanceTab} onTasksTabChange={setTasksSectionTab} />
-        {/* Header Section - Only show for overview and trips views */}
-        {currentView !== 'dashboard' && currentView !== 'bookings' && currentView !== 'fleet' && currentView !== 'customers' && currentView !== 'customer-detail' && currentView !== 'tasks' && currentView !== 'invoices' && currentView !== 'fines' && currentView !== 'price-tariffs' && currentView !== 'analytics' && currentView !== 'settings' && currentView !== 'new-booking' && currentView !== 'stations' && currentView !== 'fleet-condition' && currentView !== 'document-upload' && currentView !== 'ai-assistant' && currentView !== 'support' && currentView !== 'help-center' && currentView !== 'workflow-automation' && currentView !== 'whatsapp-business' && currentView !== 'parts-accessories' && currentView !== 'ai-voice-assistant' && (
+        {/* Header Section - Only show for vehicle detail views */}
+        {showVehicleDetailChrome && (
         <div className="mb-3 animate-fade-up">
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 min-w-0">
@@ -1172,7 +1270,7 @@ function RentalAppContent() {
                 title="Back to Fleet"
                 aria-label="Back to Fleet"
               >
-                <ArrowLeft className="w-4 h-4" />
+                <Icon name="arrow-left" className="w-4 h-4" />
               </button>
               <div className="flex items-center justify-center shrink-0" style={{ width: 28, height: 28 }}>
                 <BrandLogo
@@ -1181,7 +1279,7 @@ function RentalAppContent() {
                   isDarkMode={isDarkMode}
                 />
               </div>
-              <h1 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground truncate">
+              <h1 className="text-[12px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground truncate">
                 {selectedVehicle ? `${selectedVehicle.make ?? ''} ${selectedVehicle.model} ${selectedVehicle.year}`.trim() : '—'}
               </h1>
 
@@ -1215,14 +1313,14 @@ function RentalAppContent() {
                   }`}
                 >
                   {vehicleStatus === 'Available' ? (
-                    <CheckCircle className="w-3 h-3" />
+                    <Icon name="check-circle" className="w-3 h-3" />
                   ) : vehicleStatus === 'Manual Block' ? (
-                    <XCircle className="w-3 h-3" />
+                    <Icon name="x-circle" className="w-3 h-3" />
                   ) : (
-                    <Wrench className="w-3 h-3" />
+                    <Icon name="wrench" className="w-3 h-3" />
                   )}
                   {vehicleStatus}
-                  <ChevronDown className={`w-3 h-3 ml-0.5 transition-transform duration-200 ${isStatusDropdownOpen ? 'rotate-180' : ''}`} />
+                  <Icon name="chevron-down" className={`w-3 h-3 ml-0.5 transition-transform duration-200 ${isStatusDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
                 
                 {isStatusDropdownOpen && (
@@ -1231,21 +1329,21 @@ function RentalAppContent() {
                       onClick={() => handleVehicleStatusChange('Available')}
                       className="w-full px-2.5 py-2 flex items-center gap-2 rounded-lg hover:bg-muted transition-colors text-left"
                     >
-                      <CheckCircle className="w-3.5 h-3.5 text-[color:var(--status-positive)]" />
+                      <Icon name="check-circle" className="w-3.5 h-3.5 text-[color:var(--status-positive)]" />
                       <span className="text-[12px] font-medium text-foreground">Available</span>
                     </button>
                     <button
                       onClick={() => handleVehicleStatusChange('Manual Block')}
                       className="w-full px-2.5 py-2 flex items-center gap-2 rounded-lg hover:bg-muted transition-colors text-left"
                     >
-                      <XCircle className="w-3.5 h-3.5 text-[color:var(--status-critical)]" />
+                      <Icon name="x-circle" className="w-3.5 h-3.5 text-[color:var(--status-critical)]" />
                       <span className="text-[12px] font-medium text-foreground">Manual Block</span>
                     </button>
                     <button
                       onClick={() => handleVehicleStatusChange('Maintenance')}
                       className="w-full px-2.5 py-2 flex items-center gap-2 rounded-lg hover:bg-muted transition-colors text-left"
                     >
-                      <Wrench className="w-3.5 h-3.5 text-[color:var(--status-attention)]" />
+                      <Icon name="wrench" className="w-3.5 h-3.5 text-[color:var(--status-attention)]" />
                       <span className="text-[12px] font-medium text-foreground">Maintenance</span>
                     </button>
                   </div>
@@ -1258,9 +1356,9 @@ function RentalAppContent() {
                   onClick={() => setIsCleaningDropdownOpen(!isCleaningDropdownOpen)}
                   className={`sq-press sq-chip ${cleaningStatus === 'Clean' ? 'sq-chip-info' : 'sq-chip-critical'}`}
                 >
-                  <Sparkles className="w-3 h-3" />
+                  <Icon name="sparkles" className="w-3 h-3" />
                   {cleaningStatus}
-                  <ChevronDown className={`w-3 h-3 ml-0.5 transition-transform duration-200 ${isCleaningDropdownOpen ? 'rotate-180' : ''}`} />
+                  <Icon name="chevron-down" className={`w-3 h-3 ml-0.5 transition-transform duration-200 ${isCleaningDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {isCleaningDropdownOpen && (
@@ -1269,39 +1367,30 @@ function RentalAppContent() {
                       onClick={() => handleCleaningStatusChange('Clean')}
                       className="w-full px-2.5 py-2 flex items-center gap-2 rounded-lg hover:bg-muted transition-colors text-left"
                     >
-                      <Sparkles className="w-3.5 h-3.5 text-[color:var(--status-info)]" />
+                      <Icon name="sparkles" className="w-3.5 h-3.5 text-[color:var(--status-info)]" />
                       <span className="text-[12px] font-medium text-foreground">Clean</span>
                     </button>
                     <button
                       onClick={() => handleCleaningStatusChange('Needs Cleaning')}
                       className="w-full px-2.5 py-2 flex items-center gap-2 rounded-lg hover:bg-muted transition-colors text-left"
                     >
-                      <AlertTriangle className="w-3.5 h-3.5 text-[color:var(--status-critical)]" />
+                      <Icon name="alert-triangle" className="w-3.5 h-3.5 text-[color:var(--status-critical)]" />
                       <span className="text-[12px] font-medium text-foreground">Needs Cleaning</span>
                     </button>
                   </div>
                 )}
                 </div>
 
-                <span className={`sq-chip ${
-                  selectedVehicle?.healthStatus === 'Critical'
-                    ? 'sq-chip-critical'
-                    : selectedVehicle?.healthStatus === 'Warning'
-                      ? 'sq-chip-warning'
-                      : 'sq-chip-success'
-                }`}>
-                  <Heart className="w-3 h-3" />
-                  {selectedVehicle?.healthStatus || 'Good Health'}
-                </span>
+                <VehicleHealthChip vehicleId={selectedVehicle?.id ?? null} />
               </div>
             </div>
-            <VehicleConnectionBadge isDarkMode={isDarkMode} />
+            <VehicleConnectionBadge />
           </div>
         </div>
         )}
 
         {/* Tab Navigation - Only show for vehicle detail views */}
-        {currentView !== 'dashboard' && currentView !== 'bookings' && currentView !== 'fleet' && currentView !== 'customers' && currentView !== 'customer-detail' && currentView !== 'tasks' && currentView !== 'invoices' && currentView !== 'fines' && currentView !== 'price-tariffs' && currentView !== 'analytics' && currentView !== 'settings' && currentView !== 'new-booking' && currentView !== 'stations' && currentView !== 'fleet-condition' && currentView !== 'document-upload' && currentView !== 'ai-assistant' && currentView !== 'support' && currentView !== 'help-center' && currentView !== 'workflow-automation' && currentView !== 'whatsapp-business' && currentView !== 'parts-accessories' && currentView !== 'ai-voice-assistant' && (
+        {showVehicleDetailChrome && (
         <div className="mb-4">
           <div className="sq-tab-bar p-1 flex items-center w-full">
             <div className="flex flex-nowrap gap-0.5 flex-1 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -1317,7 +1406,7 @@ function RentalAppContent() {
                 <button
                   key={tab.key}
                   onClick={() => setCurrentView(tab.key as typeof currentView)}
-                  className={`px-3.5 py-1.5 rounded-[calc(var(--radius-md)-2px)] text-[12px] leading-[16.2px] font-semibold tracking-[-0.003em] whitespace-nowrap transition-all duration-200 ${
+                  className={`px-3.5 py-1.5 rounded-[calc(var(--radius-md)-2px)] text-[11px] leading-[16.2px] font-semibold tracking-[-0.003em] whitespace-nowrap transition-all duration-200 ${
                     currentView === tab.key
                       ? 'bg-card text-foreground shadow-[var(--shadow-1)]'
                       : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
@@ -1337,14 +1426,8 @@ function RentalAppContent() {
             <div className="rounded-lg px-2.5 py-1 border border-border bg-card shadow-sm flex items-center justify-end gap-2">
               {/* Trip Counter - Only show on Trips view */}
               {currentView === 'trips' && (
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-200 mr-auto ${
-                  isDarkMode 
-                    ? 'bg-blue-900/30 border-blue-700/50' 
-                    : 'bg-blue-50/80 border-blue-200/50'
-                }`}>
-                  <span className={`text-xs font-bold ${
-                    isDarkMode ? 'text-blue-300' : 'text-blue-700'
-                  }`}>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-transparent sq-tone-info mr-auto">
+                  <span className="text-xs font-bold">
                     {tripsCount} {tripsCount === 1 ? 'Trip' : 'Trips'}
                   </span>
                 </div>
@@ -1356,24 +1439,12 @@ function RentalAppContent() {
                   onClick={() => setIsDateDropdownOpen(!isDateDropdownOpen)}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-200 ${
                     selectedDate
-                      ? isDarkMode
-                        ? 'bg-green-900/30 border-green-700/50 ring-2 ring-green-500/20'
-                        : 'bg-green-50/80 border-green-300/50 ring-2 ring-green-400/20'
-                      : isDarkMode 
-                        ? 'bg-neutral-800/60 border-neutral-700/50 hover:bg-neutral-800' 
-                        : 'bg-white/60 border-gray-200/50 hover:bg-white'
+                      ? 'bg-[color:var(--brand-soft)] border-transparent text-[color:var(--brand-ink)] ring-1 ring-[color:var(--brand-soft)]'
+                      : 'bg-card border-border text-foreground hover:bg-muted'
                   }`}
                 >
-                  <Calendar className={`w-4 h-4 ${
-                    selectedDate
-                      ? isDarkMode ? 'text-green-400' : 'text-green-600'
-                      : isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                  }`} />
-                  <span className={`text-xs font-medium ${
-                    selectedDate
-                      ? isDarkMode ? 'text-green-300' : 'text-green-700'
-                      : isDarkMode ? 'text-gray-200' : 'text-gray-900'
-                  }`}>
+                  <Icon name="calendar" className={`w-4 h-4 ${selectedDate ? 'text-[color:var(--brand)]' : 'text-muted-foreground'}`} />
+                  <span className="text-xs font-medium">
                     {selectedDate ? (() => {
                       // V4.6.71 — Parse as LOCAL date: `new Date("2026-04-19")`
                       // interprets YYYY-MM-DD as UTC midnight per ES spec, which
@@ -1384,11 +1455,7 @@ function RentalAppContent() {
                       return new Date(y, (m || 1) - 1, d || 1).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                     })() : 'All Time'}
                   </span>
-                  <ChevronDown className={`w-3.5 h-3.5 ${
-                    selectedDate
-                      ? isDarkMode ? 'text-green-400' : 'text-green-600'
-                      : isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                  }`} />
+                  <Icon name="chevron-down" className={`w-3.5 h-3.5 ${selectedDate ? 'text-[color:var(--brand)]' : 'text-muted-foreground'}`} />
                 </button>
 
                 {isDateDropdownOpen && (
@@ -1400,11 +1467,7 @@ function RentalAppContent() {
                         setSelectedDate(e.target.value);
                         setIsDateDropdownOpen(false);
                       }}
-                      className={`px-3 py-2 rounded-lg border outline-none text-sm font-medium ${
-                        isDarkMode
-                          ? 'bg-neutral-800 border-neutral-700 text-gray-200'
-                          : 'bg-white border-gray-200 text-gray-900'
-                      }`}
+                      className="px-3 py-2 rounded-lg border border-border bg-[color:var(--input-background)] text-foreground outline-none text-sm font-medium"
                     />
                   </div>
                 )}
@@ -1416,31 +1479,15 @@ function RentalAppContent() {
                   onClick={() => setIsDriverDropdownOpen(!isDriverDropdownOpen)}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-200 ${
                     selectedDriver !== 'all'
-                      ? isDarkMode
-                        ? 'bg-green-900/30 border-green-700/50 ring-2 ring-green-500/20'
-                        : 'bg-green-50/80 border-green-300/50 ring-2 ring-green-400/20'
-                      : isDarkMode 
-                        ? 'bg-neutral-800/60 border-neutral-700/50 hover:bg-neutral-800' 
-                        : 'bg-white/60 border-gray-200/50 hover:bg-white'
+                      ? 'bg-[color:var(--brand-soft)] border-transparent text-[color:var(--brand-ink)] ring-1 ring-[color:var(--brand-soft)]'
+                      : 'bg-card border-border text-foreground hover:bg-muted'
                   }`}
                 >
-                  <User className={`w-4 h-4 ${
-                    selectedDriver !== 'all'
-                      ? isDarkMode ? 'text-green-400' : 'text-green-600'
-                      : isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                  }`} />
-                  <span className={`text-xs font-medium ${
-                    selectedDriver !== 'all'
-                      ? isDarkMode ? 'text-green-300' : 'text-green-700'
-                      : isDarkMode ? 'text-gray-200' : 'text-gray-900'
-                  }`}>
+                  <Icon name="user" className={`w-4 h-4 ${selectedDriver !== 'all' ? 'text-[color:var(--brand)]' : 'text-muted-foreground'}`} />
+                  <span className="text-xs font-medium">
                     {selectedDriver === 'all' ? 'All Drivers' : selectedDriver}
                   </span>
-                  <ChevronDown className={`w-3.5 h-3.5 ${
-                    selectedDriver !== 'all'
-                      ? isDarkMode ? 'text-green-400' : 'text-green-600'
-                      : isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                  }`} />
+                  <Icon name="chevron-down" className={`w-3.5 h-3.5 ${selectedDriver !== 'all' ? 'text-[color:var(--brand)]' : 'text-muted-foreground'}`} />
                 </button>
 
                 {isDriverDropdownOpen && (
@@ -1452,14 +1499,10 @@ function RentalAppContent() {
                           setSelectedDriver(driver);
                           setIsDriverDropdownOpen(false);
                         }}
-                        className={`w-full px-4 py-2.5 text-left text-sm font-medium transition-colors border-b last:border-b-0 ${
+                        className={`w-full px-4 py-2.5 text-left text-sm font-medium transition-colors border-b border-border/60 last:border-b-0 ${
                           selectedDriver === driver
-                            ? isDarkMode
-                              ? 'bg-blue-600/20 text-blue-400 border-neutral-700/50'
-                              : 'bg-blue-50 text-blue-600 border-gray-200/50'
-                            : isDarkMode
-                              ? 'text-gray-300 hover:bg-neutral-800 border-neutral-700/50'
-                              : 'text-gray-700 hover:bg-gray-50 border-gray-200/50'
+                            ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
+                            : 'text-foreground hover:bg-muted'
                         }`}
                       >
                         {driver === 'all' ? 'All Drivers' : driver}
@@ -1473,13 +1516,9 @@ function RentalAppContent() {
               {hasActiveFilters && (
                 <button
                   onClick={clearFilters}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all duration-200 ${
-                    isDarkMode 
-                      ? 'bg-red-900/30 border-red-700/50 hover:bg-red-900/50 text-red-400 hover:text-red-300' 
-                      : 'bg-red-50/80 border-red-200/50 hover:bg-red-100 text-red-600 hover:text-red-700'
-                  }`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-transparent transition-all duration-200 sq-tone-critical hover:opacity-90"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <Icon name="x" className="w-3.5 h-3.5" />
                   <span className="text-xs font-medium">Clear</span>
                 </button>
               )}
@@ -1512,7 +1551,6 @@ function RentalAppContent() {
           <DashboardView
             isDarkMode={isDarkMode}
             onVehicleSelect={(vehicle) => { setSelectedVehicle(vehicle); setCurrentView('overview'); }}
-            onItemHover={setHoveredVehicle}
             onOpenVehicleById={(vehicleId) => {
               const v = fleetVehicles.find((fv) => fv.id === vehicleId);
               if (v) { setSelectedVehicle(v); setCurrentView('overview'); }
@@ -1540,8 +1578,6 @@ function RentalAppContent() {
           }} initialDetailBookingId={pendingBookingDetailId} onConsumeInitialDetailBookingId={() => setPendingBookingDetailId(null)} />
         ) : currentView === 'health-errors' ? (
           <HealthErrorsView isDarkMode={isDarkMode} vehicleId={selectedVehicle?.id} fuelType={selectedVehicle?.fuelType} />
-        ) : currentView === 'rental-driving-analysis' ? (
-          <RentalDrivingAnalysisView isDarkMode={isDarkMode} />
         ) : currentView === 'financial-insights' ? (
           /* V4.6.93 — Standalone Financial Insights page (replacement for the
              retired Dashboard Finances tab). Aggregates real invoice data
@@ -1555,9 +1591,9 @@ function RentalAppContent() {
         ) : currentView === 'documents' ? (
           <DocumentsView isDarkMode={isDarkMode} vehicle={selectedVehicle} />
         ) : currentView === 'vehicle-bookings' ? (
-          <VehicleBookingsView isDarkMode={isDarkMode} vehicleName={selectedVehicle?.model} />
+          <VehicleBookingsView isDarkMode={isDarkMode} vehicle={selectedVehicle} />
         ) : currentView === 'vehicle-tasks' ? (
-          <VehicleTasksView isDarkMode={isDarkMode} />
+          <VehicleTasksView isDarkMode={isDarkMode} vehicle={selectedVehicle} />
         ) : currentView === 'customers' ? (
           <CustomersView isDarkMode={isDarkMode} onOpenCustomerDetail={(c) => { setDetailCustomer(c); setCurrentView('customer-detail'); }} additionalCustomers={newlyCreatedCustomers} />
         ) : currentView === 'customer-detail' && detailCustomer ? (
@@ -1599,14 +1635,10 @@ function RentalAppContent() {
             category={conditionDrillCategory}
             onBack={() => setCurrentView('fleet-condition')}
           />
-        ) : currentView === 'analytics' || currentView === 'fleet-condition' ? (
-          <OperationsView
+        ) : currentView === 'fleet-condition' ? (
+          <FleetConditionView
             isDarkMode={isDarkMode}
-            activeTab={currentView as OperationsTab}
-            onTabChange={(tab) => setCurrentView(tab)}
-            tariffs={tariffs}
-            onTariffsChange={setTariffs}
-            onConditionDrillDown={(vehicleId, category) => {
+            onDrillDown={(vehicleId, category) => {
               setConditionDrillVehicleId(vehicleId);
               setConditionDrillCategory(category);
               setCurrentView('fleet-condition-detail');
@@ -1629,8 +1661,6 @@ function RentalAppContent() {
             const v = fleetVehicles.find((fv: any) => fv.id === vehicleId);
             if (v) { setSelectedVehicle(v); setCurrentView('documents'); }
           }} />
-        ) : currentView === 'service-maintenance' ? (
-          <ServiceMaintenanceView isDarkMode={isDarkMode} />
         ) : currentView === 'ai-voice-assistant' ? (
           <VoiceAssistantView isDarkMode={isDarkMode} />
         ) : currentView === 'help-center' ? (
@@ -1684,39 +1714,6 @@ function RentalAppContent() {
         </div>
       </div>
 
-      {/* Right Sidebar - Always visible */}
-      <RightSidebar 
-        isDarkMode={isDarkMode} 
-        highlightedVehicle={hoveredVehicle}
-        orgId={orgId}
-        fleetVehicles={fleetVehicles}
-        bookingsVersion={bookingsVersion}
-        onTaskClick={(taskId) => {
-          setCurrentView('tasks');
-          setTasksSectionTab('tasks');
-          setHighlightedTaskId(taskId);
-        }}
-        onVehicleAlertClick={(vehicleId) => {
-          const vehicle = fleetVehicles.find(v => v.id === vehicleId);
-          if (vehicle) {
-            setSelectedVehicle(vehicle);
-            setCurrentView('health-errors');
-          }
-        }}
-        onSchedulePickupReturnClick={() => {
-          setCurrentView('bookings');
-        }}
-        onScheduleMaintenanceClick={(vehicleId) => {
-          const vehicle = fleetVehicles.find(v => v.id === vehicleId);
-          if (vehicle) {
-            setSelectedVehicle(vehicle);
-            setCurrentView('health-errors');
-          }
-        }}
-        isCollapsed={isRightSidebarCollapsed}
-        onToggleCollapse={() => setIsRightSidebarCollapsed(prev => !prev)}
-      />
-      
       {/* New Task Modal */}
       <NewTaskModal 
         isOpen={isNewTaskModalOpen} 
@@ -1729,8 +1726,8 @@ function RentalAppContent() {
         <div className="fixed inset-0 sq-backdrop flex items-center justify-center z-[100]">
           <div className="max-w-md w-full mx-4 rounded-xl p-6 shadow-xl border border-border bg-card">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5 text-yellow-600" />
+              <div className="w-10 h-10 rounded-full sq-tone-watch flex items-center justify-center shrink-0">
+                <Icon name="alert-triangle" className="w-5 h-5" />
               </div>
               <h3 className="text-base font-semibold text-foreground font-display">
                 Cleaning Task Required
@@ -1748,7 +1745,7 @@ function RentalAppContent() {
               </button>
               <button
                 onClick={confirmCleaningChange}
-                className="flex-1 px-3 py-2 bg-yellow-600 text-white rounded-md font-semibold hover:bg-yellow-700 transition-all duration-200 shadow-sm sq-press"
+                className="flex-1 px-3 py-2 rounded-md font-semibold text-white transition-all duration-200 shadow-sm sq-press bg-[color:var(--status-watch)] hover:opacity-90"
               >
                 Create Task
               </button>
@@ -1763,12 +1760,12 @@ function RentalAppContent() {
           <div className="max-w-md w-full mx-4 rounded-xl p-6 shadow-xl border border-border bg-card">
             <div className="flex items-center gap-3 mb-3">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                pendingStatus === 'Manual Block' ? 'bg-red-100' : 'bg-orange-100'
+                pendingStatus === 'Manual Block' ? 'sq-tone-critical' : 'sq-tone-warning'
               }`}>
                 {pendingStatus === 'Manual Block' ? (
-                  <XCircle className="w-5 h-5 text-red-600" />
+                  <Icon name="x-circle" className="w-5 h-5" />
                 ) : (
-                  <Wrench className="w-5 h-5 text-orange-600" />
+                  <Icon name="wrench" className="w-5 h-5" />
                 )}
               </div>
               <h3 className="text-base font-semibold text-foreground font-display">
@@ -1792,10 +1789,10 @@ function RentalAppContent() {
               </button>
               <button
                 onClick={confirmStatusChange}
-                className={`flex-1 px-3 py-2 text-white rounded-md font-semibold transition-all duration-200 shadow-sm sq-press ${
+                className={`flex-1 px-3 py-2 text-white rounded-md font-semibold transition-all duration-200 shadow-sm sq-press hover:opacity-90 ${
                   pendingStatus === 'Manual Block'
-                    ? 'bg-red-600 hover:bg-red-700'
-                    : 'bg-orange-600 hover:bg-orange-700'
+                    ? 'bg-[color:var(--status-critical)]'
+                    : 'bg-[color:var(--status-warning)]'
                 }`}
               >
                 Confirm
@@ -1810,8 +1807,8 @@ function RentalAppContent() {
         <div className="fixed inset-0 sq-backdrop flex items-center justify-center z-[100]">
           <div className="max-w-md w-full mx-4 rounded-xl p-6 shadow-xl border border-border bg-card">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                <MapPin className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 rounded-full sq-tone-brand flex items-center justify-center shrink-0">
+                <Icon name="map-pin" className="w-5 h-5" />
               </div>
               <h3 className="text-base font-semibold text-foreground font-display">
                 Relocate Vehicle
@@ -1832,7 +1829,7 @@ function RentalAppContent() {
               </button>
               <button
                 onClick={confirmStationChange}
-                className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 transition-all duration-200 shadow-sm sq-press"
+                className="flex-1 px-3 py-2 rounded-md font-semibold text-brand-foreground transition-all duration-200 shadow-sm sq-press bg-brand hover:bg-[color:var(--brand-hover)]"
               >
                 Confirm Relocation
               </button>

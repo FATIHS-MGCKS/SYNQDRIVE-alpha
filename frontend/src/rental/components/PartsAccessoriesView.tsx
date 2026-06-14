@@ -1,9 +1,7 @@
+import { Circle, Package, Wrench } from 'lucide-react';
+import { Icon } from './ui/Icon';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  Search, ChevronRight, ChevronLeft, Check, Circle, Wrench, Package,
-  Loader2, ShieldCheck, ExternalLink, X, Star, Truck, Filter, ArrowUpDown,
-  AlertCircle, Info, Car, CreditCard, Eye, ChevronDown,
-} from 'lucide-react';
+
 import { api } from '../../lib/api';
 import type {
   PartsProviderSummary,
@@ -297,7 +295,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                 !isDone && !isActive && (dk ? 'text-white/30' : 'text-gray-400'),
               )}
             >
-              {isDone ? <Check className="w-3 h-3" /> : <span className="w-4 text-center">{s}</span>}
+              {isDone ? <Icon name="check" className="w-3 h-3" /> : <span className="w-4 text-center">{s}</span>}
               <span className="hidden sm:inline">{label}</span>
             </button>
           </div>
@@ -316,7 +314,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
       )}>
         {selectedVehicle && (
           <span className="flex items-center gap-1">
-            <Car className="w-3 h-3" />
+            <Icon name="car" className="w-3 h-3" />
             {selectedVehicle.make} {selectedVehicle.model} {selectedVehicle.year} — {selectedVehicle.license}
           </span>
         )}
@@ -327,7 +325,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
         )}
         {selectedProvider && step > 3 && (
           <span className="flex items-center gap-1">
-            <Truck className="w-3 h-3" /> {selectedProvider.displayName}
+            <Icon name="truck" className="w-3 h-3" /> {selectedProvider.displayName}
           </span>
         )}
       </div>
@@ -346,7 +344,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
         </p>
       </div>
       <div className="relative">
-        <Search className={cls('absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4', dk ? 'text-white/40' : 'text-gray-400')} />
+        <Icon name="search" className={cls('absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4', dk ? 'text-white/40' : 'text-gray-400')} />
         <input
           value={vehicleSearch}
           onChange={(e) => setVehicleSearch(e.target.value)}
@@ -367,7 +365,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
         </div>
       ) : filteredVehicles.length === 0 ? (
         <div className={cls('text-center py-16', dk ? 'text-white/40' : 'text-gray-400')}>
-          <Car className="w-10 h-10 mx-auto mb-2 opacity-40" />
+          <Icon name="car" className="w-10 h-10 mx-auto mb-2 opacity-40" />
           <p className="text-sm">No vehicles found</p>
         </div>
       ) : (
@@ -395,7 +393,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   </div>
                   {selected && (
                     <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center shrink-0">
-                      <Check className="w-3 h-3 text-white" />
+                      <Icon name="check" className="w-3 h-3 text-white" />
                     </div>
                   )}
                 </div>
@@ -475,7 +473,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
         </div>
       ) : filteredProviders.length === 0 ? (
         <div className={cls('text-center py-16', dk ? 'text-white/40' : 'text-gray-400')}>
-          <Truck className="w-10 h-10 mx-auto mb-2 opacity-40" />
+          <Icon name="truck" className="w-10 h-10 mx-auto mb-2 opacity-40" />
           <p className="text-sm font-medium">No providers available</p>
           <p className="text-xs mt-1">No enabled providers support {selectedCategory || 'this category'}.</p>
         </div>
@@ -509,7 +507,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   </div>
                   {selected && (
                     <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center shrink-0 ml-2">
-                      <Check className="w-3 h-3 text-white" />
+                      <Icon name="check" className="w-3 h-3 text-white" />
                     </div>
                   )}
                 </div>
@@ -566,7 +564,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               'w-10 h-10 rounded-xl flex items-center justify-center',
               dk ? 'bg-blue-500/20' : 'bg-blue-50',
             )}>
-              <ShieldCheck className={cls('w-5 h-5', dk ? 'text-blue-400' : 'text-blue-600')} />
+              <Icon name="shield-check" className={cls('w-5 h-5', dk ? 'text-blue-400' : 'text-blue-600')} />
             </div>
             <div>
               <p className={cls('font-semibold', dk ? 'text-white' : 'text-gray-900')}>
@@ -606,7 +604,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                       dk ? 'bg-white/[0.03]' : 'bg-gray-50',
                     )}
                   >
-                    <Info className={cls('w-3.5 h-3.5 mt-0.5 shrink-0', dk ? 'text-blue-400/60' : 'text-blue-500/60')} />
+                    <Icon name="info" className={cls('w-3.5 h-3.5 mt-0.5 shrink-0', dk ? 'text-blue-400/60' : 'text-blue-500/60')} />
                     <div>
                       <span className={cls('font-medium', dk ? 'text-white/80' : 'text-gray-800')}>{field}</span>
                       {disclosedFields.descriptions[field] && (
@@ -627,7 +625,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               'flex items-center gap-3 px-4 py-3 rounded-xl',
               dk ? 'bg-white/[0.04]' : 'bg-gray-50',
             )}>
-              <Car className={cls('w-4 h-4', dk ? 'text-white/40' : 'text-gray-400')} />
+              <Icon name="car" className={cls('w-4 h-4', dk ? 'text-white/40' : 'text-gray-400')} />
               <span className={cls('text-sm', dk ? 'text-white/70' : 'text-gray-700')}>
                 {selectedVehicle.make} {selectedVehicle.model} {selectedVehicle.year} — {selectedVehicle.license}
               </span>
@@ -655,7 +653,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   : dk ? 'border-white/20 bg-white/[0.04]' : 'border-gray-300 bg-white',
               )}
             >
-              {authorized && <Check className="w-3 h-3 text-white" />}
+              {authorized && <Icon name="check" className="w-3 h-3 text-white" />}
             </div>
             <span
               onClick={() => setAuthorized(!authorized)}
@@ -686,7 +684,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   : dk ? 'bg-white/[0.06] text-white/30 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed',
               )}
             >
-              {confirmLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {confirmLoading && <Icon name="loader-2" className="w-4 h-4 animate-spin" />}
               Confirm & Search
             </button>
           </div>
@@ -720,7 +718,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
           {/* Sort */}
           <div className="relative">
             <div className="flex items-center gap-2">
-              <ArrowUpDown className={cls('w-3.5 h-3.5', dk ? 'text-white/40' : 'text-gray-400')} />
+              <Icon name="arrow-up-down" className={cls('w-3.5 h-3.5', dk ? 'text-white/40' : 'text-gray-400')} />
               <select
                 value={sortBy}
                 onChange={(e) => handleSort(e.target.value as SortOption)}
@@ -744,7 +742,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
           </div>
         ) : !searchResults || searchResults.results.length === 0 ? (
           <div className={cls('text-center py-20', dk ? 'text-white/40' : 'text-gray-400')}>
-            <Search className="w-10 h-10 mx-auto mb-3 opacity-40" />
+            <Icon name="search" className="w-10 h-10 mx-auto mb-3 opacity-40" />
             <p className="font-medium">No products found</p>
             <p className="text-xs mt-1">Try adjusting your vehicle or category selection.</p>
           </div>
@@ -767,7 +765,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                         'h-40 flex items-center justify-center',
                         dk ? 'bg-white/[0.04]' : 'bg-gray-50',
                       )}>
-                        <Package className={cls('w-10 h-10', dk ? 'text-white/15' : 'text-gray-300')} />
+                        <Icon name="package" className={cls('w-10 h-10', dk ? 'text-white/15' : 'text-gray-300')} />
                       </div>
                     )}
 
@@ -819,7 +817,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                             dk ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30' : 'bg-blue-50 text-blue-600 hover:bg-blue-100',
                           )}
                         >
-                          <Eye className="w-3 h-3" /> Details
+                          <Icon name="eye" className="w-3 h-3" /> Details
                         </button>
                       </div>
                     </div>
@@ -839,7 +837,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                     dk ? 'bg-white/[0.06] text-white/70 hover:bg-white/[0.1]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
                   )}
                 >
-                  {searchLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ChevronDown className="w-4 h-4" />}
+                  {searchLoading ? <Icon name="loader-2" className="w-4 h-4 animate-spin" /> : <Icon name="chevron-down" className="w-4 h-4" />}
                   Load More
                 </button>
               </div>
@@ -871,7 +869,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               dk ? 'bg-white/[0.06] text-white/60 hover:bg-white/[0.1]' : 'bg-gray-100 text-gray-500 hover:bg-gray-200',
             )}
           >
-            <X className="w-4 h-4" />
+            <Icon name="x" className="w-4 h-4" />
           </button>
 
           {detailLoading ? (
@@ -901,7 +899,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   'h-56 rounded-2xl flex items-center justify-center',
                   dk ? 'bg-white/[0.04]' : 'bg-gray-50',
                 )}>
-                  <Package className={cls('w-16 h-16', dk ? 'text-white/10' : 'text-gray-200')} />
+                  <Icon name="package" className={cls('w-16 h-16', dk ? 'text-white/10' : 'text-gray-200')} />
                 </div>
               )}
 
@@ -949,7 +947,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                 {(() => { const f = fitmentBadge(detailProduct.fitmentStatus, dk); return <span className={cls('px-3 py-1 rounded-full text-xs font-medium', f.bg)}>{f.label}</span>; })()}
                 {detailProduct.rating != null && (
                   <span className={cls('flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium', dk ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700')}>
-                    <Star className="w-3 h-3" /> {detailProduct.rating.toFixed(1)}
+                    <Icon name="star" className="w-3 h-3" /> {detailProduct.rating.toFixed(1)}
                     {detailProduct.reviewCount != null && <span className="opacity-60">({detailProduct.reviewCount})</span>}
                   </span>
                 )}
@@ -1017,9 +1015,9 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl text-sm font-semibold bg-blue-500 text-white hover:bg-blue-600 transition"
                   >
-                    <CreditCard className="w-4 h-4" />
+                    <Icon name="credit-card" className="w-4 h-4" />
                     Continue to Checkout
-                    <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+                    <Icon name="external-link" className="w-3.5 h-3.5 opacity-60" />
                   </a>
                 ) : (
                   <div className={cls(
@@ -1048,10 +1046,10 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
         'flex items-start gap-2 px-4 py-3 rounded-xl text-sm',
         dk ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-red-50 text-red-700 border border-red-200',
       )}>
-        <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+        <Icon name="alert-circle" className="w-4 h-4 mt-0.5 shrink-0" />
         <div className="flex-1">{error}</div>
         <button onClick={() => setError(null)}>
-          <X className="w-3.5 h-3.5 opacity-60 hover:opacity-100" />
+          <Icon name="x" className="w-3.5 h-3.5 opacity-60 hover:opacity-100" />
         </button>
       </div>
     );
@@ -1087,7 +1085,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               : dk ? 'bg-white/[0.06] text-white/70 hover:bg-white/[0.1]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
           )}
         >
-          <ChevronLeft className="w-4 h-4" /> Back
+          <Icon name="chevron-left" className="w-4 h-4" /> Back
         </button>
         <button
           onClick={goNext}
@@ -1099,7 +1097,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               : dk ? 'bg-white/[0.06] text-white/20 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed',
           )}
         >
-          Continue <ChevronRight className="w-4 h-4" />
+          Continue <Icon name="chevron-right" className="w-4 h-4" />
         </button>
       </div>
     );

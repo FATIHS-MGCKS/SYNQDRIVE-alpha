@@ -94,14 +94,14 @@ export default function LoginPage() {
           background: 'linear-gradient(145deg, #f8f9fb 0%, #eef0f5 30%, #f4f5f8 60%, #e9ecf2 100%)',
         }}
       />
-      {/* Mesh gradient orbs */}
+      {/* Mesh gradient orbs — Premium Blue brand tint (no AI-purple). */}
       <div
         className="fixed top-[-20%] right-[-10%] w-[700px] h-[700px] rounded-full opacity-[0.07]"
-        style={{ background: 'radial-gradient(circle, #6366f1 0%, transparent 70%)' }}
+        style={{ background: 'radial-gradient(circle, #2563EB 0%, transparent 70%)' }}
       />
       <div
         className="fixed bottom-[-15%] left-[-5%] w-[600px] h-[600px] rounded-full opacity-[0.05]"
-        style={{ background: 'radial-gradient(circle, #8b5cf6 0%, transparent 70%)' }}
+        style={{ background: 'radial-gradient(circle, #3b82f6 0%, transparent 70%)' }}
       />
       {/* Dot pattern */}
       <div
@@ -121,8 +121,11 @@ export default function LoginPage() {
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-neutral-200/60 bg-white/70 backdrop-blur-2xl shadow-[0_1px_8px_rgb(0,0,0,0.04)] hover:bg-white/90 hover:border-neutral-300/80 transition-all duration-200"
           >
             <Globe className="w-3.5 h-3.5 text-neutral-400" />
+            <span className="inline-flex h-4 min-w-[22px] items-center justify-center rounded-sm bg-neutral-100 px-1 font-mono text-[9px] font-semibold tracking-[0.08em] text-neutral-600">
+              {locale === 'de' ? 'DE' : 'EN'}
+            </span>
             <span className="text-xs text-neutral-600 font-medium">
-              {locale === 'de' ? '🇩🇪 Deutsch' : '🇺🇸 English'}
+              {locale === 'de' ? 'Deutsch' : 'English'}
             </span>
           </button>
           {showLangMenu && (
@@ -134,14 +137,14 @@ export default function LoginPage() {
                   onClick={() => { setLocale('en'); setShowLangMenu(false); }}
                   className={`w-full flex items-center gap-2.5 px-4 py-3 text-xs font-medium text-left transition-all duration-150 ${locale === 'en' ? 'bg-neutral-900 text-white' : 'text-neutral-600 hover:bg-neutral-50'}`}
                 >
-                  🇺🇸 English
+                  <span className="font-mono text-[10px] tracking-[0.08em] opacity-70">EN</span> English
                 </button>
                 <button
                   type="button"
                   onClick={() => { setLocale('de'); setShowLangMenu(false); }}
                   className={`w-full flex items-center gap-2.5 px-4 py-3 text-xs font-medium text-left transition-all duration-150 ${locale === 'de' ? 'bg-neutral-900 text-white' : 'text-neutral-600 hover:bg-neutral-50'}`}
                 >
-                  🇩🇪 Deutsch
+                  <span className="font-mono text-[10px] tracking-[0.08em] opacity-70">DE</span> Deutsch
                 </button>
               </div>
             </>
@@ -188,7 +191,7 @@ export default function LoginPage() {
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/15 shadow-sm"
                   style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(12px)' }}
                 >
-                  <Zap className="w-3 h-3 text-violet-300" />
+                  <Zap className="w-3 h-3 text-blue-300" />
                   <span className="text-[10px] text-white/90 font-medium tracking-wide">{t('fleetManagement')}</span>
                 </div>
 
@@ -227,7 +230,7 @@ export default function LoginPage() {
                   style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)' }}
                 >
                   <div className="flex -space-x-1.5">
-                    {['#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd'].map((color, i) => (
+                    {['#2563EB', '#3b82f6', '#60a5fa', '#93c5fd'].map((color, i) => (
                       <div
                         key={i}
                         className="w-5 h-5 rounded-full border border-black/20 flex items-center justify-center text-[8px] font-bold text-white shadow-sm"
@@ -259,8 +262,8 @@ export default function LoginPage() {
               </div>
 
               <div className="mb-4 text-center">
-                <h1 className="text-lg font-bold tracking-tight text-neutral-900">{t('welcomeBack')}</h1>
-                <p className="text-xs text-neutral-400 mt-1">{t('subtitle')}</p>
+                <h1 className="text-[12px] font-bold tracking-tight text-neutral-900">{t('welcomeBack')}</h1>
+                <p className="text-[9px] text-neutral-400 mt-1">{t('subtitle')}</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-2.5">
@@ -335,7 +338,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2 rounded-lg bg-neutral-900 text-white text-xs font-medium hover:bg-neutral-800 transition-colors duration-200 flex items-center justify-center gap-2 shadow-[0_2px_12px_rgba(0,0,0,0.12)] disabled:opacity-70 mt-1"
+                  className="w-full py-2 rounded-lg bg-neutral-900 text-white text-[9px] font-medium hover:bg-neutral-800 transition-colors duration-200 flex items-center justify-center gap-2 shadow-[0_2px_12px_rgba(0,0,0,0.12)] disabled:opacity-70 mt-1"
                 >
                   {loading ? (
                     <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

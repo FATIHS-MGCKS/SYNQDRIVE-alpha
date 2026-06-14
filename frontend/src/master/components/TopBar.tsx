@@ -2,12 +2,14 @@ import { Moon, Sun, Bell, Home, Search, Settings, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { clearAuth, getStoredUser } from '../../lib/auth';
 
+// ISO-2 code pills instead of emoji flags (anti-emoji design policy,
+// consistent with the rental TopBar).
 const languages = [
-  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-  { code: 'en', name: 'English', flag: '🇬🇧' },
-  { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  { code: 'it', name: 'Italiano', flag: '🇮🇹' },
-  { code: 'pl', name: 'Polski', flag: '🇵🇱' },
+  { code: 'de', name: 'Deutsch', short: 'DE' },
+  { code: 'en', name: 'English', short: 'EN' },
+  { code: 'fr', name: 'Français', short: 'FR' },
+  { code: 'it', name: 'Italiano', short: 'IT' },
+  { code: 'pl', name: 'Polski', short: 'PL' },
 ];
 
 type ViewType = 'dashboard' | 'organizations' | 'users' | 'vehicles' | 'prospects' | 'subscriptions' | 'activity-log' | 'support' | 'settings' | 'fleet-connection';
@@ -106,16 +108,22 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'dashboard', s
         </button>
 
         <div className="relative hidden sm:block">
-          <button onClick={() => setIsLanguageOpen(!isLanguageOpen)} className="flex items-center gap-1.5 p-1.5 rounded-md transition-colors hover:bg-muted">
-            <span className="text-base leading-none">{selectedLanguage.flag}</span>
+          <button
+            onClick={() => setIsLanguageOpen(!isLanguageOpen)}
+            className="flex h-8 min-w-[36px] items-center justify-center rounded-md px-2 font-mono tabular text-[10.5px] font-semibold tracking-[0.06em] transition-colors hover:bg-muted text-muted-foreground hover:text-foreground sq-press"
+            aria-label={`Language: ${selectedLanguage.name}`}
+          >
+            {selectedLanguage.short}
           </button>
           {isLanguageOpen && (
-            <div className="absolute right-0 top-full mt-2 w-48 rounded-lg shadow-lg border overflow-hidden z-[9999] bg-card border-border">
+            <div className="absolute right-0 top-full mt-1.5 w-44 sq-overlay overflow-hidden z-[9999] animate-fade-up">
               {languages.map((lang) => (
                 <button key={lang.code} onClick={() => { setSelectedLanguage(lang); setIsLanguageOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-5 py-3 transition-colors text-sm font-medium hover:bg-muted ${selectedLanguage.code === lang.code ? 'bg-muted' : ''}`}
+                  className={`w-full flex items-center gap-3 px-3 py-2 transition-colors text-[12.5px] hover:bg-muted ${selectedLanguage.code === lang.code ? 'bg-muted' : ''}`}
                 >
-                  <span className="text-lg">{lang.flag}</span>
+                  <span className="inline-flex items-center justify-center h-5 min-w-[28px] px-1.5 rounded-sm font-mono tabular text-[10px] font-semibold tracking-[0.06em] bg-muted text-muted-foreground">
+                    {lang.short}
+                  </span>
                   <span className="text-foreground">{lang.name}</span>
                 </button>
               ))}
@@ -123,9 +131,9 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'dashboard', s
           )}
         </div>
 
-        <button className="relative p-1.5 rounded-md transition-colors hover:bg-muted text-muted-foreground">
+        <button className="relative p-1.5 rounded-md transition-colors hover:bg-muted text-muted-foreground sq-press">
           <Bell className="w-4 h-4" />
-          <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full ring-2 ring-background"></span>
+          <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full ring-2 ring-background bg-[color:var(--status-critical)]"></span>
         </button>
 
         <div className="hidden sm:block w-px h-6 mx-1.5 bg-border" />
@@ -133,12 +141,12 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'dashboard', s
         <button
           onClick={() => { clearAuth(); window.location.href = '/login'; }}
           title="Logout"
-          className="p-1.5 rounded-md transition-colors hover:bg-muted text-muted-foreground"
+          className="p-1.5 rounded-md transition-colors hover:bg-muted text-muted-foreground sq-press"
         >
           <LogOut className="w-4 h-4" />
         </button>
 
-        <button className="w-8 h-8 ml-1 bg-gradient-to-br from-red-500 to-rose-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-md hover:shadow-lg transition-all hover:scale-105">
+        <button className="w-8 h-8 ml-1 sq-tone-critical ring-1 ring-[color:var(--status-critical-soft)] rounded-lg flex items-center justify-center text-xs font-bold transition-all hover:-translate-y-px hover:shadow-[0_4px_12px_-4px_var(--status-critical-soft)]">
           {(getStoredUser()?.name || 'SA').slice(0, 2).toUpperCase()}
         </button>
       </div>

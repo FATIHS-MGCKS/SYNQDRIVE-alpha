@@ -11,6 +11,7 @@ import { DimoSegmentsService } from './dimo-segments.service';
 import { DimoTriggersService } from './dimo-triggers.service';
 import { DimoTriggersBootstrapService } from './dimo-triggers-bootstrap.service';
 import { DimoAgentsService } from './dimo-agents.service';
+import { DimoDocumentAgentService } from './dimo-document-agent.service';
 import { AiTireSpecJobService } from './ai-tire-spec-job.service';
 import { DimoAgentsController } from './dimo-agents.controller';
 import { ChatService } from './chat.service';
@@ -31,6 +32,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DimoTriggersService,
     DimoTriggersBootstrapService,
     DimoAgentsService,
+    DimoDocumentAgentService,
     AiTireSpecJobService,
     ChatService,
     WhatsAppService,
@@ -43,6 +45,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DimoSegmentsService,
     DimoTriggersService,
     DimoAgentsService,
+    DimoDocumentAgentService,
     AiTireSpecJobService,
     ChatService,
     WhatsAppService,

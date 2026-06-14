@@ -1,0 +1,12 @@
+-- Extend InsightType enum with TIRE_CRITICAL.
+--
+-- Background: the Tire Health module now exposes a central, honest tire truth
+-- per vehicle (TireHealthService + tire-status.ts). Critical tire states — a
+-- tread at/below the legal minimum (1.6 mm), an imminent replacement, a
+-- season mismatch in winter, or rubber that is too old (DOT) — must surface as
+-- a dashboard business insight so operators see road-safety risk on the org
+-- dashboard, not only on the per-vehicle Tire Health card. A dedicated insight
+-- type lets the ranking and grouping layer treat tire events as their own
+-- category and keeps the InsightType enum consistent with the new detector
+-- (TireCriticalDetector) registered in BusinessInsightsModule.
+ALTER TYPE "InsightType" ADD VALUE IF NOT EXISTS 'TIRE_CRITICAL';

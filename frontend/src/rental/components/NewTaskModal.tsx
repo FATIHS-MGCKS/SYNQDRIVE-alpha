@@ -1,4 +1,5 @@
-import { X, Calendar, AlertCircle, User, Car } from 'lucide-react';
+
+import { Icon } from './ui/Icon';
 import { useState } from 'react';
 import { useFleetVehicles } from '../FleetContext';
 
@@ -59,7 +60,7 @@ export function NewTaskModal({ isOpen, onClose, isDarkMode }: NewTaskModalProps)
                   : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'
               }`}
             >
-              <X className="w-5 h-5" />
+              <Icon name="x" className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -92,7 +93,7 @@ export function NewTaskModal({ isOpen, onClose, isDarkMode }: NewTaskModalProps)
                 Zieldatum
               </label>
               <div className="relative">
-                <Calendar className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                <Icon name="calendar" className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                 <input
                   type="date"
                   value={dueDate}
@@ -132,7 +133,7 @@ export function NewTaskModal({ isOpen, onClose, isDarkMode }: NewTaskModalProps)
                         : 'bg-white text-gray-600 border-gray-300/50 hover:bg-gray-50'
                     }`}
                   >
-                    {priority === level && <AlertCircle className="w-4 h-4" />}
+                    {priority === level && <Icon name="alert-circle" className="w-4 h-4" />}
                     {level}
                   </button>
                 ))}
@@ -145,7 +146,7 @@ export function NewTaskModal({ isOpen, onClose, isDarkMode }: NewTaskModalProps)
                 Fahrzeug
               </label>
               <div className="relative">
-                <Car className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                <Icon name="car" className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                 <select
                   value={selectedVehicle}
                   onChange={(e) => setSelectedVehicle(e.target.value)}
@@ -172,7 +173,7 @@ export function NewTaskModal({ isOpen, onClose, isDarkMode }: NewTaskModalProps)
                 Zugewiesen an
               </label>
               <div className="relative">
-                <User className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                <Icon name="user" className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                 <select
                   value={assignedTo}
                   onChange={(e) => setAssignedTo(e.target.value)}

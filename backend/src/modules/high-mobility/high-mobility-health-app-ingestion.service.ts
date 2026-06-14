@@ -10,6 +10,7 @@ import {
   normalizeHmTirePressureStatuses,
 } from './high-mobility-mqtt-payload.util';
 import { HmSignalUsageService } from './high-mobility-signal-usage.service';
+import { capRawPayload } from '@shared/utils/json-payload.util';
 
 /**
  * HighMobilityHealthAppIngestionService
@@ -345,7 +346,7 @@ export class HighMobilityHealthAppIngestionService {
     // Preserve the accumulated raw signals map so we keep evidence of all past
     // capability groups — a single MQTT message only carries one group.
     const prevRaw = (existing?.rawSignalsJson as Record<string, any> | null) ?? {};
-    const mergedRaw = { ...prevRaw, ...props };
+    const mergedRaw = capRawPayload({ ...prevRaw, ...props });
 
     await (this.prisma as any).hmLatestHealthState.upsert({
       where: { uq_hm_latest_health_vin_app: { vin, appContainerType: 'HM_HEALTH_APP' } },

@@ -9,13 +9,17 @@ import { existsSync, mkdirSync } from 'fs';
 import { FinesService } from './fines.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { StorageService } from '@shared/storage/storage.service';
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads', 'fines');
 if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
 
 @Controller()
 export class FinesController {
-  constructor(private readonly finesService: FinesService) {}
+  constructor(
+    private readonly finesService: FinesService,
+    private readonly storage: StorageService,
+  ) {}
 
   @Get('organizations/:orgId/fines')
   @UseGuards(OrgScopingGuard, RolesGuard)
@@ -113,8 +117,12 @@ export class FinesController {
       },
     }),
   )
-  async uploadFile(@UploadedFile() file: Express.Multer.File) {
+  async uploadFile(
+    @Param('orgId') orgId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
     if (!file) throw new BadRequestException('No file uploaded');
-    return { url: `/uploads/fines/${file.filename}` };
+    const url = await this.storage.finalizeUpload('fines', file, orgId);
+    return { url };
   }
 }

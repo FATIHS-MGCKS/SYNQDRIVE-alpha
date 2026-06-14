@@ -1,5 +1,7 @@
-﻿import { useState, useEffect, useCallback } from 'react';
-import { Search, ChevronDown, Users, UserCheck, UserX, AlertTriangle, Plus, Phone, Mail, MapPin, Calendar, Car, CreditCard, Shield, ShieldCheck, Star, X, ChevronRight, ChevronLeft, FileText, Clock, TrendingUp, Ban, Eye, Upload, CheckCircle, IdCard, User, Loader2, ExternalLink } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+
+import { AlertTriangle, Car, CheckCircle, Eye, IdCard, ShieldCheck, Upload, User, UserCheck, UserX, Users } from 'lucide-react';
+import { Icon } from './ui/Icon';
 import { toast } from 'sonner';
 import { CustomerDetailModal } from './CustomerDetailModal';
 import { CustomerDocumentUploadBox } from './CustomerDocumentUploadBox';
@@ -421,7 +423,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
               : 'Not enough scored trip data'
           }
         >
-          <Star className="w-3 h-3" />
+          <Icon name="star" className="w-3 h-3" />
           <span className="text-xs font-bold">{'\u2014'}</span>
         </div>
       );
@@ -456,7 +458,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg ${bg}`}
         title={`${rounded} / 100 (Driving Style)`}
       >
-        <Star className={`w-3 h-3 ${color}`} />
+        <Icon name="star" className={`w-3 h-3 ${color}`} />
         <span className={`text-xs font-bold ${color}`}>{rounded}</span>
       </div>
     );
@@ -477,7 +479,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
             : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
       }`}>
         <span>{value === 'all' ? label : options.find(o => o.value === value)?.label}</span>
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <Icon name="chevron-down" className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
       {isOpen && (
         <div className={`absolute top-full mt-2 left-0 z-50 min-w-[180px] rounded-lg border shadow-xl overflow-hidden ${
@@ -510,70 +512,100 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
         }}
       >
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className={`text-lg font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Customers & Drivers</h1>
-          <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Manage customers, drivers, risk profiles and verifications</p>
+      <div className="flex flex-wrap items-end justify-between gap-2 sm:gap-3">
+        <div className="animate-fade-up min-w-0">
+          <h1 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground truncate">
+            Customers & Drivers
+          </h1>
         </div>
-        <button className="flex items-center gap-2 px-3 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md hover:shadow-lg transition-all text-xs font-semibold"
+        <button className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
           onClick={openAddCustomer}>
-          <Plus className="w-5 h-5" />
+          <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" />
           Add Customer
         </button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-3">
+      {/* Segment metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {[
-          { label: 'Total Drivers', value: totalDrivers, icon: Users, color: 'blue', bg: isDarkMode ? 'bg-blue-500/20' : 'bg-blue-100', text: isDarkMode ? 'text-blue-400' : 'text-blue-600', filterKey: 'all' as const },
-          { label: 'Active Drivers', value: activeDrivers, icon: UserCheck, color: 'green', bg: isDarkMode ? 'bg-green-500/20' : 'bg-green-100', text: isDarkMode ? 'text-green-400' : 'text-green-600', filterKey: 'active' as const },
-          { label: 'Suspended / Blocked', value: suspendedDrivers, icon: UserX, color: 'red', bg: isDarkMode ? 'bg-red-500/20' : 'bg-red-100', text: isDarkMode ? 'text-red-400' : 'text-red-600', filterKey: 'suspended' as const },
-          { label: 'Needs Attention', value: attentionNeeded, icon: AlertTriangle, color: 'amber', bg: isDarkMode ? 'bg-amber-500/20' : 'bg-amber-100', text: isDarkMode ? 'text-amber-400' : 'text-amber-600', filterKey: 'attention' as const },
+          {
+            label: 'Total',
+            value: totalDrivers,
+            icon: Users,
+            tone: 'neutral' as const,
+            filterKey: 'all' as const,
+          },
+          {
+            label: 'Active',
+            value: activeDrivers,
+            icon: UserCheck,
+            tone: 'success' as const,
+            filterKey: 'active' as const,
+          },
+          {
+            label: 'Blocked',
+            value: suspendedDrivers,
+            icon: UserX,
+            tone: suspendedDrivers > 0 ? 'critical' as const : 'neutral' as const,
+            filterKey: 'suspended' as const,
+          },
+          {
+            label: 'Attention',
+            value: attentionNeeded,
+            icon: AlertTriangle,
+            tone: attentionNeeded > 0 ? 'warning' as const : 'neutral' as const,
+            filterKey: 'attention' as const,
+          },
         ].map(card => {
           const isActive = cardFilter === card.filterKey;
           return (
-            <div
+            <CustomerMetric
               key={card.label}
+              label={card.label}
+              value={card.value}
+              icon={card.icon}
+              tone={card.tone}
+              active={isActive}
               onClick={() => setCardFilter(isActive ? 'all' : card.filterKey)}
-              className={`rounded-lg border shadow-sm p-4 cursor-pointer transition-all duration-200 ${
-                isActive
-                  ? card.color === 'blue'
-                    ? isDarkMode
-                      ? 'bg-neutral-900 border-blue-500/60 ring-2 ring-blue-500/30'
-                      : 'bg-white/80 border-blue-400/60 ring-2 ring-blue-400/30'
-                    : card.color === 'green'
-                    ? isDarkMode
-                      ? 'bg-neutral-900 border-green-500/60 ring-2 ring-green-500/30'
-                      : 'bg-white/80 border-green-400/60 ring-2 ring-green-400/30'
-                    : card.color === 'red'
-                    ? isDarkMode
-                      ? 'bg-neutral-900 border-red-500/60 ring-2 ring-red-500/30'
-                      : 'bg-white/80 border-red-400/60 ring-2 ring-red-400/30'
-                    : isDarkMode
-                      ? 'bg-neutral-900 border-amber-500/60 ring-2 ring-amber-500/30'
-                      : 'bg-white/80 border-amber-400/60 ring-2 ring-amber-400/30'
-                  : isDarkMode
-                    ? 'bg-neutral-900 border-neutral-700/50 hover:border-neutral-600/70 hover:shadow-md'
-                    : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-md'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className={`text-xs uppercase tracking-wider font-semibold ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{card.label}</span>
-                <div className={`w-5 h-5 rounded-lg ${card.bg} flex items-center justify-center`}>
-                  <card.icon className={`w-5 h-5 ${card.text}`} />
-                </div>
-              </div>
-              <p className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{card.value}</p>
-            </div>
+            />
           );
         })}
       </div>
 
       {/* Search & Filters */}
-      <div className={`${cardClass} p-4`}>
-        <div className="flex items-center gap-3">
-          <div className="flex-1 relative">
-            <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+      <div className={`${cardClass} p-4 rounded-2xl`}>
+        <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Icon name="filter" className="w-4 h-4 text-muted-foreground" />
+            <h3 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">Filters</h3>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {cardFilter !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setCardFilter('all')}
+                className="px-2 py-1 rounded-full text-[10px] font-semibold sq-tone-brand"
+              >
+                Segment active ×
+              </button>
+            )}
+            {(statusFilter !== 'all' || riskFilter !== 'all' || typeFilter !== 'all' || searchQuery) && (
+              <button onClick={() => { setStatusFilter('all'); setRiskFilter('all'); setTypeFilter('all'); setSearchQuery(''); }}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[10px] font-semibold transition-all ${
+                  isDarkMode
+                    ? 'bg-red-900/30 border-red-700/50 text-red-400 hover:bg-red-900/50'
+                    : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
+                }`}>
+                <Icon name="x" className="w-3.5 h-3.5" />
+                Clear filters
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex-1 min-w-[240px] relative">
+            <Icon name="search" className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
             <input
               type="text"
               placeholder="Search by name, email, phone or company..."
@@ -620,17 +652,6 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
               { value: 'Corporate', label: 'Corporate' },
             ]}
           />
-          {(statusFilter !== 'all' || riskFilter !== 'all' || typeFilter !== 'all' || searchQuery) && (
-            <button onClick={() => { setStatusFilter('all'); setRiskFilter('all'); setTypeFilter('all'); setSearchQuery(''); }}
-              className={`flex items-center gap-1.5 px-3 py-2.5 rounded-lg border text-xs font-medium transition-all ${
-                isDarkMode
-                  ? 'bg-red-900/30 border-red-700/50 text-red-400 hover:bg-red-900/50'
-                  : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
-              }`}>
-              <X className="w-3.5 h-3.5" />
-              Clear
-            </button>
-          )}
         </div>
       </div>
 
@@ -713,7 +734,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                   {customer.totalRevenue}
                 </td>
                 <td className="px-3 py-2.5">
-                  <ChevronRight className={`w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                  <Icon name="chevron-right" className={`w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
                 </td>
               </tr>
             ))}
@@ -721,7 +742,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
         </table>
         {filtered.length === 0 && (
           <div className="py-12 text-center">
-            <Users className={`w-5 h-5 mx-auto mb-3 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+            <Icon name="users" className={`w-5 h-5 mx-auto mb-3 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
             <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>No customers match your filters</p>
           </div>
         )}
@@ -815,7 +836,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                   className={`w-5 h-5 rounded-lg flex items-center justify-center transition-colors ${
                     isDarkMode ? 'hover:bg-neutral-800 text-gray-500' : 'hover:bg-gray-100 text-gray-400'
                   }`}>
-                  <X className="w-5 h-5" />
+                  <Icon name="x" className="w-5 h-5" />
                 </button>
               </div>
 
@@ -835,7 +856,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                               ? isDarkMode ? 'text-emerald-400 cursor-pointer hover:bg-emerald-500/10' : 'text-emerald-600 cursor-pointer hover:bg-emerald-50'
                               : isDarkMode ? 'text-gray-600' : 'text-gray-300'
                         }`}>
-                        {isDone ? <CheckCircle className="w-3.5 h-3.5" /> : <StepIcon className="w-3.5 h-3.5" />}
+                        {isDone ? <Icon name="check-circle" className="w-3.5 h-3.5" /> : <StepIcon className="w-3.5 h-3.5" />}
                         <span className="hidden sm:inline">{s.label}</span>
                       </button>
                       {i < steps.length - 1 && (
@@ -869,7 +890,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                       <div>
                         <label className={labelClass}>E-Mail *</label>
                         <div className="relative">
-                          <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                          <Icon name="mail" className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
                           <input type="email" placeholder="max@beispiel.de" value={newCustomer.email}
                             onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} className={`${inputClass} pl-9`} />
                         </div>
@@ -878,7 +899,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                       <div>
                         <label className={labelClass}>Telefon *</label>
                         <div className="relative">
-                          <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                          <Icon name="phone" className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
                           <input type="text" placeholder="+49 176 1234 5678" value={newCustomer.phone}
                             onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} className={`${inputClass} pl-9`} />
                         </div>
@@ -963,7 +984,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                     {sectionTitle(IdCard, 'Ausweisdokument (ID-Verifikation)')}
                     <div className={`rounded-lg p-3.5 mb-3 ${isDarkMode ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-amber-50 border border-amber-200/60'}`}>
                       <div className="flex items-start gap-2.5">
-                        <Shield className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+                        <Icon name="shield" className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
                         <p className={`text-xs ${isDarkMode ? 'text-amber-300/80' : 'text-amber-700'}`}>
                           Zur Identitätsprüfung wird ein gültiger Personalausweis oder Reisepass benötigt. Die Daten werden gemäß DSGVO verarbeitet.
                         </p>
@@ -1037,13 +1058,13 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                                 : isDarkMode ? 'bg-violet-500/15' : 'bg-violet-50'
                           }`}>
                             {idVerificationStatus === 'verifying' ? (
-                              <Loader2 className="w-5 h-5 text-violet-500 animate-spin" />
+                              <Icon name="loader-2" className="w-5 h-5 text-violet-500 animate-spin" />
                             ) : idVerificationStatus === 'verified' ? (
-                              <ShieldCheck className={`w-5 h-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                              <Icon name="shield-check" className={`w-5 h-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
                             ) : idVerificationStatus === 'failed' ? (
-                              <Shield className={`w-5 h-5 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
+                              <Icon name="shield" className={`w-5 h-5 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
                             ) : (
-                              <Shield className="w-5 h-5 text-violet-500" />
+                              <Icon name="shield" className="w-5 h-5 text-violet-500" />
                             )}
                           </div>
                           <div>
@@ -1055,7 +1076,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
                             isDarkMode ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                           }`}>
-                            <ShieldCheck className="w-3 h-3" />
+                            <Icon name="shield-check" className="w-3 h-3" />
                             Verifiziert
                           </span>
                         )}
@@ -1063,7 +1084,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
                             isDarkMode ? 'bg-red-900/30 text-red-400 border border-red-500/30' : 'bg-red-50 text-red-700 border border-red-200'
                           }`}>
-                            <X className="w-3 h-3" />
+                            <Icon name="x" className="w-3 h-3" />
                             Fehlgeschlagen
                           </span>
                         )}
@@ -1094,9 +1115,9 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                                   ? 'bg-neutral-800 border border-neutral-700/50 text-gray-600 cursor-not-allowed'
                                   : 'bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed'
                             }`}>
-                            <Shield className="w-5 h-5" />
+                            <Icon name="shield" className="w-5 h-5" />
                             ID auf Echtheit verifizieren
-                            <ExternalLink className="w-3 h-3 opacity-60" />
+                            <Icon name="external-link" className="w-3 h-3 opacity-60" />
                           </button>
                           {formErrors.veriff && <p className="text-[11px] text-red-500 mt-1.5">{formErrors.veriff}</p>}
                           {!newCustomer.idFrontUrl && (
@@ -1110,7 +1131,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                       {idVerificationStatus === 'verifying' && (
                         <div className="flex flex-col items-center py-3 gap-3">
                           <div className={`w-9 h-9 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-violet-500/10' : 'bg-violet-50'}`}>
-                            <Loader2 className="w-5 h-5 text-violet-500 animate-spin" />
+                            <Icon name="loader-2" className="w-5 h-5 text-violet-500 animate-spin" />
                           </div>
                           <div className="text-center">
                             <p className={`text-xs font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Dokument wird geprüft...</p>
@@ -1153,7 +1174,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                             className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
                               isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-800' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                             }`}>
-                            <Shield className="w-3.5 h-3.5" />
+                            <Icon name="shield" className="w-3.5 h-3.5" />
                             Erneut versuchen
                           </button>
                         </div>
@@ -1211,12 +1232,12 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                         <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>ID-Verifizierung</span>
                         {idVerificationStatus === 'verified' ? (
                           <span className={`inline-flex items-center gap-1 text-xs font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <Icon name="shield-check" className="w-3.5 h-3.5" />
                             Verifiziert (Veriff)
                           </span>
                         ) : (
                           <span className={`inline-flex items-center gap-1 text-xs font-medium ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>
-                            <Shield className="w-3.5 h-3.5" />
+                            <Icon name="shield" className="w-3.5 h-3.5" />
                             Nicht verifiziert
                           </span>
                         )}
@@ -1237,7 +1258,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                             <span key={d.label} className={`inline-flex items-center gap-1 text-[11px] font-medium ${
                               d.ok ? isDarkMode ? 'text-emerald-400' : 'text-emerald-600' : isDarkMode ? 'text-gray-600' : 'text-gray-300'
                             }`}>
-                              {d.ok ? <CheckCircle className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                              {d.ok ? <Icon name="check-circle" className="w-3 h-3" /> : <Icon name="x" className="w-3 h-3" />}
                               {d.label}
                             </span>
                           ))}
@@ -1269,7 +1290,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                       className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
                         isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-800' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                       }`}>
-                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <Icon name="chevron-left" className="w-3.5 h-3.5" />
                       Zurück
                     </button>
                   )}
@@ -1277,7 +1298,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                     <button onClick={handleNextStep}
                       className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-xs font-semibold shadow-md hover:shadow-lg transition-all">
                       Weiter
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <Icon name="chevron-right" className="w-3.5 h-3.5" />
                     </button>
                   ) : (
                     <button onClick={handleSubmitCustomer}
@@ -1287,7 +1308,7 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
                           ? 'bg-gray-300 text-white cursor-not-allowed'
                           : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white hover:shadow-lg'
                       }`}>
-                      {isSavingCustomer ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                      {isSavingCustomer ? <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : <Icon name="check-circle" className="w-3.5 h-3.5" />}
                       {isSavingCustomer ? 'Speichert…' : 'Kunden anlegen'}
                     </button>
                   )}
@@ -1298,5 +1319,52 @@ export function CustomersView({ isDarkMode, onOpenCustomerDetail, additionalCust
         );
       })()}
     </div>
+  );
+}
+
+function customerToneClass(tone: 'brand' | 'info' | 'success' | 'warning' | 'critical' | 'neutral') {
+  if (tone === 'brand') return 'sq-tone-brand';
+  if (tone === 'info') return 'sq-tone-info';
+  if (tone === 'success') return 'sq-tone-success';
+  if (tone === 'warning') return 'sq-tone-warning';
+  if (tone === 'critical') return 'sq-tone-critical';
+  return 'sq-tone-neutral';
+}
+
+function CustomerMetric({
+  label,
+  value,
+  icon,
+  tone,
+  active,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  icon: any;
+  tone: 'success' | 'warning' | 'critical' | 'neutral';
+  active: boolean;
+  onClick: () => void;
+}) {
+  const MetricIcon = icon;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`rounded-xl p-3 text-left transition-all duration-200 ${customerToneClass(tone)} ${
+        active
+          ? 'shadow-[inset_0_0_0_1px_currentColor,0_6px_14px_rgba(15,23,42,0.12)]'
+          : 'opacity-80 hover:opacity-100 hover:shadow-sm'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[18px] leading-none font-bold tabular-nums">{value}</p>
+          <p className="text-[9px] mt-1 font-semibold uppercase tracking-wider opacity-75">{label}</p>
+        </div>
+        <MetricIcon className="w-4 h-4 shrink-0 opacity-80" />
+      </div>
+    </button>
   );
 }

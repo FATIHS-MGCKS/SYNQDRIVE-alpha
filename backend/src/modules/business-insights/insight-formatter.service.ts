@@ -11,6 +11,12 @@ const TITLE_TEMPLATES: Record<InsightType, string> = {
   // BATTERY_CRITICAL keeps whatever title the detector produced (vehicle-specific)
   // rather than a generic label — empty string here means "use candidate title".
   [InsightType.BATTERY_CRITICAL]: '',
+  // TIRE_CRITICAL keeps the detector's graduated titles ("Reifen kritisch" vs
+  // "Reifen beobachten") so the escalation stays visible on the dashboard.
+  [InsightType.TIRE_CRITICAL]: '',
+  // BRAKE_CRITICAL keeps the detector's graduated titles ("Bremsen kritisch" vs
+  // "Bremsen beobachten") so the escalation stays visible on the dashboard.
+  [InsightType.BRAKE_CRITICAL]: '',
   // SERVICE_OVERDUE likewise uses the detector's title so "Service überfällig"
   // and "Service fällig" can coexist as distinct labels for the same type.
   [InsightType.SERVICE_OVERDUE]: '',
@@ -18,6 +24,10 @@ const TITLE_TEMPLATES: Record<InsightType, string> = {
   // "Pickup überfällig", "Pickup >24 h überfällig") that must not be
   // collapsed into a single generic label.
   [InsightType.PICKUP_OVERDUE]: '',
+  // TÜV / BOKraft — keep the detector's graduated titles ("… bald fällig" vs
+  // "… überfällig") so the escalation stays visible on the dashboard.
+  [InsightType.TUV_OVERDUE]: '',
+  [InsightType.BOKRAFT_OVERDUE]: '',
 };
 
 const ACTION_LABELS: Record<InsightType, string> = {
@@ -28,8 +38,12 @@ const ACTION_LABELS: Record<InsightType, string> = {
   [InsightType.SERVICE_WINDOW]: 'Schedule service',
   [InsightType.SERVICE_BEFORE_BOOKING]: 'Review vehicle',
   [InsightType.BATTERY_CRITICAL]: 'Fahrzeug prüfen',
+  [InsightType.TIRE_CRITICAL]: 'Fahrzeug prüfen',
+  [InsightType.BRAKE_CRITICAL]: 'Fahrzeug prüfen',
   [InsightType.SERVICE_OVERDUE]: 'Fahrzeug prüfen',
   [InsightType.PICKUP_OVERDUE]: 'Buchung öffnen',
+  [InsightType.TUV_OVERDUE]: 'Fahrzeug prüfen',
+  [InsightType.BOKRAFT_OVERDUE]: 'Fahrzeug prüfen',
 };
 
 const MAX_TITLE = 40;

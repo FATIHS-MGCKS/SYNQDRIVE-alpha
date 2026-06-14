@@ -1,13 +1,9 @@
 ﻿import { useState, useMemo, useEffect, useRef } from 'react';
+import { Calendar, Car, CheckCircle, CreditCard, Euro, Eye, FileText, IdCard, ShieldCheck, Star, Upload, User } from 'lucide-react';
+import { Icon } from './ui/Icon';
 import { toast } from 'sonner';
-import {
-  ArrowLeft, ArrowRight, Check, Search, Plus, User, Car, Calendar, CreditCard,
-  MapPin, Phone, Mail, Star, Shield, Clock, ChevronDown, X, Fuel, Battery,
-  CheckCircle, AlertCircle, FileText, Percent, Euro, Building2, ChevronLeft,
-  ChevronRight as ChevronRightIcon, Wrench, IdCard, Upload, Eye,
-  Printer, Send, FileSignature, Receipt, Loader2, ExternalLink, ShieldCheck
-} from 'lucide-react';
-import { VehicleData } from '../data/vehicles';
+
+import { VehicleData, isVehicleOffline, VEHICLE_OFFLINE_LABEL } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { CustomerDetailModal } from './CustomerDetailModal';
@@ -819,7 +815,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                 : 'bg-white border-gray-200 text-gray-600 hover:bg-white'
             }`}
           >
-            <ArrowLeft className="w-5 h-5" />
+            <Icon name="arrow-left" className="w-5 h-5" />
           </button>
           <div>
             <h1 className={`text-lg font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>New Booking</h1>
@@ -864,7 +860,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                 }`}
               >
                 {isCompleted ? (
-                  <Check className="w-5 h-5" />
+                  <Icon name="check" className="w-5 h-5" />
                 ) : (
                   <Icon className="w-5 h-5" />
                 )}
@@ -885,7 +881,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
           {card(
             <div className="p-12 text-center max-w-lg">
               <div className={`w-20 h-20 rounded-full mx-auto mb-3 flex items-center justify-center ${isDarkMode ? 'bg-green-600/20' : 'bg-green-100'}`}>
-                <CheckCircle className={`w-5 h-5 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+                <Icon name="check-circle" className={`w-5 h-5 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
               </div>
               <h2 className={`text-lg mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Buchung erstellt!</h2>
               <p className={`text-xs mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -960,7 +956,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                     <h2 className={`text-lg mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Kunde auswählen</h2>
                     {/* Search */}
                     <div className="relative mb-3">
-                      <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                      <Icon name="search" className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                       <input
                         type="text"
                         placeholder="Name, E-Mail oder Telefonnummer suchen..."
@@ -1018,18 +1014,18 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                               {c.company && (
                                 <span className={`text-xs px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-purple-600/20 text-purple-400' : 'bg-purple-100 text-purple-700'}`}>{c.company}</span>
                               )}
-                              {c.licenseVerified && <Shield className="w-3.5 h-3.5 text-green-500" />}
+                              {c.licenseVerified && <Icon name="shield" className="w-3.5 h-3.5 text-green-500" />}
                             </div>
                             <div className="flex items-center gap-3 mt-1">
-                              <span className={`text-xs flex items-center gap-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}><Mail className="w-3 h-3" />{c.email}</span>
-                              <span className={`text-xs flex items-center gap-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}><MapPin className="w-3 h-3" />{c.city}</span>
+                              <span className={`text-xs flex items-center gap-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}><Icon name="mail" className="w-3 h-3" />{c.email}</span>
+                              <span className={`text-xs flex items-center gap-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}><Icon name="map-pin" className="w-3 h-3" />{c.city}</span>
                             </div>
                           </div>
                           <div className="text-right shrink-0">
                             <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{c.totalBookings} Buchungen</div>
                             <div className="flex items-center gap-1 mt-1">
                               {/* V4.6.95 — Driving Style Score (0–100). "—" if not yet scored. */}
-                              <Star
+                              <Icon name="star"
                                 className={`w-3 h-3 ${
                                   c.drivingStyleScore == null
                                     ? 'text-gray-400'
@@ -1054,10 +1050,10 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                             }`}
                             title="Kundendetails anzeigen"
                           >
-                            <Eye className="w-5 h-5" />
+                            <Icon name="eye" className="w-5 h-5" />
                           </button>
                           {selectedCustomer?.id === c.id && (
-                            <Check className="w-5 h-5 text-blue-500 shrink-0" />
+                            <Icon name="check" className="w-5 h-5 text-blue-500 shrink-0" />
                           )}
                         </button>
                       ))}
@@ -1071,7 +1067,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                         ? 'border-neutral-700 text-gray-400 hover:border-blue-500/40 hover:text-blue-400'
                         : 'border-gray-300 text-gray-500 hover:border-blue-300 hover:text-blue-600'
                     }`}>
-                      <Plus className="w-5 h-5" />
+                      <Icon name="plus" className="w-5 h-5" />
                       Neuen Kunden anlegen
                     </button>
 
@@ -1134,7 +1130,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                 className={`w-5 h-5 rounded-lg flex items-center justify-center transition-colors ${
                                   isDarkMode ? 'hover:bg-neutral-800 text-gray-500' : 'hover:bg-gray-100 text-gray-400'
                                 }`}>
-                                <X className="w-5 h-5" />
+                                <Icon name="x" className="w-5 h-5" />
                               </button>
                             </div>
 
@@ -1154,7 +1150,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                             ? isDarkMode ? 'text-emerald-400 cursor-pointer hover:bg-emerald-500/10' : 'text-emerald-600 cursor-pointer hover:bg-emerald-50'
                                             : isDarkMode ? 'text-gray-600' : 'text-gray-300'
                                       }`}>
-                                      {isDone ? <CheckCircle className="w-3.5 h-3.5" /> : <StepIcon className="w-3.5 h-3.5" />}
+                                      {isDone ? <Icon name="check-circle" className="w-3.5 h-3.5" /> : <StepIcon className="w-3.5 h-3.5" />}
                                       <span className="hidden sm:inline">{s.label}</span>
                                     </button>
                                     {i < addSteps.length - 1 && (
@@ -1188,7 +1184,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                     <div>
                                       <label className={labelClass}>E-Mail *</label>
                                       <div className="relative">
-                                        <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                                        <Icon name="mail" className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
                                         <input type="email" placeholder="max@beispiel.de" value={newCustomer.email}
                                           onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} className={`${inputClass} pl-9`} />
                                       </div>
@@ -1197,7 +1193,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                     <div>
                                       <label className={labelClass}>Telefon *</label>
                                       <div className="relative">
-                                        <Phone className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                                        <Icon name="phone" className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
                                         <input type="text" placeholder="+49 176 1234 5678" value={newCustomer.phone}
                                           onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} className={`${inputClass} pl-9`} />
                                       </div>
@@ -1282,7 +1278,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                   {sectionTitle(IdCard, 'Ausweisdokument (ID-Verifikation)')}
                                   <div className={`rounded-lg p-3.5 mb-3 ${isDarkMode ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-amber-50 border border-amber-200/60'}`}>
                                     <div className="flex items-start gap-2.5">
-                                      <Shield className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+                                      <Icon name="shield" className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
                                       <p className={`text-xs ${isDarkMode ? 'text-amber-300/80' : 'text-amber-700'}`}>
                                         Zur Identitätsprüfung wird ein gültiger Personalausweis oder Reisepass benötigt. Die Daten werden gemäß DSGVO verarbeitet.
                                       </p>
@@ -1357,13 +1353,13 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                               : isDarkMode ? 'bg-violet-500/15' : 'bg-violet-50'
                                         }`}>
                                           {idVerificationStatus === 'verifying' ? (
-                                            <Loader2 className="w-5 h-5 text-violet-500 animate-spin" />
+                                            <Icon name="loader-2" className="w-5 h-5 text-violet-500 animate-spin" />
                                           ) : idVerificationStatus === 'verified' ? (
-                                            <ShieldCheck className={`w-5 h-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                                            <Icon name="shield-check" className={`w-5 h-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
                                           ) : idVerificationStatus === 'failed' ? (
-                                            <Shield className={`w-5 h-5 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
+                                            <Icon name="shield" className={`w-5 h-5 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
                                           ) : (
-                                            <Shield className="w-5 h-5 text-violet-500" />
+                                            <Icon name="shield" className="w-5 h-5 text-violet-500" />
                                           )}
                                         </div>
                                         <div>
@@ -1375,7 +1371,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                         <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
                                           isDarkMode ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                         }`}>
-                                          <ShieldCheck className="w-3 h-3" />
+                                          <Icon name="shield-check" className="w-3 h-3" />
                                           Verifiziert
                                         </span>
                                       )}
@@ -1383,7 +1379,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                         <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
                                           isDarkMode ? 'bg-red-900/30 text-red-400 border border-red-500/30' : 'bg-red-50 text-red-700 border border-red-200'
                                         }`}>
-                                          <X className="w-3 h-3" />
+                                          <Icon name="x" className="w-3 h-3" />
                                           Fehlgeschlagen
                                         </span>
                                       )}
@@ -1414,9 +1410,9 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                                 ? 'bg-neutral-800 border border-neutral-700 text-gray-600 cursor-not-allowed'
                                                 : 'bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed'
                                           }`}>
-                                          <Shield className="w-5 h-5" />
+                                          <Icon name="shield" className="w-5 h-5" />
                                           ID auf Echtheit verifizieren
-                                          <ExternalLink className="w-3 h-3 opacity-60" />
+                                          <Icon name="external-link" className="w-3 h-3 opacity-60" />
                                         </button>
                                         {formErrors.veriff && <p className="text-[11px] text-red-500 mt-1.5">{formErrors.veriff}</p>}
                                         {!newCustomer.idFrontUrl && (
@@ -1430,7 +1426,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                     {idVerificationStatus === 'verifying' && (
                                       <div className="flex flex-col items-center py-3 gap-3">
                                         <div className={`w-9 h-9 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-violet-500/10' : 'bg-violet-50'}`}>
-                                          <Loader2 className="w-5 h-5 text-violet-500 animate-spin" />
+                                          <Icon name="loader-2" className="w-5 h-5 text-violet-500 animate-spin" />
                                         </div>
                                         <div className="text-center">
                                           <p className={`text-xs font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Dokument wird geprüft...</p>
@@ -1473,7 +1469,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                           className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
                                             isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-800' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                                           }`}>
-                                          <Shield className="w-3.5 h-3.5" />
+                                          <Icon name="shield" className="w-3.5 h-3.5" />
                                           Erneut versuchen
                                         </button>
                                       </div>
@@ -1531,12 +1527,12 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                       <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>ID-Verifizierung</span>
                                       {idVerificationStatus === 'verified' ? (
                                         <span className={`inline-flex items-center gap-1 text-xs font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                                          <ShieldCheck className="w-3.5 h-3.5" />
+                                          <Icon name="shield-check" className="w-3.5 h-3.5" />
                                           Verifiziert (Veriff)
                                         </span>
                                       ) : (
                                         <span className={`inline-flex items-center gap-1 text-xs font-medium ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>
-                                          <Shield className="w-3.5 h-3.5" />
+                                          <Icon name="shield" className="w-3.5 h-3.5" />
                                           Nicht verifiziert
                                         </span>
                                       )}
@@ -1557,7 +1553,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                           <span key={d.label} className={`inline-flex items-center gap-1 text-[11px] font-medium ${
                                             d.ok ? isDarkMode ? 'text-emerald-400' : 'text-emerald-600' : isDarkMode ? 'text-gray-600' : 'text-gray-300'
                                           }`}>
-                                            {d.ok ? <CheckCircle className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                                            {d.ok ? <Icon name="check-circle" className="w-3 h-3" /> : <Icon name="x" className="w-3 h-3" />}
                                             {d.label}
                                           </span>
                                         ))}
@@ -1589,7 +1585,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                     className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
                                       isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-800' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
                                     }`}>
-                                    <ChevronLeft className="w-3.5 h-3.5" />
+                                    <Icon name="chevron-left" className="w-3.5 h-3.5" />
                                     Zurück
                                   </button>
                                 )}
@@ -1597,13 +1593,13 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                   <button onClick={handleAddNextStep}
                                     className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-xs font-semibold shadow-md hover:shadow-lg transition-all">
                                     Weiter
-                                    <ChevronRightIcon className="w-3.5 h-3.5" />
+                                    <Icon name="chevron-right" className="w-3.5 h-3.5" />
                                   </button>
                                 ) : (
                                   <button onClick={handleSubmitNewCustomer}
                                     disabled={isSavingCustomer}
                                     className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-white text-xs font-semibold shadow-md transition-all ${isSavingCustomer ? 'bg-emerald-300 cursor-not-allowed' : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 hover:shadow-lg'}`}>
-                                    <CheckCircle className="w-3.5 h-3.5" />
+                                    <Icon name="check-circle" className="w-3.5 h-3.5" />
                                     {isSavingCustomer ? 'Speichert…' : 'Kunden anlegen'}
                                   </button>
                                 )}
@@ -1628,7 +1624,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                     {/* Filters Row */}
                     <div className="space-y-3 mb-3">
                       <div className="relative">
-                        <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                        <Icon name="search" className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                         <input
                           type="text"
                           placeholder="Fahrzeug suchen..."
@@ -1694,7 +1690,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                               isDarkMode ? 'bg-neutral-800 border-neutral-700 text-gray-400 hover:text-red-400 hover:border-red-500/30' : 'bg-white border-gray-200 text-gray-500 hover:text-red-500 hover:border-red-200'
                             }`}
                           >
-                            <X className="w-3.5 h-3.5" />
+                            <Icon name="x" className="w-3.5 h-3.5" />
                             Filter zurücksetzen
                           </button>
                         )}
@@ -1742,6 +1738,11 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                         // in BookingsService.create, so this is purely UX signal.
                         const vehicleHealth = pickerHealthMap.get(v.id) ?? null;
                         const isRentalBlocked = vehicleHealth?.rental_blocked === true;
+                        // V4.7.62 — Offline (Last Signal ≥ 1 day): the vehicle's
+                        // telemetry/condition can no longer be trusted, so it is
+                        // not selectable for a booking. The row is greyed out and
+                        // the click handler is hard-disabled.
+                        const offline = isVehicleOffline(v);
                         // V4.6.67 — derive brand from `make` first (true source from
                         // backend), fall back to the model string. Use the shared
                         // BrandLogo component (carlogos-dataset CDN) for the icon
@@ -1751,53 +1752,66 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                         return (
                         <button
                           key={v.id}
+                          disabled={offline}
                           onClick={() => {
+                            if (offline) return;
                             setSelectedVehicle(v);
                             const station = v.station ?? '';
                             setPickupStation(station);
                             if (sameReturnStation) setReturnStation(station);
                           }}
-                          className={`flex items-center gap-3 w-full text-left rounded-lg border px-3 py-2 transition-all duration-200 cursor-pointer ${
-                            isMaintenance
+                          className={`flex items-center gap-3 w-full text-left rounded-lg border px-3 py-2 transition-all duration-200 ${
+                            offline
+                              ? isDarkMode
+                                ? 'border-neutral-700/40 bg-neutral-900/40 opacity-60 grayscale cursor-not-allowed'
+                                : 'border-gray-200/60 bg-gray-50/30 opacity-60 grayscale cursor-not-allowed'
+                              : isMaintenance
                               ? selectedVehicle?.id === v.id
                                 ? isDarkMode
-                                  ? 'border-blue-500/40 ring-1 ring-blue-500/20 bg-blue-600/5 opacity-70'
-                                  : 'border-blue-300 ring-1 ring-blue-200 bg-blue-50/30 opacity-70'
+                                  ? 'border-blue-500/40 ring-1 ring-blue-500/20 bg-blue-600/5 opacity-70 cursor-pointer'
+                                  : 'border-blue-300 ring-1 ring-blue-200 bg-blue-50/30 opacity-70 cursor-pointer'
                                 : isDarkMode
-                                  ? 'border-red-900/30 bg-neutral-900/40 opacity-70 hover:border-red-800/40'
-                                  : 'border-red-200/50 bg-red-50/20 opacity-70 hover:border-red-300/50'
+                                  ? 'border-red-900/30 bg-neutral-900/40 opacity-70 hover:border-red-800/40 cursor-pointer'
+                                  : 'border-red-200/50 bg-red-50/20 opacity-70 hover:border-red-300/50 cursor-pointer'
                               : selectedVehicle?.id === v.id
                               ? isDarkMode
-                                ? 'border-blue-500/40 ring-1 ring-blue-500/20 bg-blue-600/10'
-                                : 'border-blue-300 ring-1 ring-blue-200 bg-blue-50/50'
+                                ? 'border-blue-500/40 ring-1 ring-blue-500/20 bg-blue-600/10 cursor-pointer'
+                                : 'border-blue-300 ring-1 ring-blue-200 bg-blue-50/50 cursor-pointer'
                               : isDarkMode
-                                ? 'border-neutral-700/30 bg-neutral-800/40 hover:border-neutral-600/50 hover:bg-neutral-800/70'
-                                : 'border-gray-200/30 bg-gray-50/40 hover:border-gray-300/50 hover:bg-white'
+                                ? 'border-neutral-700/30 bg-neutral-800/40 hover:border-neutral-600/50 hover:bg-neutral-800/70 cursor-pointer'
+                                : 'border-gray-200/30 bg-gray-50/40 hover:border-gray-300/50 hover:bg-white cursor-pointer'
                           }`}
                         >
                           {/* Brand Logo (shared CDN component, isomorphic with FleetView) */}
                           <div className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 p-1.5 ${
                             isDarkMode ? 'bg-neutral-800' : 'bg-gray-50'
-                          } ${isMaintenance ? 'grayscale opacity-70' : ''}`}>
+                          } ${(isMaintenance || offline) ? 'grayscale opacity-70' : ''}`}>
                             <BrandLogo brand={brandKey} size={28} isDarkMode={isDarkMode} />
                           </div>
 
                           {/* Vehicle Info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <p className={`text-xs truncate ${isMaintenance ? (isDarkMode ? 'text-gray-500 line-through' : 'text-gray-400 line-through') : isDarkMode ? 'text-white' : 'text-gray-900'}`}>{mmy}</p>
-                              {isMaintenance && (
+                              <p className={`text-xs truncate ${(isMaintenance || offline) ? (isDarkMode ? 'text-gray-500 line-through' : 'text-gray-400 line-through') : isDarkMode ? 'text-white' : 'text-gray-900'}`}>{mmy}</p>
+                              {/* V4.7.62 — Offline pill takes priority: a vehicle
+                                  that has not signalled for ≥ 1 day cannot be
+                                  booked, so the dispatcher sees the reason inline. */}
+                              {offline ? (
+                                <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] bg-gray-500/80 text-white shrink-0" title={VEHICLE_OFFLINE_LABEL}>
+                                  <Icon name="wifi-off" className="w-3 h-3" />
+                                  {VEHICLE_OFFLINE_LABEL}
+                                </span>
+                              ) : isMaintenance ? (
                                 <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] bg-red-600/80 text-white shrink-0">
-                                  <Wrench className="w-3 h-3" />
+                                  <Icon name="wrench" className="w-3 h-3" />
                                   Wartung
                                 </span>
-                              )}
-                              {isRented && (
+                              ) : isRented ? (
                                 <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] bg-orange-500/80 text-white shrink-0">
-                                  <Clock className="w-3 h-3" />
+                                  <Icon name="clock" className="w-3 h-3" />
                                   Aktuell vermietet
                                 </span>
-                              )}
+                              ) : null}
                             </div>
                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                               <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{v.license}</span>
@@ -1821,7 +1835,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                 <>
                                   <span className={`text-xs ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`}>·</span>
                                   <div className="flex items-center gap-1">
-                                    <MapPin className={`w-3 h-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                                    <Icon name="map-pin" className={`w-3 h-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                                     <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{v.station}</span>
                                   </div>
                                 </>
@@ -1832,21 +1846,27 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                           {/* Price & Selection */}
                           <div className="flex items-center gap-3 shrink-0">
                             <div className="text-right">
-                              <p className={`text-xs ${isMaintenance ? (isDarkMode ? 'text-gray-500 line-through' : 'text-gray-400 line-through') : isDarkMode ? 'text-white' : 'text-gray-900'}`}>€ {getDailyRate(v)}</p>
+                              <p className={`text-xs ${(isMaintenance || offline) ? (isDarkMode ? 'text-gray-500 line-through' : 'text-gray-400 line-through') : isDarkMode ? 'text-white' : 'text-gray-900'}`}>€ {getDailyRate(v)}</p>
                               <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>pro Tag</p>
                             </div>
-                            {selectedVehicle?.id === v.id ? (
+                            {selectedVehicle?.id === v.id && !offline ? (
                               <div className={`w-5 h-5 rounded-full flex items-center justify-center ${isMaintenance ? 'bg-blue-600/50' : 'bg-blue-600'}`}>
-                                <Check className="w-3.5 h-3.5 text-white" />
+                                <Icon name="check" className="w-3.5 h-3.5 text-white" />
                               </div>
                             ) : (
                               <div className={`w-5 h-5 rounded-full border-2 relative ${
-                                isMaintenance
+                                offline
+                                  ? isDarkMode ? 'border-neutral-600' : 'border-gray-300'
+                                  : isMaintenance
                                   ? isDarkMode ? 'border-red-800/50' : 'border-red-300/50'
                                   : isDarkMode ? 'border-neutral-600' : 'border-gray-300'
                               }`}>
-                                {isMaintenance && (
-                                  <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-0.5 rounded-full ${isDarkMode ? 'bg-red-700/60' : 'bg-red-300/80'}`} />
+                                {(isMaintenance || offline) && (
+                                  <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-0.5 rounded-full ${
+                                    offline
+                                      ? (isDarkMode ? 'bg-neutral-500/70' : 'bg-gray-300/90')
+                                      : (isDarkMode ? 'bg-red-700/60' : 'bg-red-300/80')
+                                  }`} />
                                 )}
                               </div>
                             )}
@@ -1855,7 +1875,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                       );})}
                       {availableVehicles.filter(v => vehicleStatusFilter === 'all' || v.status === vehicleStatusFilter).length === 0 && (
                         <div className="py-12 text-center">
-                          <Car className={`w-5 h-5 mx-auto mb-3 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                          <Icon name="car" className={`w-5 h-5 mx-auto mb-3 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
                           <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Keine Fahrzeuge in dieser Kategorie gefunden</p>
                         </div>
                       )}
@@ -1873,7 +1893,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                   <div className="p-4">
                     <div className="flex items-center gap-2 mb-1">
                       <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-emerald-500/15' : 'bg-emerald-50'}`}>
-                        <Fuel className={`w-5 h-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                        <Icon name="fuel" className={`w-5 h-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
                       </div>
                       <h2 className={`text-lg ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Mileage Packages</h2>
                     </div>
@@ -1901,7 +1921,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                               {isSelected && (
                                 <div className="absolute top-2 right-2">
                                   <div className="w-5 h-5 rounded-full bg-emerald-600 flex items-center justify-center">
-                                    <Check className="w-3 h-3 text-white" />
+                                    <Icon name="check" className="w-3 h-3 text-white" />
                                   </div>
                                 </div>
                               )}
@@ -1930,7 +1950,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                   <div className="p-4">
                     <div className="flex items-center gap-2 mb-1">
                       <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-purple-500/15' : 'bg-purple-50'}`}>
-                        <Shield className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+                        <Icon name="shield" className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
                       </div>
                       <h2 className={`text-lg ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Insurance Packages</h2>
                     </div>
@@ -1963,7 +1983,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                     ? 'bg-purple-600 border-purple-600'
                                     : isDarkMode ? 'border-neutral-600' : 'border-gray-300'
                                 }`}>
-                                  {isSelected && <Check className="w-3 h-3 text-white" />}
+                                  {isSelected && <Icon name="check" className="w-3 h-3 text-white" />}
                                 </div>
                                 <div>
                                   <p className={`text-xs ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{ins.name}</p>
@@ -1991,7 +2011,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                   <div className="p-4">
                     <div className="flex items-center gap-2 mb-1">
                       <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-blue-500/15' : 'bg-blue-50'}`}>
-                        <Star className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                        <Icon name="star" className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
                       </div>
                       <h2 className={`text-lg ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Extras</h2>
                     </div>
@@ -2030,7 +2050,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                     ? 'bg-blue-600 border-blue-600'
                                     : isDarkMode ? 'border-neutral-600' : 'border-gray-300'
                                 }`}>
-                                  {isSelected && <Check className="w-3 h-3 text-white" />}
+                                  {isSelected && <Icon name="check" className="w-3 h-3 text-white" />}
                                 </div>
                               </div>
                             </button>
@@ -2051,17 +2071,17 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                         <div className="flex items-center gap-3">
                           {selectedMileagePackage && (
                             <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full ${isDarkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
-                              <Fuel className="w-3 h-3" /> 1 Mileage Pkg
+                              <Icon name="fuel" className="w-3 h-3" /> 1 Mileage Pkg
                             </span>
                           )}
                           {selectedInsurances.length > 0 && (
                             <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full ${isDarkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-700'}`}>
-                              <Shield className="w-3 h-3" /> {selectedInsurances.length} Insurance{selectedInsurances.length !== 1 ? 's' : ''}
+                              <Icon name="shield" className="w-3 h-3" /> {selectedInsurances.length} Insurance{selectedInsurances.length !== 1 ? 's' : ''}
                             </span>
                           )}
                           {extras.length > 0 && (
                             <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full ${isDarkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-700'}`}>
-                              <Star className="w-3 h-3" /> {extras.length} Extra{extras.length !== 1 ? 's' : ''}
+                              <Icon name="star" className="w-3 h-3" /> {extras.length} Extra{extras.length !== 1 ? 's' : ''}
                             </span>
                           )}
                         </div>
@@ -2117,7 +2137,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                   : isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white hover:border-neutral-600' : 'bg-white border-gray-200 text-gray-900 hover:border-gray-300'
                               }`}
                             >
-                              <Clock className="w-3.5 h-3.5" />
+                              <Icon name="clock" className="w-3.5 h-3.5" />
                               {pickupTime}
                             </button>
                             {showPickupTimePicker && (
@@ -2165,7 +2185,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                   </div>
                                   {/* Time Input */}
                                   <div className="flex items-center justify-center gap-2">
-                                    <Clock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                                    <Icon name="clock" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                                     <input
                                       type="time"
                                       value={pickupTime}
@@ -2218,7 +2238,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                   : isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white hover:border-neutral-600' : 'bg-white border-gray-200 text-gray-900 hover:border-gray-300'
                               }`}
                             >
-                              <Clock className="w-3.5 h-3.5" />
+                              <Icon name="clock" className="w-3.5 h-3.5" />
                               {returnTime}
                             </button>
                             {showReturnTimePicker && (
@@ -2266,7 +2286,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                   </div>
                                   {/* Time Input */}
                                   <div className="flex items-center justify-center gap-2">
-                                    <Clock className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                                    <Icon name="clock" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                                     <input
                                       type="time"
                                       value={returnTime}
@@ -2295,7 +2315,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                         <div className={`flex items-center gap-2 w-full px-3 py-2.5 rounded-lg border text-xs ${
                           isDarkMode ? 'bg-neutral-800/40 border-neutral-700 text-white' : 'bg-gray-100/60 border-gray-200 text-gray-900'
                         }`}>
-                          <MapPin className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                          <Icon name="map-pin" className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
                           <span className={pickupStation ? '' : (isDarkMode ? 'text-gray-500' : 'text-gray-400')}>
                             {pickupStation || 'Wird vom Fahrzeug übernommen'}
                           </span>
@@ -2341,7 +2361,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                               : isDarkMode ? 'bg-neutral-800 text-gray-400 border border-neutral-700/40' : 'bg-white text-gray-500 border border-gray-200/40'
                           }`}
                         >
-                          <Calendar className="w-3.5 h-3.5 mx-auto mb-1" />
+                          <Icon name="calendar" className="w-3.5 h-3.5 mx-auto mb-1" />
                           Abholdatum wählen
                         </button>
                         <button
@@ -2352,7 +2372,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                               : isDarkMode ? 'bg-neutral-800 text-gray-400 border border-neutral-700/40' : 'bg-white text-gray-500 border border-gray-200/40'
                           }`}
                         >
-                          <Calendar className="w-3.5 h-3.5 mx-auto mb-1" />
+                          <Icon name="calendar" className="w-3.5 h-3.5 mx-auto mb-1" />
                           Rückgabedatum wählen
                         </button>
                       </div>
@@ -2370,7 +2390,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                           }}
                           className={`p-1 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-700' : 'hover:bg-gray-200'}`}
                         >
-                          <ChevronLeft className="w-5 h-5" />
+                          <Icon name="chevron-left" className="w-5 h-5" />
                         </button>
                         <span className={`text-xs ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{monthNames[calendarMonth]} {calendarYear}</span>
                         <button
@@ -2385,7 +2405,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                           }}
                           className={`p-1 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-700' : 'hover:bg-gray-200'}`}
                         >
-                          <ChevronRightIcon className="w-5 h-5" />
+                          <Icon name="chevron-right" className="w-5 h-5" />
                         </button>
                       </div>
                       <div className="grid grid-cols-7 gap-1 text-center">
@@ -2430,9 +2450,9 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                 }`}>
                                   <div className="flex items-center gap-1.5 mb-1.5">
                                     {blockInfo.reason === 'maintenance' ? (
-                                      <Wrench className={`w-3 h-3 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
+                                      <Icon name="wrench" className={`w-3 h-3 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
                                     ) : (
-                                      <Car className={`w-3 h-3 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`} />
+                                      <Icon name="car" className={`w-3 h-3 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`} />
                                     )}
                                     <span className={`text-xs ${
                                       blockInfo.reason === 'maintenance'
@@ -2444,14 +2464,14 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                   </div>
                                   <div className={`text-xs mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                                     <span className="flex items-center gap-1">
-                                      <Calendar className="w-3 h-3" />
+                                      <Icon name="calendar" className="w-3 h-3" />
                                       {blockInfo.startDay}. – {blockInfo.endDay}. {monthNames[calendarMonth]}
                                     </span>
                                   </div>
                                   {blockInfo.reason !== 'maintenance' && (
                                     <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                                       <span className="flex items-center gap-1">
-                                        <User className="w-3 h-3" />
+                                        <Icon name="user" className="w-3 h-3" />
                                         {blockInfo.customer}
                                       </span>
                                     </div>
@@ -2489,7 +2509,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                       </div>
                       {!selectedVehicle && (
                         <div className={`mt-3 flex items-center gap-2 px-3 py-2 rounded-lg ${isDarkMode ? 'bg-blue-900/10 border border-blue-900/20' : 'bg-blue-50/60 border border-blue-100'}`}>
-                          <AlertCircle className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                          <Icon name="alert-circle" className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
                           <span className={`text-xs ${isDarkMode ? 'text-blue-300/80' : 'text-blue-600'}`}>
                             Bitte wählen Sie zuerst ein Fahrzeug, um die Verfügbarkeit zu sehen.
                           </span>
@@ -2497,7 +2517,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                       )}
                       {rangeHasConflict && (
                         <div className={`mt-3 flex items-center gap-2 px-3 py-2 rounded-lg ${isDarkMode ? 'bg-red-900/15 border border-red-900/30' : 'bg-red-50/60 border border-red-100'}`}>
-                          <AlertCircle className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`} />
+                          <Icon name="alert-circle" className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-red-400' : 'text-red-500'}`} />
                           <span className={`text-xs ${isDarkMode ? 'text-red-300/80' : 'text-red-600'}`}>
                             Der gewählte Zeitraum überschneidet sich mit einer bestehenden Reservierung oder Wartung. Bitte wählen Sie einen anderen Zeitraum.
                           </span>
@@ -2625,7 +2645,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                       {/* AGB */}
                       <div className={`flex items-center justify-between py-2.5 px-3 rounded-lg ${isDarkMode ? 'bg-neutral-800/30' : 'bg-gray-50/60'}`}>
                         <div className="flex items-center gap-2.5">
-                          <FileText className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                          <Icon name="file-text" className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
                           <span className={`text-xs ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>Allgemeine Geschäftsbedingungen (AGB)</span>
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -2651,7 +2671,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                             title="Drucken"
                             className={`p-1.5 rounded-md transition-all ${isDarkMode ? 'hover:bg-neutral-700/60 text-gray-400 hover:text-gray-200' : 'hover:bg-gray-200/60 text-gray-500 hover:text-gray-700'}`}
                           >
-                            <Printer className="w-3.5 h-3.5" />
+                            <Icon name="printer" className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => {
@@ -2669,7 +2689,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                             title="Per E-Mail senden"
                             className={`p-1.5 rounded-md transition-all ${isDarkMode ? 'hover:bg-neutral-700/60 text-gray-400 hover:text-gray-200' : 'hover:bg-gray-200/60 text-gray-500 hover:text-gray-700'}`}
                           >
-                            <Send className="w-3.5 h-3.5" />
+                            <Icon name="send" className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
@@ -2677,7 +2697,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                       {/* Datenschutzerklärung */}
                       <div className={`flex items-center justify-between py-2.5 px-3 rounded-lg ${isDarkMode ? 'bg-neutral-800/30' : 'bg-gray-50/60'}`}>
                         <div className="flex items-center gap-2.5">
-                          <Shield className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
+                          <Icon name="shield" className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
                           <span className={`text-xs ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>Datenschutzerklärung</span>
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -2700,7 +2720,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                             title="Drucken"
                             className={`p-1.5 rounded-md transition-all ${isDarkMode ? 'hover:bg-neutral-700/60 text-gray-400 hover:text-gray-200' : 'hover:bg-gray-200/60 text-gray-500 hover:text-gray-700'}`}
                           >
-                            <Printer className="w-3.5 h-3.5" />
+                            <Icon name="printer" className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => {
@@ -2716,7 +2736,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                             title="Per E-Mail senden"
                             className={`p-1.5 rounded-md transition-all ${isDarkMode ? 'hover:bg-neutral-700/60 text-gray-400 hover:text-gray-200' : 'hover:bg-gray-200/60 text-gray-500 hover:text-gray-700'}`}
                           >
-                            <Send className="w-3.5 h-3.5" />
+                            <Icon name="send" className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
@@ -2727,7 +2747,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                       {/* Rechnung */}
                       <div className={`flex items-center justify-between py-2.5 px-3 rounded-lg ${isDarkMode ? 'bg-neutral-800/30' : 'bg-gray-50/60'}`}>
                         <div className="flex items-center gap-2.5">
-                          <Receipt className={`w-5 h-5 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
+                          <Icon name="receipt" className={`w-5 h-5 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
                           <div>
                             <span className={`text-xs ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>Rechnung</span>
                             {invoiceGenerated && (
@@ -2752,7 +2772,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                   : 'bg-amber-50 border border-amber-200/60 text-amber-700 hover:bg-amber-100'
                               }`}
                             >
-                              {generatingInvoice ? <Loader2 className="w-3 h-3 animate-spin" /> : <Receipt className="w-3 h-3" />}
+                              {generatingInvoice ? <Icon name="loader-2" className="w-3 h-3 animate-spin" /> : <Icon name="receipt" className="w-3 h-3" />}
                               {generatingInvoice ? 'Wird generiert...' : 'Generieren'}
                             </button>
                           ) : (
@@ -2762,7 +2782,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                 title="Vorschau"
                                 className={`p-1.5 rounded-md transition-all ${isDarkMode ? 'hover:bg-neutral-700/60 text-blue-400 hover:text-blue-300' : 'hover:bg-gray-200/60 text-blue-500 hover:text-blue-600'}`}
                               >
-                                <Eye className="w-3.5 h-3.5" />
+                                <Icon name="eye" className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => {
@@ -2791,7 +2811,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                 title="Drucken"
                                 className={`p-1.5 rounded-md transition-all ${isDarkMode ? 'hover:bg-neutral-700/60 text-gray-400 hover:text-gray-200' : 'hover:bg-gray-200/60 text-gray-500 hover:text-gray-700'}`}
                               >
-                                <Printer className="w-3.5 h-3.5" />
+                                <Icon name="printer" className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => {
@@ -2809,7 +2829,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                 title="Per E-Mail senden"
                                 className={`p-1.5 rounded-md transition-all ${isDarkMode ? 'hover:bg-neutral-700/60 text-gray-400 hover:text-gray-200' : 'hover:bg-gray-200/60 text-gray-500 hover:text-gray-700'}`}
                               >
-                                <Send className="w-3.5 h-3.5" />
+                                <Icon name="send" className="w-3.5 h-3.5" />
                               </button>
                             </>
                           )}
@@ -2819,7 +2839,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                       {/* Mietvertrag */}
                       <div className={`flex items-center justify-between py-2.5 px-3 rounded-lg ${isDarkMode ? 'bg-neutral-800/30' : 'bg-gray-50/60'}`}>
                         <div className="flex items-center gap-2.5">
-                          <FileSignature className={`w-5 h-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-500'}`} />
+                          <Icon name="file-signature" className={`w-5 h-5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-500'}`} />
                           <div>
                             <span className={`text-xs ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>Mietvertrag</span>
                             {contractGenerated && (
@@ -2844,7 +2864,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                   : 'bg-emerald-50 border border-emerald-200/60 text-emerald-700 hover:bg-emerald-100'
                               }`}
                             >
-                              {generatingContract ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileSignature className="w-3 h-3" />}
+                              {generatingContract ? <Icon name="loader-2" className="w-3 h-3 animate-spin" /> : <Icon name="file-signature" className="w-3 h-3" />}
                               {generatingContract ? 'Wird generiert...' : 'Generieren'}
                             </button>
                           ) : (
@@ -2854,7 +2874,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                 title="Vorschau"
                                 className={`p-1.5 rounded-md transition-all ${isDarkMode ? 'hover:bg-neutral-700/60 text-blue-400 hover:text-blue-300' : 'hover:bg-gray-200/60 text-blue-500 hover:text-blue-600'}`}
                               >
-                                <Eye className="w-3.5 h-3.5" />
+                                <Icon name="eye" className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => {
@@ -2885,7 +2905,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                 title="Drucken"
                                 className={`p-1.5 rounded-md transition-all ${isDarkMode ? 'hover:bg-neutral-700/60 text-gray-400 hover:text-gray-200' : 'hover:bg-gray-200/60 text-gray-500 hover:text-gray-700'}`}
                               >
-                                <Printer className="w-3.5 h-3.5" />
+                                <Icon name="printer" className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => {
@@ -2903,7 +2923,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                                 title="Per E-Mail senden"
                                 className={`p-1.5 rounded-md transition-all ${isDarkMode ? 'hover:bg-neutral-700/60 text-gray-400 hover:text-gray-200' : 'hover:bg-gray-200/60 text-gray-500 hover:text-gray-700'}`}
                               >
-                                <Send className="w-3.5 h-3.5" />
+                                <Icon name="send" className="w-3.5 h-3.5" />
                               </button>
                             </>
                           )}
@@ -2948,7 +2968,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                           {quickViewDoc === 'invoice' ? 'Rechnung – Vorschau' : 'Mietvertrag – Vorschau'}
                         </h3>
                         <button onClick={() => setQuickViewDoc(null)} className={`p-1.5 rounded-lg transition-all ${isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
-                          <X className="w-5 h-5" />
+                          <Icon name="x" className="w-5 h-5" />
                         </button>
                       </div>
                       <div className="p-4">
@@ -3118,7 +3138,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                       {pickupStation ? (
                         <>
                           <p className={`text-xs flex items-center gap-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                            <MapPin className="w-3 h-3" />{pickupStation}
+                            <Icon name="map-pin" className="w-3 h-3" />{pickupStation}
                           </p>
                           {!sameReturnStation && returnStation && returnStation !== pickupStation && (
                             <p className={`text-[11px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Rückgabe: {returnStation}</p>
@@ -3251,7 +3271,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                       : 'bg-white border-gray-200 text-gray-700 hover:bg-white'
                   }`}
                 >
-                  <ArrowLeft className="w-5 h-5" />
+                  <Icon name="arrow-left" className="w-5 h-5" />
                   Zurück
                 </button>
               )}
@@ -3268,7 +3288,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                   }`}
                 >
                   Weiter
-                  <ArrowRight className="w-5 h-5" />
+                  <Icon name="arrow-right" className="w-5 h-5" />
                 </button>
               ) : (
                 <button
@@ -3282,7 +3302,7 @@ export function NewBookingView({ isDarkMode, onBack, tariffs: externalTariffs, o
                         : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   }`}
                 >
-                  <Check className="w-5 h-5" />
+                  <Icon name="check" className="w-5 h-5" />
                   {isSavingBooking ? 'Speichert…' : 'Buchung bestätigen'}
                 </button>
               )}

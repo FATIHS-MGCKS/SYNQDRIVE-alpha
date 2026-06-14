@@ -1,4 +1,6 @@
-import { Moon, Sun, Home, Search, Settings, Grid3X3, Car, Users, FileText, ListTodo, BarChart3, Calendar, MapPin, Tag, AlertCircle, Briefcase, X, ArrowRight, Zap, CreditCard, Building2, UserCog, Wifi, Lock, LogOut, User, ChevronRight } from 'lucide-react';
+
+import { AlertCircle, ArrowRight, Briefcase, Calendar, Car, FileText, Home, ListTodo, MapPin, Search, Settings, Tag, Users } from 'lucide-react';
+import { Icon } from './ui/Icon';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { clearAuth, getStoredUser } from '../../lib/auth';
 import { VehicleData } from '../data/vehicles';
@@ -17,8 +19,8 @@ const languages = [
   { code: 'cs' as Locale, name: 'Čeština', short: 'CS' },
 ];
 
-type ViewType = 'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-management' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'analytics' | 'fleet-condition' | 'rental-driving-analysis' | 'settings' | 'new-booking' | 'stations' | 'document-upload' | 'ai-assistant' | 'ai-voice-assistant' | 'support';
-type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization';
+type ViewType = 'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-management' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'fleet-condition' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'document-upload' | 'ai-assistant' | 'ai-voice-assistant' | 'support';
+type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents';
 
 interface TopBarProps {
   isDarkMode: boolean;
@@ -42,7 +44,6 @@ const viewLabelKeys: Record<ViewType, TranslationKey> = {
   'trips': 'view.trips',
   'dashboard': 'view.dashboard',
   'bookings': 'view.bookings',
-  'rental-driving-analysis': 'view.analytics',
   'health-errors': 'view.healthErrors',
   'fleet': 'view.fleet',
   'damages': 'view.damages',
@@ -55,8 +56,8 @@ const viewLabelKeys: Record<ViewType, TranslationKey> = {
   'invoices': 'view.invoices',
   'fines': 'view.fines',
   'price-tariffs': 'view.priceTariffs',
-  'analytics': 'view.analytics',
   'fleet-condition': 'view.fleetCondition',
+  'financial-insights': 'nav.financialInsights',
   'settings': 'view.settings',
   'new-booking': 'view.newBooking',
   'stations': 'view.stations',
@@ -69,7 +70,6 @@ const viewLabelKeys: Record<ViewType, TranslationKey> = {
 const viewCategoryKeys: Record<ViewType, TranslationKey> = {
   'overview': 'category.operations',
   'trips': 'category.operations',
-  'rental-driving-analysis': 'category.insights',
   'health-errors': 'category.operations',
   'damages': 'category.operations',
   'documents': 'category.operations',
@@ -84,8 +84,8 @@ const viewCategoryKeys: Record<ViewType, TranslationKey> = {
   'invoices': 'category.finance',
   'fines': 'category.finance',
   'price-tariffs': 'category.finance',
-  'analytics': 'category.insights',
   'fleet-condition': 'category.insights',
+  'financial-insights': 'category.insights',
   'settings': 'category.administration',
   'new-booking': 'category.operations',
   'stations': 'category.operations',
@@ -102,6 +102,7 @@ const settingsTabKeys: Record<SettingsTab, TranslationKey> = {
   'users': 'settingsTab.users',
   'billing': 'settingsTab.billing',
   'data-authorization': 'settingsTab.dataAuthorization',
+  'legal-documents': 'settingsTab.legalDocuments',
 };
 
 export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', settingsTab, selectedVehicle, activeBookingRef, detailCustomerId, onViewChange, onVehicleSelect, onSettingsTabChange, onFinanceTabChange, onTasksTabChange }: TopBarProps) {
@@ -174,7 +175,6 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
     { view: 'fleet' as ViewType, label: 'Fleet', icon: Car, category: 'Operations' },
     { view: 'customers' as ViewType, label: 'Customers', icon: Users, category: 'Operations' },
     { view: 'stations' as ViewType, label: 'Stations', icon: MapPin, category: 'Operations' },
-    { view: 'analytics' as ViewType, label: 'Analytics', icon: BarChart3, category: 'Insights' },
     { view: 'invoices' as ViewType, label: 'Invoices', icon: FileText, category: 'Finance' },
     { view: 'fines' as ViewType, label: 'Fines & OCR', icon: AlertCircle, category: 'Finance' },
     { view: 'price-tariffs' as ViewType, label: 'Pricing & Tariffs', icon: Tag, category: 'Finance' },
@@ -363,8 +363,8 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
   return (
     <div className="flex items-center justify-between gap-3 pb-3 mb-5 border-b border-border/50 z-10 relative">
       {/* Left Section - Breadcrumb Navigation */}
-      <div className="flex items-center gap-1.5 lg:gap-2 text-xs min-w-0 overflow-hidden">
-        <Home className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+      <div className="flex items-center gap-1.5 lg:gap-2 text-[11px] min-w-0 overflow-hidden">
+        <Icon name="home" className="w-3 h-3 shrink-0 text-muted-foreground" />
         <span className="hidden sm:inline text-muted-foreground/40">/</span>
         <span className="hidden sm:inline text-muted-foreground">{t(viewCategoryKeys[resolvedView])}</span>
         <span className="hidden sm:inline text-muted-foreground/40">/</span>
@@ -372,60 +372,62 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
           <>
             <span className="hidden md:inline text-muted-foreground">{t('view.settings')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-[14px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(settingsTabKeys[settingsTab])}</span>
+            <span className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(settingsTabKeys[settingsTab])}</span>
           </>
         ) : ['invoices', 'fines', 'price-tariffs'].includes(currentView) ? (
           <>
             <span className="hidden md:inline text-muted-foreground">{t('category.finance')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-[14px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
+            <span className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
           </>
         ) : ['tasks', 'vendor-management', 'vendor-detail'].includes(currentView) ? (
           <>
             <span className="hidden md:inline text-muted-foreground">{t('category.tasks')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-[14px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
+            <span className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
           </>
-        ) : ['analytics', 'fleet-condition'].includes(currentView) ? (
+        ) : ['fleet-condition', 'financial-insights'].includes(currentView) ? (
           <>
             <span className="hidden md:inline text-muted-foreground">{t('category.insights')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-[14px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
+            <span className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
           </>
         ) : currentView === 'new-booking' ? (
           <>
             <span className="hidden md:inline text-muted-foreground">{t('view.bookings')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-[14px] font-semibold tracking-[-0.003em] truncate text-foreground">{t('view.newBooking')}</span>
+            <span className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">{t('view.newBooking')}</span>
           </>
         ) : currentView === 'customer-detail' && detailCustomerId ? (
           <>
             <span className="hidden md:inline text-muted-foreground">{t('view.customers')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-[14px] font-semibold font-mono truncate text-foreground">{detailCustomerId}</span>
+            <span className="text-[12px] font-semibold font-mono truncate text-foreground">{detailCustomerId}</span>
           </>
         ) : currentView === 'bookings' && activeBookingRef ? (
           <>
             <span className="hidden md:inline text-muted-foreground">{t('view.bookings')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-[14px] font-semibold tracking-[-0.003em] truncate text-foreground">{activeBookingRef}</span>
+            <span className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">{activeBookingRef}</span>
           </>
         ) : ['overview', 'trips', 'health-errors', 'damages', 'documents'].includes(currentView) && selectedVehicle ? (
           <>
             <span className="hidden md:inline text-muted-foreground">{t(viewLabelKeys[resolvedView])}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-[14px] font-semibold tracking-[-0.003em] truncate text-foreground">{selectedVehicle.model}</span>
+            <span className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">{selectedVehicle.model}</span>
           </>
         ) : (
-          <span className="text-[14px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
+          <span className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
         )}
       </div>
 
-      {/* Center Section - Search (V4.6.86: refined focus ring, brand-tinted glow) */}
+      {/* Center Section - Search
+          V4.7.33 — keep the established width; only reduce vertical
+          height slightly so it aligns more calmly with the right actions. */}
       <div className="hidden md:flex flex-1 max-w-xs" ref={searchRef}>
         <div className="relative w-full">
-          <div className="flex items-center gap-2 w-full h-8 px-3 rounded-lg border bg-muted/80 border-border transition-[border-color,background-color,box-shadow] duration-200 ease-out focus-within:border-[color:var(--brand-soft)] focus-within:bg-card focus-within:shadow-[0_0_0_3px_var(--brand-soft)]">
-            <Search className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+          <div className="flex items-center gap-2 w-full h-7 px-3 rounded-md border bg-muted/80 border-border transition-[border-color,background-color,box-shadow] duration-200 ease-out focus-within:border-[color:var(--brand-soft)] focus-within:bg-card focus-within:shadow-[0_0_0_3px_var(--brand-soft)]">
+            <Icon name="search" className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
             <input
               ref={inputRef}
               type="text"
@@ -434,14 +436,14 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
               onChange={(e) => { setSearchQuery(e.target.value); setIsSearchOpen(true); }}
               onFocus={() => { if (searchQuery.trim()) setIsSearchOpen(true); }}
               onKeyDown={handleSearchKeyDown}
-              className="flex-1 bg-transparent outline-none text-[13px] placeholder:text-muted-foreground text-foreground"
+              className="min-w-0 flex-1 bg-transparent outline-none text-[12px] placeholder:text-muted-foreground text-foreground"
             />
             {searchQuery ? (
               <button onClick={() => { setSearchQuery(''); setIsSearchOpen(false); inputRef.current?.focus(); }} className="p-0.5 rounded transition-colors hover:bg-foreground/10 text-muted-foreground hover:text-foreground">
-                <X className="w-3 h-3" />
+                <Icon name="x" className="w-3 h-3" />
               </button>
             ) : (
-              <div className="flex items-center gap-0.5 text-[10px] font-semibold font-mono tabular px-1.5 py-0.5 rounded bg-foreground/5 text-muted-foreground">
+              <div className="flex shrink-0 items-center gap-0.5 text-[10px] font-semibold font-mono tabular px-1.5 py-0.5 rounded bg-foreground/5 text-muted-foreground">
                 <span>⌘</span><span>K</span>
               </div>
             )}
@@ -452,7 +454,7 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
             <div className="absolute top-full mt-2 left-0 right-0 z-[9999] sq-overlay overflow-hidden animate-fade-up">
               {searchResults.length === 0 ? (
                 <div className="px-4 py-8 text-center">
-                  <Search className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
+                  <Icon name="search" className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
                   <p className="text-sm font-medium text-muted-foreground">No results for "{searchQuery}"</p>
                   <p className="text-xs mt-1 text-muted-foreground/60">Try searching for vehicles, customers, bookings...</p>
                 </div>
@@ -533,9 +535,9 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
           aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
         >
           {isDarkMode ? (
-            <Sun className="w-4 h-4 transition-transform duration-300 ease-out hover:rotate-45" />
+            <Icon name="sun" className="w-4 h-4 transition-transform duration-300 ease-out hover:rotate-45" />
           ) : (
-            <Moon className="w-4 h-4 transition-transform duration-300 ease-out hover:-rotate-12" />
+            <Icon name="moon" className="w-4 h-4 transition-transform duration-300 ease-out hover:-rotate-12" />
           )}
         </button>
 
@@ -616,9 +618,9 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 transition-colors text-xs hover:bg-muted text-foreground"
                 >
-                  <User className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Icon name="user" className="w-3.5 h-3.5 text-muted-foreground" />
                   <span>{t('topbar.accountSettings')}</span>
-                  <ChevronRight className="w-3 h-3 ml-auto text-muted-foreground/50" />
+                  <Icon name="chevron-right" className="w-3 h-3 ml-auto text-muted-foreground/50" />
                 </button>
               </div>
 
@@ -632,7 +634,7 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 transition-colors text-xs hover:bg-destructive/10 text-destructive"
                 >
-                  <LogOut className="w-3.5 h-3.5" />
+                  <Icon name="log-out" className="w-3.5 h-3.5" />
                   <span>{t('topbar.logOut')}</span>
                 </button>
               </div>

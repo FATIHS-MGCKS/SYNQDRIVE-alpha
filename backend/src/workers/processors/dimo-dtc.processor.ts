@@ -172,19 +172,59 @@ export class DimoDtcProcessor extends WorkerHost {
 
   // ── Helpers ────────────────────────────────────────────────────────
 
+  /** Canonical OBD-II DTC shape: P/B/C/U + 4 alphanumerics (e.g. P0675). */
+  private static readonly DTC_PATTERN = /^[PBCU][0-9A-Z]{4}$/;
+
+  /**
+   * Turns the raw `obdDTCList` value into a clean, deduped list of canonical DTC
+   * codes. DIMO delivers this signal in several shapes and they must all collapse
+   * to individual codes:
+   *   - JSON-encoded array string: '["P0675"]' or '["P0675","P0420"]'
+   *   - comma-joined string:       'P0675, P0420'
+   *   - native array:              ['P0675', 'P0420']
+   *   - single string:             'P0675'
+   * Tokens are sanitized (quotes/brackets/whitespace stripped, upper-cased) and
+   * validated against the canonical pattern so malformed blobs like '["P0675"]'
+   * are never stored as a code.
+   */
   private normalizeDtcCodes(value: unknown): string[] {
-    if (!value) return [];
-    if (typeof value === 'string') {
-      return value
-        .split(',')
-        .map((c) => c.trim())
-        .filter(Boolean);
+    if (value === null || value === undefined) return [];
+
+    // A JSON-array string (e.g. '["P0675"]') must be parsed before tokenizing —
+    // otherwise the brackets/quotes get stored as part of the "code".
+    let source: unknown = value;
+    if (typeof source === 'string') {
+      const trimmed = source.trim();
+      if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        try {
+          source = JSON.parse(trimmed);
+        } catch {
+          // Not valid JSON — fall through to comma-splitting below.
+        }
+      }
     }
-    if (Array.isArray(value)) {
-      return value
-        .map((c) => (typeof c === 'string' ? c.trim() : String(c)))
-        .filter(Boolean);
+
+    const tokens: string[] = Array.isArray(source)
+      ? source.map((c) => (typeof c === 'string' ? c : String(c)))
+      : typeof source === 'string'
+        ? source.split(',')
+        : [];
+
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const token of tokens) {
+      const code = this.sanitizeDtcCode(token);
+      if (code && !seen.has(code)) {
+        seen.add(code);
+        out.push(code);
+      }
     }
-    return [];
+    return out;
+  }
+
+  /** Strips quotes/brackets/whitespace, upper-cases, and validates the code. */
+  private sanitizeDtcCode(raw: string): string | null {
+    const cleaned = raw.replace(/["'[\]\s]/g, '').toUpperCase();
+    return DimoDtcProcessor.DTC_PATTERN.test(cleaned) ? cleaned : null;
   }
 }

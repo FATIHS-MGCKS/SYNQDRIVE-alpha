@@ -35,6 +35,1435 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-insights-rental-health-dtc-v4741-2026-06-14',
+    version: '4.7.41',
+    title: 'V4.7.41 Vehicle Insights — DTC-Eskalation an Rental-Health-V1',
+    summary: [
+      '**VehicleInsightsCard** übergibt `modules.error_codes.state` aus `useEffectiveHealth` an `deriveInsights`.',
+      '**vehicle-insights-logic**: `dtcEscalation()` ersetzt binäres `dtcCount > 0` — high/critical → Action Needed, WARNING-only → Monitor / Medium Downtime (wie Fleet Status).',
+      'Verdict + Next Action unterscheiden jetzt „inspection required“ (kritisch) vs „review before assignment“ (Warnung).',
+    ],
+    reason:
+      'Vehicle Insights zeigte bei KS MS 661 (P0675 WARNING) „Action Needed“ / rote Surfaces, obwohl Rental-Health überall Warning lieferte.',
+    previousBehavior:
+      'Jeder aktive DTC setzte Readiness sofort auf Action Needed und Downtime auf High.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Rental Health V1 — Vehicle Detail Overview',
+    createdAt: '2026-06-14T19:30:00.000Z',
+  },
+  {
+    id: 'overview-vehicle-health-box-rental-health-v4740-2026-06-14',
+    version: '4.7.40',
+    title: 'V4.7.40 Overview Vehicle Health Box — Rental-Health-V1 statt binärer DTC-Eskalation',
+    summary: [
+      '**App.tsx → VehicleHealthBoxWired** (Overview-Tab Vehicle Detail): Overall-Badge, Critical/Due-soon-Zähler und Faults-Kachel-Ton lesen jetzt `useEffectiveHealth(vehicleId)` bzw. `collectRentalHealthReasons` — dieselbe Rental-Health-V1-Map wie Dashboard, FleetView, Header-Chip und Health-Tab.',
+      'Entfernt: `dtcCount > 0` → sofort „Critical“ auf der Gesamt-Ampel. WARNING-DTCs (z. B. KS MS 661 / P0675) zeigen jetzt **Warning** + amber Faults-Kachel statt rot.',
+      'Wear-Module (Brakes/Tires/Battery) behalten ihre Detail-Bars über die bestehenden Intelligence-Endpoints; nur die aggregierte Ampel und die drei Summary-Tiles folgen Rental-Health.',
+    ],
+    reason:
+      'Nach Phase 1/2 war der Overview-Tab „Vehicle Health“-Kasten die letzte inkonsistente Surface — er aggregierte Status eigenständig und behandelte jeden aktiven DTC als kritisch.',
+    previousBehavior:
+      'VehicleHealthBoxWired: `criticalCount > 0 || dtcCount > 0` → Critical; Faults-Kachel immer rot bei ≥1 DTC.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Rental Health V1 — Vehicle Detail Overview',
+    createdAt: '2026-06-14T19:00:00.000Z',
+  },
+  {
+    id: 'health-tab-rental-health-phase2-dtc-v4729-2026-06-14',
+    version: '4.7.29',
+    title: 'V4.7.29 Vehicle Health — DTC severity-aware Modal + AI vs Betriebsstatus getrennt',
+    summary: [
+      '**rental-health-ui.ts**: `dtcFaultCardTone`, `normalizeDtcDisplaySeverity`, `rentalStateLabelDe`, `rentalStatePillClasses` — DTC-Fault-Karten und Fleet-Health-Pills aus einem Helper.',
+      '**Error-Codes-Modal**: Banner „Betriebsstatus (Fleet Health)“ mit `modules.error_codes.state` + Reason. Modal-Header und aktive Fault-Cards nutzen severity-aware Töne (high=rot, medium=amber, low=blau) statt binär rot.',
+      'Pro Fault-Card: getrennte Badges „Betrieb:“ (Rental-Health) vs „DTC:“ (Poll-Severity). AI-Knowledge-Block visuell als „AI-Einschätzung · DTC Knowledge“ (indigo border); Urgency-Pills umbenannt zu „AI technisch“ / „AI Rental“.',
+    ],
+    reason:
+      'Phase-2-Harmonisierung: DTC-AI-Urgency „Kritisch“ durfte mit Fleet-Warning verwechselt werden; aktive Codes wirkten immer kritisch.',
+    previousBehavior:
+      'DTC-Modal: alle aktiven Codes rot; Knowledge-Section rote Trennlinie; AI-Urgency-Labels ohne AI-Präfix.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Rental Health V1 — Health Tab DTC',
+    createdAt: '2026-06-14T18:30:00.000Z',
+  },
+  {
+    id: 'health-tab-rental-health-v1-v4728-2026-06-14',
+    version: '4.7.28',
+    title: 'V4.7.28 Vehicle Health Tab — Rental-Health-V1 als Status-Wahrheit (Phase 1 Harmonisierung)',
+    summary: [
+      '**Neu**: `frontend/src/rental/rental-health-ui.ts` — Shared Helpers `collectRentalHealthReasons`, `rentalOverallToVhcStatus`, `quickCardAccentFromRentalState`, `serviceCardBorderFromRentalState` für einheitliche Ampel-/Quick-Card-Töne aus `VehicleHealthResponse`.',
+      '**HealthErrorsView**: Vehicle Health Center (Overall-Status + „Sofortige Aufmerksamkeit“-Liste) liest jetzt `useEffectiveHealth(vehicleId)` → dieselbe Rental-Health-V1-Map wie Dashboard Fleet Status, FleetView und Vehicle-Header-Chip. Die parallele Eskalation aus `serviceInfo`/`batterySummary`/`aiHealthCare.aiStatus` steuert die Ampel nicht mehr.',
+      'Quick-Cards (Error Codes, Battery, Service Info, Brakes, Tires) — Header-/Backdrop-Farben folgen `health.modules.*.state` (good/warning/critical). Beispiel KS MS 661: aktiver DTC P0675 (`WARNING`) → amber Warning statt rot.',
+      'Refresh-Button invalidiert zusätzlich `FleetProvider.reloadHealth()` damit Fleet- und Detail-Surfaces synchron bleiben. Modul-Modals behalten ihre Deep-Endpoints (dtcDetail, brakeHealthDetail, …).',
+    ],
+    reason:
+      'Fleet-Status-Dashboard zeigte Warning während der Health-Tab rot/kritisch wirkte — HealthErrorsView war nie an Rental-Health-V1 angebunden.',
+    previousBehavior:
+      'HealthErrorsView aggregierte Status eigenständig über healthSummary, aiHealthCare und lokale service/battery-Findings; Error-Codes-Kachel wurde bei jedem aktiven DTC rot, unabhängig von DTC-Severity.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Rental Health V1 — Health Tab',
+    createdAt: '2026-06-14T18:00:00.000Z',
+  },
+  {
+    id: 'rental-content-gutter-100px-v497-2026-06-14',
+    version: '4.9.7',
+    title: 'V4.9.7 Rental Shell — Desktop-Content-Gutter von 80 px auf 100 px erhöht',
+    summary: [
+      '`frontend/src/rental/App.tsx` — Der äussere Content-Container der `HandoverProvider`-Layout-Spalte (`flex-1 overflow-auto …`) erhöht das Desktop-Horizontal-Padding von `lg:px-[80px]` auf `lg:px-[100px]`. Resultat: 20 px mehr Atemluft links und rechts gegen den Rand auf Viewports ≥ 1024 px (Desktop); Mobile/Tablet-Padding (`px-5 sm:px-7`) bleibt unverändert. Die innere `max-w-[1440px] mx-auto`-Spalte ist unberührt.',
+    ],
+    reason:
+      'Browser-Preview-Feedback (2026-06-14): Horizontal-Padding links/rechts des Haupt-Content-Bereichs von 80 px auf 100 px anheben.',
+    previousBehavior:
+      'Seit V4.9.4 nutzte der äussere Content-Container `lg:px-[80px]` (vorher 50 px in V4.6.92).',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Rental Shell — Layout Padding',
+    createdAt: '2026-06-14T17:00:00.000Z',
+  },
+  {
+    id: 'rental-sidebar-width-260px-v496-2026-06-14',
+    version: '4.9.6',
+    title: 'V4.9.6 Rental Shell — linke Sidebar von 240 px auf 260 px verbreitert',
+    summary: [
+      '`frontend/src/rental/components/Sidebar.tsx` — Desktop-Sidebar im ausgeklappten Zustand von `w-[240px]` auf `w-[260px]` erhöht; innerer Nav-Container `max-w-[260px]` angepasst.',
+    ],
+    reason:
+      'Layout-Feedback (2026-06-14): linke Sidebar noch etwas breiter.',
+    previousBehavior:
+      'Seit V4.9.5 nutzte die ausgeklappte Desktop-Sidebar 240 px Breite (zuvor 220 px).',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Rental Shell — Sidebar Layout',
+    createdAt: '2026-06-14T16:30:00.000Z',
+  },
+  {
+    id: 'rental-sidebar-width-240px-v495-2026-06-14',
+    version: '4.9.5',
+    title: 'V4.9.5 Rental Shell — linke Sidebar von 220 px auf 240 px verbreitert',
+    summary: [
+      '`frontend/src/rental/components/Sidebar.tsx` — Desktop-Sidebar im ausgeklappten Zustand von `w-[220px]` auf `w-[240px]` erhöht; innerer Nav-Container `max-w-[240px]` angepasst. Collapsed-Breite (`w-[52px]`) und Mobile-Drawer unverändert.',
+    ],
+    reason:
+      'Layout-Feedback (2026-06-14): linke Sidebar etwas verbreitern, damit Nav-Labels und Brand-Row etwas mehr Luft haben.',
+    previousBehavior:
+      'Seit V4.6.90 nutzte die ausgeklappte Desktop-Sidebar eine feste Breite von 220 px.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Rental Shell — Sidebar Layout',
+    createdAt: '2026-06-14T16:15:00.000Z',
+  },
+  {
+    id: 'rental-content-gutter-80px-v494-2026-06-14',
+    version: '4.9.4',
+    title: 'V4.9.4 Rental Shell — Desktop-Content-Gutter von 50 px auf 80 px erhöht',
+    summary: [
+      '`frontend/src/rental/App.tsx` — Der äussere Content-Container der `HandoverProvider`-Layout-Spalte (`flex-1 overflow-auto …`) erhöht das Desktop-Horizontal-Padding von `lg:px-[50px]` auf `lg:px-[80px]`. Resultat: 30 px mehr Atemluft links und rechts gegen den Rand auf Viewports ≥ 1024 px (Desktop); Mobile/Tablet-Padding (`px-5 sm:px-7`) bleibt unverändert. Die innere `max-w-[1440px] mx-auto`-Spalte ist unberührt.',
+    ],
+    reason:
+      'Browser-Preview-Feedback (2026-06-14): Horizontal-Padding links/rechts des Haupt-Content-Bereichs von 50 px auf 80 px anheben, damit der Inhalt visuell weiter vom Sidebar- und Fensterrand entfernt sitzt.',
+    previousBehavior:
+      'Seit V4.6.92 nutzte der äussere Content-Container `lg:px-[50px]` (vorher 40 px in V4.6.86).',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Rental Shell — Layout Padding',
+    createdAt: '2026-06-14T16:00:00.000Z',
+  },
+  {
+    id: 'dtc-ingestion-jsonarray-parse-v493-2026-06-14',
+    version: '4.9.3',
+    title: 'V4.9.3 DTC-Fix — obdDTCList als JSON-Array-String korrekt geparst; Fehlercode-Erklärung (DTC Knowledge / AI-Agent) funktioniert wieder',
+    summary: [
+      'Fehlercodes zeigten „Category: Unknown" und „Noch keine Erklärung vorhanden", obwohl ein gültiger Code (z. B. P0675) aktiv war. Ursache: DIMO liefert das Signal obdDTCList als JSON-Array-String ("[\\"P0675\\"]"). Die Ingestion (DimoDtcProcessor.normalizeDtcCodes) splittete nur an Kommas — ohne Komma wurde der komplette String inkl. Klammern/Anführungszeichen als ein „Code" \'["P0675"]\' gespeichert.',
+      'Folge: getDtcCategory(\'["P0675"]\') → erstes Zeichen „[" → „Unknown"; und der Knowledge-Service verwarf den Code beim normalizeDtcCode (Pattern ^[PBCU][0-9A-Z]{4}$) → Status MISSING, also kein Enrichment-Job, kein Agent-Call (dtc/detail kehrte in ~7ms ohne [DtcEnrich]/[Agents]-Log zurück).',
+      'Fix in normalizeDtcCodes: JSON-Array-Strings werden zuerst per JSON.parse zerlegt, dann jeder Token saniert (Quotes/Klammern/Whitespace entfernt, Uppercase) und gegen das kanonische DTC-Pattern validiert + dedupliziert. Damit greifen alle Formen: \'["P0675"]\', \'["P0675","P0420"]\', \'P0675,P0420\', native Arrays und Einzelcodes.',
+      'Bestandsdaten repariert: das aktive Event mit dtc_code \'["P0675"]\' wurde per einmaligem SQL-Repair auf \'P0675\' bereinigt (nur wenn es zu genau einem gültigen Code kollabiert; Mehrfach-Blobs heilen beim nächsten erfolgreichen Poll selbst). Vehicle KS MS 661 zeigt jetzt P0675 → Category „Powertrain" und triggert beim Öffnen das DTC-Knowledge-Enrichment via DIMO-Agent.',
+    ],
+    reason:
+      'User-Report (2026-06-14): „ks ms 661 hat einen error code ["P0675"] … der AI-Agent holt die Infos nicht … bei Beschreibung steht: Noch keine Erklärung vorhanden." Vorangegangen war bereits das Anwenden der ausstehenden DB-Migrationen (u. a. dtc_knowledge); der eigentliche Restfehler lag in der Code-Ingestion.',
+    previousBehavior:
+      'DimoDtcProcessor.normalizeDtcCodes behandelte den obdDTCList-Wert nur als komma-getrennten String oder echtes Array. Der von DIMO gelieferte JSON-Array-String "[\\"P0675\\"]" enthielt kein Komma und wurde 1:1 als dtc_code gespeichert. Sämtliche nachgelagerte Logik (Kategorie, Knowledge-Normalisierung, Enrichment-Enqueue) scheiterte still an diesem ungültigen Code.',
+    details:
+      '**Geänderte Datei**: backend/src/workers/processors/dimo-dtc.processor.ts — normalizeDtcCodes erkennt führende/abschließende Klammern und JSON.parse\'t den String vor dem Tokenizing; neuer Helfer sanitizeDtcCode strippt ["\\\'[]\\s], upper-cased und prüft gegen DTC_PATTERN (^[PBCU][0-9A-Z]{4}$); Dedupe via Set. **Datenreparatur**: einmaliges UPDATE auf vehicle_dtc_events (regexp_replace nicht-alphanumerischer Zeichen, nur bei genau einem gültigen Code übernommen) — temporäre SQL/Script-Dateien nach Verifikation entfernt. **Verifikation**: Lint sauber; DB-Query bestätigt dtc_code=\'P0675\', isActive=true; Backend-Watch hat neu kompiliert und gestartet. **Hinweis (DIMO-Regel)**: Diagnose aus gespeichertem Wert + Logs; Supabase-MCP/DIMO-MCP waren auf Fehler — Datenbank ist und bleibt PostgreSQL (Prisma).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-14T14:50:00.000Z',
+  },
+  {
+    id: 'ai-assistant-chat-sse-streaming-v492-2026-06-14',
+    version: '4.9.2',
+    title: 'V4.9.2 AI Assistant Fix — Chat auf DIMO-Agents-Streaming (SSE) umgestellt, behebt 504 Gateway Timeout',
+    summary: [
+      'Der AI Assistant (rental) gab bei echten Anfragen 504 zurück. Ursache: Der Chat nutzte den synchronen DIMO-Agents-Endpoint POST /agents/:id/message, der bei jeder Anfrage mit echter Agent-Arbeit (Tool-Calls/Telemetrie-Lookups) am Gateway 504t. Der Fehler erschien als Assistant-Text „… HTTP 504".',
+      'Fix: Der Chat läuft jetzt — wie AI Upload (DimoDocumentAgentService) und AI Fehlermeldung/DTC (DtcAiResearchService) bereits — über den SSE-Stream-Endpoint /agents/:id/stream (DimoAgentsService.sendMessageStream). Die Verbindung bleibt per Keepalive offen, statt am synchronen Gateway-Timeout zu sterben.',
+      'Voll-SSE bis ins Frontend: neuer Backend-Endpoint POST /organizations/:orgId/chat/message/stream (Server-Sent Events: status/progress/result/error). Frontend nutzt streamChatMessage (fetch + ReadableStream-Reader, Authorization-Header) und zeigt Live-„denkt nach…"/Tool-Schritte im Typing-Indikator.',
+      'ChatService.sendMessage (von WhatsApp-AI-Vorschlägen genutzt) intern ebenfalls auf den Stream-Pfad umgebaut — damit ist auch die WhatsApp-AI-Antwort 504-fest. Gleiche Agent-Expiry-Retry-Logik (404/410 → Agent neu anlegen) bleibt erhalten; Nachrichten werden weiterhin in chatMessage persistiert.',
+      'Audit der übrigen AI/Agent-Funktionen: AI Upload, DTC-Research und Vehicle-/Tire-Specs streamten bereits korrekt — keine Änderung nötig. Der synchrone DimoAgentsService.sendMessage hat damit keine Aufrufer mehr (als Util belassen).',
+    ],
+    reason:
+      'User-Report (2026-06-14): „der AI Assistant funktioniert nicht, gibt 504 zurück … bitte richtig fixen … auch gucken ob die anderen Agents/AI funktionieren (AI Upload, AI Fehlermeldung)".',
+    previousBehavior:
+      'Chat blockierte synchron auf POST /agents/:id/message (axios 120s), den DIMO bei realer Agent-Arbeit mit 504 beantwortet. Der 504 wurde als Assistant-Nachricht „I\'m sorry, I couldn\'t process your request right now. HTTP 504" angezeigt. Die zur Vermeidung gebaute Streaming-Infrastruktur war nur für Vehicle-/Tire-Specs aktiv, nicht für den Chat.',
+    details:
+      '**Backend**: chat.service.ts — sendMessage intern auf sendMessageStream umgestellt + neue streamMessage(orgId, content, emit, isClosed) (SSE-Orchestrierung mit Live-Progress, Agent-Expiry-Retry, Persistenz); geteilte Helfer ensureAgentSafe/buildContext/saveUserMessage/sendWithRetry/persistAssistant; exportiertes ChatMessageResult. chat.controller.ts — neuer @Post(\'message/stream\') mit @Res() Express-Response (text/event-stream, X-Accel-Buffering:no), RolesGuard bleibt aktiv. **Frontend**: lib/api.ts — streamChatMessage + ChatStreamEvent (POST-fetch-SSE, mirror von streamAiSpecs). AIAssistantView.tsx — handleSend nutzt streamChatMessage, thinkingLabel-State für Live-Schritte, AbortController-Cleanup beim Unmount. **Verifikation**: backend tsc --noEmit grün; geänderte Frontend-Dateien lint/tsc-sauber; Backend neu gestartet, Route /api/v1/organizations/:orgId/chat/message/stream POST gemappt. **Hinweis**: DIMO-MCP-Server war zur Verifikation auf Fehler (STATUS.md) — Diagnose aus Code + Logs.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-14T13:30:00.000Z',
+  },
+  {
+    id: 'frontend-token-migration-large-views-v491-2026-06-14',
+    version: '4.9.1',
+    title: 'V4.9.1 Token-Migration der großen Operator-Views — TasksView, Vendor Management/Detail, Fleet, Dashboard & Vehicle-Health-Box auf semantische Tokens',
+    summary: [
+      'Fortsetzung von V4.9.0 (Foundation/Pattern-Bibliothek/Shell): die großen, datenintensiven Operator-Views wurden von hartkodierten Tailwind-Farben + isDarkMode/dm-Ternaries auf die semantischen theme.css-Tokens umgestellt. Reine Darstellung — keine Businesslogik, keine Datenflüsse, keine APIs verändert.',
+      'TasksView: Status-/Priority-Pills auf kanonische Tonleiter (Open=neutral, In Progress=info, Completed=success, Overdue=critical; Low→neutral, Medium→watch, High→warning, Critical→critical), Category-Tiles entkoppelt von der Dark-Mode-kaputten -100/-600-Rainbow (jetzt muted + Icon), Filter-Dropdowns/Suche/Sort/Modals (Detail + 4-Step-New-Task) tokenisiert, Aktions-Buttons (Start/Complete/Waiting/Cancel) auf brand/success/watch/critical. PriorityBadge-Tonleiter (medium=watch) auch kanonisch in components/patterns vereinheitlicht.',
+      'Vendor Management + Vendor Detail: Filter, Mapbox-POI-Suchflow (Suggestions/MAPBOX-Badge), Vendor-Liste, Tabs, Service-Area-Chips, Link-/Invoice-/Activity-Listen, Create/Edit-Modal und alle Buttons auf Tokens; aktive Filter = Brand-Tint statt grün/blau, Online/Local-Badge = ai/neutral, Alert-Dots = critical/watch/info.',
+      'FleetView + DashboardView waren bereits weitgehend tokenisiert — verbliebene Amber-Warn-Pills und Erfolg/Kritisch-Deltas auf sq-tone-watch/-success/-critical gezogen.',
+      'Vehicle-Health-Box (rental/App.tsx): getStatus/getBatteryStatus + alle Compliance-/Tacho-Tone-Helper, Stat-Tiles (Critical/Due soon/Faults), Health-Item-Bars, Badges, Calibration/Stabilizing-States, Connection-Badge (Online/Standby/Offline) und Live-Map-HUD auf Statustokens. Das `dm`-Prop-Drilling entfällt bis auf die legitime SVG-`invert`-Behandlung der Health-Icons im Dark Mode.',
+    ],
+    reason:
+      'User-Vorgabe (2026-06-14): „bitte die offenen Punkte continuation machen" — die in V4.9.0 als Continuation dokumentierten großen Views vollständig auf die zentrale Token-Wahrheit migrieren.',
+    previousBehavior:
+      'Diese Views trugen hunderte hartkodierte Tailwind-Farben (bg-emerald/amber/red/blue/neutral-*, text-gray-*, dark:* via isDarkMode/dm-Ternaries). Statusfarben waren pro View leicht unterschiedlich, Category-Badges brachen im Dark Mode (helle -100-Flächen), und dieselbe Bedeutung (z. B. „aktiver Filter") wurde mal grün, mal blau dargestellt.',
+    details:
+      '**Geänderte Dateien**: frontend/src/rental/components/TasksView.tsx (Status/Priority-Pills, Category-Badge, DropdownFilter, Such-/Sort-/Clear-Controls, Tabelle, Detail-Modal, 4-Step-New-Task-Modal), VendorManagementView.tsx (Filter/Liste/Mapbox-Modal), VendorDetailView.tsx (Header/Tabs/InfoRow/Links/Invoices/Activity/Link-Modal — ~185 Farbstellen), FleetView.tsx (Map-Error + Warn-Pill), DashboardView.tsx (Delta-/Warn-Pills), rental/App.tsx (VehicleHealthBoxWired, VehicleConnectionBadge, OverviewLiveMapCard). frontend/src/components/patterns/status-utils.ts (PriorityBadge medium=watch). **Mechanik**: hartkodierte Klassen → sq-tone-*/sq-chip-* + var(--status-*)/var(--brand*); isDarkMode/dm-Ternaries entfernt (Tokens sind theme-aware), ungenutzte isDarkMode-Props aus Destructures entfernt (Interface-kompatibel beibehalten). **Build/Lint**: vite build grün, neue/geänderte UI-Stellen tsc-/IDE-lint-sauber. Bewusst unverändert: vorbestehende repo-weite ESLint-Debt (react-hooks React-Compiler-Regeln set-state-in-effect/purity/preserve-manual-memoization/static-components, @typescript-eslint/no-explicit-any, vorbestehende ungenutzte Helfer) — betrifft Logik/Typen, nicht das Design, und lag bereits vor diesem UI-Task vor.',
+    affectsArchitecture: false,
+    module: null,
+    createdAt: '2026-06-14T02:05:00.000Z',
+  },
+  {
+    id: 'frontend-design-system-consolidation-v490-2026-06-14',
+    version: '4.9.0',
+    title: 'V4.9.0 Frontend Design-System-Konsolidierung — eine Token-Wahrheit (theme.css + components/patterns), Premium Fleet OS Look, Anti-AI-Slop',
+    summary: [
+      'Reiner Frontend-UI/UX-Umbau: keine Backend-Logik, keine Prisma-Schemas, keine API-Verträge, keine Businesslogik geändert. Ziel ist ein konsistentes, cleanes, minimalistisches, aber lebendiges Premium-SaaS-Frontend auf einer einzigen Designsprache („Clean Premium Fleet OS“).',
+      'theme.css zur kanonischen Token-Wahrheit ausgebaut: vollständige semantische Statusskala (success/watch/warning/critical/info/neutral/nodata/ai) mit Funktion statt Dekoration — Good=Grün, Watch/Due Soon=Amber, Warning=Orange (jetzt eigenständig), Critical=Rot, No Data=Slate, AI/Automation=dezentes Violett. Neue sq-chip-/sq-tone-/sq-dot-Varianten + Tailwind-Color-Bridges (text-status-*). prefers-reduced-motion- und prefers-reduced-transparency-Fallbacks ergänzt.',
+      'Neue tokenbasierte, icon-agnostische Pattern-Bibliothek unter components/patterns: PageHeader, SectionHeader, DataCard, MetricCard, StatusChip, HealthStatusChip, PriorityBadge, DataTable, EmptyState, Loading-Skeletons, DetailDrawer, Timeline, VehicleMiniCard. Light/Dark, responsive, subtile Microinteractions, sauber typisiert.',
+      'App-Shells vereinheitlicht: Master-Sidebar/TopBar/RightSidebar auf Tokens umgestellt (sq-nav-rail Active-State, sq-section-label, sq-chip-Statusbadges, tonale Quick-Actions), Emoji-Flaggen → ISO-Code-Pills, AI-Purple-Avatar-Gradient → tonale Tiles. Verbotene Inter-Schrift im Master entfernt (jetzt Manrope wie Rental).',
+      'Login vom AI-Purple-Slop befreit: violette/indigo Mesh-Orbs + Akzente → Premium-Blue-Markenton, Emoji-Flaggen → ISO-Pills (Glas als bewusster Brand-Moment beibehalten). Rental-Warn-Modals (Cleaning/Status/Station), Trips-Filterleiste und RentalHealthBadge/-ModuleRow nutzen jetzt Statustokens statt hartkodierter emerald/amber/red/blue + isDarkMode-Ternaries.',
+      'Tote/konkurrierende UI-Systeme entfernt (Recovery-Leftover): RentalLayout, MasterLayout, shared components/Sidebar, Legacy components/ui.tsx-Barrel sowie 5 ungenutzte shadcn-Stubs (form/sonner/resizable/calendar/chart) — reduziert Slop und vorbestehende tsc-Fehler.',
+    ],
+    reason:
+      'User-Vorgabe (2026-06-14): Kompletter Frontend-UI/UX-Designsystem-Umbau Richtung „Clean Premium Fleet OS“ (Swiss-International, dezente Farbe mit Funktion, subtile Motion, kein AI-Purple-Slop, kein Glass überall, kein Template-Slop). Audit-first, eine Designwahrheit (theme.css + components/ui + components/patterns), keine Backend-/API-Änderungen.',
+    previousBehavior:
+      'Zwei konkurrierende UI-Welten: die tokenbasierte shadcn/theme.css-Basis (gut umgesetzt in Rental-Sidebar/TopBar) gegen ein Legacy-components/ui.tsx-Barrel + hunderte hartkodierte Tailwind-Farben (bg-white, text-gray-*, bg-emerald/indigo/red-*, dark:*-Ternaries über isDarkMode-Prop-Drilling) in vielen Views. Master nutzte die verbotene Inter-Schrift, Login die AI-Purple-Ästhetik. Statusfarben waren modulübergreifend uneinheitlich (kein eigenständiges Orange-Warning, kein Slate-NoData, kein AI-Tone). Tote Recovery-Layouts lagen ungenutzt herum.',
+    details:
+      '**Foundation**: frontend/src/styles/theme.css — neue Status-Tokens (--status-watch/-warning/-nodata/-ai +-soft) in :root & .dark, @theme-inline Color-Bridges (--color-status-*), sq-chip-watch/-warning/-nodata/-ai + sq-tone-* + sq-dot-* Utilities, @media prefers-reduced-motion & prefers-reduced-transparency. **Pattern-Bibliothek (neu)**: frontend/src/components/patterns/{status,page-header,data-card,states,data-table,detail-drawer,timeline,vehicle-mini-card}.tsx + index.ts (Barrel). **Shell**: master/components/Sidebar.tsx, TopBar.tsx, RightSidebar.tsx (Token-Migration), master/App.tsx (Manrope statt Inter). **Surfaces**: pages/LoginPage.tsx (Brand-Blue + ISO-Pills), rental/App.tsx (Warn-Modals + Trips-Filter tokenisiert), rental/components/rental-health/RentalHealthBadge.tsx (sq-tone-Health-Skala). **Cleanup/Deletes**: rental/RentalLayout.tsx, master/MasterLayout.tsx, components/Sidebar.tsx, components/ui.tsx, components/ui/{form,sonner,resizable,calendar,chart}.tsx. **Build**: vite build grün; neue/geänderte Dateien tsc-/lint-sauber. Bewusst unverändert: vorbestehende repo-weite tsc-Fehler in nicht angefassten Views (API-/Datenshape-Themen) und die fachliche Logik aller Views. Offen (Continuation): Token-Migration der übrigen großen Views (TasksView, VendorManagement/-Detail, FleetView, DashboardView, viele master/* Views) und Adoption der Pattern-Bibliothek dort.',
+    affectsArchitecture: true,
+    module: null,
+    createdAt: '2026-06-14T02:30:00.000Z',
+  },
+  {
+    id: 'task-action-layer-v483-2026-06-14',
+    version: '4.8.3',
+    title: 'V4.8.3 Task Management → zentraler operativer Action Layer über Fleet, Rental, Vehicle Health, Alerts, Vendors, Documents & Mitarbeiter',
+    summary: [
+      'Task Management ist nicht länger eine reine To-do-Liste, sondern der operative Action Layer: Health/Alert/Booking/Document/Vendor erzeugen Handlungsbedarf, Tasks steuern Was/Wer/Bis-wann/Worauf-bezogen/Wie-erledigt. Die Fahrzeuggesundheit bleibt Wahrheit der Health-/Alert-Services — Tasks spiegeln sie nur operativ und leiten nie selbst Health-Werte ab.',
+      'Das bestehende OrgTask-Modell wurde erweitert (keine Parallelstruktur): neue Enums TaskType (VEHICLE_SERVICE/INSPECTION, TIRE/BRAKE/BATTERY_CHECK, VEHICLE_CLEANING, BOOKING_PREPARATION/PICKUP/RETURN, DOCUMENT_REVIEW, INVOICE_REQUIRED, CUSTOMER_FOLLOWUP, REPAIR, CUSTOM) und TaskSource (MANUAL/SYSTEM/ALERT/HEALTH/BOOKING/DOCUMENT/VENDOR), neuer Status WAITING, plus Felder type/sourceType, Link-IDs vehicle/booking/customer/vendor/alert/document, startedAt/cancelledAt, estimatedCostCents/actualCostCents, resolutionNote, metadata. Neue Kindtabellen TaskChecklistItem, TaskComment, TaskAttachment, TaskEvent (Timeline).',
+      'Zentraler TasksService mit State-Machine (OPEN→IN_PROGRESS/WAITING/DONE, WAITING↔IN_PROGRESS, alle aktiven→CANCELLED; DONE/CANCELLED terminal), erzwungener resolutionNote für REPAIR/BRAKE_CHECK/TIRE_CHECK/BATTERY_CHECK/VEHICLE_SERVICE/VEHICLE_INSPECTION, derived isOverdue (dueDate<now && status nicht DONE/CANCELLED — nie persistiert), Timeline-Events für jeden Übergang, Notification-Hook (Stub). Methoden: createManualTask, upsertByDedup, updateTask, assign/start/waiting/complete/cancel, addComment/Checklist/Attachment, listTasks (Filter: status/priority/type/source/assignee/links/dueFrom-To/overdue/search), getTaskById, getTasksFor Vehicle/Booking/Customer/Vendor/Alert, getDashboardSummary.',
+      'Multi-Tenant hart: jede Query organizationId-scoped, jede Relation (vehicle/booking/customer/vendor/alert/fine/invoice/document & assignedUser) wird gegen die Organisation validiert (BadRequest bei Fremd-Org, NotFound bei Fremdzugriff). Anti-Duplikat über unique dedupKey: aktive System-Tasks werden eskaliert statt dupliziert (Priority/DueDate hochgezogen, wenn die Lage ernster wird).',
+      'Auto-Task-Integration: der Insight→Task-Bridge mappt jetzt TIRE/BRAKE/BATTERY_CRITICAL Health-Insights auf typisierte HEALTH-Tasks; neuer TaskAutomationService erzeugt Booking-Lifecycle-Tasks (CONFIRMED→Preparation/Cleaning/Document-Review, ACTIVE→Pickup, COMPLETED→Return/Invoice) mit Checklisten-Templates, plus Repair-/Document-Hooks. Fines/Invoices labeln ihre System-Tasks korrekt (CUSTOMER_FOLLOWUP/INVOICE_REQUIRED, sourceType SYSTEM).',
+      'API/DTOs: vereinheitlichte REST-Endpunkte unter /organizations/:orgId/tasks (+ /summary, /:id, assign/start/waiting/complete/cancel, comments/checklist/attachments) und Convenience-Routen /vehicles|bookings|vendors|customers/:id/tasks — alle org-scoped, class-validator-DTOs statt body:any. Frontend lib/api.ts mit vollständig typisiertem Task-Read-Model + allen Endpunkten.',
+      'UI: Task Management Page (TasksView) an das echte Backend angebunden — Erstellung persistiert, Status-Aktionen (Start/Waiting/Complete mit Resolution-Note-Pflicht/Cancel), Checklist-Toggle, Kommentare & Timeline aus dem Detail. Neue wiederverwendbare EntityTasksSection: Vehicle Detail (Open Tasks, bestehend), Booking Detail (Booking Tasks, neu) und Vendor Detail (Repair-Tasks-Tab, neu) zeigen das echte Read-Model inkl. derived Overdue-Badge & Kosten — keine UI-only-Badges.',
+    ],
+    reason:
+      'User-Vorgabe (2026-06-14): Bestehendes Task Management zum zentralen operativen Action Layer über Fleet, Rental, Vehicle Health, Alerts, Vendors, Documents und Mitarbeiter umbauen. Repo-basiert, keine Fake-Daten, keine Mock-Logik, keine UI-only-Lösung; Backend, Datenmodell, API, Services und UI konsistent; Multi-Tenant über organizationId überall erhalten; bestehende Rollen-/Org-/Vehicle-/Booking-Struktur respektieren.',
+    previousBehavior:
+      'OrgTask war effektiv eine flache To-do-Liste: freie category/source-Strings, nur OPEN/IN_PROGRESS/DONE/CANCELLED, keine WAITING-Phase, keine typisierten Links zu Booking/Customer/Vendor/Alert/Document, keine Checklisten/Comments/Attachments/Timeline als Modelle, kein derived-Overdue-Vertrag, keine State-Machine/Resolution-Pflicht und keine systematische Anti-Duplikat-/Auto-Erzeugungs-Logik aus Health/Booking. Die TasksView erzeugte Tasks teils nur client-seitig ohne konsistente Backend-Wahrheit.',
+    details:
+      '**Datenmodell (Prisma)**: `schema.prisma` — Enums TaskType & TaskSource (neu), TaskStatus +WAITING; OrgTask +type/sourceType/booking_id/customer_id/vendor_id/alert_id/document_id/started_at/cancelled_at/estimated_cost_cents/actual_cost_cents/resolution_note/metadata + unique dedupKey + Indizes (priority/type/sourceType/dueDate/alle Link-IDs/assignedTo/createdByUserId + composite org+assignedTo/org+dueDate); neue Modelle TaskChecklistItem, TaskComment, TaskAttachment, TaskEvent (onDelete Cascade). Link-IDs sind bewusst skalare scoped Spalten (wie OrgInvoice), Org-Ownership wird im Service validiert. Migrationen `20260614000000_task_status_waiting` (ADD VALUE WAITING separat) und `20260614000100_task_action_layer` (Enums/Spalten/Backfill source_type+type für bestehende System-Tasks/Indizes/Kindtabellen). **Backend**: `tasks.service.ts` (State-Machine STATUS_TRANSITIONS, RESOLUTION_REQUIRED_TYPES, assertLinksBelongToOrg, recordEvent, notify-Hook, listTasks/getTaskById/getTasksFor*/getDashboardSummary, createManualTask, updateTask, assign/start/moveToWaiting/complete/cancel, addComment/Checklist/updateChecklistItem/addAttachment, findActiveByDedup/upsertByDedup mit Checklisten-Seed, closeStaleInsightTasks WAITING-aware). `tasks/dto/task.dto.ts` (Create/Update/Complete/AssignTaskDto, AddComment/ChecklistItem/UpdateChecklistItem/AddAttachmentDto, ListTasksQueryDto mit @Transform-Boolean). `tasks.controller.ts` (alle Routen unter OrgScopingGuard+RolesGuard). `tasks.module.ts` (+TaskAutomationService). `tasks/task-templates.ts` (Checklisten BOOKING_PREPARATION/PICKUP/RETURN, TIRE/BRAKE/BATTERY_CHECK, VEHICLE_CLEANING). `tasks/task-automation.service.ts` (ensureBookingLifecycleTasks/ensureRepairTask/ensureDocumentTask via safeUpsert). `business-insights/insight-task-bridge.service.ts` (TASK_TYPE_CONFIG +TIRE/BRAKE/BATTERY_CRITICAL→typisierte HEALTH-Tasks, BRIDGE_SOURCES +INSIGHT_HEALTH). `bookings/bookings.service.ts`+`bookings.module.ts` (TaskAutomationService injiziert, ensureBookingLifecycleTasks bei create/update). `fines/fines.service.ts` & `invoices/invoices.service.ts` (typisierte System-Tasks). **Tests**: `tasks/tasks.service.spec.ts` (13 grün — createManualTask+Defaults+Event, Tenant-Scoping-Reject, upsertByDedup Eskalation vs. Neuanlage, assign+Membership, valid/invalid Transition+startedAt, Resolution-Note-Pflicht BRAKE_CHECK vs. CUSTOM, isOverdue-Derivation, NotFound bei Fremd-Org, getDashboardSummary). business-insights-Suite 64 grün. Backend `tsc --noEmit` grün. **Frontend**: `lib/api.ts` (ApiTask-Read-Model + Enums + Summary + Filters + Create-Payload + alle Mutations/Convenience-Endpunkte), `rental/components/TasksView.tsx` (Backend-Create, Status-Aktionen, Checklist-Toggle, Comments/Timeline-Detail, derived Overdue), neue `rental/components/EntityTasksSection.tsx`, `VendorDetailView.tsx` (Repair-Tasks-Tab) und `BookingsView.tsx` (Booking-Tasks-Section). Lints der geänderten Frontend-Dateien grün. **Bewusst unverändert**: keine neue Notification-Architektur (nur Hook), Vendor-Repair-/Document-Auto-Erzeugung als Service-Hook bereitgestellt aber nicht an einen noch nicht existierenden Repair-Order-Flow gezwungen; bestehende, repo-weite (nicht task-bezogene) Frontend-Typecheck-Fehler unberührt.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-06-14T00:45:00.000Z',
+  },
+  {
+    id: 'brake-health-overhaul-v482-2026-06-13',
+    version: '4.8.2',
+    title: 'V4.8.2 Brake Health Overhaul — evidenzbasierter Bremszustand (Condition · Data Basis · Confidence · Restnutzungs-Range), keine Fake-Prozente/erfundene mm, kanonisch für Vehicle Detail, Fleet Condition & Alerts',
+    summary: [
+      'BrakeHealthService bleibt die einzige Bremsen-Wahrheit. Alle Klassifizierungsregeln (Condition-Bänder, Confidence-Level, Datenbasis-Taxonomie, Aggregation, Harsh-Brake-Multiplier, Restnutzungs-Range) leben jetzt in einem geteilten reinen Modul `brakes/brake-status.ts` — Service, neuer BrakeCriticalDetector, Rental Health & AI Health Care nutzen exakt dieselben Regeln (Spiegelbild zu `tire-status.ts`/`battery-status.ts`).',
+      'Neues kanonisches Read Model je Fahrzeug: overallCondition/front-/rearAxleCondition (GOOD|WATCH|WARNING|CRITICAL|UNKNOWN), dataBasis & front-/rearDataBasis (MEASURED|DOCUMENTED|SENSOR|ESTIMATED|UNKNOWN), confidenceLevel & front-/rearConfidence (HIGH|MEDIUM|LOW|UNKNOWN), estimatedFront/RearRemainingKmMin/Max (immer Range, nie Schein-Präzision), nextInspectionRecommendedInKm, estimatedReplacementDueInKm, reasons[], recommendations[], openAlerts[], lastMeasurement/Service At+MileageKm.',
+      'Ehrlichkeitsregel hart verankert: eine reine Schätzung deckelt bei WARNING. CRITICAL entsteht NUR aus einem echten Sicherheitssignal (gemessene/dokumentierte kritische Belagdicke, sicherheitsrelevanter Brems-DTC, kritische Bremsflüssigkeit, bestätigter Sofortwechsel). Viele harte Bremsungen erhöhen nur den Wear-Multiplier (0–1/100km 1.00x · 1–3 1.15x · 3–6 1.35x · 6+ 1.60x, zentral konfigurierbar) und erzeugen niemals direkt CRITICAL.',
+      'Neues Evidence-System: Prisma-Modell `BrakeEvidence` (+Enums BrakeEvidenceSource/BrakeAxle/BrakeWheelPosition/BrakeComponentStatus/BrakeEvidenceConfidence) + `BrakeEvidenceService`. Echte mm nur aus vertrauenswürdigen Quellen (Manual/Workshop/AI-Upload nach Bestätigung/Service-Invoice/Inspection/Wear-Sensor) — TELEMATICS_ESTIMATION erfindet niemals Rad-mm. AI-Upload schreibt bestätigte Bremswerte (Belag-mm, Scheibenzustand, Bremsflüssigkeit, Sofortwechsel) als Evidence (applyBrake), Doc-Schema um discCondition/brakeFluidStatus/immediateReplacement erweitert.',
+      'Vehicle Alerts & Dashboard: kanonische Alert-Codes BRAKE_PAD_WARNING/CRITICAL, BRAKE_SYSTEM_DTC, BRAKE_FLUID_WARNING, BRAKE_INSPECTION_OVERDUE, BRAKE_HEALTH_LOW_CONFIDENCE (WARNING→Warning, CRITICAL→Critical, Low Confidence nur Info). Neuer InsightType.BRAKE_CRITICAL + BrakeCriticalDetector (Estimate deckelt WARNING, CRITICAL nur mit Realsignal) an Formatter/Ranking/Grouping/Policy angebunden. Rental Health & AI Health Care lesen jetzt overallCondition statt roher Pad-%.',
+      'API/Validation: brake-health/initialize & /service und Brake-Spec-Endpunkte nutzen class-validator-DTOs (`brakes/dto/brake-mutation.dto.ts`) statt Inline-`body:{…}` — Pad 0–25 mm, Scheibe 0–50 mm, Odometer-Range, gültige Service-Kind/Scope/Source. Frontend `lib/api.ts` um kanonische Brake-Typen erweitert; Vehicle-Detail Quick Box + Detail-Modal + Fleet Condition Tile/Detail zeigen Condition/Data Basis/Confidence/Restnutzungs-Range/nächste Prüfung/offene Alerts statt eines nackten Pad-%.',
+    ],
+    reason:
+      'User-Vorgabe (2026-06-13): Brake Health fachlich sauber umbauen — keine Fake-Prozent-Wahrheit, keine erfundenen Bremsbelag-mm. Evidenzbasiertes Bremszustandsmodul mit Condition, Data Basis, Confidence, Restnutzungskilometern (Range), Prüfungsempfehlung, Alerts und sauberer Integration in VehicleHealthStatus. Keine doppelte Parallel-Wahrheit, bestehende Architektur respektieren.',
+    previousBehavior:
+      'Brake Health wurde an mehreren Stellen aus rohen Pad/Disc-Prozenten neu interpretiert (Quick Box „Healthy/Monitor/Worn“ bei 60/30 %, Fleet Condition via toneFromPercent, Rental Health mit min(pad,disc)-Schwellen und einem eigenen status===critical-Pfad, AI Health Care via pads.healthPercent<25). Es gab keine kanonische GOOD/WATCH/WARNING/CRITICAL-Wahrheit, keine ehrliche measured-vs-estimated/Confidence-Kennzeichnung, keine Restnutzungs-Range, kein Evidence-Store und keinen Brake-Insight fürs Dashboard; tiefe reine Schätzungen konnten sogar als „critical“ ein Rental blockieren.',
+    details:
+      '**Backend**: Neues `brakes/brake-status.ts` (aggregateBrakeCondition, isAlertableCondition, conditionToBars, harshBrakeWearMultiplier, classifyHealthPct/RemainingKmEstimated/RemainingKmMeasured/EstimatedCondition/MeasuredThickness/FluidStatus/DiscConditionLabel/DtcSeverity, dataBasisFromStateClass, evidenceSourceToDataBasis, strongerDataBasis, classifyConfidenceLevel, buildRemainingKmRange, alertTypeToCode, alertCodeSeverity). `brake-health.config.ts` (+conditionBands, confidenceLevels, remainingKmRange, inspection, harshBraking-Bänder, measurementFreshness). `brake-health.service.ts` (BrakeHealthSummaryDto um kanonisches Read Model erweitert, buildCanonicalReadModel auf BrakeHealthCurrent + BrakeEvidence + letztem BRAKE_SERVICE). Neues Prisma-Modell `BrakeEvidence` + 5 Enums + Relationen (Vehicle/VehicleServiceEvent/VehicleDocumentExtraction); Migrationen `20260613234000_add_brake_critical_insight_type` und `20260613234500_brake_evidence_model`. Neuer `brakes/brake-evidence.service.ts` (record/recordMany/getLatest*/listRecent, mm-Trust-Regel). `brakes/dto/brake-mutation.dto.ts` (neu) + `vehicle-intelligence.controller.ts` (DTOs statt Inline-Bodies). Konsumenten kanonisch angeglichen: `rental-health.service.ts` (evaluateBrakes liest overallCondition), `ai-health-care-aggregation.service.ts` (CRITICAL/WARNING aus overallCondition). AI-Upload: `document-extraction.schemas.ts` (BRAKE +discCondition/brakeFluidStatus/immediateReplacement) + `document-extraction-apply.service.ts` (applyBrake schreibt BrakeEvidence nach Bestätigung). Business Insights: `schema.prisma` (+InsightType.BRAKE_CRITICAL), `detectors/brake-critical.detector.ts` (neu), Registrierung in module/service + insight.types/formatter/ranking/grouping. **Tests**: `brake-status.spec.ts` (Harsh-Multiplier-Bänder, Estimate deckelt WARNING, Measured→CRITICAL, Fluid/DTC, Aggregation, Confidence HIGH/MEDIUM/LOW/UNKNOWN, Remaining-Range, Alert-Mapping), `brake-evidence.spec.ts` (Telematik erfindet keine mm, vertrauenswürdige Quellen persistieren mm), `brake-health.spec.ts` (+Read-Model: Estimate-WARNING-Cap, Measured-Override→CRITICAL+MEASURED-Basis, Fluid-CRITICAL — 48/48 grün), `detectors/brake-critical.detector.spec.ts` (Estimate→WARNING, Measured/Fluid→CRITICAL, WATCH/UNKNOWN kein Alert). Brake-Modul 92 grün + business-insights/rental-health/health-summary/document-extraction Set grün. Backend `tsc --noEmit` grün, `nest build` grün. **Frontend**: `lib/api.ts` (BrakeCondition/BrakeDataBasis/BrakeConfidenceLevel/BrakeAlertCode/BrakeCanonicalAlert + kanonische Felder auf BrakeHealthSummary), `HealthErrorsView.tsx` (Quick Box: Condition-Badge, Data Basis+Confidence, Front/Rear Restnutzungs-Range, nächste Prüfung, Alert-Dot; Detail-Modal: kanonischer Condition-Block mit Achs-Conditions/Datenbasis/Confidence, Restnutzung, nächste Prüfung, Last Measurement/Service, Open Alerts, Recommendations, Reasons; brakeConditionStyle/formatBrakeKmRange Helper), `FleetConditionView.tsx` (Brake-Tile aus overallCondition + Range), `FleetConditionDetailView.tsx` (Condition/Remaining F-R/Data Basis/Confidence StatBoxes + reasons/recommendations in Watchpoints). Frontend `tsc --noEmit` grün. Hinweis: `npm run lint` weiterhin nicht ausführbar (Backend eslint v9 ohne eslint.config.js — vorbestehender Repo-Zustand).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-13T23:55:00.000Z',
+  },
+  {
+    id: 'tire-health-overhaul-v481-2026-06-13',
+    version: '4.8.1',
+    title: 'V4.8.1 Tire Health Overhaul — eine zentrale, ehrliche Reifen-Wahrheit (gemessen vs. geschätzt), kanonischer Status für Vehicle Detail, Fleet Condition, Dashboard & Alerts',
+    summary: [
+      'TireHealthService bleibt die einzige Reifen-Wahrheit. Alle Klassifizierungsregeln (mm-Bänder pro Saison, Confidence-Level, Saison-/Uneven-/Alter-/Overdue-Logik, Aggregation) leben jetzt in einem geteilten reinen Modul `tires/tire-status.ts` — TireHealthService, der neue TireCriticalDetector und alle Konsumenten nutzen exakt dieselben Regeln (Spiegelbild zu `battery-status.ts`).',
+      'Neues kanonisches Read Model je Fahrzeug: overallStatus (GOOD|WATCH|WARNING|CRITICAL|UNKNOWN), displayMode (MEASURED|ESTIMATED|UNKNOWN), confidence (HIGH|MEDIUM|LOW|UNKNOWN), lowestTreadMm + lowestTreadPosition, measuredTreadMm/estimatedTreadMm/displayTreadMm, lastMeasurementAt, measurementAgeDays, estimatedRemainingKm, pressureStatus, seasonStatus, unevenWearStatus, recommendations. Schätzung wird nie als Messung ausgegeben; ohne Messung → LOW/UNKNOWN Confidence, ohne aktiven Satz → UNKNOWN + Empfehlung.',
+      'Tread-Status mm-basiert & saisonabhängig (Sommer/All-Season GOOD>4.0 · WATCH>3.0 · WARNING>1.6 · CRITICAL≤1.6; Winter strenger GOOD>5.0 · WATCH>4.0). Gesetzliches Minimum 1.6 mm ist immer CRITICAL. Schwellen zentral in `tire-health.config.ts` (treadStatusBands, confidenceLevels, measurementFreshness, tireAge/DOT, seasonCalendar) — Wetter/Temperatur später ergänzbar.',
+      'Neue Alerts (kanonische Codes, WATCH alarmiert nie): TIRE_TREAD_LOW/CRITICAL, TIRE_PRESSURE_LOW/HIGH, TIRE_SEASON_MISMATCH (Monatslogik: Sommerreifen im Winter→WARNING, Winterreifen im Sommer→WATCH), TIRE_AGE_WARNING (DOT-Alter), TIRE_MEASUREMENT_OVERDUE, TIRE_WEAR_UNEVEN, TIRE_ROTATION_RECOMMENDED. Neuer InsightType.TIRE_CRITICAL + TireCriticalDetector liefert kritische Reifenzustände an Dashboard Insights (Formatter/Ranking/Grouping/Policy angebunden).',
+      'Single Source of Truth durchgezogen: HealthSummaryService liest Reifen jetzt aus `TireHealthService.getSummary()` (kein paralleler Tread-Prozent-Pfad mehr). Fleet Condition Tile/Detail, Vehicle Detail (Quick Box + Detail Modal) und die Dashboard Vehicle-Health-Box leiten den Reifen-Ton/Status aus overallStatus ab statt aus einem neu gebuckelten Prozentwert.',
+      'API/Validation: Tire-Mutations-Endpunkte nutzen jetzt class-validator-DTOs (CreateTireSetup, AddTireMeasurement, Calibration, TireHealthMeasurement, Rotate, ChangeTires, ActivateStoredSet, ApplyAiTireSpec) statt `body:any`/`(body as any)` — treadMm 0–20, Odometer-/Druck-Range, DOT WWYY-Format, gültige Position/Scope/Saison/Quelle.',
+    ],
+    reason:
+      'User-Vorgabe (2026-06-13): Tire Health produktionsreif umbauen — keine isolierte Anzeige mehr, sondern eine zentrale, konsistente Reifen-Wahrheit pro Fahrzeug für Vehicle Detail, Fleet Condition, VehicleHealthStatus und Vehicle Alerts. Schätzung und echte Messung müssen sauber getrennt sein, keine Fake-Präzision, keine zweite Tire-Wahrheit.',
+    previousBehavior:
+      'Reifenstatus wurde an mehreren Stellen aus einem Tread-Prozentwert neu gebuckelt (Quick Box „Healthy/Monitor/Critical“ bei 50/25 %, Fleet Condition via toneFromPercent, Dashboard via <30/<60 %, HealthSummaryService mit eigenem treadPercent-Pfad). Es gab keine kanonische GOOD/WATCH/WARNING/CRITICAL-Wahrheit, keine ehrliche measured-vs-estimated-Kennzeichnung im Read Model, keinen Tire-Insight für das Dashboard und Tire-Mutations-Controller nahmen `body:any` an.',
+    details:
+      '**Backend**: Neues `tires/tire-status.ts` (classifyTreadStatus, classifyRemainingKmStatus, classifyUnevenWear, classifySeasonStatus, classifyConfidenceLevel, resolveDisplayMode, classifyMeasurementOverdue, classifyTireAgeYears, dotAgeYears, aggregateTireStatus, isAlertableStatus, statusToBars, legacyHealthStatusToCanonical, alertTypeToCode). `tire-health.config.ts` (+treadStatusBands, confidenceLevels, measurementFreshness, tireAge, seasonCalendar). `tire-health.service.ts` (TireHealthSummary um kanonische Felder erweitert, buildCanonicalReadModel/buildRecommendations, Alerts um Saison/Alter/Overdue + alert.code). `tires/dto/tire-mutation.dto.ts` (neu), `vehicle-intelligence.controller.ts` (DTOs statt body:any). `health-summary.service.ts` (liest getSummary statt eigenem Tread-Pfad). Business Insights: `schema.prisma` (+InsightType.TIRE_CRITICAL) + Migration `20260613230000_add_tire_critical_insight_type`, neuer `detectors/tire-critical.detector.ts`, Registrierung in module/service, insight.types/insight-formatter/insight-ranking/insight-grouping angebunden. **Tests**: `tire-status.spec.ts` (Tread-Bänder Sommer/Winter/All-Season, legal min, Saison-Mismatch, Confidence HIGH/MEDIUM/LOW/UNKNOWN, displayMode, Overdue, DOT-Alter, Uneven, Aggregation CRITICAL-wins, Alertability, Code-Mapping) und `tire-lifecycle.spec.ts` (Einzel-/Achs-/Komplettwechsel-Positionen, Positions-Normalisierung, Rotation-Permutationen) — 114/114 grün im Tire-Modul, gesamtes business-insights + vehicle-intelligence Set grün. Backend tsc --noEmit grün, `nest build` grün. **Frontend**: `lib/api.ts` (TireCanonicalStatus/TireDisplayMode/TireConfidenceLevel + kanonische Felder auf TireHealthSummaryResponse, TireAlert.code), `HealthErrorsView.tsx` (Quick Box: overallStatus-Badge, lowestTreadMm+Position, Measured/Estimated, Confidence, Last measured, Empfehlung; Detail-Modal: kanonischer Status-Banner + Empfehlungen + tireStatusStyle/formatMeasuredAgo Helper), `FleetConditionView.tsx` (toneFromTireStatus), `FleetConditionDetailView.tsx` (Status-Banner + Empfehlungen), `rental/App.tsx` (Vehicle-Health-Box nutzt overallStatus). Keine neuen Typecheck-Fehler in den geänderten Tire-Dateien; bestehende, nicht verwandte Repo-Typecheck-Fehler im Frontend (calendar/chart/form/resizable/sonner/master-App/DashboardView u. a.) unberührt. Hinweis: `npm run lint` nicht ausführbar — Backend nutzt eslint v9 ohne vorhandene eslint.config.js (vorbestehender Repo-Zustand).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-13T22:30:00.000Z',
+  },
+  {
+    id: 'battery-health-overhaul-v480-2026-06-13',
+    version: '4.8.0',
+    title: 'V4.8.0 Battery Health Overhaul — LV „Estimated Battery Health" (kein SOH %), HV echtes SOH ohne Alter/KM-Fallback, dynamische Ruhespannungsschwellen',
+    summary: [
+      'CanonicalBatteryHealthService bleibt die einzige Wahrheit für Batteriewerte. Alle Klassifizierungsregeln (LV/HV-Schwellen, Ruhespannungs-Bänder, Aggregation) leben jetzt in einem einzigen geteilten Modul `battery-health/battery-status.ts` (reine Funktionen) — Detector und Canonical-Service nutzen exakt dieselben Regeln, keine zweite Schwellen-Wahrheit.',
+      'LV (12V) Legacy entfernt: keine starre Spannungstabelle mehr als SOH-Wahrheit. `BatteryHealthService.recordSnapshot` persistiert nur noch Rohmesswerte (sohPercent=null), kein MODEL_DERIVED-LV-SOH mehr. LV wird fachlich als „Estimated Battery Health" behandelt (Verhalten: Ruhespannung/Crank Drop/Recovery/Stability), nicht als werkstattgesichertes SOH.',
+      'HV Age/KM-Fallback-Modell entfernt: HV-SOH entsteht nur noch aus Provider-SOH, Capacity-/Energy-Messung oder dokument-/werkstattbasierter Evidenz. Keine belastbare Datenbasis → HV-SOH = unavailable/unknown (kein Fake-Prozent, kein Alert nur wegen fehlendem SOH). `calculateSoh` ohne vehicleYear/odometer.',
+      'Ruhespannung dynamisch über VehicleBatterySpec.batteryType: UNKNOWN/LEAD_ACID/EFB Standard-Bänder (≥12.50 Good …), AGM strenger (≥12.60 Good …), LITHIUM = UNSUPPORTED (keine Blei-Säure-Alerts). Nur echte Ruhespannung (RESTING) wird bewertet, Live-/Ladespannung nicht.',
+      'LV-Status = Aggregat aus Estimated Battery Health + Resting Voltage (Critical>Warning>Watch>Good, Unknown nur ohne verwertbares Signal). HV-SOH-Bänder eigenständig (≥80 Good · 70–79 Watch · 60–69 Warning · <60 Critical). Publication/Kalibrierung (raw→EWMA→published mit Hysterese) bleibt erhalten, für LV nur fachlich entkoppelt (keine riskante DB-Migration).',
+      'Vehicle Alerts (BatteryCriticalDetector) nur bei WARNING/CRITICAL, nie WATCH. Spam-Schutz: Resting-WARNING braucht zwei aufeinanderfolgende qualifizierte Messungen, CRITICAL/kritische Spannung+Crank-Drop sofort. HV-Alert nur bei belastbarem SOH. Dedupe-Key bleibt erhalten.',
+      'Frontend: LV zeigt 3-Balken „Estimated Battery Health" + separate Resting Voltage mit Status (neue wiederverwendbare `BatteryConditionBars`/`RestingVoltageBadge`), keine LV-„% SOH" mehr (Battery-Card, Battery-Modal, Fleet Condition Tile/Detail, Dashboard Vehicle-Health-Box). HV behält „% SOH", zeigt sauber „Not available" ohne belastbare Daten und nutzt die neuen HV-Bänder.',
+    ],
+    reason:
+      'User-Vorgabe (2026-06-13): Battery-Modul fachlich/architektonisch sauber umbauen. LV/12V darf nicht als echtes SOH dargestellt werden (Verhaltens-Estimate ≠ Werkstatt-SOH), HV darf nicht aus Alter+KM pseudo-genau berechnet werden, und es darf keine zweite Battery-Wahrheit neben dem CanonicalBatteryHealthService geben.',
+    previousBehavior:
+      'LV-SOH wurde aus einer starren Spannungstabelle abgeleitet und als „% SOH" angezeigt; HV-SOH fiel bei fehlenden Messdaten auf ein Alter/KM-Degradationsmodell zurück (Fake-Prozent). Ruhespannungsschwellen waren fix (kein Bezug zur Batteriechemie). Der BatteryCriticalDetector und einzelne UIs klassifizierten teils mit eigenen Schwellen.',
+    details:
+      '**Backend**: Neues `battery-status.ts` (normalizeBatteryType, classifyLvEstimatedHealth, statusToBars, classifyRestingVoltage, classifyHvSoh, aggregateLvStatus, statusToLegacyCondition, isAlertableStatus, classifyCrankDrop). `battery-health.service.ts` (VOLTAGE_SOH_TABLE/estimateSohFromVoltage entfernt). `hv-battery-health.service.ts` (Method-3 Age/KM-Fallback entfernt, calculateSoh ohne year/odometer). `battery-evidence.service.ts` (+getLatestAmongSources für Document/Manual/Workshop HV-SOH). `canonical-battery-health.service.ts` (lv.healthStatus + lv.estimatedHealth{status,scorePct,displayMode:BARS,bars,label,confidence,calibrationStatus} + lv.restingVoltage{valueV,status,thresholdSource,batteryType,measurementContext}; hv.healthStatus + hv.sohPct + hv.sohSource + noFallbackSoh). `detectors/battery-critical.detector.ts` (LV resting/estimated/crank + HV-SOH, Zwei-Messungen-Spam-Schutz). Konsumenten angeglichen: rental-health, health-summary, ai-health-care-aggregation. **Tests**: `battery-status.spec.ts` (AGM 12.55→Watch, AGM 12.05→Critical, UNKNOWN 12.55→Good/12.10→Warning, Lithium→Unsupported, LV 85/70/50/35 → Good/Watch/Warning/Critical + Balken, HV 85/75/65/55, Aggregation), `battery-critical.detector.spec.ts` (Watch→kein Alert, Critical sofort, zwei Messungen für Warning, Lithium kein Alert, HV-Warning nur bei belastbarem SOH), `canonical-battery-health.service.spec.ts` (Balken-Indikator, Resting-Default/AGM-Bänder, HV unavailable). 41/41 grün, Backend-Typecheck grün. **Frontend**: `lib/api.ts` (BatteryHealthStatus/RestingVoltage-Typen + lv/hv-Felder), `BatteryConditionBars.tsx` (neu), `HealthErrorsView.tsx`, `FleetConditionView.tsx`, `FleetConditionDetailView.tsx`, `rental/App.tsx` (Vehicle-Health-Box). Keine neuen Typecheck-Fehler in den geänderten Battery-Dateien (bestehende Repo-Fehler in nicht verwandten Dateien unberührt).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-13T21:40:00.000Z',
+  },
+  {
+    id: 'vendor-management-overhaul-v4765-2026-06-13',
+    version: '4.7.65',
+    title: 'V4.7.65 Vendor Management — zentrale Lieferanten-Wahrheit, Mapbox-POI-Suche, Euromaster/Google-Places entfernt',
+    summary: [
+      'Vendor ist jetzt die einzige zentrale Wahrheit für alle externen Dienstleister einer Organisation (Werkstatt, Reifen, Karosserie, Glas, Reinigung, Versicherung, Gutachter, Teile, Abschlepp, Autohaus, OEM-Service, Sonstige). Neue Kategorien INSURANCE, APPRAISER, TOWING, DEALERSHIP, OEM_SERVICE.',
+      'Euromaster/ServicePartner-Welt restlos entfernt: Backend-Modul `service-partners`, `euromaster.config`, alle Prisma-Modelle/Enums (ServicePartner, TenantServicePartnerAssignment, PartnerDataAuthorization, PartnerServiceCase, PartnerServiceCaseEvent + Enums) sowie die Frontend-Views (`ServiceMaintenanceView`, `ServiceMaintenanceAdminView`, `euromaster/`-Komponenten) und Navigation.',
+      'Google Places aus dem Vendor-Kontext entfernt und durch eine serverseitig proxied Mapbox-POI-Suche ersetzt (Suggest→Retrieve, Session-Token, Token bleibt server-seitig). Auf der Vendor-Create-Seite füllt eine Vorschlagssuche das Formular vor (source=MAPBOX, externalPlaceId, Adresse/Koordinaten/Telefon/Website/Kategorie), legt aber nie automatisch einen Vendor an.',
+      'Vendor Create/Update verwaltet ausschließlich Stammdaten — `vehicleIds` wurde aus dem Flow entfernt. Fahrzeug-Verknüpfungen laufen über separate Endpunkte (link/update-link/unlink) mit relationType, isPreferred, priority, validFrom/Until, notes; dadurch werden Link-Notizen bei Stammdaten-Updates nicht mehr gelöscht.',
+      'Vendor Detail Page als Tab-Ansicht (Übersicht, Fahrzeuge, Rechnungen, Dokumente, Service, Historie/Audit). OrgInvoice hat jetzt eine echte `vendorId`-Relation (vendorName bleibt optionaler Snapshot); Invoice-UI bietet Vendor-Auswahl. Controller nutzt DTOs + class-validator statt body:any, PermissionsGuard (vendor-management read/write) und Audit-Logging (VENDOR / VENDOR_VEHICLE_LINK).',
+    ],
+    reason:
+      'User-Vorgabe (2026-06-13): Vendor Management sauber, konsistent und produktionsreif umbauen. Vendor soll die zentrale Wahrheit für externe Dienstleister sein, die veraltete Euromaster/ServicePartner-Sonderwelt vollständig verschwinden und Google Places durch das bereits angebundene Mapbox ersetzt werden.',
+    previousBehavior:
+      'Es existierten zwei konkurrierende Wahrheiten: Vendor und eine eigene ServicePartner/Euromaster-Welt (mit eigener UI, Seeds, Assignments, Authorizations, Cases). Vendor-Suche lief über Google Places. Der Vendor-Controller nahm `body:any` an, Vendor-Update mit `vehicleIds` löschte alle VendorVehicle-Links und legte sie neu an (Verlust von Link-Notizen). OrgInvoice kannte Lieferanten nur als Freitext `vendorName`.',
+    details:
+      '**Backend**: Prisma — Vendor (+source, externalPlaceId, addressLine2, invoices-Relation), VendorVehicle (+relationType, isPreferred, priority, validFrom/Until, updatedAt), OrgInvoice (+vendorId FK, onDelete SetNull), neue Enums VendorSource/VendorVehicleRelationType, VendorCategory + ActivityEntity (VENDOR, VENDOR_VEHICLE_LINK) erweitert; alle ServicePartner-Modelle/Enums entfernt. Migration `20260613210000_vendor_management_overhaul` (idempotent: ADD VALUE IF NOT EXISTS, ADD COLUMN IF NOT EXISTS, FK in DO-Block, DROP TABLE/TYPE der Legacy-Welt). Neue Files: `vendor-mapbox.service.ts` (Suggest/Retrieve + `mapMapboxCategory`), `dto/*` (CreateVendorDto, UpdateVendorDto, LinkVendorVehicleDto, UpdateVendorVehicleLinkDto, VendorMapboxSearch/RetrieveQueryDto), `shared/decorators/require-permission.decorator.ts`, `shared/auth/permissions.guard.ts`. `vendors.service.ts`/`vendors.controller.ts` refactored (Stammdaten vs. Links getrennt, Audit, Permissions, Detail-Sub-Resources invoices/audit/documents/service-history). `invoices.service`/`invoices.controller` um `vendorId` + `resolveVendorName` erweitert. Entfernt: `modules/service-partners/*`, `config/euromaster.config.ts`, Registrierung in `app.module.ts`/`config/index.ts`. **Frontend**: `lib/api.ts` (servicePartners-Namespaces + EuromasterAccessInfo entfernt; neue Vendor-/Mapbox-/Detail-Typen, searchMapbox/mapboxRetrieve, link/updateLink/unlinkVehicle per linkId, invoices/audit/documents/serviceHistory). `VendorManagementView` (Mapbox-Vorschlagssuche, keine vehicleIds mehr, Permission-Gating), `VendorDetailView` (Tabs + Link-Management), `InvoicesView` (Vendor-Auswahl). Service-Maintenance-Views/Navigation in rental + master entfernt. **Tests**: `vendors.service.spec.ts` (Update fasst keine Links an, Tenancy-Guard bei linkVehicle, create ohne Link-Writes, mapMapboxCategory-Normalisierung) — 16/16 grün. Backend `nest build` grün, Prisma `validate` grün, Frontend-Typecheck ohne neue Vendor-Fehler.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-06-13T20:55:00.000Z',
+  },
+  {
+    id: 'trips-tab-rental-ui-prune-v4764-2026-06-11',
+    version: '4.7.64',
+    title: 'V4.7.64 Trips — Vermieter-Fokus: technische Kennzahlen aus der Trip-UI entfernt (Backend unverändert)',
+    summary: [
+      'Im Trips-Tab der Fahrzeug-Detailseite (`TripsView`) wurden für Autovermieter irrelevante technische Kennzahlen aus der UI entfernt: Speeding (komplett), Motortemperatur, Ø-Drehzahl (RPM), Außentemperatur, Kraftstoff-/Energieverbrauch sowie Road Distribution.',
+      'Speeding wurde restlos aus der UI entfernt: Karten-Overlay inkl. Source/Layer, Map-Toggle und Legenden-Eintrag, der Speeding-Score-Badge in der Trip-Liste sowie der ausklappbare „Speeding Sections“-Block im Trip-Detail.',
+      'Aus dem Bento-Raster der Trip-Karte fielen die Kacheln „Temp“ (Außentemperatur) und „Fuel/Energy“; die Footer-Zeile (Road Mix + Speeding-Badge) entfällt komplett.',
+      'Der frühere Block „Engine & Consumption“ heißt jetzt „Engine“ und zeigt nur noch Engine Load und Throttle; Road Distribution wurde samt zugehöriger Helfer entfernt.',
+    ],
+    reason:
+      'User-Vorgabe (2026-06-11): SynqDrive hat den Schwerpunkt Autovermietung; diese Telemetrie-Detailwerte sind für die UI uninteressant, bleiben aber im Backend für Berechnungen (Driving-/Safety-Score, Verbrauchsstatistik etc.) erhalten.',
+    previousBehavior:
+      'Der Trips-Tab zeigte zusätzlich Speeding (Map-Overlay, Score-Badge, Section-Liste), Motortemperatur (Start→Ende), Ø-RPM, eine Außentemperatur-Kachel, Kraftstoff-/Energieverbrauch (Kachel + Detail) und Road Distribution (Footer-Balken + Detail-Kachel).',
+    details:
+      '**Datei**: `frontend/src/rental/components/TripsView.tsx` — reine UI-Änderung, keine API-/Backend-/Schema-Änderung; alle Felder bleiben in `TripData`/`TripEnrichment` erhalten und werden weiterhin geladen. **Karte**: `speeding-sections` Source + Glow/Line-Layer, der Daten-Feed im Map-`useEffect`, der `mapShowSpeeding`-State, die Sichtbarkeits-Toggles und der „Speeding“-Legendeneintrag entfernt; `enrichments` aus den Map-Effect-Deps entfernt, da nur noch von Speeding genutzt. **Trip-Liste**: Bento-Kacheln „Temp“ und „Fuel/Energy“ entfernt, komplette Footer-Zeile (Road Mix + Speeding-Score-Badge) entfernt. **Trip-Detail**: das 2-Spalten-Insights-Raster aufgelöst — „Road Distribution“ entfällt, „Engine & Consumption“ → „Engine“ (nur Load/Throttle, ohne RPM/Motortemperatur/Verbrauch), kompletter „Speeding Sections“-Block entfernt. **Aufräumen**: ungenutzte Helfer `getSpeedingSections`, `getConsumptionDisplay`, `hasRoadType`, die `RoadRow`-Komponente sowie die `consumption`-Variable entfernt. **Hinweis**: Ø-Geschwindigkeit (`avgSpeedKmh`) war ohnehin nicht in der UI gerendert; Refuel-/Recharge-Timeline-Events (`EnergyEventCard`) und der aggregierte „Safety“-Score bleiben erhalten.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-11T00:15:00.000Z',
+  },
+  {
+    id: 'fleet-status-offline-unavailable-signal-v4763-2026-06-10',
+    version: '4.7.63',
+    title: 'V4.7.63 Fleet Status — „Last Signal unavailable" zählt jetzt ebenfalls als Offline',
+    summary: [
+      'Fahrzeuge ohne jegliches Telemetrie-Signal („Last Signal unavailable", z.B. KS FH 660E) werden jetzt wie Offline-Fahrzeuge behandelt: ausgegraut, „Not Ready", „Vehicle Offline - Check Device" und nicht zur Buchung auswählbar.',
+      'Die gemeinsame `isVehicleOffline()`-Regel deckt damit beide Fälle ab: explizit Offline (Last Signal ≥ 1 Tag) UND nie gemeldetes/unbekanntes Signal, ohne ein frisches ONLINE/STANDBY-Fahrzeug fälschlich zu markieren.',
+    ],
+    reason:
+      'User-Feedback (2026-06-10): Die Offline-Kennzeichnung soll auch für Fahrzeuge gelten, deren Last Signal „unavailable" (also faktisch offline) ist — Beispiel KS FH 660E.',
+    previousBehavior:
+      '`isVehicleOffline()` prüfte ausschließlich `onlineStatus === "OFFLINE"`. Ein Fahrzeug, dessen `onlineStatus` nicht durchgereicht wurde bzw. das nie ein Signal gesendet hat (`lastSignal` leer), wurde nicht als offline erkannt und weiterhin als „Ready"/buchbar angezeigt.',
+    details:
+      '**Datei**: `frontend/src/rental/data/vehicles.ts` — `isVehicleOffline()` erweitert: zusätzlich zur expliziten `OFFLINE`-Klassifizierung gilt ein Fahrzeug als offline, wenn `onlineStatus` weder `ONLINE` noch `STANDBY` ist UND kein `lastSignal`-Zeitstempel vorliegt. Damit erben Fleet-Seite (`FleetView`), Dashboard (`StatInlineDetail`) und Buchungspicker (`NewBookingView`) die erweiterte Regel automatisch, da alle dieselbe Helper-Funktion nutzen. Kein Backend-Change.',
+    affectsArchitecture: false,
+    module: null,
+    createdAt: '2026-06-10T23:45:00.000Z',
+  },
+  {
+    id: 'fleet-status-offline-vehicle-v4762-2026-06-10',
+    version: '4.7.62',
+    title: 'V4.7.62 Fleet Status — Offline-Fahrzeuge (Last Signal ≥ 1 Tag) sichtbar & nicht buchbar',
+    summary: [
+      'Fahrzeuge, deren letztes Telemetrie-Signal ≥ 1 Tag alt ist (`onlineStatus === "OFFLINE"`), werden in der Fleet-Status-Box (Fleet-Seite und Dashboard) jetzt leicht ausgegraut, als „Not Ready" statt „Ready" markiert und tragen die klar lesbare Zeile „Vehicle Offline - Check Device".',
+      'Im Buchungs-Assistenten (`NewBookingView`) sind Offline-Fahrzeuge nicht mehr auswählbar: der Eintrag ist deaktiviert, ausgegraut und zeigt eine „Vehicle Offline - Check Device"-Pille.',
+      'Neue gemeinsame Quelle der Wahrheit `isVehicleOffline()` + `VEHICLE_OFFLINE_LABEL` in `rental/data/vehicles.ts`, damit Fleet-Seite, Dashboard und Buchung dieselbe Offline-Regel verwenden.',
+    ],
+    reason:
+      'User-Wunsch (2026-06-10): In der Fleet Status (Fleet-Seite und Dashboard) muss klar sichtbar sein, wenn ein Fahrzeug offline ist (Last Signal erreicht 1 Tag). Es soll ausgegraut werden, „Vehicle Offline - Check Device" anzeigen, „Not Ready" statt „Ready" sein und nicht mehr zur Buchung auswählbar sein.',
+    previousBehavior:
+      'Die Fleet-Status-„Available"-Listen rendern Offline-Fahrzeuge identisch zu Online-Fahrzeugen — grüne „Ready"-Pille, normale Adress-/Tank-/Kilometer-Footerzeile — obwohl die Telemetrie veraltet ist. Im Buchungspicker waren Offline-Fahrzeuge ganz normal anwählbar.',
+    details:
+      '**Quelle der Wahrheit**: `frontend/src/rental/data/vehicles.ts` — `isVehicleOffline(v) => v.onlineStatus === "OFFLINE"` (entspricht `STANDBY_THRESHOLD_MS = 24h` im backend `vehicle-state-interpreter.ts`) + `VEHICLE_OFFLINE_LABEL`. **Fleet-Seite**: `FleetView.tsx` Available-Tab — Offline-Zeile bekommt `opacity-60 grayscale`, die `Ready`-Pille wird zur neutralen `Not Ready`-Pille (`sq-chip-neutral`), und die Footerzeile zeigt `wifi-off` + „Vehicle Offline - Check Device" statt Adresse/Tank/Km. **Dashboard**: `StatInlineDetail.tsx` Available-Karten — gleiche Ausgrau-Logik, die bestehende Ready/Not-Ready-Pille berücksichtigt jetzt zusätzlich `offline`, und die Footerzeile wird im Offline-Fall durch die Offline-Meldung ersetzt. **Buchung**: `NewBookingView.tsx` Fahrzeugpicker — `disabled={offline}`, Click-Guard (`if (offline) return;`), `cursor-not-allowed`, ausgegrauter Stil analog zum Wartungs-Pattern und eine Offline-Pille neben dem Kennzeichen. Kein Backend-Change: das Booking-`create`-Hard-Gate bleibt unverändert (ein aktuell offline Fahrzeug kann weiterhin eine gültige künftige Reservierung sein) — die Nicht-Auswählbarkeit ist eine UI-Leitplanke.',
+    affectsArchitecture: false,
+    module: null,
+    createdAt: '2026-06-10T05:30:00.000Z',
+  },
+  {
+    id: 'storage-scalability-remediation-v4761-2026-06-09',
+    version: '4.7.61',
+    title: 'V4.7.61 Storage & Scalability — Retention, Logging, Object-Storage-Foundation',
+    summary: [
+      'Neuer `DataRetentionScheduler` (täglich 03:30) prunt append-only Telemetrie-/Log-Tabellen in Batches: dimo_poll_logs, vehicle_trip_tracking_runs, HM stream/health logs, trip_repairs, refresh_tokens (sinnvolle Defaults aktiv) sowie optional Waypoints/Tire-/Battery-Snapshots/Activity-Logs (Default deaktiviert, ENV-Opt-in).',
+      'Logging in Prod beschränkt: `LOG_LEVEL` in `main.ts` verdrahtet (Prod ohne debug/verbose), HM-MQTT Per-Message-Log auf `debug`, Request-Interceptor loggt in Prod nur noch 4xx/5xx, 5xx-Stacktraces werden pro Signatur gedrosselt.',
+      'Object-Storage-Foundation: neuer `StorageService` (Driver `local` Default = unverändert, `s3` opt-in). Alle Disk-Uploads (org-logos, customer-documents, fines, invoices, support) laufen jetzt darüber; Logo-Replace löscht das alte File. Orphan-Sweep-Scheduler (wöchentlich, Dry-Run/Default aus).',
+      'Härtung & Hygiene: Damage-Bilder bekommen Größen-/MIME-Limit, Express-Body-Limit (12 MB), `backend/public` aus Git genommen (Build erzeugt es), Autovacuum-Tuning-Migration für High-Churn-Tabellen, opt-in `RAW_PAYLOAD_MAX_BYTES`-Guard, Vite Bundle-Splitting + Source-Maps nur on demand, sowie VPS-Ops-Skripte (VACUUM/pg_repack, Logrotate, Partitionierung).',
+    ],
+    reason:
+      'Read-only Storage-Audit (2026-06-09): Produktions-Speicher wächst fast ausschließlich aus append-only Telemetrie-/Polling-Tabellen ohne Retention (plus Table-Bloat), unbegrenztem Logging und lokalem Upload-Storage. Diese Roadmap stoppt zuerst das Wachstum (P0), macht das Deployment sicherer (P1) und legt die skalierbare Storage-Architektur an (P2) — non-breaking und ENV-gesteuert.',
+    previousBehavior:
+      'Keine Retention auf den Telemetrie-/Log-Tabellen, Prod lief effektiv auf debug-Verbosity, jeder HTTP-Request und jede HM-MQTT-Message wurde geloggt, Uploads lagen ausschließlich lokal ohne Cleanup/Quota, base64-Damage-Bilder ohne Größenlimit, und der kompilierte SPA-Build (`backend/public`) wurde mit eingecheckt.',
+    details:
+      '**Retention**: `config/retention.config.ts` + `workers/schedulers/data-retention.scheduler.ts` (batched deleteMany per PK, ENV-Fenster in Tagen, Master-Switch `DATA_RETENTION_ENABLED`). **Logging**: `main.ts` `resolveLogLevels()` (env-aware) + `useBodyParser`-Limit; `request-logging.interceptor.ts` skippt 2xx/3xx in Prod; `global-exception.filter.ts` drosselt 5xx-Stacktraces; `high-mobility-mqtt-v2.service.ts` Per-Message-Log → debug. **Storage**: `config/storage.config.ts`, `shared/storage/storage.service.ts` (+`.module.ts`, @Global), lazy/optionaler `@aws-sdk/client-s3`; verdrahtet in tenant-organization-profile/customers/fines/invoices/support-Controllern; `workers/schedulers/storage-orphan-sweep.scheduler.ts`. **DB**: Migration `20260609000000_autovacuum_tuning`. **JSON-Diät**: `shared/utils/json-payload.util.ts` (`capRawPayload`, Default aus) in DIMO-Snapshot- und HM-Ingestion-Pfaden. **Frontend**: `vite.config.ts` `manualChunks` + `sourcemap` per `VITE_SOURCEMAP`. **Ops**: `backend/scripts/ops/*` (pg-bloat-report, pg-repack, pg-reclaim-bloat, setup-log-limits, partition-time-series, README). **Git**: `.gitignore` ignoriert `backend/public/`. Object-Storage (s3), Partitionierung und base64→Object-Storage-Migration sind als non-breaking Foundation/Skripte angelegt und werden über ENV/Backup-Schritte aktiviert.',
+    affectsArchitecture: true,
+    module: null,
+    createdAt: '2026-06-09T23:59:00.000Z',
+  },
+  {
+    id: 'rental-right-sidebar-removed-v4760-2026-06-09',
+    version: '4.7.60',
+    title: 'V4.7.60 Layout — Rechte Sidebar restlos aus der Rental-App entfernt',
+    summary: [
+      'Die dauerhaft sichtbare rechte Sidebar (Kalender, Termine/Schedule, Tasks, Vehicle Alerts, Notifications) wurde vollständig aus der Rental-App entfernt.',
+      'Der Hauptcontent nutzt jetzt die volle Breite zwischen linker Sidebar und Fensterrand; die Inhaltsspalte bleibt mittig (`max-w-[1440px] mx-auto`) mit symmetrischen, gleichmäßigen Rändern.',
+      'Begleitende tote Logik entfernt: `isRightSidebarCollapsed`, das `hoveredVehicle`-Cross-Highlighting (inkl. `onItemHover` an `DashboardView`) und der nur für die Sidebar genutzte `bookingsVersion`-Refetch-Zähler.',
+      'Die Komponentendatei `rental/components/RightSidebar.tsx` wurde gelöscht. Die separate Master-Admin-RightSidebar bleibt unverändert.',
+    ],
+    reason:
+      'User-Wunsch (2026-06-09): Die rechte Sidebar soll restlos entfernt werden, wobei die Abstände des Hauptcontents danach gleichmäßig und homogen bleiben müssen.',
+    previousBehavior:
+      'Die Rental-App rendert eine immer sichtbare rechte Sidebar als Flex-Geschwister neben dem Hauptcontent. Buchungs- und Handover-Events bumpten zusätzlich einen `bookingsVersion`-Zähler, damit Kalender/Termine in der Sidebar neu luden.',
+    details:
+      '**Datei**: `frontend/src/rental/App.tsx` — Import und `<RightSidebar/>`-Render entfernt; States `isRightSidebarCollapsed`, `hoveredVehicle` und `bookingsVersion` samt `onItemHover`-Prop an `DashboardView` entfernt; `bumpBookingsVersion` und der `handover:completed`-Listener auf das weiterhin nötige `refreshFleet()` reduziert (Buchungs-/Handover-Refresh bleibt erhalten). **Gelöscht**: `frontend/src/rental/components/RightSidebar.tsx`. **Layout**: Content-Wrapper unverändert `max-w-[1440px] mx-auto` mit `px-5 sm:px-7 lg:px-[50px]`, wodurch die linken/rechten Ränder über die jetzt volle Breite symmetrisch zentriert bleiben.',
+    affectsArchitecture: true,
+    module: null,
+    createdAt: '2026-06-09T00:15:00.000Z',
+  },
+  {
+    id: 'service-compliance-auto-tasks-v4759-2026-06-08',
+    version: '4.7.59',
+    title: 'V4.7.59 Tasks — Service / TÜV / BOKraft Auto-Tasks mit Eskalation',
+    summary: [
+      'Überfällige bzw. bald fällige Service-, TÜV- und BOKraft-Termine erzeugen jetzt automatisch einen OrgTask — zuerst HIGH „bald fällig“, danach URGENT „überfällig“. Derselbe Task wird eskaliert statt dupliziert.',
+      'Neue Insight→Task-Bridge konsumiert die bestehenden Insight-Kandidaten (ServiceOverdueDetector + neuer ComplianceOverdueDetector) und upsertet daraus idempotent Tasks über einen stabilen `dedupKey`.',
+      'Wird ein Termin nachgetragen und das Insight verschwindet, schließt die Bridge den zugehörigen Auto-Task automatisch (`completedAt`).',
+      '`TasksView` lädt Tasks jetzt aus der echten API (kein leeres Mock-Array mehr); das Service-Info-Modal in der Health-Ansicht zeigt aktive Auto-Tasks für das Fahrzeug.',
+    ],
+    reason:
+      'User-Feedback (2026-06-08): Ein 62 Tage überfälliger Service ohne TÜV/BOKraft-Tracking erzeugte keinerlei Aufgabe. Vorwarnungen und überfällige Pflichttermine sollen automatisch als (eskalierender) Task sichtbar werden, nicht nur als Dashboard-Insight.',
+    previousBehavior:
+      'Service-/TÜV-/BOKraft-Status wurde berechnet und konnte ein Dashboard-Insight erzeugen, aber es gab keinen Mechanismus, der daraus einen OrgTask anlegte oder eskalierte. `TasksView` zeigte ein leeres Mock-Array.',
+    details:
+      '**Schema**: `OrgTask` um `source` und unique `dedupKey` erweitert (Migration `20260608000000_service_compliance_auto_tasks`); `InsightType` um `TUV_OVERDUE` / `BOKRAFT_OVERDUE` ergänzt. **Detectors**: `ServiceOverdueDetector` nutzt jetzt `nextServiceDueDate` (Operator-Override-Präzedenz) und liefert `timeContext.dueDate`; neuer `ComplianceOverdueDetector` deckt TÜV/BOKraft ab (Warnschwelle 60 Tage, „No tracking“ → kein Task). **Bridge**: neuer `InsightTaskBridgeService.materialize` mappt Severity → Priorität (WARNING→HIGH, CRITICAL→URGENT), upsertet per `dedupKey` und schließt verwaiste Auto-Tasks. **Tasks**: `TasksService.upsertByDedup` / `closeStaleInsightTasks` als einzige Schreibpfade der Bridge. **Pipeline**: `BusinessInsightsService.runForOrganization` ruft die Bridge nach `publishInsights` mit der rohen (ungruppierten) Kandidatenliste auf, isoliert per try/catch. **Frontend**: `TasksView` mapped Backend-Tasks (Status/Priorität/Kategorie) und reichert sie mit Fahrzeugdaten aus dem FleetContext an; `HealthErrorsView` zeigt aktive `INSIGHT_*`-Tasks im Service-Modal.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-06-08T20:00:00.000Z',
+  },
+  {
+    id: 'damage-map-model-template-library-v4758-2026-05-03',
+    version: '4.7.58',
+    title: 'V4.7.58 Damage Map — Modellbilder als wiederverwendbare Exterior-Templates',
+    summary: [
+      'Damage-Map-Bilder sind nicht mehr ausschließlich pro Fahrzeug gedacht: Master Admin kann pro `make/model/view` wiederverwendbare Modell-Templates speichern.',
+      '`ExteriorImagesEditor` lädt jetzt Fahrzeug-Overrides plus Modell-Fallback, markiert die Bildquelle als `Vehicle` oder `Model` und bietet pro Slot `Save as model template`.',
+      'Über die Template-Bibliothek kann ein vorhandenes Modellbild gezielt in ein anderes Fahrzeug kopiert werden; dadurch bleiben individuelle Overrides möglich, ohne gleiche Modellbilder immer neu hochzuladen.',
+      '`DamagesView` liest nun effektive Exterior-Bilder: zuerst Fahrzeugfoto, danach Modell-Template, danach Blueprint-Fallback.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): Damage-Map-Bilder lassen sich nicht skalieren, wenn für jedes einzelne Fahrzeug dieselben Modellfotos erneut hochgeladen werden müssen. Bilder für ein Modell sollen für andere passende Fahrzeuge auswählbar sein.',
+    previousBehavior:
+      '`VehicleExteriorImage` war nur auf `vehicleId + view` normalisiert. Wiederkehrende Fahrzeuge desselben Modells mussten ihre fünf Ansichten jeweils separat erhalten; leere Fahrzeuge fielen trotz existierender Modellfotos auf Blueprint zurück.',
+    details:
+      '**Backend/Schema**: neues Prisma-Model `VehicleExteriorModelImage` (`vehicle_exterior_model_images`, unique `[modelKey, view]`) plus Migration `20260503123000_vehicle_exterior_model_images`. **Service/API**: `VehicleExteriorImagesService` ergänzt Modell-Key-Normalisierung, `listEffectiveByVehicle`, `listByModel`, `listAvailableModels`, `upsertModelImage`, `saveVehicleImageAsModelTemplate` und `applyModelTemplateToVehicle`. Neue Admin-Routen: `GET/PUT /admin/vehicle-exterior-model-images`, `GET /admin/vehicles/:vehicleId/exterior-images/effective`, `POST /admin/vehicles/:vehicleId/exterior-images/:view/save-as-model`, `POST /admin/vehicles/:vehicleId/exterior-images/:view/apply-model`; Rental bekommt `GET /vehicles/:vehicleId/exterior-images/effective`. **Frontend**: `api.vehicles.exteriorImages` exposed die neuen DTOs/Calls; `ExteriorImagesEditor` unterstützt Model-Upload, Source-Badges, Save-as-Model und Copy-from-Library; `DamagesView` nutzt den effektiven Read-Pfad.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-05-03T12:30:00.000Z',
+  },
+  {
+    id: 'damage-map-exterior-upload-compression-v4757-2026-05-03',
+    version: '4.7.57',
+    title: 'V4.7.57 Damage Map — Exterior-Photo-Uploads werden vor dem Speichern komprimiert',
+    summary: [
+      '`ExteriorImagesEditor` komprimiert Damage-Map-Fotos jetzt clientseitig vor jedem Persisted- oder Buffered-Upload.',
+      'Quellbilder bis 12 MB werden akzeptiert, im Browser über Canvas dekodiert, auf maximal 1280 px Kantenlänge skaliert und iterativ Richtung ca. 420 KB Zielgröße als WebP/JPEG gespeichert.',
+      'Die Backend-Grenze von 5 MB pro View bleibt als harte Absicherung bestehen; falls Canvas-Kompression im Browser/Dateiformat fehlschlägt, bleibt der Upload für bereits kleine Bilder funktional.',
+      'Die Kompression greift sowohl im Master-Admin Vehicle-Detail-Drawer als auch im Vehicle-Registration-Form, weil beide denselben `ExteriorImagesEditor` und denselben Buffered-Flush verwenden.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): Die im Master Admin hochgeladenen Damage-Map-Bilder kommen oft mit 1-2 MB an und sollen funktionsfähig bleiben, aber so stark wie möglich intern komprimiert werden.',
+    previousBehavior:
+      '`ExteriorImagesEditor` las die Originaldatei direkt per FileReader als Base64-Data-URI ein und schickte diese unverändert an `api.vehicles.exteriorImages.upsert` bzw. speicherte sie unverändert im Register-Form-Buffer. Dadurch landeten Smartphone-Fotos unnötig groß in `vehicle_exterior_images.image_data`.',
+    details:
+      '**Datei**: `frontend/src/master/components/ExteriorImagesEditor.tsx`. Neu: `compressExteriorImage`, `loadImageForCompression`, `canvasToDataUrl`, `estimateDataUrlBytes` sowie Kompressionskonstanten (`MAX_SOURCE_BYTES=12MB`, `MAX_IMAGE_EDGE_PX=1280`, `TARGET_COMPRESSED_BYTES≈420KB`, `MIN_IMAGE_QUALITY=0.46`). Uploadpfad: MIME validieren → Source-Cap prüfen → Canvas-Kompression → Backend-5MB-Cap prüfen → PERSISTED-Upsert oder BUFFERED-Map. Kein Backend-/Schema-Delta; `VehicleExteriorImagesService` validiert weiterhin Data-URI + 5MB.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-05-03T12:12:00.000Z',
+  },
+  {
+    id: 'data-authorization-core-page-redesign-v4756-2026-05-03',
+    version: '4.7.56',
+    title: 'V4.7.56 Data Authorization — Status-Auswahl an Core-Page-Pattern angepasst',
+    summary: [
+      '`DataAuthorizationTab` nutzt jetzt denselben Seitenrhythmus wie Fleet, Dashboard, Customers, Financial Insights und Fleet Condition: max-width Container, klarer Header links und `Autorisierung erstellen` als kompakte Primary-Action rechts.',
+      'Die alte Status-/Filter-Auswahl (`Alle Status`, Module, Bereiche) wurde aus dem oberen Bereich herausgenommen und in eine dedizierte Filter-Card verschoben.',
+      'Die wichtigsten Autorisierungskennzahlen (`Gesamt`, `Aktiv`, `Ausstehend`, `Widerrufen`) stehen jetzt als klickbare KPI-Cards mit `sq-card`, Ton-Icons, tabularen Zahlen, Hover-State und Active-Ring bereit.',
+      'Die Filter-Card zeigt jetzt Showing-Text, Status-Dropdown mit Counts, Modul-/Scope-Dropdowns, Active-Filter-Chips und eine zentrale `Clear filters`-Action.',
+      'Autorisierungs-Liste, Loading-State und Empty-State wurden optisch an die aktuellen Core-Flächen und `sq-tone-*`-Tokens angeglichen; bestehende Grant-/Revoke-/Create-Flows bleiben erhalten.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): Data Authorization soll mit `redesign-existing-projects` an Fleet, Dashboard, Customers, Financial Insights und Fleet Condition angeglichen werden; alte Auswahl-/Headerflächen und hardcoded UI-Muster sollen nicht mehr dominieren.',
+    previousBehavior:
+      '`DataAuthorizationTab` startete mit einem kleinen Header, fünf alten StatCards und direkt darunter einer kompakten Filterzeile mit Status-/Modul-/Scope-Auswahl. Dadurch wirkte die Auswahl wie eine headernahe Tabbar statt wie eine klare Workspace-/Filterfläche.',
+    details:
+      '**Datei**: `frontend/src/rental/components/DataAuthorizationTab.tsx`. Neu: `hasActiveFilters`, `clearFilters`, `statusOptions`, `scopeOptions`, `activeStatusOption`, `activeModuleLabel`, `activeScopeLabel`, `summaryCards`. Header, KPI-Zeile, Filter-Card, AuthorizationRows, Loading- und Empty-State wurden auf `sq-card`, `sq-tone-*`, Brand-Tokens, Core-Radii und konsistente Typografie umgestellt. Keine Backend/API-/Datenflussänderung; `api.dataAuthorizations.list/stats/get/create/grant/revoke` bleibt unverändert. `ArchitekturView` daher nicht geändert.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-03T11:43:00.000Z',
+  },
+  {
+    id: 'billing-tab-live-billing-core-redesign-v4755-2026-05-03',
+    version: '4.7.55',
+    title: 'V4.7.55 Billing — Demo-Abrechnung entfernt und Live-Billing-Workspace eingeführt',
+    summary: [
+      '`BillingTab` nutzt jetzt denselben Seitenrhythmus wie Fleet, Dashboard, Customers, Financial Insights und Fleet Condition: max-width Container, ruhiger Header links und Billing-Sync-Status rechts.',
+      'Die doppelte, widersprüchliche Plan-Definition wurde bereinigt; es gibt nur noch einen lokalen Plan-Katalog für die Anzeige, während der aktuelle Plan aus `GET /billing/subscriptions` kommt.',
+      'Hardcoded Demo-Rechnungen und die fake Mastercard (`Mastercard ···· 4829`) wurden entfernt. Rechnungsverlauf und MRR lesen jetzt aus den bestehenden Billing-Endpoints `api.billing.orgSubscriptions()` und `api.billing.orgInvoices()`.',
+      'Der obere Bereich zeigt KPI-Cards (`Current Plan`, `Monthly`, `Renewal`, `Invoices`) mit `sq-card`, Ton-Icons, tabularen Werten und echten Billing-Daten oder ehrlichen Empty-States.',
+      'Plan-Auswahl, Subscription Summary, Payment-Method-Hinweis und Invoice-History wurden auf Core-Flächen umgebaut; Invoice-Suche/Statusfilter sitzen in einer dedizierten Filter-Card mit Counts und `Clear filters`.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): Billing & Subscriptions soll mit `redesign-existing-projects` an Fleet, Dashboard, Customers, Financial Insights und Fleet Condition angeglichen werden; alte Auswahl-/Headerflächen und hardcoded Inhalte sollen nicht mehr dominieren.',
+    previousBehavior:
+      '`BillingTab` zeigte komplett statische Demo-Daten: zwei voneinander abweichende Plan-Arrays im selben Block, eine hardcodierte Professional-Auslastung, fixe Monatsrechnungen aus 2025/2026 und eine erfundene Mastercard. Dadurch konnten UI-Änderungen echte Billing-Daten nicht korrekt abbilden.',
+    details:
+      '**Dateien**: `frontend/src/rental/components/SettingsView.tsx`, `frontend/src/master/components/ArchitekturView.tsx`. `BillingTab` lädt nun tenant-scoped `api.billing.orgSubscriptions()` (`GET /billing/subscriptions`) und `api.billing.orgInvoices()` (`GET /billing/invoices`) und leitet daraus Plan, Status, MRR, Renewal und Rechnungsverlauf ab. Neu: `BillingSubscriptionDto`, `BillingInvoiceDto`, Status-/Money-/Date-Helfer, `summaryCards`, Invoice-Suche, Statusfilter, Empty-State für nicht exponierte Zahlungsmethode. Keine Backend-/Schemaänderung; aber Frontend-Datenfluss von Demo-Daten auf vorhandene Billing-API umgestellt, daher `ArchitekturView` aktualisiert.',
+    affectsArchitecture: true,
+    module: 'Frontend Data Flow',
+    createdAt: '2026-05-03T11:29:00.000Z',
+  },
+  {
+    id: 'users-roles-core-page-redesign-v4754-2026-05-03',
+    version: '4.7.54',
+    title: 'V4.7.54 Users & Roles — Rollen-Auswahl an Core-Page-Pattern angepasst',
+    summary: [
+      '`UsersRolesTab` nutzt jetzt denselben Seitenrhythmus wie Fleet, Dashboard, Customers, Financial Insights und Fleet Condition: max-width Container, klarer Header links und `Benutzer erstellen` als kompakte Primary-Action rechts.',
+      'Die alte horizontale Rollen-Chip-Auswahl (`Alle`, `Org Admin`, `Sub Admin`, `Worker`) wurde aus dem oberen Bereich entfernt.',
+      'Die wichtigsten User-/Access-Kennzahlen (`Users`, `Active`, `Admins`, `Station Scope`) stehen jetzt als KPI-Cards mit `sq-card`, Ton-Icons, tabularen Zahlen, Hover-State und Active-Ring bereit.',
+      'Suche und Rollen-Scope sitzen nun in einer dedizierten Filter-Card mit Showing-Text, Rollen-Dropdown mit Counts, Active-Filter-Chips, Standort-Hinweis und `Clear filters`.',
+      'User-Tabelle, Empty-State, Rollen-Badges und Dialog-Aktionen wurden optisch an die aktuellen Core-Flächen und `sq-tone-*`-Tokens angeglichen; bestehende User-/Station-API-Flows bleiben unverändert.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): Users & Roles soll mit `redesign-existing-projects` an Fleet, Dashboard, Customers, Financial Insights und Fleet Condition angeglichen werden; die Tab-/Chip-Auswahl im Headerbereich passt nicht mehr zum aktuellen Design und hardcoded/alte UI-Muster sollen nicht dominieren.',
+    previousBehavior:
+      '`UsersRolesTab` startete mit einem kleinen Header, einer direkt darunterliegenden horizontalen Rollen-Chip-Leiste und alten Border/Blue-Styles. Suche und Rollenfilter wirkten dadurch wie eine zweite Header-Tabbar statt wie eine dedizierte Workspace-/Filterfläche.',
+    details:
+      '**Datei**: `frontend/src/rental/components/UsersRolesTab.tsx`. Neu: `roleOptions`, `visibleRoleOptions`, `activeRoleOption`, `hasActiveFilters`, `clearFilters`, `summaryCards` und stabile `sq-tone-*` Role-/Statusflächen. Header, KPI-Zeile, Filter-Card, Rollen-Badges, User-List-Surface und Empty-State wurden refactored. Keine Backend/API-/Datenflussänderung; `api.users.listByOrg(orgId)`, `api.stations.list(orgId)`, Create-/Edit-/Delete-/Password-Flows bleiben erhalten. `ArchitekturView` daher nicht geändert.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-03T11:22:00.000Z',
+  },
+  {
+    id: 'fleet-connection-core-page-redesign-v4753-2026-05-03',
+    version: '4.7.53',
+    title: 'V4.7.53 Fleet Connection — Connectivity-Auswahl an Core-Page-Pattern angepasst',
+    summary: [
+      '`FleetConnectionTab` nutzt jetzt denselben Seitenrhythmus wie Fleet, Dashboard, Customers, Financial Insights und Fleet Condition: max-width Container, klarer Header links und operativer Status rechts.',
+      'Die alte horizontale Status-Chip-Auswahl (`All`, `Online`, `Standby`, `Offline`, `No Connection`) wurde aus dem oberen Bereich entfernt.',
+      'Die Connectivity-Kennzahlen stehen jetzt als klickbare KPI-Cards mit `sq-card`, Ton-Icons, tabularen Zahlen, Hover-State und Active-Ring bereit und setzen den bestehenden Statusfilter direkt.',
+      'Suche und Statusauswahl sitzen nun in einer dedizierten Filter-Card mit Showing-Text, Status-Dropdown mit Counts, Active-Filter-Chips und `Clear filters`.',
+      'Vehicle-Liste und Empty-State wurden optisch an die aktuellen Core-Flächen angeglichen; der bestehende `api.vehicles.fleetConnectivity(orgId)` Datenfluss bleibt unverändert.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): FleetConnectionTab soll mit `redesign-existing-projects` an Fleet, Dashboard, Customers, Financial Insights und Fleet Condition angeglichen werden; die Tab-/Chip-Auswahl im Headerbereich passt nicht mehr zum aktuellen Design und hardcoded/alte UI-Muster sollen nicht dominieren.',
+    previousBehavior:
+      '`FleetConnectionTab` startete mit einem kleinen Header, fünf alten Summary-Boxen und direkt darunter einer horizontalen Status-Chip-Leiste. Suche und Statusfilter wirkten dadurch wie eine zweite Header-Tabbar statt wie eine klare Workspace-/Filterfläche.',
+    details:
+      '**Datei**: `frontend/src/rental/components/SettingsView.tsx`. Neu: `statusOptions`, `statusCount`, `activeStatus`, `hasActiveFilters`, `clearFilters`, `summaryCards` und stabile `sq-tone-*` Statusflächen. Header, KPI-Zeile, Filter-Card, Vehicle-List-Surface und Empty-State wurden refactored. Keine Backend/API-/Datenflussänderung; `api.vehicles.fleetConnectivity(orgId)` und die vorhandenen Vehicle-Detail-Expansionen bleiben erhalten. `ArchitekturView` daher nicht geändert.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-03T11:13:00.000Z',
+  },
+  {
+    id: 'company-profile-core-page-redesign-v4752-2026-05-03',
+    version: '4.7.52',
+    title: 'V4.7.52 Company Profile — Organisationsprofil an Core-Page-Pattern angepasst',
+    summary: [
+      '`CompanyProfileTab` nutzt jetzt denselben Seitenrhythmus wie Account/Fleet/Dashboard/Customers/Financial Insights/Fleet Condition: max-width Container, ruhiger Header links, Edit/Save-Action rechts.',
+      'Der obere Bereich zeigt vier abgeleitete KPI-/Statuskarten (`Profile`, `Branding`, `Contact`, `Locale`) mit `sq-card`, Ton-Icons und echten Backend-Profilwerten statt reiner Formularfläche.',
+      'Unternehmensdaten und Ansprechpartner sind visuell klarer getrennt, mit `sq-card`, konsistenten Form-Feldern, Read-only/Bearbeitungs-Badge und Address-Summary im Card-Header.',
+      'Logo-Upload wurde optisch an das Core-Pattern angepasst: ruhigere Branding-Card, größere Logo-Preview, brand-token-basierte Upload-Action und erhaltene Remove-/Upload-Logik.',
+      'Der Dokumentbereich zeigt jetzt einen sauberen Empty-State und der Plus-Button ist bewusst deaktiviert, solange kein echter Dokumenten-Upload-Endpoint angebunden ist.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): Company Profile soll mit `redesign-existing-projects` an Fleet, Dashboard, Customers, Financial Insights und Fleet Condition angeglichen werden; Auswahl/Headerbereiche sollen nicht mehr wie alte Tabs wirken und hardcoded/alte UI-Muster sollen nicht dominieren.',
+    previousBehavior:
+      '`CompanyProfileTab` startete mit einem einfachen Header, altem Border/Shadow-Card-Stil, einer reinen Formularfläche ohne zusammenfassende Statuskarten, einem groben dashed Logo-Upload und einem aktiven Plus-Button im Dokumentbereich, obwohl kein Upload-Flow sichtbar angebunden war.',
+    details:
+      '**Datei**: `frontend/src/rental/components/SettingsView.tsx`. Backend- und API-Logik blieb unverändert (`api.organizations.getProfile/updateProfile/uploadLogo`, `setOrgBranding`). Neu: derived `profileCompleteness`, `addressLine`, `contactReady`, `localizationReady`, `summaryCards`. Header/KPI-Zeile, Unternehmensdaten, Ansprechpartner, Logo-Upload und Dokument-Empty-State wurden auf `sq-card`, `sq-tone-*`, Brand-Tokens, Core-Radii und konsistente Typografie umgestellt. Keine Backend/API-/Datenflussänderung; `ArchitekturView` daher nicht geändert.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-03T11:06:00.000Z',
+  },
+  {
+    id: 'account-information-core-page-redesign-v4751-2026-05-03',
+    version: '4.7.51',
+    title: 'V4.7.51 Account Information — Settings-Tabbar entfernt und Profilseite an Core-Pattern angepasst',
+    summary: [
+      '`AccountInformationTab` nutzt jetzt denselben Seitenrhythmus wie Fleet, Dashboard, Customers, Financial Insights und Fleet Condition: max-width Container, ruhiger Header links, Edit/Save-Action rechts.',
+      'Die alten, teilweise hartkodierten Profilwerte wurden reduziert: Name, E-Mail, Rolle und Organisation leiten sich aus `getStoredUser()` und `useRentalOrg()` ab; Telefon/Mobil/Standort zeigen leere Zustände statt Demo-Werte.',
+      'Der obere Bereich hat jetzt vier KPI-/Statuskarten (`Profile`, `Role`, `Access`, `Alerts`) mit `sq-card`, Ton-Icons, tabularen Werten und echten Derived Counts.',
+      'Profilkarte, Sicherheit, persönliche Informationen, Einstellungen, Benachrichtigungen und aktive Sitzungen wurden auf `sq-card`, `sq-tone-*`, ruhigere Radii und konsistente Header/Subcopy umgestellt.',
+      'Die redundante horizontale Settings-Tabbar im Content wurde aus `SettingsView` entfernt. Die Navigation bleibt über die linke Sidebar erhalten, damit keine zweite Tab-Auswahl im Headerbereich konkurriert.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): Account Information soll mit `redesign-existing-projects` an Fleet, Dashboard, Customers, Financial Insights und Fleet Condition angeglichen werden; die Tab-Auswahl im Headerbereich passt nicht mehr zum aktuellen Design und hardcoded Inhalte sollen nicht dominieren.',
+    previousBehavior:
+      '`SettingsView` zeigte zusätzlich zur Sidebar eine horizontale Settings-Tabbar direkt über dem Content. `AccountInformationTab` hatte einen einfachen Header, alte Border/Shadow-Karten, einen lauten Avatar-Gradient, mehrere Demo-Werte (`+49 30…`, Geschäftsführer, Berlin Central) und statische Session-Beispiele.',
+    details:
+      '**Datei**: `frontend/src/rental/components/SettingsView.tsx`. `AccountInformationTab` nutzt jetzt `useRentalOrg()` + `getStoredUser()` für Role/Org/Permission-Kontext, derived `profileCompleteness`, `permissionCount`, `enabledNotifications` und eine neue `summaryCards`-Zeile. Header, Profilkarte, Security-, Preferences-, Notifications- und Sessions-Karten wurden auf `sq-card`/`sq-tone-*` und Core-Page-Abstände refactored. `SettingsView` rendert keine eigene horizontale Tabbar mehr; die bestehende Sidebar-Steuerung (`settingsTab`, `onSettingsTabChange`) bleibt unverändert. Keine Backend/API-/Datenflussänderung.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-03T10:55:00.000Z',
+  },
+  {
+    id: 'damages-vehicle-damage-map-carousel-v4750-2026-05-03',
+    version: '4.7.50',
+    title: 'V4.7.50 Damages — Vehicle damage map als 5-Ansichten-Carousel mit vehicle-spezifischen Fotos',
+    summary: [
+      '`DamagesView` zeigt die "Vehicle damage map" jetzt als Carousel mit fünf festen Ansichten: `FRONT`, `LEFT`, `RIGHT`, `REAR`, `ROOF`. Der Einstieg ist immer FRONT.',
+      'Navigation per Prev/Next-Buttons, anklickbaren View-Tabs unter dem Bild und Tastatur-freundlichen Pfeil-Icons; aktive Ansicht erhält einen Indigo-Ring und einen Hinweis-Pill.',
+      'Pro Ansicht wird – wenn vorhanden – ein vehicle-spezifisches Foto angezeigt. Solange ein Slot leer ist, fällt die Box auf einen sauberen SVG-Blueprint genau dieser Ansicht zurück (statt alle vier zusammen wie vorher).',
+      'Damage-Marker werden nur noch über der aktiven Ansicht gerendert. Wenn Damages echte `locationView`+`locationX/Y`-Koordinaten tragen, werden die Pins exakt platziert; sonst bleibt eine schlanke Legacy-Verteilung über FRONT/LEFT/RIGHT als Fallback.',
+      'Im Master-Admin gibt es jetzt einen neuen Bereich `Exterior Photos` im Vehicle-Detail-Drawer (`PlatformVehiclesView`) sowie einen optionalen Abschnitt `Exterior Photos (Damage Map)` im `VehicleRegistrationModal` mit Upload, Replace und Remove pro Slot.',
+      'Im Register-Form werden Bilder zwischen Auswahl und Speichern lokal gepuffert und nach erfolgreicher Registrierung per `flushBufferedExteriorImages` in einem Best-Effort-Schwung an das Backend hochgeladen.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): Die Box "Vehicle damage map" muss konkretisiert werden — fünf Ansichten (vorne, links, rechts, hinten, dach), initial vorne, klickbare Navigation links/rechts, und die fünf Bilder müssen vehicle-spezifisch und manuell vom Master-Admin hochladbar sein (entweder im Vehicle-Detail oder schon im Register-Form für non-registered → registered).',
+    previousBehavior:
+      '`DamagesView` zeigte gleichzeitig vier statische Auto-Blueprints (Side, Front, Rear, Top) als 2x2-Grid mit zwei hartkodierten roten Markern (right/top als CSS-Strings). Es gab keine vehicle-spezifischen Bilder, keine Upload-Pfade, keinen FRONT-Einstieg und keinen Wechsel zwischen Ansichten.',
+    details:
+      '**Backend** (neu): `backend/prisma/schema.prisma` — neues Enum `VehicleExteriorView` (FRONT/LEFT/RIGHT/REAR/ROOF) und neues Model `VehicleExteriorImage` (`vehicle_exterior_images`, unique [vehicleId, view], cascade on Vehicle delete, base64 data URI in `image_data`). `Vehicle` bekommt die Relation `exteriorImages`. **Service**: `backend/src/modules/vehicles/vehicle-exterior-images.service.ts` mit `listByVehicle`, idempotentem `upsert` (FK-Validierung, ~5 MB Cap, MIME-Whitelist) und `delete`. **Controller**: `vehicles.controller.ts` neue Routen `GET/PUT/DELETE /admin/vehicles/:vehicleId/exterior-images[/:view]` (MASTER_ADMIN) und ein Read-Only `GET /vehicles/:vehicleId/exterior-images` (VehicleOwnershipGuard). `vehicles.module.ts` registriert + exportiert den Service. **API-Layer**: `frontend/src/lib/api.ts` ergänzt `api.vehicles.exteriorImages.list/listAdmin/upsert/delete` plus die DTOs `VehicleExteriorViewKey` und `VehicleExteriorImageDto`. **UI**: Neue wiederverwendbare Komponente `frontend/src/master/components/ExteriorImagesEditor.tsx` mit zwei Modi (PERSISTED ↔ BUFFERED) und Helper `flushBufferedExteriorImages`. `PlatformVehiclesView` bindet sie als `Exterior Photos` ins Vehicle-Detail-Drawer ein, `VehicleRegistrationModal` als optionalen Abschnitt 8. `frontend/src/rental/components/DamagesView.tsx`: ehemaliger 2x2-SVG-Block ersetzt durch ein Carousel (Prev/Next, View-Tabs mit Hochgeladen-Indikator, aktive-Ansichts-Pill, Loading-Overlay), neue Hilfskomponente `DamageMapBlueprint` für Fallback-Outlines, `DamageMarker` versteht jetzt zusätzlich Prozent-Positionen (`leftPercent`/`topPercent`). Lints überall clean.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-05-03T11:30:00.000Z',
+  },
+  {
+    id: 'whatsapp-business-control-redesign-v4749-2026-05-03',
+    version: '4.7.49',
+    title: 'V4.7.49 WhatsApp Business — Header-Tabs entfernt und Workspace-Auswahl modernisiert',
+    summary: [
+      '`WhatsAppBusinessView` nutzt jetzt den gleichen Seitenrhythmus wie Fleet, Dashboard, Customers, Financial Insights und Fleet Condition: kompakter Header links, Status/Actions rechts.',
+      'Die alte Tab-Auswahl (`Overview`, `Conversations`, `Configuration`) direkt unter dem Header wurde entfernt.',
+      'Die wichtigsten WhatsApp-Kennzahlen (`Connection`, `Conversations`, `Unread`, `AI Mode`) stehen jetzt als anklickbare KPI-Cards mit `sq-card`, Ton-Icons, tabularen Zahlen und Active-Ring im oberen Bereich.',
+      'Die Bereichsauswahl sitzt nun in einer dedizierten `Workspace`-Card mit aktivem Abschnitt, Beschreibung, Select-Dropdown und kompakten Quick-Actions inklusive Unread-Badge.',
+      'AI-Mode-/Overview-Karten wurden von dynamischen Tailwind-Farbstrings auf stabile `sq-tone-*` Klassen umgestellt, damit Styles zuverlässig greifen.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): WhatsApp Business soll mit `redesign-existing-projects` an Fleet, Dashboard, Customers, Financial Insights und Fleet Condition angeglichen werden; die Tab-Auswahl im Header passt nicht mehr zum aktuellen Design.',
+    previousBehavior:
+      '`WhatsAppBusinessView` hatte einen kleinen Header und direkt darunter eine breite dreigeteilte Tabbar. Dadurch wirkte der obere Bereich anders als die neuen Core-Pages und vermischte Header, Navigation und Statusauswahl.',
+    details:
+      '**Datei**: `frontend/src/rental/components/WhatsAppBusinessView.tsx`. Neu: `SECTION_OPTIONS`, stabile `AI_MODE_LABELS` mit `sq-tone-*`, `statusLabel`, `activeSection`, `readyCount`; Header refactored, Tabbar entfernt, KPI-Cards + Workspace-Selector eingeführt, Card-Surfaces auf `sq-card` harmonisiert und dynamische Farbklassen in Overview-KPIs stabilisiert. Keine Backend/API/Datenflussänderung.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-03T10:22:00.000Z',
+  },
+  {
+    id: 'voice-assistant-control-redesign-v4748-2026-05-03',
+    version: '4.7.48',
+    title: 'V4.7.48 Voice Assistant — Header-Tabs entfernt und Workspace-Auswahl modernisiert',
+    summary: [
+      '`VoiceAssistantView` nutzt jetzt den gleichen Seitenrhythmus wie Fleet, Dashboard, Customers, Financial Insights und Fleet Condition: ruhiger Header links, Status/Activate rechts.',
+      'Die breite Header-Tabbar (`Overview`, `Configuration`, `Permissions`, `Escalation`, `Telephony`, `Test`, `Analytics`, `Conversations`) wurde entfernt.',
+      'Die wichtigsten Voice-Kennzahlen (`Status`, `Total Calls`, `Readiness`, `Avg Duration`) stehen jetzt als anklickbare KPI-Cards mit `sq-card`, Ton-Icons, tabularen Zahlen und Active-Ring im oberen Bereich.',
+      'Die Bereichsauswahl sitzt nun in einer dedizierten `Workspace`-Card mit aktivem Abschnitt, Beschreibung, Select-Dropdown und kompakten Quick-Actions statt als konkurrierende Tab-Auswahl im Header.',
+      'Analytics-Cards wurden von dynamischen Tailwind-Farbstrings auf stabile `sq-tone-*` Klassen umgestellt, damit Styles zuverlässig greifen.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): Voice Assistant soll mit `redesign-existing-projects` an Fleet, Dashboard, Customers, Financial Insights und Fleet Condition angeglichen werden; die Tab-Auswahl im Header passt nicht mehr zum aktuellen Design.',
+    previousBehavior:
+      '`VoiceAssistantView` hatte einen großen Card-Header mit Status/Activate und direkt darunter eine breite horizontale Tabbar für alle Voice-Bereiche. Dadurch wirkte der obere Bereich wie eine alte Einstellungsnavigation statt wie die neuen Core-Pages.',
+    details:
+      '**Datei**: `frontend/src/rental/components/VoiceAssistantView.tsx`. Neu: `SECTION_OPTIONS`, `statusLabel`, `activeSection`, `readyChecks`, `totalChecks`, `avgDurationSeconds`; Header refactored, Tabbar entfernt, KPI-Cards + Workspace-Selector eingeführt, Card-Surfaces auf `sq-card` harmonisiert und Analytics-Farbklassen stabilisiert. Keine Backend/API/Datenflussänderung.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-03T10:15:00.000Z',
+  },
+  {
+    id: 'vendor-management-control-redesign-v4747-2026-05-03',
+    version: '4.7.47',
+    title: 'V4.7.47 Vendor Management — Kategorie-Auswahl aus Header entfernt und Filter-Pattern angeglichen',
+    summary: [
+      '`VendorManagementView` nutzt jetzt denselben Core-Page-Rhythmus wie Tasks/Invoices/Fines/Fleet Condition: Titel links, `Add Vendor` rechts als kompakte Primary-Action.',
+      'Die alte horizontale Kategorie-Chip-Leiste (`All`, `Workshop`, `Service Partner`, usw.) wurde aus dem oberen Bereich entfernt und durch ein Kategorie-Dropdown in einer dedizierten Filter-Card ersetzt.',
+      'Die vier Kennzahlen (`Total Partners`, `Active`, `Categories`, `Vehicle-Linked`) wurden auf das aktuelle KPI-Card-Pattern mit `sq-card`, tabularen Zahlen, Ton-Icons, Hover/Active-Ring und echten Filter-Actions umgestellt.',
+      'Der Filterbereich zeigt jetzt Showing-Text, Active-Filter-Chips, Search-active-Chip, Count-Badges im Kategorie-/Scope-Menü und eine zentrale `Clear filters`-Action.',
+      'Die KPI-Karten `Active` und `Vehicle-Linked` setzen jetzt echte clientseitige Scope-Filter statt nur statische Werte zu zeigen.',
+      'Vendor-Liste, Loading- und Empty-State wurden optisch an die neuen Core-Flächen angepasst; die bestehende Vendor-/Place-/Vehicle-Linking-Logik bleibt erhalten.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): Vendor Management soll mit `redesign-existing-projects` an Fleet, Dashboard, Customers, Financial Insights und Fleet Condition angeglichen werden; headernahe Tab-/Chip-Auswahl passt nicht mehr zum aktuellen Design.',
+    previousBehavior:
+      '`VendorManagementView` startete direkt mit vier alten Mini-Stats und einer horizontalen Kategorie-Auswahl neben Suche und Add-Button. Dadurch wirkte die Auswahl wie eine zusätzliche Tabbar im Header und wich vom neuen Page-Pattern ab.',
+    details:
+      '**Datei**: `frontend/src/rental/components/VendorManagementView.tsx`. Neu: `scopeFilter`, `showCategoryFilter`, `showScopeFilter`, `categoryCount`, `scopeCount`, `activeCategoryLabel`, `activeScopeLabel`, `hasActiveFilters`, `clearFilters`; Header/KPI/Filter-Card refactored, Kategorie-Chips entfernt, Scope-/Kategorie-Dropdowns mit Counts eingeführt, List-/Empty-State auf `sq-card` angeglichen. Keine Backend/API/Datenflussänderung.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-03T10:08:00.000Z',
+  },
+  {
+    id: 'tasks-view-control-redesign-v4746-2026-05-03',
+    version: '4.7.46',
+    title: 'V4.7.46 Tasks — Header-Auswahl/Filterbereich an Core-Page-Pattern angepasst',
+    summary: [
+      '`TasksView` nutzt jetzt denselben ruhigen Header-Rhythmus wie Fleet/Customers/Invoices/Fines: Titel links, `New Task` rechts als kompakte Primary-Action.',
+      'Die bisherigen Status-Summary-Karten wurden auf das aktuelle KPI-Card-Pattern umgebaut (`Open`, `In Progress`, `Completed`, `Overdue`) mit `sq-card`, tabularen Zahlen, Ton-Icons, Hover/Active-Ring und echten Status-Filtern.',
+      'Der Filterbereich wurde zu einer dedizierten Filter-Card mit Titel, Showing-Text, Active-Filter-Chips, Search-active-Chip und zentraler `Clear filters`-Action. Dadurch wirkt die Auswahl nicht mehr wie eine Tabbar im Header.',
+      'Alle Dropdowns (`Status`, `Priority`, `Category`, `Vehicle`, `Assignee`, `Sort`) bleiben erhalten, zeigen jetzt aber Count-Badges im Menü und passen visuell zum Pattern aus Customers/Fleet Condition/Invoices/Fines.',
+      'Hook-/Datenlogik blieb unverändert: `useFleetVehicles` wurde nur früher im Component-Body platziert, damit Vehicle-Counts und Active-Labels vor dem Render genutzt werden können.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): Die Auswahl in Task Management soll mit `redesign-existing-projects` an Fleet, Dashboard, Customers, Financial Insights und Fleet Condition angeglichen werden; headernahe Tab-/Auswahlflächen passen nicht mehr zum aktuellen Design.',
+    previousBehavior:
+      '`TasksView` hatte einen alten Header mit Unterzeile, eine separate Status-Kartenreihe im alten Card-Stil und darunter eine kompakte Filterzeile. Zusammen wirkte der obere Fold wie mehrere konkurrierende Auswahlbereiche.',
+    details:
+      '**Datei**: `frontend/src/rental/components/TasksView.tsx`. Neu: derived Counts/Labels (`statusCount`, `priorityCount`, `categoryCount`, `vehicleCount`, `assigneeCount`, `active*Label`, `activeSortLabel`, `clearFilters`). `DropdownFilter` unterstützt optionale `count`-Badges. Header/KPI/Filter-Card refactored. New-Task-, Detail-, Sort-, Filter- und Highlight-Flows bleiben erhalten. Kein Backend/API/Datenfluss geändert. Lints clean.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-03T10:02:00.000Z',
+  },
+  {
+    id: 'tasks-section-internal-tabs-removed-v4745-2026-05-03',
+    version: '4.7.45',
+    title: 'V4.7.45 Tasks/Vendor — interne Tab-Auswahl entfernt',
+    summary: [
+      '`TasksSectionView` rendert keine interne Tab-Leiste `Task Management / Vendor Management` mehr. Die aktive Fläche startet jetzt direkt mit `TasksView` oder `VendorManagementView`.',
+      'Entfernt wurden die nur für diese Tabbar benötigten Imports (`lucide-react` Icons, `Icon`, `useLanguage`, `TranslationKey`) sowie `tabConfig` und das `onTabChange`-Destructuring.',
+      'Die externe Navigation über Sidebar/TopBar bleibt unverändert; Highlight-/Auto-Open-Props für Tasks und Vendor-Detail-Callback bleiben vollständig verdrahtet.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): Die Tab-Auswahl auf den Seiten Task Management und Vendor Management soll entfernt werden.',
+    previousBehavior:
+      'Oberhalb der Task- bzw. Vendor-Seite stand eine zusätzliche interne Tabbar, obwohl die Seiten bereits über die Hauptnavigation erreichbar sind. Dadurch entstand eine doppelte Navigationsebene.',
+    details:
+      '**Datei**: `frontend/src/rental/components/TasksSectionView.tsx`. Interne Tabbar ersatzlos entfernt; aktiver Content wird direkt gerendert. Kein Backend/API/Datenfluss geändert. Lints clean.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-03T10:00:00.000Z',
+  },
+  {
+    id: 'sidebar-section-label-preview-style-v4744-2026-05-03',
+    version: '4.7.44',
+    title: 'V4.7.44 Sidebar — Section-Label Styling aus Browser-Preview persistiert',
+    summary: [
+      '`Sidebar` nutzt jetzt eine gemeinsame `sectionLabelClass` für Operations-/Section-/Quick-Action-Labels.',
+      'Die Labels übernehmen die im Browser abgestimmte stärkere Gewichtung (`font-weight: 900`) und den Slate-Tint `rgba(100, 116, 139, 0.9)` bei unveränderter 10px-Größe.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): Die im Browser-Preview getesteten CSS-Werte für Sidebar-Section-Labels sollten in den Source-Dateien persistiert werden.',
+    previousBehavior:
+      'Sidebar-Section-Labels kamen über `.sq-section-label` aus dem globalen Theme mit `font-weight: 700` und einem gedämpfteren `muted-foreground`-Mix.',
+    details:
+      '**Datei**: `frontend/src/rental/components/Sidebar.tsx`. Neu: gemeinsame `sectionLabelClass` mit `!font-black` und `!text-[rgba(100,116,139,0.9)]`, damit die previewten Werte scoped auf die Sidebar-Labels greifen. Keine Architektur-, Routing-, API- oder Datenflussänderung.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-03T10:00:00.000Z',
+  },
+  {
+    id: 'price-tariffs-control-redesign-v4743-2026-05-03',
+    version: '4.7.43',
+    title: 'V4.7.43 Price Tariffs — Kategorie-Tabs aus Header entfernt und Filter-Pattern angeglichen',
+    summary: [
+      '`PriceTariffsView` entfernt die header-nahe Kategorie-Chip-Leiste (`All Vehicles`, `Compact`, `Sedan`, `Premium`, `Electric`, `MPV`, `Add Group`). Die Auswahl wirkt dadurch nicht mehr wie eine zusätzliche Tabbar im Seitenkopf.',
+      'Der Header folgt jetzt dem aktuellen Core-Page-Pattern: klarer Titel links, `Add Group` rechts als kompakte Action. Inline-Add-Group bleibt funktional, aber als Header-Action statt als letzter Tab in der Kategorie-Leiste.',
+      'Neue KPI-Karten für `Vehicles`, `Groups`, `Avg day rate` und `Electric` ersetzen den alten Counter-Badge und geben echte Werte aus Fleet/Tariffs wieder. Die Karten können Filter setzen/clearen, ohne neue API-Calls auszulösen.',
+      'Kategorie- und Stationsauswahl sitzen jetzt in einer dedizierten Filter-Card mit Suche, Dropdowns, Count-Badges, Active-Filter-Chips und Clear-Action — visuell konsistent mit Invoices, Fines, Fleet Condition und Customers.',
+      'Custom-Gruppen bleiben bearbeitbar/löschbar, aber die Aktionen befinden sich jetzt im Kategorie-Dropdown statt als Hover-Buttons auf Header-Chips.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): Price Tariffs sollte mit `redesign-existing-projects` an Fleet, Dashboard, Customers, Financial Insights und Fleet Condition angeglichen werden; die Tab-Auswahl im Header passte nicht mehr zum aktuellen Design.',
+    previousBehavior:
+      'Direkt unter dem Header stand eine Kategorie-Quick-Select-Leiste mit mehreren Chip-Cards und Add-Group-Button. Dadurch sah Price Tariffs anders aus als die neu überarbeiteten Finance-/Fleet-Seiten und vermischte Header, KPI und Filter-Auswahl.',
+    details:
+      '**Datei**: `frontend/src/rental/components/PriceTariffsView.tsx`. Neu: `showCategoryFilter`, `avgDailyRate`, `electricCount`, `activeCategoryLabel`, `activeStationLabel`, `hasActiveFilters`, `clearFilters`. Header refactored, Kategorie-Chips entfernt, KPI-Karten + Filter-Card mit Kategorie-/Station-Dropdowns eingeführt. Custom-Category Rename/Delete ins Dropdown verschoben. Keine Backend/API/Datenflussänderung. Lints clean.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-03T09:54:00.000Z',
+  },
+  {
+    id: 'finance-module-selector-removed-v4742-2026-05-03',
+    version: '4.7.42',
+    title: 'V4.7.42 Finance — Modul-Auswahl aus Invoices/Fines/Pricing-Flächen entfernt',
+    summary: [
+      '`FinanceView` rendert keine interne `Finance workspace`-Card mehr. Die aktive Finance-Fläche (`InvoicesView`, `FinesView`, `PriceTariffsView`) startet jetzt direkt mit ihrem eigenen Seiteninhalt.',
+      'Die zuvor eingeführte Modul-Card-Auswahl (`Invoices`, `Fines`, `Pricing & Tariffs`) wurde komplett entfernt, inklusive `tabConfig`, `useLanguage` und Lucide-Icon-Imports im Wrapper.',
+      'Der Wrapper bleibt als neutraler `max-w-[1600px] mx-auto space-y-5`-Container erhalten, damit die drei Unterseiten ihren aktuellen Page-Rhythmus behalten.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): Die Tab-/Modul-Auswahl soll aus den Seiten Invoices, Fines und Pricing Tariffs entfernt werden; sie passt nicht mehr zum gewünschten Design.',
+    previousBehavior:
+      '`FinanceView` zeigte oberhalb jeder Finance-Unterseite eine `Finance workspace`-Card mit drei Modul-Buttons. Dadurch erschien innerhalb von Invoices/Fines/Pricing erneut eine Navigationsebene, obwohl der Nutzer diese Auswahl dort nicht sehen möchte.',
+    details:
+      '**Datei**: `frontend/src/rental/components/FinanceView.tsx`. Entfernt: `tabConfig`, `activeModule`, `useLanguage`, Finance-Workspace-`section` und alle Modul-Buttons. Kein Backend/API/Datenfluss geändert. Lints clean.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-03T09:52:00.000Z',
+  },
+  {
+    id: 'finance-fines-control-redesign-v4741-2026-05-03',
+    version: '4.7.41',
+    title: 'V4.7.41 Finance/Fines — Header-Tabs entfernt und Auswahl an Core-Page-Pattern angepasst',
+    summary: [
+      '`FinanceView` entfernt die alte Header-Tab-Leiste (`Invoices / Fines / Pricing & Tariffs`) und ersetzt sie durch eine separate `Finance workspace`-Card. Die aktive Finance-Fläche besitzt dadurch wieder ihren eigenen Header, während der Modulwechsel nicht mehr wie eine zusätzliche Seitenkopf-Navigation wirkt.',
+      'Die Finance-Modul-Auswahl nutzt jetzt drei klickbare Modul-Cards mit Icon-Tone, Beschreibung und aktivem Ring/Shadow — visuell näher an Fleet/Dashboard/Customers/Invoices statt an einer klassischen Tabbar.',
+      '`FinesView` wurde an das neue Invoices-Muster angeglichen: `max-w-[1600px] mx-auto space-y-5`, ruhiger Header mit Actions rechts, vier klickbare KPI-Karten (Gesamt, Betrag, Neu, Gelöst), dedizierte Filter-Card mit Suche, Status-Dropdown, Count-Badges, Active-Filter-Chips und Clear-Action.',
+      'Die alte Status-Pill-Leiste in `FinesView` wurde entfernt. Tabelle/Detail/Create/Upload-Flows und alle API-Calls bleiben unverändert; nur Layout und UI-State der Auswahl wurden modernisiert.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): Finance/Fines sollte mit `redesign-existing-projects` an Fleet, Dashboard, Customers, Financial Insights, Fleet Condition und Invoices angeglichen werden; die Tab-Auswahl im Header passte nicht mehr zum aktuellen Design.',
+    previousBehavior:
+      '`FinanceView` zeigte oben eine vollbreite Tab-Leiste. Bei aktivem Fines-Tab folgten direkt darunter ein alter Meta-Header, fünf Mini-Stats und eine zweite Status-Pill-Auswahl. Dadurch entstanden mehrere konkurrierende Auswahl-Ebenen im oberen Fold.',
+    details:
+      '**Dateien**: `frontend/src/rental/components/FinanceView.tsx`, `frontend/src/rental/components/FinesView.tsx`. Finance-Modulwechsel in eigene Workspace-Card verschoben; `FinesView` mit `isStatusOpen`, `statusOptions`, `statusCount`, `openCount`, `activeStatusLabel`, `hasActiveFilters`, `clearFilters` erweitert und UI auf KPI + Filter-Card Pattern refactored. Kein Backend/API/Datenfluss geändert. Lints clean.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-03T09:47:00.000Z',
+  },
+  {
+    id: 'invoices-view-control-redesign-v4740-2026-05-03',
+    version: '4.7.40',
+    title: 'V4.7.40 Invoices — Auswahl aus Header entfernt und an Core-Page-Control-Pattern angepasst',
+    summary: [
+      '`InvoicesView` nutzt jetzt denselben Page-Rhythmus wie Fleet Condition / Financial Insights / Customers: `max-w-[1600px] mx-auto space-y-5`, ruhiger Header mit Seitentitel links und Actions rechts.',
+      'Die bisherige Direction-Tab-Leiste (`Alle / Ausgehend / Eingehend`) unter dem Header wurde entfernt. Richtung und Status sitzen jetzt zusammen in einer dedizierten Filter-Card mit Suchfeld, Dropdown-Control, Count-Badges, Active-Filter-Chips und Clear-Action.',
+      'Die Statistik-Zeile wurde von fünf kleinen gleichförmigen Mini-Cards auf vier klickbare KPI-Karten umgebaut: Gesamt, Umsatz, Ausgaben, Unbezahlt. Die Karten verwenden echte `stats`/`invoices`-Werte und setzen Filter direkt (Umsatz → ausgehend, Ausgaben → eingehend, Unbezahlt → überfällig).',
+      'Die Rechnungstabelle sitzt jetzt in einer `sq-card`-Surface mit einheitlichem Radius/Shadow, passend zum aktuellen Designsystem. Tabellenlogik, Detail-Flow, Create-Flow, Upload-Flow und API-Calls bleiben unverändert.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): Die Auswahl in `InvoicesView` sollte mit `redesign-existing-projects` an Fleet, Dashboard, Customers, Financial Insights und Fleet Condition angeglichen werden; die Tab-Auswahl im Header passte nicht mehr zum aktuellen Design.',
+    previousBehavior:
+      'Der Header bestand nur aus einer Meta-Zeile plus Actions. Darunter lagen separate Direction-Tabs und eine zweite Status-Pill-Leiste. Dadurch wirkte die Seite wie ein älteres Sonderlayout und nicht wie die aktuellen Core-Pages.',
+    details:
+      '**Datei**: `frontend/src/rental/components/InvoicesView.tsx`. Neue UI-State-Slots `isDirectionOpen`/`isStatusOpen`; neue derived Counts/Labels (`statusCount`, `directionCount`, `unpaidCount`, `activeDirectionLabel`, `activeStatusLabel`, `hasActiveFilters`, `clearFilters`). Header, KPI-Karten, Filter-Card und Table-Surface refactored. Kein Backend/API/Datenfluss geändert. Lints clean.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-03T09:38:00.000Z',
+  },
+  {
+    id: 'fleet-condition-groups-collapsed-default-v4739-2026-05-03',
+    version: '4.7.39',
+    title: 'V4.7.39 Fleet Condition — Critical/Warning-Gruppen beim Seitenaufruf zugeklappt',
+    summary: [
+      '`FleetConditionView` öffnet die Critical-/Warning-/Healthy-Gruppen nicht mehr automatisch beim Mount. Initialer State ist jetzt `new Set()` — die Seite landet ruhig auf der KPI-/Header-/Gruppen-Übersicht statt sofort die Vehicle-Listen aufzuklappen.',
+      'Den dafür zuständigen `useEffect` (Auto-Expand basierend auf `criticalCount`/`warningCount`/`totalCount` solange `manualGroupToggle=false`) entfernt. Das gesamte `manualGroupToggle`-State plus seine drei `setManualGroupToggle(true)`-Aufrufe in `toggleGroup`, `applyHealthFilter`, `expandAllGroups`, `collapseAllGroups` ist damit obsolet und entfernt — kein Dead-State.',
+      'User-Aktionen, die Gruppen explizit öffnen (Click auf Gruppen-Header, Filter-Chip, „Expand all"-Button, oder Klick auf ein Vehicle in einer geschlossenen Gruppe via `applyHealthFilter`/`toggleVehicle`) bleiben unverändert.',
+    ],
+    reason:
+      'User-Feedback (2026-05-03): Beim Seitenaufruf waren Critical und Warning automatisch ausgeklappt; gewünscht ist eine zugeklappte Übersicht, sodass der Operator zuerst die KPI-Karten und Gruppen-Header sieht und gezielt drilldownen kann.',
+    previousBehavior:
+      'Ein `useEffect([criticalCount, warningCount, totalCount, manualGroupToggle])` öffnete direkt nach dem ersten Render alle Gruppen mit ≥1 Treffer (Critical, Warning, sowie Healthy bei ≤12 Vehicles). Der initiale `new Set()`-State war damit irrelevant.',
+    details:
+      '**Datei**: `frontend/src/rental/components/FleetConditionView.tsx`. Initialer `expandedGroups`-State bleibt `new Set()`. Auto-Expand-`useEffect` ersetzt durch erklärenden Kommentar. `manualGroupToggle` State + setter komplett entfernt. Lints clean. Kein API-Call, kein Daten-Pfad, kein anderer View berührt.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-03T09:10:00.000Z',
+  },
+  {
+    id: 'energy-events-recharge-coalescing-v4738-2026-05-02',
+    version: '4.7.38',
+    title: 'V4.7.38 Energy Events — Coalescing für DIMO Recharge/Refuel-Sub-Segmente',
+    summary: [
+      '`EnergyEventsService.detectEnergyEvents` führt jetzt eine Coalescing-Schicht zwischen DIMO-Fetch und Persist ein: benachbarte Sub-Segmente desselben Mechanismus werden zu einem logischen Event zusammengeführt, wenn der Gap zwischen End_N und Start_N+1 klein ist (recharge ≤ 30 min, refuel ≤ 5 min) UND die Geo-Distanz ≤ 250 m beträgt.',
+      'DIMO bleibt Source-of-Truth für die rohe Detection. Die Sub-Segment-IDs werden in `rawDetectionMeta.coalescedFromSegmentIds` als Audit-Trail mitgespeichert (`coalescedFromCount` zusätzlich für Schnellfilter).',
+      'Gemergte Events bekommen einen deterministischen `dimoSegmentId` der Form `dimo-{mechanism}-coalesced-{tokenId}-{firstStartMs}` und bleiben damit über Reruns idempotent. Single-Segment-Gruppen behalten ihre native DIMO-ID — keine Migration alter Singletons nötig.',
+      'Stale-Cleanup im Detect-Window: Rows aus früheren (pre-coalescing) Runs, deren rohe `dimoSegmentId` jetzt unter ein Coalesced-Bucket fällt, werden via `pruneStaleSubSegments` chirurgisch gelöscht — bounded auf (vehicleId, [from, to]). Kein Risiko für historische Daten außerhalb des Detect-Fensters.',
+      '`DetectEnergyEventsResult` additiv um `coalescedGroups` und `prunedStale` erweitert (rückwärtskompatibel; bestehende Konsumenten in `vehicle-intelligence.controller.ts` und `trip-reconciliation.service.ts` brechen nicht).',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): „wir haben am 1.5.26 für ks fh 660E drei recharge events von 9:27-9:53 obwohl es ein ladevorgang war, warum?\" — DIMOs `RechargeDetector` emittiert ein neues Segment, sobald der SoC-Anstieg kurz pausiert (Battery-Management, Reconnect). Drei Sub-Windows wurden 1:1 als drei Cards persistiert. Operativ ist das ein Ladevorgang.',
+    previousBehavior:
+      '`detectEnergyEvents` persistierte jedes DIMO-Sub-Segment 1:1 als eigene `VehicleEnergyEvent`-Row. Bei AC-Charging-Pausen oder DC-Reconnects entstanden so 2-4 Cards pro physischem Stecker-Vorgang.',
+    details:
+      '**Dateien**: `backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts`. Neue private Methoden: `coalesceSegments` (Time-Gap + Geo-Distance Grouping mit mechanism-spezifischen Budgets), `mergeGroup` (sumPositive für additive Deltas; envelopeMin/Max für Snapshot-Range; deterministischer `coalesced-` Key), `pruneStaleSubSegments` (window-bounded deleteMany für vorher persistierte rohe Sub-Segmente). Neue Modul-private Funktion `haversineMeters` für 250m-Radius-Check. Neues Interface `CoalescedEnergySegment extends DimoEnergyEventSegment` (zusätzlich `coalescedSegmentId` + `coalescedFromSegmentIds`). Konstanten: `COALESCE_GAP_SECONDS_RECHARGE=1800`, `COALESCE_GAP_SECONDS_REFUEL=300`, `COALESCE_GEO_RADIUS_M=250`. Lints clean. Schema unverändert (nutzt bestehendes `rawDetectionMeta` Json-Feld).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-05-02T05:00:00.000Z',
+  },
+  {
+    id: 'dashboard-home-fold-redesign-v4737-2026-05-02',
+    version: '4.7.37',
+    title: 'V4.7.37 Dashboard — Home-Fold an Fleet/Customers/Financial-Insights Rhythmus angeglichen',
+    summary: [
+      'Dashboard-Header von einer balancierten 3-Spalten-Zeile auf das gemeinsame Page-Pattern umgestellt: Titel links, Kontext-Actions rechts. Das Datum ist jetzt eine kompakte neutrale Pill neben dem Station-Selector statt zentriert als loses Element.',
+      'Root-Spacing des Dashboards nutzt jetzt `max-w-[1600px] mx-auto space-y-5`, passend zu `FinancialInsightsView` und den zuletzt angeglichenen Core-Pages.',
+      'Der obere KPI-Strip wurde von 3 auf 4 gleichwertige Karten erweitert: Revenue, Fleet Status, Profit, Expenses. Die neue Fleet-Status-Karte nutzt vorhandene echte Daten (`filteredFleetVehicles.length`, `availableVehicles.length`, aktiver Station-Filter) und keine Mock-/Hardcode-Werte.',
+      'Station-Selector bleibt vollständig verdrahtet (persistierter LocalStorage-Filter, station catalogue, Outside/Escape-Close), ist aber typografisch kompakter und als Header-Action statt separater Spalten-Anker gestaltet.',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): Dashboard ist das Herzstück der Seite und sollte mit `redesign-existing-projects` vorsichtig, sinnvoller und hochwertiger an Fleet, Vehicle Detail und Customers angepasst werden.',
+    previousBehavior:
+      'Header war ein 3-Spalten-Band mit Welcome links, Datum zentriert und Station rechts. Dadurch wirkte das Dashboard anders als Financial Insights/Fleet Condition/Customers. Der obere KPI-Strip hatte nur drei Finanzkarten und keine direkte operative Fleet-Zusammenfassung.',
+    details:
+      '**Datei**: `frontend/src/rental/components/DashboardView.tsx`. Header-Wrapper, Kontext-Pills und KPI-Grid angepasst; `MonthlyKpiTile` erhält optional `contextLabel` für nicht-monatliche Kontextkarten. Keine API-Änderung, keine Datenflussänderung, keine Widget-Logik geändert. Lints clean.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-02T04:28:00.000Z',
+  },
+  {
+    id: 'fleet-condition-header-position-financial-insights-v4736-2026-05-02',
+    version: '4.7.36',
+    title: 'V4.7.36 Fleet Condition — Header-Position exakt an Financial Insights angeglichen',
+    summary: [
+      '`FleetConditionView` nutzt jetzt denselben inneren Page-Wrapper wie `FinancialInsightsView`: `max-w-[1600px] mx-auto space-y-5`.',
+      'Der Fleet-Condition-Header bekommt `min-h-8`, damit der Titel trotz fehlender rechter Header-Actions dieselbe vertikale Position wie Financial Insights hat. Financial Insights hat rechts immer 32px hohe Pills/Refresh-Button; ohne Mindesthöhe saß der Fleet-Condition-Titel optisch höher.',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): „die header aus financial insights page und fleet condition page haben unterschiedliche postitionen, diese sollten identisch sein.\"',
+    previousBehavior:
+      'Fleet Condition hatte nur `space-y-5` als Root und einen Header ohne Mindesthöhe. Financial Insights hatte `max-w-[1600px] mx-auto space-y-5` und durch rechte Controls eine effektiv 32px hohe Header-Zeile.',
+    details:
+      '**Datei**: `frontend/src/rental/components/FleetConditionView.tsx`. Root-Wrapper + Header-Mindesthöhe angepasst. Keine Datenfluss-/Architekturänderung. Lints clean.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-02T04:23:00.000Z',
+  },
+  {
+    id: 'sidebar-collapse-stale-parent-section-v4735-2026-05-02',
+    version: '4.7.35',
+    title: 'V4.7.35 Sidebar — alte Oberkategorie beim Wechsel in neue Kategorie automatisch schließen',
+    summary: [
+      'Wenn ein Seitenwechsel in eine andere Oberkategorie führt, schließt die Sidebar die alte Oberkategorie jetzt automatisch und öffnet nur die neue aktive Parent-Section.',
+      'Beispiel: Wechsel von `Fleet Condition` (Insights) zu `Invoices` (Finance) lässt `Insights` kollabieren und öffnet `Finance`. Die linke Navigation bleibt dadurch fokussiert und sammelt keine alten offenen Gruppen an.',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): „die sidebar links sollte wenn man von einer auf eine andere seite geht diese seite sich aber in einem anderen oberkategroei befindet beim seitenwechsel die alte oberkategroei wieder collapsen.\"',
+    previousBehavior:
+      'V4.7.31 öffnete den aktiven Parent automatisch, ließ alte Parent-Sections aber offen. Nach mehreren Seitenwechseln konnten mehrere Oberkategorien gleichzeitig offen bleiben.',
+    details:
+      '**Datei**: `frontend/src/rental/components/Sidebar.tsx`. Auto-Expand-useEffect setzt jetzt `expandedSections` auf `[currentSection]` statt die neue Section an die vorhandene Liste anzuhängen. Keine Routing-/Datenflussänderung. Lints clean.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-02T04:19:00.000Z',
+  },
+  {
+    id: 'fleet-condition-kpi-cards-financial-insights-match-v4734-2026-05-02',
+    version: '4.7.34',
+    title: 'V4.7.34 Fleet Condition — Header/KPI-Bereich an Financial Insights angeglichen',
+    summary: [
+      'Die vier Fleet-Condition-KPI-Boxen nutzen jetzt dieselbe Card-Komposition wie die KPI-Reihe in `FinancialInsightsView`: `rounded-xl p-3`, tonale Fläche, Icon links oben in `bg-current/10`, Wert in `text-[16px] font-bold`, Label darunter als uppercase Microcopy.',
+      'Die Meta-Information (`vehicles monitored`, `50% · 3 with limited data`, `2 need review`, `1 act now`) sitzt nun wie bei Financial Insights als dezente Bottom-Zeile mit `border-t border-current/15` und kleinem Arrow-Indikator.',
+      'Die bisherige `sq-card rounded-2xl shadow`-Optik der KPI-Karten wurde entfernt, damit Titel + KPI-Bereich denselben optischen Rhythmus wie Financial Insights bekommen.',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): „header bereich aus titel und die vier boxen bitte optisch und abstandstechnisch an die seite financial insights anpassen.\"',
+    previousBehavior:
+      'Fleet Condition hatte zwar den Header-Font bereits angeglichen, aber die KPI-Karten waren noch im eigenen `sq-card rounded-2xl shadow`-Stil mit großem 20px-Wert und Label oben links.',
+    details:
+      '**Datei**: `frontend/src/rental/components/FleetConditionView.tsx`. Reine UI-/Spacing-Anpassung der Summary-Cards. Keine Datenfluss-/Architekturänderung. Lints clean.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-02T04:17:00.000Z',
+  },
+  {
+    id: 'sidebar-counts-remove-topbar-search-height-v4733-2026-05-02',
+    version: '4.7.33',
+    title: 'V4.7.33 Sidebar Counts entfernt + TopBar-Suche nur in der Höhe kompakter',
+    summary: [
+      'Die Anzahl-Badges an den Sidebar-Section-Headern wurden wieder entfernt. Section-Auswahl, Active-State und Auto-Expand bleiben erhalten, aber ohne numerische Unterseiten-Anzeige.',
+      'Das TopBar-Suchfeld behält wieder seine etablierte Breite (`flex-1 max-w-xs`). Der vorherige kompakte 74px Command-Pill war zu schmal.',
+      'Nur die Höhe der Suche wurde reduziert (`h-7` statt `h-8`), inklusive normal sichtbarem Placeholder. Keine Focus-Width-Animation mehr.',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): „mir gefällt die anzeige der anzahl der unterseiten in der linken sidebar nicht und das suchfeld ist in der breite viel zu dünn und in der höhe noch zu hoch , es sollte nur die höhe angepasst werden also etwas niedriger und nicht die breite verändern.\"',
+    previousBehavior:
+      'V4.7.31 zeigte Counts an Sidebar-Sections. V4.7.30 machte die TopBar-Suche zu einem sehr schmalen 74px Command-Pill mit Focus-Expansion.',
+    details:
+      '**Dateien**: `frontend/src/rental/components/Sidebar.tsx`, `frontend/src/rental/components/TopBar.tsx`. Reine UI-Korrektur, keine Routing-/Datenflussänderung. Lints clean.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-02T04:11:00.000Z',
+  },
+  {
+    id: 'fleet-condition-header-financial-insights-match-v4732-2026-05-02',
+    version: '4.7.32',
+    title: 'V4.7.32 Fleet Condition — Header an Financial Insights angeglichen',
+    summary: [
+      'Die Subline `Canonical rental health across N vehicles` wurde entfernt.',
+      'Der Page-Header nutzt jetzt dieselbe Typografie wie `FinancialInsightsView`: `text-[18px]`, `leading-[1.12]`, `font-bold`, `tracking-[-0.02em]`, `truncate` und `animate-fade-up` auf dem Header-Wrapper.',
+      'Layout des Headers ist auf `flex flex-wrap items-end justify-between gap-2 sm:gap-3` angepasst, damit es optisch mit Financial Insights übereinstimmt.',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): „entfernen und den header grösse und fonttechnisch genauso wie auf der seite financial insights machen.\"',
+    previousBehavior:
+      'Fleet Condition hatte eine eigene Subline und einen weniger kräftigen Header (`font-semibold`, `leading-[24px]`, `tracking-[-0.01em]`).',
+    details:
+      '**Datei**: `frontend/src/rental/components/FleetConditionView.tsx`. Reine Header-Typografie/Layout-Änderung. Keine Datenfluss-/Architekturänderung. Lints clean.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-02T04:09:00.000Z',
+  },
+  {
+    id: 'sidebar-section-selection-redesign-v4731-2026-05-02',
+    version: '4.7.31',
+    title: 'V4.7.31 Sidebar — Auswahl/Section-UX hochwertiger und aktiver Parent bleibt sichtbar',
+    summary: [
+      'Sidebar-Sections bekommen jetzt ein konsistentes Selection-Pattern: Section-Header haben Active/Open-State, Count-Badge und optionales Status-Badge (`Coming soon`) statt nur statischem Text mit Chevron.',
+      'Der Parent der aktuell geöffneten View wird automatisch aufgeklappt und aktiv getönt. Dadurch kann z.B. `Fleet Condition` nicht mehr in einer geschlossenen `Insights`-Gruppe „verschwinden", während die Seite aktiv ist.',
+      'Top-Level- und Subnav-Buttons haben stärkere Selected-Surface: größerer Radius, sanfte Ring/Shadow-Behandlung bei Active-State und dezente `translate-x`-Hover-Bewegung. Die bestehende `sq-nav-rail`-Logik bleibt erhalten.',
+      '`Operations` zeigt nun ebenfalls eine kleine Count-Pille; einklappbare Gruppen zeigen Counts: Insights 2, Finance 3, Tasks 2, Automation 3, Integrations 3, Administration 6. Integrations behält `Coming soon`, aber im neuen Header-Pattern.',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): Sidebar-Auswahl sollte mit `redesign-existing-projects` sinnvoller, klarer und UI/UX-technisch hochwertiger werden.',
+    previousBehavior:
+      'Viele Sidebar-Bereiche waren reine Text-Header ohne Kontext; aktive Unterseiten konnten in geschlossenen Gruppen liegen; Selected-State war nur flach getönt und visuell weniger eindeutig.',
+    details:
+      '**Datei**: `frontend/src/rental/components/Sidebar.tsx`. Neuer `sectionForView()`-Mapper, `currentSection`, Auto-Expand-useEffect, `SectionHeader`-Helper, bessere `navBtnClass`/`subNavBtnClass`, Count-/Badge-Anzeigen pro Section. Keine Routing- oder Datenflussänderung. Lints clean.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-02T04:07:00.000Z',
+  },
+  {
+    id: 'topbar-compact-search-pill-v4730-2026-05-02',
+    version: '4.7.30',
+    title: 'V4.7.30 TopBar — Suchfeld als kompakter Command-Pill im Icon-Rhythmus',
+    summary: [
+      'Das TopBar-Suchfeld ist nicht mehr `flex-1 max-w-xs`, sondern ein kompakter 74px Command-Pill mit derselben 32px-Höhe und demselben Radius wie die rechten Icon-Buttons.',
+      'Beim Fokus/Tippen expandiert das Feld auf 224px (`focus-within:w-56`), damit die Suche weiterhin nutzbar bleibt. Im Ruhezustand zeigt es nur Search-Icon + `⌘K` und nimmt optisch nicht mehr mehr Raum ein als die angrenzenden TopBar-Actions.',
+      'Placeholder ist im kompakten Zustand transparent und erscheint erst bei Fokus, damit der Pill nicht gequetscht wirkt.',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): „den suchfeld etwas verkleinern sodass er optisch genau so gross ist wie die icons rechts von ihm.\"',
+    previousBehavior:
+      'Das Suchfeld nutzte `hidden md:flex flex-1 max-w-xs` und wirkte mit ~220px Breite deutlich größer als die rechts daneben liegenden 32px-Controls.',
+    details:
+      '**Datei**: `frontend/src/rental/components/TopBar.tsx`. Search-Container von flexiblem Feld auf `flex-none` + `w-[74px] focus-within:w-56` umgestellt. Keine Logik-/Datenflussänderung; Search-Dropdown und ⌘K bleiben unverändert. Lints clean.',
+    affectsArchitecture: false,
+    module: 'Frontend UI',
+    createdAt: '2026-05-02T04:04:00.000Z',
+  },
+  {
+    id: 'fleet-condition-controls-customers-pattern-v4729-2026-05-02',
+    version: '4.7.29',
+    title: 'V4.7.29 Fleet Condition — Filter-/Auswahlleiste an Customers/Financial-Insights Pattern angeglichen',
+    summary: [
+      'Die Fleet-Condition-Auswahl nutzt jetzt dieselbe visuelle Sprache wie `CustomersView`: kompakte `Filters`-Card mit Icon + Titel, rechts aktive Filter-Chips/Clear-Button, darunter eine horizontale Search-&-Filter-Zeile.',
+      'Die vorherige eigenständige `View controls`-Karte mit Health-Kachelgrid und Sort-Segmented-Control wurde entfernt, weil sie anders wirkte als Customers/Financial-Insights und auf engem Layout zu viel visuelle Eigenlogik erzeugte.',
+      'Search ist jetzt wie bei Customers ein links gepolstertes Input mit Search-Icon, Fokus-Border und neutralem Card-BG. Health-Status und Sort sind Dropdown-Buttons im Customers-Stil (aktive Filter blau getönt, Dropdown-Menü mit gleicher Border/Shadow-Behandlung).',
+      'Health-Dropdown zeigt echte Counts pro Option (`All`, `Critical`, `Warning`, `Healthy`); Sort-Dropdown zeigt `Priority`, `Model`, `Plate` plus kleine Helper (`critical first`, `A-Z`, `license`).',
+      'Expand/Collapse sind kompakte sekundäre Buttons rechts in derselben Zeile und nicht mehr ein eigener Footer-Action-Bereich. Der Detail-Load-Hinweis bleibt als kleine Subline unter der Control-Zeile.',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): „die ui ux sieht etwas anders aus als unsere customers oder financial insights pages, bitte die auswahl optisch den anderen seiten anpassen.\"',
+    previousBehavior:
+      'Die V4.7.26-Control-Card war funktional, hatte aber eine eigene Page-spezifische Visual Language: Section-Tile, Health-Kachelgrid, Sort-Segmented-Control und Footer-Actions. Das passte nicht sauber zum bereits etablierten Filter-Pattern der Customers-Seite.',
+    details:
+      '**Datei**: `frontend/src/rental/components/FleetConditionView.tsx`. Neue Dropdown-States `isHealthFilterOpen` / `isSortOpen`; Control-Card komplett auf Customers-Pattern umgebaut. Keine Datenflussänderung, keine API-Änderung, keine Architekturänderung. Lints clean.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-05-02T03:57:00.000Z',
+  },
+  {
+    id: 'fleet-condition-reasons-on-expand-v4728-2026-05-02',
+    version: '4.7.28',
+    title: 'V4.7.28 Fleet Condition — Reason-Pillen erst beim Aufklappen sichtbar',
+    summary: [
+      'Inline-Reason-Pillen (z.B. „Battery: Spannung bei 12.45 V — Nachladen empfohlen") sind aus der eingeklappten Vehicle-Zeile entfernt. Die Liste bleibt damit ruhig und scannbar — eine Zeile pro Fahrzeug, ein einheitlicher Status-Badge.',
+      'Solange die Zeile eingeklappt ist, deutet eine kleine sekundäre Subline `N reasons · expand to view` an, dass es etwas zu sehen gibt, ohne den Inhalt selbst zu rendern.',
+      'Beim Aufklappen erscheint direkt unter der Zeile ein kompakter Block `Why this status` mit allen `blocking_reasons` (rot) und Modul-Reasons (kritisch rot, warning gelb), bevor die Condition-Tiles geladen werden. Der Block sitzt auf demselben `bg-muted/15`-Hintergrund wie die Tile-Grid und teilt sich die Border, sodass es als ein zusammengehöriges Detail-Panel wirkt.',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): „die badge erklärungen wie battery: spannung .... sollten erst beim auklappen sichtbar sein so sind sie realtiv unübersichtlich."',
+    previousBehavior:
+      'V4.7.22 hatte die Reasons bewusst inline gerendert, damit sie ohne Hover sichtbar sind. Bei mehreren betroffenen Fahrzeugen pro Liste wurde die Übersicht dadurch aber laut.',
+    details:
+      '**Datei**: `frontend/src/rental/components/FleetConditionView.tsx`. Die alten Reason-Pillen unterhalb von Make/Model/Plate sind raus; an deren Stelle steht eine Sekundär-Subline, die nur die Anzahl der Gründe anzeigt. Der ausführliche „Why this status"-Block sitzt jetzt im aufgeklappten Bereich, gerahmt mit `border-t` und `bg-muted/15`. Quelle bleibt Rental-Health-V1; keine API-/Datenfluss-Änderung.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-05-02T03:53:00.000Z',
+  },
+  {
+    id: 'fleet-condition-header-cleanup-unknown-as-healthy-v4727-2026-05-02',
+    version: '4.7.27',
+    title: 'V4.7.27 Fleet Condition — Header-Redundanz raus, Unknown verhält sich wie Healthy mit `Limited data`-Indikator',
+    summary: [
+      'Header oben rechts (`6 visible`, `3/6 checked`, `3 attention`) komplett entfernt — alle Counts standen ohnehin redundant in den vier KPI-Karten direkt darunter. Übrig bleibt nur Heading + Subline `Canonical rental health across N vehicles`. Wenn der Rental-Health-V1-Batch noch läuft, erscheint rechts ein dezenter `Refreshing`-Spinner statt einer ganzen Pillen-Reihe.',
+      'Unknown ist keine eigene Gruppe, kein eigener KPI, kein eigener Filter-Chip mehr. Unknown-Fahrzeuge fallen jetzt visuell in die Healthy-Gruppe — exakt wie sie es auf FleetView, im Dashboard-Popup und im Vehicle-Detail-Header schon tun. Der Backend-Contract (Rental-Health-V1: `unknown is never silently promoted to good`) bleibt im Datenmodell unverändert.',
+      'Transparenz pro Zeile: jedes Fahrzeug mit `overall_state: unknown` bekommt eine kleine neutrale `Limited data`-Pille direkt unter Make/Model. Tooltip erklärt: „Backend has no full health signal yet — treated as healthy on every other surface". Während des Batch-Loads steht dort `Checking` mit Mini-Spinner.',
+      'Healthy-KPI zählt jetzt `good + unknown`. Die Subline zeigt `X% of fleet` und ergänzt bei vorhandenen Unknown-Fahrzeugen `· N with limited data`, damit die Datenlücke nicht versteckt wird.',
+      'Filter-Chip-Reihe schrumpft auf 4 (`All / Critical / Warning / Healthy`). Healthy filtert konsistent gegen Good Health + Unknown — kein verstecktes „Unknown"-Bucket mehr.',
+      'Status-Pille pro Vehicle-Zeile: `Critical` / `Warning` / `Healthy` (success-Tone bei Good Health UND Unknown). `Checking…` nur während aktiver Batch-Anfrage.',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): „kannst du hier aufräumen und die redundanz entfernen am header, sowie unknown abklären das geht gar nicht weil diese fahrzeuge laut vehicle health und unseren sonstigen badges als healthy gelten."',
+    previousBehavior:
+      'Der Header wiederholte die KPI-Counts zusätzlich als Pillen (`6 visible`, `3/6 checked`, `3 attention`). Unknown bekam eine eigene KPI-Karte, einen eigenen Filter-Chip, eine eigene Gruppen-Sektion und eine `Loading…`/`Unknown`-Pille pro Zeile — obwohl die anderen Surfaces dieselben Vehicles als healthy darstellen, wirkte FleetCondition dadurch widersprüchlich.',
+    details:
+      '**Datei**: `frontend/src/rental/components/FleetConditionView.tsx`. Type `HealthCategory` reduziert auf `all | Good Health | Warning | Critical`; `ConditionGroupKey` reduziert auf `critical | warning | healthy`. Neuer `healthyCount = good + unknown`, neuer `healthyPct`. Filter behandelt `Good Health` als „good OR unknown". Gruppen-Subtitle ergänzt `· N with limited data` wenn Unknown im Bucket liegt. `toneFromStatus(Unknown) = success`. `healthLabelEx(Unknown, false) = Healthy`. Pro Zeile transparenter `Limited data`-Indikator. Alte `attentionCount`/`knownCount`-Helfer entfernt. Lints clean. Keine API-Änderung.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-05-02T03:42:00.000Z',
+  },
+  {
+    id: 'fleet-condition-view-controls-redesign-v4726-2026-05-02',
+    version: '4.7.26',
+    title: 'V4.7.26 Fleet Condition — View-Controls nach Fleet/Dashboard/Customers-Pattern statt nativer Select-Zeile',
+    summary: [
+      'Die alte Toolbar (`Search` + native `<select>` + zwei Buttons) wurde durch eine komponierte `View controls`-Karte ersetzt. Optisch orientiert sie sich an Fleet/Dashboard/Customers: Section-Icon, klare Subline, Health-Filter-Chips, Search-Feld, Sort-Segmented-Control und kontextueller Clear-Button.',
+      'Health-Filter sind jetzt explizite Chips mit echten Counts aus Rental-Health-V1 (`All`, `Critical`, `Warning`, `Healthy`, optional `Checking/Unknown`). Kein verstecktes Filtern nur über KPI-Karten mehr; dieselbe Filterfunktion wird weiterhin von den KPI-Karten verwendet.',
+      'Sortierung ist kein Browser-Select mehr, sondern ein kleines Segment-Control (`Priority`, `Model`, `Plate`) mit Helper-Tooltip. Dadurch verschwindet die rohe Textkette „Critical first Model A-Z License plate …" aus der UI.',
+      'Hardcoding reduziert: `Checking`/`Unknown`-Chip erscheint nur, wenn `unknownCount > 0`; helper/meta-Texte werden aus `healthPending`, `knownCount`, `filterCategory`, `searchQuery` und `expandedGroups.size` abgeleitet. Gruppen-Subtitle sagt nun `% of fleet` oder `% of selection`, je nachdem ob ein Filter/Search aktiv ist.',
+      'Expand/Collapse bleibt funktional, aber die Zeile zeigt jetzt dynamisch `N groups expanded · details load on demand` statt statischem Infotext.',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): Die Auswahl-/Toolbar-Zone in Fleet Condition wirkte nach dem Redesign hardcoded und passte nicht zum aktuellen Design von Fleet, Dashboard und Customers.',
+    previousBehavior:
+      'Native Select + isolierte Buttons erzeugten auf engem Layout eine rohe Aneinanderreihung von Option-Texten. Filter waren indirekt über KPI-Karten versteckt, und einige Labels waren statisch formuliert statt aus dem aktiven Health-/Selection-State abgeleitet.',
+    details:
+      '**Datei**: `frontend/src/rental/components/FleetConditionView.tsx`. Neue `applyHealthFilter`-Toggle-Logik, `clearSelection`, `healthFilterOptions`, `sortOptions`, `selectionLabel`, `activeGroupCount`. Keine Datenflussänderung, kein neuer API-Call; Quelle bleibt `FleetProvider.healthMap` / Rental-Health-V1.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-05-02T03:38:00.000Z',
+  },
+  {
+    id: 'fleet-condition-health-summary-pending-state-v4725-2026-05-02',
+    version: '4.7.25',
+    title: 'V4.7.25 Fleet Condition — Summary/Toolbar nicht mehr mit falschem Loading-/Healthy-Hardcoding',
+    summary: [
+      '`FleetConditionView` unterscheidet jetzt sauber zwischen wirklich laufendem Health-Batch (`checking`) und dauerhaft unbekannten Health-Daten (`unknown`). Die Total-Karte zeigt nicht mehr pauschal `X loading…`, sobald `unknownCount > 0` ist.',
+      'Die Healthy-Karte berechnet ihren Meta-Text während unvollständiger Health-Daten gegen den geprüften Teil der Flotte (`X of Y checked`) statt irreführend `0% of fleet` zu zeigen.',
+      'Der Header zeigt kein falsches `All clear`, solange noch Fahrzeuge ungeprüft/unknown sind. Attention bleibt nur Warning+Critical; pending/unknown wird separat als `checked`-Pill angezeigt.',
+      'Die Unknown-Gruppe nutzt jetzt ein neutrales `CircleDot`-Icon statt des grünen Healthy-Icons. Fahrzeug-Pillen zeigen bei Unknown `Checking…` nur während `healthLoading`, danach `Unknown`.',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): Nach der UI-Überarbeitung wirkte die Fleet-Condition-Seite hartcodiert und passte nicht mehr zur kanonischen Rental-Health-V1-Logik. Besonders `3 loading…`, `0% of fleet` und Healthy-Optik für Unknown waren visuell falsch.',
+    previousBehavior:
+      '`healthLabelEx(Unknown)` gab immer `Loading…` zurück; Total-Meta zeigte bei jedem `unknownCount > 0` `X loading…`; Header konnte ohne vollständige Health-Daten zu optimistisch wirken; Unknown-Gruppe renderte das Healthy-Icon.',
+    details:
+      '**Datei**: `frontend/src/rental/components/FleetConditionView.tsx`. Neue abgeleitete Werte `knownCount` und `healthPending`; Summary-Metas und Header-Pills sind jetzt aus `healthLoading + unknownCount` berechnet statt statisch an Unknown gekoppelt. Keine API-Änderung, Rental-Health-V1 bleibt die Quelle.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-05-02T03:30:00.000Z',
+  },
+  {
+    id: 'dashboard-fleet-status-empty-health-badges-v4724-2026-05-02',
+    version: '4.7.24',
+    title: 'V4.7.24 Dashboard Fleet Status — leere Health-Badges entfernen, nur Warning/Alert anzeigen',
+    summary: [
+      '`StatInlineDetail.HealthChip` rendert in den vier Dashboard-Popup-Karten (Available / Reserved / Active Rented / In Maintenance) jetzt NUR noch eine Pille, wenn der kanonische Rental-Health-V1-Status `Warning` oder `Critical` ist.',
+      'Healthy / Unknown / Loading kollabieren zu `null` — die Karte trägt in dem Fall gar keinen Health-Badge mehr. Damit verschwinden die seit V4.7.23 sichtbaren leeren `…`-Loading-Pillen und die immer-grünen „Healthy"-Pillen, die als visuelles Rauschen empfunden wurden.',
+      'Blocking-Pille (`<RentalHealthBadge showBlockingLabel />`) und Bucket-Pillen (Ready/Not Ready, Reserved/Overdue, On Time/Overdue, Planned/Unplanned/Service) bleiben unverändert — sie sind nicht „leer", sondern tragen bei jedem State eigene Information.',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): „nur noch bei dashboard fleet status die leeren badges entfernen, wenn warning oder alerts gibt sollten die badges angezeigt werden ansonsten keine schongar nicht leere badges."',
+    previousBehavior:
+      'V4.7.23 ließ den Chip immer rendern: bei `Good Health` als grüne „Healthy"-Pille, bei `Unknown` während des Loadings als neutrales `…`-Pill. Das wirkte in einer Liste mit lauter grünen Karten redundant.',
+    details:
+      '**Datei**: `frontend/src/rental/components/StatInlineDetail.tsx`. Frühreturn `if (status !== \'Critical\' && status !== \'Warning\') return null;` direkt am Anfang von `HealthChip`. Quelle (`useEffectiveHealth(vehicleId)` → `FleetProvider.healthMap`) bleibt unverändert; die kanonische Wahrheit aus V4.7.23 ist weiter in Kraft. Risiko: niedrig, rein visuell.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-05-02T03:25:00.000Z',
+  },
+  {
+    id: 'rental-health-canonical-truth-v4723-2026-05-02',
+    version: '4.7.23',
+    title: 'V4.7.23 Rental-Health-V1 wird kanonische Single-Source-of-Truth für ALLE Health-Pillen (Fleet, FleetCondition, Dashboard-Popups, Vehicle-Detail-Header, Vehicle-Alerts-Box, RightSidebar)',
+    summary: [
+      'Bisheriges Problem: dieselbe Flotte zeigte je nach Surface unterschiedliche Wahrheiten. FleetCondition flaggte ein Fahrzeug korrekt als „Warning" (aus Rental-Health-V1), während FleetView, die Dashboard-Status-Popups, der Vehicle-Detail-Header und die Vehicle-Alerts-Box dasselbe Fahrzeug als „Healthy" zeigten — weil sie aus zwei anderen, weniger vollständigen Quellen lasen.',
+      'Quelle 1 (stale): die persistierte `Vehicle.healthStatus`-Spalte (admin-set, defaultet auf „Good Health"). Wurde von `FleetView` (4× HealthPill in den 4 Tabellen), `StatInlineDetail` (4 Dashboard-Popups) und dem `App.tsx`-Vehicle-Detail-Header gelesen.',
+      'Quelle 2 (unvollständig): `dashboard-insights` Feed mit nur 2 Detektoren (BATTERY_CRITICAL + SERVICE_OVERDUE). Wurde von `RightSidebar` „Vehicle Alerts" und der Dashboard `Vehicle-Alerts`-Box via `useVehicleHealthAlerts` gelesen — Tires-/Brakes-/Error-Codes-/Complaint-/OEM-Warnings waren komplett unsichtbar.',
+      'Lösung (V4.7.23): `FleetProvider` lädt jetzt einmal pro Org die kanonische Rental-Health-V1-Map (`useFleetHealthMap` intern, ein einziger Batch-Call) und exponiert sie via Context (`healthMap`, `healthLoading`, `reloadHealth`). Neuer Hook `useEffectiveHealth(vehicleId)` gibt allen Surfaces denselben Status (`Critical` / `Warning` / `Good Health` / `Unknown`) plus Reasons-Array zurück.',
+      'Refactor pro Surface: (a) `FleetView.HealthPill` zieht jetzt `useEffectiveHealth(v.id)` statt `v.healthStatus`. Tooltip listet die Modul-Reasons + ggf. `blocking_reasons`. (b) `StatInlineDetail` ersetzt 4× inline-Pille-Block durch `<HealthChip vehicleId>`-Helper, der ebenfalls `useEffectiveHealth` nutzt. Veraltete „Healthy"-Default-Pille entfernt; während Loading rendert ein neutrales `…`-Pill. (c) `App.tsx`-Vehicle-Detail-Header bekommt eine neue `<VehicleHealthChip>`-Komponente; die alte `selectedVehicle?.healthStatus`-Inline-Logik ist gelöscht. (d) `FleetConditionView` konsumiert jetzt den geteilten Map aus dem FleetContext (kein eigener Call mehr) — Source-of-truth identisch.',
+      'Vehicle-Alerts-Box + RightSidebar (`useVehicleHealthAlerts`) komplett umgebaut: liest jetzt aus der `healthMap` und derived per-Vehicle-Alerts aus ALLEN 7 Modulen (battery, tires, brakes, error_codes, service_compliance, complaints, vehicle_alerts) statt nur Battery+Service. Die alte `deriveVehicleHealthAlerts(insights, vehicles)` bleibt als Helper für Spezialfälle erhalten, der Dashboard-Insights-Feed läuft weiter (für nicht-Health-Insights wie TIGHT_HANDOVER, STATION_SHORTAGE etc.) — aber per-Vehicle-Health geht jetzt nur noch über Rental-Health-V1.',
+      'Resultat: ein Fahrzeug mit z.B. „Battery: Spannung bei 12.45 V — Nachladen empfohlen" zeigt das Warning-Badge JETZT in jeder Surface gleichzeitig — Fleet-Condition, FleetView-Card, Vehicle-Detail-Header, Dashboard-Popup-Karte, Dashboard Vehicle-Alerts-Box und RightSidebar. Keine widersprüchlichen Signale mehr für den Operator.',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): „kurios da feuern wir eine warning und beim health tab in vehicles detail page und dashboard vehicle alerts sowie fleet status health badges sowie fleet page health badges haben wir überall healthy, wir haben hier mehrere wahrheiten was falsch ist und wir das nun fixen müssen es muss kanonisch nur eine wahrheit geben und alle lesen sie von da."',
+    previousBehavior:
+      'Drei parallele Wahrheiten je nach Surface: (1) `vehicle.healthStatus`-Spalte (FleetView, Dashboard-Popups, Vehicle-Detail-Header), (2) `dashboard-insights` Battery+Service-Detektoren (RightSidebar, Vehicle-Alerts-Box), (3) Rental-Health-V1 (FleetCondition, FleetView Blocking-Pille). Die drei stimmten regelmäßig nicht überein — gleicher Fahrzeug, drei verschiedene Status-Pillen.',
+    details: [
+      '**Provider-Pfad**: `frontend/src/rental/FleetContext.tsx` ruft jetzt intern `useFleetHealthMap(orgId, fleetVehicleIds)` auf und teilt `healthMap` + `healthLoading` + `reloadHealth` über den Context. Reihenfolge in `App.tsx`: `FleetProvider` → `DashboardInsightsProvider` (innen), damit `useVehicleHealthAlerts` `useFleetVehicles()` aufrufen kann.',
+      '**Neue Hooks**: `useEffectiveHealth(vehicleId)` und `statusFromRentalHealth(state)` als kanonische Helper. Konsumenten: `FleetView` (4× HealthPill), `StatInlineDetail` (4× HealthChip), `App.tsx` (VehicleHealthChip im Detail-Header), `FleetConditionView` (statusFor + Gruppierung), `DashboardInsightsContext` (`useVehicleHealthAlerts`).',
+      '**Geänderte Dateien**: `frontend/src/rental/FleetContext.tsx`, `frontend/src/rental/DashboardInsightsContext.tsx`, `frontend/src/rental/App.tsx`, `frontend/src/rental/components/FleetView.tsx`, `frontend/src/rental/components/StatInlineDetail.tsx`, `frontend/src/rental/components/FleetConditionView.tsx`.',
+      '**Was bleibt erhalten**: granulare Module-Boxen in `HealthErrorsView` (Tab „Health" im Vehicle-Detail) lesen weiterhin aus `vehicle-intelligence` (tires/brakes/battery/service-Detail-Endpoints) — das ist die Drill-Down-Detail-View. Die OBERE Status-Pille im Vehicle-Detail-Header zeigt jetzt aber den kanonischen Rental-Health-V1-Status, sodass Header und FleetCondition immer übereinstimmen.',
+      '**Risiko**: mittel. Größeres Refactoring quer durch 6 Dateien, aber jeder Pfad hat denselben Hook-Mechanismus, sodass die Single-Source-of-Truth-Garantie strukturell und nicht nur konventional ist. Lints clean.',
+    ].join('\n\n'),
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-05-02T03:10:00.000Z',
+  },
+  {
+    id: 'fleet-condition-warning-reasons-inline-v4722-2026-05-02',
+    version: '4.7.22',
+    title: 'V4.7.22 Fleet Condition — Warning/Critical-Begründung sichtbar in der Zeile (statt im Tooltip)',
+    summary: [
+      'Wenn ein Fahrzeug Warning oder Critical zeigt, listen wir die echten Backend-Begründungen jetzt direkt unter dem Fahrzeug-Header — nicht mehr im versteckten `title`-Tooltip. Pro betroffenem Modul (Battery / Tires / Brakes / Error codes / Service / Complaints / Vehicle alerts) gibt es eine kleine getönte Pille mit `Modul: reason`-Format (z.B. „Battery: Spannung bei 12.45 V — Nachladen empfohlen"). Critical-Module zuerst sortiert.',
+      'Zusätzlich wird jeder `blocking_reasons`-Eintrag aus dem Rental-Health-V1-Response als rote `ShieldAlert`-Pille gerendert. Damit sieht der Operator auf einen Blick, warum ein Fahrzeug aktuell für Vermietung gesperrt ist.',
+      'Die Status-Pille selbst (Healthy / Warning / Critical / Loading…) bleibt rechts wie gehabt; sie ist jetzt sauber von der Begründungs-Zone getrennt. Tooltip auf der Pille entfernt — alles Wichtige steht jetzt sichtbar in der Zeile.',
+      'Layout der Zeile auf `items-start` umgestellt, damit mehrzeilige Begründungs-Listen nicht den Status-Button verschieben.',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): „wieso haben wir eine warning für ks ms 661 und wob x 6511 ohne erkennbaren grund? SOLCHE SACHEN dürfen nicht passieren." Der Server hat seit V4.7.21 die korrekte Wahrheit geliefert (z.B. „Spannung bei 12.45 V"), die UI versteckte sie aber im `title`-Tooltip. Ergebnis: Status sah willkürlich aus.',
+    previousBehavior:
+      'Tooltip via `title=` enthielt die Reasons; ohne Hover war der Grund unsichtbar. Layout: `items-center`, kein Begründungs-Bereich.',
+    details: [
+      '**Datei**: `frontend/src/rental/components/FleetConditionView.tsx`. Neue Helper `MODULE_LABELS`, `HealthReason`, `collectReasons` ersetzen den alten String-Array-Helper.',
+      '**Quelle**: weiterhin Rental-Health-V1 (`useFleetHealthMap`). Keine zusätzlichen API-Calls.',
+      '**Risiko**: niedrig. Nur Render-Layer; Daten- und Hook-Pfad unverändert.',
+    ].join('\n\n'),
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-05-02T01:55:00.000Z',
+  },
+  {
+    id: 'fleet-condition-rental-health-v1-source-v4721-2026-05-02',
+    version: '4.7.21',
+    title: 'V4.7.21 Fleet Condition — Health-Badge nutzt Rental-Health-V1 Fleet-Batch (Server-of-truth), Loading-State, falsche Warning-Eskalation entfernt',
+    summary: [
+      'Quick-View-Health-Badge in `FleetConditionView.tsx` kommt jetzt aus dem kanonischen Rental-Health-V1-Endpunkt (`useFleetHealthMap(orgId, vehicleIds)` → `GET /organizations/:orgId/rental-health?vehicleIds=…`). Genau ein Batch-Call für die ganze sichtbare Flotte; identische Quelle wie `FleetView` und Dashboard-Popups (V4.6.86).',
+      'Eigene clientseitige `deriveEffectiveHealth`-Heuristik aus V4.7.19/V4.7.20 entfernt — sie war die Ursache für massive False-Positive-Warnings (Tires/Brakes/Battery/Service zwischen 40–69 % wurden zu Warning eskaliert, was operativ Quatsch ist; TÜV ≤ 6 Monate / Service ≤ 70 % triggerte ebenfalls grundlos).',
+      'Vor dem Eintreffen der Batch-Antwort zeigt jede Zeile jetzt eine neutrale `Loading…`-Pille statt fälschlicher „Healthy". Vehicle-Karten gruppieren sich entsprechend: neue `Unknown`-Gruppe sammelt alle Fahrzeuge, für die der Batch noch keinen Status (`unknown`/`n_a`) liefert.',
+      'Header-Pille zeigt während des Batch-Loads einen Spinner + „Loading health" (statt fälschlich „All clear"). Total-Karte ergänzt eine `X loading…`-Subline solange `unknownCount > 0`. Sortierung „Critical first" basiert jetzt auf dem RentalHealth-Status, nicht mehr dem Backend-`vehicle.healthStatus`.',
+      '`rental_blocked` aus dem Health-Response wird zusätzlich als `Blocked`-Pille (rot, links neben dem Status) gerendert. Tooltip-Reasons aus den 7 Modul-Statuses (battery, tires, brakes, error_codes, service_compliance, complaints, vehicle_alerts) inkl. `blocking_reasons`.',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): „alle erst healthy anzeigen und beim klick dann die wahre health badge angezeigt wird" — clientseitige Aggregation pro Vehicle ist offline, bis man expandet; bis dahin wurde der Default-`Good Health` aus FleetContext gezeigt. Außerdem: „bei fast allen warning steht obwohl kein warning besteht" — die Prozent-Schwellen waren viel zu aggressiv.',
+    previousBehavior:
+      'Quick-View nutzte `deriveEffectiveHealth(vehicle, cd)`. Vor Expand: Fallback auf `vehicle.healthStatus` (FleetContext-Default `Good Health` → Pille zeigte „Healthy"). Nach Expand: Aggregation aus den geladenen `tires/brakes/battery/service/dtc`-Summaries mit groben Prozent-Schwellen, die durchschnittliche Werte als Warning klassifizierten.',
+    details: [
+      '**Datei**: `frontend/src/rental/components/FleetConditionView.tsx`. Hilfsfunktionen `statusFromRentalHealth`, `toneFromStatus`, `reasonsFromHealth`, `healthLabelEx` ergänzen das Mapping zwischen `RentalHealthState` und der UI-Tone-Skala. Kein Backend-Change.',
+      '**Hooks**: `useRentalOrg()` + `useFleetHealthMap(orgId, fleetVehicleIds)` in identischer Form wie `FleetView.tsx` (V4.6.76). `idsKey`-Stabilisierung im Hook verhindert unnötige Re-Fetches.',
+      '**Drill-Down-Pfad**: nicht angefasst. Nach Expand bleibt der Lazy-Load via `tireHealthSummary` etc. erhalten; die Detail-Tiles im aufgeklappten Bereich nutzen weiterhin die granulareren Vehicle-Intelligence-Endpoints.',
+      '**Risiko**: niedrig. `RentalHealth.overall_state` ist die etablierte Single-Source-of-Truth für Fleet/Booking/Dashboard; Fleet-Condition reiht sich nun ein. Keine Änderung an Group-Container-Stilen, KPI-Karten oder Search/Filter-Logik außer der Anpassung an die kanonische Status-Domäne.',
+    ].join('\n\n'),
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-05-02T01:35:00.000Z',
+  },
+  {
+    id: 'fleet-condition-quickview-cleanup-back-button-v4720-2026-05-02',
+    version: '4.7.20',
+    title: 'V4.7.20 Fleet Condition — Quick-View nur mit Health-Badge (kein Row-Strip), Brake-Baseline-Warnings nicht mehr als Alerts gezählt, Back-Button-Bug in Detail-View gefixt',
+    summary: [
+      'Row-Metric-Strip aus V4.7.19 entfernt — die Quick-View pro Fahrzeug zeigt nur noch das Effective-Health-Badge (mit Tooltip-Begründungen aus `deriveEffectiveHealth`) und den `live`-Marker, wenn die geladenen Werte vom Backend-`healthStatus` abweichen. Werte für Tires/Brakes/Battery/Service erscheinen ausschließlich nach Aufklappen — verhindert leere Skeleton-Bars und überflüssige API-Trigger pro Fahrzeug.',
+      'Brake `baselineWarnings` und `provenanceWarnings` werden NICHT mehr in den `Alerts`-Tile (`warningAlerts`) eingerechnet. Diese sind Daten-/Modell-Hinweise (z.B. „No valid baseline anchor is available for V2 brake wear modeling") und keine echten Wear-Alerts. Echte Brake-Probleme triggern weiterhin über `cd?.brakes?.hasAlert` als `criticalAlerts`.',
+      '`deriveEffectiveHealth` ändert sich nicht — baseline/provenance-Brake-Warnings sind dort schon nie als Warning-Trigger berücksichtigt gewesen.',
+      'Bug: in `FleetConditionDetailView.tsx` schattete `const Icon = meta.icon` (LucideIcon) den `Icon`-Import aus `./ui/Icon`. Dadurch rendert `<Icon name="arrow-left" />` im Back-Button (und `<Icon name="sparkles" />` in der AI-Box) das jeweilige Kategorie-Icon statt der gewünschten UI-Icons. Lokales Symbol auf `CategoryIcon` umbenannt; Back-Button bekommt zusätzlich `type="button"` + `aria-label`.',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): Quick-View zeigt 0%/Skeleton-Bars wenn keine Daten ohne API-Calls vorhanden sind; Brake-Baseline-Warning wird fälschlich als Alert gezählt; Back-Button auf Einzel-Detailseiten zeigt das Kategorie-Icon statt eines Pfeils.',
+    previousBehavior:
+      'Quick-View hatte 4 Mini-Progress-Bars (Tires/Brakes/Battery/Service), die nur nach Expand der jeweiligen Vehicle-Card sinnvolle Werte zeigten. `Alerts`-Tile inkludierte alle `brakes.baselineWarnings` und `brakes.provenanceWarnings`. Back-Button rendere das Kategorie-Icon, weil `Icon`-Identifier shadowed war.',
+    details: [
+      '**Dateien**: `frontend/src/rental/components/FleetConditionView.tsx`, `frontend/src/rental/components/FleetConditionDetailView.tsx`.',
+      '**Tradeoff**: Wir verzichten auf eine flotten-weite Vorab-Aggregation der Detail-Werte; das hätte pro Fahrzeug mindestens 3 API-Calls bedeutet. Stattdessen bleibt die Liste leichtgewichtig und reagiert schnell, der Effective-Health-Status erscheint pro Fahrzeug erst nach dem ersten Expand (und bleibt dann durch den `conditionData`-Cache erhalten).',
+    ].join('\n\n'),
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-05-02T01:10:00.000Z',
+  },
+  {
+    id: 'fleet-condition-effective-status-rowstrip-v4719-2026-05-02',
+    version: '4.7.19',
+    title: 'V4.7.19 Fleet Condition — Effective Health-Status aus Live-Daten, Row-Metric-Strip mit Mini-Progress-Bars, entkoppelte Detailkarte',
+    summary: [
+      'Neuer Helper `deriveEffectiveHealth(vehicle, cd)` in `frontend/src/rental/components/FleetConditionView.tsx` aggregiert die geladenen Condition-Daten (Tires/Brakes/Battery/DTC/Service/TÜV/BOKraft) zu einem effektiven Status (`Critical | Warning | Good Health`) inkl. Begründungs-Strings (z.B. „Battery attention", „TÜV 1 mo", „2 active DTCs"). Sobald die Daten via Expand-Trigger geladen sind, überschreibt dieser Status die Backend-`healthStatus`-Pille; bei Diff zum Backend-Status wird ein dezenter `live`-Hinweis daneben gerendert. Die Tooltip-Liste zeigt alle Trigger-Reasons.',
+      'Row-Metric-Strip (4 Mini-Progress-Bars: Tires / Brakes / Battery / Service) sitzt jetzt direkt in der eingeklappten Zeile. Werte kommen aus `cd` wenn geladen, sonst aus `vehicle.tires` falls > 0. Fehlt jeder Wert, wird `—` mit einer dezenten Skeleton-Bar gerendert (kein irreführendes „0%" mehr).',
+      'Single-Vehicle-Expand: nur ein Fahrzeug ist gleichzeitig offen (`expandedVehicleId: string | null` statt Set). Beim Aufklappen wird die Karte als eigene erhabene Surface (`bg-background`, `shadow-2`, status-getönte Border, Padding-Wrapper) visuell aus der Liste herausgehoben — die übrige Liste bleibt ruhig und übersichtlich.',
+      'Tires-/Battery-Kacheln im Expand-Bereich härten weiterhin gegen `NaN%`/0-Fallbacks (Tires nur wenn echter Wert > 0; Battery via SOH → Estimate → Voltage-Fallback wie zuvor).',
+    ],
+    reason:
+      'User-Feedback (2026-05-02): Battery-Warnung fehlte z.B. bei „KS MX 2024", obwohl Battery-Modul Critical/Watch meldete; alle Tires wurden mit „0%" gerendert obwohl keine Daten vorlagen; Progress-Bars für Live-Daten fehlten; aufgeklappte Karte ging optisch in der Liste unter.',
+    previousBehavior:
+      'Health-Pille kam ausschließlich aus `vehicle.healthStatus` (FleetContext-Default `Good Health` wenn Backend-Feld leer). Tires-Pille zeigte „Tires 0%" für Fahrzeuge ohne Tires-Telemetrie. Mehrere Fahrzeuge konnten gleichzeitig aufgeklappt sein, ohne visuelle Trennung.',
+    details: [
+      '**Datei**: `frontend/src/rental/components/FleetConditionView.tsx` (Helper `toneRank`, `deriveEffectiveHealth`, neue Komponente `RowMetric`, State-Refactor `expandedVehicleIds → expandedVehicleId`).',
+      '**Datenfluss**: keine Backend-Änderung. Es werden weiterhin nur `tireHealthSummary / brakeHealthSummary / batteryHealthSummary / serviceInfoStatus / dtcActive / dtcStats` lazy geladen, sobald ein Fahrzeug aufgeklappt wird (Cache in `conditionData`-Map). Die Aggregation passiert clientseitig.',
+      '**Kein Re-Bucketing**: Die Gruppen (Critical/Warning/Healthy) bleiben am Backend-Status, damit sich die Liste nicht unter dem Cursor neu sortiert. Korrigiert wird nur die Pille innerhalb der Zeile + der `live`-Marker.',
+    ].join('\n\n'),
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-05-02T00:45:00.000Z',
+  },
+  {
+    id: 'brand-logo-fleet-condition-v4718-2026-05-02',
+    version: '4.7.18',
+    title: 'V4.7.18 Rental UI — OEM-BrandLogo: korrekte Kennung aus Make+Model, CDN-Fehler zeigen Fallback-Icon',
+    summary: [
+      '`getBrandFromModel` in `frontend/src/rental/components/BrandLogo.tsx` akzeptiert jetzt zusätzlich `string | null | undefined | { make?, model? }` und baut daraus einen normalisierten Suchstring (`"${make} ${model}"`). Damit entspricht die Logik der Flotten-Daten (separates `make`- und `model`-Feld aus API/FleetContext) — zuvor wirkte nur `model` ohne Präfix, wodurch viele Rows fälschlich `generic` wurden.',
+      '`BrandLogo` setzt nach `img.onError` nicht mehr `display:none`, sondern rendert konsistent `<FallbackIcon />` (wie bei fehlenden Slugs); `brand`-Wechsel setzt den Fehler-State zurück.',
+      '`FleetConditionView`: Zeilen-Logo nutzt `getBrandFromModel({ make: vehicle.make, model: vehicle.model })`; Reifen-Spalten-Badge vermeidet `NaN%` (nur echte Zahlen); Kilometer-Anzeige bevorzugt `vehicle.odometerKm`, sonst positives `vehicle.odometer`, sonst `—`; KPI-Karte „Total" nutzt Lucide-`Car` wie die übrigen Summary-Icons.',
+      '`BookingsView`-Aufrufe mit Objekt-Argument für `getBrandFromModel` sind damit lauffähig (vorher stringify-broken). Bestehende String-Aufrufe (`FleetView`, `NewBookingView`, `App.tsx`) bleiben kompatibel.',
+    ],
+    reason:
+      'User-Auftrag (2026-05-02): in Fleet Condition die richtigen Markenlogos und Verdrahtung/Anzeige prüfen.',
+    previousBehavior:
+      'Brand wurde oft nur aus `vehicle.model` abgeleitet; fehlgeschlagene CDN-Bilder versteckten das `<img>` ohne Ersatz; Reifen-Prozent und KM konnten in Randfällen `NaN`/0 zeigen.',
+    details: [
+      '**Dateien**: `BrandLogo.tsx`, `FleetConditionView.tsx`.',
+      '**CDN**: weiterhin carlogos-dataset über bestehendes `CDN_BASE`; nur Client-seitige Erkennung und Fehlerdarstellung gehärtet.',
+    ].join('\n\n'),
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-05-02T12:00:00.000Z',
+  },
+  {
+    id: 'rental-icon-system-iconify-migration-v4717-2026-05-01',
+    version: '4.7.17',
+    title: 'V4.7.17 Rental UI — Icon-System Migration: Lucide → Lets-Icons (Figma) + Solar Hybrid via Iconify, neue zentrale `<Icon>`-Primitive',
+    summary: [
+      'Neue zentrale Icon-Primitive `frontend/src/rental/components/ui/Icon.tsx` als 3-Tier-Resolver: 1) lets-icons (light-Variante, Quelle: Figma „Free Icon Pack 1800" Community-Pack `wOcPUED41uZWyaeHqpKoZY`) → 2) solar (linear-Variante, visuell kompatible Thin-Line-Fallbacks für SaaS-Icons wie shield/crown/case/buildings/magic-stick/wi-fi-router) → 3) lucide-react (Fallback für Automotive- & Vehicle-Health-Icons, die in keinem der beiden Iconify-Packs vorhanden sind oder vom User explizit unverändert bleiben sollen).',
+      'API: `<Icon name="kebab-name" className="w-4 h-4 text-amber-500" variant?="light|fill|duotone" />`. Names folgen der Lucide-Konvention (kebab-case), sodass Migration mechanisch ist (`<Car />` → `<Icon name="car" />`). Sizing/Coloring funktioniert unverändert über Tailwind, weil sowohl lucide als auch Iconify `currentColor` und Element-Sizing nutzen.',
+      '~58 TSX-Dateien im Rental-Bereich umgestellt (App.tsx, TopBar, RightSidebar, alle View-Cluster: Dashboard / Fleet / Vehicle-Detail / Bookings / Customers / Finance / Tasks / Misc), insgesamt ~1067 JSX-Icon-Swaps via Codemod (`frontend/scripts/icon-codemod.cjs`). Manuelle Folge-Fixes für Object-Literal-Pattern (`icon: AlertTriangle` → `icon: \'alert-triangle\'`) in DashboardView (MonthlyKpiTile), BusinessInsightsBox (SEVERITY_CONFIG / NOTIFICATION_ICON) und HomeAwayBadge (Geofence-Status-Icon).',
+      'User-protected: **Tacho-Warnleuchten** (`frontend/src/assets/icons/telltale/{oil,cel,brake-pad,tire-pressure,battery}.svg`) bleiben unangetastet (waren nie Teil des lucide-Systems, werden weiterhin als `<img src=… />` eingebunden) UND Vehicle-Health-Indikatoren in HealthErrorsView / FleetCondition* / RentalHealthBadge (Battery, BatteryCharging, Disc, Circle/Tire, Thermometer, Snowflake, Sun, Wind, Droplet, Heart, Gauge) werden über das `LUCIDE_FALLBACK`-Mapping intentional auf den Lucide-Pfad geroutet, damit Tacho-Pictogramme visuell unverändert bleiben.',
+      'Linke Sidebar (`frontend/src/rental/components/Sidebar.tsx`) ist vom Refactor explizit ausgenommen (Skip-Liste im Codemod) — Navigations-Icons bleiben original.',
+      'Neue Dependencies: `@iconify/react`, `@iconify-json/lets-icons` (Figma-Quelle), `@iconify-json/solar` (Fallback-Pack für SaaS-Icons). Tree-shaking bleibt funktional, weil Iconify die JSON-Sets nur bei tatsächlich referenzierten Icons mountet.',
+    ],
+    reason:
+      'Produkt-Auftrag (User, 2026-05-01): „alle icons auf der rental seite (ausser linke sidebar) sollten ausgetauscht werden mit den icons aus dem Figma Entwurf mit der ID wOcPUED41uZWyaeHqpKoZY". Anschließende Präzisierung: „die icons für tacho warnleuchten auch unverändert sein sollen". Ziel: konsistente, modernere Icon-Sprache passend zum Figma-Designsystem ohne die etablierten Vehicle-Health-Pictogramme zu zerstören.',
+    previousBehavior:
+      'Vorher importierte jede Rental-View ihre Icons direkt von `lucide-react` (~150-200 distinct icons über die Codebase verteilt). Es gab kein zentrales Mapping-Layer und kein Variant-Konzept. Visuell war die Icon-Sprache an die lucide-Standardlinie gebunden, die nicht zum Figma-Designsystem passte.',
+    details: [
+      '**Resolution-Strategie**: `LUCIDE_FALLBACK: Record<string, LucideIcon>` listet explizit die ~50 Lucide-Komponenten, die als Fallback bleiben (Automotive: Car/Truck/Wrench/Fuel/Gauge/Disc/Tire, Vehicle-Health: Battery/BatteryCharging/Thermometer/Snowflake/Sun/Wind/Droplet/Heart, Diagonal-Arrows: ArrowUpRight/ArrowDownLeft/etc., Trending: TrendingUp/TrendingDown/Activity, Misc: Bot/Sparkles/Hash/Paperclip/Printer/Wifi/WifiOff/Signal/Lightbulb/Monitor/Baby/ToggleLeft/ToggleRight/Paintbrush/Image/Ruler/Type/Award/FileSignature/Receipt/Ban/MoreHorizontal/Phone-Variants/User-Variants).',
+      '**Iconify-Map**: `ICONIFY_MAP: Record<string, string>` enthält ~110 Mappings auf konkrete Iconify-IDs. Lets-Icons-IDs nutzen Default-Suffix `-light` (Thin-Line passend zum Figma-Pack), Solar-IDs nutzen `-linear`. Variant-Override (`variant="fill"`) wirkt nur auf Lets-Icons-IDs (Solar/Lucide ignorieren sie).',
+      '**Codemod**: `frontend/scripts/icon-codemod.cjs` parst lucide-Import-Statements (mit Multi-Line- und `import type`-Support), baut ein Local-Alias→Kebab-Map und ersetzt JSX-Pattern `<LocalName attrs.../>` → `<Icon name="kebab" attrs.../>`. Behandelt aliased Imports (`Circle as TireIcon` → `<Icon name="tire-icon" />`, `Image as ImageIcon` → `<Icon name="image" />`, `Gauge as Odometer` → `<Icon name="odometer" />`).',
+      '**Codemod-Loop für Multi-Imports**: Files mit getrennten `import type { LucideIcon }` und `import { ValueIcons }` Statements werden in einer Schleife mehrfach prozessiert, sodass beide Lucide-Statements korrekt entfernt werden.',
+      '**Icon-Fixup**: `frontend/scripts/icon-fixup.cjs` löst nicht-JSX-Lucide-Verwendungen (Object-Literal-Values wie `icon: AlertTriangle`, oder `[Calendar, Car]`-Arrays) durch erneutes Hinzufügen der lucide-react-Imports nur für die Icons, die TSC mit `TS2304: Cannot find name` markiert. Dadurch bleibt das Object-Literal-Rendering funktional ohne dass jeder Konsum-Site umgeschrieben werden muss.',
+      '**Manuelle Folge-Fixes**: Dateien mit `LucideIcon`-Type-Pattern (DashboardView/MonthlyKpiTile, BusinessInsightsBox/SEVERITY_CONFIG+NOTIFICATION_ICON, HomeAwayBadge) wurden manuell auf `IconName`-Strings + `<Icon name={...} />` Render umgestellt, weil dort der Component-Reference-Pattern (`const Icon = config.icon; <Icon ... />`) mit dem neuen Icon-Import kollidierte.',
+      '**Risiko-Profil**: Niedrig auf Funktionsebene — keine Backend-/API-/Service-Änderungen, keine Routing-Änderungen, keine Datenmodell-Änderungen. Visuell mittel: einige Icons (z.B. Wallet, Crown, Briefcase, Sparkles, Wifi, Building) wechseln das Aussehen merklich, weil sie aus dem Solar-Pack kommen statt aus Lucide. Tacho-Warnleuchten und Vehicle-Health-Icons sind explizit unverändert. `ReadLints` über `frontend/src/rental` clean. `npx tsc -p tsconfig.app.json --noEmit` zeigt nur pre-existing Errors (PickupTileItem-Signatures, SetStateAction-Wrappers, WhatsApp-API-Drift, RefObject-React-19-Mismatches) — keine durch die Icon-Migration eingeführten Compile-Fehler.',
+    ].join('\n\n'),
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-05-01T00:30:00.000Z',
+  },
+  {
+    id: 'trips-view-expanded-cleanup-v4716-2026-04-28',
+    version: '4.7.16',
+    title: 'V4.7.16 Operations → Vehicle-Detail → Trips View — Aufgeklappter Trip-Eintrag entstaubt: Redundanzen raus, Speeding-Sections kollabierbar, klare 4-Block-Hierarchie',
+    summary: [
+      'Aufgeklappte Trip-Detail-Ansicht in `TripsView` (`frontend/src/rental/components/TripsView.tsx`) komplett umstrukturiert: Statt einer flachen Folge aus StatCell-Grid + BehaviorAnalysis + 3-spaltigem `bg-muted`-Block gibt es jetzt eine klare 4-Block-Hierarchie (Adressen → Behavior Analysis → 2-Spalten-Insights → kollabierbare Speeding-Section → Map-Match-Footer).',
+      'Redundanz #1 entfernt: Der `StatCell`-Grid mit Accel/Brake/Abuse-Counts (`grid-cols-3 sm:grid-cols-6`) ist weg, weil `BehaviorAnalysis` direkt darunter dieselben Counts in seinen drei kollabierbaren Section-Headern (Acceleration / Braking / Abuse Detection) anzeigt. Die Hilfskomponente `StatCell` wurde mit entfernt, da sie keinen Konsumenten mehr hat.',
+      'Redundanz #2 entfernt: Der „Behavior Analysis"-Summary-Block in der rechten Spalte (Clean / Moderate / High Risk + „X accel · Y brake · Z abuse") dupliziert genau das, was die `BehaviorAnalysis`-Komponente bereits prominent zeigt — er ist ersatzlos gestrichen.',
+      'Redundanz #3 entfernt: Der „Outside Temperature"-Block ist weg, weil die Außentemperatur bereits in den Top-Metric-Tiles als `Temp 3°C` steht. Die einzigartigen Engine-Daten (RPM, Load, Throttle, Engine-Temp Start→End) sind jetzt in einer kompakten Inline-Zeile gebündelt.',
+      'Speeding Sections sind jetzt **kollabierbar**: Header zeigt immer `Sections · Severity` Pille, Peak Over und Exposure als Zusammenfassung — die vier Summary-Tiles und die N-Detail-Section-Rows klappen erst per Klick auf. State teilt sich den existierenden `expandedSection`-State mit der BehaviorAnalysis (Key `speeding`), sodass nur ein Detail gleichzeitig offen ist.',
+      'Insights-Block: aus dem 3-Spalten-`bg-muted` ist ein sauberes 2-Spalten-Grid geworden (`grid-cols-1 md:grid-cols-2`) mit zwei tonal getönten Tiles — Road Distribution (Bar + 3 Rows) links, Engine & Consumption (RPM/Load/Throttle inline + Engine-Temp Start→End + Fuel/Energy mit Confidence-Pill) rechts. Beide Tiles nutzen das gleiche Surface-Vokabular wie die Top-Metric-Tiles (`bg-slate-50/50 border-slate-100` light, `bg-white/[0.02] border-white/[0.05]` dark).',
+      'Map-Match-Confidence sitzt jetzt als zentriertes 9px-Footer-Line am Ende — vorher war sie versteckt am Boden der dritten Spalte verklemmt zwischen Speeding-Detail und Behavior-Summary.',
+    ],
+    reason:
+      'Produkt-Feedback (User, 2026-04-28, ~20:31 Europe/Berlin): „die aufgeklappte trip eintrag ist jetzt nun optisch sehr gut aber es gibt redundanz und auch noch etwas unübersichtlichkeit bitte clean, premium und übersichtlich verändern und die speeding uaflistung sollte auch aufklappbar sein um nicht soviel platz zu nehmen". Der bisherige Aufbau hatte drei stark redundante Blöcke (StatCell-Grid, BehaviorAnalysis, Behavior-Summary) und der Speeding-Detail-Block dominierte mit 4 Summary-Tiles + N Section-Rows die ganze Höhe der ausgeklappten Karte.',
+    previousBehavior:
+      'V4.7.15-Stand: Aufgeklappter Block bestand aus (1) Trip-Adressen, (2) `StatCell`-Grid mit Accel/Brake/Abuse + RPM/Load/Throttle, (3) `BehaviorAnalysis`-Komponente, (4) `bg-muted rounded-lg p-4` mit `grid-cols-1 md:grid-cols-3` und drei Spalten: Road Distribution, Temperature/Engine/Consumption, Speeding-Sections+Behavior-Summary+Map-Match. Speeding-Detail mit 4 Summary-Tiles und ggf. dutzenden Section-Rows war immer komplett ausgeklappt sichtbar.',
+    details: [
+      '**Datei**: `frontend/src/rental/components/TripsView.tsx`. JSX-Restructuring — keine Änderung an der Datenherkunft, an `getSpeedingSections`, `BehaviorAnalysis`-Props, an den sechs `vehicleIntelligence`-API-Calls oder am Map-Rendering.',
+      '**Layout**: Outer-Wrapper auf `space-y-3` umgestellt für konsistente vertikale Rhythmik der Blöcke. Insights-Grid auf `grid-cols-1 md:grid-cols-2` reduziert (vorher 3-Spalten in `bg-muted`-Wrapper).',
+      '**Speeding-Collapsible**: Header-Button mit `setExpandedSection(speedingExpanded ? null : "speeding")`-Toggle, Body wird nur gerendert wenn `expandedSection === "speeding"`. „No Data"- und „No Speeding"-States bleiben einzeilig und nicht-kollabierbar (haben keinen Detail-Inhalt).',
+      '**Engine-Inline-Strip**: RPM/Load/Throttle stehen jetzt als `flex flex-wrap gap-x-3 gap-y-1 text-[11px]` Zeile statt als drei separate StatCell-Tiles. Engine-Temp Start→End mit Thermometer-Icon. Consumption mit Fuel-Icon, Total-Wert, Avg in Klammern und Confidence-Pille (`Low confidence` / `Invalid signal`) wenn `confidence !== "high"`.',
+      '**Removed Helper**: Funktion `function StatCell` aus dem File entfernt, da nach dem Cleanup keinen Konsumenten mehr.',
+      '**Risiko-Profil**: Niedrig — scoped auf das JSX der aufgeklappten Detail-Ansicht. Map-Layer-Updates, Behavior-Enrichment-Trigger, Speeding-Section-Berechnung und sämtliche Refs/Effects unverändert. `ReadLints` clean.',
+    ].join('\n\n'),
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-04-28T18:31:00.000Z',
+  },
+  {
+    id: 'trips-view-redesign-v4715-2026-04-28',
+    version: '4.7.15',
+    title: 'V4.7.15 Operations → Vehicle-Detail → Trips View — Rebuild der Trip-Karten für das schmale 2-Spalten-Layout (Bento-Grid statt horizontalem Scroll/Overflow)',
+    summary: [
+      '`TripsView` (`frontend/src/rental/components/TripsView.tsx`) wurde für das neue schmale linke Layout (555px) optimiert. Die einzelnen Trip-Karten hatten vorher 7 Metriken + Header + Badges in einer horizontalen Flex-Row, was zu Platzmangel und schlechter Lesbarkeit führte.',
+      'Header-Zeile: Icon, Datum, Uhrzeit und alle Badges (Ongoing, Limited, Analyzing, Driver, Private) sind jetzt sauber in einer zweizeiligen Flex-Wrap-Struktur linksbündig organisiert. Der Expand-Chevron sitzt rechts in einem runden Hover-Button.',
+      'Metrik-Grid (Bento): Die 7 Metriken (Distance, Duration, Events, Style, Safety, Temp, Consumption) sind aus der horizontalen Liste in ein `grid-cols-2 sm:grid-cols-4` Raster umgezogen. Jede Metrik nutzt jetzt eine eigene `MetricTile`-Komponente mit getönter Surface (`bg-slate-50/50` bzw. dark `bg-white/[0.02]`), kleinen Icons und `tabular-nums` für perfekte Lesbarkeit.',
+      'Footer-Zeile: Avg/Max Speed, Road Mix und Speeding-Sections sitzen jetzt in einer eigenen `border-t`-Zeile am unteren Rand der Karte, ebenfalls mit Flex-Wrap für schmale Viewports.',
+      'EnergyEventCard: Auch die kleinen Refuel/Recharge-Karten wurden an das neue Pattern angepasst (rundes Icon, Flex-Wrap für die Metriken, konsistente Abstände).',
+    ],
+    reason:
+      'Produkt-Feedback (User, 2026-04-28, ~20:25 Europe/Berlin): „wir haben ja auf 2 spalten layout umgestellt, jetzt ist es aber es kaum lesbar aber alle informationen sind sehr wichtig, bitte verändere die Box sowie die einzel trip einträge dementsprechend perfekt ohne die verdrahtungen anzufassen nur die UI UX premium und clean halten". Die horizontale Anordnung der Metriken war für das schmale Layout nicht mehr tragbar.',
+    previousBehavior:
+      'V4.7.14-Stand: Die Trip-Karten hatten eine `flex items-center gap-3 shrink-0` Reihe für alle Metriken, die auf kleinen Bildschirmen oder in der neuen schmalen Spalte gequetscht oder abgeschnitten wurde. Die Metriken hatten keine eigene Surface, sondern waren rechtsbündiger Text (`<div className="text-right">`).',
+    details: [
+      '**Datei**: `frontend/src/rental/components/TripsView.tsx`. Reine Präsentations-Refactor — keine Änderung an der Datenlogik, API-Calls, Map-Rendering oder Behavior-Analysis.',
+      '**Komponenten**: Neue `MetricTile`-Funktion ersetzt die alte `Metric`-Funktion. Sie nutzt das Bento-Box-Pattern (`rounded-[10px] border px-2.5 py-2`) mit klarem Label-Eyebrow und großem Wert.',
+      '**Responsive**: Das Grid ist `grid-cols-2 sm:grid-cols-4`, sodass es auf sehr schmalen Viewports (Mobile) in 2 Spalten und im Desktop-Split-Layout in 4 Spalten umbricht.',
+      '**Risiko-Profil**: Niedrig — scoped auf das JSX der Trip-Liste. Map-Logik und Enrichment-Callbacks sind unangetastet. `ReadLints` clean.',
+    ].join('\n\n'),
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-04-28T18:25:00.000Z',
+  },
+  {
+    id: 'vehicle-insights-card-redesign-v4714-2026-04-28',
+    version: '4.7.14',
+    title: 'V4.7.14 Operations → Vehicle-Detail → Vehicle Insights Card — visueller Rebuild auf das gleiche Card-Pattern wie Vehicle Health (Header-Pille + 3-Tile-Statusstrip + ruhige Forecast-Liste + Next-Action-CTA)',
+    summary: [
+      '`VehicleInsightsCard` (`frontend/src/rental/components/VehicleInsightsCard.tsx`) wurde von einer flachen 5-Block-Liste zu einer hierarchisch klaren Box umgebaut, die das gleiche Vokabular wie `VehicleHealthBoxWired` und `OverviewLiveMapCard` spricht. Outer-Wrapper bleibt das Standard-Card-Pattern (`rounded-xl border bg-card shadow-sm transition-shadow hover:shadow-md`), Hover-Translate gibt es weiterhin nicht.',
+      'Header: Sparkles-Icon-Chip + Titel + Readiness-Pille (Ready / Monitor / Limited / Action Needed) als ringed Tone-Pille rechts vom Titel — analog zur Coverage-Pille der Vehicle-Health-Box. Refresh-Timestamp bleibt als tabular-nums rechts, das `Loading…`-Wort ist durch einen dezenten `Loader2`-Spinner ersetzt.',
+      '3-Tile-Statusstrip ersetzt die alte Spalten-Zeile: Readiness / Cost Outlook / Downtime werden über eine gemeinsame `Tone`-Skala (`good / watch / limited / critical / neutral`) auf eine konsistente Tile-Surface gemappt (Border + Tinted-Background + Tone-Dot + Bold-Wert). Die Logik in `vehicle-insights-logic.ts` (deriveInsights, ReadinessLevel, CostOutlookLevel, DowntimeRiskLevel) ist unverändert, nur die Color-Helper werden nicht mehr direkt im JSX gemischt.',
+      'Planning Horizon: Liste sitzt jetzt in einer eingerahmten, leicht getönten Surface (`rounded-[10px] border bg-slate-50/60` bzw. dark `bg-white/[0.025]`). Jedes Item zeigt einen kleinen Urgency-Dot in der Borderfarbe (overdue/due/soon/normal), das Eventlabel und rechts in monospaced tabular-nums die Distanz und/oder Restzeit. Kein gestapelter `border-l-2`-Akzent mehr, der den Text einrückt.',
+      'Next Action ist jetzt ein eigener Strip mit `ArrowRight`-Icon, blau getönter Surface und Eyebrow `NEXT ACTION` über der Aktionszeile — visuell als prominente Handlungsempfehlung erkennbar, statt als anonyme Textzeile mit `NEXT`-Label.',
+      'Confidence-Footer als kleine `Lock`-Icon-Zeile in muted Foreground; alle Section-Divider und das `transition-opacity duration-300 opacity-100` Loading-Wrapping sind weggefallen, weil die ruhige Card-Surface den Lade-Übergang selbst trägt.',
+    ],
+    reason:
+      'Produkt-Feedback (User, 2026-04-28, ~20:14 Europe/Berlin): „genau das gleiche mit dieser Box, die ist nicht gut und schlecht UI UX Technisch. bitte mach diese mit einen von unseren skills visuell super". Die alte Box hatte fünf Sektionen ohne klare Top-Aussage, ein Status-Strip ohne Tile-Surface und keine konsistente Farbsprache zur Vehicle-Health-Box direkt darüber.',
+    previousBehavior:
+      'V4.7.13-Stand: Outer-Wrapper war bereits korrekt (`rounded-xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md`), aber die Innenstruktur bestand aus Header (Titel + Timestamp), Verdict (3 Renderpfade je nach Readiness), `StatusCol`-Reihe ohne Tile-Surface, `Divider`, Planning-Horizon-Liste mit `border-l-2`-Urgency-Akzent, weiterer `Divider`, `Next`-Label-Zeile und `Confidence`-Note — alles innerhalb eines `transition-opacity duration-300 ${loading ? "opacity-50" : "opacity-100"}` Wrappers, der bei jedem Vehicle-Wechsel die ganze Card kurz transparent gemacht hat.',
+    details: [
+      '**Datei**: `frontend/src/rental/components/VehicleInsightsCard.tsx`, ein eigenständiger Komponenten-File. Reine Präsentations-Refactor — keine Änderung an `vehicle-insights-logic.ts` (`deriveInsights`, Readiness/Cost/Downtime-Levels, Forecast-Engine), kein neuer API-Call, keine neue Prop. `useEffect` mit den sechs `vehicleIntelligence`-Endpoints (tireHealthSummary, brakeHealthSummary, batteryHealthSummary, serviceInfoStatus, dtcActive, oilChangeStatus) bleibt unverändert.',
+      '**Tone-System**: Neue private Helper `readinessTone`, `costOutlookTone`, `downtimeRiskTone` mappen die Logik-Levels auf eine 5er-Tone-Skala. Surface-Helper `toneTile` (Mini-Tile-Surface), `toneRing` (Header-Pille) und `toneDot` (Dot-Color) liefern alle Tailwind-Classes pro Tone & Darkmode. Damit ist die Box visuell ein direkter Geschwister-Block der Vehicle-Health-Box (gleiche Darkmode-Opazitäten, gleiche Pill-Treatments).',
+      '**Statusstrip**: Aus drei `StatusCol`-Spalten (Label + Dot + Wert) ist ein 3-Spalten-Grid aus `StatusTile`-Surfaces geworden. Jede Tile hat einen Eyebrow mit Tone-Dot + Bold-Wert; die Texte (`Readiness`/`Cost Outlook`/`Downtime`) sind verkürzt, der Wert (`Ready` / `Moderate Increase` / `Low` etc.) bleibt 1:1 aus der Logik.',
+      '**Planning-Liste**: Vom „Liste mit Border-Left-Akzent + Border-Bottom" zu einer eingerahmten Surface mit kleinen Trennzeilen (`border-b border-white/5` dark / `border-slate-100` light). Distanz & Zeit nutzen jetzt durchgängig `font-mono` + `tabular-nums` und liegen in einem festen Right-Slot, der bei vier Items immer noch in den verfügbaren 249px Card-Höhe passt (Forecast-Engine cappt bei `MAX_ITEMS`).',
+      '**Risiko-Profil**: Niedrig — scoped auf eine einzelne Präsentations-Komponente. Datenfluss, Forecast-Engine, Color-Helper-Exports und Insights-Logic sind unangetastet. `ReadLints` clean. Bestehende `readinessColors`/`costOutlookColors`/`downtimeRiskColors`-Exports werden nicht mehr aus dieser Komponente importiert, bleiben aber für andere Konsumenten in `vehicle-insights-logic.ts` erhalten.',
+    ].join('\n\n'),
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-04-28T18:14:00.000Z',
+  },
+  {
+    id: 'vehicle-health-box-status-only-cleanup-v4713-2026-04-28',
+    version: '4.7.13',
+    title: 'V4.7.13 Operations → Vehicle-Detail → Vehicle Health Box — Header auf 3-Stufen-Status reduziert (Good Health / Warning / Critical), Hover wieder konsistent zum Standard-Card-Pattern',
+    summary: [
+      '`VehicleHealthBoxWired` (`frontend/src/rental/App.tsx`) hat den prozentualen Aggregat-Score und die mehrschichtige Gradient-Bezel-Surface verloren. Die Box nutzt jetzt das gleiche Standard-Pattern wie alle anderen Dashboard-Karten (`rounded-xl p-3 border border-border bg-card shadow-sm transition-shadow hover:shadow-md`) — kein Translate-Y mehr beim Hover, nur eine sanfte Shadow-Verstärkung',
+      'Der Header zeigt jetzt nur noch drei Operativ-Stufen + einen Disabled-Zustand: `Good Health` / `Warning` / `Critical` / `Insufficient Data`. Die neue `overallState`-Aggregation kommt direkt aus den bereits existierenden Sub-Health-Detektionen (criticalCount, dueSoonCount, dtcCount, trackedCount) — Brakes/Tires/Battery-Status, Daten-API und Health-Detail-Navigation sind unverändert',
+      'Aufgeräumt: Score-Hero, Gradient-Progressbar, Corner-Glow und der Caption-Strip „Diagnostics · Wear trends · Service status" sind raus. Coverage steht jetzt als ruhige `x/3 tracked`-Pille rechts neben dem Titel statt in einem eigenen Block',
+    ],
+    reason:
+      'Produkt-Feedback (User, 2026-04-28, ~20:08 Europe/Berlin): „box sollte nicht so hoppeln sondern leicht schattieren beim hovern wie die anderen boxen" und „vehicle health selbst kennt nur 3 zustände good health, warning und critical daher prozentwert raus nehmen, generell etwas bitte hier aufräumen". Der Aggregat-Score war fachlich nicht trennscharf (drei Wear-Skalen + canonical Battery-Condition lassen sich nicht sauber zu einem einzelnen Prozentwert verdichten) und der Hover war als einzige Box mit `-translate-y` aus dem Dashboard-Rhythmus gefallen.',
+    previousBehavior:
+      'V4.7.11-Stand: Outer-Wrapper war ein Premium-Double-Bezel (`rounded-[18px] p-[1px] bg-gradient-to-br ... hover:-translate-y-0.5 hover:shadow-[var(--shadow-hover)]`) mit innerem `rounded-[17px] p-3` Card-Core. Der Header rendete einen zweistelligen Health-Score in Monospace, dazu eine Status-Pille (Insufficient Data / Good Health / Fair Health / Poor Health) und einen eigenen Aggregat-Progressbar-Block plus eine Caption-Zeile.',
+    details: [
+      '**Datei**: `frontend/src/rental/App.tsx`, Komponente `VehicleHealthBoxWired`. JSX-/Klassen-Refactor und Status-Logik-Konsolidierung; keine API-, Store-, Routing-, Selector- oder Berechnungs-Änderung. Der existierende `getStatus`/`getBatteryStatus`-Flow für die einzelnen Dimensionen bleibt komplett unangetastet, ebenso `useEffect` mit den sechs `vehicleIntelligence`-Calls und der Telemetry-Bridge `VehicleHealthBoxTelemetryBridge`.',
+      '**Logik**: Neuer `overallState: \'insufficient\' | \'good\' | \'warning\' | \'critical\'`-Computed: `insufficient` wenn `trackedCount === 0`, `critical` wenn `criticalCount > 0` ODER `dtcCount > 0`, `warning` wenn `dueSoonCount > 0`, sonst `good`. Damit ist die Top-Pille semantisch zu den Sub-Pillen konsistent (z.B. `attention`-Battery → Box auf `Critical`).',
+      '**Surface**: Outer Wrapper jetzt `rounded-xl p-3 border bg-card shadow-sm transition-shadow hover:shadow-md` — exakt das Pattern der `OverviewLiveMapCard`, der `BusinessInsightsBox` und der Dashboard-Tile-Cards. Hover ist nicht mehr layout-shifting.',
+      '**Risiko-Profil**: Niedrig — scoped auf eine React-Komponente, keine externe API berührt. `ReadLints` clean.',
+    ],
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-04-28T18:10:00Z',
+  },
+  {
     id: 'overview-live-map-liquid-glass-hud-v4712-2026-04-27',
     version: '4.7.12',
     title: 'V4.7.12 Operations → Vehicle-Detail → OverviewLiveMapCard — Map-Footer-HUD auf echtes Liquid Glass umgestellt',
@@ -388,7 +1817,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       '**Fix 3 — `ReturnNeedsInspectionDetector` Risk-Level-Casing.** `backend/src/modules/business-insights/detectors/return-needs-inspection.detector.ts` normalisiert `analysis.riskLevel?.toLowerCase()` vor dem `=== \'high\'`-Vergleich, sodass die Detector-Branch jetzt zuverlässig feuert (vorher hat sie nie gegriffen, weil `RentalDrivingAnalysis.riskLevel` lowercase persistiert wird, der Vergleich aber `\'HIGH\'` erwartet hatte). Neuer Spec `return-needs-inspection.detector.spec.ts` deckt lowercase + uppercase + medium + leerer Fall ab.',
       '**Fix 4 — Unified Subject/Booking-Aggregation.** `backend/src/modules/vehicle-intelligence/trips/driver-score.service.ts` exportiert jetzt `AggregationRow` + `DataConfidence` + `DriverScoreSummary` + `aggregateRows(subjectType, subjectId, rows)` als kanonischen Aggregations-Entry-Point. Distance-weighted Mittel über `TripDrivingImpact`, ignoriert Null-Scores pro Spalte unabhängig, schließt private/incomplete Trips aus, liefert `tripCount`/`scoredTripCount`/`safetyScoredTripCount`/`totalDistanceKm`/`assignmentCoveragePct`/`hasEnoughData` (≥3 scored trips & ≥50 km)/`dataConfidence`. `RentalDrivingAnalysisService.generateForBooking` ruft `driverScoreService.aggregateRows(BOOKING_CUSTOMER, bookingId, rows)` und nutzt damit identische Semantik wie der Driver-/Customer-Aggregator.',
       '**Fix 5 — Frontend-Customer-Score-Aggregator entfernt.** `frontend/src/rental/components/CustomerDetailView.tsx > useCustomerDrivingAggregate` ist auf einen reinen Metadata-Hook reduziert (analysisCount / drivingEvents / abuseEvents / lastAnalysisAt). Score-Berechnung im Frontend ist explizit verboten (Inline-Kommentar). Customer Detail/List konsumiert jetzt ausschliesslich `customer.drivingStyleScore` + `customer.safetyScore` + `customer.hasEnoughData` + `customer.dataConfidence` aus dem Backend-DTO.',
-      '**Fix 6 — `hasEnoughData` / `dataConfidence` überall sichtbar.** Neuer Helper `frontend/src/rental/lib/scoreFormat.ts` (`formatDrivingStyleScore`, `formatSafetyScore`, `getDataConfidenceLabel`, `SCORE_EM_DASH`) ist die einzige Render-Quelle für beide Scalare. Wenn Score null oder `hasEnoughData=false`: UI zeigt em-dash + „Not enough data" / „Not available" / „No speed-limit data" — niemals 0 oder 100. Konsumiert von `CustomersView`, `CustomerDetailView`, `CustomerDetailModal`, `BookingsView`, `RentalDrivingAnalysisView`, `NewBookingView`, `FleetConditionDetailView` und `TripsView`.',
+      '**Fix 6 — `hasEnoughData` / `dataConfidence` überall sichtbar.** Neuer Helper `frontend/src/rental/lib/scoreFormat.ts` (`formatDrivingStyleScore`, `formatSafetyScore`, `getDataConfidenceLabel`, `SCORE_EM_DASH`) ist die einzige Render-Quelle für beide Scalare. Wenn Score null oder `hasEnoughData=false`: UI zeigt em-dash + „Not enough data" / „Not available" / „No speed-limit data" — niemals 0 oder 100. Konsumiert von `CustomersView`, `CustomerDetailView`, `CustomerDetailModal`, `BookingsView`, `NewBookingView`, `FleetConditionDetailView` und `TripsView`.',
       '**Fix 7 — `drivingScore` aus Public-UI retired.** Alle Score-Surfaces lesen jetzt `drivingStyleScore` als Primärwert; `drivingScore` ist nur noch als optionaler Backwards-Compat-Mirror (für ältere Analysis-Payloads) im Fallback-Pfad und ist in den `Customer`-Interfaces zu `drivingScore?: number | null` herabgestuft. UI-Labels sagen konsistent „Driving Style" (nicht „Driving Score").',
       '**Fix 8 — `USER` / `ASSIGNED_USER` entfernt.** `backend/prisma/schema.prisma`: `TripAssignmentStatus` hat nur noch {`ASSIGNED_DRIVER`, `ASSIGNED_BOOKING_CUSTOMER`, `PRIVATE_UNASSIGNED`, `UNKNOWN_ASSIGNMENT`}; `TripAssignmentSubjectType` nur noch {`DRIVER`, `BOOKING_CUSTOMER`}. Migration `20260425000000_retire_user_assignment_and_speeding_severity/migration.sql` migriert via Postgres-sicherem Rename-Rebuild-Rename-Pattern, mappt etwaige Altdaten auf `UNKNOWN_ASSIGNMENT` mit genullter Subject-Referenz. Code-Pfade in `TripAnalyticsCanonicalService.assignedTripCount` und `DriverScoreService` validieren nur noch DRIVER + BOOKING_CUSTOMER.',
       '**Fix 9 — `speedingSeverityScore` Spalte gedroppt.** Migration droppt `TripDrivingImpact.speeding_severity_score`. Schema-Feld + Service-Write-Path wurden bereits in V4.6.83 deaktiviert; jetzt ist auch die Spalte weg. `safetyScore` ist explizit der einzige öffentliche speeding-bezogene Skalar; ein dritter Score wird nirgends mehr ausgespielt.',
@@ -434,14 +1863,14 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       '`frontend/src/rental/components/DashboardView.tsx` — Das Dashboard ist jetzt ausschliesslich „Business". Der bisherige `sq-tab-bar`-Segmented-Control im Header (`Business` ↔ `Finances`) wird ersatzlos entfernt; gleichzeitig wird die komplette Finances-Branch der `activeTab === \'business\' ? (...) : (...)`-Konditionale gelöscht — inkl. der zwei col-span-2 Drilldown-Popups (Revenue MTD + Costs MTD), aller Mockup-Datenstrukturen (`stats`, `financeKPIs`, `upcomingMonthData`, `topVehicles`, `revenueDetailData`, `costsDetailData`, `costsFixedMonthly`, `flopVehicles`, `VAT_RATE`) sowie der finanzbezogenen State-Hooks (`activeTab`, `activeFinancePopup`, `revenueExpandedDay`, `costsExpandedDay`). Der Datums-Header in der Top-Zeile rendert jetzt unconditional Wochentag + Tag + Monat + Jahr (statt einem activeTab-abhängigen Switch), die Station-Pill bleibt unverändert. Importliste auf `Car / Clock / ChevronDown / MapPin` reduziert; `Calendar` und `Wrench` waren nur noch von der entfernten Finances-Branch referenziert.',
       'Datei-Schrumpfung: `DashboardView.tsx` geht von 1531 Zeilen auf 471 Zeilen — netto −1060 Zeilen Mock-/Dead-Code. Die JSX-Verschachtelung der Business-Branch (`<div flex gap-3>` → `<div flex-1 min-w-0 space-y-3>` → Row 1 Grid mit `BusinessInsightsBox` + Fleet-Status, dann Row 2 Grid mit Today\'s Activity) bleibt 1:1 erhalten; nur die äussere Konditional-Klammer + die ihr nachgelagerten Branches wurden entfernt. Keine Änderung an `BusinessInsightsBox`, `StatInlineDetail`, `useFleetVehicles`, `useHandover` oder dem `today-pickups` / `today-returns`-Loader.',
       '`frontend/src/rental/components/FinancialInsightsView.tsx` (NEU, ~1027 Zeilen) — Standalone-Insights-Seite, die die abgebaute Finances-Tab inhaltlich ersetzt, aber 100% gegen das echte Backend verkabelt ist statt gegen Mock-Daten. Quellen: `api.invoices.list(orgId)` + `api.invoices.stats(orgId)` aus `/organizations/:orgId/invoices*` (geliefert von `backend/src/modules/invoices/invoices.controller.ts` + `invoices.service.ts`), zusätzlich `api.customers.list(orgId)` und der bereits in der Shell verfügbare `useFleetVehicles()`-Lookup. Aggregate (alle abgeleitet, keine Hardcoded-Defaults): MTD-Revenue / MTD-Expenses / MTD-Profit / Outstanding inkl. WoW- bzw. MoM-Delta, Daily-Series für ein zweispuriges Recharts-`AreaChart` (Revenue gradient blau, Expenses gradient rot), Top-5-Customers nach MTD-Revenue, Top-5-Vehicles nach MTD-Revenue, Recent-Activity-Liste der letzten 12 Rechnungen. Loading-/Error-/Empty-Pfade decken alle drei Failure-Modi sauber ab (`Loader2`-Spinner, `RefreshCw`-Retry, `Receipt`-Empty-Illustration). Keine Mock-Fallbacks, keine Demo-Daten, keine hardcoded `orgId`/`customerId`/`vehicleId`.',
-      '`frontend/src/rental/App.tsx` — Routing-Erweiterung. `currentView`-Union bekommt `\'financial-insights\'`; `<FinancialInsightsView isDarkMode={isDarkMode} />` wird zwischen `rental-driving-analysis` und `fleet` in der bestehenden Konditional-Kette gerendert. Importzeile `import { FinancialInsightsView } from \'./components/FinancialInsightsView\'` neu unter dem `RentalDrivingAnalysisView`-Import. Keine Änderung an Auth-/Layout-/HandoverProvider-Verkabelung.',
-      '`frontend/src/rental/components/Sidebar.tsx` — Neue Nav-Zeile „Financial Insights" in der Insights-Sektion, gerendert sowohl im expanded-Modus als auch im collapsed-Modus (via `DollarSign`-Icon, der bereits im lucide-Import liegt). Position: zwischen `Rental Driving Analysis` und `Analytics`, weil die Seite konzeptionell näher am Rental-Driving-Analysis-Pattern liegt (Insights aus Kontext-Daten) als am Finance-Group (operative Rechnungs-/Bussgeld-Verwaltung). Label kommt aus `t(\'nav.financialInsights\')` und ist bereits in V4.6.92 in `i18n/translations/en.ts` (\'Financial Insights\') und `de.ts` (\'Finanz-Auswertungen\') angelegt; alle anderen Locales fallen über die existierende EN-Inheritance-Strategie zurück.',
+      '`frontend/src/rental/App.tsx` — Routing-Erweiterung. `currentView`-Union bekommt `\'financial-insights\'`; `<FinancialInsightsView isDarkMode={isDarkMode} />` wird in der bestehenden Konditional-Kette gerendert. Keine Änderung an Auth-/Layout-/HandoverProvider-Verkabelung.',
+      '`frontend/src/rental/components/Sidebar.tsx` — Neue Nav-Zeile „Financial Insights" in der Insights-Sektion, gerendert sowohl im expanded-Modus als auch im collapsed-Modus (via `DollarSign`-Icon, der bereits im lucide-Import liegt). Label kommt aus `t(\'nav.financialInsights\')` und ist bereits in V4.6.92 in `i18n/translations/en.ts` (\'Financial Insights\') und `de.ts` (\'Finanz-Auswertungen\') angelegt; alle anderen Locales fallen über die existierende EN-Inheritance-Strategie zurück.',
       'Akzeptanz-Kriterien: (a) `ReadLints(DashboardView.tsx, FinancialInsightsView.tsx, Sidebar.tsx, App.tsx)` → 0 Errors. (b) Kein Schema-/Migration-/DTO-Delta — die neue Seite konsumiert ausschliesslich existierende `/organizations/:orgId/invoices`-/`/customers`-Endpoints, kein neuer Backend-Service, kein neuer Worker, keine neue Prisma-Tabelle. (c) Wenn das Org keine Rechnungen hat, zeigt `FinancialInsightsView` den Empty-State mit `Receipt`-Icon + `No invoice data yet`-Hinweis statt eines fabricated KPI-Sets. (d) Wenn der Stats-Endpoint 5xx liefert, zeigt die Seite einen Error-Card mit `RefreshCw`-Retry-Button. (e) Das Dashboard rendert weiterhin den kompletten Business-Inhalt (Insights-Box, Fleet-Status, Today\'s Activity) — kein visueller Regress. (f) Keine neue Dependency, keine neue Storage/Cookie/Permission, keine Auth-Änderung.',
     ],
     reason:
-      'Produkt-Feedback (User, 2026-04-25, ~00:42 Europe/Berlin): „entferne diesen Button Tab WEIL: das Dashboard nur noch aus dem Business Tab bestehen soll und die Seite aus dem Finances Tab sollte eine neue Seite in Insights sein mit dem Namen ‚Financial Insights\' bitte gleich auch alles was an mock up Daten da sind entfernen und alles richtig verdrahten dann bei der Seite diese soll nun voll funktional sein". Die V4.6.92-Dashboard-Finances-Branch war ein Erbstück aus den frühen Recovery-Iterationen: Sie lebte als zweite Tab-Hälfte des Dashboards mit hartcodierten Demo-Strukturen (`financeKPIs` mit fixen Cents-Werten, ein `topVehicles`-Array mit drei Bonzen-Beispielen, statisch erfundene `revenueDetailData`/`costsDetailData`-Tagespläne, eine `costsFixedMonthly`-Summe ohne Datenbank-Quelle), während das Backend bereits seit Monaten echte Rechnungen über `/organizations/:orgId/invoices*` ausliefert und der `InvoicesView` diese auch korrekt konsumiert. Resultat: ein Dashboard-Surface, das Operatoren mit Plausi-Daten füttert, die mit dem `Finance › Invoices`-Tab nichts zu tun haben — und damit ein Risiko für falsche Geschäftsentscheidungen. Die Konsolidierung in eine eigenständige `Financial Insights`-Seite löst zwei Probleme gleichzeitig: (i) das Dashboard fokussiert wieder ausschliesslich auf operative Übersicht (Insights-Box, Fleet-Status, Today\'s Activity), und (ii) die finanziellen KPIs leben in einem Insights-Page-Format, das exakt zum bestehenden Insights-Sidebar-Pattern (`Rental Driving Analysis`, `Analytics`, `Fleet Condition`) passt — und kommen dabei ohne Mock-Daten aus.',
+      'Produkt-Feedback (User, 2026-04-25, ~00:42 Europe/Berlin): „entferne diesen Button Tab WEIL: das Dashboard nur noch aus dem Business Tab bestehen soll und die Seite aus dem Finances Tab sollte eine neue Seite in Insights sein mit dem Namen ‚Financial Insights\' bitte gleich auch alles was an mock up Daten da sind entfernen und alles richtig verdrahten dann bei der Seite diese soll nun voll funktional sein". Die V4.6.92-Dashboard-Finances-Branch war ein Erbstück aus den frühen Recovery-Iterationen: Sie lebte als zweite Tab-Hälfte des Dashboards mit hartcodierten Demo-Strukturen (`financeKPIs` mit fixen Cents-Werten, ein `topVehicles`-Array mit drei Bonzen-Beispielen, statisch erfundene `revenueDetailData`/`costsDetailData`-Tagespläne, eine `costsFixedMonthly`-Summe ohne Datenbank-Quelle), während das Backend bereits seit Monaten echte Rechnungen über `/organizations/:orgId/invoices*` ausliefert und der `InvoicesView` diese auch korrekt konsumiert. Resultat: ein Dashboard-Surface, das Operatoren mit Plausi-Daten füttert, die mit dem `Finance › Invoices`-Tab nichts zu tun haben — und damit ein Risiko für falsche Geschäftsentscheidungen. Die Konsolidierung in eine eigenständige `Financial Insights`-Seite löst zwei Probleme gleichzeitig: (i) das Dashboard fokussiert wieder ausschliesslich auf operative Übersicht (Insights-Box, Fleet-Status, Today\'s Activity), und (ii) die finanziellen KPIs leben in einem Insights-Page-Format und kommen dabei ohne Mock-Daten aus.',
     previousBehavior:
-      'Bis V4.6.92 trug das Dashboard im Header einen Tab-Toggle „Business / Finances", der per Klick auf `Finances` eine komplett separate Layout-Branch aktivierte (4 KPI-Tiles + 2 Quartal-Karten + 2 Top-Listen + 2 Drilldown-Popups), gefüttert ausschliesslich aus hardgecodeten lokalen `financeKPIs`/`topVehicles`/`revenueDetailData`/`costsDetailData`-Arrays. Die KPI-Berechnungen waren Pseudo-Aggregationen (z. B. `costsFixedMonthly = 30000` ohne Datenquelle, `VAT_RATE = 0.19` als hardcoded EU-DE-Annahme), die Tagesreihen entstanden aus erfundenen Beispielwerten, und die „Top 5 Vehicles"-Liste enthielt drei Bonzen-Karen aus der frühen Demo-Phase. Operativ war diese Tab-Hälfte vollständig isoliert vom echten `Finance › Invoices`-Endpoint (`/organizations/:orgId/invoices*`), den `InvoicesView` benutzt — eine widersprüchliche Datensicht innerhalb desselben Produkts. Die Insights-Sidebar enthielt nur drei Einträge (`Rental Driving Analysis`, `Analytics`, `Fleet Condition`) — keinen finanz-orientierten Insights-Eintrag.',
+      'Bis V4.6.92 trug das Dashboard im Header einen Tab-Toggle „Business / Finances", der per Klick auf `Finances` eine komplett separate Layout-Branch aktivierte (4 KPI-Tiles + 2 Quartal-Karten + 2 Top-Listen + 2 Drilldown-Popups), gefüttert ausschliesslich aus hardgecodeten lokalen `financeKPIs`/`topVehicles`/`revenueDetailData`/`costsDetailData`-Arrays. Die KPI-Berechnungen waren Pseudo-Aggregationen (z. B. `costsFixedMonthly = 30000` ohne Datenquelle, `VAT_RATE = 0.19` als hardcoded EU-DE-Annahme), die Tagesreihen entstanden aus erfundenen Beispielwerten, und die „Top 5 Vehicles"-Liste enthielt drei Bonzen-Karen aus der frühen Demo-Phase. Operativ war diese Tab-Hälfte vollständig isoliert vom echten `Finance › Invoices`-Endpoint (`/organizations/:orgId/invoices*`), den `InvoicesView` benutzt — eine widersprüchliche Datensicht innerhalb desselben Produkts. Die Insights-Sidebar hatte keinen finanz-orientierten Insights-Eintrag.',
     details: null,
     affectsArchitecture: true,
     module: 'Dashboard — Finances Tab Retired + Standalone Financial Insights',
@@ -3145,7 +4574,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'UPD: DashboardView, MasterDashboardView, TripsView — prior pass: solid cards, reduced blur, semantic colors',
       'UPD: HealthErrorsView — chart tooltip popover solid surface',
       'UPD: SettingsView — all 6 tab cards + tab navigation bar: solid bg-neutral-900/bg-white, no blur',
-      'UPD: FinanceView, OperationsView — tab navigation bars: solid bg-muted rail',
+      'UPD: FinanceView — tab navigation bar: solid bg-muted rail',
       'UPD: BookingsView — popup overlay: backdrop-blur-xl → backdrop-blur-[2px]',
       'UPD: VehicleRegistrationModal (Master) — inner dialog: solid bg-neutral-900/bg-white, rounded-xl',
       'UPD: ChangesView — card variable: solid bg-neutral-900/bg-white',
@@ -3154,7 +4583,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     ],
     reason: 'Align product UI with enterprise operational density: less oversized glass, clearer hierarchy, consistent Rental/Master chrome.',
     previousBehavior: 'Widespread backdrop-blur-xl on cards; inconsistent padding between apps; large modal/title scales.',
-    details: 'Files: theme.css, fonts.css, rental/App.tsx, MainNavTabs.tsx, HealthErrorsView.tsx, SettingsView.tsx (6 cardClass + tab bar), FinanceView.tsx, OperationsView.tsx, BookingsView.tsx, master/VehicleRegistrationModal.tsx, ChangesView.tsx, plus all sidebars/topbars/rightbars/dashboards/trips from prior passes.',
+    details: 'Files: theme.css, fonts.css, rental/App.tsx, MainNavTabs.tsx, HealthErrorsView.tsx, SettingsView.tsx (6 cardClass + tab bar), FinanceView.tsx, BookingsView.tsx, master/VehicleRegistrationModal.tsx, ChangesView.tsx, plus all sidebars/topbars/rightbars/dashboards/trips from prior passes.',
     affectsArchitecture: false,
     module: 'Master Admin',
     createdAt: '2026-04-07T12:00:00.000Z',

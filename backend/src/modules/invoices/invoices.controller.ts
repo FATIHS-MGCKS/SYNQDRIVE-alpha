@@ -9,13 +9,17 @@ import { existsSync, mkdirSync } from 'fs';
 import { InvoicesService } from './invoices.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { StorageService } from '@shared/storage/storage.service';
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads', 'invoices');
 if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
 
 @Controller()
 export class InvoicesController {
-  constructor(private readonly invoicesService: InvoicesService) {}
+  constructor(
+    private readonly invoicesService: InvoicesService,
+    private readonly storage: StorageService,
+  ) {}
 
   @Get('organizations/:orgId/invoices')
   @UseGuards(OrgScopingGuard, RolesGuard)
@@ -53,8 +57,9 @@ export class InvoicesController {
   async create(
     @Param('orgId') orgId: string,
     @Body() body: {
-      type: 'OUTGOING_BOOKING' | 'OUTGOING_MANUAL' | 'INCOMING_VENDOR' | 'INCOMING_UPLOADED';
+      type: 'OUTGOING_BOOKING' | 'OUTGOING_MANUAL' | 'OUTGOING_FINAL' | 'INCOMING_VENDOR' | 'INCOMING_UPLOADED';
       customerId?: string;
+      vendorId?: string;
       vendorName?: string;
       bookingId?: string;
       vehicleId?: string;
@@ -91,6 +96,7 @@ export class InvoicesController {
       totalCents?: number;
       dueDate?: string;
       status?: string;
+      vendorId?: string | null;
       vendorName?: string;
       customerId?: string;
       notes?: string;
@@ -127,8 +133,12 @@ export class InvoicesController {
       },
     }),
   )
-  async uploadFile(@UploadedFile() file: Express.Multer.File) {
+  async uploadFile(
+    @Param('orgId') orgId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
     if (!file) throw new BadRequestException('No file uploaded');
-    return { url: `/uploads/invoices/${file.filename}` };
+    const url = await this.storage.finalizeUpload('invoices', file, orgId);
+    return { url };
   }
 }

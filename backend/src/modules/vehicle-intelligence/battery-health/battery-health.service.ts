@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   BatteryEvidenceScope,
   BatteryEvidenceSourceType,
@@ -7,31 +7,20 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { BatteryEvidenceService } from './battery-evidence.service';
 
-const logger = new Logger('BatteryHealthService');
-
-const VOLTAGE_SOH_TABLE: [number, number][] = [
-  [12.73, 100], [12.62, 90], [12.50, 80], [12.37, 70],
-  [12.24, 60], [12.10, 50], [11.96, 40], [11.81, 30],
-  [11.66, 20], [11.51, 10], [11.30, 0],
-];
-
-function estimateSohFromVoltage(restingVoltage: number): number | null {
-  if (restingVoltage >= 12.73) return 100;
-  if (restingVoltage <= 11.30) return 0;
-  for (let i = 0; i < VOLTAGE_SOH_TABLE.length - 1; i++) {
-    const [v1, s1] = VOLTAGE_SOH_TABLE[i];
-    const [v2, s2] = VOLTAGE_SOH_TABLE[i + 1];
-    if (restingVoltage >= v2 && restingVoltage <= v1) {
-      const ratio = (restingVoltage - v2) / (v1 - v2);
-      return Math.round(s2 + ratio * (s1 - s2));
-    }
-  }
-  logger.warn(
-    `Voltage ${restingVoltage}V outside interpolation range (11.30–12.73V), returning null`,
-  );
-  return null;
-}
-
+/**
+ * Legacy 12 V snapshot store.
+ *
+ * V4.8 Battery overhaul — the old static voltage→SOH lookup table that used
+ * to fabricate a "12 V SOH %" from a single resting-voltage reading has been
+ * removed. A resting voltage describes the charge/rest state, NOT a state of
+ * health, so deriving an SOH from it produced a second, misleading source of
+ * truth next to the Battery V2 / Canonical estimate.
+ *
+ * This service now only persists raw measurements (voltage, resting voltage,
+ * crank/charging voltage, temperature) and the corresponding evidence rows.
+ * The behaviour-based "Estimated Battery Health" lives in BatteryV2Service
+ * and is surfaced exclusively through CanonicalBatteryHealthService.
+ */
 @Injectable()
 export class BatteryHealthService {
   constructor(
@@ -69,15 +58,13 @@ export class BatteryHealthService {
     documentExtractionId?: string;
     serviceEventId?: string;
   }) {
-    const soh = data.restingVoltage
-      ? estimateSohFromVoltage(data.restingVoltage)
-      : estimateSohFromVoltage(data.voltageV);
-
+    // No voltage→SOH derivation: a resting voltage is a charge-state proxy,
+    // not a state of health. `sohPercent` stays null for raw LV snapshots.
     const snapshot = await this.prisma.batteryHealthSnapshot.create({
       data: {
         vehicle: { connect: { id: data.vehicleId } },
         voltageV: data.voltageV,
-        sohPercent: soh,
+        sohPercent: null,
         restingVoltage: data.restingVoltage,
         crankingVoltage: data.crankingVoltage,
         chargingVoltage: data.chargingVoltage,
@@ -139,20 +126,6 @@ export class BatteryHealthService {
         unit: 'V',
         observedAt,
         provider,
-        quality: data.quality,
-        documentExtractionId: data.documentExtractionId,
-        serviceEventId: data.serviceEventId,
-      },
-      {
-        vehicleId: data.vehicleId,
-        scope: BatteryEvidenceScope.LV,
-        sourceType: BatteryEvidenceSourceType.MODEL_DERIVED,
-        valueType: BatteryEvidenceValueType.SOH_PERCENT,
-        numericValue: soh,
-        unit: 'percent',
-        observedAt,
-        provider: 'SynqDrive',
-        confidence: 'voltage_proxy',
         quality: data.quality,
         documentExtractionId: data.documentExtractionId,
         serviceEventId: data.serviceEventId,

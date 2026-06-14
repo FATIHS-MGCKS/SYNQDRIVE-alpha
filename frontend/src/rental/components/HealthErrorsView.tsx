@@ -1,14 +1,27 @@
-import { CheckCircle, AlertTriangle, Battery, Wrench, Calendar, Disc, Circle as TireIcon, Download, FileText, Bell, Share2, Settings, ChevronRight, Sparkles, X, Plus, Search, PenTool, ShieldAlert, CircleDot, ChevronLeft, Clock, Thermometer, BatteryCharging, RefreshCw, Loader2, Upload, Ruler, Gauge, Zap, Snowflake, Sun, Wind, Activity, ClipboardList, Bot } from 'lucide-react';
+
+import { Activity, AlertTriangle, Battery, Calendar, Gauge, ShieldAlert, Snowflake, Sun, Thermometer, Wind, Wrench, Zap } from 'lucide-react';
+import { Icon } from './ui/Icon';
 import tellTaleOilIcon from '../../assets/icons/telltale/oil.svg';
 import tellTaleCelIcon from '../../assets/icons/telltale/cel.svg';
 import tellTaleBrakePadIcon from '../../assets/icons/telltale/brake-pad.svg';
 import tellTaleTirePressureIcon from '../../assets/icons/telltale/tire-pressure.svg';
 import tellTaleBatteryIcon from '../../assets/icons/telltale/battery.svg';
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { XAxis, YAxis, ResponsiveContainer, Tooltip, Line, LineChart, ReferenceArea } from 'recharts';
-import { api, streamAiTireSpecs, type AgentStep, type AiTireSpecsStreamEvent, type HealthSummaryResponse, type TireWearAnalysis, type ServiceInfoStatus, type BatteryHealthSummary, type BatteryHealthDetail, type HvBatteryStatus, type BrakeHealthSummary as BrakeHealthSummaryType, type BrakeHealthDetail, type BrakeAlert, type TripProfile, type TireHealthSummaryResponse, type TireHealthDetailResponse, type TireAlert, type VehicleComplaint } from '../../lib/api';
+import { api, streamAiTireSpecs, type AgentStep, type AiTireSpecsStreamEvent, type HealthSummaryResponse, type TireWearAnalysis, type ServiceInfoStatus, type BatteryHealthSummary, type BatteryHealthDetail, type HvBatteryStatus, type BrakeHealthSummary as BrakeHealthSummaryType, type BrakeHealthDetail, type BrakeAlert, type TripProfile, type TireHealthSummaryResponse, type TireHealthDetailResponse, type TireAlert, type VehicleComplaint, type DtcKnowledgeDto, type BatteryHealthStatus, type BatteryRestingVoltageStatus } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
+import { useEffectiveHealth, useFleetVehicles } from '../FleetContext';
+import {
+  collectRentalHealthReasons,
+  dtcFaultCardTone,
+  quickCardAccentFromRentalState,
+  rentalOverallToVhcStatus,
+  rentalStateLabelDe,
+  rentalStatePillClasses,
+  serviceCardBorderFromRentalState,
+} from '../rental-health-ui';
+import { BatteryConditionBars, RestingVoltageBadge } from './BatteryConditionBars';
 
 interface HealthErrorsViewProps {
   isDarkMode: boolean;
@@ -27,10 +40,79 @@ function formatMaxDecimals(value: number | null | undefined, maxDecimals = 2, fa
   return String(rounded);
 }
 
+/**
+ * Canonical tire status → UI style. Mirrors the backend tire-status taxonomy
+ * (GOOD | WATCH | WARNING | CRITICAL | UNKNOWN) so the quick box and detail
+ * modal render the same single source of truth, not a re-derived % bucket.
+ */
+function tireStatusStyle(
+  status: string | null | undefined,
+  isDarkMode: boolean,
+): { dot: string; pill: string; label: string } {
+  switch (status) {
+    case 'GOOD':
+      return { dot: 'bg-emerald-500', pill: isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700', label: 'Good' };
+    case 'WATCH':
+      return { dot: 'bg-amber-500', pill: isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700', label: 'Watch' };
+    case 'WARNING':
+      return { dot: 'bg-orange-500', pill: isDarkMode ? 'bg-orange-500/10 text-orange-400' : 'bg-orange-50 text-orange-700', label: 'Warning' };
+    case 'CRITICAL':
+      return { dot: 'bg-red-500', pill: isDarkMode ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-700', label: 'Critical' };
+    default:
+      return { dot: 'bg-gray-400', pill: isDarkMode ? 'bg-muted text-muted-foreground' : 'bg-muted text-muted-foreground', label: 'Unknown' };
+  }
+}
+
+/** Canonical brake condition shares the same 5-state model as tires. */
+const brakeConditionStyle = tireStatusStyle;
+
+const BRAKE_BASIS_LABEL: Record<string, string> = {
+  MEASURED: 'Measured',
+  DOCUMENTED: 'Documented',
+  SENSOR: 'Sensor',
+  ESTIMATED: 'Estimated',
+  UNKNOWN: 'Unknown',
+};
+
+const BRAKE_CONFIDENCE_LABEL: Record<string, string> = {
+  HIGH: 'High',
+  MEDIUM: 'Medium',
+  LOW: 'Low',
+  UNKNOWN: 'Unknown',
+};
+
+/** Render a remaining-life km band honestly — never false precision. */
+function formatBrakeKmRange(
+  min: number | null | undefined,
+  max: number | null | undefined,
+): string | null {
+  if (min == null && max == null) return null;
+  const fmt = (n: number) => Math.round(n).toLocaleString('de-DE');
+  if (min != null && max != null) {
+    return min === max ? `${fmt(min)} km` : `${fmt(min)}–${fmt(max)} km`;
+  }
+  const v = (min ?? max) as number;
+  return `~${fmt(v)} km`;
+}
+
+/** Human "x days ago" for a measurement timestamp; honest about missing data. */
+function formatMeasuredAgo(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const ts = new Date(iso).getTime();
+  if (!Number.isFinite(ts)) return null;
+  const days = Math.floor((Date.now() - ts) / 86_400_000);
+  if (days <= 0) return 'today';
+  if (days === 1) return '1 day ago';
+  if (days < 45) return `${days} days ago`;
+  const months = Math.round(days / 30);
+  return `${months} mo ago`;
+}
 
 export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErrorsViewProps) {
   const isEv = fuelType === 'Electric' || fuelType === 'PHEV';
-  const { orgId } = useRentalOrg();
+  const { orgId, userRole } = useRentalOrg();
+  const { health: rentalHealth, loading: rentalHealthLoading } = useEffectiveHealth(vehicleId ?? null);
+  const { reloadHealth: reloadRentalHealth } = useFleetVehicles();
   const [showErrorCodes, setShowErrorCodes] = useState(false);
   const [showBattery, setShowBattery] = useState(false);
   const [showService, setShowService] = useState(false);
@@ -38,6 +120,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
   const [showTires, setShowTires] = useState(false);
   const [showHvBattery, setShowHvBattery] = useState(false);
   const [showComplaintsModal, setShowComplaintsModal] = useState(false);
+  // V4.7.59 — active auto-tasks (source INSIGHT_*) for this vehicle, shown as
+  // a hint in the Service Info modal so operators see the materialized task.
+  const [serviceAutoTasks, setServiceAutoTasks] = useState<Array<{ id: string; title: string; priority: string; category?: string | null }>>([]);
   const [complaints, setComplaints] = useState<VehicleComplaint[]>([]);
   const [complaintsLoading, setComplaintsLoading] = useState(false);
   const [complaintForm, setComplaintForm] = useState({ description: '', urgency: 'MEDIUM', region: '' });
@@ -46,6 +131,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
   const [isModalAnimating, setIsModalAnimating] = useState(false);
   const [isModalClosing, setIsModalClosing] = useState(false);
   const [expandedErrorIndex, setExpandedErrorIndex] = useState<number | null>(null);
+  const [dtcRetrying, setDtcRetrying] = useState<Record<string, boolean>>({});
+  const dtcPollCountRef = useRef(0);
 
   const [healthSummary, setHealthSummary] = useState<HealthSummaryResponse | null>(null);
   const [aiHealthCare, setAiHealthCare] = useState<import('../../lib/api').AiHealthCareResponse | null>(null);
@@ -242,18 +329,283 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
       .finally(() => setComplaintsLoading(false));
   }, [vehicleId, orgId]);
 
+  // Load active auto-tasks for this vehicle when the Service modal opens.
+  // Filters to system-generated tasks (source INSIGHT_*) that are still open.
+  useEffect(() => {
+    if (!showService || !vehicleId || !orgId) {
+      setServiceAutoTasks([]);
+      return;
+    }
+    let cancelled = false;
+    api.tasks
+      .list(orgId)
+      .then((rows: any[]) => {
+        if (cancelled) return;
+        const list = (Array.isArray(rows) ? rows : []).filter(
+          (t) =>
+            t.vehicleId === vehicleId &&
+            typeof t.source === 'string' &&
+            t.source.startsWith('INSIGHT_') &&
+            t.status !== 'DONE' &&
+            t.status !== 'CANCELLED',
+        );
+        setServiceAutoTasks(list);
+      })
+      .catch(() => { if (!cancelled) setServiceAutoTasks([]); });
+    return () => { cancelled = true; };
+  }, [showService, vehicleId, orgId]);
+
+  // Reusable DTC detail loader (used for the initial open + silent polling).
+  const loadDtcDetail = useCallback(
+    (opts?: { silent?: boolean }) => {
+      if (!vehicleId) return Promise.resolve();
+      if (!opts?.silent) setDtcDetailLoading(true);
+      return api.vehicleIntelligence
+        .dtcDetail(vehicleId)
+        .then(setDtcDetail)
+        .catch(() => null)
+        .finally(() => {
+          if (!opts?.silent) setDtcDetailLoading(false);
+        });
+    },
+    [vehicleId],
+  );
+
   // Load DTC detail lazily when the Error Codes modal opens
   useEffect(() => {
     if (!showErrorCodes || !vehicleId) return;
-    setDtcDetailLoading(true);
-    api.vehicleIntelligence.dtcDetail(vehicleId)
-      .then(setDtcDetail)
-      .catch(() => null)
-      .finally(() => setDtcDetailLoading(false));
-  }, [showErrorCodes, vehicleId]);
+    dtcPollCountRef.current = 0;
+    loadDtcDetail();
+  }, [showErrorCodes, vehicleId, loadDtcDetail]);
+
+  // Poll quietly in the background while any active fault's AI knowledge is
+  // still being prepared (QUEUED/PROCESSING). Bounded so it never polls forever;
+  // the DTC itself is always visible regardless of knowledge state.
+  useEffect(() => {
+    if (!showErrorCodes || !vehicleId || !dtcDetail) return;
+    const faults: any[] = dtcDetail?.currentFaults?.activeFaults ?? [];
+    const pending = faults.some(
+      (f) =>
+        f?.knowledge &&
+        (f.knowledge.status === 'QUEUED' || f.knowledge.status === 'PROCESSING'),
+    );
+    if (!pending || dtcPollCountRef.current >= 40) return;
+    const t = setTimeout(() => {
+      dtcPollCountRef.current += 1;
+      loadDtcDetail({ silent: true });
+    }, 6000);
+    return () => clearTimeout(t);
+  }, [showErrorCodes, vehicleId, dtcDetail, loadDtcDetail]);
+
+  // Admin-only manual retry of AI knowledge enrichment for a single DTC code.
+  const handleRetryKnowledge = useCallback(
+    async (code: string) => {
+      if (!vehicleId || !code) return;
+      setDtcRetrying((m) => ({ ...m, [code]: true }));
+      try {
+        await api.vehicleIntelligence.dtcKnowledgeRetry(vehicleId, code);
+        dtcPollCountRef.current = 0;
+        await loadDtcDetail({ silent: true });
+      } catch {
+        /* keep DTC visible; surface nothing destructive */
+      } finally {
+        setDtcRetrying((m) => ({ ...m, [code]: false }));
+      }
+    },
+    [vehicleId, loadDtcDetail],
+  );
+
+  const isOrgAdmin = userRole === 'ORG_ADMIN';
+
+  // Renders the AI knowledge panel under an active DTC card. Pure presentation —
+  // the DTC itself always renders regardless of knowledge state.
+  const renderDtcKnowledge = (dtc: any, index: number) => {
+    const k = dtc?.knowledge as DtcKnowledgeDto | undefined;
+    if (!k) return null;
+    const isExpanded = expandedErrorIndex === index;
+
+    const urgDe: Record<string, string> = { LOW: 'Niedrig', MEDIUM: 'Mittel', HIGH: 'Hoch', CRITICAL: 'Kritisch', UNKNOWN: 'Unbekannt' };
+    const recDe: Record<string, string> = {
+      RENTABLE: 'Vermietbar',
+      CHECK_BEFORE_NEXT_RENTAL: 'Vor nächster Vermietung prüfen',
+      BLOCK_UNTIL_INSPECTED: 'Sperren bis geprüft',
+      DO_NOT_RENT: 'Nicht vermieten',
+      UNKNOWN: 'Unbekannt',
+    };
+    const urgCls = (u?: string) =>
+      ({
+        CRITICAL: isDarkMode ? 'bg-red-500/20 text-red-300' : 'bg-red-100 text-red-700',
+        HIGH: isDarkMode ? 'bg-orange-500/20 text-orange-300' : 'bg-orange-100 text-orange-700',
+        MEDIUM: isDarkMode ? 'bg-yellow-500/15 text-yellow-400' : 'bg-yellow-100 text-yellow-700',
+        LOW: isDarkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-100 text-blue-700',
+      }[u ?? 'UNKNOWN'] ?? (isDarkMode ? 'bg-neutral-700 text-gray-300' : 'bg-gray-100 text-gray-600'));
+    const recCls = (r?: string) =>
+      ({
+        DO_NOT_RENT: isDarkMode ? 'bg-red-500/20 text-red-300' : 'bg-red-100 text-red-700',
+        BLOCK_UNTIL_INSPECTED: isDarkMode ? 'bg-orange-500/20 text-orange-300' : 'bg-orange-100 text-orange-700',
+        CHECK_BEFORE_NEXT_RENTAL: isDarkMode ? 'bg-yellow-500/15 text-yellow-400' : 'bg-yellow-100 text-yellow-700',
+        RENTABLE: isDarkMode ? 'bg-green-500/15 text-green-400' : 'bg-green-100 text-green-700',
+      }[r ?? 'UNKNOWN'] ?? (isDarkMode ? 'bg-neutral-700 text-gray-300' : 'bg-gray-100 text-gray-600'));
+    const label = (text: string) => (
+      <p className={`text-[10px] uppercase tracking-wider mb-1 text-muted-foreground/70`}>{text}</p>
+    );
+    const wrap = (inner: ReactNode) => (
+      <div className={`mt-3 ml-5 pt-3 border-t ${isDarkMode ? 'border-indigo-500/20' : 'border-indigo-200/60'}`}>
+        <p className={`text-[9px] uppercase tracking-widest font-bold mb-2 ${isDarkMode ? 'text-indigo-300/80' : 'text-indigo-700/80'}`}>
+          AI-Einschätzung · DTC Knowledge
+        </p>
+        {inner}
+      </div>
+    );
+
+    if (k.status === 'QUEUED' || k.status === 'PROCESSING') {
+      return wrap(
+        <div className="flex items-center gap-2">
+          <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+          <div>
+            <p className="text-xs font-medium text-foreground/80">AI-Erklärung wird vorbereitet …</p>
+            <p className="text-[11px] text-muted-foreground">Der Fehlercode bleibt sichtbar; die Erklärung wird im Hintergrund ergänzt.</p>
+          </div>
+        </div>,
+      );
+    }
+
+    if (k.status === 'FAILED') {
+      return wrap(
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className={`w-3.5 h-3.5 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
+            <p className="text-xs text-muted-foreground">Erklärung konnte noch nicht erstellt werden.</p>
+          </div>
+          {isOrgAdmin && (
+            <button
+              type="button"
+              onClick={() => handleRetryKnowledge(dtc.code)}
+              disabled={!!dtcRetrying[dtc.code]}
+              className={`text-[11px] px-2 py-1 rounded-md font-medium ${isDarkMode ? 'bg-neutral-800 text-gray-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} disabled:opacity-50`}
+            >
+              {dtcRetrying[dtc.code] ? 'Wird erneut versucht …' : 'Erneut versuchen'}
+            </button>
+          )}
+        </div>,
+      );
+    }
+
+    if (k.status === 'MISSING') {
+      return wrap(<p className="text-xs text-muted-foreground">Noch keine Erklärung vorhanden.</p>);
+    }
+
+    // READY
+    const causes = k.possibleCauses ?? [];
+    const effects = k.possibleEffects ?? [];
+    const sources = k.sources ?? [];
+    return wrap(
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Wrench className={`w-3.5 h-3.5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">SynqDrive DTC Knowledge Base</span>
+            {k.source === 'VEHICLE_SPECIFIC' && (
+              <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${isDarkMode ? 'bg-indigo-500/15 text-indigo-300' : 'bg-indigo-100 text-indigo-700'}`}>Fahrzeugspezifisch</span>
+            )}
+            {k.needsReview && (
+              <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${isDarkMode ? 'bg-amber-500/15 text-amber-300' : 'bg-amber-100 text-amber-700'}`}>Prüfung empfohlen</span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setExpandedErrorIndex(isExpanded ? null : index)}
+            className={`text-[11px] font-medium shrink-0 ${isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'}`}
+          >
+            {isExpanded ? 'Weniger' : 'Mehr anzeigen'}
+          </button>
+        </div>
+
+        {k.title && <p className="text-xs font-semibold text-foreground mb-1">{k.title}</p>}
+        {k.shortDescription && <p className="text-xs text-foreground/80 mb-2 leading-relaxed">{k.shortDescription}</p>}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${recCls(k.rentalRecommendation)}`}>
+            Vermietung: {recDe[k.rentalRecommendation ?? 'UNKNOWN']}
+          </span>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${urgCls(k.technicalUrgency)}`}>
+            AI technisch: {urgDe[k.technicalUrgency ?? 'UNKNOWN']}
+          </span>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${urgCls(k.rentalUrgency)}`}>
+            AI Rental: {urgDe[k.rentalUrgency ?? 'UNKNOWN']}
+          </span>
+        </div>
+
+        {isExpanded && (
+          <div className="mt-3 space-y-3">
+            {causes.length > 0 && (
+              <div>
+                {label('Mögliche Ursachen')}
+                <ul className="list-disc list-inside space-y-0.5">
+                  {causes.map((c, ci) => (
+                    <li key={ci} className="text-xs text-foreground/80">{c}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {effects.length > 0 && (
+              <div>
+                {label('Mögliche Folgen')}
+                <ul className="list-disc list-inside space-y-0.5">
+                  {effects.map((c, ci) => (
+                    <li key={ci} className="text-xs text-foreground/80">{c}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {k.recommendedAction && (
+              <div>
+                {label('Empfehlung für Vermietung')}
+                <p className="text-xs text-foreground/80 leading-relaxed">{k.recommendedAction}</p>
+              </div>
+            )}
+            {sources.length > 0 && (
+              <div>
+                {label('Quellen')}
+                <ul className="space-y-0.5">
+                  {sources.map((s, si) => (
+                    <li key={si} className="text-xs">
+                      {s.url ? (
+                        <a href={s.url} target="_blank" rel="noopener noreferrer" className={`underline ${isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'}`}>
+                          {s.title || s.url}
+                        </a>
+                      ) : (
+                        <span className="text-foreground/70">{s.title}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {k.lastVerifiedAt && (
+              <p className="text-[10px] text-muted-foreground/70">
+                Zuletzt geprüft: {new Date(k.lastVerifiedAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+              </p>
+            )}
+            {isOrgAdmin && (
+              <button
+                type="button"
+                onClick={() => handleRetryKnowledge(dtc.code)}
+                disabled={!!dtcRetrying[dtc.code]}
+                className={`text-[11px] px-2 py-1 rounded-md font-medium ${isDarkMode ? 'bg-neutral-800 text-gray-300 hover:bg-neutral-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} disabled:opacity-50`}
+              >
+                {dtcRetrying[dtc.code] ? 'Aktualisiere …' : 'Neu generieren'}
+              </button>
+            )}
+          </div>
+        )}
+      </div>,
+    );
+  };
 
   const refreshHealth = () => {
     if (!vehicleId) return;
+    reloadRentalHealth();
     setHealthLoading(true);
     api.vehicleIntelligence.healthSummary(vehicleId).then(setHealthSummary).catch(() => null).finally(() => setHealthLoading(false));
     api.vehicleIntelligence.aiHealthCare(vehicleId).then(setAiHealthCare).catch(() => null);
@@ -691,34 +1043,45 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
   const lvIsCalibrating = !lvNoBatteryDetected && (lvStatus === 'calibrating' || lvPubState === 'INITIAL_CALIBRATION');
   const lvIsStabilizing = !lvNoBatteryDetected && (lvStatus === 'stabilizing' || lvPubState === 'STABILIZING');
   const voltageDisplay = bSummary?.lv?.telemetry?.voltageV?.toFixed(2) ?? bSummary?.currentState?.voltageV?.toFixed(2) ?? batteryLatest?.voltageV?.toFixed(2) ?? '—';
-  const capacityPct = lvIsCalibrating
-    ? null
-    : (bSummary?.lv?.healthPercent ?? bSummary?.currentState?.publishedSohPct ?? bSummary?.currentState?.sohPercent ?? batteryLatest?.sohPercent ?? null);
-  // During calibration: show V2 estimated SOH with soft "estimate" indicator
+  // During calibration: show V2 estimated health with soft "estimate" indicator
   const calibrationEstimate: number | null = lvIsCalibrating
     ? (bSummary?.lv?.estimatedHealthPercent ?? bSummary?.currentState?.estimatedSohPct ?? null)
     : null;
   const batteryCondition = bSummary?.lv?.condition ?? bSummary?.condition ?? 'good';
-  const batteryConditionColor =
-    batteryCondition === 'calibrating'
-      ? 'bg-blue-500'
-      : batteryCondition === 'good'
-        ? 'bg-green-500'
-        : batteryCondition === 'watch'
-          ? 'bg-amber-500'
-          : batteryCondition === 'attention'
-            ? 'bg-red-500'
-            : 'bg-gray-400';
-  const batteryConditionGlow =
-    batteryCondition === 'calibrating'
-      ? 'shadow-[0_0_8px_rgba(59,130,246,0.6)]'
-      : batteryCondition === 'good'
-        ? 'shadow-[0_0_8px_rgba(34,197,94,0.6)]'
-        : batteryCondition === 'watch'
-          ? 'shadow-[0_0_8px_rgba(245,158,11,0.6)]'
-          : batteryCondition === 'attention'
-            ? 'shadow-[0_0_8px_rgba(239,68,68,0.6)]'
-            : '';
+  // LV "Estimated Battery Health" — behaviour-derived 3-bar indicator. The 12V
+  // battery is never shown as a workshop-verified SOH %. We read the canonical
+  // estimatedHealth block and fall back to the legacy condition only when the
+  // (older) API shape is in play.
+  const lvEstimatedHealth = bSummary?.lv?.estimatedHealth ?? null;
+  const lvEstimatedStatus: BatteryHealthStatus =
+    lvEstimatedHealth?.status ??
+    (batteryCondition === 'good'
+      ? 'GOOD'
+      : batteryCondition === 'watch'
+        ? 'WATCH'
+        : batteryCondition === 'attention'
+          ? 'WARNING'
+          : 'UNKNOWN');
+  const lvEstimatedBars: 0 | 1 | 2 | 3 =
+    lvEstimatedHealth?.bars ??
+    (lvEstimatedStatus === 'GOOD'
+      ? 3
+      : lvEstimatedStatus === 'WATCH'
+        ? 2
+        : lvEstimatedStatus === 'WARNING' || lvEstimatedStatus === 'CRITICAL'
+          ? 1
+          : 0);
+  // LV resting voltage with battery-spec aware status (lead-acid / AGM / EFB;
+  // lithium is UNSUPPORTED so no false lead-acid alert is shown).
+  const lvResting = bSummary?.lv?.restingVoltage ?? null;
+  const lvRestingValue: number | null =
+    lvResting?.valueV ?? bSummary?.lv?.telemetry?.restingVoltage ?? null;
+  const lvRestingStatus: BatteryRestingVoltageStatus = lvResting?.status ?? 'UNKNOWN';
+  const lvBatteryTypeLabel = lvResting?.batteryType && lvResting.batteryType !== 'UNKNOWN'
+    ? lvResting.batteryType.replace(/_/g, ' ')
+    : bSummary?.specs?.batteryType ?? null;
+  const lvEstimatedTooltip =
+    'Estimated from resting voltage, crank drop, recovery and stability. This is not a workshop-verified SOH.';
   const batteryLastCheckedAgo = (() => {
     const lc = bSummary?.lv?.freshness?.observedAt ?? bSummary?.currentState?.lastChecked;
     if (!lc) return null;
@@ -789,166 +1152,107 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
 
   const hs = aiHealthCare ?? healthSummary;
 
-  // ── Vehicle Health Center – critical findings aggregator ────────────────────
-  // V4.6.42: The old "AI Health Care" summary only reflected the backend AI
-  // narrative (hs.overallStatus + futureOutlook) and silently ignored the
-  // deterministic compliance/safety signals that the other tiles already
-  // surface (Service / TÜV / BOKraft / Battery). That meant the card could
-  // show "Gut — keine auffälligen Probleme" while the Service-Tile right next
-  // to it screamed "ÜBERFÄLLIG" in red. The VHC is now the authoritative
-  // roll-up: it cross-checks all known deterministic health facets and
-  // escalates the overall status + renders a dedicated "Sofortige
-  // Aufmerksamkeit"-section so operators see the actual vehicle condition at
-  // a glance instead of a stale AI blurb.
+  // V4.7.28 — Vehicle Health Center status + findings now read Rental-Health-V1
+  // (same source as Dashboard Fleet Status, FleetView and the detail header chip).
+  // Module modals still load their own deep endpoints; only ampel / quick-card tones
+  // and the roll-up list are canonical here.
   type FindingSeverity = 'critical' | 'warning';
-  type CriticalFinding = {
+  type RentalHealthFinding = {
     id: string;
     severity: FindingSeverity;
-    icon: 'wrench' | 'calendar' | 'shield' | 'battery';
+    icon: 'wrench' | 'calendar' | 'shield' | 'battery' | 'alert-circle' | 'disc' | 'circle' | 'bell' | 'message-square';
     title: string;
     detail: string;
     onClick?: () => void;
   };
 
-  const criticalFindings = useMemo<CriticalFinding[]>(() => {
-    const out: CriticalFinding[] = [];
-    const si = serviceInfo;
-
-    // Service
-    if (si?.serviceOverdue) {
-      const byDays = si.serviceOverdueDays != null && si.serviceOverdueDays > 0
-        ? `${si.serviceOverdueDays} Tage`
-        : null;
-      const byKm = si.serviceOverdueKm != null && si.serviceOverdueKm > 0
-        ? `${si.serviceOverdueKm.toLocaleString('de-DE')} km`
-        : null;
-      const overBy = [byDays, byKm].filter(Boolean).join(' / ');
-      out.push({
-        id: 'service-overdue',
-        severity: 'critical',
-        icon: 'wrench',
-        title: 'Service überfällig',
-        detail: overBy ? `Seit ${overBy} überfällig — Werkstatttermin vereinbaren.` : 'Werkstatttermin vereinbaren.',
-        onClick: () => setShowService(true),
-      });
-    } else if (si?.serviceDueImminently) {
-      const inDays = si.serviceRemainingDays != null && si.serviceRemainingDays >= 0 ? `${si.serviceRemainingDays} Tage` : null;
-      const inKm = si.serviceRemainingKm != null && si.serviceRemainingKm >= 0 ? `${si.serviceRemainingKm.toLocaleString('de-DE')} km` : null;
-      const within = [inDays, inKm].filter(Boolean).join(' / ');
-      out.push({
-        id: 'service-imminent',
-        severity: 'warning',
-        icon: 'wrench',
-        title: 'Service bald fällig',
-        detail: within ? `Fällig in ${within} — Werkstatttermin planen.` : 'Werkstatttermin planen.',
-        onClick: () => setShowService(true),
-      });
+  const moduleFindingIcon = (module: string): RentalHealthFinding['icon'] => {
+    switch (module) {
+      case 'service_compliance':
+        return 'wrench';
+      case 'battery':
+        return 'battery';
+      case 'error_codes':
+        return 'alert-circle';
+      case 'brakes':
+        return 'disc';
+      case 'tires':
+        return 'circle';
+      case 'complaints':
+        return 'message-square';
+      case 'vehicle_alerts':
+        return 'bell';
+      default:
+        return 'alert-circle';
     }
+  };
 
-    // TÜV / HU
-    if (si?.tuvOverdue) {
-      const lapsed = si.tuvRemainingDays != null && si.tuvRemainingDays < 0
-        ? `${Math.abs(si.tuvRemainingDays)} Tage`
-        : null;
-      out.push({
-        id: 'tuv-overdue',
-        severity: 'critical',
-        icon: 'calendar',
-        title: 'TÜV abgelaufen',
-        detail: lapsed ? `Seit ${lapsed} abgelaufen — Hauptuntersuchung sofort.` : 'Hauptuntersuchung sofort nachholen.',
-        onClick: () => setShowService(true),
-      });
-    } else if (si?.tuvRemainingDays != null && si.tuvRemainingDays >= 0 && si.tuvRemainingDays <= 30) {
-      out.push({
-        id: 'tuv-soon',
-        severity: 'warning',
-        icon: 'calendar',
-        title: 'TÜV bald fällig',
-        detail: `Fällig in ${si.tuvRemainingDays} Tagen — HU-Termin planen.`,
-        onClick: () => setShowService(true),
-      });
+  const moduleFindingClick = (module: string): (() => void) | undefined => {
+    switch (module) {
+      case 'service_compliance':
+        return () => setShowService(true);
+      case 'battery':
+        return () => setShowBattery(true);
+      case 'error_codes':
+        return () => openModal(setShowErrorCodes);
+      case 'brakes':
+        return () => {
+          openModal(setShowBrakes);
+          if (vehicleId) {
+            api.vehicleIntelligence.brakeHealthDetail(vehicleId).then(setBrakeHealthDetail).catch(() => null);
+          }
+        };
+      case 'tires':
+        return () => {
+          setTireActionError(null);
+          openModal(setShowTires);
+          loadTireDetail();
+        };
+      case 'complaints':
+        return () => openModal(setShowComplaintsModal);
+      default:
+        return undefined;
     }
+  };
 
-    // BOKraft (§57b)
-    if (si?.bokraftOverdue) {
-      const lapsed = si.bokraftRemainingDays != null && si.bokraftRemainingDays < 0
-        ? `${Math.abs(si.bokraftRemainingDays)} Tage`
-        : null;
-      out.push({
-        id: 'bokraft-overdue',
+  const rentalFindings = useMemo<RentalHealthFinding[]>(() => {
+    if (!rentalHealth) return [];
+    const out: RentalHealthFinding[] = collectRentalHealthReasons(rentalHealth).map((r) => ({
+      id: r.module,
+      severity: r.state === 'critical' ? 'critical' : 'warning',
+      icon: moduleFindingIcon(r.module),
+      title: r.label,
+      detail: r.reason,
+      onClick: moduleFindingClick(r.module),
+    }));
+    for (const [idx, reason] of rentalHealth.blocking_reasons.entries()) {
+      if (out.some((f) => f.detail === reason)) continue;
+      out.unshift({
+        id: `blocked-${idx}`,
         severity: 'critical',
         icon: 'shield',
-        title: 'BOKraft abgelaufen',
-        detail: lapsed ? `Seit ${lapsed} abgelaufen — §57b-Prüfung sofort.` : '§57b-Prüfung sofort nachholen.',
-        onClick: () => setShowService(true),
-      });
-    } else if (si?.bokraftRemainingDays != null && si.bokraftRemainingDays >= 0 && si.bokraftRemainingDays <= 30) {
-      out.push({
-        id: 'bokraft-soon',
-        severity: 'warning',
-        icon: 'shield',
-        title: 'BOKraft bald fällig',
-        detail: `Fällig in ${si.bokraftRemainingDays} Tagen — §57b-Termin planen.`,
-        onClick: () => setShowService(true),
+        title: 'Nicht vermietbar',
+        detail: reason,
       });
     }
-
-    // Battery — canonical condition + live HM dashboard warning-light flag,
-    // merged into a SINGLE finding (never two battery rows). Precedence:
-    //   attention → "Batterie kritisch"
-    //   watch OR dashboard warning-light active → "Batterie beobachten"
-    // If the dashboard warning-light is on, its note is appended to the
-    // existing detail so the driver sees one consolidated message.
-    const battCond = batterySummary?.condition;
-    const dashBatteryLightOn = aiHealthCare?.indicators?.batteryWarningLight === true;
-    const warnLightNote = 'Dashboard-Warnleuchte aktiv — Lichtmaschine und Ladezustand prüfen.';
-
-    if (battCond === 'attention') {
-      const sohPct = batterySummary?.currentState?.publishedSohPct ?? batterySummary?.currentState?.sohPercent ?? null;
-      const voltage = batterySummary?.currentState?.voltageV ?? null;
-      const bits: string[] = [];
-      if (sohPct != null) bits.push(`SOH ${Math.round(sohPct)} %`);
-      if (voltage != null) bits.push(`${voltage.toFixed(2)} V`);
-      const base = bits.length
-        ? `${bits.join(' · ')} — Starthilfe oder Austausch empfohlen.`
-        : 'Starthilfe oder Austausch empfohlen.';
-      out.push({
-        id: 'battery-critical',
-        severity: 'critical',
-        icon: 'battery',
-        title: 'Batterie kritisch',
-        detail: dashBatteryLightOn ? `${base} ${warnLightNote}` : base,
-        onClick: () => setShowBattery(true),
-      });
-    } else if (battCond === 'watch' || dashBatteryLightOn) {
-      const base = 'Startschwierigkeiten möglich — Ladezustand und Lichtmaschine prüfen.';
-      out.push({
-        id: 'battery-watch',
-        severity: 'warning',
-        icon: 'battery',
-        title: 'Batterie beobachten',
-        detail: dashBatteryLightOn ? `${base} ${warnLightNote}` : base,
-        onClick: () => setShowBattery(true),
-      });
-    }
-
     return out;
-  }, [serviceInfo, batterySummary, aiHealthCare]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rentalHealth, vehicleId]);
 
-  const hasCriticalFinding = criticalFindings.some((f) => f.severity === 'critical');
-  const hasWarningFinding = criticalFindings.some((f) => f.severity === 'warning');
+  const vhcStatus = rentalOverallToVhcStatus(rentalHealth?.overall_state, rentalHealthLoading);
+  const hasCriticalFinding = vhcStatus === 'CRITICAL';
 
-  const cardClass = 'bg-card border border-border rounded-lg shadow-xs p-4';
-  const quickCardClass = `${cardClass} flex flex-col cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02]`;
-  const quickCardHeaderClass = 'flex items-center justify-between mb-2.5';
-  const quickCardTitleClass = 'text-base font-semibold text-foreground';
-  const quickCardBodyClass = 'flex-1 flex flex-col justify-center min-h-[104px]';
-  const quickCardFooterClass = 'mt-2 pt-2 border-t border-border';
+  const cardClass = 'bg-card border border-border/60 rounded-xl shadow-sm p-2.5';
+  const quickCardClass = `${cardClass} flex flex-col cursor-pointer transition-all duration-300 ease-out hover:shadow-lg hover:-translate-y-0.5 hover:border-border relative overflow-hidden group`;
+  const quickCardHeaderClass = 'flex items-center justify-between mb-1 relative z-10';
+  const quickCardTitleClass = 'text-[10px] font-bold tracking-tight text-foreground';
+  const quickCardBodyClass = 'flex-1 flex flex-col justify-center relative z-10';
+  const quickCardFooterClass = 'mt-1 pt-1 border-t border-border/50 relative z-10';
 
   return (
     <div className="relative">
       <div
-        className="grid grid-cols-[1.4fr_0.85fr_0.85fr_0.85fr] gap-3 transition-all duration-500 ease-out origin-center"
+        className="grid grid-cols-[1.4fr_2.55fr] gap-3 transition-all duration-500 ease-out origin-center items-start"
         style={{
           transform: isModalAnimating ? 'scale(0.92)' : 'scale(1)',
           filter: isModalAnimating ? 'blur(12px)' : 'blur(0px)',
@@ -957,57 +1261,36 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         }}
       >
         {/* ─── Vehicle Health Center – col 1, spans 2 rows ─── */}
-        <div className={`${cardClass} row-span-2 flex flex-col`}>
-            <div className="flex items-center gap-3 mb-3">
-            <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>
-              <Sparkles className="w-4 h-4" />
+        <div className="bg-card border border-border/60 rounded-xl shadow-sm p-5 flex flex-col relative overflow-hidden">
+          {/* Subtle gradient background flair */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 blur-3xl rounded-full pointer-events-none" />
+          
+          <div className="flex items-center gap-3 mb-5 relative z-10">
+            <div className={`p-2 rounded-xl border ${isDarkMode ? 'bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border-indigo-500/10 text-indigo-300' : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-100 text-indigo-600'}`}>
+              <Icon name="sparkles" className="w-4 h-4" />
             </div>
-            <h3 className="text-base font-semibold text-foreground">Vehicle Health Center</h3>
-            <span className={`ml-auto px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${isDarkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>Powered by AI</span>
-            <button onClick={refreshHealth} className={`p-1 rounded-full transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
-              {healthLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            <h3 className="text-[10px] font-semibold tracking-tight text-foreground">Vehicle Health Center</h3>
+            <span className={`ml-auto px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest border ${isDarkMode ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border-indigo-500/20 text-indigo-300' : 'bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 text-indigo-600'}`}>Powered by AI</span>
+            <button onClick={refreshHealth} className={`p-1.5 rounded-full transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
+              {healthLoading ? <Icon name="loader-2" className="w-4 h-4 animate-spin" /> : <Icon name="refresh-cw" className="w-4 h-4" />}
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar relative z-10">
 
-            {/* ── Overall Status ─────────────────────────────────────────── */}
+            {/* ── Overall Status (Rental-Health-V1) ─────────────────────────── */}
             {(() => {
-              // V4.6.42: Status is now an aggregate of the AI narrative AND
-              // the deterministic compliance/safety findings. If Service/TÜV/
-              // BOKraft is overdue or the battery is in 'attention' condition,
-              // we hard-escalate to CRITICAL regardless of what the AI text
-              // claims. A 'warning'-level finding (imminent/watch) lifts the
-              // status at least to ATTENTION_NEEDED. This prevents the old
-              // failure mode where the card said "Gut" while the Service tile
-              // next to it screamed "ÜBERFÄLLIG".
-              const aiStatus = aiHealthCare?.aiStatus ?? (
-                (hs?.overallStatus?.level === 'good') ? 'GOOD' :
-                (hs?.overallStatus?.level === 'watch') ? 'ATTENTION_NEEDED' : 'ATTENTION_NEEDED'
-              );
-              const escalated = hasCriticalFinding
-                ? 'CRITICAL'
-                : hasWarningFinding && (aiStatus === 'GOOD' || aiStatus === 'EXCELLENT')
-                  ? 'ATTENTION_NEEDED'
-                  : aiStatus;
-              const status = escalated;
+              const status = vhcStatus;
               const cfg = {
-                EXCELLENT:        { bg: isDarkMode ? 'bg-green-500/10' : 'bg-green-50', dot: 'bg-green-500', ping: 'bg-green-400', text: isDarkMode ? 'text-green-300' : 'text-green-800', sub: isDarkMode ? 'text-green-200/70' : 'text-green-700/80', label: 'Sehr gut' },
-                GOOD:             { bg: isDarkMode ? 'bg-green-500/8' : 'bg-green-50/60', dot: 'bg-green-400', ping: 'bg-green-300', text: isDarkMode ? 'text-green-300' : 'text-green-800', sub: isDarkMode ? 'text-green-200/70' : 'text-green-700/80', label: 'Gut' },
-                ATTENTION_NEEDED: { bg: isDarkMode ? 'bg-amber-500/10' : 'bg-amber-50', dot: 'bg-amber-500', ping: 'bg-amber-400', text: isDarkMode ? 'text-amber-300' : 'text-amber-800', sub: isDarkMode ? 'text-amber-200/70' : 'text-amber-700/80', label: 'Prüfen' },
-                CRITICAL:         { bg: isDarkMode ? 'bg-red-500/10' : 'bg-red-50', dot: 'bg-red-500', ping: 'bg-red-400', text: isDarkMode ? 'text-red-300' : 'text-red-800', sub: isDarkMode ? 'text-red-200/70' : 'text-red-700/80', label: 'Kritisch' },
-                NO_RECENT_DATA:   { bg: isDarkMode ? 'bg-neutral-800/60' : 'bg-gray-50', dot: 'bg-gray-400', ping: 'bg-gray-300', text: isDarkMode ? 'text-gray-400' : 'text-gray-600', sub: isDarkMode ? 'text-gray-400/70' : 'text-gray-500/80', label: 'Keine Daten' },
-              }[status] ?? { bg: isDarkMode ? 'bg-neutral-800/60' : 'bg-gray-50', dot: 'bg-gray-400', ping: 'bg-gray-300', text: 'text-muted-foreground', sub: 'text-muted-foreground', label: '—' };
+                LOADING:          { bg: isDarkMode ? 'bg-neutral-800/60 border-neutral-700/50' : 'bg-gray-50 border-gray-200', dot: 'bg-gray-400', ping: 'bg-gray-300', text: isDarkMode ? 'text-gray-400' : 'text-gray-600', sub: isDarkMode ? 'text-gray-400/80' : 'text-gray-500', label: 'Lädt…' },
+                GOOD:             { bg: isDarkMode ? 'bg-gradient-to-b from-green-500/5 to-green-500/5 border-green-500/10' : 'bg-gradient-to-b from-green-500/5 to-green-500/5 border-green-500/20', dot: 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]', ping: 'bg-green-300', text: isDarkMode ? 'text-green-300' : 'text-green-800', sub: isDarkMode ? 'text-green-200/80' : 'text-green-700', label: 'Gut' },
+                ATTENTION_NEEDED: { bg: isDarkMode ? 'bg-gradient-to-b from-amber-500/10 to-amber-500/5 border-amber-500/20' : 'bg-gradient-to-b from-amber-500/10 to-amber-500/5 border-amber-500/20', dot: 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]', ping: 'bg-amber-400', text: isDarkMode ? 'text-amber-300' : 'text-amber-800', sub: isDarkMode ? 'text-amber-200/80' : 'text-amber-800/80', label: 'Warnung' },
+                CRITICAL:         { bg: isDarkMode ? 'bg-gradient-to-b from-red-500/10 to-red-500/5 border-red-500/20' : 'bg-gradient-to-b from-red-500/10 to-red-500/5 border-red-500/20', dot: 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]', ping: 'bg-red-400', text: isDarkMode ? 'text-red-300' : 'text-red-800', sub: isDarkMode ? 'text-red-200/80' : 'text-red-800/80', label: 'Kritisch' },
+                NO_RECENT_DATA:   { bg: isDarkMode ? 'bg-gradient-to-b from-neutral-800/60 to-neutral-800/40 border-neutral-700/50' : 'bg-gradient-to-b from-neutral-500/10 to-neutral-500/5 border-neutral-500/20', dot: 'bg-gray-400', ping: 'bg-gray-300', text: isDarkMode ? 'text-gray-400' : 'text-gray-600', sub: isDarkMode ? 'text-gray-400/80' : 'text-gray-500', label: 'Begrenzte Daten' },
+              }[status] ?? { bg: isDarkMode ? 'bg-neutral-800/60 border-neutral-700/50' : 'bg-gray-50 border-gray-200', dot: 'bg-gray-400', ping: 'bg-gray-300', text: 'text-muted-foreground', sub: 'text-muted-foreground', label: '—' };
 
-              // When escalation kicks in, the AI summary may be out of sync
-              // with the deterministic findings. Replace it with a concrete
-              // summary of what's actually wrong so the card is honest.
               const aiSummaryText = aiHealthCare?.summaryText ?? hs?.overallStatus?.shortSummary ?? 'Keine Analyse verfügbar.';
-              // Build a consolidated one-liner that names BOTH counts so the
-              // header mirrors the "Sofortige Aufmerksamkeit" list 1:1. Avoids
-              // the previous failure where a warning next to a critical was
-              // invisible at the header level (operators had to scroll).
-              const critCount = criticalFindings.filter((f) => f.severity === 'critical').length;
-              const warnCount = criticalFindings.filter((f) => f.severity === 'warning').length;
+              const critCount = rentalFindings.filter((f) => f.severity === 'critical').length;
+              const warnCount = rentalFindings.filter((f) => f.severity === 'warning').length;
               const summaryText = (() => {
                 if (critCount === 0 && warnCount === 0) {
                   return aiSummaryText;
@@ -1019,31 +1302,31 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 if (critCount > 0) return `${lead} — sofortiges Handeln erforderlich.`;
                 return `${lead} — bitte prüfen.`;
               })();
-              const reasons = hasCriticalFinding || hasWarningFinding
-                ? [] // list is rendered as dedicated "Sofortige Aufmerksamkeit" section below
+              const reasons = rentalFindings.length > 0
+                ? []
                 : aiHealthCare?.reasons ?? (hs?.watchpoints ?? []);
 
               return (
-                <div className={`p-4 rounded-xl ${cfg.bg}`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="relative flex items-center justify-center w-4 h-4 shrink-0">
+                <div className={`sq-glass rounded-2xl p-5 ${cfg.bg}`}>
+                  <div className="flex items-center gap-3 mb-2.5">
+                    <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
                       <span className={`absolute inline-flex h-full w-full rounded-full ${cfg.ping} opacity-25 ${status !== 'NO_RECENT_DATA' ? 'animate-ping' : ''}`} />
-                      <div className={`relative w-2.5 h-2.5 rounded-full ${cfg.dot}`} />
+                      <div className={`relative w-3 h-3 rounded-full ${cfg.dot}`} />
                     </div>
-                    <span className={`font-semibold text-sm ${cfg.text}`}>{cfg.label}</span>
-                    <span className={`ml-auto text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-                      status === 'EXCELLENT' || status === 'GOOD' ? 'border-green-500/20 text-green-600 dark:text-green-400' :
-                      status === 'CRITICAL' ? 'border-red-500/20 text-red-600 dark:text-red-400' :
-                      status === 'ATTENTION_NEEDED' ? 'border-amber-500/20 text-amber-600 dark:text-amber-400' :
-                      'border-border text-muted-foreground'
-                    }`}>{status.replace(/_/g, ' ')}</span>
+                    <span className={`font-bold text-[10px] tracking-tight ${cfg.text}`}>{cfg.label}</span>
+                    <span className={`ml-auto text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-widest border ${
+                      status === 'GOOD' ? 'border-green-500/20 text-green-600 dark:text-green-400 bg-green-500/10' :
+                      status === 'CRITICAL' ? 'border-red-500/20 text-red-600 dark:text-red-400 bg-red-500/10' :
+                      status === 'ATTENTION_NEEDED' ? 'border-amber-500/20 text-amber-600 dark:text-amber-400 bg-amber-500/10' :
+                      'border-border text-muted-foreground bg-muted/50'
+                    }`}>{status === 'ATTENTION_NEEDED' ? 'Warning' : status.replace(/_/g, ' ')}</span>
                   </div>
-                  <p className={`text-xs ml-6 leading-relaxed ${cfg.sub}`}>{summaryText}</p>
+                  <p className={`text-[10px] ml-8 leading-relaxed font-medium ${cfg.sub}`}>{summaryText}</p>
                   {reasons.length > 0 && (
-                    <ul className={`mt-2 ml-6 space-y-1`}>
+                    <ul className={`mt-3 ml-8 space-y-1.5`}>
                       {reasons.slice(0, 3).map((r, i) => (
-                        <li key={i} className={`flex items-start gap-1.5 text-[11px] ${cfg.sub}`}>
-                          <span className={`shrink-0 mt-0.5 w-1 h-1 rounded-full ${cfg.dot}`} />
+                        <li key={i} className={`flex items-start gap-2 text-xs font-medium ${cfg.sub}`}>
+                          <span className={`shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
                           {r}
                         </li>
                       ))}
@@ -1053,64 +1336,71 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               );
             })()}
 
-            {/* ── Sofortige Aufmerksamkeit (deterministic findings) ──────── */}
-            {criticalFindings.length > 0 && (
-              <div className={`p-4 rounded-xl border ${
+            {/* ── Sofortige Aufmerksamkeit (Rental-Health-V1 module reasons) ─ */}
+            {rentalFindings.length > 0 && (
+              <div className={`sq-glass rounded-2xl p-5 ${
                 hasCriticalFinding
-                  ? isDarkMode ? 'bg-red-500/5 border-red-500/25' : 'bg-red-50/60 border-red-200'
-                  : isDarkMode ? 'bg-amber-500/5 border-amber-500/25' : 'bg-amber-50/60 border-amber-200'
+                  ? isDarkMode ? 'bg-gradient-to-b from-red-500/10 to-red-500/5 border-red-500/20' : 'bg-gradient-to-b from-red-500/10 to-red-500/5 border-red-500/20'
+                  : isDarkMode ? 'bg-gradient-to-b from-amber-500/10 to-amber-500/5 border-amber-500/20' : 'bg-gradient-to-b from-amber-500/10 to-amber-500/5 border-amber-500/20'
               }`}>
-                <div className="flex items-center gap-2 mb-3">
-                  <AlertTriangle className={`w-4 h-4 ${
-                    hasCriticalFinding
-                      ? isDarkMode ? 'text-red-400' : 'text-red-600'
-                      : isDarkMode ? 'text-amber-400' : 'text-amber-600'
-                  }`} />
-                  <span className={`font-semibold text-sm ${
+                <div className="flex items-center gap-2 mb-4">
+                  <div className={`p-1.5 rounded-lg ${hasCriticalFinding ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-500'}`}>
+                    <Icon name="alert-triangle" className="w-4 h-4" />
+                  </div>
+                  <span className={`font-bold text-[10px] tracking-tight ${
                     hasCriticalFinding
                       ? isDarkMode ? 'text-red-300' : 'text-red-800'
                       : isDarkMode ? 'text-amber-300' : 'text-amber-800'
                   }`}>{hasCriticalFinding ? 'Sofortige Aufmerksamkeit' : 'Warnungen'}</span>
-                  <span className={`ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                  <span className={`ml-auto text-[9px] font-bold px-2.5 py-1 rounded-full ${
                     hasCriticalFinding
-                      ? isDarkMode ? 'bg-red-500/20 text-red-300' : 'bg-red-100 text-red-700'
-                      : isDarkMode ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700'
-                  }`}>{criticalFindings.length}</span>
+                      ? isDarkMode ? 'bg-red-500/20 text-red-300' : 'bg-red-500/10 text-red-700'
+                      : isDarkMode ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-500/10 text-amber-700'
+                  }`}>{rentalFindings.length}</span>
                 </div>
-                <ul className="space-y-2">
-                  {criticalFindings.map((f) => {
+                <ul className="space-y-2.5">
+                  {rentalFindings.map((f) => {
                     const isCrit = f.severity === 'critical';
-                    const IconComp = f.icon === 'wrench' ? Wrench : f.icon === 'calendar' ? Calendar : f.icon === 'shield' ? ShieldAlert : Battery;
+                    const IconComp =
+                      f.icon === 'wrench' ? Wrench
+                      : f.icon === 'calendar' ? Calendar
+                      : f.icon === 'shield' ? ShieldAlert
+                      : f.icon === 'battery' ? Battery
+                      : f.icon === 'disc' ? Gauge
+                      : f.icon === 'circle' ? Activity
+                      : f.icon === 'bell' ? AlertTriangle
+                      : AlertTriangle;
                     const tint = isCrit
-                      ? isDarkMode ? 'text-red-400 bg-red-500/10' : 'text-red-600 bg-red-50'
-                      : isDarkMode ? 'text-amber-400 bg-amber-500/10' : 'text-amber-600 bg-amber-50';
+                      ? isDarkMode ? 'text-red-400 bg-red-500/15 ring-1 ring-red-500/20' : 'text-red-600 bg-red-100 ring-1 ring-red-200'
+                      : isDarkMode ? 'text-amber-400 bg-amber-500/15 ring-1 ring-amber-500/20' : 'text-amber-600 bg-amber-100 ring-1 ring-amber-200';
                     const titleColor = isCrit
                       ? isDarkMode ? 'text-red-300' : 'text-red-800'
                       : isDarkMode ? 'text-amber-300' : 'text-amber-800';
                     const detailColor = isCrit
-                      ? isDarkMode ? 'text-red-200/75' : 'text-red-700/85'
-                      : isDarkMode ? 'text-amber-200/75' : 'text-amber-700/85';
+                      ? isDarkMode ? 'text-red-200/80' : 'text-red-700/80'
+                      : isDarkMode ? 'text-amber-200/80' : 'text-amber-700/80';
+                    const badgeBg = isCrit
+                      ? isDarkMode ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-red-100 text-red-700 border-red-200'
+                      : isDarkMode ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-amber-100 text-amber-700 border-amber-200';
                     return (
                       <li
                         key={f.id}
                         onClick={(e) => { if (f.onClick) { e.stopPropagation(); f.onClick(); } }}
-                        className={`flex items-start gap-2.5 rounded-lg p-2 -mx-1 transition-colors ${f.onClick ? 'cursor-pointer hover:bg-black/[0.03] dark:hover:bg-white/[0.03]' : ''}`}
+                        className={`flex items-start gap-3 rounded-xl p-2.5 -mx-1.5 transition-all duration-200 ${f.onClick ? 'cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04] hover:shadow-sm' : ''}`}
                       >
-                        <div className={`shrink-0 p-1.5 rounded-lg ${tint}`}>
-                          <IconComp className="w-3.5 h-3.5" />
+                        <div className={`shrink-0 p-2 rounded-xl shadow-sm ${tint}`}>
+                          <IconComp className="w-4 h-4" />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className={`text-xs font-semibold ${titleColor}`}>{f.title}</span>
-                            {isCrit ? (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-red-500/15 text-red-700 dark:bg-red-500/20 dark:text-red-300">Kritisch</span>
-                            ) : (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300">Warnung</span>
-                            )}
+                        <div className="flex-1 min-w-0 pt-0.5">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className={`text-[10px] font-semibold tracking-tight ${titleColor}`}>{f.title}</span>
+                            <span className={`px-2 py-0.5 rounded uppercase tracking-widest text-[9px] font-bold border ${badgeBg}`}>
+                              {isCrit ? 'Kritisch' : 'Warnung'}
+                            </span>
                           </div>
-                          <p className={`text-[11px] mt-0.5 leading-snug ${detailColor}`}>{f.detail}</p>
+                          <p className={`text-[10px] leading-relaxed font-medium ${detailColor}`}>{f.detail}</p>
                         </div>
-                        {f.onClick && <ChevronRight className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${isCrit ? 'text-red-400' : 'text-amber-400'}`} />}
+                        {f.onClick && <Icon name="chevron-right" className={`w-4 h-4 shrink-0 mt-1 transition-transform group-hover:translate-x-0.5 ${isCrit ? 'text-red-400' : 'text-amber-400'}`} />}
                       </li>
                     );
                   })}
@@ -1120,23 +1410,30 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
 
             {/* ── Tacho Warnleuchten (live dashboard warning lights) ──────── */}
             {aiHealthCare?.hmHealthActive && (
-              <div className={`p-4 rounded-xl border ${
+              <div className={`sq-glass rounded-2xl p-5 ${
                 aiHealthCare.hmFreshnessStatus === 'stale'
-                  ? isDarkMode ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50/60 border-amber-100'
-                  : isDarkMode ? 'bg-purple-500/5 border-purple-500/15' : 'bg-purple-50/60 border-purple-100'
+                  ? isDarkMode ? 'bg-gradient-to-b from-amber-500/10 to-amber-500/5 border-amber-500/20' : 'bg-gradient-to-b from-amber-500/10 to-amber-500/5 border-amber-500/20'
+                  : isDarkMode ? 'bg-gradient-to-b from-purple-500/10 to-purple-500/5 border-purple-500/20' : 'bg-gradient-to-b from-purple-500/10 to-purple-500/5 border-purple-500/20'
               }`}>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className={`text-xs font-semibold ${isDarkMode ? 'text-purple-300' : 'text-purple-800'}`}>Tacho Warnleuchten</span>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={`p-1.5 rounded-lg ${
+                    aiHealthCare.hmFreshnessStatus === 'stale'
+                      ? isDarkMode ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-600'
+                      : isDarkMode ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-100 text-purple-600'
+                  }`}>
+                    <Icon name="activity" className="w-4 h-4" />
+                  </div>
+                  <span className={`font-bold text-[10px] tracking-tight ${isDarkMode ? 'text-purple-300' : 'text-purple-800'}`}>Tacho Warnleuchten</span>
                   {aiHealthCare.hmFreshnessStatus === 'stale' && (
-                    <span className="flex items-center gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                      <AlertTriangle className="w-2.5 h-2.5" />
-                      Daten veraltet
+                    <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[8px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                      <Icon name="alert-triangle" className="w-2.5 h-2.5" />
+                      Veraltet
                     </span>
                   )}
                   {aiHealthCare.lastHmUpdate && (
-                    <span className={`ml-auto text-[10px] ${
-                      aiHealthCare.hmFreshnessStatus === 'stale' ? 'text-amber-500' :
-                      'text-muted-foreground'
+                    <span className={`ml-auto text-[10px] font-medium px-2.5 py-1 rounded-full ${
+                      aiHealthCare.hmFreshnessStatus === 'stale' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
+                      'bg-muted text-muted-foreground'
                     }`}>
                       {(() => {
                         const ms = Date.now() - new Date(aiHealthCare.lastHmUpdate!).getTime();
@@ -1149,16 +1446,24 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   )}
                 </div>
                 {aiHealthCare.hmLastErrorAt && aiHealthCare.hmLastErrorMessage && (
-                  <div className={`mb-3 rounded-lg px-3 py-2 text-[10px] border ${
-                    isDarkMode ? 'bg-red-500/10 border-red-500/20 text-red-300' : 'bg-red-50 border-red-200 text-red-700'
+                  <div className={`mb-4 rounded-xl px-4 py-3 text-xs font-medium border shadow-sm ${
+                    isDarkMode ? 'bg-red-500/10 border-red-500/20 text-red-300' : 'bg-red-50 border-red-200 text-red-800'
                   }`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Icon name="alert-circle" className="w-3.5 h-3.5" />
+                      <span className="font-bold">Sync Error</span>
+                    </div>
                     Letzter HM-Abruf fehlgeschlagen: {aiHealthCare.hmLastErrorMessage}
                   </div>
                 )}
                 {!aiHealthCare.hmLastErrorAt && aiHealthCare.hmFreshnessStatus === 'no_data' && (
-                  <div className={`mb-3 rounded-lg px-3 py-2 text-[10px] border ${
-                    isDarkMode ? 'bg-blue-500/10 border-blue-500/20 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-700'
+                  <div className={`mb-4 rounded-xl px-4 py-3 text-xs font-medium border shadow-sm ${
+                    isDarkMode ? 'bg-blue-500/10 border-blue-500/20 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-800'
                   }`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Icon name="zap" className="w-3.5 h-3.5" />
+                      <span className="font-bold">Stream Active</span>
+                    </div>
                     OEM-Fleet-Clearance aktiv — Daten werden via MQTT gestreamt, sobald das Fahrzeug Telemetrie sendet.
                   </div>
                 )}
@@ -1214,14 +1519,14 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     return { text: 'Aktuell nicht vom OEM übertragen', tone: 'muted' };
                   };
                   const textClassFor = (tone: Tone, strong = false) => {
-                    if (tone === 'alert') return 'text-amber-600 dark:text-amber-400 font-semibold';
-                    if (tone === 'ok') return strong ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-muted-foreground';
-                    if (tone === 'muted') return 'italic text-muted-foreground/60';
-                    return 'text-muted-foreground';
+                    if (tone === 'alert') return 'text-amber-600 dark:text-amber-400 font-bold';
+                    if (tone === 'ok') return strong ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-muted-foreground font-medium';
+                    if (tone === 'muted') return 'italic text-muted-foreground/60 font-medium';
+                    return 'text-muted-foreground font-medium';
                   };
                   const dotClassFor = (tone: Tone) => {
-                    if (tone === 'alert') return 'bg-amber-500 animate-pulse';
-                    if (tone === 'ok') return 'bg-emerald-500';
+                    if (tone === 'alert') return 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)] animate-pulse';
+                    if (tone === 'ok') return 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.3)]';
                     return 'bg-gray-300 dark:bg-gray-600';
                   };
                   const iconTintFor = (tone: Tone) => {
@@ -1231,63 +1536,68 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     return isDarkMode ? 'text-gray-400' : 'text-gray-500';
                   };
                   const iconBgFor = (tone: Tone) => {
-                    if (tone === 'alert') return isDarkMode ? 'bg-amber-500/20' : 'bg-amber-50';
-                    if (tone === 'ok') return isDarkMode ? 'bg-emerald-500/15' : 'bg-emerald-50';
-                    return isDarkMode ? 'bg-muted' : 'bg-gray-100';
+                    if (tone === 'alert') return isDarkMode ? 'bg-amber-500/20 ring-1 ring-amber-500/30' : 'bg-amber-100 ring-1 ring-amber-200';
+                    if (tone === 'ok') return isDarkMode ? 'bg-emerald-500/10 ring-1 ring-emerald-500/20' : 'bg-emerald-50 ring-1 ring-emerald-100';
+                    return isDarkMode ? 'bg-white/[0.03] ring-1 ring-white/5' : 'bg-black/[0.03] ring-1 ring-black/5';
                   };
                   return (
-                <div className="space-y-2.5">
-                  {/* Motoröl — measure (periodic but Mercedes pushes only on delta) */}
+                <div className="space-y-1">
+                  {/* Motoröl — measure (periodic but Mercedes pushes only on delta).
+                      V4.6.41: hide row only when stream is WARM and the OEM still does
+                      not push any value — that proves the signal is never received for
+                      this vehicle. Cold stream → keep visible with "Noch keine Daten",
+                      because we cannot yet conclude whether the OEM ships oil data. */}
                   {(() => {
                     const oil = aiHealthCare.oilLevelDisplay;
                     const hasData = oil && oil.mode !== 'no_data';
+                    if (!hasData && !streamCold) return null;
                     const isLow = aiHealthCare.hmIndicators?.oilLevel?.status === 'LOW';
-                    const gapText = streamCold
-                      ? 'Noch keine Daten'
-                      : 'Aktuell nicht vom OEM übertragen';
                     return (
-                      <div className="flex items-center gap-3">
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isLow ? (isDarkMode ? 'bg-amber-500/20' : 'bg-amber-50') : (isDarkMode ? 'bg-muted' : 'bg-gray-100')}`}>
+                      <div className="flex items-center gap-3.5 p-2 -mx-2 rounded-xl transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm border ${isLow ? (isDarkMode ? 'bg-amber-500/20 border-amber-500/30' : 'bg-amber-100 border-amber-200') : (isDarkMode ? 'bg-white/[0.03] border-white/5' : 'bg-black/[0.03] border-black/5')}`}>
                           {/* Min Oil Level — Figma: TA284qaiR287FrPzedlr58, node 2:98 */}
                           <img
                             src={tellTaleOilIcon}
                             alt=""
                             aria-hidden="true"
-                            className={`w-3.5 h-3.5 object-contain transition-opacity ${isLow ? 'opacity-95' : 'opacity-40 grayscale'}`}
+                            className={`w-4 h-4 object-contain transition-opacity ${isLow ? 'opacity-100' : 'opacity-50 grayscale'}`}
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-semibold text-muted-foreground">Motoröl</p>
+                          <p className="text-[9px] font-bold text-foreground">Motoröl</p>
                           {hasData ? (
                             <>
-                              <div className="w-full h-1.5 rounded-full bg-muted mt-0.5 overflow-hidden">
+                              <div className="w-full h-1.5 rounded-full bg-muted mt-1.5 overflow-hidden shadow-inner">
                                 <div
-                                  className={`h-full rounded-full transition-all ${isLow ? 'bg-amber-500' : oil!.value != null && oil!.value >= 0.9 ? 'bg-blue-500' : 'bg-green-500'}`}
+                                  className={`h-full rounded-full transition-all ${isLow ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]' : oil!.value != null && oil!.value >= 0.9 ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'}`}
                                   style={{ width: `${Math.round((oil!.value ?? 0.5) * 100)}%` }}
                                 />
                               </div>
-                              <p className={`text-[10px] mt-0.5 ${isLow ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>{oil!.label}</p>
+                              <p className={`text-[10px] mt-1 font-semibold ${isLow ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>{oil!.label}</p>
                             </>
-                          ) : <p className="text-[10px] italic text-muted-foreground/60">{gapText}</p>}
+                          ) : <p className="text-[9px] italic font-medium mt-0.5 text-muted-foreground/60">Noch keine Daten</p>}
                         </div>
                       </div>
                     );
                   })()}
 
-                  {/* Motorkontrolleuchte — warn_flag (HM engine.limp_mode) */}
+                  {/* Motorkontrolleuchte — warn_flag (HM engine.limp_mode).
+                      V4.6.41: warn_flags are received from every supported OEM
+                      stream — keep row visible even when stream is cold ("Noch
+                      keine Daten"). Only signals we never receive should hide. */}
                   {(() => {
                     const r = resolveFlag(aiHealthCare.indicators?.limpMode, 'Aktiv — Werkstatt aufsuchen', 'Aus', 'warn_flag');
                     return (
-                      <div className="flex items-center gap-3">
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${iconBgFor(r.tone)}`}>
+                      <div className="flex items-center gap-3.5 p-2 -mx-2 rounded-xl transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${iconBgFor(r.tone)}`}>
                           {/* CEL_1 — Figma: TA284qaiR287FrPzedlr58, node 1:4 */}
-                          <img src={tellTaleCelIcon} alt="" aria-hidden="true" className={`w-3.5 h-3.5 object-contain transition-opacity ${r.tone === 'ok' ? 'opacity-40 grayscale' : 'opacity-95'}`} />
+                          <img src={tellTaleCelIcon} alt="" aria-hidden="true" className={`w-4 h-4 object-contain transition-opacity ${r.tone === 'ok' ? 'opacity-50 grayscale' : 'opacity-100'}`} />
                         </div>
                         <div className="flex-1">
-                          <p className="text-[10px] font-semibold text-muted-foreground">Motorkontrolleuchte</p>
-                          <p className={`text-[10px] ${textClassFor(r.tone)}`}>{r.text}</p>
+                          <p className="text-[9px] font-bold text-foreground">Motorkontrolleuchte</p>
+                          <p className={`text-[10px] mt-0.5 ${textClassFor(r.tone)}`}>{r.text}</p>
                         </div>
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${dotClassFor(r.tone)}`} />
+                        <div className={`w-2.5 h-2.5 rounded-full shrink-0 mr-1 ${dotClassFor(r.tone)}`} />
                       </div>
                     );
                   })()}
@@ -1296,16 +1606,16 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   {(() => {
                     const r = resolveFlag(aiHealthCare.indicators?.brakeWarning, 'Warnung aktiv', 'Aus', 'warn_flag');
                     return (
-                      <div className="flex items-center gap-3">
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${iconBgFor(r.tone)}`}>
+                      <div className="flex items-center gap-3.5 p-2 -mx-2 rounded-xl transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${iconBgFor(r.tone)}`}>
                           {/* Brake Pad Warning_2 — Figma: TA284qaiR287FrPzedlr58, node 1:66 */}
-                          <img src={tellTaleBrakePadIcon} alt="" aria-hidden="true" className={`w-3.5 h-3.5 object-contain transition-opacity ${r.tone === 'ok' ? 'opacity-40 grayscale' : 'opacity-95'}`} />
+                          <img src={tellTaleBrakePadIcon} alt="" aria-hidden="true" className={`w-4 h-4 object-contain transition-opacity ${r.tone === 'ok' ? 'opacity-50 grayscale' : 'opacity-100'}`} />
                         </div>
                         <div className="flex-1">
-                          <p className="text-[10px] font-semibold text-muted-foreground">Bremsbelag Vorwarnung</p>
-                          <p className={`text-[10px] ${textClassFor(r.tone)}`}>{r.text}</p>
+                          <p className="text-[9px] font-bold text-foreground">Bremsbelag Vorwarnung</p>
+                          <p className={`text-[10px] mt-0.5 ${textClassFor(r.tone)}`}>{r.text}</p>
                         </div>
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${dotClassFor(r.tone)}`} />
+                        <div className={`w-2.5 h-2.5 rounded-full shrink-0 mr-1 ${dotClassFor(r.tone)}`} />
                       </div>
                     );
                   })()}
@@ -1314,16 +1624,16 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   {(() => {
                     const r = resolveFlag(aiHealthCare.indicators?.tirePressureWarning, 'Druckwarnung aktiv', 'Aus', 'warn_flag');
                     return (
-                      <div className="flex items-center gap-3">
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${iconBgFor(r.tone)}`}>
+                      <div className="flex items-center gap-3.5 p-2 -mx-2 rounded-xl transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${iconBgFor(r.tone)}`}>
                           {/* LTP_1 — Figma: TA284qaiR287FrPzedlr58, node 2:112 */}
-                          <img src={tellTaleTirePressureIcon} alt="" aria-hidden="true" className={`w-3.5 h-3.5 object-contain transition-opacity ${r.tone === 'ok' ? 'opacity-40 grayscale' : 'opacity-95'}`} />
+                          <img src={tellTaleTirePressureIcon} alt="" aria-hidden="true" className={`w-4 h-4 object-contain transition-opacity ${r.tone === 'ok' ? 'opacity-50 grayscale' : 'opacity-100'}`} />
                         </div>
                         <div className="flex-1">
-                          <p className="text-[10px] font-semibold text-muted-foreground">Reifendruck Warnung</p>
-                          <p className={`text-[10px] ${textClassFor(r.tone)}`}>{r.text}</p>
+                          <p className="text-[9px] font-bold text-foreground">Reifendruck Warnung</p>
+                          <p className={`text-[10px] mt-0.5 ${textClassFor(r.tone)}`}>{r.text}</p>
                         </div>
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${dotClassFor(r.tone)}`} />
+                        <div className={`w-2.5 h-2.5 rounded-full shrink-0 mr-1 ${dotClassFor(r.tone)}`} />
                       </div>
                     );
                   })()}
@@ -1332,16 +1642,16 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   {(() => {
                     const r = resolveFlag(aiHealthCare.indicators?.batteryWarningLight, 'Warnleuchte aktiv', 'Aus', 'warn_flag');
                     return (
-                      <div className="flex items-center gap-3">
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${iconBgFor(r.tone)}`}>
+                      <div className="flex items-center gap-3.5 p-2 -mx-2 rounded-xl transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${iconBgFor(r.tone)}`}>
                           {/* Battery Level Low_2 — Figma: TA284qaiR287FrPzedlr58, node 2:107 */}
-                          <img src={tellTaleBatteryIcon} alt="" aria-hidden="true" className={`w-3.5 h-3.5 object-contain transition-opacity ${r.tone === 'ok' ? 'opacity-40 grayscale' : 'opacity-95'}`} />
+                          <img src={tellTaleBatteryIcon} alt="" aria-hidden="true" className={`w-4 h-4 object-contain transition-opacity ${r.tone === 'ok' ? 'opacity-50 grayscale' : 'opacity-100'}`} />
                         </div>
                         <div className="flex-1">
-                          <p className="text-[10px] font-semibold text-muted-foreground">Batterie-Warnleuchte</p>
-                          <p className={`text-[10px] ${textClassFor(r.tone)}`}>{r.text}</p>
+                          <p className="text-[9px] font-bold text-foreground">Batterie-Warnleuchte</p>
+                          <p className={`text-[10px] mt-0.5 ${textClassFor(r.tone)}`}>{r.text}</p>
                         </div>
-                        <div className={`w-2 h-2 rounded-full shrink-0 ${dotClassFor(r.tone)}`} />
+                        <div className={`w-2.5 h-2.5 rounded-full shrink-0 mr-1 ${dotClassFor(r.tone)}`} />
                       </div>
                     );
                   })()}
@@ -1354,6 +1664,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
           </div>
         </div>
 
+        {/* ─── Right Column: Quick Cards ─── */}
+        <div className="grid grid-cols-3 gap-3 h-fit auto-rows-fr">
         {/* ─── Error Codes card ─── */}
         {(() => {
           const s = dtcSummary;
@@ -1361,38 +1673,57 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
           const isStale = s?.isStale ?? false;
           const faultCount = s?.activeFaultCount ?? (dtcStatus === 'active_faults' ? activeDtcCount : 0);
           const checkedAt = s?.lastCheckedAt ?? lastDtcChecked;
+          const accent = quickCardAccentFromRentalState(
+            rentalHealth?.modules.error_codes.state,
+            isDarkMode,
+          );
           return (
-            <div onClick={() => openModal(setShowErrorCodes)} className={quickCardClass}>
+            <div onClick={() => openModal(setShowErrorCodes)} className={`${quickCardClass} order-1`}>
+              {/* Subtle gradient backdrop */}
+              <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none transition-opacity ${accent.backdrop}`} />
               <div className={quickCardHeaderClass}>
-                <h3 className={quickCardTitleClass}>Error Codes</h3>
-                <ChevronRight className={`w-4 h-4 text-muted-foreground`} />
+                <div className="flex items-center gap-2">
+                  <div className={`p-1.5 rounded-lg ${accent.iconBox}`}>
+                    <Icon name="alert-circle" className="w-3.5 h-3.5" />
+                  </div>
+                  <h3 className={quickCardTitleClass}>Error Codes</h3>
+                </div>
+                <Icon name="chevron-right" className={`w-4 h-4 text-muted-foreground transition-transform group-hover:translate-x-0.5`} />
               </div>
               <div className={`${quickCardBodyClass} items-center`}>
                 {dtcStatus === 'unavailable' && (
                   <>
                     <span className={`text-3xl mb-1 text-muted-foreground/60`}>—</span>
-                    <p className={`text-[10px] text-center text-muted-foreground`}>Noch nicht geprüft</p>
+                    <p className={`text-[10px] font-medium text-center text-muted-foreground`}>Noch nicht geprüft</p>
                   </>
                 )}
                 {dtcStatus === 'stale' && (
                   <>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 ${isDarkMode ? 'bg-amber-500/15' : 'bg-amber-50'}`}>
-                      <AlertTriangle className={`w-4 h-4 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center mb-2 shadow-sm ${isDarkMode ? 'bg-amber-500/15 ring-1 ring-amber-500/20' : 'bg-amber-50 ring-1 ring-amber-100'}`}>
+                      <Icon name="alert-triangle" className={`w-4 h-4 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
                     </div>
-                    <p className={`text-[10px] font-medium text-center ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>Daten veraltet / Abruf fehlgeschlagen</p>
+                    <p className={`text-[10px] font-semibold text-center ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>Daten veraltet / Abruf fehlgeschlagen</p>
                   </>
                 )}
                 {(dtcStatus === 'clean' || dtcStatus === 'active_faults') && (
                   <>
-                    <div className={`text-6xl font-bold tracking-tighter ${faultCount > 0 ? 'text-red-500' : isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>{faultCount}</div>
-                    {faultCount === 0 && <p className={`text-[10px] mt-1 text-center ${isDarkMode ? 'text-green-400/70' : 'text-green-600/70'}`}>Keine Fehlercodes erkannt</p>}
-                    {faultCount > 0 && <p className={`text-[10px] mt-1 text-center ${isDarkMode ? 'text-red-400/70' : 'text-red-600/70'}`}>{faultCount} Fehlercode{faultCount > 1 ? 's' : ''} erkannt</p>}
+                    <div className={`text-[40px] font-black tracking-tighter leading-none ${faultCount > 0 ? accent.countText : isDarkMode ? 'text-foreground' : 'text-foreground'}`}>{faultCount}</div>
+                    {faultCount === 0 && (
+                      <div className={`mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
+                        <Icon name="check-circle" className="w-2.5 h-2.5" /> Keine Fehler
+                      </div>
+                    )}
+                    {faultCount > 0 && (
+                      <div className={`mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${accent.faultBadge}`}>
+                        {faultCount} Fehlercode{faultCount > 1 ? 's' : ''}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
               <div className={`${quickCardFooterClass} flex items-center gap-1.5`}>
-                {isStale && <AlertTriangle className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-amber-500' : 'text-amber-400'}`} />}
-                <p className={`text-[10px] ${isStale ? (isDarkMode ? 'text-amber-500' : 'text-amber-400') : (isDarkMode ? 'text-gray-500' : 'text-gray-400')}`}>
+                {isStale && <Icon name="alert-triangle" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-amber-500' : 'text-amber-400'}`} />}
+                <p className={`text-[10px] font-medium ${isStale ? (isDarkMode ? 'text-amber-500' : 'text-amber-400') : 'text-muted-foreground'}`}>
                   {checkedAt ? formatRelativeTime(checkedAt) : '—'}
                 </p>
               </div>
@@ -1401,15 +1732,27 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         })()}
 
         {/* ─── Battery card (12V) — SOH bar + current voltage ─── */}
-        <div onClick={() => openModal(setShowBattery)} className={quickCardClass}>
+        <div onClick={() => openModal(setShowBattery)} className={`${quickCardClass} order-4`}>
           <style>{`@keyframes calibDots { 0%,20%{opacity:.2} 50%{opacity:1} 100%{opacity:.2} }`}</style>
+          {(() => {
+            const batteryAccent = quickCardAccentFromRentalState(
+              rentalHealth?.modules.battery.state,
+              isDarkMode,
+            );
+            return (
+              <>
+          {/* Subtle gradient backdrop */}
+          <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none ${batteryAccent.backdrop}`} />
           <div className={`${quickCardHeaderClass} gap-2`}>
             <div className="flex items-center gap-2 min-w-0">
+              <div className={`p-1.5 rounded-lg shrink-0 ${batteryAccent.iconBox}`}>
+                <Icon name="battery" className="w-3.5 h-3.5" />
+              </div>
               <h3 className={quickCardTitleClass}>Battery</h3>
               {aiHealthCare?.indicators?.batteryWarningLight === true && (
                 <span
                   title="Dashboard-Warnleuchte leuchtet — Lichtmaschine und Ladezustand prüfen"
-                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold border animate-pulse ${
+                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border animate-pulse ${
                     isDarkMode
                       ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
                       : 'bg-amber-50 text-amber-700 border-amber-200'
@@ -1420,9 +1763,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 </span>
               )}
             </div>
-            <ChevronRight className={`w-4 h-4 text-muted-foreground shrink-0`} />
+            <Icon name="chevron-right" className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform group-hover:translate-x-0.5`} />
           </div>
-          <div className={`${quickCardBodyClass} min-h-[112px]`}>
+          <div className={`${quickCardBodyClass}`}>
             {lvNoBatteryDetected ? (
               <>
                 <div className="mb-1 flex items-center gap-1.5">
@@ -1445,19 +1788,17 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   </span>
                 </div>
                 {calibrationEstimate != null ? (
-                  <>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className={`text-sm font-bold tracking-tight ${isDarkMode ? 'text-foreground/70' : 'text-foreground/60'}`}>
-                        ~{calibrationEstimate}% SOH
-                      </span>
-                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${isDarkMode ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-200'}`}>
-                        Schätzung
-                      </span>
-                    </div>
-                    <div className={`w-full h-1 rounded-full overflow-hidden mb-1.5 ${isDarkMode ? 'bg-white/10' : 'bg-black/5'}`}>
-                      <div className={`h-full rounded-full ${isDarkMode ? 'bg-blue-400/40' : 'bg-blue-300'}`} style={{ width: `${calibrationEstimate}%` }} />
-                    </div>
-                  </>
+                  <div className="flex items-center gap-1.5 mb-1.5" title={lvEstimatedTooltip}>
+                    <BatteryConditionBars
+                      status={calibrationEstimate >= 80 ? 'GOOD' : calibrationEstimate >= 60 ? 'WATCH' : calibrationEstimate >= 40 ? 'WARNING' : 'CRITICAL'}
+                      isDarkMode={isDarkMode}
+                      size="sm"
+                      showLabel={false}
+                    />
+                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${isDarkMode ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-200'}`}>
+                      Schätzung
+                    </span>
+                  </div>
                 ) : null}
                 <p className={`text-[10px] text-muted-foreground/70`}>
                   {calibrationStatusText}
@@ -1467,38 +1808,44 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               </>
             ) : (
               <>
-                <div className="mb-1 flex items-center gap-1.5">
-                  <span className={`text-sm font-bold tracking-tight text-foreground`}>
-                    {capacityPct != null ? `${lvIsStabilizing ? '~' : ''}${Math.round(capacityPct)}% SOH` : '—'}
-                  </span>
-                  {lvIsStabilizing && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${isDarkMode ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>Estimated</span>
+                {/* Estimated Battery Health — 3-bar indicator (no SOH %). */}
+                <div className="mb-2" title={lvEstimatedTooltip}>
+                  <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 text-muted-foreground`}>Estimated Battery Health</p>
+                  <div className="flex items-center gap-2">
+                    <BatteryConditionBars
+                      status={lvEstimatedStatus}
+                      bars={lvEstimatedBars}
+                      isDarkMode={isDarkMode}
+                      size="md"
+                    />
+                    {lvIsStabilizing && (
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border ${isDarkMode ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>Estimated</span>
+                    )}
+                  </div>
+                </div>
+                {/* Resting voltage — current rest/charge state, separate from health. */}
+                <div className="mb-2">
+                  <p className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>
+                    Resting Voltage{lvBatteryTypeLabel ? ` · ${lvBatteryTypeLabel}` : ''}
+                  </p>
+                  {lvRestingValue != null ? (
+                    <RestingVoltageBadge valueV={lvRestingValue} status={lvRestingStatus} isDarkMode={isDarkMode} />
+                  ) : (
+                    <p className={`text-[10px] font-medium text-muted-foreground`}>
+                      Live voltage: <span className={`font-bold text-foreground tabular-nums`}>{voltageDisplay}</span>
+                      {voltageDisplay !== '—' ? ' V' : ''}
+                    </p>
                   )}
                 </div>
-                {capacityPct != null && (
-                  <div className={`w-full h-1.5 rounded-full overflow-hidden mb-2 bg-muted`}>
-                    <div className={`h-full rounded-full transition-all ${lvIsStabilizing ? (isDarkMode ? 'bg-amber-500/60' : 'bg-amber-400') : batteryConditionColor}`} style={{ width: `${Math.round(capacityPct)}%` }} />
-                  </div>
-                )}
-                <p className={`text-[10px] text-muted-foreground`}>
-                  Current Voltage: <span className={`font-semibold text-foreground`}>{voltageDisplay}</span>
-                  {voltageDisplay !== '—' ? ' V' : ''}
-                </p>
-                <p className={`text-[10px] mt-1.5 capitalize font-medium ${
-                  lvIsStabilizing ? (isDarkMode ? 'text-amber-400' : 'text-amber-600') :
-                  batteryCondition === 'good' ? (isDarkMode ? 'text-green-400' : 'text-green-600') :
-                  batteryCondition === 'watch' ? (isDarkMode ? 'text-amber-400' : 'text-amber-600') :
-                  (isDarkMode ? 'text-red-400' : 'text-red-600')
-                }`}>{lvIsStabilizing ? 'Stabilizing' : batteryCondition === 'good' ? 'Healthy' : batteryCondition === 'watch' ? 'Monitor' : 'Attention needed'}</p>
                 {!lvIsStabilizing && (batteryCondition === 'watch' || batteryCondition === 'attention') && (
-                  <div className={`mt-2 rounded-md px-2 py-1.5 border text-[10px] leading-snug ${
+                  <div className={`mt-2 rounded-lg px-2.5 py-2 border text-[9px] leading-snug font-medium ${
                     batteryCondition === 'attention'
                       ? (isDarkMode ? 'bg-red-500/10 border-red-500/30 text-red-300' : 'bg-red-50 border-red-200 text-red-700')
                       : (isDarkMode ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-700')
                   }`}>
                     {batteryCondition === 'attention'
-                      ? 'Batteriespannung kritisch — Starthilfe oder Austausch empfohlen. Startschwierigkeiten wahrscheinlich.'
-                      : 'Batteriespannung kritisch — bitte beobachten. Startschwierigkeiten möglich.'}
+                      ? 'Batteriespannung kritisch — Austausch empfohlen.'
+                      : 'Batteriespannung niedrig — beobachten.'}
                   </div>
                 )}
               </>
@@ -1517,6 +1864,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               <p className={`text-[10px] text-muted-foreground/70`}>{batteryLastCheckedAgo}</p>
             </div>
           )}
+              </>
+            );
+          })()}
         </div>
 
         {/* ─── Service Info card ─── */}
@@ -1609,78 +1959,73 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   ? isDarkMode ? 'text-amber-400' : 'text-amber-600'
                   : 'text-foreground';
 
-          // Overdue/imminent borders: outline the card so it visually matches
-          // the red/amber emphasis used on the Brakes/Tires cards when those
-          // modules cross their critical thresholds.
-          const borderHighlight = overdue
-            ? 'border-red-500/50 dark:border-red-500/40 ring-1 ring-red-500/20'
-            : imminent
-              ? 'border-amber-500/50 dark:border-amber-500/40 ring-1 ring-amber-500/20'
-              : '';
+          const borderHighlight = serviceCardBorderFromRentalState(
+            rentalHealth?.modules.service_compliance.state,
+          );
+          const serviceAccent = quickCardAccentFromRentalState(
+            rentalHealth?.modules.service_compliance.state,
+            isDarkMode,
+          );
 
           return (
-            <div onClick={() => openModal(setShowService)} className={`${quickCardClass} ${borderHighlight}`}>
+            <div onClick={() => openModal(setShowService)} className={`${quickCardClass} order-3 ${borderHighlight}`}>
+              {/* Subtle gradient backdrop */}
+              <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none ${serviceAccent.backdrop}`} />
               <div className={quickCardHeaderClass}>
                 <div className="flex items-center gap-2">
+                  <div className={`p-1.5 rounded-lg ${serviceAccent.iconBox}`}>
+                    <Icon name="wrench" className="w-3.5 h-3.5" />
+                  </div>
                   <h3 className={quickCardTitleClass}>Service Info</h3>
                   {overdue && (
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400 uppercase tracking-wider">Überfällig</span>
+                    <span className="px-2 py-0.5 rounded-full text-[8px] font-bold bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400 uppercase tracking-widest border border-red-200 dark:border-red-500/30">Überfällig</span>
                   )}
                   {imminent && (
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400 uppercase tracking-wider">Fällig</span>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400 uppercase tracking-widest border border-amber-200 dark:border-amber-500/30">Fällig</span>
                   )}
                 </div>
-                <ChevronRight className={`w-4 h-4 text-muted-foreground`} />
+                <Icon name="chevron-right" className={`w-4 h-4 text-muted-foreground transition-transform group-hover:translate-x-0.5`} />
               </div>
               {pct != null && (
-                <div className={`w-full h-1.5 rounded-full overflow-hidden mb-2 bg-muted`}>
-                  <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                <div className={`w-full h-2 rounded-full overflow-hidden mb-3 bg-muted shadow-inner relative z-10`}>
+                  <div className={`h-full ${barColor} rounded-full transition-all shadow-[0_0_8px_currentColor]`} style={{ width: `${pct}%` }} />
                 </div>
               )}
-              <div className="flex flex-col justify-between flex-1 min-h-[112px] gap-2.5">
+              <div className="flex flex-col justify-between flex-1 gap-3 relative z-10">
                 <div>
-                  <p className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>Next service</p>
-                  <p className={`text-xs font-bold ${nextColor}`}>{nextStr}</p>
-                  {si?.hmServiceSource && si.hmLastUpdatedAt && (
-                    <p className="text-[10px] mt-0.5 text-purple-500 dark:text-purple-400">
-                      via HM · {(() => {
-                        const ms = Date.now() - new Date(si.hmLastUpdatedAt).getTime();
-                        const h = Math.floor(ms / 3600000);
-                        return h < 1 ? 'gerade eben' : `vor ${h}h`;
-                      })()}
-                    </p>
-                  )}
+                  <p className={`text-[9px] uppercase tracking-widest font-bold mb-1 text-muted-foreground/70`}>Next service</p>
+                  <p className={`text-[10px] font-bold ${nextColor}`}>{nextStr}</p>
                 </div>
                 <div>
-                  <p className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>Next TÜV</p>
-                  <p className={`text-xs font-bold ${tuvColor}`}>{hasTuv ? tuvDate : '—'}</p>
+                  <p className={`text-[9px] uppercase tracking-widest font-bold mb-1 text-muted-foreground/70`}>Next TÜV</p>
+                  <p className={`text-[10px] font-bold ${tuvColor}`}>{hasTuv ? tuvDate : '—'}</p>
                   {hasTuv && tuvOverdue && (
-                    <p className={`text-[10px] mt-0.5 font-semibold text-red-600 dark:text-red-400`}>TÜV abgelaufen</p>
+                    <p className={`text-[10px] mt-1 font-bold text-red-600 dark:text-red-400`}>TÜV abgelaufen</p>
                   )}
                   {hasTuv && !tuvOverdue && tuvDays != null && tuvDays <= 90 && (
-                    <p className={`text-[10px] mt-0.5 ${tuvDays <= 30 ? 'text-red-500 dark:text-red-400' : 'text-amber-500 dark:text-amber-400'}`}>
+                    <p className={`text-[10px] mt-1 font-semibold ${tuvDays <= 30 ? 'text-red-500 dark:text-red-400' : 'text-amber-500 dark:text-amber-400'}`}>
                       Fällig in {tuvDays} Tagen
                     </p>
                   )}
                   {!hasTuv && (
-                    <p className={`text-[10px] mt-0.5 text-muted-foreground/70`}>No tracking</p>
+                    <p className={`text-[10px] mt-1 text-muted-foreground/70 font-medium italic`}>No tracking</p>
                   )}
                 </div>
                 <div>
-                  <p className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>Next BOKraft</p>
-                  <p className={`text-xs font-bold ${bokColor}`}>{hasBok ? bokDate : '—'}</p>
+                  <p className={`text-[9px] uppercase tracking-widest font-bold mb-1 text-muted-foreground/70`}>Next BOKraft</p>
+                  <p className={`text-[10px] font-bold ${bokColor}`}>{hasBok ? bokDate : '—'}</p>
                   {hasBok && bokOverdue && (
-                    <p className={`text-[10px] mt-0.5 font-semibold text-red-600 dark:text-red-400`}>BOKraft abgelaufen</p>
+                    <p className={`text-[10px] mt-1 font-bold text-red-600 dark:text-red-400`}>BOKraft abgelaufen</p>
                   )}
                   {!hasBok && (
-                    <p className={`text-[10px] mt-0.5 text-muted-foreground/70`}>No tracking</p>
+                    <p className={`text-[10px] mt-1 text-muted-foreground/70 font-medium italic`}>No tracking</p>
                   )}
                 </div>
                 {(overdue || imminent) && (
-                  <div className={`rounded-md px-2 py-1.5 text-[10px] leading-snug ${overdue ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'}`}>
+                  <div className={`rounded-lg px-2.5 py-2 text-[9px] leading-snug font-medium border ${overdue ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-300' : 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-300'}`}>
                     {overdue
-                      ? 'Service überfällig — Werkstatttermin sofort vereinbaren. Betriebssicherheit und Garantie können gefährdet sein.'
-                      : 'Service fällig — Werkstatttermin planen, idealerweise vor der nächsten Buchung.'}
+                      ? 'Service überfällig — Werkstatttermin vereinbaren.'
+                      : 'Service fällig — Werkstatttermin planen.'}
                   </div>
                 )}
               </div>
@@ -1688,34 +2033,70 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
           );
         })()}
 
-        {/* ─── Brakes Quick View — pad health % + lifetime km ─── */}
+        {/* ─── Brakes Quick View — canonical condition (measured vs estimated honesty) ─── */}
         {(() => {
           const bhs = brakeHealthSummary;
-          const v2 = bhs?.isInitialized === true;
-          const padPct = bhs?.pads?.healthPercent ?? 0;
-          const lifeKm = bhs?.pads?.estimatedLifetimeKm ?? null;
-          const barC = padPct >= 60 ? 'bg-green-500' : padPct >= 30 ? 'bg-amber-500' : 'bg-red-500';
+          // Canonical condition is the single source of truth (estimates cap at
+          // WARNING; CRITICAL only from a real measured/documented safety signal).
+          const condition = bhs?.overallCondition ?? 'UNKNOWN';
+          const style = brakeConditionStyle(condition, isDarkMode);
+          const hasData = condition !== 'UNKNOWN';
+          const brakeAccent = quickCardAccentFromRentalState(
+            rentalHealth?.modules.brakes.state,
+            isDarkMode,
+          );
+          const basisLabel = bhs?.dataBasis ? BRAKE_BASIS_LABEL[bhs.dataBasis] : null;
+          const confLabel = bhs?.confidenceLevel ? BRAKE_CONFIDENCE_LABEL[bhs.confidenceLevel] : null;
+          const frontRange = formatBrakeKmRange(bhs?.estimatedFrontRemainingKmMin, bhs?.estimatedFrontRemainingKmMax);
+          const rearRange = formatBrakeKmRange(bhs?.estimatedRearRemainingKmMin, bhs?.estimatedRearRemainingKmMax);
+          const nextInspection = bhs?.nextInspectionRecommendedInKm ?? null;
+          const openAlerts = bhs?.openAlerts ?? [];
+          const tintBg = brakeAccent.backdrop;
           return (
-            <div onClick={() => { openModal(setShowBrakes); if (vehicleId) api.vehicleIntelligence.brakeHealthDetail(vehicleId).then(setBrakeHealthDetail).catch(() => null); }} className={`${quickCardClass} ${!v2 ? 'opacity-60' : ''}`}>
+            <div onClick={() => { openModal(setShowBrakes); if (vehicleId) api.vehicleIntelligence.brakeHealthDetail(vehicleId).then(setBrakeHealthDetail).catch(() => null); }} className={`${quickCardClass} order-6 ${!hasData ? 'opacity-60' : ''}`}>
+              {/* Subtle gradient backdrop */}
+              <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none ${tintBg}`} />
               <div className={quickCardHeaderClass}>
-                <h3 className={quickCardTitleClass}>Brake Health</h3>
-                <ChevronRight className={`w-4 h-4 text-muted-foreground`} />
-              </div>
-              {v2 ? (
-                <div className={quickCardBodyClass}>
-                  <div className={`text-sm font-bold mb-1 text-foreground`}>{padPct}%</div>
-                  <div className={`w-full h-1.5 rounded-full overflow-hidden mb-1.5 bg-muted`}>
-                    <div className={`h-full rounded-full ${barC}`} style={{ width: `${Math.min(padPct, 100)}%` }} />
+                <div className="flex items-center gap-2">
+                  <div className={`p-1.5 rounded-lg ${brakeAccent.iconBox}`}>
+                    <Icon name="disc" className="w-3.5 h-3.5" />
                   </div>
-                  <p className={`text-[10px] text-muted-foreground`}>
-                    Estimated Lifetime in {lifeKm != null ? `${Math.floor(lifeKm).toLocaleString('de-DE')} km` : '—'}
+                  <h3 className={quickCardTitleClass}>Brake Health</h3>
+                  {openAlerts.length > 0 && <span className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)] animate-pulse" />}
+                </div>
+                <Icon name="chevron-right" className={`w-4 h-4 text-muted-foreground transition-transform group-hover:translate-x-0.5`} />
+              </div>
+              <div className={quickCardBodyClass}>
+                {/* Condition pill + data basis */}
+                <div className="mb-2 flex items-center gap-2 flex-wrap">
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${style.pill}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                    {style.label}
+                  </span>
+                  {basisLabel && (
+                    <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{basisLabel}{confLabel ? ` · ${confLabel}` : ''}</span>
+                  )}
+                </div>
+                {hasData ? (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-medium text-muted-foreground">
+                      Front: <span className="font-bold text-foreground tabular-nums">{frontRange ?? '—'}</span>
+                    </p>
+                    <p className="text-[10px] font-medium text-muted-foreground">
+                      Rear: <span className="font-bold text-foreground tabular-nums">{rearRange ?? '—'}</span>
+                    </p>
+                    {nextInspection != null && (
+                      <p className="text-[10px] font-medium text-muted-foreground">
+                        Inspection in: <span className="font-bold text-foreground tabular-nums">{Math.round(nextInspection).toLocaleString('de-DE')} km</span>
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-muted-foreground">
+                    Bremszustand wird ermittelt, sobald eine Werkstatt-Messung, ein Dokument oder ein Brems-Signal verfügbar ist.
                   </p>
-                </div>
-              ) : (
-                <div className={quickCardBodyClass}>
-                  <p className={`text-[10px] font-medium text-muted-foreground`}>No active Tracking</p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           );
         })()}
@@ -1726,74 +2107,152 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
           const hasTireData = (th != null && th.overallPercent != null) || (tireWear != null && tireWear.overallPercent != null);
           const pct = th?.overallPercent ?? tireWear?.overallPercent ?? null;
           const remKm = th?.overallRemainingKm ?? tireWear?.estimatedRemainingKm ?? null;
-          const barColor = pct != null ? (pct >= 50 ? 'bg-green-500' : pct >= 25 ? 'bg-amber-500' : 'bg-red-500') : 'bg-gray-300';
+          const barColor = pct != null ? (pct >= 50 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : pct >= 25 ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]') : 'bg-gray-300';
           const conf = th?.confidenceLabel ?? null;
           const hasAlerts = (th?.alerts?.length ?? 0) > 0;
           const activeSetup = resolveActiveSetup(tiresData);
+          // ── Canonical read model (single source of truth — measured vs estimated honesty) ──
+          const canonStatus = th?.overallStatus ?? null;
+          const canonStyle = tireStatusStyle(canonStatus, isDarkMode);
+          const displayMm = th?.displayTreadMm ?? th?.lowestTreadMm ?? null;
+          const lowestPos = th?.lowestTreadPosition ?? null;
+          const displayMode = th?.displayMode ?? (th?.measurementState === 'measured' ? 'MEASURED' : th?.measurementState ? 'ESTIMATED' : null);
+          const confLevel = th?.confidence ?? null;
+          const lastMeasuredAt = th?.lastMeasurementAt ?? th?.latestMeasurementAt ?? null;
+          const estRemKm = th?.estimatedRemainingKm ?? remKm;
+          const topRec = th?.recommendations?.find((r) => r && r.trim().length > 0) ?? null;
+          const tireAccent = quickCardAccentFromRentalState(
+            rentalHealth?.modules.tires.state,
+            isDarkMode,
+          );
           return (
-            <div onClick={() => { setTireActionError(null); openModal(setShowTires); loadTireDetail(); }} className={`${quickCardClass} ${!hasTireData ? 'opacity-60' : ''}`}>
+            <div onClick={() => { setTireActionError(null); openModal(setShowTires); loadTireDetail(); }} className={`${quickCardClass} order-5 ${!hasTireData ? 'opacity-60' : ''}`}>
+              {/* Subtle gradient backdrop */}
+              <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none ${tireAccent.backdrop}`} />
               <div className={quickCardHeaderClass}>
                 <div className="flex items-center gap-2">
+                  <div className={`p-1.5 rounded-lg ${!hasTireData ? (isDarkMode ? 'bg-muted text-muted-foreground' : 'bg-muted text-muted-foreground') : tireAccent.iconBox}`}>
+                    <Icon name="circle" className="w-3.5 h-3.5" />
+                  </div>
                   <h3 className={quickCardTitleClass}>Tires</h3>
-                  {hasTireData && <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-gradient-to-r from-violet-500 to-purple-600 text-white">ML</span>}
-                  {hasAlerts && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
+                  {hasTireData && <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-sm">ML</span>}
+                  {hasAlerts && <span className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)] animate-pulse" />}
                 </div>
-                <ChevronRight className={`w-4 h-4 text-muted-foreground`} />
+                <Icon name="chevron-right" className={`w-4 h-4 text-muted-foreground transition-transform group-hover:translate-x-0.5`} />
               </div>
               {hasTireData && pct != null ? (
                 <div className={quickCardBodyClass}>
-                  <div className={`text-sm font-bold mb-1 text-foreground`}>{pct}%</div>
-                  <div className={`w-full h-1.5 rounded-full overflow-hidden mb-1.5 bg-muted`}>
-                    <div className={`h-full ${barColor} rounded-full`} style={{ width: `${pct}%` }} />
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className={`text-[18px] font-black tracking-tight text-foreground leading-none`}>{pct}</span>
+                    <span className="text-xs font-bold text-muted-foreground tracking-tight">% Tread</span>
+                    {th?.actionState && th.actionState !== 'KEEP_DRIVING' && (
+                      <span className={`ml-auto px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border ${
+                        th.actionState === 'REPLACE' ? (isDarkMode ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-red-50 text-red-700 border-red-200') :
+                        th.actionState === 'PLAN_SERVICE' ? (isDarkMode ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-amber-50 text-amber-700 border-amber-200') :
+                        (isDarkMode ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' : 'bg-blue-50 text-blue-700 border-blue-200')
+                      }`}>
+                        {formatEnumLabel(th.actionState)}
+                      </span>
+                    )}
                   </div>
-                  <p className={`text-[10px] text-muted-foreground`}>
-                    Estimated Lifetime in {remKm != null ? `${Math.floor(remKm).toLocaleString('de-DE')} km` : '—'}
+                  <div className={`w-full h-2 rounded-full overflow-hidden mb-2.5 bg-muted shadow-inner`}>
+                    <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <p className={`text-[10px] font-medium text-muted-foreground`}>
+                    Lifetime: <span className={`font-bold text-foreground tabular-nums`}>{remKm != null ? `${Math.floor(remKm).toLocaleString('de-DE')} km` : '—'}</span>
                   </p>
-                  {th?.actionState && (
-                    <p className={`text-[10px] mt-1 font-semibold ${th.actionState === 'REPLACE' ? 'text-red-500' : th.actionState === 'PLAN_SERVICE' ? 'text-amber-500' : 'text-blue-500'}`}>
-                      Action: {formatEnumLabel(th.actionState)}
+                  {/* Canonical status (single source of truth) — falls back to % bucket for legacy payloads */}
+                  {canonStatus && canonStatus !== 'UNKNOWN' ? (
+                    <div className={`mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest w-fit ${canonStyle.pill}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${canonStyle.dot}`} />
+                      {canonStyle.label}
+                    </div>
+                  ) : (
+                    <div className={`mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest w-fit ${
+                      pct >= 50 ? (isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700') :
+                      pct >= 25 ? (isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700') :
+                      (isDarkMode ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-700')
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        pct >= 50 ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]' :
+                        pct >= 25 ? 'bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.6)]' :
+                        'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.6)]'
+                      }`} />
+                      {pct >= 50 ? 'Healthy' : pct >= 25 ? 'Monitor' : 'Critical'}
+                    </div>
+                  )}
+                  {/* Lowest tread (mm) + position + measured/estimated honesty */}
+                  {displayMm != null && (
+                    <p className={`text-[10px] mt-2 font-medium text-muted-foreground`}>
+                      Lowest tread: <span className="font-bold text-foreground tabular-nums">ca. {displayMm.toFixed(1)} mm</span>
+                      {lowestPos ? <span className="text-muted-foreground"> · {lowestPos}</span> : null}
                     </p>
                   )}
-                  {conf && conf !== 'High' && (
-                    <p className={`text-[10px] mt-1 flex items-center gap-1 ${isDarkMode ? 'text-amber-500/70' : 'text-amber-600/70'}`}>
-                      <AlertTriangle className="w-2.5 h-2.5" />
-                      Estimate quality: {conf}
+                  {displayMode && (
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider ${
+                        displayMode === 'MEASURED'
+                          ? (isDarkMode ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-700')
+                          : (isDarkMode ? 'bg-violet-500/10 text-violet-400' : 'bg-violet-50 text-violet-700')
+                      }`}>
+                        {displayMode === 'MEASURED' ? 'Measured' : displayMode === 'ESTIMATED' ? 'Estimated' : 'Unknown'}
+                      </span>
+                      {confLevel && (
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider ${
+                          confLevel === 'HIGH' ? (isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700') :
+                          confLevel === 'MEDIUM' ? (isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700') :
+                          (isDarkMode ? 'bg-orange-500/10 text-orange-400' : 'bg-orange-50 text-orange-700')
+                        }`}>
+                          Conf: {confLevel}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {lastMeasuredAt && (
+                    <p className={`text-[10px] mt-1 font-medium text-muted-foreground/70`}>
+                      Last measured: {formatMeasuredAgo(lastMeasuredAt) ?? '—'}
                     </p>
                   )}
-                  {th?.measurementState && (
-                    <p className={`text-[10px] mt-1 text-muted-foreground`}>
-                      Source: {th.measurementState}
+                  {topRec && (
+                    <p className={`text-[10px] mt-1 font-medium ${isDarkMode ? 'text-blue-400/80' : 'text-blue-600/80'} line-clamp-2`}>
+                      {topRec}
                     </p>
                   )}
                 </div>
               ) : (
                 <div className={quickCardBodyClass}>
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <span className={`text-sm font-bold tracking-tight text-foreground`}>
+                      No active Tracking
+                    </span>
+                  </div>
                   {activeSetup && (
-                    <p className={`text-[10px] mb-1 text-muted-foreground`}>{activeSetup.brandModelFront ?? activeSetup.frontDimension ?? 'Setup'}</p>
+                    <p className={`text-[10px] mb-1 font-medium text-muted-foreground`}>{activeSetup.brandModelFront ?? activeSetup.frontDimension ?? 'Setup'}</p>
                   )}
-                  <p className={`text-[10px] font-medium ${isDarkMode ? 'text-amber-500' : 'text-amber-600'}`}>No active Tracking</p>
-                  <p className={`text-[10px] mt-0.5 text-muted-foreground`}>please provide Tire Information</p>
+                  <p className={`text-[10px] text-muted-foreground`}>
+                    Bitte Reifeninformationen hinterlegen, um die Reifenüberwachung zu aktivieren.
+                  </p>
                 </div>
               )}
               {/* HM Tire Pressure indicator */}
               {hmTirePressure && (
                 <div className={`${quickCardFooterClass} flex items-center justify-between gap-2`}>
-                  <p className="text-[10px] text-muted-foreground/70 shrink-0">
+                  <p className="text-[10px] text-muted-foreground/70 shrink-0 font-medium">
                     {hmTirePressure.lastUpdatedAt ? (() => {
                       const ms = Date.now() - new Date(hmTirePressure.lastUpdatedAt!).getTime();
                       const h = Math.floor(ms / 3600000);
                       return h < 1 ? 'gerade eben' : `vor ${h}h`;
                     })() : '—'}
                   </p>
-                  <p className={`text-[10px] font-semibold text-right ${
-                    hmTirePressure.overallStatus === 'OK' ? 'text-green-600 dark:text-green-400' :
-                    hmTirePressure.overallStatus === 'ISSUE' ? 'text-amber-600 dark:text-amber-400' :
-                    'text-muted-foreground'
+                  <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest ${
+                    hmTirePressure.overallStatus === 'OK' ? (isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700') :
+                    hmTirePressure.overallStatus === 'ISSUE' ? (isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700') :
+                    (isDarkMode ? 'bg-muted text-muted-foreground' : 'bg-muted text-muted-foreground')
                   }`}>
-                    {hmTirePressure.overallStatus === 'OK' ? '✓ Reifendruck OK' :
-                     hmTirePressure.overallStatus === 'ISSUE' ? '⚠ Reifendruck-Warnung' :
-                     'Keine aktuellen Reifendruckdaten'}
-                  </p>
+                    {hmTirePressure.overallStatus === 'OK' ? <><Icon name="check-circle" className="w-2.5 h-2.5" /> Pressure OK</> :
+                     hmTirePressure.overallStatus === 'ISSUE' ? <><Icon name="alert-triangle" className="w-2.5 h-2.5" /> Pressure Warning</> :
+                     'No data'}
+                  </div>
                 </div>
               )}
             </div>
@@ -1809,14 +2268,21 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             ? (hvBatteryStatus?.rawSohPercent != null ? Math.round(hvBatteryStatus.rawSohPercent) : null)
             : Math.round(hvBatteryStatus?.publishedSohPercent ?? hvBatteryStatus?.sohPercent ?? 0) || null;
           const interp = hvBatteryStatus?.sohInterpretation;
-          const barColor = soh == null ? 'bg-gray-400' : soh >= 80 ? 'bg-green-500' : soh >= 60 ? 'bg-amber-500' : 'bg-red-500';
+          // HV SOH bands (distinct from LV): ≥80 GOOD · 70–79 WATCH · 60–69 WARNING · <60 CRITICAL.
+          const hvStatus = bSummary?.hv?.healthStatus
+            ?? (soh == null ? 'UNKNOWN' : soh >= 80 ? 'GOOD' : soh >= 70 ? 'WATCH' : soh >= 60 ? 'WARNING' : 'CRITICAL');
+          const barColor =
+            hvStatus === 'GOOD' ? 'bg-green-500' :
+            hvStatus === 'WATCH' ? 'bg-amber-500' :
+            hvStatus === 'WARNING' ? 'bg-orange-500' :
+            hvStatus === 'CRITICAL' ? 'bg-red-500' : 'bg-gray-400';
           return (
-            <div onClick={() => openModal(setShowHvBattery)} className={`${cardClass} cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02]`}>
+            <div onClick={() => openModal(setShowHvBattery)} className={`${cardClass} order-2 cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02]`}>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-base font-semibold text-foreground">HV Battery</h3>
                 <div className="flex items-center gap-1">
-                  <Zap className={`w-3.5 h-3.5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-500'}`} />
-                  <ChevronRight className={`w-4 h-4 text-muted-foreground`} />
+                  <Icon name="zap" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-500'}`} />
+                  <Icon name="chevron-right" className={`w-4 h-4 text-muted-foreground`} />
                 </div>
               </div>
               <div className="flex-1 flex flex-col justify-center py-2">
@@ -1837,16 +2303,21 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     )}
                     <p className={`text-[10px] text-muted-foreground`}>Collecting charge and discharge data</p>
                   </>
+                ) : soh == null ? (
+                  <>
+                    <span className={`text-sm font-bold tracking-tight text-foreground`}>Not available</span>
+                    <p className={`text-[10px] mt-1 text-muted-foreground`}>No reliable HV SOH data</p>
+                  </>
                 ) : (
                   <>
                     <div className="flex items-center gap-1.5 mb-1">
-                      <span className={`text-sm font-bold tracking-tight text-foreground`}>{soh != null ? `${hvStabilizing ? '~' : ''}${soh}% SOH` : '—'}</span>
+                      <span className={`text-sm font-bold tracking-tight text-foreground`}>{`${hvStabilizing ? '~' : ''}${soh}% SOH`}</span>
                       {hvStabilizing && (
                         <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${isDarkMode ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>Estimated</span>
                       )}
                     </div>
                     <div className={`w-full h-1.5 rounded-full overflow-hidden mb-2 bg-muted`}>
-                      <div className={`h-full ${hvStabilizing ? (isDarkMode ? 'bg-amber-500/60' : 'bg-amber-400') : barColor} rounded-full transition-all`} style={{ width: `${soh ?? 0}%` }} />
+                      <div className={`h-full ${hvStabilizing ? (isDarkMode ? 'bg-amber-500/60' : 'bg-amber-400') : barColor} rounded-full transition-all`} style={{ width: `${soh}%` }} />
                     </div>
                     <p className={`text-xs text-muted-foreground`}>{hvStabilizing ? 'Estimated SOH · Stabilizing' : (interp?.label ?? '—')}</p>
                   </>
@@ -1860,30 +2331,41 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         })() : (() => {
           const activeComplaints = complaints.filter((c) => c.status === 'ACTIVE').length;
           return (
-            <div onClick={() => openModal(setShowComplaintsModal)} className={quickCardClass}>
+            <div onClick={() => openModal(setShowComplaintsModal)} className={`${quickCardClass} order-2`}>
+              {/* Subtle gradient backdrop */}
+              <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none ${activeComplaints > 0 ? 'bg-amber-500/10' : 'bg-emerald-500/8'}`} />
               <div className={quickCardHeaderClass}>
-                <h3 className={quickCardTitleClass}>Complaint List</h3>
-                <ChevronRight className={`w-4 h-4 text-muted-foreground`} />
+                <div className="flex items-center gap-2">
+                  <div className={`p-1.5 rounded-lg ${activeComplaints > 0 ? (isDarkMode ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-600') : (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-600')}`}>
+                    <Icon name="clipboard-list" className="w-3.5 h-3.5" />
+                  </div>
+                  <h3 className={quickCardTitleClass}>Complaints</h3>
+                </div>
+                <Icon name="chevron-right" className={`w-4 h-4 text-muted-foreground transition-transform group-hover:translate-x-0.5`} />
               </div>
               <div className={`${quickCardBodyClass} items-center`}>
                 {complaintsLoading ? (
-                  <Loader2 className={`w-6 h-6 animate-spin text-muted-foreground`} />
+                  <Icon name="loader-2" className={`w-6 h-6 animate-spin text-muted-foreground`} />
                 ) : (
                   <>
-                    <div className={`text-6xl font-bold tracking-tighter ${activeComplaints > 0 ? 'text-amber-500' : isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{activeComplaints}</div>
-                    <p className={`text-[10px] mt-1 text-center text-muted-foreground`}>
-                      {activeComplaints === 0 ? 'No active Feedbacks' : 'Active complaints'}
-                    </p>
+                    <div className={`text-[40px] font-black tracking-tighter leading-none ${activeComplaints > 0 ? 'text-amber-500 drop-shadow-[0_0_12px_rgba(245,158,11,0.3)]' : 'text-foreground'}`}>{activeComplaints}</div>
+                    <div className={`mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${
+                      activeComplaints === 0 ? (isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700') :
+                      (isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700')
+                    }`}>
+                      {activeComplaints === 0 ? <><Icon name="check-circle" className="w-2.5 h-2.5" /> Alles klar</> : <><Icon name="alert-circle" className="w-2.5 h-2.5" /> {activeComplaints === 1 ? 'Active' : 'Active'}</>}
+                    </div>
                   </>
                 )}
               </div>
               <div className={`${quickCardFooterClass} flex items-center gap-1.5`}>
-                <ClipboardList className={`w-3.5 h-3.5 text-muted-foreground`} />
-                <p className={`text-[10px] text-muted-foreground`}>Technical issues & observations</p>
+                <Icon name="clipboard-list" className={`w-3 h-3 text-muted-foreground/70`} />
+                <p className={`text-[10px] font-medium text-muted-foreground`}>Technical issues & observations</p>
               </div>
             </div>
           );
         })()}
+        </div>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════
@@ -1895,35 +2377,59 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => closeModal(setShowErrorCodes)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
           <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl rounded-xl p-5 shadow-lg transition-all duration-500 ease-out max-h-[85vh] overflow-y-auto bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
-            <button onClick={() => closeModal(setShowErrorCodes)} className={`absolute top-6 right-6 p-1.5 rounded-full transition-colors ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}><X className="w-5 h-5" /></button>
+            <button onClick={() => closeModal(setShowErrorCodes)} className={`absolute top-6 right-6 p-1.5 rounded-full transition-colors ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}><Icon name="x" className="w-5 h-5" /></button>
 
             {/* Modal header */}
             <div className="mb-4">
               <h2 className="text-base font-semibold mb-1 text-foreground">Error Codes</h2>
+              {rentalHealth?.modules.error_codes && (
+                <div className={`mb-3 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 ${isDarkMode ? 'bg-muted/40 border-border' : 'bg-muted/30 border-border'}`}>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Betriebsstatus (Fleet Health)
+                  </span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide ${rentalStatePillClasses(rentalHealth.modules.error_codes.state, isDarkMode)}`}>
+                    {rentalStateLabelDe(rentalHealth.modules.error_codes.state)}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">{rentalHealth.modules.error_codes.reason}</span>
+                </div>
+              )}
               {(() => {
                 const d = dtcDetail;
                 const s = dtcSummary;
                 const cs = d?.currentFaults?.status ?? s?.status;
+                const errorAccent = quickCardAccentFromRentalState(
+                  rentalHealth?.modules.error_codes.state,
+                  isDarkMode,
+                );
                 if (!cs || cs === 'unavailable') return (
                   <p className={`text-sm text-muted-foreground`}>No DTC check has been performed yet</p>
                 );
                 if (cs === 'stale') return (
                   <div className="flex items-center gap-2">
-                    <AlertTriangle className={`w-4 h-4 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
+                    <Icon name="alert-triangle" className={`w-4 h-4 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
                     <p className={`text-sm ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>DTC status outdated — last successful check {formatRelativeTime(d?.monitoring?.lastSuccessfulCheckAt ?? s?.lastSuccessfulCheckAt)}</p>
                   </div>
                 );
                 const count = d?.currentFaults?.activeFaults?.length ?? s?.activeFaultCount ?? 0;
+                const moduleState = rentalHealth?.modules.error_codes.state;
+                const statusDot =
+                  moduleState === 'critical'
+                    ? 'bg-red-500'
+                    : moduleState === 'warning'
+                      ? 'bg-amber-500'
+                      : moduleState === 'good'
+                        ? 'bg-emerald-500'
+                        : 'bg-muted-foreground';
                 if (count > 0) return (
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    <p className={`text-sm font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>{count} active fault code{count > 1 ? 's' : ''} detected</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${statusDot} animate-pulse`} />
+                    <p className={`text-sm font-semibold ${errorAccent.countText}`}>{count} active fault code{count > 1 ? 's' : ''} detected</p>
                     {d?.monitoring?.lastSuccessfulCheckAt && <span className={`ml-auto text-xs text-muted-foreground/70`}>Last check {formatRelativeTime(d.monitoring.lastSuccessfulCheckAt)}</span>}
                   </div>
                 );
                 return (
                   <div className="flex items-center gap-2">
-                    <CheckCircle className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-500'}`} />
+                    <Icon name="check-circle" className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-500'}`} />
                     <p className={`text-sm ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>No active fault codes</p>
                     {d?.monitoring?.lastSuccessfulCheckAt && <span className={`ml-auto text-xs text-muted-foreground/70`}>Last check {formatRelativeTime(d.monitoring.lastSuccessfulCheckAt)}</span>}
                   </div>
@@ -1933,7 +2439,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
 
             {dtcDetailLoading && (
               <div className={`flex items-center gap-3 py-6 justify-center text-muted-foreground`}>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Icon name="loader-2" className="w-4 h-4 animate-spin" />
                 <span className="text-sm">Loading diagnostic data…</span>
               </div>
             )}
@@ -1954,7 +2460,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
 
                     {(!d || d.currentFaults.status === 'unavailable') && (
                       <div className={`flex items-center gap-3 p-4 rounded-lg border bg-muted border-border`}>
-                        <Clock className={`w-5 h-5 shrink-0 text-muted-foreground/60`} />
+                        <Icon name="clock" className={`w-5 h-5 shrink-0 text-muted-foreground/60`} />
                         <div>
                           <p className={`text-sm font-medium text-muted-foreground`}>No DTC data available</p>
                           <p className={`text-xs text-muted-foreground/70`}>The first DTC poll runs every 3 hours — no check has been performed yet</p>
@@ -1964,7 +2470,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
 
                     {d?.currentFaults.status === 'stale' && (
                       <div className={`flex items-center gap-3 p-4 rounded-lg border ${isDarkMode ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50 border-amber-200/60'}`}>
-                        <AlertTriangle className={`w-5 h-5 shrink-0 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
+                        <Icon name="alert-triangle" className={`w-5 h-5 shrink-0 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
                         <div>
                           <p className={`text-sm font-semibold ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>Current DTC status is outdated</p>
                           <p className={`text-xs ${isDarkMode ? 'text-amber-400/70' : 'text-amber-600/70'}`}>The displayed DTC state may not reflect the actual vehicle condition. Wait for the next successful check.</p>
@@ -1974,7 +2480,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
 
                     {d?.currentFaults.status === 'clean' && (
                       <div className={`flex items-center gap-3 p-4 rounded-lg border ${isDarkMode ? 'bg-green-500/5 border-green-500/15' : 'bg-green-50 border-green-200/60'}`}>
-                        <CheckCircle className={`w-5 h-5 shrink-0 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+                        <Icon name="check-circle" className={`w-5 h-5 shrink-0 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
                         <div>
                           <p className={`text-sm font-semibold ${isDarkMode ? 'text-green-300' : 'text-green-800'}`}>No Active Fault Codes</p>
                           <p className={`text-xs ${isDarkMode ? 'text-green-400/60' : 'text-green-700/60'}`}>Vehicle diagnostics are clear as of the last successful check</p>
@@ -1984,13 +2490,23 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
 
                     {d?.currentFaults.status === 'active_faults' && d.currentFaults.activeFaults.length > 0 && (
                       <div className="space-y-2">
-                        {d.currentFaults.activeFaults.map((dtc: any, i: number) => (
-                          <div key={dtc.id ?? i} className={`p-4 rounded-lg border ${isDarkMode ? 'bg-red-500/5 border-red-500/20' : 'bg-red-50 border-red-200/60'}`}>
-                            <div className="flex items-center gap-3 mb-2">
-                              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
-                              <span className={`px-3 py-1 rounded-full text-xs font-bold ${isDarkMode ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700'}`}>{dtc.code}</span>
-                              <span className={`text-xs flex-1 font-medium text-foreground`}>{dtc.label}</span>
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold capitalize ${sevCls(dtc.severity)}`}>{dtc.severity}</span>
+                        {d.currentFaults.activeFaults.map((dtc: any, i: number) => {
+                          const faultTone = dtcFaultCardTone(dtc.severity, isDarkMode);
+                          return (
+                          <div key={dtc.id ?? i} className={`p-4 rounded-lg border ${faultTone.card}`}>
+                            <div className="flex items-center gap-3 mb-2 flex-wrap">
+                              <div className={`w-2 h-2 rounded-full ${faultTone.dot} animate-pulse shrink-0`} />
+                              <span className={`px-3 py-1 rounded-full text-xs font-bold ${faultTone.codePill}`}>{dtc.code}</span>
+                              <span className={`text-xs flex-1 font-medium text-foreground min-w-[120px]`}>{dtc.label}</span>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${rentalStatePillClasses(
+                                rentalHealth?.modules.error_codes.state,
+                                isDarkMode,
+                              )}`} title="Fleet Health Modulstatus">
+                                Betrieb: {rentalStateLabelDe(rentalHealth?.modules.error_codes.state)}
+                              </span>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold capitalize ${sevCls(dtc.severity)}`} title="Roh-Severity aus DTC-Poll">
+                                DTC: {dtc.severity}
+                              </span>
                             </div>
                             <div className="grid grid-cols-3 gap-3 ml-5">
                               <div>
@@ -2006,8 +2522,10 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                                 <p className={`text-xs text-foreground/80`}>{dtc.lastSeenAt ? new Date(dtc.lastSeenAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</p>
                               </div>
                             </div>
+                            {renderDtcKnowledge(dtc, i)}
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -2074,8 +2592,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                       <div className={`mt-4 pt-4 border-t border-border`}>
                         <div className="flex items-center gap-2">
                           {d?.monitoring?.isStale
-                            ? <AlertTriangle className={`w-3.5 h-3.5 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
-                            : <CheckCircle className={`w-3.5 h-3.5 ${isDarkMode ? 'text-green-400' : 'text-green-500'}`} />}
+                            ? <Icon name="alert-triangle" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
+                            : <Icon name="check-circle" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-green-400' : 'text-green-500'}`} />}
                           <p className={`text-xs ${d?.monitoring?.isStale ? (isDarkMode ? 'text-amber-400' : 'text-amber-600') : (isDarkMode ? 'text-green-400' : 'text-green-600')}`}>
                             {d?.monitoring?.isStale
                               ? 'Monitoring data is stale — no fresh DTC check available'
@@ -2102,7 +2620,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             className={`relative w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out bg-card border border-border`}
             style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}
           >
-            <button type="button" onClick={() => closeModal(setShowComplaintsModal)} className={`absolute top-5 right-5 p-1.5 rounded-full transition-colors z-10 ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}><X className="w-5 h-5" /></button>
+            <button type="button" onClick={() => closeModal(setShowComplaintsModal)} className={`absolute top-5 right-5 p-1.5 rounded-full transition-colors z-10 ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}><Icon name="x" className="w-5 h-5" /></button>
             <div className="mb-4">
               <h2 className="text-base font-semibold mb-1 text-foreground">Complaint List</h2>
               <p className={`text-xs text-muted-foreground`}>Driver / staff technical observations (return protocol, inspections)</p>
@@ -2140,7 +2658,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 onClick={() => void submitComplaint()}
                 className={`px-4 py-2 rounded-xl text-xs font-semibold ${isDarkMode ? 'bg-indigo-600 text-white hover:bg-indigo-500' : 'bg-indigo-600 text-white hover:bg-indigo-700'} disabled:opacity-50`}
               >
-                {submittingComplaint ? <Loader2 className="w-4 h-4 animate-spin inline" /> : 'Save complaint'}
+                {submittingComplaint ? <Icon name="loader-2" className="w-4 h-4 animate-spin inline" /> : 'Save complaint'}
               </button>
             </div>
 
@@ -2197,7 +2715,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => closeModal(setShowBattery)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
           <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
-            <button onClick={() => closeModal(setShowBattery)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}><X className="w-5 h-5" /></button>
+            <button onClick={() => closeModal(setShowBattery)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}><Icon name="x" className="w-5 h-5" /></button>
 
             {/* Header + condition badge */}
             <div className="flex items-center gap-3 mb-5">
@@ -2230,15 +2748,15 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
             {/* Current state cards */}
             <div className="flex gap-3 mb-5">
               <div className={`flex-1 rounded-lg px-4 py-3 ${isDarkMode ? 'bg-indigo-500/15' : 'bg-indigo-50'}`}>
-                <div className="flex items-center gap-1.5 mb-1"><BatteryCharging className={`w-3 h-3 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} /><span className={`text-[10px] uppercase tracking-wider font-semibold ${isDarkMode ? 'text-indigo-300' : 'text-indigo-500'}`}>Voltage</span></div>
+                <div className="flex items-center gap-1.5 mb-1"><Icon name="battery-charging" className={`w-3 h-3 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} /><span className={`text-[10px] uppercase tracking-wider font-semibold ${isDarkMode ? 'text-indigo-300' : 'text-indigo-500'}`}>Voltage</span></div>
                 <div className="flex items-baseline gap-1"><span className={`text-sm font-bold text-foreground`}>{voltageDisplay}</span><span className={`text-xs text-muted-foreground`}>V</span></div>
               </div>
               <div className={`flex-1 rounded-lg px-4 py-3 bg-muted`}>
-                <div className="flex items-center gap-1.5 mb-1"><Clock className={`w-3 h-3 text-muted-foreground`} /><span className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Last Check</span></div>
+                <div className="flex items-center gap-1.5 mb-1"><Icon name="clock" className={`w-3 h-3 text-muted-foreground`} /><span className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Last Check</span></div>
                 <div className="flex items-baseline gap-1"><span className={`text-sm font-bold text-foreground`}>{batteryLastCheckedAgo || '—'}</span></div>
               </div>
               <div className={`flex-1 rounded-lg px-4 py-3 ${bSummary?.currentState.temperatureC != null && bSummary.currentState.temperatureC < 5 ? (isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50') : isDarkMode ? 'bg-neutral-800' : 'bg-gray-100'}`}>
-                <div className="flex items-center gap-1.5 mb-1"><Thermometer className={`w-3 h-3 ${bSummary?.currentState.temperatureC != null && bSummary.currentState.temperatureC < 5 ? (isDarkMode ? 'text-blue-400' : 'text-blue-500') : (isDarkMode ? 'text-gray-400' : 'text-gray-500')}`} /><span className={`text-[10px] uppercase tracking-wider font-semibold ${bSummary?.currentState.temperatureC != null && bSummary.currentState.temperatureC < 5 ? (isDarkMode ? 'text-blue-300' : 'text-blue-500') : (isDarkMode ? 'text-gray-400' : 'text-gray-500')}`}>Temperature</span></div>
+                <div className="flex items-center gap-1.5 mb-1"><Icon name="thermometer" className={`w-3 h-3 ${bSummary?.currentState.temperatureC != null && bSummary.currentState.temperatureC < 5 ? (isDarkMode ? 'text-blue-400' : 'text-blue-500') : (isDarkMode ? 'text-gray-400' : 'text-gray-500')}`} /><span className={`text-[10px] uppercase tracking-wider font-semibold ${bSummary?.currentState.temperatureC != null && bSummary.currentState.temperatureC < 5 ? (isDarkMode ? 'text-blue-300' : 'text-blue-500') : (isDarkMode ? 'text-gray-400' : 'text-gray-500')}`}>Temperature</span></div>
                 <div className="flex items-baseline gap-1"><span className={`text-sm font-bold text-foreground`}>{bSummary?.currentState.temperatureC != null ? `${bSummary.currentState.temperatureC}°C` : '—'}</span></div>
               </div>
             </div>
@@ -2290,14 +2808,13 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               </div>
             )}
 
-            {/* SOH gauge */}
+            {/* Estimated Battery Health + Resting Voltage */}
             {(() => {
-              const soh = capacityPct;
               if (lvNoBatteryDetected) {
                 return (
                   <div className={`rounded-lg px-5 py-4 mb-5 ${isDarkMode ? 'bg-neutral-800/60' : 'bg-gray-100'}`}>
                     <div className="flex items-center justify-between mb-2">
-                      <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>State of Health (SOH)</p>
+                      <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Estimated Battery Health</p>
                       <span className={`text-sm font-semibold text-foreground`}>No LV Battery detected</span>
                     </div>
                     <p className={`text-[11px] text-muted-foreground`}>
@@ -2310,7 +2827,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 return (
                   <div className={`rounded-lg px-5 py-4 mb-5 ${isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50'}`}>
                     <div className="flex items-center justify-between mb-2">
-                      <p className={`text-[10px] uppercase tracking-wider font-semibold ${isDarkMode ? 'text-blue-300' : 'text-blue-500'}`}>State of Health (SOH)</p>
+                      <p className={`text-[10px] uppercase tracking-wider font-semibold ${isDarkMode ? 'text-blue-300' : 'text-blue-500'}`}>Estimated Battery Health</p>
                       <div className="flex items-center gap-1.5">
                         <span className={`text-sm font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>Calibrating</span>
                         <span className="inline-flex">{[0,1,2].map(i => <span key={i} className={`inline-block w-1.5 h-1.5 rounded-full mx-0.5 ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}</span>
@@ -2344,20 +2861,36 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   </div>
                 );
               }
-              const barCol = soh == null ? 'bg-gray-400' : soh >= 70 ? 'bg-green-500' : soh >= 50 ? 'bg-amber-500' : 'bg-red-500';
-              const bgCol = lvIsStabilizing ? (isDarkMode ? 'bg-amber-500/10' : 'bg-amber-50') : soh == null ? (isDarkMode ? 'bg-neutral-800/60' : 'bg-gray-100') : soh >= 70 ? (isDarkMode ? 'bg-green-500/10' : 'bg-green-50') : soh >= 50 ? (isDarkMode ? 'bg-amber-500/10' : 'bg-amber-50') : (isDarkMode ? 'bg-red-500/10' : 'bg-red-50');
+              const lvAggStatus = bSummary?.lv?.healthStatus
+                ?? (lvEstimatedStatus !== 'UNKNOWN' ? lvEstimatedStatus : 'UNKNOWN');
+              const bgCol =
+                lvAggStatus === 'GOOD' ? (isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50') :
+                lvAggStatus === 'WATCH' ? (isDarkMode ? 'bg-amber-500/10' : 'bg-amber-50') :
+                lvAggStatus === 'WARNING' ? (isDarkMode ? 'bg-orange-500/10' : 'bg-orange-50') :
+                lvAggStatus === 'CRITICAL' ? (isDarkMode ? 'bg-red-500/10' : 'bg-red-50') :
+                (isDarkMode ? 'bg-neutral-800/60' : 'bg-gray-100');
               return (
                 <div className={`rounded-lg px-5 py-4 mb-5 ${bgCol}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>{lvIsStabilizing ? 'Estimated SOH' : 'State of Health (SOH)'}</p>
-                    <span className={`text-sm font-bold tracking-tight text-foreground`}>{soh != null ? `${lvIsStabilizing ? '~' : ''}${Math.round(soh)}%` : 'Unavailable'}</span>
+                  {/* Estimated Battery Health — behaviour-derived 3-bar indicator. */}
+                  <div className="flex items-center justify-between mb-2" title={lvEstimatedTooltip}>
+                    <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Estimated Battery Health</p>
+                    <BatteryConditionBars status={lvEstimatedStatus} bars={lvEstimatedBars} isDarkMode={isDarkMode} size="md" />
                   </div>
-                  {soh != null && (
-                    <div className={`w-full h-2 rounded-full overflow-hidden bg-muted`}>
-                      <div className={`h-full rounded-full transition-all ${lvIsStabilizing ? (isDarkMode ? 'bg-amber-500/60' : 'bg-amber-400') : barCol}`} style={{ width: `${Math.round(soh)}%` }} />
-                    </div>
-                  )}
-                  {lvIsStabilizing && <p className={`text-[9px] mt-1.5 ${isDarkMode ? 'text-amber-400/60' : 'text-amber-600/60'}`}>Value is stabilizing — may refine over the next few days</p>}
+                  {/* Resting Voltage — current rest/charge state, separate from health. */}
+                  <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                    <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>
+                      Resting Voltage{lvBatteryTypeLabel ? ` · ${lvBatteryTypeLabel}` : ''}
+                    </p>
+                    {lvRestingValue != null ? (
+                      <RestingVoltageBadge valueV={lvRestingValue} status={lvRestingStatus} isDarkMode={isDarkMode} />
+                    ) : (
+                      <span className="text-xs font-bold text-muted-foreground">Not available</span>
+                    )}
+                  </div>
+                  <p className={`text-[9px] mt-2 leading-snug ${isDarkMode ? 'text-muted-foreground/70' : 'text-muted-foreground/80'}`}>
+                    {lvEstimatedTooltip}
+                  </p>
+                  {lvIsStabilizing && <p className={`text-[9px] mt-1.5 ${isDarkMode ? 'text-amber-400/60' : 'text-amber-600/60'}`}>Estimate is stabilizing — may refine over the next few days</p>}
                 </div>
               );
             })()}
@@ -2411,7 +2944,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   <div className="space-y-2">
                     {bSummary.watchpoints.map((w, i) => (
                       <div key={i} className="flex items-start gap-2">
-                        <AlertTriangle className={`w-3 h-3 mt-0.5 shrink-0 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
+                        <Icon name="alert-triangle" className={`w-3 h-3 mt-0.5 shrink-0 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
                         <p className={`text-xs leading-relaxed text-foreground/80`}>{w}</p>
                       </div>
                     ))}
@@ -2426,7 +2959,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   <div className="space-y-2">
                     {bSummary.recommendations.map((r, i) => (
                       <div key={i} className="flex items-start gap-2">
-                        <CheckCircle className={`w-3 h-3 mt-0.5 shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                        <Icon name="check-circle" className={`w-3 h-3 mt-0.5 shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
                         <p className={`text-xs leading-relaxed text-foreground/80`}>{r}</p>
                       </div>
                     ))}
@@ -2480,7 +3013,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   {bSummary.history.slice(0, 15).map((h) => (
                     <div key={h.id} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl bg-muted`}>
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${h.type === 'service' ? 'bg-blue-100' : 'bg-indigo-100'}`}>
-                        {h.type === 'service' ? <Wrench className="w-3 h-3 text-blue-600" /> : <Activity className="w-3 h-3 text-indigo-600" />}
+                        {h.type === 'service' ? <Icon name="wrench" className="w-3 h-3 text-blue-600" /> : <Icon name="activity" className="w-3 h-3 text-indigo-600" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-xs font-semibold text-foreground`}>
@@ -2510,7 +3043,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => closeModal(setShowService)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
           <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
-            <button onClick={() => closeModal(setShowService)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}><X className="w-5 h-5" /></button>
+            <button onClick={() => closeModal(setShowService)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}><Icon name="x" className="w-5 h-5" /></button>
             <h2 className={`text-sm font-semibold tracking-tight mb-5 text-foreground`}>Service Info</h2>
 
             {/* Next Service */}
@@ -2603,6 +3136,31 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 </div>
               );
             })()}
+
+            {/* Active auto-tasks (V4.7.59) — materialized by the Insight→Task bridge */}
+            {serviceAutoTasks.length > 0 && (
+              <div className="rounded-lg p-4 mb-5 border border-amber-300/50 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <Icon name="list-todo" className="w-4 h-4 text-amber-600 dark:text-amber-300" />
+                  <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">
+                    Automatisch erzeugte Tasks ({serviceAutoTasks.length})
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  {serviceAutoTasks.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between gap-3">
+                      <span className="text-xs text-amber-900 dark:text-amber-100 truncate">{t.title}</span>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${t.priority === 'URGENT' ? 'bg-red-500/15 text-red-600 dark:text-red-300' : 'bg-amber-500/20 text-amber-700 dark:text-amber-300'}`}>
+                        {t.priority === 'URGENT' ? 'Überfällig' : 'Bald fällig'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] mt-2.5 text-amber-700/80 dark:text-amber-300/70">
+                  Sichtbar unter Task Management — wird automatisch geschlossen, sobald der Termin erledigt ist.
+                </p>
+              </div>
+            )}
 
             {/* Manufacturer Interval */}
             <div className={`rounded-lg p-5 mb-5 bg-muted`}>
@@ -2745,7 +3303,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { if (!showBrakeEntry) closeModal(setShowBrakes); }}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
           <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
-            <button onClick={() => closeModal(setShowBrakes)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}><X className="w-5 h-5" /></button>
+            <button onClick={() => closeModal(setShowBrakes)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}><Icon name="x" className="w-5 h-5" /></button>
 
             {(() => {
               const bhs = brakeHealthSummary;
@@ -2789,7 +3347,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                       ? 'Warning only'
                       : 'No baseline';
 
-              const axleCard = (label: string, est: BrakeAxleEstimate | null | undefined) => {
+              const axleCard = (label: string, est: any | null | undefined) => {
                 if (!est) return null;
                 const pct = est.healthPct ?? 0;
                 const statusColor = pct >= 60 ? (d ? 'text-green-400' : 'text-green-600') : pct >= 30 ? (d ? 'text-amber-400' : 'text-amber-600') : (d ? 'text-red-400' : 'text-red-600');
@@ -2831,6 +3389,95 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                         : 'Brake wear estimation starts after a documented baseline with odometer and thickness anchor.'}
                   </p>
 
+                  {/* ── Canonical condition (evidence-based read model — measured vs estimated honesty) ── */}
+                  {bhs && (bhs.overallCondition !== 'UNKNOWN' || bhs.reasons.length > 0 || bhs.openAlerts.length > 0) && (() => {
+                    const overall = bhs.overallCondition ?? 'UNKNOWN';
+                    const oStyle = brakeConditionStyle(overall, d);
+                    const axleRow = (
+                      title: string,
+                      cond: string,
+                      basis: string,
+                      conf: string,
+                      min: number | null,
+                      max: number | null,
+                    ) => {
+                      const s = brakeConditionStyle(cond, d);
+                      const range = formatBrakeKmRange(min, max);
+                      return (
+                        <div className={`rounded-xl p-3 ${cardBg}`}>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <p className={lbl}>{title}</p>
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${s.pill}`}><span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />{s.label}</span>
+                          </div>
+                          <p className={sub}>{BRAKE_BASIS_LABEL[basis] ?? 'Unknown'}{conf ? ` · ${BRAKE_CONFIDENCE_LABEL[conf] ?? 'Unknown'} confidence` : ''}</p>
+                          <p className={`${val} mt-1`}>{range ? `${range} left` : 'Remaining life n/a'}</p>
+                        </div>
+                      );
+                    };
+                    return (
+                      <div className="mb-4">
+                        <div className="flex items-center gap-2 mb-3 flex-wrap">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${oStyle.pill}`}><span className={`w-2 h-2 rounded-full ${oStyle.dot}`} />{oStyle.label}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${d ? 'bg-neutral-800 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{BRAKE_BASIS_LABEL[bhs.dataBasis] ?? 'Unknown'} basis</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${d ? 'bg-neutral-800 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{BRAKE_CONFIDENCE_LABEL[bhs.confidenceLevel] ?? 'Unknown'} confidence</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          {axleRow('Front Axle', bhs.frontAxleCondition, bhs.frontDataBasis, bhs.frontConfidence, bhs.estimatedFrontRemainingKmMin, bhs.estimatedFrontRemainingKmMax)}
+                          {axleRow('Rear Axle', bhs.rearAxleCondition, bhs.rearDataBasis, bhs.rearConfidence, bhs.estimatedRearRemainingKmMin, bhs.estimatedRearRemainingKmMax)}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div className={`rounded-xl p-3 ${cardBg}`}>
+                            <p className={lbl}>Next inspection</p>
+                            <p className={`${val} mt-1`}>{bhs.nextInspectionRecommendedInKm != null ? `${Math.round(bhs.nextInspectionRecommendedInKm).toLocaleString('de-DE')} km` : '—'}</p>
+                          </div>
+                          <div className={`rounded-xl p-3 ${cardBg}`}>
+                            <p className={lbl}>Replacement due in</p>
+                            <p className={`${val} mt-1`}>{bhs.estimatedReplacementDueInKm != null ? `${Math.round(bhs.estimatedReplacementDueInKm).toLocaleString('de-DE')} km` : '—'}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div className={`rounded-xl p-3 ${cardBg}`}>
+                            <p className={lbl}>Last measurement</p>
+                            <p className={`${val} mt-1`}>{bhs.lastMeasurementAt ? (formatMeasuredAgo(bhs.lastMeasurementAt) ?? new Date(bhs.lastMeasurementAt).toLocaleDateString('de-DE')) : '—'}</p>
+                            {bhs.lastMeasurementMileageKm != null && <p className={sub}>@ {bhs.lastMeasurementMileageKm.toLocaleString('de-DE')} km</p>}
+                          </div>
+                          <div className={`rounded-xl p-3 ${cardBg}`}>
+                            <p className={lbl}>Last service</p>
+                            <p className={`${val} mt-1`}>{bhs.lastServiceAt ? (formatMeasuredAgo(bhs.lastServiceAt) ?? new Date(bhs.lastServiceAt).toLocaleDateString('de-DE')) : '—'}</p>
+                            {bhs.lastServiceMileageKm != null && <p className={sub}>@ {bhs.lastServiceMileageKm.toLocaleString('de-DE')} km</p>}
+                          </div>
+                        </div>
+                        {bhs.openAlerts.length > 0 && (
+                          <div className="mb-3 space-y-1.5">
+                            <h3 className={hSec}>Open Alerts</h3>
+                            {bhs.openAlerts.map((a, i) => (
+                              <div key={i} className={`flex items-start gap-2 rounded-lg px-3 py-2 ${a.severity === 'critical' ? (d ? 'bg-red-500/10' : 'bg-red-50') : a.severity === 'warning' ? (d ? 'bg-amber-500/10' : 'bg-amber-50') : (d ? 'bg-blue-500/10' : 'bg-blue-50')}`}>
+                                <span className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${a.severity === 'critical' ? 'bg-red-500' : a.severity === 'warning' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                                <p className="text-[11px] text-foreground">{a.message}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {bhs.recommendations.length > 0 && (
+                          <div className="mb-3">
+                            <h3 className={hSec}>Recommendations</h3>
+                            <ul className="space-y-1">
+                              {bhs.recommendations.map((r, i) => (<li key={i} className={sub}>• {r}</li>))}
+                            </ul>
+                          </div>
+                        )}
+                        {bhs.reasons.length > 0 && (
+                          <div className="mb-4">
+                            <h3 className={hSec}>Why this status</h3>
+                            <ul className="space-y-1">
+                              {bhs.reasons.map((r, i) => (<li key={i} className={sub}>• {r}</li>))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {/* ── NOT INITIALIZED STATE ── */}
                   {!v2 && (
                     <>
@@ -2847,8 +3494,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                           </div>
                         )}
                         <div className="flex gap-2">
-                          <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('manual'); }} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${d ? 'bg-violet-500/15 text-violet-400 hover:bg-violet-500/25' : 'bg-violet-50 text-violet-700 hover:bg-violet-100'}`}><Plus className="w-3.5 h-3.5" /> Add Brake Service</button>
-                          <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('upload'); }} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${d ? 'bg-blue-500/15 text-blue-400 hover:bg-blue-500/25' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}><Upload className="w-3.5 h-3.5" /> AI Upload Report</button>
+                          <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('manual'); }} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${d ? 'bg-violet-500/15 text-violet-400 hover:bg-violet-500/25' : 'bg-violet-50 text-violet-700 hover:bg-violet-100'}`}><Icon name="plus" className="w-3.5 h-3.5" /> Add Brake Service</button>
+                          <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('upload'); }} className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${d ? 'bg-blue-500/15 text-blue-400 hover:bg-blue-500/25' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}><Icon name="upload" className="w-3.5 h-3.5" /> AI Upload Report</button>
                         </div>
                       </div>
                       <p className={`text-[10px] mb-4 text-muted-foreground/70`}>Driving and braking behavior is already being collected via the Driving Impact Engine and will be available once brake tracking is initialized.</p>
@@ -2882,7 +3529,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                           : a.severity === 'warning' ? (d ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-amber-50 border border-amber-200')
                           : (d ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200')
                         }`}>
-                          {a.severity === 'critical' ? <ShieldAlert className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${d ? 'text-red-400' : 'text-red-600'}`} /> : <AlertTriangle className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${a.severity === 'warning' ? (d ? 'text-amber-400' : 'text-amber-600') : (d ? 'text-blue-400' : 'text-blue-600')}`} />}
+                          {a.severity === 'critical' ? <Icon name="shield-alert" className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${d ? 'text-red-400' : 'text-red-600'}`} /> : <Icon name="alert-triangle" className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${a.severity === 'warning' ? (d ? 'text-amber-400' : 'text-amber-600') : (d ? 'text-blue-400' : 'text-blue-600')}`} />}
                           <span className={`text-xs ${d ? 'text-neutral-300' : 'text-gray-700'}`}>{a.message}</span>
                         </div>
                       ))}
@@ -2945,7 +3592,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                         {(bhd?.history ?? []).map((item: any, i: number, arr: any[]) => (
                           <div key={item.id} className={`flex items-center px-4 py-3 ${i < arr.length - 1 ? d ? 'border-b border-neutral-700/50' : 'border-b border-gray-100' : ''}`}>
                             <div className={`w-7 h-7 rounded-full flex items-center justify-center mr-3 shrink-0 ${d ? 'bg-green-500/10' : 'bg-green-50'}`}>
-                              <Wrench className={`w-3 h-3 ${d ? 'text-green-400' : 'text-green-600'}`} />
+                              <Icon name="wrench" className={`w-3 h-3 ${d ? 'text-green-400' : 'text-green-600'}`} />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className={`text-xs font-semibold text-foreground`}>{item.serviceKind ? String(item.serviceKind).replace(/_/g, ' ') : 'Brake Service'}</p>
@@ -2969,8 +3616,8 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     <h3 className={hSec}>Actions</h3>
                     {!showBrakeEntry && (
                       <div className="flex gap-2 mb-3">
-                        <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('manual'); }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${d ? 'bg-violet-500/10 text-violet-400 hover:bg-violet-500/20' : 'bg-violet-50 text-violet-700 hover:bg-violet-100'}`}><Plus className="w-3 h-3" /> Add Brake Service</button>
-                        <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('upload'); }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${d ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}><Upload className="w-3 h-3" /> AI Upload Report</button>
+                        <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('manual'); }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${d ? 'bg-violet-500/10 text-violet-400 hover:bg-violet-500/20' : 'bg-violet-50 text-violet-700 hover:bg-violet-100'}`}><Icon name="plus" className="w-3 h-3" /> Add Brake Service</button>
+                        <button onClick={() => { setShowBrakeEntry(true); setBrakeEntryMode('upload'); }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${d ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}><Icon name="upload" className="w-3 h-3" /> AI Upload Report</button>
                       </div>
                     )}
                     {showBrakeEntry && brakeEntryMode === 'manual' && (
@@ -2996,7 +3643,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     )}
                     {showBrakeEntry && brakeEntryMode === 'upload' && (
                       <div className={`rounded-xl p-5 text-center ${cardBg}`}>
-                        <Upload className={`w-6 h-6 mx-auto mb-2 ${d ? 'text-blue-400' : 'text-blue-500'}`} />
+                        <Icon name="upload" className={`w-6 h-6 mx-auto mb-2 ${d ? 'text-blue-400' : 'text-blue-500'}`} />
                         <p className={`text-xs font-semibold mb-1 text-foreground`}>Upload Brake Service Document</p>
                         <p className={`text-[10px] mb-3 text-muted-foreground`}>Go to the AI Upload page to upload a brake service invoice or workshop report. Extracted data will be reviewed and confirmed before being applied.</p>
                         <button onClick={() => { setShowBrakeEntry(false); setBrakeEntryMode(null); }} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${d ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`}>Close</button>
@@ -3039,7 +3686,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { if (!showMeasurement && !showRotation && !showTireChange && !showEditSetup) closeModal(setShowTires); }}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
           <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
-            <button onClick={() => closeModal(setShowTires)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}><X className="w-5 h-5" /></button>
+            <button onClick={() => closeModal(setShowTires)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${isDarkMode ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'}`}><Icon name="x" className="w-5 h-5" /></button>
 
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
@@ -3047,9 +3694,61 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-violet-500 to-purple-600 text-white">ML</span>
               {tireDetail?.factors.regressionActive && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${isDarkMode ? 'bg-cyan-500/10 text-cyan-400' : 'bg-cyan-50 text-cyan-700'}`}>Regression</span>}
               {tireDetail?.factors.isStaggered && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700'}`}>Staggered</span>}
-              {tireDetail && tireDetail.factors.regenBrakingFactorFront < 1 && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${isDarkMode ? 'bg-green-500/10 text-green-400' : 'bg-green-50 text-green-700'}`}><Zap className="w-3 h-3 inline -mt-0.5 mr-0.5" />Regen{tireDetail.factors.driveType ? ` (${tireDetail.factors.driveType})` : ''}</span>}
-              {tireDetail?.factors.calibrationCount > 0 && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${isDarkMode ? 'bg-purple-500/10 text-purple-400' : 'bg-purple-50 text-purple-700'}`}>{tireDetail.factors.calibrationCount}× calibrated</span>}
+              {tireDetail && tireDetail.factors.regenBrakingFactorFront < 1 && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${isDarkMode ? 'bg-green-500/10 text-green-400' : 'bg-green-50 text-green-700'}`}><Icon name="zap" className="w-3 h-3 inline -mt-0.5 mr-0.5" />Regen{tireDetail.factors.driveType ? ` (${tireDetail.factors.driveType})` : ''}</span>}
+              {(tireDetail?.factors?.calibrationCount ?? 0) > 0 && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${isDarkMode ? 'bg-purple-500/10 text-purple-400' : 'bg-purple-50 text-purple-700'}`}>{tireDetail?.factors?.calibrationCount}× calibrated</span>}
             </div>
+
+            {/* Canonical Tire Status (single source of truth) */}
+            {(() => {
+              const cs = tireDetail?.summary ?? tireHealth;
+              if (!cs?.overallStatus) return null;
+              const style = tireStatusStyle(cs.overallStatus, isDarkMode);
+              const mm = cs.displayTreadMm ?? cs.lowestTreadMm ?? null;
+              const mode = cs.displayMode ?? null;
+              return (
+                <div className={`rounded-xl p-3 mb-3 border ${isDarkMode ? 'bg-neutral-800/40 border-neutral-700/50' : 'bg-gray-50 border-gray-200'}`}>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${style.pill}`}>{style.label}</span>
+                    {mm != null && (
+                      <span className="text-xs text-foreground">
+                        Lowest tread: <span className="font-bold">ca. {mm.toFixed(1)} mm</span>
+                        {cs.lowestTreadPosition ? <span className="text-muted-foreground"> · {cs.lowestTreadPosition}</span> : null}
+                      </span>
+                    )}
+                    {mode && (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                        mode === 'MEASURED'
+                          ? (isDarkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-700')
+                          : (isDarkMode ? 'bg-violet-500/15 text-violet-400' : 'bg-violet-50 text-violet-700')
+                      }`}>
+                        {mode === 'MEASURED' ? 'Measured' : mode === 'ESTIMATED' ? 'Estimated' : 'Unknown'}
+                      </span>
+                    )}
+                    {cs.confidence && (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${isDarkMode ? 'bg-neutral-700/60 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                        Confidence: {cs.confidence}
+                      </span>
+                    )}
+                    {cs.estimatedRemainingKm != null && (
+                      <span className="text-[10px] text-muted-foreground ml-auto">~{Math.floor(cs.estimatedRemainingKm).toLocaleString('de-DE')} km remaining</span>
+                    )}
+                  </div>
+                  {(cs.lastMeasurementAt ?? cs.latestMeasurementAt) && (
+                    <p className="text-[10px] mt-2 text-muted-foreground">Last measured: {formatMeasuredAgo(cs.lastMeasurementAt ?? cs.latestMeasurementAt) ?? '—'}</p>
+                  )}
+                  {(cs.recommendations ?? []).length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {(cs.recommendations ?? []).slice(0, 3).map((rec, i) => (
+                        <li key={i} className="text-[11px] flex items-start gap-2 text-muted-foreground">
+                          <span className={`mt-1.5 w-1 h-1 rounded-full shrink-0 ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`} />
+                          {rec}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Estimate Quality Badge */}
             {(() => {
@@ -3063,7 +3762,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 <div className={`rounded-xl p-3 mb-5 border ${bg}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <ShieldAlert className={`w-4 h-4 ${tc}`} />
+                      <Icon name="shield-alert" className={`w-4 h-4 ${tc}`} />
                       <span className={`text-xs font-semibold ${tc}`}>Estimate Quality: {label} ({score}%)</span>
                     </div>
                     {label !== 'High' && <span className={`text-[10px] text-muted-foreground`}>Manual measurement improves accuracy</span>}
@@ -3119,7 +3818,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               <div className="space-y-2 mb-5">
                 {(tireDetail?.alerts ?? tireHealth?.alerts ?? []).filter((a: TireAlert) => a.severity !== 'info').map((alert: TireAlert, i: number) => (
                   <div key={i} className={`rounded-xl px-3 py-2.5 flex items-center gap-2 ${alert.severity === 'critical' ? (isDarkMode ? 'bg-red-500/10 border border-red-800/30' : 'bg-red-50 border border-red-200') : (isDarkMode ? 'bg-amber-500/10 border border-amber-800/30' : 'bg-amber-50 border border-amber-200')}`}>
-                    <AlertTriangle className={`w-3.5 h-3.5 shrink-0 ${alert.severity === 'critical' ? 'text-red-500' : 'text-amber-500'}`} />
+                    <Icon name="alert-triangle" className={`w-3.5 h-3.5 shrink-0 ${alert.severity === 'critical' ? 'text-red-500' : 'text-amber-500'}`} />
                     <span className={`text-xs ${alert.severity === 'critical' ? (isDarkMode ? 'text-red-300' : 'text-red-700') : (isDarkMode ? 'text-amber-300' : 'text-amber-700')}`}>{alert.message}</span>
                   </div>
                 ))}
@@ -3162,7 +3861,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               ))}
             </div>
 
-            {tireDetailLoading && <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-blue-500" /></div>}
+            {tireDetailLoading && <div className="flex justify-center py-8"><Icon name="loader-2" className="w-6 h-6 animate-spin text-blue-500" /></div>}
 
             {/* ── OVERVIEW TAB ── */}
             {tireModalTab === 'overview' && !tireDetailLoading && (
@@ -3173,11 +3872,11 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   const hasIncomplete = active && (!active.brandModelFront || !active.frontDimension || !active.tireSeason);
                   if (!active) return (
                     <div className={`rounded-lg p-4 text-center mb-5 border-2 border-dashed ${isDarkMode ? 'bg-neutral-800/40 border-amber-500/20' : 'bg-amber-50/50 border-amber-200'}`}>
-                      <TireIcon className={`w-8 h-8 mx-auto mb-2 ${isDarkMode ? 'text-amber-500/60' : 'text-amber-400'}`} />
+                      <Icon name="circle" className={`w-8 h-8 mx-auto mb-2 ${isDarkMode ? 'text-amber-500/60' : 'text-amber-400'}`} />
                       <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>No active Tracking</p>
                       <p className={`text-xs text-muted-foreground`}>please provide Tire Information</p>
                       <button onClick={handleOpenEditSetup} className={`mt-3 px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors ${isDarkMode ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
-                        <PenTool className="w-3 h-3 inline -mt-0.5 mr-1" />Add Tire Setup
+                        <Icon name="pen-tool" className="w-3 h-3 inline -mt-0.5 mr-1" />Add Tire Setup
                       </button>
                     </div>
                   );
@@ -3185,14 +3884,14 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     <div className={`rounded-lg p-4 mb-5 bg-muted`}>
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <TireIcon className={`w-4 h-4 text-muted-foreground`} />
+                          <Icon name="circle" className={`w-4 h-4 text-muted-foreground`} />
                           <h3 className={`text-xs font-bold uppercase tracking-wider text-muted-foreground`}>Active Set</h3>
                           {active.tireSeason && <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${isDarkMode ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-700'}`}>{active.tireSeason.replace('_', ' ')}</span>}
                           {tireHealth?.totalKmOnSet ? <span className={`text-[10px] text-muted-foreground`}>{Math.round(tireHealth.totalKmOnSet).toLocaleString('de-DE')} km on set</span> : null}
                           {hasIncomplete && <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700'}`}>Incomplete</span>}
                         </div>
                         <button onClick={handleOpenEditSetup} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-colors ${isDarkMode ? 'text-blue-400 hover:bg-blue-500/10' : 'text-blue-600 hover:bg-blue-50'}`}>
-                          <PenTool className="w-3 h-3" />Edit
+                          <Icon name="pen-tool" className="w-3 h-3" />Edit
                         </button>
                       </div>
                       {!showEditSetup ? (
@@ -3273,7 +3972,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                           <div className={`rounded-xl p-3 border bg-muted border-border`}>
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2">
-                                <Bot className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+                                <Icon name="bot" className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
                                 <span className={`text-[10px] font-bold uppercase tracking-wider text-muted-foreground`}>AI Tire Intelligence</span>
                               </div>
                               {!aiTireLoading && !aiTireResult && (
@@ -3287,7 +3986,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                                         : isDarkMode ? 'bg-neutral-700 text-gray-500 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                     }`}
                                   >
-                                    <Sparkles className="w-3 h-3" />Fetch AI Tire Spec
+                                    <Icon name="sparkles" className="w-3 h-3" />Fetch AI Tire Spec
                                   </button>
                                   {!aiTireSpecFieldsReady && (
                                     <div className={`absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[9px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 ${isDarkMode ? 'bg-neutral-700 text-gray-300' : 'bg-gray-800 text-white'}`}>
@@ -3302,7 +4001,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                             {aiTireLoading && (
                               <div className={`rounded-lg p-3 bg-muted`}>
                                 <div className="flex items-center gap-2 mb-2">
-                                  <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
+                                  <Icon name="loader-2" className="w-4 h-4 animate-spin text-purple-500" />
                                   <span className={`text-xs font-semibold ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>
                                     {aiTireCountdown > 0 ? 'Fetching AI Tire Spec...' : 'Taking longer than expected...'}
                                   </span>
@@ -3321,7 +4020,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                                   <div className="mt-2 space-y-1">
                                     {aiTireSteps.map((s, i) => (
                                       <div key={i} className="flex items-center gap-1.5">
-                                        {s.status === 'done' ? <CheckCircle className="w-3 h-3 text-green-500" /> : s.status === 'error' ? <AlertTriangle className="w-3 h-3 text-red-500" /> : <Loader2 className="w-3 h-3 animate-spin text-purple-400" />}
+                                        {s.status === 'done' ? <Icon name="check-circle" className="w-3 h-3 text-green-500" /> : s.status === 'error' ? <Icon name="alert-triangle" className="w-3 h-3 text-red-500" /> : <Icon name="loader-2" className="w-3 h-3 animate-spin text-purple-400" />}
                                         <span className={`text-[9px] text-muted-foreground`}>{s.step}</span>
                                       </div>
                                     ))}
@@ -3334,7 +4033,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                             {!aiTireLoading && aiTireError && (
                               <div className={`rounded-lg p-3 ${isDarkMode ? 'bg-red-500/10 border border-red-800/20' : 'bg-red-50 border border-red-200'}`}>
                                 <div className="flex items-center gap-2 mb-1">
-                                  <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+                                  <Icon name="alert-triangle" className="w-3.5 h-3.5 text-red-500" />
                                   <span className={`text-xs font-semibold ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>Fetch failed</span>
                                 </div>
                                 <p className={`text-[10px] mb-2 ${isDarkMode ? 'text-red-400/70' : 'text-red-600'}`}>{aiTireError}</p>
@@ -3350,7 +4049,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                               <div className={`rounded-lg p-3 bg-muted border border-border`}>
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center gap-2">
-                                    <Sparkles className={`w-3.5 h-3.5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+                                    <Icon name="sparkles" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
                                     <span className={`text-xs font-semibold ${isDarkMode ? 'text-purple-300' : 'text-purple-700'}`}>AI Tire Spec Result</span>
                                   </div>
                                   {(() => {
@@ -3385,7 +4084,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                                     { key: 'heatSensitivity', label: 'Heat Sensitivity' },
                                     { key: 'confidenceScore', label: 'Confidence' },
                                   ].map(({ key, label }) => {
-                                    const val = aiTireResult[key];
+                                    const val = (aiTireResult as any)[key];
                                     return (
                                       <div key={key} className="flex justify-between py-0.5">
                                         <span className={`text-[9px] text-muted-foreground`}>{label}</span>
@@ -3402,10 +4101,10 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                                 )}
                                 <div className="flex gap-2 mt-3">
                                   <button onClick={handleApplyAiTireSpec} disabled={aiTireApplying} className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-semibold bg-green-500 hover:bg-green-600 text-white transition-colors disabled:opacity-50">
-                                    {aiTireApplying ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}Apply Spec
+                                    {aiTireApplying ? <Icon name="loader-2" className="w-3 h-3 animate-spin" /> : <Icon name="check-circle" className="w-3 h-3" />}Apply Spec
                                   </button>
                                   <button onClick={handleFetchAiTireSpec} disabled={aiTireLoading} className="px-3 py-1.5 rounded-lg text-[10px] font-semibold bg-purple-500 hover:bg-purple-600 text-white transition-colors">
-                                    <RefreshCw className="w-3 h-3 inline -mt-0.5 mr-1" />Retry
+                                    <Icon name="refresh-cw" className="w-3 h-3 inline -mt-0.5 mr-1" />Retry
                                   </button>
                                   <button onClick={handleDiscardAiTireSpec} className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-colors ${isDarkMode ? 'text-gray-400 hover:bg-neutral-800' : 'text-gray-500 hover:bg-gray-100'}`}>Discard</button>
                                 </div>
@@ -3423,7 +4122,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                           <div className="flex gap-2 justify-end pt-1">
                             <button onClick={() => setShowEditSetup(false)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isDarkMode ? 'text-gray-400 hover:bg-neutral-800' : 'text-gray-500 hover:bg-gray-100'}`}>Cancel</button>
                             <button onClick={handleSaveEditSetup} disabled={submittingEditSetup} className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white transition-colors disabled:opacity-50 flex items-center gap-1.5">
-                              {submittingEditSetup && <Loader2 className="w-3.5 h-3.5 animate-spin" />}Save Setup
+                              {submittingEditSetup && <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />}Save Setup
                             </button>
                           </div>
                         </div>
@@ -3512,9 +4211,9 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 {/* Action Error Banner */}
                 {tireActionError && (
                   <div className={`rounded-xl px-4 py-3 mb-4 flex items-center gap-2 ${isDarkMode ? 'bg-red-500/10 border border-red-800/30' : 'bg-red-50 border border-red-200'}`}>
-                    <AlertTriangle className="w-4 h-4 text-red-500 shrink-0" />
+                    <Icon name="alert-triangle" className="w-4 h-4 text-red-500 shrink-0" />
                     <span className={`text-xs ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>{tireActionError}</span>
-                    <button onClick={() => setTireActionError(null)} className={`ml-auto p-0.5 rounded ${isDarkMode ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}><X className="w-3 h-3" /></button>
+                    <button onClick={() => setTireActionError(null)} className={`ml-auto p-0.5 rounded ${isDarkMode ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}><Icon name="x" className="w-3 h-3" /></button>
                   </div>
                 )}
 
@@ -3522,15 +4221,15 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 <div className={`rounded-lg p-5 mb-5 bg-muted`}>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className={`text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>Manual Measurement</h3>
-                    {!showMeasurement && <button onClick={() => { setShowMeasurement(true); setMeasurementMode(null); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white transition-colors"><Plus className="w-3.5 h-3.5" /> Record</button>}
+                    {!showMeasurement && <button onClick={() => { setShowMeasurement(true); setMeasurementMode(null); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white transition-colors"><Icon name="plus" className="w-3.5 h-3.5" /> Record</button>}
                   </div>
                   {showMeasurement && !measurementMode && (
                     <div className="flex gap-3">
                       <button onClick={() => setMeasurementMode('manual')} className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed transition-all hover:scale-[1.02] ${isDarkMode ? 'border-neutral-600 hover:border-blue-500/50 hover:bg-blue-500/5' : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'}`}>
-                        <Ruler className={`w-6 h-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} /><p className={`text-xs font-semibold text-foreground`}>Manual Entry</p><p className={`text-[10px] text-center text-muted-foreground`}>Enter measured tread values</p>
+                        <Icon name="ruler" className={`w-6 h-6 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} /><p className={`text-xs font-semibold text-foreground`}>Manual Entry</p><p className={`text-[10px] text-center text-muted-foreground`}>Enter measured tread values</p>
                       </button>
                       <button onClick={() => setMeasurementMode('upload')} className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed transition-all hover:scale-[1.02] ${isDarkMode ? 'border-neutral-600 hover:border-purple-500/50 hover:bg-purple-500/5' : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50/50'}`}>
-                        <Upload className={`w-6 h-6 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} /><p className={`text-xs font-semibold text-foreground`}>AI Upload</p><p className={`text-[10px] text-center text-muted-foreground`}>Upload checkup sheet</p>
+                        <Icon name="upload" className={`w-6 h-6 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} /><p className={`text-xs font-semibold text-foreground`}>AI Upload</p><p className={`text-[10px] text-center text-muted-foreground`}>Upload checkup sheet</p>
                       </button>
                     </div>
                   )}
@@ -3547,13 +4246,13 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                       </div>
                       <div className="flex gap-2 justify-end">
                         <button onClick={() => { setShowMeasurement(false); setMeasurementMode(null); }} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isDarkMode ? 'text-gray-400 hover:bg-neutral-800' : 'text-gray-500 hover:bg-gray-100'}`}>Cancel</button>
-                        <button onClick={handleSubmitMeasurement} disabled={submittingMeasurement} className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white transition-colors disabled:opacity-50 flex items-center gap-1.5">{submittingMeasurement && <Loader2 className="w-3.5 h-3.5 animate-spin" />}Confirm & Calibrate</button>
+                        <button onClick={handleSubmitMeasurement} disabled={submittingMeasurement} className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white transition-colors disabled:opacity-50 flex items-center gap-1.5">{submittingMeasurement && <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />}Confirm & Calibrate</button>
                       </div>
                     </div>
                   )}
                   {showMeasurement && measurementMode === 'upload' && (
                     <div className={`text-center py-6 border-2 border-dashed rounded-xl ${isDarkMode ? 'border-neutral-600' : 'border-gray-200'}`}>
-                      <Upload className={`w-8 h-8 mx-auto mb-2 text-muted-foreground`} />
+                      <Icon name="upload" className={`w-8 h-8 mx-auto mb-2 text-muted-foreground`} />
                       <p className={`text-xs font-semibold mb-1 text-foreground`}>Use Document Upload for AI extraction</p>
                       <p className={`text-[10px] mb-3 text-muted-foreground`}>This tire modal no longer performs direct file upload.</p>
                       <div className="flex gap-2 justify-center">
@@ -3588,7 +4287,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     </div>
                     <div className="flex gap-2 justify-end">
                       <button onClick={() => setShowRotation(false)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${isDarkMode ? 'text-gray-400 hover:bg-neutral-800' : 'text-gray-500 hover:bg-gray-100'}`}>Cancel</button>
-                      <button onClick={handleRotateTires} disabled={submittingRotation} className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 flex items-center gap-1.5">{submittingRotation && <Loader2 className="w-3.5 h-3.5 animate-spin" />}Confirm Rotation</button>
+                      <button onClick={handleRotateTires} disabled={submittingRotation} className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 flex items-center gap-1.5">{submittingRotation && <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />}Confirm Rotation</button>
                     </div>
                   </div>
                 )}
@@ -3705,7 +4404,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                         }
                         className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-red-500 hover:bg-red-600 text-white disabled:opacity-50 flex items-center gap-1.5"
                       >
-                        {submittingTireChange && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                        {submittingTireChange && <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />}
                         Confirm Replacement
                       </button>
                     </div>
@@ -3771,7 +4470,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                       <div key={entry.id} className="relative flex items-start gap-3 py-4">
                         {i < (tireDetail?.rotationHistory?.length ?? 0) - 1 && <div className={`absolute left-[9px] w-px bg-muted`} style={{ top: 'calc(50% + 4px)', height: '100%' }} />}
                         <div className="relative z-10 mt-1 shrink-0">
-                          {entry.changeType === 'ROTATION' ? <RefreshCw className="w-[18px] h-[18px] text-blue-500" /> : entry.changeType === 'TIRE_CHANGE' ? <TireIcon className="w-[18px] h-[18px] text-red-500" /> : <Plus className="w-[18px] h-[18px] text-green-500" />}
+                          {entry.changeType === 'ROTATION' ? <Icon name="refresh-cw" className="w-[18px] h-[18px] text-blue-500" /> : entry.changeType === 'TIRE_CHANGE' ? <Icon name="circle" className="w-[18px] h-[18px] text-red-500" /> : <Icon name="plus" className="w-[18px] h-[18px] text-green-500" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
@@ -3788,7 +4487,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   </div>
                 ) : (
                   <div className={`flex flex-col items-center justify-center py-12 text-muted-foreground/70`}>
-                    <RefreshCw className="w-8 h-8 mb-3 opacity-40" />
+                    <Icon name="refresh-cw" className="w-8 h-8 mb-3 opacity-40" />
                     <p className="text-sm font-medium">No rotation or change events recorded</p>
                     <p className="text-xs mt-1 opacity-60">Use the Rotate or Change actions to log tire movements</p>
                   </div>
@@ -3802,7 +4501,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                       {(tireDetail?.measurements ?? []).map((m: any) => (
                         <div key={m.id} className={`rounded-xl p-3 bg-muted`}>
                           <div className="flex items-center gap-2 mb-2">
-                            <Ruler className={`w-3.5 h-3.5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                            <Icon name="ruler" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
                             <span className={`text-xs font-semibold text-foreground`}>{new Date(m.date).toLocaleDateString('de-DE')}</span>
                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-medium ${isDarkMode ? 'bg-neutral-600 text-gray-300' : 'bg-gray-200 text-gray-600'}`}>{m.source}</span>
                             {m.odometerKm != null && <span className={`text-[10px] text-muted-foreground`}>{m.odometerKm.toLocaleString()} km</span>}
@@ -3972,14 +4671,14 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-emerald-500/15 flex items-center justify-center">
-                    <BatteryCharging className="w-5 h-5 text-emerald-500" />
+                    <Icon name="battery-charging" className="w-5 h-5 text-emerald-500" />
                   </div>
                   <div>
                     <h2 className="text-base font-semibold text-foreground">HV Battery Health</h2>
                     <p className={`text-xs text-muted-foreground`}>Traction Battery Intelligence</p>
                   </div>
                 </div>
-                <button onClick={() => closeModal(setShowHvBattery)} className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}><X className="w-5 h-5" /></button>
+                <button onClick={() => closeModal(setShowHvBattery)} className={`p-2 rounded-xl transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}><Icon name="x" className="w-5 h-5" /></button>
               </div>
             </div>
 
@@ -4003,9 +4702,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                       <span className="inline-flex">{[0,1,2].map(i => <span key={i} className={`inline-block w-1.5 h-1.5 rounded-full mx-0.5 ${isDarkMode ? 'bg-blue-400' : 'bg-blue-500'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}</span>
                     </div>
                     <p className={`text-[10px] ${isDarkMode ? 'text-blue-400/60' : 'text-blue-500/60'}`}>Collecting charge and discharge data for accurate battery health estimation</p>
-                    {hvBatteryStatus.publicationMethod === 'degradation_model' && (
-                      <p className={`text-[9px] mt-1 ${isDarkMode ? 'text-amber-400/50' : 'text-amber-500/50'}`}>Currently using model-based estimate only — needs measured data for reliable SOH</p>
-                    )}
+                    <p className={`text-[9px] mt-1 ${isDarkMode ? 'text-blue-400/50' : 'text-blue-500/50'}`}>No reliable HV SOH data yet — SOH is only reported from provider, capacity measurement or a workshop report.</p>
                     <div className="grid grid-cols-2 gap-3 mt-3">
                       <div className="text-center">
                         <div className={`text-2xl font-black text-foreground`}>{hvBatteryStatus?.currentSocPercent != null ? `${formatMaxDecimals(hvBatteryStatus.currentSocPercent)}%` : '—'}</div>
@@ -4022,10 +4719,12 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                     <div className="grid grid-cols-3 gap-3">
                       <div className="text-center">
                         <div className={`text-3xl font-black ${
-                          (hvBatteryStatus?.sohPercent ?? 0) >= 80 ? 'text-green-500' :
-                          (hvBatteryStatus?.sohPercent ?? 0) >= 60 ? 'text-amber-500' : 'text-red-500'
-                        }`}>{hvBatteryStatus?.sohPercent != null ? `${hvBatteryStatus.publicationState === 'STABILIZING' ? '~' : ''}${formatMaxDecimals(hvBatteryStatus.sohPercent)}%` : '—'}</div>
-                        <p className={`text-xs mt-1 text-muted-foreground`}>{hvBatteryStatus?.publicationState === 'STABILIZING' ? 'Estimated SOH' : 'SOH'}</p>
+                          hvBatteryStatus?.sohPercent == null ? 'text-muted-foreground' :
+                          hvBatteryStatus.sohPercent >= 80 ? 'text-green-500' :
+                          hvBatteryStatus.sohPercent >= 70 ? 'text-amber-500' :
+                          hvBatteryStatus.sohPercent >= 60 ? 'text-orange-500' : 'text-red-500'
+                        }`}>{hvBatteryStatus?.sohPercent != null ? `${hvBatteryStatus.publicationState === 'STABILIZING' ? '~' : ''}${formatMaxDecimals(hvBatteryStatus.sohPercent)}%` : 'N/A'}</div>
+                        <p className={`text-xs mt-1 text-muted-foreground`}>{hvBatteryStatus?.sohPercent == null ? 'No reliable SOH' : hvBatteryStatus?.publicationState === 'STABILIZING' ? 'Estimated SOH' : 'SOH'}</p>
                       </div>
                       <div className="text-center">
                         <div className={`text-3xl font-black text-foreground`}>{hvBatteryStatus?.currentSocPercent != null ? `${formatMaxDecimals(hvBatteryStatus.currentSocPercent)}%` : '—'}</div>
@@ -4089,11 +4788,11 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                 <h3 className={`text-sm font-semibold mb-4 text-foreground`}>Charging Sessions</h3>
                 {hvBatteryStatus?.chargingSessions?.length > 0 ? (
                   <div className="space-y-3">
-                    {hvBatteryStatus.chargingSessions.map((s: any, i: number) => (
+                    {hvBatteryStatus?.chargingSessions?.map((s: any, i: number) => (
                       <div key={i} className={`rounded-xl p-3 bg-muted`}>
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
-                            <BatteryCharging className={`w-3.5 h-3.5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-500'}`} />
+                            <Icon name="battery-charging" className={`w-3.5 h-3.5 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-500'}`} />
                             <span className={`text-xs font-semibold text-foreground`}>
                               {new Date(s.startTime).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })}
                             </span>
@@ -4122,7 +4821,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   </div>
                 ) : (
                   <div className={`flex flex-col items-center justify-center py-10 text-muted-foreground/70`}>
-                    <BatteryCharging className="w-8 h-8 mb-3 opacity-40" />
+                    <Icon name="battery-charging" className="w-8 h-8 mb-3 opacity-40" />
                     <p className="text-sm font-medium">No charging sessions recorded</p>
                     <p className="text-xs mt-1 opacity-60">Charging data will appear as telemetry is collected</p>
                   </div>
@@ -4135,7 +4834,7 @@ export function HealthErrorsView({ isDarkMode, vehicleId, fuelType }: HealthErro
                   <h3 className={`text-sm font-semibold mb-4 text-foreground`}>SOH Trend</h3>
                   <div className="h-40">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={hvBatteryStatus.recentTrend.map((t: any) => ({
+                      <LineChart data={hvBatteryStatus?.recentTrend?.map((t: any) => ({
                         date: new Date(t.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
                         soh: t.sohPercent,
                         soc: t.socPercent,

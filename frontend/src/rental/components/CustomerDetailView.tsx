@@ -1,42 +1,12 @@
+import { Calendar, Car, Receipt, Star } from 'lucide-react';
+import { Icon } from './ui/Icon';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
 import { customerStatusUiToApi } from '../lib/entityMappers';
 import { CustomerDocumentUploadBox } from './CustomerDocumentUploadBox';
-import {
-  ArrowLeft,
-  Phone,
-  Mail,
-  MapPin,
-  Calendar,
-  Car,
-  Star,
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  AlertTriangle,
-  FileText,
-  Clock,
-  Ban,
-  CheckCircle,
-  XCircle,
-  Globe,
-  Activity,
-  Gauge,
-  Zap,
-  Hash,
-  TrendingUp,
-  TrendingDown,
-  Navigation,
-  Route,
-  Receipt,
-  Shield,
-  UserPlus,
-  ShieldCheck,
-  ExternalLink,
-  Info,
-} from 'lucide-react';
+
 
 // ---------------------------------------------------------------------------
 // V4.6.66 — Customer Detail is now 100% backend-wired. Every previously
@@ -556,7 +526,7 @@ export function CustomerDetailView({
               : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'
           }`}
         >
-          <ArrowLeft className="w-5 h-5" />
+          <Icon name="arrow-left" className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-3">
           <div
@@ -564,7 +534,7 @@ export function CustomerDetailView({
               isDarkMode ? 'bg-neutral-800/60' : 'bg-gray-100/80'
             }`}
           >
-            <Hash className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+            <Icon name="hash" className={`w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
             <span
               className={`text-xs font-mono font-semibold ${
                 isDarkMode ? 'text-gray-300' : 'text-gray-700'
@@ -586,9 +556,9 @@ export function CustomerDetailView({
             {customer.status === 'Active' && (
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
             )}
-            {customer.status === 'Suspended' && <Ban className="w-5 h-5" />}
-            {customer.status === 'Blocked' && <XCircle className="w-5 h-5" />}
-            {customer.status === 'Under Review' && <Clock className="w-5 h-5" />}
+            {customer.status === 'Suspended' && <Icon name="ban" className="w-5 h-5" />}
+            {customer.status === 'Blocked' && <Icon name="x-circle" className="w-5 h-5" />}
+            {customer.status === 'Under Review' && <Icon name="clock" className="w-5 h-5" />}
             {customer.status}
           </span>
         </div>
@@ -629,7 +599,7 @@ export function CustomerDetailView({
               href={`tel:${customer.phone.replace(/\s/g, '')}`}
               className="px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold transition-all shadow-sm flex items-center gap-2 no-underline"
             >
-              <Phone className="w-3.5 h-3.5" />
+              <Icon name="phone" className="w-3.5 h-3.5" />
               Contact
             </a>
           )}
@@ -665,11 +635,11 @@ export function CustomerDetailView({
               )}
               {idVerified && licenseVerified ? (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200">
-                  <CheckCircle className="w-3 h-3" /> Verified
+                  <Icon name="check-circle" className="w-3 h-3" /> Verified
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200">
-                  <Clock className="w-3 h-3" /> Unverified
+                  <Icon name="clock" className="w-3 h-3" /> Unverified
                 </span>
               )}
             </div>
@@ -811,19 +781,19 @@ export function CustomerDetailView({
                   <h4 className={`text-xs font-bold mb-3 ${textPrimary}`}>Contact</h4>
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
-                      <Phone className={`w-5 h-5 ${textTertiary}`} />
+                      <Icon name="phone" className={`w-5 h-5 ${textTertiary}`} />
                       <span className={`text-xs ${textPrimary}`}>{customer.phone || EM_DASH}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Mail className={`w-5 h-5 ${textTertiary}`} />
+                      <Icon name="mail" className={`w-5 h-5 ${textTertiary}`} />
                       <span className={`text-xs ${textPrimary}`}>{customer.email || EM_DASH}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Globe className={`w-5 h-5 ${textTertiary}`} />
+                      <Icon name="globe" className={`w-5 h-5 ${textTertiary}`} />
                       <span className={`text-xs ${textPrimary}`}>{displayCountry}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <MapPin className={`w-5 h-5 ${textTertiary}`} />
+                      <Icon name="map-pin" className={`w-5 h-5 ${textTertiary}`} />
                       <span className={`text-xs ${textPrimary}`}>
                         {[displayStreet !== EM_DASH ? displayStreet : null, [displayZip, displayCity].filter(Boolean).join(' ')]
                           .filter(Boolean)
@@ -1014,7 +984,7 @@ export function CustomerDetailView({
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 py-3">
-                      <Shield className={`w-5 h-5 ${textTertiary}`} />
+                      <Icon name="shield" className={`w-5 h-5 ${textTertiary}`} />
                       <span className={`text-xs ${textSecondary}`}>
                         Keine Bußgelder für diesen Kunden.
                       </span>
@@ -1039,12 +1009,12 @@ export function CustomerDetailView({
                         <span className={`text-xs ${textSecondary}`}>Personalausweis</span>
                         {idVerified ? (
                           <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
-                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <Icon name="shield-check" className="w-3.5 h-3.5" />
                             Verified
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600">
-                            <Shield className="w-3.5 h-3.5" />
+                            <Icon name="shield" className="w-3.5 h-3.5" />
                             Unverified
                           </span>
                         )}
@@ -1058,12 +1028,12 @@ export function CustomerDetailView({
                         <span className={`text-xs ${textSecondary}`}>Führerschein</span>
                         {licenseVerified ? (
                           <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
-                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <Icon name="shield-check" className="w-3.5 h-3.5" />
                             Verified
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600">
-                            <Shield className="w-3.5 h-3.5" />
+                            <Icon name="shield" className="w-3.5 h-3.5" />
                             Unverified
                           </span>
                         )}
@@ -1177,7 +1147,7 @@ export function CustomerDetailView({
               </div>
             ) : (
               <div className={`p-12 rounded-lg border text-center ${cardBg}`}>
-                <Calendar className={`w-5 h-5 mx-auto mb-3 ${textTertiary}`} />
+                <Icon name="calendar" className={`w-5 h-5 mx-auto mb-3 ${textTertiary}`} />
                 <p className={`text-xs font-medium ${textSecondary}`}>
                   Noch keine Buchungen für diesen Kunden
                 </p>
@@ -1194,7 +1164,7 @@ export function CustomerDetailView({
           <div className="space-y-5">
             {drivingAgg.analysisCount === 0 ? (
               <div className={`p-12 rounded-lg border text-center ${cardBg}`}>
-                <Activity className={`w-5 h-5 mx-auto mb-3 ${textTertiary}`} />
+                <Icon name="activity" className={`w-5 h-5 mx-auto mb-3 ${textTertiary}`} />
                 <p className={`text-xs font-medium ${textSecondary}`}>
                   Noch keine Rental-Driving-Analysen vorhanden
                 </p>
@@ -1270,7 +1240,7 @@ export function CustomerDetailView({
                               : 'bg-amber-50 text-amber-700 border border-amber-200'
                           }`}
                         >
-                          <AlertTriangle className="w-3 h-3" />
+                          <Icon name="alert-triangle" className="w-3 h-3" />
                           Not enough scored trip data
                         </div>
                       )}
@@ -1335,7 +1305,7 @@ export function CustomerDetailView({
                 <div className="grid grid-cols-2 gap-3">
                   <div className={`rounded-lg border p-4 ${cardBg}`}>
                     <div className="flex items-center gap-2 mb-3">
-                      <TrendingUp className={`w-4 h-4 ${textTertiary}`} />
+                      <Icon name="trending-up" className={`w-4 h-4 ${textTertiary}`} />
                       <h4 className={`text-xs font-bold ${textPrimary}`}>
                         Driving Events (Total)
                       </h4>
@@ -1349,7 +1319,7 @@ export function CustomerDetailView({
                   </div>
                   <div className={`rounded-lg border p-4 ${cardBg}`}>
                     <div className="flex items-center gap-2 mb-3">
-                      <Zap className={`w-4 h-4 ${textTertiary}`} />
+                      <Icon name="zap" className={`w-4 h-4 ${textTertiary}`} />
                       <h4 className={`text-xs font-bold ${textPrimary}`}>
                         Abuse Events (Total)
                       </h4>
@@ -1370,7 +1340,7 @@ export function CustomerDetailView({
                       : 'bg-blue-50/60 border-blue-200/60 text-blue-700'
                   }`}
                 >
-                  <Info className="w-4 h-4 shrink-0" />
+                  <Icon name="info" className="w-4 h-4 shrink-0" />
                   <span>
                     Für Event-Breakdown pro Trip / Vehicle öffnen Sie die Rental Driving
                     Analysis Seite — dort ist jeder der {drivingAgg.drivingEvents +
@@ -1465,7 +1435,7 @@ export function CustomerDetailView({
               </>
             ) : (
               <div className={`p-12 rounded-lg border text-center ${cardBg}`}>
-                <Shield className={`w-5 h-5 mx-auto mb-3 ${textTertiary}`} />
+                <Icon name="shield" className={`w-5 h-5 mx-auto mb-3 ${textTertiary}`} />
                 <p className={`text-xs font-medium ${textSecondary}`}>Keine Bußgelder erfasst</p>
                 <p className={`text-xs mt-1 ${textTertiary}`}>
                   Dieser Kunde hat eine saubere Fahrhistorie.
@@ -1492,7 +1462,7 @@ export function CustomerDetailView({
             >
               {idVerified && licenseVerified ? (
                 <>
-                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  <Icon name="check-circle" className="w-5 h-5 text-green-500" />
                   <div>
                     <p className={`text-xs font-semibold ${textPrimary}`}>
                       KYC-Verifizierung abgeschlossen
@@ -1504,7 +1474,7 @@ export function CustomerDetailView({
                 </>
               ) : (
                 <>
-                  <AlertTriangle className="w-5 h-5 text-amber-500" />
+                  <Icon name="alert-triangle" className="w-5 h-5 text-amber-500" />
                   <div>
                     <p className={`text-xs font-semibold ${textPrimary}`}>
                       KYC-Verifizierung unvollständig
@@ -1572,7 +1542,7 @@ export function CustomerDetailView({
                               doc.url ? 'bg-blue-100' : 'bg-gray-100'
                             } flex items-center justify-center`}
                           >
-                            <FileText
+                            <Icon name="file-text"
                               className={`w-3.5 h-3.5 ${
                                 doc.url ? 'text-blue-500' : 'text-gray-400'
                               }`}
@@ -1591,9 +1561,9 @@ export function CustomerDetailView({
                           }`}
                         >
                           {doc.url ? (
-                            <CheckCircle className="w-3.5 h-3.5" />
+                            <Icon name="check-circle" className="w-3.5 h-3.5" />
                           ) : (
-                            <Clock className="w-3.5 h-3.5" />
+                            <Icon name="clock" className="w-3.5 h-3.5" />
                           )}
                           {doc.url ? 'Uploaded' : 'Fehlt'}
                         </span>
@@ -1606,7 +1576,7 @@ export function CustomerDetailView({
                             rel="noopener noreferrer"
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-semibold hover:bg-blue-100 transition-colors w-fit"
                           >
-                            <Download className="w-3 h-3" />
+                            <Icon name="download" className="w-3 h-3" />
                             Öffnen
                           </a>
                         ) : (
@@ -1718,7 +1688,7 @@ export function CustomerDetailView({
               </>
             ) : (
               <div className={`p-12 rounded-lg border text-center ${cardBg}`}>
-                <FileText className={`w-5 h-5 mx-auto mb-3 ${textTertiary}`} />
+                <Icon name="file-text" className={`w-5 h-5 mx-auto mb-3 ${textTertiary}`} />
                 <p className={`text-xs font-medium ${textSecondary}`}>Keine Rechnungen</p>
                 <p className={`text-xs mt-1 ${textTertiary}`}>
                   Rechnungen erscheinen hier automatisch, sobald Buchungen abgerechnet werden.
@@ -1732,7 +1702,7 @@ export function CustomerDetailView({
         {activeTab === 'alerts' && (
           <div className="space-y-5">
             <div className={`p-6 rounded-lg border text-center ${cardBg}`}>
-              <AlertTriangle className={`w-5 h-5 mx-auto mb-3 ${textTertiary}`} />
+              <Icon name="alert-triangle" className={`w-5 h-5 mx-auto mb-3 ${textTertiary}`} />
               <p className={`text-xs font-medium ${textSecondary}`}>
                 Kundenspezifische Alerts sind noch nicht verdrahtet
               </p>

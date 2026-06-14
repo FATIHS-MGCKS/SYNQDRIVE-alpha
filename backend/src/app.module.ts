@@ -9,10 +9,11 @@ import { BullModule } from '@nestjs/bullmq';
 import { join } from 'path';
 import Redis from 'ioredis';
 
-import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, euromasterConfig, highMobilityConfig } from '@config/index';
+import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig } from '@config/index';
 
 import { PrismaModule } from '@shared/database/prisma.module';
 import { RedisModule } from '@shared/redis/redis.module';
+import { StorageModule } from '@shared/storage/storage.module';
 import { AuthModule } from '@shared/auth/auth.module';
 import { SharedGuardsModule } from '@shared/auth/shared-guards.module';
 
@@ -44,9 +45,10 @@ import { PartsAccessoriesModule } from '@modules/parts-accessories/parts-accesso
 import { InsurancesModule } from '@modules/insurances/insurances.module';
 import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.module';
 import { BusinessInsightsModule } from '@modules/business-insights/business-insights.module';
-import { ServicePartnersModule } from '@modules/service-partners/service-partners.module';
 import { HighMobilityModule } from '@modules/high-mobility/high-mobility.module';
 import { RentalHealthModule } from '@modules/rental-health/rental-health.module';
+import { DocumentExtractionModule } from '@modules/document-extraction/document-extraction.module';
+import { DocumentsModule } from '@modules/documents/documents.module';
 import { WorkersModule } from '@workers/workers.module';
 import { AuthApiModule } from '@modules/auth/auth.module';
 import { HealthModule } from '@modules/health/health.module';
@@ -115,7 +117,7 @@ export class AppModule {
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
-          load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, euromasterConfig, highMobilityConfig],
+          load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig],
         }),
 
         // Global throttler: 200 requests per minute per IP (normal API usage)
@@ -160,6 +162,7 @@ export class AppModule {
 
         PrismaModule,
         RedisModule,
+        StorageModule,
         AuthModule,
         SharedGuardsModule,
         AuthApiModule,
@@ -193,9 +196,10 @@ export class AppModule {
         InsurancesModule,
         VoiceAssistantModule,
         BusinessInsightsModule,
-        ServicePartnersModule,
         HighMobilityModule,
         RentalHealthModule,
+        DocumentExtractionModule,
+        DocumentsModule,
 
         // Workers / processors / schedulers. Non-Redis schedulers inside this
         // module (e.g. brake recalc, trip reconciliation, HM polling) also live

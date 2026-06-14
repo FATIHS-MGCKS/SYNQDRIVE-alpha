@@ -19,6 +19,7 @@ import { existsSync, mkdirSync } from 'fs';
 import { OrganizationsService } from './organizations.service';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { StorageService } from '@shared/storage/storage.service';
 
 const LOGO_UPLOAD_DIR = join(process.cwd(), 'uploads', 'org-logos');
 if (!existsSync(LOGO_UPLOAD_DIR)) mkdirSync(LOGO_UPLOAD_DIR, { recursive: true });
@@ -46,7 +47,10 @@ interface AuthedRequest {
 @Controller('organizations/:orgId/profile')
 @UseGuards(OrgScopingGuard, RolesGuard)
 export class TenantOrganizationProfileController {
-  constructor(private readonly organizationsService: OrganizationsService) {}
+  constructor(
+    private readonly organizationsService: OrganizationsService,
+    private readonly storage: StorageService,
+  ) {}
 
   @Get()
   async getProfile(@Param('orgId') orgId: string) {
@@ -110,8 +114,22 @@ export class TenantOrganizationProfileController {
   ) {
     this.assertCanWriteOrgProfile(req);
     if (!file) throw new BadRequestException('No file uploaded');
-    const url = `/uploads/org-logos/${file.filename}`;
+
+    // Capture the previous logo so we can delete it after the swap — otherwise
+    // every re-upload orphans a file on disk forever.
+    const previous = await this.organizationsService
+      .getTenantProfile(orgId)
+      .catch(() => null);
+    const oldLogoUrl = previous?.logoUrl ?? null;
+
+    const url = await this.storage.finalizeUpload('org-logos', file, orgId);
     await this.organizationsService.updateTenantProfile(orgId, { logoUrl: url });
+
+    // Remove the previous logo (across whichever driver stored it) so re-uploads
+    // don't orphan files on disk / in the bucket.
+    if (oldLogoUrl && oldLogoUrl !== url) {
+      await this.storage.removeByPublicUrl(oldLogoUrl);
+    }
     return { url };
   }
 

@@ -1,10 +1,6 @@
+import { Navigation } from 'lucide-react';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import {
-  Navigation, AlertTriangle, Award, User, Clock, Gauge, MapPin, RefreshCw,
-  Zap, ChevronDown, ChevronUp, Thermometer, Activity, Wind, Fuel, TrendingUp,
-  AlertCircle, Shield, Loader2, BarChart3, Route, Play, CheckCircle2, ArrowUp, ArrowDown,
-  BatteryCharging,
-} from 'lucide-react';
+import { Icon } from './ui/Icon';
 import { api } from '../../lib/api';
 import type { TripEnrichment, TripBehaviorEvent, SpeedingSection, EnergyEvent } from '../../lib/api';
 import { buildTripsMapGeoJson } from '../../lib/geospatial';
@@ -28,7 +24,7 @@ interface TripData {
   dimoSegmentId?: string;
   tripStatus: 'ONGOING' | 'COMPLETED' | 'CANCELLED';
   startTime: string;
-  endTime?: string;
+  endTime?: string | null;
   startLatitude?: number;
   startLongitude?: number;
   endLatitude?: number;
@@ -133,13 +129,6 @@ interface TripsViewProps {
   onTripsLoaded?: (trips: TripData[]) => void;
 }
 
-/** Resolve speeding sections from enrichment or DB trip data */
-function getSpeedingSections(trip: TripData, enr?: TripEnrichment | null): SpeedingSection[] {
-  if (enr?.speedingSections?.length) return enr.speedingSections;
-  if (trip.speedingSectionsJson?.length) return trip.speedingSectionsJson;
-  return [];
-}
-
 function formatDuration(minutes: number | null | undefined): string {
   if (minutes == null) return '--';
   const h = Math.floor(minutes / 60);
@@ -199,7 +188,6 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [energyEvents, setEnergyEvents] = useState<EnergyEvent[]>([]);
   const [mapShowSpeed, setMapShowSpeed] = useState(true);
-  const [mapShowSpeeding, setMapShowSpeeding] = useState(true);
   const [mapShowDrivingEvents, setMapShowDrivingEvents] = useState(true);
   const [mapShowAbuseEvents, setMapShowAbuseEvents] = useState(true);
   const [mapShowStops, setMapShowStops] = useState(true);
@@ -406,28 +394,6 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
         },
       });
 
-      // Speeding sections (overlaid on top of speed route)
-      map.addSource('speeding-sections', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-      map.addLayer({
-        id: 'speeding-sections-glow', type: 'line', source: 'speeding-sections',
-        layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: {
-          'line-color': ['match', ['get', 'severity'], 'severe', '#dc2626', 'high', '#ef4444', 'moderate', '#f97316', '#eab308'],
-          'line-width': ['interpolate', ['linear'], ['zoom'], 10, 8, 16, 12],
-          'line-opacity': 0.3, 'line-blur': 3,
-        },
-      });
-      map.addLayer({
-        id: 'speeding-sections-line', type: 'line', source: 'speeding-sections',
-        layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: {
-          'line-color': ['match', ['get', 'severity'], 'severe', '#dc2626', 'high', '#ef4444', 'moderate', '#f97316', '#eab308'],
-          'line-width': ['interpolate', ['linear'], ['zoom'], 10, 4, 16, 7],
-          'line-opacity': 0.9,
-          'line-dasharray': [2, 1],
-        },
-      });
-
       // Stop circles
       map.addSource('stop-points', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
       map.addLayer({
@@ -482,7 +448,6 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
     if (!map || !mapLoaded) return;
     const routeSrc = map.getSource('trips-routes') as mapboxgl.GeoJSONSource | undefined;
     const speedSrc = map.getSource('speed-route') as mapboxgl.GeoJSONSource | undefined;
-    const speedingSrc = map.getSource('speeding-sections') as mapboxgl.GeoJSONSource | undefined;
     const stopsSrc = map.getSource('stop-points') as mapboxgl.GeoJSONSource | undefined;
     if (!routeSrc) return;
 
@@ -508,23 +473,6 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
           }
         }
         speedSrc.setData({ type: 'FeatureCollection', features: speedFeatures });
-      }
-
-      // Speeding sections
-      if (speedingSrc && selectedTrip) {
-        const sections = getSpeedingSections(selectedTrip, enrichments[selectedTrip.id]);
-        if (sections.length > 0) {
-          const sectionFeatures: GeoJSON.Feature<GeoJSON.LineString>[] = sections
-            .filter((s) => s.coordinates.length >= 2)
-            .map((s) => ({
-              type: 'Feature',
-              geometry: { type: 'LineString', coordinates: s.coordinates },
-              properties: { severity: s.severity, maxOver: s.maxOverSpeedKmh, limit: s.representativeSpeedLimitKmh },
-            }));
-          speedingSrc.setData({ type: 'FeatureCollection', features: sectionFeatures });
-        } else {
-          speedingSrc.setData({ type: 'FeatureCollection', features: [] });
-        }
       }
 
       // Detect stops from route points (speed < 3 km/h for consecutive points)
@@ -600,13 +548,12 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
     } else {
       routeSrc.setData({ type: 'FeatureCollection', features: [] });
       if (speedSrc) speedSrc.setData({ type: 'FeatureCollection', features: [] });
-      if (speedingSrc) speedingSrc.setData({ type: 'FeatureCollection', features: [] });
       if (stopsSrc) stopsSrc.setData({ type: 'FeatureCollection', features: [] });
       if (selectedTrip?.startLatitude != null && selectedTrip?.startLongitude != null) {
         map.flyTo({ center: [selectedTrip.startLongitude, selectedTrip.startLatitude], zoom: 13 });
       }
     }
-  }, [mapGeoJson, selectedTrip, routePoints, enrichments, behaviorEvents, mapShowDrivingEvents, mapShowAbuseEvents, mapLoaded]);
+  }, [mapGeoJson, selectedTrip, routePoints, behaviorEvents, mapShowDrivingEvents, mapShowAbuseEvents, mapLoaded]);
 
   // ── Toggle layer visibility ──
   useEffect(() => {
@@ -616,11 +563,9 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
       if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
     };
     setVis('speed-route-layer', mapShowSpeed);
-    setVis('speeding-sections-glow', mapShowSpeeding);
-    setVis('speeding-sections-line', mapShowSpeeding);
     setVis('stop-points-ring', mapShowStops);
     setVis('stop-points-center', mapShowStops);
-  }, [mapShowSpeed, mapShowSpeeding, mapShowStops, mapLoaded]);
+  }, [mapShowSpeed, mapShowStops, mapLoaded]);
 
   // Auto-enrich trip route when selected and not yet enriched
   useEffect(() => {
@@ -683,23 +628,6 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
     // Legacy fallback only for trips that predate the behaviorReady flag
     return (t.harshBrakeCount ?? 0) + (t.harshAccelCount ?? 0) + (t.harshCornerCount ?? 0);
   };
-  const hasRoadType = (t: TripData) => t.citySharePercent != null || t.highwaySharePercent != null;
-
-  const getConsumptionDisplay = (t: TripData, enr?: TripEnrichment) => {
-    if (isEv) {
-      const kwh = enr?.energyUsedKwh ?? t.energyUsedKwh;
-      const avg = enr?.avgConsumptionKwhPer100Km ?? t.avgConsumptionKwhPer100Km;
-      const conf = enr?.energyConfidence ?? t.energyConfidence;
-      if (kwh == null) return null;
-      return { value: `${kwh.toFixed(1)} kWh`, avg: avg != null ? `${avg.toFixed(1)} kWh/100km` : null, label: 'Energy', confidence: conf };
-    }
-    const liters = enr?.fuelUsedLiters ?? t.fuelUsedLiters;
-    const avg = enr?.avgConsumptionLPer100Km ?? t.avgConsumptionLPer100Km;
-    const conf = enr?.fuelConfidence ?? t.fuelConfidence;
-    if (liters == null) return null;
-    return { value: `${liters.toFixed(1)} L`, avg: avg != null ? `${avg.toFixed(1)} L/100km` : null, label: 'Fuel', confidence: conf };
-  };
-
   return (
     <div className="max-w-[1600px] mx-auto">
       {/* V4.6.89 — Map + Trip List side-by-side on xl+ screens (map left sticky, list right scrollable).
@@ -710,8 +638,8 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
         {/* Header row */}
         <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <Route className={`w-[18px] h-[18px] shrink-0 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
-            <h2 className="text-[16px] font-semibold tracking-[-0.003em] truncate text-foreground">
+            <Icon name="route" className={`w-[18px] h-[18px] shrink-0 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+            <h2 className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">
               {selectedTrip ? `Trip Route – ${formatDate(selectedTrip.startTime)}` : 'Trip Route Map'}
             </h2>
             {selectedTrip && enrichments[selectedTrip.id]?.mapMatchConfidence > 0 && (
@@ -723,8 +651,8 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
               <span className={`text-[11px] ${(syncMessage.includes('No missing') || syncMessage.includes('repaired') || syncMessage.includes('found')) ? (isDark ? 'text-green-400' : 'text-green-600') : isDark ? 'text-amber-400' : 'text-amber-600'}`}>{syncMessage}</span>
             )}
             <button onClick={handleSync} disabled={syncing || !vehicleId}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all ${isDark ? 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/30' : 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] hover:bg-[color:color-mix(in_srgb,var(--brand)_14%,transparent)]'} disabled:opacity-50`}>
-              <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${isDark ? 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/30' : 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] hover:bg-[color:color-mix(in_srgb,var(--brand)_14%,transparent)]'} disabled:opacity-50`}>
+              <Icon name="refresh-cw" className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Check for Missing Trips</span>
               <span className="sm:hidden">Sync</span>
             </button>
@@ -750,17 +678,7 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
                   ? 'bg-blue-500/10 text-blue-500 border border-blue-500/30'
                   : 'bg-muted text-muted-foreground border border-border'
               }`}>
-              <Gauge className="w-3 h-3" /> Speed
-            </button>
-
-            {/* Toggle: Speeding */}
-            <button onClick={() => setMapShowSpeeding((v) => !v)}
-              className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold transition-all ${
-                mapShowSpeeding
-                  ? 'bg-red-500/10 text-red-500 border border-red-500/30'
-                  : 'bg-muted text-muted-foreground border border-border'
-              }`}>
-              <AlertCircle className="w-3 h-3" /> Speeding
+              <Icon name="gauge" className="w-3 h-3" /> Speed
             </button>
 
             {/* Toggle: Driving Events */}
@@ -770,7 +688,7 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
                   ? 'bg-orange-500/10 text-orange-500 border border-orange-500/30'
                   : 'bg-muted text-muted-foreground border border-border'
               }`}>
-              <Zap className="w-3 h-3" /> Events
+              <Icon name="zap" className="w-3 h-3" /> Events
             </button>
 
             {/* Toggle: Abuse Events */}
@@ -780,7 +698,7 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
                   ? 'bg-red-500/10 text-red-500 border border-red-500/30'
                   : 'bg-muted text-muted-foreground border border-border'
               }`}>
-              <Shield className="w-3 h-3" /> Abuse
+              <Icon name="shield" className="w-3 h-3" /> Abuse
             </button>
 
             {/* Toggle: Stops */}
@@ -790,7 +708,7 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
                   ? 'bg-slate-500/10 text-slate-500 border border-slate-500/30'
                   : 'bg-muted text-muted-foreground border border-border'
               }`}>
-              <Clock className="w-3 h-3" /> Stops
+              <Icon name="clock" className="w-3 h-3" /> Stops
             </button>
           </div>
         )}
@@ -801,7 +719,7 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
           {!mapLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/70 z-10">
               <div className="flex flex-col items-center gap-2">
-                <Loader2 className={`w-6 h-6 animate-spin ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+                <Icon name="loader-2" className={`w-6 h-6 animate-spin ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
                 <span className={`text-xs font-medium text-muted-foreground`}>Loading map...</span>
               </div>
             </div>
@@ -810,7 +728,7 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
           {routeLoading && mapLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/40 z-10">
               <div className="flex flex-col items-center gap-2">
-                <Loader2 className={`w-6 h-6 animate-spin ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+                <Icon name="loader-2" className={`w-6 h-6 animate-spin ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
                 <span className={`text-xs font-medium text-foreground`}>Loading route data...</span>
               </div>
             </div>
@@ -819,7 +737,7 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
           {selectedTrip && enrichingId === selectedTrip.id && mapLoaded && !routeLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/30 z-10">
               <div className="flex flex-col items-center gap-2">
-                <Loader2 className={`w-5 h-5 animate-spin ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`} />
+                <Icon name="loader-2" className={`w-5 h-5 animate-spin ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`} />
                 <span className={`text-xs font-medium text-muted-foreground`}>Enriching trip data...</span>
               </div>
             </div>
@@ -840,10 +758,6 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
                 <span className={`text-[8px] text-muted-foreground`}>Fast</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className="w-3 h-0.5 rounded-full bg-red-500" />
-                <span className={`text-[8px] text-muted-foreground`}>Speeding</span>
-              </div>
-              <div className="flex items-center gap-1">
                 <span className="w-2.5 h-2.5 rounded-full border-2 border-slate-400" style={{ borderStyle: 'solid' }} />
                 <span className={`text-[8px] text-muted-foreground`}>Stop</span>
               </div>
@@ -855,10 +769,10 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
       {/* Trip List */}
       <div className="rounded-xl p-4 shadow-sm border border-border bg-card min-w-0">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-[16px] font-semibold tracking-[-0.003em] text-foreground">
+          <h2 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">
             Trip History <span className="text-muted-foreground font-medium">({trips.length}{energyEvents.length > 0 ? ` · ${energyEvents.length} events` : ''})</span>
           </h2>
-          {loading && <Loader2 className="w-4 h-4 animate-spin text-[color:var(--brand)]" />}
+          {loading && <Icon name="loader-2" className="w-4 h-4 animate-spin text-[color:var(--brand)]" />}
         </div>
         {loadError && (
           <div className="mb-3 px-3 py-2 rounded-lg border border-destructive/50 bg-destructive/10 text-destructive text-xs">{loadError}</div>
@@ -870,7 +784,7 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
             <p className={`text-xs mt-1 text-muted-foreground`}>Trips werden aus DIMO geladen. Fahrzeug mit DIMO verbinden und Sync starten.</p>
             <button onClick={handleSync} disabled={syncing}
               className="mt-4 inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
-              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> Check for Missing Trips
+              <Icon name="refresh-cw" className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} /> Check for Missing Trips
             </button>
           </div>
         )}
@@ -890,7 +804,6 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
             const enr = enrichments[trip.id];
             const isSelected = selectedTrip?.id === trip.id;
             const events = totalEvents(trip);
-            const consumption = getConsumptionDisplay(trip, enr);
             const isOngoing = trip.tripStatus === 'ONGOING';
             // V4.6.95 — `drivingStyleScore` is the canonical scalar.
             // `drivingScore` is a legacy compat mirror retained only for
@@ -901,408 +814,170 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
 
             return (
               <div key={trip.id} onClick={() => handleSelectTrip(trip)}
-                className={`rounded-lg border transition-all duration-200 cursor-pointer ${
-                  isSelected ? 'bg-accent border-accent-foreground/20 shadow-sm'
-                  : 'bg-card border-border hover:bg-accent/50 shadow-xs'
+                className={`group rounded-xl border transition-all duration-300 cursor-pointer overflow-hidden ${
+                  isSelected
+                    ? (isDark ? 'bg-accent/30 border-blue-500/30 shadow-sm' : 'bg-blue-50/30 border-blue-200 shadow-sm')
+                    : 'bg-card border-border hover:border-muted-foreground/30 hover:shadow-md'
                 }`}>
-                <div className="p-3">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                      isOngoing ? (isDark ? 'bg-amber-600/20' : 'bg-amber-100') : (isDark ? 'bg-blue-600/20' : 'bg-blue-100')
-                    }`}>
-                      {isOngoing
-                        ? <Play className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
-                        : <Navigation className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
-                      }
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs font-bold text-foreground`}>{formatDate(trip.startTime)}</span>
-                        <span className={`text-[11px] text-muted-foreground`}>
-                          {formatTime(trip.startTime)} – {trip.endTime ? formatTime(trip.endTime) : '...'}
-                        </span>
-                        {/* Trip status badge */}
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider ${
-                          isOngoing ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'
-                        }`}>
-                          {isOngoing ? 'ongoing' : 'completed'}
-                        </span>
-                        {trip.detailsLimited && (
-                          <span className="px-1.5 py-0.5 rounded text-[8px] bg-muted/80 text-muted-foreground" title="Some trip details are unavailable">limited</span>
-                        )}
-                        {trip.behaviorReady === false && !trip.detailsLimited && (
-                          <span className="px-1.5 py-0.5 rounded text-[8px] bg-blue-500/10 text-blue-400" title="Behavior analysis in progress">analyzing</span>
-                        )}
-                        {trip.gapEnded && (
-                          <span className="px-1 py-0.5 rounded text-[8px] bg-muted text-muted-foreground">gap</span>
-                        )}
-                        {trip.driverName && (
-                          <span className={`flex items-center gap-1 text-[10px] text-muted-foreground`}><User className="w-3 h-3" />{trip.driverName}</span>
-                        )}
-                        {(trip.isPrivateTrip || trip.assignmentStatus === 'PRIVATE_UNASSIGNED') && (
-                          <span className="px-1.5 py-0.5 rounded text-[8px] bg-purple-500/10 text-purple-400 uppercase tracking-wider">
-                            private
+                <div className="p-3 sm:p-4 @container">
+                  {/* ── Header ─────────────────────────────────────────────── */}
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                        isOngoing
+                          ? (isDark ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-600')
+                          : (isSelected
+                              ? (isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600')
+                              : (isDark ? 'bg-slate-800 text-slate-400 group-hover:bg-slate-700 group-hover:text-slate-300' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-600'))
+                      }`}>
+                        {isOngoing ? <Icon name="play" className="w-4.5 h-4.5 ml-0.5" /> : <Navigation className="w-4.5 h-4.5" />}
+                      </div>
+                      <div className="flex flex-col min-w-0 pt-0.5">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="text-[10px] font-bold text-foreground">{formatDate(trip.startTime)}</span>
+                          <span className="text-[10px] font-medium text-muted-foreground">
+                            {formatTime(trip.startTime)} – {trip.endTime ? formatTime(trip.endTime) : '...'}
                           </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 shrink-0">
-                      <Metric isDark={isDark} label="Dist" value={formatDistance(trip.distanceKm)} />
-                      <Metric isDark={isDark} label="Time" value={formatDuration(trip.durationMinutes)} />
-                      <Metric isDark={isDark} label="Events"
-                        value={events === null ? '…' : String(events)}
-                        color={events === null ? undefined : events > 0 ? 'orange' : 'green'}
-                        icon={<Zap className="w-3 h-3" />} />
-                      <Metric isDark={isDark} label="Style" value={styleScore != null ? String(Math.round(styleScore)) : '--'}
-                        color={styleScore != null ? (styleScore >= 90 ? 'green' : styleScore >= 75 ? 'blue' : 'orange') : undefined}
-                        icon={<Award className="w-3 h-3" />} />
-                      <Metric isDark={isDark} label="Safety" value={safetyScore != null ? String(Math.round(safetyScore)) : '--'}
-                        color={safetyScore != null ? (safetyScore >= 90 ? 'green' : safetyScore >= 75 ? 'blue' : 'orange') : undefined}
-                        icon={<Award className="w-3 h-3" />} />
-                      {trip.outsideTemperatureStartC != null && (
-                        <Metric isDark={isDark} label="Temp" value={`${trip.outsideTemperatureStartC.toFixed(0)}°C`} icon={<Thermometer className="w-3 h-3" />} />
-                      )}
-                      {consumption && <Metric isDark={isDark} label={consumption.label} value={consumption.avg ?? consumption.value} icon={<Fuel className="w-3 h-3" />} />}
-                      <div className={`p-1 rounded-lg text-muted-foreground`}>
-                        {isSelected ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 pl-11">
-                    <span className={`flex items-center gap-1 text-[11px] text-muted-foreground`}>
-                      <Gauge className="w-3 h-3" /> Avg {trip.avgSpeedKmh?.toFixed(0) ?? '--'} km/h
-                    </span>
-                    <span className={`flex items-center gap-1 text-[11px] text-muted-foreground`}>
-                      <Gauge className="w-3 h-3" /> Max {trip.maxSpeedKmh?.toFixed(0) ?? '--'} km/h
-                    </span>
-                    {hasRoadType(trip) && (
-                      <div className="flex items-center gap-1.5 ml-auto">
-                        <div className="flex gap-0.5 h-1.5 w-20 rounded-full overflow-hidden">
-                          {(trip.citySharePercent ?? 0) > 0 && <div className="bg-blue-500" style={{ width: `${trip.citySharePercent}%` }} />}
-                          {(trip.highwaySharePercent ?? 0) > 0 && <div className="bg-emerald-500" style={{ width: `${trip.highwaySharePercent}%` }} />}
-                          {(trip.countrySharePercent ?? 0) > 0 && <div className="bg-amber-500" style={{ width: `${trip.countrySharePercent}%` }} />}
                         </div>
-                        <span className={`text-[9px] text-muted-foreground`}>Road mix</span>
-                      </div>
-                    )}
-                    {/* Speeding: section-based summary */}
-                    {(() => {
-                      const sections = getSpeedingSections(trip, enr);
-                      const sectionCount = sections.length || (enr?.speedingSectionCount ?? trip.speedingSectionCount ?? 0);
-                      const isEnriched = !!(trip.enrichedAt || enr);
-                      if (!isEnriched) return null;
-                      if (sectionCount > 0) {
-                        const maxSeverity = sections.length > 0
-                          ? (['severe', 'high', 'moderate', 'low'] as const).find((s) => sections.some((sec) => sec.severity === s)) ?? 'low'
-                          : 'low';
-                        const sevColor = maxSeverity === 'severe' || maxSeverity === 'high' ? 'text-red-400' : maxSeverity === 'moderate' ? 'text-amber-400' : 'text-yellow-400';
-                        return (
-                          <span className={`flex items-center gap-1 text-[10px] ${sevColor}`}>
-                            <AlertCircle className="w-3 h-3" /> {sectionCount} speeding {sectionCount === 1 ? 'section' : 'sections'}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                            isOngoing ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'
+                          }`}>
+                            {isOngoing ? 'ongoing' : 'completed'}
                           </span>
-                        );
-                      }
-                      return (
-                        <span className={`flex items-center gap-1 text-[10px] ${isDark ? 'text-green-400' : 'text-green-600'}`}>
-                          <CheckCircle2 className="w-3 h-3" /> No speeding
-                        </span>
-                      );
-                    })()}
+                          {trip.detailsLimited && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-muted text-muted-foreground" title="Some trip details are unavailable">Limited</span>
+                          )}
+                          {trip.behaviorReady === false && !trip.detailsLimited && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-500/10 text-blue-400" title="Behavior analysis in progress">Analyzing</span>
+                          )}
+                          {trip.gapEnded && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-muted text-muted-foreground">Gap</span>
+                          )}
+                          {trip.driverName && (
+                            <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+                              <Icon name="user" className="w-3 h-3" />{trip.driverName}
+                            </span>
+                          )}
+                          {(trip.isPrivateTrip || trip.assignmentStatus === 'PRIVATE_UNASSIGNED') && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-400">
+                              Private
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className={`p-1.5 rounded-full transition-colors shrink-0 ${
+                      isSelected
+                        ? (isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600')
+                        : 'text-muted-foreground group-hover:bg-muted'
+                    }`}>
+                      {isSelected ? <Icon name="chevron-up" className="w-4 h-4" /> : <Icon name="chevron-down" className="w-4 h-4" />}
+                    </div>
                   </div>
+
+                  {/* ── Metrics Grid (Bento) ─────────────────────────────────── */}
+                  {/* V4.6.96 — Container-query grid: grows columns as the Trip
+                      History card itself widens, not the viewport. xl
+                      side-by-side layout (~415 px card) → 4 cols, stacked
+                      layout (~520 px+) → 5 cols. Reduces tile width so the
+                      bento doesn't "stretch" the second row's tiles. */}
+                  <div className="grid grid-cols-2 @[24rem]:grid-cols-4 @[30rem]:grid-cols-5 gap-1.5">
+                    <MetricTile isDark={isDark} label="Distance" value={formatDistance(trip.distanceKm)} icon={<Icon name="route" className="w-3 h-3" />} />
+                    <MetricTile isDark={isDark} label="Duration" value={formatDuration(trip.durationMinutes)} icon={<Icon name="clock" className="w-3 h-3" />} />
+                    <MetricTile isDark={isDark} label="Events"
+                      value={events === null ? '…' : String(events)}
+                      color={events === null ? undefined : events > 0 ? 'orange' : 'green'}
+                      icon={<Icon name="zap" className="w-3 h-3" />} />
+                    <MetricTile isDark={isDark} label="Driving Style"
+                      value={styleScore != null ? <>{Math.round(styleScore)}<span className="text-muted-foreground font-normal text-[8px] ml-0.5">/100</span></> : '--'}
+                      color={styleScore != null ? (styleScore >= 90 ? 'green' : styleScore >= 75 ? 'blue' : 'orange') : undefined}
+                      icon={<Icon name="award" className="w-3 h-3" />} />
+                    <MetricTile isDark={isDark} label="Safety"
+                      value={safetyScore != null ? <>{Math.round(safetyScore)}<span className="text-muted-foreground font-normal text-[8px] ml-0.5">/100</span></> : '--'}
+                      color={safetyScore != null ? (safetyScore >= 90 ? 'green' : safetyScore >= 75 ? 'blue' : 'orange') : undefined}
+                      icon={<Icon name="shield" className="w-3 h-3" />} />
+                  </div>
+
                 </div>
 
                 {/* Expanded Detail */}
                 {isSelected && (
-                  <div className={`px-4 pb-4 pt-3 border-t border-border`} onClick={(e) => e.stopPropagation()}>
-                    {enrichingId === trip.id && (
-                      <div className={`mb-3 flex items-center gap-1.5 text-xs ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Enriching trip data...
-                      </div>
-                    )}
-                    <TripAddresses trip={trip} isDark={isDark} />
+                  <div className={`px-4 pb-4 pt-0`} onClick={(e) => e.stopPropagation()}>
+                    <div className="pt-4 border-t border-border/40 space-y-3">
+                      {enrichingId === trip.id && (
+                        <div className={`flex items-center gap-1.5 text-[11px] font-medium ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                          <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> Enriching trip data...
+                        </div>
+                      )}
 
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3">
-                      <StatCell isDark={isDark} label="Accel (total)"
-                        value={trip.behaviorReady ? (trip.totalAccelerationEvents ?? trip.accelerationEventCount ?? 0) : '--'}
-                        warn={trip.behaviorReady ? (trip.hardAccelerationEvents ?? trip.hardAccelerationCount ?? 0) > 0 : false} />
-                      <StatCell isDark={isDark} label="Brake (total)"
-                        value={trip.behaviorReady ? (trip.totalBrakingEvents ?? trip.brakingEventCount ?? 0) : '--'}
-                        warn={trip.behaviorReady ? (trip.hardBrakingEvents ?? trip.hardBrakingCount ?? 0) > 0 : false} />
-                      <StatCell isDark={isDark} label="Abuse"
-                        value={trip.behaviorReady ? (trip.abuseEvents ?? trip.abuseEventCount ?? 0) : '--'}
-                        warn={trip.behaviorReady ? (trip.abuseEvents ?? trip.abuseEventCount ?? 0) > 0 : false} />
-                      {trip.avgRpm != null && <StatCell isDark={isDark} label="Avg RPM" value={`${Math.round(trip.avgRpm)}`} />}
-                      {trip.avgEngineLoad != null && <StatCell isDark={isDark} label="Avg Load" value={`${trip.avgEngineLoad.toFixed(1)}%`} />}
-                      {trip.avgThrottlePosition != null && <StatCell isDark={isDark} label="Avg Throttle" value={`${trip.avgThrottlePosition.toFixed(1)}%`} />}
-                    </div>
+                      {/* A. Addresses (Start | End) */}
+                      <TripAddresses trip={trip} isDark={isDark} />
 
-                    {/* Behavior Analysis Sections */}
-                    <BehaviorAnalysis
-                      trip={trip}
-                      isDark={isDark}
-                      events={behaviorEvents[trip.id] ?? []}
-                      loading={behaviorLoading === trip.id}
-                      expandedSection={expandedSection}
-                      onToggleSection={(s) => setExpandedSection(expandedSection === s ? null : s)}
-                      onEnrich={async () => {
-                        if (!vehicleId) return;
-                        setBehaviorLoading(trip.id);
-                        try {
-                          await api.vehicleIntelligence.enrichTripBehavior(vehicleId, trip.id);
-                          const evts = await api.vehicleIntelligence.tripBehaviorEvents(vehicleId, trip.id);
-                          setBehaviorEvents((prev) => ({ ...prev, [trip.id]: evts?.events ?? [] }));
-                          loadTrips();
-                        } catch { /* silent */ }
-                        setBehaviorLoading(null);
-                      }}
-                    />
+                      {/* B. Driving Behavior Analysis (collapsible Accel / Brake / Abuse) */}
+                      <BehaviorAnalysis
+                        trip={trip}
+                        isDark={isDark}
+                        events={behaviorEvents[trip.id] ?? []}
+                        loading={behaviorLoading === trip.id}
+                        expandedSection={expandedSection}
+                        onToggleSection={(s) => setExpandedSection(expandedSection === s ? null : s)}
+                        onEnrich={async () => {
+                          if (!vehicleId) return;
+                          setBehaviorLoading(trip.id);
+                          try {
+                            await api.vehicleIntelligence.enrichTripBehavior(vehicleId, trip.id);
+                            const evts = await api.vehicleIntelligence.tripBehaviorEvents(vehicleId, trip.id);
+                            setBehaviorEvents((prev) => ({ ...prev, [trip.id]: evts?.events ?? [] }));
+                            loadTrips();
+                          } catch { /* silent */ }
+                          setBehaviorLoading(null);
+                        }}
+                      />
 
-                    <div className="rounded-lg p-4 bg-muted">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        {/* Road Type Distribution */}
-                        <div>
-                          <div className="flex items-center gap-1.5 mb-2.5">
-                            <Wind className={`w-3.5 h-3.5 ${isDark ? 'text-indigo-400' : 'text-indigo-500'}`} />
-                            <span className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Road Distribution</span>
-                          </div>
-                          {hasRoadType(trip) || enr ? (
-                            <>
-                              <div className="flex gap-0.5 h-2.5 rounded-full overflow-hidden mb-3">
-                                {((enr?.citySharePercent ?? trip.citySharePercent) ?? 0) > 0 && <div className="bg-blue-500 rounded-sm" style={{ width: `${enr?.citySharePercent ?? trip.citySharePercent}%` }} />}
-                                {((enr?.highwaySharePercent ?? trip.highwaySharePercent) ?? 0) > 0 && <div className="bg-emerald-500 rounded-sm" style={{ width: `${enr?.highwaySharePercent ?? trip.highwaySharePercent}%` }} />}
-                                {((enr?.countrySharePercent ?? trip.countrySharePercent) ?? 0) > 0 && <div className="bg-amber-500 rounded-sm" style={{ width: `${enr?.countrySharePercent ?? trip.countrySharePercent}%` }} />}
-                              </div>
-                              <div className="space-y-1.5">
-                                <RoadRow isDark={isDark} color="bg-blue-500" label="City" percent={enr?.citySharePercent ?? trip.citySharePercent ?? 0} km={enr?.cityKm} />
-                                <RoadRow isDark={isDark} color="bg-emerald-500" label="Highway" percent={enr?.highwaySharePercent ?? trip.highwaySharePercent ?? 0} km={enr?.highwayKm} />
-                                <RoadRow isDark={isDark} color="bg-amber-500" label="Country" percent={enr?.countrySharePercent ?? trip.countrySharePercent ?? 0} km={enr?.countryKm} />
-                              </div>
-                            </>
-                          ) : (
-                            <p className={`text-[11px] text-muted-foreground`}>Run trip analysis to calculate road type distribution</p>
-                          )}
+                      {/* C. Engine telemetry (Load / Throttle) */}
+                      <div className={`rounded-xl border p-3 ${isDark ? 'bg-white/[0.02] border-white/[0.05]' : 'bg-slate-50/50 border-slate-100'}`}>
+                        <div className="flex items-center gap-1.5 mb-2.5">
+                          <Icon name="activity" className={`w-3.5 h-3.5 ${isDark ? 'text-cyan-400' : 'text-cyan-500'}`} />
+                          <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Engine</span>
                         </div>
 
-                        {/* Temperature + Performance + Consumption */}
-                        <div className="space-y-3">
-                          {(trip.outsideTemperatureStartC != null || enr?.outsideTemperatureStartC != null) && (
-                            <div>
-                              <div className="flex items-center gap-1.5 mb-1">
-                                <Thermometer className={`w-3.5 h-3.5 ${((enr?.outsideTemperatureStartC ?? trip.outsideTemperatureStartC) ?? 20) > 30 ? 'text-red-400' : ((enr?.outsideTemperatureStartC ?? trip.outsideTemperatureStartC) ?? 20) < 5 ? 'text-blue-400' : 'text-muted-foreground'}`} />
-                                <span className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Outside Temperature</span>
-                              </div>
-                              <p className={`text-sm font-bold text-foreground`}>
-                                {(enr?.outsideTemperatureStartC ?? trip.outsideTemperatureStartC)?.toFixed(1)}°C
-                              </p>
-                            </div>
-                          )}
-                          {(trip.engineTempStartC != null || enr?.engineTempStartC != null) && (
-                            <div>
-                              <div className="flex items-center gap-1.5 mb-1">
-                                <Activity className={`w-3.5 h-3.5 ${isDark ? 'text-cyan-400' : 'text-cyan-500'}`} />
-                                <span className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Engine Temp</span>
-                              </div>
-                              <p className={`text-[11px] text-muted-foreground`}>
-                                Start: {(enr?.engineTempStartC ?? trip.engineTempStartC)?.toFixed(0)}°C
-                                {(enr?.engineTempEndC ?? trip.engineTempEndC) != null && <> → End: {(enr?.engineTempEndC ?? trip.engineTempEndC)?.toFixed(0)}°C</>}
-                              </p>
-                            </div>
-                          )}
+                        {(() => {
+                          const hasEngine =
+                            trip.avgEngineLoad != null ||
+                            trip.avgThrottlePosition != null;
 
-                          <div>
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <Fuel className={`w-3.5 h-3.5 ${isEv ? (isDark ? 'text-emerald-400' : 'text-emerald-500') : (isDark ? 'text-cyan-400' : 'text-cyan-500')}`} />
-                              <span className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>
-                                {isEv ? 'Energy Consumption' : 'Fuel Consumption'}
-                              </span>
-                            </div>
-                            {consumption ? (
-                              <>
-                                <p className={`text-sm font-bold text-foreground`}>{consumption.value}</p>
-                                {consumption.avg && <p className={`text-[10px] text-muted-foreground`}>{consumption.avg}</p>}
-                                {consumption.confidence && consumption.confidence !== 'high' && (
-                                  <p className={`text-[9px] italic mt-0.5 ${isDark ? 'text-amber-500/70' : 'text-amber-600/70'}`}>
-                                    {consumption.confidence === 'low' ? 'Low confidence — signal quality limited' : 'Invalid signal data'}
-                                  </p>
-                                )}
-                              </>
-                            ) : (
-                              <p className={`text-[11px] text-muted-foreground`}>
-                                No {isEv ? 'energy' : 'fuel'} data available — signal not reported at trip start or end
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Speeding Sections */}
-                        <div className="space-y-3">
-                          {(() => {
-                            const isEnriched = !!(trip.enrichedAt || enr);
-                            const sections = getSpeedingSections(trip, enr);
-                            const sectionCount = sections.length || (enr?.speedingSectionCount ?? trip.speedingSectionCount ?? 0);
-                            const maxOver = enr?.maxOverSpeedKmh ?? trip.maxOverSpeedKmh ?? 0;
-                            const distM = enr?.speedingDistanceMeters ?? trip.speedingDistanceM ?? 0;
-                            const durS = enr?.speedingDurationSeconds ?? trip.speedingDurationS ?? 0;
-                            const exposure = enr?.speedingExposurePercent ?? trip.speedingExposurePct ?? null;
-
-                            if (!isEnriched) {
-                              return (
-                                <div>
-                                  <div className="flex items-center gap-1.5 mb-1">
-                                    <AlertCircle className={`w-3.5 h-3.5 text-muted-foreground`} />
-                                    <span className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Speeding Sections</span>
-                                  </div>
-                                  <p className={`text-sm font-medium text-muted-foreground`}>No Data</p>
-                                  <p className={`text-[9px] text-muted-foreground`}>Run trip analysis to detect speeding</p>
-                                </div>
-                              );
-                            }
-
-                            if (sectionCount === 0) {
-                              return (
-                                <div>
-                                  <div className="flex items-center gap-1.5 mb-1">
-                                    <CheckCircle2 className={`w-3.5 h-3.5 ${isDark ? 'text-green-400' : 'text-green-500'}`} />
-                                    <span className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Speeding Sections</span>
-                                  </div>
-                                  <p className={`text-sm font-bold ${isDark ? 'text-green-400' : 'text-green-600'}`}>No Speeding</p>
-                                  <p className={`text-[9px] text-muted-foreground`}>Based on matched road speed limits with 5% tolerance</p>
-                                </div>
-                              );
-                            }
-
-                            const maxSeverity = (['severe', 'high', 'moderate', 'low'] as const).find((s) => sections.some((sec) => sec.severity === s)) ?? 'low';
-                            const headerColor = maxSeverity === 'severe' || maxSeverity === 'high' ? 'text-red-400' : maxSeverity === 'moderate' ? 'text-amber-400' : (isDark ? 'text-yellow-400' : 'text-yellow-600');
-
+                          if (!hasEngine) {
                             return (
-                              <div>
-                                <div className="flex items-center gap-1.5 mb-2">
-                                  <AlertCircle className={`w-3.5 h-3.5 ${headerColor}`} />
-                                  <span className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Speeding Sections</span>
-                                </div>
-
-                                {/* Summary cards */}
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-                                  <div className={`rounded-lg px-2.5 py-1.5 bg-muted`}>
-                                    <p className={`text-[9px] uppercase tracking-wider text-muted-foreground`}>Sections</p>
-                                    <p className={`text-sm font-bold ${headerColor}`}>{sectionCount}</p>
-                                  </div>
-                                  <div className={`rounded-lg px-2.5 py-1.5 bg-muted`}>
-                                    <p className={`text-[9px] uppercase tracking-wider text-muted-foreground`}>Distance</p>
-                                    <p className={`text-sm font-bold text-foreground`}>{distM >= 1000 ? `${(distM / 1000).toFixed(1)} km` : `${distM} m`}</p>
-                                  </div>
-                                  <div className={`rounded-lg px-2.5 py-1.5 bg-muted`}>
-                                    <p className={`text-[9px] uppercase tracking-wider text-muted-foreground`}>Peak Over</p>
-                                    <p className={`text-sm font-bold text-red-400`}>+{maxOver} km/h</p>
-                                  </div>
-                                  <div className={`rounded-lg px-2.5 py-1.5 bg-muted`}>
-                                    <p className={`text-[9px] uppercase tracking-wider text-muted-foreground`}>Exposure</p>
-                                    <p className={`text-sm font-bold text-foreground`}>{exposure != null ? `${exposure}%` : '—'}</p>
-                                  </div>
-                                </div>
-
-                                {/* Section detail list */}
-                                {sections.length > 0 && (
-                                  <div className="space-y-1.5">
-                                    {sections.map((sec) => {
-                                      const sevColors: Record<string, string> = {
-                                        severe: 'bg-red-500', high: 'bg-red-400', moderate: 'bg-amber-400', low: 'bg-yellow-400',
-                                      };
-                                      const sevLabel: Record<string, string> = {
-                                        severe: 'Severe', high: 'High', moderate: 'Moderate', low: 'Low',
-                                      };
-                                      return (
-                                        <div key={sec.sectionIndex} className="rounded-lg px-3 py-2 bg-muted border border-border">
-                                          <div className="flex items-center justify-between mb-1">
-                                            <div className="flex items-center gap-2">
-                                              <span className={`inline-block w-2 h-2 rounded-full ${sevColors[sec.severity]}`} />
-                                              <span className={`text-[10px] font-semibold text-foreground`}>
-                                                {formatTime(sec.startedAt)} – {formatTime(sec.endedAt)}
-                                              </span>
-                                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
-                                                sec.severity === 'severe' || sec.severity === 'high'
-                                                  ? 'bg-red-500/15 text-red-400'
-                                                  : sec.severity === 'moderate'
-                                                    ? 'bg-amber-500/15 text-amber-400'
-                                                    : 'bg-yellow-500/15 text-yellow-500'
-                                              }`}>{sevLabel[sec.severity]}</span>
-                                            </div>
-                                            {sec.primaryLimitSource === 'fallback' && (
-                                              <span className="text-[8px] px-1 py-0.5 rounded bg-muted text-muted-foreground">Estimated limit</span>
-                                            )}
-                                          </div>
-                                          <div className="flex flex-wrap gap-x-4 gap-y-0.5">
-                                            <span className={`text-[10px] text-muted-foreground`}>
-                                              {sec.durationSeconds}s · {sec.approxDistanceMeters >= 1000 ? `${(sec.approxDistanceMeters / 1000).toFixed(1)} km` : `${sec.approxDistanceMeters} m`}
-                                            </span>
-                                            <span className={`text-[10px] text-muted-foreground`}>
-                                              Limit {sec.representativeSpeedLimitKmh} km/h
-                                            </span>
-                                            <span className={`text-[10px] font-medium text-red-400`}>
-                                              Peak +{sec.maxOverSpeedKmh} km/h · Avg +{sec.avgOverSpeedKmh} km/h
-                                            </span>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-
-                                <p className={`text-[8px] mt-2 text-muted-foreground`}>Based on matched road speed limits with 5% tolerance</p>
-                              </div>
+                              <p className="text-[11px] text-muted-foreground">
+                                No {isEv ? 'energy' : 'engine'} telemetry available
+                              </p>
                             );
-                          })()}
+                          }
 
-                          <div>
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <Shield
-                                className={`w-3.5 h-3.5 ${
-                                  (trip.abuseEvents ?? trip.abuseEventCount ?? 0) > 3
-                                    ? 'text-red-400'
-                                    : (trip.abuseEvents ?? trip.abuseEventCount ?? 0) > 0
-                                      ? 'text-amber-400'
-                                      : 'text-green-400'
-                                }`}
-                              />
-                              <span className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Behavior Analysis</span>
+                          return (
+                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px]">
+                              {trip.avgEngineLoad != null && (
+                                <span className="text-muted-foreground">
+                                  Load <span className="text-foreground font-bold tabular-nums">{trip.avgEngineLoad.toFixed(0)}%</span>
+                                </span>
+                              )}
+                              {trip.avgThrottlePosition != null && (
+                                <span className="text-muted-foreground">
+                                  Throttle <span className="text-foreground font-bold tabular-nums">{trip.avgThrottlePosition.toFixed(0)}%</span>
+                                </span>
+                              )}
                             </div>
-                            {trip.behaviorReady ? (
-                              <>
-                                <p
-                                  className={`text-sm font-bold ${
-                                    (trip.abuseEvents ?? trip.abuseEventCount ?? 0) > 3
-                                      ? 'text-red-400'
-                                      : (trip.abuseEvents ?? trip.abuseEventCount ?? 0) > 0
-                                        ? (isDark ? 'text-amber-400' : 'text-amber-600')
-                                        : (isDark ? 'text-green-400' : 'text-green-600')
-                                  }`}
-                                >
-                                  {(trip.abuseEvents ?? trip.abuseEventCount ?? 0) > 3
-                                    ? 'High Risk'
-                                    : (trip.abuseEvents ?? trip.abuseEventCount ?? 0) > 0
-                                      ? 'Moderate'
-                                      : 'Clean'}
-                                </p>
-                                <p className={`text-[10px] text-muted-foreground`}>
-                                  {trip.totalAccelerationEvents ?? trip.accelerationEventCount ?? 0} accel ·{' '}
-                                  {trip.totalBrakingEvents ?? trip.brakingEventCount ?? 0} brake ·{' '}
-                                  {trip.abuseEvents ?? trip.abuseEventCount ?? 0} abuse
-                                </p>
-                              </>
-                            ) : (
-                              <p className={`text-[10px] text-muted-foreground`}>Not yet analyzed</p>
-                            )}
-                          </div>
-
-                          {(enr?.mapMatchConfidence ?? 0) > 0 && (
-                            <div className={`mt-2 pt-2 border-t border-border`}>
-                              <p className={`text-[9px] text-muted-foreground`}>Map match confidence: {Math.round((enr?.mapMatchConfidence ?? 0) * 100)}%</p>
-                            </div>
-                          )}
-                        </div>
+                          );
+                        })()}
                       </div>
+
+                      {/* E. Map match confidence — tiny footer */}
+                      {(enr?.mapMatchConfidence ?? 0) > 0 && (
+                        <p className="text-[9px] text-muted-foreground text-center pt-1">
+                          Map match confidence: <span className="font-semibold tabular-nums">{Math.round((enr?.mapMatchConfidence ?? 0) * 100)}%</span>
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1333,26 +1008,26 @@ function TripAddresses({ trip, isDark }: { trip: TripData; isDark: boolean }) {
   return (
     <div className="grid grid-cols-2 gap-3 mb-3">
       <div className={`flex items-start gap-2 p-2 rounded-lg bg-muted`}>
-        <MapPin className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
+        <Icon name="map-pin" className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${isDark ? 'text-green-400' : 'text-green-600'}`} />
         <div className="min-w-0">
-          <div className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>Start</div>
+          <div className={`text-[9px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>Start</div>
           {startLoading ? (
-            <Loader2 className={`w-3 h-3 animate-spin text-muted-foreground`} />
+            <Icon name="loader-2" className={`w-3 h-3 animate-spin text-muted-foreground`} />
           ) : (
-            <div className={`text-[11px] font-medium truncate text-foreground`}>
+            <div className={`text-[10px] font-medium truncate text-foreground`}>
               {startAddr?.formatted ?? '—'}
             </div>
           )}
         </div>
       </div>
       <div className={`flex items-start gap-2 p-2 rounded-lg bg-muted`}>
-        <MapPin className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${isDark ? 'text-red-400' : 'text-red-600'}`} />
+        <Icon name="map-pin" className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${isDark ? 'text-red-400' : 'text-red-600'}`} />
         <div className="min-w-0">
-          <div className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>End</div>
+          <div className={`text-[9px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>End</div>
           {endLoading ? (
-            <Loader2 className={`w-3 h-3 animate-spin text-muted-foreground`} />
+            <Icon name="loader-2" className={`w-3 h-3 animate-spin text-muted-foreground`} />
           ) : (
-            <div className={`text-[11px] font-medium truncate text-foreground`}>
+            <div className={`text-[10px] font-medium truncate text-foreground`}>
               {endAddr?.formatted ?? '—'}
             </div>
           )}
@@ -1402,7 +1077,7 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
     return (
       <div className="rounded-lg p-4 mb-3 border border-border bg-card">
         <div className="flex items-center gap-2">
-          <Loader2 className={`w-4 h-4 animate-spin ${isDark ? 'text-indigo-400' : 'text-indigo-500'}`} />
+          <Icon name="loader-2" className={`w-4 h-4 animate-spin ${isDark ? 'text-indigo-400' : 'text-indigo-500'}`} />
           <span className={`text-xs font-medium ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
             {enrichStatus === 'PENDING' ? 'Analysis queued...' : 'Analyzing driving behavior...'}
           </span>
@@ -1416,7 +1091,7 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
     return (
       <div className="rounded-lg p-4 mb-3 border border-border bg-card">
         <div className="flex items-center gap-2 mb-1">
-          <BarChart3 className={`w-4 h-4 text-muted-foreground`} />
+          <Icon name="bar-chart-3" className={`w-4 h-4 text-muted-foreground`} />
           <span className={`text-xs font-semibold text-foreground`}>Driving Behavior Analysis</span>
         </div>
         <p className={`text-[10px] text-muted-foreground`}>
@@ -1431,7 +1106,7 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
     return (
       <div className="rounded-lg p-4 mb-3 border border-border bg-card">
         <div className="flex items-center gap-2 mb-1">
-          <AlertCircle className={`w-4 h-4 text-destructive`} />
+          <Icon name="alert-circle" className={`w-4 h-4 text-destructive`} />
           <span className={`text-xs font-semibold text-foreground`}>Driving Behavior Analysis</span>
         </div>
         <p className={`text-[10px] text-muted-foreground`}>
@@ -1447,11 +1122,11 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
       <div className="rounded-lg p-4 mb-3 border border-border bg-card">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <AlertTriangle className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />
+            <Icon name="alert-triangle" className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />
             <span className={`text-xs font-semibold text-foreground`}>Driving Behavior Analysis</span>
           </div>
           <button onClick={onEnrich} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isDark ? 'bg-amber-600/20 text-amber-400 hover:bg-amber-600/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`}>
-            <RefreshCw className="w-3.5 h-3.5" /> Retry
+            <Icon name="refresh-cw" className="w-3.5 h-3.5" /> Retry
           </button>
         </div>
         <p className={`text-[10px] mt-1.5 text-muted-foreground`}>
@@ -1469,11 +1144,11 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
       <div className="rounded-lg p-4 mb-3 border border-border bg-card">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <BarChart3 className={`w-4 h-4 ${isDark ? 'text-indigo-400' : 'text-indigo-500'}`} />
+            <Icon name="bar-chart-3" className={`w-4 h-4 ${isDark ? 'text-indigo-400' : 'text-indigo-500'}`} />
             <span className={`text-xs font-semibold text-foreground`}>Driving Behavior Analysis</span>
           </div>
           <button onClick={onEnrich} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isDark ? 'bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}>
-            <Activity className="w-3.5 h-3.5" /> Analyze Behavior
+            <Icon name="activity" className="w-3.5 h-3.5" /> Analyze Behavior
           </button>
         </div>
         <p className={`text-[10px] mt-1.5 text-muted-foreground`}>
@@ -1487,7 +1162,7 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
     {
       key: 'accel',
       label: 'Acceleration',
-      icon: <ArrowUp className="w-3.5 h-3.5" />,
+      icon: <Icon name="arrow-up" className="w-3.5 h-3.5" />,
       count: trip.totalAccelerationEvents ?? trip.accelerationEventCount ?? accelEvents.length,
       hardCount: trip.hardAccelerationEvents ?? trip.hardAccelerationCount ?? 0,
       events: accelEvents,
@@ -1496,7 +1171,7 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
     {
       key: 'brake',
       label: 'Braking',
-      icon: <ArrowDown className="w-3.5 h-3.5" />,
+      icon: <Icon name="arrow-down" className="w-3.5 h-3.5" />,
       count: trip.totalBrakingEvents ?? trip.brakingEventCount ?? brakeEvents.length,
       hardCount: trip.hardBrakingEvents ?? trip.hardBrakingCount ?? 0,
       events: brakeEvents,
@@ -1505,7 +1180,7 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
     {
       key: 'abuse',
       label: 'Abuse Detection',
-      icon: <Shield className="w-3.5 h-3.5" />,
+      icon: <Icon name="shield" className="w-3.5 h-3.5" />,
       count: trip.abuseEvents ?? trip.abuseEventCount ?? abuseEvents.length,
       hardCount: 0,
       events: abuseEvents,
@@ -1521,7 +1196,7 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
             className="w-full flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-accent/50">
             <div className="flex items-center gap-2">
               <span className={sec.color}>{sec.icon}</span>
-              <span className={`text-xs font-semibold text-foreground`}>{sec.label}</span>
+              <span className={`text-[10px] font-semibold text-foreground`}>{sec.label}</span>
               <span className={`px-1 py-px rounded text-[10px] font-bold ${sec.count > 0 ? (sec.hardCount > 0 ? classBg('HARD') : classBg('MODERATE')) : classBg('LIGHT')}`}>
                 {sec.count}
               </span>
@@ -1530,7 +1205,7 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
               )}
             </div>
             <div className={`text-muted-foreground`}>
-              {expandedSection === sec.key ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              {expandedSection === sec.key ? <Icon name="chevron-up" className="w-3.5 h-3.5" /> : <Icon name="chevron-down" className="w-3.5 h-3.5" />}
             </div>
           </button>
 
@@ -1584,7 +1259,7 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
                         {ev.latitude != null && ev.longitude != null && (
                           <EventDetail isDark={isDark} label="Location"
                             value={`${ev.latitude.toFixed(4)}, ${ev.longitude.toFixed(4)}`}
-                            icon={<MapPin className="w-2.5 h-2.5" />} />
+                            icon={<Icon name="map-pin" className="w-2.5 h-2.5" />} />
                         )}
                         {ev.source === 'DRIVING_EVENT' && (
                           <span className="text-[9px] px-1 py-0.5 rounded bg-blue-500/10 text-blue-500">LTE</span>
@@ -1605,35 +1280,23 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
   );
 }
 
-function Metric({ isDark, label, value, color, icon }: { isDark: boolean; label: string; value: string; color?: 'green' | 'blue' | 'orange' | 'red'; icon?: React.ReactNode }) {
-  const colorClass = color === 'green' ? 'text-green-500'
-    : color === 'blue' ? 'text-blue-500'
-    : color === 'orange' ? 'text-orange-500'
-    : color === 'red' ? 'text-red-500' : 'text-foreground';
-  return (
-    <div className="text-right">
-      <div className={`text-[10px] mb-0.5 text-muted-foreground`}>{label}</div>
-      <div className={`text-xs font-bold flex items-center justify-end gap-0.5 ${colorClass}`}>{icon}{value}</div>
-    </div>
-  );
-}
+function MetricTile({ isDark, label, value, color, icon }: { isDark: boolean; label: string; value: React.ReactNode; color?: 'green' | 'blue' | 'orange' | 'red'; icon?: React.ReactNode }) {
+  const colorClass = color === 'green' ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
+    : color === 'blue' ? (isDark ? 'text-blue-400' : 'text-blue-600')
+    : color === 'orange' ? (isDark ? 'text-amber-400' : 'text-amber-600')
+    : color === 'red' ? (isDark ? 'text-red-400' : 'text-red-600') : 'text-foreground';
 
-function StatCell({ isDark, label, value, warn }: { isDark: boolean; label: string; value: string | number; warn?: boolean }) {
-  return (
-    <div>
-      <div className={`text-[10px] uppercase tracking-wider font-semibold mb-1 text-muted-foreground`}>{label}</div>
-      <div className={`text-xs font-bold ${warn ? 'text-orange-500' : 'text-green-500'}`}>{value}</div>
-    </div>
-  );
-}
+  const bgClass = isDark ? 'bg-white/[0.02] border-white/[0.05]' : 'bg-slate-50/50 border-slate-100';
 
-function RoadRow({ isDark, color, label, percent, km }: { isDark: boolean; color: string; label: string; percent: number; km?: number }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className={`w-2 h-2 rounded-sm ${color}`} />
-      <span className={`text-[11px] font-semibold w-8 text-foreground`}>{percent}%</span>
-      <span className={`text-[10px] flex-1 text-muted-foreground`}>{label}</span>
-      {km != null && km > 0 && <span className={`text-[10px] font-medium text-muted-foreground`}>{km.toFixed(1)} km</span>}
+    <div className={`px-1.5 py-1.5 rounded-[10px] border ${bgClass} flex flex-col justify-center min-w-0`}>
+      <div className="flex items-center gap-1 mb-0.5">
+        {icon && <span className="text-muted-foreground shrink-0 opacity-70">{icon}</span>}
+        <span className="text-[9px] uppercase tracking-wider font-semibold text-muted-foreground truncate" title={label}>{label}</span>
+      </div>
+      <div className={`text-[10px] font-bold tabular-nums truncate ${colorClass}`}>
+        {value}
+      </div>
     </div>
   );
 }
@@ -1703,33 +1366,33 @@ function EnergyEventCard({ event, isDark }: { event: EnergyEvent; isDark: boolea
         : 'bg-muted text-muted-foreground';
 
   return (
-    <div className="rounded-lg border border-border bg-card/60 shadow-xs">
-      <div className="p-3 flex items-center gap-3">
+    <div className="rounded-xl border border-border bg-card/40 shadow-sm">
+      <div className="p-3 sm:p-4 flex items-center gap-3">
         <div
-          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${accentBg}`}
+          className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${accentBg}`}
         >
           {isRefuel ? (
-            <Fuel className={`w-4 h-4 ${accentText}`} />
+            <Icon name="fuel" className={`w-4 h-4 ${accentText}`} />
           ) : (
-            <BatteryCharging className={`w-4 h-4 ${accentText}`} />
+            <Icon name="battery-charging" className={`w-4 h-4 ${accentText}`} />
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-foreground">{dateLabel}</span>
-            <span className="text-[11px] text-muted-foreground">{timeLabel}</span>
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className="text-[10px] font-bold text-foreground">{dateLabel}</span>
+            <span className="text-[10px] font-medium text-muted-foreground">{timeLabel}</span>
             <span
-              className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider ${pillBg}`}
+              className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${pillBg}`}
             >
               {isRefuel ? 'refuel' : 'recharge'}
             </span>
             <span
-              className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider ${confidenceTint}`}
+              className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${confidenceTint}`}
             >
               {event.confidence}
             </span>
           </div>
-          <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-3 flex-wrap text-[10px] font-medium text-muted-foreground">
             {primaryDelta && (
               <span className={`font-semibold ${accentText}`}>{primaryDelta}</span>
             )}
@@ -1740,7 +1403,7 @@ function EnergyEventCard({ event, isDark }: { event: EnergyEvent; isDark: boolea
             )}
             {event.startLatitude != null && event.startLongitude != null && (
               <span className="inline-flex items-center gap-1">
-                <MapPin className="w-2.5 h-2.5" />
+                <Icon name="map-pin" className="w-2.5 h-2.5" />
                 {event.startLatitude.toFixed(3)}, {event.startLongitude.toFixed(3)}
               </span>
             )}

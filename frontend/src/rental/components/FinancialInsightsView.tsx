@@ -1,3 +1,5 @@
+import { ArrowDownLeft, ArrowUpRight, Clock, Receipt, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import { Icon } from './ui/Icon';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Area,
@@ -8,24 +10,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import {
-  AlertCircle,
-  ArrowDownLeft,
-  ArrowRight,
-  ArrowUpRight,
-  CheckCircle,
-  ChevronDown,
-  ChevronUp,
-  Clock,
-  Loader2,
-  Receipt,
-  RefreshCw,
-  Target,
-  TrendingDown,
-  TrendingUp,
-  Wallet,
-  X,
-} from 'lucide-react';
+
 import { api } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
@@ -58,16 +43,6 @@ interface InvoiceLite {
   dueDate: string | null;
   paidAt: string | null;
   createdAt: string | null;
-}
-
-interface InvoiceStats {
-  total: number;
-  outgoing: number;
-  incoming: number;
-  paid: number;
-  unpaid: number;
-  totalRevenueCents: number;
-  totalExpensesCents: number;
 }
 
 interface CustomerLite {
@@ -162,8 +137,7 @@ function customerLabel(c: CustomerLite | undefined): string {
  * only operational signals; everything finance-driven (Revenue MTD, Expenses
  * MTD, Profit, Outstanding, daily breakdown, top customers/vehicles) lives
  * here as a first-class Insights surface and is wired end-to-end to the real
- * `/organizations/:orgId/invoices` and `/organizations/:orgId/invoices/stats`
- * endpoints — no mock data, no synthetic timeseries, no hardcoded category
+ * `/organizations/:orgId/invoices` endpoint — no mock data, no synthetic timeseries, no hardcoded category
  * lists, no fabricated AI commentary.
  */
 export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps) {
@@ -180,7 +154,6 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<InvoiceLite[]>([]);
-  const [stats, setStats] = useState<InvoiceStats | null>(null);
   const [customers, setCustomers] = useState<CustomerLite[]>([]);
   const [activePopup, setActivePopup] = useState<'revenue' | 'expenses' | null>(null);
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
@@ -189,16 +162,14 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   const load = useCallback(async () => {
     if (!orgId) {
       setInvoices([]);
-      setStats(null);
       setCustomers([]);
       setLoading(false);
       return;
     }
     setError(null);
     try {
-      const [iList, iStats, cList] = await Promise.all([
+      const [iList, cList] = await Promise.all([
         api.invoices.list(orgId).catch(() => [] as any[]),
-        api.invoices.stats(orgId).catch(() => null as any),
         api.customers.list(orgId).catch(() => [] as any[]),
       ]);
       const invoicesArr: InvoiceLite[] = Array.isArray(iList) ? (iList as InvoiceLite[]) : [];
@@ -206,7 +177,6 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         ? (cList as CustomerLite[])
         : ((cList as any)?.data ?? []);
       setInvoices(invoicesArr);
-      setStats(iStats && typeof iStats === 'object' ? (iStats as InvoiceStats) : null);
       setCustomers(customersArr);
     } catch (e: any) {
       setError(e?.message ? String(e.message) : 'Failed to load financial data');
@@ -241,16 +211,18 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     const prevRevenue: InvoiceLite[] = [];
     const prevExpense: InvoiceLite[] = [];
     const outstandingRevenue: InvoiceLite[] = [];
+    const mtdInvoices: InvoiceLite[] = [];
 
     for (const inv of invoices) {
       const d = effectiveDateOf(inv);
       if (!d) continue;
       const inMtd = d >= monthStart && d <= now;
       const inPrev = d >= prevMonthStart && d <= prevMonthEnd;
+      if (inMtd) mtdInvoices.push(inv);
       if (isOutgoing(inv.type)) {
         if (inMtd) mtdRevenue.push(inv);
         if (inPrev) prevRevenue.push(inv);
-        if (inv.status !== 'PAID' && inv.status !== 'CANCELLED') {
+        if (inMtd && inv.status !== 'PAID' && inv.status !== 'CANCELLED') {
           outstandingRevenue.push(inv);
         }
       } else if (isIncoming(inv.type)) {
@@ -258,7 +230,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         if (inPrev) prevExpense.push(inv);
       }
     }
-    return { mtdRevenue, mtdExpense, prevRevenue, prevExpense, outstandingRevenue };
+    return { mtdRevenue, mtdExpense, prevRevenue, prevExpense, outstandingRevenue, mtdInvoices };
   }, [invoices, monthStart, prevMonthStart, prevMonthEnd, now]);
 
   const sumCents = (rows: InvoiceLite[]): number =>
@@ -271,6 +243,14 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   const outstandingCents = useMemo(() => sumCents(bucketed.outstandingRevenue), [bucketed.outstandingRevenue]);
   const profitCents = mtdRevenueCents - mtdExpenseCents;
   const profitMargin = mtdRevenueCents > 0 ? (profitCents / mtdRevenueCents) * 100 : 0;
+  const mtdPaidInvoices = useMemo(
+    () => bucketed.mtdInvoices.filter((inv) => inv.status === 'PAID').length,
+    [bucketed.mtdInvoices],
+  );
+  const mtdOpenInvoices = useMemo(
+    () => bucketed.mtdInvoices.filter((inv) => inv.status !== 'PAID' && inv.status !== 'CANCELLED').length,
+    [bucketed.mtdInvoices],
+  );
 
   const revenueDeltaPct = prevRevenueCents > 0
     ? ((mtdRevenueCents - prevRevenueCents) / prevRevenueCents) * 100
@@ -414,45 +394,49 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   if (loading) {
     return (
       <div className="max-w-[1600px] mx-auto py-12 flex flex-col items-center justify-center gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        <Icon name="loader-2" className="w-8 h-8 animate-spin text-muted-foreground" />
         <p className="text-xs text-muted-foreground">{t('common.loading') ?? 'Loading…'}</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-[1600px] mx-auto">
+    <div className="max-w-[1600px] mx-auto space-y-5">
       {/* ─── Header ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-5">
-        <div className="animate-fade-up">
-          <div className="sq-section-label mb-1.5">{t('nav.insights')}</div>
-          <h1 className="text-[22px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground">
+      <div className="flex flex-wrap items-end justify-between gap-2 sm:gap-3">
+        <div className="animate-fade-up min-w-0">
+          <h1 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground truncate">
             {t('nav.financialInsights')}
           </h1>
-          <p className="text-[12px] text-muted-foreground mt-1">{monthLabel} · {invoices.length} invoices</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold sq-tone-neutral">
+            {monthLabel}
+          </span>
+          <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold sq-tone-brand">
+            {invoices.length} invoices
+          </span>
           <button
             type="button"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[13px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border disabled:opacity-60"
+            className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border disabled:opacity-60"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-muted-foreground ${refreshing ? 'animate-spin' : ''}`} />
+            <Icon name="refresh-cw" className={`w-3.5 h-3.5 text-muted-foreground ${refreshing ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/5 p-3 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-red-500" />
-          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+        <div className="rounded-xl p-3 flex items-center gap-2 sq-tone-critical">
+          <Icon name="alert-circle" className="w-4 h-4" />
+          <p className="text-xs font-medium">{error}</p>
         </div>
       )}
 
       {/* ─── KPI Row ─── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <KpiCard
           label="Revenue MTD"
           value={fmtEUR(mtdRevenueCents, intlLocale)}
@@ -494,37 +478,37 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         />
       </div>
 
-      {/* ─── KPI summary row 2 (org-wide totals from /stats endpoint) ─── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-        <SummaryCard label="Lifetime revenue" value={fmtEUR(stats?.totalRevenueCents ?? 0, intlLocale)} />
-        <SummaryCard label="Lifetime expenses" value={fmtEUR(stats?.totalExpensesCents ?? 0, intlLocale)} />
-        <SummaryCard label="Paid invoices" value={String(stats?.paid ?? 0)} hint={`${stats?.outgoing ?? 0} outgoing total`} />
-        <SummaryCard label="Unpaid invoices" value={String(stats?.unpaid ?? 0)} hint={`${stats?.incoming ?? 0} incoming total`} />
+      {/* ─── KPI summary row 2 (current month context) ─── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <SummaryCard label="Revenue invoices" value={String(bucketed.mtdRevenue.length)} hint={monthLabel} />
+        <SummaryCard label="Expense invoices" value={String(bucketed.mtdExpense.length)} hint={monthLabel} />
+        <SummaryCard label="Paid invoices" value={String(mtdPaidInvoices)} hint="This month" />
+        <SummaryCard label="Open invoices" value={String(mtdOpenInvoices)} hint="This month" />
       </div>
 
       {/* ─── Daily chart ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-3">
-        <div className="lg:col-span-2 rounded-lg p-4 border shadow-sm bg-card border-border">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <div className="lg:col-span-2 sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h3 className="text-base font-semibold text-foreground">Daily Revenue & Expenses</h3>
-              <p className="text-xs mt-0.5 text-muted-foreground">{monthLabel} · daily breakdown</p>
+              <h3 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">Daily Revenue & Expenses</h3>
+              <p className="text-[10px] mt-0.5 text-muted-foreground">{monthLabel} · daily breakdown</p>
             </div>
-            <div className="flex items-center gap-3 text-xs">
+            <div className="flex items-center gap-2 text-xs">
               <div className="text-right">
-                <div className="font-medium text-muted-foreground">Revenue</div>
-                <div className="font-bold text-green-600 dark:text-green-400">{fmtEUR(mtdRevenueCents, intlLocale)}</div>
+                <div className="text-[10px] font-medium text-muted-foreground">Revenue</div>
+                <div className="text-[11px] font-bold text-[color:var(--status-success)]">{fmtEUR(mtdRevenueCents, intlLocale)}</div>
               </div>
               <div className="text-right">
-                <div className="font-medium text-muted-foreground">Expenses</div>
-                <div className="font-bold text-red-600 dark:text-red-400">{fmtEUR(mtdExpenseCents, intlLocale)}</div>
+                <div className="text-[10px] font-medium text-muted-foreground">Expenses</div>
+                <div className="text-[11px] font-bold text-[color:var(--status-critical)]">{fmtEUR(mtdExpenseCents, intlLocale)}</div>
               </div>
             </div>
           </div>
           <div className="relative">
             {!hasDailyData && (
               <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-                <div className="px-4 py-2 rounded-lg bg-muted/70 border border-border text-center">
+                <div className="px-4 py-2 rounded-xl bg-card/90 border border-border text-center shadow-[var(--shadow-1)]">
                   <p className="text-xs font-semibold text-foreground">No invoices recorded this month yet</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">Daily revenue & expenses will appear once invoices are issued.</p>
                 </div>
@@ -589,16 +573,16 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         </div>
 
         {/* Margin / outstanding sidebar card */}
-        <div className="rounded-lg p-4 border shadow-sm bg-card border-border">
+        <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
           <div className="flex items-center gap-2 mb-3">
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-blue-500/20' : 'bg-blue-100'}`}>
-              <Target className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center sq-tone-brand">
+              <Icon name="target" className="w-4 h-4" />
             </div>
-            <h3 className="text-base font-semibold text-foreground">Snapshot</h3>
+            <h3 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">Snapshot</h3>
           </div>
           <dl className="space-y-3">
             <SnapRow label="Profit margin">
-              <span className={`text-xs font-bold ${profitCents >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              <span className={`text-xs font-bold ${profitCents >= 0 ? 'text-[color:var(--status-success)]' : 'text-[color:var(--status-critical)]'}`}>
                 {fmtPct(profitMargin, 1)}
               </span>
             </SnapRow>
@@ -606,7 +590,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
               {revenueDeltaPct === null ? (
                 <span className="text-xs text-muted-foreground">—</span>
               ) : (
-                <span className={`text-xs font-bold ${revenueDeltaPct >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                <span className={`text-xs font-bold ${revenueDeltaPct >= 0 ? 'text-[color:var(--status-success)]' : 'text-[color:var(--status-critical)]'}`}>
                   {fmtPct(revenueDeltaPct, 1)}
                 </span>
               )}
@@ -615,7 +599,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
               {expenseDeltaPct === null ? (
                 <span className="text-xs text-muted-foreground">—</span>
               ) : (
-                <span className={`text-xs font-bold ${expenseDeltaPct <= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                <span className={`text-xs font-bold ${expenseDeltaPct <= 0 ? 'text-[color:var(--status-success)]' : 'text-[color:var(--status-critical)]'}`}>
                   {fmtPct(expenseDeltaPct, 1)}
                 </span>
               )}
@@ -700,9 +684,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
                 className="rounded-md px-2 py-2 flex items-center gap-2.5 hover:bg-muted/40 transition-colors"
               >
                 <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${
-                  meta.tone === 'revenue'
-                    ? (isDarkMode ? 'bg-green-500/15 text-green-400' : 'bg-green-100 text-green-700')
-                    : (isDarkMode ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-100 text-amber-700')
+                  meta.tone === 'revenue' ? 'sq-tone-success' : 'sq-tone-warning'
                 }`}>
                   <Icon className="w-3.5 h-3.5" />
                 </div>
@@ -722,18 +704,18 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
                   </p>
                 </div>
                 <div className="flex flex-col items-end shrink-0">
-                  <span className={`text-[12px] font-bold ${meta.tone === 'revenue' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                  <span className={`text-[12px] font-bold ${meta.tone === 'revenue' ? 'text-[color:var(--status-success)]' : 'text-[color:var(--status-attention)]'}`}>
                     {fmtEUR(inv.totalCents ?? 0, intlLocale)}
                   </span>
                   <span
                     className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-px rounded ${
                       status.tone === 'paid'
-                        ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
+                        ? 'sq-tone-success'
                         : status.tone === 'overdue'
-                          ? (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-100 text-red-700')
+                          ? 'sq-tone-critical'
                           : status.tone === 'unpaid'
-                            ? (isDarkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-100 text-blue-700')
-                            : (isDarkMode ? 'bg-neutral-700/40 text-neutral-300' : 'bg-gray-100 text-gray-600')
+                            ? 'sq-tone-brand'
+                            : 'sq-tone-neutral'
                     }`}
                   >
                     {status.label}
@@ -769,7 +751,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
 // ─── Reusable bits ─────────────────────────────────────────────────────
 
 function KpiCard({
-  label, value, icon: Icon, color, isDarkMode, delta, deltaInverted, subtle, onClick, clickable,
+  label, value, icon: Icon, color, delta, deltaInverted, subtle, onClick, clickable,
 }: {
   label: string;
   value: string;
@@ -782,30 +764,21 @@ function KpiCard({
   onClick?: () => void;
   clickable?: boolean;
 }) {
-  const colorBg = color === 'green'
-    ? (isDarkMode ? 'bg-green-500/20' : 'bg-green-100')
-    : color === 'red'
-      ? (isDarkMode ? 'bg-red-500/20' : 'bg-red-100')
-      : color === 'blue'
-        ? (isDarkMode ? 'bg-blue-500/20' : 'bg-blue-100')
-        : (isDarkMode ? 'bg-purple-500/20' : 'bg-purple-100');
-  const colorIcon = color === 'green'
-    ? (isDarkMode ? 'text-green-400' : 'text-green-600')
-    : color === 'red'
-      ? (isDarkMode ? 'text-red-400' : 'text-red-600')
-      : color === 'blue'
-        ? (isDarkMode ? 'text-blue-400' : 'text-blue-600')
-        : (isDarkMode ? 'text-purple-400' : 'text-purple-600');
+  const toneClass =
+    color === 'green'
+      ? 'sq-tone-success'
+      : color === 'red'
+        ? 'sq-tone-critical'
+        : color === 'blue'
+          ? 'sq-tone-brand'
+          : 'sq-tone-warning';
 
   const deltaDisplay = (() => {
     if (delta == null) return null;
     const positive = delta >= 0;
     const goodDirection = deltaInverted ? !positive : positive;
-    const cls = goodDirection
-      ? (isDarkMode ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700')
-      : (isDarkMode ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700');
     return (
-      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cls}`}>
+      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${goodDirection ? 'sq-tone-success' : 'sq-tone-critical'}`}>
         {positive ? '▲' : '▼'} {fmtPct(Math.abs(delta), 1)}
       </span>
     );
@@ -816,22 +789,22 @@ function KpiCard({
     <Wrapper
       type={clickable ? 'button' : undefined}
       onClick={onClick}
-      className={`text-left rounded-lg p-4 border transition-all duration-200 shadow-sm bg-card border-border flex flex-col ${
-        clickable ? 'cursor-pointer hover:border-border/80 hover:shadow-md' : ''
+      className={`text-left rounded-xl p-3 transition-all duration-200 flex flex-col ${toneClass} ${
+        clickable ? 'cursor-pointer hover:opacity-90 hover:shadow-sm' : ''
       }`}
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${colorBg}`}>
-          <Icon className={`w-4 h-4 ${colorIcon}`} />
+      <div className="flex items-start justify-between mb-2">
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-current/10">
+          <Icon className="w-4 h-4" />
         </div>
         {deltaDisplay}
       </div>
-      <div className="text-[18px] font-bold leading-tight text-foreground tabular-nums">{value}</div>
-      <div className="text-[11.5px] font-medium text-muted-foreground mt-0.5">{label}</div>
+      <div className="text-[16px] font-bold leading-tight tabular-nums">{value}</div>
+      <div className="text-[9px] mt-1 font-semibold uppercase tracking-wider opacity-75">{label}</div>
       {subtle && (
-        <div className="text-[10.5px] text-muted-foreground mt-2 pt-2 border-t border-border/60 flex items-center justify-between">
+        <div className="text-[10px] mt-2 pt-2 border-t border-current/15 flex items-center justify-between opacity-80">
           <span>{subtle}</span>
-          {clickable && <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />}
+          {clickable && <Icon name="arrow-right" className="w-3.5 h-3.5" />}
         </div>
       )}
     </Wrapper>
@@ -840,12 +813,12 @@ function KpiCard({
 
 function SummaryCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-lg p-3 border bg-card border-border flex items-center justify-between">
+    <div className="rounded-xl p-3 border border-border/60 bg-card flex items-center justify-between">
       <div>
-        <div className="text-[10.5px] uppercase tracking-wide font-semibold text-muted-foreground">{label}</div>
+        <div className="text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">{label}</div>
         {hint && <div className="text-[10.5px] text-muted-foreground/80 mt-0.5">{hint}</div>}
       </div>
-      <div className="text-[14px] font-bold tabular-nums text-foreground">{value}</div>
+      <div className="text-[13px] font-bold tabular-nums text-foreground">{value}</div>
     </div>
   );
 }
@@ -860,7 +833,7 @@ function SnapRow({ label, children }: { label: string; children: React.ReactNode
 }
 
 function ListCard({
-  title, icon: Icon, tone, isDarkMode, empty, emptyHint, children,
+  title, icon: Icon, tone, empty, emptyHint, children,
 }: {
   title: string;
   icon: typeof TrendingUp;
@@ -870,25 +843,26 @@ function ListCard({
   emptyHint: string;
   children: React.ReactNode;
 }) {
-  const toneCls = tone === 'green'
-    ? (isDarkMode ? 'bg-green-500/15 text-green-400' : 'bg-green-100 text-green-600')
-    : tone === 'blue'
-      ? (isDarkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-100 text-blue-600')
-      : tone === 'red'
-        ? (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-100 text-red-600')
-        : (isDarkMode ? 'bg-neutral-700/40 text-neutral-200' : 'bg-gray-100 text-gray-600');
+  const toneCls =
+    tone === 'green'
+      ? 'sq-tone-success'
+      : tone === 'blue'
+        ? 'sq-tone-brand'
+        : tone === 'red'
+          ? 'sq-tone-critical'
+          : 'sq-tone-neutral';
 
   return (
-    <div className="rounded-lg p-4 border shadow-sm bg-card border-border">
+    <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
       <div className="flex items-center gap-2.5 mb-3">
         <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${toneCls}`}>
           <Icon className="w-4 h-4" />
         </div>
-        <h3 className="text-base font-semibold text-foreground">{title}</h3>
+        <h3 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">{title}</h3>
       </div>
       {empty ? (
         <div className="rounded-md border border-dashed border-border/70 px-3 py-6 text-center">
-          <CheckCircle className="w-4 h-4 text-muted-foreground mx-auto mb-1.5" />
+          <Icon name="check-circle" className="w-4 h-4 text-muted-foreground mx-auto mb-1.5" />
           <p className="text-[11px] text-muted-foreground">{emptyHint}</p>
         </div>
       ) : (
@@ -899,7 +873,7 @@ function ListCard({
 }
 
 function ListRow({
-  rank, primary, secondary, value, valueTone, isDarkMode,
+  rank, primary, secondary, value, valueTone,
 }: {
   rank: number;
   primary: string;
@@ -909,14 +883,14 @@ function ListRow({
   isDarkMode: boolean;
 }) {
   const rankCls = rank === 1
-    ? (isDarkMode ? 'bg-yellow-500/20 text-yellow-300' : 'bg-yellow-100 text-yellow-700')
+    ? 'sq-tone-warning'
     : rank === 2
-      ? (isDarkMode ? 'bg-neutral-700/60 text-gray-200' : 'bg-gray-200 text-gray-700')
+      ? 'sq-tone-brand'
       : rank === 3
-        ? (isDarkMode ? 'bg-orange-500/15 text-orange-300' : 'bg-orange-100 text-orange-700')
-        : (isDarkMode ? 'bg-neutral-800 text-neutral-400' : 'bg-muted text-muted-foreground');
+        ? 'sq-tone-success'
+        : 'sq-tone-neutral';
   const valueCls = valueTone === 'positive'
-    ? (isDarkMode ? 'text-green-400' : 'text-green-600')
+    ? 'text-[color:var(--status-success)]'
     : 'text-foreground';
   return (
     <div className="rounded-md px-2 py-2 flex items-center gap-2.5">
@@ -949,7 +923,7 @@ function BreakdownPopup({
   customerById: Map<string, CustomerLite>;
   vehicleById: Map<string, { license: string; model: string }>;
 }) {
-  const totalCls = tone === 'revenue' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400';
+  const totalCls = tone === 'revenue' ? 'text-[color:var(--status-success)]' : 'text-[color:var(--status-attention)]';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -964,26 +938,22 @@ function BreakdownPopup({
           className="absolute top-3 right-3 w-8 h-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors"
           aria-label="Close"
         >
-          <X className="w-4 h-4 text-muted-foreground" />
+          <Icon name="x" className="w-4 h-4 text-muted-foreground" />
         </button>
 
         <div className="mb-4">
-          <h2 className="text-base font-bold text-foreground">{title}</h2>
+          <h2 className="text-[14px] font-bold text-foreground">{title}</h2>
           <p className="text-xs text-muted-foreground mt-0.5">{monthLabel}</p>
         </div>
 
-        <div className={`rounded-lg p-3 border mb-4 ${
-          tone === 'revenue'
-            ? (isDarkMode ? 'bg-green-500/5 border-green-500/20' : 'bg-green-50/60 border-green-200/60')
-            : (isDarkMode ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50/60 border-amber-200/60')
-        }`}>
+        <div className={`rounded-xl p-3 mb-4 ${tone === 'revenue' ? 'sq-tone-success' : 'sq-tone-warning'}`}>
           <div className="text-[10.5px] uppercase tracking-wide font-semibold text-muted-foreground">Total</div>
-          <div className={`text-[20px] font-bold tabular-nums ${totalCls}`}>{fmtEURFull(totalCents, intlLocale)}</div>
+          <div className="text-[16px] font-bold tabular-nums">{fmtEURFull(totalCents, intlLocale)}</div>
         </div>
 
         {days.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border/70 px-4 py-8 text-center">
-            <CheckCircle className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
+            <Icon name="check-circle" className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
             <p className="text-xs text-muted-foreground">No {tone === 'revenue' ? 'revenue' : 'expense'} entries this month.</p>
           </div>
         ) : (
@@ -1009,7 +979,7 @@ function BreakdownPopup({
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`text-[14px] font-bold tabular-nums ${totalCls}`}>{fmtEUR(day.totalCents, intlLocale)}</span>
-                      {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                      {isExpanded ? <Icon name="chevron-up" className="w-4 h-4 text-muted-foreground" /> : <Icon name="chevron-down" className="w-4 h-4 text-muted-foreground" />}
                     </div>
                   </button>
                   {isExpanded && (
@@ -1036,17 +1006,17 @@ function BreakdownPopup({
                               </div>
                             </div>
                             <div className="flex flex-col items-end shrink-0">
-                              <span className={`text-[12px] font-bold tabular-nums ${tone === 'revenue' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                              <span className={`text-[12px] font-bold tabular-nums ${tone === 'revenue' ? 'text-[color:var(--status-success)]' : 'text-[color:var(--status-attention)]'}`}>
                                 {fmtEUR(inv.totalCents ?? 0, intlLocale)}
                               </span>
                               <span className={`text-[9px] font-bold uppercase tracking-wider px-1 py-px rounded ${
                                 status.tone === 'paid'
-                                  ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-100 text-emerald-700')
+                                  ? 'sq-tone-success'
                                   : status.tone === 'overdue'
-                                    ? (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-100 text-red-700')
+                                    ? 'sq-tone-critical'
                                     : status.tone === 'unpaid'
-                                      ? (isDarkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-100 text-blue-700')
-                                      : (isDarkMode ? 'bg-neutral-700/40 text-neutral-300' : 'bg-gray-100 text-gray-600')
+                                      ? 'sq-tone-brand'
+                                      : 'sq-tone-neutral'
                               }`}>
                                 {status.label}
                               </span>

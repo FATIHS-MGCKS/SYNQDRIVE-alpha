@@ -11,6 +11,16 @@ import { BatteryV2Service } from './battery-v2.service';
 import { BatteryEvidenceService } from './battery-evidence.service';
 import { HvBatteryHealthService } from './hv-battery-health.service';
 import { daysBetween, getLvCalibrationProgress } from './soh-publication';
+import {
+  aggregateLvStatus,
+  classifyHvSoh,
+  classifyLvEstimatedHealth,
+  classifyRestingVoltage,
+  statusToBars,
+  statusToLegacyCondition,
+  type BatteryHealthStatus,
+  type LvAggregateStatus,
+} from './battery-status';
 
 export type BatteryStatus =
   | 'ready'
@@ -26,6 +36,9 @@ export type BatteryCondition =
   | 'attention'
   | 'calibrating'
   | 'unknown';
+
+/** Source of a HV SOH value — never a model/age fallback anymore. */
+export type HvSohSource = 'PROVIDER' | 'CAPACITY_ESTIMATE' | 'DOCUMENT' | 'MANUAL';
 
 export interface FreshnessInfo {
   observedAt: string | null;
@@ -78,6 +91,7 @@ export class CanonicalBatteryHealthService {
       batteryEvents,
       lvEvidenceRecent,
       hvProviderSohEvidence,
+      hvReportedSohEvidence,
     ] = await Promise.all([
       this.prisma.vehicle.findUnique({
         where: { id: vehicleId },
@@ -124,6 +138,17 @@ export class CanonicalBatteryHealthService {
         scope: BatteryEvidenceScope.HV,
         valueType: BatteryEvidenceValueType.SOH_PERCENT,
         sourceType: BatteryEvidenceSourceType.PROVIDER_REPORTED,
+      }),
+      // Workshop / document / manual HV SOH — a real, human-verified data
+      // basis that ranks above modeled telemetry estimates.
+      this.batteryEvidenceService.getLatestAmongSources(vehicleId, {
+        scope: BatteryEvidenceScope.HV,
+        valueType: BatteryEvidenceValueType.SOH_PERCENT,
+        sourceTypes: [
+          BatteryEvidenceSourceType.DOCUMENT_CONFIRMED,
+          BatteryEvidenceSourceType.WORKSHOP_MEASUREMENT,
+          BatteryEvidenceSourceType.MANUAL_REPORT,
+        ],
       }),
     ]);
 
@@ -182,16 +207,49 @@ export class CanonicalBatteryHealthService {
       lvVoltageSource = null;
     }
 
+    // LV "Estimated Battery Health" — a behaviour-derived score from the V2
+    // publication pipeline (rest voltage, crank drop, recovery, stability).
+    // It is NOT a workshop SOH; the UI must render it as a 3-bar indicator,
+    // never as a prominent "SOH %". The legacy voltage→SOH lookup table has
+    // been removed, so there is no second LV truth anymore.
     const lvPublishedSoh = parseNum(v2?.publishedSohPct);
-    const lvLegacySoh = parseNum(latestLvSnapshot?.sohPercent);
-    const lvHealthPercent = lvIsCalibrating
-      ? null
-      : lvPublishedSoh ?? lvLegacySoh ?? null;
+    const lvHealthPercent = lvIsCalibrating ? null : lvPublishedSoh;
     const lvEstimatedHealthPercent = lvIsCalibrating
       ? parseNum(v2?.stabilizedSohPct) ??
         parseNum(v2?.rawSohPct) ??
         parseNum(v2?.estimatedSohPct)
       : null;
+
+    // Estimated-health status: only classify once a published score exists
+    // (i.e. not during INITIAL_CALIBRATION) — otherwise it stays UNKNOWN.
+    const lvEstimatedHealthStatus: BatteryHealthStatus = lvIsCalibrating
+      ? 'UNKNOWN'
+      : classifyLvEstimatedHealth(lvPublishedSoh);
+    const lvEstimatedHealthScorePct = lvIsCalibrating
+      ? lvEstimatedHealthPercent
+      : lvPublishedSoh;
+
+    // Resting voltage: only a genuine resting reading is evaluated. The V2
+    // rest capture and document-confirmed snapshots persist `restingVoltage`;
+    // an engine-off live snapshot is also acceptable. A live charging voltage
+    // (engine running) is never treated as a resting reading.
+    const snapshotRestingVoltage = parseNum(latestLvSnapshot?.restingVoltage);
+    const engineOffVoltage =
+      latestLvSnapshot?.engineRunning === false ? snapshotVoltage : null;
+    const lvRestingVoltageValue = snapshotRestingVoltage ?? engineOffVoltage;
+    const lvRestingClassification = classifyRestingVoltage(
+      lvRestingVoltageValue,
+      specs?.batteryType ?? null,
+    );
+    const lvRestingMeasurementContext =
+      lvRestingVoltageValue != null ? 'RESTING' : 'UNKNOWN';
+
+    // Final LV status — worst of the two available signals (Critical wins,
+    // Warning over Watch, Watch over Good; Unknown only when nothing usable).
+    const lvHealthStatus: LvAggregateStatus = aggregateLvStatus(
+      lvEstimatedHealthStatus,
+      lvRestingClassification.status,
+    );
 
     // Freshness is anchored on the carrier that produced the displayed voltage,
     // not on the older of the two.  This keeps the "no_recent_data" label
@@ -203,34 +261,14 @@ export class CanonicalBatteryHealthService {
       null;
     const lvFreshness = freshnessFromDate(lvLastChecked, 48 * 60 * 60 * 1000);
 
-    // Unified LV battery condition thresholds (single source of truth for all
-    // UIs — Dashboard Vehicle Health box, Health Tab, Fleet Condition view).
-    //
-    // SOH (preferred when available):
-    //   < 50   → attention  (red)     — health critical, replace / diagnose
-    //   < 75   → watch      (amber)   — monitor, starting problems possible
-    //   ≥ 75   → good       (green)
-    //
-    // Voltage (fallback when no SOH is available):
-    //   < 12.0 → attention  (red)     — battery depleted, likely won't start
-    //   < 12.4 → watch      (amber)   — low resting voltage, starting risk
-    //   ≥ 12.4 → good       (green)
-    //
-    // The voltage-based watch threshold was raised from 12.0V to 12.4V on
-    // explicit fleet-ops request: 12.4V (≈ 75 % SoC) is the practical cut-off
-    // where starting difficulties can begin to occur, and operators need to
-    // see that as a warning instead of green.
-    let lvCondition: BatteryCondition = 'unknown';
-    if (lvIsCalibrating) lvCondition = 'calibrating';
-    else if (lvHealthPercent != null) {
-      if (lvHealthPercent < 50) lvCondition = 'attention';
-      else if (lvHealthPercent < 75) lvCondition = 'watch';
-      else lvCondition = 'good';
-    } else if (lvVoltage != null) {
-      if (lvVoltage < 12.0) lvCondition = 'attention';
-      else if (lvVoltage < 12.4) lvCondition = 'watch';
-      else lvCondition = 'good';
-    }
+    // Legacy three-state condition (good/watch/attention) for backward-compat
+    // consumers. It is derived from the aggregated LV status so there is a
+    // single source of truth — UIs that understand the new GOOD/WATCH/WARNING/
+    // CRITICAL scale should read `lv.healthStatus` / `lv.estimatedHealth` /
+    // `lv.restingVoltage` instead.
+    const lvCondition: BatteryCondition = lvIsCalibrating
+      ? 'calibrating'
+      : statusToLegacyCondition(lvHealthStatus);
 
     const lvStatus: BatteryStatus = !lvVoltage && !v2
       ? 'estimate_unavailable'
@@ -255,6 +293,11 @@ export class CanonicalBatteryHealthService {
     const trendDirection = this.computeTrendDirection(trend30);
     const hvStatusAny = hvStatus as any;
 
+    // HV SOH resolution — only from a real data basis, no age/km fallback:
+    //   1) fresh provider-reported SOH
+    //   2) workshop / document / manual report
+    //   3) capacity/energy-based measurement from the HV service
+    //   else → unavailable (UNKNOWN), never a fabricated percentage.
     const providerSohFromLatestState = parseNum(
       latestState?.tractionBatterySohPercent,
     );
@@ -265,43 +308,65 @@ export class CanonicalBatteryHealthService {
         (latestState?.lastSeenAt ?? null),
       45 * 24 * 60 * 60 * 1000,
     );
+    const providerSohUsable =
+      providerSoh != null && providerSohFreshness.isFresh;
 
-    const hvPublishedSoh = parseNum(hvStatusAny?.publishedSohPercent);
-    const hvRawSoh = parseNum(hvStatusAny?.rawSohPercent);
-    const hvModelSoh = parseNum(hvStatusAny?.sohPercent);
+    const reportedSoh = parseNum(hvReportedSohEvidence?.numericValue);
+    const reportedSohFreshness = freshnessFromDate(
+      hvReportedSohEvidence?.observedAt ?? null,
+      365 * 24 * 60 * 60 * 1000,
+    );
+    const reportedSohUsable =
+      reportedSoh != null && reportedSohFreshness.isFresh;
+    const reportedSohSource: HvSohSource =
+      hvReportedSohEvidence?.sourceType ===
+      BatteryEvidenceSourceType.DOCUMENT_CONFIRMED
+        ? 'DOCUMENT'
+        : 'MANUAL';
 
-    const hvHealthPercent =
-      providerSoh != null && providerSohFreshness.isFresh
-        ? providerSoh
-        : hvPublishedSoh ?? hvRawSoh ?? hvModelSoh ?? null;
+    // Capacity/energy measurement from the HV service. After the fallback
+    // removal `publishedSohPercent`/`rawSohPercent` are only populated when a
+    // capacity_measurement / energy_throughput basis existed.
+    const hvMeasuredMethod = hvStatusAny?.sohMethod as string | undefined;
+    const hvMeasuredSoh =
+      hvMeasuredMethod === 'capacity_measurement' ||
+      hvMeasuredMethod === 'energy_throughput'
+        ? parseNum(hvStatusAny?.publishedSohPercent) ??
+          parseNum(hvStatusAny?.rawSohPercent)
+        : null;
 
-    const hvSourceType =
-      providerSoh != null && providerSohFreshness.isFresh
-        ? 'provider_reported'
-        : mapEvidenceSource(
-            hvProviderSohEvidence?.sourceType ??
-              (hvStatusAny?.sohSourceType as
-                | BatteryEvidenceSourceType
-                | undefined),
-          ) ??
-          (hvStatusAny?.sohMethod === 'degradation_model'
-            ? 'model_derived'
-            : hvStatusAny?.sohMethod
-              ? 'telemetry_derived'
-              : null);
+    let hvHealthPercent: number | null = null;
+    let hvSohSource: HvSohSource | null = null;
+    let hvSourceType: string | null = null;
+    let hvMethod: string | null = null;
 
-    const hvMethod =
-      providerSoh != null && providerSohFreshness.isFresh
-        ? 'provider_reported_soh'
-        : (hvStatusAny?.sohMethod ?? null);
+    if (providerSohUsable) {
+      hvHealthPercent = providerSoh;
+      hvSohSource = 'PROVIDER';
+      hvSourceType = 'provider_reported';
+      hvMethod = 'provider_reported_soh';
+    } else if (reportedSohUsable) {
+      hvHealthPercent = reportedSoh;
+      hvSohSource = reportedSohSource;
+      hvSourceType =
+        mapEvidenceSource(hvReportedSohEvidence?.sourceType ?? null) ?? 'document_confirmed';
+      hvMethod = 'reported_soh';
+    } else if (hvMeasuredSoh != null) {
+      hvHealthPercent = hvMeasuredSoh;
+      hvSohSource = 'CAPACITY_ESTIMATE';
+      hvSourceType = 'telemetry_derived';
+      hvMethod = hvMeasuredMethod ?? 'capacity_measurement';
+    }
 
-    const hvLastObservedAt =
-      hvProviderSohEvidence?.observedAt ??
-      (hvStatusAny?.lastRecordedAt
-        ? new Date(hvStatusAny.lastRecordedAt)
-        : null) ??
-      latestState?.lastSeenAt ??
-      null;
+    const hvLastObservedAt = providerSohUsable
+      ? hvProviderSohEvidence?.observedAt ?? latestState?.lastSeenAt ?? null
+      : reportedSohUsable
+        ? hvReportedSohEvidence?.observedAt ?? null
+        : (hvStatusAny?.lastRecordedAt
+            ? new Date(hvStatusAny.lastRecordedAt)
+            : null) ??
+          latestState?.lastSeenAt ??
+          null;
     const hvFreshness = freshnessFromDate(hvLastObservedAt, 7 * 24 * 60 * 60 * 1000);
 
     const hvStatusLabel: BatteryStatus = !isEv
@@ -312,33 +377,36 @@ export class CanonicalBatteryHealthService {
           ? 'ready'
           : 'no_recent_data';
 
+    // HV SOH status bands (distinct from LV): ≥80 GOOD · 70–79 WATCH ·
+    // 60–69 WARNING · <60 CRITICAL · no data → UNKNOWN.
+    const hvHealthStatus: BatteryHealthStatus = !isEv
+      ? 'UNKNOWN'
+      : classifyHvSoh(hvHealthPercent);
     const hvCondition: BatteryCondition = !isEv
       ? 'unknown'
-      : hvHealthPercent == null
-        ? 'unknown'
-        : hvHealthPercent < 60
-          ? 'attention'
-          : hvHealthPercent < 75
-            ? 'watch'
-            : 'good';
+      : statusToLegacyCondition(hvHealthStatus);
 
     const lvWatchpoints: string[] = [];
-    if (lvHealthPercent != null && lvHealthPercent < 50) {
-      lvWatchpoints.push('12V-Batterie SOH unter 50% — Austausch prüfen');
-    } else if (lvHealthPercent != null && lvHealthPercent < 75) {
-      lvWatchpoints.push('12V-Batterie SOH unter 75% — Startschwierigkeiten möglich');
+    if (lvEstimatedHealthStatus === 'CRITICAL') {
+      lvWatchpoints.push('Geschätzte 12V-Batteriegesundheit kritisch — Austausch prüfen');
+    } else if (lvEstimatedHealthStatus === 'WARNING') {
+      lvWatchpoints.push('Geschätzte 12V-Batteriegesundheit niedrig — Startschwierigkeiten möglich');
     }
-    if (lvVoltage != null && lvVoltage < 12.0) {
-      lvWatchpoints.push('Spannung unter 12.0V — Batterie entladen, Starthilfe/Austausch empfohlen');
-    } else if (lvVoltage != null && lvVoltage < 12.4) {
-      lvWatchpoints.push('Spannung unter 12.4V — kritisch beobachten, Startschwierigkeiten möglich');
+    if (lvRestingClassification.status === 'CRITICAL') {
+      lvWatchpoints.push(
+        `Ruhespannung ${lvRestingVoltageValue?.toFixed(2)}V kritisch — Batterie entladen, Starthilfe/Austausch empfohlen`,
+      );
+    } else if (lvRestingClassification.status === 'WARNING') {
+      lvWatchpoints.push(
+        `Ruhespannung ${lvRestingVoltageValue?.toFixed(2)}V niedrig — Startschwierigkeiten möglich`,
+      );
     }
     if (lvStatus === 'no_recent_data') {
       lvWatchpoints.push('No recent LV sample');
     }
 
     const hvWatchpoints: string[] = [];
-    if (isEv && hvHealthPercent != null && hvHealthPercent < 70) {
+    if (isEv && (hvHealthStatus === 'WARNING' || hvHealthStatus === 'CRITICAL')) {
       hvWatchpoints.push('HV health indicates notable degradation');
     }
     if (isEv && hvStatusLabel === 'no_recent_data') {
@@ -347,16 +415,16 @@ export class CanonicalBatteryHealthService {
 
     const watchpoints = [...lvWatchpoints, ...hvWatchpoints];
     const recommendations: string[] = [];
-    if (lvCondition === 'attention') {
+    if (lvHealthStatus === 'CRITICAL') {
       recommendations.push(
         '12V-Batterie kritisch — Starthilfe oder Austausch empfohlen',
       );
-    } else if (lvCondition === 'watch') {
+    } else if (lvHealthStatus === 'WARNING') {
       recommendations.push(
-        '12V-Batterie kritisch beobachten — Startschwierigkeiten möglich, Ladezustand und Lichtmaschine prüfen',
+        '12V-Batterie beobachten — Startschwierigkeiten möglich, Ladezustand und Lichtmaschine prüfen',
       );
     }
-    if (hvCondition === 'attention') {
+    if (hvHealthStatus === 'WARNING' || hvHealthStatus === 'CRITICAL') {
       recommendations.push('Schedule traction battery diagnostics');
     }
     if (watchpoints.length === 0) {
@@ -395,17 +463,36 @@ export class CanonicalBatteryHealthService {
         hv: isEv,
       },
       lv: {
+        // Runtime/lifecycle label (ready/calibrating/…) — unchanged contract.
         status: lvStatus,
+        // Aggregated health status on the GOOD/WATCH/WARNING/CRITICAL scale.
+        healthStatus: lvHealthStatus,
         condition: lvCondition,
         healthPercent: lvHealthPercent,
         estimatedHealthPercent: lvEstimatedHealthPercent,
+        // Behaviour-derived "Estimated Battery Health" — render as 3 bars.
+        estimatedHealth: {
+          status: lvEstimatedHealthStatus,
+          scorePct: lvEstimatedHealthScorePct,
+          displayMode: 'BARS' as const,
+          bars: statusToBars(lvEstimatedHealthStatus),
+          label: 'Estimated Battery Health',
+          confidence: (v2?.maturityConfidence as string | undefined) ?? 'none',
+          calibrationStatus: lvPubState,
+        },
+        // Resting voltage state from battery-spec-aware thresholds.
+        restingVoltage: {
+          valueV: lvRestingVoltageValue,
+          status: lvRestingClassification.status,
+          thresholdSource: lvRestingClassification.thresholdSource,
+          batteryType: lvRestingClassification.batteryType,
+          measurementContext: lvRestingMeasurementContext,
+        },
         method: lvIsCalibrating
           ? 'model_derived'
           : lvPublishedSoh != null
             ? 'telemetry_derived'
-            : lvLegacySoh != null
-              ? 'telemetry_derived'
-              : 'estimate_unavailable',
+            : 'estimate_unavailable',
         confidence: (v2?.maturityConfidence as string | undefined) ?? 'none',
         freshness: lvFreshness,
         evidenceType:
@@ -434,8 +521,13 @@ export class CanonicalBatteryHealthService {
       },
       hv: {
         status: hvStatusLabel,
+        healthStatus: hvHealthStatus,
         condition: hvCondition,
         healthPercent: hvHealthPercent,
+        // Real SOH only — provider/capacity/document/manual. No age/km model.
+        sohPct: hvHealthPercent,
+        sohSource: hvSohSource,
+        noFallbackSoh: true as const,
         method: hvMethod,
         confidence: (hvStatusAny?.maturityConfidence as string | undefined) ?? 'none',
         freshness: hvFreshness,

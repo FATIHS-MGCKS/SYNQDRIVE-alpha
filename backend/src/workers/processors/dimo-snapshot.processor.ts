@@ -12,6 +12,7 @@ import { BatteryV2Service } from '../../modules/vehicle-intelligence/battery-hea
 import { HvBatteryHealthService } from '../../modules/vehicle-intelligence/battery-health/hv-battery-health.service';
 import { ClickHouseTelemetryService } from '../../modules/clickhouse/clickhouse-telemetry.service';
 import { TripMetricsService } from '../../modules/observability/trip-metrics.service';
+import { capRawPayload } from '@shared/utils/json-payload.util';
 
 export interface DimoSnapshotJobData {
   vehicleId: string;
@@ -369,7 +370,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
       lvBatteryVoltage: numVal(signals.lowVoltageBatteryCurrentVoltage),
       coolantTempC: numVal(signals.powertrainCombustionEngineECT),
       speedKmh: numVal(signals.speed),
-      rawPayloadJson: signals as object,
+      rawPayloadJson: capRawPayload(signals as object) as object,
     };
   }
 }

@@ -113,3 +113,32 @@ export const fleetVehicles: VehicleData[] = [];
 export function getShortModel(model: string): string {
   return model.replace(/ \d{4}$/, '');
 }
+
+// V4.7.62 — Canonical "vehicle offline" predicate. A vehicle counts as
+// offline once its last telemetry signal is ≥ 24h old, which the backend
+// already encodes as `onlineStatus === 'OFFLINE'`
+// (see `vehicle-state-interpreter.ts > STANDBY_THRESHOLD_MS`). Every
+// surface (Fleet page Fleet-Status, Dashboard Fleet-Status, booking
+// picker) reads this single helper so the "Last Signal 1 day → offline"
+// rule never drifts between views.
+//
+// V4.7.63 — Also treat "Last Signal unavailable" as offline: a vehicle
+// that has never reported telemetry (no `lastSignal` timestamp) and is
+// not currently ONLINE/STANDBY is offline too (e.g. KS FH 660E). The
+// `onlineStatus !== 'ONLINE'/'STANDBY'` guard means a freshly reporting
+// vehicle can never be misclassified by the empty-signal branch.
+export function isVehicleOffline(
+  v: Pick<VehicleData, 'onlineStatus' | 'lastSignal'>,
+): boolean {
+  if (v.onlineStatus === 'OFFLINE') return true;
+  if (
+    v.onlineStatus !== 'ONLINE' &&
+    v.onlineStatus !== 'STANDBY' &&
+    !v.lastSignal
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export const VEHICLE_OFFLINE_LABEL = 'Vehicle Offline - Check Device';

@@ -1,9 +1,6 @@
+import { Icon } from './ui/Icon';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  Headphones, Plus, Search, Send, Paperclip, Image as ImageIcon, X,
-  Clock, CheckCircle, AlertCircle, MessageSquare, ChevronLeft,
-  RefreshCw, Loader2, ArrowUp,
-} from 'lucide-react';
+
 import { api } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
 import { getStoredUser } from '../../lib/auth';
@@ -133,7 +130,7 @@ export function SupportView({ isDarkMode }: { isDarkMode: boolean }) {
           <p className={`text-xs mt-1 ${textSecondary}`}>{tickets.length} Tickets · {statusCounts['Open'] || 0} offen</p>
         </div>
         <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20">
-          <Plus className="w-4 h-4" /> Neues Ticket
+          <Icon name="plus" className="w-4 h-4" /> Neues Ticket
         </button>
       </div>
 
@@ -155,7 +152,7 @@ export function SupportView({ isDarkMode }: { isDarkMode: boolean }) {
       {/* Filters */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-sm">
-          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
+          <Icon name="search" className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
           <input type="text" placeholder="Ticket suchen..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
             className={`w-full pl-10 pr-3 py-2.5 rounded-xl border text-xs ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'} outline-none`} />
         </div>
@@ -171,10 +168,10 @@ export function SupportView({ isDarkMode }: { isDarkMode: boolean }) {
       {/* Ticket list */}
       <div className={`${cardClass} divide-y ${isDarkMode ? 'divide-neutral-700/30' : 'divide-gray-100'}`}>
         {loading ? (
-          <div className="flex items-center justify-center py-16"><Loader2 className={`w-5 h-5 animate-spin ${textSecondary}`} /></div>
+          <div className="flex items-center justify-center py-16"><Icon name="loader-2" className={`w-5 h-5 animate-spin ${textSecondary}`} /></div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16">
-            <Headphones className={`w-10 h-10 mx-auto mb-3 ${textSecondary} opacity-40`} />
+            <Icon name="headphones" className={`w-10 h-10 mx-auto mb-3 ${textSecondary} opacity-40`} />
             <p className={`text-sm font-medium ${textPrimary}`}>Keine Tickets gefunden</p>
             <p className={`text-xs mt-1 ${textSecondary}`}>{searchTerm || statusFilter !== 'all' ? 'Versuchen Sie andere Filter.' : 'Erstellen Sie Ihr erstes Support-Ticket.'}</p>
           </div>
@@ -198,7 +195,7 @@ export function SupportView({ isDarkMode }: { isDarkMode: boolean }) {
                 <p className={`text-[11px] ${textSecondary}`}>{formatTime(t.lastActivityAt || t.createdAt)}</p>
                 {t.messageCount !== undefined && t.messageCount > 1 && (
                   <div className={`flex items-center gap-1 justify-end mt-1 ${textSecondary}`}>
-                    <MessageSquare className="w-3 h-3" />
+                    <Icon name="message-square" className="w-3 h-3" />
                     <span className="text-[10px]">{t.messageCount}</span>
                   </div>
                 )}
@@ -264,7 +261,7 @@ function CreateTicketForm({ isDarkMode, orgId, onClose, onCreated }: {
   return (
     <div className="max-w-2xl mx-auto space-y-5">
       <button onClick={onClose} className={`flex items-center gap-1 text-xs font-medium ${textSecondary} hover:${textPrimary} transition-colors`}>
-        <ChevronLeft className="w-4 h-4" /> Zurück zur Übersicht
+        <Icon name="chevron-left" className="w-4 h-4" /> Zurück zur Übersicht
       </button>
 
       <div className={cardClass}>
@@ -285,11 +282,11 @@ function CreateTicketForm({ isDarkMode, orgId, onClose, onCreated }: {
             {imagePreview ? (
               <div className="relative inline-block">
                 <img src={imagePreview} alt="Preview" className="h-24 rounded-xl border border-gray-200/30 object-cover" />
-                <button onClick={() => { setImageFile(null); setImagePreview(null); }} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center"><X className="w-3 h-3" /></button>
+                <button onClick={() => { setImageFile(null); setImagePreview(null); }} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center"><Icon name="x" className="w-3 h-3" /></button>
               </div>
             ) : (
               <button onClick={() => fileRef.current?.click()} className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed text-xs font-medium transition-colors ${isDarkMode ? 'border-neutral-700 text-gray-400 hover:border-neutral-600' : 'border-gray-300 text-gray-500 hover:border-gray-400'}`}>
-                <ImageIcon className="w-4 h-4" /> Bild auswählen
+                <Icon name="image" className="w-4 h-4" /> Bild auswählen
               </button>
             )}
           </div>
@@ -298,7 +295,7 @@ function CreateTicketForm({ isDarkMode, orgId, onClose, onCreated }: {
         <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t" style={{ borderColor: isDarkMode ? 'rgb(64 64 64 / 0.5)' : 'rgb(229 231 235 / 0.5)' }}>
           <button onClick={onClose} className={`px-4 py-2.5 rounded-xl text-xs font-semibold border ${isDarkMode ? 'border-neutral-700 text-gray-400 hover:bg-neutral-800' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>Abbrechen</button>
           <button onClick={handleSubmit} disabled={saving || !subject.trim() || !description.trim()} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2">
-            {saving ? (uploading ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Bild wird hochgeladen...</> : <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Wird erstellt...</>) : <><Send className="w-3.5 h-3.5" /> Ticket erstellen</>}
+            {saving ? (uploading ? <><Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> Bild wird hochgeladen...</> : <><Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> Wird erstellt...</>) : <><Icon name="send" className="w-3.5 h-3.5" /> Ticket erstellen</>}
           </button>
         </div>
       </div>
@@ -370,7 +367,7 @@ function TicketDetail({ isDarkMode, ticket, orgId, onBack, onUpdate }: {
     <div className="max-w-3xl mx-auto space-y-4">
       {/* Back + header */}
       <button onClick={onBack} className={`flex items-center gap-1 text-xs font-medium ${textSecondary} hover:${textPrimary} transition-colors`}>
-        <ChevronLeft className="w-4 h-4" /> Zurück zur Übersicht
+        <Icon name="chevron-left" className="w-4 h-4" /> Zurück zur Übersicht
       </button>
 
       <div className={`${cardClass} p-5`}>
@@ -421,17 +418,17 @@ function TicketDetail({ isDarkMode, ticket, orgId, onBack, onUpdate }: {
             {imagePreview && (
               <div className="relative inline-block mb-2">
                 <img src={imagePreview} alt="Preview" className="h-16 rounded-lg object-cover" />
-                <button onClick={() => { setImageFile(null); setImagePreview(null); }} className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center"><X className="w-2.5 h-2.5" /></button>
+                <button onClick={() => { setImageFile(null); setImagePreview(null); }} className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center"><Icon name="x" className="w-2.5 h-2.5" /></button>
               </div>
             )}
             <div className="flex items-end gap-2">
               <input ref={fileRef} type="file" accept="image/*" onChange={handleImage} className="hidden" />
               <button onClick={() => fileRef.current?.click()} className={`p-2.5 rounded-xl transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
-                <Paperclip className="w-4 h-4" />
+                <Icon name="paperclip" className="w-4 h-4" />
               </button>
               <textarea value={message} onChange={e => setMessage(e.target.value)} onKeyDown={handleKeyDown} rows={1} placeholder="Nachricht schreiben..." className={`flex-1 px-4 py-2.5 rounded-xl border text-xs resize-none ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'} outline-none`} />
               <button onClick={handleSend} disabled={sending || (!message.trim() && !imageFile)} className="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50">
-                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {sending ? <Icon name="loader-2" className="w-4 h-4 animate-spin" /> : <Icon name="send" className="w-4 h-4" />}
               </button>
             </div>
           </div>

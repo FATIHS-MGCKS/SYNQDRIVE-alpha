@@ -1,5 +1,6 @@
+import { Icon } from '../ui/Icon';
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Eraser, PenTool, Type } from 'lucide-react';
+
 
 // V4.6.75 — Canvas-based signature pad with touch + mouse + typed-name
 // fallback. Emits both a rendered PNG data URL (for the signature image
@@ -173,7 +174,7 @@ export function SignaturePad({
                 : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200'
             }`}
           >
-            <PenTool className="w-3 h-3" />
+            <Icon name="pen-tool" className="w-3 h-3" />
             Zeichnen
           </button>
           <button
@@ -189,7 +190,7 @@ export function SignaturePad({
                 : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200'
             }`}
           >
-            <Type className="w-3 h-3" />
+            <Icon name="type" className="w-3 h-3" />
             Tippen
           </button>
         </div>
@@ -221,7 +222,7 @@ export function SignaturePad({
             }`}
             title="Unterschrift löschen"
           >
-            <Eraser className="w-3.5 h-3.5" />
+            <Icon name="eraser" className="w-3.5 h-3.5" />
           </button>
           {!dataUrl && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">

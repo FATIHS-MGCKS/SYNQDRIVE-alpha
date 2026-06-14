@@ -23,7 +23,6 @@ import { HealthTrackingView } from './components/HealthTrackingView';
 import { TripDetectionLogicView } from './components/TripDetectionLogicView';
 import { PerformanceLogicView } from './components/PerformanceLogicView';
 import VehicleLogbookView from './components/VehicleLogbookView';
-import { ServiceMaintenanceAdminView } from './components/ServiceMaintenanceAdminView';
 import { HighMobilityDataView } from './components/HighMobilityDataView';
 import { HighMobilityCompatibilityView } from './components/HighMobilityCompatibilityView';
 import { Toaster, toast } from 'sonner';
@@ -575,7 +574,7 @@ export default function App() {
   return (
     <div
       className="h-screen flex overflow-hidden bg-background"
-      style={{ fontFamily: "'Inter', 'Manrope', sans-serif" }}
+      style={{ fontFamily: "'Manrope', sans-serif" }}
     >
       <Toaster position="top-right" richColors closeButton theme={isDarkMode ? 'dark' : 'light'} />
 
@@ -734,10 +733,6 @@ export default function App() {
             {/* VEHICLE LOGBOOK */}
             {currentView === 'vehicle-logbook' && (
               <VehicleLogbookView isDarkMode={isDarkMode} />
-            )}
-
-            {currentView === 'service-maintenance' && (
-              <ServiceMaintenanceAdminView isDarkMode={isDarkMode} />
             )}
 
             {currentView === 'high-mobility' && (

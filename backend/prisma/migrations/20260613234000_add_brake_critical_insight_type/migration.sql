@@ -1,0 +1,11 @@
+-- Extend InsightType enum with BRAKE_CRITICAL.
+--
+-- Background: the canonical, evidence-based Brake Health read model surfaces a
+-- CRITICAL brake condition only when backed by a real safety signal (measured
+-- critical pad thickness, safety-relevant brake DTC, critical brake-fluid state
+-- or a confirmed immediate-replacement document). The new BrakeCriticalDetector
+-- emits this as a dashboard business insight so fleet-ops sees brake risk on the
+-- org dashboard, not only on the per-vehicle Health tab. A dedicated insight
+-- type lets the ranking/grouping layer treat brake events as their own category
+-- and keeps InsightType consistent with the registered detector.
+ALTER TYPE "InsightType" ADD VALUE IF NOT EXISTS 'BRAKE_CRITICAL';

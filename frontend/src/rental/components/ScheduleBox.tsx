@@ -1,4 +1,5 @@
-import { Calendar, ChevronRight, Loader2, UserCircle2 } from 'lucide-react';
+
+import { Icon } from './ui/Icon';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { api } from '../../lib/api';
 import { useFleetVehicles } from '../FleetContext';
@@ -343,7 +344,7 @@ export function ScheduleBox({ isDarkMode: _isDarkMode, onOpenBookingById, statio
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="sq-tone-info w-7 h-7 rounded-xl flex items-center justify-center shrink-0">
-              <Calendar className="w-4 h-4" />
+              <Icon name="calendar" className="w-4 h-4" />
             </div>
             <div className="min-w-0">
               <h3 className="text-[12px] font-semibold tracking-[-0.005em] text-foreground">Schedule</h3>
@@ -378,7 +379,7 @@ export function ScheduleBox({ isDarkMode: _isDarkMode, onOpenBookingById, statio
       {/* ─── Body ─── */}
       {loading ? (
         <div className="flex-1 min-h-[200px] flex items-center justify-center">
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          <Icon name="loader-2" className="w-5 h-5 animate-spin text-muted-foreground" />
         </div>
       ) : errored ? (
         <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center px-4 text-center">
@@ -388,7 +389,7 @@ export function ScheduleBox({ isDarkMode: _isDarkMode, onOpenBookingById, statio
       ) : rows.length === 0 ? (
         <div className="flex-1 min-h-[200px] flex flex-col items-center justify-center px-4 text-center">
           <div className="sq-tone-info w-9 h-9 rounded-xl flex items-center justify-center mb-2">
-            <Calendar className="w-4.5 h-4.5" />
+            <Icon name="calendar" className="w-4.5 h-4.5" />
           </div>
           <p className="text-[12px] font-semibold text-foreground">No bookings in this range</p>
           <p className="text-[11px] text-muted-foreground mt-0.5">Switch to {viewMode === 'day' ? 'Week' : viewMode === 'week' ? 'Month' : 'Day'} to widen the horizon.</p>
@@ -435,7 +436,7 @@ export function ScheduleBox({ isDarkMode: _isDarkMode, onOpenBookingById, statio
                       {row.vehicleLicense && (
                         <div className="text-[10px] font-semibold text-[color:var(--brand)] tabular-nums truncate flex items-center gap-0.5">
                           {row.vehicleLicense}
-                          <ChevronRight className="w-2.5 h-2.5 opacity-70 shrink-0" />
+                          <Icon name="chevron-right" className="w-2.5 h-2.5 opacity-70 shrink-0" />
                         </div>
                       )}
                     </div>
@@ -488,7 +489,7 @@ export function ScheduleBox({ isDarkMode: _isDarkMode, onOpenBookingById, statio
                             // collapses to ~1px and is effectively invisible).
                             style={{ left: `${b.leftPct}%`, width: `${b.widthPct}%`, minWidth: '6px' }}
                           >
-                            {showIcon && <UserCircle2 className={`w-3 h-3 shrink-0 ${tone.icon}`} />}
+                            {showIcon && <Icon name="user-circle-2" className={`w-3 h-3 shrink-0 ${tone.icon}`} />}
                             {label && <span className="truncate">{label}</span>}
                           </button>
                         );

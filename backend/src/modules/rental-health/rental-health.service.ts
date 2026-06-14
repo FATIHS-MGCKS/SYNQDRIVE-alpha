@@ -178,10 +178,13 @@ export class RentalHealthService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Battery — reads {@link CanonicalBatteryHealthService.getSummary}.
-   * Voltage thresholds follow the V1 spec exactly.
-   *   ≥ 12.6 V → good, 12.4–12.5 → warning, < 12.4 → critical
-   * Battery warning light from HM (if streamed) escalates to at least warning.
+   * Battery — reads the canonical LV battery status from
+   * {@link CanonicalBatteryHealthService.getSummary}. This module no longer
+   * re-derives a state from the raw voltage (which could be a charging
+   * voltage); it consumes the aggregated `lv.healthStatus` (Estimated Battery
+   * Health + battery-spec resting-voltage bands) so there is a single source
+   * of truth. The HM battery warning light still escalates to at least
+   * warning when streamed.
    */
   private evaluateBattery(
     summary: Awaited<ReturnType<CanonicalBatteryHealthService['getSummary']>> | null,
@@ -196,9 +199,10 @@ export class RentalHealthService {
       };
     }
 
-    const voltage = summary.lv?.telemetry?.voltageV ?? null;
+    const lv = summary.lv;
+    const restingVoltage = lv?.restingVoltage?.valueV ?? null;
     const observedAt =
-      summary.lv?.freshness?.observedAt ??
+      lv?.freshness?.observedAt ??
       summary.currentState?.lastChecked ??
       summary.generatedAt ??
       null;
@@ -211,18 +215,28 @@ export class RentalHealthService {
     let state: HealthState;
     let reason: string;
 
-    if (voltage == null) {
-      state = 'unknown';
-      reason = 'Keine Spannungsmessung verfügbar';
-    } else if (voltage >= 12.6) {
-      state = 'good';
-      reason = `Spannung bei ${voltage.toFixed(2)} V`;
-    } else if (voltage >= 12.4) {
-      state = 'warning';
-      reason = `Spannung bei ${voltage.toFixed(2)} V — Nachladen empfohlen`;
-    } else {
-      state = 'critical';
-      reason = `Spannung bei ${voltage.toFixed(2)} V — akut niedrig`;
+    const voltageNote =
+      restingVoltage != null ? ` (Ruhespannung ${restingVoltage.toFixed(2)} V)` : '';
+    switch (lv?.healthStatus) {
+      case 'GOOD':
+        state = 'good';
+        reason = `Batteriezustand gut${voltageNote}`;
+        break;
+      case 'WATCH':
+        state = 'warning';
+        reason = `Batterie beobachten${voltageNote}`;
+        break;
+      case 'WARNING':
+        state = 'warning';
+        reason = `Batterie auffällig — Nachladen/Prüfen empfohlen${voltageNote}`;
+        break;
+      case 'CRITICAL':
+        state = 'critical';
+        reason = `Batterie kritisch${voltageNote}`;
+        break;
+      default:
+        state = 'unknown';
+        reason = 'Keine belastbare Batteriebewertung verfügbar';
     }
 
     if (warningLightActive) {
@@ -339,57 +353,63 @@ export class RentalHealthService {
    * `pads.healthPercent` and `discs.healthPercent` (min of both).
    */
   private evaluateBrakes(summary: BrakeHealthSummaryDto | null): ModuleHealth {
-    if (!summary || !summary.isInitialized) {
+    const updatedAt = summary?.lastRecalculatedAt ?? summary?.updatedAt ?? null;
+
+    if (!summary) {
       return {
         state: 'unknown',
-        reason: summary?.message ?? 'Keine Bremsen-Baseline hinterlegt',
-        last_updated_at: toIso(summary?.lastRecalculatedAt),
-        data_stale: isStale(summary?.lastRecalculatedAt),
+        reason: 'Keine Bremsen-Baseline hinterlegt',
+        last_updated_at: toIso(updatedAt),
+        data_stale: isStale(updatedAt),
       };
     }
 
-    const padsHealth = summary.pads?.healthPercent ?? null;
-    const discsHealth = summary.discs?.healthPercent ?? null;
-    const healthValues = [padsHealth, discsHealth].filter(
-      (v): v is number => v != null && Number.isFinite(v),
-    );
-    const minHealth = healthValues.length > 0 ? Math.min(...healthValues) : null;
-
+    // Single canonical truth: BrakeHealthService.overallCondition. A purely
+    // ESTIMATED condition caps at WARNING; only a real safety signal (measured
+    // critical pad, brake DTC, critical fluid, immediate-replacement) is
+    // CRITICAL. We never re-derive a parallel state from raw health-percent.
+    const condition = summary.overallCondition ?? 'UNKNOWN';
     let state: HealthState;
-    let reason: string;
-
-    if (minHealth == null) {
-      state = 'unknown';
-      reason = summary.message ?? 'Keine Bremsenwerte verfügbar';
-    } else if (minHealth <= 10) {
-      state = 'critical';
-      reason = `Geschätzte Restnutzbarkeit bei ${Math.round(minHealth)} %`;
-    } else if (minHealth <= 30) {
-      state = 'warning';
-      reason = `Geschätzte Restnutzbarkeit bei ${Math.round(minHealth)} %`;
-    } else {
-      state = 'good';
-      reason = `Restnutzbarkeit bei ${Math.round(minHealth)} %`;
+    switch (condition) {
+      case 'CRITICAL':
+        state = 'critical';
+        break;
+      case 'WARNING':
+      case 'WATCH':
+        state = 'warning';
+        break;
+      case 'GOOD':
+        state = 'good';
+        break;
+      default:
+        state = 'unknown';
     }
 
-    // Pad pre-warning (hasAlert from BrakeHealthCurrent) escalates to at
-    // least warning — analogous to the tire TPMS light.
+    // Build the human reason from the canonical read model.
+    let reason: string;
+    if (state === 'unknown') {
+      reason = summary.reasons?.[0] ?? summary.message ?? 'Keine belastbare Bremsen-Datenbasis';
+    } else {
+      const front = summary.estimatedFrontRemainingKmMin;
+      const rear = summary.estimatedRearRemainingKmMin;
+      const lowest = [front, rear].filter((v): v is number => v != null);
+      reason =
+        summary.recommendations?.[0] ??
+        (lowest.length > 0
+          ? `Geschätzte Restnutzung ab ~${Math.min(...lowest).toLocaleString('de-DE')} km`
+          : `Bremszustand: ${condition}`);
+    }
+
+    // Pad pre-warning sensor (hasAlert) escalates to at least warning.
     if (summary.hasAlert) {
       state = maxSeverity(state, 'warning');
-      reason = 'Bremsbelag-Vorwarnleuchte aktiv';
-    }
-
-    // BrakeHealthService sometimes sets status='critical' independently of
-    // healthPercent (e.g. missing-baseline + active alert). Honor it.
-    if (summary.status === 'critical') {
-      state = maxSeverity(state, 'critical');
     }
 
     return {
       state,
       reason,
-      last_updated_at: toIso(summary.lastRecalculatedAt ?? null),
-      data_stale: isStale(summary.lastRecalculatedAt ?? null),
+      last_updated_at: toIso(updatedAt),
+      data_stale: isStale(updatedAt),
     };
   }
 

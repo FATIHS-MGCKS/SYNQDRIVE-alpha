@@ -44,7 +44,8 @@ function createCalloutEl(plate: string, isDark: boolean): HTMLDivElement {
   callout.style.transform = 'translateX(-50%)';
   callout.style.padding = '4px 10px';
   callout.style.borderRadius = '8px';
-  callout.style.fontSize = '10px';
+  callout.style.fontFamily = 'Manrope, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
+  callout.style.fontSize = '8px';
   callout.style.fontWeight = '600';
   callout.style.letterSpacing = '0.05em';
   callout.style.whiteSpace = 'nowrap';
@@ -302,31 +303,42 @@ export function LiveMapOverview({
         </div>
       )}
       {currentAddress && currentAddress.formatted !== '—' && !waitingForPosition && (
-        <div className="absolute top-3 left-3 max-w-[220px] px-2.5 py-1.5 bg-card/85 backdrop-blur-sm border border-border/50 rounded-lg shadow-md text-foreground">
-          <p className="text-[10px] font-semibold leading-tight truncate">{currentAddress.street ? `${currentAddress.street}${currentAddress.houseNumber ? ` ${currentAddress.houseNumber}` : ''}` : currentAddress.city ?? '—'}</p>
-          {currentAddress.street && currentAddress.city && (
-            <p className="text-[10px] leading-tight truncate text-muted-foreground">{currentAddress.city}</p>
-          )}
+        <div className="absolute top-3 left-3 max-w-[220px]">
+          <div className="px-2.5 py-1.5 sq-map-liquid-glass rounded-lg text-foreground">
+            <p className="text-[8px] font-semibold leading-tight truncate">{currentAddress.street ? `${currentAddress.street}${currentAddress.houseNumber ? ` ${currentAddress.houseNumber}` : ''}` : currentAddress.city ?? '—'}</p>
+            {currentAddress.street && currentAddress.city && (
+              <p className="text-[9px] leading-tight truncate text-muted-foreground">{currentAddress.city}</p>
+            )}
+          </div>
         </div>
       )}
-      <div className="absolute top-3 right-12 flex items-center gap-1.5 px-2.5 py-1 bg-card/85 backdrop-blur-sm border border-border/50 rounded-lg shadow-md text-foreground">
-        {isLiveTracking ? (
-          <>
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
-            </span>
-            <span className="text-[10px] font-semibold tracking-wider">LIVE</span>
-          </>
-        ) : (
-          <>
-            <span className="relative flex h-2 w-2">
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-400" />
-            </span>
-            <span className="text-[10px] font-semibold tracking-wider">SNAPSHOT</span>
-          </>
-        )}
-      </div>
+      <style>{`
+        .mapboxgl-ctrl-group {
+          background: rgba(255, 255, 255, 0.74) !important;
+          border: 1px solid rgba(255, 255, 255, 0.64) !important;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 2px 8px rgba(15, 23, 42, 0.08) !important;
+          backdrop-filter: blur(22px) saturate(180%) !important;
+          -webkit-backdrop-filter: blur(22px) saturate(180%) !important;
+          border-radius: 8px !important;
+        }
+        .dark .mapboxgl-ctrl-group {
+          background: rgba(15, 23, 42, 0.72) !important;
+          border-color: rgba(255, 255, 255, 0.18) !important;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 8px rgba(0, 0, 0, 0.22) !important;
+        }
+        .mapboxgl-ctrl-group button {
+          background: transparent !important;
+        }
+        .mapboxgl-ctrl-group button+button {
+          border-top: 1px solid rgba(15, 23, 42, 0.08) !important;
+        }
+        .dark .mapboxgl-ctrl-group button+button {
+          border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+        }
+        .dark .mapboxgl-ctrl-icon {
+          filter: invert(1) opacity(0.8);
+        }
+      `}</style>
     </div>
   );
 }

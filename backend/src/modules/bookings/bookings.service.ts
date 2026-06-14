@@ -9,6 +9,7 @@ import { Booking, Prisma, BookingStatus, VehicleStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RentalDrivingAnalysisService } from '../rental-driving-analysis/rental-driving-analysis.service';
 import { InvoicesService } from '@modules/invoices/invoices.service';
+import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
 import {
   parsePagination,
   buildPaginatedResult,
@@ -17,6 +18,7 @@ import {
 } from '@shared/utils/pagination';
 import { HandoverProtocolDto } from './handover.types';
 import { RentalHealthService } from '@modules/rental-health/rental-health.service';
+import { TaskAutomationService } from '@modules/tasks/task-automation.service';
 
 const BOOKING_STATUS_DISPLAY: Record<string, string> = {
   PENDING: 'Pending',
@@ -39,6 +41,14 @@ export class BookingsService {
     // the gate can never disagree about "why this vehicle is blocked".
     @Inject(forwardRef(() => RentalHealthService))
     private readonly rentalHealthService: RentalHealthService,
+    // Booking Document Lifecycle — generates the initial document bundle when a
+    // booking is confirmed. Fire-and-forget; never blocks/breaks booking create.
+    @Inject(forwardRef(() => BookingDocumentBundleService))
+    private readonly bookingDocumentBundleService: BookingDocumentBundleService,
+    // V4.8.3 Task Action Layer — materializes booking lifecycle tasks
+    // (preparation / pickup / return / invoice). Idempotent + fire-and-forget;
+    // never blocks/breaks booking writes.
+    private readonly taskAutomationService: TaskAutomationService,
   ) {}
 
   async create(orgId: string, data: Omit<Prisma.BookingCreateInput, 'organization'>): Promise<Booking> {
@@ -131,17 +141,39 @@ export class BookingsService {
       data: { ...data, organization: { connect: { id: orgId } } },
     });
 
-    this.invoicesService.createBookingInvoice(orgId, {
-      id: booking.id,
-      customerId: booking.customerId,
-      vehicleId: booking.vehicleId,
-      totalPriceCents: booking.totalPriceCents,
-      dailyRateCents: booking.dailyRateCents,
-      startDate: booking.startDate,
-      endDate: booking.endDate,
-      currency: booking.currency,
-      kmIncluded: booking.kmIncluded,
-    }).catch(() => {});
+    const invoicePromise = this.invoicesService
+      .createBookingInvoice(orgId, {
+        id: booking.id,
+        customerId: booking.customerId,
+        vehicleId: booking.vehicleId,
+        totalPriceCents: booking.totalPriceCents,
+        dailyRateCents: booking.dailyRateCents,
+        startDate: booking.startDate,
+        endDate: booking.endDate,
+        currency: booking.currency,
+        kmIncluded: booking.kmIncluded,
+      })
+      .catch(() => null);
+
+    // Generate the initial document bundle once the booking is CONFIRMED.
+    // Sequenced AFTER the invoice attempt so the bundle reuses that invoice
+    // instead of creating a duplicate. Fully fire-and-forget — booking creation
+    // is never blocked or failed by document generation.
+    if (booking.status === 'CONFIRMED') {
+      void invoicePromise
+        .then(() => this.bookingDocumentBundleService.generateInitialBundle(orgId, booking.id))
+        .catch(() => {});
+    }
+
+    void this.taskAutomationService
+      .ensureBookingLifecycleTasks({
+        id: booking.id,
+        organizationId: orgId,
+        vehicleId: booking.vehicleId,
+        customerId: booking.customerId,
+        status: booking.status,
+      })
+      .catch(() => {});
 
     return booking;
   }
@@ -516,12 +548,31 @@ export class BookingsService {
     id: string,
     data: Prisma.BookingUpdateInput,
   ): Promise<Booking> {
-    await this.prisma.booking.findFirstOrThrow({
+    const existing = await this.prisma.booking.findFirstOrThrow({
       where: { id, organizationId: orgId },
     });
     const updated = await this.prisma.booking.update({ where: { id }, data });
     if (updated.status === 'COMPLETED') {
       this.rentalDrivingAnalysisService.generateForBooking(orgId, id).catch(() => {});
+    }
+    // Generate the initial document bundle when a booking transitions INTO
+    // CONFIRMED via update. Idempotent + fire-and-forget.
+    if (updated.status === 'CONFIRMED' && existing.status !== 'CONFIRMED') {
+      this.bookingDocumentBundleService.generateInitialBundle(orgId, id).catch(() => {});
+    }
+    // Materialize booking lifecycle tasks on any status transition. The
+    // automation service is idempotent (dedup per generatedKey), so calling it
+    // on every update is safe and only adds tasks when the status warrants it.
+    if (updated.status !== existing.status) {
+      void this.taskAutomationService
+        .ensureBookingLifecycleTasks({
+          id: updated.id,
+          organizationId: orgId,
+          vehicleId: updated.vehicleId,
+          customerId: updated.customerId,
+          status: updated.status,
+        })
+        .catch(() => {});
     }
     return updated;
   }

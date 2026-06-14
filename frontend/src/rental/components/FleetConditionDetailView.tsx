@@ -1,9 +1,7 @@
+import { AlertCircle, Battery, Bell, Calendar, CircleDot, Disc, MessageSquare, ShieldCheck, Wrench } from 'lucide-react';
+import { Icon } from './ui/Icon';
 import { useState, useEffect } from 'react';
-import {
-  ArrowLeft, CircleDot, Disc, Battery, AlertCircle, Wrench, ShieldCheck,
-  Calendar, MessageSquare, Bell, Activity, TrendingDown, TrendingUp,
-  CheckCircle, AlertTriangle, ShieldAlert, Clock, Zap, Sparkles, ChevronRight, Info
-} from 'lucide-react';
+
 import {
   api,
   type TireHealthSummaryResponse,
@@ -41,11 +39,21 @@ function getMetricColor(v: number, d: boolean) { return v >= 70 ? (d ? 'text-eme
 function fmtDate(s: string | null) { return s ? new Date(s).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'; }
 function fmtRemTime(mo: number | null) { if (mo == null) return '—'; if (mo < 0) return 'Overdue'; const m = Math.round(mo); return m >= 12 ? `${Math.floor(m / 12)}y ${m % 12}mo` : `${m} months`; }
 function formatEnumLabel(value: unknown, fallback = '—') { return typeof value === 'string' && value.length > 0 ? value.replace(/_/g, ' ') : fallback; }
+// Canonical tire status (GOOD|WATCH|WARNING|CRITICAL|UNKNOWN) → pill style + label.
+function tireStatusPill(status: string | null | undefined, d: boolean): { cls: string; label: string } {
+  switch (status) {
+    case 'GOOD': return { cls: d ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700', label: 'Good' };
+    case 'WATCH': return { cls: d ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700', label: 'Watch' };
+    case 'WARNING': return { cls: d ? 'bg-orange-500/15 text-orange-400' : 'bg-orange-50 text-orange-700', label: 'Warning' };
+    case 'CRITICAL': return { cls: d ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700', label: 'Critical' };
+    default: return { cls: d ? 'bg-neutral-800 text-gray-300' : 'bg-gray-100 text-gray-600', label: 'Unknown' };
+  }
+}
 
 export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBack }: FleetConditionDetailViewProps) {
   const isDark = isDarkMode;
   const meta = CATEGORY_META[category];
-  const Icon = meta.icon;
+  const CategoryIcon = meta.icon;
 
   const [loading, setLoading] = useState(true);
   const [tiresSummary, setTiresSummary] = useState<TireHealthSummaryResponse | null>(null);
@@ -115,11 +123,16 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
     <div className="space-y-5">
       {/* ─── Back + Header ─── */}
       <div className="flex items-center gap-3">
-        <button onClick={onBack} className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
-          <ArrowLeft className="w-5 h-5" />
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Back to Fleet Condition"
+          className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
+        >
+          <Icon name="arrow-left" className="w-5 h-5" />
         </button>
         <div className={`p-2.5 rounded-xl ${isDark ? 'bg-blue-500/15' : 'bg-blue-50'}`}>
-          <Icon className={`w-5 h-5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+          <CategoryIcon className={`w-5 h-5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
         </div>
         <div>
           <h1 className={`text-lg font-bold tracking-tight ${textPrimary}`}>{meta.label}</h1>
@@ -149,7 +162,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
           <div className={`${cardClass} p-5`}>
             <div className="flex items-center gap-3 mb-4">
               <div className={`p-2 rounded-xl ${isDark ? 'bg-purple-500/15' : 'bg-purple-50'}`}>
-                <Sparkles className={`w-5 h-5 ${isDark ? 'text-purple-400' : 'text-purple-600'}`} />
+                <Icon name="sparkles" className={`w-5 h-5 ${isDark ? 'text-purple-400' : 'text-purple-600'}`} />
               </div>
               <div className="flex-1">
                 <h3 className={`text-sm font-semibold ${textPrimary}`}>AI Predictive Analysis</h3>
@@ -197,7 +210,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
                       <ul className="mt-1.5 space-y-1">
                         {aiResult.futureOutlook.items.map((item, i) => (
                           <li key={i} className={`text-xs flex items-start gap-2 ${textSecondary}`}>
-                            <TrendingDown className={`w-3 h-3 mt-0.5 shrink-0 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />
+                            <Icon name="trending-down" className={`w-3 h-3 mt-0.5 shrink-0 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />
                             {item}
                           </li>
                         ))}
@@ -237,7 +250,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
                     <ul className="space-y-1.5">
                       {aiResult.preventiveRecommendations.map((r, i) => (
                         <li key={i} className={`text-xs flex items-start gap-2 ${textSecondary}`}>
-                          <CheckCircle className={`w-3 h-3 mt-0.5 shrink-0 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
+                          <Icon name="check-circle" className={`w-3 h-3 mt-0.5 shrink-0 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
                           {r}
                         </li>
                       ))}
@@ -290,7 +303,7 @@ function WatchpointList({ items, isDark, textSecondary }: { items: string[]; isD
     <ul className="space-y-1.5">
       {items.map((w, i) => (
         <li key={i} className={`text-xs flex items-start gap-2 ${textSecondary}`}>
-          <AlertTriangle className={`w-3 h-3 mt-0.5 shrink-0 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />
+          <Icon name="alert-triangle" className={`w-3 h-3 mt-0.5 shrink-0 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />
           {w}
         </li>
       ))}
@@ -304,7 +317,7 @@ function RecommendationList({ items, isDark, textSecondary }: { items: string[];
     <ul className="space-y-1.5">
       {items.map((r, i) => (
         <li key={i} className={`text-xs flex items-start gap-2 ${textSecondary}`}>
-          <CheckCircle className={`w-3 h-3 mt-0.5 shrink-0 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
+          <Icon name="check-circle" className={`w-3 h-3 mt-0.5 shrink-0 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
           {r}
         </li>
       ))}
@@ -316,8 +329,55 @@ function RecommendationList({ items, isDark, textSecondary }: { items: string[];
 function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary: TireHealthSummaryResponse | null; detail: TireHealthDetailResponse | null }) {
   const s = summary;
   const pct = s?.overallPercent ?? 0;
+  const canonPill = tireStatusPill(s?.overallStatus, isDark);
   return (
     <>
+      {/* Canonical tire status (single source of truth — measured vs estimated honesty) */}
+      {s?.overallStatus && (
+        <div className={`${p.cardClass} p-4 flex flex-wrap items-center gap-x-4 gap-y-2`}>
+          <div className="flex items-center gap-2">
+            <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${canonPill.cls}`}>{canonPill.label}</span>
+            <span className={`text-[10px] uppercase tracking-wider font-semibold ${p.textMuted}`}>Tire Status</span>
+          </div>
+          {s.displayTreadMm != null && (
+            <p className={`text-xs ${p.textSecondary}`}>
+              Lowest tread: <span className={`font-bold ${p.textPrimary}`}>ca. {s.displayTreadMm.toFixed(1)} mm</span>
+              {s.lowestTreadPosition ? <span className={p.textMuted}> · {s.lowestTreadPosition}</span> : null}
+            </p>
+          )}
+          {s.displayMode && (
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+              s.displayMode === 'MEASURED'
+                ? (isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-700')
+                : (isDark ? 'bg-violet-500/15 text-violet-400' : 'bg-violet-50 text-violet-700')
+            }`}>
+              {s.displayMode === 'MEASURED' ? 'Measured' : s.displayMode === 'ESTIMATED' ? 'Estimated' : 'Unknown'}
+            </span>
+          )}
+          {s.confidence && (
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${isDark ? 'bg-neutral-800 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+              Confidence: {s.confidence}
+            </span>
+          )}
+          {s.lastMeasurementAt && (
+            <span className={`text-[10px] ${p.textMuted}`}>Last measured: {fmtDate(s.lastMeasurementAt)}</span>
+          )}
+        </div>
+      )}
+      {/* Recommendations from canonical read model */}
+      {(s?.recommendations ?? []).length > 0 && (
+        <div className={`${p.cardClass} p-4`}>
+          <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${p.textMuted}`}>Recommendations</p>
+          <ul className="space-y-1">
+            {(s?.recommendations ?? []).slice(0, 4).map((rec, i) => (
+              <li key={i} className={`text-xs flex items-start gap-2 ${p.textSecondary}`}>
+                <span className={`mt-1.5 w-1 h-1 rounded-full shrink-0 ${isDark ? 'bg-blue-400' : 'bg-blue-500'}`} />
+                {rec}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatBox {...p} isDark={isDark} label="Tread Life" value={`${Math.round(pct)}%`} colorClass={getMetricColor(pct, isDark)} sub={s?.healthStatus ?? ''} />
         <StatBox {...p} isDark={isDark} label="Remaining KM" value={s?.overallRemainingKm != null ? `~${Math.round(s.overallRemainingKm / 1000)}k` : '—'} sub="projected wear limit" />
@@ -455,7 +515,7 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
                 : a.severity === 'warning' ? (isDark ? 'text-amber-400' : 'text-amber-600')
                 : p.textSecondary
               }`}>
-                <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
+                <Icon name="alert-triangle" className="w-3 h-3 mt-0.5 shrink-0" />
                 {a.message}
               </li>
             ))}
@@ -477,6 +537,28 @@ function BrakesDetail({
     summary?.pads?.healthPercent != null || summary?.discs?.healthPercent != null
       ? Math.min(summary?.pads?.healthPercent ?? 101, summary?.discs?.healthPercent ?? 101)
       : null;
+  // Canonical condition is the single source of truth shown to operators.
+  const condition = summary?.overallCondition ?? 'UNKNOWN';
+  const condLabel =
+    condition === 'UNKNOWN' ? '—' : condition.charAt(0) + condition.slice(1).toLowerCase();
+  const condColor =
+    condition === 'GOOD'
+      ? isDark ? 'text-emerald-400' : 'text-emerald-500'
+      : condition === 'WATCH'
+        ? isDark ? 'text-amber-400' : 'text-amber-500'
+        : condition === 'WARNING' || condition === 'CRITICAL'
+          ? isDark ? 'text-red-400' : 'text-red-500'
+          : p.textMuted;
+  const BASIS_LABEL: Record<string, string> = {
+    MEASURED: 'Measured', DOCUMENTED: 'Documented', SENSOR: 'Sensor', ESTIMATED: 'Estimated', UNKNOWN: 'Unknown',
+  };
+  const CONF_LABEL: Record<string, string> = { HIGH: 'High', MEDIUM: 'Medium', LOW: 'Low', UNKNOWN: 'Unknown' };
+  const fmtRange = (min: number | null | undefined, max: number | null | undefined): string => {
+    if (min == null && max == null) return '—';
+    const f = (n: number) => Math.round(n).toLocaleString('de-DE');
+    if (min != null && max != null) return min === max ? `${f(min)} km` : `${f(min)}–${f(max)} km`;
+    return `~${f((min ?? max) as number)} km`;
+  };
   const stateLabel =
     summary?.stateClass === 'MEASURED'
       ? 'Measured'
@@ -509,6 +591,8 @@ function BrakesDetail({
           : p.textMuted;
 
   const watchpoints = [
+    ...(summary?.reasons ?? []),
+    ...(summary?.recommendations ?? []),
     ...(summary?.baselineWarnings ?? []),
     ...(summary?.provenanceWarnings ?? []),
     ...(detail?.alerts ?? []).map((a) => a.message),
@@ -520,47 +604,39 @@ function BrakesDetail({
         <StatBox
           {...p}
           isDark={isDark}
-          label="Brake Health"
-          value={pct != null ? `${Math.round(pct)}%` : '—'}
-          colorClass={pct != null ? getMetricColor(pct, isDark) : p.textMuted}
-          sub={summary?.limitingComponent ? `Limit: ${summary.limitingComponent}` : 'limiting component'}
+          label="Brake Condition"
+          value={condLabel}
+          colorClass={condColor}
+          sub={pct != null ? `Pad/disc est. ${Math.round(pct)}%` : 'evidence-based'}
         />
         <StatBox
           {...p}
           isDark={isDark}
-          label="Remaining KM"
-          value={
-            summary?.remainingKm != null
-              ? `~${Math.round(summary.remainingKm / 1000)}k`
-              : '—'
-          }
-          sub="projected"
+          label="Remaining (F / R)"
+          value={fmtRange(summary?.estimatedFrontRemainingKmMin, summary?.estimatedFrontRemainingKmMax)}
+          sub={`Rear: ${fmtRange(summary?.estimatedRearRemainingKmMin, summary?.estimatedRearRemainingKmMax)}`}
         />
         <StatBox
           {...p}
           isDark={isDark}
-          label="State"
-          value={stateLabel}
+          label="Data Basis"
+          value={BASIS_LABEL[summary?.dataBasis ?? 'UNKNOWN'] ?? 'Unknown'}
           colorClass={
-            summary?.stateClass === 'NO_BASELINE'
-              ? isDark
-                ? 'text-gray-400'
-                : 'text-gray-500'
-              : summary?.stateClass === 'WARNING_ONLY'
-                ? isDark
-                  ? 'text-amber-400'
-                  : 'text-amber-600'
+            summary?.dataBasis === 'MEASURED' || summary?.dataBasis === 'DOCUMENTED'
+              ? isDark ? 'text-emerald-400' : 'text-emerald-600'
+              : summary?.dataBasis === 'ESTIMATED'
+                ? isDark ? 'text-blue-400' : 'text-blue-600'
                 : undefined
           }
-          sub={statusLabel}
+          sub={summary?.nextInspectionRecommendedInKm != null ? `Inspect in ~${Math.round(summary.nextInspectionRecommendedInKm).toLocaleString('de-DE')} km` : stateLabel}
         />
         <StatBox
           {...p}
           isDark={isDark}
           label="Confidence"
-          value={summary?.confidence?.label ?? '—'}
+          value={CONF_LABEL[summary?.confidenceLevel ?? 'UNKNOWN'] ?? 'Unknown'}
           colorClass={statusColor}
-          sub={summary?.confidence?.score != null ? `Score: ${summary.confidence.score}` : ''}
+          sub={summary?.confidence?.score != null ? `Score: ${summary.confidence.score}` : statusLabel}
         />
       </div>
 
@@ -618,7 +694,7 @@ function BrakesDetail({
           <div className="space-y-2">
             {detail!.history.slice(0, 10).map((h) => (
               <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'bg-neutral-800/40' : 'bg-gray-50'}`}>
-                <Clock className={`w-3 h-3 ${p.textMuted}`} />
+                <Icon name="clock" className={`w-3 h-3 ${p.textMuted}`} />
                 <span className={`text-xs font-medium ${p.textPrimary}`}>{fmtDate(h.date)}</span>
                 {h.serviceKind && <span className={`text-[10px] ${p.textMuted}`}>{h.serviceKind}</span>}
                 {h.odometerKm != null && <span className={`text-[10px] ${p.textMuted}`}>{h.odometerKm.toLocaleString('de-DE')} km</span>}
@@ -638,14 +714,22 @@ function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: 
   const pubState = bat?.lv?.publicationState ?? bat?.currentState?.publicationState;
   const isCalib = pubState === 'INITIAL_CALIBRATION';
   const isStab = pubState === 'STABILIZING';
-  const soh = isCalib
-    ? null
-    : (bat?.lv?.healthPercent ?? bat?.currentState?.publishedSohPct ?? bat?.currentState?.sohPercent ?? null);
-  const estSoh = bat?.lv?.estimatedHealthPercent ?? bat?.currentState?.estimatedSohPct ?? null;
   const volt = bat?.lv?.telemetry?.voltageV ?? bat?.currentState?.voltageV;
   const cond = bat?.lv?.condition ?? bat?.condition;
   const matConf = bat?.lv?.confidence ?? bat?.currentState?.maturityConfidence;
   const lvStatus = bat?.lv?.status ?? (isCalib ? 'calibrating' : 'ready');
+  // LV "Estimated Battery Health" status (no SOH %) + separate Resting Voltage.
+  const estStatus: string =
+    bat?.lv?.estimatedHealth?.status ??
+    (cond === 'good' ? 'GOOD' : cond === 'watch' ? 'WATCH' : cond === 'attention' ? 'WARNING' : 'UNKNOWN');
+  const statusLabel: Record<string, string> = { GOOD: 'Good', WATCH: 'Watch', WARNING: 'Warning', CRITICAL: 'Critical', UNKNOWN: '—', UNSUPPORTED: 'Not rated' };
+  const statusColor = (s: string) =>
+    s === 'GOOD' ? (isDark ? 'text-emerald-400' : 'text-emerald-500') :
+    s === 'WATCH' ? (isDark ? 'text-amber-400' : 'text-amber-500') :
+    s === 'WARNING' ? (isDark ? 'text-orange-400' : 'text-orange-500') :
+    s === 'CRITICAL' ? (isDark ? 'text-red-400' : 'text-red-500') : p.textMuted;
+  const restingV = bat?.lv?.restingVoltage?.valueV ?? bat?.lv?.telemetry?.restingVoltage ?? null;
+  const restingStatus: string = bat?.lv?.restingVoltage?.status ?? 'UNKNOWN';
 
   return (
     <>
@@ -664,38 +748,35 @@ function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: 
         <StatBox
           {...p}
           isDark={isDark}
-          label={isStab ? 'Estimated SOH' : 'SOH'}
+          label="Est. Health"
           value={
             isCalib
               ? 'Calibrating'
-              : soh != null
-                ? `${isStab ? '~' : ''}${Math.round(soh)}%`
-                : estSoh != null
-                  ? `~${Math.round(estSoh)}%`
-                  : lvStatus === 'no_recent_data'
-                    ? 'No data'
-                    : 'Unavailable'
+              : lvStatus === 'no_recent_data'
+                ? 'No data'
+                : statusLabel[estStatus] ?? '—'
           }
           colorClass={
             isCalib
               ? (isDark ? 'text-blue-400' : 'text-blue-500')
-              : isStab || estSoh != null
-                ? (isDark ? 'text-amber-400' : 'text-amber-500')
-                : soh != null
-                  ? getMetricColor(soh, isDark)
-                  : p.textMuted
+              : statusColor(estStatus)
           }
           sub={
             isCalib
               ? 'collecting data'
               : lvStatus === 'no_recent_data'
                 ? 'no recent data'
-                : isStab || estSoh != null
-                  ? 'estimated'
-                  : 'state of health'
+                : 'estimated battery health'
           }
         />
-        <StatBox {...p} isDark={isDark} label="Voltage" value={volt != null ? `${volt.toFixed(1)}V` : '—'} sub="current reading" />
+        <StatBox
+          {...p}
+          isDark={isDark}
+          label="Resting Voltage"
+          value={restingV != null ? `${restingV.toFixed(2)}V` : volt != null ? `${volt.toFixed(1)}V` : '—'}
+          colorClass={restingV != null ? statusColor(restingStatus) : p.textMuted}
+          sub={restingV != null && statusLabel[restingStatus] !== '—' ? statusLabel[restingStatus] : 'rest/charge state'}
+        />
         <StatBox
           {...p}
           isDark={isDark}
@@ -741,7 +822,7 @@ function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: 
             ? (isDark ? 'border-red-500/30 bg-red-500/5' : 'border-red-200 bg-red-50/80')
             : (isDark ? 'border-amber-500/30 bg-amber-500/5' : 'border-amber-200 bg-amber-50/80')
         }`}>
-          <AlertCircle className={`w-4 h-4 mt-0.5 shrink-0 ${
+          <Icon name="alert-circle" className={`w-4 h-4 mt-0.5 shrink-0 ${
             cond === 'attention'
               ? (isDark ? 'text-red-400' : 'text-red-600')
               : (isDark ? 'text-amber-400' : 'text-amber-600')
@@ -756,8 +837,8 @@ function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: 
             </p>
             <p className={`text-xs mt-0.5 ${p.textSecondary}`}>
               {cond === 'attention'
-                ? 'Batteriespannung bzw. SOH kritisch — Starthilfe oder Austausch empfohlen. Startschwierigkeiten wahrscheinlich.'
-                : 'Batteriespannung unter 12.4V oder SOH unter 75% — Startschwierigkeiten möglich, Ladezustand und Lichtmaschine prüfen.'}
+                ? 'Ruhespannung bzw. geschätzte Batteriegesundheit kritisch — Starthilfe oder Austausch empfohlen. Startschwierigkeiten wahrscheinlich.'
+                : 'Niedrige Ruhespannung oder geschätzte Batteriegesundheit unter Schwelle — Startschwierigkeiten möglich, Ladezustand und Lichtmaschine prüfen.'}
             </p>
           </div>
         </div>
@@ -791,7 +872,7 @@ function DtcDetail({ isDark, active, all, ...p }: DetailProps & { active: any[];
           <div className="space-y-2">
             {active.map((d: any, i: number) => (
               <div key={i} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'bg-red-500/5 border border-red-500/20' : 'bg-red-50 border border-red-200/50'}`}>
-                <AlertCircle className={`w-4 h-4 shrink-0 ${isDark ? 'text-red-400' : 'text-red-500'}`} />
+                <Icon name="alert-circle" className={`w-4 h-4 shrink-0 ${isDark ? 'text-red-400' : 'text-red-500'}`} />
                 <span className={`text-xs font-mono font-bold ${isDark ? 'text-red-300' : 'text-red-700'}`}>{d.code ?? d.dtcCode ?? 'DTC'}</span>
                 <span className={`text-xs flex-1 ${p.textSecondary}`}>{d.description ?? d.label ?? ''}</span>
               </div>
@@ -831,7 +912,7 @@ function ServiceDetail({ isDark, service: svc, ...p }: DetailProps & { service: 
 
       {hmActive && kmMissingFromOem && (
         <div className={`${p.cardClass} p-3 text-xs ${p.textMuted} flex items-center gap-2`}>
-          <Info className="w-3.5 h-3.5 flex-shrink-0" />
+          <Icon name="info" className="w-3.5 h-3.5 flex-shrink-0" />
           <span>
             Kilometer bis zum nächsten Service werden vom OEM aktuell nicht gestreamt — nur Tage verfügbar.
           </span>
@@ -844,7 +925,7 @@ function ServiceDetail({ isDark, service: svc, ...p }: DetailProps & { service: 
           <div className="space-y-2">
             {svc.serviceHistory.slice(0, 10).map(h => (
               <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'bg-neutral-800/40' : 'bg-gray-50'}`}>
-                <Clock className={`w-3 h-3 ${p.textMuted}`} />
+                <Icon name="clock" className={`w-3 h-3 ${p.textMuted}`} />
                 <span className={`text-xs font-medium ${p.textPrimary}`}>{fmtDate(h.date)}</span>
                 <span className={`text-[10px] ${p.textMuted}`}>{h.eventType}</span>
                 {h.odometerKm != null && <span className={`text-[10px] ${p.textMuted}`}>{h.odometerKm.toLocaleString('de-DE')} km</span>}
@@ -880,7 +961,7 @@ function TuevDetail({ isDark, service: svc, ...p }: DetailProps & { service: Ser
           <div className="space-y-2">
             {svc.tuvHistory.map(h => (
               <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'bg-neutral-800/40' : 'bg-gray-50'}`}>
-                <Clock className={`w-3 h-3 ${p.textMuted}`} />
+                <Icon name="clock" className={`w-3 h-3 ${p.textMuted}`} />
                 <span className={`text-xs font-medium ${p.textPrimary}`}>{fmtDate(h.date)}</span>
                 {h.workshopName && <span className={`text-[10px] ${p.textMuted}`}>{h.workshopName}</span>}
               </div>
@@ -913,7 +994,7 @@ function BokraftDetail({ isDark, service: svc, ...p }: DetailProps & { service: 
           <div className="space-y-2">
             {svc.bokraftHistory.map(h => (
               <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'bg-neutral-800/40' : 'bg-gray-50'}`}>
-                <Clock className={`w-3 h-3 ${p.textMuted}`} />
+                <Icon name="clock" className={`w-3 h-3 ${p.textMuted}`} />
                 <span className={`text-xs font-medium ${p.textPrimary}`}>{fmtDate(h.date)}</span>
                 {h.workshopName && <span className={`text-[10px] ${p.textMuted}`}>{h.workshopName}</span>}
               </div>
@@ -929,7 +1010,7 @@ function BokraftDetail({ isDark, service: svc, ...p }: DetailProps & { service: 
 function DriverFeedbackDetail({ isDark, ...p }: DetailProps) {
   return (
     <div className={`${p.cardClass} p-8 text-center`}>
-      <MessageSquare className={`w-10 h-10 mx-auto mb-3 ${p.textMuted}`} />
+      <Icon name="message-square" className={`w-10 h-10 mx-auto mb-3 ${p.textMuted}`} />
       <p className={`text-sm font-semibold ${p.textPrimary}`}>No Driver Feedback Recorded</p>
       <p className={`text-xs mt-1 ${p.textSecondary}`}>Driver feedback will appear here once submitted through the driver app.</p>
     </div>
@@ -985,9 +1066,9 @@ function AlertsDetail({ isDark, tires, brakeSummary, brakeDetail, battery, dtcAc
                 : a.severity === 'warning' ? (isDark ? 'bg-amber-500/5 border border-amber-500/20' : 'bg-amber-50 border border-amber-200/50')
                 : (isDark ? 'bg-neutral-800/40 border border-neutral-700/40' : 'bg-gray-50 border border-gray-200')
               }`}>
-                {a.severity === 'critical' ? <ShieldAlert className={`w-4 h-4 shrink-0 ${isDark ? 'text-red-400' : 'text-red-500'}`} />
-                : a.severity === 'warning' ? <AlertTriangle className={`w-4 h-4 shrink-0 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />
-                : <Activity className={`w-4 h-4 shrink-0 ${p.textMuted}`} />}
+                {a.severity === 'critical' ? <Icon name="shield-alert" className={`w-4 h-4 shrink-0 ${isDark ? 'text-red-400' : 'text-red-500'}`} />
+                : a.severity === 'warning' ? <Icon name="alert-triangle" className={`w-4 h-4 shrink-0 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />
+                : <Icon name="activity" className={`w-4 h-4 shrink-0 ${p.textMuted}`} />}
                 <span className={`text-[10px] font-semibold uppercase ${p.textMuted} w-16 shrink-0`}>{a.source}</span>
                 <span className={`text-xs flex-1 ${p.textSecondary}`}>{a.message}</span>
               </div>
@@ -996,7 +1077,7 @@ function AlertsDetail({ isDark, tires, brakeSummary, brakeDetail, battery, dtcAc
         </div>
       ) : (
         <div className={`${p.cardClass} p-8 text-center`}>
-          <CheckCircle className={`w-10 h-10 mx-auto mb-3 ${isDark ? 'text-emerald-400' : 'text-emerald-500'}`} />
+          <Icon name="check-circle" className={`w-10 h-10 mx-auto mb-3 ${isDark ? 'text-emerald-400' : 'text-emerald-500'}`} />
           <p className={`text-sm font-semibold ${p.textPrimary}`}>No Active Alerts</p>
           <p className={`text-xs mt-1 ${p.textSecondary}`}>All monitored components are within normal parameters.</p>
         </div>

@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
+  classifyCrankDrop,
+  classifyHvSoh,
+  classifyLvEstimatedHealth,
+  classifyRestingVoltage,
+  type BatteryHealthStatus,
+} from '../../vehicle-intelligence/battery-health/battery-status';
+import {
   DetectorContext,
   InsightCandidate,
   InsightDetector,
@@ -10,39 +17,33 @@ import {
 } from '../insight.types';
 
 /**
- * Surfaces vehicles whose 12V battery is at risk of causing starting problems.
+ * Surfaces vehicles whose battery is at risk, using the SAME classification
+ * rules as CanonicalBatteryHealthService (`battery-status.ts`) — there is no
+ * second set of thresholds. A vehicle alert is only produced for WARNING or
+ * CRITICAL; WATCH stays visible in the Battery module / Vehicle Health /
+ * Fleet Condition but never raises an alert.
  *
- * Thresholds mirror CanonicalBatteryHealthService (single source of truth):
- *   voltage < 12.0V  → CRITICAL — battery depleted, starting unlikely
- *   voltage < 12.4V  → WARNING  — starting difficulty possible
- *   SOH     < 50%    → CRITICAL — replacement recommended
- *   SOH     < 75%    → WARNING  — monitor, declining capacity
+ * LV (12 V) alert grounds (V4.8 Battery overhaul):
+ *   · Resting-voltage status WARNING/CRITICAL — battery-spec aware bands
+ *     (lead-acid / AGM / EFB; lithium is UNSUPPORTED → no false alert).
+ *     Only a genuine resting voltage is used, never a live charging voltage.
+ *   · Estimated Battery Health WARNING/CRITICAL — from the V2 publication
+ *     pipeline (stabilized, hysteresis-gated; never a raw outlier sample).
+ *   · Bad crank drop — escalates a low resting voltage to CRITICAL.
  *
- * SOH truth (V4.6.35 — no more false alarms from raw outlier samples):
- *   The detector now consumes the SAME SOH the Health Tab shows —
- *   BatteryFeatures.publishedSohPct from the V2 publication pipeline
- *   (raw → stabilized → published, with outlier suppression and hysteresis).
- *   Previously the detector read BatteryHealthSnapshot.sohPercent directly,
- *   which surfaced transient single-sample outliers (e.g. a 25 % reading
- *   between multiple 79–100 % readings) as CRITICAL alerts while the
- *   canonical service correctly reported 86 % stabilized.
+ * HV (traction) alert grounds:
+ *   · HV SOH WARNING/CRITICAL only when a reliable SOH basis exists
+ *     (provider / capacity measurement). Never on unavailable/unknown SOH and
+ *     never from an age/km fallback (that model has been removed).
  *
- *   Vehicles in INITIAL_CALIBRATION publication state are skipped for SOH
- *   classification — the value is not yet trustworthy. Voltage-based
- *   classification still runs so a genuinely flat 12 V battery is still
- *   flagged during calibration. If no V2 record exists at all, we fall
- *   back to the legacy snapshot SOH (preserves behaviour for vehicles that
- *   never entered the V2 pipeline).
- *
- * The detector reads the fleet's VehicleLatestState (populated by DIMO
- * telemetry and, for MQTT-push vehicles, High Mobility health ingestion) so
- * the dashboard reflects the same voltage the Health Tab displays. Vehicles
- * without a recent voltage sample or without a calibrated SOH are skipped —
- * we never fabricate a critical state from missing data.
- *
- * Freshness window: 72h. A stale voltage is NOT promoted into a critical
- * insight because the real-world state may have changed since the last
- * sample (engine started, alternator charged).
+ * Spam protection:
+ *   · A resting-voltage WARNING requires TWO consecutive qualified resting
+ *     measurements below the band — a single dip does not alert.
+ *   · A resting-voltage CRITICAL fires immediately (depleted battery is an
+ *     urgent operational risk), as does WARNING-voltage + bad crank drop.
+ *   · Estimated-health values are already stabilized by the pipeline.
+ *   · The dedupeKey is preserved so the existing dedup/resolution system
+ *     collapses repeats.
  */
 @Injectable()
 export class BatteryCriticalDetector implements InsightDetector {
@@ -69,9 +70,10 @@ export class BatteryCriticalDetector implements InsightDetector {
         model: true,
         licensePlate: true,
         stationId: true,
+        fuelType: true,
         latestState: {
           select: {
-            lvBatteryVoltage: true,
+            tractionBatterySohPercent: true,
             lastSeenAt: true,
           },
         },
@@ -82,11 +84,10 @@ export class BatteryCriticalDetector implements InsightDetector {
 
     const vehicleIds = vehicles.map((v) => v.id);
 
-    // Latest battery health snapshot per vehicle (cheap single query). We
-    // pull a small window and reduce client-side to the most recent row per
-    // vehicle — keeps this detector to two DB round-trips regardless of
-    // fleet size.
-    const [snapshots, featuresRows] = await Promise.all([
+    const [snapshots, featuresRows, specRows, hvCurrentRows] = await Promise.all([
+      // Resting-voltage history within the freshness window. We keep the two
+      // most recent QUALIFIED resting samples per vehicle for the
+      // two-consecutive spam guard.
       this.prisma.batteryHealthSnapshot.findMany({
         where: {
           vehicleId: { in: vehicleIds },
@@ -95,14 +96,31 @@ export class BatteryCriticalDetector implements InsightDetector {
         orderBy: { recordedAt: 'desc' },
         select: {
           vehicleId: true,
+          restingVoltage: true,
           voltageV: true,
-          sohPercent: true,
+          engineRunning: true,
           recordedAt: true,
         },
       }),
-      // V2 publication pipeline — single source of truth for SOH (same row
-      // CanonicalBatteryHealthService reads for the Health Tab).
+      // V2 publication pipeline — single source of truth for the LV estimated
+      // health score + crank drop.
       this.prisma.batteryFeatures.findMany({
+        where: { vehicleId: { in: vehicleIds } },
+        select: {
+          vehicleId: true,
+          publishedSohPct: true,
+          publicationState: true,
+          crankDrop: true,
+        },
+      }),
+      // Battery spec (latest per vehicle) for chemistry-aware voltage bands.
+      this.prisma.vehicleBatterySpec.findMany({
+        where: { vehicleId: { in: vehicleIds } },
+        orderBy: { createdAt: 'desc' },
+        select: { vehicleId: true, batteryType: true, createdAt: true },
+      }),
+      // HV publication state (capacity/energy-based SOH).
+      this.prisma.hvBatteryHealthCurrent.findMany({
         where: { vehicleId: { in: vehicleIds } },
         select: {
           vehicleId: true,
@@ -112,146 +130,168 @@ export class BatteryCriticalDetector implements InsightDetector {
       }),
     ]);
 
-    const latestSnapshotByVehicle = new Map<
+    // Two most-recent qualified resting samples per vehicle.
+    const restingByVehicle = new Map<
       string,
-      { voltageV: number | null; sohPercent: number | null; recordedAt: Date }
+      Array<{ restingVoltage: number; recordedAt: Date }>
     >();
     for (const s of snapshots) {
-      if (!latestSnapshotByVehicle.has(s.vehicleId)) {
-        latestSnapshotByVehicle.set(s.vehicleId, {
-          voltageV: s.voltageV,
-          sohPercent: s.sohPercent,
-          recordedAt: s.recordedAt,
-        });
+      const resting =
+        s.restingVoltage ?? (s.engineRunning === false ? s.voltageV : null);
+      if (resting == null) continue;
+      const list = restingByVehicle.get(s.vehicleId) ?? [];
+      if (list.length < 2) {
+        list.push({ restingVoltage: resting, recordedAt: s.recordedAt });
+        restingByVehicle.set(s.vehicleId, list);
       }
     }
 
     const featuresByVehicle = new Map<
       string,
-      { publishedSohPct: number | null; publicationState: string | null }
+      { publishedSohPct: number | null; publicationState: string | null; crankDrop: number | null }
     >();
     for (const f of featuresRows) {
       featuresByVehicle.set(f.vehicleId, {
         publishedSohPct: f.publishedSohPct ?? null,
         publicationState: (f.publicationState as string | null) ?? null,
+        crankDrop: f.crankDrop ?? null,
+      });
+    }
+
+    const batteryTypeByVehicle = new Map<string, string | null>();
+    for (const spec of specRows) {
+      if (!batteryTypeByVehicle.has(spec.vehicleId)) {
+        batteryTypeByVehicle.set(spec.vehicleId, spec.batteryType ?? null);
+      }
+    }
+
+    const hvCurrentByVehicle = new Map<
+      string,
+      { publishedSohPct: number | null; publicationState: string | null }
+    >();
+    for (const h of hvCurrentRows) {
+      hvCurrentByVehicle.set(h.vehicleId, {
+        publishedSohPct: h.publishedSohPct ?? null,
+        publicationState: (h.publicationState as string | null) ?? null,
       });
     }
 
     const candidates: InsightCandidate[] = [];
 
     for (const v of vehicles) {
-      const snap = latestSnapshotByVehicle.get(v.id);
+      const restingSamples = restingByVehicle.get(v.id) ?? [];
       const features = featuresByVehicle.get(v.id);
-      const stateVoltage = v.latestState?.lvBatteryVoltage ?? null;
-      const stateSeenAt = v.latestState?.lastSeenAt ?? null;
-      const snapVoltage = snap?.voltageV ?? null;
-      const snapSoh = snap?.sohPercent ?? null;
-      const snapAt = snap?.recordedAt ?? null;
+      const batteryType = batteryTypeByVehicle.get(v.id) ?? null;
 
-      // Prefer the fresher voltage carrier (mirrors CanonicalBatteryHealthService).
-      let voltage: number | null = null;
-      let observedAt: Date | null = null;
-      if (snapVoltage != null && stateVoltage != null) {
-        const snapNewer =
-          snapAt && stateSeenAt
-            ? snapAt.getTime() >= stateSeenAt.getTime()
-            : snapAt != null;
-        voltage = snapNewer ? snapVoltage : stateVoltage;
-        observedAt = snapNewer ? snapAt : stateSeenAt;
-      } else if (snapVoltage != null) {
-        voltage = snapVoltage;
-        observedAt = snapAt;
-      } else if (stateVoltage != null) {
-        voltage = stateVoltage;
-        observedAt = stateSeenAt;
+      // ── LV resting voltage ───────────────────────────────────────────────
+      const latestResting = restingSamples[0] ?? null;
+      const restingClass = latestResting
+        ? classifyRestingVoltage(latestResting.restingVoltage, batteryType)
+        : null;
+      const restingStatus = restingClass?.status ?? 'UNKNOWN';
+      const secondResting = restingSamples[1] ?? null;
+      const secondRestingBelowWarning = secondResting
+        ? ['WARNING', 'CRITICAL'].includes(
+            classifyRestingVoltage(secondResting.restingVoltage, batteryType).status,
+          )
+        : false;
+
+      // ── LV estimated health (only once published) ─────────────────────────
+      let estHealthStatus: BatteryHealthStatus = 'UNKNOWN';
+      if (
+        features &&
+        features.publicationState !== BatteryCriticalDetector.INITIAL_CALIBRATION &&
+        features.publishedSohPct != null
+      ) {
+        estHealthStatus = classifyLvEstimatedHealth(features.publishedSohPct);
       }
 
-      // Skip stale samples — a 4-day-old 11.8V reading is not actionable.
-      if (observedAt && observedAt < freshnessCutoff) {
-        voltage = null;
-        observedAt = null;
-      }
+      // ── LV crank drop ─────────────────────────────────────────────────────
+      const crankStatus = classifyCrankDrop(features?.crankDrop ?? null);
+      const crankBad = crankStatus === 'WARNING' || crankStatus === 'CRITICAL';
 
-      // SOH — canonical precedence:
-      //   1) V2.publishedSohPct when the pipeline has published a value
-      //   2) legacy BatteryHealthSnapshot.sohPercent ONLY if the vehicle
-      //      has never entered the V2 pipeline (features absent)
-      //   3) otherwise SOH is intentionally unavailable (we do not want to
-      //      alert on a raw sample that the pipeline has already classified
-      //      as an outlier — that was the root cause of historical false
-      //      alarms on WOB X 6511: snapshot=25 %, published=86 %).
-      let soh: number | null;
-      let sohSource: 'v2_published' | 'legacy_snapshot' | 'suppressed_calibrating' | 'suppressed_outlier' | 'unavailable' =
-        'unavailable';
-      if (features) {
-        if (features.publicationState === BatteryCriticalDetector.INITIAL_CALIBRATION) {
-          // Not enough qualified observations yet — treating this as
-          // CRITICAL would fire spurious alerts on every new vehicle.
-          soh = null;
-          sohSource = 'suppressed_calibrating';
-        } else if (features.publishedSohPct != null) {
-          soh = features.publishedSohPct;
-          sohSource = 'v2_published';
-        } else {
-          // V2 row exists but hasn't published yet (e.g. stabilizing without
-          // a published value). Do NOT fall back to the raw snapshot — that
-          // would re-introduce the outlier false-alarm path.
-          soh = null;
-          sohSource = 'suppressed_outlier';
-        }
-      } else if (snapSoh != null) {
-        soh = snapSoh;
-        sohSource = 'legacy_snapshot';
-      } else {
-        soh = null;
-      }
-
-      // Classify strictly using the canonical thresholds. Voltage wins over
-      // SOH when voltage is definitively in the critical band because a
-      // depleted 12V battery is an immediate operational risk.
+      // ── LV severity decision ──────────────────────────────────────────────
       let severity: InsightSeverity | null = null;
       let reason: string | null = null;
       let title = 'Batterie kritisch';
       let message = '';
       let priority = 60;
+      const label = v.licensePlate || `${v.make} ${v.model}`;
 
-      if (voltage != null && voltage < 12.0) {
+      if (
+        restingStatus === 'CRITICAL' ||
+        (restingStatus === 'WARNING' && crankBad)
+      ) {
+        const vtxt = latestResting!.restingVoltage.toFixed(2);
         severity = InsightSeverity.CRITICAL;
-        reason = `Spannung ${voltage.toFixed(2)} V (< 12.0 V)`;
+        reason = `Ruhespannung ${vtxt} V kritisch`;
         title = 'Batterie kritisch — Starthilfe empfohlen';
-        message = `Spannung bei ${voltage.toFixed(2)} V — Batterie entladen, Starthilfe oder Austausch empfohlen. Startschwierigkeiten wahrscheinlich.`;
+        message = `Ruhespannung bei ${vtxt} V — Batterie entladen, Starthilfe oder Austausch empfohlen. Startschwierigkeiten wahrscheinlich.`;
         priority = 85;
-      } else if (soh != null && soh < 50) {
+      } else if (estHealthStatus === 'CRITICAL') {
         severity = InsightSeverity.CRITICAL;
-        reason = `SOH ${Math.round(soh)}% (< 50%)`;
-        title = 'Batterie kritisch — SOH unter 50%';
-        message = `Kapazität bei ${Math.round(soh)}% SOH — Austausch empfohlen. Startschwierigkeiten wahrscheinlich.`;
+        reason = 'Geschätzte Batteriegesundheit kritisch';
+        title = 'Batterie kritisch — Gesundheit niedrig';
+        message =
+          'Geschätzte 12V-Batteriegesundheit kritisch — Austausch empfohlen. Startschwierigkeiten wahrscheinlich.';
         priority = 80;
-      } else if (voltage != null && voltage < 12.4) {
+      } else if (restingStatus === 'WARNING' && secondRestingBelowWarning) {
+        const vtxt = latestResting!.restingVoltage.toFixed(2);
         severity = InsightSeverity.WARNING;
-        reason = `Spannung ${voltage.toFixed(2)} V (< 12.4 V)`;
+        reason = `Ruhespannung ${vtxt} V niedrig (2 Messungen)`;
         title = 'Batterie kritisch beobachten';
-        message = `Spannung bei ${voltage.toFixed(2)} V — Startschwierigkeiten möglich. Ladezustand und Lichtmaschine prüfen.`;
+        message = `Ruhespannung bei ${vtxt} V über zwei Messungen — Startschwierigkeiten möglich. Ladezustand und Lichtmaschine prüfen.`;
         priority = 65;
-      } else if (soh != null && soh < 75) {
+      } else if (estHealthStatus === 'WARNING' || crankStatus === 'CRITICAL') {
         severity = InsightSeverity.WARNING;
-        reason = `SOH ${Math.round(soh)}% (< 75%)`;
+        reason =
+          crankStatus === 'CRITICAL'
+            ? 'Schlechtes Startverhalten (Crank Drop)'
+            : 'Geschätzte Batteriegesundheit niedrig';
         title = 'Batterie kritisch beobachten';
-        message = `Kapazität bei ${Math.round(soh)}% SOH — Startschwierigkeiten möglich, Batterie beobachten.`;
+        message =
+          crankStatus === 'CRITICAL'
+            ? 'Hoher Spannungseinbruch beim Start — Batterie beobachten, Startschwierigkeiten möglich.'
+            : 'Geschätzte 12V-Batteriegesundheit niedrig — Batterie beobachten, Startschwierigkeiten möglich.';
         priority = 60;
+      }
+
+      // ── HV SOH (EV only, reliable data only) ──────────────────────────────
+      const isEv = v.fuelType === 'ELECTRIC' || v.fuelType === 'PLUGIN_HYBRID';
+      if (!severity && isEv) {
+        const hvCurrent = hvCurrentByVehicle.get(v.id);
+        const providerSoh = v.latestState?.tractionBatterySohPercent ?? null;
+        const capacitySoh =
+          hvCurrent &&
+          hvCurrent.publicationState !== BatteryCriticalDetector.INITIAL_CALIBRATION
+            ? hvCurrent.publishedSohPct
+            : null;
+        const hvSoh = providerSoh ?? capacitySoh ?? null;
+        const hvStatus = classifyHvSoh(hvSoh);
+        if (hvSoh != null && (hvStatus === 'WARNING' || hvStatus === 'CRITICAL')) {
+          severity =
+            hvStatus === 'CRITICAL'
+              ? InsightSeverity.CRITICAL
+              : InsightSeverity.WARNING;
+          reason = `HV-SOH ${Math.round(hvSoh)} %`;
+          title =
+            hvStatus === 'CRITICAL'
+              ? 'Traktionsbatterie kritisch'
+              : 'Traktionsbatterie beobachten';
+          message = `HV-Batteriegesundheit bei ${Math.round(hvSoh)} % — Diagnose der Traktionsbatterie empfohlen.`;
+          priority = hvStatus === 'CRITICAL' ? 82 : 62;
+        }
       }
 
       if (!severity) continue;
 
-      const label = v.licensePlate || `${v.make} ${v.model}`;
+      const observedAt = latestResting?.recordedAt ?? v.latestState?.lastSeenAt ?? null;
       const reasons: string[] = [reason!];
       if (observedAt) {
         const ageH = Math.round(
           (ctx.now.getTime() - observedAt.getTime()) / 3_600_000,
         );
-        reasons.push(
-          ageH < 1 ? 'Messwert aktuell' : `Messwert ${ageH} h alt`,
-        );
+        reasons.push(ageH < 1 ? 'Messwert aktuell' : `Messwert ${ageH} h alt`);
       }
       reasons.push('Startschwierigkeiten möglich');
 
@@ -269,14 +309,13 @@ export class BatteryCriticalDetector implements InsightDetector {
           ? { observedAt: observedAt.toISOString() }
           : undefined,
         metrics: {
-          voltageV: voltage ?? 'unknown',
-          sohPercent: soh ?? 'unknown',
-          // Provenance — reveals whether the SOH came from the V2 publication
-          // pipeline (trusted, stabilized) or the legacy snapshot fallback.
-          sohSource,
+          restingVoltageV: latestResting?.restingVoltage ?? 'unknown',
+          restingStatus,
+          estimatedHealthStatus: estHealthStatus,
+          crankDropStatus: crankStatus,
         },
         reasons,
-        confidence: voltage != null ? 0.95 : 0.8,
+        confidence: latestResting != null ? 0.95 : 0.8,
         dedupeKey: `battery_critical:${v.id}`,
         groupKey: v.stationId
           ? `battery_critical:${v.stationId}`

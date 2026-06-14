@@ -1,21 +1,7 @@
+import { Car, MapPin, User, Wrench } from 'lucide-react';
+import { Icon } from '../ui/Icon';
 import { useEffect, useMemo, useState } from 'react';
-import {
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Gauge,
-  Fuel,
-  Sparkles,
-  Car,
-  FileSignature,
-  Loader2,
-  Plus,
-  X,
-  ShieldAlert,
-  User,
-  Wrench,
-  MapPin,
-} from 'lucide-react';
+
 import { api } from '../../../lib/api';
 import { SignaturePad } from './SignaturePad';
 
@@ -387,7 +373,7 @@ export function HandoverProtocolDialog({
                     : 'bg-emerald-50'
                 }`}
               >
-                <FileSignature
+                <Icon name="file-signature"
                   className={`w-5 h-5 ${
                     kind === 'PICKUP'
                       ? isDarkMode
@@ -415,7 +401,7 @@ export function HandoverProtocolDialog({
                   : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
               }`}
             >
-              <X className="w-4 h-4" />
+              <Icon name="x" className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -454,7 +440,7 @@ export function HandoverProtocolDialog({
           {kind === 'PICKUP' && (
             <div className={`rounded-xl border p-4 ${borderColor} ${cardBg}`}>
               <div className="flex items-center gap-2 mb-2">
-                <Clock className={`w-4 h-4 ${isDarkMode ? 'text-sky-400' : 'text-sky-500'}`} />
+                <Icon name="clock" className={`w-4 h-4 ${isDarkMode ? 'text-sky-400' : 'text-sky-500'}`} />
                 <label className={`text-xs font-semibold ${textPrimary}`}>
                   Tatsächlicher Pickup-Zeitpunkt
                 </label>
@@ -488,7 +474,7 @@ export function HandoverProtocolDialog({
                       isDarkMode ? 'text-amber-300' : 'text-amber-700'
                     }`}
                   >
-                    <AlertTriangle className="w-3 h-3" />
+                    <Icon name="alert-triangle" className="w-3 h-3" />
                     {label} nach geplantem Pickup — wird als Rückdatierung erfasst.
                   </div>
                 );
@@ -500,7 +486,7 @@ export function HandoverProtocolDialog({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className={`rounded-xl border p-4 ${borderColor} ${cardBg}`}>
               <div className="flex items-center gap-2 mb-2">
-                <Gauge className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                <Icon name="gauge" className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
                 <label className={`text-xs font-semibold ${textPrimary}`}>Kilometerstand *</label>
               </div>
               <div className="flex items-center gap-2">
@@ -529,7 +515,7 @@ export function HandoverProtocolDialog({
             <div className={`rounded-xl border p-4 ${borderColor} ${cardBg}`}>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <Fuel className={`w-4 h-4 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
+                  <Icon name="fuel" className={`w-4 h-4 ${isDarkMode ? 'text-amber-400' : 'text-amber-500'}`} />
                   <label className={`text-xs font-semibold ${textPrimary}`}>Tankstand / SoC *</label>
                 </div>
                 <span className={`text-xs font-bold ${textPrimary}`}>{fuelLabel}</span>
@@ -566,7 +552,7 @@ export function HandoverProtocolDialog({
           {/* Checks */}
           <div className={`rounded-xl border p-4 ${borderColor} ${cardBg}`}>
             <div className="flex items-center gap-2 mb-3">
-              <Sparkles className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
+              <Icon name="sparkles" className={`w-4 h-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
               <h3 className={`text-xs font-semibold ${textPrimary}`}>Fahrzeugkontrolle</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
@@ -590,7 +576,7 @@ export function HandoverProtocolDialog({
           <div className={`rounded-xl border p-4 ${borderColor} ${cardBg}`}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <ShieldAlert className={`w-4 h-4 ${isDarkMode ? 'text-orange-400' : 'text-orange-500'}`} />
+                <Icon name="shield-alert" className={`w-4 h-4 ${isDarkMode ? 'text-orange-400' : 'text-orange-500'}`} />
                 <h3 className={`text-xs font-semibold ${textPrimary}`}>Schäden</h3>
                 <span className={`text-[10px] ${textTertiary}`}>
                   ({selectedDamageIds.size}/{damages.length} ausgewählt)
@@ -605,7 +591,7 @@ export function HandoverProtocolDialog({
                     : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
                 }`}
               >
-                <Plus className="w-3 h-3" />
+                <Icon name="plus" className="w-3 h-3" />
                 Neuen Schaden erfassen
               </button>
             </div>
@@ -670,7 +656,7 @@ export function HandoverProtocolDialog({
                         : 'bg-orange-500 text-white hover:bg-orange-600'
                     }`}
                   >
-                    {creatingDamage ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                    {creatingDamage ? <Icon name="loader-2" className="w-3 h-3 animate-spin" /> : <Icon name="plus" className="w-3 h-3" />}
                     Anlegen
                   </button>
                 </div>
@@ -679,7 +665,7 @@ export function HandoverProtocolDialog({
 
             {loadingDamages ? (
               <div className={`flex items-center gap-2 text-xs ${textMuted}`}>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Schäden werden geladen…
+                <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> Schäden werden geladen…
               </div>
             ) : damages.length === 0 ? (
               <p className={`text-[11px] ${textMuted}`}>
@@ -747,7 +733,7 @@ export function HandoverProtocolDialog({
           {/* Staff */}
           <div className={`rounded-xl border p-4 ${borderColor} ${cardBg}`}>
             <div className="flex items-center gap-2 mb-3">
-              <User className={`w-4 h-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} />
+              <Icon name="user" className={`w-4 h-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} />
               <h3 className={`text-xs font-semibold ${textPrimary}`}>Übergabe durch *</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -846,7 +832,7 @@ export function HandoverProtocolDialog({
                   : 'bg-red-50 border-red-200 text-red-700'
               }`}
             >
-              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+              <Icon name="alert-triangle" className="w-4 h-4 mt-0.5 shrink-0" />
               <span className="text-xs">{submitError}</span>
             </div>
           )}
@@ -884,7 +870,7 @@ export function HandoverProtocolDialog({
                   : 'bg-emerald-600 hover:bg-emerald-700'
               }`}
             >
-              {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+              {submitting ? <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : <Icon name="check-circle" className="w-3.5 h-3.5" />}
               {primaryLabel}
             </button>
           </div>

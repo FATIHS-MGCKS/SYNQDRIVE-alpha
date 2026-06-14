@@ -1,4 +1,5 @@
-﻿import { ArrowDownLeft, ArrowDownRight, ArrowUpRight, Car, Check, Clock, ChevronDown, MapPin, Wallet, type LucideIcon } from 'lucide-react';
+﻿
+import { Icon, type IconName } from './ui/Icon';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { VehicleData } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
@@ -481,21 +482,13 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpen
   );
 
   return (
-    <div className="max-w-[1600px] mx-auto">
-      {/* V4.6.86 — premium dashboard header: section label + bold date,
-          refined segmented control, station pill button using sq-press. */}
-      {/* V4.6.88 — premium dashboard header: Manrope page title @ 28/700,
-          segmented control switched to 13/600 per V4.6.88 typography rules. */}
-      {/* V4.6.95 — Header restructured into a balanced 3-column band:
-          • LEFT  → personalised page title („Welcome back, <First Last>")
-          • CENTER → today's date (subtle 13/medium muted), now optically
-                    centered between the title and the station pill so the
-                    band feels symmetric instead of left-heavy.
-          • RIGHT → station selector (unchanged behaviour).
-          Below `sm` the three regions stack vertically while keeping their
-          horizontal alignment so the centered date does not collapse onto
-          the left edge on phones. */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 sm:items-end gap-2 sm:gap-3 mb-5">
+    <div className="max-w-[1600px] mx-auto space-y-5">
+      {/* V4.7.37 — Dashboard is the operational home surface, so its header
+          now follows the same clean page rhythm as Fleet / Customers /
+          Financial Insights: title left, compact contextual controls right.
+          Date is no longer centered as a detached object; it behaves like
+          a filter/context pill next to the station selector. */}
+      <div className="flex min-h-8 flex-wrap items-end justify-between gap-2 sm:gap-3">
         <div className="animate-fade-up min-w-0">
           <h1 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground truncate">
             {(() => {
@@ -506,16 +499,14 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpen
             })()}
           </h1>
         </div>
-        <div className="animate-fade-up flex sm:justify-center">
-          <span className="text-[13px] font-medium text-muted-foreground capitalize whitespace-nowrap">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold sq-tone-neutral capitalize whitespace-nowrap">
             {(() => {
               const lm: Record<string, string> = { en: 'en-US', de: 'de-DE', fr: 'fr-FR', nl: 'nl-NL', es: 'es-ES', it: 'it-IT', pl: 'pl-PL', cs: 'cs-CZ' };
               const loc = lm[locale] || 'en-US';
               return new Date().toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
             })()}
           </span>
-        </div>
-        <div className="flex items-center gap-2 sm:justify-end">
           {/* V4.6.95 — Station filter is now data-driven: options come from
               `api.stations.list(orgId)` (loaded into `stationsApi`), the
               chosen station is persisted to localStorage and propagated as
@@ -529,13 +520,13 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpen
               onClick={() => setIsStationDropdownOpen((prev) => !prev)}
               aria-haspopup="listbox"
               aria-expanded={isStationDropdownOpen}
-              className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[13px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border max-w-[260px]"
+              className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border max-w-[260px]"
             >
-              <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <span className="text-[12px] truncate">
+              <Icon name="map-pin" className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <span className="truncate">
                 {selectedStationName ?? t('dashboard.allStations')}
               </span>
-              <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 shrink-0 ${isStationDropdownOpen ? 'rotate-180' : ''}`} />
+              <Icon name="chevron-down" className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 shrink-0 ${isStationDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
             {isStationDropdownOpen && (
               <div
@@ -579,7 +570,7 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpen
                     >
                       <span className="flex items-center gap-2 min-w-0">
                         {isActive ? (
-                          <Check className="w-3.5 h-3.5 shrink-0" />
+                          <Icon name="check" className="w-3.5 h-3.5 shrink-0" />
                         ) : (
                           <span className="w-3.5 h-3.5 shrink-0" aria-hidden />
                         )}
@@ -624,22 +615,33 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpen
                 label in its subline (`MonthlyKpiTile`), so the header was
                 redundant, sat asymmetrically left-aligned with no right-side
                 counterpart, and ate vertical space without adding info. */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
               <MonthlyKpiTile
                 label={t('dashboard.revenue')}
                 value={fmtMonthlyEUR(monthlyKpis.revenueCents)}
                 subtitle={t('dashboard.invoicesShort', { count: monthlyKpis.revenueCount })}
-                icon={ArrowUpRight}
+                icon="arrow-up-right"
                 tone="success"
                 deltaPct={monthlyKpis.revenueDeltaPct}
                 deltaLabel={t('dashboard.vsLastMonth')}
                 monthLabel={monthlyKpis.monthLabel}
               />
               <MonthlyKpiTile
+                label={t('dashboard.fleetStatus')}
+                value={String(filteredFleetVehicles.length)}
+                subtitle={`${availableVehicles.length} ${t('dashboard.available')}`}
+                icon="car"
+                tone="info"
+                deltaPct={null}
+                deltaLabel=""
+                monthLabel={monthlyKpis.monthLabel}
+                contextLabel={selectedStationName ?? t('dashboard.allStations')}
+              />
+              <MonthlyKpiTile
                 label={t('dashboard.profit')}
                 value={fmtMonthlyEUR(monthlyKpis.profitCents)}
                 subtitle={t('dashboard.vsLastMonth')}
-                icon={Wallet}
+                icon="wallet"
                 tone={monthlyKpis.profitCents >= 0 ? 'brand' : 'critical'}
                 deltaPct={monthlyKpis.profitDeltaPct}
                 deltaLabel={t('dashboard.vsLastMonth')}
@@ -650,7 +652,7 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpen
                 label={t('dashboard.expenses')}
                 value={fmtMonthlyEUR(monthlyKpis.expenseCents)}
                 subtitle={t('dashboard.invoicesShort', { count: monthlyKpis.expenseCount })}
-                icon={ArrowDownLeft}
+                icon="arrow-down-left"
                 tone="critical"
                 deltaPct={monthlyKpis.expenseDeltaPct}
                 deltaLabel={t('dashboard.vsLastMonth')}
@@ -681,7 +683,7 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpen
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2.5">
                     <div className="sq-tone-brand w-7 h-7 rounded-xl flex items-center justify-center">
-                      <Car className="w-4 h-4" />
+                      <Icon name="car" className="w-4 h-4" />
                     </div>
                     <div>
                       <h3 className="text-[12px] font-semibold tracking-[-0.005em] text-foreground">{t('dashboard.fleetStatus')}</h3>
@@ -741,7 +743,7 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpen
                         {tab.warn > 0 && (
                           <span
                             title={tab.key === 'Active Rented' ? `${tab.warn} über Km-Limit` : `${tab.warn} überfällig`}
-                            className="text-[10px] min-w-[16px] h-[16px] px-1 flex items-center justify-center rounded-full font-bold tabular-nums bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0"
+                            className="text-[10px] min-w-[16px] h-[16px] px-1 flex items-center justify-center rounded-full font-bold tabular-nums sq-tone-watch shrink-0"
                           >
                             {tab.warn}
                           </span>
@@ -796,7 +798,7 @@ export function DashboardView({ isDarkMode, onVehicleSelect, onItemHover, onOpen
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="sq-tone-warning w-7 h-7 rounded-xl flex items-center justify-center shrink-0">
-                      <Clock className="w-4 h-4" />
+                      <Icon name="clock" className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
                       <h3 className="text-[12px] font-semibold tracking-[-0.005em] text-foreground">Today's Activity</h3>
@@ -872,12 +874,13 @@ interface MonthlyKpiTileProps {
   label: string;
   value: string;
   subtitle: string;
-  icon: LucideIcon;
+  icon: IconName;
   tone: KpiTone;
   deltaPct: number | null;
   deltaLabel: string;
   deltaInverted?: boolean;
   monthLabel: string;
+  contextLabel?: string;
   hideSubtitle?: boolean;
 }
 
@@ -885,22 +888,22 @@ function MonthlyKpiTile({
   label,
   value,
   subtitle,
-  icon: Icon,
+  icon,
   tone,
   deltaPct,
   deltaLabel,
   deltaInverted,
   monthLabel,
+  contextLabel,
   hideSubtitle,
 }: MonthlyKpiTileProps) {
   const hasDelta = deltaPct !== null && Number.isFinite(deltaPct);
   const positive = hasDelta && (deltaPct as number) >= 0;
   const goodDirection = deltaInverted ? !positive : positive;
-  const DeltaIcon = positive ? ArrowUpRight : ArrowDownRight;
   return (
     <div className="sq-card animate-fade-up p-3 flex items-center gap-3 min-w-0">
       <div className={`sq-tone-${tone} w-9 h-9 rounded-xl flex items-center justify-center shrink-0`}>
-        <Icon className="w-4 h-4" />
+        <Icon name={icon} className="w-4 h-4" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2 mb-0.5">
@@ -911,12 +914,10 @@ function MonthlyKpiTile({
             <span
               title={deltaLabel}
               className={`shrink-0 inline-flex items-center gap-0.5 text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-full ${
-                goodDirection
-                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                  : 'bg-red-500/15 text-red-600 dark:text-red-400'
+                goodDirection ? 'sq-tone-success' : 'sq-tone-critical'
               }`}
             >
-              <DeltaIcon className="w-2.5 h-2.5" />
+              <Icon name={positive ? 'arrow-up-right' : 'arrow-down-right'} className="w-2.5 h-2.5" />
               {`${(deltaPct as number) >= 0 ? '+' : ''}${(deltaPct as number).toFixed(1)}%`}
             </span>
           )}
@@ -925,7 +926,7 @@ function MonthlyKpiTile({
           {value}
         </div>
         <div className="mt-0.5 text-[10.5px] text-muted-foreground truncate">
-          <span className="font-medium text-foreground/80 capitalize">{monthLabel}</span>
+          <span className="font-medium text-foreground/80 capitalize">{contextLabel ?? monthLabel}</span>
           {!hideSubtitle && <span className="mx-1 opacity-60">·</span>}
           {!hideSubtitle && <span>{subtitle}</span>}
         </div>

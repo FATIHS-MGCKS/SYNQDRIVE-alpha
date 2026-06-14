@@ -160,6 +160,31 @@ export class BatteryEvidenceService {
     });
   }
 
+  /**
+   * Latest evidence row matching any of the given source types. Used to
+   * resolve a trustworthy HV SOH from workshop / document / manual reports
+   * (any of which is a real data basis) without a separate query per source.
+   */
+  async getLatestAmongSources(
+    vehicleId: string,
+    params: {
+      scope: BatteryEvidenceScope;
+      valueType: BatteryEvidenceValueType;
+      sourceTypes: BatteryEvidenceSourceType[];
+    },
+  ) {
+    if (!params.sourceTypes.length) return null;
+    return this.prisma.batteryEvidence.findFirst({
+      where: {
+        vehicleId,
+        scope: params.scope,
+        valueType: params.valueType,
+        sourceType: { in: params.sourceTypes },
+      },
+      orderBy: { observedAt: 'desc' },
+    });
+  }
+
   async listRecent(
     vehicleId: string,
     params: {

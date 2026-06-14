@@ -11,6 +11,23 @@ import {
   resolveReferenceNewTread,
 } from './tire-health.config';
 import {
+  TireStatus,
+  TireDisplayMode,
+  TireConfidenceLevel,
+  TireAlertCode,
+  classifyTreadStatus,
+  classifyRemainingKmStatus,
+  classifyUnevenWear,
+  classifySeasonStatus,
+  classifyConfidenceLevel,
+  resolveDisplayMode,
+  classifyMeasurementOverdue,
+  classifyTireAgeYears,
+  dotAgeYears,
+  aggregateTireStatus,
+  alertTypeToCode,
+} from './tire-status';
+import {
   TirePosition,
   TireHealthStatus,
   TireChangeType,
@@ -93,6 +110,26 @@ export interface TireHealthSummary {
   dataQualityWarnings: string[];
   pressureContext: TirePressureContext;
   latestMeasurementAt: string | null;
+
+  // ── Canonical read model (single honest tire truth) ────────────────────────
+  // These are the fields every consumer (Vehicle Detail Quick Box, Fleet
+  // Condition, VehicleHealthStatus, alert detector) should read. They make the
+  // measured-vs-estimated distinction explicit and never imply fake precision.
+  overallStatus: TireStatus;
+  displayMode: TireDisplayMode;
+  confidence: TireConfidenceLevel;
+  lowestTreadMm: number | null;
+  lowestTreadPosition: string | null;
+  measuredTreadMm: number | null;
+  estimatedTreadMm: number | null;
+  displayTreadMm: number | null;
+  lastMeasurementAt: string | null;
+  measurementAgeDays: number | null;
+  estimatedRemainingKm: number | null;
+  pressureStatus: TireStatus;
+  seasonStatus: TireStatus;
+  unevenWearStatus: TireStatus;
+  recommendations: string[];
 }
 
 export interface TireHealthDetail {
@@ -109,6 +146,8 @@ export interface TireHealthDetail {
 
 export interface TireAlert {
   type: string;
+  /** Canonical, stable alert code consumers can switch on (see tire-status.ts). */
+  code?: TireAlertCode;
   severity: 'info' | 'warning' | 'critical';
   message: string;
   position?: string;
@@ -862,19 +901,48 @@ export class TireHealthService {
       alerts.push({ type: 'LOW_CONFIDENCE', severity: 'info', message: 'Estimate quality low — manual tread measurement recommended' });
     }
 
-    // Pressure alerts from explainability
+    // Pressure alerts from explainability (only when there is a real pressure feed)
     if (wearAnalysis.factors?.pressureFactorFront > 1.06 || wearAnalysis.factors?.pressureFactorRear > 1.06) {
       alerts.push({ type: 'PRESSURE_IMPACT', severity: 'warning', message: 'Tire pressure deviation detected — check and correct pressures' });
     }
 
-    // Season mismatch alert
-    if (wearAnalysis.factors?.seasonMismatchFactor > 1.02) {
-      alerts.push({ type: 'SEASON_MISMATCH', severity: 'info', message: 'Tires may not match current seasonal conditions — consider a seasonal change' });
+    // ── Season suitability (calendar-based; weather can replace later) ────────
+    const seasonResult = classifySeasonStatus(setup.tireSeason);
+    if (seasonResult.mismatch && seasonResult.status === 'WARNING') {
+      alerts.push({ type: 'SEASON_MISMATCH', severity: 'warning', message: 'Summer tires fitted during the winter season — reduced grip in cold, wet or snow. Switch to winter/all-season tires.' });
+    } else if (seasonResult.mismatch && seasonResult.status === 'WATCH') {
+      alerts.push({ type: 'SEASON_MISMATCH', severity: 'info', message: 'Winter tires fitted during summer — increased wear and longer braking distance. Consider switching to summer tires.' });
+    }
+
+    // ── Measurement overdue ───────────────────────────────────────────────────
+    const latestMeas = setup.measurements?.[0] ?? null;
+    const measAgeDays = latestMeas?.measuredAt
+      ? Math.floor((Date.now() - new Date(latestMeas.measuredAt).getTime()) / 86400000)
+      : null;
+    if (classifyMeasurementOverdue(measAgeDays)) {
+      alerts.push({ type: 'MEASUREMENT_OVERDUE', severity: 'warning', message: `No tread measurement in ${measAgeDays} days — re-measure to keep the estimate reliable.` });
+    }
+
+    // ── Tire age from DOT ─────────────────────────────────────────────────────
+    const dotAges = [dotAgeYears(setup.dotCodeFront), dotAgeYears(setup.dotCodeRear)].filter(
+      (v): v is number => v != null,
+    );
+    const maxAgeYears = dotAges.length > 0 ? Math.max(...dotAges) : null;
+    const ageStatus = classifyTireAgeYears(maxAgeYears);
+    if (ageStatus === 'WARNING') {
+      alerts.push({ type: 'TIRE_AGE_WARNING', severity: 'warning', message: `Tires are ~${Math.round(maxAgeYears!)} years old (DOT) — rubber ageing means replacement is recommended regardless of tread.` });
+    } else if (ageStatus === 'WATCH') {
+      alerts.push({ type: 'TIRE_AGE_WARNING', severity: 'info', message: `Tires are ~${Math.round(maxAgeYears!)} years old (DOT) — inspect rubber condition periodically.` });
     }
 
     // No manual measurement warning for used tires
     if (setup.tireCondition === 'ALREADY_MOUNTED' && (!setup.measurements || setup.measurements.length === 0)) {
       alerts.push({ type: 'USED_TIRE_NO_MEASUREMENT', severity: 'warning', message: 'Used tires mounted without manual tread measurement — estimates may be inaccurate. Measure tread depth promptly.' });
+    }
+
+    // Stamp every alert with its canonical, stable code.
+    for (const alert of alerts) {
+      if (!alert.code) alert.code = alertTypeToCode(alert.type);
     }
 
     return alerts;
@@ -957,6 +1025,16 @@ export class TireHealthService {
       alerts,
     });
 
+    const canonical = this.buildCanonicalReadModel({
+      setup,
+      wearAnalysis,
+      worst,
+      measurementState,
+      latestMeasurement,
+      adjustedRemainingKm,
+      pressureContext,
+    });
+
     return {
       overallPercent: setLevelPercent,
       overallRemainingKm: adjustedRemainingKm,
@@ -996,7 +1074,214 @@ export class TireHealthService {
       dataQualityWarnings,
       pressureContext,
       latestMeasurementAt: latestMeasurement?.measuredAt?.toISOString() ?? null,
+      ...canonical,
     };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  CANONICAL READ MODEL (single honest tire truth)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Derives the honest GOOD/WATCH/WARNING/CRITICAL read model from the wear
+   * analysis. Measured and estimated values are kept separate and the display
+   * mode / confidence make clear which one is shown. Status is aggregated from
+   * tread, remaining-km, season, uneven-wear, pressure and tire age — CRITICAL
+   * always wins, UNKNOWN signals are ignored.
+   */
+  private buildCanonicalReadModel(args: {
+    setup: any;
+    wearAnalysis: any;
+    worst: { pos: string; mm: number };
+    measurementState: 'measured' | 'estimated' | 'mixed';
+    latestMeasurement: any | null;
+    adjustedRemainingKm: number;
+    pressureContext: TirePressureContext;
+  }): {
+    overallStatus: TireStatus;
+    displayMode: TireDisplayMode;
+    confidence: TireConfidenceLevel;
+    lowestTreadMm: number | null;
+    lowestTreadPosition: string | null;
+    measuredTreadMm: number | null;
+    estimatedTreadMm: number | null;
+    displayTreadMm: number | null;
+    lastMeasurementAt: string | null;
+    measurementAgeDays: number | null;
+    estimatedRemainingKm: number | null;
+    pressureStatus: TireStatus;
+    seasonStatus: TireStatus;
+    unevenWearStatus: TireStatus;
+    recommendations: string[];
+  } {
+    const { setup, wearAnalysis, worst, measurementState, latestMeasurement, adjustedRemainingKm, pressureContext } = args;
+
+    const estimatedTreadMm = this.round1(worst.mm);
+    const lowestTreadPosition = this.positionLabel(worst.pos);
+
+    const measuredVals = latestMeasurement
+      ? [latestMeasurement.frontLeftMm, latestMeasurement.frontRightMm, latestMeasurement.rearLeftMm, latestMeasurement.rearRightMm].filter(
+          (v: any): v is number => v != null,
+        )
+      : [];
+    const hasMeasurement = measuredVals.length > 0;
+    const measuredTreadMm = hasMeasurement ? this.round1(Math.min(...measuredVals)) : null;
+
+    const measurementAgeDays = latestMeasurement?.measuredAt
+      ? Math.floor((Date.now() - new Date(latestMeasurement.measuredAt).getTime()) / 86400000)
+      : null;
+
+    const displayMode = resolveDisplayMode(measurementState, true);
+    const displayTreadMm = displayMode === 'MEASURED' ? measuredTreadMm ?? estimatedTreadMm : estimatedTreadMm;
+    const lowestTreadMm = displayTreadMm;
+
+    const confidence = classifyConfidenceLevel({
+      hasMeasurement,
+      measurementAgeDays,
+      kmSinceMeasurement: null,
+      hasWearBaseline: true,
+    });
+
+    // ── Sub-statuses ──
+    const treadStatus = classifyTreadStatus(lowestTreadMm, setup.tireSeason);
+    const remainingKmStatus = classifyRemainingKmStatus(adjustedRemainingKm);
+    const seasonResult = classifySeasonStatus(setup.tireSeason);
+    const seasonStatus = seasonResult.status;
+
+    const sideDeltaFront = Math.abs(wearAnalysis.frontLeftMm - wearAnalysis.frontRightMm);
+    const sideDeltaRear = Math.abs(wearAnalysis.rearLeftMm - wearAnalysis.rearRightMm);
+    const axleDelta = Math.abs(
+      (wearAnalysis.frontLeftMm + wearAnalysis.frontRightMm) / 2 -
+        (wearAnalysis.rearLeftMm + wearAnalysis.rearRightMm) / 2,
+    );
+    const unevenWearStatus = classifyUnevenWear(sideDeltaFront, sideDeltaRear, axleDelta);
+    const pressureStatus = this.mapPressureStatus(pressureContext);
+
+    const dotAges = [dotAgeYears(setup.dotCodeFront), dotAgeYears(setup.dotCodeRear)].filter(
+      (v): v is number => v != null,
+    );
+    const maxAgeYears = dotAges.length > 0 ? Math.max(...dotAges) : null;
+    const ageStatus = classifyTireAgeYears(maxAgeYears);
+
+    const overallStatus = aggregateTireStatus(
+      treadStatus,
+      remainingKmStatus,
+      seasonStatus,
+      unevenWearStatus,
+      pressureStatus,
+      ageStatus,
+    );
+
+    const recommendations = this.buildRecommendations({
+      treadStatus,
+      remainingKmStatus,
+      seasonResult,
+      unevenWearStatus,
+      pressureStatus,
+      ageStatus,
+      ageYears: maxAgeYears,
+      confidence,
+      hasMeasurement,
+      measurementOverdue: classifyMeasurementOverdue(measurementAgeDays),
+    });
+
+    return {
+      overallStatus,
+      displayMode,
+      confidence,
+      lowestTreadMm,
+      lowestTreadPosition,
+      measuredTreadMm,
+      estimatedTreadMm,
+      displayTreadMm,
+      lastMeasurementAt: latestMeasurement?.measuredAt?.toISOString() ?? null,
+      measurementAgeDays,
+      estimatedRemainingKm: adjustedRemainingKm,
+      pressureStatus,
+      seasonStatus,
+      unevenWearStatus,
+      recommendations,
+    };
+  }
+
+  private buildRecommendations(args: {
+    treadStatus: TireStatus;
+    remainingKmStatus: TireStatus;
+    seasonResult: { status: TireStatus; mismatch: boolean; expectedSeason: string };
+    unevenWearStatus: TireStatus;
+    pressureStatus: TireStatus;
+    ageStatus: TireStatus;
+    ageYears: number | null;
+    confidence: TireConfidenceLevel;
+    hasMeasurement: boolean;
+    measurementOverdue: boolean;
+  }): string[] {
+    const recs: string[] = [];
+    if (args.treadStatus === 'CRITICAL') {
+      recs.push('Replace tires now — tread is at or below the legal minimum (1.6 mm).');
+    } else if (args.treadStatus === 'WARNING' || args.remainingKmStatus === 'WARNING') {
+      recs.push('Plan tire replacement soon.');
+    } else if (args.treadStatus === 'WATCH') {
+      recs.push('Monitor tread depth; replacement will be needed in the medium term.');
+    }
+    if (args.seasonResult.mismatch && args.seasonResult.status === 'WARNING') {
+      recs.push('Fit winter or all-season tires for current conditions.');
+    } else if (args.seasonResult.mismatch && args.seasonResult.status === 'WATCH') {
+      recs.push('Switch to summer tires to reduce wear and improve braking.');
+    }
+    if (args.unevenWearStatus === 'WARNING') {
+      recs.push('Check wheel alignment and tire pressure — significant uneven wear detected.');
+    } else if (args.unevenWearStatus === 'WATCH') {
+      recs.push('Rotate tires to even out front/rear wear.');
+    }
+    if (args.pressureStatus === 'WARNING') {
+      recs.push('Correct tire pressure to the recommended values.');
+    }
+    if (args.ageStatus === 'WARNING') {
+      recs.push(`Tires are ~${Math.round(args.ageYears ?? 0)} years old — replacement is recommended regardless of tread.`);
+    }
+    if (args.measurementOverdue) {
+      recs.push('Re-measure tread depth — the last measurement is overdue.');
+    }
+    if (!args.hasMeasurement) {
+      recs.push('Record a tread measurement to confirm the estimate.');
+    } else if (args.confidence === 'LOW') {
+      recs.push('Re-measure soon to improve confidence.');
+    }
+    if (recs.length === 0) recs.push('No tire action required.');
+    return Array.from(new Set(recs)).slice(0, 5);
+  }
+
+  private mapPressureStatus(ctx: TirePressureContext): TireStatus {
+    switch (ctx.overallStatus) {
+      case 'ISSUE':
+        return 'WARNING';
+      case 'OK':
+        return 'GOOD';
+      case 'STALE':
+      case 'UNKNOWN':
+      default:
+        return 'UNKNOWN';
+    }
+  }
+
+  private positionLabel(pos: string): string {
+    switch (pos) {
+      case 'FL':
+        return 'front left';
+      case 'FR':
+        return 'front right';
+      case 'RL':
+        return 'rear left';
+      case 'RR':
+        return 'rear right';
+      default:
+        return pos;
+    }
+  }
+
+  private round1(value: number): number {
+    return Math.round(value * 10) / 10;
   }
 
   private resolveActionState(
@@ -1342,6 +1627,39 @@ export class TireHealthService {
     setup: any,
     pressureContext?: TirePressureContext,
   ): TireHealthSummary {
+    const resolvedPressure = pressureContext ?? {
+      source: 'NONE' as const,
+      dimoFreshness: 'no_data' as const,
+      hmFreshness: 'no_data' as const,
+      overallStatus: 'UNKNOWN' as const,
+      warningHints: [],
+    };
+
+    const latestMeasurement = setup.measurements?.[0] ?? null;
+    const measuredVals = latestMeasurement
+      ? [latestMeasurement.frontLeftMm, latestMeasurement.frontRightMm, latestMeasurement.rearLeftMm, latestMeasurement.rearRightMm].filter(
+          (v: any): v is number => v != null,
+        )
+      : [];
+    const measuredTreadMm = measuredVals.length > 0 ? this.round1(Math.min(...measuredVals)) : null;
+    const measurementAgeDays = latestMeasurement?.measuredAt
+      ? Math.floor((Date.now() - new Date(latestMeasurement.measuredAt).getTime()) / 86400000)
+      : null;
+
+    // Without a wear baseline we cannot honestly assert tread health, but a
+    // season mismatch or a live pressure issue is still a real, knowable fact.
+    const seasonResult = classifySeasonStatus(setup.tireSeason);
+    const pressureStatus = this.mapPressureStatus(resolvedPressure);
+    const knownStatus = aggregateTireStatus(seasonResult.status, pressureStatus);
+    const overallStatus: TireStatus = knownStatus === 'GOOD' ? 'UNKNOWN' : knownStatus;
+
+    const recommendations: string[] = ['Record a tread measurement to establish a baseline.'];
+    if (seasonResult.mismatch && seasonResult.status === 'WARNING') {
+      recommendations.unshift('Fit winter or all-season tires for current conditions.');
+    } else if (seasonResult.mismatch && seasonResult.status === 'WATCH') {
+      recommendations.unshift('Switch to summer tires to reduce wear.');
+    }
+
     return {
       overallPercent: 100,
       overallRemainingKm: setup.expectedLifeKm ?? 35000,
@@ -1356,7 +1674,7 @@ export class TireHealthService {
       installedAt: setup.installedAt?.toISOString() ?? null,
       totalKmOnSet: 0,
       wearRateMmPer1000km: null,
-      alerts: [{ type: 'LOW_CONFIDENCE', severity: 'info', message: 'New tire setup — no wear data yet. Measurement recommended.' }],
+      alerts: [{ type: 'LOW_CONFIDENCE', code: 'TIRE_LOW_CONFIDENCE', severity: 'info', message: 'New tire setup — no wear data yet. Measurement recommended.' }],
       tireCondition: setup.tireCondition ?? 'UNKNOWN',
       tireArchetype: null,
       tireSpecMatched: false,
@@ -1372,14 +1690,25 @@ export class TireHealthService {
       actionReasons: ['No calibrated wear baseline yet. Record first tread measurement.'],
       measurementState: 'estimated',
       dataQualityWarnings: ['No tire wear baseline measurement available.'],
-      pressureContext: pressureContext ?? {
-        source: 'NONE',
-        dimoFreshness: 'no_data',
-        hmFreshness: 'no_data',
-        overallStatus: 'UNKNOWN',
-        warningHints: [],
-      },
-      latestMeasurementAt: setup.measurements?.[0]?.measuredAt?.toISOString() ?? null,
+      pressureContext: resolvedPressure,
+      latestMeasurementAt: latestMeasurement?.measuredAt?.toISOString() ?? null,
+
+      // ── Canonical read model ──
+      overallStatus,
+      displayMode: measuredTreadMm != null ? 'MEASURED' : 'UNKNOWN',
+      confidence: measuredTreadMm != null ? 'LOW' : 'UNKNOWN',
+      lowestTreadMm: measuredTreadMm,
+      lowestTreadPosition: null,
+      measuredTreadMm,
+      estimatedTreadMm: null,
+      displayTreadMm: measuredTreadMm,
+      lastMeasurementAt: latestMeasurement?.measuredAt?.toISOString() ?? null,
+      measurementAgeDays,
+      estimatedRemainingKm: null,
+      pressureStatus,
+      seasonStatus: seasonResult.status,
+      unevenWearStatus: 'UNKNOWN',
+      recommendations,
     };
   }
 }

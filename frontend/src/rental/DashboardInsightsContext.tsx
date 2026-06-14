@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { api } from '../lib/api';
+import type { VehicleHealthResponse, RentalHealthState } from '../lib/api';
 import { useRentalOrg } from './RentalContext';
+import { useFleetVehicles } from './FleetContext';
 import type { VehicleData } from './data/vehicles';
 
 /**
@@ -298,17 +300,95 @@ export function deriveVehicleHealthAlerts(
   return rows;
 }
 
-/** Convenience hook: derive alerts from context + provided fleet snapshot. */
+// V4.7.23 — Per-vehicle health alerts now derive from the canonical
+// Rental-Health-V1 map (battery + tires + brakes + error_codes +
+// service_compliance + complaints + vehicle_alerts). The previous
+// implementation only saw BATTERY_CRITICAL + SERVICE_OVERDUE insights,
+// which is why the Dashboard "Vehicle Alerts" box and RightSidebar
+// happily showed an empty list while FleetCondition flagged the same
+// vehicle as Warning because of e.g. tire wear. Both surfaces now read
+// the SAME data the FleetCondition view, FleetView pills and Vehicle
+// Detail header read.
+const RENTAL_HEALTH_MODULE_LABELS: Record<string, string> = {
+  battery: 'Battery',
+  tires: 'Tires',
+  brakes: 'Brakes',
+  error_codes: 'Error codes',
+  service_compliance: 'Service & inspection',
+  complaints: 'Complaints',
+  vehicle_alerts: 'OEM warning lights',
+};
+
+function severityFromState(state: RentalHealthState): VehicleAlertSeverity | null {
+  if (state === 'critical') return 'critical';
+  if (state === 'warning') return 'warning';
+  return null;
+}
+
+export function deriveVehicleHealthAlertsFromRentalHealth(
+  healthMap: Map<string, VehicleHealthResponse>,
+  fleetVehicles: VehicleData[],
+): VehicleHealthAlert[] {
+  const vehicleById = new Map<string, VehicleData>();
+  for (const v of fleetVehicles) vehicleById.set(v.id, v);
+
+  const rows: VehicleHealthAlert[] = [];
+  for (const [vehicleId, health] of healthMap) {
+    const overall = severityFromState(health.overall_state);
+    if (!overall && !health.rental_blocked) continue;
+
+    const reasons: string[] = [];
+    if (health.rental_blocked && health.blocking_reasons.length > 0) {
+      for (const r of health.blocking_reasons) reasons.push(`Blocked: ${r}`);
+    }
+    let worst: VehicleAlertSeverity = overall ?? 'critical';
+    for (const [name, mod] of Object.entries(health.modules)) {
+      const sev = severityFromState(mod.state);
+      if (!sev) continue;
+      const label = RENTAL_HEALTH_MODULE_LABELS[name] ?? name;
+      reasons.push(`${label}: ${mod.reason}`);
+      if (SEVERITY_RANK[sev] > SEVERITY_RANK[worst]) worst = sev;
+    }
+    if (reasons.length === 0) continue;
+
+    const vehicle = vehicleById.get(vehicleId) ?? null;
+    const [primaryReason, ...rest] = reasons;
+    rows.push({
+      vehicleId,
+      vehicle,
+      severity: worst,
+      kinds: [],
+      primaryReason,
+      secondaryReasons: rest,
+      license: vehicle?.license,
+      model: vehicle?.model,
+      station: vehicle?.station,
+    });
+  }
+
+  rows.sort((a, b) => {
+    const byRank = SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity];
+    if (byRank !== 0) return byRank;
+    const la = (a.license || a.model || '').toLowerCase();
+    const lb = (b.license || b.model || '').toLowerCase();
+    return la.localeCompare(lb);
+  });
+
+  return rows;
+}
+
+/** Convenience hook: derive alerts from the canonical Rental-Health-V1 map. */
 export function useVehicleHealthAlerts(fleetVehicles: VehicleData[]): {
   alerts: VehicleHealthAlert[];
   loading: boolean;
   error: boolean;
   counts: { critical: number; warning: number; info: number; total: number };
 } {
-  const { insights, loading, error } = useDashboardInsights();
+  const { healthMap, healthLoading } = useFleetVehicles();
+  const { error } = useDashboardInsights();
   const alerts = useMemo(
-    () => deriveVehicleHealthAlerts(insights, fleetVehicles),
-    [insights, fleetVehicles],
+    () => deriveVehicleHealthAlertsFromRentalHealth(healthMap, fleetVehicles),
+    [healthMap, fleetVehicles],
   );
   const counts = useMemo(
     () => ({
@@ -319,5 +399,5 @@ export function useVehicleHealthAlerts(fleetVehicles: VehicleData[]): {
     }),
     [alerts],
   );
-  return { alerts, loading, error, counts };
+  return { alerts, loading: healthLoading, error, counts };
 }

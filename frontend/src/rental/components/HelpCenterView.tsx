@@ -1,12 +1,7 @@
+import { BarChart3, Bot, Building2, Calendar, Car, FileCheck, FileText, Headphones, HelpCircle, LayoutDashboard, ListTodo, MapPin, Package, Rocket, ShieldCheck, Users, Zap } from 'lucide-react';
+import { Icon } from './ui/Icon';
 import { useState, useMemo, useRef, useEffect } from 'react';
-import {
-  Search, ChevronDown, ChevronRight, BookOpen, LayoutDashboard, Calendar, Car,
-  Users, MapPin, BarChart3, Activity, FileText, AlertCircle, Tag, ListTodo,
-  Briefcase, Zap, MessageSquare, Phone, Shield, Package, CreditCard, Truck,
-  Building2, UserCog, Wifi, Lock, HelpCircle, Headphones, Gauge,
-  Upload, Bot, FileCheck, Wrench, Heart, ShieldCheck, Sparkles, Clock, Eye,
-  CheckCircle, Info, AlertTriangle, Rocket,
-} from 'lucide-react';
+
 
 // ═══════════════════════════════════════════════════
 // HELP CENTER DATA
@@ -226,31 +221,6 @@ Laden Sie Fahrzeugdokumente hoch (z. B. Zulassungsbescheinigung Teil I) – die 
     icon: BarChart3,
     description: 'Fahrdaten-Analyse, Statistiken und Flottengesundheit.',
     articles: [
-      {
-        id: 'rental-driving-analysis',
-        title: 'Fahrverhalten-Analyse',
-        content: `Die Fahrverhalten-Analyse zeigt Ihnen, wie Ihre Fahrzeuge genutzt werden:
-
-• **Fahrverhalten-Scores** – Bewertung des Fahrverhaltens anhand von Beschleunigung, Bremsen und Geschwindigkeit.
-• **Eco-Scores** – Wie effizient und umweltfreundlich werden Ihre Fahrzeuge gefahren?
-• **Sicherheits-Scores** – Gibt es auffällige Fahrweisen, die ein Risiko darstellen könnten?
-
-Diese Daten helfen Ihnen, den Umgang mit Ihren Fahrzeugen zu verstehen und bei Auffälligkeiten frühzeitig einzugreifen.
-
-**Voraussetzung:** Fahrzeuge müssen über Fleet Connectivity verbunden sein, damit Fahrdaten erfasst werden.`,
-      },
-      {
-        id: 'analytics',
-        title: 'Analysen',
-        content: `Die Analyse-Seite bietet Ihnen Auswertungen zu Ihrem Betrieb:
-
-• Buchungsvolumen und Auslastung über verschiedene Zeiträume
-• Umsatzentwicklung
-• Fahrzeug-Performance-Vergleiche
-• Stationsbezogene Auswertungen
-
-**Warum wichtig:** Zahlen lügen nicht. Regelmäßige Blicke auf die Analysen helfen Ihnen, Trends zu erkennen, Ihre Flotte optimal einzusetzen und bessere Geschäftsentscheidungen zu treffen.`,
-      },
       {
         id: 'fleet-condition',
         title: 'Flottengesundheit',
@@ -835,7 +805,7 @@ export function HelpCenterView({ isDarkMode }: { isDarkMode: boolean }) {
       <div>
         <div className="flex items-center gap-3 mb-2">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDarkMode ? 'bg-blue-500/15' : 'bg-blue-100/60'}`}>
-            <BookOpen className="w-5 h-5 text-blue-500" />
+            <Icon name="book-open" className="w-5 h-5 text-blue-500" />
           </div>
           <div>
             <h1 className={`text-xl font-bold tracking-tight ${textPrimary}`}>Help Center</h1>
@@ -850,7 +820,7 @@ export function HelpCenterView({ isDarkMode }: { isDarkMode: boolean }) {
 
       {/* Search */}
       <div className="relative">
-        <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
+        <Icon name="search" className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
         <input
           type="text"
           placeholder="Nach Themen, Funktionen oder Fragen suchen..."
@@ -927,7 +897,7 @@ export function HelpCenterView({ isDarkMode }: { isDarkMode: boolean }) {
                   </div>
                   <p className={`text-xs mt-0.5 ${textSecondary} line-clamp-1`}>{section.description}</p>
                 </div>
-                <ChevronDown className={`w-4 h-4 shrink-0 transition-transform duration-200 ${textMuted} ${isExpanded ? 'rotate-180' : ''}`} />
+                <Icon name="chevron-down" className={`w-4 h-4 shrink-0 transition-transform duration-200 ${textMuted} ${isExpanded ? 'rotate-180' : ''}`} />
               </button>
 
               {/* Expanded Articles */}
@@ -942,7 +912,7 @@ export function HelpCenterView({ isDarkMode }: { isDarkMode: boolean }) {
                           onClick={() => setExpandedArticle(isArticleExpanded ? null : article.id)}
                           className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${isDarkMode ? 'hover:bg-neutral-800/40' : 'hover:bg-gray-50/60'}`}
                         >
-                          <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${textMuted} ${isArticleExpanded ? 'rotate-90' : ''}`} />
+                          <Icon name="chevron-right" className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${textMuted} ${isArticleExpanded ? 'rotate-90' : ''}`} />
                           <span className={`text-xs font-semibold ${textPrimary}`}>{article.title}</span>
                         </button>
                         {isArticleExpanded && (
@@ -965,7 +935,7 @@ export function HelpCenterView({ isDarkMode }: { isDarkMode: boolean }) {
       {/* Footer */}
       <div className={`${cardClass} p-5 text-center`}>
         <div className="flex items-center justify-center gap-2 mb-2">
-          <Headphones className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+          <Icon name="headphones" className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
           <p className={`text-xs font-semibold ${textPrimary}`}>Noch Fragen?</p>
         </div>
         <p className={`text-xs ${textSecondary}`}>

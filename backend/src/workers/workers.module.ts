@@ -13,6 +13,7 @@ import { TireRecalculationProcessor } from './processors/tire-recalculation.proc
 import { TripTrackingProcessor } from './processors/trip-tracking.processor';
 import { TripBehaviorEnrichmentProcessor } from './processors/trip-behavior-enrichment.processor';
 import { DrivingImpactProcessor } from './processors/driving-impact.processor';
+import { DtcKnowledgeProcessor } from './processors/dtc-knowledge.processor';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
 import { DimoDtcScheduler } from './schedulers/dimo-dtc.scheduler';
@@ -22,6 +23,8 @@ import { BrakeRecalculationScheduler } from './schedulers/brake-recalculation.sc
 import { TripTrackingRecoveryScheduler } from './schedulers/trip-tracking-recovery.scheduler';
 import { TripReconciliationScheduler } from './schedulers/trip-reconciliation.scheduler';
 import { HmHealthPollingScheduler } from './schedulers/hm-health-polling.scheduler';
+import { DataRetentionScheduler } from './schedulers/data-retention.scheduler';
+import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.scheduler';
 
 @Module({
   imports: [
@@ -33,6 +36,7 @@ import { HmHealthPollingScheduler } from './schedulers/hm-health-polling.schedul
       { name: QUEUE_NAMES.TRIP_TRACKING },
       { name: QUEUE_NAMES.TRIP_BEHAVIOR_ENRICHMENT },
       { name: QUEUE_NAMES.DRIVING_IMPACT_COMPUTE },
+      { name: QUEUE_NAMES.DTC_KNOWLEDGE_ENRICHMENT },
     ),
     DimoModule,
     VehicleIntelligenceModule,
@@ -47,6 +51,7 @@ import { HmHealthPollingScheduler } from './schedulers/hm-health-polling.schedul
     TripTrackingProcessor,
     TripBehaviorEnrichmentProcessor,
     DrivingImpactProcessor,
+    DtcKnowledgeProcessor,
 
     // Schedulers
     DimoSnapshotScheduler,
@@ -57,6 +62,8 @@ import { HmHealthPollingScheduler } from './schedulers/hm-health-polling.schedul
     TripTrackingRecoveryScheduler,
     TripReconciliationScheduler,
     HmHealthPollingScheduler,
+    DataRetentionScheduler,
+    StorageOrphanSweepScheduler,
   ],
 })
 export class WorkersModule {}

@@ -20,6 +20,7 @@ import { CustomersService } from './customers.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PaginationParams } from '@shared/utils/pagination';
+import { StorageService } from '@shared/storage/storage.service';
 import { Prisma } from '@prisma/client';
 
 const CUSTOMER_DOCS_DIR = join(process.cwd(), 'uploads', 'customer-documents');
@@ -39,7 +40,10 @@ const CUSTOMER_DOCUMENT_TYPES = new Set([
 @Controller('organizations/:orgId/customers')
 @UseGuards(OrgScopingGuard, RolesGuard)
 export class CustomersController {
-  constructor(private readonly customersService: CustomersService) {}
+  constructor(
+    private readonly customersService: CustomersService,
+    private readonly storage: StorageService,
+  ) {}
 
   @Get('stats')
   async getStats(@Param('orgId') orgId: string) {
@@ -86,7 +90,7 @@ export class CustomersController {
     }),
   )
   async uploadCustomerDocument(
-    @Param('orgId') _orgId: string,
+    @Param('orgId') orgId: string,
     @Body() body: { documentType?: string },
     @UploadedFile() file?: Express.Multer.File,
   ) {
@@ -97,7 +101,7 @@ export class CustomersController {
         `Invalid documentType. Expected one of: ${Array.from(CUSTOMER_DOCUMENT_TYPES).join(', ')}`,
       );
     }
-    const url = `/uploads/customer-documents/${file.filename}`;
+    const url = await this.storage.finalizeUpload('customer-documents', file, orgId);
     return { url, documentType: type || null };
   }
 

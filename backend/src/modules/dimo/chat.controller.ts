@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Delete, Param, Body, Query, UseGuards, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, Query, Res, UseGuards, Logger } from '@nestjs/common';
+import { Response } from 'express';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { ChatService } from './chat.service';
 
@@ -42,6 +43,53 @@ export class ChatController {
         createdAt: new Date().toISOString(),
       };
     }
+  }
+
+  /**
+   * Streaming variant of sendMessage. Returns Server-Sent Events so the agent
+   * can do long-running work (tool calls / telemetry lookups) without hitting
+   * the upstream gateway 504 that the synchronous DIMO /message endpoint returns.
+   * Events: `status`, `progress`, `result`, `error`.
+   */
+  @Post('message/stream')
+  async streamMessage(
+    @Param('orgId') orgId: string,
+    @Body() body: { content: string },
+    @Res() res: Response,
+  ) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    const closed = { value: false };
+    res.on('close', () => { closed.value = true; });
+
+    const send = (event: string, data: unknown) => {
+      if (!closed.value) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    if (!body.content?.trim()) {
+      send('result', {
+        role: 'assistant',
+        content: 'Please enter a message to get started.',
+        createdAt: new Date().toISOString(),
+      });
+      if (!closed.value) res.end();
+      return;
+    }
+
+    try {
+      await this.chatService.streamMessage(orgId, body.content.trim(), send, () => closed.value);
+    } catch (err: any) {
+      this.logger.error(`[Chat] Unhandled error in streamMessage for org ${orgId}: ${err.message}`, err.stack);
+      send('error', {
+        message: "I'm sorry, something unexpected happened while processing your request. Please try again in a moment.",
+      });
+    }
+
+    if (!closed.value) res.end();
   }
 
   @Get('history')

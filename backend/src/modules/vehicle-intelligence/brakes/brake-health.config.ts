@@ -196,6 +196,76 @@ export const BRAKE_HEALTH_CONFIG = {
     highBrakeStressThreshold: 70,
     lowConfidenceThreshold: 55,
   },
+
+  // ════════════════════════════════════════════════════════════════════════════
+  //  CANONICAL EVIDENCE-BASED READ MODEL (Condition / Data Basis / Confidence)
+  //  — These bands drive the *honest* GOOD/WATCH/WARNING/CRITICAL condition that
+  //    every consumer (Vehicle Detail, Fleet Condition, VehicleHealthStatus,
+  //    Vehicle Alerts) reads. They never invent mm values; a CRITICAL condition
+  //    requires a real safety signal (measured/documented critical thickness,
+  //    safety-relevant DTC, fluid critical, warning contact, immediate-replace).
+  // ════════════════════════════════════════════════════════════════════════════
+
+  // ── Condition bands (estimate-derived condition caps at WARNING) ────────────
+  conditionBands: {
+    /** Health-percent thresholds for an axle/component condition. */
+    healthPct: { good: 50, watch: 30, warning: 15 },
+    /** Remaining-km thresholds. critical only escalates real measurements. */
+    remainingKm: { good: 8000, watch: 4000, warning: 2000, critical: 1000 },
+  },
+
+  // ── Confidence LEVEL mapping (HIGH/MEDIUM/LOW/UNKNOWN) ───────────────────────
+  // The point-based confidenceScore (0–100) is mapped to a level. An ESTIMATED
+  // data basis is capped at MEDIUM — an estimate is never HIGH confidence.
+  confidenceLevels: {
+    highScore: 80,
+    mediumScore: 55,
+    /** A measured anchor older than this many days can no longer be HIGH. */
+    measuredHighMaxAgeDays: 365,
+    /** A measured anchor more km ago than this can no longer be HIGH. */
+    measuredHighMaxKm: 15000,
+  },
+
+  // ── Remaining-life RANGE spread (never show false precision) ─────────────────
+  // The single modeled remaining-km is widened into a [min,max] band whose width
+  // depends on the confidence level, then rounded to a readable step.
+  remainingKmRange: {
+    spreadByConfidence: { HIGH: 0.15, MEDIUM: 0.3, LOW: 0.45, UNKNOWN: 0.5 } as Record<
+      string,
+      number
+    >,
+    roundStepKm: 500,
+  },
+
+  // ── Inspection / replacement recommendation ──────────────────────────────────
+  inspection: {
+    /** Recommend an inspection this many km before the modeled critical point. */
+    recommendedHeadroomKm: 2000,
+    /** Never recommend an interval longer than this. */
+    maxIntervalKm: 20000,
+    /** Brake service/inspection is overdue after this distance since anchor. */
+    serviceOverdueKm: 60000,
+    /** …or after this many days since the last brake service. */
+    serviceOverdueDays: 730,
+  },
+
+  // ── Harsh-braking → wear multiplier (centralized, normalized per 100 km) ─────
+  // Harsh braking ONLY scales the wear multiplier — it can never by itself drive
+  // a CRITICAL condition. Bands are ascending by harshBrakeEventsPer100Km.
+  harshBraking: {
+    bands: [
+      { maxPer100Km: 1, level: 'normal', multiplier: 1.0 },
+      { maxPer100Km: 3, level: 'elevated', multiplier: 1.15 },
+      { maxPer100Km: 6, level: 'high', multiplier: 1.35 },
+      { maxPer100Km: Infinity, level: 'very_high', multiplier: 1.6 },
+    ] as ReadonlyArray<{ maxPer100Km: number; level: string; multiplier: number }>,
+  },
+
+  // ── Measurement freshness (canonical read model) ─────────────────────────────
+  measurementFreshness: {
+    /** A measured baseline older than this is considered stale for confidence. */
+    staleDays: 540,
+  },
 } as const;
 
 export type BrakeHealthConfig = typeof BRAKE_HEALTH_CONFIG;
