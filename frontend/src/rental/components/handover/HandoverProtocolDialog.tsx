@@ -91,6 +91,7 @@ export function HandoverProtocolDialog({
     locationLabel: '',
   });
   const [creatingDamage, setCreatingDamage] = useState(false);
+  const [misuseCaseCount, setMisuseCaseCount] = useState(0);
 
   // Form state
   const [odometerKm, setOdometerKm] = useState<string>('');
@@ -158,6 +159,26 @@ export function HandoverProtocolDialog({
     setSubmitting(false);
     setPerformedAtLocal('');
   }, [isOpen, booking?.id, kind]);
+
+  // Informative hint only — no return blockade.
+  useEffect(() => {
+    if (!isOpen || !booking || kind !== 'RETURN' || !orgId) {
+      setMisuseCaseCount(0);
+      return;
+    }
+    let cancelled = false;
+    api.misuseCases
+      .list(orgId, { bookingId: booking.id, limit: 1, page: 1 })
+      .then((res) => {
+        if (!cancelled) setMisuseCaseCount(res.meta?.total ?? 0);
+      })
+      .catch(() => {
+        if (!cancelled) setMisuseCaseCount(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, booking?.id, kind, orgId]);
 
   // Load damages for the selected vehicle when the dialog opens
   useEffect(() => {
@@ -408,6 +429,23 @@ export function HandoverProtocolDialog({
 
         {/* Scrollable body */}
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-5">
+          {kind === 'RETURN' && misuseCaseCount > 0 && (
+            <div
+              className={`flex items-start gap-2 px-3 py-2.5 rounded-lg border text-xs ${
+                isDarkMode
+                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+                  : 'bg-amber-50 border-amber-200 text-amber-900'
+              }`}
+            >
+              <Icon name="alert-triangle" className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>
+                Für diese Buchung liegen {misuseCaseCount} Prüffall
+                {misuseCaseCount === 1 ? '' : 'e'} vor. Bitte in der Buchungsdetailansicht
+                einsehen — keine automatische Sperre.
+              </span>
+            </div>
+          )}
+
           {/* Quick facts */}
           <div className={`rounded-xl border p-4 ${borderColor} ${cardBg}`}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">

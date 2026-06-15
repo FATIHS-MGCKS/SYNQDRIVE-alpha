@@ -6,7 +6,8 @@ import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
 import type { ApiTask, ApiTaskType, CreateTaskPayload } from '../../lib/api';
-import { PageHeader } from '../../components/patterns';
+import { PageHeader, StatusChip, PriorityBadge, EmptyState, SkeletonRows, ErrorState } from '../../components/patterns';
+import type { StatusTone } from '../../components/patterns';
 
 // View category → canonical backend TaskType.
 const CATEGORY_TO_TASK_TYPE: Record<string, ApiTaskType> = {
@@ -30,7 +31,6 @@ const VIEW_PRIORITY_TO_API: Record<string, CreateTaskPayload['priority']> = {
 };
 
 interface TasksViewProps {
-  isDarkMode: boolean;
   autoOpenNewTask?: boolean;
   onAutoOpenConsumed?: () => void;
   highlightedTaskId?: string | null;
@@ -160,6 +160,8 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
   const { fleetVehicles } = useFleetVehicles();
   const { orgId } = useRentalOrg();
   const [rawTasks, setRawTasks] = useState<BackendTask[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [tasksError, setTasksError] = useState<string | null>(null);
   const [mutating, setMutating] = useState(false);
   // Full server detail for the open task (checklist / comments / timeline).
   const [detailFull, setDetailFull] = useState<ApiTask | null>(null);
@@ -189,10 +191,19 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
   const loadTasks = useRef<() => void>(() => {});
   loadTasks.current = () => {
     if (!orgId) return;
+    setTasksLoading(true);
+    setTasksError(null);
     api.tasks
       .list(orgId)
-      .then((rows) => setRawTasks(Array.isArray(rows) ? (rows as unknown as BackendTask[]) : []))
-      .catch(() => setRawTasks([]));
+      .then((rows) => {
+        setRawTasks(Array.isArray(rows) ? (rows as unknown as BackendTask[]) : []);
+        setTasksError(null);
+      })
+      .catch((err) => {
+        setRawTasks([]);
+        setTasksError(err instanceof Error ? err.message : 'Failed to load tasks');
+      })
+      .finally(() => setTasksLoading(false));
   };
 
   // Load org tasks from the API (replaces the previous empty mock array).
@@ -200,9 +211,22 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
   useEffect(() => {
     if (!orgId) return;
     let cancelled = false;
+    setTasksLoading(true);
+    setTasksError(null);
     api.tasks.list(orgId)
-      .then((rows) => { if (!cancelled) setRawTasks(Array.isArray(rows) ? (rows as unknown as BackendTask[]) : []); })
-      .catch(() => { if (!cancelled) setRawTasks([]); });
+      .then((rows) => {
+        if (!cancelled) {
+          setRawTasks(Array.isArray(rows) ? (rows as unknown as BackendTask[]) : []);
+          setTasksError(null);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setRawTasks([]);
+          setTasksError(err instanceof Error ? err.message : 'Failed to load tasks');
+        }
+      })
+      .finally(() => { if (!cancelled) setTasksLoading(false); });
     return () => { cancelled = true; };
   }, [orgId]);
 
@@ -525,36 +549,33 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
   const textSecondary = 'text-muted-foreground';
   const textTertiary = 'text-muted-foreground/70';
 
-  const StatusPill = ({ status }: { status: TaskStatus }) => {
-    const s: Record<TaskStatus, string> = {
-      'Open': 'sq-tone-neutral border-current/15',
-      'In Progress': 'sq-tone-info border-current/15',
-      'Waiting': 'sq-tone-watch border-current/15',
-      'Completed': 'sq-tone-success border-current/15',
-      'Overdue': 'sq-tone-critical border-current/15',
-    };
-    return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${s[status]}`}>{status}</span>;
+  const taskStatusTone = (status: TaskStatus): StatusTone => {
+    switch (status) {
+      case 'In Progress': return 'info';
+      case 'Completed': return 'success';
+      case 'Overdue': return 'critical';
+      case 'Waiting': return 'watch';
+      default: return 'watch';
+    }
   };
 
-  const PriorityPill = ({ priority }: { priority: TaskPriority }) => {
-    const s: Record<TaskPriority, string> = {
-      'Low': 'sq-tone-neutral border-current/15',
-      'Medium': 'sq-tone-watch border-current/15',
-      'High': 'sq-tone-warning border-current/15',
-      'Critical': 'sq-tone-critical border-current/15',
-    };
-    return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${s[priority]}`}>{priority}</span>;
-  };
+  const TaskStatusChip = ({ status }: { status: TaskStatus }) => (
+    <StatusChip tone={taskStatusTone(status)} dot>{status}</StatusChip>
+  );
 
-  const CategoryBadge = ({ category }: { category: TaskCategory }) => {
-    const Icon = categoryIcons[category];
+  const TaskPriorityBadge = ({ priority }: { priority: TaskPriority }) => (
+    <PriorityBadge
+      priority={priority === 'Critical' ? 'urgent' : priority.toLowerCase()}
+      label={priority}
+    />
+  );
+
+  const TaskCategoryChip = ({ category }: { category: TaskCategory }) => {
+    const CatIcon = categoryIcons[category];
     return (
-      <div className="flex items-center gap-1.5">
-        <div className="w-5 h-5 rounded-lg bg-muted flex items-center justify-center">
-          <Icon className="w-3 h-3 text-muted-foreground" />
-        </div>
-        <span className="text-xs font-medium text-foreground/80">{category}</span>
-      </div>
+      <StatusChip tone="neutral" icon={<CatIcon className="h-3 w-3" />}>
+        {category}
+      </StatusChip>
     );
   };
 
@@ -828,7 +849,22 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
 
       {/* Tasks Table */}
       <div className={`${cardClass} overflow-hidden`}>
-        <table className="w-full">
+        {tasksError ? (
+          <ErrorState
+            compact
+            title="Could not load tasks"
+            error={tasksError}
+            onRetry={() => loadTasks.current()}
+            className="py-12"
+          />
+        ) : tasksLoading ? (
+          <div className="p-4">
+            <SkeletonRows rows={8} />
+          </div>
+        ) : (
+        <>
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[900px]">
           <thead>
             <tr className="border-b border-border">
               {['Task', 'Category', 'Vehicle', 'Station', 'Assigned To', 'Due Date', 'Priority', 'Status', ''].map(h => (
@@ -844,7 +880,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                 <tr key={task.id}
                   ref={(el) => { taskRowRefs.current[task.id] = el; }}
                   onClick={() => openTaskDetail(task)}
-                  className={`cursor-pointer transition-all duration-500 ${
+                  className={`cursor-pointer transition-colors duration-200 sq-card-elevated ${
                     flashingTaskId === task.id
                       ? 'bg-[color:var(--brand-soft)] ring-1 ring-[color:var(--brand-soft)]'
                       : 'hover:bg-muted/60'
@@ -861,7 +897,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                     </div>
                   </td>
                   <td className="px-3 py-2.5">
-                    <CategoryBadge category={task.category} />
+                    <TaskCategoryChip category={task.category} />
                   </td>
                   <td className="px-3 py-2.5">
                     <p className={`text-xs font-medium ${textPrimary}`}>{task.vehicleLicense}</p>
@@ -883,10 +919,10 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                     <p className={`text-[11px] ${textTertiary}`}>{task.estimatedDuration}</p>
                   </td>
                   <td className="px-3 py-2.5">
-                    <PriorityPill priority={task.priority} />
+                    <TaskPriorityBadge priority={task.priority} />
                   </td>
                   <td className="px-3 py-2.5">
-                    <StatusPill status={task.status} />
+                    <TaskStatusChip status={task.status} />
                   </td>
                   <td className="px-3 py-2.5">
                     <Icon name="chevron-right" className="w-5 h-5 text-muted-foreground/50" />
@@ -896,11 +932,16 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
             })}
           </tbody>
         </table>
+        </div>
         {sorted.length === 0 && (
-          <div className="py-12 text-center">
-            <Icon name="list-todo" className="w-5 h-5 mx-auto mb-3 text-muted-foreground/50" />
-            <p className={`text-xs font-medium ${textSecondary}`}>No tasks match your filters</p>
-          </div>
+          <EmptyState
+            compact
+            icon={<Icon name="list-todo" className="h-5 w-5" />}
+            title="No tasks match your filters"
+            description="Try adjusting your search or filter criteria."
+          />
+        )}
+        </>
         )}
       </div>
 
@@ -937,8 +978,8 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className={`text-xs font-mono ${textTertiary}`}>{selectedTask.id}</span>
-                    <StatusPill status={selectedTask.status} />
-                    <PriorityPill priority={selectedTask.priority} />
+                    <TaskStatusChip status={selectedTask.status} />
+                    <TaskPriorityBadge priority={selectedTask.priority} />
                   </div>
                   <h2 className={`text-base font-bold ${textPrimary}`}>{selectedTask.title}</h2>
                 </div>
@@ -1001,7 +1042,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className={`text-xs ${textSecondary}`}>Category</span>
-                      <CategoryBadge category={selectedTask.category} />
+                      <TaskCategoryChip category={selectedTask.category} />
                     </div>
                     <div className="flex items-center justify-between">
                       <span className={`text-xs ${textSecondary}`}>Created</span>
@@ -1357,11 +1398,11 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                       <SummaryRow label="Beschreibung" value={newTask.description} />
                       <div className="flex items-center justify-between py-2">
                         <span className={`text-xs ${textTertiary}`}>Kategorie</span>
-                        <CategoryBadge category={newTask.category} />
+                        <TaskCategoryChip category={newTask.category} />
                       </div>
                       <div className="flex items-center justify-between py-2">
                         <span className={`text-xs ${textTertiary}`}>Priorität</span>
-                        <PriorityPill priority={newTask.priority} />
+                        <TaskPriorityBadge priority={newTask.priority} />
                       </div>
                     </div>
                     <div className={`rounded-lg border p-4 space-y-0 divide-y ${

@@ -5,6 +5,8 @@ import { api } from '../../lib/api';
 import type { TripEnrichment, TripBehaviorEvent, SpeedingSection, EnergyEvent } from '../../lib/api';
 import { buildTripsMapGeoJson } from '../../lib/geospatial';
 import { useAddress } from '../../lib/useAddress';
+import { useRentalOrg } from '../RentalContext';
+import { MisuseCasesPanel } from './MisuseCasesPanel';
 import mapboxgl from 'mapbox-gl';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
@@ -29,7 +31,7 @@ interface TripData {
   startLongitude?: number;
   endLatitude?: number;
   endLongitude?: number;
-  distanceKm?: number;
+  distanceKm?: number | null;
   durationMinutes?: number;
   avgSpeedKmh?: number;
   maxSpeedKmh?: number;
@@ -172,6 +174,7 @@ function localDayRangeIso(dateYMD: string): { from: string; to: string } {
 }
 
 export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver, fuelType, onTripsLoaded }: TripsViewProps) {
+  const { orgId } = useRentalOrg();
   const isEv = fuelType === 'Electric' || fuelType === 'PHEV';
   const [trips, setTrips] = useState<TripData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -228,7 +231,7 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
           .energyEvents(vehicleId, { from, to })
           .catch(() => [] as EnergyEvent[]),
       ]);
-      const list = tripsData ?? [];
+      const list = (tripsData ?? []) as TripData[];
       setTrips(list);
       setEnergyEvents(eventsData ?? []);
       onTripsLoadedRef.current?.(list);
@@ -934,6 +937,17 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
                           setBehaviorLoading(null);
                         }}
                       />
+
+                      {orgId && trip.tripStatus === 'COMPLETED' && (
+                        <MisuseCasesPanel
+                          orgId={orgId}
+                          tripId={trip.id}
+                          vehicleId={vehicleId}
+                          title="Prüffälle für diesen Trip"
+                          compact
+                          limit={5}
+                        />
+                      )}
 
                       {/* C. Engine telemetry (Load / Throttle) */}
                       <div className={`rounded-xl border p-3 ${isDark ? 'bg-white/[0.02] border-white/[0.05]' : 'bg-slate-50/50 border-slate-100'}`}>

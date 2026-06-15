@@ -116,6 +116,96 @@ describe('VendorsService — tenancy guards', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
+  it('linkVehicle() links a vehicle within the same org', async () => {
+    const prisma = makePrismaDouble();
+    prisma.vendor.findFirst.mockResolvedValue({ id: 'v1', name: 'X' });
+    prisma.vehicle.findFirst.mockResolvedValue({ id: 'veh1' });
+    prisma.vendorVehicle.upsert.mockResolvedValue({
+      id: 'link1',
+      vehicleId: 'veh1',
+      relationType: 'WORKSHOP',
+      isPreferred: false,
+      priority: null,
+      validFrom: null,
+      validUntil: null,
+      notes: null,
+      vehicle: {
+        id: 'veh1',
+        make: 'VW',
+        model: 'Golf',
+        licensePlate: 'KS-AB 123',
+        year: 2022,
+        vin: 'VIN123',
+      },
+    });
+
+    const service = makeService(prisma);
+    const link = await service.linkVehicle('org1', 'v1', {
+      vehicleId: 'veh1',
+      relationType: 'WORKSHOP',
+    } as any);
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.vendorVehicle.upsert).toHaveBeenCalled();
+    expect(link).toMatchObject({ id: 'veh1', vendorVehicleId: 'link1' });
+  });
+
+  it('findById() throws NotFound when vendor is outside the org', async () => {
+    const prisma = makePrismaDouble();
+    prisma.vendor.findFirst.mockResolvedValue(null);
+
+    const service = makeService(prisma);
+    await expect(service.findById('org1', 'foreign-vendor')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
+  it('create() sets organizationId from the org route — not from the DTO', async () => {
+    const prisma = makePrismaDouble();
+    prisma.vendor.create.mockResolvedValue({
+      id: 'v1',
+      name: 'Werkstatt',
+      category: 'WORKSHOP',
+      source: 'MANUAL',
+    });
+    prisma.vendor.findFirst.mockResolvedValue(VENDOR_INCLUDE_ROW);
+
+    const service = makeService(prisma);
+    await service.create('org1', { name: 'Werkstatt', category: 'WORKSHOP' } as any);
+
+    expect(prisma.vendor.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ organizationId: 'org1', name: 'Werkstatt' }),
+      }),
+    );
+  });
+
+  it('updateLink() rejects a link that is not org-scoped to vendor + vehicle', async () => {
+    const prisma = makePrismaDouble();
+    prisma.vendor.findFirst.mockResolvedValue({ id: 'v1', name: 'X' });
+    prisma.vendorVehicle.findFirst.mockResolvedValue(null);
+
+    const service = makeService(prisma);
+    await expect(
+      service.updateLink('org1', 'v1', 'link-foreign', { isPreferred: true } as any),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('unlinkVehicle() rejects a link that is not org-scoped to vendor + vehicle', async () => {
+    const prisma = makePrismaDouble();
+    prisma.vendor.findFirst.mockResolvedValue({ id: 'v1', name: 'X' });
+    prisma.vendorVehicle.findFirst.mockResolvedValue(null);
+
+    const service = makeService(prisma);
+    await expect(
+      service.unlinkVehicle('org1', 'v1', 'link-foreign'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(prisma.vendorVehicle.delete).not.toHaveBeenCalled();
+  });
+
   it('update() throws NotFound when the vendor is not in the org', async () => {
     const prisma = makePrismaDouble();
     prisma.vendor.findFirst.mockResolvedValue(null); // assertVendor fails

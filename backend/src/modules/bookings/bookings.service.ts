@@ -19,6 +19,7 @@ import {
 import { HandoverProtocolDto } from './handover.types';
 import { RentalHealthService } from '@modules/rental-health/rental-health.service';
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
+import { CustomerEligibilityService } from '@modules/customers/customer-eligibility.service';
 
 const BOOKING_STATUS_DISPLAY: Record<string, string> = {
   PENDING: 'Pending',
@@ -49,6 +50,7 @@ export class BookingsService {
     // (preparation / pickup / return / invoice). Idempotent + fire-and-forget;
     // never blocks/breaks booking writes.
     private readonly taskAutomationService: TaskAutomationService,
+    private readonly customerEligibilityService: CustomerEligibilityService,
   ) {}
 
   async create(orgId: string, data: Omit<Prisma.BookingCreateInput, 'organization'>): Promise<Booking> {
@@ -136,6 +138,24 @@ export class BookingsService {
         vehicleId,
       });
     }
+
+    const customerId: string | undefined =
+      anyData.customerId ?? anyData.customer?.connect?.id;
+    const requestedStatus: BookingStatus =
+      (anyData.status as BookingStatus) ?? 'PENDING';
+
+    if (!customerId) {
+      throw new BadRequestException(
+        'customerId is required to create a booking',
+      );
+    }
+
+    await this.assertCustomerBookingEligibility(
+      orgId,
+      customerId,
+      requestedStatus,
+      startDate,
+    );
 
     const booking = await this.prisma.booking.create({
       data: { ...data, organization: { connect: { id: orgId } } },
@@ -551,6 +571,42 @@ export class BookingsService {
     const existing = await this.prisma.booking.findFirstOrThrow({
       where: { id, organizationId: orgId },
     });
+
+    const anyData = data as Record<string, unknown>;
+    const nextCustomerId =
+      (anyData.customerId as string | undefined) ??
+      (anyData.customer as { connect?: { id?: string } } | undefined)?.connect
+        ?.id ??
+      existing.customerId;
+    const nextStart =
+      anyData.startDate instanceof Date
+        ? anyData.startDate
+        : anyData.startDate
+          ? new Date(anyData.startDate as string)
+          : existing.startDate;
+    const nextEnd =
+      anyData.endDate instanceof Date
+        ? anyData.endDate
+        : anyData.endDate
+          ? new Date(anyData.endDate as string)
+          : existing.endDate;
+    const nextStatus = (anyData.status as BookingStatus | undefined) ?? existing.status;
+
+    const customerOrDatesChanged =
+      nextCustomerId !== existing.customerId ||
+      nextStart.getTime() !== existing.startDate.getTime() ||
+      nextEnd.getTime() !== existing.endDate.getTime();
+    const statusChanged = nextStatus !== existing.status;
+
+    if (customerOrDatesChanged || statusChanged) {
+      await this.assertCustomerBookingEligibility(
+        orgId,
+        nextCustomerId,
+        nextStatus,
+        nextStart,
+      );
+    }
+
     const updated = await this.prisma.booking.update({ where: { id }, data });
     if (updated.status === 'COMPLETED') {
       this.rentalDrivingAnalysisService.generateForBooking(orgId, id).catch(() => {});
@@ -673,5 +729,45 @@ export class BookingsService {
     ]);
 
     return updated;
+  }
+
+  private async assertCustomerBookingEligibility(
+    orgId: string,
+    customerId: string,
+    requestedStatus: BookingStatus,
+    startDate: Date,
+  ): Promise<void> {
+    const eligibility = await this.customerEligibilityService.evaluateForBooking(
+      orgId,
+      customerId,
+      { requestedStatus, startDate },
+    );
+
+    let allowed = true;
+    let message = 'Customer is not eligible for this booking';
+
+    if (requestedStatus === 'PENDING') {
+      allowed = eligibility.canCreatePendingBooking;
+      message = 'Customer is not eligible for a new booking';
+    } else if (requestedStatus === 'CONFIRMED') {
+      allowed = eligibility.canConfirmBooking;
+      message = 'Customer is not eligible for a confirmed booking';
+    } else if (requestedStatus === 'ACTIVE') {
+      allowed = eligibility.canStartRental;
+      message = 'Customer is not eligible for rental pickup';
+    } else {
+      return;
+    }
+
+    if (!allowed) {
+      throw new ConflictException({
+        code: 'CUSTOMER_BOOKING_BLOCKED',
+        message,
+        blockingReasons: eligibility.blockingReasons,
+        warnings: eligibility.warnings,
+        requiredActions: eligibility.requiredActions,
+        customerId,
+      });
+    }
   }
 }

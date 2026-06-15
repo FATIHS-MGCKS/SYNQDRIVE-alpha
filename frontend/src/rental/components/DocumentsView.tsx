@@ -1,10 +1,14 @@
 import { Icon } from './ui/Icon';
 import { VehicleData } from '../data/vehicles';
-import type { ReactNode } from 'react';
-import { PageHeader } from '../../components/patterns/page-header';
+import {
+  PageHeader,
+  MetricCard,
+  DataCard,
+  StatusChip,
+  EmptyState,
+} from '../../components/patterns';
 
 interface DocumentsViewProps {
-  isDarkMode: boolean;
   vehicle?: VehicleData | null;
 }
 
@@ -16,13 +20,7 @@ const tuvHistory: TuvRow[] = [];
 const serviceHistory: ServiceRow[] = [];
 const repairHistory: RepairRow[] = [];
 
-export function DocumentsView({ isDarkMode, vehicle }: DocumentsViewProps) {
-  const cardClass = `rounded-lg border shadow-sm ${
-    isDarkMode
-      ? 'bg-neutral-900 border-neutral-700'
-      : 'bg-white border-gray-200'
-  }`;
-
+export function DocumentsView({ vehicle }: DocumentsViewProps) {
   const dash = '—';
   const vehicleName = vehicle ? [vehicle.make, vehicle.model].filter(Boolean).join(' ') : 'Kein Fahrzeug ausgewählt';
   const vehicleSubtitle = vehicle ? [vehicle.license, vehicle.station].filter(Boolean).join(' · ') : 'Wähle ein Fahrzeug aus, um Dokumente und Fixkosten zu prüfen.';
@@ -81,24 +79,26 @@ export function DocumentsView({ isDarkMode, vehicle }: DocumentsViewProps) {
         icon={<Icon name="file-text" className="w-4 h-4" />}
         meta={<span className="text-[11px] text-muted-foreground truncate">{vehicleName}</span>}
       />
-      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
-        <div className="flex items-start justify-end gap-4 flex-wrap">
-          <div className="grid grid-cols-3 gap-2 w-full sm:w-auto sm:min-w-[330px]">
-            <SummaryMetric label="Dokumente" value="0/4" tone="warning" />
-            <SummaryMetric label="Kosten" value={`${configuredCostLines}/5`} tone={configuredCostLines >= 3 ? 'success' : 'neutral'} />
-            <SummaryMetric label="Nachweise" value={`${tuvHistory.length + serviceHistory.length + repairHistory.length}`} tone="neutral" />
-          </div>
-        </div>
+      <div className="grid grid-cols-3 gap-2">
+        <MetricCard label="Dokumente" value="0/4" status="warning" />
+        <MetricCard
+          label="Kosten"
+          value={`${configuredCostLines}/5`}
+          status={configuredCostLines >= 3 ? 'success' : 'neutral'}
+        />
+        <MetricCard
+          label="Nachweise"
+          value={String(tuvHistory.length + serviceHistory.length + repairHistory.length)}
+          status="neutral"
+        />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] gap-3 items-start">
-        <div className={`${cardClass} p-4 rounded-2xl`}>
-          <DocumentsSectionHeader
-            icon="file-text"
-            title="Dokumentenstatus"
-            subtitle="Pflichtunterlagen pro Fahrzeug, priorisiert nach operativer Relevanz."
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-4">
+        <DataCard
+          title="Dokumentenstatus"
+          description="Pflichtunterlagen pro Fahrzeug, priorisiert nach operativer Relevanz."
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {documentCards.map((doc) => (
               <DocumentTile
                 key={doc.title}
@@ -110,40 +110,36 @@ export function DocumentsView({ isDarkMode, vehicle }: DocumentsViewProps) {
               />
             ))}
           </div>
-        </div>
+        </DataCard>
 
-        <div className={`${cardClass} p-4 rounded-2xl`}>
-          <DocumentsSectionHeader
-            icon="wallet"
-            title="Monatliche Fixkosten"
-            subtitle="Finanzielle Grundlast des Fahrzeugs auf einen Blick."
-          />
-          <div className="mt-4 space-y-2.5">
+        <DataCard
+          title="Monatliche Fixkosten"
+          description="Finanzielle Grundlast des Fahrzeugs auf einen Blick."
+        >
+          <div className="space-y-2.5">
             {monthlyLines.map((item) => (
               <CostRow key={item.label} label={item.label} value={item.value} tone={item.tone} />
             ))}
-            <div className={`pt-3 mt-3 border-t flex items-center justify-between ${isDarkMode ? 'border-neutral-700' : 'border-gray-200'}`}>
+            <div className="pt-3 mt-3 border-t border-border flex items-center justify-between">
               <span className="text-[11px] font-semibold text-foreground">Gesamt pro Monat</span>
               <span className="text-[13px] font-bold tabular-nums text-foreground">
                 {vehicle?.totalMonthlyCost ?? dash}
               </span>
             </div>
           </div>
-        </div>
+        </DataCard>
       </div>
 
-      <div className={`${cardClass} p-4 rounded-2xl`}>
-        <DocumentsSectionHeader
-          icon="clipboard-list"
-          title="Nachweise & Historie"
-          subtitle="TÜV, Service und Reparaturen als ein gemeinsamer Verlauf statt getrennter leerer Tabellen."
-        />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 mt-4">
+      <DataCard
+        title="Nachweise & Historie"
+        description="TÜV, Service und Reparaturen als ein gemeinsamer Verlauf statt getrennter leerer Tabellen."
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
           {evidenceSections.map((section) => (
             <EvidenceCard key={section.title} {...section} />
           ))}
         </div>
-      </div>
+      </DataCard>
     </div>
   );
 }
@@ -155,41 +151,6 @@ function toneClass(tone: 'brand' | 'info' | 'success' | 'warning' | 'critical' |
   if (tone === 'warning') return 'sq-tone-warning';
   if (tone === 'critical') return 'sq-tone-critical';
   return 'sq-tone-neutral';
-}
-
-function SummaryMetric({ label, value, tone }: { label: string; value: string; tone: 'success' | 'warning' | 'neutral' }) {
-  return (
-    <div className={`rounded-xl px-3 py-2 ${toneClass(tone)}`}>
-      <p className="text-[16px] leading-none font-bold tabular-nums">{value}</p>
-      <p className="text-[9px] mt-1 font-semibold uppercase tracking-wider opacity-75">{label}</p>
-    </div>
-  );
-}
-
-function DocumentsSectionHeader({
-  icon,
-  fallbackIcon,
-  title,
-  subtitle,
-}: {
-  icon: string;
-  fallbackIcon?: string;
-  title: string;
-  subtitle: string;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-3">
-      <div className="flex items-start gap-2.5 min-w-0">
-        <div className="sq-tone-neutral w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
-          <Icon name={icon || fallbackIcon || 'file-text'} className="w-4 h-4" />
-        </div>
-        <div className="min-w-0">
-          <h4 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">{title}</h4>
-          <p className="text-[10px] mt-0.5 text-muted-foreground">{subtitle}</p>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function DocumentTile({
@@ -206,7 +167,7 @@ function DocumentTile({
   tone: 'brand' | 'info' | 'success' | 'warning';
 }) {
   return (
-    <div className="rounded-xl border border-border bg-muted/30 p-3">
+    <div className="rounded-xl border border-border bg-muted/30 p-3 sq-card-elevated transition-colors">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2.5 min-w-0">
           <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${toneClass(tone)}`}>
@@ -217,7 +178,7 @@ function DocumentTile({
             <p className="text-[10px] mt-0.5 text-muted-foreground">{description}</p>
           </div>
         </div>
-        <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-amber-100 text-amber-700 shrink-0">Fehlt</span>
+        <StatusChip tone="warning">Fehlt</StatusChip>
       </div>
       <button
         type="button"
@@ -257,12 +218,12 @@ function EvidenceCard({
   rows: number;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-muted/30 p-3 min-h-[150px] flex flex-col">
+    <div className="rounded-xl border border-border bg-muted/30 p-3 min-h-[150px] flex flex-col sq-card-elevated transition-colors">
       <div className="flex items-start justify-between gap-3">
         <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${toneClass(tone)}`}>
           <Icon name={icon} className="w-4 h-4" />
         </div>
-        <span className="text-[10px] font-semibold text-muted-foreground tabular-nums">{rows} Einträge</span>
+        <StatusChip tone="neutral">{rows} Einträge</StatusChip>
       </div>
       <div className="mt-3">
         <p className="text-[11px] font-semibold text-foreground">{title}</p>
@@ -270,20 +231,17 @@ function EvidenceCard({
       </div>
       <div className="mt-auto pt-4">
         {rows === 0 ? (
-          <EmptyInline icon="file" text="Noch keine Nachweise hinterlegt" />
+          <EmptyState
+            compact
+            icon={<Icon name="file" className="w-3.5 h-3.5" />}
+            title="Noch keine Nachweise"
+            description="Noch keine Nachweise hinterlegt"
+            className="!py-4 !px-0"
+          />
         ) : (
           <button type="button" className="text-[10px] font-semibold text-[color:var(--brand)]">Verlauf anzeigen</button>
         )}
       </div>
-    </div>
-  );
-}
-
-function EmptyInline({ icon, text }: { icon: string; text: ReactNode }) {
-  return (
-    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-      <Icon name={icon} className="w-3.5 h-3.5" />
-      <span>{text}</span>
     </div>
   );
 }

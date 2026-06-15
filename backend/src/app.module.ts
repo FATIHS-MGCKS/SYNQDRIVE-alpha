@@ -31,6 +31,7 @@ import { IntegrationsModule } from '@modules/integrations/integrations.module';
 import { BillingModule } from '@modules/billing/billing.module';
 import { ProspectsModule } from '@modules/prospects/prospects.module';
 import { CustomersModule } from '@modules/customers/customers.module';
+import { MisuseCasesModule } from '@modules/vehicle-intelligence/misuse-cases/misuse-cases.module';
 import { BookingsModule } from '@modules/bookings/bookings.module';
 import { RentalDrivingAnalysisModule } from '@modules/rental-driving-analysis/rental-driving-analysis.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
@@ -182,6 +183,7 @@ export class AppModule {
         BillingModule,
         ProspectsModule,
         CustomersModule,
+        MisuseCasesModule,
         BookingsModule,
         RentalDrivingAnalysisModule,
         ActivityLogModule,

@@ -34,6 +34,7 @@ import {
   PriorityBadge,
   StatusDot,
 } from '../../components/patterns';
+import { MisuseCasesPanel } from './MisuseCasesPanel';
 
 interface HealthErrorsViewProps {
   vehicleId?: string;
@@ -1277,6 +1278,11 @@ export function HealthErrorsView({ vehicleId, fuelType }: HealthErrorsViewProps)
           </button>
         }
       />
+      {vehicleId && orgId && (
+        <div className="mb-3">
+          <MisuseCasesPanel orgId={orgId} vehicleId={vehicleId} title="Prüffälle" limit={10} />
+        </div>
+      )}
       <div
         className="grid grid-cols-[1.4fr_2.55fr] gap-3 transition-all duration-500 ease-out origin-center items-start"
         style={{
@@ -2148,7 +2154,7 @@ export function HealthErrorsView({ vehicleId, fuelType }: HealthErrorsViewProps)
                   <div className="mb-2 flex items-center gap-2">
                     <span className={`text-[18px] font-black tracking-tight text-foreground leading-none`}>{pct}</span>
                     <span className="text-xs font-bold text-muted-foreground tracking-tight">% Tread</span>
-                    {th?.actionState && th.actionState !== 'KEEP_DRIVING' && (
+                    {th?.actionState && th.actionState !== 'OBSERVE' && (
                       <span className={`ml-auto px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border ${
                         th.actionState === 'REPLACE' ? ('sq-chip-critical border border-border') :
                         th.actionState === 'PLAN_SERVICE' ? ('sq-chip-watch border border-border') :
@@ -4078,10 +4084,10 @@ export function HealthErrorsView({ vehicleId, fuelType }: HealthErrorsViewProps)
                                     );
                                   })}
                                 </div>
-                                {(aiTireResult.manufacturerSourceUrl || aiTireResult.labelSourceUrl) && (
+                                {Boolean(aiTireResult.manufacturerSourceUrl || aiTireResult.labelSourceUrl) && (
                                   <div className={`mt-2 pt-2 border-t border-border`}>
-                                    {aiTireResult.manufacturerSourceUrl && <a href={String(aiTireResult.manufacturerSourceUrl)} target="_blank" rel="noopener noreferrer" className="text-[9px] text-blue-500 hover:underline block truncate">Manufacturer source</a>}
-                                    {aiTireResult.labelSourceUrl && <a href={String(aiTireResult.labelSourceUrl)} target="_blank" rel="noopener noreferrer" className="text-[9px] text-blue-500 hover:underline block truncate">Label source</a>}
+                                    {Boolean(aiTireResult.manufacturerSourceUrl) && <a href={String(aiTireResult.manufacturerSourceUrl)} target="_blank" rel="noopener noreferrer" className="text-[9px] text-blue-500 hover:underline block truncate">Manufacturer source</a>}
+                                    {Boolean(aiTireResult.labelSourceUrl) && <a href={String(aiTireResult.labelSourceUrl)} target="_blank" rel="noopener noreferrer" className="text-[9px] text-blue-500 hover:underline block truncate">Label source</a>}
                                   </div>
                                 )}
                                 <div className="flex gap-2 mt-3">
@@ -4751,7 +4757,7 @@ export function HealthErrorsView({ vehicleId, fuelType }: HealthErrorsViewProps)
               {/* Charging Sessions */}
               <div className={`rounded-lg p-5 bg-muted`}>
                 <h3 className={`text-sm font-semibold mb-4 text-foreground`}>Charging Sessions</h3>
-                {hvBatteryStatus?.chargingSessions?.length > 0 ? (
+                {(hvBatteryStatus?.chargingSessions?.length ?? 0) > 0 ? (
                   <div className="space-y-3">
                     {hvBatteryStatus?.chargingSessions?.map((s: any, i: number) => (
                       <div key={i} className={`rounded-xl p-3 bg-muted`}>
@@ -4794,7 +4800,7 @@ export function HealthErrorsView({ vehicleId, fuelType }: HealthErrorsViewProps)
               </div>
 
               {/* SOH Trend */}
-              {hvBatteryStatus?.recentTrend?.length > 0 && (
+              {(hvBatteryStatus?.recentTrend?.length ?? 0) > 0 && (
                 <div className={`rounded-lg p-5 bg-muted`}>
                   <h3 className={`text-sm font-semibold mb-4 text-foreground`}>SOH Trend</h3>
                   <div className="h-40">

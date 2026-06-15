@@ -317,9 +317,63 @@ enum CustomerType {
 }
 
 enum CustomerRiskLevel {
+  NOT_ASSESSED
   LOW
   MEDIUM
   HIGH
+}
+
+enum CustomerRiskSource {
+  NONE
+  MANUAL
+  SYSTEM
+  AI
+}
+
+enum CustomerDocumentType {
+  ID_FRONT
+  ID_BACK
+  LICENSE_FRONT
+  LICENSE_BACK
+  OTHER
+}
+
+enum CustomerDocumentStatus {
+  UPLOADED
+  PENDING_REVIEW
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum CustomerVerificationStatus {
+  NOT_SUBMITTED
+  PENDING_REVIEW
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum CustomerTimelineEventType {
+  CREATED
+  UPDATED
+  STATUS_CHANGED
+  RISK_CHANGED
+  DOCUMENT_UPLOADED
+  DOCUMENT_VERIFIED
+  DOCUMENT_REJECTED
+  BOOKING_CREATED
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  BOOKING_NO_SHOW
+  PICKUP_COMPLETED
+  RETURN_COMPLETED
+  INVOICE_CREATED
+  PAYMENT_RECEIVED
+  FINE_CREATED
+  DAMAGE_REPORTED
+  TASK_CREATED
+  NOTE_ADDED
 }
 
 enum BookingStatus {
@@ -588,6 +642,9 @@ model Organization {
   orgIntegrations           OrganizationIntegration[]
   subscriptions             BillingSubscription[]
   customers                 Customer[]
+  customerDocuments         CustomerDocument[]
+  customerTimelineEvents    CustomerTimelineEvent[]
+  customerEligibilityPolicy CustomerEligibilityPolicy?
   bookings                  Booking[]
   bookingHandoverProtocols  BookingHandoverProtocol[]
   activityLogs              ActivityLog[]
@@ -609,6 +666,7 @@ model Organization {
   bookingDocumentBundles    BookingDocumentBundle[]
   bookingDeposits           BookingDeposit[]
   rentalContracts           RentalContract[]
+  misuseCases               MisuseCase[]
 
   @@index([status])
   @@map("organizations")
@@ -874,6 +932,7 @@ model Vehicle {
   tripDetectionState     VehicleTripDetectionState?
   tripTrackingRuns       VehicleTripTrackingRun[]
   tripBehaviorEvents     TripBehaviorEvent[]
+  misuseCases            MisuseCase[]
   tripRepairs            TripRepair[]
   energyEvents           VehicleEnergyEvent[]
   logbookConfig          VehicleLogbookConfig?
@@ -1767,8 +1826,13 @@ model Customer {
   zip            String?
   country        String?
   company        String?
+  taxId          String?            @map("tax_id")
   customerType   CustomerType       @default(INDIVIDUAL) @map("customer_type")
-  riskLevel      CustomerRiskLevel  @default(LOW) @map("risk_level")
+  riskLevel      CustomerRiskLevel  @default(NOT_ASSESSED) @map("risk_level")
+  riskSource     CustomerRiskSource @default(NONE) @map("risk_source")
+  riskReason     String?            @map("risk_reason")
+  riskUpdatedAt  DateTime?          @map("risk_updated_at")
+  riskUpdatedByUserId String?       @map("risk_updated_by_user_id")
   notes          String?
   licenseExpiry  DateTime?          @map("license_expiry")
   licenseClass   String?            @map("license_class")
@@ -1777,13 +1841,24 @@ model Customer {
   idExpiry       DateTime?          @map("id_expiry")
   idVerified     Boolean            @default(false) @map("id_verified")
   licenseVerified Boolean           @default(false) @map("license_verified")
-  // V4.6.65 — KYC document URLs (stored under /uploads/customer-documents).
-  // Kept as plain URLs for simplicity; switch to a dedicated CustomerDocument
-  // table if the product ever needs versioning or per-document metadata.
+  idVerificationStatus CustomerVerificationStatus @default(NOT_SUBMITTED) @map("id_verification_status")
+  licenseVerificationStatus CustomerVerificationStatus @default(NOT_SUBMITTED) @map("license_verification_status")
+  // Legacy KYC URLs — read/backward-compat only; new uploads use CustomerDocument.
   idFrontUrl      String?            @map("id_front_url")
   idBackUrl       String?            @map("id_back_url")
   licenseFrontUrl String?            @map("license_front_url")
   licenseBackUrl  String?            @map("license_back_url")
+  emailNormalized String?            @map("email_normalized")
+  phoneNormalized String?            @map("phone_normalized")
+  licenseNumberNormalized String?    @map("license_number_normalized")
+  idNumberNormalized String?         @map("id_number_normalized")
+  fullNameNormalized String?        @map("full_name_normalized")
+  archivedAt     DateTime?          @map("archived_at")
+  archivedByUserId String?          @map("archived_by_user_id")
+  archiveReason  String?            @map("archive_reason")
+  piiAnonymizedAt DateTime?         @map("pii_anonymized_at")
+  piiAnonymizedByUserId String?     @map("pii_anonymized_by_user_id")
+  retentionUntil DateTime?          @map("retention_until")
   status         CustomerStatus     @default(ACTIVE)
   createdAt      DateTime           @default(now()) @map("created_at")
   updatedAt      DateTime           @updatedAt @map("updated_at")
@@ -1791,10 +1866,89 @@ model Customer {
   organization          Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   bookings              Booking[]
   rentalDrivingAnalyses RentalDrivingAnalysis[]
+  documents             CustomerDocument[]
+  timelineEvents        CustomerTimelineEvent[]
+  misuseCases           MisuseCase[]
 
   @@index([organizationId])
   @@index([email])
+  @@index([organizationId, emailNormalized])
+  @@index([organizationId, phoneNormalized])
+  @@index([organizationId, licenseNumberNormalized])
+  @@index([organizationId, idNumberNormalized])
+  @@index([organizationId, fullNameNormalized])
   @@map("customers")
+}
+
+model CustomerDocument {
+  id               String                 @id @default(uuid())
+  organizationId   String                 @map("organization_id")
+  customerId       String                 @map("customer_id")
+  type             CustomerDocumentType
+  status           CustomerDocumentStatus @default(UPLOADED)
+  fileKey          String                 @map("file_key")
+  originalFileName String?                @map("original_file_name")
+  mimeType         String?                @map("mime_type")
+  sizeBytes        Int?                   @map("size_bytes")
+  extractedJson    Json?                  @map("extracted_json")
+  uploadedByUserId String?                @map("uploaded_by_user_id")
+  reviewedByUserId String?                @map("reviewed_by_user_id")
+  reviewedAt       DateTime?              @map("reviewed_at")
+  rejectedReason   String?                @map("rejected_reason")
+  expiresAt        DateTime?              @map("expires_at")
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@index([type])
+  @@index([status])
+  @@map("customer_documents")
+}
+
+model CustomerTimelineEvent {
+  id              String                    @id @default(uuid())
+  organizationId  String                    @map("organization_id")
+  customerId      String                    @map("customer_id")
+  type            CustomerTimelineEventType
+  title           String
+  description     String?
+  metadata        Json?
+  createdByUserId String?                   @map("created_by_user_id")
+  createdAt       DateTime                  @default(now()) @map("created_at")
+
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@index([createdAt])
+  @@map("customer_timeline_events")
+}
+
+model CustomerEligibilityPolicy {
+  id                                     String   @id @default(uuid())
+  organizationId                         String   @unique @map("organization_id")
+  requireVerifiedIdForConfirmedBooking   Boolean  @default(false) @map("require_verified_id_for_confirmed_booking")
+  requireVerifiedLicenseForConfirmedBooking Boolean @default(false) @map("require_verified_license_for_confirmed_booking")
+  requireVerifiedIdForPickup             Boolean  @default(true) @map("require_verified_id_for_pickup")
+  requireVerifiedLicenseForPickup        Boolean  @default(true) @map("require_verified_license_for_pickup")
+  blockExpiredLicense                    Boolean  @default(true) @map("block_expired_license")
+  blockExpiredId                         Boolean  @default(true) @map("block_expired_id")
+  warnLicenseExpiringWithinDays          Int      @default(30) @map("warn_license_expiring_within_days")
+  warnIdExpiringWithinDays               Int      @default(30) @map("warn_id_expiring_within_days")
+  blockHighRiskCustomer                  Boolean  @default(false) @map("block_high_risk_customer")
+  blockOpenOverdueInvoices               Boolean  @default(false) @map("block_open_overdue_invoices")
+  blockOpenFines                         Boolean  @default(false) @map("block_open_fines")
+  createdAt                              DateTime @default(now()) @map("created_at")
+  updatedAt                              DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("customer_eligibility_policies")
 }
 
 // ------------------------------------------------
@@ -1829,6 +1983,7 @@ model Booking {
   vehicle               Vehicle                   @relation(fields: [vehicleId], references: [id])
   rentalDrivingAnalysis RentalDrivingAnalysis?
   handoverProtocols     BookingHandoverProtocol[]
+  misuseCases           MisuseCase[]
 
   @@index([organizationId])
   @@index([customerId])
@@ -3256,6 +3411,7 @@ model VehicleTrip {
   waypoints      VehicleTripWaypoint[]
   events         DrivingEvent[]
   behaviorEvents TripBehaviorEvent[]
+  misuseCases    MisuseCase[]
   repairs        TripRepair[]
 
   @@index([vehicleId])
@@ -3390,6 +3546,148 @@ model TripBehaviorEvent {
   // composite serves that filter without a secondary scan.
   @@index([tripId, eventCategory])
   @@map("trip_behavior_events")
+}
+
+// ------------------------------------------------
+// MISUSE / ABUSE CASES (informational Prüffälle — read-only, no workflow)
+// ------------------------------------------------
+
+enum MisuseCaseCategory {
+  USAGE_ANOMALY
+  MISUSE_SUSPICION
+  TECHNICAL_RISK
+  DAMAGE_SUSPICION
+  TAMPERING_DATA_INTEGRITY
+}
+
+enum MisuseCaseType {
+  AGGRESSIVE_DRIVING_PATTERN
+  COLD_ENGINE_ABUSE
+  REPEATED_ENGINE_REV_IN_IDLE
+  LAUNCH_ABUSE_PATTERN
+  BRAKE_ABUSE_PATTERN
+  POSSIBLE_COLLISION_OR_IMPACT
+  DIMO_COLLISION_REPORTED
+  OVERHEATING_DAMAGE_RISK
+  DTC_AFTER_ABUSE_OR_IMPACT
+  TELEMETRY_INTEGRITY_ISSUE
+  TAMPERING_SUSPECTED
+  EV_BATTERY_STRESS_PATTERN
+  RENTAL_GEOFENCE_VIOLATION
+}
+
+enum MisuseCaseSeverity {
+  INFO
+  WARNING
+  SEVERE
+  CRITICAL
+}
+
+enum MisuseCaseConfidence {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum MisuseAttributionScope {
+  BOOKING_CUSTOMER
+  ASSIGNED_DRIVER
+  VEHICLE_ONLY
+  PRIVATE_UNASSIGNED
+  UNKNOWN
+}
+
+enum MisuseEvidenceSourceType {
+  TRIP_BEHAVIOR_EVENT
+  DRIVING_EVENT
+  DIMO_EVENT
+  DTC
+  VEHICLE_TRIP_COUNTER
+  VEHICLE_LATEST_STATE
+  DERIVED_PATTERN
+}
+
+model MisuseCase {
+  id             String                 @id @default(uuid())
+  organizationId String                 @map("organization_id")
+  vehicleId      String                 @map("vehicle_id")
+  tripId         String?                @map("trip_id")
+  bookingId      String?                @map("booking_id")
+  customerId     String?                @map("customer_id")
+
+  category       MisuseCaseCategory
+  type           MisuseCaseType
+  severity       MisuseCaseSeverity
+  confidence     MisuseCaseConfidence
+
+  title              String
+  description        String?
+  recommendedAction  String?              @map("recommended_action")
+
+  attributionScope              MisuseAttributionScope @map("attribution_scope")
+  assignmentStatusSnapshot      TripAssignmentStatus?  @map("assignment_status_snapshot")
+  assignmentSubjectTypeSnapshot TripAssignmentSubjectType? @map("assignment_subject_type_snapshot")
+  assignmentSubjectIdSnapshot   String?                @map("assignment_subject_id_snapshot")
+  assignedBookingIdSnapshot     String?                @map("assigned_booking_id_snapshot")
+  isPrivateTripSnapshot         Boolean                @default(false) @map("is_private_trip_snapshot")
+
+  firstDetectedAt DateTime @map("first_detected_at")
+  lastDetectedAt  DateTime @map("last_detected_at")
+  eventCount      Int      @default(1) @map("event_count")
+
+  evidenceSummary Json?    @map("evidence_summary")
+  fingerprint     String   @unique
+  informationalOnly Boolean @default(true) @map("informational_only")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip         VehicleTrip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  booking      Booking?     @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  customer     Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  evidence     MisuseCaseEvidence[]
+
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([tripId])
+  @@index([bookingId])
+  @@index([customerId])
+  @@index([category])
+  @@index([type])
+  @@index([severity])
+  @@index([lastDetectedAt])
+  @@map("misuse_cases")
+}
+
+model MisuseCaseEvidence {
+  id             String                   @id @default(uuid())
+  caseId         String                   @map("case_id")
+  sourceType     MisuseEvidenceSourceType @map("source_type")
+  sourceId       String?                  @map("source_id")
+  organizationId String                   @map("organization_id")
+  vehicleId      String                   @map("vehicle_id")
+  tripId         String?                  @map("trip_id")
+  bookingId      String?                  @map("booking_id")
+  customerId     String?                  @map("customer_id")
+
+  eventType   String
+  severity    MisuseCaseSeverity?
+  confidence  MisuseCaseConfidence?
+  occurredAt  DateTime              @map("occurred_at")
+  snapshotJson Json?                @map("snapshot_json")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  misuseCase MisuseCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([tripId])
+  @@index([sourceType, sourceId])
+  @@map("misuse_case_evidence")
 }
 
 // ------------------------------------------------

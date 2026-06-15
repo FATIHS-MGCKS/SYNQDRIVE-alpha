@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 
 import { VehicleData, isVehicleOffline, VEHICLE_OFFLINE_LABEL } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
-import { ImageWithFallback } from './figma/ImageWithFallback';
+import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { CustomerDetailModal } from './CustomerDetailModal';
 import { CustomerDocumentUploadBox } from './CustomerDocumentUploadBox';
 import { VehicleTariff, ExtraOption, buildTariffs } from '../data/tariffs';
@@ -54,7 +54,7 @@ interface Customer {
   phone: string;
   company?: string;
   type: 'Individual' | 'Corporate';
-  status: 'Active' | 'Under Review' | 'Suspended' | 'Blocked';
+  status: 'Active' | 'Under Review' | 'Suspended' | 'Blocked' | 'Archived' | 'Inactive';
   // V4.6.95 — neutral 'Not Assessed' default replaces fake "Low Risk".
   riskLevel: 'Not Assessed' | 'Low Risk' | 'Medium Risk' | 'High Risk';
   // Canonical Driving Style Score (0–100, may be null when no scored trips
@@ -85,7 +85,7 @@ const mapApiCustomerToBookingCustomer = (c: any): Customer => {
     phone: c?.phone ?? '',
     company: c?.company ?? undefined,
     type: customerTypeApiToUi(c?.customerType),
-    status: customerStatusApiToUi(c?.status),
+    status: customerStatusApiToUi(c?.status, c?.archivedAt),
     riskLevel: customerRiskApiToUi(c?.riskLevel),
     // V4.6.95 — drivingStyleScore is the canonical scalar; legacy
     // `drivingScore` is kept as fallback only for older payloads. Missing
@@ -158,31 +158,49 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
   // selected vehicle). Replaces the previous hardcoded `vehicleBookings`
   // dictionary that only worked for the legacy v1..v6 demo IDs.
   const [orgBookings, setOrgBookings] = useState<any[]>([]);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+  const [customerEligibility, setCustomerEligibility] = useState<{
+    canCreatePendingBooking: boolean;
+    canConfirmBooking: boolean;
+    canStartRental: boolean;
+    blockingReasons: string[];
+    warnings: string[];
+    requiredActions: string[];
+  } | null>(null);
 
   useEffect(() => {
     if (!orgId) return;
     let cancelled = false;
-    (async () => {
+    const timer = setTimeout(async () => {
       setCustomersLoading(true);
       setCustomersError(null);
       try {
-        const res: any = await (api.customers.list as any)(orgId, { limit: 500 });
+        const params: { limit: number; page: number; search?: string } = {
+          limit: 25,
+          page: 1,
+        };
+        if (customerSearch.trim()) params.search = customerSearch.trim();
+        const res = await api.customers.list(orgId, params);
         if (cancelled) return;
-        const list = Array.isArray(res) ? res : (res?.data ?? res?.items ?? []);
+        const list = Array.isArray(res) ? res : (res?.data ?? []);
         setCustomers(list.map(mapApiCustomerToBookingCustomer));
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (cancelled) return;
-        const msg = err?.response?.data?.message || err?.message || 'Kunden konnten nicht geladen werden';
-        setCustomersError(String(msg));
+        const msg =
+          err instanceof Error ? err.message : 'Kunden konnten nicht geladen werden';
+        setCustomersError(msg);
         setCustomers([]);
       } finally {
         if (!cancelled) setCustomersLoading(false);
       }
-    })();
+    }, 300);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
-  }, [orgId]);
+  }, [orgId, customerSearch]);
 
   // V4.6.67 — load all org bookings once so the calendar in the Period step
   // can mark days that are actually blocked for the selected vehicle.
@@ -211,8 +229,6 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
   };
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [customerSearch, setCustomerSearch] = useState('');
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [vehicleSearch, setVehicleSearch] = useState('');
   const [vehicleStationFilter, setVehicleStationFilter] = useState('all');
   const [vehicleFuelFilter, setVehicleFuelFilter] = useState('all');
@@ -224,6 +240,29 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
   const [returnDate, setReturnDate] = useState('');
   const [pickupTime, setPickupTime] = useState('10:00');
   const [returnTime, setReturnTime] = useState('10:00');
+
+  useEffect(() => {
+    if (!orgId || !selectedCustomer?.id) {
+      setCustomerEligibility(null);
+      return;
+    }
+    let cancelled = false;
+    const startIso = pickupDate
+      ? new Date(`${pickupDate}T${pickupTime || '10:00'}`).toISOString()
+      : undefined;
+    api.customers
+      .eligibility(orgId, selectedCustomer.id, startIso)
+      .then((result) => {
+        if (!cancelled) setCustomerEligibility(result);
+      })
+      .catch(() => {
+        if (!cancelled) setCustomerEligibility(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, selectedCustomer?.id, pickupDate, pickupTime]);
+
   const [showPickupTimePicker, setShowPickupTimePicker] = useState(false);
   const [showReturnTimePicker, setShowReturnTimePicker] = useState(false);
   const [pickupStation, setPickupStation] = useState('');
@@ -379,9 +418,9 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
   // accident/violation counts from a score.
   const mapToDetailCustomer = (c: Customer) => ({
     ...c,
-    lastTrip: c.lastTrip ?? EM_DASH,
-    joinDate: c.joinDate ?? EM_DASH,
-    licenseExpiry: c.licenseExpiry ?? EM_DASH,
+    lastTrip: (c as Customer & { lastTrip?: string }).lastTrip ?? EM_DASH,
+    joinDate: (c as Customer & { joinDate?: string }).joinDate ?? EM_DASH,
+    licenseExpiry: (c as Customer & { licenseExpiry?: string }).licenseExpiry ?? EM_DASH,
     accidents: 0,
     violations: 0,
     notes: '',
@@ -389,10 +428,7 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
   });
 
   // Derived
-  const filteredCustomers = customers.filter(c => {
-    const q = customerSearch.toLowerCase();
-    return c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.phone.includes(q) || (c.company && c.company.toLowerCase().includes(q));
-  });
+  const filteredCustomers = customers;
 
   const stations = [...new Set(fleetVehicles.map(v => v.station))];
   const fuelTypes = [...new Set(fleetVehicles.map(v => v.fuelType))];
@@ -514,6 +550,15 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
       return;
     }
 
+    if (customerEligibility && !customerEligibility.canConfirmBooking) {
+      toast.error('Kunde nicht freigegeben', {
+        description:
+          customerEligibility.blockingReasons.join(' · ') ||
+          'Der Kunde erfüllt die Anforderungen für eine bestätigte Buchung nicht.',
+      });
+      return;
+    }
+
     setIsSavingBooking(true);
     try {
       const insuranceLabel = selectedInsurances.length > 0 && vehicleTariff
@@ -522,7 +567,7 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
       const paymentLabel = paymentMethod === 'card' ? 'Kreditkarte' : paymentMethod === 'cash' ? 'Barzahlung' : 'Rechnung';
       const effectiveReturnStation = sameReturnStation ? pickupStation : returnStation;
 
-      const dailyRateEuro = (vehicleTariff?.dailyRate ?? getDailyRateFallback(selectedVehicle)) || 0;
+      const dailyRateEuro = (vehicleTariff?.daily.rate ?? getDailyRateFallback(selectedVehicle)) || 0;
       const extrasForPayload = (extras || [])
         .map((id) => {
           const opt = extraOptions.find((o) => o.id === id);
@@ -790,7 +835,15 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
       case 3:
         return true;
       case 4:
-        return selectedCustomer !== null;
+        if (!selectedCustomer) return false;
+        if (
+          customerEligibility &&
+          !customerEligibility.canCreatePendingBooking &&
+          customerEligibility.blockingReasons.length > 0
+        ) {
+          return false;
+        }
+        return true;
       case 5:
         return agbAccepted && privacyAccepted;
       default:
@@ -1024,6 +1077,34 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                         </button>
                       ))}
                     </div>
+
+                    {selectedCustomer && customerEligibility && (
+                      <div className={`mt-3 p-3 rounded-lg border text-xs space-y-2 ${
+                        customerEligibility.blockingReasons.length > 0
+                          ? 'sq-tone-critical border-border'
+                          : customerEligibility.warnings.length > 0
+                            ? 'sq-tone-warning border-border'
+                            : 'sq-tone-success border-border'
+                      }`}>
+                        <div className="font-semibold text-foreground">
+                          Mietfreigabe:{' '}
+                          {customerEligibility.blockingReasons.length > 0
+                            ? 'Blockiert'
+                            : customerEligibility.warnings.length > 0
+                              ? 'Warnung'
+                              : 'Freigegeben'}
+                        </div>
+                        {customerEligibility.blockingReasons.map((r) => (
+                          <div key={r} className="text-muted-foreground">• {r}</div>
+                        ))}
+                        {customerEligibility.warnings.map((w) => (
+                          <div key={w} className="text-muted-foreground">⚠ {w}</div>
+                        ))}
+                        {customerEligibility.requiredActions.map((a) => (
+                          <div key={a} className="text-muted-foreground">→ {a}</div>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Add New Customer */}
                     <button
@@ -1433,7 +1514,7 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                                     <SummaryRow label="Führerscheinnr." value={newCustomer.licenseNumber} />
                                     <SummaryRow label="Klasse" value={newCustomer.licenseClass} />
                                     <SummaryRow label="FS gültig bis" value={newCustomer.licenseExpiry} />
-                                    <SummaryRow label="Ausweistyp" value={newCustomer.idType === 'ID Card' ? 'Personalausweis' : 'Reisepass'} />
+                                    <SummaryRow label="Ausweistyp" value={newCustomer.idType} />
                                     <SummaryRow label="Ausweisnr." value={newCustomer.idNumber} />
                                     <SummaryRow label="Ausweis gültig bis" value={newCustomer.idExpiry} />
                                     <div className="flex items-center justify-between py-2">

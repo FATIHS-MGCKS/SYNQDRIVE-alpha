@@ -54,9 +54,14 @@ export class VendorMapboxService {
   private readonly logger = new Logger(VendorMapboxService.name);
 
   private get token(): string {
-    // Reuse the platform-wide Mapbox token already used for stations geocoding
-    // and trip map-matching (kept strictly server-side).
-    return process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '';
+    // Prefer server-only env vars; fall back to the legacy public name only when
+    // that is what the deployment already provides (token never leaves the backend).
+    return (
+      process.env.MAPBOX_ACCESS_TOKEN ??
+      process.env.MAPBOX_TOKEN ??
+      process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ??
+      ''
+    );
   }
 
   /** Suggest step: typeahead POI/address suggestions. */
@@ -67,7 +72,7 @@ export class VendorMapboxService {
     const token = this.token;
     if (!token) {
       throw new ServiceUnavailableException(
-        'Vendor search is not configured (missing Mapbox token).',
+        'Vendor search is not configured (set MAPBOX_ACCESS_TOKEN or MAPBOX_TOKEN).',
       );
     }
 
@@ -122,7 +127,7 @@ export class VendorMapboxService {
     const token = this.token;
     if (!token) {
       throw new ServiceUnavailableException(
-        'Vendor search is not configured (missing Mapbox token).',
+        'Vendor search is not configured (set MAPBOX_ACCESS_TOKEN or MAPBOX_TOKEN).',
       );
     }
 

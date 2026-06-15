@@ -11,6 +11,7 @@ import { RentalHealthModule } from '@modules/rental-health/rental-health.module'
 import { DocumentsModule } from '@modules/documents/documents.module';
 // V4.8.3 Task Action Layer — booking lifecycle task automation.
 import { TasksModule } from '@modules/tasks/tasks.module';
+import { CustomersModule } from '@modules/customers/customers.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { TasksModule } from '@modules/tasks/tasks.module';
     forwardRef(() => RentalHealthModule),
     forwardRef(() => DocumentsModule),
     TasksModule,
+    CustomersModule,
   ],
   controllers: [BookingsController],
   providers: [BookingsService, BookingsHandoverService],

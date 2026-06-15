@@ -10,7 +10,7 @@ export const de: Record<TranslationKey, string> = {
   'nav.stations': 'Standorte',
   'nav.insights': 'Auswertungen',
   'nav.fleetCondition': 'Flottenzustand',
-  'nav.financialInsights': 'Finanz-Auswertungen',
+  'nav.financialInsights': 'Auswertungen',
   'nav.finance': 'Finanzen',
   'nav.invoices': 'Rechnungen',
   'nav.fines': 'Bussen',
@@ -24,7 +24,7 @@ export const de: Record<TranslationKey, string> = {
   'nav.aiVoiceAssistant': 'KI-Sprachassistent',
   'nav.whatsappBusiness': 'WhatsApp Business',
   'nav.integrations': 'Integrationen',
-  'nav.insurance': 'Versicherung',
+  'nav.insurance': 'Versicherungen',
   'nav.partsAccessories': 'Teile & Zubehoer',
   'nav.fuelCards': 'Tankkarten',
   'nav.vehicleBrokerage': 'Fahrzeugvermittlung',
@@ -46,6 +46,10 @@ export const de: Record<TranslationKey, string> = {
   'nav.upload': 'Hochladen',
   'nav.aiAssistant': 'KI-Assistent',
 
+  'fleetTab.status': 'Status',
+  'fleetTab.health': 'Health',
+  'fleetTab.service': 'Service',
+
   // ─── TopBar ───
   'topbar.searchPlaceholder': 'Fahrzeuge, Buchungen, Kunden suchen...',
   'topbar.searchShortcut': 'Suche',
@@ -63,6 +67,8 @@ export const de: Record<TranslationKey, string> = {
   'view.bookings': 'Buchungen',
   'view.healthErrors': 'Gesundheit & Fehler',
   'view.fleet': 'Flotte',
+  'view.fleetHealth': 'Health',
+  'view.fleetService': 'Service',
   'view.damages': 'Schaeden',
   'view.documents': 'Dokumente',
   'view.customers': 'Kunden',
@@ -152,6 +158,7 @@ export const de: Record<TranslationKey, string> = {
 
   // TopBar view categories
   'category.operations': 'Betrieb',
+  'category.fleet': 'Flotte',
   'category.insights': 'Auswertungen',
   'category.finance': 'Finanzen',
   'category.tasks': 'Aufgaben',

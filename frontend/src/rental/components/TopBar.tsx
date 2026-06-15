@@ -1,5 +1,5 @@
 
-import { AlertCircle, ArrowRight, Briefcase, Calendar, Car, FileText, Home, ListTodo, MapPin, Search, Settings, Tag, Users } from 'lucide-react';
+import { AlertCircle, ArrowRight, Calendar, Car, DollarSign, FileText, Home, ListTodo, MapPin, Search, Settings, Tag, Users } from 'lucide-react';
 import { Icon } from './ui/Icon';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { clearAuth, getStoredUser } from '../../lib/auth';
@@ -21,13 +21,15 @@ const languages = [
   { code: 'cs' as Locale, name: 'Čeština', short: 'CS' },
 ];
 
-type ViewType = 'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-management' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'fleet-condition' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'document-upload' | 'ai-assistant' | 'ai-voice-assistant' | 'support';
+type ViewType = 'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'fleet-condition-detail' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'price-tariffs' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'document-upload' | 'ai-assistant' | 'ai-voice-assistant' | 'support' | 'help-center' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances';
 type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents';
+type FleetTab = 'status' | 'health' | 'service';
 
 interface TopBarProps {
   isDarkMode: boolean;
   setIsDarkMode: (value: boolean) => void;
   currentView?: string;
+  fleetTab?: FleetTab;
   settingsTab?: SettingsTab;
   selectedVehicle?: VehicleData | null;
   activeBookingRef?: string | null;
@@ -36,7 +38,7 @@ interface TopBarProps {
   onVehicleSelect?: (vehicle: VehicleData) => void;
   onSettingsTabChange?: (tab: SettingsTab) => void;
   onFinanceTabChange?: (tab: any) => void;
-  onTasksTabChange?: (tab: any) => void;
+  onFleetTabChange?: (tab: FleetTab) => void;
 }
 
 import type { TranslationKey } from '../i18n/translations/en';
@@ -53,20 +55,23 @@ const viewLabelKeys: Record<ViewType, TranslationKey> = {
   'customers': 'view.customers',
   'customer-detail': 'view.customerDetail',
   'tasks': 'view.tasks',
-  'vendor-management': 'view.vendorManagement',
-  'vendor-detail': 'view.vendorManagement',
+  'vendor-detail': 'view.fleetService',
   'invoices': 'view.invoices',
-  'fines': 'view.fines',
   'price-tariffs': 'view.priceTariffs',
-  'fleet-condition': 'view.fleetCondition',
+  'fleet-condition-detail': 'view.fleetHealth',
   'financial-insights': 'nav.financialInsights',
   'settings': 'view.settings',
   'new-booking': 'view.newBooking',
   'stations': 'view.stations',
   'document-upload': 'view.documentUpload',
   'ai-assistant': 'view.aiAssistant',
-  'ai-voice-assistant': 'view.aiVoiceAssistant',
+  'ai-voice-assistant': 'nav.aiVoiceAssistant',
   'support': 'view.support',
+  'help-center': 'nav.helpCenter',
+  'workflow-automation': 'nav.workflowAutomation',
+  'whatsapp-business': 'nav.whatsappBusiness',
+  'parts-accessories': 'nav.partsAccessories',
+  'insurances': 'nav.insurance',
 };
 
 const viewCategoryKeys: Record<ViewType, TranslationKey> = {
@@ -77,24 +82,27 @@ const viewCategoryKeys: Record<ViewType, TranslationKey> = {
   'documents': 'category.operations',
   'dashboard': 'category.operations',
   'bookings': 'category.operations',
-  'fleet': 'category.operations',
+  'fleet': 'category.fleet',
+  'fleet-condition-detail': 'category.fleet',
+  'vendor-detail': 'category.fleet',
   'customers': 'category.operations',
   'customer-detail': 'category.operations',
   'tasks': 'category.tasks',
-  'vendor-management': 'category.tasks',
-  'vendor-detail': 'category.tasks',
   'invoices': 'category.finance',
-  'fines': 'category.finance',
   'price-tariffs': 'category.finance',
-  'fleet-condition': 'category.insights',
-  'financial-insights': 'category.insights',
+  'financial-insights': 'category.finance',
   'settings': 'category.administration',
   'new-booking': 'category.operations',
-  'stations': 'category.operations',
+  'stations': 'category.administration',
   'document-upload': 'category.operations',
   'ai-assistant': 'category.operations',
   'ai-voice-assistant': 'category.operations',
   'support': 'category.support',
+  'help-center': 'category.support',
+  'workflow-automation': 'nav.automation',
+  'whatsapp-business': 'nav.automation',
+  'parts-accessories': 'nav.integrations',
+  'insurances': 'nav.integrations',
 };
 
 const settingsTabKeys: Record<SettingsTab, TranslationKey> = {
@@ -107,7 +115,13 @@ const settingsTabKeys: Record<SettingsTab, TranslationKey> = {
   'legal-documents': 'settingsTab.legalDocuments',
 };
 
-export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', settingsTab, selectedVehicle, activeBookingRef, detailCustomerId, onViewChange, onVehicleSelect, onSettingsTabChange, onFinanceTabChange, onTasksTabChange }: TopBarProps) {
+const fleetTabKeys: Record<FleetTab, TranslationKey> = {
+  status: 'fleetTab.status',
+  health: 'fleetTab.health',
+  service: 'fleetTab.service',
+};
+
+export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', fleetTab = 'status', settingsTab, selectedVehicle, activeBookingRef, detailCustomerId, onViewChange, onVehicleSelect, onSettingsTabChange, onFinanceTabChange, onFleetTabChange }: TopBarProps) {
   const { locale, setLocale, t } = useLanguage();
   const { fleetVehicles } = useFleetVehicles();
   const { orgId } = useRentalOrg();
@@ -179,14 +193,13 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
   const navigationItems = [
     { view: 'dashboard' as ViewType, label: 'Dashboard', icon: Home, category: 'Operations' },
     { view: 'bookings' as ViewType, label: 'Bookings', icon: Calendar, category: 'Operations' },
-    { view: 'fleet' as ViewType, label: 'Fleet', icon: Car, category: 'Operations' },
     { view: 'customers' as ViewType, label: 'Customers', icon: Users, category: 'Operations' },
-    { view: 'stations' as ViewType, label: 'Stations', icon: MapPin, category: 'Operations' },
+    { view: 'tasks' as ViewType, label: 'Tasks', icon: ListTodo, category: 'Operations' },
+    { view: 'fleet' as ViewType, label: 'Fleet', icon: Car, category: 'Fleet' },
+    { view: 'financial-insights' as ViewType, label: 'Insights', icon: DollarSign, category: 'Finance' },
     { view: 'invoices' as ViewType, label: 'Invoices', icon: FileText, category: 'Finance' },
-    { view: 'fines' as ViewType, label: 'Fines & OCR', icon: AlertCircle, category: 'Finance' },
-    { view: 'price-tariffs' as ViewType, label: 'Pricing & Tariffs', icon: Tag, category: 'Finance' },
-    { view: 'tasks' as ViewType, label: 'Task Management', icon: ListTodo, category: 'Tasks' },
-    { view: 'vendor-management' as ViewType, label: 'Vendor Management', icon: Briefcase, category: 'Tasks' },
+    { view: 'price-tariffs' as ViewType, label: 'Price Tariffs', icon: Tag, category: 'Finance' },
+    { view: 'stations' as ViewType, label: 'Stations', icon: MapPin, category: 'Administration' },
     { view: 'settings' as ViewType, label: 'Settings', icon: Settings, category: 'Administration' },
   ];
 
@@ -328,12 +341,9 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
         onViewChange?.('invoices');
         break;
       case 'task':
-        onTasksTabChange?.('tasks');
         onViewChange?.('tasks');
         break;
       case 'fine':
-        onFinanceTabChange?.('fines');
-        onViewChange?.('fines');
         break;
       case 'page':
         onViewChange?.(result.id);
@@ -403,23 +413,35 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', se
             <span className="hidden md:inline text-muted-foreground/40">/</span>
             <span className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(settingsTabKeys[settingsTab])}</span>
           </>
-        ) : ['invoices', 'fines', 'price-tariffs'].includes(currentView) ? (
+        ) : ['invoices', 'price-tariffs', 'financial-insights'].includes(currentView) ? (
           <>
             <span className="hidden md:inline text-muted-foreground">{t('category.finance')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
             <span className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
           </>
-        ) : ['tasks', 'vendor-management', 'vendor-detail'].includes(currentView) ? (
+        ) : currentView === 'fleet' || currentView === 'fleet-condition-detail' || currentView === 'vendor-detail' ? (
+          <>
+            <span className="hidden md:inline text-muted-foreground">{t('category.fleet')}</span>
+            <span className="hidden md:inline text-muted-foreground/40">/</span>
+            <span className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">
+              {currentView === 'fleet'
+                ? t(fleetTabKeys[fleetTab])
+                : currentView === 'vendor-detail'
+                  ? t('view.fleetService')
+                  : t('view.fleetHealth')}
+            </span>
+          </>
+        ) : currentView === 'tasks' ? (
           <>
             <span className="hidden md:inline text-muted-foreground">{t('category.tasks')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
             <span className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
           </>
-        ) : ['fleet-condition', 'financial-insights'].includes(currentView) ? (
+        ) : currentView === 'stations' ? (
           <>
-            <span className="hidden md:inline text-muted-foreground">{t('category.insights')}</span>
+            <span className="hidden md:inline text-muted-foreground">{t('category.administration')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
+            <span className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">{t('view.stations')}</span>
           </>
         ) : currentView === 'new-booking' ? (
           <>

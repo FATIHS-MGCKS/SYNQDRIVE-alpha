@@ -222,9 +222,9 @@ Laden Sie Fahrzeugdokumente hoch (z. B. Zulassungsbescheinigung Teil I) – die 
     description: 'Fahrdaten-Analyse, Statistiken und Flottengesundheit.',
     articles: [
       {
-        id: 'fleet-condition',
-        title: 'Flottengesundheit',
-        content: `Die Flottengesundheit zeigt den technischen Zustand aller Fahrzeuge auf einen Blick:
+        id: 'fleet-health',
+        title: 'Flotte — Health',
+        content: `Unter **Flotte → Health** sehen Sie den technischen Zustand aller Fahrzeuge auf einen Blick:
 
 • **Health-Score** – Ein zusammenfassender Wert pro Fahrzeug (basierend auf Alter, Kilometern, Service-Status, Reifenzustand, Bremsenzustand etc.).
 • **Warnungen** – Fahrzeuge mit überfälligem Service, abgenutzten Reifen oder anderen Problemen werden hervorgehoben.
@@ -240,7 +240,7 @@ Laden Sie Fahrzeugdokumente hoch (z. B. Zulassungsbescheinigung Teil I) – die 
     id: 'finance',
     title: 'Finanzen',
     icon: FileText,
-    description: 'Rechnungen, Bußgelder und Preisgestaltung.',
+    description: 'Rechnungen und Preisgestaltung.',
     articles: [
       {
         id: 'invoices',
@@ -252,17 +252,6 @@ Laden Sie Fahrzeugdokumente hoch (z. B. Zulassungsbescheinigung Teil I) – die 
 • Rechnungsdetails und Positionen einsehen
 
 Rechnungen werden aus Buchungen generiert und berücksichtigen den gewählten Tarif, die Mietdauer und eventuelle Zusatzkosten.`,
-      },
-      {
-        id: 'fines',
-        title: 'Bußgelder',
-        content: `Hier verwalten Sie Bußgelder, die im Zusammenhang mit Ihren Fahrzeugen anfallen:
-
-• Erfassen Sie eingehende Bußgeldbescheide
-• Ordnen Sie sie dem richtigen Fahrzeug und Zeitraum zu
-• Identifizieren Sie, welcher Mieter zum Zeitpunkt des Verstoßes verantwortlich war
-
-**Tipp:** Durch vollständige Buchungsdaten kann das System automatisch den verantwortlichen Mieter zuordnen.`,
       },
       {
         id: 'pricing',
@@ -281,9 +270,9 @@ Gut gepflegte Tarife sorgen dafür, dass Buchungen automatisch korrekt berechnet
   // ──── TASKS ────
   {
     id: 'tasks-section',
-    title: 'Aufgaben & Dienstleister',
+    title: 'Aufgaben',
     icon: ListTodo,
-    description: 'Aufgaben planen und externe Dienstleister verwalten.',
+    description: 'Aufgaben planen und nachverfolgen.',
     articles: [
       {
         id: 'task-management',
@@ -298,9 +287,9 @@ Gut gepflegte Tarife sorgen dafür, dass Buchungen automatisch korrekt berechnet
 **Tipp:** Nutzen Sie Aufgaben, um Wartungsarbeiten systematisch zu planen. So vergessen Sie nichts und alles ist dokumentiert.`,
       },
       {
-        id: 'vendor-management',
-        title: 'Dienstleisterverwaltung',
-        content: `Hier verwalten Sie Ihre externen Partner – Werkstätten, Reinigungsdienste, Reifenhändler und andere Dienstleister:
+        id: 'fleet-service',
+        title: 'Flotte — Service',
+        content: `Unter **Flotte → Service** verwalten Sie Ihre externen Partner – Werkstätten, Reinigungsdienste, Reifenhändler und andere Dienstleister:
 
 • Dienstleister anlegen mit Kontaktdaten und Spezialisierung
 • Aufgaben und Aufträge an Dienstleister verknüpfen

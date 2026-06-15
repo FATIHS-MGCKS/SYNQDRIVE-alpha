@@ -1,6 +1,7 @@
-import { LayoutDashboard, Briefcase, DollarSign, Calendar, Car, AlertTriangle, Users, CheckSquare, FileText, AlertCircle, Tag, Settings, Building2, Wifi, MapPin, UserCog, CreditCard, Plus, Upload, ChevronDown, Bell, MessageSquare, LayoutGrid, ListTodo, Menu, X, Shield, Package, Lock, HelpCircle, Zap, Phone, Truck, Activity, Headphones, ChevronRight, User, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { LayoutDashboard, DollarSign, Calendar, Car, Users, CheckSquare, FileText, Tag, Settings, Building2, Wifi, MapPin, UserCog, CreditCard, Plus, Upload, Menu, X, Shield, Package, Lock, HelpCircle, Zap, Phone, Truck, Headphones, ChevronRight, User, PanelLeftClose, PanelLeftOpen, ListTodo, MessageSquare } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
+import type { FleetTab } from './FleetHubView';
 // auth import removed — logout moved to TopBar account menu
 import synqdriveLogoLight from '../../assets/synqdrive-logo-light.png';
 import synqdriveLogoDark from '../../assets/synqdrive-logo-dark.png';
@@ -8,32 +9,41 @@ import synqdriveLogoDark from '../../assets/synqdrive-logo-dark.png';
 type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents';
 
 interface SidebarProps {
-  isDarkMode: boolean;
   onNewTaskClick?: () => void;
   onNewBookingClick?: () => void;
   currentView?: string;
   onViewChange?: (view: any) => void;
+  onFleetTabChange?: (tab: FleetTab) => void;
   settingsTab?: SettingsTab;
   onSettingsTabChange?: (tab: SettingsTab) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
-export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, currentView, onViewChange, settingsTab, onSettingsTabChange, isCollapsed = false, onToggleCollapse }: SidebarProps) {
+export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onViewChange, onFleetTabChange, settingsTab, onSettingsTabChange, isCollapsed = false, onToggleCollapse }: SidebarProps) {
   const { t } = useLanguage();
+  const isFleetActive =
+    currentView === 'fleet' ||
+    currentView === 'fleet-condition-detail' ||
+    currentView === 'vendor-detail';
+
   const sectionForView = (view?: string): string | null => {
-    if (view === 'financial-insights' || view === 'fleet-condition') return 'insights';
-    if (view === 'invoices' || view === 'fines' || view === 'price-tariffs') return 'finance';
-    if (view === 'tasks' || view === 'vendor-management' || view === 'vendor-detail') return 'tasks';
+    if (view === 'financial-insights' || view === 'invoices' || view === 'price-tariffs') return 'finance';
     if (view === 'workflow-automation' || view === 'ai-voice-assistant' || view === 'whatsapp-business') return 'automation';
     if (view === 'insurances' || view === 'parts-accessories') return 'integrations';
-    if (view === 'settings') return 'administration';
+    if (view === 'settings' || view === 'stations') return 'administration';
     return null;
   };
   const currentSection = sectionForView(currentView);
-  const [expandedSections, setExpandedSections] = useState<string[]>(() => currentSection ? [currentSection] : ['insights']);
+  const [expandedSections, setExpandedSections] = useState<string[]>(() => currentSection ? [currentSection] : ['finance']);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const synqdriveLogo = isDarkMode ? synqdriveLogoDark : synqdriveLogoLight;
+
+  const SynqLogo = ({ className }: { className?: string }) => (
+    <>
+      <img src={synqdriveLogoLight} alt="SYNQDRIVE" className={`dark:hidden ${className ?? ''}`} />
+      <img src={synqdriveLogoDark} alt="SYNQDRIVE" className={`hidden dark:block ${className ?? ''}`} />
+    </>
+  );
 
   // Close mobile menu on view change
   const handleViewChange = (view: any) => {
@@ -103,7 +113,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
     </div>
   );
 
-  const sectionLabelClass = 'sq-section-label !text-[10px] !font-black !text-[rgba(100,116,139,0.9)]';
+  const sectionLabelClass = 'sq-section-label !text-[10px] !font-black !text-muted-foreground/80';
 
   const sectionHeaderClass = (section: string) => {
     const isOpen = expandedSections.includes(section);
@@ -142,61 +152,43 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
 
   // Shared desktop/mobile navigation. Keep this as a render function so React
   // does not remount the whole nav on each sidebar render and replay animations.
+  const handleFleetNav = () => {
+    onFleetTabChange?.('status');
+    handleViewChange('fleet');
+  };
+
   const renderNavigationContent = (isMobile = false) => (
     <>
-      {/* OPERATIONS Section — always visible */}
-      <div className={`mb-2 flex items-center justify-between px-2.5 ${isMobile ? 'mt-3' : 'mt-1'}`}>
-        <span className={sectionLabelClass}>{t('nav.operations')}</span>
-      </div>
-
-      <nav className="space-y-0.5 mb-1">
+      {/* Primary navigation */}
+      <nav className={`space-y-0.5 mb-1 ${isMobile ? 'mt-3' : 'mt-1'}`}>
         <button onClick={() => handleViewChange('dashboard')} className={navBtnClass(currentView === 'dashboard')}>
           <LayoutDashboard className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.dashboard')}</span>
         </button>
         <button onClick={() => handleViewChange('bookings')} className={navBtnClass(currentView === 'bookings')}>
           <Calendar className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.bookings')}</span>
         </button>
-        <button onClick={() => handleViewChange('fleet')} className={navBtnClass(currentView === 'fleet')}>
-          <Car className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.fleet')}</span>
-        </button>
-        <button onClick={() => handleViewChange('customers')} className={navBtnClass(currentView === 'customers')}>
+        <button onClick={() => handleViewChange('customers')} className={navBtnClass(currentView === 'customers' || currentView === 'customer-detail')}>
           <Users className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.customers')}</span>
         </button>
-        <button onClick={() => handleViewChange('stations')} className={navBtnClass(currentView === 'stations')}>
-          <MapPin className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.stations')}</span>
+        <button onClick={() => handleViewChange('tasks')} className={navBtnClass(currentView === 'tasks')}>
+          <ListTodo className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.tasks')}</span>
+        </button>
+        <button onClick={handleFleetNav} className={navBtnClass(isFleetActive)}>
+          <Car className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.fleet')}</span>
         </button>
       </nav>
 
-      {/* INSIGHTS Section */}
-      <div className="mt-5 mb-1">
-        <NavSectionHeader section="insights" label={t('nav.insights')} />
-      </div>
-      {expandedSections.includes('insights') && (
-        <nav className="space-y-0.5 mb-1 animate-fade-up">
-          {/* V4.6.93 — `Financial Insights` is the dashboard-finances replacement.
-              Real `/organizations/:orgId/invoices*` data is aggregated inside
-              `FinancialInsightsView`, which now lives next to the other
-              insights pages instead of inside the Dashboard. */}
-          <button onClick={() => handleViewChange('financial-insights')} className={subNavBtnClass(currentView === 'financial-insights')}>
-            <DollarSign className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.financialInsights')}</span>
-          </button>
-          <button onClick={() => handleViewChange('fleet-condition')} className={subNavBtnClass(currentView === 'fleet-condition')}>
-            <Activity className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.fleetCondition')}</span>
-          </button>
-        </nav>
-      )}
-
-      {/* FINANCE Section */}
+      {/* FINANCE */}
       <div className="mt-5 mb-1">
         <NavSectionHeader section="finance" label={t('nav.finance')} />
       </div>
       {expandedSections.includes('finance') && (
         <nav className="space-y-0.5 mb-1 animate-fade-up">
+          <button onClick={() => handleViewChange('financial-insights')} className={subNavBtnClass(currentView === 'financial-insights')}>
+            <DollarSign className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.financialInsights')}</span>
+          </button>
           <button onClick={() => handleViewChange('invoices')} className={subNavBtnClass(currentView === 'invoices')}>
             <FileText className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.invoices')}</span>
-          </button>
-          <button onClick={() => handleViewChange('fines')} className={subNavBtnClass(currentView === 'fines')}>
-            <AlertCircle className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.fines')}</span>
           </button>
           <button onClick={() => handleViewChange('price-tariffs')} className={subNavBtnClass(currentView === 'price-tariffs')}>
             <Tag className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.pricingTariffs')}</span>
@@ -204,24 +196,9 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
         </nav>
       )}
 
-      {/* TASKS Section */}
+      {/* AUTOMATION */}
       <div className="mt-5 mb-1">
-        <NavSectionHeader section="tasks" label={t('nav.tasks')} />
-      </div>
-      {expandedSections.includes('tasks') && (
-        <nav className="space-y-0.5 mb-1 animate-fade-up">
-          <button onClick={() => handleViewChange('tasks')} className={subNavBtnClass(currentView === 'tasks')}>
-            <ListTodo className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.taskManagement')}</span>
-          </button>
-          <button onClick={() => handleViewChange('vendor-management')} className={subNavBtnClass(currentView === 'vendor-management')}>
-            <Briefcase className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.vendorManagement')}</span>
-          </button>
-        </nav>
-      )}
-
-      {/* AUTOMATION Section */}
-      <div className="mt-5 mb-1">
-        <NavSectionHeader section="automation" label={t('nav.automation')} />
+        <NavSectionHeader section="automation" label={t('nav.automation')} badge={t('nav.comingSoon')} />
       </div>
       {expandedSections.includes('automation') && (
         <nav className="space-y-0.5 mb-1 animate-fade-up">
@@ -237,7 +214,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
         </nav>
       )}
 
-      {/* INTEGRATIONS Section */}
+      {/* INTEGRATION */}
       <div className="mt-5 mb-1">
         <NavSectionHeader section="integrations" label={t('nav.integrations')} badge={t('nav.comingSoon')} />
       </div>
@@ -260,7 +237,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
         </nav>
       )}
 
-      {/* ADMINISTRATION Section */}
+      {/* ADMINISTRATION */}
       <div className="mt-5 mb-1">
         <NavSectionHeader section="administration" label={t('nav.administration')} />
       </div>
@@ -275,14 +252,14 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
           <button onClick={() => { onSettingsTabChange?.('users'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'users')}>
             <UserCog className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.usersRoles')}</span>
           </button>
+          <button onClick={() => handleViewChange('stations')} className={subNavBtnClass(currentView === 'stations')}>
+            <MapPin className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.stations')}</span>
+          </button>
           <button onClick={() => { onSettingsTabChange?.('fleet-connection'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'fleet-connection')}>
             <Wifi className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.fleetConnectivity')}</span>
           </button>
           <button onClick={() => { onSettingsTabChange?.('data-authorization'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'data-authorization')}>
             <Lock className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.dataAuthorization')}</span>
-          </button>
-          <button onClick={() => { onSettingsTabChange?.('legal-documents'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'legal-documents')}>
-            <FileText className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.legalDocuments')}</span>
           </button>
           <button onClick={() => { onSettingsTabChange?.('billing'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'billing')}>
             <CreditCard className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.billingSubscription')}</span>
@@ -303,9 +280,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
       {/* Divider */}
       <div className="my-4 h-px bg-border/60" />
 
-      {/* Quick Actions — V4.6.86: replaces 4 AI-gradient buttons with a primary brand CTA
-          + restrained neo-press secondary tiles. Hierarchy is now clear: one primary,
-          one positive, two neutral. */}
+      {/* Quick Actions */}
       <div className="pb-2">
         <div className={`${sectionLabelClass} mb-2 px-1 text-center`}>
           {t('nav.quickActions')}
@@ -374,11 +349,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
           </button>
 
           {/* Centered Logo */}
-          <img
-            src={synqdriveLogo}
-            alt="SYNQDRIVE"
-            className="h-[25px] w-auto object-contain"
-          />
+          <SynqLogo className="h-[25px] w-auto object-contain" />
 
           {/* Spacer for symmetry */}
           <div className="w-10" />
@@ -418,7 +389,7 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
                 has an aspect ratio of ~5.7:1 (1024x180). h-[27px] keeps the horizontal footprint
                 at ~154px so the brand row stays visually identical to the previous logo inside
                 the 260px sidebar. */}
-            <img src={synqdriveLogo} alt="SYNQDRIVE" className="h-[27px] w-auto object-contain" />
+            <SynqLogo className="h-[27px] w-auto object-contain" />
           </div>
         )}
 
@@ -431,7 +402,6 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
             }}
           >
             <nav className="space-y-0.5 w-full flex flex-col items-center">
-              {/* Main nav icons */}
               <button onClick={() => handleViewChange('dashboard')} className={collapsedBtnClass(currentView === 'dashboard')}>
                 <LayoutDashboard className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.dashboard')} />
@@ -440,75 +410,51 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
                 <Calendar className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.bookings')} />
               </button>
-              <button onClick={() => handleViewChange('fleet')} className={collapsedBtnClass(currentView === 'fleet')}>
-                <Car className="w-[14px] h-[14px]" />
-                <CollapsedTooltip label={t('nav.fleet')} />
-              </button>
-              <button onClick={() => handleViewChange('customers')} className={collapsedBtnClass(currentView === 'customers')}>
+              <button onClick={() => handleViewChange('customers')} className={collapsedBtnClass(currentView === 'customers' || currentView === 'customer-detail')}>
                 <Users className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.customers')} />
               </button>
-              <button onClick={() => handleViewChange('stations')} className={collapsedBtnClass(currentView === 'stations')}>
-                <MapPin className="w-[14px] h-[14px]" />
-                <CollapsedTooltip label={t('nav.stations')} />
+              <button onClick={() => handleViewChange('tasks')} className={collapsedBtnClass(currentView === 'tasks')}>
+                <ListTodo className="w-[14px] h-[14px]" />
+                <CollapsedTooltip label={t('nav.tasks')} />
+              </button>
+              <button onClick={handleFleetNav} className={collapsedBtnClass(isFleetActive)}>
+                <Car className="w-[14px] h-[14px]" />
+                <CollapsedTooltip label={t('nav.fleet')} />
               </button>
 
-              {/* Divider */}
-              <div className={`w-4 h-px my-1.5 bg-border`} />
+              <div className="w-4 h-px my-1.5 bg-border" />
 
-              {/* Insights */}
               <button onClick={() => handleViewChange('financial-insights')} className={collapsedBtnClass(currentView === 'financial-insights')}>
                 <DollarSign className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.financialInsights')} />
               </button>
-              <button onClick={() => handleViewChange('fleet-condition')} className={collapsedBtnClass(currentView === 'fleet-condition')}>
-                <Activity className="w-[14px] h-[14px]" />
-                <CollapsedTooltip label={t('nav.fleetCondition')} />
-              </button>
-
-              {/* Divider */}
-              <div className={`w-4 h-px my-1.5 bg-border`} />
-
-              {/* Finance */}
               <button onClick={() => handleViewChange('invoices')} className={collapsedBtnClass(currentView === 'invoices')}>
                 <FileText className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.invoices')} />
-              </button>
-              <button onClick={() => handleViewChange('fines')} className={collapsedBtnClass(currentView === 'fines')}>
-                <AlertCircle className="w-[14px] h-[14px]" />
-                <CollapsedTooltip label={t('nav.fines')} />
               </button>
               <button onClick={() => handleViewChange('price-tariffs')} className={collapsedBtnClass(currentView === 'price-tariffs')}>
                 <Tag className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.pricingTariffs')} />
               </button>
 
-              {/* Divider */}
-              <div className={`w-4 h-px my-1.5 bg-border`} />
+              <div className="w-4 h-px my-1.5 bg-border" />
 
-              {/* Tasks */}
-              <button onClick={() => handleViewChange('tasks')} className={collapsedBtnClass(currentView === 'tasks')}>
-                <ListTodo className="w-[14px] h-[14px]" />
-                <CollapsedTooltip label={t('nav.taskManagement')} />
-              </button>
-
-              {/* Divider */}
-              <div className={`w-4 h-px my-1.5 bg-border`} />
-
-              {/* Admin */}
               <button onClick={() => { onSettingsTabChange?.('company'); handleViewChange('settings'); }} className={collapsedBtnClass(currentView === 'settings')}>
                 <Settings className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.administration')} />
               </button>
+              <button onClick={() => handleViewChange('stations')} className={collapsedBtnClass(currentView === 'stations')}>
+                <MapPin className="w-[14px] h-[14px]" />
+                <CollapsedTooltip label={t('nav.stations')} />
+              </button>
 
-              {/* Support */}
               <button onClick={() => handleViewChange('support')} className={collapsedBtnClass(currentView === 'support')}>
                 <Headphones className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.support')} />
               </button>
             </nav>
 
-            {/* Collapsed Quick Actions — V4.6.86: brand CTA + success tone */}
             <div className="mt-auto pt-3 w-full flex flex-col items-center gap-1.5 border-t border-sidebar-border">
               <button
                 onClick={() => onNewBookingClick?.()}
@@ -526,14 +472,30 @@ export function Sidebar({ isDarkMode, onNewTaskClick, onNewBookingClick, current
                 <CheckSquare className="w-3.5 h-3.5" />
                 <CollapsedTooltip label={t('nav.newTask')} />
               </button>
+              <button
+                onClick={() => handleViewChange('document-upload')}
+                className="sq-3d-btn sq-3d-btn--neutral w-8 h-8 rounded-lg flex items-center justify-center relative group"
+                aria-label={t('nav.upload')}
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <CollapsedTooltip label={t('nav.upload')} />
+              </button>
+              <button
+                onClick={() => handleViewChange('ai-assistant')}
+                className="sq-3d-btn sq-3d-btn--ai w-8 h-8 rounded-lg flex items-center justify-center relative group"
+                aria-label={t('nav.aiAssistant')}
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <CollapsedTooltip label={t('nav.aiAssistant')} />
+              </button>
             </div>
           </div>
         ) : (
           /* Expanded: full navigation */
-          <div className="flex-1 overflow-y-auto px-[18px] py-4 scrollbar-thin scrollbar-thumb-gray-300/50 scrollbar-track-transparent"
+          <div className="flex-1 overflow-y-auto px-[18px] py-4 scrollbar-thin scrollbar-thumb-border/50 scrollbar-track-transparent"
             style={{
               scrollbarWidth: 'thin',
-              scrollbarColor: isDarkMode ? 'rgba(100,100,100,0.3) transparent' : 'rgba(209, 213, 219, 0.5) transparent'
+              scrollbarColor: 'color-mix(in srgb, var(--border) 50%, transparent) transparent',
             }}
           >
             <div className="max-w-[260px] mx-auto">

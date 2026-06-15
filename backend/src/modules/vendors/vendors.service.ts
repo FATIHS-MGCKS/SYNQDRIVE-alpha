@@ -252,7 +252,7 @@ export class VendorsService {
   ) {
     await this.assertVendor(orgId, vendorId);
     const existing = await this.prisma.vendorVehicle.findFirst({
-      where: { id: linkId, vendorId },
+      where: this.scopedLinkWhere(orgId, vendorId, linkId),
       select: { id: true, vehicleId: true, relationType: true },
     });
     if (!existing) throw new NotFoundException('Vehicle link not found');
@@ -306,7 +306,7 @@ export class VendorsService {
   ) {
     await this.assertVendor(orgId, vendorId);
     const existing = await this.prisma.vendorVehicle.findFirst({
-      where: { id: linkId, vendorId },
+      where: this.scopedLinkWhere(orgId, vendorId, linkId),
       select: { id: true, vehicleId: true },
     });
     if (!existing) throw new NotFoundException('Vehicle link not found');
@@ -419,6 +419,16 @@ export class VendorsService {
   }
 
   // ── helpers ──────────────────────────────────────────────────────────────────
+
+  /** Vendor↔vehicle link must belong to the same org on both sides. */
+  private scopedLinkWhere(orgId: string, vendorId: string, linkId: string) {
+    return {
+      id: linkId,
+      vendorId,
+      vendor: { organizationId: orgId },
+      vehicle: { organizationId: orgId },
+    };
+  }
 
   private async assertVendor(orgId: string, id: string) {
     const vendor = await this.prisma.vendor.findFirst({

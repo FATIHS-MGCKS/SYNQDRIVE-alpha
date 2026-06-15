@@ -17,18 +17,17 @@ import { DashboardView } from './components/DashboardView';
 import { BookingsView } from './components/BookingsView';
 import { FinancialInsightsView } from './components/FinancialInsightsView';
 import { HealthErrorsView } from './components/HealthErrorsView';
-import { FleetView } from './components/FleetView';
+import { FleetHubView, type FleetTab } from './components/FleetHubView';
 import { DamagesView } from './components/DamagesView';
 import { DocumentsView } from './components/DocumentsView';
 import { CustomersView } from './components/CustomersView';
 import { SettingsView, StationsTab } from './components/SettingsView';
 import { NewBookingView } from './components/NewBookingView';
 import { FleetConditionDetailView } from './components/FleetConditionDetailView';
-import { FleetConditionView, type ConditionCategory } from './components/FleetConditionView';
+import type { ConditionCategory } from './components/FleetConditionView';
 import { FinanceView } from './components/FinanceView';
 import type { FinanceTab } from './components/FinanceView';
-import { TasksSectionView } from './components/TasksSectionView';
-import type { TasksSectionTab } from './components/TasksSectionView';
+import { TasksView } from './components/TasksView';
 import { VendorDetailView } from './components/VendorDetailView';
 import { CustomerDetailView } from './components/CustomerDetailView';
 import { VehicleBookingsView } from './components/VehicleBookingsView';
@@ -48,6 +47,7 @@ import { useVehicleLiveMapStore } from './stores/useVehicleLiveMapStore';
 import { useShallow } from 'zustand/react/shallow';
 import { LanguageProvider } from './i18n/LanguageContext';
 import { DocumentUploadView } from './components/DocumentUploadView';
+import { PageHeader, HealthStatusChip, StatusChip } from '../components/patterns';
 import { AIAssistantView } from './components/AIAssistantView';
 import { SupportView } from './components/SupportView';
 import { HelpCenterView } from './components/HelpCenterView';
@@ -1006,31 +1006,15 @@ function VehicleHealthChip({ vehicleId }: { vehicleId: string | null }) {
   }
   const title = reasons.join(' · ') || undefined;
   if (status === 'Critical') {
-    return (
-      <span title={title} className="sq-chip sq-chip-critical">
-        <Icon name="heart" className="w-3 h-3" /> Critical
-      </span>
-    );
+    return <HealthStatusChip state="critical" label="Critical" icon={<Icon name="heart" className="w-3 h-3" />} title={title} />;
   }
   if (status === 'Warning') {
-    return (
-      <span title={title} className="sq-chip sq-chip-warning">
-        <Icon name="heart" className="w-3 h-3" /> Warning
-      </span>
-    );
+    return <HealthStatusChip state="warning" label="Warning" icon={<Icon name="heart" className="w-3 h-3" />} title={title} />;
   }
   if (status === 'Good Health') {
-    return (
-      <span title={title} className="sq-chip sq-chip-success">
-        <Icon name="heart" className="w-3 h-3" /> Good Health
-      </span>
-    );
+    return <HealthStatusChip state="good" label="Good Health" icon={<Icon name="heart" className="w-3 h-3" />} title={title} />;
   }
-  return (
-    <span title="Loading rental health…" className="sq-chip sq-chip-neutral">
-      <Icon name="heart" className="w-3 h-3" /> Loading…
-    </span>
-  );
+  return <HealthStatusChip state="unknown" label="Loading…" icon={<Icon name="heart" className="w-3 h-3" />} title="Loading rental health…" />;
 }
 
 function RentalAppContent() {
@@ -1043,7 +1027,7 @@ function RentalAppContent() {
   const [isCleaningDropdownOpen, setIsCleaningDropdownOpen] = useState(false);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [autoOpenNewTask, setAutoOpenNewTask] = useState(false);
-  const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-management' | 'vendor-detail' | 'invoices' | 'fines' | 'price-tariffs' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'vehicle-bookings' | 'vehicle-tasks' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'fleet-condition' | 'fleet-condition-detail' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant'>('dashboard');
+  const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'price-tariffs' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'vehicle-bookings' | 'vehicle-tasks' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'fleet-condition-detail' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant'>('dashboard');
   const [detailCustomer, setDetailCustomer] = useState<any>(null);
   const [detailVendorId, setDetailVendorId] = useState<string | null>(null);
   // V4.6.99 — Pending Booking-Detail-Id für die Cross-View-Navigation
@@ -1055,8 +1039,8 @@ function RentalAppContent() {
   const [settingsTab, setSettingsTab] = useState<'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents'>('company');
   const [conditionDrillVehicleId, setConditionDrillVehicleId] = useState<string | null>(null);
   const [conditionDrillCategory, setConditionDrillCategory] = useState<ConditionCategory>('tires');
+  const [fleetTab, setFleetTab] = useState<FleetTab>('status');
   const [financeTab, setFinanceTab] = useState<FinanceTab>('invoices');
-  const [tasksSectionTab, setTasksSectionTab] = useState<TasksSectionTab>('tasks');
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>(null);
   // Poll live telemetry on every vehicle-detail tab that shows the header badge
   // (Overview, Trips, Health, Damages, Documents, Bookings, Task List). Before
@@ -1211,6 +1195,26 @@ function RentalAppContent() {
 
   const handleBackToFleet = () => {
     setCurrentView('fleet');
+    setFleetTab('status');
+  };
+
+  /** Central view router — maps legacy views to the new IA. */
+  const handleViewChange = (view: string) => {
+    if (view === 'fleet-condition') {
+      setCurrentView('fleet');
+      setFleetTab('health');
+      return;
+    }
+    if (view === 'vendor-management') {
+      setCurrentView('fleet');
+      setFleetTab('service');
+      return;
+    }
+    if (view === 'fines') return;
+    if (view === 'fleet') {
+      setFleetTab('status');
+    }
+    setCurrentView(view as typeof currentView);
   };
 
   // Handle station change
@@ -1248,11 +1252,11 @@ function RentalAppContent() {
       <VehicleLiveTelemetryBinder vehicleId={liveTelemetryVehicleId} orgId={orgId} />
       <Toaster position="top-right" richColors closeButton theme={isDarkMode ? 'dark' : 'light'} />
       <Sidebar 
-        isDarkMode={isDarkMode} 
-        onNewTaskClick={() => { setCurrentView('tasks'); setTasksSectionTab('tasks'); setAutoOpenNewTask(true); }}
-        onNewBookingClick={() => setCurrentView('new-booking')}
+        onNewTaskClick={() => { handleViewChange('tasks'); setAutoOpenNewTask(true); }}
+        onNewBookingClick={() => handleViewChange('new-booking')}
         currentView={currentView}
-        onViewChange={setCurrentView}
+        onViewChange={handleViewChange}
+        onFleetTabChange={setFleetTab}
         settingsTab={settingsTab}
         onSettingsTabChange={setSettingsTab}
         isCollapsed={isSidebarCollapsed}
@@ -1264,69 +1268,54 @@ function RentalAppContent() {
             margins stay symmetric now that the right sidebar is gone. */}
         <div className="flex-1 overflow-auto px-5 sm:px-7 lg:px-[100px] pt-4 lg:pt-6 pb-8 text-foreground">
           <div className="max-w-[1440px] mx-auto text-[13px]">
-            <TopBar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} currentView={currentView} settingsTab={settingsTab} selectedVehicle={selectedVehicle} activeBookingRef={activeBookingRef} detailCustomerId={detailCustomerId} onViewChange={setCurrentView} onVehicleSelect={setSelectedVehicle} onSettingsTabChange={setSettingsTab} onFinanceTabChange={setFinanceTab} onTasksTabChange={setTasksSectionTab} />
+            <TopBar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} currentView={currentView} fleetTab={fleetTab} settingsTab={settingsTab} selectedVehicle={selectedVehicle} activeBookingRef={activeBookingRef} detailCustomerId={detailCustomerId} onViewChange={handleViewChange} onVehicleSelect={setSelectedVehicle} onSettingsTabChange={setSettingsTab} onFinanceTabChange={setFinanceTab} onFleetTabChange={setFleetTab} />
         {/* Header Section - Only show for vehicle detail views */}
-        {showVehicleDetailChrome && (
+        {showVehicleDetailChrome && selectedVehicle && (
         <div className="mb-3 animate-fade-up">
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 min-w-0">
-              <button
-                onClick={handleBackToFleet}
-                className="sq-press p-1.5 rounded-xl border border-border/60 bg-card text-muted-foreground hover:text-foreground hover:bg-muted"
-                title="Back to Fleet"
-                aria-label="Back to Fleet"
-              >
-                <Icon name="arrow-left" className="w-4 h-4" />
-              </button>
-              <div className="flex items-center justify-center shrink-0" style={{ width: 28, height: 28 }}>
-                <BrandLogo
-                  brand={getBrandFromModel(selectedVehicle?.make || selectedVehicle?.model || '')}
-                  size={24}
-                  isDarkMode={isDarkMode}
-                />
-              </div>
-              <h1 className="text-[12px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground truncate">
-                {selectedVehicle ? `${selectedVehicle.make ?? ''} ${selectedVehicle.model} ${selectedVehicle.year}`.trim() : '—'}
-              </h1>
-
-              {/* Inline meta: license · station (flat, no card wrappers) */}
-              <div className="flex items-center gap-1.5 shrink-0 pl-1.5 ml-0.5 border-l border-border/60">
-                <span
-                  className="text-[11px] font-semibold tabular-nums text-foreground"
-                  title="License"
+          <PageHeader
+            eyebrow={[selectedVehicle.license, selectedVehicle.station].filter(Boolean).join(' · ') || 'Vehicle'}
+            title={`${selectedVehicle.make ?? ''} ${selectedVehicle.model} ${selectedVehicle.year}`.trim()}
+            icon={(
+              <BrandLogo
+                brand={getBrandFromModel(selectedVehicle.make || selectedVehicle.model || '')}
+                size={24}
+              />
+            )}
+            actions={(
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  onClick={handleBackToFleet}
+                  className="sq-press p-1.5 rounded-xl border border-border/60 bg-card text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+                  title="Back to Fleet"
+                  aria-label="Back to Fleet"
                 >
-                  {selectedVehicle?.license || '—'}
-                </span>
-                <span aria-hidden className="text-muted-foreground/60">·</span>
-                <span
-                  className="text-[11px] font-medium text-muted-foreground"
-                  title="Station"
-                >
-                  {selectedVehicle?.station || '—'}
-                </span>
-              </div>
-
-              <div className="flex gap-1.5">
+                  <Icon name="arrow-left" className="w-4 h-4" />
+                </button>
                 <div className="relative">
                 <button
                   onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-                  className={`sq-press sq-chip ${
+                  className={`sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] ${
                     vehicleStatus === 'Available'
-                      ? 'sq-chip-success'
+                      ? ''
                       : vehicleStatus === 'Manual Block'
-                        ? 'sq-chip-critical'
-                        : 'sq-chip-warning'
+                        ? ''
+                        : ''
                   }`}
                 >
-                  {vehicleStatus === 'Available' ? (
-                    <Icon name="check-circle" className="w-3 h-3" />
-                  ) : vehicleStatus === 'Manual Block' ? (
-                    <Icon name="x-circle" className="w-3 h-3" />
-                  ) : (
-                    <Icon name="wrench" className="w-3 h-3" />
-                  )}
-                  {vehicleStatus}
-                  <Icon name="chevron-down" className={`w-3 h-3 ml-0.5 transition-transform duration-200 ${isStatusDropdownOpen ? 'rotate-180' : ''}`} />
+                  <StatusChip
+                    tone={vehicleStatus === 'Available' ? 'success' : vehicleStatus === 'Manual Block' ? 'critical' : 'warning'}
+                    icon={
+                      vehicleStatus === 'Available' ? (
+                        <Icon name="check-circle" className="w-3 h-3" />
+                      ) : vehicleStatus === 'Manual Block' ? (
+                        <Icon name="x-circle" className="w-3 h-3" />
+                      ) : (
+                        <Icon name="wrench" className="w-3 h-3" />
+                      )
+                    }
+                  >
+                    {vehicleStatus}
+                  </StatusChip>
                 </button>
                 
                 {isStatusDropdownOpen && (
@@ -1356,15 +1345,17 @@ function RentalAppContent() {
                 )}
                 </div>
 
-                {/* Cleaning Status Dropdown */}
                 <div className="relative">
                 <button
                   onClick={() => setIsCleaningDropdownOpen(!isCleaningDropdownOpen)}
-                  className={`sq-press sq-chip ${cleaningStatus === 'Clean' ? 'sq-chip-info' : 'sq-chip-critical'}`}
+                  className="sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
                 >
-                  <Icon name="sparkles" className="w-3 h-3" />
-                  {cleaningStatus}
-                  <Icon name="chevron-down" className={`w-3 h-3 ml-0.5 transition-transform duration-200 ${isCleaningDropdownOpen ? 'rotate-180' : ''}`} />
+                  <StatusChip
+                    tone={cleaningStatus === 'Clean' ? 'info' : 'critical'}
+                    icon={<Icon name="sparkles" className="w-3 h-3" />}
+                  >
+                    {cleaningStatus}
+                  </StatusChip>
                 </button>
 
                 {isCleaningDropdownOpen && (
@@ -1387,11 +1378,11 @@ function RentalAppContent() {
                 )}
                 </div>
 
-                <VehicleHealthChip vehicleId={selectedVehicle?.id ?? null} />
+                <VehicleHealthChip vehicleId={selectedVehicle.id ?? null} />
+                <VehicleConnectionBadge />
               </div>
-            </div>
-            <VehicleConnectionBadge />
-          </div>
+            )}
+          />
         </div>
         )}
 
@@ -1560,7 +1551,7 @@ function RentalAppContent() {
               const v = fleetVehicles.find((fv) => fv.id === vehicleId);
               if (v) { setSelectedVehicle(v); setCurrentView('overview'); }
             }}
-            onOpenRentalView={(view) => setCurrentView(view)}
+            onOpenRentalView={(view) => handleViewChange(view)}
             onOpenBookingById={(bookingId) => {
               setPendingBookingDetailId(bookingId);
               setCurrentView('bookings');
@@ -1590,11 +1581,21 @@ function RentalAppContent() {
              fallbacks. Lives next to other Insights pages, not under Finance. */
           <FinancialInsightsView isDarkMode={isDarkMode} />
         ) : currentView === 'fleet' ? (
-          <FleetView onVehicleSelect={handleVehicleSelect} />
+          <FleetHubView
+            activeTab={fleetTab}
+            onTabChange={setFleetTab}
+            onVehicleSelect={handleVehicleSelect}
+            onDrillDown={(vehicleId, category) => {
+              setConditionDrillVehicleId(vehicleId);
+              setConditionDrillCategory(category);
+              setCurrentView('fleet-condition-detail');
+            }}
+            onOpenVendorDetail={(vendor) => { setDetailVendorId(vendor.id); setCurrentView('vendor-detail'); }}
+          />
         ) : currentView === 'damages' ? (
           <DamagesView isDarkMode={isDarkMode} vehicleId={selectedVehicle?.id} />
         ) : currentView === 'documents' ? (
-          <DocumentsView isDarkMode={isDarkMode} vehicle={selectedVehicle} />
+          <DocumentsView vehicle={selectedVehicle} />
         ) : currentView === 'vehicle-bookings' ? (
           <VehicleBookingsView isDarkMode={isDarkMode} vehicle={selectedVehicle} />
         ) : currentView === 'vehicle-tasks' ? (
@@ -1607,45 +1608,32 @@ function RentalAppContent() {
             onBack={() => setCurrentView('customers')}
             onUpdateCustomer={(updated) => setDetailCustomer(updated)}
           />
-        ) : currentView === 'invoices' || currentView === 'fines' || currentView === 'price-tariffs' ? (
+        ) : currentView === 'invoices' || currentView === 'price-tariffs' ? (
           <FinanceView
             isDarkMode={isDarkMode}
             activeTab={currentView as FinanceTab}
-            onTabChange={(tab) => { setFinanceTab(tab); setCurrentView(tab); }}
+            onTabChange={(tab) => { setFinanceTab(tab); handleViewChange(tab); }}
             tariffs={tariffs}
             onTariffsChange={setTariffs}
           />
         ) : currentView === 'vendor-detail' && detailVendorId ? (
           <VendorDetailView
-            isDarkMode={isDarkMode}
             vendorId={detailVendorId}
-            onBack={() => { setCurrentView('vendor-management'); setDetailVendorId(null); }}
+            onBack={() => { setCurrentView('fleet'); setFleetTab('service'); setDetailVendorId(null); }}
           />
-        ) : currentView === 'tasks' || currentView === 'vendor-management' ? (
-          <TasksSectionView
-            isDarkMode={isDarkMode}
-            activeTab={currentView as TasksSectionTab}
-            onTabChange={(tab) => { setTasksSectionTab(tab); setCurrentView(tab); }}
+        ) : currentView === 'tasks' ? (
+          <TasksView
             autoOpenNewTask={autoOpenNewTask}
             onAutoOpenConsumed={() => setAutoOpenNewTask(false)}
             highlightedTaskId={highlightedTaskId}
             onHighlightConsumed={() => setHighlightedTaskId(null)}
-            onOpenVendorDetail={(vendor) => { setDetailVendorId(vendor.id); setCurrentView('vendor-detail'); }}
           />
         ) : currentView === 'fleet-condition-detail' && conditionDrillVehicleId ? (
           <FleetConditionDetailView
             isDarkMode={isDarkMode}
             vehicleId={conditionDrillVehicleId}
             category={conditionDrillCategory}
-            onBack={() => setCurrentView('fleet-condition')}
-          />
-        ) : currentView === 'fleet-condition' ? (
-          <FleetConditionView
-            onDrillDown={(vehicleId, category) => {
-              setConditionDrillVehicleId(vehicleId);
-              setConditionDrillCategory(category);
-              setCurrentView('fleet-condition-detail');
-            }}
+            onBack={() => { setCurrentView('fleet'); setFleetTab('health'); }}
           />
         ) : currentView === 'document-upload' ? (
           <DocumentUploadView isDarkMode={isDarkMode} />

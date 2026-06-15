@@ -45,7 +45,7 @@ interface OrgUser {
 interface Station {
   id: string;
   name: string;
-  city?: string;
+  city?: string | null;
 }
 
 type WizardStep = 'role' | 'personal' | 'settings' | 'permissions' | 'account';
@@ -62,12 +62,12 @@ const PERMISSION_MODULES: PermissionModule[] = [
   { key: 'fleet', label: 'Fleet', icon: Car, group: 'Operations' },
   { key: 'customers', label: 'Customers', icon: Users, group: 'Operations' },
   { key: 'stations', label: 'Stations', icon: MapPin, group: 'Operations' },
-  { key: 'fleet-condition', label: 'Fleet Condition', icon: Activity, group: 'Insights' },
+  { key: 'fleet-condition', label: 'Fleet — Health', icon: Activity, group: 'Fleet' },
   { key: 'invoices', label: 'Invoices', icon: FileText, group: 'Finance' },
   { key: 'fines', label: 'Fines', icon: AlertCircle, group: 'Finance' },
   { key: 'price-tariffs', label: 'Pricing & Tariffs', icon: Tag, group: 'Finance' },
   { key: 'tasks', label: 'Task Management', icon: ListTodo, group: 'Tasks' },
-  { key: 'vendor-management', label: 'Vendor Management', icon: Briefcase, group: 'Tasks' },
+  { key: 'vendor-management', label: 'Fleet — Service', icon: Briefcase, group: 'Fleet' },
   { key: 'ai-assistant', label: 'AI Assistant', icon: MessageSquare, group: 'Automation' },
   { key: 'workflow-automation', label: 'Workflow Automation', icon: Zap, group: 'Automation' },
   { key: 'document-upload', label: 'Document Upload', icon: Upload, group: 'Automation' },

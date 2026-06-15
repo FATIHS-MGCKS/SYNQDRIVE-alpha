@@ -6,6 +6,7 @@ import { Icon } from './ui/Icon';
 import { useState, useEffect, useCallback } from 'react';
 
 import { EntityTasksSection } from './EntityTasksSection';
+import { PageHeader, StatusChip, EmptyState, SkeletonCard } from '../../components/patterns';
 import { api } from '../../lib/api';
 import type {
   Vendor, VendorCategory, VendorSourceType, VendorVehicleRelationType,
@@ -77,7 +78,6 @@ const TABS: { value: DetailTab; label: string }[] = [
 // ── types ──────────────────────────────────────────────
 
 interface VendorDetailViewProps {
-  isDarkMode: boolean;
   vendorId: string;
   onBack: () => void;
 }
@@ -119,10 +119,15 @@ const emptyLinkForm: LinkFormData = {
 
 // ── component ──────────────────────────────────────────
 
-export function VendorDetailView({ isDarkMode, vendorId, onBack }: VendorDetailViewProps) {
+function formatRecordDate(value: unknown): string | null {
+  if (value == null || value === '') return null;
+  const d = new Date(String(value));
+  return Number.isFinite(d.getTime()) ? d.toLocaleDateString('de-DE') : null;
+}
+
+export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
   const { orgId, hasPermission } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
-  const isDark = isDarkMode;
   const canManage = hasPermission('vendor-management', 'write');
   const canViewFinancials = hasPermission('vendor-management', 'read');
 
@@ -334,18 +339,30 @@ export function VendorDetailView({ isDarkMode, vendorId, onBack }: VendorDetailV
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Icon name="loader-2" className={`w-6 h-6 animate-spin ${'text-muted-foreground/60'}`} />
+      <div className="space-y-4">
+        <SkeletonCard />
+        <SkeletonCard />
       </div>
     );
   }
 
   if (!vendor) {
     return (
-      <div className={`${cardClass} p-8 text-center`}>
-        <Icon name="store" className={`w-8 h-8 mx-auto mb-3 ${'text-muted-foreground/60'}`} />
-        <p className={`text-sm font-medium ${'text-foreground'}`}>Vendor not found</p>
-        <button onClick={onBack} className="mt-3 text-xs text-[color:var(--brand)] hover:opacity-80">Go back</button>
+      <div className={cardClass}>
+        <EmptyState
+          icon={<Icon name="store" className="h-5 w-5" />}
+          title="Vendor not found"
+          description="This vendor may have been removed or you may not have access."
+          action={(
+            <button
+              type="button"
+              onClick={onBack}
+              className="text-xs font-medium text-[color:var(--brand)] hover:opacity-80"
+            >
+              Go back
+            </button>
+          )}
+        />
       </div>
     );
   }
@@ -475,35 +492,40 @@ export function VendorDetailView({ isDarkMode, vendorId, onBack }: VendorDetailV
 
   return (
     <div className="space-y-5">
-      {/* Back + header */}
-      <div className="flex items-center gap-3">
-        <button onClick={onBack} className={`p-2 rounded-lg transition ${'hover:bg-muted text-muted-foreground'}`}>
-          <Icon name="arrow-left" className="w-4 h-4" />
-        </button>
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${'bg-muted'}`}>
-          <CatIcon className={`w-5 h-5 ${'text-[color:var(--brand)]'}`} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h2 className={`text-lg font-bold truncate ${'text-foreground'}`}>{vendor.name}</h2>
-            {!vendor.isActive && (
-              <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${'sq-tone-neutral'}`}>Inactive</span>
-            )}
-            {vendor.source === 'MAPBOX' && (
-              <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${'sq-tone-brand'}`}>Mapbox</span>
-            )}
-          </div>
-          <p className={`text-[11px] ${'text-muted-foreground'}`}>{getCategoryLabel(vendor.category)}</p>
-        </div>
-        {canManage && (
-          <button onClick={startEdit}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition ${
-              'bg-muted text-foreground hover:bg-accent'
-            }`}>
-            <Icon name="edit-3" className="w-3.5 h-3.5" /> Edit
+      <PageHeader
+        eyebrow={(
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex items-center gap-1.5 p-1.5 rounded-lg transition hover:bg-muted text-muted-foreground hover:text-foreground"
+          >
+            <Icon name="arrow-left" className="w-4 h-4" />
+            <span>Back to vendors</span>
           </button>
         )}
-      </div>
+        title={vendor.name}
+        description={getCategoryLabel(vendor.category)}
+        icon={<CatIcon className="w-4 h-4 text-[color:var(--brand)]" />}
+        status={(
+          <>
+            {!vendor.isActive && (
+              <StatusChip tone="watch">Inactive</StatusChip>
+            )}
+            {vendor.source === 'MAPBOX' && (
+              <StatusChip tone="info">Mapbox</StatusChip>
+            )}
+          </>
+        )}
+        actions={canManage ? (
+          <button
+            type="button"
+            onClick={startEdit}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition bg-muted text-foreground hover:bg-accent"
+          >
+            <Icon name="edit-3" className="w-3.5 h-3.5" /> Edit
+          </button>
+        ) : undefined}
+      />
 
       {/* Tab bar */}
       <div className={`flex items-center gap-1 overflow-x-auto border-b ${'border-border'}`}>
@@ -521,7 +543,7 @@ export function VendorDetailView({ isDarkMode, vendorId, onBack }: VendorDetailV
               }`}>
               {t.label}
               {count != null && count > 0 && (
-                <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full sq-tone-neutral">{count}</span>
+                <StatusChip tone="neutral" className="ml-1.5 text-[10px]">{count}</StatusChip>
               )}
               {active && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[color:var(--brand)] rounded-full" />}
             </button>
@@ -535,12 +557,12 @@ export function VendorDetailView({ isDarkMode, vendorId, onBack }: VendorDetailV
           <div className={`${cardClass} p-5`}>
             <h3 className={`text-xs font-semibold mb-4 ${'text-muted-foreground'}`}>Contact & Address</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {address && <InfoRow isDark={isDark} icon={MapPin} label="Address" value={address} />}
-              {vendor.phone && <InfoRow isDark={isDark} icon={Phone} label="Phone" value={vendor.phone} href={`tel:${vendor.phone}`} />}
-              {vendor.email && <InfoRow isDark={isDark} icon={Mail} label="Email" value={vendor.email} href={`mailto:${vendor.email}`} />}
-              {vendor.website && <InfoRow isDark={isDark} icon={Globe} label="Website" value={vendor.website} href={vendor.website.startsWith('http') ? vendor.website : `https://${vendor.website}`} external />}
+              {address && <InfoRow icon={MapPin} label="Address" value={address} />}
+              {vendor.phone && <InfoRow icon={Phone} label="Phone" value={vendor.phone} href={`tel:${vendor.phone}`} />}
+              {vendor.email && <InfoRow icon={Mail} label="Email" value={vendor.email} href={`mailto:${vendor.email}`} />}
+              {vendor.website && <InfoRow icon={Globe} label="Website" value={vendor.website} href={vendor.website.startsWith('http') ? vendor.website : `https://${vendor.website}`} external />}
               {(vendor.latitude != null && vendor.longitude != null) && (
-                <InfoRow isDark={isDark} icon={MapPin} label="Coordinates" value={`${vendor.latitude.toFixed(5)}, ${vendor.longitude.toFixed(5)}`} />
+                <InfoRow icon={MapPin} label="Coordinates" value={`${vendor.latitude.toFixed(5)}, ${vendor.longitude.toFixed(5)}`} />
               )}
             </div>
 
@@ -549,9 +571,7 @@ export function VendorDetailView({ isDarkMode, vendorId, onBack }: VendorDetailV
                 <h4 className={`text-[11px] font-medium mb-2 ${'text-muted-foreground'}`}>Service Areas</h4>
                 <div className="flex flex-wrap gap-1.5">
                   {vendor.serviceAreas.map((sa) => (
-                    <span key={sa} className={`px-2 py-1 rounded-md text-[10px] font-medium ${
-                      'sq-tone-info border border-transparent'
-                    }`}>{sa}</span>
+                    <StatusChip key={sa} tone="info">{sa}</StatusChip>
                   ))}
                 </div>
               </div>
@@ -564,10 +584,10 @@ export function VendorDetailView({ isDarkMode, vendorId, onBack }: VendorDetailV
                 <Icon name="user" className="w-3.5 h-3.5" /> Contact Person
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <InfoRow isDark={isDark} icon={User} label="Name" value={vendor.contactName} />
-                {vendor.contactRole && <InfoRow isDark={isDark} icon={Tag} label="Role" value={vendor.contactRole} />}
-                {vendor.contactPhone && <InfoRow isDark={isDark} icon={Phone} label="Phone" value={vendor.contactPhone} href={`tel:${vendor.contactPhone}`} />}
-                {vendor.contactEmail && <InfoRow isDark={isDark} icon={Mail} label="Email" value={vendor.contactEmail} href={`mailto:${vendor.contactEmail}`} />}
+                <InfoRow icon={User} label="Name" value={vendor.contactName} />
+                {vendor.contactRole && <InfoRow icon={Tag} label="Role" value={vendor.contactRole} />}
+                {vendor.contactPhone && <InfoRow icon={Phone} label="Phone" value={vendor.contactPhone} href={`tel:${vendor.contactPhone}`} />}
+                {vendor.contactEmail && <InfoRow icon={Mail} label="Email" value={vendor.contactEmail} href={`mailto:${vendor.contactEmail}`} />}
               </div>
               {vendor.contactNotes && <p className={`mt-3 text-[11px] ${'text-muted-foreground'}`}>{vendor.contactNotes}</p>}
             </div>
@@ -605,7 +625,21 @@ export function VendorDetailView({ isDarkMode, vendorId, onBack }: VendorDetailV
           </div>
 
           {vendor.linkedVehicles.length === 0 ? (
-            <p className={`text-[11px] ${'text-muted-foreground'}`}>No vehicles linked yet</p>
+            <EmptyState
+              compact
+              icon={<Icon name="car" className="h-5 w-5" />}
+              title="No vehicles linked yet"
+              description="Link fleet vehicles to track preferred workshops and service relationships."
+              action={canManage ? (
+                <button
+                  type="button"
+                  onClick={openCreateLink}
+                  className="inline-flex items-center gap-1 rounded-lg bg-muted px-2.5 py-1.5 text-[10px] font-medium text-foreground hover:bg-accent transition"
+                >
+                  <Icon name="plus" className="w-3 h-3" /> Link Vehicle
+                </button>
+              ) : undefined}
+            />
           ) : (
             <div className="space-y-1.5">
               {vendor.linkedVehicles.map((lv) => (
@@ -616,9 +650,9 @@ export function VendorDetailView({ isDarkMode, vendorId, onBack }: VendorDetailV
                         {lv.make} {lv.model} {lv.year ? `(${lv.year})` : ''}
                       </span>
                       <span className={`text-[10px] ${'text-muted-foreground'}`}>{lv.licensePlate ?? lv.vin}</span>
-                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${'sq-tone-neutral'}`}>{getRelationLabel(lv.relationType)}</span>
+                      <StatusChip tone="neutral">{getRelationLabel(lv.relationType)}</StatusChip>
                       {lv.isPreferred && (
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${'sq-tone-watch'}`}>Preferred</span>
+                        <StatusChip tone="watch">Preferred</StatusChip>
                       )}
                       {lv.priority != null && (
                         <span className={`text-[9px] ${'text-muted-foreground'}`}>Prio {lv.priority}</span>
@@ -654,9 +688,13 @@ export function VendorDetailView({ isDarkMode, vendorId, onBack }: VendorDetailV
           {!canViewFinancials ? (
             <p className={`text-[11px] ${'text-muted-foreground'}`}>You do not have permission to view financials.</p>
           ) : invoicesLoading ? (
-            <div className="flex justify-center py-8"><Icon name="loader-2" className={`w-5 h-5 animate-spin ${'text-muted-foreground/60'}`} /></div>
+            <SkeletonCard className="border-0 shadow-none bg-transparent p-0" />
           ) : invoices.length === 0 ? (
-            <p className={`text-[11px] ${'text-muted-foreground'}`}>No invoices linked to this vendor yet</p>
+            <EmptyState
+              compact
+              icon={<Icon name="file-text" className="h-5 w-5" />}
+              title="No invoices linked to this vendor yet"
+            />
           ) : (
             <div className="space-y-1.5">
               {invoices.map((inv) => (
@@ -687,26 +725,28 @@ export function VendorDetailView({ isDarkMode, vendorId, onBack }: VendorDetailV
             <Icon name="file-text" className="w-3.5 h-3.5" /> Documents
           </h3>
           {documentsLoading ? (
-            <div className="flex justify-center py-8"><Icon name="loader-2" className={`w-5 h-5 animate-spin ${'text-muted-foreground/60'}`} /></div>
+            <SkeletonCard className="border-0 shadow-none bg-transparent p-0" />
           ) : documents.length === 0 ? (
-            <div className="py-6 text-center">
-              <p className={`text-sm font-medium ${'text-foreground'}`}>No documents yet</p>
-              <p className={`mt-1 text-xs ${'text-muted-foreground'}`}>
-                Contracts, quotes and warranty documents linked to this vendor will appear here.
-              </p>
-            </div>
+            <EmptyState
+              compact
+              icon={<Icon name="file-text" className="h-5 w-5" />}
+              title="No documents yet"
+              description="Contracts, quotes and warranty documents linked to this vendor will appear here."
+            />
           ) : (
             <div className="space-y-2">
-              {documents.map((doc, idx) => (
+              {documents.map((doc, idx) => {
+                const createdLabel = formatRecordDate(doc.createdAt);
+                return (
                 <div key={String(doc.id ?? idx)} className="flex items-center justify-between gap-3 py-2 border-b border-border/50 last:border-0">
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium text-foreground truncate">{String(doc.title ?? doc.name ?? 'Document')}</p>
-                    {doc.createdAt && (
-                      <p className="text-[10px] text-muted-foreground">{new Date(String(doc.createdAt)).toLocaleDateString('de-DE')}</p>
+                    {createdLabel != null && (
+                      <p className="text-[10px] text-muted-foreground">{createdLabel}</p>
                     )}
                   </div>
                 </div>
-              ))}
+              );})}
             </div>
           )}
         </div>
@@ -719,26 +759,28 @@ export function VendorDetailView({ isDarkMode, vendorId, onBack }: VendorDetailV
             <Icon name="wrench" className="w-3.5 h-3.5" /> Service History
           </h3>
           {serviceLoading ? (
-            <div className="flex justify-center py-8"><Icon name="loader-2" className={`w-5 h-5 animate-spin ${'text-muted-foreground/60'}`} /></div>
+            <SkeletonCard className="border-0 shadow-none bg-transparent p-0" />
           ) : serviceHistory.length === 0 ? (
-            <div className="py-6 text-center">
-              <p className={`text-sm font-medium ${'text-foreground'}`}>No service history yet</p>
-              <p className={`mt-1 text-xs ${'text-muted-foreground'}`}>
-                Service and maintenance cases handled by this vendor will appear here once recorded.
-              </p>
-            </div>
+            <EmptyState
+              compact
+              icon={<Icon name="wrench" className="h-5 w-5" />}
+              title="No service history yet"
+              description="Service and maintenance cases handled by this vendor will appear here once recorded."
+            />
           ) : (
             <div className="space-y-2">
-              {serviceHistory.map((row, idx) => (
+              {serviceHistory.map((row, idx) => {
+                const eventLabel = formatRecordDate(row.eventDate);
+                return (
                 <div key={String(row.id ?? idx)} className="flex items-center justify-between gap-3 py-2 border-b border-border/50 last:border-0">
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium text-foreground truncate">{String(row.title ?? row.description ?? 'Service')}</p>
-                    {row.eventDate && (
-                      <p className="text-[10px] text-muted-foreground">{new Date(String(row.eventDate)).toLocaleDateString('de-DE')}</p>
+                    {eventLabel != null && (
+                      <p className="text-[10px] text-muted-foreground">{eventLabel}</p>
                     )}
                   </div>
                 </div>
-              ))}
+              );})}
             </div>
           )}
         </div>
@@ -747,7 +789,6 @@ export function VendorDetailView({ isDarkMode, vendorId, onBack }: VendorDetailV
       {/* ── Repair / Vendor Tasks tab ── */}
       {activeTab === 'tasks' && orgId && (
         <EntityTasksSection
-          isDark={isDark}
           title="Repair Tasks"
           emptyHint="Keine Tasks für diese Werkstatt. Reparatur-Tasks erscheinen hier, sobald sie diesem Vendor zugeordnet werden."
           fetchTasks={() => api.tasks.forVendor(orgId, vendorId)}
@@ -762,9 +803,9 @@ export function VendorDetailView({ isDarkMode, vendorId, onBack }: VendorDetailV
             <Icon name="clock" className="w-3.5 h-3.5" /> Activity History
           </h3>
           {auditLoading ? (
-            <div className="flex justify-center py-8"><Icon name="loader-2" className={`w-5 h-5 animate-spin ${'text-muted-foreground/60'}`} /></div>
+            <SkeletonCard className="border-0 shadow-none bg-transparent p-0" />
           ) : audit.length === 0 ? (
-            <p className={`text-[11px] ${'text-muted-foreground'}`}>No activity recorded yet</p>
+            <EmptyState compact title="No activity recorded yet" />
           ) : (
             <div className="space-y-2">
               {audit.map((a) => (
@@ -887,7 +928,7 @@ export function VendorDetailView({ isDarkMode, vendorId, onBack }: VendorDetailV
 // ── sub-components ─────────────────────────────────────
 
 function InfoRow({ icon: IconCmp, label, value, href, external }: {
-  isDark?: boolean; icon: typeof MapPin; label: string; value: string; href?: string; external?: boolean;
+  icon: typeof MapPin; label: string; value: string; href?: string; external?: boolean;
 }) {
   const content = (
     <div className="flex items-start gap-2.5">

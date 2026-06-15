@@ -41,6 +41,7 @@ import { AiHealthCareAggregationService } from './health-summary/ai-health-care-
 import { DrivingImpactService } from './driving-impact/driving-impact.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
 import { DimoModule } from '../dimo/dimo.module';
+import { MisuseCasesModule } from './misuse-cases/misuse-cases.module';
 import { InvoicesModule } from '@modules/invoices/invoices.module';
 import { HighMobilityModule } from '../high-mobility/high-mobility.module';
 import { QUEUE_NAMES } from '../../workers/queues/queue-names';
@@ -63,6 +64,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
 @Module({
   imports: [
     forwardRef(() => DimoModule),
+    forwardRef(() => MisuseCasesModule),
     forwardRef(() => InvoicesModule),
     forwardRef(() => HighMobilityModule),
     BullModule.registerQueue(

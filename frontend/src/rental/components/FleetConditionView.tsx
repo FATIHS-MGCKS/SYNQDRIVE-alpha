@@ -48,6 +48,8 @@ export type ConditionCategory = 'tires' | 'brakes' | 'battery' | 'dtc' | 'servic
 
 interface FleetConditionViewProps {
   onDrillDown?: (vehicleId: string, category: ConditionCategory) => void;
+  /** When true, page title is provided by FleetHubView. */
+  embedded?: boolean;
 }
 
 type HealthCategory = 'all' | 'Good Health' | 'Warning' | 'Critical';
@@ -221,7 +223,7 @@ function textToneClass(tone: Tone): string {
   return 'text-muted-foreground';
 }
 
-export function FleetConditionView({ onDrillDown }: FleetConditionViewProps) {
+export function FleetConditionView({ onDrillDown, embedded = false }: FleetConditionViewProps) {
   const systemDark = useSyncExternalStore(
     (onStoreChange) => {
       const el = document.documentElement;
@@ -734,9 +736,10 @@ export function FleetConditionView({ onDrillDown }: FleetConditionViewProps) {
   const activeGroupCount = expandedGroups.size;
 
   return (
-    <div className="max-w-[1600px] mx-auto space-y-5">
+    <div className={`${embedded ? '' : 'max-w-[1600px] mx-auto'} space-y-5`}>
+      {!embedded && (
       <PageHeader
-        title="Fleet Condition"
+        title="Health"
         status={
           healthPending ? (
             <StatusChip tone="neutral" icon={
@@ -747,6 +750,16 @@ export function FleetConditionView({ onDrillDown }: FleetConditionViewProps) {
           ) : undefined
         }
       />
+      )}
+      {embedded && healthPending && (
+        <div className="flex justify-end">
+          <StatusChip tone="neutral" icon={
+            <span className="h-2 w-2 rounded-full border-[1.5px] border-current border-t-transparent animate-spin" />
+          }>
+            Refreshing
+          </StatusChip>
+        </div>
+      )}
 
       {healthLoading && totalCount === 0 ? (
         <SkeletonMetricGrid count={4} />

@@ -3,7 +3,7 @@ import { Icon } from './ui/Icon';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { VehicleData } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
-import { StatInlineDetail } from './StatInlineDetail';
+import { StatInlineDetail, type PickupTileItem, type ReturnTileItem } from './StatInlineDetail';
 import { useLanguage } from '../i18n/LanguageContext';
 import { BusinessInsightsBox } from './BusinessInsightsBox';
 import { ScheduleBox } from './ScheduleBox';
@@ -384,7 +384,7 @@ export function DashboardView({ onVehicleSelect, onItemHover, onOpenVehicleById,
   // V4.6.75 — open the Übergabeprotokoll dialog from the Pick-Up / Return
   // Today tile rows. Seeds the dialog with the data the row already has so
   // the header renders instantly; the provider hydrates the rest.
-  const handleConfirmPickup = useCallback((p: typeof pickupItems[number]) => {
+  const handleConfirmPickup = useCallback((p: PickupTileItem) => {
     if (!p.bookingId) return;
     openHandover({
       bookingId: p.bookingId,
@@ -402,7 +402,7 @@ export function DashboardView({ onVehicleSelect, onItemHover, onOpenVehicleById,
     });
   }, [openHandover]);
 
-  const handleConfirmReturn = useCallback((r: typeof returnItems[number]) => {
+  const handleConfirmReturn = useCallback((r: ReturnTileItem) => {
     if (!r.bookingId) return;
     openHandover({
       bookingId: r.bookingId,

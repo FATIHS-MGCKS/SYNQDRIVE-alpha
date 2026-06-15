@@ -8,7 +8,7 @@ export const en = {
   'nav.stations': 'Stations',
   'nav.insights': 'Insights',
   'nav.fleetCondition': 'Fleet Condition',
-  'nav.financialInsights': 'Financial Insights',
+  'nav.financialInsights': 'Insights',
   'nav.finance': 'Finance',
   'nav.invoices': 'Invoices',
   'nav.fines': 'Fines',
@@ -22,7 +22,7 @@ export const en = {
   'nav.aiVoiceAssistant': 'AI Voice Assistant',
   'nav.whatsappBusiness': 'WhatsApp Business',
   'nav.integrations': 'Integrations',
-  'nav.insurance': 'Insurance',
+  'nav.insurance': 'Insurances',
   'nav.partsAccessories': 'Parts & Accessories',
   'nav.fuelCards': 'Fuel Cards',
   'nav.vehicleBrokerage': 'Vehicle Brokerage',
@@ -44,6 +44,11 @@ export const en = {
   'nav.upload': 'Upload',
   'nav.aiAssistant': 'AI Assistant',
 
+  // ─── Fleet hub tabs ───
+  'fleetTab.status': 'Status',
+  'fleetTab.health': 'Health',
+  'fleetTab.service': 'Service',
+
   // ─── TopBar ───
   'topbar.searchPlaceholder': 'Search vehicles, bookings, customers...',
   'topbar.searchShortcut': 'Search',
@@ -61,6 +66,8 @@ export const en = {
   'view.bookings': 'Bookings',
   'view.healthErrors': 'Health & Errors',
   'view.fleet': 'Fleet',
+  'view.fleetHealth': 'Health',
+  'view.fleetService': 'Service',
   'view.damages': 'Damages',
   'view.documents': 'Documents',
   'view.customers': 'Customers',
@@ -78,6 +85,7 @@ export const en = {
 
   // TopBar view categories
   'category.operations': 'Operations',
+  'category.fleet': 'Fleet',
   'category.insights': 'Insights',
   'category.finance': 'Finance',
   'category.tasks': 'Tasks',

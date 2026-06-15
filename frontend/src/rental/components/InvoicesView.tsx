@@ -110,10 +110,10 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
         api.vehicles.listByOrg(orgId).catch(() => []),
         api.vendors.list(orgId).catch(() => []),
       ]);
-      setInvoices(iList || []);
+      setInvoices(Array.isArray(iList) ? iList : (iList as { data?: any[] })?.data || []);
       setStats(iStats);
       setCustomers(Array.isArray(cList) ? cList : (cList as any)?.data || []);
-      setVehicles(vList || []);
+      setVehicles(Array.isArray(vList) ? vList : (vList as { data?: any[] })?.data || []);
       setVendors(Array.isArray(venList) ? venList : []);
     } catch { setInvoices([]); }
     finally { setLoading(false); }

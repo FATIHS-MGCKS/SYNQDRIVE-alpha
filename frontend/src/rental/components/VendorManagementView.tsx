@@ -6,7 +6,7 @@ import { api } from '../../lib/api';
 import type { Vendor, VendorCategory, VendorSource, VendorSourceType, VendorInput, VendorMapboxSuggestion } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
-import { PageHeader } from '../../components/patterns';
+import { PageHeader, StatusChip, EmptyState, SkeletonCard } from '../../components/patterns';
 
 // ── constants ──────────────────────────────────────────
 
@@ -46,8 +46,9 @@ function getCategoryIcon(cat: VendorCategory) {
 // ── types ──────────────────────────────────────────────
 
 interface VendorManagementViewProps {
-  isDarkMode: boolean;
   onOpenDetail?: (vendor: Vendor) => void;
+  /** When true, page title is provided by FleetHubView. */
+  embedded?: boolean;
 }
 
 type VendorScopeFilter = 'ALL' | 'ACTIVE' | 'LINKED';
@@ -88,7 +89,7 @@ const emptyForm: VendorFormData = {
 
 // ── component ──────────────────────────────────────────
 
-export function VendorManagementView({ onOpenDetail }: VendorManagementViewProps) {
+export function VendorManagementView({ onOpenDetail, embedded = false }: VendorManagementViewProps) {
   const { orgId, hasPermission } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
   const canManage = hasPermission('vendor-management', 'write');
@@ -315,21 +316,27 @@ export function VendorManagementView({ onOpenDetail }: VendorManagementViewProps
 
   // ── render ───────────────────────────────────────────
 
+  const addVendorAction = canManage ? (
+    <button
+      type="button"
+      onClick={openCreate}
+      className="sq-press flex items-center gap-2 rounded-xl bg-[color:var(--brand)] px-3 py-2 text-[10px] font-semibold text-white shadow-[var(--shadow-1)] transition-all hover:opacity-90"
+    >
+      <Icon name="plus" className="h-4 w-4" />
+      Add Partner
+    </button>
+  ) : undefined;
+
   return (
-    <div className="max-w-[1600px] mx-auto space-y-5">
+    <div className={`${embedded ? '' : 'max-w-[1600px] mx-auto'} space-y-5`}>
+      {embedded ? (
+        addVendorAction ? <div className="flex justify-end">{addVendorAction}</div> : null
+      ) : (
       <PageHeader
-        title="Vendor Management"
-        actions={canManage ? (
-          <button
-            type="button"
-            onClick={openCreate}
-            className="sq-press flex items-center gap-2 rounded-xl bg-[color:var(--brand)] px-3 py-2 text-[10px] font-semibold text-white shadow-[var(--shadow-1)] transition-all hover:opacity-90"
-          >
-            <Icon name="plus" className="h-4 w-4" />
-            Add Vendor
-          </button>
-        ) : undefined}
+        title="Service"
+        actions={addVendorAction}
       />
+      )}
 
       {/* Segment metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
@@ -568,30 +575,28 @@ export function VendorManagementView({ onOpenDetail }: VendorManagementViewProps
 
       {/* Vendor list */}
       {loading ? (
-        <div className="sq-card flex items-center justify-center rounded-2xl py-16 shadow-[var(--shadow-1)]">
-          <Icon name="loader-2" className="h-5 w-5 animate-spin text-muted-foreground" />
+        <div className="space-y-2">
+          <SkeletonCard className="rounded-2xl shadow-[var(--shadow-1)]" />
+          <SkeletonCard className="rounded-2xl shadow-[var(--shadow-1)]" />
+          <SkeletonCard className="rounded-2xl shadow-[var(--shadow-1)]" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="sq-card rounded-2xl p-10 text-center shadow-[var(--shadow-1)]">
-          <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl sq-tone-neutral">
-            <Icon name="store" className="h-5 w-5" />
-          </span>
-          <p className="text-sm font-semibold text-foreground">
-            {vendors.length === 0 ? 'No service partners yet' : 'No matching vendors'}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {vendors.length === 0 ? 'Add your first workshop, tire dealer, or service partner.' : 'Try adjusting your search or filter.'}
-          </p>
-          {vendors.length === 0 && canManage && (
-            <button
-              type="button"
-              onClick={openCreate}
-              className="sq-press mt-5 inline-flex items-center gap-2 rounded-xl bg-[color:var(--brand)] px-3 py-2 text-[10px] font-semibold text-white shadow-[var(--shadow-1)] transition-all hover:opacity-90"
-            >
-              <Icon name="plus" className="h-4 w-4" />
-              Add Vendor
-            </button>
-          )}
+        <div className="sq-card rounded-2xl shadow-[var(--shadow-1)]">
+          <EmptyState
+            icon={<Icon name="store" className="h-5 w-5" />}
+            title={vendors.length === 0 ? 'No service partners yet' : 'No matching vendors'}
+            description={vendors.length === 0 ? 'Add your first workshop, tire dealer, or service partner.' : 'Try adjusting your search or filter.'}
+            action={vendors.length === 0 && canManage ? (
+              <button
+                type="button"
+                onClick={openCreate}
+                className="sq-press inline-flex items-center gap-2 rounded-xl bg-[color:var(--brand)] px-3 py-2 text-[10px] font-semibold text-white shadow-[var(--shadow-1)] transition-all hover:opacity-90"
+              >
+                <Icon name="plus" className="h-4 w-4" />
+                Add Vendor
+              </button>
+            ) : undefined}
+          />
         </div>
       ) : (
         <div className="space-y-2">
@@ -621,12 +626,17 @@ export function VendorManagementView({ onOpenDetail }: VendorManagementViewProps
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="truncate text-sm font-semibold text-foreground">{v.name}</span>
-                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                        v.sourceType === 'ONLINE_VENDOR' ? 'sq-tone-ai' : 'sq-tone-neutral'
-                      }`}>{v.sourceType === 'ONLINE_VENDOR' ? 'Online' : 'Local'}</span>
+                      <StatusChip tone={v.sourceType === 'ONLINE_VENDOR' ? 'ai' : 'neutral'}>
+                        {v.sourceType === 'ONLINE_VENDOR' ? 'Online' : 'Local'}
+                      </StatusChip>
+                      {!v.isActive && (
+                        <StatusChip tone="watch">Inactive</StatusChip>
+                      )}
                     </div>
                     <div className="mt-0.5 flex items-center gap-3 text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-1"><Icon name="tag" className="w-3 h-3" />{getCategoryLabel(v.category)}</span>
+                      <span className="flex items-center gap-1">
+                        <StatusChip tone="neutral">{getCategoryLabel(v.category)}</StatusChip>
+                      </span>
                       {v.city && <span className="flex items-center gap-1"><Icon name="map-pin" className="w-3 h-3" />{v.city}</span>}
                       {v.contactName && <span className="flex items-center gap-1"><Icon name="user" className="w-3 h-3" />{v.contactName}</span>}
                     </div>
@@ -635,7 +645,7 @@ export function VendorManagementView({ onOpenDetail }: VendorManagementViewProps
                   {/* Service areas */}
                   <div className="hidden md:flex items-center gap-1 max-w-[200px] overflow-hidden">
                     {v.serviceAreas.slice(0, 3).map((sa) => (
-                      <span key={sa} className="whitespace-nowrap rounded-md px-1.5 py-0.5 text-[9px] font-semibold sq-tone-neutral">{sa}</span>
+                      <StatusChip key={sa} tone="info" className="whitespace-nowrap text-[9px]">{sa}</StatusChip>
                     ))}
                     {v.serviceAreas.length > 3 && (
                       <span className="text-[9px] text-muted-foreground">+{v.serviceAreas.length - 3}</span>
@@ -702,7 +712,8 @@ export function VendorManagementView({ onOpenDetail }: VendorManagementViewProps
                     <input value={poiQuery} onChange={(e) => handlePoiQueryChange(e.target.value)}
                       onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                       onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                      placeholder="Name, Branche oder Adresse eingeben…" className={`${inputClass} pl-9`} />
+                      placeholder="Name, Branche oder Adresse eingeben…"
+                      className={`${inputClass} pl-9 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]`} />
                     {sugLoading && <Icon name="loader-2" className={`absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin ${'text-muted-foreground'}`} />}
 
                     {showSuggestions && (
@@ -715,7 +726,7 @@ export function VendorManagementView({ onOpenDetail }: VendorManagementViewProps
                           <p className={`px-3 py-2.5 text-[11px] ${'text-muted-foreground'}`}>No matches — enter details manually.</p>
                         ) : suggestions.map((s) => (
                           <button key={s.mapboxId} onMouseDown={() => selectSuggestion(s)}
-                            className="w-full text-left px-3 py-2.5 flex items-start gap-2.5 transition hover:bg-muted">
+                            className="w-full text-left px-3 py-2.5 flex items-start gap-2.5 transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-inset">
                             <Icon name="map-pin" className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${'text-[color:var(--brand)]'}`} />
                             <div>
                               <div className={`text-xs font-medium ${'text-foreground'}`}>{s.name}</div>
@@ -739,7 +750,7 @@ export function VendorManagementView({ onOpenDetail }: VendorManagementViewProps
                   <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                     placeholder="Company name" className={`${inputClass} pl-9`} />
                   {form.source === 'MAPBOX' && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-semibold px-1.5 py-0.5 rounded sq-tone-brand">MAPBOX</span>
+                    <StatusChip tone="info" className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px]">MAPBOX</StatusChip>
                   )}
                 </div>
               </div>

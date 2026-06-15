@@ -50,6 +50,68 @@ export function EmptyState({
 }
 
 /* ════════════════════════════════════════════════════════════════════
+   ErrorState — failed fetch / action surface with optional retry.
+   Mirrors EmptyState layout; destructive tone on icon tile.
+   ════════════════════════════════════════════════════════════════════ */
+
+export interface ErrorStateProps {
+  icon?: ReactNode;
+  title?: ReactNode;
+  description?: ReactNode;
+  /** Raw error message (shown when description omitted). */
+  error?: ReactNode;
+  onRetry?: () => void;
+  retryLabel?: string;
+  compact?: boolean;
+  className?: string;
+}
+
+export function ErrorState({
+  icon,
+  title = 'Something went wrong',
+  description,
+  error,
+  onRetry,
+  retryLabel = 'Try again',
+  compact,
+  className,
+}: ErrorStateProps) {
+  const detail = description ?? (error ? String(error) : undefined);
+
+  return (
+    <div
+      className={cn(
+        'flex flex-col items-center justify-center text-center animate-fade-up',
+        compact ? 'py-8 px-4' : 'py-16 px-6',
+        className,
+      )}
+      role="alert"
+    >
+      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl sq-tone-critical text-[color:var(--status-critical)]">
+        {icon ?? (
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+        )}
+      </div>
+      <p className="text-[14px] font-semibold text-foreground">{title}</p>
+      {detail && (
+        <p className="mt-1 max-w-sm text-[12.5px] leading-relaxed text-muted-foreground">{detail}</p>
+      )}
+      {onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-4 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+        >
+          {retryLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════
    Loading skeletons — shaped to the final layout (no generic spinners
    for primary surfaces, per the brief).
    ════════════════════════════════════════════════════════════════════ */

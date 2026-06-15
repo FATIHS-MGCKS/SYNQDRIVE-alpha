@@ -28,7 +28,7 @@ interface Customer {
   phone: string;
   company?: string;
   type: 'Individual' | 'Corporate';
-  status: 'Active' | 'Under Review' | 'Suspended' | 'Blocked';
+  status: 'Active' | 'Under Review' | 'Suspended' | 'Blocked' | 'Archived' | 'Inactive';
   // V4.6.95 — neutral 'Not Assessed' default (no fake "Low Risk").
   riskLevel: 'Not Assessed' | 'Low Risk' | 'Medium Risk' | 'High Risk';
   // V4.6.95 — `drivingScore` is a legacy compatibility mirror; canonical

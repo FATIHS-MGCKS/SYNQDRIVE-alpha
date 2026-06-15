@@ -1,6 +1,7 @@
 import { Moon, Sun, Bell, Home, Search, Settings, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { clearAuth, getStoredUser } from '../../lib/auth';
+import type { MasterView } from './Sidebar';
 
 // ISO-2 code pills instead of emoji flags (anti-emoji design policy,
 // consistent with the rental TopBar).
@@ -12,16 +13,14 @@ const languages = [
   { code: 'pl', name: 'Polski', short: 'PL' },
 ];
 
-type ViewType = 'dashboard' | 'organizations' | 'users' | 'vehicles' | 'prospects' | 'subscriptions' | 'activity-log' | 'support' | 'settings' | 'fleet-connection';
-
 interface TopBarProps {
   isDarkMode: boolean;
   setIsDarkMode: (value: boolean) => void;
-  currentView?: ViewType;
+  currentView?: MasterView;
   settingsTab?: string;
 }
 
-const viewLabels: Record<ViewType, string> = {
+const viewLabels: Partial<Record<MasterView, string>> = {
   'dashboard': 'Dashboard',
   'organizations': 'Organizations',
   'users': 'Users',
@@ -34,7 +33,7 @@ const viewLabels: Record<ViewType, string> = {
   'fleet-connection': 'Fleet Connection',
 };
 
-const viewCategories: Record<ViewType, string> = {
+const viewCategories: Partial<Record<MasterView, string>> = {
   'dashboard': 'Overview',
   'organizations': 'Management',
   'users': 'Management',
@@ -67,7 +66,7 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'dashboard', s
       <div className="flex items-center gap-2 text-xs min-w-0 overflow-hidden font-medium">
         <Home className="w-4 h-4 shrink-0 text-muted-foreground" />
         <span className="hidden sm:inline text-muted-foreground/40">/</span>
-        <span className="hidden sm:inline text-muted-foreground">{viewCategories[currentView]}</span>
+        <span className="hidden sm:inline text-muted-foreground">{viewCategories[currentView] ?? 'SynqDrive'}</span>
         <span className="hidden sm:inline text-muted-foreground/40">/</span>
         {currentView === 'settings' && settingsTab ? (
           <>
@@ -76,7 +75,7 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'dashboard', s
             <span className="text-sm font-semibold truncate text-foreground">{settingsTabLabels[settingsTab] || 'General'}</span>
           </>
         ) : (
-          <span className="text-sm font-semibold truncate text-foreground">{viewLabels[currentView]}</span>
+          <span className="text-sm font-semibold truncate text-foreground">{viewLabels[currentView] ?? currentView}</span>
         )}
       </div>
 

@@ -21,6 +21,7 @@ import { LteR1BehaviorEnrichmentService } from './lte-r1-behavior-enrichment.ser
 import { summarizeEvTractionPowerFromHf, type EvTractionPowerTripSummary } from './hf-recuperation';
 import { TripAssignmentService } from './trip-assignment.service';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
+import { MisuseCaseAggregatorService } from '../misuse-cases/misuse-case-aggregator.service';
 
 export interface BehaviorEnrichmentResult {
   accelerationEvents: number;
@@ -136,6 +137,7 @@ export class TripBehaviorEnrichmentService {
     private readonly segments: DimoSegmentsService,
     private readonly lteR1: LteR1BehaviorEnrichmentService,
     private readonly tripAssignmentService: TripAssignmentService,
+    private readonly misuseCaseAggregator: MisuseCaseAggregatorService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {}
 
@@ -483,6 +485,11 @@ export class TripBehaviorEnrichmentService {
       });
     });
     await this.tripAssignmentService.applyAssignmentToTrip(tripId);
+    void this.misuseCaseAggregator.evaluateTrip(tripId).catch((err: Error) => {
+      this.logger.warn(
+        `Misuse case aggregation failed for trip ${tripId}: ${err?.message ?? err}`,
+      );
+    });
 
     this.logger.log(
       `HF enrichment complete for trip ${tripId}: ` +
@@ -727,6 +734,11 @@ export class TripBehaviorEnrichmentService {
       });
     });
     await this.tripAssignmentService.applyAssignmentToTrip(tripId);
+    void this.misuseCaseAggregator.evaluateTrip(tripId).catch((err: Error) => {
+      this.logger.warn(
+        `Misuse case aggregation failed for trip ${tripId}: ${err?.message ?? err}`,
+      );
+    });
 
     this.logger.log(
       `LTE_R1 enrichment complete for trip ${tripId}: ` +

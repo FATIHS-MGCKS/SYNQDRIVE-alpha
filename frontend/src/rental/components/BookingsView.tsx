@@ -11,6 +11,7 @@ import { mapApiBooking, type BookingUiRow } from '../lib/entityMappers';
 import { BrandLogo, getBrandFromModel } from './BrandLogo';
 import { BookingDocumentsSection } from './BookingDocumentsSection';
 import { EntityTasksSection } from './EntityTasksSection';
+import { MisuseCasesPanel } from './MisuseCasesPanel';
 // V4.6.76 Rental Health V1 — surface the rental_blocked gate on the
 // "Pickup bestätigen" flow so dispatchers can't even try to hand over a
 // vehicle that the backend will refuse. The BookingsService.create gate
@@ -2963,6 +2964,15 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
                 </div>
               );
             })()}
+
+            {orgId && detailBookingId && (
+              <MisuseCasesPanel
+                orgId={orgId}
+                bookingId={detailBookingId}
+                title="Prüffälle während dieser Buchung"
+                limit={15}
+              />
+            )}
 
             {/* Notes */}
             {(detailBooking.notes || isEditMode) && (

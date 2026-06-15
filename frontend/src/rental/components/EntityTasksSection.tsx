@@ -9,7 +9,7 @@ import type { ApiTask, ApiTaskPriority, ApiTaskStatus } from '../../lib/api';
  * badge never disagrees with the canonical truth.
  */
 interface EntityTasksSectionProps {
-  isDark: boolean;
+  isDark?: boolean;
   title: string;
   emptyHint: string;
   /** Returns the tasks for this entity (e.g. () => api.tasks.forVendor(orgId, vendorId)). */
@@ -68,7 +68,7 @@ function fmtCents(cents: number | null): string | null {
   return `${(cents / 100).toFixed(2)} €`;
 }
 
-export function EntityTasksSection({ isDark, title, emptyHint, fetchTasks, deps, onOpenTask, activeOnly }: EntityTasksSectionProps) {
+export function EntityTasksSection({ isDark = false, title, emptyHint, fetchTasks, deps, onOpenTask, activeOnly }: EntityTasksSectionProps) {
   const [tasks, setTasks] = useState<ApiTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [errored, setErrored] = useState(false);

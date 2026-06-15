@@ -3349,8 +3349,8 @@ function BillingTab() {
           : (subscriptionResult as BillingSubscriptionDto | null);
         const invoiceList = Array.isArray(invoiceResult)
           ? invoiceResult
-          : Array.isArray((invoiceResult as { data?: BillingInvoiceDto[] } | null)?.data)
-            ? ((invoiceResult as { data: BillingInvoiceDto[] }).data)
+          : (invoiceResult != null && Array.isArray((invoiceResult as { data?: BillingInvoiceDto[] }).data))
+            ? (invoiceResult as { data: BillingInvoiceDto[] }).data
             : [];
         setSubscription(nextSubscription);
         setInvoices(invoiceList.length > 0 ? invoiceList : (nextSubscription?.invoices ?? []));

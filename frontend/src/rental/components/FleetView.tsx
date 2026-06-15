@@ -86,6 +86,8 @@ class MapSafetyBoundary extends Component<
 
 interface FleetViewProps {
   onVehicleSelect?: (vehicle: VehicleData) => void;
+  /** When true, page title is provided by FleetHubView. */
+  embedded?: boolean;
 }
 
 const KASSEL_CENTER: [number, number] = [9.4797, 51.3127];
@@ -310,7 +312,7 @@ function FleetAvailableAddressText({ v }: { v: VehicleData }) {
   );
 }
 
-export function FleetView({ onVehicleSelect }: FleetViewProps) {
+export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps) {
   const systemDark = useSyncExternalStore(
     (onStoreChange) => {
       const el = document.documentElement;
@@ -593,46 +595,49 @@ export function FleetView({ onVehicleSelect }: FleetViewProps) {
     }
   };
 
+  const stationFilterControl = (
+    <div className="relative">
+      <button
+        onClick={() => setIsStationOpen(!isStationOpen)}
+        className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-medium text-foreground transition-all hover:bg-muted hover:border-border"
+        aria-haspopup="listbox"
+        aria-expanded={isStationOpen}
+      >
+        <Icon name="map-pin" className="w-4 h-4 text-muted-foreground" />
+        <span className="text-muted-foreground">Station</span>
+        <span className="text-foreground">{selectedStationLabel}</span>
+        <Icon name="chevron-down" className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${isStationOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {isStationOpen && (
+        <div className="sq-overlay animate-fade-up absolute top-full mt-2 right-0 z-50 min-w-[220px] p-1 rounded-xl">
+          {stationOptions.map((station) => (
+            <button
+              key={station.id}
+              onClick={() => {
+                setStationFilter(station.id);
+                setIsStationOpen(false);
+              }}
+              className={`w-full px-3 py-2 text-left text-[12px] font-medium rounded-lg transition-colors ${
+                station.id === selectedStation
+                  ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
+                  : 'text-foreground hover:bg-muted'
+              }`}
+            >
+              {station.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Fleet Overview"
-        actions={
-          <div className="relative">
-            <button
-              onClick={() => setIsStationOpen(!isStationOpen)}
-              className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-medium text-foreground transition-all hover:bg-muted hover:border-border"
-              aria-haspopup="listbox"
-              aria-expanded={isStationOpen}
-            >
-              <Icon name="map-pin" className="w-4 h-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Station</span>
-              <span className="text-foreground">{selectedStationLabel}</span>
-              <Icon name="chevron-down" className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${isStationOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {isStationOpen && (
-              <div className="sq-overlay animate-fade-up absolute top-full mt-2 right-0 z-50 min-w-[220px] p-1 rounded-xl">
-                {stationOptions.map((station) => (
-                  <button
-                    key={station.id}
-                    onClick={() => {
-                      setStationFilter(station.id);
-                      setIsStationOpen(false);
-                    }}
-                    className={`w-full px-3 py-2 text-left text-[12px] font-medium rounded-lg transition-colors ${
-                      station.id === selectedStation
-                        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
-                        : 'text-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {station.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        }
-      />
+      {embedded ? (
+        <div className="flex justify-end">{stationFilterControl}</div>
+      ) : (
+        <PageHeader title="Fleet Overview" actions={stationFilterControl} />
+      )}
 
       {error && (
         <div className="sq-tone-critical rounded-xl px-3 py-2 text-[12px] font-medium animate-fade-up">

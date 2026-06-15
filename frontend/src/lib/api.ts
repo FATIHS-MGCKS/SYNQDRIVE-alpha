@@ -1305,15 +1305,120 @@ export const api = {
     },
     get: (orgId: string, id: string) => get<RentalDrivingAnalysisItem>(`/organizations/${orgId}/rental-driving-analyses/${id}`),
   },
+  misuseCases: {
+    list: (
+      orgId: string,
+      params?: {
+        page?: number;
+        limit?: number;
+        vehicleId?: string;
+        tripId?: string;
+        bookingId?: string;
+        customerId?: string;
+        category?: string;
+        type?: string;
+        severity?: string;
+      },
+    ) => {
+      const q = new URLSearchParams();
+      if (params?.page != null) q.set('page', String(params.page));
+      if (params?.limit != null) q.set('limit', String(params.limit));
+      if (params?.vehicleId) q.set('vehicleId', params.vehicleId);
+      if (params?.tripId) q.set('tripId', params.tripId);
+      if (params?.bookingId) q.set('bookingId', params.bookingId);
+      if (params?.customerId) q.set('customerId', params.customerId);
+      if (params?.category) q.set('category', params.category);
+      if (params?.type) q.set('type', params.type);
+      if (params?.severity) q.set('severity', params.severity);
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return get<{
+        data: Array<Record<string, unknown>>;
+        meta: { total: number; page: number; limit: number; totalPages: number };
+      }>(`/organizations/${orgId}/misuse-cases${suffix}`);
+    },
+    get: (orgId: string, id: string) =>
+      get<Record<string, unknown>>(`/organizations/${orgId}/misuse-cases/${id}`),
+  },
   customers: {
-    list: (orgId: string) => get<{ data: CustomerApiRecord[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(`/organizations/${orgId}/customers`),
+    list: (
+      orgId: string,
+      params?: {
+        page?: number;
+        limit?: number;
+        search?: string;
+        status?: string;
+        riskLevel?: string;
+        customerType?: string;
+        verificationStatus?: string;
+        verificationTarget?: 'id' | 'license';
+        licenseExpiringBefore?: string;
+        includeArchived?: boolean;
+      },
+    ) => {
+      const q = new URLSearchParams();
+      if (params?.page) q.set('page', String(params.page));
+      if (params?.limit) q.set('limit', String(params.limit));
+      if (params?.search) q.set('search', params.search);
+      if (params?.status) q.set('status', params.status);
+      if (params?.riskLevel) q.set('riskLevel', params.riskLevel);
+      if (params?.customerType) q.set('customerType', params.customerType);
+      if (params?.verificationStatus) q.set('verificationStatus', params.verificationStatus);
+      if (params?.verificationTarget) q.set('verificationTarget', params.verificationTarget);
+      if (params?.licenseExpiringBefore) q.set('licenseExpiringBefore', params.licenseExpiringBefore);
+      if (params?.includeArchived) q.set('includeArchived', 'true');
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return get<{ data: CustomerApiRecord[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(
+        `/organizations/${orgId}/customers${suffix}`,
+      );
+    },
     get: (orgId: string, id: string) => get<CustomerApiRecord>(`/organizations/${orgId}/customers/${id}`),
-    create: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/customers`, data),
-    update: (orgId: string, id: string, data: any) => patch<any>(`/organizations/${orgId}/customers/${id}`, data),
-    delete: (orgId: string, id: string) => del<void>(`/organizations/${orgId}/customers/${id}`),
-    stats: (orgId: string) => get<any>(`/organizations/${orgId}/customers/stats`),
-    // V4.6.65 — KYC document upload during customer registration.
-    // documentType is one of 'id-front' | 'id-back' | 'license-front' | 'license-back'.
+    create: (orgId: string, data: Record<string, unknown>) => post<CustomerApiRecord>(`/organizations/${orgId}/customers`, data),
+    update: (orgId: string, id: string, data: Record<string, unknown>) => patch<CustomerApiRecord>(`/organizations/${orgId}/customers/${id}`, data),
+    archive: (orgId: string, id: string, reason?: string) =>
+      request<CustomerApiRecord>(`/organizations/${orgId}/customers/${id}`, {
+        method: 'DELETE',
+        body: JSON.stringify(reason ? { reason } : {}),
+      }),
+    delete: (orgId: string, id: string) => del<CustomerApiRecord>(`/organizations/${orgId}/customers/${id}`),
+    stats: (orgId: string) => get<Record<string, number>>(`/organizations/${orgId}/customers/stats`),
+    checkDuplicates: (
+      orgId: string,
+      params: {
+        email?: string;
+        phone?: string;
+        licenseNumber?: string;
+        idNumber?: string;
+        firstName?: string;
+        lastName?: string;
+        dateOfBirth?: string;
+      },
+    ) => {
+      const q = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v) q.set(k, v);
+      });
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return get<{ duplicates: Array<{ customerId: string; firstName: string; lastName: string; email: string | null; matchType: 'hard' | 'soft'; matchReason: string }>; hasHardMatch: boolean }>(
+        `/organizations/${orgId}/customers/duplicates${suffix}`,
+      );
+    },
+    eligibility: (orgId: string, id: string, startDate?: string) => {
+      const q = startDate ? `?startDate=${encodeURIComponent(startDate)}` : '';
+      return get<{
+        customerId: string;
+        canCreatePendingBooking: boolean;
+        canConfirmBooking: boolean;
+        canStartRental: boolean;
+        blockingReasons: string[];
+        warnings: string[];
+        requiredActions: string[];
+      }>(`/organizations/${orgId}/customers/${id}/eligibility${q}`);
+    },
+    updateStatus: (orgId: string, id: string, data: { status: string; reason?: string }) =>
+      patch<CustomerApiRecord>(`/organizations/${orgId}/customers/${id}/status`, data),
+    updateRisk: (orgId: string, id: string, data: { riskLevel: string; riskReason?: string }) =>
+      patch<CustomerApiRecord>(`/organizations/${orgId}/customers/${id}/risk`, data),
+    // Legacy pre-registration upload (backward compat).
     uploadDocument: async (
       orgId: string,
       documentType: 'id-front' | 'id-back' | 'license-front' | 'license-back',
@@ -1342,6 +1447,64 @@ export const api = {
         throw new Error(message);
       }
       return res.json() as Promise<{ url: string; documentType: string | null }>;
+    },
+    customerDocuments: {
+      list: (orgId: string, customerId: string) =>
+        get<Array<Record<string, unknown>>>(`/organizations/${orgId}/customers/${customerId}/documents`),
+      upload: async (
+        orgId: string,
+        customerId: string,
+        type: string,
+        file: File,
+      ) => {
+        const form = new FormData();
+        form.append('file', file);
+        form.append('type', type);
+        const token = localStorage.getItem('synqdrive_token');
+        const res = await fetch(
+          `/api/v1/organizations/${orgId}/customers/${customerId}/documents`,
+          {
+            method: 'POST',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            body: form,
+          },
+        );
+        if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as { message?: string };
+          throw new Error(body.message || `Upload failed (${res.status})`);
+        }
+        return res.json() as Promise<Record<string, unknown>>;
+      },
+      review: (
+        orgId: string,
+        customerId: string,
+        documentId: string,
+        payload: { status: string; rejectedReason?: string },
+      ) =>
+        patch<Record<string, unknown>>(
+          `/organizations/${orgId}/customers/${customerId}/documents/${documentId}/review`,
+          payload,
+        ),
+    },
+    customerTimeline: {
+      list: (
+        orgId: string,
+        customerId: string,
+        params?: { page?: number; limit?: number },
+      ) => {
+        const q = new URLSearchParams();
+        if (params?.page) q.set('page', String(params.page));
+        if (params?.limit) q.set('limit', String(params.limit));
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return get<{ data: Array<Record<string, unknown>>; meta: { total: number; page: number; limit: number; totalPages: number } }>(
+          `/organizations/${orgId}/customers/${customerId}/timeline${suffix}`,
+        );
+      },
+      addNote: (orgId: string, customerId: string, payload: { note: string; title?: string }) =>
+        post<Record<string, unknown>>(
+          `/organizations/${orgId}/customers/${customerId}/timeline/notes`,
+          payload,
+        ),
     },
   },
   stations: {

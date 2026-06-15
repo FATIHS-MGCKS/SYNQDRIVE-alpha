@@ -35,6 +35,123 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'misuse-cases-layer-v4811-2026-06-15',
+    version: '4.8.11',
+    title: 'V4.8.11 — Misuse/Abuse Prüffälle (informative Case-Schicht)',
+    summary: [
+      '**Prisma**: `MisuseCase`, `MisuseCaseEvidence` + Enums (`MisuseCaseCategory/Type/Severity/Confidence`, `MisuseAttributionScope`, `MisuseEvidenceSourceType`); Migration `20260615140000_misuse_cases`. Kein Workflow-/Resolve-Status.',
+      '**Backend**: `misuse-cases` Modul mit `MisuseCaseAggregatorService` (nach TripAssignment), `MisuseCaseRulesService` (Pattern-Regeln), read-only API `GET /organizations/:orgId/misuse-cases`. DIMO `safety.collision` via `fetchSafetyEvents` — nicht als normales `DrivingEvent`.',
+      '**Pipeline**: `TripBehaviorEnrichmentService` → `applyAssignmentToTrip` → `misuseCaseAggregator.evaluateTrip` (idempotent per fingerprint).',
+      '**Frontend**: read-only `MisuseCasesPanel` in Vehicle Health, Trips, Booking Detail, Customer Driving Tab; Return-Handover Hinweis ohne Blockade.',
+    ],
+    reason:
+      'Einzelereignisse (Kickdown, Impact, DIMO collision) sollen als lesbare, zusammengefasste Prüffälle sichtbar sein — ohne Schuld zu beweisen und ohne Review-Workflow.',
+    previousBehavior:
+      'Nur Roh-Events (`TripBehaviorEvent`, `DrivingEvent`) und Trip-Counter; keine aggregierten Cases; DIMO safety.collision nicht abgefragt.',
+    details:
+      'Attribution respektiert `TripAssignment` / `PRIVATE_UNASSIGNED`. Customer-Liste filtert nur `BOOKING_CUSTOMER`. Tests: rules, persistence idempotency, service org-scope. Deferred: TELEMETRY_INTEGRITY, EV_BATTERY_STRESS, GEOFENCE.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-15T14:00:00.000Z',
+  },
+  {
+    id: 'customer-module-overhaul-v4810-2026-06-15',
+    version: '4.8.10',
+    title: 'V4.8.10 — Customer module overhaul (eligibility, documents, DTOs, booking gate)',
+    summary: [
+      '**Prisma**: `CustomerRiskLevel` +`NOT_ASSESSED`; neue Enums `CustomerRiskSource`, `CustomerDocumentType/Status`, `CustomerVerificationStatus`, `CustomerTimelineEventType`; Modelle `CustomerDocument`, `CustomerTimelineEvent`, `CustomerEligibilityPolicy`; Customer erweitert um normalized fields, archive/PII retention, verification statuses.',
+      '**Backend**: DTO-Layer (`create/update/list/status/risk/document/review`); `CustomerDocumentsService`, `CustomerEligibilityService`, `CustomerTimelineService`; dedizierte Endpoints (eligibility, duplicates, documents, timeline, status, risk); `CustomersService` mit Normalisierung, Duplicate Detection, erweiterten Stats, Archivierung.',
+      '**Bookings**: `BookingsService.create/update` ruft `CustomerEligibilityService.evaluateForBooking` auf — strukturierter `CUSTOMER_BOOKING_BLOCKED` Conflict.',
+      '**Frontend**: `api.customers` mit Query-Params; Booking-Flow mit serverseitiger Kundensuche + Eligibility-Panel; `CustomerDetailView` Eligibility + Timeline; Entity Mapper `NOT_ASSESSED`, `INACTIVE`≠Suspended.',
+    ],
+    reason:
+      'Customer soll als zentrale Mietfreigabe-/Kundenakte fungieren — nicht nur Kontaktliste. Booking muss Customer-Eligibility zwingend nutzen.',
+    previousBehavior:
+      'Rohe Prisma-Inputs im Controller, `riskLevel` default LOW, INACTIVE als Suspended gemappt, keine Eligibility-Gates in Bookings, Dokumente nur als URL-Felder.',
+    details:
+      'Migration `20260615120000_customer_module_overhaul`. Legacy KYC-URL-Felder bleiben read-only/backward-compat; neue Uploads über `CustomerDocument`. Tests: `customers.service.spec.ts`, `customer-eligibility.service.spec.ts`.',
+    affectsArchitecture: true,
+    module: 'Rental',
+    createdAt: '2026-06-15T12:00:00.000Z',
+  },
+  {
+    id: 'sidebar-navigation-ia-v489-2026-06-15',
+    version: '4.8.9',
+    title: 'V4.8.9 — Sidebar / Navigation IA refactor (Fleet hub, Finance, Administration)',
+    summary: [
+      '**Fleet hub**: neue `FleetHubView` mit Tabs Status (`FleetView`), Health (`FleetConditionView`), Service (`VendorManagementView`); Legacy-Views `fleet-condition` / `vendor-management` leiten auf Fleet + Tab um.',
+      '**Sidebar**: neue Struktur — Dashboard, Buchungen, Kunden, Aufgaben, Flotte; Finance (Insights, Rechnungen, Preise); Automation + Integration (Coming-soon-Badge); Administration inkl. Standorte; Support/Hilfe-Center; Schnellaktionen unverändert.',
+      '**Entfernt (sichtbar)**: eigenständige Sidebar-Seiten Fines/Bussen, Fleet Condition, Vendor Management; `FinanceView` ohne Fines-Tab.',
+      '**i18n**: `fleetTab.*`, Fleet-Breadcrumbs in TopBar; EN/DE Labels aktualisiert.',
+    ],
+    reason:
+      'Informationsarchitektur-Umbau: Flottenarbeit zentral unter Fleet, Finanzen/Administration neu gruppiert, Fines als eigenständige Seite aus der Navigation entfernt.',
+    previousBehavior:
+      'Fleet Condition und Vendor Management waren eigene Sidebar-Einträge; Fines unter Finance; Standorte unter Operations; Insights-Sektion getrennt von Finance.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Frontend',
+    createdAt: '2026-06-15T20:00:00.000Z',
+  },
+  {
+    id: 'vendor-mapbox-audit-hardening-v488-2026-06-15',
+    version: '4.8.8',
+    title: 'V4.8.8 — Vendor Management audit hardening (Mapbox token, org-scoped links, tests)',
+    summary: [
+      '**Audit verification**: Vendor module already on Mapbox + typed DTOs from V4.7.65; this pass closes remaining hardening gaps without UI redesign.',
+      '**VendorMapboxService**: token resolution prefers `MAPBOX_ACCESS_TOKEN` / `MAPBOX_TOKEN`, then legacy `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN`; clearer `ServiceUnavailableException` when unset.',
+      '**VendorsService**: `updateLink` / `unlinkVehicle` now resolve links via `scopedLinkWhere` (vendor + vehicle must belong to the same org).',
+      '**Tests**: `vendor-mapbox.service.spec.ts` (missing token, token priority, suggestion normalisation, upstream errors); expanded `vendors.service.spec.ts` (same-org link success, org-scoped link rejection, create orgId from route).',
+    ],
+    reason:
+      'Targeted follow-up on the Vendor Management audit — confirm no Google Places in vendor context, tighten multi-tenant link guards, and expand regression tests.',
+    previousBehavior:
+      'Mapbox token read only `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN`; link update/unlink matched `linkId` + `vendorId` without verifying the linked vehicle org; Mapbox service lacked dedicated unit tests.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vendor Management',
+    createdAt: '2026-06-15T18:00:00.000Z',
+  },
+  {
+    id: 'ui-adoption-pass-v487-2026-06-15',
+    version: '4.8.7',
+    title: 'V4.8.7 — UI adoption pass (Tasks, Vendors, Documents, vehicle header)',
+    summary: [
+      '**New pattern**: `ErrorState` in `components/patterns/states.tsx` (destructive empty + optional retry) exported via pattern barrel.',
+      '**TasksView**: local `StatusPill`/`PriorityPill`/`CategoryBadge` → `StatusChip`/`PriorityBadge`; `EmptyState`/`SkeletonRows`/`ErrorState` for filter-empty, loading, and fetch error; dead `isDarkMode` prop removed.',
+      '**Sidebar**: `isDarkMode` prop removed; logo via `dark:` dual-image; section labels + scrollbar use tokens (`text-muted-foreground`, `var(--border)`).',
+      '**Vehicle detail header** (`App.tsx`): `PageHeader` visual language + `HealthStatusChip`/`StatusChip` for fleet status, cleaning, and rental health; `DocumentsView` drops `isDarkMode`.',
+      '**DocumentsView**: `MetricCard`/`DataCard`/`StatusChip`/`EmptyState` replace local summary tiles, card shells, amber "Fehlt" badge, and `EmptyInline`.',
+      '**VendorDetailView** + **VendorManagementView**: `PageHeader`, `StatusChip`, `EmptyState`/`SkeletonCard`; Mapbox `focus-visible` rings; theme props removed.',
+      '**Build**: targeted TypeScript fixes across rental + master so `npm run build` (`tsc -b && vite build`) is green.',
+    ],
+    reason:
+      'Close remaining high-visibility design-system gaps after V4.8.6 — pattern adoption on Tasks, vendor surfaces, vehicle documents, and vehicle-detail chrome without backend changes.',
+    previousBehavior:
+      'TasksView kept local pill components and no loading/error states; Sidebar and DocumentsView still passed or used `isDarkMode`; vehicle detail header was hand-rolled; `npm run build` failed on pre-existing TypeScript errors.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Frontend',
+    createdAt: '2026-06-15T14:00:00.000Z',
+  },
+  {
+    id: 'vendor-views-pattern-adoption-2026-06-15',
+    version: '4.8.6',
+    summary: [
+      '**VendorDetailView**: custom header replaced with `PageHeader`; `StatusChip` for inactive/Mapbox/relation/preferred/service-area badges; `EmptyState` + `SkeletonCard` for loading/empty/not-found and tab lazy-load surfaces; `isDarkMode`/`isDark` removed; `formatRecordDate` guards unknown `createdAt`/`eventDate` before render.',
+      '**VendorManagementView**: `StatusChip` for source type, category, inactive, service areas, and Mapbox prefill badge; list loading/empty → `SkeletonCard` + `EmptyState`; Mapbox search input/suggestion buttons get `focus-visible` ring; dead `isDarkMode` prop removed from interface.',
+      '**App.tsx** / **TasksSectionView**: `VendorDetailView` and `TasksSectionView` call sites drop `isDarkMode`. **EntityTasksSection**: `isDark` optional (defaults `false`) so vendor detail no longer passes theme prop.',
+    ],
+    reason:
+      'Continue V4.8.6 design-system rollout on vendor surfaces — shared patterns instead of hand-rolled headers, chips, spinners, and theme props.',
+    previousBehavior:
+      'Vendor detail used a bespoke back+title header, sq-tone span badges, loader spinners, and required `isDarkMode` from App; vendor list used hand-rolled empty/loading cards and inline tone spans.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Frontend / Vendor Management',
+    createdAt: '2026-06-15T12:00:00.000Z',
+  },
+  {
     id: 'design-system-rollout-v486-complete-2026-06-14',
     version: '4.8.6',
     title: 'V4.8.6 — Design System Rollout (pattern library visible across product)',

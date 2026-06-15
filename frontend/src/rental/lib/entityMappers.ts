@@ -2,7 +2,7 @@
 // Keeps CustomersView / CustomerDetailModal / NewBookingView / BookingsView
 // in lock-step with the backend enums + response shapes.
 
-export type CustomerUiStatus = 'Active' | 'Under Review' | 'Suspended' | 'Blocked';
+export type CustomerUiStatus = 'Active' | 'Under Review' | 'Suspended' | 'Blocked' | 'Archived' | 'Inactive';
 export type CustomerApiStatus = 'ACTIVE' | 'INACTIVE' | 'BLOCKED' | 'SUSPENDED' | 'UNDER_REVIEW';
 
 // V4.6.95 — Customer risk is operational metadata, not a score.
@@ -15,7 +15,7 @@ export type CustomerUiRisk =
   | 'Low Risk'
   | 'Medium Risk'
   | 'High Risk';
-export type CustomerApiRisk = 'LOW' | 'MEDIUM' | 'HIGH';
+export type CustomerApiRisk = 'NOT_ASSESSED' | 'LOW' | 'MEDIUM' | 'HIGH';
 
 export type CustomerUiType = 'Individual' | 'Corporate';
 export type CustomerApiType = 'INDIVIDUAL' | 'CORPORATE';
@@ -38,39 +38,62 @@ export function customerStatusUiToApi(ui: CustomerUiStatus | string | undefined)
   }
 }
 
-export function customerStatusApiToUi(api: CustomerApiStatus | string | undefined): CustomerUiStatus {
+export function customerStatusApiToUi(
+  api: CustomerApiStatus | string | undefined,
+  archivedAt?: string | Date | null,
+): CustomerUiStatus {
+  if (archivedAt) return 'Archived';
   switch (api) {
     case 'ACTIVE': return 'Active';
     case 'SUSPENDED': return 'Suspended';
     case 'UNDER_REVIEW': return 'Under Review';
     case 'BLOCKED': return 'Blocked';
-    case 'INACTIVE': return 'Suspended';
+    case 'INACTIVE': return 'Inactive';
     default: return 'Active';
   }
 }
 
-export function customerRiskUiToApi(ui: CustomerUiRisk | string | undefined): CustomerApiRisk {
+export type CustomerUiVerification =
+  | 'Not Submitted'
+  | 'Pending Review'
+  | 'Verified'
+  | 'Rejected'
+  | 'Expired';
+
+export type CustomerApiVerification =
+  | 'NOT_SUBMITTED'
+  | 'PENDING_REVIEW'
+  | 'VERIFIED'
+  | 'REJECTED'
+  | 'EXPIRED';
+
+export function customerVerificationApiToUi(
+  api: CustomerApiVerification | string | undefined | null,
+): CustomerUiVerification {
+  switch (api) {
+    case 'PENDING_REVIEW': return 'Pending Review';
+    case 'VERIFIED': return 'Verified';
+    case 'REJECTED': return 'Rejected';
+    case 'EXPIRED': return 'Expired';
+    default: return 'Not Submitted';
+  }
+}
+
+export function customerRiskUiToApi(ui: CustomerUiRisk | string | undefined): CustomerApiRisk | undefined {
   switch (ui) {
     case 'Low Risk': return 'LOW';
     case 'Medium Risk': return 'MEDIUM';
     case 'High Risk': return 'HIGH';
-    // 'Not Assessed' has no API equivalent — treat as LOW only when forced
-    // to choose by an enum-typed field. Most flows should never round-trip
-    // 'Not Assessed' to the API; the field is read-only on the UI side.
-    default: return 'LOW';
+    case 'Not Assessed': return 'NOT_ASSESSED';
+    default: return undefined;
   }
 }
 
 export function customerRiskApiToUi(
   api: CustomerApiRisk | string | undefined | null,
 ): CustomerUiRisk {
-  // V4.6.95 — neutralize the fake "Low Risk" default. Customer.riskLevel
-  // currently has no real writer, so unknown / null / undefined must NOT
-  // be presented as "Low Risk" — that misleads operators into thinking
-  // the customer was actually assessed. Use the neutral "Not Assessed"
-  // label so the UI and product team can decide later whether to wire a
-  // real assessment writer.
   switch (api) {
+    case 'NOT_ASSESSED': return 'Not Assessed';
     case 'LOW': return 'Low Risk';
     case 'MEDIUM': return 'Medium Risk';
     case 'HIGH': return 'High Risk';
@@ -388,6 +411,7 @@ export interface BuildCustomerCreatePayloadArgs {
   idBackUrl?: string | null;
   licenseFrontUrl?: string | null;
   licenseBackUrl?: string | null;
+  allowDuplicateOverride?: boolean;
 }
 
 export function buildCustomerCreatePayload(args: BuildCustomerCreatePayloadArgs) {
@@ -395,28 +419,19 @@ export function buildCustomerCreatePayload(args: BuildCustomerCreatePayloadArgs)
   return {
     firstName: args.firstName.trim(),
     lastName: args.lastName.trim(),
-    email: args.email?.trim() || null,
-    phone: args.phone?.trim() || null,
-    address: args.street?.trim() || null,
-    zip: args.zip?.trim() || null,
-    city: args.city?.trim() || null,
-    country: args.country?.trim() || null,
-    company: args.company?.trim() || null,
+    email: args.email?.trim() || undefined,
+    phone: args.phone?.trim() || undefined,
+    address: args.street?.trim() || undefined,
+    postalCode: args.zip?.trim() || undefined,
+    city: args.city?.trim() || undefined,
+    country: args.country?.trim() || undefined,
+    companyName: args.company?.trim() || undefined,
     customerType: customerTypeUiToApi(args.type),
-    riskLevel: customerRiskUiToApi(args.riskLevel),
-    licenseNumber: args.licenseNumber?.trim() || null,
-    licenseExpiry: toIso(args.licenseExpiry),
-    licenseClass: args.licenseClass?.trim() || null,
-    idType: args.idType?.trim() || null,
-    idNumber: args.idNumber?.trim() || null,
-    idExpiry: toIso(args.idExpiry),
-    idVerified: Boolean(args.idVerified),
-    licenseVerified: Boolean(args.licenseVerified),
-    status: customerStatusUiToApi(args.status),
-    notes: args.notes?.trim() || null,
-    idFrontUrl: args.idFrontUrl ?? null,
-    idBackUrl: args.idBackUrl ?? null,
-    licenseFrontUrl: args.licenseFrontUrl ?? null,
-    licenseBackUrl: args.licenseBackUrl ?? null,
+    licenseNumber: args.licenseNumber?.trim() || undefined,
+    licenseExpiry: toIso(args.licenseExpiry) ?? undefined,
+    idNumber: args.idNumber?.trim() || undefined,
+    idExpiry: toIso(args.idExpiry) ?? undefined,
+    notes: args.notes?.trim() || undefined,
+    allowDuplicateOverride: args.allowDuplicateOverride,
   };
 }

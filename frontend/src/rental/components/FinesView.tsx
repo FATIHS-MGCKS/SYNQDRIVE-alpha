@@ -91,7 +91,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
       ]);
       setFines(fList || []);
       setStats(fStats);
-      setVehicles(vList || []);
+      setVehicles(Array.isArray(vList) ? vList : (vList as { data?: any[] })?.data || []);
     } catch { setFines([]); }
     finally { setLoading(false); }
   }, [orgId]);

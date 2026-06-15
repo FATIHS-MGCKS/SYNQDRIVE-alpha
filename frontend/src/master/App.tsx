@@ -351,12 +351,12 @@ export default function App() {
   };
 
   // ============ VEHICLE REGISTRATION ============
-  const parseOptFloat = (s: string): number | undefined => {
+  const parseOptFloat = (s: string | undefined): number | undefined => {
     if (!s?.trim()) return undefined;
     const n = parseFloat(s.replace(',', '.'));
     return Number.isFinite(n) ? n : undefined;
   };
-  const parseOptInt = (s: string): number | undefined => {
+  const parseOptInt = (s: string | undefined): number | undefined => {
     if (!s?.trim()) return undefined;
     const n = parseInt(s, 10);
     return Number.isFinite(n) ? n : undefined;
@@ -367,7 +367,7 @@ export default function App() {
     const upper = (label || '').toUpperCase().trim();
     return m[upper] || undefined;
   };
-  const parseWeightDist = (s: string): number | undefined => {
+  const parseWeightDist = (s: string | undefined): number | undefined => {
     if (!s?.trim()) return undefined;
     const m = s.match(/^(\d+(?:\.\d+)?)/);
     return m ? parseFloat(m[1]) : undefined;

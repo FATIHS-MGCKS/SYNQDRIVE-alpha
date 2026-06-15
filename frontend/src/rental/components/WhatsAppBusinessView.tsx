@@ -65,9 +65,9 @@ export function WhatsAppBusinessView({ isDarkMode }: WhatsAppBusinessViewProps) 
         api.whatsapp.getStats(orgId),
         api.whatsapp.getConversations(orgId),
       ]);
-      setConfig(cfg.data);
-      setStats(st.data);
-      setConversations(convos.data || []);
+      setConfig(cfg);
+      setStats(st);
+      setConversations(convos || []);
     } catch { /* empty */ }
     setLoading(false);
   }, [orgId]);
@@ -81,7 +81,7 @@ export function WhatsAppBusinessView({ isDarkMode }: WhatsAppBusinessViewProps) 
     setAiSuggestion(null);
     try {
       const res = await api.whatsapp.getMessages(orgId, convo.id);
-      setMessages(res.data || []);
+      setMessages(res || []);
     } catch { setMessages([]); }
     setMsgLoading(false);
   }, [orgId]);
@@ -95,7 +95,7 @@ export function WhatsAppBusinessView({ isDarkMode }: WhatsAppBusinessViewProps) 
     setSending(true);
     try {
       const res = await api.whatsapp.sendMessage(orgId, selectedConvo.id, input.trim());
-      setMessages((prev) => [...prev, res.data]);
+      setMessages((prev) => [...prev, res]);
       setInput('');
       setAiSuggestion(null);
       load();
@@ -108,7 +108,7 @@ export function WhatsAppBusinessView({ isDarkMode }: WhatsAppBusinessViewProps) 
     setAiLoading(true);
     try {
       const res = await api.whatsapp.getAiSuggestion(orgId, selectedConvo.id);
-      setAiSuggestion(res.data.suggestion);
+      setAiSuggestion(res.suggestion);
     } catch { /* empty */ }
     setAiLoading(false);
   };
@@ -118,7 +118,7 @@ export function WhatsAppBusinessView({ isDarkMode }: WhatsAppBusinessViewProps) 
     setSending(true);
     try {
       const res = await api.whatsapp.sendAiReply(orgId, selectedConvo.id, aiSuggestion);
-      setMessages((prev) => [...prev, res.data]);
+      setMessages((prev) => [...prev, res]);
       setAiSuggestion(null);
       load();
     } catch { /* empty */ }
@@ -129,7 +129,7 @@ export function WhatsAppBusinessView({ isDarkMode }: WhatsAppBusinessViewProps) 
     if (!orgId || !connectPhone.trim()) return;
     try {
       const res = await api.whatsapp.connect(orgId, { phoneNumber: connectPhone.trim(), businessName: connectName.trim() || undefined });
-      setConfig(res.data);
+      setConfig(res);
       setConnectModal(false);
       load();
     } catch { /* empty */ }
@@ -139,7 +139,7 @@ export function WhatsAppBusinessView({ isDarkMode }: WhatsAppBusinessViewProps) 
     if (!orgId) return;
     try {
       const res = await api.whatsapp.disconnect(orgId);
-      setConfig(res.data);
+      setConfig(res);
       load();
     } catch { /* empty */ }
   };
@@ -152,7 +152,7 @@ export function WhatsAppBusinessView({ isDarkMode }: WhatsAppBusinessViewProps) 
       setSimContent('');
       load();
       const convos = await api.whatsapp.getConversations(orgId);
-      setConversations(convos.data || []);
+      setConversations(convos || []);
     } catch { /* empty */ }
   };
 
@@ -161,7 +161,7 @@ export function WhatsAppBusinessView({ isDarkMode }: WhatsAppBusinessViewProps) 
     setSavingConfig(true);
     try {
       const res = await api.whatsapp.updateConfig(orgId, patch);
-      setConfig(res.data);
+      setConfig(res);
     } catch { /* empty */ }
     setSavingConfig(false);
   };

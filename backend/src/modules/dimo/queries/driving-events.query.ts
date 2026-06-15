@@ -57,13 +57,40 @@ export function buildDrivingEventsQuery(
   from: Date,
   to: Date,
 ): string {
+  return buildDimoEventsQuery(tokenId, from, to, [
+    'behavior.harshBraking',
+    'behavior.extremeBraking',
+    'behavior.harshAcceleration',
+    'behavior.harshCornering',
+  ]);
+}
+
+/**
+ * Safety-family DIMO events (e.g. collision). Kept separate from behavior.*
+ * driving events — NOT mapped to DrivingEventType rows.
+ */
+export function buildSafetyEventsQuery(
+  tokenId: number,
+  from: Date,
+  to: Date,
+): string {
+  return buildDimoEventsQuery(tokenId, from, to, ['safety.collision']);
+}
+
+function buildDimoEventsQuery(
+  tokenId: number,
+  from: Date,
+  to: Date,
+  names: string[],
+): string {
+  const namesJson = names.map((n) => `"${n}"`).join(', ');
   return `
-    query DrivingEvents {
+    query DimoEvents {
       events(
         tokenId: ${tokenId}
         from: "${from.toISOString()}"
         to: "${to.toISOString()}"
-        filter: { name: { in: ["behavior.harshBraking", "behavior.extremeBraking", "behavior.harshAcceleration", "behavior.harshCornering"] } }
+        filter: { name: { in: [${namesJson}] } }
       ) {
         timestamp
         name

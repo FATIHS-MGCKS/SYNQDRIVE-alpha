@@ -12,6 +12,9 @@ import {
   customerStatusApiToUi,
   customerRiskApiToUi,
   customerTypeApiToUi,
+  customerStatusUiToApi,
+  customerRiskUiToApi,
+  customerTypeUiToApi,
 } from '../lib/entityMappers';
 import {
   PageHeader,
@@ -35,7 +38,7 @@ interface Customer {
   phone: string;
   company?: string;
   type: 'Individual' | 'Corporate';
-  status: 'Active' | 'Under Review' | 'Suspended' | 'Blocked';
+  status: 'Active' | 'Under Review' | 'Suspended' | 'Blocked' | 'Archived' | 'Inactive';
   // V4.6.95 — Customer.riskLevel is operational. Default is 'Not Assessed'.
   riskLevel: 'Not Assessed' | 'Low Risk' | 'Medium Risk' | 'High Risk';
   // V4.6.95 — `drivingStyleScore` is the canonical 0–100 scalar. The legacy
@@ -114,7 +117,7 @@ function mapApiCustomer(c: any): Customer {
     phone: c.phone ?? '',
     company: c.company ?? c.companyName ?? undefined,
     type: customerTypeApiToUi(c.customerType ?? c.type),
-    status: customerStatusApiToUi(c.status),
+    status: customerStatusApiToUi(c.status, c.archivedAt),
     riskLevel: customerRiskApiToUi(c.riskLevel),
     drivingScore: styleScore,
     drivingStyleScore: styleScore,
@@ -178,28 +181,59 @@ function customerAvatarTone(status: Customer['status']): string {
 export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }: CustomersViewProps) {
   const { orgId } = useRentalOrg();
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerStats, setCustomerStats] = useState<Record<string, number> | null>(null);
   const [isSavingCustomer, setIsSavingCustomer] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [riskFilter, setRiskFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
 
   const loadCustomers = useCallback(() => {
     if (!orgId) return;
-    api.customers.list(orgId)
-      .then((res: any) => {
+    const params: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      status?: string;
+      riskLevel?: string;
+      customerType?: string;
+    } = { page: 1, limit: 50 };
+    if (searchQuery.trim()) params.search = searchQuery.trim();
+    if (statusFilter !== 'all') {
+      params.status = customerStatusUiToApi(statusFilter as Customer['status']);
+    }
+    if (riskFilter !== 'all') {
+      const risk = customerRiskUiToApi(riskFilter as Customer['riskLevel']);
+      if (risk) params.riskLevel = risk;
+    }
+    if (typeFilter !== 'all') {
+      params.customerType = customerTypeUiToApi(typeFilter as Customer['type']);
+    }
+    api.customers.list(orgId, params)
+      .then((res) => {
         const list = Array.isArray(res) ? res : res?.data ?? [];
         setCustomers(list.map(mapApiCustomer));
       })
       .catch(() => setCustomers([]));
+  }, [orgId, searchQuery, statusFilter, riskFilter, typeFilter]);
+
+  const loadStats = useCallback(() => {
+    if (!orgId) return;
+    api.customers.stats(orgId)
+      .then((stats) => setCustomerStats(stats))
+      .catch(() => setCustomerStats(null));
   }, [orgId]);
 
   useEffect(() => {
     loadCustomers();
   }, [loadCustomers]);
 
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
   // Merge additional customers from NewBookingView
   const allCustomers = [...customers, ...additionalCustomers.filter(ac => !customers.some(c => c.id === ac.id))] as Customer[];
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [riskFilter, setRiskFilter] = useState<string>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isRiskOpen, setIsRiskOpen] = useState(false);
   const [isTypeOpen, setIsTypeOpen] = useState(false);
@@ -380,10 +414,12 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
     return matchesSearch && matchesStatus && matchesRisk && matchesType && matchesCard;
   });
 
-  const totalDrivers = allCustomers.length;
-  const activeDrivers = allCustomers.filter(c => c.status === 'Active').length;
-  const suspendedDrivers = allCustomers.filter(c => c.status === 'Suspended' || c.status === 'Blocked').length;
-  const attentionNeeded = allCustomers.filter(c => c.riskLevel === 'High Risk' || c.status === 'Under Review').length;
+  const totalDrivers = customerStats?.total ?? allCustomers.length;
+  const activeDrivers = customerStats?.active ?? allCustomers.filter(c => c.status === 'Active').length;
+  const suspendedDrivers = customerStats?.blocked ?? allCustomers.filter(c => c.status === 'Suspended' || c.status === 'Blocked').length;
+  const attentionNeeded = customerStats
+    ? (customerStats.highRisk ?? 0) + (customerStats.underReview ?? 0) + (customerStats.pendingVerification ?? 0)
+    : allCustomers.filter(c => c.riskLevel === 'High Risk' || c.status === 'Under Review').length;
 
   const inputClass =
     'w-full px-3 py-2.5 rounded-lg border border-border bg-[color:var(--input-background)] text-foreground placeholder:text-muted-foreground outline-none transition-all text-xs focus:border-[color:var(--brand)] focus:ring-1 focus:ring-[color:var(--brand-soft)]';

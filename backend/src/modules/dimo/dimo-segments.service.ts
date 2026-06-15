@@ -10,6 +10,7 @@ import { buildHighFrequencyQuery } from './queries/high-frequency.query';
 import { buildBatteryCrankQuery } from './queries/battery-crank.query';
 import {
   buildDrivingEventsQuery,
+  buildSafetyEventsQuery,
   type DimoVehicleEventRecord,
 } from './queries/driving-events.query';
 import {
@@ -835,6 +836,43 @@ export class DimoSegmentsService {
     } catch (err: any) {
       this.logger.warn(
         `Driving events fetch failed for tokenId=${tokenId}: ${err.message}`,
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Fetch DIMO safety.* events (e.g. safety.collision) for misuse-case aggregation.
+   * Not persisted as DrivingEvent rows.
+   */
+  async fetchSafetyEvents(
+    tokenId: number,
+    from: Date,
+    to: Date,
+  ): Promise<DimoVehicleEventRecord[]> {
+    const jwt = await this.auth.getVehicleJwt(tokenId);
+    if (!jwt) return [];
+
+    const query = buildSafetyEventsQuery(tokenId, from, to);
+    try {
+      const result = await this.telemetry.queryGraphQL(jwt, query);
+      const events: any[] = result?.data?.events ?? [];
+      return events
+        .filter((e: any) => typeof e?.timestamp === 'string' && typeof e?.name === 'string')
+        .map((e: any): DimoVehicleEventRecord => ({
+          timestamp: e.timestamp,
+          name: e.name,
+          source: typeof e.source === 'string' ? e.source : '',
+          durationNs: typeof e.durationNs === 'number' ? e.durationNs : 0,
+          metadata: typeof e.metadata === 'string' ? e.metadata : null,
+        }))
+        .sort(
+          (a, b) =>
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+        );
+    } catch (err: any) {
+      this.logger.warn(
+        `Safety events fetch failed for tokenId=${tokenId}: ${err.message}`,
       );
       return [];
     }

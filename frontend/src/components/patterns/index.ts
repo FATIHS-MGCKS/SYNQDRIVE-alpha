@@ -30,8 +30,8 @@ export type { PageHeaderProps, SectionHeaderProps } from './page-header';
 export { DataCard, MetricCard } from './data-card';
 export type { DataCardProps, MetricCardProps, MetricTrend } from './data-card';
 
-export { EmptyState, SkeletonRows, SkeletonMetricGrid, SkeletonCard } from './states';
-export type { EmptyStateProps, SkeletonRowsProps, SkeletonGridProps } from './states';
+export { EmptyState, ErrorState, SkeletonRows, SkeletonMetricGrid, SkeletonCard } from './states';
+export type { EmptyStateProps, ErrorStateProps, SkeletonRowsProps, SkeletonGridProps } from './states';
 
 export { DataTable } from './data-table';
 export type { DataTableProps, DataTableColumn } from './data-table';

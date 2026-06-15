@@ -126,7 +126,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
         <button
           type="button"
           onClick={onBack}
-          aria-label="Back to Fleet Condition"
+          aria-label="Back to Fleet Health"
           className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
         >
           <Icon name="arrow-left" className="w-5 h-5" />

@@ -6,6 +6,7 @@ import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
 import { customerStatusUiToApi } from '../lib/entityMappers';
 import { CustomerDocumentUploadBox } from './CustomerDocumentUploadBox';
+import { MisuseCasesPanel } from './MisuseCasesPanel';
 import { PageHeader, StatusChip } from '../../components/patterns';
 import type { StatusTone } from '../../components/patterns';
 
@@ -36,7 +37,7 @@ interface Customer {
   phone: string;
   company?: string;
   type: 'Individual' | 'Corporate';
-  status: 'Active' | 'Under Review' | 'Suspended' | 'Blocked';
+  status: 'Active' | 'Under Review' | 'Suspended' | 'Blocked' | 'Archived' | 'Inactive';
   // V4.6.95 — Customer.riskLevel default neutral state is 'Not Assessed'.
   riskLevel: 'Not Assessed' | 'Low Risk' | 'Medium Risk' | 'High Risk';
   // V4.6.95 — `drivingStyleScore` is the canonical 0–100 scalar. The legacy
@@ -76,7 +77,8 @@ type DetailTab =
   | 'fines'
   | 'documents'
   | 'invoices'
-  | 'alerts';
+  | 'alerts'
+  | 'timeline';
 
 type CustomerDetail = {
   id: string;
@@ -316,6 +318,31 @@ export function CustomerDetailView({
   const [activeTab, setActiveTab] = useState<DetailTab>('overview');
   const [statusSaving, setStatusSaving] = useState(false);
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
+  const [eligibility, setEligibility] = useState<{
+    canCreatePendingBooking: boolean;
+    canConfirmBooking: boolean;
+    canStartRental: boolean;
+    blockingReasons: string[];
+    warnings: string[];
+    requiredActions: string[];
+  } | null>(null);
+  const [timelineEvents, setTimelineEvents] = useState<Array<Record<string, unknown>>>([]);
+
+  useEffect(() => {
+    if (!orgId) return;
+    api.customers
+      .eligibility(orgId, customer.id)
+      .then(setEligibility)
+      .catch(() => setEligibility(null));
+  }, [orgId, customer.id, detail?.id]);
+
+  useEffect(() => {
+    if (!orgId || activeTab !== 'timeline') return;
+    api.customers.customerTimeline
+      .list(orgId, customer.id, { limit: 50 })
+      .then((res) => setTimelineEvents(res.data ?? []))
+      .catch(() => setTimelineEvents([]));
+  }, [orgId, customer.id, activeTab]);
 
   const bookings = detail?.bookings ?? [];
 
@@ -407,7 +434,7 @@ export function CustomerDetailView({
     if (!orgId || statusSaving) return;
     setStatusSaving(true);
     try {
-      await api.customers.update(orgId, customer.id, {
+      await api.customers.updateStatus(orgId, customer.id, {
         status: customerStatusUiToApi(next),
       });
       onUpdateCustomer?.({ ...customer, status: next });
@@ -485,6 +512,7 @@ export function CustomerDetailView({
     { key: 'fines', label: `Fines (${fines.length})` },
     { key: 'documents', label: 'Documents' },
     { key: 'invoices', label: `Invoices (${invoices.length})` },
+    { key: 'timeline', label: 'Timeline & Notes' },
     { key: 'alerts', label: 'Alerts & Notes' },
   ];
 
@@ -692,6 +720,41 @@ export function CustomerDetailView({
                 </div>
               ))}
             </div>
+
+            {eligibility && (
+              <div className={`rounded-lg border p-4 ${cardBg}`}>
+                <h3 className={`text-xs font-semibold uppercase tracking-wider mb-3 ${textTertiary}`}>
+                  Mietfreigabe
+                </h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <StatusChip
+                    tone={
+                      eligibility.blockingReasons.length > 0
+                        ? 'critical'
+                        : eligibility.warnings.length > 0
+                          ? 'warning'
+                          : 'success'
+                    }
+                    dot
+                  >
+                    {eligibility.blockingReasons.length > 0
+                      ? 'Blockiert'
+                      : eligibility.warnings.length > 0
+                        ? 'Warnung'
+                        : 'Freigegeben'}
+                  </StatusChip>
+                </div>
+                {eligibility.blockingReasons.map((r) => (
+                  <p key={r} className={`text-xs ${textSecondary}`}>• {r}</p>
+                ))}
+                {eligibility.warnings.map((w) => (
+                  <p key={w} className={`text-xs ${textSecondary}`}>⚠ {w}</p>
+                ))}
+                {eligibility.requiredActions.map((a) => (
+                  <p key={a} className={`text-xs ${textSecondary}`}>→ {a}</p>
+                ))}
+              </div>
+            )}
 
             {/* Two Column Layout */}
             <div className="grid grid-cols-2 gap-3">
@@ -1262,6 +1325,15 @@ export function CustomerDetailView({
                     Einträge einer konkreten Buchung zugeordnet.
                   </span>
                 </div>
+
+                {orgId && (
+                  <MisuseCasesPanel
+                    orgId={orgId}
+                    customerId={customer.id}
+                    title="Nutzungsauffälligkeiten / Prüffälle"
+                    limit={15}
+                  />
+                )}
               </>
             )}
           </div>
@@ -1602,6 +1674,39 @@ export function CustomerDetailView({
                 <p className={`text-xs mt-1 ${textTertiary}`}>
                   Rechnungen erscheinen hier automatisch, sobald Buchungen abgerechnet werden.
                 </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TIMELINE TAB */}
+        {activeTab === 'timeline' && (
+          <div className={`rounded-lg border ${cardBg}`}>
+            {timelineEvents.length === 0 ? (
+              <div className="p-6 text-center">
+                <p className={`text-xs ${textSecondary}`}>Noch keine Timeline-Einträge.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {timelineEvents.map((ev) => (
+                  <div key={String(ev.id)} className="px-4 py-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-xs font-semibold ${textPrimary}`}>
+                        {String(ev.title ?? ev.type ?? 'Event')}
+                      </span>
+                      <span className={`text-[10px] ${textTertiary}`}>
+                        {ev.createdAt
+                          ? formatDate(String(ev.createdAt))
+                          : EM_DASH}
+                      </span>
+                    </div>
+                    {ev.description ? (
+                      <p className={`text-xs mt-1 ${textSecondary} whitespace-pre-wrap`}>
+                        {String(ev.description)}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
               </div>
             )}
           </div>
