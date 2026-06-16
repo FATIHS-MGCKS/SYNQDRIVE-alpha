@@ -34,6 +34,10 @@ export interface VehicleData {
   // `StatInlineDetail`. Both can be `null` for vehicles that have not
   // been assigned to a station yet.
   stationId?: string | null;
+  /** Canonical home station (same as stationId when loaded from fleet-map). */
+  homeStationId?: string | null;
+  currentStationId?: string | null;
+  expectedStationId?: string | null;
   fuelType: 'Petrol' | 'Diesel' | 'Electric' | 'Hybrid' | 'PHEV';
   status: FleetStatus;
   cleaningStatus: 'Clean' | 'Needs Cleaning';

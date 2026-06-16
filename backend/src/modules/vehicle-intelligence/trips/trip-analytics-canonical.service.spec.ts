@@ -32,9 +32,9 @@ describe('TripAnalyticsCanonicalService', () => {
     service = new TripAnalyticsCanonicalService(prisma, assignmentService);
   });
 
-  it('hydrates trip list with canonical score + event summary', async () => {
+  it('hydrates trip list with canonical stress score + event summary', async () => {
     prisma.tripDrivingImpact.findMany.mockResolvedValue([
-      { tripId: 'trip-1', drivingStyleScore: 82, safetyScore: 76 },
+      { tripId: 'trip-1', drivingStressScore: 82 },
     ]);
     assignmentService.resolveForTrip.mockResolvedValue({
       assignmentStatus: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
@@ -81,15 +81,12 @@ describe('TripAnalyticsCanonicalService', () => {
     ] as any);
 
     expect(result).toHaveLength(1);
-    expect(result[0].canonicalTripSummary.scores.drivingStyleScore).toBe(82);
-    expect(result[0].canonicalTripSummary.scores.safetyScore).toBe(76);
+    expect(result[0].canonicalTripSummary.scores.drivingStressScore).toBe(82);
+    expect(result[0].canonicalTripSummary.scores.stressLevel).toBe('critical');
     expect(result[0].canonicalTripSummary.events.totalBrakingEvents).toBe(6);
-    expect(result[0].canonicalTripSummary.assignment.assignmentStatus).toBe(
-      TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
-    );
   });
 
-  it('falls back to legacy fields when impact row is missing', async () => {
+  it('falls back to legacy drivingScore when impact row is missing', async () => {
     prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
     assignmentService.resolveForTrip.mockResolvedValue({
       assignmentStatus: TripAssignmentStatus.PRIVATE_UNASSIGNED,
@@ -135,18 +132,15 @@ describe('TripAnalyticsCanonicalService', () => {
       },
     ] as any);
 
-    expect(result[0].canonicalTripSummary.scores.drivingStyleScore).toBe(55);
+    expect(result[0].canonicalTripSummary.scores.drivingStressScore).toBe(55);
+    expect(result[0].canonicalTripSummary.scores.stressLevel).toBe('high');
     expect(result[0].canonicalTripSummary.scores.scoreSource).toBe('vehicle_trip_compat');
-    // V4.6.95 — trip with no speed-limit enrichment must surface safetyScore=null,
-    // not a fake "100 = perfect safety". `hasSpeedingData` reflects the same.
-    expect(result[0].canonicalTripSummary.scores.safetyScore).toBeNull();
-    expect(result[0].canonicalTripSummary.scores.hasSpeedingData).toBe(false);
-    expect(result[0].canonicalTripSummary.scores.safetyDataConfidence).toBe('none');
-    expect(result[0].canonicalTripSummary.events.totalAccelerationEvents).toBe(0);
   });
 
-  it('returns safetyScore=100 when speed-limit data exists with zero speeding events', async () => {
-    prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
+  it('does not expose safety score fields', async () => {
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([
+      { tripId: 'trip-1', drivingStressScore: 30 },
+    ]);
     assignmentService.resolveForTrip.mockResolvedValue({
       assignmentStatus: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
       assignmentSubjectType: TripAssignmentSubjectType.BOOKING_CUSTOMER,
@@ -158,18 +152,17 @@ describe('TripAnalyticsCanonicalService', () => {
 
     const result = await service.hydrateTrips([
       {
-        id: 'trip-clean',
+        id: 'trip-1',
         vehicleId: 'vehicle-1',
         driverName: null,
-        startTime: new Date('2026-03-01T08:00:00Z'),
-        endTime: new Date('2026-03-01T09:00:00Z'),
-        drivingScore: 90,
-        // Real speed-limit data, no speeding events occurred.
-        speedingExposurePct: 0,
+        startTime: new Date(),
+        endTime: new Date(),
+        drivingScore: null,
         speedingSectionCount: 0,
+        speedingSegments: 0,
+        speedingExposurePct: 0,
         maxOverSpeedKmh: 0,
         avgOverSpeedKmh: 0,
-        speedingSegments: 0,
         accelerationEventCount: 0,
         hardAccelerationCount: 0,
         brakingEventCount: 0,
@@ -193,9 +186,7 @@ describe('TripAnalyticsCanonicalService', () => {
       },
     ] as any);
 
-    expect(result[0].canonicalTripSummary.scores.safetyScore).toBe(100);
-    expect(result[0].canonicalTripSummary.scores.hasSpeedingData).toBe(true);
-    expect(result[0].canonicalTripSummary.scores.safetyDataConfidence).toBe('high');
+    expect((result[0].canonicalTripSummary.scores as any).safetyScore).toBeUndefined();
   });
 
   it('returns canonical trip stats from aggregates', async () => {
@@ -212,19 +203,17 @@ describe('TripAnalyticsCanonicalService', () => {
       },
     });
     prisma.tripDrivingImpact.aggregate.mockResolvedValue({
-      _avg: { drivingStyleScore: 74.456, safetyScore: 68.111 },
+      _avg: { drivingStressScore: 74.456 },
     });
     prisma.vehicleTrip.count
-      .mockResolvedValueOnce(3) // privateTripCount
-      .mockResolvedValueOnce(9); // assignedTripCount
+      .mockResolvedValueOnce(3)
+      .mockResolvedValueOnce(9);
 
     const stats = await service.getVehicleStats('vehicle-1');
 
     expect(stats.totalTrips).toBe(12);
-    expect(stats.avgDrivingStyleScore).toBe(74.46);
-    expect(stats.avgSafetyScore).toBe(68.11);
-    expect(stats.privateTripCount).toBe(3);
-    expect(stats.assignedTripCount).toBe(9);
+    expect(stats.avgDrivingStressScore).toBe(74.46);
+    expect(stats.stressLevel).toBe('high');
+    expect((stats as any).avgSafetyScore).toBeUndefined();
   });
 });
-

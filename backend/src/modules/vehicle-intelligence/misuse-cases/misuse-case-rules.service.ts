@@ -198,9 +198,7 @@ export class MisuseCaseRulesService {
   }
 
   private ruleLaunchAbuse(abuse: TripBehaviorEvent[]): CaseCandidate | null {
-    const launches = abuse.filter(
-      (e) => e.eventType === 'LAUNCH_LIKE_START' || e.eventType === 'LAUNCH_CONTROL',
-    );
+    const launches = abuse.filter((e) => e.eventType === 'LAUNCH_LIKE_START');
     if (launches.length === 0) return null;
 
     const strong = launches.find(

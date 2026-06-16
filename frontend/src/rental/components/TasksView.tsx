@@ -5,9 +5,10 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
-import type { ApiTask, ApiTaskType, CreateTaskPayload } from '../../lib/api';
-import { PageHeader, StatusChip, PriorityBadge, EmptyState, SkeletonRows, ErrorState } from '../../components/patterns';
-import type { StatusTone } from '../../components/patterns';
+import type { ApiTask, ApiTaskSummary, ApiTaskType, CreateTaskPayload, Station } from '../../lib/api';
+import { checklistPreviewForType } from '../lib/task-templates';
+import { PageHeader, StatusChip, PriorityBadge, EmptyState, ErrorState, DataTable } from '../../components/patterns';
+import type { StatusTone, DataTableColumn } from '../../components/patterns';
 
 // View category → canonical backend TaskType.
 const CATEGORY_TO_TASK_TYPE: Record<string, ApiTaskType> = {
@@ -25,9 +26,9 @@ const CATEGORY_TO_TASK_TYPE: Record<string, ApiTaskType> = {
 
 const VIEW_PRIORITY_TO_API: Record<string, CreateTaskPayload['priority']> = {
   Low: 'LOW',
-  Medium: 'MEDIUM',
+  Medium: 'NORMAL',
   High: 'HIGH',
-  Critical: 'URGENT',
+  Critical: 'CRITICAL',
 };
 
 interface TasksViewProps {
@@ -73,11 +74,12 @@ interface BackendTask {
   status: string;
   priority: string;
   vehicleId?: string | null;
-  assignedTo?: string | null;
+  assignedUserId?: string | null;
   source?: string | null;
   dueDate?: string | null;
   completedAt?: string | null;
   createdAt?: string | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 const KNOWN_CATEGORIES: TaskCategory[] = ['Cleaning', 'Maintenance', 'Repair', 'Inspection', 'Damage', 'TÜV', 'Insurance', 'Documents', 'Tire Change', 'Oil Change'];
@@ -91,9 +93,12 @@ function mapCategory(c?: string | null): TaskCategory {
 
 function mapPriority(p?: string): TaskPriority {
   switch ((p || '').toUpperCase()) {
+    case 'CRITICAL':
     case 'URGENT': return 'Critical';
     case 'HIGH': return 'High';
     case 'LOW': return 'Low';
+    case 'NORMAL':
+    case 'MEDIUM':
     default: return 'Medium';
   }
 }
@@ -151,7 +156,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
   const [taskStep, setTaskStep] = useState(0);
   const [newTask, setNewTask] = useState({
     title: '', description: '', category: 'Maintenance' as TaskCategory, priority: 'Medium' as TaskPriority,
-    vehicleLicense: '', station: '', assignedTo: '', createdBy: '',
+    vehicleLicense: '', stationId: '', assignedTo: '', createdBy: '',
     dueDate: '', estimatedDuration: '', notes: '',
   });
   const [taskFormErrors, setTaskFormErrors] = useState<Record<string, string>>({});
@@ -165,7 +170,28 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
   const [mutating, setMutating] = useState(false);
   // Full server detail for the open task (checklist / comments / timeline).
   const [detailFull, setDetailFull] = useState<ApiTask | null>(null);
+  const [taskSummary, setTaskSummary] = useState<ApiTaskSummary | null>(null);
   const [orgMembers, setOrgMembers] = useState<{ id: string; name: string }[]>([]);
+  const [orgStations, setOrgStations] = useState<Station[]>([]);
+
+  useEffect(() => {
+    if (!orgId) {
+      setOrgStations([]);
+      return;
+    }
+    let cancelled = false;
+    api.stations
+      .list(orgId)
+      .then((rows) => {
+        if (!cancelled) setOrgStations(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) setOrgStations([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
 
   useEffect(() => {
     if (!orgId) {
@@ -176,9 +202,9 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
     api.users.listByOrg(orgId)
       .then((res) => {
         if (cancelled) return;
-        const list = Array.isArray(res) ? res : ((res as { data?: unknown[] })?.data ?? []);
+        const list = Array.isArray(res) ? res : [];
         setOrgMembers(
-          list.map((u: { id: string; name?: string; firstName?: string; lastName?: string; email?: string }) => ({
+          list.map((u) => ({
             id: u.id,
             name: u.name || `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email || u.id,
           })),
@@ -193,14 +219,15 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
     if (!orgId) return;
     setTasksLoading(true);
     setTasksError(null);
-    api.tasks
-      .list(orgId)
-      .then((rows) => {
+    Promise.all([api.tasks.list(orgId), api.tasks.summary(orgId)])
+      .then(([rows, summary]) => {
         setRawTasks(Array.isArray(rows) ? (rows as unknown as BackendTask[]) : []);
+        setTaskSummary(summary);
         setTasksError(null);
       })
       .catch((err) => {
         setRawTasks([]);
+        setTaskSummary(null);
         setTasksError(err instanceof Error ? err.message : 'Failed to load tasks');
       })
       .finally(() => setTasksLoading(false));
@@ -275,8 +302,15 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
   // Enrich with vehicle metadata from the shared fleet context.
   const tasks = useMemo<Task[]>(() => {
     const vById = new Map(fleetVehicles.map((v) => [v.id, v]));
+    const stationById = new Map(orgStations.map((s) => [s.id, s]));
     return rawTasks.map((t) => {
       const veh = t.vehicleId ? vById.get(t.vehicleId) : undefined;
+      const metaStationId =
+        typeof t.metadata?.stationId === 'string' ? t.metadata.stationId : null;
+      const stationName =
+        (metaStationId ? stationById.get(metaStationId)?.name : null) ??
+        veh?.station ??
+        '';
       const isAuto = !!t.source && t.source.startsWith('INSIGHT_');
       return {
         id: t.id,
@@ -288,11 +322,11 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
         vehicleId: t.vehicleId || '',
         vehicleLicense: veh?.license || '',
         vehicleModel: veh?.model || '',
-        station: veh?.station || '',
+        station: stationName,
         assignedTo: (() => {
           const uid = (t as BackendTask & { assignedUserId?: string }).assignedUserId;
-          if (uid) return orgMembers.find((m) => m.id === uid)?.name ?? t.assignedTo ?? 'Unassigned';
-          return t.assignedTo || (isAuto ? 'System' : 'Unassigned');
+          if (uid) return orgMembers.find((m) => m.id === uid)?.name ?? (t as BackendTask).assignedUserId ?? 'Unassigned';
+          return (t as BackendTask).assignedUserId || (isAuto ? 'System' : 'Unassigned');
         })(),
         createdDate: fmtDate(t.createdAt),
         dueDate: fmtDate(t.dueDate),
@@ -301,7 +335,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
         notes: isAuto ? 'Automatisch erzeugt durch SynqDrive Insights.' : undefined,
       };
     });
-  }, [rawTasks, fleetVehicles, orgMembers]);
+  }, [rawTasks, fleetVehicles, orgMembers, orgStations]);
 
   const openNewTask = () => {
     setIsNewTaskOpen(true);
@@ -398,7 +432,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
   const resetNewTaskForm = () => {
     setNewTask({
       title: '', description: '', category: 'Maintenance', priority: 'Medium',
-      vehicleLicense: '', station: '', assignedTo: '', createdBy: '',
+      vehicleLicense: '', stationId: '', assignedTo: '', createdBy: '',
       dueDate: '', estimatedDuration: '', notes: '',
     });
     setTaskFormErrors({});
@@ -413,7 +447,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
     } else if (step === 1) {
       if (!newTask.vehicleLicense) errors.vehicleLicense = 'Fahrzeug auswählen';
       if (!newTask.assignedTo) errors.assignedTo = 'Zuweisung erforderlich';
-      if (!newTask.station.trim()) errors.station = 'Station erforderlich';
+      if (!newTask.stationId) errors.stationId = 'Station erforderlich';
     } else if (step === 2) {
       if (!newTask.dueDate) errors.dueDate = 'Fälligkeitsdatum erforderlich';
       if (!newTask.estimatedDuration.trim()) errors.estimatedDuration = 'Geschätzte Dauer erforderlich';
@@ -435,16 +469,22 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
       return;
     }
     const vehicle = fleetVehicles.find((v) => v.license === newTask.vehicleLicense);
+    const taskType = CATEGORY_TO_TASK_TYPE[newTask.category] ?? 'CUSTOM';
+    const checklistItems = checklistPreviewForType(taskType);
     const payload: CreateTaskPayload = {
       title: newTask.title.trim(),
       description: newTask.description.trim() || undefined,
-      type: CATEGORY_TO_TASK_TYPE[newTask.category] ?? 'CUSTOM',
+      type: taskType,
       source: 'MANUAL',
-      priority: VIEW_PRIORITY_TO_API[newTask.priority] ?? 'MEDIUM',
+      priority: VIEW_PRIORITY_TO_API[newTask.priority] ?? 'NORMAL',
       category: newTask.category,
       dueDate: newTask.dueDate ? new Date(newTask.dueDate).toISOString() : undefined,
       assignedUserId: newTask.assignedTo || undefined,
       vehicleId: vehicle?.id,
+      stationId: newTask.stationId || undefined,
+      checklist: checklistItems.length
+        ? checklistItems.map((title, sortOrder) => ({ title, sortOrder }))
+        : undefined,
     };
     setMutating(true);
     api.tasks
@@ -492,10 +532,12 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
     return a.dueDate.split('.').reverse().join('').localeCompare(b.dueDate.split('.').reverse().join(''));
   });
 
-  const openCount = tasks.filter(t => t.status === 'Open').length;
-  const inProgressCount = tasks.filter(t => t.status === 'In Progress').length;
-  const completedCount = tasks.filter(t => t.status === 'Completed').length;
-  const overdueCount = tasks.filter(t => t.status === 'Overdue').length;
+  const inProgressCount = taskSummary?.inProgress ?? tasks.filter(t => t.status === 'In Progress').length;
+  const summaryOpen = taskSummary?.open ?? tasks.filter(t => t.status === 'Open').length;
+  const summaryDueToday = taskSummary?.dueToday ?? 0;
+  const summaryOverdue = taskSummary?.overdue ?? tasks.filter(t => t.status === 'Overdue').length;
+  const summaryCritical = taskSummary?.critical ?? 0;
+  const summaryAssignedToMe = taskSummary?.assignedToMe ?? 0;
   const uniqueVehicles = fleetVehicles.length > 0
     ? fleetVehicles.map(v => ({ value: v.license, label: `${v.license} – ${v.model}` }))
     : [...new Set(tasks.map(t => t.vehicleLicense))].filter(Boolean).map(license => {
@@ -544,7 +586,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
     closeAllDropdowns();
   };
 
-  const cardClass = 'sq-card rounded-lg';
+
   const textPrimary = 'text-foreground';
   const textSecondary = 'text-muted-foreground';
   const textTertiary = 'text-muted-foreground/70';
@@ -578,6 +620,74 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
       </StatusChip>
     );
   };
+
+  const taskColumns = useMemo<DataTableColumn<Task>[]>(() => [
+    {
+      key: 'task',
+      header: 'Task',
+      cell: (task) => (
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-mono text-muted-foreground/70">{task.id}</span>
+            {task.priority === 'Critical' && <Icon name="alert-triangle" className="w-3 h-3 text-[color:var(--status-critical)]" />}
+          </div>
+          <p className="text-xs font-semibold mt-0.5 text-foreground">{task.title}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'category',
+      header: 'Category',
+      cell: (task) => <TaskCategoryChip category={task.category} />,
+    },
+    {
+      key: 'vehicle',
+      header: 'Vehicle',
+      cell: (task) => (
+        <>
+          <p className="text-xs font-medium text-foreground">{task.vehicleLicense}</p>
+          <p className="text-[11px] text-muted-foreground/70">{task.vehicleModel.split(' ').slice(0, 2).join(' ')}</p>
+        </>
+      ),
+    },
+    {
+      key: 'station',
+      header: 'Station',
+      cell: (task) => <span className="text-xs text-muted-foreground">{task.station}</span>,
+    },
+    {
+      key: 'assignee',
+      header: 'Assigned To',
+      cell: (task) => (
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-brand text-brand-foreground">
+            {task.assignedTo.split(' ').map((n) => n[0]).join('')}
+          </div>
+          <span className="text-xs text-muted-foreground">{task.assignedTo}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'due',
+      header: 'Due Date',
+      cell: (task) => (
+        <>
+          <span className={`text-xs font-medium ${task.status === 'Overdue' ? 'text-[color:var(--status-critical)]' : 'text-foreground'}`}>{task.dueDate}</span>
+          <p className="text-[11px] text-muted-foreground/70">{task.estimatedDuration}</p>
+        </>
+      ),
+    },
+    {
+      key: 'priority',
+      header: 'Priority',
+      cell: (task) => <TaskPriorityBadge priority={task.priority} />,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (task) => <TaskStatusChip status={task.status} />,
+    },
+  ], []);
 
   const DropdownFilter = ({ label, value, options, isOpen, onToggle, onSelect }: {
     label: string; value: string; options: { value: string; label: string; count?: number }[];
@@ -640,52 +750,67 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
         )}
       />
 
-      {/* Segment metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      {/* Segment metrics — canonical counts from GET /tasks/summary */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
         {[
           {
             label: 'Open',
-            value: openCount,
+            value: summaryOpen,
             helper: `${inProgressCount} in progress`,
             icon: ListTodo,
             tone: 'sq-tone-brand',
             filterVal: 'Open',
           },
           {
-            label: 'In Progress',
-            value: inProgressCount,
-            helper: `${filtered.length} currently visible`,
-            icon: Clock,
+            label: 'Due Today',
+            value: summaryDueToday,
+            helper: 'fällig heute',
+            icon: Calendar,
             tone: 'sq-tone-warning',
-            filterVal: 'In Progress',
-          },
-          {
-            label: 'Completed',
-            value: completedCount,
-            helper: 'closed work orders',
-            icon: CheckCircle,
-            tone: 'sq-tone-success',
-            filterVal: 'Completed',
+            filterVal: null,
           },
           {
             label: 'Overdue',
-            value: overdueCount,
-            helper: overdueCount > 0 ? 'needs attention' : 'no overdue tasks',
+            value: summaryOverdue,
+            helper: summaryOverdue > 0 ? 'needs attention' : 'no overdue tasks',
             icon: AlertTriangle,
-            tone: overdueCount > 0 ? 'sq-tone-critical' : 'sq-tone-neutral',
+            tone: summaryOverdue > 0 ? 'sq-tone-critical' : 'sq-tone-neutral',
             filterVal: 'Overdue',
           },
+          {
+            label: 'Critical',
+            value: summaryCritical,
+            helper: 'priority CRITICAL',
+            icon: AlertTriangle,
+            tone: summaryCritical > 0 ? 'sq-tone-critical' : 'sq-tone-neutral',
+            filterVal: 'Critical',
+          },
+          {
+            label: 'Assigned To Me',
+            value: summaryAssignedToMe,
+            helper: 'my open tasks',
+            icon: CheckCircle,
+            tone: 'sq-tone-info',
+            filterVal: null,
+          },
         ].map(card => {
-          const isActive = statusFilter === card.filterVal;
+          const isActive = card.filterVal != null && statusFilter === card.filterVal;
           const MetricIcon = card.icon;
           return (
             <button
               key={card.label}
               type="button"
-              onClick={() => setStatusFilter(isActive ? 'all' : card.filterVal)}
+              onClick={() => {
+                if (card.filterVal === 'Critical') {
+                  setPriorityFilter(isActive ? 'all' : 'Critical');
+                } else if (card.filterVal) {
+                  setStatusFilter(isActive ? 'all' : card.filterVal);
+                }
+              }}
+              disabled={card.filterVal == null && card.label !== 'Due Today'}
               className={`group sq-card sq-press rounded-2xl p-4 text-left shadow-[var(--shadow-1)] transition-all ${
                 isActive ? 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_22%,transparent)]' : 'hover:bg-muted/35'
-              }`}
+              } ${card.filterVal == null ? 'cursor-default' : ''}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -848,8 +973,8 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
       </div>
 
       {/* Tasks Table */}
-      <div className={`${cardClass} overflow-hidden`}>
-        {tasksError ? (
+      {tasksError ? (
+        <div className="sq-card overflow-hidden">
           <ErrorState
             compact
             title="Could not load tasks"
@@ -857,93 +982,42 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
             onRetry={() => loadTasks.current()}
             className="py-12"
           />
-        ) : tasksLoading ? (
-          <div className="p-4">
-            <SkeletonRows rows={8} />
-          </div>
-        ) : (
-        <>
-        <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px]">
-          <thead>
-            <tr className="border-b border-border">
-              {['Task', 'Category', 'Vehicle', 'Station', 'Assigned To', 'Due Date', 'Priority', 'Status', ''].map(h => (
-                <th key={h} className={`text-left text-xs uppercase tracking-wider font-semibold px-3 py-3 ${textTertiary}`}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/60">
-            {sorted.map(task => {
-              const isOverdue = task.status === 'Overdue';
-              const isCritical = task.priority === 'Critical';
-              return (
-                <tr key={task.id}
-                  ref={(el) => { taskRowRefs.current[task.id] = el; }}
-                  onClick={() => openTaskDetail(task)}
-                  className={`cursor-pointer transition-colors duration-200 sq-card-elevated ${
-                    flashingTaskId === task.id
-                      ? 'bg-[color:var(--brand-soft)] ring-1 ring-[color:var(--brand-soft)]'
-                      : 'hover:bg-muted/60'
-                  } ${
-                    isOverdue && flashingTaskId !== task.id ? 'bg-[color:var(--status-critical-soft)]' : ''
-                  }`}>
-                  <td className="px-3 py-2.5">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[11px] font-mono ${textTertiary}`}>{task.id}</span>
-                        {isCritical && <Icon name="alert-triangle" className="w-3 h-3 text-[color:var(--status-critical)]" />}
-                      </div>
-                      <p className={`text-xs font-semibold mt-0.5 ${textPrimary}`}>{task.title}</p>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <TaskCategoryChip category={task.category} />
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <p className={`text-xs font-medium ${textPrimary}`}>{task.vehicleLicense}</p>
-                    <p className={`text-[11px] ${textTertiary}`}>{task.vehicleModel.split(' ').slice(0, 2).join(' ')}</p>
-                  </td>
-                  <td className={`px-3 py-2.5 text-xs ${textSecondary}`}>
-                    {task.station}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-brand text-brand-foreground`}>
-                        {task.assignedTo.split(' ').map(n => n[0]).join('')}
-                      </div>
-                      <span className={`text-xs ${textSecondary}`}>{task.assignedTo}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <span className={`text-xs font-medium ${isOverdue ? 'text-[color:var(--status-critical)]' : textPrimary}`}>{task.dueDate}</span>
-                    <p className={`text-[11px] ${textTertiary}`}>{task.estimatedDuration}</p>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <TaskPriorityBadge priority={task.priority} />
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <TaskStatusChip status={task.status} />
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <Icon name="chevron-right" className="w-5 h-5 text-muted-foreground/50" />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
         </div>
-        {sorted.length === 0 && (
-          <EmptyState
-            compact
-            icon={<Icon name="list-todo" className="h-5 w-5" />}
-            title="No tasks match your filters"
-            description="Try adjusting your search or filter criteria."
-          />
-        )}
-        </>
-        )}
-      </div>
+      ) : (
+        <DataTable
+          columns={taskColumns}
+          rows={sorted}
+          getRowKey={(task) => task.id}
+          loading={tasksLoading}
+          skeletonRows={8}
+          dense
+          stickyHeader
+          onRowClick={openTaskDetail}
+          getRowClassName={(task) => {
+            if (flashingTaskId === task.id) {
+              return 'bg-[color:var(--brand-soft)] ring-1 ring-[color:var(--brand-soft)]';
+            }
+            if (task.status === 'Overdue') {
+              return 'bg-[color:var(--status-critical-soft)]';
+            }
+            return undefined;
+          }}
+          rowRef={(task, el) => {
+            taskRowRefs.current[task.id] = el;
+          }}
+          rowActions={() => (
+            <Icon name="chevron-right" className="w-5 h-5 text-muted-foreground/50" />
+          )}
+          empty={(
+            <EmptyState
+              compact
+              icon={<Icon name="list-todo" className="h-5 w-5" />}
+              title="No tasks match your filters"
+              description="Try adjusting your search or filter criteria."
+            />
+          )}
+        />
+      )}
 
       {/* Results Count */}
       <div className="flex items-center justify-between">
@@ -1032,8 +1106,34 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
               {/* Description */}
               <div>
                 <h4 className={`text-xs uppercase tracking-wider font-semibold mb-2 ${textTertiary}`}>Description</h4>
-                <p className={`text-xs ${textSecondary}`}>{selectedTask.description}</p>
+                <p className={`text-xs ${textSecondary}`}>{selectedTask.description || '—'}</p>
               </div>
+
+              {detailFull && (
+                <div className={`rounded-lg border p-4 ${'bg-muted/40 border-border'}`}>
+                  <h4 className={`text-xs uppercase tracking-wider font-semibold mb-3 ${textTertiary}`}>Task Meta</h4>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div><span className={textSecondary}>Type</span><p className={`font-medium ${textPrimary}`}>{detailFull.type.replace(/_/g, ' ')}</p></div>
+                    <div><span className={textSecondary}>Source</span><p className={`font-medium ${textPrimary}`}>{detailFull.sourceType}{detailFull.source ? ` · ${detailFull.source}` : ''}</p></div>
+                    <div><span className={textSecondary}>Priority</span><p className={`font-medium ${textPrimary}`}>{detailFull.priority}</p></div>
+                    <div><span className={textSecondary}>Status</span><p className={`font-medium ${textPrimary}`}>{detailFull.status}</p></div>
+                    {(detailFull.estimatedCostCents != null || detailFull.actualCostCents != null) && (
+                      <>
+                        <div><span className={textSecondary}>Est. Cost</span><p className={`font-medium ${textPrimary}`}>{detailFull.estimatedCostCents != null ? `${(detailFull.estimatedCostCents / 100).toFixed(2)} €` : '—'}</p></div>
+                        <div><span className={textSecondary}>Actual Cost</span><p className={`font-medium ${textPrimary}`}>{detailFull.actualCostCents != null ? `${(detailFull.actualCostCents / 100).toFixed(2)} €` : '—'}</p></div>
+                      </>
+                    )}
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {detailFull.vehicleId && <span className="text-[10px] px-2 py-1 rounded-full border border-border bg-card">Vehicle · {detailFull.vehicleId.slice(0, 8)}…</span>}
+                    {detailFull.bookingId && <span className="text-[10px] px-2 py-1 rounded-full border border-border bg-card">Booking · {detailFull.bookingId.slice(0, 8)}…</span>}
+                    {detailFull.customerId && <span className="text-[10px] px-2 py-1 rounded-full border border-border bg-card">Customer · {detailFull.customerId.slice(0, 8)}…</span>}
+                    {detailFull.vendorId && <span className="text-[10px] px-2 py-1 rounded-full border border-border bg-card">Vendor · {detailFull.vendorId.slice(0, 8)}…</span>}
+                    {detailFull.alertId && <span className="text-[10px] px-2 py-1 rounded-full border border-border bg-card">Alert · {detailFull.alertId.slice(0, 8)}…</span>}
+                    {detailFull.documentId && <span className="text-[10px] px-2 py-1 rounded-full border border-border bg-card">Document · {detailFull.documentId.slice(0, 8)}…</span>}
+                  </div>
+                </div>
+              )}
 
               {/* Info Grid */}
               <div className="grid grid-cols-2 gap-3">
@@ -1139,6 +1239,33 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                 </div>
               )}
 
+              {detailFull && detailFull.comments && detailFull.comments.length > 0 && (
+                <div>
+                  <h4 className={`text-xs uppercase tracking-wider font-semibold mb-2 ${textTertiary}`}>Comments</h4>
+                  <div className="space-y-2">
+                    {detailFull.comments.map((c) => (
+                      <div key={c.id} className={`rounded-lg border px-3 py-2 text-xs ${'bg-muted/40 border-border'}`}>
+                        <p className={textPrimary}>{c.body}</p>
+                        <p className={`mt-1 ${textTertiary}`}>{fmtDate(c.createdAt)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {detailFull && detailFull.attachments && detailFull.attachments.length > 0 && (
+                <div>
+                  <h4 className={`text-xs uppercase tracking-wider font-semibold mb-2 ${textTertiary}`}>Attachments</h4>
+                  <div className="space-y-1.5">
+                    {detailFull.attachments.map((a) => (
+                      <a key={a.id} href={a.fileUrl} target="_blank" rel="noopener noreferrer" className={`block text-xs underline ${textSecondary}`}>
+                        {a.fileName ?? a.fileUrl}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Timeline (from server detail) */}
               {detailFull && detailFull.timeline && detailFull.timeline.length > 0 && (
                 <div>
@@ -1205,7 +1332,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
         const allCategories: TaskCategory[] = ['Cleaning', 'Maintenance', 'Repair', 'Inspection', 'Damage', 'TÜV', 'Insurance', 'Documents', 'Tire Change', 'Oil Change'];
         const allPriorities: TaskPriority[] = ['Low', 'Medium', 'High', 'Critical'];
         const assigneesList = orgMembers;
-        const stationsList: string[] = [];
+        const stationsList = orgStations.filter((s) => s.status === 'ACTIVE');
 
         return (
           <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={closeNewTask}>
@@ -1318,7 +1445,19 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                     {sectionTitle(Car, 'Fahrzeug & Zuweisung')}
                     <div>
                       <label className={labelClass}>Fahrzeug *</label>
-                      <select value={newTask.vehicleLicense} onChange={e => setNewTask({ ...newTask, vehicleLicense: e.target.value })} className={inputClass}>
+                      <select
+                        value={newTask.vehicleLicense}
+                        onChange={(e) => {
+                          const license = e.target.value;
+                          const veh = fleetVehicles.find((v) => v.license === license);
+                          setNewTask({
+                            ...newTask,
+                            vehicleLicense: license,
+                            stationId: veh?.homeStationId ?? veh?.stationId ?? newTask.stationId,
+                          });
+                        }}
+                        className={inputClass}
+                      >
                         <option value="">Fahrzeug auswählen...</option>
                         {uniqueVehicles.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
                       </select>
@@ -1335,11 +1474,20 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                       </div>
                       <div>
                         <label className={labelClass}>Station *</label>
-                        <select value={newTask.station} onChange={e => setNewTask({ ...newTask, station: e.target.value })} className={inputClass}>
-                          <option value="">{stationsList.length === 0 ? 'No stations' : 'Station wählen...'}</option>
-                          {stationsList.map(s => <option key={s} value={s}>{s}</option>)}
+                        <select
+                          value={newTask.stationId}
+                          onChange={(e) => {
+                            const stationId = e.target.value;
+                            setNewTask({ ...newTask, stationId });
+                          }}
+                          className={inputClass}
+                        >
+                          <option value="">{stationsList.length === 0 ? 'Keine Stationen' : 'Station wählen...'}</option>
+                          {stationsList.map((s) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
                         </select>
-                        {taskFormErrors.station && <p className="text-[11px] text-[color:var(--status-critical)] mt-1">{taskFormErrors.station}</p>}
+                        {taskFormErrors.stationId && <p className="text-[11px] text-[color:var(--status-critical)] mt-1">{taskFormErrors.stationId}</p>}
                       </div>
                     </div>
                   </div>
@@ -1410,7 +1558,10 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                     }`}>
                       <SummaryRow label="Fahrzeug" value={newTask.vehicleLicense ? (uniqueVehicles.find(v => v.value === newTask.vehicleLicense)?.label || newTask.vehicleLicense) : ''} />
                       <SummaryRow label="Zugewiesen an" value={orgMembers.find(m => m.id === newTask.assignedTo)?.name ?? newTask.assignedTo} />
-                      <SummaryRow label="Station" value={newTask.station} />
+                      <SummaryRow
+                        label="Station"
+                        value={orgStations.find((s) => s.id === newTask.stationId)?.name ?? '—'}
+                      />
                     </div>
                     <div className={`rounded-lg border p-4 space-y-0 divide-y ${
                       'bg-muted/40 border-border divide-border/60'

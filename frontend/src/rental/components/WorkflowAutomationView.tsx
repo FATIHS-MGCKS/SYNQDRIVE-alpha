@@ -32,11 +32,43 @@ interface Workflow {
 }
 
 interface TriggerDef { type: string; config?: Record<string, any>; }
-interface ConditionDef { field: string; operator: string; value: any; }
+interface ConditionDef { field?: string; path?: string; operator: string; value: any; }
 interface ActionDef { type: string; config?: Record<string, any>; }
 interface ScopeDef { type: string; stationIds?: string[]; vehicleIds?: string[]; }
 
-interface Stats { total: number; active: number; draft: number; disabled: number; }
+interface Stats {
+  total: number;
+  active: number;
+  draft: number;
+  disabled: number;
+  invalid?: number;
+  totalRuns?: number;
+  successfulRuns?: number;
+  failedRuns?: number;
+  waitingApprovalRuns?: number;
+  runsLast24h?: number;
+  lastRunAt?: string | null;
+}
+
+interface WorkflowRun {
+  id: string;
+  eventType: string;
+  entityType?: string | null;
+  entityId?: string | null;
+  status: string;
+  errorMessage?: string | null;
+  startedAt: string;
+  finishedAt?: string | null;
+  createdAt: string;
+  actionRuns?: Array<{
+    id: string;
+    actionType: string;
+    actionIndex: number;
+    status: string;
+    errorMessage?: string | null;
+    requiresApproval: boolean;
+  }>;
+}
 
 interface Props { isDarkMode: boolean; canWrite?: boolean; }
 
@@ -53,35 +85,33 @@ const CATEGORIES = [
 ] as const;
 
 const TRIGGER_TYPES = [
-  { key: 'vehicle_returned', label: 'Vehicle returned', category: 'vehicle_return' },
-  { key: 'vehicle_status_change', label: 'Vehicle status changed', category: 'vehicle_return' },
-  { key: 'cleaning_status_change', label: 'Cleaning status changed', category: 'cleaning' },
-  { key: 'geofence_exit', label: 'Vehicle leaves territory', category: 'geofencing' },
-  { key: 'geofence_dwell', label: 'Vehicle outside territory for duration', category: 'geofencing' },
+  { key: 'booking.returned', label: 'Booking returned', category: 'vehicle_return' },
+  { key: 'booking.completed', label: 'Booking completed', category: 'vehicle_return' },
+  { key: 'vehicle_returned', label: 'Vehicle returned (legacy)', category: 'vehicle_return' },
+  { key: 'vehicle.health.warning', label: 'Vehicle health warning', category: 'maintenance' },
+  { key: 'vehicle.health.critical', label: 'Vehicle health critical', category: 'maintenance' },
   { key: 'health_threshold', label: 'Health threshold reached', category: 'maintenance' },
-  { key: 'maintenance_due', label: 'Maintenance / inspection due', category: 'maintenance' },
-  { key: 'compliance_expiring', label: 'TÜV / BOKraft / permit expiring', category: 'maintenance' },
-  { key: 'fine_created', label: 'New fine received', category: 'finance' },
+  { key: 'vehicle.dtc.critical', label: 'Critical DTC detected', category: 'maintenance' },
   { key: 'invoice_overdue', label: 'Invoice overdue', category: 'finance' },
-  { key: 'task_escalation', label: 'Task unanswered for duration', category: 'support' },
-  { key: 'support_escalation', label: 'Support ticket unanswered', category: 'support' },
-  { key: 'ai_action_request', label: 'AI requests special action', category: 'ai_permissions' },
-  { key: 'schedule', label: 'Scheduled (recurring)', category: 'vehicle_return' },
-  { key: 'manual', label: 'Manual trigger', category: 'vehicle_return' },
+  { key: 'invoice.overdue', label: 'Invoice overdue (canonical)', category: 'finance' },
+  { key: 'fine_created', label: 'Customer complaint / fine', category: 'finance' },
+  { key: 'customer.complaint.created', label: 'Customer complaint created', category: 'support' },
+  { key: 'manual', label: 'Manual / test trigger', category: 'vehicle_return' },
+  { key: 'manual.test', label: 'Manual test', category: 'vehicle_return' },
 ] as const;
 
 const ACTION_TYPES = [
-  { key: 'create_alert', label: 'Create alert', icon: Bell },
-  { key: 'create_task', label: 'Create task', icon: ClipboardList },
-  { key: 'change_cleaning_status', label: 'Set cleaning status', icon: Sparkles },
-  { key: 'change_vehicle_status', label: 'Change vehicle status', icon: Car },
-  { key: 'send_notification', label: 'Send notification', icon: Bell },
-  { key: 'ai_suggest', label: 'AI: Suggest action only', icon: Bot },
-  { key: 'ai_execute', label: 'AI: Execute action', icon: Zap },
-  { key: 'ai_send_message', label: 'AI: Send customer message', icon: Bot },
-  { key: 'ai_book_appointment', label: 'AI: Book appointment', icon: Calendar },
-  { key: 'request_approval', label: 'Request approval / confirmation', icon: Shield },
-  { key: 'assign_vendor', label: 'Assign vendor / service', icon: Truck },
+  { key: 'create_alert', label: 'Create alert', icon: Bell, mvp: true },
+  { key: 'create_task', label: 'Create task', icon: ClipboardList, mvp: true },
+  { key: 'change_vehicle_status', label: 'Change vehicle status', icon: Car, mvp: true },
+  { key: 'send_notification', label: 'Prepare notification (draft only)', icon: Bell, mvp: true },
+  { key: 'ai_suggest', label: 'AI: Suggest action (approval required)', icon: Bot, mvp: true },
+  { key: 'request_approval', label: 'Request approval', icon: Shield, mvp: true },
+  { key: 'change_cleaning_status', label: 'Set cleaning status', icon: Sparkles, mvp: false, comingSoon: true },
+  { key: 'ai_execute', label: 'AI: Execute action', icon: Zap, mvp: false, comingSoon: true },
+  { key: 'ai_send_message', label: 'AI: Send customer message', icon: Bot, mvp: false, comingSoon: true },
+  { key: 'ai_book_appointment', label: 'AI: Book appointment', icon: Calendar, mvp: false, comingSoon: true },
+  { key: 'assign_vendor', label: 'Assign vendor / service', icon: Truck, mvp: false, comingSoon: true },
 ] as const;
 
 const CONDITION_FIELDS = [
@@ -127,15 +157,6 @@ interface StarterTemplate {
 
 const STARTER_TEMPLATES: StarterTemplate[] = [
   {
-    name: 'Auto-Clean on Return',
-    description: 'Automatically set "Needs Cleaning" when a vehicle is returned.',
-    category: 'cleaning',
-    trigger: { type: 'vehicle_returned' },
-    conditions: [],
-    actions: [{ type: 'change_cleaning_status', config: { status: 'NEEDS_CLEANING' } }],
-    scope: { type: 'organization' },
-  },
-  {
     name: 'Return Damage Check',
     description: 'Create a damage inspection task for every vehicle return.',
     category: 'vehicle_return',
@@ -145,38 +166,30 @@ const STARTER_TEMPLATES: StarterTemplate[] = [
     scope: { type: 'organization' },
   },
   {
-    name: 'Geofence Exit Alert',
-    description: 'Send an alert when a vehicle leaves the allowed territory.',
-    category: 'geofencing',
-    trigger: { type: 'geofence_exit', config: { territoryName: 'Default Territory' } },
+    name: 'Return Admin Notification',
+    description: 'Prepare an internal notification draft when a booking is returned.',
+    category: 'vehicle_return',
+    trigger: { type: 'vehicle_returned' },
     conditions: [],
-    actions: [{ type: 'create_alert', config: { severity: 'high', message: 'Vehicle has left the allowed territory' } }],
+    actions: [{ type: 'send_notification', config: { target: 'admin', message: 'Vehicle returned — review readiness' } }],
     scope: { type: 'organization' },
   },
   {
-    name: 'Geofence Dwell Escalation',
-    description: 'Escalate alert if vehicle remains outside allowed territory for 2+ hours.',
-    category: 'geofencing',
-    trigger: { type: 'geofence_dwell', config: { durationMinutes: 120 } },
+    name: 'Critical Health → Out of Service',
+    description: 'Block vehicle and create repair task when critical health is detected.',
+    category: 'maintenance',
+    trigger: { type: 'vehicle.health.critical' },
     conditions: [],
     actions: [
-      { type: 'create_alert', config: { severity: 'critical', message: 'Vehicle outside territory for extended period' } },
-      { type: 'create_task', config: { title: 'Investigate vehicle location', priority: 'URGENT' } },
+      { type: 'change_vehicle_status', config: { status: 'OUT_OF_SERVICE' } },
+      { type: 'create_task', config: { title: 'Critical vehicle issue – repair required', priority: 'CRITICAL' } },
+      { type: 'create_alert', config: { severity: 'critical', message: 'Vehicle blocked due to critical health' } },
     ],
     scope: { type: 'organization' },
   },
   {
-    name: 'TÜV Expiry Reminder',
-    description: 'Create a reminder task 30 days before TÜV expiry.',
-    category: 'maintenance',
-    trigger: { type: 'compliance_expiring', config: { type: 'tuev', daysBefore: 30 } },
-    conditions: [],
-    actions: [{ type: 'create_task', config: { title: 'TÜV renewal due', priority: 'HIGH', category: 'compliance' } }],
-    scope: { type: 'organization' },
-  },
-  {
-    name: 'Service Threshold Alert',
-    description: 'Alert when tire/brake/service threshold is reached.',
+    name: 'Health Warning Alert',
+    description: 'Alert when vehicle health drops below threshold.',
     category: 'maintenance',
     trigger: { type: 'health_threshold', config: { metric: 'overall', threshold: 60 } },
     conditions: [],
@@ -187,30 +200,17 @@ const STARTER_TEMPLATES: StarterTemplate[] = [
     scope: { type: 'organization' },
   },
   {
-    name: 'Critical Health → Block Vehicle',
-    description: 'Set vehicle unavailable when critical health issue detected.',
-    category: 'maintenance',
-    trigger: { type: 'health_threshold', config: { metric: 'overall', threshold: 30 } },
-    conditions: [],
-    actions: [
-      { type: 'change_vehicle_status', config: { status: 'NOT_AVAILABLE' } },
-      { type: 'create_task', config: { title: 'Critical vehicle issue – repair required', priority: 'URGENT' } },
-      { type: 'create_alert', config: { severity: 'critical', message: 'Vehicle blocked due to critical health' } },
-    ],
-    scope: { type: 'organization' },
-  },
-  {
-    name: 'Fine Auto-Task',
-    description: 'Automatically create a handling task when a new fine is received.',
+    name: 'Fine Processing Task',
+    description: 'Create a handling task when a fine or complaint is recorded.',
     category: 'finance',
     trigger: { type: 'fine_created' },
     conditions: [],
-    actions: [{ type: 'create_task', config: { title: 'Process new fine', priority: 'MEDIUM', category: 'fine' } }],
+    actions: [{ type: 'create_task', config: { title: 'Process new fine', priority: 'NORMAL', category: 'fine' } }],
     scope: { type: 'organization' },
   },
   {
     name: 'Invoice Overdue Escalation',
-    description: 'Create escalation task when invoice is overdue for 14+ days.',
+    description: 'Escalate when invoice is overdue for 14+ days.',
     category: 'finance',
     trigger: { type: 'invoice_overdue', config: { overdueDays: 14 } },
     conditions: [{ field: 'overdue_days', operator: 'greater_than', value: 14 }],
@@ -221,36 +221,12 @@ const STARTER_TEMPLATES: StarterTemplate[] = [
     scope: { type: 'organization' },
   },
   {
-    name: 'AI: Task Creation Permission',
-    description: 'Allow AI to autonomously create operational tasks.',
+    name: 'AI: Suggest Action (Approval)',
+    description: 'AI suggests an operational action — never auto-executes without approval.',
     category: 'ai_permissions',
-    trigger: { type: 'ai_action_request', config: { actionType: 'create_task' } },
+    trigger: { type: 'manual' },
     conditions: [],
-    actions: [{ type: 'ai_execute', config: { permission: 'create_task', requireApproval: false } }],
-    scope: { type: 'organization' },
-  },
-  {
-    name: 'AI: Customer Message (Approval Required)',
-    description: 'Allow AI to send customer messages – requires admin approval.',
-    category: 'ai_permissions',
-    trigger: { type: 'ai_action_request', config: { actionType: 'send_message' } },
-    conditions: [],
-    actions: [
-      { type: 'request_approval', config: { approverRole: 'ORG_ADMIN', message: 'AI wants to send a customer message' } },
-      { type: 'ai_send_message', config: { channel: 'whatsapp' } },
-    ],
-    scope: { type: 'organization' },
-  },
-  {
-    name: 'Support Ticket Escalation',
-    description: 'Escalate internally when a support ticket goes unanswered for 4 hours.',
-    category: 'support',
-    trigger: { type: 'support_escalation', config: { hoursUnanswered: 4 } },
-    conditions: [],
-    actions: [
-      { type: 'create_task', config: { title: 'Support escalation – unanswered ticket', priority: 'HIGH' } },
-      { type: 'send_notification', config: { target: 'admin', message: 'Support ticket requires immediate attention' } },
-    ],
+    actions: [{ type: 'ai_suggest', config: { summary: 'Review suggested fleet action' } }],
     scope: { type: 'organization' },
   },
 ];
@@ -295,6 +271,16 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgClass: str
   ACTIVE: { label: 'Active', color: 'green', bgClass: 'bg-green-100 dark:bg-green-900/30', textClass: 'text-green-700 dark:text-green-400' },
   DRAFT: { label: 'Draft', color: 'amber', bgClass: 'bg-amber-100 dark:bg-amber-900/30', textClass: 'text-amber-700 dark:text-amber-400' },
   DISABLED: { label: 'Disabled', color: 'gray', bgClass: 'bg-gray-100 dark:bg-gray-800', textClass: 'text-gray-500 dark:text-gray-400' },
+  INVALID: { label: 'Invalid', color: 'red', bgClass: 'bg-red-100 dark:bg-red-900/30', textClass: 'text-red-700 dark:text-red-400' },
+};
+
+const RUN_STATUS_CONFIG: Record<string, { label: string; bgClass: string; textClass: string }> = {
+  SUCCESS: { label: 'Success', bgClass: 'bg-green-100 dark:bg-green-900/30', textClass: 'text-green-700 dark:text-green-400' },
+  FAILED: { label: 'Failed', bgClass: 'bg-red-100 dark:bg-red-900/30', textClass: 'text-red-700 dark:text-red-400' },
+  SKIPPED: { label: 'Skipped', bgClass: 'bg-gray-100 dark:bg-gray-800', textClass: 'text-gray-500 dark:text-gray-400' },
+  WAITING_APPROVAL: { label: 'Waiting approval', bgClass: 'bg-purple-100 dark:bg-purple-900/30', textClass: 'text-purple-700 dark:text-purple-400' },
+  RUNNING: { label: 'Running', bgClass: 'bg-blue-100 dark:bg-blue-900/30', textClass: 'text-blue-700 dark:text-blue-400' },
+  PENDING: { label: 'Pending', bgClass: 'bg-amber-100 dark:bg-amber-900/30', textClass: 'text-amber-700 dark:text-amber-400' },
 };
 
 // ─── Main Component ──────────────────────────────
@@ -302,7 +288,10 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgClass: str
 export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
   const { orgId } = useRentalOrg();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
-  const [stats, setStats] = useState<Stats>({ total: 0, active: 0, draft: 0, disabled: 0 });
+  const [stats, setStats] = useState<Stats>({
+    total: 0, active: 0, draft: 0, disabled: 0, invalid: 0,
+    totalRuns: 0, successfulRuns: 0, failedRuns: 0, waitingApprovalRuns: 0, runsLast24h: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -328,7 +317,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
         api.workflows.list(orgId),
         api.workflows.stats(orgId),
       ]);
-      setWorkflows(wfRes);
+      setWorkflows(wfRes as Workflow[]);
       setStats(stRes);
     } catch (e) {
       console.error('Failed to load workflows', e);
@@ -414,7 +403,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
   };
 
   const handleSave = async () => {
-    if (!orgId || !builderData?.name) return;
+    if (!orgId || !builderData?.name || !builderData.category || !builderData.trigger || !builderData.actions?.length) return;
     setSaving(true);
     try {
       const payload = {
@@ -446,6 +435,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
   if (view === 'detail' && selectedWorkflow) return (
     <DetailView
       wf={selectedWorkflow}
+      orgId={orgId}
       isDarkMode={isDarkMode}
       canWrite={canWrite}
       onBack={() => { setView('list'); setSelectedWorkflow(null); }}
@@ -453,6 +443,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
       onToggle={() => handleToggle(selectedWorkflow)}
       onDuplicate={() => handleDuplicate(selectedWorkflow)}
       onDelete={() => handleDelete(selectedWorkflow)}
+      onRefresh={loadData}
     />
   );
 
@@ -472,9 +463,14 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className={`text-xl font-bold ${textPrimary}`}>Workflow Automation</h1>
+          <div className="flex items-center gap-2">
+            <h1 className={`text-xl font-bold ${textPrimary}`}>Workflow Automation</h1>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide ${isDarkMode ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-50 text-blue-700'}`}>
+              Beta Runtime
+            </span>
+          </div>
           <p className={`text-xs mt-0.5 ${textSecondary}`}>
-            Automate operations, alerts, tasks, and AI actions across your fleet
+            Tenant-scoped automation with real execution logs — manual test and booking return hooks active
           </p>
         </div>
         {canWrite && (
@@ -501,16 +497,18 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
       {/* Stats */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: 'Total', value: stats.total, icon: Layers, color: 'blue' },
+          { label: 'Workflows', value: stats.total, icon: Layers, color: 'blue' },
           { label: 'Active', value: stats.active, icon: Play, color: 'green' },
-          { label: 'Draft', value: stats.draft, icon: Edit3, color: 'amber' },
-          { label: 'Disabled', value: stats.disabled, icon: Pause, color: 'gray' },
+          { label: 'Runs (24h)', value: stats.runsLast24h ?? 0, icon: Zap, color: 'cyan' },
+          { label: 'Failed runs', value: stats.failedRuns ?? 0, icon: Pause, color: 'red' },
         ].map((s) => {
           const colors: Record<string, string> = {
             blue: isDarkMode ? 'text-blue-400' : 'text-blue-600',
             green: isDarkMode ? 'text-green-400' : 'text-green-600',
             amber: isDarkMode ? 'text-amber-400' : 'text-amber-600',
             gray: isDarkMode ? 'text-gray-400' : 'text-gray-500',
+            cyan: isDarkMode ? 'text-cyan-400' : 'text-cyan-600',
+            red: isDarkMode ? 'text-red-400' : 'text-red-600',
           };
           return (
             <div key={s.label} className={`${cardBg} border ${cardBorder} rounded-xl p-3`}>
@@ -774,10 +772,45 @@ function WorkflowRow({ wf, isDarkMode, canWrite, onOpen, onEdit, onToggle, onDup
 
 // ─── DetailView ──────────────────────────────────
 
-function DetailView({ wf, isDarkMode, canWrite, onBack, onEdit, onToggle, onDuplicate, onDelete }: {
-  wf: Workflow; isDarkMode: boolean; canWrite: boolean;
+function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle, onDuplicate, onDelete, onRefresh }: {
+  wf: Workflow; orgId: string | null; isDarkMode: boolean; canWrite: boolean;
   onBack: () => void; onEdit: () => void; onToggle: () => void; onDuplicate: () => void; onDelete: () => void;
+  onRefresh: () => void;
 }) {
+  const [runs, setRuns] = useState<WorkflowRun[]>([]);
+  const [runsLoading, setRunsLoading] = useState(true);
+  const [testing, setTesting] = useState(false);
+  const [testError, setTestError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!orgId) return;
+    setRunsLoading(true);
+    api.workflows.listRuns(orgId, wf.id, 15)
+      .then((rows) => setRuns(rows as WorkflowRun[]))
+      .catch(() => setRuns([]))
+      .finally(() => setRunsLoading(false));
+  }, [orgId, wf.id]);
+
+  const handleTest = async () => {
+    if (!orgId) return;
+    setTesting(true);
+    setTestError(null);
+    try {
+      const result = await api.workflows.test(orgId, wf.id, {
+        payload: { manualTest: true, workflowName: wf.name },
+      });
+      if (result.runs?.length) {
+        setRuns((prev) => [...(result.runs as WorkflowRun[]), ...prev]);
+      } else {
+        setTestError(result.message || 'Workflow was skipped (conditions/scope)');
+      }
+      onRefresh();
+    } catch (e) {
+      setTestError(e instanceof Error ? e.message : 'Test failed');
+    } finally {
+      setTesting(false);
+    }
+  };
   const cat = getCategoryMeta(wf.category);
   const CatIcon = cat.icon;
   const st = STATUS_CONFIG[wf.status] || STATUS_CONFIG.DRAFT;
@@ -823,6 +856,14 @@ function DetailView({ wf, isDarkMode, canWrite, onBack, onEdit, onToggle, onDupl
         </div>
         {canWrite && (
           <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleTest}
+              disabled={testing}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'} disabled:opacity-50`}
+            >
+              <Icon name="play" className="w-3.5 h-3.5 text-blue-500" />
+              {testing ? 'Testing…' : 'Test workflow'}
+            </button>
             <button onClick={onToggle} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border ${cardBorder} ${cardBg} ${textPrimary} ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}>
               {wf.status === 'ACTIVE' ? <><Icon name="pause" className="w-3.5 h-3.5 text-amber-500" /> Disable</> : <><Icon name="play" className="w-3.5 h-3.5 text-green-500" /> Enable</>}
             </button>
@@ -851,6 +892,12 @@ function DetailView({ wf, isDarkMode, canWrite, onBack, onEdit, onToggle, onDupl
                 ' Approval step is configured.'}
             </p>
           </div>
+        </div>
+      )}
+
+      {testError && (
+        <div className={`text-xs px-3 py-2 rounded-lg border ${isDarkMode ? 'bg-amber-900/20 border-amber-800/40 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+          {testError}
         </div>
       )}
 
@@ -893,7 +940,7 @@ function DetailView({ wf, isDarkMode, canWrite, onBack, onEdit, onToggle, onDupl
               {wf.conditions.map((c: ConditionDef, i: number) => (
                 <div key={i} className={`flex items-center gap-1.5 text-[11px] ${textSecondary} mb-0.5`}>
                   <Icon name="filter" className="w-3 h-3" />
-                  <span>{getFieldLabel(c.field)} {getOperatorLabel(c.operator)} <strong className={textPrimary}>{String(c.value)}</strong></span>
+                  <span>{getFieldLabel(c.field ?? c.path ?? '')} {getOperatorLabel(c.operator)} <strong className={textPrimary}>{String(c.value)}</strong></span>
                 </div>
               ))}
             </div>
@@ -917,6 +964,54 @@ function DetailView({ wf, isDarkMode, canWrite, onBack, onEdit, onToggle, onDupl
             );
           })}
         </div>
+      </div>
+
+      {/* Execution history */}
+      <div className={`${cardBg} border ${cardBorder} rounded-xl p-4`}>
+        <div className="flex items-center justify-between mb-3">
+          <p className={`text-xs font-semibold ${textPrimary}`}>Execution history</p>
+          <span className={`text-[10px] ${textSecondary}`}>{wf.triggerCount} total triggers</span>
+        </div>
+        {runsLoading ? (
+          <p className={`text-xs ${textSecondary}`}>Loading runs…</p>
+        ) : runs.length === 0 ? (
+          <p className={`text-xs ${textSecondary}`}>Noch keine Ausführungen vorhanden.</p>
+        ) : (
+          <div className="space-y-2">
+            {runs.map((run) => {
+              const rs = RUN_STATUS_CONFIG[run.status] || RUN_STATUS_CONFIG.PENDING;
+              return (
+                <div key={run.id} className={`p-2.5 rounded-lg border ${cardBorder} ${isDarkMode ? 'bg-white/[0.02]' : 'bg-gray-50'}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${rs.bgClass} ${rs.textClass}`}>{rs.label}</span>
+                      <span className={`text-xs font-medium truncate ${textPrimary}`}>{run.eventType}</span>
+                      {run.entityId && (
+                        <span className={`text-[10px] truncate ${textSecondary}`}>{run.entityType}:{run.entityId.slice(0, 8)}…</span>
+                      )}
+                    </div>
+                    <span className={`text-[10px] shrink-0 ${textSecondary}`}>{relativeTime(run.createdAt)}</span>
+                  </div>
+                  {run.errorMessage && (
+                    <p className={`text-[10px] mt-1 text-red-500`}>{run.errorMessage}</p>
+                  )}
+                  {run.actionRuns && run.actionRuns.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {run.actionRuns.map((ar) => {
+                        const ars = RUN_STATUS_CONFIG[ar.status] || RUN_STATUS_CONFIG.PENDING;
+                        return (
+                          <span key={ar.id} className={`text-[9px] px-1.5 py-0.5 rounded ${ars.bgClass} ${ars.textClass}`}>
+                            {ar.actionType} — {ars.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1148,7 +1243,11 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
                       <div className="flex items-center gap-1.5 mb-1.5">
                         <Icon className={`w-3.5 h-3.5 ${a.type.startsWith('ai_') ? 'text-purple-500' : isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
                         <select value={a.type} onChange={(e) => updateAction(i, { type: e.target.value, config: {} })} className={`flex-1 px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
-                          {ACTION_TYPES.map((at) => <option key={at.key} value={at.key}>{at.label}</option>)}
+                          {ACTION_TYPES.map((at) => (
+                            <option key={at.key} value={at.key} disabled={'comingSoon' in at && at.comingSoon}>
+                              {at.label}{'comingSoon' in at && at.comingSoon ? ' (Coming soon)' : ''}
+                            </option>
+                          ))}
                         </select>
                         <button onClick={() => removeAction(i)} className="p-0.5"><Icon name="x" className="w-3 h-3 text-red-400" /></button>
                       </div>
@@ -1304,11 +1403,11 @@ function ActionConfigEditor({ action, onChange, isDarkMode }: {
           </div>
           <div>
             <label className={labelClass}>Priority</label>
-            <select value={action.config?.priority || 'MEDIUM'} onChange={(e) => updateConfig('priority', e.target.value)} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
+            <select value={action.config?.priority || 'NORMAL'} onChange={(e) => updateConfig('priority', e.target.value)} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
               <option value="LOW">Low</option>
-              <option value="MEDIUM">Medium</option>
+              <option value="NORMAL">Normal</option>
               <option value="HIGH">High</option>
-              <option value="URGENT">Urgent</option>
+              <option value="CRITICAL">Critical</option>
             </select>
           </div>
         </div>
@@ -1345,10 +1444,12 @@ function ActionConfigEditor({ action, onChange, isDarkMode }: {
       return (
         <div>
           <label className={labelClass}>Set status to</label>
-          <select value={action.config?.status || 'NOT_AVAILABLE'} onChange={(e) => updateConfig('status', e.target.value)} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
+          <select value={action.config?.status || 'OUT_OF_SERVICE'} onChange={(e) => updateConfig('status', e.target.value)} className={`w-full px-2 py-1 text-[10px] rounded border ${inputBg} focus:outline-none`}>
             <option value="AVAILABLE">Available</option>
-            <option value="NOT_AVAILABLE">Not Available</option>
+            <option value="RENTED">Rented</option>
             <option value="IN_SERVICE">In Service</option>
+            <option value="OUT_OF_SERVICE">Out of Service</option>
+            <option value="RESERVED">Reserved</option>
           </select>
         </div>
       );

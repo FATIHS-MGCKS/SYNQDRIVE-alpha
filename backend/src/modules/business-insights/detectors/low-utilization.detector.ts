@@ -20,7 +20,7 @@ export class LowUtilizationDetector implements InsightDetector {
       },
       select: {
         id: true, make: true, model: true, licensePlate: true,
-        dailyRateEur: true, stationId: true,
+        dailyRateEur: true, homeStationId: true,
       },
     });
 
@@ -80,7 +80,7 @@ export class LowUtilizationDetector implements InsightDetector {
         reasons: [`No bookings in past ${lookbackDays} days`, 'No upcoming bookings in next 7 days'],
         confidence: 1.0,
         dedupeKey: `low_utilization:${v.id}`,
-        groupKey: v.stationId ? `low_util:${v.stationId}` : 'low_utilization_fleet',
+        groupKey: v.homeStationId ? `low_util:${v.homeStationId}` : 'low_utilization_fleet',
       });
     }
     return candidates;

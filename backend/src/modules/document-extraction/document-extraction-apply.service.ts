@@ -443,7 +443,18 @@ export class DocumentExtractionApplyService {
         dueDate: this.str(d.dueDate),
         imageUrl: sourceFileUrl || undefined,
         extractedData: d,
-        status: 'SENT',
+        documentExtractionId: input.extractionId,
+        fromExtraction: true,
+        lineItems: totalCentsParsed > 0
+          ? [
+              {
+                description: this.str(d.title) ?? 'Eingangsrechnung',
+                quantity: 1,
+                unitPriceNetCents: Math.round(totalCentsParsed / 1.19),
+                taxRate: 19,
+              },
+            ]
+          : undefined,
       });
     }
     return {};

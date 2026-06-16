@@ -448,7 +448,7 @@ describe('DrivingImpactService.computeForTrip', () => {
     expect(createArg.highwaySharePct).toBe(60);
     expect(typeof createArg.longitudinalStressScore).toBe('number');
     expect(typeof createArg.brakingStressScore).toBe('number');
-    expect(typeof createArg.drivingStyleScore).toBe('number');
+    expect(typeof createArg.drivingStressScore).toBe('number');
     // V4.6.95: trips with no speed-limit / speeding enrichment must yield
     // safetyScore = null (NOT coerced to 100). The base mock row has no
     // speeding fields, so the service must persist null here.
@@ -560,7 +560,7 @@ describe('DrivingImpactService.computeForTrip', () => {
         launchLikePer100Km: 0, brakesPer100Km: 24, stopDensity: 0.08,
         highSpeedBrakeShare: 0.2, meanBrakeEnergyPerKm: 100, p95NegativeDecel: 5,
         longitudinalStressScore: 42, brakingStressScore: 55, stopGoStressScore: 38,
-        highSpeedStressScore: 40, thermalBrakeStressScore: 22, drivingStyleScore: 46,
+        highSpeedStressScore: 40, thermalBrakeStressScore: 22, drivingStressScore: 46,
       },
     ]);
     prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
@@ -574,31 +574,8 @@ describe('DrivingImpactService.computeForTrip', () => {
     expect(upsertArg.create.modelVersion).toBe(C.MODEL_VERSION);
   });
 
-  // V4.6.95 — Fix 1: safety score nullability around the persistence path.
-  it('persists safetyScore = 100 when route enrichment ran with zero speeding', async () => {
-    prisma.vehicleTrip.findUnique.mockResolvedValue(
-      makeBaseTripRow({
-        speedingExposurePct: 0,
-        maxOverSpeedKmh: 0,
-        avgOverSpeedKmh: 0,
-        speedingSectionCount: 0,
-        speedingDistanceM: 0,
-        speedingDurationS: 0,
-      }),
-    );
-    prisma.tripBehaviorEvent.count.mockResolvedValue(0);
-    prisma.tripBehaviorEvent.findMany.mockResolvedValue([]);
-    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
-    prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
-    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
-
-    await service.computeForTrip('trip-1', 'vehicle-1');
-
-    const createArg = prisma.tripDrivingImpact.upsert.mock.calls[0][0].create;
-    expect(createArg.safetyScore).toBe(100);
-  });
-
-  it('persists safetyScore < 100 when actual speeding is present', async () => {
+  // V4.8.24 — Safety score retired from impact persistence.
+  it('always persists safetyScore = null (retired)', async () => {
     prisma.vehicleTrip.findUnique.mockResolvedValue(
       makeBaseTripRow({
         speedingExposurePct: 30,
@@ -616,37 +593,11 @@ describe('DrivingImpactService.computeForTrip', () => {
     await service.computeForTrip('trip-1', 'vehicle-1');
 
     const createArg = prisma.tripDrivingImpact.upsert.mock.calls[0][0].create;
-    expect(createArg.safetyScore).toBeLessThan(100);
-    expect(createArg.safetyScore).toBeGreaterThanOrEqual(0);
-  });
-
-  it('persists safetyScore = null when no speed-limit enrichment ran', async () => {
-    prisma.vehicleTrip.findUnique.mockResolvedValue(
-      makeBaseTripRow({
-        speedingExposurePct: null,
-        maxOverSpeedKmh: null,
-        avgOverSpeedKmh: null,
-        speedingSectionCount: null,
-        speedingDistanceM: null,
-        speedingDurationS: null,
-      }),
-    );
-    prisma.tripBehaviorEvent.count.mockResolvedValue(0);
-    prisma.tripBehaviorEvent.findMany.mockResolvedValue([]);
-    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
-    prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
-    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
-
-    await service.computeForTrip('trip-1', 'vehicle-1');
-
-    const createArg = prisma.tripDrivingImpact.upsert.mock.calls[0][0].create;
     expect(createArg.safetyScore).toBeNull();
+    expect(typeof createArg.drivingStressScore).toBe('number');
   });
 
-  // V4.6.95 — Fix 1: rolling aggregation must ignore null safetyScore rows
-  // and yield rolling safetyScore = null when the entire window has no
-  // speed-limit-enriched trips.
-  it('rolling safetyScore is null when no trips in the window have safety data', async () => {
+  it('rolling safetyScore stays null on recompute', async () => {
     prisma.vehicleTrip.findUnique.mockResolvedValue(makeBaseTripRow());
     prisma.tripBehaviorEvent.count.mockResolvedValue(0);
     prisma.tripBehaviorEvent.findMany.mockResolvedValue([]);
@@ -661,7 +612,7 @@ describe('DrivingImpactService.computeForTrip', () => {
         launchLikePer100Km: 0, brakesPer100Km: 24, stopDensity: 0.08,
         highSpeedBrakeShare: 0.2, meanBrakeEnergyPerKm: 100, p95NegativeDecel: 5,
         longitudinalStressScore: 42, brakingStressScore: 55, stopGoStressScore: 38,
-        highSpeedStressScore: 40, thermalBrakeStressScore: 22, drivingStyleScore: 46,
+        highSpeedStressScore: 40, thermalBrakeStressScore: 22, drivingStressScore: 46,
         safetyScore: null,
       },
       {
@@ -673,7 +624,7 @@ describe('DrivingImpactService.computeForTrip', () => {
         launchLikePer100Km: 0, brakesPer100Km: 20, stopDensity: 0.05,
         highSpeedBrakeShare: 0.15, meanBrakeEnergyPerKm: 90, p95NegativeDecel: 4,
         longitudinalStressScore: 38, brakingStressScore: 50, stopGoStressScore: 32,
-        highSpeedStressScore: 36, thermalBrakeStressScore: 20, drivingStyleScore: 42,
+        highSpeedStressScore: 36, thermalBrakeStressScore: 20, drivingStressScore: 42,
         safetyScore: null,
       },
     ]);
@@ -685,48 +636,7 @@ describe('DrivingImpactService.computeForTrip', () => {
     expect(upsertArg.create.safetyScore).toBeNull();
     expect(upsertArg.update.safetyScore).toBeNull();
     // Driving-style aggregation is independent and must still produce a value.
-    expect(typeof upsertArg.create.drivingStyleScore).toBe('number');
-  });
-
-  it('rolling safetyScore aggregates only over rows that have safety data', async () => {
-    prisma.vehicleTrip.findUnique.mockResolvedValue(makeBaseTripRow());
-    prisma.tripBehaviorEvent.count.mockResolvedValue(0);
-    prisma.tripBehaviorEvent.findMany.mockResolvedValue([]);
-    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
-    prisma.tripDrivingImpact.findMany.mockResolvedValue([
-      {
-        tripId: 'trip-1', vehicleId: 'vehicle-1', distanceKm: 50,
-        tripStartedAt: new Date(), tripEndedAt: new Date(),
-        citySharePct: 30, highwaySharePct: 60, countryRoadSharePct: 10,
-        hardAccelPer100Km: 0, extremeAccelPer100Km: 0, hardBrakePer100Km: 0,
-        extremeBrakePer100Km: 0, fullBrakingPer100Km: 0, kickdownPer100Km: 0,
-        launchLikePer100Km: 0, brakesPer100Km: 0, stopDensity: 0,
-        highSpeedBrakeShare: 0, meanBrakeEnergyPerKm: 0, p95NegativeDecel: 0,
-        longitudinalStressScore: 0, brakingStressScore: 0, stopGoStressScore: 0,
-        highSpeedStressScore: 0, thermalBrakeStressScore: 0, drivingStyleScore: 0,
-        // null safety row must be excluded
-        safetyScore: null,
-      },
-      {
-        tripId: 'trip-2', vehicleId: 'vehicle-1', distanceKm: 100,
-        tripStartedAt: new Date(), tripEndedAt: new Date(),
-        citySharePct: 30, highwaySharePct: 60, countryRoadSharePct: 10,
-        hardAccelPer100Km: 0, extremeAccelPer100Km: 0, hardBrakePer100Km: 0,
-        extremeBrakePer100Km: 0, fullBrakingPer100Km: 0, kickdownPer100Km: 0,
-        launchLikePer100Km: 0, brakesPer100Km: 0, stopDensity: 0,
-        highSpeedBrakeShare: 0, meanBrakeEnergyPerKm: 0, p95NegativeDecel: 0,
-        longitudinalStressScore: 0, brakingStressScore: 0, stopGoStressScore: 0,
-        highSpeedStressScore: 0, thermalBrakeStressScore: 0, drivingStyleScore: 0,
-        safetyScore: 80,
-      },
-    ]);
-    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
-
-    await service.computeForTrip('trip-1', 'vehicle-1');
-
-    const upsertArg = prisma.vehicleDrivingImpactCurrent.upsert.mock.calls[0][0];
-    // Only the second row has safetyScore; the rolling value must be that row's value.
-    expect(upsertArg.create.safetyScore).toBe(80);
+    expect(typeof upsertArg.create.drivingStressScore).toBe('number');
   });
 
   it('emits score drift metric when legacy score diverges', async () => {
@@ -762,7 +672,7 @@ describe('DrivingImpactService consumer accessors', () => {
       countryRoadSharePct: 10,
       longitudinalStressScore: 42,
       brakingStressScore: 38,
-      drivingStyleScore: 40,
+      drivingStressScore: 40,
     };
     prisma.vehicleDrivingImpactCurrent.findUnique.mockResolvedValue(mockRow);
 

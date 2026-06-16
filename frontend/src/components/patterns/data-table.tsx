@@ -37,6 +37,10 @@ export interface DataTableProps<T> {
   card?: boolean;
   stickyHeader?: boolean;
   className?: string;
+  /** Optional per-row class (e.g. overdue highlight). */
+  getRowClassName?: (row: T, index: number) => string | undefined;
+  /** Optional per-row ref (e.g. scroll-into-view on deep link). */
+  rowRef?: (row: T, el: HTMLTableRowElement | null) => void;
 }
 
 const alignClass: Record<NonNullable<DataTableColumn<unknown>['align']>, string> = {
@@ -58,6 +62,8 @@ export function DataTable<T>({
   card = true,
   stickyHeader,
   className,
+  getRowClassName,
+  rowRef,
 }: DataTableProps<T>) {
   const cellPad = dense ? 'px-3 py-2' : 'px-3 py-2.5';
   const totalCols = columns.length + (rowActions ? 1 : 0);
@@ -110,9 +116,11 @@ export function DataTable<T>({
             rows.map((row, index) => (
               <tr
                 key={getRowKey(row, index)}
+                ref={rowRef ? (el) => rowRef(row, el) : undefined}
                 className={cn(
                   'sq-table-row border-b border-border/60 last:border-0',
                   onRowClick && 'cursor-pointer',
+                  getRowClassName?.(row, index),
                 )}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
               >

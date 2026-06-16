@@ -92,4 +92,14 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
 
     expect(evidenceRows.length).toBe(1);
   });
+
+  it('keeps eventCount idempotent when upserting the same candidate twice', async () => {
+    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution);
+    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution);
+
+    const stored = [...store.values()][0];
+    expect(stored.eventCount).toBe(5);
+    expect(store.size).toBe(1);
+    expect(evidenceRows.length).toBe(1);
+  });
 });

@@ -1,4 +1,6 @@
-/** Structured agent response for Rental Driving Analysis (UI-ready). */
+import type { StressLevel } from '../vehicle-intelligence/driving-impact/stress-level.util';
+
+/** Structured agent response for Rental Driving Analysis (vehicle stress focus). */
 export interface RentalDrivingAnalysisPayload {
   analysisMeta: {
     vehicleId: string;
@@ -7,52 +9,29 @@ export interface RentalDrivingAnalysisPayload {
     periodStart: string;
     periodEnd: string;
     dataConfidence: 'low' | 'medium' | 'high';
-    /**
-     * V4.6.83 — transparency hint for how trips were matched to the booking.
-     *   - `booking_assignment` → authoritative match via TripAssignmentService
-     *     (VehicleTrip.assignedBookingId = Booking.id). High trust.
-     *   - `time_window_fallback` → no trips carry the booking assignment yet,
-     *     so we fell back to vehicle + period overlap. Treat as low-confidence.
-     *   - `none` → no trips resolved in either path.
-     */
     analysisSource?: 'booking_assignment' | 'time_window_fallback' | 'none';
-    /**
-     * V4.6.95 — booking-level trust metadata produced by the unified
-     * `DriverScoreService.aggregateRows` helper. UIs can render an honest
-     * "based on N trips, K km" caption and decide whether to dim a card
-     * because the data is sparse.
-     */
     scoredTripCount?: number;
-    safetyScoredTripCount?: number;
     totalDistanceKm?: number;
   };
   overallAssessment: {
-    level: 'good' | 'watch' | 'attention';
+    level: 'low_stress' | 'moderate_stress' | 'elevated_stress' | 'high_stress';
     title: string;
     shortSummary: string;
   };
-  driverStyle: {
-    category: 'safe' | 'balanced' | 'wear_promoting' | 'aggressive' | 'abusive' | 'high_risk';
-    label: string;
+  vehicleStressSummary: {
+    drivingStressScore: number | null;
+    stressLevel: StressLevel | null;
+    longitudinalStressScore: number | null;
+    brakingStressScore: number | null;
+    stopGoStressScore: number | null;
+    highSpeedStressScore: number | null;
+    thermalBrakeStressScore: number | null;
     summary: string;
-  };
-  riskAnalysis: {
-    level: 'low' | 'medium' | 'high';
-    summary: string;
-    keyRisks: string[];
   };
   usagePattern: {
     tripType: 'mostly_short_distance' | 'mostly_long_distance' | 'mixed';
     roadDistribution: { cityPercent: number; highwayPercent: number; countryRoadPercent: number };
     temperatureContext: { avgTemperatureC: number | null; climateNote: string };
-  };
-  drivingBehavior: {
-    drivingStyleScore: number | null;
-    safetyScore: number | null;
-    drivingScore: number | null;
-    safetyStyle: string;
-    accelerationBehavior: { level: 'calm' | 'moderate' | 'aggressive'; summary: string };
-    brakingBehavior: { level: 'calm' | 'moderate' | 'harsh'; summary: string };
   };
   eventSummary: {
     drivingEventsCount: number | null;
@@ -69,7 +48,6 @@ export interface RentalDrivingAnalysisPayload {
       reason: string;
     }>;
   };
-  positiveSignals: string[];
   watchpoints: string[];
   recommendations: string[];
 }

@@ -10,11 +10,15 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { StationsService } from './stations.service';
 import {
-  StationsService,
-  StationUpsertPayload,
-  StationPatchPayload,
-} from './stations.service';
+  CreateStationDto,
+  UpdateStationDto,
+  ListStationsQueryDto,
+  SetStationVehiclesDto,
+  AssignVehicleStationDto,
+  UpdateVehicleCurrentStationDto,
+} from './dto';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 
@@ -23,19 +27,15 @@ import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 export class StationsController {
   constructor(private readonly stationsService: StationsService) {}
 
-  // ----- Listing / stats -----
-
   @Get()
-  async findAll(@Param('orgId') orgId: string) {
-    return this.stationsService.findAll(orgId);
+  async findAll(@Param('orgId') orgId: string, @Query() query: ListStationsQueryDto) {
+    return this.stationsService.findAll(orgId, query);
   }
 
   @Get('stats')
   async getStats(@Param('orgId') orgId: string) {
     return this.stationsService.getStationStats(orgId);
   }
-
-  // ----- Google Places autocomplete (static paths before :id) -----
 
   @Get('search-places')
   async searchPlaces(@Query('q') query: string) {
@@ -47,31 +47,46 @@ export class StationsController {
     return this.stationsService.getPlaceDetails(placeId);
   }
 
-  /**
-   * V4.7.07 — One-shot backfill: geocode every station of this org whose
-   * latitude / longitude is still null but that has at least an address +
-   * city or postal code. Used to recover stations that were created
-   * before the auto-geocoder was wired in (or where the address lookup
-   * failed at the time). Idempotent: re-running it on a fully geocoded
-   * org returns `totalChecked: 0`.
-   */
   @Post('backfill-coordinates')
   async backfillCoordinates(@Param('orgId') orgId: string) {
     return this.stationsService.backfillCoordinates(orgId);
   }
 
-  // ----- Single resource -----
+  @Patch('vehicles/current-station')
+  async updateVehicleCurrentStation(
+    @Param('orgId') orgId: string,
+    @Body() body: UpdateVehicleCurrentStationDto,
+  ) {
+    return this.stationsService.updateVehicleCurrentStation(
+      orgId,
+      body.vehicleId,
+      body.currentStationId ?? null,
+      body.expectedStationId,
+    );
+  }
 
   @Get(':id')
   async findOne(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.stationsService.findOne(orgId, id);
   }
 
+  @Get(':id/overview-stats')
+  async getOverviewStats(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.stationsService.getStationOverviewStats(orgId, id);
+  }
+
+  @Get(':id/fleet')
+  async getFleet(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.stationsService.getStationFleet(orgId, id);
+  }
+
+  @Get(':id/bookings')
+  async getBookings(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.stationsService.getStationBookings(orgId, id);
+  }
+
   @Post()
-  async create(
-    @Param('orgId') orgId: string,
-    @Body() body: StationUpsertPayload,
-  ) {
+  async create(@Param('orgId') orgId: string, @Body() body: CreateStationDto) {
     return this.stationsService.create(orgId, body);
   }
 
@@ -79,24 +94,47 @@ export class StationsController {
   async update(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Body() body: StationPatchPayload,
+    @Body() body: UpdateStationDto,
   ) {
     return this.stationsService.update(orgId, id, body);
   }
 
-  /**
-   * Replace this station's vehicle list with `vehicleIds` (SET semantics).
-   * Vehicles previously here that aren't listed get detached; vehicles in
-   * the list that were elsewhere — including vehicles assigned to another
-   * station — are moved to this station.
-   */
+  @Post(':id/archive')
+  async archive(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.stationsService.archive(orgId, id);
+  }
+
+  @Post(':id/restore')
+  async restore(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.stationsService.restore(orgId, id);
+  }
+
+  @Post(':id/set-primary')
+  async setPrimary(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.stationsService.setPrimaryStation(orgId, id);
+  }
+
   @Put(':id/vehicles')
   async setVehicles(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Body() body: { vehicleIds?: string[] },
+    @Body() body: SetStationVehiclesDto,
   ) {
-    return this.stationsService.setStationVehicles(orgId, id, body?.vehicleIds ?? []);
+    return this.stationsService.setStationVehicles(orgId, id, body.vehicleIds ?? []);
+  }
+
+  @Post(':id/assign-vehicle')
+  async assignVehicle(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: AssignVehicleStationDto,
+  ) {
+    return this.stationsService.assignVehicleToStation(
+      orgId,
+      id,
+      body.vehicleId,
+      body.target ?? 'home',
+    );
   }
 
   @Delete(':id')

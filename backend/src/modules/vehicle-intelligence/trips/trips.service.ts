@@ -145,23 +145,18 @@ export class TripsService {
       }),
       this.prisma.tripDrivingImpact.aggregate({
         where: { vehicleId },
-        _avg: { drivingStyleScore: true, safetyScore: true },
+        _avg: { drivingStressScore: true },
       }),
     ]);
 
-    // V4.6.95 — nullable averages: missing data must never render as 0.
-    // Prisma returns `null` from `_avg` if no rows match. Preserve that
-    // semantics all the way through to the API so the UI can show "—".
-    const avgDrivingStyleScore = impactAgg._avg.drivingStyleScore ?? null;
-    const avgSafetyScore = impactAgg._avg.safetyScore ?? null;
+    const avgDrivingStressScore = impactAgg._avg.drivingStressScore ?? null;
 
     return {
       totalTrips,
       totalDistanceKm: tripAgg._sum.distanceKm ?? 0,
-      // Compatibility alias for older consumers; canonical source is TripDrivingImpact.drivingStyleScore.
-      avgDrivingScore: avgDrivingStyleScore,
-      avgDrivingStyleScore,
-      avgSafetyScore,
+      avgDrivingScore: avgDrivingStressScore,
+      avgDrivingStressScore,
+      avgDrivingStyleScore: avgDrivingStressScore,
       totalAccelerationEvents: tripAgg._sum.totalAccelerationEvents ?? 0,
       totalHardAccelerationEvents: tripAgg._sum.hardAccelerationEvents ?? 0,
       totalBrakingEvents: tripAgg._sum.totalBrakingEvents ?? 0,

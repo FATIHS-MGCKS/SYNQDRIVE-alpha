@@ -22,7 +22,7 @@ export class TightHandoverDetector implements InsightDetector {
       select: {
         id: true, vehicleId: true, startDate: true, endDate: true,
         pickupStationId: true, returnStationId: true,
-        vehicle: { select: { licensePlate: true, make: true, model: true, stationId: true } },
+        vehicle: { select: { licensePlate: true, make: true, model: true, homeStationId: true } },
       },
     });
 

@@ -170,7 +170,7 @@ export function DashboardView({ onVehicleSelect, onItemHover, onOpenVehicleById,
   // render so the dispatcher's last choice survives a reload, and revoked
   // automatically if the persisted station no longer exists in the org's
   // station catalogue (e.g. it was renamed or deleted).
-  const [selectedStationName, setSelectedStationName] = useState<string | null>(() => {
+  const [selectedStationId, setSelectedStationId] = useState<string | null>(() => {
     try {
       return localStorage.getItem(STATION_FILTER_STORAGE_KEY);
     } catch {
@@ -210,27 +210,28 @@ export function DashboardView({ onVehicleSelect, onItemHover, onOpenVehicleById,
   // loaded catalogue, fall back to „All Stations" instead of silently
   // hiding every row (the previous filter is now meaningless).
   useEffect(() => {
-    if (!selectedStationName) return;
+    if (!selectedStationId) return;
     if (stationsApi.length === 0) return;
-    const stillExists = stationsApi.some((s) => s.name === selectedStationName);
-    if (!stillExists) {
-      setSelectedStationName(null);
-      try { localStorage.removeItem(STATION_FILTER_STORAGE_KEY); } catch {}
+    const byId = stationsApi.some((s) => s.id === selectedStationId);
+    if (byId) return;
+    const byLegacyName = stationsApi.find((s) => s.name === selectedStationId);
+    if (byLegacyName) {
+      setSelectedStationId(byLegacyName.id);
+      try { localStorage.setItem(STATION_FILTER_STORAGE_KEY, byLegacyName.id); } catch {}
+      return;
     }
-  }, [stationsApi, selectedStationName]);
+    setSelectedStationId(null);
+    try { localStorage.removeItem(STATION_FILTER_STORAGE_KEY); } catch {}
+  }, [stationsApi, selectedStationId]);
 
-  // V4.6.95 — Persist user choice + close dropdown helper. Wrapping the
-  // setter via `useCallback` keeps the dropdown <button onClick> identity
-  // stable across re-renders.
-  const applyStationFilter = useCallback((name: string | null) => {
-    setSelectedStationName(name);
+  const applyStationFilter = useCallback((stationId: string | null) => {
+    setSelectedStationId(stationId);
     setIsStationDropdownOpen(false);
     try {
-      if (name) localStorage.setItem(STATION_FILTER_STORAGE_KEY, name);
+      if (stationId) localStorage.setItem(STATION_FILTER_STORAGE_KEY, stationId);
       else localStorage.removeItem(STATION_FILTER_STORAGE_KEY);
     } catch {
-      // Storage unavailable / private mode — selection is still respected
-      // for the current session, just not persisted.
+      // ignore
     }
   }, []);
 
@@ -261,9 +262,19 @@ export function DashboardView({ onVehicleSelect, onItemHover, onOpenVehicleById,
   // consistent slice of the fleet. Vehicles store the station as a name
   // string; falsy `selectedStationName` keeps the full fleet.
   const filteredFleetVehicles = useMemo(() => {
-    if (!selectedStationName) return fleetVehicles;
-    return fleetVehicles.filter((v) => (v.station || '') === selectedStationName);
-  }, [fleetVehicles, selectedStationName]);
+    if (!selectedStationId) return fleetVehicles;
+    return fleetVehicles.filter(
+      (v) =>
+        v.stationId === selectedStationId ||
+        v.homeStationId === selectedStationId ||
+        v.currentStationId === selectedStationId,
+    );
+  }, [fleetVehicles, selectedStationId]);
+
+  const selectedStationName = useMemo(() => {
+    if (!selectedStationId) return null;
+    return stationsApi.find((s) => s.id === selectedStationId)?.name ?? null;
+  }, [selectedStationId, stationsApi]);
 
   // Compute warning indicators for stat boxes
   const availableVehicles = filteredFleetVehicles.filter(v => v.status === 'Available');
@@ -556,10 +567,10 @@ export function DashboardView({ onVehicleSelect, onItemHover, onOpenVehicleById,
                   <button
                     type="button"
                     role="option"
-                    aria-selected={selectedStationName === null}
+                    aria-selected={selectedStationId === null}
                     onClick={() => applyStationFilter(null)}
                     className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-[13px] font-medium rounded-lg transition-colors ${
-                      selectedStationName === null
+                      selectedStationId === null
                         ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
                         : 'text-foreground hover:bg-muted'
                     }`}
@@ -573,15 +584,20 @@ export function DashboardView({ onVehicleSelect, onItemHover, onOpenVehicleById,
                     <div className="my-1 mx-2 h-px bg-border/60" aria-hidden />
                   )}
                   {stationsApi.map((s) => {
-                    const isActive = selectedStationName === s.name;
-                    const count = fleetVehicles.filter((v) => (v.station || '') === s.name).length;
+                    const isActive = selectedStationId === s.id;
+                    const count = fleetVehicles.filter(
+                      (v) =>
+                        v.stationId === s.id ||
+                        v.homeStationId === s.id ||
+                        v.currentStationId === s.id,
+                    ).length;
                     return (
                       <button
                         key={s.id}
                         type="button"
                         role="option"
                         aria-selected={isActive}
-                        onClick={() => applyStationFilter(s.name)}
+                        onClick={() => applyStationFilter(s.id)}
                         className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-[13px] font-medium rounded-lg transition-colors ${
                           isActive
                             ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'

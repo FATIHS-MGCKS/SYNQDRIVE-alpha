@@ -96,6 +96,11 @@ export class CreateTaskDto {
   @IsString()
   documentId?: string;
 
+  /** Operational station reference — persisted in task metadata. */
+  @IsOptional()
+  @IsString()
+  stationId?: string;
+
   @IsOptional()
   @IsInt()
   @Min(0)

@@ -51,7 +51,7 @@ export class ServiceOverdueDetector implements InsightDetector {
         make: true,
         model: true,
         licensePlate: true,
-        stationId: true,
+        homeStationId: true,
         serviceIntervalManufacturerKm: true,
         serviceIntervalManufacturerMonths: true,
         lastServiceDate: true,
@@ -240,8 +240,8 @@ export class ServiceOverdueDetector implements InsightDetector {
         // "5 vehicles at station X are overdue" into a single line when
         // the list gets long. Falls back to a fleet-wide group when the
         // vehicle has no station (shared pool).
-        groupKey: v.stationId
-          ? `service_overdue:${v.stationId}`
+        groupKey: v.homeStationId
+          ? `service_overdue:${v.homeStationId}`
           : 'service_overdue_fleet',
       });
     }

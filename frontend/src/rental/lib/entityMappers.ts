@@ -2,6 +2,8 @@
 // Keeps CustomersView / CustomerDetailModal / NewBookingView / BookingsView
 // in lock-step with the backend enums + response shapes.
 
+import { api } from '../../lib/api';
+
 export type CustomerUiStatus = 'Active' | 'Under Review' | 'Suspended' | 'Blocked' | 'Archived' | 'Inactive';
 export type CustomerApiStatus = 'ACTIVE' | 'INACTIVE' | 'BLOCKED' | 'SUSPENDED' | 'UNDER_REVIEW';
 
@@ -20,7 +22,7 @@ export type CustomerApiRisk = 'NOT_ASSESSED' | 'LOW' | 'MEDIUM' | 'HIGH';
 export type CustomerUiType = 'Individual' | 'Corporate';
 export type CustomerApiType = 'INDIVIDUAL' | 'CORPORATE';
 
-export type BookingUiStatus = 'active' | 'confirmed' | 'pending' | 'completed' | 'cancelled';
+export type BookingUiStatus = 'active' | 'confirmed' | 'pending' | 'completed' | 'cancelled' | 'no_show';
 
 const MONTHS_SHORT_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
@@ -34,6 +36,8 @@ export function customerStatusUiToApi(ui: CustomerUiStatus | string | undefined)
     case 'Suspended': return 'SUSPENDED';
     case 'Under Review': return 'UNDER_REVIEW';
     case 'Blocked': return 'BLOCKED';
+    case 'Inactive': return 'INACTIVE';
+    case 'Archived': return 'INACTIVE';
     default: return 'ACTIVE';
   }
 }
@@ -67,6 +71,78 @@ export type CustomerApiVerification =
   | 'REJECTED'
   | 'EXPIRED';
 
+export type CustomerDocumentApiType =
+  | 'ID_FRONT'
+  | 'ID_BACK'
+  | 'LICENSE_FRONT'
+  | 'LICENSE_BACK'
+  | 'OTHER';
+
+export type CustomerDocumentApiStatus =
+  | 'UPLOADED'
+  | 'PENDING_REVIEW'
+  | 'VERIFIED'
+  | 'REJECTED'
+  | 'EXPIRED';
+
+export type CustomerUiDocumentStatus =
+  | 'Not Submitted'
+  | 'Uploaded'
+  | 'Pending Review'
+  | 'Verified'
+  | 'Rejected'
+  | 'Expired';
+
+export function customerDocumentSlotToApiType(
+  slot: 'id-front' | 'id-back' | 'license-front' | 'license-back',
+): CustomerDocumentApiType {
+  switch (slot) {
+    case 'id-front': return 'ID_FRONT';
+    case 'id-back': return 'ID_BACK';
+    case 'license-front': return 'LICENSE_FRONT';
+    case 'license-back': return 'LICENSE_BACK';
+  }
+}
+
+export function customerDocumentStatusApiToUi(
+  api: CustomerDocumentApiStatus | string | undefined | null,
+  hasDocument: boolean,
+): CustomerUiDocumentStatus {
+  if (!hasDocument) return 'Not Submitted';
+  switch (api) {
+    case 'UPLOADED': return 'Uploaded';
+    case 'PENDING_REVIEW': return 'Pending Review';
+    case 'VERIFIED': return 'Verified';
+    case 'REJECTED': return 'Rejected';
+    case 'EXPIRED': return 'Expired';
+    default: return 'Pending Review';
+  }
+}
+
+export const CUSTOMER_KYC_DOCUMENT_TYPES: CustomerDocumentApiType[] = [
+  'ID_FRONT',
+  'ID_BACK',
+  'LICENSE_FRONT',
+  'LICENSE_BACK',
+];
+
+export type PendingCustomerDocumentFiles = Partial<
+  Record<CustomerDocumentApiType, File>
+>;
+
+export async function uploadPendingCustomerDocuments(
+  orgId: string,
+  customerId: string,
+  files: PendingCustomerDocumentFiles,
+): Promise<void> {
+  for (const type of CUSTOMER_KYC_DOCUMENT_TYPES) {
+    const file = files[type];
+    if (file) {
+      await api.customers.customerDocuments.upload(orgId, customerId, type, file);
+    }
+  }
+}
+
 export function customerVerificationApiToUi(
   api: CustomerApiVerification | string | undefined | null,
 ): CustomerUiVerification {
@@ -76,6 +152,107 @@ export function customerVerificationApiToUi(
     case 'REJECTED': return 'Rejected';
     case 'EXPIRED': return 'Expired';
     default: return 'Not Submitted';
+  }
+}
+
+/** German display labels for customer verification status. */
+export function customerVerificationUiLabelDe(
+  ui: CustomerUiVerification | string | undefined,
+): string {
+  switch (ui) {
+    case 'Pending Review': return 'In Prüfung';
+    case 'Verified': return 'Verifiziert';
+    case 'Rejected': return 'Abgelehnt';
+    case 'Expired': return 'Abgelaufen';
+    default: return 'Nicht eingereicht';
+  }
+}
+
+export function customerStatusUiLabelDe(ui: CustomerUiStatus | string | undefined): string {
+  switch (ui) {
+    case 'Active': return 'Aktiv';
+    case 'Under Review': return 'In Prüfung';
+    case 'Suspended': return 'Suspendiert';
+    case 'Blocked': return 'Gesperrt';
+    case 'Inactive': return 'Inaktiv';
+    case 'Archived': return 'Archiviert';
+    default: return String(ui ?? '—');
+  }
+}
+
+export function customerRiskUiLabelDe(ui: CustomerUiRisk | string | undefined): string {
+  switch (ui) {
+    case 'Not Assessed': return 'Nicht bewertet';
+    case 'Low Risk': return 'Niedrig';
+    case 'Medium Risk': return 'Mittel';
+    case 'High Risk': return 'Hoch';
+    default: return 'Nicht bewertet';
+  }
+}
+
+export function customerDocumentStatusUiLabelDe(
+  ui: CustomerUiDocumentStatus | string | undefined,
+): string {
+  switch (ui) {
+    case 'Uploaded': return 'Hochgeladen';
+    case 'Pending Review': return 'In Prüfung';
+    case 'Verified': return 'Verifiziert';
+    case 'Rejected': return 'Abgelehnt';
+    case 'Expired': return 'Abgelaufen';
+    default: return 'Nicht eingereicht';
+  }
+}
+
+export function invoiceStatusApiToUiLabel(status: string | null | undefined): string {
+  switch ((status ?? '').toUpperCase()) {
+    case 'PAID': return 'Bezahlt';
+    case 'OVERDUE': return 'Überfällig';
+    case 'SENT': return 'Versendet';
+    case 'OPEN': return 'Offen';
+    case 'DRAFT': return 'Entwurf';
+    case 'CANCELLED': return 'Storniert';
+    case 'PENDING': return 'Ausstehend';
+    default: return status || '—';
+  }
+}
+
+export function fineStatusApiToUiLabel(status: string | null | undefined): string {
+  switch ((status ?? '').toUpperCase()) {
+    case 'RESOLVED': return 'Erledigt';
+    case 'CLOSED': return 'Geschlossen';
+    case 'MATCHED': return 'Zugeordnet';
+    case 'OPEN': return 'Offen';
+    case 'PENDING': return 'Ausstehend';
+    case 'DISPUTED': return 'Angefochten';
+    default: return status || '—';
+  }
+}
+
+export function invoiceStatusTone(
+  status: string | null | undefined,
+): 'success' | 'warning' | 'critical' | 'info' | 'neutral' {
+  switch ((status ?? '').toUpperCase()) {
+    case 'PAID': return 'success';
+    case 'OVERDUE': return 'critical';
+    case 'DRAFT': return 'neutral';
+    case 'SENT':
+    case 'OPEN':
+    case 'PENDING': return 'warning';
+    default: return 'neutral';
+  }
+}
+
+export function fineStatusTone(
+  status: string | null | undefined,
+): 'success' | 'warning' | 'critical' | 'info' | 'neutral' {
+  switch ((status ?? '').toUpperCase()) {
+    case 'RESOLVED':
+    case 'CLOSED': return 'success';
+    case 'MATCHED': return 'info';
+    case 'OPEN':
+    case 'PENDING': return 'warning';
+    case 'DISPUTED': return 'critical';
+    default: return 'neutral';
   }
 }
 
@@ -117,23 +294,38 @@ export function customerTypeApiToUi(api: CustomerApiType | string | undefined): 
 // with lowercase enums. Normalize both directions.
 // ------------------------------------------------
 
-export function bookingStatusApiToUi(api: string | undefined | null): BookingUiStatus {
+export function bookingStatusApiToUi(
+  api: string | undefined | null,
+  statusEnum?: string | null,
+): BookingUiStatus {
+  const enumRaw = (statusEnum ?? '').toString().toUpperCase();
+  if (enumRaw === 'NO_SHOW') return 'no_show';
+  if (enumRaw === 'CANCELLED') return 'cancelled';
+  if (enumRaw === 'ACTIVE') return 'active';
+  if (enumRaw === 'CONFIRMED') return 'confirmed';
+  if (enumRaw === 'COMPLETED') return 'completed';
+  if (enumRaw === 'PENDING') return 'pending';
+
   const v = String(api ?? '').toLowerCase();
+  if (v === 'no show' || v === 'no_show') return 'no_show';
   if (v === 'active') return 'active';
   if (v === 'confirmed') return 'confirmed';
   if (v === 'pending') return 'pending';
   if (v === 'completed') return 'completed';
-  if (v === 'cancelled' || v === 'no_show') return 'cancelled';
+  if (v === 'cancelled') return 'cancelled';
   return 'pending';
 }
 
-export function bookingStatusUiToApi(ui: BookingUiStatus): 'ACTIVE' | 'CONFIRMED' | 'PENDING' | 'COMPLETED' | 'CANCELLED' {
+export function bookingStatusUiToApi(
+  ui: BookingUiStatus,
+): 'ACTIVE' | 'CONFIRMED' | 'PENDING' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW' {
   switch (ui) {
     case 'active': return 'ACTIVE';
     case 'confirmed': return 'CONFIRMED';
     case 'pending': return 'PENDING';
     case 'completed': return 'COMPLETED';
     case 'cancelled': return 'CANCELLED';
+    case 'no_show': return 'NO_SHOW';
   }
 }
 
@@ -209,6 +401,8 @@ export interface BookingUiRow {
   endYear: number;
   pickupLocation: string;
   returnLocation: string;
+  pickupStationId?: string | null;
+  returnStationId?: string | null;
   revenue: string;
   status: BookingUiStatus;
   bookingRef: string;
@@ -229,6 +423,8 @@ export interface BookingUiRow {
   returnHandoverBy: string | null;
   pickupProtocol: HandoverProtocolRow | null;
   returnProtocol: HandoverProtocolRow | null;
+  extras: Array<{ id?: string; name?: string; price?: number }>;
+  totalPriceCents: number | null;
   _raw: unknown;
 }
 
@@ -280,7 +476,23 @@ export function mapApiBooking(api: any): BookingUiRow {
   const end = formatBookingDate(api.endDate);
   const currency = (api.currency || 'eur').toLowerCase();
   const symbol = currency === 'eur' ? '€' : currency === 'usd' ? '$' : '';
-  const revenueNum = typeof api.totalPrice === 'number' ? api.totalPrice : 0;
+  const revenueNum =
+    typeof api.totalPriceCents === 'number'
+      ? api.totalPriceCents / 100
+      : typeof api.totalPrice === 'number'
+        ? api.totalPrice
+        : 0;
+  const totalPriceCents =
+    typeof api.totalPriceCents === 'number'
+      ? api.totalPriceCents
+      : typeof api.totalPrice === 'number'
+        ? Math.round(api.totalPrice * 100)
+        : null;
+  const extrasList = Array.isArray(api.extras)
+    ? api.extras
+    : Array.isArray(api.extrasJson)
+      ? api.extrasJson
+      : [];
   // V4.6.75 — The booking list/detail endpoints now return pickupProtocol /
   // returnProtocol objects (or null). Mileage/fuel/handover-by are derived
   // from those real records instead of being forced to null. Superseded
@@ -308,10 +520,12 @@ export function mapApiBooking(api: any): BookingUiRow {
     endDay: end.day,
     endMonth: end.month,
     endYear: end.year,
-    pickupLocation: api.station ?? api.pickupLocation ?? '',
-    returnLocation: api.station ?? api.returnLocation ?? '',
+    pickupLocation: api.pickupStationName ?? api.station ?? api.pickupLocation ?? '',
+    returnLocation: api.returnStationName ?? api.station ?? api.returnLocation ?? '',
+    pickupStationId: api.pickupStationId ?? null,
+    returnStationId: api.returnStationId ?? null,
     revenue: `${symbol}${revenueNum.toFixed(0)}`,
-    status: bookingStatusApiToUi(api.status),
+    status: bookingStatusApiToUi(api.status, api.statusEnum),
     bookingRef: `BK-${String(api.id).slice(-6).toUpperCase()}`,
     insurance: Array.isArray(api.insuranceOptions) && api.insuranceOptions.length > 0
       ? api.insuranceOptions.map((i: any) => (typeof i === 'string' ? i : i?.name ?? i?.id ?? '')).filter(Boolean).join(', ')
@@ -332,6 +546,8 @@ export function mapApiBooking(api: any): BookingUiRow {
     returnHandoverBy: returnProtocol?.performedByName ?? null,
     pickupProtocol,
     returnProtocol,
+    extras: extrasList,
+    totalPriceCents,
     _raw: api,
   };
 }
@@ -343,17 +559,25 @@ export function mapApiBooking(api: any): BookingUiRow {
 export interface BuildBookingCreatePayloadArgs {
   customerId: string;
   vehicleId: string;
-  pickupDate: string;   // YYYY-MM-DD
-  pickupTime: string;   // HH:MM
-  returnDate: string;   // YYYY-MM-DD
-  returnTime: string;   // HH:MM
+  pickupDate: string;
+  pickupTime: string;
+  returnDate: string;
+  returnTime: string;
   pickupStationId?: string | null;
   returnStationId?: string | null;
-  dailyRateEuro: number;
-  totalPriceEuro: number;
-  includedKm: number;
-  insuranceLabels: string[];
-  extras: Array<{ id: string; name?: string; price?: number }>;
+  /** Legacy hints — backend Pricing Service is source of truth. */
+  dailyRateEuro?: number;
+  totalPriceEuro?: number;
+  includedKm?: number;
+  insuranceLabels?: string[];
+  extras?: Array<{ id: string; name?: string; price?: number }>;
+  pricingInput?: {
+    selectedMileagePackageId?: string;
+    selectedInsuranceOptionIds?: string[];
+    selectedExtraOptionIds?: string[];
+    manualDiscountCents?: number;
+    manualAdjustmentCents?: number;
+  };
   notes?: string;
   currency?: string;
   status?: 'PENDING' | 'CONFIRMED' | 'ACTIVE';
@@ -369,13 +593,18 @@ export function buildBookingCreatePayload(args: BuildBookingCreatePayloadArgs) {
     ...(args.returnStationId ? { returnStation: { connect: { id: args.returnStationId } } } : {}),
     startDate: startIso,
     endDate: endIso,
-    dailyRateCents: Math.round(args.dailyRateEuro * 100),
-    totalPriceCents: Math.round(args.totalPriceEuro * 100),
-    kmIncluded: Math.max(0, Math.round(args.includedKm || 0)),
-    insuranceOptions: args.insuranceLabels,
-    extrasJson: args.extras,
+    ...(args.dailyRateEuro != null
+      ? { dailyRateCents: Math.round(args.dailyRateEuro * 100) }
+      : {}),
+    ...(args.totalPriceEuro != null
+      ? { totalPriceCents: Math.round(args.totalPriceEuro * 100) }
+      : {}),
+    ...(args.includedKm != null ? { kmIncluded: Math.max(0, Math.round(args.includedKm)) } : {}),
+    ...(args.insuranceLabels ? { insuranceOptions: args.insuranceLabels } : {}),
+    ...(args.extras ? { extrasJson: args.extras } : {}),
+    ...(args.pricingInput ? { pricingInput: args.pricingInput } : {}),
     currency: (args.currency || 'eur').toLowerCase(),
-    status: args.status || 'CONFIRMED',
+    status: args.status || 'PENDING',
     notes: args.notes || '',
   };
 }
@@ -406,11 +635,6 @@ export interface BuildCustomerCreatePayloadArgs {
   riskLevel?: CustomerUiRisk | string;
   status?: CustomerUiStatus | string;
   notes?: string;
-  // V4.6.65 — KYC document URLs (returned by /customers/documents upload).
-  idFrontUrl?: string | null;
-  idBackUrl?: string | null;
-  licenseFrontUrl?: string | null;
-  licenseBackUrl?: string | null;
   allowDuplicateOverride?: boolean;
 }
 

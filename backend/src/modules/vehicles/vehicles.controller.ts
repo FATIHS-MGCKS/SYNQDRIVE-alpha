@@ -16,6 +16,8 @@ import { VehiclesService } from './vehicles.service';
 import { VehicleExteriorImagesService } from './vehicle-exterior-images.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { VehicleOwnershipGuard } from '@shared/auth/vehicle-ownership.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { PaginationParams } from '@shared/utils/pagination';
@@ -27,6 +29,7 @@ import {
   VehicleType,
   FuelType,
 } from '@prisma/client';
+import { FleetConnectivityQueryDto } from './dto/fleet-connectivity-query.dto';
 
 type VehicleExteriorView = 'FRONT' | 'LEFT' | 'RIGHT' | 'REAR' | 'ROOF';
 
@@ -262,8 +265,13 @@ export class VehiclesController {
   }
 
   @Get('organizations/:orgId/fleet-connectivity')
-  async getFleetConnectivity(@Param('orgId') orgId: string) {
-    return this.vehiclesService.getFleetConnectivity(orgId);
+  @UseGuards(OrgScopingGuard, PermissionsGuard)
+  @RequirePermission('fleet-connectivity', 'read')
+  async getFleetConnectivity(
+    @Param('orgId') orgId: string,
+    @Query() query: FleetConnectivityQueryDto,
+  ) {
+    return this.vehiclesService.getFleetConnectivity(orgId, query);
   }
 
   @Get('organizations/:orgId/vehicles/:vehicleId/complaints')

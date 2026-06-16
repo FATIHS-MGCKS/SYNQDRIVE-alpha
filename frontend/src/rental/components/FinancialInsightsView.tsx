@@ -15,6 +15,15 @@ import { api } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
 import { useLanguage } from '../i18n/LanguageContext';
+import { InsightsCockpit } from './insights/InsightsCockpit';
+import {
+  expensesInRange,
+  issuedRevenueInRange,
+  openOutgoingReceivables,
+  overdueOutgoingReceivables,
+  paidRevenueInRange,
+  sumCents,
+} from '../lib/financial-insights.logic';
 
 // ─── Types ─────────────────────────────────────────────────────────────
 
@@ -152,7 +161,9 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   const intlLocale = localeMap[locale] || 'en-US';
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
+  const [customerLoadWarning, setCustomerLoadWarning] = useState<string | null>(null);
+  const [reportingAnchor, setReportingAnchor] = useState(() => new Date());
   const [invoices, setInvoices] = useState<InvoiceLite[]>([]);
   const [customers, setCustomers] = useState<CustomerLite[]>([]);
   const [activePopup, setActivePopup] = useState<'revenue' | 'expenses' | null>(null);
@@ -166,20 +177,32 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
       setLoading(false);
       return;
     }
-    setError(null);
+    setInvoiceError(null);
+    setCustomerLoadWarning(null);
     try {
-      const [iList, cList] = await Promise.all([
-        api.invoices.list(orgId).catch(() => [] as any[]),
-        api.customers.list(orgId).catch(() => [] as any[]),
-      ]);
-      const invoicesArr: InvoiceLite[] = Array.isArray(iList) ? (iList as InvoiceLite[]) : [];
-      const customersArr: CustomerLite[] = Array.isArray(cList)
-        ? (cList as CustomerLite[])
-        : ((cList as any)?.data ?? []);
+      let invoicesArr: InvoiceLite[] = [];
+      try {
+        const iList = await api.invoices.list(orgId);
+        invoicesArr = Array.isArray(iList) ? (iList as InvoiceLite[]) : [];
+      } catch {
+        invoicesArr = [];
+        setInvoiceError('Finanzdaten konnten nicht geladen werden.');
+      }
+
+      let customersArr: CustomerLite[] = [];
+      try {
+        const cList = await api.customers.list(orgId);
+        customersArr = Array.isArray(cList)
+          ? (cList as CustomerLite[])
+          : ((cList as { data?: CustomerLite[] })?.data ?? []);
+      } catch {
+        customersArr = [];
+        setCustomerLoadWarning('Kundendaten konnten nicht geladen werden — Zuordnungen können unvollständig sein.');
+      }
+
       setInvoices(invoicesArr);
       setCustomers(customersArr);
-    } catch (e: any) {
-      setError(e?.message ? String(e.message) : 'Failed to load financial data');
+      setReportingAnchor(new Date());
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -198,7 +221,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
 
   // ─── Derived: time slices ────────────────────────────────────────────
 
-  const now = useMemo(() => new Date(), []);
+  const now = reportingAnchor;
   const monthStart = useMemo(() => startOfMonth(now), [now]);
   const prevMonthStart = useMemo(() => startOfPrevMonth(now), [now]);
   const prevMonthEnd = useMemo(() => endOfPrevMonth(now), [now]);
@@ -206,51 +229,39 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   // Bucket invoices by current vs previous month and by direction so we can
   // compute MTD KPIs + month-over-month deltas without re-iterating the list.
   const bucketed = useMemo(() => {
-    const mtdRevenue: InvoiceLite[] = [];
-    const mtdExpense: InvoiceLite[] = [];
-    const prevRevenue: InvoiceLite[] = [];
-    const prevExpense: InvoiceLite[] = [];
-    const outstandingRevenue: InvoiceLite[] = [];
-    const mtdInvoices: InvoiceLite[] = [];
+    const outstandingRevenue = openOutgoingReceivables(invoices, now);
+    const overdueRevenue = overdueOutgoingReceivables(invoices, now);
+    const mtdIssued = issuedRevenueInRange(invoices, monthStart, now);
+    const mtdPaid = paidRevenueInRange(invoices, monthStart, now);
+    const mtdExpenseRows = expensesInRange(invoices, monthStart, now);
+    const prevIssued = issuedRevenueInRange(invoices, prevMonthStart, prevMonthEnd);
 
-    for (const inv of invoices) {
-      const d = effectiveDateOf(inv);
-      if (!d) continue;
-      const inMtd = d >= monthStart && d <= now;
-      const inPrev = d >= prevMonthStart && d <= prevMonthEnd;
-      if (inMtd) mtdInvoices.push(inv);
-      if (isOutgoing(inv.type)) {
-        if (inMtd) mtdRevenue.push(inv);
-        if (inPrev) prevRevenue.push(inv);
-        if (inMtd && inv.status !== 'PAID' && inv.status !== 'CANCELLED') {
-          outstandingRevenue.push(inv);
-        }
-      } else if (isIncoming(inv.type)) {
-        if (inMtd) mtdExpense.push(inv);
-        if (inPrev) prevExpense.push(inv);
-      }
-    }
-    return { mtdRevenue, mtdExpense, prevRevenue, prevExpense, outstandingRevenue, mtdInvoices };
+    return {
+      mtdRevenue: mtdIssued,
+      mtdExpense: mtdExpenseRows,
+      prevRevenue: prevIssued,
+      prevExpense: expensesInRange(invoices, prevMonthStart, prevMonthEnd),
+      outstandingRevenue,
+      overdueRevenue,
+      mtdPaid,
+      mtdInvoices: mtdIssued,
+    };
   }, [invoices, monthStart, prevMonthStart, prevMonthEnd, now]);
 
-  const sumCents = (rows: InvoiceLite[]): number =>
-    rows.reduce((acc, r) => acc + (r.totalCents ?? 0), 0);
-
   const mtdRevenueCents = useMemo(() => sumCents(bucketed.mtdRevenue), [bucketed.mtdRevenue]);
+  const mtdPaidRevenueCents = useMemo(() => sumCents(bucketed.mtdPaid), [bucketed.mtdPaid]);
   const mtdExpenseCents = useMemo(() => sumCents(bucketed.mtdExpense), [bucketed.mtdExpense]);
   const prevRevenueCents = useMemo(() => sumCents(bucketed.prevRevenue), [bucketed.prevRevenue]);
   const prevExpenseCents = useMemo(() => sumCents(bucketed.prevExpense), [bucketed.prevExpense]);
   const outstandingCents = useMemo(() => sumCents(bucketed.outstandingRevenue), [bucketed.outstandingRevenue]);
+  const overdueCents = useMemo(() => sumCents(bucketed.overdueRevenue), [bucketed.overdueRevenue]);
   const profitCents = mtdRevenueCents - mtdExpenseCents;
   const profitMargin = mtdRevenueCents > 0 ? (profitCents / mtdRevenueCents) * 100 : 0;
-  const mtdPaidInvoices = useMemo(
-    () => bucketed.mtdInvoices.filter((inv) => inv.status === 'PAID').length,
-    [bucketed.mtdInvoices],
-  );
   const mtdOpenInvoices = useMemo(
     () => bucketed.mtdInvoices.filter((inv) => inv.status !== 'PAID' && inv.status !== 'CANCELLED').length,
     [bucketed.mtdInvoices],
   );
+  const hasPaidCashflowData = bucketed.mtdPaid.length > 0;
 
   const revenueDeltaPct = prevRevenueCents > 0
     ? ((mtdRevenueCents - prevRevenueCents) / prevRevenueCents) * 100
@@ -400,8 +411,32 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     );
   }
 
+  if (invoiceError) {
+    return (
+      <div className="max-w-[1600px] mx-auto space-y-4">
+        <InsightsCockpit isDarkMode={isDarkMode} openReceivablesEur={0} />
+        <div className="rounded-xl p-4 sq-tone-critical text-sm font-medium flex items-center gap-2">
+          <Icon name="alert-circle" className="w-5 h-5" />
+          {invoiceError}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-[1600px] mx-auto space-y-5">
+      <InsightsCockpit
+        isDarkMode={isDarkMode}
+        openReceivablesEur={Math.round(outstandingCents / 100)}
+        financialRiskEur={Math.round(overdueCents / 100)}
+      />
+
+      <div className="pt-2 border-t border-border">
+        <h2 className="text-[14px] font-bold text-foreground mb-1">Financial Intelligence</h2>
+        <p className="text-[11px] text-muted-foreground mb-4">
+          Ausgestellte Rechnungen (Issued) nach Rechnungsdatum · Cashflow nur bei erfasstem Zahlungsdatum
+        </p>
+      </div>
       {/* ─── Header ─── */}
       <div className="flex flex-wrap items-end justify-between gap-2 sm:gap-3">
         <div className="animate-fade-up min-w-0">
@@ -428,23 +463,23 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         </div>
       </div>
 
-      {error && (
-        <div className="rounded-xl p-3 flex items-center gap-2 sq-tone-critical">
+      {customerLoadWarning && (
+        <div className="rounded-xl p-3 flex items-center gap-2 sq-tone-warning">
           <Icon name="alert-circle" className="w-4 h-4" />
-          <p className="text-xs font-medium">{error}</p>
+          <p className="text-xs font-medium">{customerLoadWarning}</p>
         </div>
       )}
 
       {/* ─── KPI Row ─── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
         <KpiCard
-          label="Revenue MTD"
+          label="Issued Revenue MTD"
           value={fmtEUR(mtdRevenueCents, intlLocale)}
           icon={ArrowUpRight}
           color="green"
           isDarkMode={isDarkMode}
           delta={revenueDeltaPct}
-          subtle={`${bucketed.mtdRevenue.length} invoices`}
+          subtle={`${bucketed.mtdRevenue.length} Rechnungen ausgestellt`}
           onClick={() => setActivePopup('revenue')}
           clickable
         />
@@ -466,23 +501,34 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           icon={Wallet}
           color={profitCents >= 0 ? 'blue' : 'red'}
           isDarkMode={isDarkMode}
-          subtle={`Margin ${fmtPct(profitMargin, 1)}`}
+          subtle={`Margin ${fmtPct(profitMargin, 1)} · basierend auf Issued Revenue`}
         />
         <KpiCard
-          label="Outstanding"
+          label="Open Receivables"
           value={fmtEUR(outstandingCents, intlLocale)}
           icon={Clock}
           color="purple"
           isDarkMode={isDarkMode}
-          subtle={`${bucketed.outstandingRevenue.length} unpaid`}
+          subtle={`${bucketed.outstandingRevenue.length} offen gesamt`}
+        />
+        <KpiCard
+          label="Overdue"
+          value={fmtEUR(overdueCents, intlLocale)}
+          icon={Clock}
+          color="red"
+          isDarkMode={isDarkMode}
+          subtle={`${bucketed.overdueRevenue.length} überfällig`}
         />
       </div>
 
-      {/* ─── KPI summary row 2 (current month context) ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        <SummaryCard label="Revenue invoices" value={String(bucketed.mtdRevenue.length)} hint={monthLabel} />
+        <SummaryCard
+          label="Paid revenue MTD"
+          value={hasPaidCashflowData ? fmtEUR(mtdPaidRevenueCents, intlLocale) : '—'}
+          hint={hasPaidCashflowData ? 'nach paidAt' : 'Zahlungsdatum nicht verfügbar'}
+        />
         <SummaryCard label="Expense invoices" value={String(bucketed.mtdExpense.length)} hint={monthLabel} />
-        <SummaryCard label="Paid invoices" value={String(mtdPaidInvoices)} hint="This month" />
+        <SummaryCard label="Paid invoices MTD" value={String(bucketed.mtdPaid.length)} hint="nach paidAt" />
         <SummaryCard label="Open invoices" value={String(mtdOpenInvoices)} hint="This month" />
       </div>
 

@@ -11,7 +11,7 @@ function baseTask(over: Record<string, unknown> = {}) {
     category: null,
     type: 'CUSTOM',
     status: 'OPEN',
-    priority: 'MEDIUM',
+    priority: 'NORMAL',
     source: null,
     sourceType: 'MANUAL',
     dedupKey: null,
@@ -23,7 +23,7 @@ function baseTask(over: Record<string, unknown> = {}) {
     documentId: null,
     fineId: null,
     invoiceId: null,
-    assignedTo: null,
+    assignedUserId: null,
     estimatedCostCents: null,
     actualCostCents: null,
     resolutionNote: null,
@@ -85,7 +85,7 @@ describe('TasksService', () => {
     const data = prisma.orgTask.create.mock.calls[0][0].data;
     expect(data.organizationId).toBe('org1');
     expect(data.type).toBe('CUSTOM');
-    expect(data.priority).toBe('MEDIUM');
+    expect(data.priority).toBe('NORMAL');
     expect(data.sourceType).toBe('MANUAL');
     expect(prisma.taskEvent.create).toHaveBeenCalled();
     expect(res.id).toBe('t1');
@@ -103,14 +103,14 @@ describe('TasksService', () => {
 
   it('does not duplicate a system task with an active dedupKey — it escalates in place', async () => {
     prisma.orgTask.findFirst.mockResolvedValue(baseTask({ id: 'tX', dedupKey: 'health:brake:v1', status: 'OPEN' }));
-    prisma.orgTask.update.mockResolvedValue(baseTask({ id: 'tX', priority: 'URGENT' }));
+    prisma.orgTask.update.mockResolvedValue(baseTask({ id: 'tX', priority: 'CRITICAL' }));
 
     await svc.upsertByDedup('org1', 'health:brake:v1', {
       title: 'Brake critical',
       source: 'INSIGHT_HEALTH',
       type: 'BRAKE_CHECK',
       sourceType: 'HEALTH',
-      priority: 'URGENT',
+      priority: 'CRITICAL',
     });
 
     expect(prisma.orgTask.update).toHaveBeenCalledTimes(1);
@@ -134,16 +134,16 @@ describe('TasksService', () => {
   it('assigns a task to a member of the org and records an ASSIGNED event', async () => {
     prisma.orgTask.findFirst
       .mockResolvedValueOnce(baseTask()) // loadTaskOrThrow
-      .mockResolvedValueOnce(baseTask({ assignedTo: 'u2' })); // getTaskById
+      .mockResolvedValueOnce(baseTask({ assignedUserId: 'u2' })); // getTaskById
     prisma.organizationMembership.findFirst.mockResolvedValue({ id: 'm1' });
-    prisma.orgTask.update.mockResolvedValue(baseTask({ assignedTo: 'u2' }));
+    prisma.orgTask.update.mockResolvedValue(baseTask({ assignedUserId: 'u2' }));
 
     const res = await svc.assignTask('org1', 't1', 'u2', 'actor');
 
     expect(prisma.organizationMembership.findFirst).toHaveBeenCalled();
     expect(prisma.orgTask.update).toHaveBeenCalled();
     expect(prisma.taskEvent.create).toHaveBeenCalled();
-    expect(res.assignedTo).toBe('u2');
+    expect(res.assignedUserId).toBe('u2');
   });
 
   it('allows a valid status transition OPEN → IN_PROGRESS and stamps startedAt', async () => {
@@ -222,7 +222,7 @@ describe('TasksService', () => {
         { status: 'IN_PROGRESS', _count: { _all: 1 } },
         { status: 'DONE', _count: { _all: 2 } },
       ])
-      .mockResolvedValueOnce([{ priority: 'URGENT', _count: { _all: 1 } }]);
+      .mockResolvedValueOnce([{ priority: 'CRITICAL', _count: { _all: 1 } }]);
     prisma.orgTask.count
       .mockResolvedValueOnce(3) // open
       .mockResolvedValueOnce(2) // overdue

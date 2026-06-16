@@ -93,6 +93,11 @@ export function HandoverProvider({
           startDate: seed.startDate ?? '',
           endDate: seed.endDate ?? '',
           pickupLocation: seed.pickupLocation ?? '',
+          returnLocation: seed.returnLocation,
+          pickupStationId: seed.pickupStationId,
+          returnStationId: seed.returnStationId,
+          handoverInstructions: seed.handoverInstructions,
+          returnInstructions: seed.returnInstructions,
           status: seed.status,
           includedKm: seed.includedKm,
           pickupOdometerKm: seed.pickupOdometerKm ?? null,
@@ -102,27 +107,59 @@ export function HandoverProvider({
       }
       if (!orgId) return;
       try {
-        const full = await api.bookings.get(orgId, bookingId);
-        if (!full) return;
+        const detail = await api.bookings.detail(orgId, bookingId);
+        if (!detail) return;
         const pickupKm =
-          kind === 'RETURN' && full.pickupProtocol
-            ? full.pickupProtocol.odometerKm
+          kind === 'RETURN' && detail.handover.pickup
+            ? detail.handover.pickup.odometerKm
             : null;
         setBooking({
-          id: full.id,
-          vehicleId: full.vehicleId,
-          vehicleName: full.vehicleName,
-          plate: full.vehicleLicense ?? '',
-          customerName: full.customerName ?? '',
-          startDate: full.startDate,
-          endDate: full.endDate,
-          pickupLocation: full.station ?? '',
-          status: full.status,
-          includedKm: full.kmIncluded,
+          id: detail.core.bookingId,
+          vehicleId: detail.vehicle.vehicleId,
+          vehicleName: detail.vehicle.displayName,
+          plate: detail.vehicle.licensePlate ?? '',
+          customerName: detail.customer.fullName ?? '',
+          startDate: detail.core.startDate,
+          endDate: detail.core.endDate,
+          pickupLocation:
+            detail.stations?.pickup?.name ?? detail.core.pickupStationName ?? '',
+          returnLocation:
+            detail.stations?.return?.name ?? detail.core.returnStationName ?? '',
+          pickupStationId: detail.core.pickupStationId,
+          returnStationId: detail.core.returnStationId,
+          handoverInstructions: detail.stations?.pickup?.handoverInstructions ?? null,
+          returnInstructions: detail.stations?.return?.returnInstructions ?? null,
+          status: detail.core.status,
+          includedKm: detail.core.kmIncluded ?? undefined,
           pickupOdometerKm: pickupKm,
         });
       } catch {
-        // keep seed data
+        try {
+          const full = await api.bookings.get(orgId, bookingId);
+          if (!full) return;
+          const pickupKm =
+            kind === 'RETURN' && full.pickupProtocol
+              ? full.pickupProtocol.odometerKm
+              : null;
+          setBooking({
+            id: full.id,
+            vehicleId: full.vehicleId,
+            vehicleName: full.vehicleName,
+            plate: full.vehicleLicense ?? '',
+            customerName: full.customerName ?? '',
+            startDate: full.startDate,
+            endDate: full.endDate,
+            pickupLocation: full.pickupStationName ?? full.station ?? '',
+            returnLocation: full.returnStationName ?? full.station ?? '',
+            pickupStationId: full.pickupStationId ?? null,
+            returnStationId: full.returnStationId ?? null,
+            status: full.status,
+            includedKm: full.kmIncluded,
+            pickupOdometerKm: pickupKm,
+          });
+        } catch {
+          // keep seed data
+        }
       }
     },
     [orgId],

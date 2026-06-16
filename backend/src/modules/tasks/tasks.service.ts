@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma, TaskPriority, TaskSource, TaskStatus, TaskType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { checklistForType } from './task-templates';
 
 // ─── Domain constants (V4.8.3 Task Action Layer) ─────────────────────────
 
@@ -39,7 +40,7 @@ export interface TaskLinks {
   documentId?: string | null;
   fineId?: string | null;
   invoiceId?: string | null;
-  assignedTo?: string | null;
+  assignedUserId?: string | null;
 }
 
 export interface CreateManualTaskInput extends TaskLinks {
@@ -61,7 +62,7 @@ export interface UpdateTaskInput {
   description?: string;
   priority?: TaskPriority;
   dueDate?: string | Date | null;
-  assignedTo?: string | null;
+  assignedUserId?: string | null;
   estimatedCostCents?: number | null;
   actualCostCents?: number | null;
   metadata?: Prisma.InputJsonValue;
@@ -134,7 +135,7 @@ export class TasksService {
       documentId: t.documentId || null,
       fineId: t.fineId || null,
       invoiceId: t.invoiceId || null,
-      assignedTo: t.assignedTo || null,
+      assignedUserId: t.assignedUserId || null,
       estimatedCostCents: t.estimatedCostCents ?? null,
       actualCostCents: t.actualCostCents ?? null,
       resolutionNote: t.resolutionNote || null,
@@ -210,9 +211,9 @@ export class TasksService {
   // Every relational id supplied by a caller must belong to the same org.
 
   private async assertLinksBelongToOrg(orgId: string, links: TaskLinks): Promise<void> {
-    if (links.assignedTo) {
+    if (links.assignedUserId) {
       const member = await this.prisma.organizationMembership.findFirst({
-        where: { userId: links.assignedTo, organizationId: orgId },
+        where: { userId: links.assignedUserId, organizationId: orgId },
         select: { id: true },
       });
       if (!member) {
@@ -292,7 +293,7 @@ export class TasksService {
     if (filters.priority) where.priority = Array.isArray(filters.priority) ? { in: filters.priority } : filters.priority;
     if (filters.type) where.type = Array.isArray(filters.type) ? { in: filters.type } : filters.type;
     if (filters.sourceType) where.sourceType = Array.isArray(filters.sourceType) ? { in: filters.sourceType } : filters.sourceType;
-    if (filters.assignedUserId) where.assignedTo = filters.assignedUserId;
+    if (filters.assignedUserId) where.assignedUserId = filters.assignedUserId;
     if (filters.vehicleId) where.vehicleId = filters.vehicleId;
     if (filters.bookingId) where.bookingId = filters.bookingId;
     if (filters.customerId) where.customerId = filters.customerId;
@@ -382,9 +383,9 @@ export class TasksService {
       this.prisma.orgTask.count({ where: { organizationId: orgId, status: 'OPEN' } }),
       this.prisma.orgTask.count({ where: { ...activeFilter, dueDate: { lt: now } } }),
       this.prisma.orgTask.count({ where: { ...activeFilter, dueDate: { gte: startOfDay, lt: endOfDay } } }),
-      this.prisma.orgTask.count({ where: { ...activeFilter, priority: 'URGENT' } }),
+      this.prisma.orgTask.count({ where: { ...activeFilter, priority: 'CRITICAL' } }),
       currentUserId
-        ? this.prisma.orgTask.count({ where: { ...activeFilter, assignedTo: currentUserId } })
+        ? this.prisma.orgTask.count({ where: { ...activeFilter, assignedUserId: currentUserId } })
         : Promise.resolve(0),
     ]);
 
@@ -410,9 +411,21 @@ export class TasksService {
 
   // ─── Create ───────────────────────────────────────────────────────────────
 
+  private resolveChecklist(
+    type: TaskType,
+    provided?: Array<{ title: string; description?: string; sortOrder?: number }>,
+  ): Array<{ title: string; description?: string; sortOrder?: number }> | undefined {
+    if (provided && provided.length > 0) return provided;
+    const template = checklistForType(type);
+    return template.length > 0 ? template : undefined;
+  }
+
   async createManualTask(orgId: string, input: CreateManualTaskInput, createdByUserId?: string) {
     if (!input.title?.trim()) throw new BadRequestException('Title is required');
     await this.assertLinksBelongToOrg(orgId, input);
+
+    const type = input.type ?? 'CUSTOM';
+    const checklist = this.resolveChecklist(type, input.checklist);
 
     const task = await this.prisma.orgTask.create({
       data: {
@@ -420,8 +433,8 @@ export class TasksService {
         title: input.title.trim(),
         description: input.description,
         category: input.category,
-        type: input.type ?? 'CUSTOM',
-        priority: input.priority ?? 'MEDIUM',
+        type,
+        priority: input.priority ?? 'NORMAL',
         source: input.source ?? null,
         sourceType: input.sourceType ?? 'MANUAL',
         vehicleId: input.vehicleId ?? undefined,
@@ -432,26 +445,25 @@ export class TasksService {
         documentId: input.documentId ?? undefined,
         fineId: input.fineId ?? undefined,
         invoiceId: input.invoiceId ?? undefined,
-        assignedTo: input.assignedTo ?? undefined,
+        assignedUserId: input.assignedUserId ?? undefined,
         dueDate: input.dueDate ? new Date(input.dueDate) : null,
         estimatedCostCents: input.estimatedCostCents ?? undefined,
         metadata: input.metadata,
         createdByUserId: createdByUserId ?? null,
-        checklistItems:
-          input.checklist && input.checklist.length > 0
-            ? {
-                create: input.checklist.map((c, i) => ({
-                  title: c.title,
-                  description: c.description,
-                  sortOrder: c.sortOrder ?? i,
-                })),
-              }
-            : undefined,
+        checklistItems: checklist
+          ? {
+              create: checklist.map((c, i) => ({
+                title: c.title,
+                description: c.description,
+                sortOrder: c.sortOrder ?? i,
+              })),
+            }
+          : undefined,
       },
     });
 
     await this.recordEvent(task.id, 'CREATED', createdByUserId, null, task.status);
-    if (task.priority === 'URGENT') this.notify('created_critical', task);
+    if (task.priority === 'CRITICAL') this.notify('created_critical', task);
     return this.getTaskById(task.id, orgId);
   }
 
@@ -478,7 +490,7 @@ export class TasksService {
       documentId?: string;
       fineId?: string;
       invoiceId?: string;
-      assignedTo?: string;
+      assignedUserId?: string;
       dueDate?: string;
       estimatedCostCents?: number;
     },
@@ -522,7 +534,7 @@ export class TasksService {
     if (existing.status === 'DONE' || existing.status === 'CANCELLED') {
       throw new BadRequestException('A completed or cancelled task can no longer be edited');
     }
-    if (data.assignedTo) await this.assertLinksBelongToOrg(orgId, { assignedTo: data.assignedTo });
+    if (data.assignedUserId) await this.assertLinksBelongToOrg(orgId, { assignedUserId: data.assignedUserId });
 
     const update: Prisma.OrgTaskUpdateInput = {};
     if (data.title !== undefined) update.title = data.title;
@@ -530,7 +542,7 @@ export class TasksService {
     if (data.category !== undefined) update.category = data.category;
     if (data.priority !== undefined) update.priority = data.priority;
     if (data.dueDate !== undefined) update.dueDate = data.dueDate ? new Date(data.dueDate) : null;
-    if (data.assignedTo !== undefined) update.assignedTo = data.assignedTo;
+    if (data.assignedUserId !== undefined) update.assignedUserId = data.assignedUserId;
     if (data.estimatedCostCents !== undefined) update.estimatedCostCents = data.estimatedCostCents;
     if (data.actualCostCents !== undefined) update.actualCostCents = data.actualCostCents;
     if (data.metadata !== undefined) update.metadata = data.metadata;
@@ -547,7 +559,7 @@ export class TasksService {
    */
   async update(
     id: string,
-    data: { title?: string; description?: string; status?: TaskStatus; priority?: TaskPriority; assignedTo?: string; dueDate?: string },
+    data: { title?: string; description?: string; status?: TaskStatus; priority?: TaskPriority; assignedUserId?: string; dueDate?: string },
     orgId?: string,
   ) {
     if (!orgId) {
@@ -562,7 +574,7 @@ export class TasksService {
     if (data.title !== undefined) rest.title = data.title;
     if (data.description !== undefined) rest.description = data.description;
     if (data.priority !== undefined) rest.priority = data.priority;
-    if (data.assignedTo !== undefined) rest.assignedTo = data.assignedTo;
+    if (data.assignedUserId !== undefined) rest.assignedUserId = data.assignedUserId;
     if (data.dueDate !== undefined) rest.dueDate = data.dueDate;
     if (Object.keys(rest).length > 0) {
       // Re-load: status change above may have closed the task.
@@ -619,9 +631,9 @@ export class TasksService {
     if (task.status === 'DONE' || task.status === 'CANCELLED') {
       throw new BadRequestException('A completed or cancelled task can no longer be assigned');
     }
-    if (assignedUserId) await this.assertLinksBelongToOrg(orgId, { assignedTo: assignedUserId });
-    await this.prisma.orgTask.update({ where: { id }, data: { assignedTo: assignedUserId, updatedByUserId: actorUserId ?? null } });
-    await this.recordEvent(id, 'ASSIGNED', actorUserId, task.assignedTo, assignedUserId);
+    if (assignedUserId) await this.assertLinksBelongToOrg(orgId, { assignedUserId });
+    await this.prisma.orgTask.update({ where: { id }, data: { assignedUserId, updatedByUserId: actorUserId ?? null } });
+    await this.recordEvent(id, 'ASSIGNED', actorUserId, task.assignedUserId, assignedUserId);
     const result = await this.getTaskById(id, orgId);
     if (assignedUserId) this.notify('assigned', result);
     return result;
@@ -781,7 +793,7 @@ export class TasksService {
           category: payload.category,
           type: payload.type ?? existing!.type,
           sourceType: payload.sourceType ?? existing!.sourceType,
-          priority: payload.priority ?? 'MEDIUM',
+          priority: payload.priority ?? 'NORMAL',
           vehicleId: payload.vehicleId ?? existing!.vehicleId,
           bookingId: payload.bookingId ?? existing!.bookingId,
           customerId: payload.customerId ?? existing!.customerId,
@@ -805,15 +817,18 @@ export class TasksService {
       });
     }
 
+    const taskType = payload.type ?? 'CUSTOM';
+    const checklist = this.resolveChecklist(taskType, payload.checklist);
+
     const task = await this.prisma.orgTask.create({
       data: {
         organizationId: orgId,
         title: payload.title,
         description: payload.description,
         category: payload.category,
-        type: payload.type ?? 'CUSTOM',
+        type: taskType,
         sourceType: payload.sourceType ?? 'SYSTEM',
-        priority: payload.priority ?? 'MEDIUM',
+        priority: payload.priority ?? 'NORMAL',
         vehicleId: payload.vehicleId ?? undefined,
         bookingId: payload.bookingId ?? undefined,
         customerId: payload.customerId ?? undefined,
@@ -826,16 +841,15 @@ export class TasksService {
         source: payload.source,
         dedupKey,
         metadata: payload.metadata,
-        checklistItems:
-          payload.checklist && payload.checklist.length > 0
-            ? {
-                create: payload.checklist.map((c, i) => ({
+        checklistItems: checklist
+          ? {
+              create: checklist.map((c, i) => ({
                   title: c.title,
                   description: c.description,
                   sortOrder: c.sortOrder ?? i,
                 })),
-              }
-            : undefined,
+            }
+          : undefined,
       },
     });
     await this.recordEvent(task.id, 'CREATED', null, null, task.status, { auto: true });

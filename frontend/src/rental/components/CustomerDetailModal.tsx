@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 import { api } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
 import { customerStatusUiToApi } from '../lib/entityMappers';
+import { VehicleStressPanel } from './VehicleStressPanel';
+import { formatStressScore, resolveDrivingStressScore } from '../lib/scoreFormat';
 
 // ---------------------------------------------------------------------------
 // V4.6.66 — Customer Quick View is fully grounded:
@@ -31,11 +33,8 @@ interface Customer {
   status: 'Active' | 'Under Review' | 'Suspended' | 'Blocked' | 'Archived' | 'Inactive';
   // V4.6.95 — neutral 'Not Assessed' default (no fake "Low Risk").
   riskLevel: 'Not Assessed' | 'Low Risk' | 'Medium Risk' | 'High Risk';
-  // V4.6.95 — `drivingScore` is a legacy compatibility mirror; canonical
-  // public scalar is `drivingStyleScore`. Both kept optional.
-  drivingScore?: number | null;
-  drivingStyleScore?: number | null;
-  safetyScore?: number | null;
+  drivingStressScore?: number | null;
+  stressLevel?: 'low' | 'moderate' | 'high' | 'critical' | null;
   hasEnoughData?: boolean;
   dataConfidence?: 'none' | 'low' | 'medium' | 'high';
   scoredTripCount?: number;
@@ -98,8 +97,8 @@ type ModalDetail = {
   notes?: string | null;
   idVerified?: boolean | null;
   licenseVerified?: boolean | null;
-  drivingStyleScore?: number | null;
-  safetyScore?: number | null;
+  drivingStressScore?: number | null;
+  stressLevel?: 'low' | 'moderate' | 'high' | 'critical' | null;
   hasEnoughData?: boolean | null;
   dataConfidence?: 'none' | 'low' | 'medium' | 'high' | null;
   scoredTripCount?: number | null;
@@ -149,22 +148,18 @@ export function CustomerDetailModal({
   };
 
   // V4.6.95 — Backend-canonical scores. Frontend never aggregates.
-  const drivingStyleScore =
-    detail?.drivingStyleScore ??
-    customer.drivingStyleScore ??
-    customer.drivingScore ??
-    null;
-  const safetyScore = detail?.safetyScore ?? customer.safetyScore ?? null;
+  const drivingStressScore = resolveDrivingStressScore(detail ?? customer);
+  const stressLevel = detail?.stressLevel ?? customer.stressLevel ?? null;
   const hasEnoughData =
     typeof detail?.hasEnoughData === 'boolean'
       ? detail.hasEnoughData
       : typeof customer.hasEnoughData === 'boolean'
         ? customer.hasEnoughData
         : true;
-  const combinedScore =
-    drivingStyleScore != null && safetyScore != null && hasEnoughData
-      ? Math.round(((drivingStyleScore + safetyScore) / 2) * 10) / 10
-      : null;
+  const stressDisplay = formatStressScore(drivingStressScore, {
+    hasEnoughData,
+    level: stressLevel ?? undefined,
+  });
 
   const totalRevenueCents = detail?.totalRevenueCents ?? null;
   const totalKmDriven = (detail?.bookings ?? []).reduce(
@@ -405,25 +400,17 @@ export function CustomerDetailModal({
                   tone: 'sq-tone-success',
                 },
                 {
-                  // V4.6.95 — both scalars are 0–100 model scores. Show "—"
-                  // for missing or insufficient data; never coerce to 0/100.
-                  label: 'Style / Safety',
-                  value: !hasEnoughData
-                    ? EM_DASH
-                    : drivingStyleScore != null || safetyScore != null
-                      ? `${drivingStyleScore != null ? Math.round(drivingStyleScore) : EM_DASH} / ${
-                          safetyScore != null ? Math.round(safetyScore) : EM_DASH
-                        }`
-                      : EM_DASH,
+                  label: 'Fahrbelastung',
+                  value: stressDisplay.isMissing ? EM_DASH : stressDisplay.label,
                   icon: Star,
                   tone:
-                    combinedScore == null
-                      ? 'sq-tone-neutral'
-                      : combinedScore >= 80
-                        ? 'sq-tone-success'
-                        : combinedScore >= 60
+                    stressDisplay.tone === 'success'
+                      ? 'sq-tone-success'
+                      : stressDisplay.tone === 'critical'
+                        ? 'sq-tone-critical'
+                        : stressDisplay.tone === 'warning'
                           ? 'sq-tone-warning'
-                          : 'sq-tone-critical',
+                          : 'sq-tone-neutral',
                 },
               ].map((stat) => (
                 <div key={stat.label} className={`rounded-xl p-3 text-left transition-all duration-200 ${stat.tone}`}>
@@ -608,83 +595,19 @@ export function CustomerDetailModal({
                   </div>
                 </div>
 
-                {/* Driving scores */}
-                <div className={`rounded-2xl border p-5 ${cardBg}`}>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">Driving Behavior</h4>
-                    <button
-                      onClick={() => {
-                        onOpenDetail?.();
-                        onClose();
-                      }}
-                      className="text-xs text-[color:var(--brand)] hover:opacity-80 font-medium"
-                    >
-                      Details
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="relative w-16 h-16">
-                      <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
-                        <circle
-                          cx="32"
-                          cy="32"
-                          r="28"
-                          fill="none"
-                          strokeWidth="5"
-                          className="stroke-border"
-                        />
-                        {combinedScore != null && (
-                          <circle
-                            cx="32"
-                            cy="32"
-                            r="28"
-                            fill="none"
-                            strokeWidth="5"
-                            strokeDasharray={`${(combinedScore / 100) * 175.93} 175.93`}
-                            strokeLinecap="round"
-                            className={
-                              combinedScore >= 80
-                                ? 'stroke-[color:var(--status-success)]'
-                                : combinedScore >= 60
-                                  ? 'stroke-[color:var(--status-attention)]'
-                                  : 'stroke-[color:var(--status-critical)]'
-                            }
-                          />
-                        )}
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-[12px] font-bold text-foreground">
-                          {combinedScore != null ? Math.round(combinedScore) : EM_DASH}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Style Score</span>
-                        <span className="text-xs font-semibold text-foreground">
-                          {drivingStyleScore != null && hasEnoughData
-                            ? `${Math.round(drivingStyleScore)} / 100`
-                            : EM_DASH}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Safety Score</span>
-                        <span className="text-xs font-semibold text-foreground">
-                          {safetyScore != null && hasEnoughData
-                            ? `${Math.round(safetyScore)} / 100`
-                            : EM_DASH}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    {!hasEnoughData
-                      ? 'Not enough scored trip data yet.'
-                      : combinedScore == null
-                        ? 'Noch keine Rental-Driving-Analysen vorhanden — Werte erscheinen nach der ersten abgeschlossenen Buchung.'
-                        : 'Aggregiert aus abgeschlossenen Rental-Driving-Analysen.'}
-                  </p>
-                </div>
+                <VehicleStressPanel
+                  title="Fahrbelastung"
+                  stressScore={drivingStressScore}
+                  stressLevel={stressLevel}
+                  hasEnoughData={hasEnoughData}
+                  dataConfidence={detail?.dataConfidence ?? customer.dataConfidence ?? null}
+                  compact
+                  footnote={
+                    !hasEnoughData
+                      ? 'Noch nicht genügend bewertete Trips.'
+                      : 'Technische Belastung — keine Fahrerbewertung. Speeding/Compliance wird im Rental nicht ausgewertet.'
+                  }
+                />
 
                 {/* Fines Card */}
                 <div className={`rounded-2xl border p-5 ${cardBg}`}>

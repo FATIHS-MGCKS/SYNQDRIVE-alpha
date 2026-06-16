@@ -1,8 +1,16 @@
-import { LayoutDashboard, DollarSign, Calendar, Car, Users, CheckSquare, FileText, Tag, Settings, Building2, Wifi, MapPin, UserCog, CreditCard, Plus, Upload, Menu, X, Shield, Package, Lock, HelpCircle, Zap, Phone, Truck, Headphones, ChevronRight, User, PanelLeftClose, PanelLeftOpen, ListTodo, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, DollarSign, Calendar, Car, Users, CheckSquare, FileText, Tag, Settings, Building2, Wifi, MapPin, UserCog, CreditCard, Plus, Upload, Menu, X, Shield, Package, Lock, HelpCircle, Zap, Phone, Truck, Headphones, ChevronRight, User, PanelLeftClose, PanelLeftOpen, ListTodo, MessageSquare, Activity } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useRentalOrg } from '../RentalContext';
 import type { FleetTab } from './FleetHubView';
-// auth import removed — logout moved to TopBar account menu
+import {
+  navItemClass,
+  subNavItemClass,
+  navSectionHeaderClass,
+  navSectionLabelClass,
+  CollapsedNavTooltip,
+  NavComingSoonBadge,
+} from '../../components/shell';
 import synqdriveLogoLight from '../../assets/synqdrive-logo-light.png';
 import synqdriveLogoDark from '../../assets/synqdrive-logo-dark.png';
 
@@ -22,6 +30,8 @@ interface SidebarProps {
 
 export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onViewChange, onFleetTabChange, settingsTab, onSettingsTabChange, isCollapsed = false, onToggleCollapse }: SidebarProps) {
   const { t } = useLanguage();
+  const { hasPermission } = useRentalOrg();
+  const canDataAnalyse = hasPermission('data-analyse', 'read');
   const isFleetActive =
     currentView === 'fleet' ||
     currentView === 'fleet-condition-detail' ||
@@ -31,7 +41,7 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
     if (view === 'financial-insights' || view === 'invoices' || view === 'price-tariffs') return 'finance';
     if (view === 'workflow-automation' || view === 'ai-voice-assistant' || view === 'whatsapp-business') return 'automation';
     if (view === 'insurances' || view === 'parts-accessories') return 'integrations';
-    if (view === 'settings' || view === 'stations') return 'administration';
+    if (view === 'settings') return 'administration';
     return null;
   };
   const currentSection = sectionForView(currentView);
@@ -77,54 +87,16 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
     }
   };
 
-  // V4.6.88 — Sidebar nav labels promoted to 13/600 per shared typography rules.
-  // V4.6.91 — type scale tightened in left sidebar only: top-level + sub nav
-  //           items both ride at 12/600 (was 13/600), section labels drop to
-  //           10/900 with the preview-approved slate tint. `!` prefix is required because the unlayered
-  //           `.sq-nav-rail` / `.sq-section-label` rules in theme.css outrank
-  //           Tailwind utility classes.
-  // Active state now picks up a slightly richer Soft-Blue-Tint surface so
-  // selected sections feel branded, not just highlighted.
-  const navBtnClass = (isActive: boolean) =>
-    `sq-nav-rail w-full flex items-center gap-2.5 px-2.5 py-[8px] rounded-lg transition-all duration-200 ease-out !text-[12px] font-semibold tracking-[-0.003em] group ${
-      isActive
-        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] active ring-1 ring-[color:var(--brand-soft)] shadow-[var(--shadow-1)]'
-        : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground hover:translate-x-[1px]'
-    }`;
-
-  const subNavBtnClass = (isActive: boolean) =>
-    `sq-nav-rail w-full flex items-center gap-2.5 pl-4 pr-2.5 py-[7px] rounded-lg transition-all duration-200 ease-out !text-[12px] font-medium group ${
-      isActive
-        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] active ring-1 ring-[color:var(--brand-soft)] shadow-[var(--shadow-1)]'
-        : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground hover:translate-x-[1px]'
-    }`;
-
-  const collapsedBtnClass = (isActive: boolean) =>
-    `w-8 h-8 flex items-center justify-center rounded-md transition-all duration-200 ease-out relative group ${
-      isActive
-        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
-        : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-    }`;
-
-  // Tooltip for collapsed items — uses overlay utility for consistent elevation
-  const CollapsedTooltip = ({ label }: { label: string }) => (
-    <div className="sq-overlay absolute left-full ml-2 px-2 py-1 text-[10.5px] font-medium whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-foreground">
-      {label}
-    </div>
-  );
-
-  const sectionLabelClass = 'sq-section-label !text-[10px] !font-black !text-muted-foreground/80';
-
+  // Active state uses brand-soft surface (see nav-primitives).
+  const navBtnClass = (isActive: boolean) => navItemClass(isActive);
+  const subNavBtnClass = (isActive: boolean) => subNavItemClass(isActive);
+  const collapsedBtnClass = (isActive: boolean) => navItemClass(isActive, true);
+  const CollapsedTooltip = CollapsedNavTooltip;
+  const sectionLabelClass = navSectionLabelClass;
   const sectionHeaderClass = (section: string) => {
     const isOpen = expandedSections.includes(section);
     const isActive = currentSection === section;
-    return `w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg cursor-pointer group transition-all duration-150 ${
-      isActive
-        ? 'bg-[color:var(--brand-soft)]/70 text-[color:var(--brand-ink)]'
-        : isOpen
-          ? 'bg-accent/25 text-foreground'
-          : 'text-muted-foreground hover:bg-accent/30 hover:text-foreground'
-    }`;
+    return navSectionHeaderClass(isOpen, isActive);
   };
 
   const NavSectionHeader = ({
@@ -169,6 +141,9 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
         </button>
         <button onClick={() => handleViewChange('customers')} className={navBtnClass(currentView === 'customers' || currentView === 'customer-detail')}>
           <Users className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.customers')}</span>
+        </button>
+        <button onClick={() => handleViewChange('stations')} className={navBtnClass(currentView === 'stations' || currentView === 'station-detail')}>
+          <MapPin className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.stations')}</span>
         </button>
         <button onClick={() => handleViewChange('tasks')} className={navBtnClass(currentView === 'tasks')}>
           <ListTodo className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.tasks')}</span>
@@ -252,9 +227,6 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
           <button onClick={() => { onSettingsTabChange?.('users'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'users')}>
             <UserCog className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.usersRoles')}</span>
           </button>
-          <button onClick={() => handleViewChange('stations')} className={subNavBtnClass(currentView === 'stations')}>
-            <MapPin className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.stations')}</span>
-          </button>
           <button onClick={() => { onSettingsTabChange?.('fleet-connection'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'fleet-connection')}>
             <Wifi className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.fleetConnectivity')}</span>
           </button>
@@ -275,6 +247,11 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
         <button onClick={() => handleViewChange('help-center')} className={navBtnClass(currentView === 'help-center')}>
           <HelpCircle className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.helpCenter')}</span>
         </button>
+        {canDataAnalyse && (
+          <button onClick={() => handleViewChange('data-analyse')} className={navBtnClass(currentView === 'data-analyse')}>
+            <Activity className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.dataAnalyse')}</span>
+          </button>
+        )}
       </div>
 
       {/* Divider */}
@@ -414,6 +391,10 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
                 <Users className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.customers')} />
               </button>
+              <button onClick={() => handleViewChange('stations')} className={collapsedBtnClass(currentView === 'stations' || currentView === 'station-detail')}>
+                <MapPin className="w-[14px] h-[14px]" />
+                <CollapsedTooltip label={t('nav.stations')} />
+              </button>
               <button onClick={() => handleViewChange('tasks')} className={collapsedBtnClass(currentView === 'tasks')}>
                 <ListTodo className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.tasks')} />
@@ -440,13 +421,9 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
 
               <div className="w-4 h-px my-1.5 bg-border" />
 
-              <button onClick={() => { onSettingsTabChange?.('company'); handleViewChange('settings'); }} className={collapsedBtnClass(currentView === 'settings')}>
+              <button onClick={() => { onSettingsTabChange?.(settingsTab ?? 'account'); handleViewChange('settings'); }} className={collapsedBtnClass(currentView === 'settings')}>
                 <Settings className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.administration')} />
-              </button>
-              <button onClick={() => handleViewChange('stations')} className={collapsedBtnClass(currentView === 'stations')}>
-                <MapPin className="w-[14px] h-[14px]" />
-                <CollapsedTooltip label={t('nav.stations')} />
               </button>
 
               <button onClick={() => handleViewChange('support')} className={collapsedBtnClass(currentView === 'support')}>

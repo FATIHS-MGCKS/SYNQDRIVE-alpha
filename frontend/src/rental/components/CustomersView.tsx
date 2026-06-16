@@ -15,6 +15,8 @@ import {
   customerStatusUiToApi,
   customerRiskUiToApi,
   customerTypeUiToApi,
+  uploadPendingCustomerDocuments,
+  type PendingCustomerDocumentFiles,
 } from '../lib/entityMappers';
 import {
   PageHeader,
@@ -24,7 +26,7 @@ import {
 } from '../../components/patterns';
 import type { DataTableColumn } from '../../components/patterns';
 import type { StatusTone } from '../../components/patterns';
-import { formatDrivingStyleScore } from '../lib/scoreFormat';
+import { formatStressScore, resolveDrivingStressScore, stressToneToStatusTone } from '../lib/scoreFormat';
 
 interface CustomersViewProps {
   onOpenCustomerDetail?: (customer: any) => void;
@@ -41,13 +43,8 @@ interface Customer {
   status: 'Active' | 'Under Review' | 'Suspended' | 'Blocked' | 'Archived' | 'Inactive';
   // V4.6.95 — Customer.riskLevel is operational. Default is 'Not Assessed'.
   riskLevel: 'Not Assessed' | 'Low Risk' | 'Medium Risk' | 'High Risk';
-  // V4.6.95 — `drivingStyleScore` is the canonical 0–100 scalar. The legacy
-  // `drivingScore` mirror is optional and must NEVER be displayed as a
-  // separate score; it is only kept around so older API payloads keep working.
-  drivingScore?: number | null;
-  drivingStyleScore?: number | null;
-  safetyScore?: number | null;
-  // V4.6.95 — backend-supplied confidence metadata.
+  drivingStressScore?: number | null;
+  stressLevel?: 'low' | 'moderate' | 'high' | 'critical' | null;
   hasEnoughData?: boolean;
   dataConfidence?: 'none' | 'low' | 'medium' | 'high';
   scoredTripCount?: number;
@@ -92,16 +89,9 @@ function formatCentsEUR(cents?: number | null): string {
 // Previously the UI used `c.totalRevenue` / `c.lastTrip` which were never
 // computed on the backend → always fell through to the placeholder.
 function mapApiCustomer(c: any): Customer {
-  // V4.6.95 — drivingStyleScore is the canonical scalar; drivingScore is
-  // a legacy compat mirror retained only for older API payloads. Backend
-  // is the single source of truth — frontend never recomputes scores.
-  const styleScore =
-    typeof c.drivingStyleScore === 'number'
-      ? c.drivingStyleScore
-      : typeof c.drivingScore === 'number'
-        ? c.drivingScore
-        : null;
-  const safetyScore = typeof c.safetyScore === 'number' ? c.safetyScore : null;
+  // V4.8.25 — vehicle stress score; higher = more load.
+  const stressScore = resolveDrivingStressScore(c);
+  const stressLevel = c.stressLevel ?? null;
   const totalBookings =
     typeof c.totalBookings === 'number'
       ? c.totalBookings
@@ -119,9 +109,8 @@ function mapApiCustomer(c: any): Customer {
     type: customerTypeApiToUi(c.customerType ?? c.type),
     status: customerStatusApiToUi(c.status, c.archivedAt),
     riskLevel: customerRiskApiToUi(c.riskLevel),
-    drivingScore: styleScore,
-    drivingStyleScore: styleScore,
-    safetyScore,
+    drivingStressScore: stressScore,
+    stressLevel,
     hasEnoughData: typeof c.hasEnoughData === 'boolean' ? c.hasEnoughData : undefined,
     dataConfidence: c.dataConfidence ?? undefined,
     scoredTripCount: typeof c.scoredTripCount === 'number' ? c.scoredTripCount : undefined,
@@ -162,9 +151,9 @@ function customerRiskTone(level: Customer['riskLevel']): StatusTone {
 }
 
 function scoreToneFromDisplay(
-  tone: ReturnType<typeof formatDrivingStyleScore>['tone'],
+  tone: ReturnType<typeof formatStressScore>['tone'],
 ): StatusTone {
-  if (tone === 'success' || tone === 'good') return 'success';
+  if (tone === 'success') return 'success';
   if (tone === 'warning') return 'warning';
   if (tone === 'critical') return 'critical';
   if (tone === 'muted') return 'noData';
@@ -251,13 +240,9 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
     licenseNumber: '', licenseExpiry: '', licenseClass: 'B',
     idType: 'Personalausweis' as 'Personalausweis' | 'Reisepass',
     idNumber: '', idExpiry: '',
-    // V4.6.65 — real uploaded document URLs (null = not yet uploaded).
-    idFrontUrl: null as string | null,
-    idBackUrl: null as string | null,
-    licenseFrontUrl: null as string | null,
-    licenseBackUrl: null as string | null,
     notes: '',
   });
+  const [pendingDocFiles, setPendingDocFiles] = useState<PendingCustomerDocumentFiles>({});
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [idVerificationStatus, setIdVerificationStatus] = useState<'idle' | 'verifying' | 'verified' | 'failed'>('idle');
 
@@ -267,9 +252,9 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       type: 'Individual', company: '',
       licenseNumber: '', licenseExpiry: '', licenseClass: 'B',
       idType: 'Personalausweis', idNumber: '', idExpiry: '',
-      idFrontUrl: null, idBackUrl: null, licenseFrontUrl: null, licenseBackUrl: null,
       notes: '',
     });
+    setPendingDocFiles({});
     setFormErrors({});
     setAddStep(0);
     setIdVerificationStatus('idle');
@@ -329,9 +314,9 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       if (!newCustomer.idNumber.trim()) errors.idNumber = 'Ausweisnummer erforderlich';
       if (!newCustomer.idExpiry) errors.idExpiry = 'Ablaufdatum erforderlich';
     } else if (step === 2) {
-      if (!newCustomer.idFrontUrl) errors.idFront = 'Vorderseite des Ausweises erforderlich';
-      if (!newCustomer.idBackUrl) errors.idBack = 'Rückseite des Ausweises erforderlich';
-      if (!newCustomer.licenseFrontUrl) errors.licenseFront = 'Vorderseite des Führerscheins erforderlich';
+      if (!pendingDocFiles.ID_FRONT) errors.idFront = 'Vorderseite des Ausweises erforderlich';
+      if (!pendingDocFiles.ID_BACK) errors.idBack = 'Rückseite des Ausweises erforderlich';
+      if (!pendingDocFiles.LICENSE_FRONT) errors.licenseFront = 'Vorderseite des Führerscheins erforderlich';
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -367,17 +352,10 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
         idType: newCustomer.idType,
         idNumber: newCustomer.idNumber,
         idExpiry: newCustomer.idExpiry,
-        idVerified: idVerificationStatus === 'verified',
-        licenseVerified: Boolean(newCustomer.licenseFrontUrl),
-        riskLevel: 'Low Risk',
-        status: 'Active',
         notes: newCustomer.notes,
-        idFrontUrl: newCustomer.idFrontUrl,
-        idBackUrl: newCustomer.idBackUrl,
-        licenseFrontUrl: newCustomer.licenseFrontUrl,
-        licenseBackUrl: newCustomer.licenseBackUrl,
       });
       const created: any = await api.customers.create(orgId, payload);
+      await uploadPendingCustomerDocuments(orgId, created.id, pendingDocFiles);
       const mapped = mapApiCustomer(created);
       setCustomers(prev => [mapped, ...prev.filter(c => c.id !== mapped.id)]);
       toast.success('Kunde angelegt', {
@@ -500,19 +478,19 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       },
       {
         key: 'driving',
-        header: 'Driving Style',
+        header: 'Fahrbelastung',
         cell: (customer) => {
-          const display = formatDrivingStyleScore(
-            customer.drivingStyleScore ?? customer.drivingScore,
-            { hasEnoughData: customer.hasEnoughData ?? true },
-          );
+          const display = formatStressScore(customer.drivingStressScore, {
+            hasEnoughData: customer.hasEnoughData ?? true,
+            level: customer.stressLevel ?? undefined,
+          });
           return (
             <StatusChip
               tone={scoreToneFromDisplay(display.tone)}
-              icon={<Icon name="star" className="w-3 h-3" />}
-              title={display.isMissing ? display.label : `${display.outOf100} (Driving Style)`}
+              icon={<Icon name="gauge" className="w-3 h-3" />}
+              title={display.isMissing ? display.label : `${display.outOf100} Fahrbelastung`}
             >
-              {display.compact}
+              {display.isMissing ? display.compact : display.label}
             </StatusChip>
           );
         },
@@ -1021,21 +999,19 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                     <div className="grid grid-cols-2 gap-3">
                       <CustomerDocumentUploadBox
                         label="Vorderseite *"
-                        slot="id-front"
+                        documentType="ID_FRONT"
                         orgId={orgId}
-                        url={newCustomer.idFrontUrl}
+                        pendingFile={pendingDocFiles.ID_FRONT}
                         errorMessage={formErrors.idFront}
-                        onUploaded={(url) => setNewCustomer((prev) => ({ ...prev, idFrontUrl: url }))}
-                        onCleared={() => setNewCustomer((prev) => ({ ...prev, idFrontUrl: null }))}
+                        onPendingFileChange={(file) => setPendingDocFiles((prev) => ({ ...prev, ID_FRONT: file ?? undefined }))}
                       />
                       <CustomerDocumentUploadBox
                         label="Rückseite *"
-                        slot="id-back"
+                        documentType="ID_BACK"
                         orgId={orgId}
-                        url={newCustomer.idBackUrl}
+                        pendingFile={pendingDocFiles.ID_BACK}
                         errorMessage={formErrors.idBack}
-                        onUploaded={(url) => setNewCustomer((prev) => ({ ...prev, idBackUrl: url }))}
-                        onCleared={() => setNewCustomer((prev) => ({ ...prev, idBackUrl: null }))}
+                        onPendingFileChange={(file) => setPendingDocFiles((prev) => ({ ...prev, ID_BACK: file ?? undefined }))}
                       />
                     </div>
                     {/* Veriff ID Verification */}
@@ -1090,7 +1066,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                           <button
                             type="button"
                             onClick={() => {
-                              if (!newCustomer.idFrontUrl) {
+                              if (!pendingDocFiles.ID_FRONT) {
                                 setFormErrors({ ...formErrors, veriff: 'Bitte laden Sie zuerst die Vorderseite des Ausweises hoch.' });
                                 return;
                               }
@@ -1100,9 +1076,9 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                                 setIdVerificationStatus('verified');
                               }, 3000);
                             }}
-                            disabled={!newCustomer.idFrontUrl}
+                            disabled={!pendingDocFiles.ID_FRONT}
                             className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-                              newCustomer.idFrontUrl
+                              pendingDocFiles.ID_FRONT
                                 ? 'bg-[color:var(--brand)] text-white shadow-md hover:opacity-90'
                                 : 'border border-border bg-muted text-muted-foreground cursor-not-allowed'
                             }`}>
@@ -1111,7 +1087,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                             <Icon name="external-link" className="w-3 h-3 opacity-60" />
                           </button>
                           {formErrors.veriff && <p className="text-[11px] text-[color:var(--status-critical)] mt-1.5">{formErrors.veriff}</p>}
-                          {!newCustomer.idFrontUrl && (
+                          {!pendingDocFiles.ID_FRONT && (
                             <p className="text-[11px] mt-1.5 text-muted-foreground">
                               Bitte laden Sie zuerst die Vorderseite des Ausweises hoch.
                             </p>
@@ -1177,20 +1153,18 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                     <div className="grid grid-cols-2 gap-3">
                       <CustomerDocumentUploadBox
                         label="Vorderseite *"
-                        slot="license-front"
+                        documentType="LICENSE_FRONT"
                         orgId={orgId}
-                        url={newCustomer.licenseFrontUrl}
+                        pendingFile={pendingDocFiles.LICENSE_FRONT}
                         errorMessage={formErrors.licenseFront}
-                        onUploaded={(url) => setNewCustomer((prev) => ({ ...prev, licenseFrontUrl: url }))}
-                        onCleared={() => setNewCustomer((prev) => ({ ...prev, licenseFrontUrl: null }))}
+                        onPendingFileChange={(file) => setPendingDocFiles((prev) => ({ ...prev, LICENSE_FRONT: file ?? undefined }))}
                       />
                       <CustomerDocumentUploadBox
                         label="Rückseite (optional)"
-                        slot="license-back"
+                        documentType="LICENSE_BACK"
                         orgId={orgId}
-                        url={newCustomer.licenseBackUrl}
-                        onUploaded={(url) => setNewCustomer((prev) => ({ ...prev, licenseBackUrl: url }))}
-                        onCleared={() => setNewCustomer((prev) => ({ ...prev, licenseBackUrl: null }))}
+                        pendingFile={pendingDocFiles.LICENSE_BACK}
+                        onPendingFileChange={(file) => setPendingDocFiles((prev) => ({ ...prev, LICENSE_BACK: file ?? undefined }))}
                       />
                     </div>
                   </div>
@@ -1233,10 +1207,10 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                         <span className="text-xs text-muted-foreground">Dokumente</span>
                         <div className="flex items-center gap-3">
                           {[
-                            { label: 'Ausweis VS', ok: Boolean(newCustomer.idFrontUrl) },
-                            { label: 'Ausweis RS', ok: Boolean(newCustomer.idBackUrl) },
-                            { label: 'FS VS', ok: Boolean(newCustomer.licenseFrontUrl) },
-                            { label: 'FS RS', ok: Boolean(newCustomer.licenseBackUrl) },
+                            { label: 'Ausweis VS', ok: Boolean(pendingDocFiles.ID_FRONT) },
+                            { label: 'Ausweis RS', ok: Boolean(pendingDocFiles.ID_BACK) },
+                            { label: 'FS VS', ok: Boolean(pendingDocFiles.LICENSE_FRONT) },
+                            { label: 'FS RS', ok: Boolean(pendingDocFiles.LICENSE_BACK) },
                           ].map(d => (
                             <span key={d.label} className={`inline-flex items-center gap-1 text-[11px] font-medium ${
                               d.ok ? 'text-[color:var(--status-positive)]' : 'text-muted-foreground'

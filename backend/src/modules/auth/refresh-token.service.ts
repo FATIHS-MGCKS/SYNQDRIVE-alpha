@@ -135,6 +135,75 @@ export class RefreshTokenService {
     });
   }
 
+  /** List refresh-token sessions for account self-service (metadata only). */
+  async listSessionsForUser(userId: string) {
+    return this.prisma.refreshToken.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+  }
+
+  /**
+   * Heuristic for "current" session when no raw refresh token is supplied:
+   * the newest active token (not revoked, not expired, not superseded by rotation).
+   */
+  resolveCurrentSessionId(
+    tokens: Array<{ id: string; revokedAt: Date | null; expiresAt: Date; replacedBy: string | null }>,
+  ): string | null {
+    const now = new Date();
+    const active = tokens.filter(
+      (t) => !t.revokedAt && t.expiresAt > now && !t.replacedBy,
+    );
+    if (active.length === 0) return null;
+    return active[0]?.id ?? null;
+  }
+
+  /** Revoke a single session owned by the user. */
+  async revokeSessionById(userId: string, sessionId: string): Promise<boolean> {
+    const result = await this.prisma.refreshToken.updateMany({
+      where: { id: sessionId, userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return result.count > 0;
+  }
+
+  /**
+   * Revoke all active sessions except `keepSessionId`.
+   * When `keepSessionId` is omitted, keeps the newest active session so the
+   * caller is not locked out if the current session cannot be determined
+   * from the access token alone.
+   */
+  async revokeOtherSessionsForUser(
+    userId: string,
+    keepSessionId?: string | null,
+  ): Promise<{ revoked: number; keptSessionId: string | null }> {
+    const tokens = await this.listSessionsForUser(userId);
+    const now = new Date();
+    const active = tokens.filter(
+      (t) => !t.revokedAt && t.expiresAt > now && !t.replacedBy,
+    );
+    const keepId =
+      keepSessionId && active.some((t) => t.id === keepSessionId)
+        ? keepSessionId
+        : this.resolveCurrentSessionId(tokens);
+
+    if (!keepId) {
+      return { revoked: 0, keptSessionId: null };
+    }
+
+    const result = await this.prisma.refreshToken.updateMany({
+      where: {
+        userId,
+        revokedAt: null,
+        id: { not: keepId },
+      },
+      data: { revokedAt: new Date() },
+    });
+
+    return { revoked: result.count, keptSessionId: keepId };
+  }
+
   private async createRefreshToken(
     userId: string,
     context: { userAgent?: string; ipAddress?: string },

@@ -1,12 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TaskSource, TaskType } from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '../tasks/tasks.service';
+import { checklistForType } from '../tasks/task-templates';
 import {
   InsightCandidate,
   InsightEntityScope,
-  InsightSeverity,
   InsightType,
 } from './insight.types';
+import { mapInsightSeverityToTaskPriority } from './insight-task.mapper';
 
 interface TaskTypeConfig {
   category: string;
@@ -16,43 +18,34 @@ interface TaskTypeConfig {
 }
 
 /**
- * V4.7.59 — Insight→Task bridge.
- *
- * Consumes the per-vehicle insight candidates of a single run and materializes
- * them into actionable OrgTasks. The same `dedupKey` is reused across the
- * "imminent" (WARNING → HIGH "bald fällig") and "overdue" (CRITICAL → URGENT
- * "überfällig") lifecycle so a single task escalates rather than duplicating.
- *
- * Severity truth stays in the detectors — this bridge only maps it onto task
- * priority/title and handles idempotency + auto-close.
+ * V4.7.59 — Insight (Alert) → Task bridge.
+ * Severity truth stays in detectors; this maps onto task priority/title,
+ * links alertId from DashboardInsight, seeds checklists, and handles dedup.
  */
 @Injectable()
 export class InsightTaskBridgeService {
   private readonly logger = new Logger(InsightTaskBridgeService.name);
 
-  // Only these candidate types become tasks. Each maps to a typed task and a
-  // provenance `source` (the auto-close whitelist below). Health-critical
-  // insights (V4.8.3) flow through the same bridge so a single task per
-  // (vehicle, condition) escalates/auto-closes with the alert.
   private static readonly TASK_TYPE_CONFIG: Partial<Record<InsightType, TaskTypeConfig>> = {
-    [InsightType.SERVICE_OVERDUE]: { category: 'Maintenance', source: 'INSIGHT_SERVICE', taskType: 'VEHICLE_SERVICE', sourceType: 'SYSTEM' },
-    [InsightType.TUV_OVERDUE]: { category: 'TÜV', source: 'INSIGHT_COMPLIANCE', taskType: 'VEHICLE_INSPECTION', sourceType: 'SYSTEM' },
-    [InsightType.BOKRAFT_OVERDUE]: { category: 'BOKraft', source: 'INSIGHT_COMPLIANCE', taskType: 'VEHICLE_INSPECTION', sourceType: 'SYSTEM' },
-    [InsightType.TIRE_CRITICAL]: { category: 'Tire Change', source: 'INSIGHT_HEALTH', taskType: 'TIRE_CHECK', sourceType: 'HEALTH' },
-    [InsightType.BRAKE_CRITICAL]: { category: 'Repair', source: 'INSIGHT_HEALTH', taskType: 'BRAKE_CHECK', sourceType: 'HEALTH' },
-    [InsightType.BATTERY_CRITICAL]: { category: 'Maintenance', source: 'INSIGHT_HEALTH', taskType: 'BATTERY_CHECK', sourceType: 'HEALTH' },
+    [InsightType.SERVICE_OVERDUE]: { category: 'Maintenance', source: 'INSIGHT_SERVICE', taskType: 'VEHICLE_SERVICE', sourceType: 'ALERT' },
+    [InsightType.TUV_OVERDUE]: { category: 'TÜV', source: 'INSIGHT_COMPLIANCE', taskType: 'VEHICLE_INSPECTION', sourceType: 'ALERT' },
+    [InsightType.BOKRAFT_OVERDUE]: { category: 'BOKraft', source: 'INSIGHT_COMPLIANCE', taskType: 'VEHICLE_INSPECTION', sourceType: 'ALERT' },
+    [InsightType.TIRE_CRITICAL]: { category: 'Tire Change', source: 'INSIGHT_HEALTH', taskType: 'TIRE_CHECK', sourceType: 'ALERT' },
+    [InsightType.BRAKE_CRITICAL]: { category: 'Repair', source: 'INSIGHT_HEALTH', taskType: 'BRAKE_CHECK', sourceType: 'ALERT' },
+    [InsightType.BATTERY_CRITICAL]: { category: 'Maintenance', source: 'INSIGHT_HEALTH', taskType: 'BATTERY_CHECK', sourceType: 'ALERT' },
   };
 
   private static readonly BRIDGE_SOURCES = ['INSIGHT_SERVICE', 'INSIGHT_COMPLIANCE', 'INSIGHT_HEALTH'];
 
-  constructor(private readonly tasks: TasksService) {}
+  constructor(
+    private readonly tasks: TasksService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async materialize(
     organizationId: string,
     candidates: InsightCandidate[],
   ): Promise<{ upserted: number; closed: number }> {
-    // Only per-vehicle candidates of whitelisted types. Grouped/station-scoped
-    // candidates are intentionally excluded — tasks are per vehicle.
     const relevant = candidates.filter(
       (c) =>
         InsightTaskBridgeService.TASK_TYPE_CONFIG[c.type] != null &&
@@ -61,8 +54,6 @@ export class InsightTaskBridgeService {
         c.entityIds.length === 1,
     );
 
-    // Collapse duplicate keys (defensive — a detector could emit twice) and
-    // keep the most severe candidate per key.
     const byKey = new Map<string, InsightCandidate>();
     for (const c of relevant) {
       const prev = byKey.get(c.dedupeKey);
@@ -78,9 +69,15 @@ export class InsightTaskBridgeService {
       const dedupKey = c.dedupeKey;
       seenKeys.push(dedupKey);
 
-      const priority = c.severity === InsightSeverity.CRITICAL ? 'URGENT' : 'HIGH';
+      const priority = mapInsightSeverityToTaskPriority(c.severity);
       const dueRaw = c.timeContext?.dueDate;
       const dueDate = dueRaw ? new Date(dueRaw) : null;
+
+      const alert = await this.prisma.dashboardInsight.findFirst({
+        where: { organizationId, dedupeKey: dedupKey, isActive: true },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true },
+      });
 
       try {
         await this.tasks.upsertByDedup(organizationId, dedupKey, {
@@ -91,9 +88,11 @@ export class InsightTaskBridgeService {
           sourceType: cfg.sourceType,
           priority,
           vehicleId,
+          alertId: alert?.id ?? null,
           source: cfg.source,
           dueDate,
-          metadata: { generatedKey: dedupKey, insightType: c.type },
+          metadata: { generatedKey: dedupKey, insightType: c.type, insightSeverity: c.severity },
+          checklist: checklistForType(cfg.taskType),
         });
         upserted++;
       } catch (err: any) {
@@ -103,7 +102,6 @@ export class InsightTaskBridgeService {
       }
     }
 
-    // Anything previously auto-created but no longer firing this run is closed.
     let closed = 0;
     try {
       closed = await this.tasks.closeStaleInsightTasks(

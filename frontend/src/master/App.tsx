@@ -28,6 +28,7 @@ import { HighMobilityCompatibilityView } from './components/HighMobilityCompatib
 import { Toaster, toast } from 'sonner';
 import type { Organization, PlatformUser, RegisteredVehicle, DimoVehicle } from './data/platform-data';
 import { api } from '../lib/api';
+import { AppShell } from '../components/shell';
 
 function mapApiOrg(o: any): Organization {
   return {
@@ -572,12 +573,9 @@ export default function App() {
   const getOrgVehicles = (orgId: string) => registeredVehicles.filter(v => v.organizationId === orgId);
 
   return (
-    <div
-      className="h-screen flex overflow-hidden bg-background"
-      style={{ fontFamily: "'Manrope', sans-serif" }}
-    >
-      <Toaster position="top-right" richColors closeButton theme={isDarkMode ? 'dark' : 'light'} />
-
+    <AppShell
+      variant="master"
+      sidebar={(
       <Sidebar
         isDarkMode={isDarkMode}
         currentView={currentView}
@@ -585,10 +583,13 @@ export default function App() {
         settingsTab={settingsTab}
         onSettingsTabChange={setSettingsTab}
       />
+      )}
+      rightPanel={(
+      <RightSidebar isDarkMode={isDarkMode} onViewChange={(view) => { setCurrentView(view as MasterView); }} />
+      )}
+    >
+      <Toaster position="top-right" richColors closeButton theme={isDarkMode ? 'dark' : 'light'} />
 
-      <div className="flex-1 flex flex-col overflow-hidden pt-16 lg:pt-0">
-        <div className="flex-1 overflow-auto px-4 sm:px-6 lg:px-8 pt-3 lg:pt-4 pb-6 text-foreground">
-          <div className="max-w-[1400px] mx-auto">
             <TopBar
               isDarkMode={isDarkMode}
               setIsDarkMode={setIsDarkMode}
@@ -742,11 +743,6 @@ export default function App() {
               <HighMobilityCompatibilityView isDarkMode={isDarkMode} />
             )}
 
-          </div>
-        </div>
-      </div>
-
-      <RightSidebar isDarkMode={isDarkMode} onViewChange={(view) => { setCurrentView(view as MasterView); }} />
-    </div>
+    </AppShell>
   );
 }

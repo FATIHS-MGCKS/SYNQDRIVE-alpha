@@ -1,20 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, TripAssignmentSubjectType, TripStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { classifyStressLevel } from '../driving-impact/stress-level.util';
+import type { StressLevel } from '../driving-impact/stress-level.util';
 
 /**
- * Distance-weighted score row. The unified aggregation helper consumes these
- * rows once for both the per-subject and the booking aggregation paths.
- *
- * V4.6.95 — replaces the previous unweighted-arithmetic-mean implementation
- * that diverged from the rolling-vehicle aggregation in DrivingImpactService.
- * The whole platform now uses one numeric definition of subject/booking
- * Driving Style and Safety scores: distance-weighted average over scored
- * trips, ignoring null values per metric independently.
+ * Distance-weighted vehicle stress row for subject/booking aggregation.
+ * Higher `drivingStressScore` = higher vehicle load (not driver quality).
  */
 export interface AggregationRow {
-  drivingStyleScore: number | null;
-  safetyScore: number | null;
+  drivingStressScore: number | null;
   distanceKm: number;
 }
 
@@ -23,24 +18,13 @@ export type DataConfidence = 'none' | 'low' | 'medium' | 'high';
 export interface DriverScoreSummary {
   subjectType: TripAssignmentSubjectType;
   subjectId: string;
-  /** Total eligible trips (completed, non-private, assigned to this subject). */
   tripCount: number;
-  /** Trips with a non-null drivingStyleScore. Drives `hasEnoughData`. */
+  /** Trips with a non-null drivingStressScore. */
   scoredTripCount: number;
-  /** Trips with a non-null safetyScore (route/speed-limit data was present). */
-  safetyScoredTripCount: number;
-  /** Sum of distanceKm across eligible trips. Drives `hasEnoughData`. */
   totalDistanceKm: number;
-  drivingStyleScore: number | null;
-  safetyScore: number | null;
-  /** Share of eligible trips that produced a TripDrivingImpact row. */
+  drivingStressScore: number | null;
+  stressLevel: StressLevel | null;
   assignmentCoveragePct: number;
-  /**
-   * `true` when the aggregate is statistically meaningful enough to render
-   * with full UI affordance. Default rule: `scoredTripCount >= 3` AND
-   * `totalDistanceKm >= 50`. Booking analyses surface this honestly even when
-   * confidence is low.
-   */
   hasEnoughData: boolean;
   dataConfidence: DataConfidence;
 }
@@ -51,8 +35,6 @@ const MIN_DISTANCE_KM = 50;
 @Injectable()
 export class DriverScoreService {
   constructor(private readonly prisma: PrismaService) {}
-
-  // ── Public API ────────────────────────────────────────────────────────────
 
   async getScoreSummary(
     subjectType: TripAssignmentSubjectType,
@@ -69,11 +51,7 @@ export class DriverScoreService {
     const rows: AggregationRow[] = trips.map((trip) => {
       const impact = scoreMap.get(trip.id);
       return {
-        drivingStyleScore: impact?.drivingStyleScore ?? null,
-        safetyScore: impact?.safetyScore ?? null,
-        // Prefer the impact row's snapshot (locks in distance at scoring
-        // time); fall back to the live trip distance for legacy trips
-        // where the impact row hasn't been written yet.
+        drivingStressScore: impact?.drivingStressScore ?? null,
         distanceKm: impact?.distanceKm ?? trip.distanceKm ?? 0,
       };
     });
@@ -109,8 +87,7 @@ export class DriverScoreService {
       if (!key) continue;
       const impact = scoreMap.get(trip.id);
       const row: AggregationRow = {
-        drivingStyleScore: impact?.drivingStyleScore ?? null,
-        safetyScore: impact?.safetyScore ?? null,
+        drivingStressScore: impact?.drivingStressScore ?? null,
         distanceKm: impact?.distanceKm ?? trip.distanceKm ?? 0,
       };
       const arr = grouped.get(key) ?? [];
@@ -127,12 +104,6 @@ export class DriverScoreService {
     return output;
   }
 
-  /**
-   * Reusable aggregation entry point shared with `RentalDrivingAnalysisService`
-   * so booking-level Driving Style + Safety follows the same rules as driver
-   * and customer aggregates. Callers pass the rows they already loaded; no
-   * Prisma queries happen here — this prevents accidental circular deps.
-   */
   aggregateRows(
     subjectType: TripAssignmentSubjectType,
     subjectId: string,
@@ -140,8 +111,6 @@ export class DriverScoreService {
   ): DriverScoreSummary {
     return this.aggregate(subjectType, subjectId, rows);
   }
-
-  // ── Internals ─────────────────────────────────────────────────────────────
 
   private aggregate(
     subjectType: TripAssignmentSubjectType,
@@ -152,18 +121,12 @@ export class DriverScoreService {
     const totalDistanceKm = this.round2(
       rows.reduce((sum, r) => sum + (r.distanceKm > 0 ? r.distanceKm : 0), 0),
     );
-    const scoredTripCount = rows.filter((r) => r.drivingStyleScore != null).length;
-    const safetyScoredTripCount = rows.filter((r) => r.safetyScore != null).length;
+    const scoredTripCount = rows.filter((r) => r.drivingStressScore != null).length;
 
-    const drivingStyleScore = this.weightedAvg(
+    const drivingStressScore = this.weightedAvg(
       rows
-        .filter((r) => r.drivingStyleScore != null)
-        .map((r) => ({ value: r.drivingStyleScore as number, weight: r.distanceKm })),
-    );
-    const safetyScore = this.weightedAvg(
-      rows
-        .filter((r) => r.safetyScore != null)
-        .map((r) => ({ value: r.safetyScore as number, weight: r.distanceKm })),
+        .filter((r) => r.drivingStressScore != null)
+        .map((r) => ({ value: r.drivingStressScore as number, weight: r.distanceKm })),
     );
 
     const hasEnoughData =
@@ -175,10 +138,9 @@ export class DriverScoreService {
       subjectId,
       tripCount,
       scoredTripCount,
-      safetyScoredTripCount,
       totalDistanceKm,
-      drivingStyleScore,
-      safetyScore,
+      drivingStressScore,
+      stressLevel: classifyStressLevel(drivingStressScore),
       assignmentCoveragePct:
         tripCount > 0 ? this.round2((scoredTripCount / tripCount) * 100) : 0,
       hasEnoughData,
@@ -188,8 +150,6 @@ export class DriverScoreService {
 
   private weightedAvg(samples: { value: number; weight: number }[]): number | null {
     if (samples.length === 0) return null;
-    // If all weights are zero/missing (e.g. legacy rows without distance),
-    // gracefully degrade to an unweighted mean rather than dividing by zero.
     const totalWeight = samples.reduce((sum, s) => sum + Math.max(0, s.weight), 0);
     if (totalWeight <= 0) {
       const unweighted =
@@ -239,29 +199,24 @@ export class DriverScoreService {
   private async getImpactMap(
     tripIds: string[],
   ): Promise<
-    Map<
-      string,
-      { drivingStyleScore: number | null; safetyScore: number | null; distanceKm: number }
-    >
+    Map<string, { drivingStressScore: number | null; distanceKm: number }>
   > {
     if (tripIds.length === 0) return new Map();
     const rows = await this.prisma.tripDrivingImpact.findMany({
       where: { tripId: { in: tripIds } },
       select: {
         tripId: true,
-        drivingStyleScore: true,
-        safetyScore: true,
+        drivingStressScore: true,
         distanceKm: true,
       },
     });
     const out = new Map<
       string,
-      { drivingStyleScore: number | null; safetyScore: number | null; distanceKm: number }
+      { drivingStressScore: number | null; distanceKm: number }
     >();
     for (const row of rows) {
       out.set(row.tripId, {
-        drivingStyleScore: row.drivingStyleScore,
-        safetyScore: row.safetyScore,
+        drivingStressScore: row.drivingStressScore,
         distanceKm: row.distanceKm ?? 0,
       });
     }

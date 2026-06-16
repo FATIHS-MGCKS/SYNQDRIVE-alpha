@@ -2,7 +2,7 @@ import { SetMetadata } from '@nestjs/common';
 
 export const PERMISSION_KEY = 'required_permission';
 
-export type PermissionLevel = 'read' | 'write';
+export type PermissionLevel = 'read' | 'write' | 'manage';
 
 export interface RequiredPermission {
   /**
@@ -12,7 +12,7 @@ export interface RequiredPermission {
    * per employee account.
    */
   module: string;
-  /** `read` for GET, `write` for create/update/delete/link operations. */
+  /** `read` for GET; `write` for create/basic edits; `manage` for privileged ops. */
   level: PermissionLevel;
 }
 

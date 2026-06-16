@@ -18,6 +18,7 @@ import {
   HandoverProtocolDto,
 } from './handover.types';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
+import { WorkflowEventService } from '@modules/workflows/workflow-event.service';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // Enforces the booking lifecycle at the service layer:
@@ -37,6 +38,7 @@ export class BookingsHandoverService {
     // return, the final invoice) after a successful handover. Fire-and-forget.
     @Inject(forwardRef(() => BookingDocumentBundleService))
     private readonly bookingDocumentBundleService: BookingDocumentBundleService,
+    private readonly workflowEvents: WorkflowEventService,
   ) {}
 
   async createHandover(
@@ -54,6 +56,8 @@ export class BookingsHandoverService {
         vehicleId: true,
         status: true,
         startDate: true,
+        pickupStationId: true,
+        returnStationId: true,
       },
     });
     if (!booking) {
@@ -153,8 +157,17 @@ export class BookingsHandoverService {
         const bookingUpdateData: Prisma.BookingUpdateInput = {
           status: transitionTo,
         };
+        const actualStationId =
+          payload.actualStationId ??
+          (kind === 'PICKUP' ? booking.pickupStationId : booking.returnStationId);
+        if (kind === 'PICKUP' && actualStationId) {
+          bookingUpdateData.actualPickupStation = { connect: { id: actualStationId } };
+        }
         if (kind === 'RETURN') {
           bookingUpdateData.completedAt = new Date();
+          if (actualStationId) {
+            bookingUpdateData.actualReturnStation = { connect: { id: actualStationId } };
+          }
           // kmDriven = return odometer − pickup odometer (if pickup exists).
           const pickup = await tx.bookingHandoverProtocol.findUnique({
             where: { bookingId_kind: { bookingId, kind: 'PICKUP' } },
@@ -182,7 +195,15 @@ export class BookingsHandoverService {
         if (kind === 'RETURN') {
           await tx.vehicle.update({
             where: { id: booking.vehicleId },
-            data: { status: 'AVAILABLE' as VehicleStatus },
+            data: {
+              status: 'AVAILABLE' as VehicleStatus,
+              ...(actualStationId ? { currentStationId: actualStationId } : {}),
+            },
+          });
+        } else if (kind === 'PICKUP' && actualStationId) {
+          await tx.vehicle.update({
+            where: { id: booking.vehicleId },
+            data: { currentStationId: actualStationId },
           });
         }
 
@@ -204,6 +225,27 @@ export class BookingsHandoverService {
       this.bookingDocumentBundleService
         .generateFinalInvoiceAndDocument(orgId, bookingId, payload.performedByUserId ?? null)
         .catch(() => {});
+
+      const eventBase = {
+        organizationId: orgId,
+        entityType: 'booking' as const,
+        entityId: bookingId,
+        payload: {
+          bookingId,
+          vehicleId: updatedBooking.vehicleId,
+          status: updatedBooking.status,
+        },
+      };
+      this.workflowEvents.scheduleEmit({
+        ...eventBase,
+        type: 'booking.returned',
+        idempotencyKey: `booking.returned:${bookingId}`,
+      });
+      this.workflowEvents.scheduleEmit({
+        ...eventBase,
+        type: 'booking.completed',
+        idempotencyKey: `booking.completed:${bookingId}`,
+      });
     }
 
     return {

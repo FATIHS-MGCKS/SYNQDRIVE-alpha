@@ -1,15 +1,16 @@
-import { Building2, Car, Clock, CreditCard, Database, Globe, Signal, SignalZero, User, UserCog, Wifi, Zap } from 'lucide-react';
+﻿import { Building2, Clock, CreditCard, Database, User, UserCog } from 'lucide-react';
 import { Icon } from './ui/Icon';
 import { useState, useMemo, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 
-import { getStoredUser } from '../../lib/auth';
 import { useRentalOrg } from '../RentalContext';
-import { api, type FleetConnectivityResponse, type FleetConnectivityVehicle } from '../../lib/api';
+import { api } from '../../lib/api';
 import { isVehicleAtHomeStation } from '../../lib/geospatial';
-import { formatOdometerKmFloor } from '../../lib/formatVehicleDisplay';
 import { UsersRolesTab } from './UsersRolesTab';
 import { DataAuthorizationTab } from './DataAuthorizationTab';
 import { LegalDocumentsTab } from './LegalDocumentsTab';
+import { AccountInformationTab } from './settings/AccountInformationTab';
+import { CompanyInformationTab } from './settings/CompanyInformationTab';
+import { FleetConnectivityTab } from './settings/FleetConnectivityTab';
 import {
   PageHeader,
   DataCard,
@@ -31,1524 +32,23 @@ function useDocumentDark(): boolean {
   );
 }
 
-function getInitials(name: string | null, email: string): string {
-  if (name && name.trim()) {
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase().slice(0, 2);
-    return name.slice(0, 2).toUpperCase();
-  }
-  if (email) return email.slice(0, 2).toUpperCase();
-  return 'U';
-}
-
 interface SettingsViewProps {
   activeTab?: SettingsTab;
   onTabChange?: (tab: SettingsTab) => void;
+  onNavigateToStations?: () => void;
 }
 
 type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents';
 
 // ============================================
-// ACCOUNT INFORMATION TAB
-// ============================================
-function AccountInformationTab() {
-  const storedUser = getStoredUser();
-  const { orgName, userRole, userPermissions } = useRentalOrg();
-  const [isEditing, setIsEditing] = useState(false);
-  const [accountData, setAccountData] = useState(() => {
-    const u = getStoredUser();
-    const parts = (u?.name || '').trim().split(/\s+/);
-    const firstName = parts[0] || '';
-    const lastName = parts.slice(1).join(' ') || '';
-    return {
-      firstName,
-      lastName,
-      email: u?.email ?? '',
-      phone: '',
-      mobile: '',
-      position: u?.membershipRole ?? u?.platformRole ?? '',
-      department: u?.organizationName ?? '',
-      location: '',
-      language: 'Deutsch',
-      timezone: 'Europe/Berlin (CET)',
-      dateFormat: 'DD.MM.YYYY',
-      notifications: {
-        email: true,
-        push: true,
-        sms: false,
-        weeklyReport: true,
-        bookingAlerts: true,
-        maintenanceAlerts: true,
-        fineAlerts: false,
-      },
-    };
-  });
-  const accountInitials = getInitials(storedUser?.name ?? null, storedUser?.email ?? '');
-  const [showPasswordChange, setShowPasswordChange] = useState(false);
-
-  const cardClass = 'sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]';
-  const inputClass = 'w-full px-3 py-2.5 rounded-xl border border-border/70 bg-card text-xs text-foreground placeholder:text-muted-foreground transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-70 outline-none focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]';
-  const labelClass = 'block text-[11px] font-semibold mb-1.5 text-muted-foreground';
-  const textPrimary = 'text-foreground';
-  const textSecondary = 'text-muted-foreground';
-
-  const toggleNotification = (key: keyof typeof accountData.notifications) => {
-    setAccountData({
-      ...accountData,
-      notifications: { ...accountData.notifications, [key]: !accountData.notifications[key] },
-    });
-  };
-
-  const accountName = `${accountData.firstName} ${accountData.lastName}`.trim() || storedUser?.email || 'User';
-  const roleLabel = userRole || storedUser?.membershipRole || storedUser?.platformRole || 'Member';
-  const organizationLabel = orgName || storedUser?.organizationName || accountData.department || 'No organization';
-  const permissionCount = useMemo(() => {
-    if (!userPermissions) return 0;
-    return Object.values(userPermissions).filter((p) => p?.read || p?.write).length;
-  }, [userPermissions]);
-  const enabledNotifications = Object.values(accountData.notifications).filter(Boolean).length;
-  const profileCompleteness = useMemo(() => {
-    const fields = [
-      accountData.firstName,
-      accountData.lastName,
-      accountData.email,
-      accountData.position,
-      accountData.department || organizationLabel,
-      accountData.language,
-      accountData.timezone,
-    ];
-    return Math.round((fields.filter(Boolean).length / fields.length) * 100);
-  }, [accountData, organizationLabel]);
-
-  const summaryCards = [
-    {
-      label: 'Profile',
-      value: `${profileCompleteness}%`,
-      meta: isEditing ? 'Editing draft' : 'Ready',
-      icon: 'user',
-      tone: profileCompleteness >= 80 ? 'sq-tone-success' : 'sq-tone-warning',
-    },
-    {
-      label: 'Role',
-      value: roleLabel,
-      meta: organizationLabel,
-      icon: 'shield-check',
-      tone: 'sq-tone-brand',
-    },
-    {
-      label: 'Access',
-      value: permissionCount,
-      meta: permissionCount === 1 ? 'permission group' : 'permission groups',
-      icon: 'key',
-      tone: 'sq-tone-info',
-    },
-    {
-      label: 'Alerts',
-      value: enabledNotifications,
-      meta: 'enabled channels',
-      icon: 'bell',
-      tone: 'sq-tone-neutral',
-    },
-  ];
-
-  return (
-    <div className="max-w-[1600px] mx-auto space-y-5">
-      <PageHeader
-        title="Account Information"
-        description="Verwalten Sie Profil, Sicherheit, Sitzungen und persönliche Benachrichtigungen an einer Stelle."
-        actions={
-          <button
-            type="button"
-            onClick={() => setIsEditing(!isEditing)}
-            className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200 active:scale-[0.98] ${
-              isEditing
-                ? 'bg-[var(--brand)] text-[var(--brand-foreground)] hover:bg-[var(--brand-hover)] shadow-[var(--shadow-1)]'
-                : 'border border-border/60 bg-card text-foreground hover:bg-muted'
-            }`}
-          >
-            {isEditing ? <><Icon name="save" className="w-4 h-4" /> Änderungen speichern</> : <><Icon name="edit-3" className="w-4 h-4" /> Profil bearbeiten</>}
-          </button>
-        }
-      />
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        {summaryCards.map((card) => (
-          <MetricCard
-            key={card.label}
-            label={card.label}
-            value={card.value}
-            hint={card.meta}
-            icon={<Icon name={card.icon} className="w-4 h-4" />}
-            status={
-              card.tone === 'sq-tone-success' ? 'success'
-              : card.tone === 'sq-tone-warning' ? 'warning'
-              : card.tone === 'sq-tone-brand' ? 'info'
-              : card.tone === 'sq-tone-info' ? 'info'
-              : 'neutral'
-            }
-          />
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        {/* Left Column — Profile Card & Security */}
-        <div className="space-y-5">
-          {/* Profile Card */}
-          <div className={cardClass}>
-            <div className="flex flex-col items-center text-center">
-              <div className="relative mb-3">
-                <div className="w-24 h-24 sq-tone-brand rounded-3xl flex items-center justify-center text-[24px] font-semibold tracking-[-0.04em] shadow-[var(--shadow-2)]">
-                  {accountInitials}
-                </div>
-                {isEditing && (
-                  <button className="absolute -bottom-1 -right-1 w-7 h-7 rounded-xl flex items-center justify-center text-white shadow-lg bg-[var(--brand)] hover:bg-[var(--brand-hover)] transition-colors">
-                    <Icon name="camera" className="w-3.5 h-3.5" />
-                  </button>
-                )}
-                <div className="absolute -top-1 -right-1 w-6 h-6 sq-tone-success rounded-xl border-2 border-background flex items-center justify-center">
-                  <Icon name="check" className="w-3 h-3" />
-                </div>
-              </div>
-              <h3 className={`text-[16px] font-semibold tracking-[-0.01em] ${textPrimary}`}>{accountName}</h3>
-              <p className={`text-[12px] ${textSecondary}`}>{accountData.position || roleLabel}</p>
-              <p className={`text-[11px] mt-0.5 ${textSecondary}`}>{organizationLabel}</p>
-              <div className="mt-3 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold sq-tone-brand">
-                <Icon name="crown" className="w-3 h-3" /> {roleLabel}
-              </div>
-            </div>
-            <div className={`mt-5 pt-5 border-t space-y-3 ${'border-border/60'}`}>
-              <div className="flex items-center gap-3">
-                <div className="sq-tone-neutral w-8 h-8 rounded-lg flex items-center justify-center shrink-0"><Icon name="mail" className="w-4 h-4" /></div>
-                <span className={`text-xs ${textSecondary}`}>{accountData.email || 'Keine E-Mail hinterlegt'}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="sq-tone-neutral w-8 h-8 rounded-lg flex items-center justify-center shrink-0"><Icon name="phone" className="w-4 h-4" /></div>
-                <span className={`text-xs ${textSecondary}`}>{accountData.phone || 'Telefon nicht hinterlegt'}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="sq-tone-neutral w-8 h-8 rounded-lg flex items-center justify-center shrink-0"><Icon name="smartphone" className="w-4 h-4" /></div>
-                <span className={`text-xs ${textSecondary}`}>{accountData.mobile || 'Mobilnummer nicht hinterlegt'}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="sq-tone-neutral w-8 h-8 rounded-lg flex items-center justify-center shrink-0"><Icon name="map-pin" className="w-4 h-4" /></div>
-                <span className={`text-xs ${textSecondary}`}>{accountData.location || 'Standort nicht gesetzt'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Security */}
-          <div className={cardClass}>
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <div>
-                <h3 className={`text-[14px] font-semibold tracking-[-0.01em] ${textPrimary}`}>Sicherheit</h3>
-                <p className={`text-[11px] ${textSecondary}`}>Login, 2FA und Sitzungsstatus</p>
-              </div>
-              <span className="sq-tone-success px-2 py-1 rounded-lg text-[10px] font-semibold">Protected</span>
-            </div>
-            <div className="space-y-3">
-              <div className={`flex items-center justify-between p-3 rounded-xl border ${'bg-muted/40 border-border'}`}>
-                <div className="flex items-center gap-3">
-                  <div className="sq-tone-neutral w-9 h-9 rounded-xl flex items-center justify-center shrink-0"><Icon name="key" className="w-4 h-4" /></div>
-                  <div>
-                    <p className={`text-xs font-medium ${textPrimary}`}>Passwort</p>
-                    <p className={`text-xs ${textSecondary}`}>Änderung über gesicherten Dialog</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowPasswordChange(!showPasswordChange)}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
-                    'text-[color:var(--brand)] hover:bg-[color:var(--brand-soft)]'
-                  }`}
-                >
-                  Ändern
-                </button>
-              </div>
-              {showPasswordChange && (
-                <div className="space-y-3 pt-2">
-                  <div>
-                    <label className={labelClass}>Aktuelles Passwort</label>
-                    <input type="password" placeholder="••••••••" className={inputClass} />
-                  </div>
-                  <div>
-                    <label className={labelClass}>Neues Passwort</label>
-                    <input type="password" placeholder="Mindestens 8 Zeichen" className={inputClass} />
-                  </div>
-                  <div>
-                    <label className={labelClass}>Passwort bestätigen</label>
-                    <input type="password" placeholder="Passwort wiederholen" className={inputClass} />
-                  </div>
-                  <button className="w-full px-3 py-2.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors">
-                    Passwort aktualisieren
-                  </button>
-                </div>
-              )}
-              <div className={`flex items-center justify-between p-3 rounded-xl border ${'bg-muted/40 border-border'}`}>
-                <div className="flex items-center gap-3">
-                  <div className="sq-tone-success w-9 h-9 rounded-xl flex items-center justify-center shrink-0"><Icon name="shield-check" className="w-4 h-4" /></div>
-                  <div>
-                    <p className={`text-xs font-medium ${textPrimary}`}>Zwei-Faktor-Authentifizierung</p>
-                    <p className={`text-xs ${textSecondary}`}>Zusätzliche Sicherheitsebene</p>
-                  </div>
-                </div>
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-lg sq-tone-success">Aktiv</span>
-              </div>
-              <div className={`flex items-center justify-between p-3 rounded-xl border ${'bg-muted/40 border-border'}`}>
-                <div className="flex items-center gap-3">
-                  <div className="sq-tone-info w-9 h-9 rounded-xl flex items-center justify-center shrink-0"><Icon name="clock" className="w-4 h-4" /></div>
-                  <div>
-                    <p className={`text-xs font-medium ${textPrimary}`}>Letzte Anmeldung</p>
-                    <p className={`text-xs ${textSecondary}`}>Aktuelle Session · Browser</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column — Personal Data & Preferences */}
-        <div className="lg:col-span-2 space-y-5">
-          {/* Personal Information */}
-          <div className={cardClass}>
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <div>
-                <h3 className={`text-[14px] font-semibold tracking-[-0.01em] ${textPrimary}`}>Persönliche Informationen</h3>
-                <p className={`text-[11px] ${textSecondary}`}>Basisdaten aus Login-Profil und lokalen Einstellungen</p>
-              </div>
-              <span className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${isEditing ? 'sq-tone-warning' : 'sq-tone-neutral'}`}>
-                {isEditing ? 'Bearbeitung aktiv' : 'Read only'}
-              </span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className={labelClass}>Vorname</label>
-                <input type="text" value={accountData.firstName}
-                  onChange={(e) => setAccountData({ ...accountData, firstName: e.target.value })}
-                  disabled={!isEditing} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Nachname</label>
-                <input type="text" value={accountData.lastName}
-                  onChange={(e) => setAccountData({ ...accountData, lastName: e.target.value })}
-                  disabled={!isEditing} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>E-Mail-Adresse</label>
-                <input type="email" value={accountData.email}
-                  onChange={(e) => setAccountData({ ...accountData, email: e.target.value })}
-                  disabled={!isEditing} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Telefon</label>
-                <input type="text" value={accountData.phone}
-                  onChange={(e) => setAccountData({ ...accountData, phone: e.target.value })}
-                  disabled={!isEditing} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Mobil</label>
-                <input type="text" value={accountData.mobile}
-                  onChange={(e) => setAccountData({ ...accountData, mobile: e.target.value })}
-                  disabled={!isEditing} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Position</label>
-                <input type="text" value={accountData.position}
-                  onChange={(e) => setAccountData({ ...accountData, position: e.target.value })}
-                  disabled={!isEditing} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Abteilung</label>
-                <input type="text" value={accountData.department}
-                  onChange={(e) => setAccountData({ ...accountData, department: e.target.value })}
-                  disabled={!isEditing} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Standort</label>
-                <select value={accountData.location}
-                  onChange={(e) => setAccountData({ ...accountData, location: e.target.value })}
-                  disabled={!isEditing} className={inputClass}>
-                  <option>Berlin Central</option>
-                  <option>Berlin Tegel</option>
-                  <option>Munich Central</option>
-                  <option>Hamburg Hafen</option>
-                  <option>Stuttgart Mitte</option>
-                  <option>Frankfurt Airport</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Preferences */}
-          <div className={cardClass}>
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <div>
-                <h3 className={`text-[14px] font-semibold tracking-[-0.01em] ${textPrimary}`}>Einstellungen</h3>
-                <p className={`text-[11px] ${textSecondary}`}>Sprache, Zeitzone und Datumsformat für operative Ansichten</p>
-              </div>
-              <span className="sq-tone-neutral px-2 py-1 rounded-lg text-[10px] font-semibold">{accountData.language}</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              <div>
-                <label className={labelClass}>Sprache</label>
-                <select value={accountData.language}
-                  onChange={(e) => setAccountData({ ...accountData, language: e.target.value })}
-                  disabled={!isEditing} className={inputClass}>
-                  <option>Deutsch</option>
-                  <option>English</option>
-                  <option>Français</option>
-                  <option>Italiano</option>
-                  <option>Polski</option>
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>Zeitzone</label>
-                <select value={accountData.timezone}
-                  onChange={(e) => setAccountData({ ...accountData, timezone: e.target.value })}
-                  disabled={!isEditing} className={inputClass}>
-                  <option>Europe/Berlin (CET)</option>
-                  <option>Europe/London (GMT)</option>
-                  <option>Europe/Paris (CET)</option>
-                  <option>Europe/Zurich (CET)</option>
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>Datumsformat</label>
-                <select value={accountData.dateFormat}
-                  onChange={(e) => setAccountData({ ...accountData, dateFormat: e.target.value })}
-                  disabled={!isEditing} className={inputClass}>
-                  <option>DD.MM.YYYY</option>
-                  <option>MM/DD/YYYY</option>
-                  <option>YYYY-MM-DD</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Notifications */}
-          <div className={cardClass}>
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <div>
-                <h3 className={`text-[14px] font-semibold tracking-[-0.01em] ${textPrimary}`}>Benachrichtigungen</h3>
-                <p className={`text-[11px] ${textSecondary}`}>{enabledNotifications} Kanäle aktiv</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setAccountData({
-                  ...accountData,
-                  notifications: Object.fromEntries(
-                    Object.keys(accountData.notifications).map((key) => [key, true]),
-                  ) as typeof accountData.notifications,
-                })}
-                className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-colors text-[var(--brand)] hover:bg-[var(--brand-soft)]"
-              >
-                Alle aktivieren
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {[
-                { key: 'email' as const, label: 'E-Mail-Benachrichtigungen', desc: 'Wichtige Updates per E-Mail erhalten' },
-                { key: 'push' as const, label: 'Push-Benachrichtigungen', desc: 'Desktop-Benachrichtigungen im Browser' },
-                { key: 'sms' as const, label: 'SMS-Benachrichtigungen', desc: 'Kritische Alerts per SMS' },
-                { key: 'weeklyReport' as const, label: 'Wöchentlicher Report', desc: 'Zusammenfassung jeden Montag' },
-                { key: 'bookingAlerts' as const, label: 'Buchungs-Alerts', desc: 'Neue Buchungen und Stornierungen' },
-                { key: 'maintenanceAlerts' as const, label: 'Wartungs-Alerts', desc: 'Anstehende Wartungstermine' },
-              ].map((item) => (
-                <div key={item.key} className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-colors ${'bg-muted/40 border-border'}`}>
-                  <div>
-                    <p className={`text-xs font-medium ${textPrimary}`}>{item.label}</p>
-                    <p className={`text-xs ${textSecondary}`}>{item.desc}</p>
-                  </div>
-                  <button
-                    onClick={() => toggleNotification(item.key)}
-                    className={`relative w-10 h-6 rounded-full transition-colors duration-200 shrink-0 ${
-                      accountData.notifications[item.key]
-                        ? 'bg-[var(--brand)]'
-                        : 'bg-muted'
-                    }`}
-                  >
-                    <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                      accountData.notifications[item.key] ? 'translate-x-5' : 'translate-x-0.5'
-                    }`} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Active Sessions */}
-          <div className={cardClass}>
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h3 className={`text-[14px] font-semibold tracking-[-0.01em] ${textPrimary}`}>Aktive Sitzungen</h3>
-                <p className={`text-[11px] ${textSecondary}`}>Gerätezugriffe und aktuelle Session</p>
-              </div>
-              <button className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors text-red-500 hover:bg-red-50 ${'hover:bg-[color:var(--status-critical-soft)]'}`}>
-                Alle anderen abmelden
-              </button>
-            </div>
-            <div className="space-y-2">
-              {[
-                { device: 'Current browser', location: organizationLabel, time: 'Aktuelle Sitzung', current: true },
-              ].map((session, i) => (
-                <div key={i} className={`flex items-center justify-between p-3 rounded-xl border ${'bg-muted/40 border-border'}`}>
-                  <div className="flex items-center gap-3">
-                    <div className="sq-tone-info w-9 h-9 rounded-xl flex items-center justify-center shrink-0">
-                      <Icon name="globe" className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className={`text-xs font-medium ${textPrimary}`}>{session.device}</p>
-                      <p className={`text-xs ${textSecondary}`}>{session.location} · {session.time}</p>
-                    </div>
-                  </div>
-                  {session.current ? (
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-lg sq-tone-success">Aktuell</span>
-                  ) : (
-                    <button className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${'text-muted-foreground hover:bg-muted'}`}>
-                      Abmelden
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================
-// COMPANY PROFILE TAB
-// ============================================
-//
-// Backend-backed: GET/PATCH /organizations/:orgId/profile and
-// POST /organizations/:orgId/profile/logo (multer). The logo URL also
-// flows back into RentalContext so the right-sidebar branding header
-// updates immediately after upload (no page reload required).
-
-type CompanyProfileData = {
-  name: string;
-  address: string;
-  city: string;
-  state: string;
-  zip: string;
-  country: string;
-  taxId: string;
-  manager: string;
-  managerEmail: string;
-  email: string;
-  phone: string;
-  timezone: string;
-  language: string;
-  website: string;
-};
-
-function emptyCompanyProfileData(): CompanyProfileData {
-  return {
-    name: '',
-    address: '',
-    city: '',
-    state: '',
-    zip: '',
-    country: '',
-    taxId: '',
-    manager: '',
-    managerEmail: '',
-    email: '',
-    phone: '',
-    timezone: '',
-    language: '',
-    website: '',
-  };
-}
-
-function CompanyProfileTab({ orgId }: { orgId?: string }) {
-  const { setOrgBranding, hasPermission, userRole } = useRentalOrg();
-  const canEditProfile = userRole === 'ORG_ADMIN' || hasPermission('settings', 'write');
-
-  const [companyData, setCompanyData] = useState<CompanyProfileData>(() => emptyCompanyProfileData());
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<{ kind: 'ok' | 'err'; text?: string } | null>(null);
-  const [logoUploading, setLogoUploading] = useState(false);
-  const [logoError, setLogoError] = useState<string | null>(null);
-  const [logoBroken, setLogoBroken] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    setLogoBroken(false);
-  }, [logoUrl]);
-
-  const loadProfile = useCallback(async () => {
-    if (!orgId?.trim()) {
-      setLoading(false);
-      setLoadError('Keine Organisation geladen.');
-      return;
-    }
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const profile = await api.organizations.getProfile(orgId);
-      setCompanyData({
-        name: profile.companyName ?? '',
-        address: profile.address ?? '',
-        city: profile.city ?? '',
-        state: profile.state ?? '',
-        zip: profile.zip ?? '',
-        country: profile.country ?? '',
-        taxId: profile.taxId ?? '',
-        manager: profile.managerName ?? '',
-        managerEmail: profile.managerEmail ?? '',
-        email: profile.email ?? '',
-        phone: profile.phone ?? '',
-        timezone: profile.timezone ?? '',
-        language: profile.language ?? '',
-        website: profile.website ?? '',
-      });
-      setLogoUrl(profile.logoUrl ?? null);
-      setOrgBranding({
-        orgName: profile.companyName ?? '',
-        orgLogoUrl: profile.logoUrl ?? null,
-      });
-    } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Profil konnte nicht geladen werden.');
-    } finally {
-      setLoading(false);
-    }
-  }, [orgId, setOrgBranding]);
-
-  useEffect(() => {
-    void loadProfile();
-  }, [loadProfile]);
-
-  const persistCompanyProfile = async (): Promise<boolean> => {
-    if (!orgId?.trim()) {
-      setSaveMessage({ kind: 'err', text: 'Keine Organisation geladen — Profil kann nicht gespeichert werden.' });
-      return false;
-    }
-    setSaving(true);
-    try {
-      const updated = await api.organizations.updateProfile(orgId, {
-        companyName: companyData.name.trim(),
-        address: companyData.address,
-        city: companyData.city,
-        state: companyData.state,
-        zip: companyData.zip,
-        country: companyData.country,
-        taxId: companyData.taxId,
-        phone: companyData.phone,
-        email: companyData.email,
-        website: companyData.website,
-        timezone: companyData.timezone,
-        language: companyData.language,
-        managerName: companyData.manager,
-        managerEmail: companyData.managerEmail,
-      });
-      setOrgBranding({
-        orgName: updated?.companyName ?? companyData.name.trim(),
-      });
-      setSaveMessage({ kind: 'ok' });
-      return true;
-    } catch (err) {
-      setSaveMessage({
-        kind: 'err',
-        text: err instanceof Error ? err.message : 'Speichern fehlgeschlagen.',
-      });
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handlePrimaryAction = async () => {
-    if (!canEditProfile) return;
-    setSaveMessage(null);
-    if (isEditing) {
-      if (await persistCompanyProfile()) setIsEditing(false);
-    } else {
-      setIsEditing(true);
-    }
-  };
-
-  const handleLogoFile = async (file: File) => {
-    if (!orgId?.trim()) {
-      setLogoError('Keine Organisation geladen.');
-      return;
-    }
-    if (!file.type.startsWith('image/')) {
-      setLogoError('Nur Bilddateien sind erlaubt (PNG, JPG, SVG, WebP).');
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setLogoError('Datei zu groß (max. 2 MB).');
-      return;
-    }
-    setLogoError(null);
-    setLogoUploading(true);
-    try {
-      const { url } = await api.organizations.uploadLogo(orgId, file);
-      setLogoUrl(url);
-      setOrgBranding({ orgLogoUrl: url });
-    } catch (err) {
-      setLogoError(err instanceof Error ? err.message : 'Upload fehlgeschlagen.');
-    } finally {
-      setLogoUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const handleLogoRemove = async () => {
-    if (!orgId?.trim()) return;
-    setLogoError(null);
-    setLogoUploading(true);
-    try {
-      await api.organizations.updateProfile(orgId, { logoUrl: null });
-      setLogoUrl(null);
-      setOrgBranding({ orgLogoUrl: null });
-    } catch (err) {
-      setLogoError(err instanceof Error ? err.message : 'Logo konnte nicht entfernt werden.');
-    } finally {
-      setLogoUploading(false);
-    }
-  };
-
-  const placeholder = '\u2014';
-
-  const cardClass = 'sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]';
-  const inputClass = `w-full px-3 py-2.5 rounded-xl border text-xs transition-all duration-200 ${
-    'border-border/70 bg-card text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]'
-  } outline-none`;
-  const inputClassView = `${inputClass} ${!isEditing ? 'cursor-default opacity-90' : ''}`;
-  const labelClass = 'block text-[11px] font-semibold mb-1.5 text-muted-foreground';
-  const textPrimary = 'text-foreground';
-  const textSecondary = 'text-muted-foreground';
-
-  const businessDocuments: Array<{ name: string; size: string; date: string }> = [];
-
-  const profileCompleteness = useMemo(() => {
-    const fields = [
-      companyData.name,
-      companyData.address,
-      companyData.city,
-      companyData.country,
-      companyData.email,
-      companyData.phone,
-      companyData.manager,
-      companyData.managerEmail,
-      companyData.timezone,
-      companyData.language,
-    ];
-    return Math.round((fields.filter(Boolean).length / fields.length) * 100);
-  }, [companyData]);
-  const addressLine = [companyData.zip, companyData.city, companyData.country].filter(Boolean).join(' · ') || 'No address data';
-  const contactReady = Boolean(companyData.email || companyData.phone || companyData.website);
-  const localizationReady = Boolean(companyData.timezone || companyData.language);
-  const summaryCards = [
-    {
-      label: 'Profile',
-      value: `${profileCompleteness}%`,
-      meta: profileCompleteness >= 80 ? 'Complete' : 'Needs details',
-      icon: 'building-2',
-      tone: profileCompleteness >= 80 ? 'sq-tone-success' : 'sq-tone-warning',
-    },
-    {
-      label: 'Branding',
-      value: logoUrl ? 'Logo' : 'Missing',
-      meta: logoUrl ? 'Shown in app chrome' : 'Upload recommended',
-      icon: 'image',
-      tone: logoUrl ? 'sq-tone-success' : 'sq-tone-neutral',
-    },
-    {
-      label: 'Contact',
-      value: contactReady ? 'Ready' : 'Open',
-      meta: companyData.email || companyData.phone || 'No contact channel',
-      icon: 'mail',
-      tone: contactReady ? 'sq-tone-info' : 'sq-tone-warning',
-    },
-    {
-      label: 'Locale',
-      value: localizationReady ? 'Set' : 'Open',
-      meta: companyData.timezone || companyData.language || 'Timezone missing',
-      icon: 'globe',
-      tone: localizationReady ? 'sq-tone-brand' : 'sq-tone-neutral',
-    },
-  ];
-
-  const primaryButtonDisabled =
-    !canEditProfile || saving || (!isEditing && loading) || (!orgId?.trim());
-  const primaryButtonLabel = saving
-    ? 'Speichern…'
-    : isEditing
-      ? 'Save Changes'
-      : 'Edit Profile';
-  const primaryButtonIcon = saving ? (
-    <Icon name="loader-2" className="w-5 h-5 animate-spin" />
-  ) : isEditing ? (
-    <Icon name="save" className="w-5 h-5" />
-  ) : (
-    <Icon name="edit-3" className="w-5 h-5" />
-  );
-
-  return (
-    <div className="max-w-[1600px] mx-auto space-y-5">
-      {/* Header */}
-      <div className="min-h-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h2 className="text-[22px] leading-tight font-semibold tracking-[-0.018em] text-foreground">Company Profile</h2>
-          <p className="text-[13px] mt-1 text-muted-foreground">
-            Verwalten Sie Unternehmensdaten, Branding und Buchungsdokumente mit dem bestehenden Organisationsprofil.
-          </p>
-          {loading && (
-            <p className={`text-xs mt-1 ${textSecondary} flex items-center gap-1.5`}>
-              <Icon name="loader-2" className="w-3 h-3 animate-spin" /> Profil wird geladen…
-            </p>
-          )}
-          {!loading && loadError && (
-            <p className="text-xs mt-1 text-red-500">{loadError}</p>
-          )}
-          {saveMessage?.kind === 'ok' && (
-            <p className="text-xs mt-1 text-emerald-500">Gespeichert.</p>
-          )}
-          {saveMessage?.kind === 'err' && (
-            <p className="text-xs mt-1 text-red-500">
-              {saveMessage.text ?? 'Speichern fehlgeschlagen.'}
-            </p>
-          )}
-          {!loading && !canEditProfile && (
-            <p className={`text-xs mt-1 ${textSecondary}`}>
-              Nur Organisations-Admins können das Firmenprofil bearbeiten.
-            </p>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={handlePrimaryAction}
-          disabled={primaryButtonDisabled}
-          className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200 active:scale-[0.98] ${
-            primaryButtonDisabled ? 'opacity-50 cursor-not-allowed ' : ''
-          }${
-            isEditing
-              ? 'bg-[var(--brand)] text-[var(--brand-foreground)] hover:bg-[var(--brand-hover)] shadow-[var(--shadow-1)]'
-              : 'sq-btn-secondary'
-          }`}
-        >
-          {primaryButtonIcon} {primaryButtonLabel}
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        {summaryCards.map((card) => (
-          <div key={card.label} className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-2)]">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{card.label}</p>
-                <p className="mt-2 text-[20px] leading-none font-semibold tracking-[-0.02em] text-foreground tabular-nums truncate">
-                  {card.value}
-                </p>
-                <p className="mt-1 text-[11px] text-muted-foreground truncate">{card.meta}</p>
-              </div>
-              <div className={`${card.tone} w-10 h-10 rounded-xl flex items-center justify-center shrink-0`}>
-                <Icon name={card.icon} className="w-5 h-5" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        {/* Company Information */}
-        <div className={`lg:col-span-2 ${cardClass}`}>
-          <div className="flex items-start justify-between gap-3 mb-4">
-            <div>
-              <h3 className={`text-[14px] font-semibold tracking-[-0.01em] ${textPrimary}`}>Unternehmensinformationen</h3>
-              <p className={`text-[11px] mt-0.5 ${textSecondary}`}>{addressLine}</p>
-            </div>
-            <span className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${isEditing ? 'sq-tone-warning' : 'sq-tone-neutral'}`}>
-              {isEditing ? 'Bearbeitung aktiv' : 'Read only'}
-            </span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="col-span-2">
-              <label className={labelClass}>Firmenname</label>
-              <input
-                type="text"
-                value={companyData.name}
-                placeholder={placeholder}
-                onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })}
-                readOnly={!isEditing}
-                className={inputClassView}
-              />
-            </div>
-            <div className="col-span-2">
-              <label className={labelClass}>Adresse</label>
-              <input
-                type="text"
-                value={companyData.address}
-                placeholder={placeholder}
-                onChange={(e) => setCompanyData({ ...companyData, address: e.target.value })}
-                readOnly={!isEditing}
-                className={inputClassView}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Stadt</label>
-              <input
-                type="text"
-                value={companyData.city}
-                placeholder={placeholder}
-                onChange={(e) => setCompanyData({ ...companyData, city: e.target.value })}
-                readOnly={!isEditing}
-                className={inputClassView}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Bundesland</label>
-              <input
-                type="text"
-                value={companyData.state}
-                placeholder={placeholder}
-                onChange={(e) => setCompanyData({ ...companyData, state: e.target.value })}
-                readOnly={!isEditing}
-                className={inputClassView}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>PLZ</label>
-              <input
-                type="text"
-                value={companyData.zip}
-                placeholder={placeholder}
-                onChange={(e) => setCompanyData({ ...companyData, zip: e.target.value })}
-                readOnly={!isEditing}
-                className={inputClassView}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Land</label>
-              <input
-                type="text"
-                value={companyData.country}
-                placeholder={placeholder}
-                onChange={(e) => setCompanyData({ ...companyData, country: e.target.value })}
-                readOnly={!isEditing}
-                className={inputClassView}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Steuernummer / USt-ID</label>
-              <input
-                type="text"
-                value={companyData.taxId}
-                placeholder={placeholder}
-                onChange={(e) => setCompanyData({ ...companyData, taxId: e.target.value })}
-                readOnly={!isEditing}
-                className={inputClassView}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Telefon</label>
-              <input
-                type="text"
-                value={companyData.phone}
-                placeholder={placeholder}
-                onChange={(e) => setCompanyData({ ...companyData, phone: e.target.value })}
-                readOnly={!isEditing}
-                className={inputClassView}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>E-Mail</label>
-              <input
-                type="email"
-                value={companyData.email}
-                placeholder={placeholder}
-                onChange={(e) => setCompanyData({ ...companyData, email: e.target.value })}
-                readOnly={!isEditing}
-                className={inputClassView}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Website</label>
-              <input
-                type="text"
-                value={companyData.website}
-                placeholder={placeholder}
-                onChange={(e) => setCompanyData({ ...companyData, website: e.target.value })}
-                readOnly={!isEditing}
-                className={inputClassView}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Zeitzone</label>
-              <input
-                type="text"
-                value={companyData.timezone}
-                placeholder={placeholder}
-                onChange={(e) => setCompanyData({ ...companyData, timezone: e.target.value })}
-                readOnly={!isEditing}
-                className={inputClassView}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Hauptsprache</label>
-              <input
-                type="text"
-                value={companyData.language}
-                placeholder={placeholder}
-                onChange={(e) => setCompanyData({ ...companyData, language: e.target.value })}
-                readOnly={!isEditing}
-                className={inputClassView}
-              />
-            </div>
-          </div>
-
-          {/* Manager Section */}
-          <div className={`mt-6 pt-6 border-t ${'border-border/60'}`}>
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <div>
-                <h4 className={`text-[13px] font-semibold ${textPrimary}`}>Geschäftsführer / Ansprechpartner</h4>
-                <p className={`text-[11px] ${textSecondary}`}>Kontaktperson für Vertrags- und Betriebsfragen</p>
-              </div>
-              <span className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${companyData.manager || companyData.managerEmail ? 'sq-tone-success' : 'sq-tone-neutral'}`}>
-                {companyData.manager || companyData.managerEmail ? 'Hinterlegt' : 'Offen'}
-              </span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className={labelClass}>Name</label>
-                <input
-                  type="text"
-                  value={companyData.manager}
-                  placeholder={placeholder}
-                  onChange={(e) => setCompanyData({ ...companyData, manager: e.target.value })}
-                  readOnly={!isEditing}
-                  className={inputClassView}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>E-Mail</label>
-                <input
-                  type="email"
-                  value={companyData.managerEmail}
-                  placeholder={placeholder}
-                  onChange={(e) => setCompanyData({ ...companyData, managerEmail: e.target.value })}
-                  readOnly={!isEditing}
-                  className={inputClassView}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column - Logo & Documents */}
-        <div className="space-y-5">
-          {/* Company Logo — used by the right-sidebar branding header. */}
-          <div className={cardClass}>
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div>
-                <h3 className={`text-[14px] font-semibold tracking-[-0.01em] ${textPrimary}`}>Firmenlogo</h3>
-                <p className={`text-[11px] ${textSecondary}`}>Wird in Sidebar und App-Chrome angezeigt</p>
-              </div>
-              {logoUrl && canEditProfile && (
-                <button
-                  type="button"
-                  onClick={handleLogoRemove}
-                  disabled={logoUploading}
-                  className={`p-1.5 rounded-lg transition-colors ${
-                    logoUploading
-                      ? 'opacity-50 cursor-not-allowed'
-                      : 'text-muted-foreground hover:text-[color:var(--status-critical)] hover:bg-[color:var(--status-critical-soft)]'
-                  }`}
-                  title="Logo entfernen"
-                  aria-label="Logo entfernen"
-                >
-                  <Icon name="trash-2" className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/svg+xml,image/webp"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void handleLogoFile(file);
-              }}
-            />
-
-            <div
-              className={`border rounded-2xl p-5 text-center transition-colors ${
-                'border-border bg-muted/40'
-              }`}
-            >
-              <div
-                className="w-24 h-24 mx-auto mb-3 rounded-2xl sq-tone-neutral flex items-center justify-center overflow-hidden"
-              >
-                {logoUrl && !logoBroken ? (
-                  <img
-                    src={logoUrl}
-                    alt="Firmenlogo"
-                    className="w-full h-full object-contain"
-                    onError={() => setLogoBroken(true)}
-                  />
-                ) : (
-                  <Icon name="image" className={`w-5 h-5 ${textSecondary}`} />
-                )}
-              </div>
-              <p className={`text-[13px] font-semibold mb-1 ${textPrimary}`}>
-                {logoUrl ? 'Logo aktualisieren' : 'Logo hochladen'}
-              </p>
-              <p className={`text-xs ${textSecondary}`}>PNG, JPG, SVG oder WebP bis 2 MB</p>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={!canEditProfile || logoUploading || !orgId?.trim()}
-                className={`mt-3 inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl transition-colors active:scale-[0.98] ${
-                  !canEditProfile || logoUploading || !orgId?.trim()
-                    ? 'opacity-50 cursor-not-allowed bg-[var(--brand)] text-[var(--brand-foreground)]'
-                    : 'bg-[var(--brand)] text-[var(--brand-foreground)] hover:bg-[var(--brand-hover)]'
-                }`}
-              >
-                {logoUploading ? (
-                  <>
-                    <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> Lädt hoch…
-                  </>
-                ) : (
-                  <>
-                    <Icon name="upload" className="w-3.5 h-3.5" /> Datei auswählen
-                  </>
-                )}
-              </button>
-              {logoError && (
-                <p className="text-xs mt-2 text-red-500">{logoError}</p>
-              )}
-              {!canEditProfile && !logoUrl && (
-                <p className={`text-xs mt-2 ${textSecondary}`}>
-                  Kein Logo hinterlegt. Nur Admins können ein Logo hochladen.
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Business Documents */}
-          <div className={cardClass}>
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div>
-                <h3 className={`text-[14px] font-semibold tracking-[-0.01em] ${textPrimary}`}>Dokumente</h3>
-                <p className={`text-[11px] ${textSecondary}`}>Buchungsbestätigung und Kundenunterlagen</p>
-              </div>
-              <button
-                type="button"
-                disabled
-                title="Dokument-Upload ist noch nicht angebunden"
-                className="p-1.5 rounded-lg bg-[var(--brand-soft)] text-[var(--brand)] opacity-60 cursor-not-allowed"
-              >
-                <Icon name="plus" className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <p className={`text-xs mb-3 ${textSecondary}`}>Geschäftsdokumente, die Kunden bei der Buchungsbestätigung angezeigt werden.</p>
-            {businessDocuments.length === 0 ? (
-              <div className={`text-xs py-6 text-center rounded-2xl border border-dashed ${
-                'border-border text-muted-foreground bg-muted/40'
-              }`}>
-                <div className="sq-tone-neutral w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center">
-                  <Icon name="file-text" className="w-5 h-5" />
-                </div>
-                <p className="font-semibold text-foreground">Noch keine Dokumente hinterlegt</p>
-                <p className="mt-1 text-[11px] text-muted-foreground">Der Upload wird aktiviert, sobald ein Dokumenten-Endpoint vorhanden ist.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {businessDocuments.map((doc, i) => (
-                  <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border ${
-                    'bg-muted/50 border-border'
-                  }`}>
-                    <Icon name="file-text" className={`w-5 h-5 flex-shrink-0 ${'text-[color:var(--brand)]'}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-medium truncate ${textPrimary}`}>{doc.name}</p>
-                      <p className={`text-xs ${textSecondary}`}>{doc.size} · {doc.date}</p>
-                    </div>
-                    <button type="button" className={`p-1 rounded-lg hover:bg-red-100 hover:text-red-500 transition-colors ${textSecondary}`}>
-                      <Icon name="trash-2" className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================
-// FLEET CONNECTION TAB
-// ============================================
-
-function ConnectivityStatusChip({ status }: { status: FleetConnectivityVehicle['connectionStatus'] }) {
-  const tone =
-    status === 'online' ? 'success'
-    : status === 'standby' ? 'watch'
-    : status === 'offline' ? 'critical'
-    : 'noData';
-  const label =
-    status === 'online' ? 'Online'
-    : status === 'standby' ? 'Standby'
-    : status === 'offline' ? 'Offline'
-    : 'Not Connected';
-  return <StatusChip tone={tone} dot={status === 'online'}>{label}</StatusChip>;
-}
-
-function FleetConnectionTab() {
-  const { orgId } = useRentalOrg();
-  const [data, setData] = useState<FleetConnectivityResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'standby' | 'offline' | 'not_connected'>('all');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [jammingOpenId, setJammingOpenId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!orgId) { setLoading(false); return; }
-    setLoading(true);
-    setError(false);
-    api.vehicles.fleetConnectivity(orgId)
-      .then(setData)
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
-  }, [orgId]);
-
-  const cardClass = 'sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]';
-  const textPrimary = 'text-foreground';
-  const textSecondary = 'text-muted-foreground';
-  const textMuted = 'text-muted-foreground';
-
-  const vehicles = useMemo(() => {
-    if (!data) return [];
-    let list = data.vehicles;
-    if (statusFilter !== 'all') list = list.filter(v => v.connectionStatus === statusFilter);
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter(v =>
-        v.vin?.toLowerCase().includes(q) ||
-        v.licensePlate?.toLowerCase().includes(q) ||
-        `${v.make} ${v.model}`.toLowerCase().includes(q) ||
-        v.deviceSerial?.toLowerCase().includes(q) ||
-        v.station?.toLowerCase().includes(q)
-      );
-    }
-    return list;
-  }, [data, statusFilter, search]);
-
-  const s = data?.summary;
-  const statusOptions: { key: typeof statusFilter; label: string; description: string }[] = [
-    { key: 'all', label: 'All vehicles', description: 'Every registered vehicle' },
-    { key: 'online', label: 'Online', description: 'Fresh signal and active data source' },
-    { key: 'standby', label: 'Standby', description: 'Known vehicle with stale or paused signal' },
-    { key: 'offline', label: 'Offline', description: 'No fresh connection currently available' },
-    { key: 'not_connected', label: 'No connection', description: 'Registered but not mapped to a data source' },
-  ];
-  const statusCount = (key: typeof statusFilter) => {
-    if (!s) return 0;
-    if (key === 'all') return s.total ?? 0;
-    if (key === 'online') return s.online ?? 0;
-    if (key === 'standby') return s.standby ?? 0;
-    if (key === 'offline') return s.offline ?? 0;
-    return s.notConnected ?? 0;
-  };
-  const activeStatus = statusOptions.find(o => o.key === statusFilter) ?? statusOptions[0];
-  const hasActiveFilters = statusFilter !== 'all' || search.trim().length > 0;
-  const clearFilters = () => {
-    setStatusFilter('all');
-    setSearch('');
-  };
-  const summaryCards = [
-    { label: 'Total Vehicles', value: s?.total ?? 0, filter: 'all' as const, icon: Car, tone: 'sq-tone-neutral', meta: `${vehicles.length} currently shown` },
-    { label: 'Online', value: s?.online ?? 0, filter: 'online' as const, icon: Signal, tone: 'sq-tone-success', meta: 'Fresh operational feed' },
-    { label: 'Standby', value: s?.standby ?? 0, filter: 'standby' as const, icon: Clock, tone: 'sq-tone-warning', meta: 'Needs attention soon' },
-    { label: 'Offline', value: s?.offline ?? 0, filter: 'offline' as const, icon: SignalZero, tone: 'sq-tone-critical', meta: `${s?.notConnected ?? 0} not connected` },
-    { label: 'No Connection', value: s?.notConnected ?? 0, filter: 'not_connected' as const, icon: Wifi, tone: 'sq-tone-neutral', meta: 'Missing source mapping' },
-  ];
-
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24">
-        <div className={`w-8 h-8 border-2 border-t-transparent rounded-full animate-spin ${'border-[color:var(--brand)]'}`} />
-        <p className={`text-xs mt-3 ${textSecondary}`}>Loading fleet connectivity...</p>
-      </div>
-    );
-  }
-
-  if (error || !data) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24">
-        <Icon name="alert-circle" className={`w-10 h-10 mb-3 ${'text-[color:var(--status-critical)]'}`} />
-        <p className={`text-sm font-semibold ${textPrimary}`}>Could not load connectivity data</p>
-        <p className={`text-xs mt-1 ${textSecondary}`}>Check your connection or try again later.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="max-w-[1600px] mx-auto space-y-5">
-      {/* Header */}
-      <PageHeader
-        title="Fleet Connectivity"
-        description="Vehicle connection status, data sources, OBD mapping and device signal quality in one operational view."
-        status={
-          <span className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold ${
-            (s?.offline ?? 0) > 0 || (s?.notConnected ?? 0) > 0 ? 'sq-tone-warning' : 'sq-tone-success'
-          }`}>
-            <Icon name={(s?.offline ?? 0) > 0 || (s?.notConnected ?? 0) > 0 ? 'alert-triangle' : 'check-circle-2'} className="w-4 h-4" />
-            {(s?.offline ?? 0) > 0 || (s?.notConnected ?? 0) > 0 ? 'Action needed' : 'Fleet connected'}
-          </span>
-        }
-      />
-
-      {/* Summary Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
-        {summaryCards.map(stat => {
-          const active = statusFilter === stat.filter;
-          return (
-            <button
-              type="button"
-              key={stat.label}
-              onClick={() => setStatusFilter(stat.filter)}
-              aria-pressed={active}
-              className={`${cardClass} text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-2)] active:scale-[0.99] ${
-                active ? 'ring-1 ring-[var(--brand)]' : ''
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[11px] uppercase tracking-[0.08em] font-semibold text-muted-foreground">{stat.label}</p>
-                  <p className="mt-2 text-[22px] leading-none font-semibold tracking-[-0.02em] text-foreground tabular-nums">{stat.value}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground truncate">{stat.meta}</p>
-                </div>
-                <div className={`${stat.tone} w-10 h-10 rounded-xl flex items-center justify-center shrink-0`}>
-                  <stat.icon className="w-5 h-5" />
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Filters */}
-      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
-        <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
-          <div>
-            <p className="text-[13px] font-semibold text-foreground">Search & Filters</p>
-            <p className="text-[11px] text-muted-foreground">
-              Showing {vehicles.length} of {s?.total ?? 0} vehicles · active scope: {activeStatus.label}
-            </p>
-          </div>
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-colors text-[var(--brand)] hover:bg-[var(--brand-soft)]"
-            >
-              Clear filters
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-3">
-          <div className="relative">
-            <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search VIN, plate, make, model, serial..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl text-xs border border-border/70 bg-card text-foreground placeholder:text-muted-foreground outline-none transition-all focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]"
-            />
-          </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-            className="w-full px-3 py-2.5 rounded-xl border border-border/70 bg-card text-xs font-semibold text-foreground outline-none transition-all focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]"
-          >
-            {statusOptions.map(option => (
-              <option key={option.key} value={option.key}>
-                {option.label} ({statusCount(option.key)})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="mt-3 flex items-center gap-2 flex-wrap">
-          <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold sq-tone-neutral">
-            <Icon name="filter" className="w-3 h-3" />
-            {activeStatus.description}
-          </span>
-          {search.trim() && (
-            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold sq-tone-info">
-              Search: {search.trim()}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Vehicle List */}
-      {vehicles.length === 0 ? (
-        <div className={`${cardClass} flex flex-col items-center justify-center py-14 px-6 text-center border-dashed ${
-          '!border-border/80'
-        }`}>
-          <div className="sq-tone-neutral w-12 h-12 rounded-2xl mb-3 flex items-center justify-center">
-            <Icon name="car" className="w-6 h-6" />
-          </div>
-          <p className={`text-sm font-semibold ${textPrimary}`}>
-            {search || statusFilter !== 'all' ? 'No vehicles match your filters' : 'No connected vehicles'}
-          </p>
-          <p className={`text-xs mt-1 max-w-sm ${textSecondary}`}>
-            {search || statusFilter !== 'all'
-              ? 'Try adjusting your search or filter criteria.'
-              : 'Vehicles will appear here once they are registered and connected via DIMO.'}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {vehicles.map(v => {
-            const isExpanded = expandedId === v.vehicleId;
-            const ConnIcon = v.connectionType === 'Aftermarket Device' ? Wifi : v.connectionType === 'Synthetic Device' ? Globe : Zap;
-            const statusTone =
-              v.connectionStatus === 'online' ? 'sq-tone-success'
-              : v.connectionStatus === 'standby' ? 'sq-tone-warning'
-              : v.connectionStatus === 'offline' ? 'sq-tone-critical'
-              : 'sq-tone-neutral';
-            return (
-              <div key={v.vehicleId} className={`${cardClass} transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-2)] cursor-pointer`} onClick={() => setExpandedId(isExpanded ? null : v.vehicleId)}>
-                {/* Compact row */}
-                <div className="flex items-center gap-3">
-                  <div className={`${statusTone} w-10 h-10 rounded-xl flex items-center justify-center shrink-0`}>
-                    <ConnIcon className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className={`text-xs font-semibold truncate ${textPrimary}`}>{v.make} {v.model} {v.year ?? ''}</p>
-                      {v.licensePlate && <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded-lg sq-tone-neutral">{v.licensePlate}</span>}
-                    </div>
-                    <div className="flex items-center gap-3 mt-0.5">
-                      <span className={`text-[10px] font-mono ${textMuted}`}>{v.vin}</span>
-                      {v.station && <span className={`text-[10px] ${textMuted}`}>{v.station}</span>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <div className="text-right hidden sm:block">
-                      <p className={`text-[10px] ${textMuted}`}>Last Signal</p>
-                      <p className={`text-xs font-medium ${
-                        v.freshnessLabel === 'Live' ? ('text-[color:var(--status-positive)]')
-                        : v.freshnessLabel === 'Unknown' ? textMuted
-                        : textPrimary
-                      }`}>{v.freshnessLabel}</p>
-                    </div>
-                    <ConnectivityStatusChip status={v.connectionStatus} />
-                    <Icon name="chevron-down" className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''} ${textMuted}`} />
-                  </div>
-                </div>
-
-                {/* Expanded detail */}
-                {isExpanded && (
-                  <div className={`mt-4 pt-4 border-t ${'border-border/50'}`} onClick={e => e.stopPropagation()}>
-                    {/* Status Interpretation */}
-                    <div className={`flex items-start gap-2 mb-4 px-3 py-2.5 rounded-lg text-xs ${
-                      v.connectionStatus === 'online' ? ('sq-tone-success')
-                      : v.connectionStatus === 'standby' ? ('sq-tone-watch')
-                      : v.connectionStatus === 'offline' ? ('sq-tone-critical')
-                      : ('sq-tone-neutral')
-                    }`}>
-                      <ConnectivityStatusChip status={v.connectionStatus} />
-                      <span className="mt-0.5">{v.statusNote}</span>
-                    </div>
-
-                    <div className={`mb-4 rounded-xl border px-3 py-3 space-y-3 ${'border-border/60 bg-muted/50'}`}>
-                      <p className={`text-[10px] uppercase tracking-wider font-bold ${textMuted}`}>OBD & cellular</p>
-                      <div className="flex items-center gap-2">
-                        {v.obdIsPluggedIn === true && <><Icon name="check-circle-2" className="w-4 h-4 text-emerald-500 shrink-0" /><span className={`text-xs font-medium ${textPrimary}`}>OBD Device Plugged IN</span></>}
-                        {v.obdIsPluggedIn === false && <><Icon name="x-circle" className="w-4 h-4 text-red-500 shrink-0" /><span className={`text-xs font-medium ${textPrimary}`}>OBD Device Plugged IN</span></>}
-                        {v.obdIsPluggedIn == null && <span className={`text-xs ${textMuted}`}>OBD plug-in: no snapshot data</span>}
-                      </div>
-                      <div>
-                        <button
-                          type="button"
-                          className={`flex items-center gap-2 text-left w-full ${(v.jammingDetectedCount ?? 0) > 0 ? 'cursor-pointer' : 'cursor-default'}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if ((v.jammingDetectedCount ?? 0) <= 0) return;
-                            setJammingOpenId(jammingOpenId === v.vehicleId ? null : v.vehicleId);
-                          }}
-                        >
-                          <span className={`text-xs font-semibold ${textPrimary}`}>{v.jammingDetectedCount ?? 0} Jamming detected</span>
-                          {(v.jammingDetectedCount ?? 0) > 0 && (
-                            <Icon name="chevron-down" className={`w-3.5 h-3.5 ${textMuted} transition-transform ${jammingOpenId === v.vehicleId ? 'rotate-180' : ''}`} />
-                          )}
-                        </button>
-                        {jammingOpenId === v.vehicleId && (v.jammingDetectedCount ?? 0) > 0 && (
-                          <ul className={`mt-2 space-y-2 pl-3 border-l-2 ${'border-[color:var(--status-watch-soft)]'}`}>
-                            {(v.jammingIncidents ?? []).map((inc, i) => (
-                              <li key={i} className={`text-[10px] space-y-0.5 ${textSecondary}`}>
-                                <p><span className={textMuted}>When: </span>{inc.detectedAt ? new Date(inc.detectedAt).toLocaleString('de-DE') : '—'}</p>
-                                <p><span className={textMuted}>Where: </span>{inc.where ?? '—'}</p>
-                                <p><span className={textMuted}>Last known address: </span>{inc.lastKnownAddress ?? '—'}</p>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3">
-                      {([
-                        ['Connection Type', v.connectionType],
-                        ['Source Type', v.sourceType ?? '—'],
-                        ['Provider', v.provider],
-                        ['Device Serial', v.deviceSerial ? <span className="font-mono">{v.deviceSerial}</span> : '—'],
-                        ['DIMO Token ID', v.dimoTokenId != null ? <span className="font-mono">{v.dimoTokenId}</span> : '—'],
-                        ['Synthetic Token', v.syntheticTokenId != null ? <span className="font-mono">{v.syntheticTokenId}</span> : '—'],
-                        ['Last Signal', v.lastSeenAt ? new Date(v.lastSeenAt).toLocaleString('de-DE') : '—'],
-                        ['Last Sync', v.lastSyncedAt ? new Date(v.lastSyncedAt).toLocaleString('de-DE') : '—'],
-                        ['Data Freshness', v.freshnessLabel],
-                        ['Paired / Linked', v.pairedAt ? new Date(v.pairedAt).toLocaleDateString('de-DE') : '—'],
-                        ['Telemetry Available', v.hasTelemetry ? 'Yes' : 'No'],
-                        ['Odometer', formatOdometerKmFloor(v.odometerKm)],
-                        ['Location', (v.latitude != null && v.longitude != null) ? `${v.latitude.toFixed(4)}, ${v.longitude.toFixed(4)}` : '—'],
-                        ['VIN', <span className="font-mono text-[10px]">{v.vin}</span>],
-                        ['License Plate', v.licensePlate ?? '—'],
-                      ] as [string, React.ReactNode][]).map(([label, value]) => (
-                        <div key={label}>
-                          <p className={`text-[10px] uppercase tracking-wider font-semibold ${textMuted}`}>{label}</p>
-                          <p className={`text-xs font-medium mt-0.5 ${textPrimary}`}>{value}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ============================================
-// STATIONS & BRANCHES TAB — fully live-wired
+// STATIONS & BRANCHES TAB â€” fully live-wired
 // ============================================
 // Reads from GET /organizations/:orgId/stations (and /stats), supports
 // add/edit/delete/activate-deactivate, Google Places autocomplete, and
 // shows aggregate vehicle counts. Tenant-scoped via useRentalOrg.
 // ============================================
 // Geofence sliders are clamped to this range. Values outside get rejected
-// by the backend (`stations.service.ts > buildWriteData`) too — keep these
+// by the backend (`stations.service.ts > buildWriteData`) too â€” keep these
 // in sync with `RADIUS_MIN_M` / `RADIUS_MAX_M` there.
 const STATION_RADIUS_MIN_M = 25;
 const STATION_RADIUS_MAX_M = 5000;
@@ -1569,7 +69,7 @@ type StationFormState = {
   openingHours: string;
   notes: string;
   googlePlaceId: string | null;
-  status: 'ACTIVE' | 'INACTIVE';
+  status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
 };
 
 const EMPTY_STATION_FORM: StationFormState = {
@@ -1614,7 +114,7 @@ export function StationsTab() {
   // Status toggle feedback
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  // Vehicle assignment modal — SET-semantics editor for the vehicle ↔ station
+  // Vehicle assignment modal â€” SET-semantics editor for the vehicle â†” station
   // mapping. We load all vehicles in the org once when the modal opens, then
   // post the resulting set back via api.stations.setVehicles(...).
   type AssignVehicleRow = {
@@ -1644,7 +144,7 @@ export function StationsTab() {
   const [suggestOpen, setSuggestOpen] = useState(false);
   const suggestTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // V4.7.07 — One-shot Mapbox geocoding backfill state. Surfaced in the page
+  // V4.7.07 â€” One-shot Mapbox geocoding backfill state. Surfaced in the page
   // header as "Koordinaten nachziehen" whenever at least one station in the
   // org is missing latitude/longitude (= would render a UNKNOWN HOME/AWAY
   // pill on Dashboard / FleetView). Result banner stays visible until the
@@ -1654,7 +154,7 @@ export function StationsTab() {
     useState<import('../../lib/api').StationGeocodingBackfillResult | null>(null);
   const [backfillError, setBackfillError] = useState<string | null>(null);
 
-  // ─────────────────────────── styling ───────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ styling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const cardClass = 'sq-card rounded-xl p-4 shadow-[var(--shadow-1)]';
   const textPrimary = 'text-foreground';
   const textSecondary = 'text-muted-foreground';
@@ -1663,7 +163,7 @@ export function StationsTab() {
   const labelClass =
     'block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-muted-foreground';
 
-  // ─────────────────────────── data loading ───────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ data loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const load = useCallback(async () => {
     if (!orgId) return;
     setLoading(true);
@@ -1688,7 +188,7 @@ export function StationsTab() {
     load();
   }, [load]);
 
-  // V4.7.07 — Manually trigger the Mapbox geocoding backfill. Reloads the
+  // V4.7.07 â€” Manually trigger the Mapbox geocoding backfill. Reloads the
   // station list afterwards so the cards / stats / HOME-AWAY badges in
   // Dashboard + FleetView reflect the freshly geocoded coordinates.
   const runBackfill = useCallback(async () => {
@@ -1711,7 +211,7 @@ export function StationsTab() {
     [stations],
   );
 
-  // ─────────────────────────── filtering ───────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ filtering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return stations.filter((s) => {
@@ -1727,7 +227,7 @@ export function StationsTab() {
     });
   }, [stations, search, stationScope]);
 
-  // ─────────────────────────── form helpers ───────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ form helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const openCreate = () => {
     setEditingId(null);
     setForm(EMPTY_STATION_FORM);
@@ -1751,7 +251,12 @@ export function StationsTab() {
       phone: station.phone ?? '',
       email: station.email ?? '',
       managerName: station.managerName ?? '',
-      openingHours: station.openingHours ?? '',
+      openingHours:
+        typeof station.openingHours === 'string'
+          ? station.openingHours
+          : station.openingHours
+            ? JSON.stringify(station.openingHours)
+            : '',
       notes: station.notes ?? '',
       googlePlaceId: station.googlePlaceId,
       status: station.status,
@@ -1840,7 +345,15 @@ export function StationsTab() {
         phone: form.phone.trim() || null,
         email: form.email.trim() || null,
         managerName: form.managerName.trim() || null,
-        openingHours: form.openingHours.trim() || null,
+        openingHours: (() => {
+          const raw = form.openingHours.trim();
+          if (!raw) return null;
+          try {
+            return JSON.parse(raw) as import('../../lib/api').StationOpeningHours;
+          } catch {
+            return { legacyText: raw } as import('../../lib/api').StationOpeningHours;
+          }
+        })(),
         notes: form.notes.trim() || null,
         googlePlaceId: form.googlePlaceId,
         status: form.status,
@@ -1891,13 +404,13 @@ export function StationsTab() {
       await load();
       setDeletingId(null);
     } catch (e) {
-      setError((e as Error).message || 'Löschen fehlgeschlagen');
+      setError((e as Error).message || 'LÃ¶schen fehlgeschlagen');
     } finally {
       setDeleting(false);
     }
   };
 
-  // ─────────────────────────── vehicle assignment ───────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ vehicle assignment â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const openAssign = useCallback(
     async (station: import('../../lib/api').Station) => {
       if (!orgId) return;
@@ -1977,7 +490,7 @@ export function StationsTab() {
   };
 
   // Filtered + searched view of the vehicle list inside the assignment modal.
-  // Computed each render — the list is bounded to ~500 rows so this is cheap
+  // Computed each render â€” the list is bounded to ~500 rows so this is cheap
   // and avoids the staleness traps a memo would introduce when the assignment
   // set changes.
   const assignFiltered = (() => {
@@ -2009,7 +522,7 @@ export function StationsTab() {
     return attaches + detaches;
   })();
 
-  // ─────────────────────────── render ───────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const totalStations = stats?.totalStations ?? stations.length;
   const activeStations =
     stats?.activeStations ?? stations.filter((s) => s.status === 'ACTIVE').length;
@@ -2030,7 +543,7 @@ export function StationsTab() {
             <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Suche nach Name, Stadt, Manager…"
+              placeholder="Suche nach Name, Stadt, Managerâ€¦"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className={`${inputClass} w-60 pl-9`}
@@ -2041,7 +554,7 @@ export function StationsTab() {
               type="button"
               onClick={runBackfill}
               disabled={backfillRunning}
-              title={`${stationsMissingCoords} Station${stationsMissingCoords === 1 ? '' : 'en'} ohne Koordinaten — jetzt automatisch über Mapbox geocodieren`}
+              title={`${stationsMissingCoords} Station${stationsMissingCoords === 1 ? '' : 'en'} ohne Koordinaten â€” jetzt automatisch Ã¼ber Mapbox geocodieren`}
               className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-semibold transition-all disabled:opacity-50 sq-tone-warning hover:opacity-90"
             >
               {backfillRunning ? (
@@ -2056,12 +569,12 @@ export function StationsTab() {
             onClick={openCreate}
             className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
           >
-            <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" /> Standort hinzufügen
+            <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" /> Standort hinzufÃ¼gen
           </button>
         </div>
       </div>
 
-      {/* V4.7.07 — Backfill result banner. Stays visible until the user
+      {/* V4.7.07 â€” Backfill result banner. Stays visible until the user
           clicks the X to dismiss. Lists every station that was checked
           along with the new coords (geocoded), the failure reason
           (failed) or the missing-data reason (skipped). */}
@@ -2087,9 +600,9 @@ export function StationsTab() {
               ) : backfillResult ? (
                 <>
                   <p className={`text-xs font-semibold ${'text-[color:var(--status-positive)]'}`}>
-                    Backfill abgeschlossen — {backfillResult.totalGeocoded} geocodiert
+                    Backfill abgeschlossen â€” {backfillResult.totalGeocoded} geocodiert
                     {backfillResult.totalFailed > 0 && `, ${backfillResult.totalFailed} fehlgeschlagen`}
-                    {backfillResult.totalSkipped > 0 && `, ${backfillResult.totalSkipped} übersprungen`}
+                    {backfillResult.totalSkipped > 0 && `, ${backfillResult.totalSkipped} Ã¼bersprungen`}
                   </p>
                   {backfillResult.results.length > 0 && (
                     <ul className={`mt-1.5 space-y-0.5 text-[10.5px] ${'text-[color:var(--status-positive)]'}`}>
@@ -2104,11 +617,11 @@ export function StationsTab() {
                               {r.latitude.toFixed(5)}, {r.longitude.toFixed(5)}
                             </span>
                           )}
-                          {r.reason && <span className="opacity-80">— {r.reason}</span>}
+                          {r.reason && <span className="opacity-80">â€” {r.reason}</span>}
                         </li>
                       ))}
                       {backfillResult.results.length > 8 && (
-                        <li className="opacity-70">… und {backfillResult.results.length - 8} weitere</li>
+                        <li className="opacity-70">â€¦ und {backfillResult.results.length - 8} weitere</li>
                       )}
                     </ul>
                   )}
@@ -2122,7 +635,7 @@ export function StationsTab() {
                 setBackfillError(null);
               }}
               className="p-1 rounded-md text-muted-foreground hover:bg-muted transition-colors"
-              aria-label="Hinweis schließen"
+              aria-label="Hinweis schlieÃŸen"
             >
               <Icon name="x" className="w-3.5 h-3.5" />
             </button>
@@ -2190,7 +703,7 @@ export function StationsTab() {
       {loading ? (
         <div className={`${cardClass} flex items-center justify-center py-12`}>
           <Icon name="loader-2" className="w-5 h-5 animate-spin text-[color:var(--brand)] mr-2" />
-          <span className={`text-xs ${textSecondary}`}>Standorte werden geladen…</span>
+          <span className={`text-xs ${textSecondary}`}>Standorte werden geladenâ€¦</span>
         </div>
       ) : stations.length === 0 ? (
         // Empty state
@@ -2206,12 +719,12 @@ export function StationsTab() {
             onClick={openCreate}
             className="sq-press mt-4 flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
           >
-            <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" /> Standort hinzufügen
+            <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" /> Standort hinzufÃ¼gen
           </button>
         </div>
       ) : filtered.length === 0 ? (
         <div className={`${cardClass} text-center py-10`}>
-          <p className={`text-xs ${textSecondary}`}>Keine Treffer für &quot;{search}&quot;.</p>
+          <p className={`text-xs ${textSecondary}`}>Keine Treffer fÃ¼r &quot;{search}&quot;.</p>
         </div>
       ) : (
         // Station list
@@ -2254,7 +767,7 @@ export function StationsTab() {
                 <p className={`text-[11px] mt-0.5 ${textSecondary}`}>
                   {editingId
                     ? 'Aktualisieren Sie Adresse, Kontakt und Status dieses Standorts.'
-                    : 'Tippen Sie den Namen oder die Adresse ein — Google Places vervollständigt automatisch.'}
+                    : 'Tippen Sie den Namen oder die Adresse ein â€” Google Places vervollstÃ¤ndigt automatisch.'}
                 </p>
               </div>
               <button
@@ -2291,7 +804,7 @@ export function StationsTab() {
                     {suggestLoading ? (
                       <div className={`px-3 py-2.5 text-xs flex items-center gap-2 ${textSecondary}`}>
                         <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />
-                        Suche Standorte…
+                        Suche Standorteâ€¦
                       </div>
                     ) : (
                       suggestions.map((s) => (
@@ -2320,10 +833,10 @@ export function StationsTab() {
               {/* Address grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="sm:col-span-2">
-                  <label className={labelClass}>Straße / Adresse</label>
+                  <label className={labelClass}>StraÃŸe / Adresse</label>
                   <input
                     type="text"
-                    placeholder="Musterstraße 12"
+                    placeholder="MusterstraÃŸe 12"
                     value={form.address}
                     onChange={(e) => setForm({ ...form, address: e.target.value })}
                     className={inputClass}
@@ -2361,7 +874,7 @@ export function StationsTab() {
                 </div>
               </div>
 
-              {/* V4.7.07 — Manual Lat/Lng override. Auto-fills on save via
+              {/* V4.7.07 â€” Manual Lat/Lng override. Auto-fills on save via
                   the backend Mapbox geocoder when left empty + an address
                   is set. Surfaced as an explicit override so the user can
                   paste coordinates from Google Maps if Mapbox returns the
@@ -2383,13 +896,13 @@ export function StationsTab() {
                     }`}>
                       Koordinaten {form.latitude != null && form.longitude != null && (
                         <span className="ml-2 text-[9px] font-normal normal-case tracking-normal text-emerald-500">
-                          ✓ gesetzt
+                          âœ“ gesetzt
                         </span>
                       )}
                     </label>
                     <p className={`text-[10.5px] mt-0.5 ${textSecondary}`}>
                       Beim Speichern automatisch aus der Adresse berechnet (Mapbox).
-                      Optional manuell überschreiben — z.B. aus Google Maps kopieren.
+                      Optional manuell Ã¼berschreiben â€” z.B. aus Google Maps kopieren.
                     </p>
                   </div>
                 </div>
@@ -2419,7 +932,7 @@ export function StationsTab() {
                   </div>
                   <div>
                     <label className={`block text-[10px] font-semibold mb-1 uppercase tracking-wider ${textSecondary}`}>
-                      Längengrad (Lng)
+                      LÃ¤ngengrad (Lng)
                     </label>
                     <input
                       type="number"
@@ -2447,12 +960,12 @@ export function StationsTab() {
                     onClick={() => setForm({ ...form, latitude: null, longitude: null, googlePlaceId: null })}
                     className={`mt-1.5 text-[10px] underline-offset-2 hover:underline ${textSecondary}`}
                   >
-                    Koordinaten zurücksetzen (beim nächsten Speichern wird neu geocodiert)
+                    Koordinaten zurÃ¼cksetzen (beim nÃ¤chsten Speichern wird neu geocodiert)
                   </button>
                 )}
               </div>
 
-              {/* Geofence radius — defines the "at home" zone for this station */}
+              {/* Geofence radius â€” defines the "at home" zone for this station */}
               <div
                 className="rounded-xl border border-border bg-[color:var(--brand-soft)] p-3.5"
               >
@@ -2533,7 +1046,7 @@ export function StationsTab() {
                           : 'bg-muted text-muted-foreground hover:bg-muted/80'
                       }`}
                     >
-                      Parkplatz · 100m
+                      Parkplatz Â· 100m
                     </button>
                     <button
                       type="button"
@@ -2544,7 +1057,7 @@ export function StationsTab() {
                           : 'bg-muted text-muted-foreground hover:bg-muted/80'
                       }`}
                     >
-                      Filiale · 250m
+                      Filiale Â· 250m
                     </button>
                     <button
                       type="button"
@@ -2555,7 +1068,7 @@ export function StationsTab() {
                           : 'bg-muted text-muted-foreground hover:bg-muted/80'
                       }`}
                     >
-                      Gelände · 1km
+                      GelÃ¤nde Â· 1km
                     </button>
                   </div>
                   <span>{STATION_RADIUS_MAX_M >= 1000 ? `${STATION_RADIUS_MAX_M / 1000} km` : `${STATION_RADIUS_MAX_M} m`}</span>
@@ -2569,7 +1082,7 @@ export function StationsTab() {
                     <Icon name="alert-circle" className="w-3 h-3 shrink-0 mt-0.5" />
                     <span>
                       Hinweis: Der Umkreis greift erst, wenn die Station Koordinaten hat.
-                      Beim Speichern werden Lat/Lng automatisch aus der Adresse berechnet —
+                      Beim Speichern werden Lat/Lng automatisch aus der Adresse berechnet â€”
                       oder Sie tragen sie oben manuell ein.
                     </span>
                   </p>
@@ -2609,10 +1122,10 @@ export function StationsTab() {
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Öffnungszeiten</label>
+                  <label className={labelClass}>Ã–ffnungszeiten</label>
                   <input
                     type="text"
-                    placeholder="Mo–Fr 08:00–18:00"
+                    placeholder="Moâ€“Fr 08:00â€“18:00"
                     value={form.openingHours}
                     onChange={(e) => setForm({ ...form, openingHours: e.target.value })}
                     className={inputClass}
@@ -2625,7 +1138,7 @@ export function StationsTab() {
                 <label className={labelClass}>Notizen</label>
                 <textarea
                   rows={3}
-                  placeholder="Interne Notizen zum Standort…"
+                  placeholder="Interne Notizen zum Standortâ€¦"
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   className={`${inputClass} resize-none`}
@@ -2661,7 +1174,7 @@ export function StationsTab() {
               {form.latitude !== null && form.longitude !== null && (
                 <div className={`text-[11px] ${textSecondary}`}>
                   Koordinaten: {form.latitude.toFixed(5)}, {form.longitude.toFixed(5)}
-                  {form.googlePlaceId && <> · <span className="font-mono">{form.googlePlaceId.slice(0, 18)}…</span></>}
+                  {form.googlePlaceId && <> Â· <span className="font-mono">{form.googlePlaceId.slice(0, 18)}â€¦</span></>}
                 </div>
               )}
 
@@ -2698,7 +1211,7 @@ export function StationsTab() {
               >
                 {saving ? (
                   <>
-                    <Icon name="loader-2" className="w-4 h-4 animate-spin" /> Speichere…
+                    <Icon name="loader-2" className="w-4 h-4 animate-spin" /> Speichereâ€¦
                   </>
                 ) : (
                   <>
@@ -2729,15 +1242,15 @@ export function StationsTab() {
                 <Icon name="alert-circle" className="w-5 h-5 text-red-500" />
               </div>
               <div>
-                <h3 className={`text-sm font-semibold ${textPrimary}`}>Standort löschen?</h3>
+                <h3 className={`text-sm font-semibold ${textPrimary}`}>Standort lÃ¶schen?</h3>
                 <p className={`text-xs mt-1 ${textSecondary}`}>
                   {(() => {
                     const s = stations.find((x) => x.id === deletingId);
                     return s
                       ? s.vehicleCount > 0
-                        ? `${s.vehicleCount} Fahrzeug(e) sind diesem Standort zugewiesen und werden entkoppelt. Diese Aktion kann nicht rückgängig gemacht werden.`
-                        : 'Diese Aktion kann nicht rückgängig gemacht werden.'
-                      : 'Diese Aktion kann nicht rückgängig gemacht werden.';
+                        ? `${s.vehicleCount} Fahrzeug(e) sind diesem Standort zugewiesen und werden entkoppelt. Diese Aktion kann nicht rÃ¼ckgÃ¤ngig gemacht werden.`
+                        : 'Diese Aktion kann nicht rÃ¼ckgÃ¤ngig gemacht werden.'
+                      : 'Diese Aktion kann nicht rÃ¼ckgÃ¤ngig gemacht werden.';
                   })()}
                 </p>
               </div>
@@ -2759,11 +1272,11 @@ export function StationsTab() {
               >
                 {deleting ? (
                   <>
-                    <Icon name="loader-2" className="w-4 h-4 animate-spin" /> Lösche…
+                    <Icon name="loader-2" className="w-4 h-4 animate-spin" /> LÃ¶scheâ€¦
                   </>
                 ) : (
                   <>
-                    <Icon name="trash-2" className="w-4 h-4" /> Löschen
+                    <Icon name="trash-2" className="w-4 h-4" /> LÃ¶schen
                   </>
                 )}
               </button>
@@ -2797,12 +1310,12 @@ export function StationsTab() {
                 </h3>
                 <p className={`text-[11px] mt-0.5 truncate ${textSecondary}`}>
                   Standort: <span className={`font-medium ${textPrimary}`}>{assignStation.name}</span>
-                  {' · '}
-                  {assignSelected.size} ausgewählt
+                  {' Â· '}
+                  {assignSelected.size} ausgewÃ¤hlt
                   {assignChangeCount > 0 && (
                     <>
-                      {' · '}
-                      <span className="text-blue-500 font-semibold">{assignChangeCount} Änderung(en)</span>
+                      {' Â· '}
+                      <span className="text-blue-500 font-semibold">{assignChangeCount} Ã„nderung(en)</span>
                     </>
                   )}
                 </p>
@@ -2828,7 +1341,7 @@ export function StationsTab() {
                 <Icon name="search" className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${textSecondary}`} />
                 <input
                   type="text"
-                  placeholder="Suche nach Kennzeichen, Modell, Standort…"
+                  placeholder="Suche nach Kennzeichen, Modell, Standortâ€¦"
                   value={assignSearch}
                   onChange={(e) => setAssignSearch(e.target.value)}
                   className={`w-full pl-9 pr-3 py-2 rounded-lg border text-xs transition-all duration-200 ${
@@ -2866,7 +1379,7 @@ export function StationsTab() {
               {assignLoading ? (
                 <div className={`flex items-center justify-center py-12 ${textSecondary}`}>
                   <Icon name="loader-2" className="w-5 h-5 animate-spin text-blue-500 mr-2" />
-                  <span className="text-xs">Fahrzeuge werden geladen…</span>
+                  <span className="text-xs">Fahrzeuge werden geladenâ€¦</span>
                 </div>
               ) : assignError ? (
                 <div
@@ -2882,7 +1395,7 @@ export function StationsTab() {
                 </div>
               ) : assignFiltered.length === 0 ? (
                 <div className={`text-center py-10 text-xs ${textSecondary}`}>
-                  Keine Treffer für die gewählten Filter.
+                  Keine Treffer fÃ¼r die gewÃ¤hlten Filter.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-1.5">
@@ -2892,7 +1405,7 @@ export function StationsTab() {
                     const willMove =
                       checked && v.stationId !== null && v.stationId !== assignStation.id;
                     const willDetach = !checked && wasHere;
-                    // Live geofence check — true ⇢ vehicle's last GPS fix is
+                    // Live geofence check â€” true â‡¢ vehicle's last GPS fix is
                     // inside this station's radius. Only useful when the
                     // station has lat/lng + radius configured.
                     const atHome = isVehicleAtHomeStation(v, assignStation);
@@ -2919,11 +1432,11 @@ export function StationsTab() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className={`text-xs font-bold tabular-nums ${textPrimary}`}>
-                              {v.license || '—'}
+                              {v.license || 'â€”'}
                             </span>
                             <span className={`text-[11px] truncate ${textSecondary}`}>
                               {[v.make, v.model].filter(Boolean).join(' ')}
-                              {v.year ? ` · ${v.year}` : ''}
+                              {v.year ? ` Â· ${v.year}` : ''}
                             </span>
                           </div>
                           <div className="flex items-center flex-wrap gap-1.5 mt-0.5 text-[10px]">
@@ -2993,8 +1506,8 @@ export function StationsTab() {
             >
               <span className={`text-[11px] ${textSecondary}`}>
                 {assignChangeCount === 0
-                  ? 'Keine ausstehenden Änderungen'
-                  : `${assignChangeCount} ausstehende Änderung(en)`}
+                  ? 'Keine ausstehenden Ã„nderungen'
+                  : `${assignChangeCount} ausstehende Ã„nderung(en)`}
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -3013,7 +1526,7 @@ export function StationsTab() {
                 >
                   {assignSaving ? (
                     <>
-                      <Icon name="loader-2" className="w-4 h-4 animate-spin" /> Speichere…
+                      <Icon name="loader-2" className="w-4 h-4 animate-spin" /> Speichereâ€¦
                     </>
                   ) : (
                     <>
@@ -3138,15 +1651,18 @@ function StationCard({
             <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1">
               {station.openingHours && (
                 <span className={`text-[11px] flex items-center gap-1 ${textSecondary}`}>
-                  <Icon name="clock" className="w-3 h-3" /> {station.openingHours}
+                  <Icon name="clock" className="w-3 h-3" />{' '}
+                  {typeof station.openingHours === 'string'
+                    ? station.openingHours
+                    : String(station.openingHours)}
                 </span>
               )}
               {station.radiusMeters != null && (
                 <span
                   title={
                     station.latitude != null && station.longitude != null
-                      ? `Fahrzeuge innerhalb von ${station.radiusMeters} m gelten als „vor Ort"`
-                      : 'Umkreis konfiguriert — wirkt erst, wenn die Station Koordinaten hat.'
+                      ? `Fahrzeuge innerhalb von ${station.radiusMeters} m gelten als â€žvor Ort"`
+                      : 'Umkreis konfiguriert â€” wirkt erst, wenn die Station Koordinaten hat.'
                   }
                   className={`text-[11px] flex items-center gap-1 ${
                     station.latitude != null && station.longitude != null
@@ -3243,7 +1759,7 @@ function StationCard({
           </button>
           <button
             onClick={onDelete}
-            title="Löschen"
+            title="LÃ¶schen"
             className="p-2 rounded-lg hover:bg-red-100 hover:text-red-500 transition-colors"
           >
             <Icon name="trash-2" className={`w-4 h-4 ${textSecondary}`} />
@@ -3265,7 +1781,7 @@ function StationCard({
 }
 
 function formatLastActive(iso: string | null): string {
-  if (!iso) return '–';
+  if (!iso) return 'â€“';
   const d = new Date(iso);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
@@ -3322,9 +1838,9 @@ function BillingTab() {
   const inputClass =
     'w-full px-3 py-2.5 rounded-xl border border-border/70 bg-card text-xs text-foreground placeholder:text-muted-foreground transition-all duration-200 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]';
   const planCatalog = [
-    { name: 'Starter', aliases: ['Starter'], price: '€24,99', desc: 'Bis 4 Fahrzeuge', features: ['Bis 4 Fahrzeuge', '2 Benutzer', 'Basis-Telematik', 'E-Mail Support'], tone: 'sq-tone-neutral' },
-    { name: 'Professional', aliases: ['Professional', 'Business'], price: '€20,99', desc: 'Bis 12 Fahrzeuge', features: ['Bis 12 Fahrzeuge', '10 Benutzer', 'Erweiterte Telematik', 'AI Insights', 'Prioritäts-Support', 'API Zugang'], tone: 'sq-tone-brand' },
-    { name: 'Enterprise', aliases: ['Enterprise', 'Custom'], price: '€18,99', desc: 'Ab 12+ Fahrzeuge', features: ['Ab 12+ Fahrzeuge', 'Unbegrenzte Benutzer', 'Premium Telematik', 'AI Fleet Assistant', 'Dedizierter Support', 'Custom Integrationen'], tone: 'sq-tone-success' },
+    { name: 'Starter', aliases: ['Starter'], price: 'â‚¬24,99', desc: 'Bis 4 Fahrzeuge', features: ['Bis 4 Fahrzeuge', '2 Benutzer', 'Basis-Telematik', 'E-Mail Support'], tone: 'sq-tone-neutral' },
+    { name: 'Professional', aliases: ['Professional', 'Business'], price: 'â‚¬20,99', desc: 'Bis 12 Fahrzeuge', features: ['Bis 12 Fahrzeuge', '10 Benutzer', 'Erweiterte Telematik', 'AI Insights', 'PrioritÃ¤ts-Support', 'API Zugang'], tone: 'sq-tone-brand' },
+    { name: 'Enterprise', aliases: ['Enterprise', 'Custom'], price: 'â‚¬18,99', desc: 'Ab 12+ Fahrzeuge', features: ['Ab 12+ Fahrzeuge', 'Unbegrenzte Benutzer', 'Premium Telematik', 'AI Fleet Assistant', 'Dedizierter Support', 'Custom Integrationen'], tone: 'sq-tone-success' },
   ];
 
   useEffect(() => {
@@ -3371,7 +1887,7 @@ function BillingTab() {
   const formatMoney = (value: number | null | undefined) =>
     typeof value === 'number'
       ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value)
-      : '—';
+      : 'â€”';
   const invoiceAmount = (invoice: BillingInvoiceDto) =>
     typeof invoice.amount === 'number'
       ? invoice.amount
@@ -3379,7 +1895,7 @@ function BillingTab() {
         ? invoice.amountCents / 100
         : null;
   const formatDateShort = (iso: string | null | undefined) => {
-    if (!iso) return '—';
+    if (!iso) return 'â€”';
     try {
       return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
     } catch {
@@ -3390,7 +1906,7 @@ function BillingTab() {
   const statusLabel = (status: string | null | undefined) => {
     const normalized = normalizeStatus(status);
     if (normalized === 'paid') return 'Bezahlt';
-    if (normalized === 'overdue' || normalized === 'uncollectible') return 'Überfällig';
+    if (normalized === 'overdue' || normalized === 'uncollectible') return 'ÃœberfÃ¤llig';
     if (normalized === 'open' || normalized === 'pending' || normalized === 'draft') return 'Offen';
     return status ?? 'Offen';
   };
@@ -3437,7 +1953,7 @@ function BillingTab() {
     { label: 'Current Plan', value: currentPlan?.name ?? 'Setup', meta: subscription?.status ?? 'No subscription record', icon: CreditCard, tone: subscription ? 'sq-tone-brand' : 'sq-tone-warning' },
     { label: 'Monthly', value: formatMoney(currentMrr), meta: 'MRR from Billing API', icon: Database, tone: currentMrr ? 'sq-tone-success' : 'sq-tone-neutral' },
     { label: 'Renewal', value: formatDateShort(subscription?.currentPeriodEnd), meta: subscription?.currentPeriodStart ? `Since ${formatDateShort(subscription.currentPeriodStart)}` : 'No period synced', icon: Clock, tone: subscription?.currentPeriodEnd ? 'sq-tone-info' : 'sq-tone-neutral' },
-    { label: 'Invoices', value: invoices.length, meta: `${openInvoiceCount} open · ${paidInvoiceCount} paid`, icon: UserCog, tone: openInvoiceCount > 0 ? 'sq-tone-warning' : 'sq-tone-success' },
+    { label: 'Invoices', value: invoices.length, meta: `${openInvoiceCount} open Â· ${paidInvoiceCount} paid`, icon: UserCog, tone: openInvoiceCount > 0 ? 'sq-tone-warning' : 'sq-tone-success' },
   ];
 
   return (
@@ -3543,7 +2059,7 @@ function BillingTab() {
                               : 'border border-border/70 bg-muted/40 text-muted-foreground cursor-not-allowed'
                           }`}
                         >
-                          {isCurrent ? 'Aktueller Plan' : plan.name === 'Enterprise' ? 'Kontakt über Support' : 'Upgrade vorbereiten'}
+                          {isCurrent ? 'Aktueller Plan' : plan.name === 'Enterprise' ? 'Kontakt Ã¼ber Support' : 'Upgrade vorbereiten'}
                         </button>
                       </div>
                     );
@@ -3565,11 +2081,11 @@ function BillingTab() {
                 </div>
                 <div className="space-y-3">
                   {[
-                    { label: 'Plan', value: currentPlan?.name ?? subscription?.plan ?? '—' },
+                    { label: 'Plan', value: currentPlan?.name ?? subscription?.plan ?? 'â€”' },
                     { label: 'Monthly recurring', value: formatMoney(currentMrr) },
                     { label: 'Current period start', value: formatDateShort(subscription?.currentPeriodStart) },
                     { label: 'Current period end', value: formatDateShort(subscription?.currentPeriodEnd) },
-                    { label: 'Subscription ID', value: subscription?.id ?? '—' },
+                    { label: 'Subscription ID', value: subscription?.id ?? 'â€”' },
                   ].map(item => (
                     <div key={item.label} className="flex items-center justify-between gap-3 py-1.5 border-b border-border/40 last:border-b-0">
                       <span className="text-xs text-muted-foreground">{item.label}</span>
@@ -3603,7 +2119,7 @@ function BillingTab() {
               <div>
                 <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-foreground">Rechnungsverlauf</h3>
                 <p className="text-[11px] text-muted-foreground">
-                  Showing {filteredInvoices.length} of {invoices.length} invoices · active scope: {activeStatus.label}
+                  Showing {filteredInvoices.length} of {invoices.length} invoices Â· active scope: {activeStatus.label}
                 </p>
               </div>
               {hasActiveFilters && (
@@ -3667,7 +2183,7 @@ function BillingTab() {
                       return (
                         <tr key={invoice.id} className="border-t border-border/50 transition-colors hover:bg-muted/30">
                           <td className="px-3 py-2.5 text-xs font-mono font-medium text-foreground">{invoice.stripeInvoiceId ?? invoice.id}</td>
-                          <td className="px-3 py-2.5 text-xs text-muted-foreground">{invoice.plan ?? currentPlan?.name ?? '—'}</td>
+                          <td className="px-3 py-2.5 text-xs text-muted-foreground">{invoice.plan ?? currentPlan?.name ?? 'â€”'}</td>
                           <td className="px-3 py-2.5 text-xs text-muted-foreground">{formatDateShort(invoice.date ?? invoice.invoiceDate)}</td>
                           <td className="px-3 py-2.5 text-xs font-semibold text-right text-foreground">{formatMoney(invoiceAmount(invoice))}</td>
                           <td className="px-3 py-2.5 text-center">
@@ -3703,21 +2219,35 @@ function BillingTab() {
 // ============================================
 // MAIN SETTINGS VIEW
 // ============================================
-export function SettingsView({ activeTab: controlledTab = 'company', onTabChange }: SettingsViewProps) {
+export function SettingsView({
+  activeTab: controlledTab = 'company',
+  onTabChange,
+  onNavigateToStations,
+}: SettingsViewProps) {
   const { orgId, hasPermission } = useRentalOrg();
   const activeTab = controlledTab;
   const canWriteDataAuth = hasPermission('data-authorization', 'write');
+  const canManageDataAuth = hasPermission('data-authorization', 'manage');
   const bridgeDark = useDocumentDark();
 
   return (
     <div className="space-y-5">
       {/* Tab Content */}
-      {activeTab === 'account' && <AccountInformationTab />}
-      {activeTab === 'company' && <CompanyProfileTab orgId={orgId} />}
-      {activeTab === 'fleet-connection' && <FleetConnectionTab />}
-      {activeTab === 'users' && <UsersRolesTab isDarkMode={bridgeDark} orgId={orgId} />}
+      {activeTab === 'account' && (
+        <AccountInformationTab onNavigateToUsers={() => onTabChange?.('users')} />
+      )}
+      {activeTab === 'company' && (
+        <CompanyInformationTab
+          onNavigateToLegalDocuments={() => onTabChange?.('legal-documents')}
+          onNavigateToStations={onNavigateToStations}
+        />
+      )}
+      {activeTab === 'fleet-connection' && <FleetConnectivityTab />}
+      {activeTab === 'users' && <UsersRolesTab orgId={orgId} />}
       {activeTab === 'billing' && <BillingTab />}
-      {activeTab === 'data-authorization' && <DataAuthorizationTab isDarkMode={bridgeDark} canWrite={canWriteDataAuth} />}
+      {activeTab === 'data-authorization' && (
+        <DataAuthorizationTab canWrite={canWriteDataAuth} canManage={canManageDataAuth} />
+      )}
       {activeTab === 'legal-documents' && <LegalDocumentsTab isDarkMode={bridgeDark} />}
     </div>
   );

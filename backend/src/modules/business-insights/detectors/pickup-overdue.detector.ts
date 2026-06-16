@@ -91,7 +91,7 @@ export class PickupOverdueDetector implements InsightDetector {
             make: true,
             model: true,
             licensePlate: true,
-            stationId: true,
+            homeStationId: true,
           },
         },
         customer: {

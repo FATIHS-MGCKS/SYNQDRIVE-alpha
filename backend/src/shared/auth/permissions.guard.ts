@@ -11,22 +11,22 @@ import {
   PERMISSION_KEY,
   RequiredPermission,
 } from '@shared/decorators/require-permission.decorator';
+import {
+  evaluateModulePermission,
+  normalizeMembershipPermissions,
+} from './permission.util';
 
 /**
- * PermissionsGuard — permission-based authorization on top of the existing
- * membership permission model (`OrganizationMembership.permissions` JSON).
+ * Permission-based authorization using `OrganizationMembership.permissions` JSON.
  *
- * Resolution order (mirrors the frontend `hasPermission` semantics):
- *   1. No `@RequirePermission` on the route → pass-through.
- *   2. No authenticated user → defer (AuthGuard runs first globally).
- *   3. MASTER_ADMIN (platform role) → full access.
- *   4. ORG_ADMIN (membership role) → full access within the org.
- *   5. Everyone else → must have `{ [module]: { read|write: true } }` granted.
+ * Resolution order:
+ *   1. No `@RequirePermission` → pass-through (route must still be auth + org scoped).
+ *   2. Unauthenticated → deny.
+ *   3. MASTER_ADMIN → allow.
+ *   4. ORG_ADMIN membership → allow within org.
+ *   5. Everyone else → explicit module permission required (never open-by-default).
  *
- * This keeps feature code free of hardcoded role checks: routes only declare the
- * capability they need; the ORG_ADMIN grants that capability per employee.
- *
- * Must run AFTER OrgScopingGuard so the org membership is already validated.
+ * Must run AFTER OrgScopingGuard on org-scoped routes.
  */
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -43,24 +43,19 @@ export class PermissionsGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    // No declared permission requirement → nothing to enforce here.
     if (!required) return true;
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    // AuthGuard handles unauthenticated requests globally.
-    if (!user) return true;
+    if (!user) {
+      throw new ForbiddenException('Authentication required');
+    }
 
-    // Platform admins bypass tenant permission checks.
     if (user.platformRole === 'MASTER_ADMIN') return true;
-
-    // Org admins have full access within their organization.
-    if (user.membershipRole === 'ORG_ADMIN') return true;
 
     const orgId: string | undefined = request.params?.orgId;
     if (!orgId) {
-      // Permission-gated routes are always org-scoped in this codebase.
       throw new ForbiddenException('Organization context required');
     }
 
@@ -75,14 +70,12 @@ export class PermissionsGuard implements CanActivate {
 
     if (membership.role === 'ORG_ADMIN') return true;
 
-    const permissions = (membership.permissions ?? null) as Record<
-      string,
-      { read?: boolean; write?: boolean }
-    > | null;
-
-    const modulePerms = permissions?.[required.module];
-    const granted =
-      required.level === 'write' ? !!modulePerms?.write : !!modulePerms?.read;
+    const permissions = normalizeMembershipPermissions(membership.permissions);
+    const granted = evaluateModulePermission(
+      permissions,
+      required.module,
+      required.level,
+    );
 
     if (!granted) {
       this.logger.warn(

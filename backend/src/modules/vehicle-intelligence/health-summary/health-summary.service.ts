@@ -60,6 +60,9 @@ export interface HealthSummaryAgentInput {
     oilChange: { lastChangedAt: string | null; eventCount: number; hasData: boolean } | null;
   };
   behaviorAndUsage: {
+    /** Vehicle stress index 0–100 — higher = more load on tires/brakes. */
+    drivingStressScore: number | null;
+    /** @deprecated Mirror of drivingStressScore (legacy field name). */
     drivingScore: number | null;
     drivingEventsCount: number;
     abuseDetectionCount: number;
@@ -350,7 +353,14 @@ export class HealthSummaryService {
         },
       },
       behaviorAndUsage: {
-        drivingScore: (tripStats as any).avgDrivingScore ?? null,
+        drivingStressScore:
+          (tripStats as any).avgDrivingStressScore ??
+          (tripStats as any).avgDrivingScore ??
+          null,
+        drivingScore:
+          (tripStats as any).avgDrivingStressScore ??
+          (tripStats as any).avgDrivingScore ??
+          null,
         drivingEventsCount,
         abuseDetectionCount: (tripStats as any).totalAbuseEvents ?? 0,
         accelerationBehavior,
@@ -448,11 +458,15 @@ export class HealthSummaryService {
       preventive.push('Log oil changes to keep intervals accurate.');
     }
 
-    if (b.drivingScore != null && b.drivingScore >= 80) {
-      positives.push('Driving score is good — smooth driving pattern.');
-    } else if (b.drivingScore != null && b.drivingScore < 60) {
-      watchpoints.push('Driving score is below average; harsh events may increase wear.');
-      maintenanceFocus.push({ area: 'general', priority: 'low', reason: 'Driving style impact' });
+    const vehicleStress = b.drivingStressScore ?? b.drivingScore;
+    if (vehicleStress != null && vehicleStress <= 25) {
+      positives.push('Recent trips show low vehicle stress — gentle load on tires and brakes.');
+    } else if (vehicleStress != null && vehicleStress >= 76) {
+      watchpoints.push('Recent trips show critical vehicle stress — elevated wear on tires and brakes likely.');
+      maintenanceFocus.push({ area: 'general', priority: 'medium', reason: 'Critical vehicle stress' });
+    } else if (vehicleStress != null && vehicleStress >= 51) {
+      watchpoints.push('Recent trips show high vehicle stress — monitor tire and brake wear closely.');
+      maintenanceFocus.push({ area: 'general', priority: 'low', reason: 'High vehicle stress' });
     }
 
     if (b.brakingBehavior === 'elevated_harsh_braking') {

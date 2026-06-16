@@ -846,13 +846,16 @@ export class VehicleIntelligenceController {
       return {
         ...rest,
         drivingScore:
-          trip.canonicalTripSummary?.scores?.drivingStyleScore ??
+          trip.canonicalTripSummary?.scores?.drivingStressScore ??
           trip.drivingScore ??
           null,
-        drivingStyleScore:
-          trip.canonicalTripSummary?.scores?.drivingStyleScore ??
+        drivingStressScore:
+          trip.canonicalTripSummary?.scores?.drivingStressScore ??
           null,
-        safetyScore: trip.canonicalTripSummary?.scores?.safetyScore ?? null,
+        stressLevel: trip.canonicalTripSummary?.scores?.stressLevel ?? null,
+        drivingStyleScore:
+          trip.canonicalTripSummary?.scores?.drivingStressScore ??
+          null,
         scoreSource: trip.canonicalTripSummary?.scores?.scoreSource ?? 'derived',
         totalAccelerationEvents: trip.canonicalTripSummary?.events?.totalAccelerationEvents ?? 0,
         hardAccelerationEvents: trip.canonicalTripSummary?.events?.hardAccelerationEvents ?? 0,
@@ -982,11 +985,12 @@ export class VehicleIntelligenceController {
     return {
       ...rest,
       drivingScore:
-        hydratedTrip.canonicalTripSummary?.scores?.drivingStyleScore ??
+        hydratedTrip.canonicalTripSummary?.scores?.drivingStressScore ??
         hydratedTrip.drivingScore ??
         null,
-      drivingStyleScore: hydratedTrip.canonicalTripSummary?.scores?.drivingStyleScore ?? null,
-      safetyScore: hydratedTrip.canonicalTripSummary?.scores?.safetyScore ?? null,
+      drivingStressScore: hydratedTrip.canonicalTripSummary?.scores?.drivingStressScore ?? null,
+      stressLevel: hydratedTrip.canonicalTripSummary?.scores?.stressLevel ?? null,
+      drivingStyleScore: hydratedTrip.canonicalTripSummary?.scores?.drivingStressScore ?? null,
       scoreSource: hydratedTrip.canonicalTripSummary?.scores?.scoreSource ?? 'derived',
       totalAccelerationEvents: hydratedTrip.canonicalTripSummary?.events?.totalAccelerationEvents ?? 0,
       hardAccelerationEvents: hydratedTrip.canonicalTripSummary?.events?.hardAccelerationEvents ?? 0,

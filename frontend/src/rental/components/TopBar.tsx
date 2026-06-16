@@ -21,7 +21,7 @@ const languages = [
   { code: 'cs' as Locale, name: 'Čeština', short: 'CS' },
 ];
 
-type ViewType = 'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'fleet-condition-detail' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'price-tariffs' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'document-upload' | 'ai-assistant' | 'ai-voice-assistant' | 'support' | 'help-center' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances';
+type ViewType = 'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'fleet-condition-detail' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'price-tariffs' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'document-upload' | 'ai-assistant' | 'ai-voice-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances';
 type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents';
 type FleetTab = 'status' | 'health' | 'service';
 
@@ -34,6 +34,7 @@ interface TopBarProps {
   selectedVehicle?: VehicleData | null;
   activeBookingRef?: string | null;
   detailCustomerId?: string | null;
+  detailStationName?: string | null;
   onViewChange?: (view: any) => void;
   onVehicleSelect?: (vehicle: VehicleData) => void;
   onSettingsTabChange?: (tab: SettingsTab) => void;
@@ -63,11 +64,13 @@ const viewLabelKeys: Record<ViewType, TranslationKey> = {
   'settings': 'view.settings',
   'new-booking': 'view.newBooking',
   'stations': 'view.stations',
+  'station-detail': 'view.stationDetail',
   'document-upload': 'view.documentUpload',
   'ai-assistant': 'view.aiAssistant',
   'ai-voice-assistant': 'nav.aiVoiceAssistant',
   'support': 'view.support',
   'help-center': 'nav.helpCenter',
+  'data-analyse': 'nav.dataAnalyse',
   'workflow-automation': 'nav.workflowAutomation',
   'whatsapp-business': 'nav.whatsappBusiness',
   'parts-accessories': 'nav.partsAccessories',
@@ -93,12 +96,14 @@ const viewCategoryKeys: Record<ViewType, TranslationKey> = {
   'financial-insights': 'category.finance',
   'settings': 'category.administration',
   'new-booking': 'category.operations',
-  'stations': 'category.administration',
+  'stations': 'category.operations',
+  'station-detail': 'category.operations',
   'document-upload': 'category.operations',
   'ai-assistant': 'category.operations',
   'ai-voice-assistant': 'category.operations',
   'support': 'category.support',
   'help-center': 'category.support',
+  'data-analyse': 'category.support',
   'workflow-automation': 'nav.automation',
   'whatsapp-business': 'nav.automation',
   'parts-accessories': 'nav.integrations',
@@ -121,7 +126,7 @@ const fleetTabKeys: Record<FleetTab, TranslationKey> = {
   service: 'fleetTab.service',
 };
 
-export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', fleetTab = 'status', settingsTab, selectedVehicle, activeBookingRef, detailCustomerId, onViewChange, onVehicleSelect, onSettingsTabChange, onFinanceTabChange, onFleetTabChange }: TopBarProps) {
+export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', fleetTab = 'status', settingsTab, selectedVehicle, activeBookingRef, detailCustomerId, detailStationName, onViewChange, onVehicleSelect, onSettingsTabChange, onFinanceTabChange, onFleetTabChange }: TopBarProps) {
   const { locale, setLocale, t } = useLanguage();
   const { fleetVehicles } = useFleetVehicles();
   const { orgId } = useRentalOrg();
@@ -194,12 +199,12 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', fl
     { view: 'dashboard' as ViewType, label: 'Dashboard', icon: Home, category: 'Operations' },
     { view: 'bookings' as ViewType, label: 'Bookings', icon: Calendar, category: 'Operations' },
     { view: 'customers' as ViewType, label: 'Customers', icon: Users, category: 'Operations' },
+    { view: 'stations' as ViewType, label: 'Stations', icon: MapPin, category: 'Operations' },
     { view: 'tasks' as ViewType, label: 'Tasks', icon: ListTodo, category: 'Operations' },
     { view: 'fleet' as ViewType, label: 'Fleet', icon: Car, category: 'Fleet' },
     { view: 'financial-insights' as ViewType, label: 'Insights', icon: DollarSign, category: 'Finance' },
     { view: 'invoices' as ViewType, label: 'Invoices', icon: FileText, category: 'Finance' },
     { view: 'price-tariffs' as ViewType, label: 'Price Tariffs', icon: Tag, category: 'Finance' },
-    { view: 'stations' as ViewType, label: 'Stations', icon: MapPin, category: 'Administration' },
     { view: 'settings' as ViewType, label: 'Settings', icon: Settings, category: 'Administration' },
   ];
 
@@ -438,10 +443,12 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', fl
             <span className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">{t(viewLabelKeys[resolvedView])}</span>
           </>
         ) : currentView === 'stations' ? (
+          <span className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">{t('view.stations')}</span>
+        ) : currentView === 'station-detail' && detailStationName ? (
           <>
-            <span className="hidden md:inline text-muted-foreground">{t('category.administration')}</span>
+            <span className="hidden md:inline text-muted-foreground">{t('view.stations')}</span>
             <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">{t('view.stations')}</span>
+            <span className="text-[12px] font-semibold tracking-[-0.003em] truncate text-foreground">{detailStationName}</span>
           </>
         ) : currentView === 'new-booking' ? (
           <>

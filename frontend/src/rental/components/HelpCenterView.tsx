@@ -373,30 +373,31 @@ Der Assistent lernt aus Ihren Fahrzeug- und Betriebsdaten und kann Ihnen im Tage
       },
       {
         id: 'fleet-connectivity',
-        title: 'Fleet Connectivity',
-        content: `Fleet Connectivity verbindet Ihre physischen Fahrzeuge mit der digitalen Plattform.
+        title: 'Fleet Connectivity (read-only)',
+        content: `Fleet Connectivity zeigt den technischen Verbindungs- und Telemetrie-Status Ihrer Fahrzeuge.
 
-Verbundene Fahrzeuge liefern Live-Daten wie:
-• Position und Standort in Echtzeit
-• Kilometerstand
-• Fahrdaten (Geschwindigkeit, Beschleunigung, Bremsen)
-• Fahrzeugzustand (Batterie, Reifendruck, Warnungen)
+Sichtbar sind u. a.:
+• Verbindungsstatus (online / standby / offline / nicht verbunden)
+• Signalverfügbarkeit (GPS, Odometer, DTC, OBD, …)
+• Telemetrie-Bereitschaft und maskierte Geräte-IDs
 
-**Wie verbinden?** Unter Einstellungen → Fleet Connectivity sehen Sie alle verbundenen Fahrzeuge und können neue Verbindungen einrichten. Die Verbindung erfolgt über die DIMO-Technologie.
+**Read-only:** In dieser Ansicht gibt es keine Connect-, Disconnect- oder Admin-Aktionen. Verbindungen werden über den operativen Fahrzeug-/DIMO-Flow hergestellt.
 
-**Warum verbinden?** Verbundene Fahrzeuge ermöglichen Live-Tracking, automatische Fahrtenerfassung, Gesundheitsanalysen und Fahrverhalten-Auswertungen. Ohne Verbindung sind diese Funktionen nicht verfügbar.`,
+**Datenfreigaben:** Autorisieren und widerrufen Sie im **Data Authorization & Consent Center**.`,
       },
       {
         id: 'data-authorization',
-        title: 'Datenautorisierung',
-        content: `Unter Datenautorisierung legen Sie fest, welche Daten geteilt und genutzt werden dürfen.
+        title: 'Data Authorization & Consent Center',
+        content: `Im **Data Authorization & Consent Center** verwalten Sie Datenfreigaben und Einwilligungen:
 
-Dies betrifft insbesondere:
-• Welche Fahrzeugdaten der Plattform zur Analyse zur Verfügung stehen
-• Ob und wie Daten für Versicherungsangebote oder andere Dienste freigegeben werden
-• Die Kontrolle über Ihre Datenhoheit
+• Quelle und Verarbeiter (z. B. DIMO → SynqDrive)
+• Zwecke (Live Map, Trips, Health, Alerts, Analytics)
+• Datenkategorien, Scope und betroffene Fahrzeuge
+• Risiko, Status, Ablauf und Audit-Verlauf
 
-**Grundprinzip:** Sie behalten immer die Kontrolle. Daten werden nur dann geteilt, wenn Sie das aktiv autorisieren.`,
+**DIMO Telemetry Authorization** wird automatisch erzeugt, wenn DIMO-verbundene Fahrzeuge existieren.
+
+**Grundprinzip:** Freigaben sind auditierbar. Widerrufe wirken auf die Datenverarbeitung — Fleet Connectivity bleibt eine rein technische Read-only-Übersicht.`,
       },
       {
         id: 'billing',

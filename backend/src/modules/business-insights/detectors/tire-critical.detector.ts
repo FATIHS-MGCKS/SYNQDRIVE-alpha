@@ -59,7 +59,7 @@ export class TireCriticalDetector implements InsightDetector {
         make: true,
         model: true,
         licensePlate: true,
-        stationId: true,
+        homeStationId: true,
       },
     });
     if (vehicles.length === 0) return [];
@@ -147,6 +147,27 @@ export class TireCriticalDetector implements InsightDetector {
         ageStatus,
       );
 
+      if (overall === 'WATCH') {
+        const label = v.licensePlate || `${v.make} ${v.model}`;
+        candidates.push({
+          type: this.type,
+          severity: InsightSeverity.INFO,
+          priority: 40,
+          title: 'Reifen beobachten',
+          message: `${label}: Reifenzustand im Beobachtungsbereich — planmäßige Prüfung empfohlen.`,
+          actionLabel: 'Fahrzeug prüfen',
+          actionType: 'navigate_vehicle',
+          entityScope: InsightEntityScope.VEHICLE,
+          entityIds: [v.id],
+          metrics: { overallStatus: overall, treadStatus, measured: hasMeasurement },
+          reasons: ['Reifenzustand WATCH'],
+          confidence: hasMeasurement ? 0.75 : 0.5,
+          dedupeKey: `tire_critical:${v.id}`,
+          groupKey: v.homeStationId ? `tire_critical:${v.homeStationId}` : 'tire_critical_fleet',
+        });
+        continue;
+      }
+
       if (!isAlertableStatus(overall)) continue;
 
       // Honest severity: never claim a confirmed "replace now" from a pure
@@ -210,7 +231,7 @@ export class TireCriticalDetector implements InsightDetector {
         reasons,
         confidence: hasMeasurement ? 0.92 : 0.6,
         dedupeKey: `tire_critical:${v.id}`,
-        groupKey: v.stationId ? `tire_critical:${v.stationId}` : 'tire_critical_fleet',
+        groupKey: v.homeStationId ? `tire_critical:${v.homeStationId}` : 'tire_critical_fleet',
       });
     }
 

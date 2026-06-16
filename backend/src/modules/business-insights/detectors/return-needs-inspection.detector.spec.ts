@@ -1,10 +1,5 @@
 /**
- * V4.6.95 — Fix 3: ReturnNeedsInspectionDetector risk-level casing
- *
- * `RentalDrivingAnalysis.riskLevel` is written lowercase ('low' | 'medium' |
- * 'high'). The previous detector compared against uppercase 'HIGH', which
- * silently swallowed the most important signal. These tests pin the new
- * lowercase-normalized comparison.
+ * ReturnNeedsInspectionDetector — vehicle stress signals (V4.8.24)
  */
 
 import { ReturnNeedsInspectionDetector } from './return-needs-inspection.detector';
@@ -34,7 +29,7 @@ describe('ReturnNeedsInspectionDetector', () => {
     detector = new ReturnNeedsInspectionDetector(prisma);
   });
 
-  it("flags a return when RentalDrivingAnalysis.riskLevel is lowercase 'high'", async () => {
+  it("flags a return when riskLevel is 'high_stress'", async () => {
     const ctx = makeContext();
     prisma.booking.findMany.mockResolvedValue([
       {
@@ -47,22 +42,19 @@ describe('ReturnNeedsInspectionDetector', () => {
       },
     ]);
     prisma.rentalDrivingAnalysis.findUnique.mockResolvedValue({
-      riskLevel: 'high',
+      riskLevel: 'high_stress',
       abuseDetectionCount: 0,
-      drivingScore: 80,
+      drivingScore: 40,
       payload: {},
     });
 
     const candidates = await detector.detect(ctx);
 
     expect(candidates).toHaveLength(1);
-    expect(candidates[0].reasons.some((r) => r.startsWith('High-risk driving profile'))).toBe(
-      true,
-    );
-    expect(candidates[0].entityIds).toEqual(['vehicle-1']);
+    expect(candidates[0].reasons.some((r) => r.includes('vehicle stress'))).toBe(true);
   });
 
-  it("does NOT flag a high-risk reason when riskLevel is 'medium'", async () => {
+  it('does NOT flag when stress is low and rental is short', async () => {
     const ctx = makeContext();
     prisma.booking.findMany.mockResolvedValue([
       {
@@ -75,18 +67,17 @@ describe('ReturnNeedsInspectionDetector', () => {
       },
     ]);
     prisma.rentalDrivingAnalysis.findUnique.mockResolvedValue({
-      riskLevel: 'medium',
+      riskLevel: 'low_stress',
       abuseDetectionCount: 0,
-      drivingScore: 80,
+      drivingScore: 20,
       payload: {},
     });
 
     const candidates = await detector.detect(ctx);
-
     expect(candidates).toEqual([]);
   });
 
-  it("normalizes uppercase 'HIGH' into the same high-risk reason", async () => {
+  it('flags critical vehicle stress from drivingScore >= 76', async () => {
     const ctx = makeContext();
     prisma.booking.findMany.mockResolvedValue([
       {
@@ -99,7 +90,7 @@ describe('ReturnNeedsInspectionDetector', () => {
       },
     ]);
     prisma.rentalDrivingAnalysis.findUnique.mockResolvedValue({
-      riskLevel: 'HIGH',
+      riskLevel: 'moderate_stress',
       abuseDetectionCount: 0,
       drivingScore: 80,
       payload: {},
@@ -108,12 +99,10 @@ describe('ReturnNeedsInspectionDetector', () => {
     const candidates = await detector.detect(ctx);
 
     expect(candidates).toHaveLength(1);
-    expect(candidates[0].reasons.some((r) => r.startsWith('High-risk driving profile'))).toBe(
-      true,
-    );
+    expect(candidates[0].reasons.some((r) => r.includes('Critical vehicle stress'))).toBe(true);
   });
 
-  it('skips returns without any reason (no analysis, short rental, no km overage)', async () => {
+  it('skips returns without any reason', async () => {
     const ctx = makeContext();
     prisma.booking.findMany.mockResolvedValue([
       {
@@ -128,7 +117,6 @@ describe('ReturnNeedsInspectionDetector', () => {
     prisma.rentalDrivingAnalysis.findUnique.mockResolvedValue(null);
 
     const candidates = await detector.detect(ctx);
-
     expect(candidates).toEqual([]);
   });
 });

@@ -49,7 +49,7 @@ export class BrakeCriticalDetector implements InsightDetector {
         organizationId: ctx.organizationId,
         status: { in: ['AVAILABLE', 'RENTED', 'IN_SERVICE', 'RESERVED'] },
       },
-      select: { id: true, make: true, model: true, licensePlate: true, stationId: true },
+      select: { id: true, make: true, model: true, licensePlate: true, homeStationId: true },
     });
     if (vehicles.length === 0) return [];
 
@@ -165,6 +165,26 @@ export class BrakeCriticalDetector implements InsightDetector {
       rearCond = aggregateBrakeCondition(rearCond, safety);
 
       const overall = aggregateBrakeCondition(frontCond, rearCond);
+      if (overall === 'WATCH') {
+        const label = v.licensePlate || `${v.make} ${v.model}`;
+        candidates.push({
+          type: this.type,
+          severity: InsightSeverity.INFO,
+          priority: 38,
+          title: 'Bremsen beobachten',
+          message: `${label}: Bremszustand im Beobachtungsbereich — planmäßige Prüfung empfohlen.`,
+          actionLabel: 'Fahrzeug prüfen',
+          actionType: 'navigate_vehicle',
+          entityScope: InsightEntityScope.VEHICLE,
+          entityIds: [v.id],
+          metrics: { overallCondition: overall },
+          reasons: ['Bremszustand WATCH'],
+          confidence: hasRealSignal ? 0.75 : 0.5,
+          dedupeKey: `brake_critical:${v.id}`,
+          groupKey: v.homeStationId ? `brake_critical:${v.homeStationId}` : 'brake_critical_fleet',
+        });
+        continue;
+      }
       if (!isAlertableCondition(overall)) continue;
 
       // Honesty guard: a CRITICAL not backed by a real signal is capped at WARNING.
@@ -206,7 +226,7 @@ export class BrakeCriticalDetector implements InsightDetector {
         reasons,
         confidence: hasRealSignal ? 0.9 : 0.6,
         dedupeKey: `brake_critical:${v.id}`,
-        groupKey: v.stationId ? `brake_critical:${v.stationId}` : 'brake_critical_fleet',
+        groupKey: v.homeStationId ? `brake_critical:${v.homeStationId}` : 'brake_critical_fleet',
       });
     }
 

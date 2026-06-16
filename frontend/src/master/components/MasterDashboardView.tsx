@@ -65,22 +65,22 @@ function formatRelativeTime(iso: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-const ENTITY_ICON_MAP: Record<string, { icon: typeof Building2; color: string }> = {
-  ORGANIZATION: { icon: Building2, color: 'text-blue-500 bg-blue-500/10' },
-  USER: { icon: Users, color: 'text-purple-500 bg-purple-500/10' },
-  VEHICLE: { icon: Car, color: 'text-indigo-500 bg-indigo-500/10' },
-  SUBSCRIPTION: { icon: CreditCard, color: 'text-emerald-500 bg-emerald-500/10' },
-  INVOICE: { icon: FileText, color: 'text-amber-500 bg-amber-500/10' },
-  ROLE: { icon: Shield, color: 'text-rose-500 bg-rose-500/10' },
-  SETTINGS: { icon: Settings, color: 'text-gray-500 bg-gray-500/10' },
+const ENTITY_ICON_MAP: Record<string, { icon: typeof Building2; tone: string }> = {
+  ORGANIZATION: { icon: Building2, tone: 'sq-tone-info' },
+  USER: { icon: Users, tone: 'sq-tone-ai' },
+  VEHICLE: { icon: Car, tone: 'sq-tone-brand' },
+  SUBSCRIPTION: { icon: CreditCard, tone: 'sq-tone-success' },
+  INVOICE: { icon: FileText, tone: 'sq-tone-watch' },
+  ROLE: { icon: Shield, tone: 'sq-tone-critical' },
+  SETTINGS: { icon: Settings, tone: 'sq-tone-neutral' },
 };
 
 function getEntityVisuals(entity: string, action: string) {
   const mapped = ENTITY_ICON_MAP[entity];
   if (mapped) return mapped;
-  if (action === 'DELETE') return { icon: Trash2, color: 'text-red-500 bg-red-500/10' };
-  if (action === 'CREATE') return { icon: UserPlus, color: 'text-green-500 bg-green-500/10' };
-  return { icon: Activity, color: 'text-gray-500 bg-gray-500/10' };
+  if (action === 'DELETE') return { icon: Trash2, tone: 'sq-tone-critical' };
+  if (action === 'CREATE') return { icon: UserPlus, tone: 'sq-tone-success' };
+  return { icon: Activity, tone: 'sq-tone-neutral' };
 }
 
 export function MasterDashboardView({ isDarkMode, onViewChange }: MasterDashboardViewProps) {
@@ -153,7 +153,7 @@ export function MasterDashboardView({ isDarkMode, onViewChange }: MasterDashboar
         <p className="text-sm font-semibold">Failed to load dashboard data</p>
         <button
           onClick={() => window.location.reload()}
-          className="mt-3 flex items-center gap-1.5 text-xs font-bold text-blue-500 hover:text-blue-400 transition-colors"
+          className="mt-3 flex items-center gap-1.5 text-xs font-bold text-[color:var(--brand)] hover:opacity-80 transition-colors"
         >
           <RefreshCw className="w-3.5 h-3.5" /> Retry
         </button>
@@ -162,30 +162,11 @@ export function MasterDashboardView({ isDarkMode, onViewChange }: MasterDashboar
   }
 
   const kpiCards = [
-    { label: 'Active Organizations', value: stats.activeOrganizations.toLocaleString(), icon: Building2, gradient: 'blue' },
-    { label: 'Connected Vehicles', value: stats.totalVehicles.toLocaleString(), icon: Car, gradient: 'indigo' },
-    { label: 'Platform Users', value: stats.totalUsers.toLocaleString(), icon: Users, gradient: 'purple' },
-    { label: 'Monthly Recurring Revenue', value: formatMrr(stats.totalRevenueMrr), icon: DollarSign, gradient: 'emerald' },
+    { label: 'Active Organizations', value: stats.activeOrganizations.toLocaleString(), icon: Building2, tone: 'sq-tone-info' },
+    { label: 'Connected Vehicles', value: stats.totalVehicles.toLocaleString(), icon: Car, tone: 'sq-tone-brand' },
+    { label: 'Platform Users', value: stats.totalUsers.toLocaleString(), icon: Users, tone: 'sq-tone-ai' },
+    { label: 'Monthly Recurring Revenue', value: formatMrr(stats.totalRevenueMrr), icon: DollarSign, tone: 'sq-tone-success' },
   ];
-
-  const gradientStyles: Record<string, { icon: string; iconBg: string }> = {
-    blue: {
-      icon: isDarkMode ? 'text-blue-400' : 'text-blue-600',
-      iconBg: isDarkMode ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/20' : 'bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200/50',
-    },
-    indigo: {
-      icon: isDarkMode ? 'text-indigo-400' : 'text-indigo-600',
-      iconBg: isDarkMode ? 'bg-gradient-to-br from-indigo-500/20 to-indigo-600/10 border border-indigo-500/20' : 'bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200/50',
-    },
-    purple: {
-      icon: isDarkMode ? 'text-purple-400' : 'text-purple-600',
-      iconBg: isDarkMode ? 'bg-gradient-to-br from-purple-500/20 to-purple-600/10 border border-purple-500/20' : 'bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200/50',
-    },
-    emerald: {
-      icon: isDarkMode ? 'text-emerald-400' : 'text-emerald-600',
-      iconBg: isDarkMode ? 'bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border border-emerald-500/20' : 'bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200/50',
-    },
-  };
 
   const secondaryMetrics = [
     { label: 'DIMO Vehicles', value: stats.totalDimoVehicles, icon: Wifi },
@@ -209,8 +190,8 @@ export function MasterDashboardView({ isDarkMode, onViewChange }: MasterDashboar
         </div>
         <div className="flex items-center gap-2">
           <div className="px-3 py-1.5 rounded-xl border bg-card border-border shadow-sm flex items-center gap-2">
-            <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${hasCritical ? 'bg-red-500' : 'bg-green-500'}`} />
-            <span className={`text-xs font-semibold ${hasCritical ? 'text-red-500' : 'text-foreground'}`}>
+            <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${hasCritical ? 'bg-[color:var(--status-critical)]' : 'bg-[color:var(--status-positive)]'}`} />
+            <span className={`text-xs font-semibold ${hasCritical ? 'text-[color:var(--status-critical)]' : 'text-foreground'}`}>
               {hasCritical ? 'Issues Detected' : 'System Normal'}
             </span>
           </div>
@@ -219,13 +200,11 @@ export function MasterDashboardView({ isDarkMode, onViewChange }: MasterDashboar
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {kpiCards.map((kpi) => {
-          const gs = gradientStyles[kpi.gradient];
-          return (
+        {kpiCards.map((kpi) => (
             <div key={kpi.label} className={cardClass}>
               <div className="flex items-start justify-between mb-2.5">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-inner ${gs.iconBg}`}>
-                  <kpi.icon className={`w-4 h-4 ${gs.icon}`} />
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${kpi.tone}`}>
+                  <kpi.icon className="w-4 h-4" />
                 </div>
               </div>
               <div>
@@ -233,8 +212,7 @@ export function MasterDashboardView({ isDarkMode, onViewChange }: MasterDashboar
                 <p className="text-xs font-medium mt-1 text-muted-foreground">{kpi.label}</p>
               </div>
             </div>
-          );
-        })}
+        ))}
       </div>
 
       {/* Secondary Metrics */}
@@ -244,7 +222,7 @@ export function MasterDashboardView({ isDarkMode, onViewChange }: MasterDashboar
             key={m.label}
             disabled={!m.clickable}
             onClick={m.clickable ? () => onViewChange?.('support') : undefined}
-            className={`${cardClass} text-left flex items-center gap-3 ${m.clickable ? 'cursor-pointer hover:ring-1 hover:ring-blue-500/30' : 'cursor-default'}`}
+            className={`${cardClass} text-left flex items-center gap-3 ${m.clickable ? 'cursor-pointer hover:ring-1 hover:ring-[color:var(--brand-soft)]' : 'cursor-default'}`}
           >
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-muted">
               <m.icon className="w-4 h-4 text-muted-foreground" />
@@ -282,7 +260,7 @@ export function MasterDashboardView({ isDarkMode, onViewChange }: MasterDashboar
               const Icon = ev.icon;
               return (
                 <div key={item.id} className="flex items-start gap-3 p-3 rounded-xl transition-all bg-muted/30 hover:bg-muted/60 border border-border">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm ${ev.color}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm ${ev.tone}`}>
                     <Icon className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0 pt-0.5">
@@ -364,12 +342,12 @@ export function MasterDashboardView({ isDarkMode, onViewChange }: MasterDashboar
       </div>
 
       {/* Newest Support Requests */}
-      <NewestSupportWidget isDarkMode={isDarkMode} cardClass={cardClass} />
+      <NewestSupportWidget cardClass={cardClass} />
     </div>
   );
 }
 
-function NewestSupportWidget({ isDarkMode, cardClass }: { isDarkMode: boolean; cardClass: string }) {
+function NewestSupportWidget({ cardClass }: { cardClass: string }) {
   const [tickets, setTickets] = useState<any[]>([]);
 
   useEffect(() => {
@@ -378,20 +356,20 @@ function NewestSupportWidget({ isDarkMode, cardClass }: { isDarkMode: boolean; c
 
   if (tickets.length === 0) return null;
 
-  const statusColors: Record<string, { bg: string; text: string; dot: string }> = {
-    Open: { bg: 'bg-blue-500/15', text: 'text-blue-500', dot: 'bg-blue-500' },
-    'In Progress': { bg: 'bg-amber-500/15', text: 'text-amber-500', dot: 'bg-amber-500' },
-    Waiting: { bg: 'bg-purple-500/15', text: 'text-purple-500', dot: 'bg-purple-500' },
-    Resolved: { bg: 'bg-emerald-500/15', text: 'text-emerald-500', dot: 'bg-emerald-500' },
-    Closed: { bg: 'bg-gray-500/15', text: 'text-gray-400', dot: 'bg-gray-400' },
+  const statusTone: Record<string, string> = {
+    Open: 'sq-tone-info',
+    'In Progress': 'sq-tone-watch',
+    Waiting: 'sq-tone-ai',
+    Resolved: 'sq-tone-success',
+    Closed: 'sq-tone-neutral',
   };
 
   return (
     <div className={cardClass}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDarkMode ? 'bg-blue-500/10' : 'bg-blue-100/50'}`}>
-            <Headphones className="w-4 h-4 text-blue-500" />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center sq-tone-info">
+            <Headphones className="w-4 h-4" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-foreground">Newest Support Requests</h3>
@@ -404,7 +382,7 @@ function NewestSupportWidget({ isDarkMode, cardClass }: { isDarkMode: boolean; c
       </div>
       <div className="space-y-2">
         {tickets.map((t: any) => {
-          const sc = statusColors[t.status] || statusColors.Open;
+          const tone = statusTone[t.status] || statusTone.Open;
           return (
             <div key={t.id} className="flex items-start gap-3 p-3 rounded-xl border transition-colors bg-muted/30 border-border hover:bg-muted/50">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 bg-muted text-muted-foreground">
@@ -413,8 +391,8 @@ function NewestSupportWidget({ isDarkMode, cardClass }: { isDarkMode: boolean; c
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-xs font-semibold truncate text-foreground">{t.subject}</p>
-                  <span className={`shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${sc.bg} ${sc.text}`}>
-                    <span className={`w-1 h-1 rounded-full ${sc.dot}`} /> {t.status}
+                  <span className={`shrink-0 sq-chip text-[9px] font-semibold ${tone}`}>
+                    {t.status}
                   </span>
                 </div>
                 <p className="text-[10px] mt-0.5 text-muted-foreground">

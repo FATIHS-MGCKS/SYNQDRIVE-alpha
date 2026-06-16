@@ -9,6 +9,8 @@ export interface JammingIncidentDto {
   where: string | null;
   /** Reverse-geocoded address when available in pipeline; otherwise null */
   lastKnownAddress: string | null;
+  /** True when derived from latest snapshot only — not a persisted incident history. */
+  isSnapshotIndication?: true;
 }
 
 export interface ConnectivitySnapshotExtras {
@@ -68,9 +70,8 @@ function formatWhereFromSignals(signals: Record<string, unknown>): string | null
 }
 
 /**
- * Build incident rows for UI: one row per detection count from the latest snapshot.
- * When only an aggregate count exists (no per-event history in telemetry),
- * each row repeats the same snapshot timestamp and location — honest behavior.
+ * Build snapshot indication for UI — at most one row; count reflects
+ * aggregate value from the latest telemetry snapshot, not event history.
  */
 export function extractConnectivitySnapshot(
   signals: Record<string, unknown> | null | undefined,
@@ -87,11 +88,12 @@ export function extractConnectivitySnapshot(
   const where = formatWhereFromSignals(signals);
 
   const incidents: JammingIncidentDto[] = [];
-  for (let i = 0; i < count; i++) {
+  if (count > 0) {
     incidents.push({
       detectedAt: ts,
       where,
       lastKnownAddress: null,
+      isSnapshotIndication: true,
     });
   }
 

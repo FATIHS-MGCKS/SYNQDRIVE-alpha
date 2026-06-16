@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import {
   Prisma,
   OrganizationStatus,
@@ -7,15 +7,29 @@ import {
   MembershipStatus,
   BookingStatus,
   VehicleStatus,
+  ActivityAction,
+  ActivityEntity,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '@shared/database/prisma.service';
+import { AuditService } from '@modules/activity-log/audit.service';
+import { OrganizationRoleService } from '@modules/users/organization-role.service';
 import {
   parsePagination,
   buildPaginatedResult,
   PaginationParams,
   PaginatedResult,
 } from '@shared/utils/pagination';
+import { UpdateTenantOrganizationProfileDto } from './dto/update-tenant-organization-profile.dto';
+import {
+  TENANT_PROFILE_CRITICAL_FIELDS,
+  TenantOrganizationProfileDto,
+} from './types/tenant-organization-profile.types';
+import {
+  collectChangedFields,
+  normalizeTimezoneInput,
+  normalizeWebsite,
+} from './utils/tenant-profile-normalizer.util';
 
 const ORG_STATUS_MAP: Record<string, string> = {
   ACTIVE: 'Active',
@@ -78,7 +92,11 @@ const INVOICE_STATUS_MAP: Record<string, string> = {
 
 @Injectable()
 export class OrganizationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+    private readonly organizationRoles: OrganizationRoleService,
+  ) {}
 
   private toBusinessTypeEnum(value: string): BusinessType {
     const map: Record<string, BusinessType> = {
@@ -128,7 +146,9 @@ export class OrganizationsService {
       country: data.country ? String(data.country) : undefined,
       website: data.website ? String(data.website) : undefined,
     };
-    return this.prisma.organization.create({ data: payload });
+    const org = await this.prisma.organization.create({ data: payload });
+    void this.organizationRoles.ensureDefaultRoles(org.id);
+    return org;
   }
 
   async createWithAdmin(
@@ -158,6 +178,8 @@ export class OrganizationsService {
         status: MembershipStatus.ACTIVE,
       },
     });
+
+    void this.organizationRoles.ensureDefaultRoles(org.id, user.id);
 
     return { organization: org, admin: { id: user.id, email: user.email, name: user.name } };
   }
@@ -307,57 +329,71 @@ export class OrganizationsService {
   // businessType, lastActiveAt, createdAt, updatedAt) stay under MASTER_ADMIN
   // control via the existing `/admin/organizations` routes.
 
-  async getTenantProfile(orgId: string): Promise<{
-    id: string;
-    companyName: string;
-    address: string | null;
-    city: string | null;
-    state: string | null;
-    zip: string | null;
-    country: string | null;
-    taxId: string | null;
-    phone: string | null;
-    email: string | null;
-    website: string | null;
-    timezone: string | null;
-    language: string | null;
-    managerName: string | null;
-    managerEmail: string | null;
-    logoUrl: string | null;
-    businessType: string;
-  }> {
-    const org = await this.prisma.organization.findUnique({
-      where: { id: orgId },
-      select: {
-        id: true,
-        companyName: true,
-        address: true,
-        city: true,
-        state: true,
-        zip: true,
-        country: true,
-        taxId: true,
-        phone: true,
-        email: true,
-        website: true,
-        timezone: true,
-        language: true,
-        managerName: true,
-        managerEmail: true,
-        logoUrl: true,
-        businessType: true,
-      },
-    });
-    if (!org) throw new NotFoundException('Organization not found');
+  private static readonly TENANT_PROFILE_SELECT = {
+    id: true,
+    companyName: true,
+    legalCompanyName: true,
+    legalForm: true,
+    address: true,
+    city: true,
+    state: true,
+    zip: true,
+    country: true,
+    taxId: true,
+    taxNumber: true,
+    vatId: true,
+    isSmallBusiness: true,
+    defaultVatRate: true,
+    invoicePrefix: true,
+    nextInvoiceNumber: true,
+    paymentTermsDays: true,
+    invoiceEmail: true,
+    bankName: true,
+    iban: true,
+    bic: true,
+    pdfFooterText: true,
+    emailSignature: true,
+    phone: true,
+    email: true,
+    website: true,
+    timezone: true,
+    language: true,
+    managerName: true,
+    managerEmail: true,
+    logoUrl: true,
+    logoDarkUrl: true,
+    pdfLogoUrl: true,
+    accentColor: true,
+    businessType: true,
+  } satisfies Prisma.OrganizationSelect;
+
+  private mapTenantProfile(
+    org: Prisma.OrganizationGetPayload<{ select: typeof OrganizationsService.TENANT_PROFILE_SELECT }>,
+  ): TenantOrganizationProfileDto {
     return {
       id: org.id,
       companyName: org.companyName,
+      legalCompanyName: org.legalCompanyName,
+      legalForm: org.legalForm,
       address: org.address,
       city: org.city,
       state: org.state,
       zip: org.zip,
       country: org.country,
       taxId: org.taxId,
+      taxNumber: org.taxNumber,
+      vatId: org.vatId,
+      isSmallBusiness: org.isSmallBusiness,
+      defaultVatRate: org.defaultVatRate,
+      invoicePrefix: org.invoicePrefix,
+      nextInvoiceNumber: org.nextInvoiceNumber,
+      paymentTermsDays: org.paymentTermsDays,
+      invoiceEmail: org.invoiceEmail,
+      bankName: org.bankName,
+      iban: org.iban,
+      bic: org.bic,
+      pdfFooterText: org.pdfFooterText,
+      emailSignature: org.emailSignature,
       phone: org.phone,
       email: org.email,
       website: org.website,
@@ -366,72 +402,143 @@ export class OrganizationsService {
       managerName: org.managerName,
       managerEmail: org.managerEmail,
       logoUrl: org.logoUrl,
+      logoDarkUrl: org.logoDarkUrl,
+      pdfLogoUrl: org.pdfLogoUrl,
+      accentColor: org.accentColor,
       businessType: org.businessType,
     };
   }
 
+  async getTenantProfile(orgId: string): Promise<TenantOrganizationProfileDto> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      select: OrganizationsService.TENANT_PROFILE_SELECT,
+    });
+    if (!org) throw new NotFoundException('Organization not found');
+    return this.mapTenantProfile(org);
+  }
+
   async updateTenantProfile(
     orgId: string,
-    patch: {
-      companyName?: string;
-      address?: string | null;
-      city?: string | null;
-      state?: string | null;
-      zip?: string | null;
-      country?: string | null;
-      taxId?: string | null;
-      phone?: string | null;
-      email?: string | null;
-      website?: string | null;
-      timezone?: string | null;
-      language?: string | null;
-      managerName?: string | null;
-      managerEmail?: string | null;
-      logoUrl?: string | null;
+    dto: UpdateTenantOrganizationProfileDto,
+    auditCtx?: {
+      actorUserId?: string;
+      ip?: string;
+      userAgent?: string;
+      route?: string;
     },
-  ) {
+  ): Promise<TenantOrganizationProfileDto> {
+    const before = await this.getTenantProfile(orgId);
     const data: Prisma.OrganizationUpdateInput = {};
-    if (typeof patch.companyName === 'string' && patch.companyName.trim().length > 0) {
-      data.companyName = patch.companyName.trim();
+
+    if (dto.companyName !== undefined) {
+      if (!dto.companyName.trim()) {
+        throw new BadRequestException('companyName cannot be empty');
+      }
+      data.companyName = dto.companyName.trim();
     }
-    const stringOrNull = (v: unknown) => {
-      if (v === null) return null;
-      if (typeof v !== 'string') return undefined;
-      const trimmed = v.trim();
-      return trimmed.length > 0 ? trimmed : null;
+
+    const assignNullable = <K extends keyof UpdateTenantOrganizationProfileDto>(
+      key: K,
+      field: keyof Prisma.OrganizationUpdateInput,
+    ) => {
+      const value = dto[key];
+      if (value !== undefined) {
+        (data as Record<string, unknown>)[field as string] = value;
+      }
     };
-    const address = stringOrNull(patch.address);
-    if (address !== undefined) data.address = address;
-    const city = stringOrNull(patch.city);
-    if (city !== undefined) data.city = city;
-    const state = stringOrNull(patch.state);
-    if (state !== undefined) data.state = state;
-    const zip = stringOrNull(patch.zip);
-    if (zip !== undefined) data.zip = zip;
-    const country = stringOrNull(patch.country);
-    if (country !== undefined) data.country = country;
-    const taxId = stringOrNull(patch.taxId);
-    if (taxId !== undefined) data.taxId = taxId;
-    const phone = stringOrNull(patch.phone);
-    if (phone !== undefined) data.phone = phone;
-    const email = stringOrNull(patch.email);
-    if (email !== undefined) data.email = email;
-    const website = stringOrNull(patch.website);
-    if (website !== undefined) data.website = website;
-    const timezone = stringOrNull(patch.timezone);
-    if (timezone !== undefined) data.timezone = timezone;
-    const language = stringOrNull(patch.language);
-    if (language !== undefined) data.language = language;
-    const managerName = stringOrNull(patch.managerName);
-    if (managerName !== undefined) data.managerName = managerName;
-    const managerEmail = stringOrNull(patch.managerEmail);
-    if (managerEmail !== undefined) data.managerEmail = managerEmail;
-    if (patch.logoUrl === null || typeof patch.logoUrl === 'string') {
-      data.logoUrl = stringOrNull(patch.logoUrl);
+
+    assignNullable('legalCompanyName', 'legalCompanyName');
+    assignNullable('legalForm', 'legalForm');
+    assignNullable('address', 'address');
+    assignNullable('city', 'city');
+    assignNullable('state', 'state');
+    assignNullable('zip', 'zip');
+    assignNullable('country', 'country');
+    assignNullable('taxId', 'taxId');
+    assignNullable('taxNumber', 'taxNumber');
+    assignNullable('vatId', 'vatId');
+    assignNullable('invoicePrefix', 'invoicePrefix');
+    assignNullable('invoiceEmail', 'invoiceEmail');
+    assignNullable('bankName', 'bankName');
+    assignNullable('iban', 'iban');
+    assignNullable('bic', 'bic');
+    assignNullable('pdfFooterText', 'pdfFooterText');
+    assignNullable('emailSignature', 'emailSignature');
+    assignNullable('phone', 'phone');
+    assignNullable('email', 'email');
+    assignNullable('managerName', 'managerName');
+    assignNullable('managerEmail', 'managerEmail');
+    assignNullable('accentColor', 'accentColor');
+    assignNullable('logoDarkUrl', 'logoDarkUrl');
+    assignNullable('pdfLogoUrl', 'pdfLogoUrl');
+    assignNullable('logoUrl', 'logoUrl');
+    assignNullable('language', 'language');
+
+    if (dto.isSmallBusiness !== undefined) {
+      data.isSmallBusiness = dto.isSmallBusiness;
+    }
+    if (dto.defaultVatRate !== undefined) {
+      data.defaultVatRate = dto.defaultVatRate;
+    }
+    if (dto.nextInvoiceNumber !== undefined) {
+      data.nextInvoiceNumber = dto.nextInvoiceNumber;
+    }
+    if (dto.paymentTermsDays !== undefined) {
+      data.paymentTermsDays = dto.paymentTermsDays;
+    }
+
+    if (dto.website !== undefined) {
+      try {
+        data.website = normalizeWebsite(dto.website);
+      } catch {
+        throw new BadRequestException('Invalid website URL');
+      }
+    }
+
+    if (dto.timezone !== undefined) {
+      try {
+        data.timezone = normalizeTimezoneInput(dto.timezone);
+      } catch {
+        throw new BadRequestException('Invalid IANA timezone');
+      }
+    }
+
+    if (Object.keys(data).length === 0) {
+      return before;
     }
 
     await this.prisma.organization.update({ where: { id: orgId }, data });
-    return this.getTenantProfile(orgId);
+    const after = await this.getTenantProfile(orgId);
+
+    if (auditCtx?.actorUserId) {
+      const changed = collectChangedFields(
+        before as unknown as Record<string, unknown>,
+        after as unknown as Record<string, unknown>,
+        Object.keys(dto),
+      );
+      const critical = changed.filter((f) =>
+        (TENANT_PROFILE_CRITICAL_FIELDS as readonly string[]).includes(f),
+      );
+      if (changed.length > 0) {
+        void this.audit.record({
+          actorUserId: auditCtx.actorUserId,
+          actorOrganizationId: orgId,
+          action: ActivityAction.UPDATE,
+          entity: ActivityEntity.ORGANIZATION,
+          entityId: orgId,
+          description: 'Tenant company profile updated',
+          changeSummary: changed.join(', '),
+          route: auditCtx.route,
+          ipAddress: auditCtx.ip,
+          userAgent: auditCtx.userAgent,
+          level: critical.length > 0 ? 'WARN' : 'INFO',
+          metaJson: { changedFields: changed, criticalFields: critical },
+        });
+      }
+    }
+
+    return after;
   }
 
   async getOrganizationStats(orgId: string) {

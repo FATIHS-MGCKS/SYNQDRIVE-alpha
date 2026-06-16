@@ -77,13 +77,20 @@ function buildSections(ctx: HandoverContext): RenderSection[] {
 }
 
 function meta(ctx: HandoverContext) {
-  return [
+  const rows = [
     { label: 'Buchung', value: bookingRef(ctx.booking.id) },
     { label: 'Kunde', value: customerDisplayName(ctx.customer) },
     { label: 'Fahrzeug', value: `${vehicleLabel(ctx.vehicle)}${ctx.vehicle.licensePlate ? ` · ${ctx.vehicle.licensePlate}` : ''}` },
     { label: 'Zeitpunkt', value: formatDateTime(ctx.performedAt ?? new Date()) },
     ...(ctx.performedByName ? [{ label: 'Durchgeführt von', value: ctx.performedByName }] : []),
   ];
+  if (ctx.booking.pickupLocation) {
+    rows.push({ label: 'Abholstation', value: ctx.booking.pickupLocation });
+  }
+  if (ctx.booking.pickupHandoverInstructions) {
+    rows.push({ label: 'Übergabehinweise', value: ctx.booking.pickupHandoverInstructions });
+  }
+  return rows;
 }
 
 /** Pickup handover protocol (Übergabeprotokoll Abholung). */

@@ -45,10 +45,29 @@ enum MembershipStatus {
   REMOVED
 }
 
+enum OrganizationInviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
 enum UserStatus {
   ACTIVE
   INACTIVE
   SUSPENDED
+}
+
+enum NotificationCategory {
+  BOOKINGS
+  PICKUPS_RETURNS
+  TASKS
+  INVOICES_PAYMENTS
+  VEHICLE_HEALTH
+  DAMAGE_MISUSE
+  DOCUMENTS
+  WEEKLY_REPORTS
+  SECURITY
 }
 
 enum UserPlatformRole {
@@ -59,6 +78,15 @@ enum UserPlatformRole {
 enum StationStatus {
   ACTIVE
   INACTIVE
+  ARCHIVED
+}
+
+enum StationType {
+  MAIN
+  BRANCH
+  PARKING
+  PARTNER
+  TEMPORARY
 }
 
 enum ProductSlug {
@@ -517,6 +545,9 @@ enum ActivityEntity {
   FINE // fine record
   VENDOR // external service provider / supplier
   VENDOR_VEHICLE_LINK // vendor ↔ vehicle relationship
+  ORGANIZATION_INVITE // tenant user invite
+  ORGANIZATION_ROLE // custom role template
+  DATA_AUTHORIZATION // org-level data consent / authorization record
 }
 
 enum DrivingEventType {
@@ -621,6 +652,24 @@ model Organization {
   zip          String?
   country      String?
   taxId        String?            @map("tax_id")
+  legalCompanyName String?        @map("legal_company_name")
+  legalForm    String?            @map("legal_form")
+  taxNumber    String?            @map("tax_number")
+  vatId        String?            @map("vat_id")
+  isSmallBusiness Boolean         @default(false) @map("is_small_business")
+  defaultVatRate Float?           @map("default_vat_rate")
+  invoicePrefix String?           @map("invoice_prefix")
+  nextInvoiceNumber Int           @default(1) @map("next_invoice_number")
+  paymentTermsDays Int            @default(7) @map("payment_terms_days")
+  invoiceEmail String?            @map("invoice_email")
+  bankName     String?            @map("bank_name")
+  iban         String?
+  bic          String?
+  pdfFooterText String?           @map("pdf_footer_text")
+  emailSignature String?          @map("email_signature")
+  accentColor  String?            @map("accent_color")
+  logoDarkUrl  String?            @map("logo_dark_url")
+  pdfLogoUrl   String?            @map("pdf_logo_url")
   phone        String?
   email        String?
   website      String?
@@ -667,6 +716,22 @@ model Organization {
   bookingDeposits           BookingDeposit[]
   rentalContracts           RentalContract[]
   misuseCases               MisuseCase[]
+  orgInvoices               OrgInvoice[]
+  userAccountPreferences    UserAccountPreference[]
+  userNotificationPreferences UserNotificationPreference[]
+  orgInvoiceSequences       OrgInvoiceSequence[]
+  priceBooks                PriceBook[]
+  priceTariffGroups         PriceTariffGroup[]
+  priceTariffVersions       PriceTariffVersion[]
+  tariffRates               TariffRate[]
+  mileagePackages           MileagePackage[]
+  insuranceOptions          TariffInsuranceOption[]
+  tariffExtraOptions        TariffExtraOption[]
+  vehicleTariffAssignments  VehicleTariffAssignment[]
+  bookingPriceSnapshots     BookingPriceSnapshot[]
+  bookingPriceLineItems     BookingPriceLineItem[]
+  organizationRoles         OrganizationRole[]
+  organizationUserInvites   OrganizationUserInvite[]
 
   @@index([status])
   @@map("organizations")
@@ -700,9 +765,14 @@ model User {
   createdAt          DateTime         @default(now()) @map("created_at")
   updatedAt          DateTime         @updatedAt @map("updated_at")
 
-  memberships   OrganizationMembership[]
-  activityLogs  ActivityLog[]
-  refreshTokens RefreshToken[]
+  memberships              OrganizationMembership[]
+  activityLogs             ActivityLog[]
+  refreshTokens            RefreshToken[]
+  accountPreferences       UserAccountPreference[]
+  notificationPreferences  UserNotificationPreference[]
+  invitesSent              OrganizationUserInvite[] @relation("InvitesSent")
+  invitesAccepted          OrganizationUserInvite[] @relation("InvitesAccepted")
+  organizationRolesCreated OrganizationRole[]       @relation("RolesCreated")
 
   @@map("users")
 }
@@ -731,31 +801,149 @@ model RefreshToken {
 }
 
 // ------------------------------------------------
-// ORGANIZATION MEMBERSHIPS
+// ACCOUNT SELF-SERVICE (per-user, per-org preferences)
 // ------------------------------------------------
 
-model OrganizationMembership {
-  id               String           @id @default(uuid())
-  userId           String           @map("user_id")
-  organizationId   String           @map("organization_id")
-  role             MembershipRole
-  roleLabel        String?          @map("role_label")
-  stationScope     String?          @map("station_scope")
-  department       String?
-  position         String?
-  permissions      Json?
-  fieldAgentAccess Boolean          @default(false) @map("field_agent_access")
-  status           MembershipStatus @default(ACTIVE)
-  createdAt        DateTime         @default(now()) @map("created_at")
-  updatedAt        DateTime         @updatedAt @map("updated_at")
+model UserAccountPreference {
+  id                 String   @id @default(uuid())
+  userId             String   @map("user_id")
+  organizationId     String   @map("organization_id")
+  defaultStationId   String?  @map("default_station_id")
+  defaultLandingPage String?  @map("default_landing_page")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  defaultStation Station?     @relation(fields: [defaultStationId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("user_account_preferences")
+}
+
+model UserNotificationPreference {
+  id             String               @id @default(uuid())
+  userId         String               @map("user_id")
+  organizationId String               @map("organization_id")
+  category       NotificationCategory
+  inApp          Boolean              @default(true) @map("in_app")
+  email          Boolean              @default(true)
+  push           Boolean              @default(false)
+  sms            Boolean              @default(false)
+  criticalOnly   Boolean              @default(false) @map("critical_only")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, organizationId, category])
+  @@index([userId, organizationId])
+  @@map("user_notification_preferences")
+}
+
+// ------------------------------------------------
+// ORGANIZATION MEMBERSHIPS
+// ------------------------------------------------
+
+model OrganizationMembership {
+  id                 String           @id @default(uuid())
+  userId             String           @map("user_id")
+  organizationId     String           @map("organization_id")
+  role               MembershipRole
+  organizationRoleId String?          @map("organization_role_id")
+  roleLabel          String?          @map("role_label")
+  stationScope       String?          @map("station_scope")
+  department         String?
+  position           String?
+  permissions        Json?
+  stationIds         Json?            @map("station_ids")
+  fieldAgentAccess   Boolean          @default(false) @map("field_agent_access")
+  status             MembershipStatus @default(ACTIVE)
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationRole OrganizationRole? @relation(fields: [organizationRoleId], references: [id], onDelete: SetNull)
+
   @@unique([userId, organizationId])
   @@index([organizationId])
   @@index([userId])
+  @@index([organizationRoleId])
   @@map("organization_memberships")
+}
+
+// ------------------------------------------------
+// ORGANIZATION ROLE TEMPLATES (Access Control)
+// ------------------------------------------------
+
+model OrganizationRole {
+  id                      String         @id @default(uuid())
+  organizationId          String         @map("organization_id")
+  name                    String
+  description             String?
+  systemKey               String?        @map("system_key")
+  isSystemTemplate        Boolean        @default(false) @map("is_system_template")
+  isDefault               Boolean        @default(false) @map("is_default")
+  isActive                Boolean        @default(true) @map("is_active")
+  membershipRole          MembershipRole @map("membership_role")
+  permissions             Json?
+  stationScopeDefault     String?        @map("station_scope_default")
+  defaultStationIds       Json?          @map("default_station_ids")
+  fieldAgentAccessDefault Boolean        @default(false) @map("field_agent_access_default")
+  createdByUserId         String?        @map("created_by_user_id")
+  createdAt               DateTime       @default(now()) @map("created_at")
+  updatedAt               DateTime       @updatedAt @map("updated_at")
+
+  organization  Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy     User?                      @relation("RolesCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  memberships   OrganizationMembership[]
+  invites       OrganizationUserInvite[]
+
+  @@unique([organizationId, systemKey])
+  @@index([organizationId, isActive])
+  @@map("organization_roles")
+}
+
+// ------------------------------------------------
+// ORGANIZATION USER INVITES
+// ------------------------------------------------
+
+model OrganizationUserInvite {
+  id                 String                   @id @default(uuid())
+  organizationId     String                   @map("organization_id")
+  email              String
+  membershipRole     MembershipRole           @map("membership_role")
+  organizationRoleId String?                  @map("organization_role_id")
+  permissions        Json?
+  stationScope       String?                  @map("station_scope")
+  stationIds         Json?                    @map("station_ids")
+  fieldAgentAccess   Boolean                  @default(false) @map("field_agent_access")
+  department         String?
+  position           String?
+  roleLabel          String?                  @map("role_label")
+  tokenHash          String                   @map("token_hash")
+  tokenLookup        String                   @unique @map("token_lookup")
+  status             OrganizationInviteStatus @default(PENDING)
+  expiresAt          DateTime                 @map("expires_at")
+  invitedByUserId    String                   @map("invited_by_user_id")
+  acceptedByUserId   String?                  @map("accepted_by_user_id")
+  acceptedAt         DateTime?                @map("accepted_at")
+  revokedAt          DateTime?                @map("revoked_at")
+  createdAt          DateTime                 @default(now()) @map("created_at")
+  updatedAt          DateTime                 @updatedAt @map("updated_at")
+
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationRole OrganizationRole? @relation(fields: [organizationRoleId], references: [id], onDelete: SetNull)
+  invitedBy        User              @relation("InvitesSent", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+  acceptedBy       User?             @relation("InvitesAccepted", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([organizationId, email])
+  @@index([tokenHash])
+  @@map("organization_user_invites")
 }
 
 // ------------------------------------------------
@@ -763,30 +951,54 @@ model OrganizationMembership {
 // ------------------------------------------------
 
 model Station {
-  id             String        @id @default(uuid())
-  organizationId String        @map("organization_id")
-  name           String
-  address        String?
-  city           String?
-  postalCode     String?       @map("postal_code")
-  country        String?
-  latitude       Float?
-  longitude      Float?
-  radiusMeters   Int?          @default(150) @map("radius_meters")
-  phone          String?
-  email          String?
-  managerName    String?       @map("manager_name")
-  openingHours   String?       @map("opening_hours")
-  notes          String?
-  googlePlaceId  String?       @map("google_place_id")
-  status         StationStatus @default(ACTIVE)
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
+  id                      String        @id @default(uuid())
+  organizationId          String        @map("organization_id")
+  name                    String
+  code                    String?
+  status                  StationStatus @default(ACTIVE)
+  type                    StationType   @default(BRANCH)
+  isPrimary               Boolean       @default(false) @map("is_primary")
+  address                 String?
+  addressLine2            String?       @map("address_line2")
+  city                    String?
+  postalCode              String?       @map("postal_code")
+  country                 String?
+  latitude                Float?
+  longitude               Float?
+  timezone                String?       @default("Europe/Berlin")
+  radiusMeters            Int?          @default(100) @map("radius_meters")
+  phone                   String?
+  email                   String?
+  managerName             String?       @map("manager_name")
+  pickupEnabled           Boolean       @default(true) @map("pickup_enabled")
+  returnEnabled           Boolean       @default(true) @map("return_enabled")
+  afterHoursReturnEnabled Boolean       @default(false) @map("after_hours_return_enabled")
+  keyBoxAvailable         Boolean       @default(false) @map("key_box_available")
+  capacity                Int?
+  openingHours            Json?         @map("opening_hours")
+  holidayRules            Json?         @map("holiday_rules")
+  handoverInstructions    String?       @map("handover_instructions")
+  returnInstructions      String?       @map("return_instructions")
+  notes                   String?
+  internalNotes           String?       @map("internal_notes")
+  googlePlaceId           String?       @map("google_place_id")
+  archivedAt              DateTime?     @map("archived_at")
+  createdAt               DateTime      @default(now()) @map("created_at")
+  updatedAt               DateTime      @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicles     Vehicle[]
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehiclesHome         Vehicle[]    @relation("VehicleHomeStation")
+  vehiclesCurrent      Vehicle[]    @relation("VehicleCurrentStation")
+  vehiclesExpected     Vehicle[]    @relation("VehicleExpectedStation")
+  pickupBookings       Booking[]    @relation("BookingPickupStation")
+  returnBookings       Booking[]    @relation("BookingReturnStation")
+  actualPickupBookings Booking[]    @relation("BookingActualPickupStation")
+  actualReturnBookings Booking[]    @relation("BookingActualReturnStation")
+  userAccountPreferences UserAccountPreference[]
 
+  @@unique([organizationId, code])
   @@index([organizationId])
+  @@index([organizationId, status])
   @@map("stations")
 }
 
@@ -832,7 +1044,9 @@ model OrganizationProduct {
 model Vehicle {
   id                                String            @id @default(uuid())
   organizationId                    String            @map("organization_id")
-  stationId                         String?           @map("station_id")
+  homeStationId                     String?           @map("station_id")
+  currentStationId                  String?           @map("current_station_id")
+  expectedStationId                 String?           @map("expected_station_id")
   dimoVehicleId                     String?           @map("dimo_vehicle_id")
   vin                               String
   make                              String
@@ -895,7 +1109,9 @@ model Vehicle {
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
   organization           Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  station                Station?                     @relation(fields: [stationId], references: [id], onDelete: SetNull)
+  homeStation            Station?                     @relation("VehicleHomeStation", fields: [homeStationId], references: [id], onDelete: SetNull)
+  currentStation         Station?                     @relation("VehicleCurrentStation", fields: [currentStationId], references: [id], onDelete: SetNull)
+  expectedStation        Station?                     @relation("VehicleExpectedStation", fields: [expectedStationId], references: [id], onDelete: SetNull)
   dimoVehicle            DimoVehicle?                 @relation(fields: [dimoVehicleId], references: [id], onDelete: SetNull)
   batterySpecs           VehicleBatterySpec[]
   tireSetups             VehicleTireSetup[]
@@ -942,10 +1158,13 @@ model Vehicle {
   dataSourceLinks        VehicleDataSourceLink[]
   hmSignalGroupStates    HmSignalGroupState[]
   providerConsents       VehicleProviderConsent[]
+  tariffAssignments      VehicleTariffAssignment[]
 
   @@unique([vin, organizationId])
   @@index([organizationId])
-  @@index([stationId])
+  @@index([homeStationId])
+  @@index([currentStationId])
+  @@index([expectedStationId])
   @@index([status])
   @@map("vehicles")
 }
@@ -1877,6 +2096,9 @@ model Customer {
   @@index([organizationId, licenseNumberNormalized])
   @@index([organizationId, idNumberNormalized])
   @@index([organizationId, fullNameNormalized])
+  @@index([organizationId, archivedAt])
+  @@index([organizationId, status])
+  @@index([organizationId, riskLevel])
   @@map("customers")
 }
 
@@ -1960,8 +2182,14 @@ model Booking {
   organizationId   String        @map("organization_id")
   customerId       String        @map("customer_id")
   vehicleId        String        @map("vehicle_id")
-  pickupStationId  String?       @map("pickup_station_id")
-  returnStationId  String?       @map("return_station_id")
+  pickupStationId        String?  @map("pickup_station_id")
+  returnStationId        String?  @map("return_station_id")
+  actualPickupStationId  String?  @map("actual_pickup_station_id")
+  actualReturnStationId  String?  @map("actual_return_station_id")
+  pickupAddressOverride  String?  @map("pickup_address_override")
+  returnAddressOverride  String?  @map("return_address_override")
+  isOneWayRental         Boolean  @default(false) @map("is_one_way_rental")
+  stationTransferFeeCents Int?    @map("station_transfer_fee_cents")
   startDate        DateTime      @map("start_date")
   endDate          DateTime      @map("end_date")
   dailyRateCents   Int?          @map("daily_rate_cents")
@@ -1981,20 +2209,288 @@ model Booking {
   organization          Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   customer              Customer                  @relation(fields: [customerId], references: [id])
   vehicle               Vehicle                   @relation(fields: [vehicleId], references: [id])
+  pickupStation         Station?                  @relation("BookingPickupStation", fields: [pickupStationId], references: [id], onDelete: SetNull)
+  returnStation         Station?                  @relation("BookingReturnStation", fields: [returnStationId], references: [id], onDelete: SetNull)
+  actualPickupStation   Station?                  @relation("BookingActualPickupStation", fields: [actualPickupStationId], references: [id], onDelete: SetNull)
+  actualReturnStation   Station?                  @relation("BookingActualReturnStation", fields: [actualReturnStationId], references: [id], onDelete: SetNull)
   rentalDrivingAnalysis RentalDrivingAnalysis?
   handoverProtocols     BookingHandoverProtocol[]
   misuseCases           MisuseCase[]
+  priceSnapshots        BookingPriceSnapshot[]
 
   @@index([organizationId])
   @@index([customerId])
   @@index([vehicleId])
   @@index([status])
   @@index([startDate, endDate])
+  @@index([pickupStationId])
+  @@index([returnStationId])
   // Service-window detector and availability lookups filter by
   // vehicleId + status + startDate.
   @@index([vehicleId, status, startDate])
   @@index([organizationId, status])
   @@map("bookings")
+}
+
+// ------------------------------------------------
+// PRICING & TARIFFS (V4.8.22)
+// ------------------------------------------------
+
+enum PriceTariffVersionStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum PriceOptionPricingType {
+  PER_DAY
+  PER_BOOKING
+}
+
+enum BookingPriceLineItemType {
+  BASE_RENTAL
+  INSURANCE
+  EXTRA
+  MILEAGE_PACKAGE
+  DISCOUNT
+  TAX
+  DEPOSIT
+  MANUAL_ADJUSTMENT
+  EXTRA_KM
+}
+
+model PriceBook {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String
+  currency       String   @default("EUR")
+  taxRatePercent Int      @default(19) @map("tax_rate_percent")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization         Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tariffGroups         PriceTariffGroup[]
+  tariffVersions       PriceTariffVersion[]
+  vehicleAssignments   VehicleTariffAssignment[]
+  bookingPriceSnapshots BookingPriceSnapshot[]
+
+  @@index([organizationId])
+  @@map("price_books")
+}
+
+model PriceTariffGroup {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  priceBookId    String   @map("price_book_id")
+  name           String
+  description    String?
+  category       String?
+  isActive       Boolean  @default(true) @map("is_active")
+  sortOrder      Int      @default(0) @map("sort_order")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization       Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  priceBook          PriceBook                 @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
+  versions           PriceTariffVersion[]
+  vehicleAssignments VehicleTariffAssignment[]
+  bookingPriceSnapshots BookingPriceSnapshot[]
+
+  @@index([organizationId])
+  @@index([priceBookId])
+  @@map("price_tariff_groups")
+}
+
+model PriceTariffVersion {
+  id             String                   @id @default(uuid())
+  organizationId String                   @map("organization_id")
+  priceBookId    String                   @map("price_book_id")
+  tariffGroupId  String                   @map("tariff_group_id")
+  versionNumber  Int                      @map("version_number")
+  status         PriceTariffVersionStatus @default(DRAFT)
+  validFrom      DateTime                 @map("valid_from")
+  validTo        DateTime?                @map("valid_to")
+  createdBy      String?                  @map("created_by")
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  updatedAt      DateTime                 @updatedAt @map("updated_at")
+
+  organization         Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  priceBook            PriceBook                 @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
+  tariffGroup          PriceTariffGroup          @relation(fields: [tariffGroupId], references: [id], onDelete: Cascade)
+  rate                 TariffRate?
+  mileagePackages      MileagePackage[]
+  insuranceOptions     TariffInsuranceOption[]
+  extraOptions         TariffExtraOption[]
+  bookingPriceSnapshots BookingPriceSnapshot[]
+
+  @@unique([tariffGroupId, versionNumber])
+  @@index([organizationId])
+  @@index([tariffGroupId, status])
+  @@map("price_tariff_versions")
+}
+
+model TariffRate {
+  id                 String   @id @default(uuid())
+  organizationId     String   @map("organization_id")
+  tariffVersionId    String   @unique @map("tariff_version_id")
+  dailyRateCents     Int      @map("daily_rate_cents")
+  weeklyRateCents    Int      @default(0) @map("weekly_rate_cents")
+  monthlyRateCents   Int      @default(0) @map("monthly_rate_cents")
+  includedKmPerDay   Int      @default(200) @map("included_km_per_day")
+  extraKmPriceCents  Int      @default(0) @map("extra_km_price_cents")
+  depositAmountCents Int      @default(0) @map("deposit_amount_cents")
+  minimumRentalDays  Int?     @map("minimum_rental_days")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tariffVersion PriceTariffVersion @relation(fields: [tariffVersionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("tariff_rates")
+}
+
+model MileagePackage {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  tariffVersionId String   @map("tariff_version_id")
+  label           String
+  includedKm      Int      @map("included_km")
+  priceCents      Int      @map("price_cents")
+  isActive        Boolean  @default(true) @map("is_active")
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tariffVersion PriceTariffVersion @relation(fields: [tariffVersionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([tariffVersionId])
+  @@map("mileage_packages")
+}
+
+model TariffInsuranceOption {
+  id               String                 @id @default(uuid())
+  organizationId   String                 @map("organization_id")
+  tariffVersionId  String                 @map("tariff_version_id")
+  label            String
+  description      String?
+  priceCents       Int                    @map("price_cents")
+  pricingType      PriceOptionPricingType @default(PER_DAY) @map("pricing_type")
+  deductibleCents  Int?                   @map("deductible_cents")
+  isDefault        Boolean                @default(false) @map("is_default")
+  isActive         Boolean                @default(true) @map("is_active")
+  sortOrder        Int                    @default(0) @map("sort_order")
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tariffVersion PriceTariffVersion @relation(fields: [tariffVersionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([tariffVersionId])
+  @@map("tariff_insurance_options")
+}
+
+model TariffExtraOption {
+  id              String                 @id @default(uuid())
+  organizationId  String                 @map("organization_id")
+  tariffVersionId String                 @map("tariff_version_id")
+  label           String
+  description     String?
+  priceCents      Int                    @map("price_cents")
+  pricingType     PriceOptionPricingType @default(PER_DAY) @map("pricing_type")
+  isActive        Boolean                @default(true) @map("is_active")
+  sortOrder       Int                    @default(0) @map("sort_order")
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+
+  organization  Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tariffVersion PriceTariffVersion @relation(fields: [tariffVersionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([tariffVersionId])
+  @@map("tariff_extra_options")
+}
+
+model VehicleTariffAssignment {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  vehicleId      String    @map("vehicle_id")
+  tariffGroupId  String    @map("tariff_group_id")
+  priceBookId    String    @map("price_book_id")
+  validFrom      DateTime  @map("valid_from")
+  validTo        DateTime? @map("valid_to")
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle        Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  tariffGroup    PriceTariffGroup @relation(fields: [tariffGroupId], references: [id], onDelete: Cascade)
+  priceBook      PriceBook        @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([vehicleId, isActive])
+  @@index([tariffGroupId])
+  @@map("vehicle_tariff_assignments")
+}
+
+model BookingPriceSnapshot {
+  id                String   @id @default(uuid())
+  organizationId    String   @map("organization_id")
+  bookingId         String   @unique @map("booking_id")
+  priceBookId       String?  @map("price_book_id")
+  tariffGroupId     String?  @map("tariff_group_id")
+  tariffVersionId   String?  @map("tariff_version_id")
+  currency          String   @default("EUR")
+  taxRatePercent    Int      @map("tax_rate_percent")
+  rentalDays        Int      @map("rental_days")
+  includedKm        Int      @map("included_km")
+  extraKmPriceCents Int      @map("extra_km_price_cents")
+  depositAmountCents Int     @map("deposit_amount_cents")
+  subtotalNetCents  Int      @map("subtotal_net_cents")
+  taxAmountCents    Int      @map("tax_amount_cents")
+  totalGrossCents   Int      @map("total_gross_cents")
+  totalDueNowCents  Int?     @map("total_due_now_cents")
+  pricingInputJson  Json?    @map("pricing_input_json")
+  pricingWarningsJson Json?  @map("pricing_warnings_json")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  organization  Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking       Booking                @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  priceBook     PriceBook?             @relation(fields: [priceBookId], references: [id], onDelete: SetNull)
+  tariffGroup   PriceTariffGroup?      @relation(fields: [tariffGroupId], references: [id], onDelete: SetNull)
+  tariffVersion PriceTariffVersion?    @relation(fields: [tariffVersionId], references: [id], onDelete: SetNull)
+  lineItems     BookingPriceLineItem[]
+
+  @@index([organizationId])
+  @@map("booking_price_snapshots")
+}
+
+model BookingPriceLineItem {
+  id                     String                   @id @default(uuid())
+  organizationId         String                   @map("organization_id")
+  bookingPriceSnapshotId String                   @map("booking_price_snapshot_id")
+  type                   BookingPriceLineItemType
+  label                  String
+  quantity               Int                      @default(1)
+  unitPriceCents         Int                      @map("unit_price_cents")
+  totalNetCents          Int                      @map("total_net_cents")
+  taxRatePercent         Int                      @map("tax_rate_percent")
+  totalGrossCents        Int                      @map("total_gross_cents")
+  metadataJson           Json?                    @map("metadata_json")
+  sortOrder              Int                      @default(0) @map("sort_order")
+  createdAt              DateTime                 @default(now()) @map("created_at")
+
+  organization         Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookingPriceSnapshot BookingPriceSnapshot @relation(fields: [bookingPriceSnapshotId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([bookingPriceSnapshotId])
+  @@map("booking_price_line_items")
 }
 
 // ------------------------------------------------
@@ -2225,9 +2721,9 @@ enum TaskStatus {
 
 enum TaskPriority {
   LOW
-  MEDIUM
+  NORMAL
   HIGH
-  URGENT
+  CRITICAL
 }
 
 // V4.8.3 — Task Action Layer. Canonical task taxonomy. Operationally typed so
@@ -2271,7 +2767,7 @@ model OrgTask {
   category        String?
   type            TaskType     @default(CUSTOM)
   status          TaskStatus   @default(OPEN)
-  priority        TaskPriority @default(MEDIUM)
+  priority        TaskPriority @default(NORMAL)
   // Canonical link targets. All optional — a task may link to a vehicle, a
   // booking, a customer, a vendor, an alert (DashboardInsight) or a document,
   // but never has to have all of them. Stored as plain scoped ids (org
@@ -2284,7 +2780,7 @@ model OrgTask {
   documentId      String?      @map("document_id")
   fineId          String?      @map("fine_id")
   invoiceId       String?      @map("invoice_id")
-  assignedTo      String?      @map("assigned_to")
+  assignedUserId  String?      @map("assigned_to")
   dueDate         DateTime?    @map("due_date")
   startedAt       DateTime?    @map("started_at")
   completedAt     DateTime?    @map("completed_at")
@@ -2328,11 +2824,11 @@ model OrgTask {
   @@index([vendorId])
   @@index([alertId])
   @@index([documentId])
-  @@index([assignedTo])
+  @@index([assignedUserId])
   @@index([createdByUserId])
   // Task list is per-org filtered by status; dueDate is the common sort.
   @@index([organizationId, status])
-  @@index([organizationId, assignedTo])
+  @@index([organizationId, assignedUserId])
   @@index([organizationId, dueDate])
   @@index([organizationId, source])
   @@unique([organizationId, dedupKey], name: "org_tasks_org_dedup_key")
@@ -2421,16 +2917,73 @@ enum OrgInvoiceType {
 }
 
 enum OrgInvoiceStatus {
+  // Outgoing lifecycle
   DRAFT
+  ISSUED
   SENT
+  PARTIALLY_PAID
   PAID
   OVERDUE
   CANCELLED
+  CREDITED
+  VOID
+  // Incoming lifecycle
+  UPLOADED
+  NEEDS_REVIEW
+  APPROVED
+  BOOKED
+  REJECTED
+}
+
+enum InvoicePaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CARD
+  STRIPE
+  OTHER
+}
+
+model OrgInvoiceSequence {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  sequenceYear   Int      @map("sequence_year")
+  lastNumber     Int      @default(0) @map("last_number")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, sequenceYear])
+  @@map("org_invoice_sequences")
+}
+
+model OrgInvoicePayment {
+  id             String               @id @default(uuid())
+  organizationId String               @map("organization_id")
+  invoiceId      String               @map("invoice_id")
+  amountCents    Int                  @map("amount_cents")
+  method         InvoicePaymentMethod @default(BANK_TRANSFER)
+  paidAt         DateTime             @map("paid_at")
+  reference      String?
+  note           String?
+  createdByUserId String?             @map("created_by_user_id")
+  createdAt      DateTime             @default(now()) @map("created_at")
+
+  invoice OrgInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([invoiceId])
+  @@index([paidAt])
+  @@map("org_invoice_payments")
 }
 
 model OrgInvoice {
   id             String           @id @default(uuid())
-  invoiceNumber  Int              @unique @default(autoincrement()) @map("invoice_number")
+  /// @deprecated Legacy global autoincrement — use invoiceNumberDisplay + sequence fields for new invoices.
+  invoiceNumber  Int?             @map("invoice_number")
+  legacyInvoiceNumber Int?        @map("legacy_invoice_number")
+  invoiceNumberDisplay String?    @map("invoice_number_display")
+  sequenceYear   Int?             @map("sequence_year")
+  sequenceNumber Int?             @map("sequence_number")
   organizationId String           @map("organization_id")
   type           OrgInvoiceType
   customerId     String?          @map("customer_id")
@@ -2444,6 +2997,8 @@ model OrgInvoice {
   subtotalCents  Int              @default(0) @map("subtotal_cents")
   taxCents       Int              @default(0) @map("tax_cents")
   totalCents     Int              @map("total_cents")
+  paidCents      Int              @default(0) @map("paid_cents")
+  outstandingCents Int            @default(0) @map("outstanding_cents")
   currency       String           @default("EUR")
   invoiceDate    DateTime         @default(now()) @map("invoice_date")
   dueDate        DateTime?        @map("due_date")
@@ -2451,14 +3006,24 @@ model OrgInvoice {
   templateId     String?          @map("template_id")
   imageUrl       String?          @map("image_url")
   extractedData  Json?            @map("extracted_data")
+  documentExtractionId String?    @map("document_extraction_id")
+  generatedDocumentId  String?    @map("generated_document_id")
   notes          String?
   paidAt         DateTime?        @map("paid_at")
+  issuedAt       DateTime?        @map("issued_at")
+  sentAt         DateTime?        @map("sent_at")
+  cancelledAt    DateTime?        @map("cancelled_at")
+  voidedAt       DateTime?        @map("voided_at")
+  creditedAt     DateTime?        @map("credited_at")
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
 
-  tasks  OrgTask[]
-  vendor Vendor?  @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  tasks    OrgTask[]
+  payments OrgInvoicePayment[]
+  vendor   Vendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@unique([organizationId, sequenceYear, sequenceNumber])
   @@index([organizationId])
   @@index([customerId])
   @@index([vendorId])
@@ -2466,7 +3031,6 @@ model OrgInvoice {
   @@index([status])
   @@index([type])
   @@index([invoiceDate])
-  // Invoice list: paginated per-org by status and date.
   @@index([organizationId, status])
   @@index([organizationId, invoiceDate])
   @@map("org_invoices")
@@ -3839,9 +4403,34 @@ enum DataAuthorizationStatus {
   EXPIRED
 }
 
+enum DataAuthorizationSourceType {
+  DIMO
+  SYNQDRIVE_SYSTEM
+  CUSTOMER_CONSENT
+  PARTNER_ACCESS
+  MANUAL_UPLOAD
+  API_INTEGRATION
+}
+
+enum DataAuthorizationProcessorType {
+  SYNQDRIVE
+  EXTERNAL_PARTNER
+  INTERNAL_SYSTEM
+}
+
+enum DataAuthorizationRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
 enum DataAuthorizationScope {
   ORGANIZATION
+  CONNECTED_VEHICLES
   VEHICLE
+  CUSTOMER
+  BOOKING
 }
 
 enum DataAuthorizationAccessPattern {
@@ -3852,32 +4441,49 @@ enum DataAuthorizationAccessPattern {
 }
 
 model OrgDataAuthorization {
-  id               String                         @id @default(uuid())
-  organizationId   String                         @map("organization_id")
-  requestingEntity String                         @map("requesting_entity")
-  moduleOrigin     String                         @map("module_origin")
-  purpose          String
-  scope            DataAuthorizationScope         @default(ORGANIZATION)
-  dataCategories   Json                           @map("data_categories")
-  destination      String
-  vehicleIds       Json?                          @map("vehicle_ids")
-  accessPattern    DataAuthorizationAccessPattern @default(ONGOING) @map("access_pattern")
-  status           DataAuthorizationStatus        @default(PENDING)
-  grantedById      String?                        @map("granted_by_id")
-  grantedByName    String?                        @map("granted_by_name")
-  grantedAt        DateTime?                      @map("granted_at")
-  revokedById      String?                        @map("revoked_by_id")
-  revokedByName    String?                        @map("revoked_by_name")
-  revokedAt        DateTime?                      @map("revoked_at")
-  expiresAt        DateTime?                      @map("expires_at")
-  notes            String?
-  createdAt        DateTime                       @default(now()) @map("created_at")
-  updatedAt        DateTime                       @updatedAt @map("updated_at")
+  id                String                         @id @default(uuid())
+  organizationId    String                         @map("organization_id")
+  title             String?
+  description       String?
+  sourceType        DataAuthorizationSourceType?   @map("source_type")
+  processorType     DataAuthorizationProcessorType? @map("processor_type")
+  processorName     String?                        @map("processor_name")
+  purposes          Json?
+  riskLevel         DataAuthorizationRiskLevel     @default(MEDIUM) @map("risk_level")
+  customerIds       Json?                          @map("customer_ids")
+  bookingIds        Json?                          @map("booking_ids")
+  systemKey         String?                        @map("system_key")
+  isSystemGenerated Boolean                        @default(false) @map("is_system_generated")
+  lastAccessAt      DateTime?                      @map("last_access_at")
+  accessCount       Int                            @default(0) @map("access_count")
+  revokeReason      String?                        @map("revoke_reason")
+  requestingEntity  String                         @map("requesting_entity")
+  moduleOrigin      String                         @map("module_origin")
+  purpose           String
+  scope             DataAuthorizationScope         @default(ORGANIZATION)
+  dataCategories    Json                           @map("data_categories")
+  destination       String
+  vehicleIds        Json?                          @map("vehicle_ids")
+  accessPattern     DataAuthorizationAccessPattern @default(ONGOING) @map("access_pattern")
+  status            DataAuthorizationStatus        @default(PENDING)
+  grantedById       String?                        @map("granted_by_id")
+  grantedByName     String?                        @map("granted_by_name")
+  grantedAt         DateTime?                      @map("granted_at")
+  revokedById       String?                        @map("revoked_by_id")
+  revokedByName     String?                        @map("revoked_by_name")
+  revokedAt         DateTime?                      @map("revoked_at")
+  expiresAt         DateTime?                      @map("expires_at")
+  notes             String?
+  createdAt         DateTime                       @default(now()) @map("created_at")
+  updatedAt         DateTime                       @updatedAt @map("updated_at")
 
+  @@unique([organizationId, systemKey])
   @@index([organizationId])
   @@index([status])
   @@index([moduleOrigin])
   @@index([requestingEntity])
+  @@index([sourceType])
+  @@index([riskLevel])
   @@map("org_data_authorizations")
 }
 
@@ -3887,6 +4493,32 @@ enum WorkflowStatus {
   ACTIVE
   DRAFT
   DISABLED
+  INVALID
+}
+
+enum WorkflowRunStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  SKIPPED
+  WAITING_APPROVAL
+}
+
+enum WorkflowActionRunStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  SKIPPED
+  WAITING_APPROVAL
+}
+
+enum WorkflowApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
 }
 
 model OrgWorkflow {
@@ -3900,6 +4532,8 @@ model OrgWorkflow {
   actions         Json
   scope           Json           @default("{\"type\":\"organization\"}")
   status          WorkflowStatus @default(DRAFT)
+  enabled         Boolean        @default(false)
+  version         Int            @default(1)
   createdById     String?        @map("created_by_id")
   createdByName   String?        @map("created_by_name")
   updatedById     String?        @map("updated_by_id")
@@ -3910,10 +4544,92 @@ model OrgWorkflow {
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
+  runs OrgWorkflowRun[]
+
   @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, enabled])
   @@index([status])
   @@index([category])
   @@map("org_workflows")
+}
+
+model OrgWorkflowRun {
+  id              String            @id @default(uuid())
+  organizationId  String            @map("organization_id")
+  workflowId      String            @map("workflow_id")
+  workflowVersion Int               @map("workflow_version")
+  eventType       String            @map("event_type")
+  entityType      String?           @map("entity_type")
+  entityId        String?           @map("entity_id")
+  status          WorkflowRunStatus @default(PENDING)
+  inputPayload    Json              @map("input_payload")
+  conditionResult Json?             @map("condition_result")
+  errorMessage    String?           @map("error_message")
+  idempotencyKey  String            @map("idempotency_key")
+  startedAt       DateTime          @default(now()) @map("started_at")
+  finishedAt      DateTime?         @map("finished_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+
+  workflow   OrgWorkflow            @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  actionRuns OrgWorkflowActionRun[]
+  approvals  OrgWorkflowApproval[]
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId])
+  @@index([workflowId])
+  @@index([organizationId, workflowId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("org_workflow_runs")
+}
+
+model OrgWorkflowActionRun {
+  id               String                  @id @default(uuid())
+  organizationId   String                  @map("organization_id")
+  workflowRunId    String                  @map("workflow_run_id")
+  workflowId       String                  @map("workflow_id")
+  actionType       String                  @map("action_type")
+  actionIndex      Int                     @map("action_index")
+  status           WorkflowActionRunStatus @default(PENDING)
+  input            Json?
+  output           Json?
+  errorMessage     String?                 @map("error_message")
+  requiresApproval Boolean                 @default(false) @map("requires_approval")
+  approvedByUserId String?                 @map("approved_by_user_id")
+  approvedAt       DateTime?               @map("approved_at")
+  startedAt        DateTime?               @map("started_at")
+  finishedAt       DateTime?               @map("finished_at")
+  createdAt        DateTime                @default(now()) @map("created_at")
+
+  workflowRun OrgWorkflowRun @relation(fields: [workflowRunId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([workflowRunId])
+  @@index([workflowId])
+  @@index([status])
+  @@map("org_workflow_action_runs")
+}
+
+model OrgWorkflowApproval {
+  id               String                 @id @default(uuid())
+  organizationId   String                 @map("organization_id")
+  workflowRunId    String                 @map("workflow_run_id")
+  actionRunId      String                 @map("action_run_id")
+  status           WorkflowApprovalStatus @default(PENDING)
+  requestedBySystem Boolean               @default(true) @map("requested_by_system")
+  approvedByUserId String?                @map("approved_by_user_id")
+  reason           String?
+  createdAt        DateTime               @default(now()) @map("created_at")
+  decidedAt        DateTime?              @map("decided_at")
+
+  workflowRun OrgWorkflowRun @relation(fields: [workflowRunId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([workflowRunId])
+  @@index([actionRunId])
+  @@index([status])
+  @@map("org_workflow_approvals")
 }
 
 // ------------------------------------------------
@@ -4785,7 +5501,10 @@ model TripDrivingImpact {
   stopGoStressScore       Float? @map("stop_go_stress_score")
   highSpeedStressScore    Float? @map("high_speed_stress_score")
   thermalBrakeStressScore Float? @map("thermal_brake_stress_score")
-  drivingStyleScore       Float? @map("driving_style_score")
+  /// Composite vehicle stress / Fahrbelastung (0–100). Higher = more load/stress, NOT driver quality.
+  /// DB column kept as `driving_style_score` for non-destructive rename (V4.8.24).
+  drivingStressScore      Float? @map("driving_style_score")
+  /// @deprecated Retired from rental surfaces; no longer written on recompute. Column retained for history.
   safetyScore             Float? @map("safety_score")
   speedingExposurePct     Float? @map("speeding_exposure_pct")
   // V4.6.95 — `speedingSeverityScore` was deprecated in V4.6.83 (no consumer
@@ -4845,11 +5564,9 @@ model VehicleDrivingImpactCurrent {
   stopGoStressScore       Float? @map("stop_go_stress_score")
   highSpeedStressScore    Float? @map("high_speed_stress_score")
   thermalBrakeStressScore Float? @map("thermal_brake_stress_score")
-  drivingStyleScore       Float? @map("driving_style_score")
-  // Rolling speeding-centric Safety Score (V4.6.83). Distance-weighted
-  // aggregate over the same rolling window as drivingStyleScore. Kept in
-  // sync with TripDrivingImpact.safetyScore; mirrors the canonical
-  // `computeSafetyScore` output from the Driving Impact Engine.
+  /// Rolling composite vehicle stress (0–100). Higher = more load. Mapped to legacy column.
+  drivingStressScore      Float? @map("driving_style_score")
+  /// @deprecated No longer updated on recompute; historical values may remain.
   safetyScore             Float? @map("safety_score")
 
   modelVersion String   @map("model_version")

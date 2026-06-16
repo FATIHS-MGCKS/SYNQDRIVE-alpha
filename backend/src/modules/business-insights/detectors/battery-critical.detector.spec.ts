@@ -25,7 +25,7 @@ describe('BatteryCriticalDetector', () => {
             make: 'BMW',
             model: 'i4',
             licensePlate: 'B AB 123',
-            stationId: null,
+            homeStationId: null,
             fuelType: opts.fuelType ?? 'GASOLINE',
             latestState: {
               tractionBatterySohPercent: opts.providerHvSoh ?? null,

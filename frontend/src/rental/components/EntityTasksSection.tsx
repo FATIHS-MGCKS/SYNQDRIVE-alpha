@@ -46,12 +46,13 @@ function statusTone(status: ApiTaskStatus): string {
 
 function priorityTone(priority: ApiTaskPriority): string {
   switch (priority) {
-    case 'URGENT':
+    case 'CRITICAL':
       return 'text-red-600';
     case 'HIGH':
       return 'text-orange-600';
     case 'LOW':
       return 'text-gray-500';
+    case 'NORMAL':
     default:
       return 'text-amber-600';
   }

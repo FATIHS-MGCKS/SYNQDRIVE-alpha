@@ -449,7 +449,7 @@ function del<T>(path: string) {
 // Mirrors the backend TasksService read model. `isOverdue` is derived
 // server-side (dueDate < now && status not terminal) and must be used as-is.
 export type ApiTaskStatus = 'OPEN' | 'IN_PROGRESS' | 'WAITING' | 'DONE' | 'CANCELLED';
-export type ApiTaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type ApiTaskPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
 export type ApiTaskType =
   | 'VEHICLE_SERVICE'
   | 'VEHICLE_INSPECTION'
@@ -520,7 +520,7 @@ export interface ApiTask {
   documentId: string | null;
   fineId: string | null;
   invoiceId: string | null;
-  assignedTo: string | null;
+  assignedUserId: string | null;
   estimatedCostCents: number | null;
   actualCostCents: number | null;
   resolutionNote: string | null;
@@ -583,6 +583,7 @@ export interface CreateTaskPayload {
   vendorId?: string;
   alertId?: string;
   documentId?: string;
+  stationId?: string;
   estimatedCostCents?: number;
   checklist?: Array<{ title: string; description?: string; sortOrder?: number }>;
 }
@@ -656,6 +657,186 @@ export interface BookingDocumentBundleView {
   warnings: string[];
 }
 
+export type BookingDetailDocumentSlot = {
+  documentType: string;
+  status: 'missing' | 'required' | 'generated' | 'signed' | 'void';
+  required: boolean;
+  available: boolean;
+  generatedAt: string | null;
+  signedAt: string | null;
+  documentId: string | null;
+  missingReason: string | null;
+};
+
+export type BookingDetailHandoverSide = {
+  protocolId: string;
+  status: 'completed';
+  completedAt: string;
+  odometerKm: number;
+  fuelPercent: number;
+  fuelFull: boolean;
+  damageCount: number;
+  signatureComplete: boolean;
+  performedByName: string | null;
+};
+
+export type BookingStationContext = {
+  stationId: string;
+  name: string;
+  code: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  openingHours: unknown;
+  handoverInstructions: string | null;
+  returnInstructions: string | null;
+  status: string;
+  pickupEnabled: boolean;
+  returnEnabled: boolean;
+  latitude: number | null;
+  longitude: number | null;
+};
+
+export type BookingDetailDto = {
+  core: {
+    bookingId: string;
+    bookingNumber: string;
+    organizationId: string;
+    status: string;
+    statusEnum: string;
+    startDate: string;
+    endDate: string;
+    pickupStationId: string | null;
+    returnStationId: string | null;
+    pickupStationName: string | null;
+    returnStationName: string | null;
+    notes: string | null;
+    createdAt: string;
+    updatedAt: string;
+    cancelledAt: string | null;
+    completedAt: string | null;
+    kmIncluded: number | null;
+    kmDriven: number | null;
+    insuranceOptions: string[];
+    extras: unknown[];
+    currency: string;
+    isOneWayRental: boolean;
+    pickupAddressOverride: string | null;
+    returnAddressOverride: string | null;
+  };
+  stations: {
+    pickup: BookingStationContext | null;
+    return: BookingStationContext | null;
+    actualPickup: BookingStationContext | null;
+    actualReturn: BookingStationContext | null;
+    isOneWayRental: boolean;
+    hasPickupDeviation: boolean;
+    hasReturnDeviation: boolean;
+  };
+  customer: {
+    customerId: string;
+    fullName: string;
+    email: string | null;
+    phone: string | null;
+    customerStatus: string | null;
+    identityStatus: string | null;
+    licenseStatus: string | null;
+    riskLevel: string | null;
+    openInvoiceCount: number;
+    openFineCount: number;
+    noShowCount: number;
+  };
+  vehicle: {
+    vehicleId: string;
+    displayName: string;
+    licensePlate: string;
+    vin: string | null;
+    make: string | null;
+    model: string | null;
+    year: number | null;
+    vehicleStatus: string | null;
+    rentalBlocked: boolean;
+    blockingReasons: string[];
+    odometerKm: number | null;
+    fuelPercent: number | null;
+    evSoc: number | null;
+  };
+  finance: {
+    basePriceCents: number | null;
+    extrasPriceCents: number | null;
+    discountAmountCents: number | null;
+    depositAmountCents: number | null;
+    depositStatus: string | null;
+    taxRate: number | null;
+    taxAmountCents: number | null;
+    grossAmountCents: number | null;
+    paidAmountCents: number | null;
+    openAmountCents: number | null;
+    paymentStatus: string | null;
+    invoiceStatus: string | null;
+    finalInvoiceStatus: string | null;
+    additionalChargesCents: number | null;
+    refundAmountCents: number | null;
+    retainedDepositAmountCents: number | null;
+    computed: boolean;
+  };
+  documents: {
+    bundleStatus: string | null;
+    legalTermsAttached: boolean;
+    legalWithdrawalAttached: boolean;
+    legalMissing: string[];
+    warnings: string[];
+    slots: BookingDetailDocumentSlot[];
+  };
+  handover: {
+    pickup: BookingDetailHandoverSide | null;
+    return: BookingDetailHandoverSide | null;
+  };
+  tasks: {
+    openCount: number;
+    overdueCount: number;
+    completedCount: number;
+    nextDueAt: string | null;
+    items: Array<{
+      id: string;
+      title: string;
+      status: string;
+      priority: string;
+      dueAt: string | null;
+      overdue: boolean;
+    }>;
+  };
+  health: {
+    rentalBlocked: boolean;
+    blockingReasons: string[];
+    overallState: string | null;
+    criticalWarnings: string[];
+    warningWarnings: string[];
+  };
+  usage: {
+    drivingStressScore: number | null;
+    stressLevel: 'low' | 'moderate' | 'high' | 'critical' | null;
+    drivingEventsCount: number | null;
+    abuseDetectionCount: number | null;
+    misuseCaseCount: number;
+    hasAnalysis: boolean;
+  };
+  eligibility: {
+    canCreatePendingBooking: boolean;
+    canConfirmBooking: boolean;
+    canStartRental: boolean;
+    blockingReasons: string[];
+    warnings: string[];
+    requiredActions: string[];
+  } | null;
+  activity: Array<{
+    id: string;
+    action: string;
+    description: string;
+    createdAt: string;
+  }>;
+};
+
 export interface LegalDocumentDto {
   id: string;
   documentType: string;
@@ -718,9 +899,10 @@ export interface VehicleTripAnalytics {
   durationMinutes?: number | null;
   avgSpeedKmh?: number | null;
   maxSpeedKmh?: number | null;
+  drivingStressScore?: number | null;
+  stressLevel?: 'low' | 'moderate' | 'high' | 'critical' | null;
+  /** @deprecated Legacy mirror — use drivingStressScore */
   drivingScore?: number | null;
-  drivingStyleScore?: number | null;
-  safetyScore?: number | null;
   scoreSource?: 'trip_driving_impact' | 'vehicle_trip_compat' | 'derived';
   totalAccelerationEvents?: number;
   hardAccelerationEvents?: number;
@@ -729,10 +911,6 @@ export interface VehicleTripAnalytics {
   fullBrakingEvents?: number;
   corneringEvents?: number;
   abuseEvents?: number;
-  speedingEvents?: number;
-  speedingExposurePct?: number | null;
-  speedingSectionCount?: number | null;
-  speedingSectionsJson?: SpeedingSection[];
   behaviorReady?: boolean;
   detailsLimited?: boolean;
   assignmentStatus?: TripAssignmentStatus | null;
@@ -747,9 +925,11 @@ export interface VehicleTripAnalytics {
 export interface VehicleTripStats {
   totalTrips: number;
   totalDistanceKm: number;
-  avgDrivingScore: number;
-  avgDrivingStyleScore: number;
-  avgSafetyScore: number;
+  avgDrivingStressScore: number | null;
+  stressLevel: 'low' | 'moderate' | 'high' | 'critical' | null;
+  /** @deprecated Mirror of avgDrivingStressScore */
+  avgDrivingScore: number | null;
+  avgDrivingStyleScore: number | null;
   totalAccelerationEvents: number;
   totalHardAccelerationEvents: number;
   totalBrakingEvents: number;
@@ -765,8 +945,8 @@ export interface DriverScoreSummary {
   subjectId: string;
   tripCount: number;
   scoredTripCount: number;
-  drivingStyleScore: number | null;
-  safetyScore: number | null;
+  drivingStressScore: number | null;
+  stressLevel: 'low' | 'moderate' | 'high' | 'critical' | null;
   assignmentCoveragePct: number;
 }
 
@@ -778,8 +958,8 @@ export interface CustomerApiRecord {
   email?: string | null;
   phone?: string | null;
   bookingCount?: number;
-  drivingStyleScore?: number | null;
-  safetyScore?: number | null;
+  drivingStressScore?: number | null;
+  stressLevel?: 'low' | 'moderate' | 'high' | 'critical' | null;
   scoreEligibleTripCount?: number;
   // V4.6.66 — booking-derived aggregates returned by /customers and /customers/:id.
   totalRevenueCents?: number;
@@ -795,11 +975,8 @@ export interface RentalDrivingAnalysisItem {
   periodStart: string;
   periodEnd: string;
   overallLevel: string;
-  // V4.6.95 — riskLevel is lowercase ('low' | 'medium' | 'high') as
-  // produced by RentalDrivingAnalysisService.
   riskLevel: string;
-  // V4.6.95 — `drivingScore` is the legacy compat mirror. Prefer
-  // `payload.drivingBehavior.drivingStyleScore` everywhere.
+  /** Legacy column — mirrors vehicle stress score */
   drivingScore: number | null;
   drivingEventsCount?: number | null;
   abuseDetectionCount?: number | null;
@@ -807,13 +984,15 @@ export interface RentalDrivingAnalysisItem {
   driverStyleCategory?: string | null;
   payload: {
     overallAssessment?: { level?: string; title?: string; shortSummary?: string };
-    drivingBehavior?: {
-      drivingStyleScore?: number | null;
-      safetyScore?: number | null;
-      drivingScore?: number | null;
-      safetyStyle?: string;
-      accelerationBehavior?: { level?: string; summary?: string };
-      brakingBehavior?: { level?: string; summary?: string };
+    vehicleStressSummary?: {
+      drivingStressScore?: number | null;
+      stressLevel?: 'low' | 'moderate' | 'high' | 'critical' | null;
+      longitudinalStressScore?: number | null;
+      brakingStressScore?: number | null;
+      stopGoStressScore?: number | null;
+      highSpeedStressScore?: number | null;
+      thermalBrakeStressScore?: number | null;
+      summary?: string;
     };
     eventSummary?: {
       drivingEventsCount?: number | null;
@@ -821,25 +1000,26 @@ export interface RentalDrivingAnalysisItem {
       errorCodeOccurred?: boolean;
       eventHighlights?: string[];
     };
-    riskAnalysis?: {
-      level?: string;
-      summary?: string;
-      keyRisks?: string[];
-    };
     wearImpactAssessment?: {
       overallWearImpact?: string;
       summary?: string;
       affectedAreas?: Array<{ area: string; impact: string; reason?: string }>;
     };
-    // V4.6.95 — backend-supplied confidence metadata.
+    usagePattern?: {
+      tripType?: string;
+      roadDistribution?: { cityPercent?: number; highwayPercent?: number; countryRoadPercent?: number };
+      temperatureContext?: { avgTemperatureC?: number | null; climateNote?: string };
+    };
+    watchpoints?: string[];
+    recommendations?: string[];
     analysisMeta?: {
       tripCount?: number;
       scoredTripCount?: number;
-      safetyScoredTripCount?: number;
       totalDistanceKm?: number;
       assignmentCoveragePct?: number;
       hasEnoughData?: boolean;
-      dataConfidence?: 'none' | 'low' | 'medium' | 'high';
+      dataConfidence?: 'low' | 'medium' | 'high';
+      analysisSource?: string;
     };
     [key: string]: unknown;
   } | null;
@@ -848,12 +1028,500 @@ export interface RentalDrivingAnalysisItem {
   [key: string]: unknown;
 }
 
+// ── Workflow Automation types ───────────────────────────────────────────────
+export interface WorkflowTriggerDto {
+  type: string;
+  config?: Record<string, unknown>;
+}
+export interface WorkflowConditionDto {
+  field?: string;
+  path?: string;
+  operator: string;
+  value?: unknown;
+}
+export interface WorkflowActionDto {
+  type: string;
+  config?: Record<string, unknown>;
+  requiresApproval?: boolean;
+}
+export interface WorkflowScopeDto {
+  type: string;
+  stationIds?: string[];
+  vehicleIds?: string[];
+}
+export interface WorkflowDto {
+  id: string;
+  organizationId: string;
+  name: string;
+  description: string | null;
+  category: string;
+  trigger: WorkflowTriggerDto;
+  conditions: WorkflowConditionDto[];
+  actions: WorkflowActionDto[];
+  scope: WorkflowScopeDto;
+  status: string;
+  statusLabel?: string;
+  enabled?: boolean;
+  version?: number;
+  createdById: string | null;
+  createdByName: string | null;
+  updatedById: string | null;
+  updatedByName: string | null;
+  lastTriggeredAt: string | null;
+  triggerCount: number;
+  isTemplate?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface WorkflowStatsDto {
+  total: number;
+  active: number;
+  draft: number;
+  disabled: number;
+  invalid: number;
+  totalRuns: number;
+  successfulRuns: number;
+  failedRuns: number;
+  waitingApprovalRuns: number;
+  runsLast24h: number;
+  lastRunAt: string | null;
+}
+export interface WorkflowActionRunDto {
+  id: string;
+  organizationId: string;
+  workflowRunId: string;
+  workflowId: string;
+  actionType: string;
+  actionIndex: number;
+  status: string;
+  input?: Record<string, unknown> | null;
+  output?: Record<string, unknown> | null;
+  errorMessage?: string | null;
+  requiresApproval: boolean;
+  approvedByUserId?: string | null;
+  approvedAt?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  createdAt: string;
+}
+export interface WorkflowRunDto {
+  id: string;
+  organizationId: string;
+  workflowId: string;
+  workflowVersion: number;
+  eventType: string;
+  entityType?: string | null;
+  entityId?: string | null;
+  status: string;
+  inputPayload: Record<string, unknown>;
+  conditionResult?: Record<string, unknown> | null;
+  errorMessage?: string | null;
+  idempotencyKey: string;
+  startedAt: string;
+  finishedAt?: string | null;
+  createdAt: string;
+  actionRuns?: WorkflowActionRunDto[];
+  workflow?: { id: string; name: string; version: number };
+}
+export interface WorkflowCreatePayload {
+  name: string;
+  description?: string;
+  category: string;
+  trigger: WorkflowTriggerDto;
+  conditions?: WorkflowConditionDto[];
+  actions: WorkflowActionDto[];
+  scope?: WorkflowScopeDto;
+  status?: string;
+}
+export type WorkflowUpdatePayload = Partial<WorkflowCreatePayload>;
+export interface WorkflowTestPayload {
+  payload?: Record<string, unknown>;
+  entityType?: string;
+  entityId?: string;
+}
+export interface WorkflowTestResultDto {
+  runIds: string[];
+  runs: WorkflowRunDto[];
+  message?: string;
+}
+
+// ── Account Self-Service (Settings → Account Information) ───────────────────
+export type AccountNotificationCategory =
+  | 'BOOKINGS'
+  | 'PICKUPS_RETURNS'
+  | 'TASKS'
+  | 'INVOICES_PAYMENTS'
+  | 'VEHICLE_HEALTH'
+  | 'DAMAGE_MISUSE'
+  | 'DOCUMENTS'
+  | 'WEEKLY_REPORTS'
+  | 'SECURITY';
+
+export interface TenantOrganizationProfileDto {
+  id: string;
+  companyName: string;
+  legalCompanyName: string | null;
+  legalForm: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  country: string | null;
+  /** @deprecated Legacy combined tax identifier — prefer taxNumber / vatId */
+  taxId: string | null;
+  taxNumber: string | null;
+  vatId: string | null;
+  isSmallBusiness: boolean;
+  defaultVatRate: number | null;
+  invoicePrefix: string | null;
+  nextInvoiceNumber: number;
+  paymentTermsDays: number;
+  invoiceEmail: string | null;
+  bankName: string | null;
+  iban: string | null;
+  bic: string | null;
+  pdfFooterText: string | null;
+  emailSignature: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  timezone: string | null;
+  language: string | null;
+  managerName: string | null;
+  managerEmail: string | null;
+  logoUrl: string | null;
+  logoDarkUrl: string | null;
+  pdfLogoUrl: string | null;
+  accentColor: string | null;
+  businessType: string;
+}
+
+export type TenantOrganizationProfileUpdate = Partial<
+  Pick<
+    TenantOrganizationProfileDto,
+    | 'companyName'
+    | 'legalCompanyName'
+    | 'legalForm'
+    | 'address'
+    | 'city'
+    | 'state'
+    | 'zip'
+    | 'country'
+    | 'taxId'
+    | 'taxNumber'
+    | 'vatId'
+    | 'isSmallBusiness'
+    | 'defaultVatRate'
+    | 'invoicePrefix'
+    | 'nextInvoiceNumber'
+    | 'paymentTermsDays'
+    | 'invoiceEmail'
+    | 'bankName'
+    | 'iban'
+    | 'bic'
+    | 'pdfFooterText'
+    | 'emailSignature'
+    | 'phone'
+    | 'email'
+    | 'website'
+    | 'timezone'
+    | 'language'
+    | 'managerName'
+    | 'managerEmail'
+    | 'logoUrl'
+    | 'logoDarkUrl'
+    | 'pdfLogoUrl'
+    | 'accentColor'
+  >
+>;
+
+export interface AccountMeDto {
+  user: {
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    displayName: string;
+    phone: string | null;
+    mobile: string | null;
+    avatarUrl: string | null;
+    language: string | null;
+    timezone: string | null;
+    dateFormat: string | null;
+    lastLoginAt: string | null;
+    lastLoginIp: string | null;
+    lastLoginDevice: string | null;
+    createdAt: string;
+    updatedAt: string;
+  };
+  organization: {
+    id: string;
+    name: string;
+    slug: string | null;
+    status: string;
+  };
+  membership: {
+    id: string;
+    role: string;
+    roleLabel: string | null;
+    department: string | null;
+    position: string | null;
+    stationScope: string | null;
+    permissions: Record<string, { read: boolean; write: boolean }> | null;
+    status: string;
+  };
+  preferences: {
+    language: string | null;
+    timezone: string | null;
+    dateFormat: string | null;
+    defaultStationId: string | null;
+    defaultLandingPage: string | null;
+  };
+  notifications: Array<{
+    category: AccountNotificationCategory;
+    label: string;
+    description: string;
+    inApp: boolean;
+    email: boolean;
+    push: boolean;
+    sms: boolean;
+    criticalOnly: boolean;
+  }>;
+  security: {
+    hasPassword: boolean;
+    twoFactorEnabled: boolean;
+    twoFactorAvailable: boolean;
+    passkeysAvailable: boolean;
+    lastLoginAt: string | null;
+    lastLoginIp: string | null;
+    activeSessionCount: number;
+    securityScore: number;
+    recommendations: string[];
+  };
+  accountHealth: {
+    score: number;
+    completedItems: string[];
+    missingItems: string[];
+    recommendations: string[];
+  };
+}
+
+export interface AccountSessionDto {
+  id: string;
+  current: boolean;
+  userAgent: string | null;
+  browser: string | null;
+  device: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  lastUsedAt: string | null;
+  status: 'active' | 'revoked' | 'expired';
+}
+
+/** Users & Roles — access control (V4.8.34) */
+export type MembershipPermissionLevel = {
+  read: boolean;
+  write: boolean;
+  manage?: boolean;
+};
+
+export type MembershipPermissionsMap = Record<string, MembershipPermissionLevel>;
+
+export type OrganizationInviteStatus = 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED';
+
+export interface OrganizationInviteDto {
+  id: string;
+  organizationId: string;
+  email: string;
+  membershipRole: string;
+  organizationRoleId: string | null;
+  organizationRoleName: string | null;
+  roleLabel: string | null;
+  department: string | null;
+  position: string | null;
+  stationScope: string | null;
+  stationIds: string[];
+  status: OrganizationInviteStatus;
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+  acceptedAt: string | null;
+  revokedAt: string | null;
+  invitedBy: { id: string; name: string | null; email: string } | null;
+}
+
+export interface OrganizationInviteCreatedDto extends OrganizationInviteDto {
+  inviteToken?: string;
+  inviteUrl?: string;
+}
+
+export interface CreateOrganizationInvitePayload {
+  email: string;
+  membershipRole?: string;
+  organizationRoleId?: string;
+  permissions?: MembershipPermissionsMap;
+  stationScope?: string;
+  stationIds?: string[];
+  fieldAgentAccess?: boolean;
+  department?: string;
+  position?: string;
+  roleLabel?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+export interface OrganizationRoleDto {
+  id: string;
+  organizationId: string;
+  name: string;
+  description: string | null;
+  systemKey: string | null;
+  isSystemTemplate: boolean;
+  isDefault: boolean;
+  isActive: boolean;
+  membershipRole: string;
+  permissions: MembershipPermissionsMap | null;
+  stationScopeDefault: string | null;
+  defaultStationIds: string[];
+  fieldAgentAccessDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateOrganizationRolePayload {
+  name: string;
+  description?: string;
+  membershipRole: string;
+  permissions?: MembershipPermissionsMap;
+  stationScopeDefault?: string;
+  defaultStationIds?: string[];
+  fieldAgentAccessDefault?: boolean;
+}
+
+export interface UpdateOrganizationRolePayload extends Partial<CreateOrganizationRolePayload> {
+  isActive?: boolean;
+}
+
+export interface OrganizationRolePermissionPreviewDto {
+  roleId: string;
+  name: string;
+  membershipRole: string;
+  permissions: MembershipPermissionsMap | null;
+  fieldAgentAccessDefault: boolean;
+  stationScopeDefault: string | null;
+  defaultStationIds: string[];
+}
+
+export interface OrgUserDto {
+  id: string;
+  membershipId: string;
+  name: string;
+  displayName?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  roleKey: string;
+  membershipRole?: string;
+  roleLabel: string;
+  organizationRoleId?: string | null;
+  organizationRoleName?: string;
+  organizationId: string;
+  organizationName: string;
+  department: string;
+  position: string;
+  stationScope: string;
+  stationIds?: string[];
+  fieldAgentAccess: boolean;
+  permissions: MembershipPermissionsMap | null;
+  status: string;
+  membershipStatus: string;
+  lastActive: string;
+  lastLoginAt: string;
+  createdAt: string;
+  updatedAt?: string;
+  avatar: string;
+  phone: string;
+  mobile: string;
+  address?: string;
+  language: string;
+  timezone: string;
+  dateFormat: string;
+  mustChangePassword?: boolean;
+  lastLoginIp?: string;
+  lastLoginDevice?: string;
+}
+
+export interface UserSecurityActivityDto {
+  userId: string;
+  email: string;
+  lastLoginAt: string | null;
+  mustChangePassword: boolean;
+  membershipStatus: string;
+  organizationRole: { id: string; name: string } | null;
+  inviteStatus: OrganizationInviteStatus | null;
+  invitedAt: string | null;
+  twoFactorEnabled: boolean | null;
+  activeSessionCount: number | null;
+  auditTimeline: Array<{
+    id: string;
+    action: string;
+    entity: string;
+    description: string;
+    auditAction: string | null;
+    createdAt: string;
+    level: string;
+  }>;
+}
+
 export const api = {
   auth: {
     login: (email: string, password: string) =>
       post<{ token: string; user: any }>('/auth/login', { email, password }),
     me: () => get<any>('/auth/me'),
     seedAdmin: () => post<any>('/auth/seed-admin', {}),
+  },
+  account: {
+    me: () => get<AccountMeDto>('/account/me'),
+    updateProfile: (payload: {
+      firstName?: string;
+      lastName?: string;
+      phone?: string | null;
+      mobile?: string | null;
+    }) => patch<AccountMeDto>('/account/me/profile', payload),
+    updatePreferences: (payload: {
+      language?: 'de' | 'en';
+      timezone?: string;
+      dateFormat?: 'DD.MM.YYYY' | 'YYYY-MM-DD';
+      defaultStationId?: string | null;
+      defaultLandingPage?: 'dashboard' | 'bookings' | 'fleet' | 'customers' | 'tasks' | null;
+    }) => patch<AccountMeDto>('/account/me/preferences', payload),
+    updateNotifications: (payload: {
+      preferences: Array<{
+        category: AccountNotificationCategory;
+        inApp?: boolean;
+        email?: boolean;
+        push?: boolean;
+        sms?: boolean;
+        criticalOnly?: boolean;
+      }>;
+    }) => patch<AccountMeDto>('/account/me/notifications', payload),
+    changePassword: (payload: {
+      currentPassword: string;
+      newPassword: string;
+      confirmPassword: string;
+      revokeOtherSessions?: boolean;
+    }) => post<{ message: string }>('/account/me/change-password', payload),
+    sessions: () => get<AccountSessionDto[]>('/account/me/sessions'),
+    revokeOtherSessions: (payload?: { keepSessionId?: string }) =>
+      post<{ revoked: number; keptSessionId: string | null }>(
+        '/account/me/sessions/revoke-others',
+        payload ?? {},
+      ),
+    revokeSession: (sessionId: string) =>
+      post<{ revoked: boolean }>(`/account/me/sessions/${sessionId}/revoke`, {}),
   },
   admin: {
     dashboard: () => get<any>('/admin/dashboard'),
@@ -916,59 +1584,32 @@ export const api = {
     // Distinct from the MASTER_ADMIN routes above: these are guarded by
     // OrgScopingGuard and only allow editing the caller's own org.
     getProfile: (orgId: string) =>
-      get<{
-        id: string;
-        companyName: string;
-        address: string | null;
-        city: string | null;
-        state: string | null;
-        zip: string | null;
-        country: string | null;
-        taxId: string | null;
-        phone: string | null;
-        email: string | null;
-        website: string | null;
-        timezone: string | null;
-        language: string | null;
-        managerName: string | null;
-        managerEmail: string | null;
-        logoUrl: string | null;
-        businessType: string;
-      }>(`/organizations/${orgId}/profile`),
-    updateProfile: (
-      orgId: string,
-      data: {
-        companyName?: string;
-        address?: string | null;
-        city?: string | null;
-        state?: string | null;
-        zip?: string | null;
-        country?: string | null;
-        taxId?: string | null;
-        phone?: string | null;
-        email?: string | null;
-        website?: string | null;
-        timezone?: string | null;
-        language?: string | null;
-        managerName?: string | null;
-        managerEmail?: string | null;
-        logoUrl?: string | null;
-      },
-    ) => patch<any>(`/organizations/${orgId}/profile`, data),
+      get<TenantOrganizationProfileDto>(`/organizations/${orgId}/profile`),
+    updateProfile: (orgId: string, data: TenantOrganizationProfileUpdate) =>
+      patch<TenantOrganizationProfileDto>(`/organizations/${orgId}/profile`, data),
     uploadLogo: async (orgId: string, file: File) => {
       const form = new FormData();
       form.append('file', file);
-      const token = localStorage.getItem('synqdrive_token');
-      const res = await fetch(`/api/v1/organizations/${orgId}/profile/logo`, {
+      const token = getToken();
+      const res = await fetch(`${BASE_URL}/organizations/${orgId}/profile/logo`, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: form,
       });
       if (!res.ok) {
-        let message = `Upload failed (${res.status})`;
+        let message = `Logo-Upload fehlgeschlagen (${res.status})`;
         try {
-          const body = (await res.json()) as { message?: string };
-          if (body?.message) message = body.message;
+          const body = (await res.json()) as { message?: string | string[] };
+          const raw = body?.message;
+          const text = Array.isArray(raw) ? raw.join(', ') : raw;
+          if (text) {
+            message =
+              text.includes('Only PNG') || text.includes('WebP')
+                ? 'Nur PNG, JPG/JPEG und WebP sind erlaubt (max. 2 MB).'
+                : text.includes('No file uploaded')
+                  ? 'Keine Datei ausgewählt.'
+                  : text;
+          }
         } catch {
           /* ignore */
         }
@@ -984,13 +1625,51 @@ export const api = {
     update: (id: string, data: any) => patch<any>(`/admin/users/${id}`, data),
     delete: (id: string) => del<void>(`/admin/users/${id}`),
     changePassword: (id: string, password: string) => post<{ message: string }>(`/admin/users/${id}/change-password`, { password }),
-    listByOrg: (orgId: string) => get<any[]>(`/organizations/${orgId}/users`),
-    getByOrg: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/users/${id}`),
-    createByOrg: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/users`, data),
-    updateByOrg: (orgId: string, id: string, data: any) => patch<any>(`/organizations/${orgId}/users/${id}`, data),
+    listByOrg: (orgId: string) => get<OrgUserDto[]>(`/organizations/${orgId}/users`),
+    getByOrg: (orgId: string, id: string) => get<OrgUserDto>(`/organizations/${orgId}/users/${id}`),
+    createByOrg: (orgId: string, data: Partial<OrgUserDto> & Record<string, unknown>) =>
+      post<OrgUserDto>(`/organizations/${orgId}/users`, data),
+    updateByOrg: (orgId: string, id: string, data: Partial<OrgUserDto> & Record<string, unknown>) =>
+      patch<OrgUserDto>(`/organizations/${orgId}/users/${id}`, data),
     deleteByOrg: (orgId: string, id: string) => del<void>(`/organizations/${orgId}/users/${id}`),
     changePasswordByOrg: (orgId: string, userId: string, password: string) =>
       post<{ message: string }>(`/organizations/${orgId}/users/${userId}/change-password`, { password }),
+    assignRole: (orgId: string, userId: string, roleId: string) =>
+      post<unknown>(`/organizations/${orgId}/users/${userId}/assign-role`, { roleId }),
+    securityActivity: (orgId: string, userId: string) =>
+      get<UserSecurityActivityDto>(`/organizations/${orgId}/users/${userId}/security-activity`),
+  },
+  organizationInvites: {
+    list: (orgId: string, status?: OrganizationInviteStatus) =>
+      get<OrganizationInviteDto[]>(
+        `/organizations/${orgId}/invites${status ? `?status=${status}` : ''}`,
+      ),
+    create: (orgId: string, data: CreateOrganizationInvitePayload) =>
+      post<OrganizationInviteCreatedDto>(`/organizations/${orgId}/invites`, data),
+    resend: (orgId: string, inviteId: string) =>
+      post<OrganizationInviteDto & { inviteToken?: string; inviteUrl?: string }>(
+        `/organizations/${orgId}/invites/${inviteId}/resend`,
+        {},
+      ),
+    revoke: (orgId: string, inviteId: string) =>
+      del<OrganizationInviteDto>(`/organizations/${orgId}/invites/${inviteId}`),
+  },
+  organizationRoles: {
+    list: (orgId: string) => get<OrganizationRoleDto[]>(`/organizations/${orgId}/roles`),
+    get: (orgId: string, roleId: string) =>
+      get<OrganizationRoleDto>(`/organizations/${orgId}/roles/${roleId}`),
+    permissionPreview: (orgId: string, roleId: string) =>
+      get<OrganizationRolePermissionPreviewDto>(
+        `/organizations/${orgId}/roles/${roleId}/permission-preview`,
+      ),
+    create: (orgId: string, data: CreateOrganizationRolePayload) =>
+      post<OrganizationRoleDto>(`/organizations/${orgId}/roles`, data),
+    update: (orgId: string, roleId: string, data: UpdateOrganizationRolePayload) =>
+      patch<OrganizationRoleDto>(`/organizations/${orgId}/roles/${roleId}`, data),
+    duplicate: (orgId: string, roleId: string) =>
+      post<OrganizationRoleDto>(`/organizations/${orgId}/roles/${roleId}/duplicate`, {}),
+    delete: (orgId: string, roleId: string) =>
+      del<{ deleted: boolean }>(`/organizations/${orgId}/roles/${roleId}`),
   },
   vehicles: {
     listAll: (params?: { page?: number; limit?: number }) =>
@@ -1022,7 +1701,25 @@ export const api = {
       lastSeenAt: string | null;
       source: 'dimo' | 'cache';
     }>(`/organizations/${orgId}/vehicles/${id}/live-gps`),
-    fleetConnectivity: (orgId: string) => get<FleetConnectivityResponse>(`/organizations/${orgId}/fleet-connectivity`),
+    fleetConnectivity: (
+      orgId: string,
+      params?: {
+        page?: number;
+        limit?: number;
+        status?: FleetConnectivityStatus;
+        q?: string;
+      },
+    ) => {
+      const search = new URLSearchParams();
+      if (params?.page != null) search.set('page', String(params.page));
+      if (params?.limit != null) search.set('limit', String(params.limit));
+      if (params?.status) search.set('status', params.status);
+      if (params?.q?.trim()) search.set('q', params.q.trim());
+      const qs = search.toString();
+      return get<FleetConnectivityResponse>(
+        `/organizations/${orgId}/fleet-connectivity${qs ? `?${qs}` : ''}`,
+      );
+    },
     listComplaints: (orgId: string, vehicleId: string) =>
       get<VehicleComplaint[]>(`/organizations/${orgId}/vehicles/${vehicleId}/complaints`),
     createComplaint: (orgId: string, vehicleId: string, body: { description: string; urgency?: string; region?: string | null }) =>
@@ -1151,8 +1848,37 @@ export const api = {
       get<WhatsAppStats>(`/organizations/${orgId}/whatsapp/stats`),
   },
   bookings: {
-    list: (orgId: string) => get<any[]>(`/organizations/${orgId}/bookings`),
+    list: (
+      orgId: string,
+      params?: {
+        page?: number;
+        limit?: number;
+        status?: string;
+        vehicleId?: string;
+        customerId?: string;
+        stationId?: string;
+        from?: string;
+        to?: string;
+        search?: string;
+      },
+    ) => {
+      const q = new URLSearchParams();
+      if (params?.page != null) q.set('page', String(params.page));
+      if (params?.limit != null) q.set('limit', String(params.limit));
+      if (params?.status) q.set('status', params.status);
+      if (params?.vehicleId) q.set('vehicleId', params.vehicleId);
+      if (params?.customerId) q.set('customerId', params.customerId);
+      if (params?.stationId) q.set('stationId', params.stationId);
+      if (params?.from) q.set('from', params.from);
+      if (params?.to) q.set('to', params.to);
+      if (params?.search) q.set('search', params.search);
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return get<{ data: unknown[]; meta?: unknown } | unknown[]>(
+        `/organizations/${orgId}/bookings${suffix}`,
+      );
+    },
     get: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/bookings/${id}`),
+    detail: (orgId: string, id: string) => get<BookingDetailDto>(`/organizations/${orgId}/bookings/${id}/detail`),
     create: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/bookings`, data),
     update: (orgId: string, id: string, data: any) => patch<any>(`/organizations/${orgId}/bookings/${id}`, data),
     cancel: (orgId: string, id: string) => del<void>(`/organizations/${orgId}/bookings/${id}`),
@@ -1253,7 +1979,12 @@ export const api = {
   },
   dashboardInsights: {
     get: (orgId: string) => get<{
-      generatedAt: string;
+      generatedAt: string | null;
+      hasRun: boolean;
+      lastRunAt: string | null;
+      stale: boolean;
+      activeInsightCount: number;
+      error: string | null;
       summary: { total: number; critical: number; warning: number; opportunity: number; info: number };
       insights: Array<{
         id: string;
@@ -1267,7 +1998,7 @@ export const api = {
         entityScope: string;
         entityIds?: string[] | null;
         timeContext?: Record<string, string> | null;
-        metrics?: Record<string, any> | null;
+        metrics?: Record<string, unknown> | null;
         reasons?: string[] | null;
         isGrouped: boolean;
         groupCount: number;
@@ -1508,14 +2239,35 @@ export const api = {
     },
   },
   stations: {
-    list: (orgId: string) => get<Station[]>(`/organizations/${orgId}/stations`),
+    list: (orgId: string, params?: { status?: string; type?: string; selectableOnly?: boolean }) => {
+      const q = new URLSearchParams();
+      if (params?.status) q.set('status', params.status);
+      if (params?.type) q.set('type', params.type);
+      if (params?.selectableOnly) q.set('selectableOnly', 'true');
+      const qs = q.toString();
+      return get<Station[]>(`/organizations/${orgId}/stations${qs ? `?${qs}` : ''}`);
+    },
     get: (orgId: string, id: string) => get<Station>(`/organizations/${orgId}/stations/${id}`),
     create: (orgId: string, data: StationUpsertPayload) =>
       post<Station>(`/organizations/${orgId}/stations`, data),
     update: (orgId: string, id: string, data: Partial<StationUpsertPayload>) =>
       patch<Station>(`/organizations/${orgId}/stations/${id}`, data),
     delete: (orgId: string, id: string) =>
-      del<{ id: string; unassignedVehicles: number }>(`/organizations/${orgId}/stations/${id}`),
+      del<{ id: string; unassignedVehicles: number; archived?: boolean }>(
+        `/organizations/${orgId}/stations/${id}`,
+      ),
+    archive: (orgId: string, id: string) =>
+      post<Station>(`/organizations/${orgId}/stations/${id}/archive`, {}),
+    restore: (orgId: string, id: string) =>
+      post<Station>(`/organizations/${orgId}/stations/${id}/restore`, {}),
+    setPrimary: (orgId: string, id: string) =>
+      post<Station>(`/organizations/${orgId}/stations/${id}/set-primary`, {}),
+    overviewStats: (orgId: string, stationId: string) =>
+      get<StationOverviewStats>(`/organizations/${orgId}/stations/${stationId}/overview-stats`),
+    fleet: (orgId: string, stationId: string) =>
+      get<StationFleetVehicle[]>(`/organizations/${orgId}/stations/${stationId}/fleet`),
+    bookings: (orgId: string, stationId: string) =>
+      get<StationBookingRow[]>(`/organizations/${orgId}/stations/${stationId}/bookings`),
     stats: (orgId: string) => get<StationsStats>(`/organizations/${orgId}/stations/stats`),
     searchPlaces: (orgId: string, q: string) =>
       get<StationPlaceSuggestion[]>(`/organizations/${orgId}/stations/search-places?q=${encodeURIComponent(q)}`),
@@ -1531,6 +2283,16 @@ export const api = {
       put<StationVehicleAssignmentResult>(
         `/organizations/${orgId}/stations/${stationId}/vehicles`,
         { vehicleIds },
+      ),
+    assignVehicle: (
+      orgId: string,
+      stationId: string,
+      vehicleId: string,
+      target: 'home' | 'current' | 'expected' = 'home',
+    ) =>
+      post<{ id: string; homeStationId: string | null; currentStationId: string | null; expectedStationId: string | null }>(
+        `/organizations/${orgId}/stations/${stationId}/assign-vehicle`,
+        { vehicleId, target },
       ),
     /**
      * V4.7.07 — Geocode all stations in this org that are missing
@@ -1579,20 +2341,54 @@ export const api = {
     serviceHistory: (orgId: string, vendorId: string) =>
       get<any[]>(`/organizations/${orgId}/vendors/${vendorId}/service-history`),
   },
+  dataAnalyse: {
+    vehicles: (orgId: string) =>
+      get<DataAnalyseVehicle[]>(`/organizations/${orgId}/data-analyse/vehicles`),
+    telemetryOverview: (orgId: string, vehicleId: string) =>
+      get<DataAnalyseTelemetryOverview>(`/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/telemetry-overview`),
+    signals: (orgId: string, vehicleId: string) =>
+      get<DataAnalyseSignalRow[]>(`/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/signals`),
+    highFrequency: (orgId: string, vehicleId: string) =>
+      get<DataAnalyseHighFrequency>(`/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/high-frequency`),
+    launchFeasibility: (orgId: string, vehicleId: string) =>
+      get<DataAnalyseLaunchFeasibilityResult>(`/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/launch-feasibility`),
+    healthTrace: (orgId: string, vehicleId: string) =>
+      get<DataAnalyseHealthTrace>(`/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/health-trace`),
+    pipeline: (orgId: string, vehicleId: string) =>
+      get<DataAnalysePipeline>(`/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/pipeline`),
+    signalGroups: (orgId: string, vehicleId?: string) => {
+      const qs = vehicleId ? `?vehicleId=${encodeURIComponent(vehicleId)}` : '';
+      return get<DataAnalyseSignalGroup[]>(`/organizations/${orgId}/data-analyse/signal-groups${qs}`);
+    },
+  },
   dataAuthorizations: {
-    list: (orgId: string, params?: { status?: string; moduleOrigin?: string; scope?: string }) => {
+    list: (orgId: string, params?: { status?: string; moduleOrigin?: string; scope?: string; sourceType?: string; q?: string }) => {
       const q = new URLSearchParams();
       if (params?.status) q.set('status', params.status);
       if (params?.moduleOrigin) q.set('moduleOrigin', params.moduleOrigin);
       if (params?.scope) q.set('scope', params.scope);
+      if (params?.sourceType) q.set('sourceType', params.sourceType);
+      if (params?.q) q.set('q', params.q);
       const qs = q.toString();
-      return get<any[]>(`/organizations/${orgId}/data-authorizations${qs ? `?${qs}` : ''}`);
+      return get<DataAuthorizationDto[]>(`/organizations/${orgId}/data-authorizations${qs ? `?${qs}` : ''}`);
     },
-    stats: (orgId: string) => get<any>(`/organizations/${orgId}/data-authorizations/stats`),
-    get: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/data-authorizations/${id}`),
-    create: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/data-authorizations`, data),
-    grant: (orgId: string, id: string) => patch<any>(`/organizations/${orgId}/data-authorizations/${id}/grant`, {}),
-    revoke: (orgId: string, id: string) => patch<any>(`/organizations/${orgId}/data-authorizations/${id}/revoke`, {}),
+    stats: (orgId: string) => get<DataAuthorizationStatsDto>(`/organizations/${orgId}/data-authorizations/stats`),
+    get: (orgId: string, id: string) => get<DataAuthorizationDto>(`/organizations/${orgId}/data-authorizations/${id}`),
+    create: (orgId: string, data: CreateDataAuthorizationPayload) =>
+      post<DataAuthorizationDto>(`/organizations/${orgId}/data-authorizations`, data),
+    grant: (orgId: string, id: string, body?: { notes?: string }) =>
+      post<DataAuthorizationDto>(`/organizations/${orgId}/data-authorizations/${id}/grant`, body ?? {}),
+    revoke: (orgId: string, id: string, body?: { reason?: string }) =>
+      post<DataAuthorizationDto>(`/organizations/${orgId}/data-authorizations/${id}/revoke`, body ?? {}),
+    syncSystem: (orgId: string) =>
+      post<DataAuthorizationDto[]>(`/organizations/${orgId}/data-authorizations/sync-system-authorizations`, {}),
+    /** Alias for syncSystem */
+    syncSystemAuthorizations: (orgId: string) =>
+      post<DataAuthorizationDto[]>(`/organizations/${orgId}/data-authorizations/sync-system-authorizations`, {}),
+    auditLog: (orgId: string, limit?: number) => {
+      const q = limit ? `?limit=${limit}` : '';
+      return get<DataAuthorizationAuditEntry[]>(`/organizations/${orgId}/data-authorizations/audit-log${q}`);
+    },
   },
   workflows: {
     list: (orgId: string, params?: { status?: string; category?: string }) => {
@@ -1600,15 +2396,24 @@ export const api = {
       if (params?.status) q.set('status', params.status);
       if (params?.category) q.set('category', params.category);
       const qs = q.toString();
-      return get<any[]>(`/organizations/${orgId}/workflows${qs ? `?${qs}` : ''}`);
+      return get<WorkflowDto[]>(`/organizations/${orgId}/workflows${qs ? `?${qs}` : ''}`);
     },
-    stats: (orgId: string) => get<any>(`/organizations/${orgId}/workflows/stats`),
-    get: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/workflows/${id}`),
-    create: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/workflows`, data),
-    update: (orgId: string, id: string, data: any) => patch<any>(`/organizations/${orgId}/workflows/${id}`, data),
-    toggle: (orgId: string, id: string) => patch<any>(`/organizations/${orgId}/workflows/${id}/toggle`, {}),
-    duplicate: (orgId: string, id: string) => post<any>(`/organizations/${orgId}/workflows/${id}/duplicate`, {}),
-    remove: (orgId: string, id: string) => del<any>(`/organizations/${orgId}/workflows/${id}`),
+    stats: (orgId: string) => get<WorkflowStatsDto>(`/organizations/${orgId}/workflows/stats`),
+    get: (orgId: string, id: string) => get<WorkflowDto>(`/organizations/${orgId}/workflows/${id}`),
+    create: (orgId: string, data: WorkflowCreatePayload) => post<WorkflowDto>(`/organizations/${orgId}/workflows`, data),
+    update: (orgId: string, id: string, data: WorkflowUpdatePayload) => patch<WorkflowDto>(`/organizations/${orgId}/workflows/${id}`, data),
+    toggle: (orgId: string, id: string) => patch<WorkflowDto>(`/organizations/${orgId}/workflows/${id}/toggle`, {}),
+    duplicate: (orgId: string, id: string) => post<WorkflowDto>(`/organizations/${orgId}/workflows/${id}/duplicate`, {}),
+    remove: (orgId: string, id: string) => del<{ deleted: boolean }>(`/organizations/${orgId}/workflows/${id}`),
+    listRuns: (orgId: string, workflowId: string, limit = 25) =>
+      get<WorkflowRunDto[]>(`/organizations/${orgId}/workflows/${workflowId}/runs?limit=${limit}`),
+    getRun: (orgId: string, runId: string) => get<WorkflowRunDto>(`/organizations/${orgId}/workflows/runs/${runId}`),
+    test: (orgId: string, workflowId: string, data?: WorkflowTestPayload) =>
+      post<WorkflowTestResultDto>(`/organizations/${orgId}/workflows/${workflowId}/test`, data ?? {}),
+    approveActionRun: (orgId: string, actionRunId: string) =>
+      post<WorkflowActionRunDto>(`/organizations/${orgId}/workflows/action-runs/${actionRunId}/approve`, {}),
+    rejectActionRun: (orgId: string, actionRunId: string, reason?: string) =>
+      post<WorkflowActionRunDto>(`/organizations/${orgId}/workflows/action-runs/${actionRunId}/reject`, { reason }),
   },
   billing: {
     subscriptions: () => get<any[]>('/admin/billing/subscriptions'),
@@ -1712,19 +2517,63 @@ export const api = {
     forCustomer: (orgId: string, customerId: string) => get<ApiTask[]>(`/organizations/${orgId}/customers/${customerId}/tasks`),
   },
   invoices: {
-    list: (orgId: string, params?: { type?: string; status?: string }) => {
+    list: (orgId: string, params?: { type?: string; status?: string; direction?: string }) => {
       const q = new URLSearchParams();
       if (params?.type) q.set('type', params.type);
       if (params?.status) q.set('status', params.status);
+      if (params?.direction) q.set('direction', params.direction);
       const qs = q.toString();
-      return get<any[]>(`/organizations/${orgId}/invoices${qs ? `?${qs}` : ''}`);
+      return get<import('../rental/components/invoices/invoiceTypes').Invoice[]>(
+        `/organizations/${orgId}/invoices${qs ? `?${qs}` : ''}`,
+      );
     },
-    stats: (orgId: string) => get<any>(`/organizations/${orgId}/invoices/stats`),
-    get: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/invoices/${id}`),
-    create: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/invoices`, data),
-    update: (orgId: string, id: string, data: any) => patch<any>(`/organizations/${orgId}/invoices/${id}`, data),
-    markPaid: (orgId: string, id: string) => patch<any>(`/organizations/${orgId}/invoices/${id}/pay`, {}),
-    byCustomer: (orgId: string, customerId: string) => get<any[]>(`/organizations/${orgId}/customers/${customerId}/invoices`),
+    stats: (orgId: string) =>
+      get<import('../rental/components/invoices/invoiceTypes').InvoiceStats>(
+        `/organizations/${orgId}/invoices/stats`,
+      ),
+    get: (orgId: string, id: string) =>
+      get<import('../rental/components/invoices/invoiceTypes').Invoice>(
+        `/organizations/${orgId}/invoices/${id}`,
+      ),
+    create: (orgId: string, data: Record<string, unknown>) =>
+      post<import('../rental/components/invoices/invoiceTypes').Invoice>(
+        `/organizations/${orgId}/invoices`,
+        data,
+      ),
+    update: (orgId: string, id: string, data: Record<string, unknown>) =>
+      patch<import('../rental/components/invoices/invoiceTypes').Invoice>(
+        `/organizations/${orgId}/invoices/${id}`,
+        data,
+      ),
+    issue: (orgId: string, id: string) =>
+      post<import('../rental/components/invoices/invoiceTypes').Invoice>(
+        `/organizations/${orgId}/invoices/${id}/issue`,
+        {},
+      ),
+    markSent: (orgId: string, id: string) =>
+      post<import('../rental/components/invoices/invoiceTypes').Invoice>(
+        `/organizations/${orgId}/invoices/${id}/mark-sent`,
+        {},
+      ),
+    recordPayment: (
+      orgId: string,
+      id: string,
+      data: { amountCents: number; method?: string; paidAt?: string; reference?: string; note?: string },
+    ) =>
+      post<import('../rental/components/invoices/invoiceTypes').Invoice>(
+        `/organizations/${orgId}/invoices/${id}/payments`,
+        data,
+      ),
+    markPaid: (orgId: string, id: string) =>
+      patch<import('../rental/components/invoices/invoiceTypes').Invoice>(
+        `/organizations/${orgId}/invoices/${id}/pay`,
+        {},
+      ),
+    byCustomer: (orgId: string, customerId: string) =>
+      get<import('../rental/components/invoices/invoiceTypes').Invoice[]>(
+        `/organizations/${orgId}/customers/${customerId}/invoices`,
+      ),
+    /** Attachment upload only — NOT for AI extraction. */
     uploadFile: async (orgId: string, file: File) => {
       const form = new FormData();
       form.append('file', file);
@@ -1738,9 +2587,48 @@ export const api = {
       return res.json() as Promise<{ url: string }>;
     },
   },
+  pricing: {
+    catalog: (orgId: string) => get<any>(`/organizations/${orgId}/price-tariffs`),
+    simulate: (orgId: string, data: Record<string, unknown>) =>
+      post<any>(`/organizations/${orgId}/pricing/simulate`, data),
+    createGroup: (orgId: string, data: Record<string, unknown>) =>
+      post<any>(`/organizations/${orgId}/price-tariffs/groups`, data),
+    updateGroup: (orgId: string, groupId: string, data: Record<string, unknown>) =>
+      patch<any>(`/organizations/${orgId}/price-tariffs/groups/${groupId}`, data),
+    upsertVersion: (orgId: string, groupId: string, data: Record<string, unknown>) =>
+      post<any>(`/organizations/${orgId}/price-tariffs/groups/${groupId}/version`, data),
+    updateVersion: (orgId: string, versionId: string, data: Record<string, unknown>) =>
+      patch<any>(`/organizations/${orgId}/price-tariffs/versions/${versionId}`, data),
+    activateVersion: (orgId: string, versionId: string) =>
+      post<any>(`/organizations/${orgId}/price-tariffs/versions/${versionId}/activate`, {}),
+    assignVehicle: (orgId: string, data: Record<string, unknown>) =>
+      post<any>(`/organizations/${orgId}/price-tariffs/assignments`, data),
+    deactivateAssignment: (orgId: string, assignmentId: string) =>
+      patch<any>(`/organizations/${orgId}/price-tariffs/assignments/${assignmentId}/deactivate`, {}),
+    unassignedVehicles: (orgId: string) =>
+      get<any[]>(`/organizations/${orgId}/price-tariffs/unassigned-vehicles`),
+  },
   activityLog: {
     listAll: () => get<any[]>('/admin/activity-log'),
-    listByOrg: (orgId: string) => get<any[]>(`/organizations/${orgId}/activity-log`),
+    listByOrg: (
+      orgId: string,
+      params?: { entity?: string; action?: string; limit?: number; page?: number },
+    ) => {
+      const q = new URLSearchParams();
+      if (params?.entity) q.set('entity', params.entity);
+      if (params?.action) q.set('action', params.action);
+      if (params?.limit) q.set('limit', String(params.limit));
+      if (params?.page) q.set('page', String(params.page));
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return get<{ data: Array<{
+        id: string;
+        action: string;
+        entity: string;
+        description: string;
+        userName: string;
+        createdAt: string;
+      }>; meta?: { total: number } }>(`/organizations/${orgId}/activity-log${suffix}`);
+    },
   },
   products: {
     list: () => get<any[]>('/admin/products'),
@@ -3134,6 +4022,8 @@ export interface JammingIncidentDto {
   detectedAt: string | null;
   where: string | null;
   lastKnownAddress: string | null;
+  /** Snapshot-only indication — not a persisted incident history row. */
+  isSnapshotIndication?: true;
 }
 
 export interface FleetMapVehicleResponse {
@@ -3149,6 +4039,9 @@ export interface FleetMapVehicleResponse {
   cleaningStatus: string;
   stationId: string | null;
   stationName: string | null;
+  homeStationId: string | null;
+  currentStationId: string | null;
+  expectedStationId: string | null;
   latitude: number | null;
   longitude: number | null;
   lastSeenAt: string | null;
@@ -3191,6 +4084,31 @@ export interface FleetMapVehicleResponse {
 
 export type FleetMaintenanceReasonCode = 'SCHEDULED_SERVICE' | 'OPERATIONAL_BLOCK';
 
+export type FleetConnectivityStatus =
+  | 'online'
+  | 'standby'
+  | 'offline'
+  | 'not_connected';
+
+export type FleetConnectivitySignalState = 'available' | 'missing' | 'unknown';
+
+export type FleetConnectivityReadinessLevel =
+  | 'good'
+  | 'watch'
+  | 'warning'
+  | 'no_data';
+
+export interface FleetConnectivitySignals {
+  gps: FleetConnectivitySignalState;
+  odometer: FleetConnectivitySignalState;
+  speed: FleetConnectivitySignalState;
+  fuel: FleetConnectivitySignalState;
+  evSoc: FleetConnectivitySignalState;
+  dtc: FleetConnectivitySignalState;
+  obdPlug: FleetConnectivitySignalState;
+  jamming: FleetConnectivitySignalState;
+}
+
 export interface FleetConnectivityVehicle {
   vehicleId: string;
   vin: string;
@@ -3202,10 +4120,7 @@ export interface FleetConnectivityVehicle {
   connectionType: string;
   sourceType: string | null;
   provider: string;
-  deviceSerial: string | null;
-  syntheticTokenId: number | null;
-  dimoTokenId: number | null;
-  connectionStatus: 'online' | 'standby' | 'offline' | 'not_connected';
+  connectionStatus: FleetConnectivityStatus;
   statusNote: string;
   online: boolean;
   lastSeenAt: string | null;
@@ -3218,18 +4133,263 @@ export interface FleetConnectivityVehicle {
   hasTelemetry: boolean;
   obdIsPluggedIn: boolean | null;
   jammingDetectedCount: number;
+  jammingSnapshotNote: string | null;
   jammingIncidents: JammingIncidentDto[];
+  maskedDeviceSerial: string | null;
+  maskedDimoTokenId: string | null;
+  maskedSyntheticTokenId: string | null;
+  readinessScore: number;
+  readinessLevel: FleetConnectivityReadinessLevel;
+  signalCoveragePercent: number;
+  signals: FleetConnectivitySignals;
+  /** @deprecated masked alias — raw serial is never returned */
+  deviceSerial: string | null;
+  /** @deprecated always null — use maskedDimoTokenId */
+  dimoTokenId: number | null;
+  /** @deprecated always null — use maskedSyntheticTokenId */
+  syntheticTokenId: number | null;
+}
+
+export interface FleetConnectivityThresholds {
+  onlineMaxMinutes: number;
+  standbyMaxHours: number;
+}
+
+export interface FleetConnectivitySummary {
+  total: number;
+  online: number;
+  standby: number;
+  offline: number;
+  notConnected: number;
+  connected: number;
+  withTelemetry: number;
+  withoutTelemetry: number;
+  obdPluggedIn: number;
+  obdUnplugged: number;
+  obdNoData: number;
+  jammingSnapshotDetected: number;
+  avgSignalCoverage: number | null;
+  avgReadinessScore: number | null;
+}
+
+export interface DataAuthorizationDto {
+  id: string;
+  organizationId: string;
+  title: string;
+  description: string | null;
+  requestingEntity: string;
+  moduleOrigin: string;
+  purpose: string;
+  purposes: string[];
+  sourceType: string | null;
+  processorType: string | null;
+  processorName: string | null;
+  scope: string;
+  scopeKey: string;
+  dataCategories: string[];
+  destination: string;
+  vehicleIds: string[] | null;
+  vehicleCount: number;
+  customerIds: string[];
+  bookingIds: string[];
+  accessPattern: string;
+  accessPatternKey: string;
+  status: string;
+  statusKey: string;
+  riskLevel: string;
+  riskLevelKey: string;
+  systemKey: string | null;
+  isSystemGenerated: boolean;
+  lastAccessAt: string | null;
+  accessCount: number;
+  revokeReason: string | null;
+  grantedById: string | null;
+  grantedByName: string | null;
+  grantedAt: string | null;
+  revokedById: string | null;
+  revokedByName: string | null;
+  revokedAt: string | null;
+  expiresAt: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DataAuthorizationStatsDto {
+  total: number;
+  active: number;
+  pending: number;
+  revoked: number;
+  expired: number;
+  highRisk: number;
+  expiringSoon: number;
+}
+
+export interface CreateDataAuthorizationPayload {
+  title: string;
+  moduleOrigin: string;
+  purposes: string[];
+  scope: string;
+  dataCategories: string[];
+  destination: string;
+  description?: string;
+  requestingEntity?: string;
+  sourceType?: string;
+  processorType?: string;
+  processorName?: string;
+  vehicleIds?: string[];
+  customerIds?: string[];
+  bookingIds?: string[];
+  accessPattern?: string;
+  expiresAt?: string;
+  notes?: string;
+}
+
+export interface DataAuthorizationAuditEntry {
+  id: string;
+  action: string;
+  description: string;
+  changeSummary: string | null;
+  entityId: string | null;
+  level: string | null;
+  createdAt: string;
+  actor: { id: string; name: string | null; email: string | null } | null;
+  metaJson: unknown;
+}
+
+export interface FleetConnectivityPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalInOrganization: number;
 }
 
 export interface FleetConnectivityResponse {
-  summary: {
-    total: number;
-    online: number;
-    standby: number;
-    offline: number;
-    notConnected: number;
-  };
+  generatedAt: string;
+  thresholds: FleetConnectivityThresholds;
+  summary: FleetConnectivitySummary;
+  pagination: FleetConnectivityPagination;
   vehicles: FleetConnectivityVehicle[];
+}
+
+export type DataAnalyseIntervalStatus = 'OK' | 'Delayed' | 'Sparse' | 'Missing' | 'Unknown';
+export type DataAnalyseFreshness = 'fresh' | 'stale' | 'offline' | 'insufficient_data' | 'unknown';
+export type DataAnalyseHfQuality = 'Good for detection' | 'Borderline' | 'Too sparse' | 'Not available' | 'Unknown';
+export type DataAnalyseLaunchFeasibility = 'Reliable' | 'Possible but weak' | 'Not reliable' | 'Not enough data';
+
+export interface DataAnalyseVehicle {
+  id: string;
+  name: string;
+  licensePlate: string | null;
+  vin: string | null;
+  provider: string | null;
+  connectionStatus: string;
+  lastSeenAt: string | null;
+  dimoTokenId: number | null;
+}
+
+export interface DataAnalyseTelemetryOverview {
+  lastTelemetryReceived: string | null;
+  totalSignalsObserved: number;
+  highFrequencySignalsObserved: number;
+  averageObservedIntervalMs: number | null;
+  fastestObservedIntervalMs: number | null;
+  slowestObservedIntervalMs: number | null;
+  missingExpectedSignals: string[];
+  dataFreshnessStatus: DataAnalyseFreshness;
+  insufficientData: boolean;
+  notes: string[];
+}
+
+export interface DataAnalyseSignalRow {
+  signalName: string;
+  signalGroup: string;
+  latestValue: string | number | boolean | null;
+  unit: string | null;
+  providerTimestamp: string | null;
+  backendReceivedTimestamp: string | null;
+  lastSeen: string | null;
+  observedIntervalMs: number | null;
+  expectedIntervalMs: number | null;
+  intervalStatus: DataAnalyseIntervalStatus;
+  sourceProvider: string | null;
+  storageLocation: string;
+  usedByModules: string[];
+  persisted: boolean;
+}
+
+export interface DataAnalyseHighFrequency {
+  available: boolean;
+  message: string | null;
+  snapshotLevelOnly: boolean;
+  clickHouseAvailable: boolean;
+  signals: Array<{
+    signalName: string;
+    observedIntervalMs: number | null;
+    averageIntervalMs: number | null;
+    dropoutCount: number | null;
+    longestGapMs: number | null;
+    providerToBackendLatencyMs: number | null;
+    detectionQuality: DataAnalyseHfQuality;
+    notes: string[];
+  }>;
+  waypointCount24h: number | null;
+}
+
+export interface DataAnalyseLaunchFeasibilityResult {
+  feasibility: DataAnalyseLaunchFeasibility;
+  availableSignals: string[];
+  missingSignals: string[];
+  observedIntervals: Record<string, number | null>;
+  minimumViableIntervalMs: number;
+  providerLimitations: string[];
+  recommendation: string;
+  reasons: string[];
+}
+
+export interface DataAnalyseHealthTraceSection {
+  status: string | null;
+  lastCalculationAt: string | null;
+  calculationSource: string | null;
+  freshness: string;
+  inputsAvailable: string[];
+  inputsMissing: string[];
+  evidence: Record<string, unknown>;
+  notes: string[];
+}
+
+export interface DataAnalyseHealthTrace {
+  brake: DataAnalyseHealthTraceSection;
+  tire: DataAnalyseHealthTraceSection;
+  battery: DataAnalyseHealthTraceSection;
+}
+
+export interface DataAnalysePipelineStep {
+  step: string;
+  status: string;
+  lastSeenAt: string | null;
+  sourceName: string | null;
+  notes: string | null;
+}
+
+export interface DataAnalysePipeline {
+  provider: string | null;
+  steps: DataAnalysePipelineStep[];
+  lastSuccessfulProcessing: string | null;
+  lastError: string | null;
+}
+
+export interface DataAnalyseSignalGroup {
+  id: string;
+  groupName: string;
+  description: string;
+  typicalSignals: string[];
+  expectedIntervalMs: number | null;
+  practicalUse: string;
+  usedByModules: string[];
+  detectionRelevance: string;
+  currentAvailability: string;
+  availabilityNotes: string | null;
 }
 
 export interface AdminFleetConnectivityVehicle {
@@ -3675,53 +4835,128 @@ export interface VendorAuditEntry {
 
 // ── Stations & Branches ─────────────────────────────────────────────────────
 // Mirrors backend StationDto / StationsService.
-export type StationStatus = 'ACTIVE' | 'INACTIVE';
+export type StationStatus = 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
+export type StationType = 'MAIN' | 'BRANCH' | 'PARKING' | 'PARTNER' | 'TEMPORARY';
+
+export type StationOpeningHours = Record<
+  string,
+  { closed?: boolean; open?: string; close?: string; slots?: Array<{ open: string; close: string }> }
+>;
 
 export interface Station {
   id: string;
   name: string;
+  code: string | null;
+  status: StationStatus;
+  statusLabel: string;
+  type: StationType;
+  typeLabel: string;
+  isPrimary: boolean;
   address: string | null;
+  addressLine1: string | null;
+  addressLine2: string | null;
   city: string | null;
   postalCode: string | null;
   country: string | null;
   latitude: number | null;
   longitude: number | null;
-  /**
-   * Geofence radius (m). When non-null and combined with `latitude` /
-   * `longitude`, a vehicle is considered "at home" if its current GPS
-   * fix is within this many meters of the station's coordinates. See
-   * `frontend/src/lib/geospatial.ts > isVehicleAtHomeStation`.
-   */
+  timezone: string | null;
   radiusMeters: number | null;
+  geofenceRadiusMeters: number | null;
   phone: string | null;
   email: string | null;
   managerName: string | null;
-  openingHours: string | null;
+  contactPerson: string | null;
+  pickupEnabled: boolean;
+  returnEnabled: boolean;
+  afterHoursReturnEnabled: boolean;
+  keyBoxAvailable: boolean;
+  capacity: number | null;
+  openingHours: StationOpeningHours | string | null;
+  holidayRules: Record<string, unknown> | null;
+  handoverInstructions: string | null;
+  returnInstructions: string | null;
   notes: string | null;
+  internalNotes: string | null;
   googlePlaceId: string | null;
-  status: StationStatus;
-  statusLabel: string;
+  archivedAt: string | null;
   vehicleCount: number;
   createdAt: string;
   updatedAt: string;
 }
 
+export interface StationOverviewStats {
+  totalVehicles: number;
+  availableVehicles: number;
+  bookedVehicles: number;
+  inServiceVehicles: number;
+  vehiclesWithHealthWarnings: number | null;
+  todayPickups: number;
+  todayReturns: number;
+  upcomingPickups: number;
+  upcomingReturns: number;
+  openTasks: number;
+  capacity: number | null;
+  capacityUsagePercent: number | null;
+  hasMissingCoordinates: boolean;
+  hasMissingOpeningHours: boolean;
+  hasMissingPickupReturnRules: boolean;
+}
+
+export interface StationFleetVehicle {
+  id: string;
+  vehicleName: string | null;
+  make: string;
+  model: string;
+  licensePlate: string | null;
+  status: string;
+  homeStationId: string | null;
+  currentStationId: string | null;
+  expectedStationId: string | null;
+}
+
+export interface StationBookingRow {
+  id: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  pickupStationId: string | null;
+  returnStationId: string | null;
+  isOneWayRental: boolean;
+  customerName: string;
+  vehicleLabel: string;
+}
+
 export interface StationUpsertPayload {
   name: string;
+  code?: string | null;
+  type?: StationType;
+  status?: StationStatus;
+  isPrimary?: boolean;
   address?: string | null;
+  addressLine2?: string | null;
   city?: string | null;
   postalCode?: string | null;
   country?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  timezone?: string | null;
   radiusMeters?: number | null;
   phone?: string | null;
   email?: string | null;
   managerName?: string | null;
-  openingHours?: string | null;
+  pickupEnabled?: boolean;
+  returnEnabled?: boolean;
+  afterHoursReturnEnabled?: boolean;
+  keyBoxAvailable?: boolean;
+  capacity?: number | null;
+  openingHours?: StationOpeningHours | null;
+  holidayRules?: Record<string, unknown> | null;
+  handoverInstructions?: string | null;
+  returnInstructions?: string | null;
   notes?: string | null;
+  internalNotes?: string | null;
   googlePlaceId?: string | null;
-  status?: StationStatus;
 }
 
 export interface StationsStats {
@@ -3824,7 +5059,7 @@ export interface WhatsAppConversation {
   lastMessagePreview: string | null;
   unreadCount: number;
   status: string;
-  assignedTo: string | null;
+  assignedUserId: string | null;
   createdAt: string;
 }
 

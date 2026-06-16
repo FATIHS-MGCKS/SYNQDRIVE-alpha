@@ -53,7 +53,10 @@ function parseDate(value: unknown): Date | null {
 }
 
 function normalizeStatus(raw: unknown, start: Date, end: Date): BookingStatus {
+  const enumRaw = String((raw as { statusEnum?: string })?.statusEnum ?? '').toUpperCase();
+  if (enumRaw === 'NO_SHOW') return 'cancelled';
   const status = String(raw ?? '').toLowerCase();
+  if (status.includes('no_show') || status.includes('no show')) return 'cancelled';
   if (status.includes('cancel')) return 'cancelled';
   if (status.includes('complete') || status.includes('done') || status.includes('closed')) return 'completed';
   const now = Date.now();

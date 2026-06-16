@@ -83,31 +83,22 @@ export default function LoginPage() {
   };
 
   const inputClass =
-    'w-full px-3 py-1.5 text-xs text-neutral-900 bg-neutral-50/80 border border-neutral-200/80 rounded-lg focus:bg-white focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/5 outline-none transition-all duration-200 placeholder:text-neutral-400';
+    'w-full px-3 py-2 text-xs text-foreground bg-[color:var(--input-background)] border border-border rounded-lg focus:bg-card focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--ring)] outline-none transition-all duration-200 placeholder:text-muted-foreground';
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-hidden">
-      {/* Ambient background */}
+    <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-hidden bg-background">
+      {/* Ambient brand moment — allowed glass/gradient on login only */}
       <div
-        className="fixed inset-0"
+        className="pointer-events-none fixed inset-0 opacity-80"
         style={{
-          background: 'linear-gradient(145deg, #f8f9fb 0%, #eef0f5 30%, #f4f5f8 60%, #e9ecf2 100%)',
+          background:
+            'radial-gradient(ellipse 80% 60% at 85% 10%, color-mix(in srgb, var(--brand) 8%, transparent), transparent 55%), radial-gradient(ellipse 70% 50% at 5% 95%, color-mix(in srgb, var(--brand) 5%, transparent), transparent 50%), var(--background)',
         }}
       />
-      {/* Mesh gradient orbs — Premium Blue brand tint (no AI-purple). */}
       <div
-        className="fixed top-[-20%] right-[-10%] w-[700px] h-[700px] rounded-full opacity-[0.07]"
-        style={{ background: 'radial-gradient(circle, #2563EB 0%, transparent 70%)' }}
-      />
-      <div
-        className="fixed bottom-[-15%] left-[-5%] w-[600px] h-[600px] rounded-full opacity-[0.05]"
-        style={{ background: 'radial-gradient(circle, #3b82f6 0%, transparent 70%)' }}
-      />
-      {/* Dot pattern */}
-      <div
-        className="fixed inset-0 opacity-[0.02]"
+        className="pointer-events-none fixed inset-0 opacity-[0.35]"
         style={{
-          backgroundImage: 'radial-gradient(circle at 1px 1px, #000 0.5px, transparent 0)',
+          backgroundImage: 'radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--foreground) 6%, transparent) 0.5px, transparent 0)',
           backgroundSize: '32px 32px',
         }}
       />
@@ -118,31 +109,31 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setShowLangMenu(!showLangMenu)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-neutral-200/60 bg-white/70 backdrop-blur-2xl shadow-[0_1px_8px_rgb(0,0,0,0.04)] hover:bg-white/90 hover:border-neutral-300/80 transition-all duration-200"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-border bg-card/80 backdrop-blur-md shadow-[var(--shadow-1)] hover:bg-card hover:border-border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
           >
-            <Globe className="w-3.5 h-3.5 text-neutral-400" />
-            <span className="inline-flex h-4 min-w-[22px] items-center justify-center rounded-sm bg-neutral-100 px-1 font-mono text-[9px] font-semibold tracking-[0.08em] text-neutral-600">
+            <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="inline-flex h-4 min-w-[22px] items-center justify-center rounded-sm bg-muted px-1 font-mono text-[9px] font-semibold tracking-[0.08em] text-muted-foreground">
               {locale === 'de' ? 'DE' : 'EN'}
             </span>
-            <span className="text-xs text-neutral-600 font-medium">
+            <span className="text-xs text-foreground font-medium">
               {locale === 'de' ? 'Deutsch' : 'English'}
             </span>
           </button>
           {showLangMenu && (
             <>
               <div className="fixed inset-0" onClick={() => setShowLangMenu(false)} aria-hidden />
-              <div className="absolute right-0 top-full mt-2 w-44 rounded-xl border border-neutral-200/60 bg-white/95 backdrop-blur-2xl shadow-[0_12px_40px_rgb(0,0,0,0.1)] overflow-hidden">
+              <div className="absolute right-0 top-full mt-2 w-44 rounded-xl border border-border bg-popover shadow-[var(--shadow-2)] overflow-hidden animate-fade-up">
                 <button
                   type="button"
                   onClick={() => { setLocale('en'); setShowLangMenu(false); }}
-                  className={`w-full flex items-center gap-2.5 px-4 py-3 text-xs font-medium text-left transition-all duration-150 ${locale === 'en' ? 'bg-neutral-900 text-white' : 'text-neutral-600 hover:bg-neutral-50'}`}
+                  className={`w-full flex items-center gap-2.5 px-4 py-3 text-xs font-medium text-left transition-all duration-150 ${locale === 'en' ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]' : 'text-muted-foreground hover:bg-muted'}`}
                 >
                   <span className="font-mono text-[10px] tracking-[0.08em] opacity-70">EN</span> English
                 </button>
                 <button
                   type="button"
                   onClick={() => { setLocale('de'); setShowLangMenu(false); }}
-                  className={`w-full flex items-center gap-2.5 px-4 py-3 text-xs font-medium text-left transition-all duration-150 ${locale === 'de' ? 'bg-neutral-900 text-white' : 'text-neutral-600 hover:bg-neutral-50'}`}
+                  className={`w-full flex items-center gap-2.5 px-4 py-3 text-xs font-medium text-left transition-all duration-150 ${locale === 'de' ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]' : 'text-muted-foreground hover:bg-muted'}`}
                 >
                   <span className="font-mono text-[10px] tracking-[0.08em] opacity-70">DE</span> Deutsch
                 </button>
@@ -159,13 +150,7 @@ export default function LoginPage() {
           keep the original size so the card does not overflow the root's
           overflow-hidden container. */}
       <div
-        className="relative w-full max-w-[820px] min-h-[440px] rounded-[20px] overflow-hidden z-10 origin-center md:scale-[1.2]"
-        style={{
-          background: 'rgba(255, 255, 255, 0.72)',
-          backdropFilter: 'blur(60px) saturate(180%)',
-          WebkitBackdropFilter: 'blur(60px) saturate(180%)',
-          boxShadow: '0 0 0 1px rgba(255,255,255,0.6), 0 24px 80px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.03)',
-        }}
+        className="relative w-full max-w-[820px] min-h-[440px] rounded-[20px] overflow-hidden z-10 origin-center md:scale-[1.2] sq-glass border border-border shadow-[var(--shadow-2)]"
       >
         <div className="flex min-h-[460px]">
           {/* Left Panel */}
@@ -262,19 +247,19 @@ export default function LoginPage() {
               </div>
 
               <div className="mb-4 text-center">
-                <h1 className="text-[12px] font-bold tracking-tight text-neutral-900">{t('welcomeBack')}</h1>
-                <p className="text-[9px] text-neutral-400 mt-1">{t('subtitle')}</p>
+                <h1 className="text-sm font-bold tracking-tight text-foreground">{t('welcomeBack')}</h1>
+                <p className="text-[11px] text-muted-foreground mt-1">{t('subtitle')}</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-2.5">
                 {error && (
-                  <div className="px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
+                  <div className="px-3 py-2 rounded-lg border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical-soft)] text-xs text-[color:var(--status-critical)]">
                     {error}
                   </div>
                 )}
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-medium text-neutral-500 tracking-wide pl-0.5">{t('email')}</label>
+                  <label className="text-[10px] font-medium text-muted-foreground tracking-wide pl-0.5">{t('email')}</label>
                   <input
                     type="email"
                     value={email}
@@ -286,7 +271,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-medium text-neutral-500 tracking-wide pl-0.5">{t('password')}</label>
+                  <label className="text-[10px] font-medium text-muted-foreground tracking-wide pl-0.5">{t('password')}</label>
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
@@ -299,7 +284,7 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-neutral-400 hover:text-neutral-600 transition-colors rounded hover:bg-neutral-100"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground transition-colors rounded hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -315,7 +300,7 @@ export default function LoginPage() {
                       onClick={() => setRememberMe(!rememberMe)}
                       onKeyDown={(e) => e.key === 'Enter' && setRememberMe((v) => !v)}
                       className={`w-[14px] h-[14px] rounded border-[1.5px] flex items-center justify-center transition-all duration-200 cursor-pointer ${
-                        rememberMe ? 'bg-neutral-900 border-neutral-900' : 'border-neutral-300 group-hover:border-neutral-400'
+                        rememberMe ? 'bg-[color:var(--brand)] border-[color:var(--brand)]' : 'border-border group-hover:border-muted-foreground'
                       }`}
                     >
                       {rememberMe && (
@@ -324,11 +309,11 @@ export default function LoginPage() {
                         </svg>
                       )}
                     </div>
-                    <span className="text-[10px] text-neutral-500 font-medium">{t('rememberMe')}</span>
+                    <span className="text-[10px] text-muted-foreground font-medium">{t('rememberMe')}</span>
                   </label>
                   <button
                     type="button"
-                    className="text-[10px] text-neutral-400 hover:text-neutral-700 font-medium transition-colors"
+                    className="text-[10px] text-muted-foreground hover:text-foreground font-medium transition-colors"
                     onClick={() => setError(locale === 'de' ? 'Bitte wenden Sie sich an den Support.' : 'Please contact support.')}
                   >
                     {t('forgotPassword')}
@@ -338,7 +323,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2 rounded-lg bg-neutral-900 text-white text-[9px] font-medium hover:bg-neutral-800 transition-colors duration-200 flex items-center justify-center gap-2 shadow-[0_2px_12px_rgba(0,0,0,0.12)] disabled:opacity-70 mt-1"
+                  className="w-full py-2 rounded-lg bg-[color:var(--brand)] text-[color:var(--brand-foreground)] text-xs font-semibold hover:bg-[color:var(--brand-hover)] transition-colors duration-200 flex items-center justify-center gap-2 shadow-[var(--shadow-1)] disabled:opacity-70 mt-1 sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
                   {loading ? (
                     <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -351,16 +336,16 @@ export default function LoginPage() {
                 </button>
 
                 <div className="flex items-center gap-3 py-0.5">
-                  <div className="flex-1 h-px bg-neutral-200/80" />
-                  <span className="text-[9px] text-neutral-400 font-medium tracking-wider uppercase">{t('or')}</span>
-                  <div className="flex-1 h-px bg-neutral-200/80" />
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-[9px] text-muted-foreground font-medium tracking-wider uppercase">{t('or')}</span>
+                  <div className="flex-1 h-px bg-border" />
                 </div>
 
                 <div className="flex gap-2">
                   <button
                     type="button"
                     disabled
-                    className="flex-1 py-1.5 rounded-lg border border-neutral-200/80 bg-white/80 text-xs font-medium text-neutral-400 flex items-center justify-center gap-2 shadow-[0_1px_4px_rgba(0,0,0,0.03)] cursor-not-allowed"
+                    className="flex-1 py-1.5 rounded-lg border border-border bg-card text-xs font-medium text-muted-foreground flex items-center justify-center gap-2 shadow-[var(--shadow-1)] cursor-not-allowed"
                   >
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
                       <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -373,7 +358,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     disabled
-                    className="flex-1 py-1.5 rounded-lg border border-neutral-200/80 bg-white/80 text-xs font-medium text-neutral-400 flex items-center justify-center gap-2 shadow-[0_1px_4px_rgba(0,0,0,0.03)] cursor-not-allowed"
+                    className="flex-1 py-1.5 rounded-lg border border-border bg-card text-xs font-medium text-muted-foreground flex items-center justify-center gap-2 shadow-[var(--shadow-1)] cursor-not-allowed"
                   >
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
                       <rect x="1" y="1" width="10" height="10" fill="#F25022"/>
@@ -391,7 +376,7 @@ export default function LoginPage() {
       </div>
 
       <div className="fixed bottom-4 text-center w-full z-10">
-        <p className="text-[10px] text-neutral-400">{t('footer')}</p>
+        <p className="text-[10px] text-muted-foreground">{t('footer')}</p>
       </div>
     </div>
   );

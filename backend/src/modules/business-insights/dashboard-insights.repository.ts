@@ -109,8 +109,20 @@ export class DashboardInsightsRepository {
     const lastRun = await this.prisma.dashboardInsightRun.findFirst({
       where: { organizationId, finishedAt: { not: null } },
       orderBy: { finishedAt: 'desc' },
-      select: { finishedAt: true },
+      select: { finishedAt: true, errorMessage: true, startedAt: true },
     });
+
+    const policy = await this.prisma.tenantInsightPolicy.findUnique({
+      where: { organizationId },
+      select: { refreshIntervalMin: true },
+    });
+    const refreshMin = policy?.refreshIntervalMin ?? 30;
+    const staleThresholdMs = refreshMin * 60_000 * 2;
+    const lastRunAt = lastRun?.finishedAt ?? null;
+    const stale =
+      lastRunAt != null
+        ? Date.now() - lastRunAt.getTime() > staleThresholdMs
+        : false;
 
     const dtos = insights.map((i) => this.toInsightDto(i));
 
@@ -123,7 +135,12 @@ export class DashboardInsightsRepository {
     };
 
     return {
-      generatedAt: lastRun?.finishedAt?.toISOString() ?? new Date().toISOString(),
+      generatedAt: lastRunAt?.toISOString() ?? null,
+      hasRun: lastRunAt != null,
+      lastRunAt: lastRunAt?.toISOString() ?? null,
+      stale,
+      activeInsightCount: insights.length,
+      error: lastRun?.errorMessage ?? null,
       summary,
       insights: dtos,
     };

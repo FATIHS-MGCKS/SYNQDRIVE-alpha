@@ -10,7 +10,7 @@ export interface AuthUser {
   organizationId: string | null;
   organizationName: string | null;
   organizationLogoUrl?: string | null;
-  permissions: Record<string, { read: boolean; write: boolean }> | null;
+  permissions: Record<string, { read: boolean; write: boolean; manage?: boolean }> | null;
 }
 
 export function getToken(): string | null {

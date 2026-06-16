@@ -9,8 +9,8 @@ interface RentalContextValue {
   orgLogoUrl: string | null;
   loading: boolean;
   userRole: string | null;
-  userPermissions: Record<string, { read: boolean; write: boolean }> | null;
-  hasPermission: (module: string, level: 'read' | 'write') => boolean;
+  userPermissions: Record<string, { read: boolean; write: boolean; manage?: boolean }> | null;
+  hasPermission: (module: string, level: 'read' | 'write' | 'manage') => boolean;
   /** Update orgName + orgLogoUrl in memory and persist to the stored auth user
    *  so other consumers (RightSidebar, TopBar, …) re-render immediately. */
   setOrgBranding: (patch: { orgName?: string; orgLogoUrl?: string | null }) => void;
@@ -33,7 +33,7 @@ export function RentalProvider({ children }: { children: ReactNode }) {
   const [orgLogoUrl, setOrgLogoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [userPermissions, setUserPermissions] = useState<Record<string, { read: boolean; write: boolean }> | null>(null);
+  const [userPermissions, setUserPermissions] = useState<Record<string, { read: boolean; write: boolean; manage?: boolean }> | null>(null);
 
   useEffect(() => {
     const user = getStoredUser();
@@ -59,12 +59,14 @@ export function RentalProvider({ children }: { children: ReactNode }) {
     }).catch(() => setLoading(false));
   }, []);
 
-  const hasPermission = useCallback((module: string, level: 'read' | 'write'): boolean => {
+  const hasPermission = useCallback((module: string, level: 'read' | 'write' | 'manage'): boolean => {
     if (userRole === 'ORG_ADMIN') return true;
     if (!userPermissions) return false;
     const perm = userPermissions[module];
     if (!perm) return false;
-    return level === 'write' ? perm.write : perm.read;
+    if (level === 'read') return perm.read === true || perm.write === true || perm.manage === true;
+    if (level === 'write') return perm.write === true || perm.manage === true;
+    return perm.manage === true;
   }, [userRole, userPermissions]);
 
   const setOrgBranding = useCallback(

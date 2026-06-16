@@ -8,9 +8,20 @@ import { useFleetVehicles } from '../FleetContext';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { CustomerDetailModal } from './CustomerDetailModal';
 import { CustomerDocumentUploadBox } from './CustomerDocumentUploadBox';
-import { VehicleTariff, ExtraOption, buildTariffs } from '../data/tariffs';
 import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
+import { formatStressScore, resolveDrivingStressScore, stressToneToStatusTone } from '../lib/scoreFormat';
+import { usePriceTariffs } from '../hooks/usePriceTariffs';
+import { usePricingSimulation } from '../hooks/usePricingSimulation';
+import {
+  discountableNetCents,
+  eurosFromCents,
+  formatNetAsGross,
+  formatOptionGrossLabel,
+  formatPriceCents,
+  getVehicleTariffFromCatalog,
+  grossFromNetCents,
+} from '../pricing/pricingUtils';
 // V4.6.67 — share the same brand-logo CDN/component used in FleetView so the
 // vehicle picker shows real brand artwork (Volkswagen, BMW, Tesla, …) instead
 // of an inline mock map of carlogos.org URLs.
@@ -22,6 +33,8 @@ import {
   customerStatusApiToUi,
   customerRiskApiToUi,
   mapApiBooking,
+  uploadPendingCustomerDocuments,
+  type PendingCustomerDocumentFiles,
 } from '../lib/entityMappers';
 // V4.6.76 Rental Health V1 — pre-flight the rental_blocked gate in the
 // vehicle picker so dispatchers see "Nicht vermietbar" BEFORE they click,
@@ -36,12 +49,17 @@ import {
   EmptyState,
   SkeletonCard,
 } from '../../components/patterns';
+import { StationSelectFields } from './stations/StationSelectFields';
+import {
+  resolveDefaultPickupStationId,
+  stationLabel,
+} from '../lib/stationBookingUtils';
+import type { Station } from '../../lib/api';
 
 const EM_DASH = '\u2014';
 
 interface NewBookingViewProps {
   onBack: () => void;
-  tariffs?: VehicleTariff[];
   onCustomerCreated?: (customer: any) => void;
   onBookingCreated?: (booking: any) => void;
 }
@@ -57,9 +75,8 @@ interface Customer {
   status: 'Active' | 'Under Review' | 'Suspended' | 'Blocked' | 'Archived' | 'Inactive';
   // V4.6.95 — neutral 'Not Assessed' default replaces fake "Low Risk".
   riskLevel: 'Not Assessed' | 'Low Risk' | 'Medium Risk' | 'High Risk';
-  // Canonical Driving Style Score (0–100, may be null when no scored trips
-  // exist). Frontend never recomputes — backend is source of truth.
-  drivingStyleScore: number | null;
+  drivingStressScore: number | null;
+  stressLevel?: 'low' | 'moderate' | 'high' | 'critical' | null;
   totalBookings: number;
   totalRevenue: string;
   city: string;
@@ -87,15 +104,8 @@ const mapApiCustomerToBookingCustomer = (c: any): Customer => {
     type: customerTypeApiToUi(c?.customerType),
     status: customerStatusApiToUi(c?.status, c?.archivedAt),
     riskLevel: customerRiskApiToUi(c?.riskLevel),
-    // V4.6.95 — drivingStyleScore is the canonical scalar; legacy
-    // `drivingScore` is kept as fallback only for older payloads. Missing
-    // data is preserved as `null` (do NOT coerce to 0/100).
-    drivingStyleScore:
-      typeof c?.drivingStyleScore === 'number'
-        ? c.drivingStyleScore
-        : typeof c?.drivingScore === 'number'
-          ? c.drivingScore
-          : null,
+    drivingStressScore: resolveDrivingStressScore(c),
+    stressLevel: c?.stressLevel ?? null,
     totalBookings: typeof c?.totalRentals === 'number' ? c.totalRentals : 0,
     totalRevenue: formatEuro(typeof c?.totalRevenue === 'number' ? c.totalRevenue : 0),
     city: c?.city ?? '',
@@ -123,12 +133,7 @@ const buildMMY = (v: { make?: string | null; model?: string | null; year?: numbe
   return year ? `${head} ${year}`.trim() : head || rawModel || 'Fahrzeug';
 };
 
-// Fallback pricing (used only when no tariff data is available)
-const getDailyRateFallback = (v: VehicleData) => {
-  const base = v.fuelType === 'Electric' ? 89 : v.fuelType === 'Hybrid' ? 79 : v.fuelType === 'Diesel' ? 59 : 49;
-  const yearMod = v.year >= 2025 ? 15 : v.year >= 2024 ? 10 : 0;
-  return base + yearMod;
-};
+// Fallback pricing removed — backend Pricing Service is the source of truth.
 
 // V4.6.67 — Reordered steps so that the booking flow is logically gated:
 //   Vehicle → Period → Extras → Customer → Checkout
@@ -144,10 +149,11 @@ const steps = [
   { id: 5, label: 'Checkout', icon: CreditCard },
 ];
 
-export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCreated, onBookingCreated }: NewBookingViewProps) {
+export function NewBookingView({ onBack, onCustomerCreated, onBookingCreated }: NewBookingViewProps) {
   const { fleetVehicles } = useFleetVehicles();
   const { orgId } = useRentalOrg();
-  const allTariffs = externalTariffs?.length ? externalTariffs : buildTariffs(fleetVehicles);
+  const { catalog, loading: catalogLoading } = usePriceTariffs(orgId);
+  const taxRatePercent = catalog?.priceBook?.taxRatePercent ?? 19;
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customersLoading, setCustomersLoading] = useState(false);
   const [customersError, setCustomersError] = useState<string | null>(null);
@@ -222,10 +228,10 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
     };
   }, [orgId]);
 
-  // Tariff-aware daily rate lookup
-  const getDailyRate = (v: VehicleData) => {
-    const tariff = allTariffs.find(t => t.vehicleId === v.id);
-    return tariff ? tariff.daily.rate : getDailyRateFallback(v);
+  const getVehicleDailyRateLabel = (vehicleId: string): string | null => {
+    const ctx = getVehicleTariffFromCatalog(catalog, vehicleId);
+    if (!ctx?.version.rate) return null;
+    return formatNetAsGross(ctx.version.rate.dailyRateCents, taxRatePercent);
   };
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -265,12 +271,11 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
 
   const [showPickupTimePicker, setShowPickupTimePicker] = useState(false);
   const [showReturnTimePicker, setShowReturnTimePicker] = useState(false);
-  const [pickupStation, setPickupStation] = useState('');
-  const [returnStation, setReturnStation] = useState('');
+  const [pickupStationId, setPickupStationId] = useState('');
+  const [returnStationId, setReturnStationId] = useState('');
   const [sameReturnStation, setSameReturnStation] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash' | 'invoice'>('card');
   const [discountPercent, setDiscountPercent] = useState(0);
-  const [depositAmount] = useState(250);
   const [extras, setExtras] = useState<string[]>([]);
   const [selectedMileagePackage, setSelectedMileagePackage] = useState<string | null>(null);
   const [selectedInsurances, setSelectedInsurances] = useState<string[]>([]);
@@ -301,13 +306,9 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
     licenseNumber: '', licenseExpiry: '', licenseClass: 'B',
     idType: 'Personalausweis' as 'Personalausweis' | 'Reisepass',
     idNumber: '', idExpiry: '',
-    // V4.6.65 — real uploaded document URLs.
-    idFrontUrl: null as string | null,
-    idBackUrl: null as string | null,
-    licenseFrontUrl: null as string | null,
-    licenseBackUrl: null as string | null,
     notes: '',
   });
+  const [pendingDocFiles, setPendingDocFiles] = useState<PendingCustomerDocumentFiles>({});
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [idVerificationStatus, setIdVerificationStatus] = useState<'idle' | 'verifying' | 'verified' | 'failed'>('idle');
 
@@ -317,9 +318,9 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
       type: 'Individual', company: '',
       licenseNumber: '', licenseExpiry: '', licenseClass: 'B',
       idType: 'Personalausweis', idNumber: '', idExpiry: '',
-      idFrontUrl: null, idBackUrl: null, licenseFrontUrl: null, licenseBackUrl: null,
       notes: '',
     });
+    setPendingDocFiles({});
     setFormErrors({});
     setAddStep(0);
     setIdVerificationStatus('idle');
@@ -341,9 +342,9 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
       if (!newCustomer.idNumber.trim()) errors.idNumber = 'ID number required';
       if (!newCustomer.idExpiry) errors.idExpiry = 'Expiry date required';
     } else if (step === 2) {
-      if (!newCustomer.idFrontUrl) errors.idFront = 'ID front side required';
-      if (!newCustomer.idBackUrl) errors.idBack = 'ID back side required';
-      if (!newCustomer.licenseFrontUrl) errors.licenseFront = 'License front side required';
+      if (!pendingDocFiles.ID_FRONT) errors.idFront = 'ID front side required';
+      if (!pendingDocFiles.ID_BACK) errors.idBack = 'ID back side required';
+      if (!pendingDocFiles.LICENSE_FRONT) errors.licenseFront = 'License front side required';
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -376,17 +377,16 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
         idNumber: newCustomer.idNumber,
         idExpiry: newCustomer.idExpiry,
         notes: newCustomer.notes,
-        idVerified: idVerificationStatus === 'verified',
-        licenseVerified: Boolean(newCustomer.licenseFrontUrl),
-        idFrontUrl: newCustomer.idFrontUrl,
-        idBackUrl: newCustomer.idBackUrl,
-        licenseFrontUrl: newCustomer.licenseFrontUrl,
-        licenseBackUrl: newCustomer.licenseBackUrl,
       });
       const created = await api.customers.create(orgId, payload as any);
+      await uploadPendingCustomerDocuments(orgId, created.id, pendingDocFiles);
       const bookingCustomer = mapApiCustomerToBookingCustomer(created);
       setCustomers(prev => [bookingCustomer, ...prev.filter(c => c.id !== bookingCustomer.id)]);
       setSelectedCustomer(bookingCustomer);
+      const startIso = pickupDate
+        ? new Date(`${pickupDate}T${pickupTime || '10:00'}`).toISOString()
+        : undefined;
+      api.customers.eligibility(orgId, created.id, startIso).then(setCustomerEligibility).catch(() => setCustomerEligibility(null));
       if (onCustomerCreated) {
         onCustomerCreated({
           ...bookingCustomer,
@@ -426,6 +426,27 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
     notes: '',
     currentVehicle: undefined as string | undefined,
   });
+
+  const [orgStations, setOrgStations] = useState<Station[]>([]);
+
+  useEffect(() => {
+    if (!orgId) {
+      setOrgStations([]);
+      return;
+    }
+    let cancelled = false;
+    api.stations
+      .list(orgId)
+      .then((rows) => {
+        if (!cancelled) setOrgStations(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) setOrgStations([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
 
   // Derived
   const filteredCustomers = customers;
@@ -476,52 +497,124 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
     return Math.max(1, Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)));
   }, [pickupDate, returnDate]);
 
-  // Get tariff for selected vehicle
-  const vehicleTariff = selectedVehicle ? allTariffs.find(t => t.vehicleId === selectedVehicle.id) : null;
+  const vehicleTariffCtx = selectedVehicle
+    ? getVehicleTariffFromCatalog(catalog, selectedVehicle.id)
+    : null;
 
-  const dailyRate = selectedVehicle ? getDailyRate(selectedVehicle) : 0;
-  const subtotal = dailyRate * rentalDays;
+  const mileagePackages = useMemo(
+    () => vehicleTariffCtx?.version.mileagePackages.filter((p) => p.isActive) ?? [],
+    [vehicleTariffCtx],
+  );
+  const insuranceOptions = useMemo(
+    () => vehicleTariffCtx?.version.insuranceOptions.filter((i) => i.isActive) ?? [],
+    [vehicleTariffCtx],
+  );
+  const extraOptions = useMemo(
+    () => vehicleTariffCtx?.version.extraOptions.filter((e) => e.isActive) ?? [],
+    [vehicleTariffCtx],
+  );
 
-  // Calculate extras total from tariff data
-  const extrasTotal = useMemo(() => {
-    if (!vehicleTariff) return 0;
-    let total = 0;
-    // Selected extras daily prices * rental days
-    for (const extId of extras) {
-      const ext = vehicleTariff.extras?.find(e => e.id === extId);
-      if (ext) total += ext.dailyPrice * rentalDays;
-    }
-    // Selected insurances daily prices * rental days
-    for (const insId of selectedInsurances) {
-      const ins = vehicleTariff.insurances.find(i => i.id === insId);
-      if (ins) total += ins.dailyPrice * rentalDays;
-    }
-    // Selected mileage package (one-time)
-    if (selectedMileagePackage) {
-      const pkg = vehicleTariff.mileagePackages.find(p => p.id === selectedMileagePackage);
-      if (pkg) total += pkg.price;
-    }
-    return total;
-  }, [vehicleTariff, extras, selectedInsurances, selectedMileagePackage, rentalDays]);
+  useEffect(() => {
+    setExtras([]);
+    setSelectedMileagePackage(null);
+    const defaults = vehicleTariffCtx?.version.insuranceOptions
+      .filter((i) => i.isActive && i.isDefault)
+      .map((i) => i.id) ?? [];
+    setSelectedInsurances(defaults);
+  }, [selectedVehicle?.id, vehicleTariffCtx?.version.id]);
 
-  const discountAmount = Math.round((subtotal + extrasTotal) * discountPercent / 100);
-  const totalBeforeTax = subtotal + extrasTotal - discountAmount;
-  const tax = Math.round(totalBeforeTax * 0.19);
-  const grandTotal = totalBeforeTax + tax;
+  const pickupAtIso = pickupDate
+    ? new Date(`${pickupDate}T${pickupTime || '10:00'}:00`).toISOString()
+    : '';
+  const returnAtIso = returnDate
+    ? new Date(`${returnDate}T${returnTime || '10:00'}:00`).toISOString()
+    : '';
 
-  // Free kilometers based on vehicle type
-  const freeKmPerDay = vehicleTariff ? vehicleTariff.daily.kmLimit
-    : selectedVehicle
-    ? selectedVehicle.fuelType === 'Electric' ? 200
-    : selectedVehicle.fuelType === 'Hybrid' ? 250
-    : 300
-    : 250;
-  const baseFreeKm = freeKmPerDay * rentalDays;
-  const mileagePkgKm = selectedMileagePackage && vehicleTariff
-    ? (vehicleTariff.mileagePackages.find(p => p.id === selectedMileagePackage)?.km || 0)
+  const pricingInputBase = useMemo(
+    () => ({
+      selectedMileagePackageId: selectedMileagePackage ?? undefined,
+      selectedInsuranceOptionIds: selectedInsurances,
+      selectedExtraOptionIds: extras,
+    }),
+    [selectedMileagePackage, selectedInsurances, extras],
+  );
+
+  const simParamsNoDiscount = useMemo(() => {
+    if (!selectedVehicle?.id || !pickupAtIso || !returnAtIso) return null;
+    return {
+      vehicleId: selectedVehicle.id,
+      pickupAt: pickupAtIso,
+      returnAt: returnAtIso,
+      pricing: pricingInputBase,
+    };
+  }, [selectedVehicle?.id, pickupAtIso, returnAtIso, pricingInputBase]);
+
+  const { result: priceSimBase } = usePricingSimulation(orgId, simParamsNoDiscount, 400);
+
+  const manualDiscountCents = useMemo(() => {
+    if (discountPercent <= 0) return undefined;
+    const base = discountableNetCents(priceSimBase);
+    if (base <= 0) return undefined;
+    return Math.round(base * discountPercent / 100);
+  }, [discountPercent, priceSimBase]);
+
+  const simParams = useMemo(() => {
+    if (!simParamsNoDiscount) return null;
+    return {
+      ...simParamsNoDiscount,
+      pricing: {
+        ...pricingInputBase,
+        ...(manualDiscountCents != null ? { manualDiscountCents } : {}),
+      },
+    };
+  }, [simParamsNoDiscount, pricingInputBase, manualDiscountCents]);
+
+  const {
+    result: priceSim,
+    loading: priceLoading,
+    error: priceError,
+  } = usePricingSimulation(orgId, simParams, manualDiscountCents != null ? 300 : 400);
+
+  const displayRentalDays = priceSim?.rentalDays ?? rentalDays;
+  const grandTotal = eurosFromCents(priceSim?.totalGrossCents);
+  const tax = eurosFromCents(priceSim?.taxAmountCents);
+  const subtotalNet = eurosFromCents(priceSim?.subtotalNetCents);
+  const depositAmount = eurosFromCents(priceSim?.depositAmountCents);
+  const totalFreeKm = priceSim?.includedKm ?? 0;
+  const extraKmPrice = eurosFromCents(priceSim?.extraKmPriceCents);
+  const dailyRateGross = priceSim?.effectiveDailyRateCents != null
+    ? eurosFromCents(grossFromNetCents(priceSim.effectiveDailyRateCents, taxRatePercent))
+    : vehicleTariffCtx?.version.rate
+      ? eurosFromCents(
+          grossFromNetCents(vehicleTariffCtx.version.rate.dailyRateCents, taxRatePercent),
+        )
+      : null;
+  const freeKmPerDay = vehicleTariffCtx?.version.rate?.includedKmPerDay ?? 0;
+  const baseFreeKm = freeKmPerDay * displayRentalDays;
+  const mileagePkgKm = selectedMileagePackage
+    ? mileagePackages.find((p) => p.id === selectedMileagePackage)?.includedKm ?? 0
     : 0;
-  const totalFreeKm = baseFreeKm + mileagePkgKm;
-  const extraKmPrice = vehicleTariff ? vehicleTariff.extraKmPrice : (selectedVehicle?.fuelType === 'Electric' ? 0.25 : 0.29);
+  const discountAmount = manualDiscountCents != null ? manualDiscountCents / 100 : 0;
+  const totalBeforeTax = subtotalNet;
+  const hasPrice = Boolean(priceSim && grandTotal != null);
+  const noTariffForVehicle = Boolean(selectedVehicle && !vehicleTariffCtx && !catalogLoading);
+  const canCalculatePrice = Boolean(
+    selectedVehicle && pickupDate && returnDate && vehicleTariffCtx,
+  );
+
+  const baseRentalLine = priceSim?.lineItems.find((li) => li.type === 'BASE_RENTAL');
+  const subtotal = baseRentalLine ? baseRentalLine.totalGrossCents / 100 : 0;
+  const extrasTotal = priceSim
+    ? priceSim.lineItems
+        .filter(
+          (li) =>
+            li.type !== 'BASE_RENTAL' &&
+            li.type !== 'TAX' &&
+            li.type !== 'DISCOUNT' &&
+            li.type !== 'MANUAL_DISCOUNT',
+        )
+        .reduce((sum, li) => sum + li.totalGrossCents, 0) / 100
+    : 0;
 
   // Auto-redirect countdown
   const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
@@ -559,21 +652,42 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
       return;
     }
 
+    if (!vehicleTariffCtx || !priceSim || grandTotal == null) {
+      toast.error('Preis nicht verfügbar', {
+        description:
+          priceError ||
+          'Für dieses Fahrzeug ist kein aktiver Tarif konfiguriert oder die Preisberechnung ist fehlgeschlagen.',
+      });
+      return;
+    }
+
+    const effectiveReturnStationId = sameReturnStation ? pickupStationId : returnStationId;
+    if (!pickupStationId || !effectiveReturnStationId) {
+      toast.error('Stationen fehlen', {
+        description: 'Bitte Abhol- und Rückgabestation auswählen.',
+      });
+      return;
+    }
+
     setIsSavingBooking(true);
     try {
-      const insuranceLabel = selectedInsurances.length > 0 && vehicleTariff
-        ? vehicleTariff.insurances.filter(i => selectedInsurances.includes(i.id)).map(i => i.name).join(', ')
+      const insuranceLabel = selectedInsurances.length > 0
+        ? insuranceOptions.filter((i) => selectedInsurances.includes(i.id)).map((i) => i.label).join(', ')
         : 'Haftpflicht';
       const paymentLabel = paymentMethod === 'card' ? 'Kreditkarte' : paymentMethod === 'cash' ? 'Barzahlung' : 'Rechnung';
-      const effectiveReturnStation = sameReturnStation ? pickupStation : returnStation;
+      const pickupName = orgStations.find((s) => s.id === pickupStationId)?.name ?? '';
+      const returnName = orgStations.find((s) => s.id === effectiveReturnStationId)?.name ?? '';
 
-      const dailyRateEuro = (vehicleTariff?.daily.rate ?? getDailyRateFallback(selectedVehicle)) || 0;
-      const extrasForPayload = (extras || [])
+      const extrasForPayload = extras
         .map((id) => {
           const opt = extraOptions.find((o) => o.id === id);
-          return opt
-            ? { id: opt.id, name: opt.label, price: opt.dailyPrice * rentalDays }
-            : null;
+          if (!opt) return null;
+          const line = priceSim.lineItems.find((li) => li.label === opt.label);
+          return {
+            id: opt.id,
+            name: opt.label,
+            price: line ? line.totalGrossCents / 100 : grossFromNetCents(opt.priceCents, taxRatePercent) / 100,
+          };
         })
         .filter(Boolean) as Array<{ id: string; name: string; price: number }>;
 
@@ -584,22 +698,22 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
         pickupTime,
         returnDate,
         returnTime,
-        dailyRateEuro,
+        pickupStationId,
+        returnStationId: effectiveReturnStationId,
+        dailyRateEuro: dailyRateGross ?? undefined,
         totalPriceEuro: grandTotal,
         includedKm: totalFreeKm,
         insuranceLabels: insuranceLabel ? [insuranceLabel] : [],
         extras: extrasForPayload,
-        notes: `Abholung: ${pickupStation || selectedVehicle.station} • Rückgabe: ${effectiveReturnStation || pickupStation || selectedVehicle.station} • Zahlung: ${paymentLabel}`,
+        pricingInput: {
+          selectedMileagePackageId: selectedMileagePackage ?? undefined,
+          selectedInsuranceOptionIds: selectedInsurances,
+          selectedExtraOptionIds: extras,
+          manualDiscountCents,
+        },
+        notes: `Abholung: ${pickupName || selectedVehicle.station} • Rückgabe: ${returnName || pickupName || selectedVehicle.station} • Zahlung: ${paymentLabel}`,
         currency: 'eur',
-        // V4.6.70 — always CONFIRMED at creation time. The booking
-        // lifecycle transitions CONFIRMED → ACTIVE at the explicit
-        // handover step (pickup action in BookingsView); auto-promoting
-        // to ACTIVE just because the pickup date is today was wrong on
-        // two fronts: (a) `findTodaysPickups` filters to PENDING|CONFIRMED
-        // so the entry silently disappeared from the "Pick Up Today"
-        // dashboard tile, and (b) the rental surface expects "Reserved"
-        // until the handover — ACTIVE means "physically out on the road".
-        status: 'CONFIRMED',
+        status: customerEligibility?.canConfirmBooking ? 'CONFIRMED' : 'PENDING',
       });
 
       const created = await api.bookings.create(orgId, payload as any);
@@ -659,6 +773,16 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
         : [];
       if (code === 'VEHICLE_RENTAL_BLOCKED' && reasons.length > 0) {
         toast.error('Fahrzeug nicht vermietbar', {
+          description: reasons.join(' · '),
+          duration: 8000,
+        });
+      } else if (
+        (code === 'CUSTOMER_BOOKING_BLOCKED' ||
+          code === 'CUSTOMER_CONFIRMATION_BLOCKED' ||
+          code === 'CUSTOMER_PICKUP_BLOCKED') &&
+        reasons.length > 0
+      ) {
+        toast.error('Kunde nicht freigegeben', {
           description: reasons.join(' · '),
           duration: 8000,
         });
@@ -845,7 +969,7 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
         }
         return true;
       case 5:
-        return agbAccepted && privacyAccepted;
+        return agbAccepted && privacyAccepted && hasPrice && !priceLoading;
       default:
         return false;
     }
@@ -857,10 +981,13 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
     </DataCard>
   );
 
-  // Get extras, insurances, mileage packages from tariff
-  const extraOptions = vehicleTariff?.extras || [];
-  const insuranceOptions = vehicleTariff?.insurances || [];
-  const mileagePackages = vehicleTariff?.mileagePackages || [];
+  // Get extras, insurances, mileage packages from active tariff version (see vehicleTariffCtx above)
+
+  const formatEuroAmount = (value: number | null | undefined) =>
+    value != null && Number.isFinite(value) ? `€ ${value.toFixed(2)}` : '—';
+
+  const amountLabel = (value: number | null | undefined) =>
+    value != null && Number.isFinite(value) ? value.toFixed(2) : '—';
 
   return (
     <div className="space-y-5">
@@ -951,7 +1078,7 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                 </div>
                 <div className="flex justify-between text-xs pt-2 border-t border-border">
                   <span className="text-muted-foreground">Total Amount</span>
-                  <span className="text-[color:var(--status-positive)]">€ {grandTotal.toFixed(2)}</span>
+                  <span className="text-[color:var(--status-positive)]">{formatEuroAmount(grandTotal)}</span>
                 </div>
               </div>
               <div className="flex gap-3">
@@ -1052,16 +1179,22 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                           </div>
                           <div className="text-right shrink-0">
                             <div className="text-xs text-muted-foreground">{c.totalBookings} Buchungen</div>
-                            <div className="flex items-center gap-1 mt-1">
-                              {/* V4.6.95 — Driving Style Score (0–100). "—" if not yet scored. */}
-                              <Icon name="star"
-                                className={`w-3 h-3 ${ c.drivingStyleScore == null ? 'text-muted-foreground' : c.drivingStyleScore >= 85 ? 'text-green-500' : c.drivingStyleScore >= 70 ? 'text-amber-500' : 'text-red-500' }`}
-                              />
-                              <span className="text-xs text-foreground">
-                                {c.drivingStyleScore == null
-                                  ? '\u2014'
-                                  : Math.round(c.drivingStyleScore)}
-                              </span>
+                            <div className="flex items-center gap-1 mt-1 justify-end">
+                              {(() => {
+                                const display = formatStressScore(c.drivingStressScore, {
+                                  level: c.stressLevel ?? undefined,
+                                });
+                                if (display.isMissing) {
+                                  return (
+                                    <span className="text-xs text-muted-foreground">{display.compact}</span>
+                                  );
+                                }
+                                return (
+                                  <StatusChip tone={stressToneToStatusTone(display.tone)} className="text-[9px]">
+                                    {display.label}
+                                  </StatusChip>
+                                );
+                              })()}
                             </div>
                           </div>
                           <button
@@ -1341,21 +1474,19 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                                   <div className="grid grid-cols-2 gap-3">
                                     <CustomerDocumentUploadBox
                                       label="Vorderseite *"
-                                      slot="id-front"
+                                      documentType="ID_FRONT"
                                       orgId={orgId}
-                                      url={newCustomer.idFrontUrl}
+                                      pendingFile={pendingDocFiles.ID_FRONT}
                                       errorMessage={formErrors.idFront}
-                                      onUploaded={(url) => setNewCustomer((prev) => ({ ...prev, idFrontUrl: url }))}
-                                      onCleared={() => setNewCustomer((prev) => ({ ...prev, idFrontUrl: null }))}
+                                      onPendingFileChange={(file) => setPendingDocFiles((prev) => ({ ...prev, ID_FRONT: file ?? undefined }))}
                                     />
                                     <CustomerDocumentUploadBox
                                       label="Rückseite *"
-                                      slot="id-back"
+                                      documentType="ID_BACK"
                                       orgId={orgId}
-                                      url={newCustomer.idBackUrl}
+                                      pendingFile={pendingDocFiles.ID_BACK}
                                       errorMessage={formErrors.idBack}
-                                      onUploaded={(url) => setNewCustomer((prev) => ({ ...prev, idBackUrl: url }))}
-                                      onCleared={() => setNewCustomer((prev) => ({ ...prev, idBackUrl: null }))}
+                                      onPendingFileChange={(file) => setPendingDocFiles((prev) => ({ ...prev, ID_BACK: file ?? undefined }))}
                                     />
                                   </div>
 
@@ -1400,7 +1531,7 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                                         </p>
                                         <button
                                           onClick={() => {
-                                            if (!newCustomer.idFrontUrl) {
+                                            if (!pendingDocFiles.ID_FRONT) {
                                               setFormErrors({ ...formErrors, veriff: 'Bitte laden Sie zuerst die Vorderseite des Ausweises hoch.' });
                                               return;
                                             }
@@ -1410,14 +1541,14 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                                               setIdVerificationStatus('verified');
                                             }, 3000);
                                           }}
-                                          disabled={!newCustomer.idFrontUrl}
-                                          className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${ newCustomer.idFrontUrl ? 'bg-[color:var(--status-ai)] text-primary-foreground hover:opacity-90 shadow-sm' : 'bg-muted border border-border text-muted-foreground cursor-not-allowed' }`}>
+                                          disabled={!pendingDocFiles.ID_FRONT}
+                                          className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${ pendingDocFiles.ID_FRONT ? 'bg-[color:var(--status-ai)] text-primary-foreground hover:opacity-90 shadow-sm' : 'bg-muted border border-border text-muted-foreground cursor-not-allowed' }`}>
                                           <Icon name="shield" className="w-5 h-5" />
                                           ID auf Echtheit verifizieren
                                           <Icon name="external-link" className="w-3 h-3 opacity-60" />
                                         </button>
                                         {formErrors.veriff && <p className="text-[11px] text-red-500 mt-1.5">{formErrors.veriff}</p>}
-                                        {!newCustomer.idFrontUrl && (
+                                        {!pendingDocFiles.ID_FRONT && (
                                           <p className="text-[11px] mt-1.5 text-muted-foreground">
                                             Bitte laden Sie zuerst die Vorderseite des Ausweises hoch.
                                           </p>
@@ -1481,20 +1612,18 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                                   <div className="grid grid-cols-2 gap-3">
                                     <CustomerDocumentUploadBox
                                       label="Vorderseite *"
-                                      slot="license-front"
+                                      documentType="LICENSE_FRONT"
                                       orgId={orgId}
-                                      url={newCustomer.licenseFrontUrl}
+                                      pendingFile={pendingDocFiles.LICENSE_FRONT}
                                       errorMessage={formErrors.licenseFront}
-                                      onUploaded={(url) => setNewCustomer((prev) => ({ ...prev, licenseFrontUrl: url }))}
-                                      onCleared={() => setNewCustomer((prev) => ({ ...prev, licenseFrontUrl: null }))}
+                                      onPendingFileChange={(file) => setPendingDocFiles((prev) => ({ ...prev, LICENSE_FRONT: file ?? undefined }))}
                                     />
                                     <CustomerDocumentUploadBox
                                       label="Rückseite (optional)"
-                                      slot="license-back"
+                                      documentType="LICENSE_BACK"
                                       orgId={orgId}
-                                      url={newCustomer.licenseBackUrl}
-                                      onUploaded={(url) => setNewCustomer((prev) => ({ ...prev, licenseBackUrl: url }))}
-                                      onCleared={() => setNewCustomer((prev) => ({ ...prev, licenseBackUrl: null }))}
+                                      pendingFile={pendingDocFiles.LICENSE_BACK}
+                                      onPendingFileChange={(file) => setPendingDocFiles((prev) => ({ ...prev, LICENSE_BACK: file ?? undefined }))}
                                     />
                                   </div>
                                 </div>
@@ -1537,10 +1666,10 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                                       <span className="text-xs text-muted-foreground">Dokumente</span>
                                       <div className="flex items-center gap-3">
                                         {[
-                                          { label: 'Ausweis VS', ok: Boolean(newCustomer.idFrontUrl) },
-                                          { label: 'Ausweis RS', ok: Boolean(newCustomer.idBackUrl) },
-                                          { label: 'FS VS', ok: Boolean(newCustomer.licenseFrontUrl) },
-                                          { label: 'FS RS', ok: Boolean(newCustomer.licenseBackUrl) },
+                                          { label: 'Ausweis VS', ok: Boolean(pendingDocFiles.ID_FRONT) },
+                                          { label: 'Ausweis RS', ok: Boolean(pendingDocFiles.ID_BACK) },
+                                          { label: 'FS VS', ok: Boolean(pendingDocFiles.LICENSE_FRONT) },
+                                          { label: 'FS RS', ok: Boolean(pendingDocFiles.LICENSE_BACK) },
                                         ].map(d => (
                                           <span key={d.label} className={`inline-flex items-center gap-1 text-[11px] font-medium ${ d.ok ? 'text-[color:var(--status-positive)]' : 'text-muted-foreground' }`}>
                                             {d.ok ? <Icon name="check-circle" className="w-3 h-3" /> : <Icon name="x" className="w-3 h-3" />}
@@ -1707,6 +1836,8 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                         // not selectable for a booking. The row is greyed out and
                         // the click handler is hard-disabled.
                         const offline = isVehicleOffline(v);
+                        const dailyLabel = getVehicleDailyRateLabel(v.id);
+                        const noTariff = !dailyLabel && !catalogLoading;
                         // V4.6.67 — derive brand from `make` first (true source from
                         // backend), fall back to the model string. Use the shared
                         // BrandLogo component (carlogos-dataset CDN) for the icon
@@ -1720,9 +1851,14 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                           onClick={() => {
                             if (offline) return;
                             setSelectedVehicle(v);
-                            const station = v.station ?? '';
-                            setPickupStation(station);
-                            if (sameReturnStation) setReturnStation(station);
+                            const defaultPickup = resolveDefaultPickupStationId(
+                              orgStations,
+                              v.homeStationId ?? v.stationId,
+                            );
+                            if (defaultPickup) {
+                              setPickupStationId(defaultPickup);
+                              if (sameReturnStation) setReturnStationId(defaultPickup);
+                            }
                           }}
                           className={`flex items-center gap-3 w-full text-left rounded-lg border px-3 py-2 transition-all duration-200 ${ offline ? 'border-border bg-muted/30 opacity-60 grayscale cursor-not-allowed' : isMaintenance ? selectedVehicle?.id === v.id ? 'border-[color:var(--brand)] ring-1 ring-[color:var(--brand-glow)] bg-[color:var(--brand-soft)] opacity-70 cursor-pointer' : 'border-[color:var(--status-critical)]/30 bg-muted/40 opacity-70 hover:border-[color:var(--status-critical)]/50 cursor-pointer' : selectedVehicle?.id === v.id ? 'border-[color:var(--brand)] ring-1 ring-[color:var(--brand-glow)] bg-[color:var(--brand-soft)] cursor-pointer' : 'border-border bg-muted/40 hover:border-border hover:bg-card cursor-pointer' }`}
                         >
@@ -1781,7 +1917,9 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                           {/* Price & Selection */}
                           <div className="flex items-center gap-3 shrink-0">
                             <div className="text-right">
-                              <p className={`text-xs ${(isMaintenance || offline) ? ('text-muted-foreground line-through') : 'text-foreground'}`}>€ {getDailyRate(v)}</p>
+                              <p className={`text-xs ${(isMaintenance || offline) ? ('text-muted-foreground line-through') : noTariff ? 'text-[color:var(--status-watch)]' : 'text-foreground'}`}>
+                                {dailyLabel ?? 'Kein Tarif'}
+                              </p>
                               <p className="text-xs text-muted-foreground">pro Tag</p>
                             </div>
                             {selectedVehicle?.id === v.id && !offline ? (
@@ -1825,7 +1963,13 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                     <p className="text-xs mb-3 text-muted-foreground">
                       Add extra kilometers to your booking. Only one package can be selected.
                     </p>
-                    {mileagePackages.length > 0 ? (
+                    {!vehicleTariffCtx ? (
+                      <div className="py-6 text-center">
+                        <p className="text-xs text-[color:var(--status-watch)]">
+                          Kein aktiver Tarif für dieses Fahrzeug. Bitte in Price Tariffs zuweisen.
+                        </p>
+                      </div>
+                    ) : mileagePackages.length > 0 ? (
                       <div className="grid grid-cols-3 gap-3">
                         {mileagePackages.map((pkg) => {
                           const isSelected = selectedMileagePackage === pkg.id;
@@ -1843,14 +1987,19 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                                 </div>
                               )}
                               <p className={`text-xs mb-1 ${isSelected ? ('text-[color:var(--status-positive)]') : ('text-foreground')}`}>
-                                +{pkg.km.toLocaleString()}
+                                +{pkg.includedKm.toLocaleString('de-DE')}
                               </p>
                               <p className="text-xs mb-2 text-muted-foreground">kilometers</p>
                               <div className={`text-xs ${isSelected ? ('text-[color:var(--status-positive)]') : ('text-foreground')}`}>
-                                {'\u20AC'} {pkg.price.toFixed(2)}
+                                {formatPriceCents(grossFromNetCents(pkg.priceCents, taxRatePercent))}
                               </div>
                               <p className="text-xs mt-1 text-muted-foreground">
-                                {'\u20AC'} {(pkg.price / pkg.km).toFixed(2)}/km effective
+                                {formatPriceCents(
+                                  Math.round(
+                                    grossFromNetCents(pkg.priceCents, taxRatePercent) / Math.max(1, pkg.includedKm),
+                                  ),
+                                )}
+                                /km effective
                               </p>
                             </button>
                           );
@@ -1891,15 +2040,17 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                                   {isSelected && <Icon name="check" className="w-3 h-3 text-white" />}
                                 </div>
                                 <div>
-                                  <p className="text-xs text-foreground">{ins.name}</p>
+                                  <p className="text-xs text-foreground">{ins.label}</p>
                                   <p className="text-xs mt-0.5 text-muted-foreground">{ins.description}</p>
                                 </div>
                               </div>
                               <div className="text-right shrink-0 ml-4">
                                 <p className={`text-xs ${isSelected ? ('text-[color:var(--status-ai)]') : ('text-foreground')}`}>
-                                  {'\u20AC'} {ins.dailyPrice.toFixed(2)}
+                                  {formatOptionGrossLabel(ins.priceCents, ins.pricingType, taxRatePercent, displayRentalDays)}
                                 </p>
-                                <p className="text-xs text-muted-foreground">per day</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {ins.pricingType === 'PER_DAY' ? 'per day' : 'per booking'}
+                                </p>
                               </div>
                             </button>
                           );
@@ -1933,14 +2084,14 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                               onClick={() => setExtras(prev => prev.includes(opt.id) ? prev.filter(e => e !== opt.id) : [...prev, opt.id])}
                               className={`p-4 rounded-lg border text-left transition-all flex items-center gap-3 ${ isSelected ? 'sq-tone-brand border border-border ring-1 ring-[color:var(--brand-glow)]' : 'bg-muted/40 border border-border hover:border-border' }`}
                             >
-                              <span className="text-base shrink-0">{opt.icon}</span>
+                              <span className="text-base shrink-0">✦</span>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs text-foreground">{opt.label}</p>
                                 <p className="text-[11px] mt-0.5 text-muted-foreground">{opt.description}</p>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 <span className={`text-xs ${isSelected ? ('text-[color:var(--status-info)]') : ('text-foreground')}`}>
-                                  {'\u20AC'}{opt.dailyPrice}/d
+                                  {formatOptionGrossLabel(opt.priceCents, opt.pricingType, taxRatePercent, displayRentalDays)}
                                 </span>
                                 <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${ isSelected ? 'bg-blue-600 border-blue-600' : 'border-border' }`}>
                                   {isSelected && <Icon name="check" className="w-3 h-3 text-white" />}
@@ -1979,7 +2130,7 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                           )}
                         </div>
                         <span className="text-xs text-foreground">
-                          + {'\u20AC'} {extrasTotal.toFixed(2)} {rentalDays > 0 ? 'total' : '/selection'}
+                          {hasPrice ? `+ ${formatEuroAmount(extrasTotal)}` : '—'}
                         </span>
                       </div>
                     </div>
@@ -2178,40 +2329,19 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                     </div>
 
                     {/* Stations */}
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                      <div>
-                        <label className="text-xs mb-1.5 block text-muted-foreground">Abholstation</label>
-                        <div className={`flex items-center gap-2 w-full px-3 py-2.5 rounded-lg border text-xs ${ 'bg-muted/40 border border-border text-foreground' }`}>
-                          <Icon name="map-pin" className="w-3.5 h-3.5 shrink-0 text-[color:var(--status-info)]" />
-                          <span className={pickupStation ? '' : ('text-muted-foreground')}>
-                            {pickupStation || 'Wird vom Fahrzeug übernommen'}
-                          </span>
-                          {pickupStation && (
-                            <span className="ml-auto text-xs px-1.5 py-0.5 rounded sq-chip-info">Vorgegeben</span>
-                          )}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <label className="text-xs text-muted-foreground">Rückgabestation</label>
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <input type="checkbox" checked={sameReturnStation} onChange={(e) => {
-                              setSameReturnStation(e.target.checked);
-                              if (e.target.checked) setReturnStation(pickupStation);
-                            }} className="rounded" />
-                            <span className="text-xs text-muted-foreground">Gleiche Station</span>
-                          </label>
-                        </div>
-                        <select
-                          value={returnStation}
-                          onChange={(e) => setReturnStation(e.target.value)}
-                          disabled={sameReturnStation}
-                          className={`w-full px-3 py-2.5 rounded-lg border text-xs outline-none ${ sameReturnStation ? 'opacity-50 cursor-not-allowed' : '' } bg-card border border-border text-foreground`}
-                        >
-                          <option value="">Station wählen...</option>
-                          {stations.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                      </div>
+                    <div className="mb-3">
+                      <StationSelectFields
+                        stations={orgStations}
+                        pickupStationId={pickupStationId}
+                        returnStationId={returnStationId}
+                        sameReturnStation={sameReturnStation}
+                        onPickupChange={(id) => {
+                          setPickupStationId(id);
+                          if (sameReturnStation) setReturnStationId(id);
+                        }}
+                        onReturnChange={setReturnStationId}
+                        onSameReturnChange={setSameReturnStation}
+                      />
                     </div>
 
                     {/* Calendar Selection */}
@@ -2607,11 +2737,11 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                                       <p>Fahrzeug: ${selectedVehicle ? buildMMY(selectedVehicle) : '–'} (${selectedVehicle?.license || '–'})</p>
                                       <p>Zeitraum: ${pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : '–'} – ${returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : '–'}</p>
                                       <table><tr><th>Position</th><th>Betrag</th></tr>
-                                      <tr><td>${rentalDays}x Tagestarif</td><td>&euro; ${subtotal.toFixed(2)}</td></tr>
-                                      <tr><td>Packages & Extras</td><td>&euro; ${extrasTotal.toFixed(2)}</td></tr>
-                                      ${discountPercent > 0 ? `<tr><td>Rabatt (${discountPercent}%)</td><td>-&euro; ${discountAmount.toFixed(2)}</td></tr>` : ''}
-                                      <tr><td>MwSt. (19%)</td><td>&euro; ${tax.toFixed(2)}</td></tr>
-                                      <tr><td class="total">Gesamt</td><td class="total">&euro; ${grandTotal.toFixed(2)}</td></tr>
+                                      <tr><td>${displayRentalDays}x Tagestarif</td><td>&euro; ${amountLabel(subtotal)}</td></tr>
+                                      <tr><td>Packages & Extras</td><td>&euro; ${amountLabel(extrasTotal)}</td></tr>
+                                      ${discountPercent > 0 ? `<tr><td>Rabatt (${discountPercent}%)</td><td>-&euro; ${amountLabel(discountAmount)}</td></tr>` : ''}
+                                      <tr><td>MwSt. (${taxRatePercent}%)</td><td>&euro; ${amountLabel(tax)}</td></tr>
+                                      <tr><td class="total">Gesamt</td><td class="total">&euro; ${amountLabel(grandTotal)}</td></tr>
                                       </table></body></html>
                                     `);
                                     printWindow.document.close();
@@ -2630,7 +2760,7 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                                     `Sehr geehrte/r ${selectedCustomer?.name || 'Kunde/in'},\n\nanbei Ihre Rechnung.\n\n` +
                                     `Fahrzeug: ${selectedVehicle ? buildMMY(selectedVehicle) : '–'} (${selectedVehicle?.license || '–'})\n` +
                                     `Zeitraum: ${rentalDays} Tage\n` +
-                                    `Gesamt: € ${grandTotal.toFixed(2)}\n\n` +
+                                    `Gesamt: € ${amountLabel(grandTotal)}\n\n` +
                                     'Mit freundlichen Grüßen\nIhr Flottenmanagement-Team'
                                   );
                                   const email = selectedCustomer?.email || '';
@@ -2698,8 +2828,8 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                                       <h2>Mietzeitraum</h2>
                                       <p>${pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : '–'} (${pickupTime}) – ${returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : '–'} (${returnTime})</p>
                                       <h2>Kosten</h2>
-                                      <p>Gesamt: &euro; ${grandTotal.toFixed(2)} (inkl. MwSt.)</p>
-                                      <p>Kaution: &euro; ${depositAmount.toFixed(2)}</p>
+                                      <p>Gesamt: &euro; ${amountLabel(grandTotal)} (inkl. MwSt.)</p>
+                                      <p>Kaution: &euro; ${amountLabel(depositAmount)}</p>
                                       <p>Frei-Kilometer: ${totalFreeKm.toLocaleString('de-DE')} km</p>
                                       <div class="sig"><div>Vermieter</div><div>Mieter</div></div>
                                       </body></html>
@@ -2720,7 +2850,7 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                                     `Sehr geehrte/r ${selectedCustomer?.name || 'Kunde/in'},\n\nanbei Ihr Mietvertrag.\n\n` +
                                     `Fahrzeug: ${selectedVehicle ? buildMMY(selectedVehicle) : '–'} (${selectedVehicle?.license || '–'})\n` +
                                     `Zeitraum: ${pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : '–'} – ${returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : '–'}\n` +
-                                    `Gesamt: € ${grandTotal.toFixed(2)}\n\n` +
+                                    `Gesamt: € ${amountLabel(grandTotal)}\n\n` +
                                     'Mit freundlichen Grüßen\nIhr Flottenmanagement-Team'
                                   );
                                   const email = selectedCustomer?.email || '';
@@ -2796,26 +2926,26 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                             </div>
                             <div className="border-t pt-3 space-y-2 border-border">
                               <div className="flex justify-between text-xs">
-                                <span className="text-muted-foreground">{rentalDays}x Tagestarif (€{dailyRate})</span>
-                                <span className="text-foreground">€ {subtotal.toFixed(2)}</span>
+                                <span className="text-muted-foreground">{displayRentalDays}x Tagestarif ({formatEuroAmount(dailyRateGross)})</span>
+                                <span className="text-foreground">{formatEuroAmount(subtotal)}</span>
                               </div>
                               <div className="flex justify-between text-xs">
                                 <span className="text-muted-foreground">Packages & Extras</span>
-                                <span className="text-foreground">€ {extrasTotal.toFixed(2)}</span>
+                                <span className="text-foreground">{formatEuroAmount(extrasTotal)}</span>
                               </div>
                               {discountPercent > 0 && (
                                 <div className="flex justify-between text-xs">
                                   <span className="text-green-500">Rabatt ({discountPercent}%)</span>
-                                  <span className="text-green-500">-€ {discountAmount.toFixed(2)}</span>
+                                  <span className="text-green-500">-€ {amountLabel(discountAmount)}</span>
                                 </div>
                               )}
                               <div className="flex justify-between text-xs">
-                                <span className="text-muted-foreground">MwSt. (19%)</span>
-                                <span className="text-foreground">€ {tax.toFixed(2)}</span>
+                                <span className="text-muted-foreground">MwSt. ({taxRatePercent}%)</span>
+                                <span className="text-foreground">{formatEuroAmount(tax)}</span>
                               </div>
                               <div className="flex justify-between pt-2 border-t border-border">
                                 <span className="text-foreground">Gesamt</span>
-                                <span className="text-xs text-foreground">€ {grandTotal.toFixed(2)}</span>
+                                <span className="text-xs text-foreground">{formatEuroAmount(grandTotal)}</span>
                               </div>
                             </div>
                           </div>
@@ -2855,11 +2985,11 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                               </div>
                               <div className="flex justify-between pt-2 border-t border-border">
                                 <span>Gesamtkosten</span>
-                                <span className="text-xs text-foreground">€ {grandTotal.toFixed(2)}</span>
+                                <span className="text-xs text-foreground">{formatEuroAmount(grandTotal)}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-muted-foreground">Kaution</span>
-                                <span className="text-[color:var(--status-watch)]">€ {depositAmount.toFixed(2)}</span>
+                                <span className="text-[color:var(--status-watch)]">{formatEuroAmount(depositAmount)}</span>
                               </div>
                             </div>
                             <div className="border-t pt-6 mt-6 flex gap-16 border-border">
@@ -2938,13 +3068,21 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                     </div>
                     <div>
                       <div className="text-[11px] mb-1 text-muted-foreground">Station</div>
-                      {pickupStation ? (
+                      {pickupStationId ? (
                         <>
                           <p className="text-xs flex items-center gap-1 text-foreground">
-                            <Icon name="map-pin" className="w-3 h-3" />{pickupStation}
+                            <Icon name="map-pin" className="w-3 h-3" />
+                            {orgStations.find((s) => s.id === pickupStationId)
+                              ? stationLabel(orgStations.find((s) => s.id === pickupStationId)!)
+                              : '—'}
                           </p>
-                          {!sameReturnStation && returnStation && returnStation !== pickupStation && (
-                            <p className="text-[11px] text-muted-foreground">Rückgabe: {returnStation}</p>
+                          {!sameReturnStation && returnStationId && returnStationId !== pickupStationId && (
+                            <p className="text-[11px] text-muted-foreground">
+                              Rückgabe:{' '}
+                              {orgStations.find((s) => s.id === returnStationId)
+                                ? stationLabel(orgStations.find((s) => s.id === returnStationId)!)
+                                : '—'}
+                            </p>
                           )}
                         </>
                       ) : (
@@ -2958,11 +3096,11 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                       <div className="flex flex-wrap gap-1.5">
                         {selectedMileagePackage && (() => {
                           const pkg = mileagePackages.find(p => p.id === selectedMileagePackage);
-                          return pkg ? <span className="text-[11px] px-1.5 py-0.5 rounded-full sq-chip-success">+{pkg.km}km</span> : null;
+                          return pkg ? <span className="text-[11px] px-1.5 py-0.5 rounded-full sq-chip-success">+{pkg.includedKm}km</span> : null;
                         })()}
                         {selectedInsurances.map(insId => {
                           const ins = insuranceOptions.find(i => i.id === insId);
-                          return <span key={insId} className="text-[11px] px-1.5 py-0.5 rounded-full sq-tone-ai">{ins?.name}</span>;
+                          return <span key={insId} className="text-[11px] px-1.5 py-0.5 rounded-full sq-tone-ai">{ins?.label}</span>;
                         })}
                         {extras.map(e => {
                           const opt = extraOptions.find(o => o.id === e);
@@ -2978,55 +3116,40 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
 
                 {/* Price breakdown */}
                 <div className="space-y-2.5">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">{rentalDays}x Tagestarif (€{dailyRate})</span>
-                    <span className="text-foreground">€ {subtotal.toFixed(2)}</span>
-                  </div>
-                  {extrasTotal > 0 && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Packages & Extras</span>
-                      <span className="text-foreground">{'\u20AC'} {extrasTotal.toFixed(2)}</span>
-                    </div>
+                  {noTariffForVehicle && (
+                    <p className="text-xs text-[color:var(--status-watch)]">
+                      Kein aktiver Tarif für dieses Fahrzeug. Zuweisung in Price Tariffs erforderlich.
+                    </p>
                   )}
-                  {(selectedMileagePackage || selectedInsurances.length > 0 || extras.length > 0) && (
-                    <div className="pl-3 space-y-1.5 border-l border-border">
-                      {selectedMileagePackage && (() => {
-                        const pkg = mileagePackages.find(p => p.id === selectedMileagePackage);
-                        return pkg ? (
-                          <div className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">+{pkg.km}km Package</span>
-                            <span className="text-muted-foreground">{'\u20AC'}{pkg.price.toFixed(2)}</span>
-                          </div>
-                        ) : null;
-                      })()}
-                      {selectedInsurances.map(insId => {
-                        const ins = insuranceOptions.find(i => i.id === insId);
-                        return ins ? (
-                          <div key={insId} className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">{ins.name}</span>
-                            <span className="text-muted-foreground">{'\u20AC'}{(ins.dailyPrice * rentalDays).toFixed(2)}</span>
-                          </div>
-                        ) : null;
-                      })}
-                      {extras.map(e => {
-                        const opt = extraOptions.find(o => o.id === e);
-                        return opt ? (
-                          <div key={e} className="flex justify-between text-xs">
-                            <span className="text-muted-foreground">{opt.label}</span>
-                            <span className="text-muted-foreground">{'\u20AC'}{(opt.dailyPrice * rentalDays).toFixed(2)}</span>
-                          </div>
-                        ) : null;
-                      })}
-                    </div>
+                  {canCalculatePrice && priceLoading && (
+                    <p className="text-xs text-muted-foreground">Preis wird berechnet…</p>
                   )}
+                  {priceError && (
+                    <p className="text-xs text-[color:var(--status-critical)]">{priceError}</p>
+                  )}
+                  {!canCalculatePrice && selectedVehicle && (!pickupDate || !returnDate) && (
+                    <p className="text-xs text-muted-foreground">Zeitraum wählen für Preisberechnung.</p>
+                  )}
+                  {priceSim?.lineItems.map((line) => (
+                    <div key={`${line.type}-${line.label}-${line.sortOrder ?? 0}`} className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">{line.label}</span>
+                      <span className="text-foreground">{formatPriceCents(line.totalGrossCents)}</span>
+                    </div>
+                  ))}
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Frei-Kilometer</span>
                     <span className="text-[color:var(--status-positive)]">{totalFreeKm.toLocaleString('de-DE')} km</span>
                   </div>
+                  {extraKmPrice != null && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Extra-km</span>
+                      <span className="text-muted-foreground">{formatEuroAmount(extraKmPrice)}/km</span>
+                    </div>
+                  )}
                   {mileagePkgKm > 0 && (
                     <div className="pl-3 space-y-1.5 border-l border-border">
                       <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Basis ({freeKmPerDay} km/Tag × {rentalDays})</span>
+                        <span className="text-muted-foreground">Basis ({freeKmPerDay} km/Tag × {displayRentalDays})</span>
                         <span className="text-muted-foreground">{baseFreeKm.toLocaleString('de-DE')} km</span>
                       </div>
                       <div className="flex justify-between text-xs">
@@ -3035,29 +3158,26 @@ export function NewBookingView({ onBack, tariffs: externalTariffs, onCustomerCre
                       </div>
                     </div>
                   )}
-                  {discountPercent > 0 && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-green-500">Rabatt ({discountPercent}%)</span>
-                      <span className="text-green-500">-€ {discountAmount.toFixed(2)}</span>
-                    </div>
-                  )}
+                  {priceSim?.warnings?.map((w) => (
+                    <p key={w} className="text-[11px] text-[color:var(--status-watch)]">{w}</p>
+                  ))}
                   <div className="pt-3 mt-2 border-t space-y-2 border-border">
                     <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Zwischensumme</span>
-                      <span className="text-foreground">€ {totalBeforeTax.toFixed(2)}</span>
+                      <span className="text-muted-foreground">Zwischensumme (netto)</span>
+                      <span className="text-foreground">{formatEuroAmount(subtotalNet)}</span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">MwSt. (19%)</span>
-                      <span className="text-foreground">€ {tax.toFixed(2)}</span>
+                      <span className="text-muted-foreground">MwSt. ({taxRatePercent}%)</span>
+                      <span className="text-foreground">{formatEuroAmount(tax)}</span>
                     </div>
                   </div>
                   <div className="flex justify-between items-baseline pt-3 border-t border-border">
                     <span className="text-foreground">Gesamt</span>
-                    <span className="text-base text-foreground">€ {grandTotal.toFixed(2)}</span>
+                    <span className="text-base text-foreground">{formatEuroAmount(grandTotal)}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Kaution</span>
-                    <span className="text-[color:var(--status-watch)]">€ {depositAmount.toFixed(2)}</span>
+                    <span className="text-[color:var(--status-watch)]">{formatEuroAmount(depositAmount)}</span>
                   </div>
                 </div>
               </div>

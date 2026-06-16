@@ -15,7 +15,7 @@ describe('BrakeCriticalDetector', () => {
     ({
       vehicle: {
         findMany: jest.fn().mockResolvedValue([
-          { id: 'veh-1', make: 'VW', model: 'Golf', licensePlate: 'B AB 123', stationId: null },
+          { id: 'veh-1', make: 'VW', model: 'Golf', licensePlate: 'B AB 123', homeStationId: null },
         ]),
       },
       brakeHealthCurrent: {

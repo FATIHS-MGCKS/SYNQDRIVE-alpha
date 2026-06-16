@@ -8,12 +8,13 @@ import {
   Param,
   Query,
   UseGuards,
+  NotFoundException,
 } from '@nestjs/common';
 import { BookingsService } from './bookings.service';
 import { BookingsHandoverService } from './bookings-handover.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
-import { PaginationParams } from '@shared/utils/pagination';
+import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { Prisma } from '@prisma/client';
 import { CreateHandoverProtocolPayload } from './handover.types';
 
@@ -43,9 +44,19 @@ export class BookingsController {
   @Get()
   async findAll(
     @Param('orgId') orgId: string,
-    @Query() query: PaginationParams,
+    @Query() query: ListBookingsQueryDto,
   ) {
     return this.bookingsService.findAll(orgId, query);
+  }
+
+  @Get(':id/detail')
+  async findDetail(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+  ) {
+    const detail = await this.bookingsService.findDetail(orgId, id);
+    if (!detail) throw new NotFoundException(`Booking ${id} not found`);
+    return detail;
   }
 
   @Get(':id')

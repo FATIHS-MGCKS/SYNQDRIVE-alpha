@@ -198,7 +198,7 @@ export const TIRE_HEALTH_CONFIG = {
   behaviorFactorWeights: {
     longitudinal: 0.50,
     braking: 0.35,
-    drivingStyle: 0.15,
+    drivingStress: 0.15,
   },
 
   behaviorScoreAnchors: [

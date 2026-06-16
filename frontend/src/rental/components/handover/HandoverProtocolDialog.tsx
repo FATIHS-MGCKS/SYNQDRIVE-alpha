@@ -2,7 +2,8 @@ import { Car, MapPin, User, Wrench } from 'lucide-react';
 import { Icon } from '../ui/Icon';
 import { useEffect, useMemo, useState } from 'react';
 
-import { api } from '../../../lib/api';
+import { api, type Station } from '../../../lib/api';
+import { stationsForPickup, stationsForReturn } from '../../lib/stationBookingUtils';
 import { SignaturePad } from './SignaturePad';
 
 // V4.6.75 — Pickup / Return Übergabeprotokoll dialog.
@@ -26,6 +27,11 @@ export interface HandoverDialogBookingInfo {
   startDate: string;
   endDate: string;
   pickupLocation: string;
+  returnLocation?: string;
+  pickupStationId?: string | null;
+  returnStationId?: string | null;
+  handoverInstructions?: string | null;
+  returnInstructions?: string | null;
   status?: string;
   includedKm?: number;
   pickupOdometerKm?: number | null;
@@ -120,6 +126,8 @@ export function HandoverProtocolDialog({
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [orgStations, setOrgStations] = useState<Station[]>([]);
+  const [actualStationId, setActualStationId] = useState<string>('');
 
   useEffect(() => {
     if (!isOpen) {
@@ -158,7 +166,26 @@ export function HandoverProtocolDialog({
     setSubmitError(null);
     setSubmitting(false);
     setPerformedAtLocal('');
-  }, [isOpen, booking?.id, kind]);
+    const plannedId =
+      kind === 'PICKUP' ? booking.pickupStationId : booking.returnStationId;
+    setActualStationId(plannedId ?? '');
+  }, [isOpen, booking?.id, kind, booking?.pickupStationId, booking?.returnStationId]);
+
+  useEffect(() => {
+    if (!isOpen || !orgId) return;
+    let cancelled = false;
+    api.stations
+      .list(orgId)
+      .then((rows) => {
+        if (!cancelled) setOrgStations(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) setOrgStations([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, orgId]);
 
   // Informative hint only — no return blockade.
   useEffect(() => {
@@ -342,6 +369,7 @@ export function HandoverProtocolDialog({
         staffSignatureDataUrl: staffSigData,
         documentsAcknowledged: checks.documentsAcknowledged,
         damageIds: Array.from(selectedDamageIds),
+        actualStationId: actualStationId || null,
       };
       if (kind === 'PICKUP') {
         await api.bookings.createPickupHandover(orgId, booking.id, payload);
@@ -453,8 +481,12 @@ export function HandoverProtocolDialog({
               <Fact icon={User} label="Kunde" value={booking.customerName} mutedCls={textMuted} primaryCls={textPrimary} />
               <Fact
                 icon={MapPin}
-                label="Station"
-                value={booking.pickupLocation || '—'}
+                label={kind === 'PICKUP' ? 'Abholstation' : 'Rückgabestation'}
+                value={
+                  kind === 'PICKUP'
+                    ? booking.pickupLocation || '—'
+                    : booking.returnLocation || booking.pickupLocation || '—'
+                }
                 mutedCls={textMuted}
                 primaryCls={textPrimary}
               />
@@ -466,7 +498,42 @@ export function HandoverProtocolDialog({
                 primaryCls={textPrimary}
               />
             </div>
+            {(kind === 'PICKUP' ? booking.handoverInstructions : booking.returnInstructions) && (
+              <p className={`text-xs mt-3 pt-3 border-t ${borderColor} whitespace-pre-wrap ${textMuted}`}>
+                {kind === 'PICKUP' ? booking.handoverInstructions : booking.returnInstructions}
+              </p>
+            )}
           </div>
+
+          {orgStations.length > 0 && (
+            <div className={`rounded-xl border p-4 ${borderColor} ${cardBg}`}>
+              <label className={`text-xs font-semibold block mb-2 ${textPrimary}`}>
+                Tatsächliche Station
+              </label>
+              <select
+                value={actualStationId}
+                onChange={(e) => setActualStationId(e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border text-xs outline-none ${borderColor} ${cardBg} ${textPrimary}`}
+              >
+                <option value="">Geplante Station übernehmen</option>
+                {(kind === 'PICKUP' ? stationsForPickup(orgStations) : stationsForReturn(orgStations)).map(
+                  (s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ),
+                )}
+              </select>
+              {kind === 'RETURN' &&
+                booking.returnStationId &&
+                actualStationId &&
+                actualStationId !== booking.returnStationId && (
+                  <p className={`text-xs mt-2 sq-tone-warning px-2 py-1.5 rounded-lg`}>
+                    Rückgabe an abweichender Station — optional Transfer prüfen.
+                  </p>
+                )}
+            </div>
+          )}
 
           {/* V4.6.81 — Backdate pickup timestamp (PICKUP only).
               Defaults to empty (= server uses now()). Operators who need

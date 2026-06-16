@@ -1,0 +1,3 @@
+-- TaskPriority vocabulary alignment: MEDIUM -> NORMAL, URGENT -> CRITICAL
+ALTER TYPE "TaskPriority" RENAME VALUE 'MEDIUM' TO 'NORMAL';
+ALTER TYPE "TaskPriority" RENAME VALUE 'URGENT' TO 'CRITICAL';

@@ -12,6 +12,9 @@ import { DocumentsModule } from '@modules/documents/documents.module';
 // V4.8.3 Task Action Layer — booking lifecycle task automation.
 import { TasksModule } from '@modules/tasks/tasks.module';
 import { CustomersModule } from '@modules/customers/customers.module';
+import { WorkflowsModule } from '@modules/workflows/workflows.module';
+import { PricingModule } from '@modules/pricing/pricing.module';
+import { StationsModule } from '@modules/stations/stations.module';
 
 @Module({
   imports: [
@@ -21,6 +24,9 @@ import { CustomersModule } from '@modules/customers/customers.module';
     forwardRef(() => DocumentsModule),
     TasksModule,
     CustomersModule,
+    WorkflowsModule,
+    PricingModule,
+    StationsModule,
   ],
   controllers: [BookingsController],
   providers: [BookingsService, BookingsHandoverService],

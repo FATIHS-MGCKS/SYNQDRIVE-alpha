@@ -53,6 +53,14 @@ export interface BookingInfo {
   currency?: string | null;
   pickupLocation?: string | null;
   returnLocation?: string | null;
+  pickupStationName?: string | null;
+  returnStationName?: string | null;
+  pickupStationPhone?: string | null;
+  returnStationPhone?: string | null;
+  pickupStationEmail?: string | null;
+  returnStationEmail?: string | null;
+  pickupHandoverInstructions?: string | null;
+  returnInstructions?: string | null;
 }
 
 export function normalizeCurrency(currency?: string | null): string {

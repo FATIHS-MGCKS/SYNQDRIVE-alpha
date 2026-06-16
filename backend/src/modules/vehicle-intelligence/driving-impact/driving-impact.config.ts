@@ -115,8 +115,16 @@ export const DRIVING_IMPACT_CONFIG = {
     p95Factor: 0.15,
   },
 
-  // ── Driving Style Score composite weights (must sum to 1.0) ─────────────
+  // ── Vehicle stress composite weights (must sum to 1.0) ───────────────────
 
+  DRIVING_STRESS_WEIGHTS: {
+    longitudinal: 0.30,
+    braking: 0.35,
+    stopGo: 0.20,
+    highSpeed: 0.15,
+  },
+
+  /** @deprecated Use DRIVING_STRESS_WEIGHTS */
   DRIVING_STYLE_WEIGHTS: {
     longitudinal: 0.30,
     braking: 0.35,

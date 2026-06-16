@@ -10,6 +10,11 @@ import {
 import { useState } from 'react';
 import synqdriveLogoDark from '../../assets/synqdrive-logo-dark.png';
 import synqdriveLogoLight from '../../assets/synqdrive-logo.png';
+import {
+  navItemClass,
+  navSectionLabelClass,
+  navSectionHeaderClass,
+} from '../../components/shell';
 
 export type MasterView =
   | 'dashboard'
@@ -64,28 +69,26 @@ export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, on
   const active = (view: MasterView) => currentView === view;
   const activeSettings = (tab: string) => currentView === 'settings' && settingsTab === tab;
 
-  const itemCls = (on: boolean) =>
-    `sq-nav-rail w-full flex items-center gap-3 px-2.5 py-1.5 rounded-md !text-xs transition-all duration-200 ${
-      on
-        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] active font-medium'
-        : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground hover:translate-x-[1px]'
-    }`;
+  const itemCls = (on: boolean) => navItemClass(on);
 
   const icon = 'w-4 h-4 shrink-0';
 
   const sectionLabel = (text: string) => (
-    <div className="sq-section-label px-3 mt-5 mb-2">{text}</div>
+    <div className={`${navSectionLabelClass} px-3 mt-5 mb-2`}>{text}</div>
   );
 
-  const collapsibleHeader = (key: string, label: string) => (
+  const collapsibleHeader = (key: string, label: string) => {
+    const isOpen = expanded[key];
+    return (
     <button
       onClick={() => toggle(key)}
-      className="w-full flex items-center justify-between px-3 py-1.5 mt-4 mb-1 rounded-md group transition-colors duration-150 hover:bg-accent/40"
+      className={navSectionHeaderClass(!!isOpen, false)}
     >
-      <span className="sq-section-label">{label}</span>
-      <ChevronRight className={`w-3 h-3 transition-transform duration-200 text-muted-foreground/60 ${expanded[key] ? 'rotate-90' : ''}`} />
+      <span className={navSectionLabelClass}>{label}</span>
+      <ChevronRight className={`w-3 h-3 transition-transform duration-200 text-muted-foreground/60 ${isOpen ? 'rotate-90' : ''}`} />
     </button>
-  );
+    );
+  };
 
   const NavContent = () => (
     <>

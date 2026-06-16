@@ -81,7 +81,7 @@ export class BatteryCriticalDetector implements InsightDetector {
         make: true,
         model: true,
         licensePlate: true,
-        stationId: true,
+        homeStationId: true,
         fuelType: true,
         latestState: {
           select: {
@@ -403,8 +403,8 @@ export class BatteryCriticalDetector implements InsightDetector {
         reasons,
         confidence: latestResting != null ? 0.95 : 0.8,
         dedupeKey: `battery_critical:${v.id}`,
-        groupKey: v.stationId
-          ? `battery_critical:${v.stationId}`
+        groupKey: v.homeStationId
+          ? `battery_critical:${v.homeStationId}`
           : 'battery_critical_fleet',
       });
     }

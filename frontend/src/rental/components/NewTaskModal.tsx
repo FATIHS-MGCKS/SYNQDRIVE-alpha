@@ -1,10 +1,11 @@
 
 import { Icon } from './ui/Icon';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
-import type { CreateTaskPayload } from '../../lib/api';
+import type { ApiTaskType, CreateTaskPayload } from '../../lib/api';
+import { checklistPreviewForType, MANUAL_TASK_TYPES } from '../lib/task-templates';
 
 interface NewTaskModalProps {
   isOpen: boolean;
@@ -12,23 +13,31 @@ interface NewTaskModalProps {
   isDarkMode: boolean;
 }
 
-const PRIORITY_MAP: Record<'Low' | 'Medium' | 'High' | 'Urgent', CreateTaskPayload['priority']> = {
+const PRIORITY_MAP: Record<'Low' | 'Normal' | 'High' | 'Critical', CreateTaskPayload['priority']> = {
   Low: 'LOW',
-  Medium: 'MEDIUM',
+  Normal: 'NORMAL',
   High: 'HIGH',
-  Urgent: 'URGENT',
+  Critical: 'CRITICAL',
 };
 
 export function NewTaskModal({ isOpen, onClose, isDarkMode }: NewTaskModalProps) {
   const { fleetVehicles } = useFleetVehicles();
   const { orgId } = useRentalOrg();
+  const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [taskType, setTaskType] = useState<ApiTaskType>('CUSTOM');
   const [dueDate, setDueDate] = useState('');
-  const [priority, setPriority] = useState<'Low' | 'Medium' | 'High' | 'Urgent'>('Medium');
-  const [assignedTo, setAssignedTo] = useState('');
-  const [selectedVehicle, setSelectedVehicle] = useState('');
+  const [priority, setPriority] = useState<'Low' | 'Normal' | 'High' | 'Critical'>('Normal');
+  const [assignedUserId, setAssignedUserId] = useState('');
+  const [vehicleId, setVehicleId] = useState('');
+  const [bookingId, setBookingId] = useState('');
+  const [customerId, setCustomerId] = useState('');
+  const [vendorId, setVendorId] = useState('');
+  const [estimatedCost, setEstimatedCost] = useState('');
   const [orgMembers, setOrgMembers] = useState<{ id: string; name: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  const checklistPreview = useMemo(() => checklistPreviewForType(taskType), [taskType]);
 
   useEffect(() => {
     if (!orgId || !isOpen) return;
@@ -36,9 +45,9 @@ export function NewTaskModal({ isOpen, onClose, isDarkMode }: NewTaskModalProps)
     api.users.listByOrg(orgId)
       .then((res) => {
         if (cancelled) return;
-        const list = Array.isArray(res) ? res : ((res as { data?: unknown[] })?.data ?? []);
+        const list = Array.isArray(res) ? res : [];
         setOrgMembers(
-          list.map((u: { id: string; name?: string; firstName?: string; lastName?: string; email?: string }) => ({
+          list.map((u) => ({
             id: u.id,
             name: u.name || `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email || u.id,
           })),
@@ -48,26 +57,45 @@ export function NewTaskModal({ isOpen, onClose, isDarkMode }: NewTaskModalProps)
     return () => { cancelled = true; };
   }, [orgId, isOpen]);
 
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setTaskType('CUSTOM');
+    setDueDate('');
+    setPriority('Normal');
+    setAssignedUserId('');
+    setVehicleId('');
+    setBookingId('');
+    setCustomerId('');
+    setVendorId('');
+    setEstimatedCost('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!orgId || submitting) return;
     setSubmitting(true);
     try {
+      const estCents = estimatedCost.trim()
+        ? Math.round(parseFloat(estimatedCost.replace(',', '.')) * 100)
+        : undefined;
+      const checklist = checklistPreview.map((t, sortOrder) => ({ title: t, sortOrder }));
       await api.tasks.create(orgId, {
-        title: description.trim().slice(0, 120) || 'Task',
-        description: description.trim(),
-        type: 'CUSTOM',
+        title: title.trim() || description.trim().slice(0, 120) || 'Task',
+        description: description.trim() || undefined,
+        type: taskType,
         source: 'MANUAL',
         priority: PRIORITY_MAP[priority],
         dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
-        vehicleId: selectedVehicle || undefined,
-        assignedUserId: assignedTo || undefined,
+        vehicleId: vehicleId || undefined,
+        bookingId: bookingId.trim() || undefined,
+        customerId: customerId.trim() || undefined,
+        vendorId: vendorId.trim() || undefined,
+        assignedUserId: assignedUserId || undefined,
+        estimatedCostCents: Number.isFinite(estCents) ? estCents : undefined,
+        checklist: checklist.length ? checklist : undefined,
       });
-      setDescription('');
-      setDueDate('');
-      setPriority('Medium');
-      setAssignedTo('');
-      setSelectedVehicle('');
+      resetForm();
       onClose();
     } catch (err) {
       console.error('Create task failed', err);
@@ -78,185 +106,123 @@ export function NewTaskModal({ isOpen, onClose, isDarkMode }: NewTaskModalProps)
 
   if (!isOpen) return null;
 
+  const inputClass = `w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:ring-2 focus:ring-emerald-500/50 focus:outline-none ${
+    isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500' : 'bg-white border-gray-300/50 text-gray-900 placeholder-gray-400'
+  }`;
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      ></div>
-
-      {/* Modal */}
-      <div className={`relative w-full max-w-2xl rounded-2xl border shadow-2xl overflow-hidden ${
-        isDarkMode 
-          ? 'bg-neutral-900/95 border-neutral-700' 
-          : 'bg-white/95 border-gray-200'
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className={`relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border shadow-2xl ${
+        isDarkMode ? 'bg-neutral-900/95 border-neutral-700' : 'bg-white/95 border-gray-200'
       }`}>
-        {/* Header */}
-        <div className={`px-8 py-6 border-b ${isDarkMode ? 'border-neutral-700' : 'border-gray-200'}`}>
+        <div className={`px-8 py-6 border-b sticky top-0 z-10 ${isDarkMode ? 'border-neutral-700 bg-neutral-900/95' : 'border-gray-200 bg-white/95'}`}>
           <div className="flex items-center justify-between">
-            <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-              Neuen Task erstellen
-            </h2>
-            <button
-              onClick={onClose}
-              className={`p-2 rounded-lg transition-all duration-200 ${
-                isDarkMode 
-                  ? 'hover:bg-neutral-800 text-gray-400 hover:text-white' 
-                  : 'hover:bg-gray-100 text-gray-500 hover:text-gray-900'
-              }`}
-            >
+            <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Neuen Task erstellen</h2>
+            <button type="button" onClick={onClose} className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}>
               <Icon name="x" className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="px-8 py-6">
-          <div className="space-y-6">
-            {/* Beschreibung */}
-            <div>
-              <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Beschreibung
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Task-Beschreibung eingeben..."
-                rows={4}
-                required
-                className={`w-full px-4 py-3 rounded-xl border transition-all duration-200 resize-none focus:ring-2 focus:ring-emerald-500/50 focus:outline-none ${
-                  isDarkMode 
-                    ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500' 
-                    : 'bg-white border-gray-300/50 text-gray-900 placeholder-gray-400'
-                }`}
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="px-8 py-6 space-y-5">
+          <div>
+            <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Titel</label>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} placeholder="Kurztitel" />
+          </div>
 
-            {/* Zieldatum */}
-            <div>
-              <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Zieldatum
-              </label>
-              <div className="relative">
-                <Icon name="calendar" className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  required
-                  className={`w-full pl-12 pr-4 py-3 rounded-xl border transition-all duration-200 focus:ring-2 focus:ring-emerald-500/50 focus:outline-none ${
-                    isDarkMode 
-                      ? 'bg-neutral-800 border-neutral-700 text-white' 
-                      : 'bg-white border-gray-300/50 text-gray-900'
-                  }`}
-                />
-              </div>
-            </div>
+          <div>
+            <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Typ</label>
+            <select value={taskType} onChange={(e) => setTaskType(e.target.value as ApiTaskType)} className={inputClass}>
+              {MANUAL_TASK_TYPES.map((t) => (
+                <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
+              ))}
+            </select>
+          </div>
 
-            {/* Dringlichkeit */}
-            <div>
-              <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Dringlichkeit
-              </label>
-              <div className="flex gap-2">
-                {(['Low', 'Medium', 'High', 'Urgent'] as const).map((level) => (
-                  <button
-                    key={level}
-                    type="button"
-                    onClick={() => setPriority(level)}
-                    className={`flex-1 px-4 py-3 rounded-xl text-sm font-semibold border transition-all duration-200 flex items-center justify-center gap-2 ${
-                      priority === level
-                        ? level === 'Low'
-                          ? 'bg-blue-100 text-blue-700 border-blue-300 shadow-md'
-                          : level === 'Medium'
-                          ? 'bg-yellow-100 text-yellow-700 border-yellow-300 shadow-md'
-                          : level === 'High'
-                          ? 'bg-orange-100 text-orange-700 border-orange-300 shadow-md'
-                          : 'bg-red-100 text-red-700 border-red-300 shadow-md'
-                        : isDarkMode
-                        ? 'bg-neutral-800 text-gray-400 border-neutral-700 hover:bg-neutral-800'
-                        : 'bg-white text-gray-600 border-gray-300/50 hover:bg-gray-50'
-                    }`}
-                  >
-                    {priority === level && <Icon name="alert-circle" className="w-4 h-4" />}
-                    {level}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <div>
+            <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Beschreibung</label>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className={`${inputClass} resize-none`} placeholder="Details…" />
+          </div>
 
-            {/* Fahrzeugauswahl */}
-            <div>
-              <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Fahrzeug
-              </label>
-              <div className="relative">
-                <Icon name="car" className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                <select
-                  value={selectedVehicle}
-                  onChange={(e) => setSelectedVehicle(e.target.value)}
-                  required
-                  className={`w-full pl-12 pr-4 py-3 rounded-xl border transition-all duration-200 focus:ring-2 focus:ring-emerald-500/50 focus:outline-none ${
-                    isDarkMode 
-                      ? 'bg-neutral-800 border-neutral-700 text-white' 
-                      : 'bg-white border-gray-300/50 text-gray-900'
-                  }`}
-                >
-                  <option value="">Fahrzeug auswählen...</option>
-                  {fleetVehicles.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {[v.make, v.model, v.year].filter(Boolean).join(' ')}{v.license ? ` – ${v.license}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          {checklistPreview.length > 0 && (
+            <div className={`rounded-xl border p-4 ${isDarkMode ? 'border-neutral-700 bg-neutral-800/50' : 'border-gray-200 bg-gray-50'}`}>
+              <p className={`text-xs font-semibold mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Standard-Checkliste (Vorschau)</p>
+              <ul className={`text-xs space-y-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                {checklistPreview.map((item) => <li key={item}>• {item}</li>)}
+              </ul>
             </div>
+          )}
 
-            {/* Zuweisung */}
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Zugewiesen an
-              </label>
-              <div className="relative">
-                <Icon name="user" className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                <select
-                  value={assignedTo}
-                  onChange={(e) => setAssignedTo(e.target.value)}
-                  required
-                  className={`w-full pl-12 pr-4 py-3 rounded-xl border transition-all duration-200 focus:ring-2 focus:ring-emerald-500/50 focus:outline-none ${
-                    isDarkMode 
-                      ? 'bg-neutral-800 border-neutral-700 text-white' 
-                      : 'bg-white border-gray-300/50 text-gray-900'
-                  }`}
-                >
-                  <option value="">Person auswählen...</option>
-                  {orgMembers.map((m) => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </select>
-              </div>
+              <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Fälligkeitsdatum</label>
+              <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Geschätzte Kosten (€)</label>
+              <input type="text" inputMode="decimal" value={estimatedCost} onChange={(e) => setEstimatedCost(e.target.value)} className={inputClass} placeholder="0,00" />
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-3 mt-8">
-            <button
-              type="button"
-              onClick={onClose}
-              className={`flex-1 px-6 py-3 rounded-xl font-semibold transition-all duration-200 border ${
-                isDarkMode 
-                  ? 'bg-neutral-800 hover:bg-neutral-800 text-gray-300 border-neutral-700' 
-                  : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300/50'
-              }`}
-            >
+          <div>
+            <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Dringlichkeit</label>
+            <div className="flex gap-2">
+              {(['Low', 'Normal', 'High', 'Critical'] as const).map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => setPriority(level)}
+                  className={`flex-1 px-3 py-2 rounded-xl text-xs font-semibold border ${
+                    priority === level
+                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                      : isDarkMode ? 'bg-neutral-800 text-gray-400 border-neutral-700' : 'bg-white text-gray-600 border-gray-300'
+                  }`}
+                >
+                  {level}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Fahrzeug</label>
+            <select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)} className={inputClass}>
+              <option value="">Optional…</option>
+              {fleetVehicles.map((v) => (
+                <option key={v.id} value={v.id}>{[v.make, v.model, v.license].filter(Boolean).join(' · ')}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Booking ID</label>
+              <input value={bookingId} onChange={(e) => setBookingId(e.target.value)} className={inputClass} placeholder="optional" />
+            </div>
+            <div>
+              <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Customer ID</label>
+              <input value={customerId} onChange={(e) => setCustomerId(e.target.value)} className={inputClass} placeholder="optional" />
+            </div>
+            <div>
+              <label className={`block text-xs font-semibold mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Vendor ID</label>
+              <input value={vendorId} onChange={(e) => setVendorId(e.target.value)} className={inputClass} placeholder="optional" />
+            </div>
+          </div>
+
+          <div>
+            <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Zugewiesen an</label>
+            <select value={assignedUserId} onChange={(e) => setAssignedUserId(e.target.value)} className={inputClass}>
+              <option value="">Optional…</option>
+              {orgMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className={`flex-1 px-6 py-3 rounded-xl font-semibold border ${isDarkMode ? 'border-neutral-700 text-gray-300' : 'border-gray-300 text-gray-700'}`}>
               Abbrechen
             </button>
-            <button
-              type="submit"
-              disabled={submitting || !orgId}
-              className="flex-1 px-6 py-3 rounded-xl font-semibold transition-all duration-200 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl disabled:opacity-50"
-            >
+            <button type="submit" disabled={submitting || !orgId} className="flex-1 px-6 py-3 rounded-xl font-semibold bg-gradient-to-r from-emerald-500 to-green-600 text-white disabled:opacity-50">
               Task erstellen
             </button>
           </div>

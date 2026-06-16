@@ -173,11 +173,12 @@ export class CustomersService {
       return {
         ...c,
         bookingCount: c._count.bookings,
-        drivingStyleScore: score?.drivingStyleScore ?? null,
-        safetyScore: score?.safetyScore ?? null,
+        drivingStressScore: score?.drivingStressScore ?? null,
+        stressLevel: score?.stressLevel ?? null,
+        /** @deprecated Use drivingStressScore */
+        drivingStyleScore: score?.drivingStressScore ?? null,
         scoreEligibleTripCount: score?.tripCount ?? 0,
         scoredTripCount: score?.scoredTripCount ?? 0,
-        safetyScoredTripCount: score?.safetyScoredTripCount ?? 0,
         totalDistanceKm: score?.totalDistanceKm ?? 0,
         hasEnoughData: score?.hasEnoughData ?? false,
         dataConfidence: score?.dataConfidence ?? 'none',
@@ -211,11 +212,11 @@ export class CustomersService {
     const agg = bookingAggMap.get(id);
     return {
       ...customer,
-      drivingStyleScore: score?.drivingStyleScore ?? null,
-      safetyScore: score?.safetyScore ?? null,
+      drivingStressScore: score?.drivingStressScore ?? null,
+      stressLevel: score?.stressLevel ?? null,
+      drivingStyleScore: score?.drivingStressScore ?? null,
       scoreEligibleTripCount: score?.tripCount ?? 0,
       scoredTripCount: score?.scoredTripCount ?? 0,
-      safetyScoredTripCount: score?.safetyScoredTripCount ?? 0,
       totalDistanceKm: score?.totalDistanceKm ?? 0,
       hasEnoughData: score?.hasEnoughData ?? false,
       dataConfidence: score?.dataConfidence ?? 'none',
@@ -686,10 +687,9 @@ export class CustomersService {
       {
         tripCount: number;
         scoredTripCount: number;
-        safetyScoredTripCount: number;
         totalDistanceKm: number;
-        drivingStyleScore: number | null;
-        safetyScore: number | null;
+        drivingStressScore: number | null;
+        stressLevel: 'low' | 'moderate' | 'high' | 'critical' | null;
         hasEnoughData: boolean;
         dataConfidence: 'none' | 'low' | 'medium' | 'high';
       }
@@ -700,10 +700,9 @@ export class CustomersService {
       {
         tripCount: number;
         scoredTripCount: number;
-        safetyScoredTripCount: number;
         totalDistanceKm: number;
-        drivingStyleScore: number | null;
-        safetyScore: number | null;
+        drivingStressScore: number | null;
+        stressLevel: 'low' | 'moderate' | 'high' | 'critical' | null;
         hasEnoughData: boolean;
         dataConfidence: 'none' | 'low' | 'medium' | 'high';
       }
@@ -729,10 +728,9 @@ export class CustomersService {
       map.set(customerId, {
         tripCount: summary?.tripCount ?? 0,
         scoredTripCount: summary?.scoredTripCount ?? 0,
-        safetyScoredTripCount: summary?.safetyScoredTripCount ?? 0,
         totalDistanceKm: summary?.totalDistanceKm ?? 0,
-        drivingStyleScore: summary?.drivingStyleScore ?? null,
-        safetyScore: summary?.safetyScore ?? null,
+        drivingStressScore: summary?.drivingStressScore ?? null,
+        stressLevel: summary?.stressLevel ?? null,
         hasEnoughData: summary?.hasEnoughData ?? false,
         dataConfidence: summary?.dataConfidence ?? 'none',
       });

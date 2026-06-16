@@ -1,26 +1,16 @@
 import { Icon } from './ui/Icon';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { toast } from 'sonner';
 import { api } from '../../lib/api';
+import type { CustomerDocumentApiType } from '../lib/entityMappers';
 
 // ------------------------------------------------
-// CustomerDocumentUploadBox (V4.6.65)
+// CustomerDocumentUploadBox
 //
-// Shared KYC upload widget used in:
-//   - CustomersView → "Neuer Kunde" wizard (step 3 Dokumente)
-//   - NewBookingView → inline "Neuer Kunde" wizard
-//
-// Declared at module scope on purpose: previously the upload UI was defined
-// *inside* the modal render function, which caused React to treat the
-// component type as fresh on every parent re-render, remount the hidden
-// <input type="file"> and discard the user's file selection — which is why
-// clicking upload appeared to do nothing and the user could not proceed
-// through registration.
-//
-// On selection we upload immediately via `api.customers.uploadDocument` so the
-// returned URL can be persisted with the Customer row. Files land under
-// /uploads/customer-documents/ and survive page reloads.
+// For existing customers: uploads via CustomerDocument API.
+// For registration wizards (no customerId yet): holds File locally until
+// the customer row exists, then parent calls uploadPendingCustomerDocuments.
 // ------------------------------------------------
 
 export type CustomerDocumentSlot =
@@ -29,28 +19,74 @@ export type CustomerDocumentSlot =
   | 'license-front'
   | 'license-back';
 
+export interface CustomerDocumentRecord {
+  id: string;
+  type: string;
+  status: string;
+  fileKey: string;
+  createdAt?: string;
+  reviewedAt?: string | null;
+  expiresAt?: string | null;
+}
+
 export interface CustomerDocumentUploadBoxProps {
   label: string;
-  url: string | null;
-  slot: CustomerDocumentSlot;
+  documentType: CustomerDocumentApiType;
   orgId: string | undefined;
+  customerId?: string;
+  document?: CustomerDocumentRecord | null;
+  /** Wizard mode — file selected before customer exists */
+  pendingFile?: File | null;
+  /** Legacy read-only preview URL when no CustomerDocument row exists */
+  legacyPreviewUrl?: string | null;
   errorMessage?: string;
-  onUploaded: (url: string) => void;
-  onCleared: () => void;
+  onDocumentUploaded?: (doc: CustomerDocumentRecord) => void;
+  onPendingFileChange?: (file: File | null) => void;
+}
+
+function resolvePreviewUrl(
+  document: CustomerDocumentRecord | null | undefined,
+  pendingFile: File | null | undefined,
+  legacyPreviewUrl: string | null | undefined,
+): string | null {
+  if (document?.fileKey) {
+    return document.fileKey.startsWith('http') || document.fileKey.startsWith('/')
+      ? document.fileKey
+      : `/uploads/${document.fileKey}`;
+  }
+  if (pendingFile) return URL.createObjectURL(pendingFile);
+  return legacyPreviewUrl ?? null;
 }
 
 export function CustomerDocumentUploadBox({
   label,
-  url,
-  slot,
+  documentType,
   orgId,
+  customerId,
+  document,
+  pendingFile,
+  legacyPreviewUrl,
   errorMessage,
-  onUploaded,
-  onCleared,
+  onDocumentUploaded,
+  onPendingFileChange,
 }: CustomerDocumentUploadBoxProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+
+  const previewUrl = resolvePreviewUrl(document, pendingFile, legacyPreviewUrl) ?? objectUrl;
+  const hasContent = Boolean(document || pendingFile || legacyPreviewUrl || objectUrl);
+
+  useEffect(() => {
+    if (!pendingFile) {
+      setObjectUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(pendingFile);
+    setObjectUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pendingFile]);
 
   const labelClass =
     'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
@@ -64,11 +100,25 @@ export function CustomerDocumentUploadBox({
         toast.error(msg);
         return;
       }
+
       setLocalError(null);
+
+      if (!customerId) {
+        onPendingFileChange?.(file);
+        if (inputRef.current) inputRef.current.value = '';
+        return;
+      }
+
       setUploading(true);
       try {
-        const res = await api.customers.uploadDocument(orgId, slot, file);
-        onUploaded(res.url);
+        const res = await api.customers.customerDocuments.upload(
+          orgId,
+          customerId,
+          documentType,
+          file,
+        );
+        onDocumentUploaded?.(res as unknown as CustomerDocumentRecord);
+        toast.success('Dokument hochgeladen');
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Upload fehlgeschlagen';
         setLocalError(msg);
@@ -78,19 +128,25 @@ export function CustomerDocumentUploadBox({
         if (inputRef.current) inputRef.current.value = '';
       }
     },
-    [orgId, slot, onUploaded],
+    [orgId, customerId, documentType, onDocumentUploaded, onPendingFileChange],
   );
 
-  const hasUrl = Boolean(url);
-  const isImage = hasUrl && !/\.pdf($|\?)/i.test(url || '');
+  const isImage = hasContent && previewUrl && !/\.pdf($|\?)/i.test(previewUrl);
 
   const dropzoneClass = uploading
     ? 'border-[color:var(--brand)]/40 bg-[color:var(--brand-soft)]'
-    : hasUrl
+    : hasContent
       ? 'border-[color:var(--status-positive)]/40 bg-[color:var(--status-positive-soft)]'
       : errorMessage || localError
         ? 'border-[color:var(--status-critical)]/40 bg-[color:var(--status-critical-soft)]'
         : 'border-border bg-muted/30 hover:border-[color:var(--brand)]/40 hover:bg-[color:var(--brand-soft)]';
+
+  const clearSelection = () => {
+    if (inputRef.current) inputRef.current.value = '';
+    if (!customerId) {
+      onPendingFileChange?.(null);
+    }
+  };
 
   return (
     <div>
@@ -105,11 +161,11 @@ export function CustomerDocumentUploadBox({
               Wird hochgeladen…
             </span>
           </div>
-        ) : hasUrl ? (
+        ) : hasContent ? (
           <div className="flex flex-col items-center gap-2">
-            {isImage ? (
+            {isImage && previewUrl ? (
               <img
-                src={url || ''}
+                src={previewUrl}
                 alt={label}
                 className="h-16 w-auto max-w-full rounded-md object-contain border border-[color:var(--status-positive)]/20"
               />
@@ -124,19 +180,18 @@ export function CustomerDocumentUploadBox({
             <div className="flex items-center gap-2">
               <Icon name="check-circle" className="w-3.5 h-3.5 text-[color:var(--status-positive)]" />
               <span className="text-[11px] font-semibold text-[color:var(--status-positive)]">
-                Hochgeladen
+                {customerId ? 'Hochgeladen' : 'Ausgewählt'}
               </span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (inputRef.current) inputRef.current.value = '';
-                  onCleared();
-                }}
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-[color:var(--status-critical)] hover:opacity-80"
-              >
-                <Icon name="trash-2" className="w-3 h-3" />
-                Entfernen
-              </button>
+              {!customerId && (
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-[color:var(--status-critical)] hover:opacity-80"
+                >
+                  <Icon name="trash-2" className="w-3 h-3" />
+                  Entfernen
+                </button>
+              )}
             </div>
           </div>
         ) : (

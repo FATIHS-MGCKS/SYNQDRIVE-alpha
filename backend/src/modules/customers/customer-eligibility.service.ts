@@ -301,7 +301,7 @@ export class CustomerEligibilityService {
         organizationId: orgId,
         customerId,
         status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
-        priority: { in: ['HIGH', 'URGENT'] },
+        priority: { in: ['HIGH', 'CRITICAL'] },
       },
     });
     if (criticalOpen > 0) {

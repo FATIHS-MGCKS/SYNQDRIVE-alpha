@@ -81,6 +81,10 @@ export const defaultExtras: ExtraOption[] = [
   { id: 'wifi', label: 'Mobile WiFi', dailyPrice: 7, description: 'Portable WiFi hotspot with 10GB data', icon: '\u{1F4F6}' },
 ];
 
+/**
+ * @deprecated Demo/seed only — production pricing uses the org Price Tariffs API
+ * (`api.pricing.catalog` + `api.pricing.simulate`). Do not use in booking or finance flows.
+ */
 export const buildTariffs = (vehicles: VehicleData[]): VehicleTariff[] => vehicles.map(v => {
   const cat = getVehicleCategory(v.model, v.fuelType);
   const base = cat === 'Premium' ? 89 : cat === 'Electric' ? 79 : cat === 'Sedan' ? 59 : 45;

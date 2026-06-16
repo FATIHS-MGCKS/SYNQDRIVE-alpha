@@ -21,13 +21,13 @@ export class StationShortageDetector implements InsightDetector {
 
     for (const station of stations) {
       const totalVehicles = await this.prisma.vehicle.count({
-        where: { organizationId: ctx.organizationId, stationId: station.id, status: { not: 'OUT_OF_SERVICE' } },
+        where: { organizationId: ctx.organizationId, homeStationId: station.id, status: { not: 'OUT_OF_SERVICE' } },
       });
 
       const bookedOut = await this.prisma.booking.count({
         where: {
           organizationId: ctx.organizationId,
-          vehicle: { stationId: station.id },
+          vehicle: { homeStationId: station.id },
           status: { in: ['CONFIRMED', 'ACTIVE'] },
           startDate: { lte: horizon },
           endDate: { gte: ctx.now },

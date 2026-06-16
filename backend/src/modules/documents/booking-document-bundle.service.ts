@@ -33,12 +33,15 @@ import {
   VehicleInfo,
   bookingRef,
 } from './templates/template-helpers';
+import { formatStationAddress, stationToDocumentInfo } from '@modules/stations/station.types';
+import { Station } from '@prisma/client';
 import { buildBookingInvoiceDocument, InvoiceLineItem } from './templates/booking-invoice.template';
 import { buildDepositReceiptDocument } from './templates/deposit-receipt.template';
 import { buildRentalContractDocument } from './templates/rental-contract.template';
 import { buildPickupHandoverDocument, HandoverContext } from './templates/pickup-handover.template';
 import { buildReturnHandoverDocument } from './templates/return-handover.template';
 import { buildFinalInvoiceDocument, FinalInvoiceLineItem } from './templates/final-invoice.template';
+import { TaskAutomationService } from '@modules/tasks/task-automation.service';
 
 const TEMPLATE_VERSION = '1';
 
@@ -58,6 +61,8 @@ type BookingWithRelations = Booking & {
   customer: Customer;
   vehicle: Vehicle;
   organization: Organization;
+  pickupStation?: Station | null;
+  returnStation?: Station | null;
 };
 
 export interface BundleView {
@@ -93,6 +98,7 @@ export class BookingDocumentBundleService {
     private readonly numbering: DocumentNumberingService,
     private readonly invoices: InvoicesService,
     @Inject(DOCUMENT_RENDERER) private readonly renderer: DocumentRenderer,
+    private readonly taskAutomation: TaskAutomationService,
   ) {}
 
   private get generationEnabled(): boolean {
@@ -663,6 +669,67 @@ export class BookingDocumentBundleService {
       where: { id: bundle.id },
       data: { status, lastError: warning, generatedAt: status === BUNDLE_STATUS.COMPLETE ? new Date() : bundle.generatedAt },
     });
+
+    void this.syncMissingDocumentTasks(orgId, bookingId, bookingStatus).catch((err) =>
+      this.logger.warn(`syncMissingDocumentTasks(${bookingId}) failed: ${this.shortError(err)}`),
+    );
+  }
+
+  /** Materialize DOCUMENT_REVIEW / INVOICE_REQUIRED tasks for missing bundle docs. */
+  private async syncMissingDocumentTasks(
+    orgId: string,
+    bookingId: string,
+    bookingStatus: string,
+  ): Promise<void> {
+    const bundle = await this.prisma.bookingDocumentBundle.findUnique({ where: { bookingId } });
+    if (!bundle || bundle.organizationId !== orgId) return;
+
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: bookingId, organizationId: orgId },
+      select: { id: true, vehicleId: true, customerId: true },
+    });
+    if (!booking) return;
+
+    const required = this.requiredTypesForStage(bookingStatus);
+    const base = {
+      bookingId: booking.id,
+      vehicleId: booking.vehicleId,
+    };
+
+    for (const docType of required) {
+      if (bundle[BUNDLE_FIELD[docType]]) continue;
+      const isInvoice =
+        docType === DOCUMENT_TYPE.BOOKING_INVOICE || docType === DOCUMENT_TYPE.FINAL_INVOICE;
+      await this.taskAutomation.ensureDocumentTask(orgId, {
+        kind: docType,
+        ...base,
+        title: `Fehlendes Dokument: ${DOCUMENT_TITLE_DE[docType] ?? docType}`,
+        description: `Erforderliches Buchungsdokument fehlt noch (${DOCUMENT_TITLE_DE[docType] ?? docType}).`,
+        type: isInvoice ? 'INVOICE_REQUIRED' : 'DOCUMENT_REVIEW',
+        priority: docType === DOCUMENT_TYPE.FINAL_INVOICE ? 'HIGH' : 'NORMAL',
+      });
+    }
+
+    if (!bundle.termsDocumentId) {
+      await this.taskAutomation.ensureDocumentTask(orgId, {
+        kind: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
+        ...base,
+        title: `Fehlendes Dokument: ${DOCUMENT_TITLE_DE[DOCUMENT_TYPE.TERMS_AND_CONDITIONS]}`,
+        description: 'AGB fehlen in Administration oder im Buchungspaket.',
+        type: 'DOCUMENT_REVIEW',
+        priority: 'NORMAL',
+      });
+    }
+    if (!bundle.withdrawalDocumentId) {
+      await this.taskAutomation.ensureDocumentTask(orgId, {
+        kind: DOCUMENT_TYPE.WITHDRAWAL_INFORMATION,
+        ...base,
+        title: `Fehlendes Dokument: ${DOCUMENT_TITLE_DE[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]}`,
+        description: 'Widerrufsbelehrung fehlt in Administration oder im Buchungspaket.',
+        type: 'DOCUMENT_REVIEW',
+        priority: 'NORMAL',
+      });
+    }
   }
 
   // ── helpers ───────────────────────────────────────────────────────────
@@ -816,7 +883,13 @@ export class BookingDocumentBundleService {
   private async loadBooking(orgId: string, bookingId: string): Promise<BookingWithRelations> {
     const booking = await this.prisma.booking.findFirst({
       where: { id: bookingId, organizationId: orgId },
-      include: { customer: true, vehicle: true, organization: true },
+      include: {
+        customer: true,
+        vehicle: true,
+        organization: true,
+        pickupStation: true,
+        returnStation: true,
+      },
     });
     if (!booking) throw new NotFoundException('Booking not found');
     return booking as BookingWithRelations;
@@ -922,6 +995,13 @@ export class BookingDocumentBundleService {
   }
 
   private bookingInfo(b: BookingWithRelations): BookingInfo {
+    const pickupLocation =
+      b.pickupAddressOverride?.trim() ||
+      (b.pickupStation ? formatStationAddress(stationToDocumentInfo(b.pickupStation)) : null);
+    const returnLocation =
+      b.returnAddressOverride?.trim() ||
+      (b.returnStation ? formatStationAddress(stationToDocumentInfo(b.returnStation)) : null);
+
     return {
       id: b.id,
       startDate: b.startDate,
@@ -931,6 +1011,16 @@ export class BookingDocumentBundleService {
       kmIncluded: b.kmIncluded,
       kmDriven: b.kmDriven,
       currency: b.currency,
+      pickupLocation,
+      returnLocation,
+      pickupStationName: b.pickupStation?.name ?? null,
+      returnStationName: b.returnStation?.name ?? null,
+      pickupStationPhone: b.pickupStation?.phone ?? null,
+      returnStationPhone: b.returnStation?.phone ?? null,
+      pickupStationEmail: b.pickupStation?.email ?? null,
+      returnStationEmail: b.returnStation?.email ?? null,
+      pickupHandoverInstructions: b.pickupStation?.handoverInstructions ?? null,
+      returnInstructions: b.returnStation?.returnInstructions ?? null,
     };
   }
 

@@ -58,4 +58,6 @@ export interface CreateHandoverProtocolPayload {
   staffSignatureDataUrl?: string | null;
   documentsAcknowledged?: boolean;
   damageIds?: string[];
+  /** Actual station where handover occurred (defaults to planned station). */
+  actualStationId?: string | null;
 }

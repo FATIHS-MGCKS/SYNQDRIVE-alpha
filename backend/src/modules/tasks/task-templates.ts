@@ -50,6 +50,18 @@ export const TASK_CHECKLIST_TEMPLATES: Partial<Record<TaskType, string[]>> = {
     'Müll entfernen',
     'Fotos (optional)',
   ],
+  VEHICLE_SERVICE: [
+    'Servicehistorie prüfen',
+    'Fälligkeit / Kilometerstand prüfen',
+    'Werkstatttermin planen',
+    'Ergebnis dokumentieren',
+  ],
+  VEHICLE_INSPECTION: [
+    'Fahrzeug visuell prüfen',
+    'Relevante Fehlercodes prüfen',
+    'Sicherheitsrelevante Mängel dokumentieren',
+    'Maßnahmen festlegen',
+  ],
 };
 
 export function checklistForType(type: TaskType): Array<{ title: string; sortOrder: number }> {

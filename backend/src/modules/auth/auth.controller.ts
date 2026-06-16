@@ -105,7 +105,11 @@ export class AuthController {
 
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { lastLoginAt: new Date() },
+      data: {
+        lastLoginAt: new Date(),
+        lastLoginIp: (req as any)?.ip ?? null,
+        lastLoginDevice: ((req as any)?.headers?.['user-agent'] as string | undefined)?.slice(0, 500) ?? null,
+      },
     });
 
     const membership = user.memberships[0];

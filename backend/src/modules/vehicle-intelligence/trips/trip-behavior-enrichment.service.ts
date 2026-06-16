@@ -141,6 +141,21 @@ export class TripBehaviorEnrichmentService {
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {}
 
+  /**
+   * Misuse cases are informational/read-only hints. Aggregation must not block trip
+   * enrichment. Errors are logged with trip context and can be reprocessed later.
+   */
+  private scheduleMisuseCaseAggregation(tripId: string): void {
+    void this.misuseCaseAggregator.evaluateTrip(tripId).catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
+      this.logger.error(
+        `Misuse case aggregation failed for trip ${tripId}: ${message}`,
+        stack,
+      );
+    });
+  }
+
   async enrichTrip(tripId: string): Promise<BehaviorEnrichmentResult | null> {
     const trip = await this.prisma.vehicleTrip.findUnique({
       where: { id: tripId },
@@ -485,11 +500,7 @@ export class TripBehaviorEnrichmentService {
       });
     });
     await this.tripAssignmentService.applyAssignmentToTrip(tripId);
-    void this.misuseCaseAggregator.evaluateTrip(tripId).catch((err: Error) => {
-      this.logger.warn(
-        `Misuse case aggregation failed for trip ${tripId}: ${err?.message ?? err}`,
-      );
-    });
+    this.scheduleMisuseCaseAggregation(tripId);
 
     this.logger.log(
       `HF enrichment complete for trip ${tripId}: ` +
@@ -734,11 +745,7 @@ export class TripBehaviorEnrichmentService {
       });
     });
     await this.tripAssignmentService.applyAssignmentToTrip(tripId);
-    void this.misuseCaseAggregator.evaluateTrip(tripId).catch((err: Error) => {
-      this.logger.warn(
-        `Misuse case aggregation failed for trip ${tripId}: ${err?.message ?? err}`,
-      );
-    });
+    this.scheduleMisuseCaseAggregation(tripId);
 
     this.logger.log(
       `LTE_R1 enrichment complete for trip ${tripId}: ` +

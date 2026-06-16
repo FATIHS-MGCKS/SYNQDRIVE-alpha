@@ -6,6 +6,11 @@ import { InsightGroupingService } from './insight-grouping.service';
 import { InsightFormatterService } from './insight-formatter.service';
 import { DashboardInsightsRepository } from './dashboard-insights.repository';
 import { InsightTaskBridgeService } from './insight-task-bridge.service';
+import {
+  gateHealthInsightsForBusinessContext,
+  RAW_HEALTH_INSIGHT_TYPES,
+  type UpcomingBookingSlice,
+} from './insight-health-gate';
 import { DetectorContext, InsightCandidate, InsightDetector } from './insight.types';
 
 import { TightHandoverDetector } from './detectors/tight-handover.detector';
@@ -110,12 +115,14 @@ export class BusinessInsightsService {
         }
       }
 
-      const grouped = this.grouping.dedupeAndGroup(allCandidates);
+      const gatedCandidates = await this.gateHealthInsights(allCandidates, ctx);
+
+      const grouped = this.grouping.dedupeAndGroup(gatedCandidates);
       const ranked = this.ranking.rank(grouped);
       const formatted = this.formatter.format(ranked.slice(0, policy.maxVisibleInsights), policy.useLlmFormatting);
 
       await this.repo.publishInsights(organizationId, run.id, formatted);
-      await this.repo.completeRun(run.id, allCandidates.length, formatted.length);
+      await this.repo.completeRun(run.id, gatedCandidates.length, formatted.length);
 
       // Materialize actionable per-vehicle candidates into escalating OrgTasks.
       // Uses the raw (pre-group, pre-limit) candidate list so every overdue
@@ -123,7 +130,7 @@ export class BusinessInsightsService {
       // Isolated in its own try/catch: a bridge failure must never tear down a
       // successful insights run.
       try {
-        await this.bridge.materialize(organizationId, allCandidates);
+        await this.bridge.materialize(organizationId, gatedCandidates);
       } catch (bridgeErr: any) {
         this.logger.warn(
           `Insight→Task bridge failed for org ${organizationId}: ${bridgeErr?.message ?? bridgeErr}`,
@@ -131,7 +138,7 @@ export class BusinessInsightsService {
       }
 
       this.logger.log(
-        `Insights run [${trigger}] for org ${organizationId}: ${allCandidates.length} candidates → ${grouped.length} grouped → ${formatted.length} published`,
+        `Insights run [${trigger}] for org ${organizationId}: ${gatedCandidates.length} candidates → ${grouped.length} grouped → ${formatted.length} published`,
       );
       return { runId: run.id, published: formatted.length };
     } catch (err: any) {
@@ -201,5 +208,70 @@ export class BusinessInsightsService {
 
     await Promise.all(Array.from({ length: safeLimit }, () => worker()));
     return results.filter((r) => r !== undefined);
+  }
+
+  /**
+   * Raw BATTERY/TIRE/BRAKE insights only reach the cockpit when an upcoming
+   * booking exists — otherwise they stay in Health modules only.
+   */
+  private async gateHealthInsights(
+    candidates: InsightCandidate[],
+    ctx: DetectorContext,
+  ): Promise<InsightCandidate[]> {
+    const healthVehicleIds = [
+      ...new Set(
+        candidates
+          .filter((c) => RAW_HEALTH_INSIGHT_TYPES.has(c.type))
+          .flatMap((c) => c.entityIds),
+      ),
+    ];
+
+    if (healthVehicleIds.length === 0) {
+      return gateHealthInsightsForBusinessContext(candidates, new Map(), new Map(), ctx.now);
+    }
+
+    const horizon = new Date(
+      ctx.now.getTime() + ctx.policy.serviceBeforeBookingHours * 3_600_000,
+    );
+
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        organizationId: ctx.organizationId,
+        vehicleId: { in: healthVehicleIds },
+        status: { in: ['CONFIRMED', 'PENDING'] },
+        startDate: { gte: ctx.now, lte: horizon },
+      },
+      orderBy: { startDate: 'asc' },
+      select: {
+        id: true,
+        vehicleId: true,
+        customerId: true,
+        startDate: true,
+        totalPriceCents: true,
+        dailyRateCents: true,
+      },
+    });
+
+    const bookingByVehicle = new Map<string, UpcomingBookingSlice>();
+    for (const b of bookings) {
+      if (!bookingByVehicle.has(b.vehicleId)) {
+        bookingByVehicle.set(b.vehicleId, b);
+      }
+    }
+
+    const vehicles = await this.prisma.vehicle.findMany({
+      where: { id: { in: healthVehicleIds } },
+      select: { id: true, licensePlate: true, make: true, model: true },
+    });
+    const labelById = new Map(
+      vehicles.map((v) => [v.id, v.licensePlate || `${v.make} ${v.model}`.trim()]),
+    );
+
+    return gateHealthInsightsForBusinessContext(
+      candidates,
+      bookingByVehicle,
+      labelById,
+      ctx.now,
+    );
   }
 }

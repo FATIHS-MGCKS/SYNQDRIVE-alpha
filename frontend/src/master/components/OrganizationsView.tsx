@@ -1,10 +1,13 @@
+import { useState, useMemo } from 'react';
 import {
   Building2, Search, Plus, MoreHorizontal, CheckCircle, AlertTriangle,
   XCircle, X, Save, Trash2, ChevronRight, UserPlus, ArrowLeft, Eye, EyeOff,
-  Upload, Globe, Phone, MapPin, FileText, Clock, Languages, User, Mail, ImageIcon,
+  Upload, Globe, Phone, Clock, Languages, User, Mail, ImageIcon,
 } from 'lucide-react';
-import { useState } from 'react';
 import type { Organization, OrgStatus, SubscriptionPlan } from '../data/platform-data';
+import { PageHeader, DataTable, StatusChip } from '../../components/patterns';
+import type { DataTableColumn } from '../../components/patterns';
+import type { StatusTone } from '../../components/patterns';
 
 interface OrganizationsViewProps {
   isDarkMode: boolean;
@@ -15,20 +18,24 @@ interface OrganizationsViewProps {
   onDeleteOrg: (id: string) => void;
 }
 
-const planColors: Record<string, string> = {
-  Starter: 'bg-gray-100 text-gray-700 border-gray-200',
-  Business: 'bg-blue-50 text-blue-700 border-blue-200',
-  Enterprise: 'bg-purple-50 text-purple-700 border-purple-200',
-  Custom: 'bg-amber-50 text-amber-700 border-amber-200',
+const planTone = (plan: string): StatusTone => {
+  if (plan === 'Business') return 'info';
+  if (plan === 'Enterprise') return 'ai';
+  if (plan === 'Custom') return 'watch';
+  return 'neutral';
 };
-const statusColors: Record<string, string> = {
-  Active: 'bg-green-50 text-green-700 border-green-200',
-  Trial: 'bg-blue-50 text-blue-700 border-blue-200',
-  Suspended: 'bg-red-50 text-red-700 border-red-200',
-  Churned: 'bg-gray-100 text-gray-500 border-gray-200',
+
+const orgStatusTone = (status: string): StatusTone => {
+  if (status === 'Active') return 'success';
+  if (status === 'Trial') return 'info';
+  if (status === 'Suspended') return 'critical';
+  return 'neutral';
 };
-const statusIcons: Record<string, typeof CheckCircle> = {
-  Active: CheckCircle, Trial: AlertTriangle, Suspended: XCircle, Churned: XCircle,
+
+const orgStatusIcon = (status: string) => {
+  if (status === 'Active') return CheckCircle;
+  if (status === 'Trial') return AlertTriangle;
+  return XCircle;
 };
 
 const BUSINESS_TYPES = [
@@ -183,7 +190,6 @@ export function OrganizationsView({
   const totalMRR = filteredOrgs.reduce((s, o) => s + o.mrr, 0);
   const totalVehicles = filteredOrgs.reduce((s, o) => s + o.fleet_size, 0);
 
-  const cardClass = 'bg-card border border-border rounded-lg shadow-xs';
   const inputClass = 'w-full px-3 py-2 rounded-lg border text-sm outline-none transition-colors bg-muted border-border text-foreground focus:border-ring';
   const labelClass = `block text-sm font-semibold mb-1 text-foreground`;
 
@@ -196,28 +202,88 @@ export function OrganizationsView({
   const step1Valid = formName.trim().length > 0;
   const step2Valid = skipAdmin || (adminName.trim() && adminEmail.trim() && adminPassword.trim());
 
-  return (
-    <div className="space-y-4 pb-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <h1 className={`text-2xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Organizations</h1>
-          <p className="text-sm mt-1 font-medium text-muted-foreground">
-            {filteredOrgs.length} organizations · {totalVehicles} vehicles · €{totalMRR.toLocaleString()} MRR
-          </p>
+  const orgColumns = useMemo<DataTableColumn<Organization>[]>(() => [
+    {
+      key: 'org',
+      header: 'Organization',
+      cell: (org) => (
+        <div className="flex items-center gap-3 min-w-[200px]">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center sq-tone-brand shrink-0">
+            <Building2 className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">{org.company_name}</p>
+            <p className="text-xs text-muted-foreground">{[org.city, org.country].filter(Boolean).join(', ')}</p>
+          </div>
         </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-lg text-sm font-semibold shadow-sm hover:shadow-md transition-all"
-        >
-          <Plus className="w-5 h-5" />New Organization
-        </button>
-      </div>
+      ),
+    },
+    {
+      key: 'plan',
+      header: 'Plan',
+      cell: (org) => <StatusChip tone={planTone(org.plan)}>{org.plan}</StatusChip>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (org) => {
+        const Icon = orgStatusIcon(org.status);
+        return (
+          <StatusChip tone={orgStatusTone(org.status)} icon={<Icon className="w-3 h-3" />}>
+            {org.status}
+          </StatusChip>
+        );
+      },
+    },
+    {
+      key: 'vehicles',
+      header: 'Vehicles',
+      align: 'center',
+      numeric: true,
+      cell: (org) => <span className="text-sm font-semibold">{org.fleet_size}</span>,
+    },
+    {
+      key: 'users',
+      header: 'Users',
+      align: 'center',
+      numeric: true,
+      cell: (org) => <span className="text-sm font-semibold">{org.users}</span>,
+    },
+    {
+      key: 'mrr',
+      header: 'MRR',
+      align: 'right',
+      numeric: true,
+      cell: (org) => <span className="text-sm font-semibold">€{org.mrr.toLocaleString()}</span>,
+    },
+    {
+      key: 'lastActive',
+      header: 'Last Active',
+      cell: (org) => <span className="text-sm text-muted-foreground">{org.lastActive}</span>,
+    },
+  ], []);
+
+  return (
+    <div className="space-y-4 pb-6 animate-fade-up">
+      <PageHeader
+        title="Organizations"
+        description={`${filteredOrgs.length} organizations · ${totalVehicles} vehicles · €${totalMRR.toLocaleString()} MRR`}
+        actions={(
+          <button
+            type="button"
+            onClick={openCreate}
+            className="sq-press inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[color:var(--brand)] text-[color:var(--brand-foreground)] text-sm font-semibold shadow-[var(--shadow-1)] hover:bg-[color:var(--brand-hover)] transition-all"
+          >
+            <Plus className="w-5 h-5" />
+            New Organization
+          </button>
+        )}
+      />
 
       {/* Filters */}
-      <div className={`${cardClass} p-4`}>
+      <div className="sq-card p-4">
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className={`flex items-center gap-2 flex-1 px-3 py-2 rounded-xl border ${isDarkMode ? 'bg-neutral-800 border-neutral-700' : 'bg-gray-50/50 border-gray-200/50'}`}>
+          <div className="flex items-center gap-2 flex-1 px-3 py-2 rounded-xl border border-border bg-[color:var(--input-background)]">
             <Search className={`w-4 h-4 shrink-0 text-muted-foreground`} />
             <input
               type="text"
@@ -246,86 +312,34 @@ export function OrganizationsView({
         </div>
       </div>
 
-      {/* Table */}
-      <div className={`${cardClass} overflow-hidden`}>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className={`text-left px-5 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Organization</th>
-                <th className={`text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Plan</th>
-                <th className={`text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Status</th>
-                <th className={`text-center px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Vehicles</th>
-                <th className={`text-center px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Users</th>
-                <th className={`text-right px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>MRR</th>
-                <th className={`text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Last Active</th>
-                <th className="px-3 py-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredOrgs.length === 0 && (
-                <tr>
-                  <td colSpan={8} className={`text-center py-16 text-sm text-muted-foreground`}>
-                    No organizations found. Click <strong>New Organization</strong> to get started.
-                  </td>
-                </tr>
-              )}
-              {filteredOrgs.map(org => {
-                const Icon = statusIcons[org.status] ?? CheckCircle;
-                return (
-                  <tr
-                    key={org.id}
-                    className={`border-b last:border-b-0 transition-colors cursor-pointer border-border hover:bg-muted/50`}
-                    onClick={() => onSelectOrg(org)}
-                  >
-                    <td className="px-5 py-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-indigo-50 dark:bg-indigo-500/15">
-                          <Building2 className="w-4 h-4 text-indigo-500" />
-                        </div>
-                        <div>
-                          <p className={`text-sm font-semibold text-foreground`}>{org.company_name}</p>
-                          <p className={`text-xs text-muted-foreground`}>{[org.city, org.country].filter(Boolean).join(', ')}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold border ${planColors[org.plan] ?? ''}`}>{org.plan}</span>
-                    </td>
-                    <td className="px-3 py-2">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border ${statusColors[org.status] ?? ''}`}>
-                        <Icon className="w-3 h-3" />{org.status}
-                      </span>
-                    </td>
-                    <td className={`px-3 py-2 text-center text-sm font-semibold text-foreground`}>{org.fleet_size}</td>
-                    <td className={`px-3 py-2 text-center text-sm font-semibold text-foreground`}>{org.users}</td>
-                    <td className={`px-3 py-2 text-right text-sm font-semibold text-foreground`}>€{org.mrr.toLocaleString()}</td>
-                    <td className={`px-3 py-2 text-sm text-muted-foreground`}>{org.lastActive}</td>
-                    <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => openEdit(org)}
-                          className="p-1.5 rounded-lg transition-colors hover:bg-muted text-muted-foreground"
-                          title="Edit"
-                        >
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm(org.id)}
-                          className="p-1.5 rounded-lg transition-colors hover:bg-red-50 text-muted-foreground hover:text-red-500 dark:hover:bg-red-900/30 dark:hover:text-red-400"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        columns={orgColumns}
+        rows={filteredOrgs}
+        getRowKey={(org) => org.id}
+        onRowClick={onSelectOrg}
+        dense
+        empty="No organizations found. Click New Organization to get started."
+        rowActions={(org) => (
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => openEdit(org)}
+              className="p-1.5 rounded-lg transition-colors hover:bg-muted text-muted-foreground"
+              title="Edit"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeleteConfirm(org.id)}
+              className="p-1.5 rounded-lg transition-colors hover:bg-[color:var(--status-critical-soft)] text-muted-foreground hover:text-[color:var(--status-critical)]"
+              title="Delete"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      />
 
       {/* ─── Create / Edit Modal ─── */}
       {modalOpen && (
@@ -344,9 +358,9 @@ export function OrganizationsView({
                   <h2 className="text-base font-semibold text-foreground">{modalTitle}</h2>
                   {!isEdit && (
                     <div className="flex items-center gap-1.5 mt-1.5">
-                      <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full transition-colors ${wizardStep === 1 ? 'bg-indigo-500 text-white' : (isDarkMode ? 'bg-neutral-700 text-gray-400' : 'bg-gray-100 text-gray-500')}`}>1 Unternehmensdaten</span>
-                      <ChevronRight className="w-3 h-3 text-gray-400" />
-                      <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full transition-colors ${wizardStep === 2 ? 'bg-indigo-500 text-white' : 'bg-muted text-muted-foreground'}`}>2 Admin Account</span>
+                      <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full transition-colors ${wizardStep === 1 ? 'bg-[color:var(--brand)] text-[color:var(--brand-foreground)]' : 'bg-muted text-muted-foreground'}`}>1 Unternehmensdaten</span>
+                      <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                      <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full transition-colors ${wizardStep === 2 ? 'bg-[color:var(--brand)] text-[color:var(--brand-foreground)]' : 'bg-muted text-muted-foreground'}`}>2 Admin Account</span>
                     </div>
                   )}
                 </div>

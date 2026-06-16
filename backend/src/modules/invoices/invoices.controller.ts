@@ -10,6 +10,12 @@ import { InvoicesService } from './invoices.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { StorageService } from '@shared/storage/storage.service';
+import {
+  CreateInvoiceDto,
+  InvoiceQueryDto,
+  RecordInvoicePaymentDto,
+  UpdateInvoiceDto,
+} from './dto';
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads', 'invoices');
 if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -25,10 +31,15 @@ export class InvoicesController {
   @UseGuards(OrgScopingGuard, RolesGuard)
   async findAll(
     @Param('orgId') orgId: string,
-    @Query('type') type?: string,
-    @Query('status') status?: string,
+    @Query() query: InvoiceQueryDto,
+    @Query('type') typeLegacy?: string,
+    @Query('status') statusLegacy?: string,
   ) {
-    return this.invoicesService.findByOrg(orgId, { type, status });
+    return this.invoicesService.findByOrg(orgId, {
+      type: query.type ?? typeLegacy,
+      status: query.status ?? statusLegacy,
+      direction: query.direction,
+    });
   }
 
   @Get('organizations/:orgId/invoices/stats')
@@ -54,31 +65,7 @@ export class InvoicesController {
 
   @Post('organizations/:orgId/invoices')
   @UseGuards(OrgScopingGuard, RolesGuard)
-  async create(
-    @Param('orgId') orgId: string,
-    @Body() body: {
-      type: 'OUTGOING_BOOKING' | 'OUTGOING_MANUAL' | 'OUTGOING_FINAL' | 'INCOMING_VENDOR' | 'INCOMING_UPLOADED';
-      customerId?: string;
-      vendorId?: string;
-      vendorName?: string;
-      bookingId?: string;
-      vehicleId?: string;
-      title: string;
-      description?: string;
-      lineItems?: any;
-      subtotalCents?: number;
-      taxCents?: number;
-      totalCents: number;
-      currency?: string;
-      invoiceDate?: string;
-      dueDate?: string;
-      status?: 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED';
-      templateId?: string;
-      imageUrl?: string;
-      extractedData?: Record<string, unknown>;
-      notes?: string;
-    },
-  ) {
+  async create(@Param('orgId') orgId: string, @Body() body: CreateInvoiceDto) {
     return this.invoicesService.create(orgId, body);
   }
 
@@ -87,23 +74,31 @@ export class InvoicesController {
   async update(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
-    @Body() body: {
-      title?: string;
-      description?: string;
-      lineItems?: any;
-      subtotalCents?: number;
-      taxCents?: number;
-      totalCents?: number;
-      dueDate?: string;
-      status?: string;
-      vendorId?: string | null;
-      vendorName?: string;
-      customerId?: string;
-      notes?: string;
-      templateId?: string;
-    },
+    @Body() body: UpdateInvoiceDto,
   ) {
     return this.invoicesService.update(id, body, orgId);
+  }
+
+  @Post('organizations/:orgId/invoices/:id/issue')
+  @UseGuards(OrgScopingGuard, RolesGuard)
+  async issue(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.invoicesService.issue(id, orgId);
+  }
+
+  @Post('organizations/:orgId/invoices/:id/mark-sent')
+  @UseGuards(OrgScopingGuard, RolesGuard)
+  async markSent(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.invoicesService.markSent(id, orgId);
+  }
+
+  @Post('organizations/:orgId/invoices/:id/payments')
+  @UseGuards(OrgScopingGuard, RolesGuard)
+  async recordPayment(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: RecordInvoicePaymentDto,
+  ) {
+    return this.invoicesService.recordPayment(id, orgId, body);
   }
 
   @Patch('organizations/:orgId/invoices/:id/pay')
@@ -112,6 +107,7 @@ export class InvoicesController {
     return this.invoicesService.markPaid(id, orgId);
   }
 
+  /** Legacy attachment upload only — NOT for AI extraction. Use document-extraction upload. */
   @Post('organizations/:orgId/invoices/upload')
   @UseGuards(OrgScopingGuard, RolesGuard)
   @UseInterceptors(
@@ -133,12 +129,12 @@ export class InvoicesController {
       },
     }),
   )
-  async uploadFile(
+  async uploadAttachment(
     @Param('orgId') orgId: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
     const url = await this.storage.finalizeUpload('invoices', file, orgId);
-    return { url };
+    return { url, purpose: 'attachment_only' };
   }
 }

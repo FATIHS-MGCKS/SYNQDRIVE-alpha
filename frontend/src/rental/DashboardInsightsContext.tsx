@@ -32,7 +32,11 @@ export type InsightType =
   | 'SERVICE_WINDOW'
   | 'SERVICE_BEFORE_BOOKING'
   | 'BATTERY_CRITICAL'
+  | 'TIRE_CRITICAL'
+  | 'BRAKE_CRITICAL'
   | 'SERVICE_OVERDUE'
+  | 'TUV_OVERDUE'
+  | 'BOKRAFT_OVERDUE'
   | 'PICKUP_OVERDUE';
 
 export interface InsightEntityBreakdown {
@@ -64,7 +68,12 @@ export interface DashboardInsight {
 }
 
 export interface InsightsResponse {
-  generatedAt: string;
+  generatedAt: string | null;
+  hasRun: boolean;
+  lastRunAt: string | null;
+  stale: boolean;
+  activeInsightCount: number;
+  error: string | null;
   summary: { total: number; critical: number; warning: number; opportunity: number; info: number };
   insights: DashboardInsight[];
 }
@@ -95,7 +104,12 @@ interface DashboardInsightsContextValue {
 }
 
 const EMPTY_RESPONSE: InsightsResponse = {
-  generatedAt: new Date(0).toISOString(),
+  generatedAt: null,
+  hasRun: false,
+  lastRunAt: null,
+  stale: false,
+  activeInsightCount: 0,
+  error: null,
   summary: { total: 0, critical: 0, warning: 0, opportunity: 0, info: 0 },
   insights: [],
 };

@@ -2,11 +2,30 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  ForbiddenException,
 } from '@nestjs/common';
-import { MembershipStatus, MembershipRole, Prisma } from '@prisma/client';
+import {
+  MembershipStatus,
+  MembershipRole,
+  Prisma,
+  UserStatus,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  MIN_USER_PASSWORD_LENGTH,
+  USERS_ROLES_MODULE,
+} from '@shared/auth/permission.constants';
+import {
+  assertMembershipPermission,
+  normalizeMembershipPermissions,
+  type PermissionActor,
+} from '@shared/auth/permission.util';
 import * as bcrypt from 'bcrypt';
+import type {
+  CreateOrgUserDto,
+  UpdateOrgUserDto,
+} from './dto';
+import { UserAccessAuditService, UserAccessAuditAction } from './user-access-audit.service';
+import { assertNotLastActiveOrgAdmin } from './org-admin-protection.util';
 
 const ROLE_DISPLAY: Record<string, string> = {
   ORG_ADMIN: 'Org Admin',
@@ -29,50 +48,188 @@ function getInitials(name: string | null | undefined): string {
   return name.substring(0, 2).toUpperCase();
 }
 
-export interface CreateOrgUserDto {
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: 'ORG_ADMIN' | 'SUB_ADMIN' | 'WORKER';
-  password?: string;
-  inviteByEmail?: boolean;
-  phone?: string;
-  mobile?: string;
-  address?: string;
-  position?: string;
-  department?: string;
-  roleLabel?: string;
-  stationScope?: string;
-  language?: string;
-  timezone?: string;
-  dateFormat?: string;
-  permissions?: Record<string, { read: boolean; write: boolean }>;
-  fieldAgentAccess?: boolean;
+function buildDisplayName(
+  firstName?: string | null,
+  lastName?: string | null,
+  name?: string | null,
+): string {
+  const fromParts = [firstName, lastName].filter(Boolean).join(' ').trim();
+  if (fromParts) return fromParts;
+  return (name ?? '').trim();
 }
 
-export interface UpdateOrgUserDto {
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  phone?: string;
-  mobile?: string;
-  address?: string;
-  position?: string;
-  department?: string;
-  roleLabel?: string;
-  role?: 'ORG_ADMIN' | 'SUB_ADMIN' | 'WORKER';
-  stationScope?: string;
-  language?: string;
-  timezone?: string;
-  dateFormat?: string;
-  permissions?: Record<string, { read: boolean; write: boolean }>;
-  fieldAgentAccess?: boolean;
-  status?: 'ACTIVE' | 'SUSPENDED';
+function parseStationIds(raw: unknown): string[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw.filter((id): id is string => typeof id === 'string' && !!id.trim());
+  }
+  return [];
+}
+
+function stationIdsToJson(ids: string[] | undefined): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+  if (!ids || ids.length === 0) return Prisma.JsonNull;
+  return ids.map((id) => id.trim()).filter(Boolean);
+}
+
+function hasSensitiveMembershipChanges(dto: UpdateOrgUserDto): boolean {
+  return (
+    dto.role !== undefined ||
+    dto.permissions !== undefined ||
+    dto.fieldAgentAccess !== undefined ||
+    dto.status !== undefined
+  );
 }
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly userAudit: UserAccessAuditService,
+  ) {}
+
+  private assertPasswordStrength(password: string): void {
+    if (!password || password.length < MIN_USER_PASSWORD_LENGTH) {
+      throw new BadRequestException(
+        `Password must be at least ${MIN_USER_PASSWORD_LENGTH} characters`,
+      );
+    }
+  }
+
+  private async assertNotLastActiveOrgAdmin(
+    orgId: string,
+    targetUserId: string,
+  ): Promise<void> {
+    return assertNotLastActiveOrgAdmin(this.prisma, orgId, targetUserId);
+  }
+
+  private requiresManageForUserProvisioning(
+    dto: Pick<CreateOrgUserDto, 'permissions' | 'password'>,
+    role: MembershipRole,
+  ): boolean {
+    if (role === MembershipRole.ORG_ADMIN) return true;
+    if (dto.permissions !== undefined) return true;
+    if (dto.password) return true;
+    return false;
+  }
+
+  private async validateStationIds(
+    orgId: string,
+    stationIds: string[] | undefined,
+  ): Promise<void> {
+    if (!stationIds?.length) return;
+    const found = await this.prisma.station.count({
+      where: { organizationId: orgId, id: { in: stationIds } },
+    });
+    if (found !== stationIds.length) {
+      throw new BadRequestException('One or more station ids are invalid for this organization');
+    }
+  }
+
+  private resolveStationFields(
+    dto: { stationScope?: string; stationIds?: string[] },
+    existing?: { stationScope?: string | null; stationIds?: unknown },
+  ): {
+    stationScope: string | null;
+    stationIds: Prisma.InputJsonValue | typeof Prisma.JsonNull;
+  } {
+    if (dto.stationIds !== undefined) {
+      const ids = dto.stationIds ?? [];
+      return {
+        stationIds: stationIdsToJson(ids),
+        stationScope:
+          ids.length === 1
+            ? ids[0]
+            : ids.length === 0
+              ? dto.stationScope?.trim() || null
+              : dto.stationScope?.trim() || null,
+      };
+    }
+    if (dto.stationScope !== undefined) {
+      const scope = dto.stationScope?.trim() || null;
+      return {
+        stationScope: scope,
+        stationIds: scope ? [scope] : Prisma.JsonNull,
+      };
+    }
+    return {
+      stationScope: existing?.stationScope ?? null,
+      stationIds:
+        existing?.stationIds != null
+          ? (existing.stationIds as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
+    };
+  }
+
+  private async resolveMembershipRoleFields(
+    orgId: string,
+    dto: Pick<
+      CreateOrgUserDto,
+      | 'role'
+      | 'organizationRoleId'
+      | 'permissions'
+      | 'stationScope'
+      | 'stationIds'
+      | 'fieldAgentAccess'
+      | 'roleLabel'
+    >,
+  ): Promise<{
+    role: MembershipRole;
+    organizationRoleId: string | null;
+    permissions: ReturnType<typeof normalizeMembershipPermissions>;
+    roleLabel: string | null;
+    fieldAgentAccess: boolean;
+    stationScope?: string;
+    stationIds?: string[];
+  }> {
+    let role = dto.role as MembershipRole;
+    let organizationRoleId: string | null = dto.organizationRoleId ?? null;
+    let permissions = normalizeMembershipPermissions(dto.permissions);
+    let roleLabel = dto.roleLabel?.trim() || null;
+    let fieldAgentAccess = dto.fieldAgentAccess;
+    let stationScope = dto.stationScope;
+    let stationIds = dto.stationIds;
+
+    if (dto.organizationRoleId) {
+      const template = await this.prisma.organizationRole.findFirst({
+        where: {
+          id: dto.organizationRoleId,
+          organizationId: orgId,
+          isActive: true,
+        },
+      });
+      if (!template) {
+        throw new BadRequestException('Invalid organization role');
+      }
+      role = template.membershipRole;
+      organizationRoleId = template.id;
+      if (dto.permissions === undefined) {
+        permissions = normalizeMembershipPermissions(template.permissions);
+      }
+      if (!dto.roleLabel) {
+        roleLabel = template.name;
+      }
+      if (dto.fieldAgentAccess === undefined) {
+        fieldAgentAccess = template.fieldAgentAccessDefault;
+      }
+      if (dto.stationScope === undefined && !dto.stationIds?.length) {
+        stationScope = template.stationScopeDefault ?? undefined;
+        stationIds = Array.isArray(template.defaultStationIds)
+          ? (template.defaultStationIds as string[])
+          : undefined;
+      }
+    }
+
+    return {
+      role,
+      organizationRoleId,
+      permissions,
+      roleLabel,
+      fieldAgentAccess:
+        role === MembershipRole.ORG_ADMIN ? true : !!fieldAgentAccess,
+      stationScope,
+      stationIds,
+    };
+  }
 
   async findAll() {
     const users = await this.prisma.user.findMany({
@@ -107,12 +264,34 @@ export class UsersService {
     return this.mapUser(user, user.memberships[0]);
   }
 
-  async create(data: { email: string; name?: string; [key: string]: unknown }) {
-    return this.prisma.user.create({ data: { email: data.email, name: data.name } });
+  async create(data: { email: string; name?: string }) {
+    const user = await this.prisma.user.create({
+      data: { email: data.email.toLowerCase().trim(), name: data.name },
+    });
+    return this.mapUser(user, undefined);
   }
 
-  async update(id: string, data: { email?: string; name?: string; [key: string]: unknown }) {
-    return this.prisma.user.update({ where: { id }, data: { email: data.email, name: data.name } });
+  async update(id: string, data: { email?: string; name?: string }) {
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: {
+        ...(data.email !== undefined
+          ? { email: data.email.toLowerCase().trim() }
+          : {}),
+        ...(data.name !== undefined ? { name: data.name } : {}),
+      },
+    });
+    return this.mapUser(user, undefined);
+  }
+
+  async changePasswordAdmin(userId: string, password: string) {
+    this.assertPasswordStrength(password);
+    const hash = await bcrypt.hash(password, 10);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: hash, mustChangePassword: true },
+    });
+    return { message: 'Password updated successfully' };
   }
 
   async delete(id: string) {
@@ -122,10 +301,14 @@ export class UsersService {
 
   async findByOrganization(orgId: string) {
     const memberships = await this.prisma.organizationMembership.findMany({
-      where: { organizationId: orgId },
+      where: {
+        organizationId: orgId,
+        status: { not: MembershipStatus.REMOVED },
+      },
       include: {
         user: true,
         organization: { select: { id: true, companyName: true } },
+        organizationRole: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: 'asc' },
     });
@@ -137,49 +320,70 @@ export class UsersService {
       where: { organizationId: orgId, userId },
       include: {
         user: true,
-        organization: {
-          select: { id: true, companyName: true },
-          },
+        organization: { select: { id: true, companyName: true } },
+        organizationRole: { select: { id: true, name: true } },
       },
     });
     if (!membership) throw new NotFoundException('User not found in organization');
     return this.mapOrgUserFull(membership);
   }
 
-  async createOrgUser(orgId: string, dto: CreateOrgUserDto) {
-    const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email.toLowerCase().trim() },
-    });
+  async createOrgUser(orgId: string, dto: CreateOrgUserDto, actor: PermissionActor = {}) {
+    const roleFields = await this.resolveMembershipRoleFields(orgId, dto);
+    if (this.requiresManageForUserProvisioning(dto, roleFields.role)) {
+      await assertMembershipPermission(
+        this.prisma,
+        actor,
+        orgId,
+        USERS_ROLES_MODULE,
+        'manage',
+      );
+    }
+    await this.validateStationIds(orgId, roleFields.stationIds);
+
+    const email = dto.email.toLowerCase().trim();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
 
     if (existing) {
       const existingMembership =
-        await this.prisma.organizationMembership.findFirst({
-          where: { userId: existing.id, organizationId: orgId },
+        await this.prisma.organizationMembership.findUnique({
+          where: {
+            userId_organizationId: {
+              userId: existing.id,
+              organizationId: orgId,
+            },
+          },
         });
+
       if (existingMembership) {
+        if (existingMembership.status === MembershipStatus.REMOVED) {
+          return this.reactivateOrgUser(orgId, existing.id, dto, existingMembership.id);
+        }
         throw new BadRequestException(
           'User already exists in this organization',
         );
       }
     }
 
-    const fullName = [dto.firstName, dto.lastName].filter(Boolean).join(' ');
+    const fullName = buildDisplayName(dto.firstName, dto.lastName);
     let passwordHash: string | undefined;
     if (dto.password) {
-      if (dto.password.length < 6) {
-        throw new BadRequestException(
-          'Password must be at least 6 characters',
-        );
-      }
+      this.assertPasswordStrength(dto.password);
       passwordHash = await bcrypt.hash(dto.password, 10);
     }
+
+    const stationFields = this.resolveStationFields({
+      stationScope: roleFields.stationScope,
+      stationIds: roleFields.stationIds,
+    });
+    const normalizedPermissions = roleFields.permissions;
 
     const result = await this.prisma.$transaction(async (tx) => {
       let user = existing;
       if (!user) {
         user = await tx.user.create({
           data: {
-            email: dto.email.toLowerCase().trim(),
+            email,
             name: fullName || null,
             firstName: dto.firstName || null,
             lastName: dto.lastName || null,
@@ -191,7 +395,7 @@ export class UsersService {
             timezone: dto.timezone || 'Europe/Berlin',
             dateFormat: dto.dateFormat || 'DD.MM.YYYY',
             mustChangePassword: !!dto.password,
-            status: 'ACTIVE',
+            status: UserStatus.ACTIVE,
           },
         });
       } else if (passwordHash) {
@@ -214,16 +418,17 @@ export class UsersService {
         data: {
           userId: user.id,
           organizationId: orgId,
-          role: dto.role as MembershipRole,
-          roleLabel: dto.roleLabel || null,
-          stationScope: dto.stationScope || null,
+          role: roleFields.role,
+          organizationRoleId: roleFields.organizationRoleId,
+          roleLabel: roleFields.roleLabel,
+          stationScope: stationFields.stationScope,
+          stationIds: stationFields.stationIds,
           department: dto.department || null,
           position: dto.position || null,
-          permissions: dto.permissions
-            ? (dto.permissions as unknown as Prisma.InputJsonValue)
+          permissions: normalizedPermissions
+            ? (normalizedPermissions as unknown as Prisma.InputJsonValue)
             : Prisma.JsonNull,
-          fieldAgentAccess:
-            dto.role === 'ORG_ADMIN' ? true : !!dto.fieldAgentAccess,
+          fieldAgentAccess: roleFields.fieldAgentAccess,
           status: dto.inviteByEmail
             ? MembershipStatus.INVITED
             : MembershipStatus.ACTIVE,
@@ -237,25 +442,161 @@ export class UsersService {
       return membership;
     });
 
-    return this.mapOrgUserFull(result as unknown as {
-      user: Record<string, unknown>;
-      organization?: { id: string; companyName: string } | null;
-      [key: string]: unknown;
+    const mapped = this.mapOrgUserFull(result);
+    void this.userAudit.record({
+      organizationId: orgId,
+      auditAction: UserAccessAuditAction.USER_CREATED,
+      targetUserId: result.user.id,
+      description: `Benutzer ${result.user.email} erstellt`,
     });
+    return mapped;
   }
 
-  async updateOrgUser(orgId: string, userId: string, dto: UpdateOrgUserDto) {
+  private async reactivateOrgUser(
+    orgId: string,
+    userId: string,
+    dto: CreateOrgUserDto,
+    membershipId: string,
+  ) {
+    const roleFields = await this.resolveMembershipRoleFields(orgId, dto);
+    await this.validateStationIds(orgId, roleFields.stationIds);
+
+    const fullName = buildDisplayName(dto.firstName, dto.lastName);
+    let passwordHash: string | undefined;
+    if (dto.password) {
+      this.assertPasswordStrength(dto.password);
+      passwordHash = await bcrypt.hash(dto.password, 10);
+    }
+
+    const stationFields = this.resolveStationFields({
+      stationScope: roleFields.stationScope,
+      stationIds: roleFields.stationIds,
+    });
+    const normalizedPermissions = roleFields.permissions;
+
+    const membership = await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          name: fullName || undefined,
+          email: dto.email.toLowerCase().trim(),
+          phone: dto.phone || undefined,
+          mobile: dto.mobile || undefined,
+          address: dto.address || undefined,
+          language: dto.language || undefined,
+          timezone: dto.timezone || undefined,
+          dateFormat: dto.dateFormat || undefined,
+          status: UserStatus.ACTIVE,
+          ...(passwordHash
+            ? { passwordHash, mustChangePassword: true }
+            : {}),
+        },
+      });
+
+      return tx.organizationMembership.update({
+        where: { id: membershipId },
+        data: {
+          role: roleFields.role,
+          organizationRoleId: roleFields.organizationRoleId,
+          roleLabel: roleFields.roleLabel,
+          stationScope: stationFields.stationScope,
+          stationIds: stationFields.stationIds,
+          department: dto.department || null,
+          position: dto.position || null,
+          permissions: normalizedPermissions
+            ? (normalizedPermissions as unknown as Prisma.InputJsonValue)
+            : Prisma.JsonNull,
+          fieldAgentAccess: roleFields.fieldAgentAccess,
+          status: dto.inviteByEmail
+            ? MembershipStatus.INVITED
+            : MembershipStatus.ACTIVE,
+        },
+        include: {
+          user: true,
+          organization: { select: { id: true, companyName: true } },
+        },
+      });
+    });
+
+    const mapped = this.mapOrgUserFull(membership);
+    void this.userAudit.record({
+      organizationId: orgId,
+      auditAction: UserAccessAuditAction.USER_REACTIVATED,
+      targetUserId: userId,
+      description: `Benutzer ${dto.email} reaktiviert`,
+    });
+    return mapped;
+  }
+
+  async updateOrgUser(
+    orgId: string,
+    userId: string,
+    dto: UpdateOrgUserDto,
+    actor: PermissionActor,
+  ) {
     const membership = await this.prisma.organizationMembership.findFirst({
       where: { organizationId: orgId, userId },
     });
     if (!membership) throw new NotFoundException('User not found in organization');
+    if (membership.status === MembershipStatus.REMOVED) {
+      throw new BadRequestException('Cannot update a removed membership');
+    }
 
-    const fullName = dto.firstName || dto.lastName
-      ? [dto.firstName, dto.lastName].filter(Boolean).join(' ')
-      : undefined;
+    if (hasSensitiveMembershipChanges(dto)) {
+      await assertMembershipPermission(
+        this.prisma,
+        actor,
+        orgId,
+        USERS_ROLES_MODULE,
+        'manage',
+      );
+    }
+
+    if (dto.role !== undefined && dto.role !== membership.role) {
+      if (membership.role === MembershipRole.ORG_ADMIN) {
+        await this.assertNotLastActiveOrgAdmin(orgId, userId);
+      }
+      if (dto.role !== MembershipRole.ORG_ADMIN) {
+        // demoting to non-admin — already checked last admin above
+      }
+    }
+
+    if (dto.status === 'SUSPENDED') {
+      await this.assertNotLastActiveOrgAdmin(orgId, userId);
+    }
+
+    if (dto.stationIds !== undefined) {
+      await this.validateStationIds(orgId, dto.stationIds);
+    }
+
+    const fullName =
+      dto.firstName !== undefined || dto.lastName !== undefined
+        ? buildDisplayName(
+            dto.firstName ?? undefined,
+            dto.lastName ?? undefined,
+          )
+        : undefined;
+
+    const stationFields = this.resolveStationFields(dto, membership);
+    const normalizedPermissions =
+      dto.permissions !== undefined
+        ? normalizeMembershipPermissions(dto.permissions)
+        : undefined;
+
+    const auditBefore = {
+      role: membership.role,
+      roleLabel: membership.roleLabel,
+      permissions: membership.permissions,
+      stationScope: membership.stationScope,
+      stationIds: membership.stationIds,
+      fieldAgentAccess: membership.fieldAgentAccess,
+      status: membership.status,
+    };
 
     await this.prisma.$transaction(async (tx) => {
-      const userUpdate: Record<string, unknown> = {};
+      const userUpdate: Prisma.UserUpdateInput = {};
       if (dto.firstName !== undefined) userUpdate.firstName = dto.firstName;
       if (dto.lastName !== undefined) userUpdate.lastName = dto.lastName;
       if (fullName) userUpdate.name = fullName;
@@ -266,29 +607,32 @@ export class UsersService {
       if (dto.language !== undefined) userUpdate.language = dto.language;
       if (dto.timezone !== undefined) userUpdate.timezone = dto.timezone;
       if (dto.dateFormat !== undefined) userUpdate.dateFormat = dto.dateFormat;
-      if (dto.status !== undefined) userUpdate.status = dto.status;
+      if (dto.status !== undefined) {
+        userUpdate.status =
+          dto.status === 'SUSPENDED' ? UserStatus.SUSPENDED : UserStatus.ACTIVE;
+      }
 
       if (Object.keys(userUpdate).length > 0) {
         await tx.user.update({ where: { id: userId }, data: userUpdate });
       }
 
-      const membershipUpdate: Record<string, unknown> = {};
-      if (dto.role !== undefined)
-        membershipUpdate.role = dto.role as MembershipRole;
-      if (dto.roleLabel !== undefined)
-        membershipUpdate.roleLabel = dto.roleLabel;
-      if (dto.stationScope !== undefined)
-        membershipUpdate.stationScope = dto.stationScope || null;
-      if (dto.department !== undefined)
-        membershipUpdate.department = dto.department;
-      if (dto.position !== undefined)
-        membershipUpdate.position = dto.position;
-      if (dto.permissions !== undefined)
-        membershipUpdate.permissions = dto.permissions
-          ? (dto.permissions as unknown as Prisma.InputJsonValue)
+      const membershipUpdate: Prisma.OrganizationMembershipUpdateInput = {};
+      if (dto.role !== undefined) membershipUpdate.role = dto.role as MembershipRole;
+      if (dto.roleLabel !== undefined) membershipUpdate.roleLabel = dto.roleLabel;
+      if (dto.stationScope !== undefined || dto.stationIds !== undefined) {
+        membershipUpdate.stationScope = stationFields.stationScope;
+        membershipUpdate.stationIds = stationFields.stationIds;
+      }
+      if (dto.department !== undefined) membershipUpdate.department = dto.department;
+      if (dto.position !== undefined) membershipUpdate.position = dto.position;
+      if (normalizedPermissions !== undefined) {
+        membershipUpdate.permissions = normalizedPermissions
+          ? (normalizedPermissions as unknown as Prisma.InputJsonValue)
           : Prisma.JsonNull;
-      if (dto.fieldAgentAccess !== undefined)
+      }
+      if (dto.fieldAgentAccess !== undefined) {
         membershipUpdate.fieldAgentAccess = dto.fieldAgentAccess;
+      }
 
       if (Object.keys(membershipUpdate).length > 0) {
         await tx.organizationMembership.update({
@@ -298,6 +642,77 @@ export class UsersService {
       }
     });
 
+    const actorUserId = actor.id;
+    if (dto.role !== undefined && dto.role !== auditBefore.role) {
+      void this.userAudit.record({
+        organizationId: orgId,
+        actorUserId,
+        auditAction: UserAccessAuditAction.USER_ROLE_CHANGED,
+        targetUserId: userId,
+        description: `Rolle geändert für Benutzer ${userId}`,
+        before: { role: auditBefore.role },
+        after: { role: dto.role },
+      });
+    }
+    if (dto.permissions !== undefined) {
+      void this.userAudit.record({
+        organizationId: orgId,
+        actorUserId,
+        auditAction: UserAccessAuditAction.USER_PERMISSIONS_CHANGED,
+        targetUserId: userId,
+        description: `Berechtigungen geändert für Benutzer ${userId}`,
+        before: { permissions: auditBefore.permissions },
+        after: { permissions: normalizedPermissions },
+      });
+    }
+    if (dto.stationScope !== undefined || dto.stationIds !== undefined) {
+      void this.userAudit.record({
+        organizationId: orgId,
+        actorUserId,
+        auditAction: UserAccessAuditAction.USER_STATION_SCOPE_CHANGED,
+        targetUserId: userId,
+        description: `Stations-Scope geändert für Benutzer ${userId}`,
+        before: {
+          stationScope: auditBefore.stationScope,
+          stationIds: auditBefore.stationIds,
+        },
+        after: {
+          stationScope: stationFields.stationScope,
+          stationIds: stationFields.stationIds,
+        },
+      });
+    }
+    if (dto.status === 'SUSPENDED') {
+      void this.userAudit.record({
+        organizationId: orgId,
+        actorUserId,
+        auditAction: UserAccessAuditAction.USER_DEACTIVATED,
+        targetUserId: userId,
+        description: `Benutzer ${userId} deaktiviert`,
+      });
+    } else if (dto.status === 'ACTIVE') {
+      void this.userAudit.record({
+        organizationId: orgId,
+        actorUserId,
+        auditAction: UserAccessAuditAction.USER_UPDATED,
+        targetUserId: userId,
+        description: `Benutzer ${userId} aktualisiert`,
+      });
+    } else if (
+      dto.firstName !== undefined ||
+      dto.lastName !== undefined ||
+      dto.email !== undefined ||
+      dto.phone !== undefined
+    ) {
+      void this.userAudit.record({
+        organizationId: orgId,
+        actorUserId,
+        auditAction: UserAccessAuditAction.USER_UPDATED,
+        targetUserId: userId,
+        description: `Benutzerprofil ${userId} aktualisiert`,
+      });
+    }
+
     return this.findOrgUserDetail(orgId, userId);
   }
 
@@ -306,71 +721,112 @@ export class UsersService {
     userId: string,
     password: string,
     requesterId: string,
+    actor: PermissionActor,
   ) {
     const membership = await this.prisma.organizationMembership.findFirst({
       where: { organizationId: orgId, userId },
     });
     if (!membership) throw new NotFoundException('User not found in organization');
 
-    if (requesterId !== userId) {
-      const requesterMembership =
-        await this.prisma.organizationMembership.findFirst({
-          where: { organizationId: orgId, userId: requesterId },
-        });
-      if (
-        !requesterMembership ||
-        requesterMembership.role === 'WORKER' ||
-        requesterMembership.role === 'DRIVER'
-      ) {
-        throw new ForbiddenException(
-          'Insufficient permissions to change password',
-        );
-      }
-      if (
-        requesterMembership.role === 'SUB_ADMIN' &&
-        membership.role === 'ORG_ADMIN'
-      ) {
-        throw new ForbiddenException('Cannot change password for an Org Admin');
-      }
+    const isSelf = requesterId === userId;
+    if (!isSelf) {
+      await assertMembershipPermission(
+        this.prisma,
+        actor,
+        orgId,
+        USERS_ROLES_MODULE,
+        'manage',
+      );
     }
 
-    if (!password || password.length < 6) {
-      throw new BadRequestException('Password must be at least 6 characters');
-    }
+    this.assertPasswordStrength(password);
     const hash = await bcrypt.hash(password, 10);
     await this.prisma.user.update({
       where: { id: userId },
-      data: { passwordHash: hash, mustChangePassword: requesterId !== userId },
+      data: {
+        passwordHash: hash,
+        mustChangePassword: !isSelf,
+      },
     });
+    if (!isSelf) {
+      void this.userAudit.record({
+        organizationId: orgId,
+        actorUserId: actor.id,
+        auditAction: UserAccessAuditAction.USER_PASSWORD_RESET_BY_ADMIN,
+        targetUserId: userId,
+        description: `Passwort von Admin für Benutzer ${userId} zurückgesetzt`,
+      });
+    }
     return { message: 'Password updated successfully' };
   }
 
-  async removeOrgUser(orgId: string, userId: string) {
+  async removeOrgUser(orgId: string, userId: string, actor?: PermissionActor) {
     const membership = await this.prisma.organizationMembership.findFirst({
       where: { organizationId: orgId, userId },
     });
     if (!membership) throw new NotFoundException('User not found in organization');
 
+    await this.assertNotLastActiveOrgAdmin(orgId, userId);
+
     await this.prisma.organizationMembership.update({
       where: { id: membership.id },
       data: { status: MembershipStatus.REMOVED },
     });
+    void this.userAudit.record({
+      organizationId: orgId,
+      actorUserId: actor?.id,
+      auditAction: UserAccessAuditAction.USER_REMOVED_FROM_ORG,
+      targetUserId: userId,
+      description: `Benutzer ${userId} aus Organisation entfernt`,
+      before: { status: membership.status, role: membership.role },
+      after: { status: MembershipStatus.REMOVED },
+    });
     return { removed: true };
   }
 
-  async createMembership(userId: string, orgId: string, role: string) {
+  async createMembership(userId: string, orgId: string, role: MembershipRole) {
+    const existing = await this.prisma.organizationMembership.findUnique({
+      where: {
+        userId_organizationId: { userId, organizationId: orgId },
+      },
+    });
+
+    if (existing) {
+      if (existing.status === MembershipStatus.REMOVED) {
+        return this.prisma.organizationMembership.update({
+          where: { id: existing.id },
+          data: {
+            role,
+            status: MembershipStatus.ACTIVE,
+          },
+        });
+      }
+      throw new BadRequestException('Membership already exists');
+    }
+
     return this.prisma.organizationMembership.create({
       data: {
         userId,
         organizationId: orgId,
-        role: role as MembershipRole,
+        role,
+        status: MembershipStatus.ACTIVE,
       },
     });
   }
 
   async removeMembership(userId: string, orgId: string) {
-    await this.prisma.organizationMembership.deleteMany({
-      where: { userId, organizationId: orgId },
+    const membership = await this.prisma.organizationMembership.findUnique({
+      where: {
+        userId_organizationId: { userId, organizationId: orgId },
+      },
+    });
+    if (!membership) return { removed: true };
+
+    await this.assertNotLastActiveOrgAdmin(orgId, userId);
+
+    await this.prisma.organizationMembership.update({
+      where: { id: membership.id },
+      data: { status: MembershipStatus.REMOVED },
     });
     return { removed: true };
   }
@@ -383,70 +839,130 @@ export class UsersService {
   }
 
   private mapOrgUser(membership: {
-    user: Record<string, unknown>;
+    user: {
+      id: string;
+      email: string;
+      name: string | null;
+      firstName: string | null;
+      lastName: string | null;
+      status: UserStatus;
+      phone: string | null;
+      mobile: string | null;
+      language: string | null;
+      timezone: string | null;
+      dateFormat: string | null;
+      lastLoginAt: Date | null;
+      createdAt: Date;
+      updatedAt: Date;
+    };
     organization?: { id: string; companyName: string } | null;
-    [key: string]: unknown;
+    organizationId?: string;
+    id: string;
+    role: MembershipRole;
+    roleLabel: string | null;
+    stationScope: string | null;
+    stationIds: unknown;
+    department: string | null;
+    position: string | null;
+    permissions: unknown;
+    fieldAgentAccess: boolean;
+    status: MembershipStatus;
+    createdAt: Date;
+    updatedAt: Date;
+    organizationRoleId?: string | null;
+    organizationRole?: { id: string; name: string } | null;
   }) {
-    const u = membership.user as Record<string, unknown>;
-    const role = ROLE_DISPLAY[membership.role as string] || (membership.role as string);
-    const membershipStatus = membership.status as string;
+    const u = membership.user;
+    const displayName = buildDisplayName(u.firstName, u.lastName, u.name);
+    const role = ROLE_DISPLAY[membership.role] || membership.role;
+    const membershipStatus = membership.status;
+    const stationIds = parseStationIds(membership.stationIds);
+    const permissions = normalizeMembershipPermissions(membership.permissions);
 
     return {
-      id: u.id as string,
-      membershipId: membership.id as string,
-      name: (u.name as string) || '',
-      firstName: (u.firstName as string) || '',
-      lastName: (u.lastName as string) || '',
-      email: (u.email as string) || '',
+      id: u.id,
+      membershipId: membership.id,
+      name: displayName,
+      displayName,
+      fullName: displayName,
+      firstName: u.firstName || '',
+      lastName: u.lastName || '',
+      email: u.email || '',
       role,
-      roleKey: membership.role as string,
-      roleLabel: (membership.roleLabel as string) || '',
-      organizationId: membership.organizationId as string,
+      roleKey: membership.role,
+      membershipRole: membership.role,
+      roleLabel: membership.roleLabel || '',
+      organizationRoleId: membership.organizationRoleId ?? membership.organizationRole?.id ?? null,
+      organizationRoleName: membership.organizationRole?.name ?? '',
+      organizationId: membership.organizationId ?? membership.organization?.id ?? '',
       organizationName: membership.organization?.companyName || '',
-      department: (membership.department as string) || '',
-      position: (membership.position as string) || '',
-      stationScope: (membership.stationScope as string) || '',
+      department: membership.department || '',
+      position: membership.position || '',
+      stationScope: membership.stationScope || '',
+      stationIds,
       fieldAgentAccess: !!membership.fieldAgentAccess,
-      permissions: (membership.permissions as Record<string, unknown>) || null,
+      permissions,
       status:
-        membershipStatus === 'INVITED'
+        membershipStatus === MembershipStatus.INVITED
           ? 'Invited'
-          : membershipStatus === 'REMOVED'
+          : membershipStatus === MembershipStatus.REMOVED
             ? 'Removed'
-            : (USER_STATUS_MAP[u.status as string] || 'Active'),
+            : USER_STATUS_MAP[u.status] || 'Active',
       membershipStatus,
-      lastActive:
-        ((u.lastLoginAt as Date)?.toISOString?.()) ||
-        ((u.updatedAt as Date)?.toISOString?.()) ||
-        '',
-      lastLoginAt: ((u.lastLoginAt as Date)?.toISOString?.()) || '',
-      createdAt: ((u.createdAt as Date)?.toISOString?.()) || '',
-      avatar: getInitials(u.name as string),
-      phone: (u.phone as string) || '',
-      mobile: (u.mobile as string) || '',
-      language: (u.language as string) || 'de',
-      timezone: (u.timezone as string) || 'Europe/Berlin',
-      dateFormat: (u.dateFormat as string) || 'DD.MM.YYYY',
+      lastActive: u.lastLoginAt?.toISOString() || u.updatedAt?.toISOString() || '',
+      lastLoginAt: u.lastLoginAt?.toISOString() || '',
+      createdAt: u.createdAt?.toISOString() || '',
+      updatedAt: u.updatedAt?.toISOString() || '',
+      invitedAt:
+        membershipStatus === MembershipStatus.INVITED
+          ? membership.createdAt?.toISOString() || ''
+          : '',
+      avatar: getInitials(displayName),
+      phone: u.phone || '',
+      mobile: u.mobile || '',
+      language: u.language || 'de',
+      timezone: u.timezone || 'Europe/Berlin',
+      dateFormat: u.dateFormat || 'DD.MM.YYYY',
     };
   }
 
-  private mapOrgUserFull(membership: {
-    user: Record<string, unknown>;
-    organization?: { id: string; companyName: string } | null;
-    [key: string]: unknown;
+  private mapOrgUserFull(membership: Parameters<UsersService['mapOrgUser']>[0] & {
+    user: Parameters<UsersService['mapOrgUser']>[0]['user'] & {
+      address?: string | null;
+      mustChangePassword?: boolean;
+      lastLoginIp?: string | null;
+      lastLoginDevice?: string | null;
+    };
   }) {
     const base = this.mapOrgUser(membership);
-    const u = membership.user as Record<string, unknown>;
+    const u = membership.user;
     return {
       ...base,
-      address: (u.address as string) || '',
+      address: u.address || '',
       mustChangePassword: !!u.mustChangePassword,
-      lastLoginIp: (u.lastLoginIp as string) || '',
-      lastLoginDevice: (u.lastLoginDevice as string) || '',
+      lastLoginIp: u.lastLoginIp || '',
+      lastLoginDevice: u.lastLoginDevice || '',
     };
   }
 
-  private mapUser(user: Record<string, unknown>, membership?: Record<string, unknown>) {
+  private mapUser(
+    user: {
+      id: string;
+      email: string;
+      name: string | null;
+      platformRole: string;
+      status: UserStatus;
+      lastLoginAt: Date | null;
+      createdAt: Date;
+      updatedAt: Date;
+    },
+    membership?: {
+      role: MembershipRole;
+      status: MembershipStatus;
+      organizationId: string;
+      organization?: { id: string; companyName: string };
+    },
+  ) {
     const isMasterAdmin = user.platformRole === 'MASTER_ADMIN';
 
     let role: string;
@@ -456,45 +972,36 @@ export class UsersService {
 
     if (isMasterAdmin) {
       role = 'Master Admin';
-      status = USER_STATUS_MAP[user.status as string] || 'Active';
+      status = USER_STATUS_MAP[user.status] || 'Active';
       if (membership) {
-        organizationId =
-          (membership.organizationId as string) ||
-          ((membership as Record<string, unknown>).organization as { id: string })?.id || '';
-        organizationName =
-          ((membership as Record<string, unknown>).organization as { companyName: string })?.companyName || '';
+        organizationId = membership.organizationId || membership.organization?.id || '';
+        organizationName = membership.organization?.companyName || '';
       }
     } else if (membership) {
-      role = ROLE_DISPLAY[membership.role as string] || (membership.role as string);
-      organizationId =
-        (membership.organizationId as string) ||
-        ((membership as Record<string, unknown>).organization as { id: string })?.id || '';
-      organizationName =
-        ((membership as Record<string, unknown>).organization as { companyName: string })?.companyName || '';
+      role = ROLE_DISPLAY[membership.role] || membership.role;
+      organizationId = membership.organizationId || membership.organization?.id || '';
+      organizationName = membership.organization?.companyName || '';
       status =
         membership.status === MembershipStatus.INVITED
           ? 'Invited'
-          : (USER_STATUS_MAP[user.status as string] || 'Active');
+          : USER_STATUS_MAP[user.status] || 'Active';
     } else {
       role = 'Worker';
-      status = USER_STATUS_MAP[user.status as string] || 'Active';
+      status = USER_STATUS_MAP[user.status] || 'Active';
     }
 
     return {
-      id: user.id as string,
-      name: (user.name as string) || '',
-      email: user.email as string,
+      id: user.id,
+      name: user.name || '',
+      email: user.email,
       role,
       organizationId,
       organizationName,
       status,
-      lastActive:
-        ((user.lastLoginAt as Date)?.toISOString?.()) ||
-        ((user.updatedAt as Date)?.toISOString?.()) ||
-        '',
-      created_at: ((user.createdAt as Date)?.toISOString?.()) || '',
-      avatar: getInitials(user.name as string),
-      last_login: ((user.lastLoginAt as Date)?.toISOString?.()) || '',
+      lastActive: user.lastLoginAt?.toISOString() || user.updatedAt?.toISOString() || '',
+      created_at: user.createdAt?.toISOString() || '',
+      avatar: getInitials(user.name),
+      last_login: user.lastLoginAt?.toISOString() || '',
     };
   }
 }

@@ -134,7 +134,8 @@ export class MisuseCasePersistenceHelper {
           candidate.lastDetectedAt > existing.lastDetectedAt
             ? candidate.lastDetectedAt
             : existing.lastDetectedAt,
-        eventCount: existing.eventCount + candidate.eventCount,
+        // Reprocessing replaces the current snapshot — do not accumulate counts.
+        eventCount: candidate.eventCount,
         evidenceSummary: evidenceSummary as Prisma.InputJsonValue,
         description: candidate.description,
         recommendedAction: candidate.recommendedAction ?? existing.recommendedAction,

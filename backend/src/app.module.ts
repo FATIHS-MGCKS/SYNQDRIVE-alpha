@@ -41,6 +41,7 @@ import { FinesModule } from '@modules/fines/fines.module';
 import { InvoicesModule } from '@modules/invoices/invoices.module';
 import { VendorsModule } from '@modules/vendors/vendors.module';
 import { DataAuthorizationsModule } from '@modules/data-authorizations/data-authorizations.module';
+import { DataAnalyseModule } from '@modules/data-analyse/data-analyse.module';
 import { WorkflowsModule } from '@modules/workflows/workflows.module';
 import { PartsAccessoriesModule } from '@modules/parts-accessories/parts-accessories.module';
 import { InsurancesModule } from '@modules/insurances/insurances.module';
@@ -50,8 +51,10 @@ import { HighMobilityModule } from '@modules/high-mobility/high-mobility.module'
 import { RentalHealthModule } from '@modules/rental-health/rental-health.module';
 import { DocumentExtractionModule } from '@modules/document-extraction/document-extraction.module';
 import { DocumentsModule } from '@modules/documents/documents.module';
+import { PricingModule } from '@modules/pricing/pricing.module';
 import { WorkersModule } from '@workers/workers.module';
 import { AuthApiModule } from '@modules/auth/auth.module';
+import { AccountModule } from '@modules/account/account.module';
 import { HealthModule } from '@modules/health/health.module';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { SpaFallbackController } from './spa-fallback.controller';
@@ -167,6 +170,7 @@ export class AppModule {
         AuthModule,
         SharedGuardsModule,
         AuthApiModule,
+        AccountModule,
         HealthModule,
 
         PlatformAdminModule,
@@ -193,6 +197,7 @@ export class AppModule {
         InvoicesModule,
         VendorsModule,
         DataAuthorizationsModule,
+        DataAnalyseModule,
         WorkflowsModule,
         PartsAccessoriesModule,
         InsurancesModule,
@@ -202,6 +207,7 @@ export class AppModule {
         RentalHealthModule,
         DocumentExtractionModule,
         DocumentsModule,
+        PricingModule,
 
         // Workers / processors / schedulers. Non-Redis schedulers inside this
         // module (e.g. brake recalc, trip reconciliation, HM polling) also live

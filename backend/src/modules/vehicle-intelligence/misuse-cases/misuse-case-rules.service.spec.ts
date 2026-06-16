@@ -181,6 +181,48 @@ describe('MisuseCaseRulesService', () => {
     const dimo = result.find((c) => c.type === MisuseCaseType.DIMO_COLLISION_REPORTED);
     expect(dimo?.confidence).toBe(MisuseCaseConfidence.HIGH);
   });
+
+  it('LAUNCH_LIKE_START creates LAUNCH_ABUSE_PATTERN when rule threshold met', () => {
+    const launches = [
+      {
+        id: 'l1',
+        eventCategory: 'ABUSE' as const,
+        eventType: 'LAUNCH_LIKE_START',
+        classification: 'SEVERE',
+        startedAt: new Date('2026-06-01T10:05:00Z'),
+      },
+      {
+        id: 'l2',
+        eventCategory: 'ABUSE' as const,
+        eventType: 'LAUNCH_LIKE_START',
+        classification: 'MODERATE',
+        startedAt: new Date('2026-06-01T10:10:00Z'),
+      },
+    ];
+    const result = service.evaluate(ctx({ behaviorEvents: launches as any }));
+    const launchCase = result.find((c) => c.type === MisuseCaseType.LAUNCH_ABUSE_PATTERN);
+    expect(launchCase).toBeDefined();
+    expect(launchCase?.title).not.toMatch(/Launch Control/i);
+    expect(launchCase?.description).not.toMatch(/Launch Control/i);
+    expect(launchCase?.recommendedAction).not.toMatch(/Launch Control/i);
+  });
+
+  it('LAUNCH_CONTROL alone does not create LAUNCH_ABUSE_PATTERN', () => {
+    const result = service.evaluate(
+      ctx({
+        behaviorEvents: [
+          {
+            id: 'lc1',
+            eventCategory: 'ABUSE',
+            eventType: 'LAUNCH_CONTROL',
+            classification: 'SEVERE',
+            startedAt: new Date('2026-06-01T10:05:00Z'),
+          } as any,
+        ],
+      }),
+    );
+    expect(result.find((c) => c.type === MisuseCaseType.LAUNCH_ABUSE_PATTERN)).toBeUndefined();
+  });
 });
 
 describe('resolveAttribution', () => {

@@ -168,19 +168,18 @@ export function computeThermalBrakeStressScore(input: {
 }
 
 /**
- * Driving Style Score (0–100).
+ * Composite vehicle stress / Fahrbelastung score (0–100).
  *
- * Composite summary of overall driving severity.
- * Weights: 30% longitudinal + 35% braking + 20% stop-go + 15% high-speed.
- * Do NOT use this as the sole input for health models; use component scores.
+ * Weighted blend of component stress scores. Higher = more vehicle load.
+ * Do NOT interpret as driver quality or safety compliance.
  */
-export function computeDrivingStyleScore(input: {
+export function computeDrivingStressScore(input: {
   longitudinalStressScore: number;
   brakingStressScore: number;
   stopGoStressScore: number;
   highSpeedStressScore: number;
 }): number {
-  const W = C.DRIVING_STYLE_WEIGHTS;
+  const W = C.DRIVING_STRESS_WEIGHTS;
   return round1(
     W.longitudinal * input.longitudinalStressScore +
     W.braking * input.brakingStressScore +
@@ -190,14 +189,13 @@ export function computeDrivingStyleScore(input: {
 }
 
 /**
- * Safety Score (0–100), intentionally separated from driving style.
- * Speeding is first-class here and excluded from the style score.
- *
- * IMPORTANT: This pure function only handles **numeric** inputs. Whether the
- * underlying data was actually present is the caller's responsibility — see
- * `hasSpeedingDataFromTrip()` below. A trip with all `null` speed-limit
- * fields must NOT be passed to this function with `?? 0` substitutes; that
- * would coerce missing data into "100 = perfectly safe", which is wrong.
+ * @deprecated Alias for `computeDrivingStressScore`. Legacy name implied positive driving style.
+ */
+export const computeDrivingStyleScore = computeDrivingStressScore;
+
+/**
+ * @deprecated Speeding/Safety score retired from rental and new impact writes.
+ * Retained for historical reference only — do not use in new domain logic.
  */
 export function computeSafetyScore(input: {
   speedingExposurePct: number;

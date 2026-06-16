@@ -43,9 +43,10 @@ function normalizeStatus(raw: unknown, dueAt: Date | null): TaskStatus {
 
 function normalizePriority(raw: unknown): TaskPriority {
   const priority = String(raw ?? '').toLowerCase();
-  if (priority.includes('critical')) return 'critical';
+  if (priority.includes('critical') || priority.includes('urgent')) return 'critical';
   if (priority.includes('high')) return 'high';
   if (priority.includes('low')) return 'low';
+  if (priority.includes('normal') || priority.includes('medium')) return 'medium';
   return 'medium';
 }
 
@@ -86,7 +87,7 @@ function normalizeTask(raw: any): Task {
     status: normalizeStatus(raw?.status, dueAt),
     priority: normalizePriority(raw?.priority),
     category: String(raw?.category ?? raw?.type ?? 'General'),
-    assignee: String(raw?.assignedTo ?? raw?.assignee ?? raw?.ownerName ?? 'Unassigned'),
+    assignee: String(raw?.assignedUserId ?? raw?.assignedTo ?? raw?.assignee ?? raw?.ownerName ?? 'Unassigned'),
     dueAt,
     createdAt: parseDate(raw?.createdAt ?? raw?.createdDate),
   };
@@ -109,11 +110,11 @@ export function VehicleTasksView({ isDarkMode: _isDarkMode, vehicle }: VehicleTa
     setLoading(true);
     setErrored(false);
     api.tasks
-      .list(orgId)
+      .forVehicle(orgId, vehicle.id)
       .then((res) => {
         if (cancelled) return;
-        const arr = Array.isArray(res) ? res : ((res as any)?.data ?? []);
-        setRows(Array.isArray(arr) ? arr : []);
+        const arr = Array.isArray(res) ? res : [];
+        setRows(arr);
       })
       .catch(() => {
         if (!cancelled) {
@@ -130,7 +131,6 @@ export function VehicleTasksView({ isDarkMode: _isDarkMode, vehicle }: VehicleTa
   const tasks = useMemo(() => {
     if (!vehicle?.id) return [];
     return rows
-      .filter((row) => String(row?.vehicleId ?? row?._raw?.vehicleId ?? '') === vehicle.id)
       .map(normalizeTask)
       .sort((a, b) => {
         const statusRank: Record<TaskStatus, number> = { overdue: 0, open: 1, 'in-progress': 2, completed: 3 };

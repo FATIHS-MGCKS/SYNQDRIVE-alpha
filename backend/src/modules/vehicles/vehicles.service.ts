@@ -26,8 +26,20 @@ import {
   PaginatedResult,
 } from '@shared/utils/pagination';
 import { interpretVehicleState } from './vehicle-state-interpreter';
-import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
+import type { FleetConnectivityQueryDto } from './dto/fleet-connectivity-query.dto';
+import {
+  buildFleetConnectivitySummary,
+  DEFAULT_FLEET_CONNECTIVITY_LIMIT,
+  FLEET_CONNECTIVITY_HARD_LIMIT,
+  FLEET_CONNECTIVITY_THRESHOLDS,
+  mapFleetConnectivityVehicle,
+  matchesFleetConnectivitySearch,
+  paginateFleetConnectivityVehicles,
+} from './fleet-connectivity.util';
+import type { FleetConnectivityResponseDto } from './fleet-connectivity.types';
 import { TireLifecycleService } from '@modules/vehicle-intelligence/tires/tire-lifecycle.service';
+import { DataAuthorizationsService } from '@modules/data-authorizations/data-authorizations.service';
+import { DataAuthorizationEnforcementService } from '@modules/data-authorizations/data-authorization-enforcement.service';
 
 const DIMO_FUEL_TYPE_MAP: Record<string, FuelType> = {
   GASOLINE: FuelType.GASOLINE,
@@ -96,7 +108,7 @@ function centsToEur(cents: number | null | undefined): string {
 }
 
 const FULL_VEHICLE_INCLUDE = {
-  station: true,
+  homeStation: true,
   dimoVehicle: true,
   latestState: true,
   batterySpecs: { orderBy: { createdAt: 'desc' as const }, take: 1 },
@@ -212,6 +224,8 @@ export class VehiclesService {
     private readonly providerConsent: VehicleProviderConsentService,
     @Inject(forwardRef(() => TireLifecycleService))
     private readonly tireLifecycleService: TireLifecycleService,
+    private readonly dataAuthorizations: DataAuthorizationsService,
+    private readonly dataAuthEnforcement: DataAuthorizationEnforcementService,
     @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
   ) {}
 
@@ -522,7 +536,7 @@ export class VehiclesService {
       year: v.year,
       organizationId: v.organizationId,
       organizationName: v.organization?.companyName ?? '',
-      station: v.station?.name ?? '',
+      station: v.homeStation?.name ?? '',
       status: VEHICLE_STATUS_MAP[v.status as VehicleStatus] ?? 'Available',
       health: HEALTH_STATUS_MAP[v.healthStatus as HealthStatus] ?? 'Good',
       lastSignal: interpreted.lastSignal,
@@ -660,12 +674,15 @@ export class VehiclesService {
       make: v.make ?? '',
       model: v.model,
       year: v.year,
-      station: v.station?.name ?? '',
+      station: v.homeStation?.name ?? '',
       // V4.6.96 — expose canonical station identity so the Settings →
       // Stations vehicle-assignment modal can render the current
       // station of each vehicle without a second round-trip.
-      stationId: v.station?.id ?? null,
-      stationName: v.station?.name ?? null,
+      stationId: v.homeStation?.id ?? null,
+      stationName: v.homeStation?.name ?? null,
+      homeStationId: v.homeStation?.id ?? null,
+      currentStationId: v.currentStationId ?? null,
+      expectedStationId: v.expectedStationId ?? null,
       fuelType: FUEL_TYPE_LABEL[v.fuelType as FuelType] ?? 'Other',
       // Rental status is derived from open bookings first, then falls back
       // to the admin-managed DB column. Maintenance wins over booking
@@ -1124,7 +1141,10 @@ export class VehiclesService {
         cleaningStatus: true,
         imageUrl: true,
         tankCapacityLiters: true,
-        station: { select: { id: true, name: true } },
+        homeStationId: true,
+        currentStationId: true,
+        expectedStationId: true,
+        homeStation: { select: { id: true, name: true } },
         latestState: {
           select: {
             latitude: true,
@@ -1206,8 +1226,11 @@ export class VehiclesService {
           RENTAL_HEALTH_MAP[vehicle.healthStatus as HealthStatus] ?? 'Good Health',
         cleaningStatus:
           CLEANING_STATUS_MAP[vehicle.cleaningStatus as CleaningStatus] ?? 'Clean',
-        stationId: vehicle.station?.id ?? null,
-        stationName: vehicle.station?.name ?? null,
+        stationId: vehicle.homeStation?.id ?? null,
+        stationName: vehicle.homeStation?.name ?? null,
+        homeStationId: vehicle.homeStation?.id ?? null,
+        currentStationId: vehicle.currentStationId ?? null,
+        expectedStationId: vehicle.expectedStationId ?? null,
         latitude: state?.latitude ?? null,
         longitude: state?.longitude ?? null,
         lastSeenAt: state?.lastSeenAt?.toISOString() ?? null,
@@ -1308,7 +1331,7 @@ export class VehiclesService {
     const vehicle = await this.prisma.vehicle.findFirst({
       where,
       include: {
-        station: true,
+        homeStation: true,
         latestState: true,
         dimoVehicle: true,
       },
@@ -1380,7 +1403,7 @@ export class VehiclesService {
       make: vehicle.make,
       model: vehicle.model,
       year: vehicle.year,
-      station: vehicle.station?.name ?? '',
+      station: vehicle.homeStation?.name ?? '',
       online: interpreted.isFresh,
       lastSignal: interpreted.lastSignal,
       speed: state?.speedKmh ?? 0,
@@ -1435,6 +1458,21 @@ export class VehiclesService {
         lastSeenAt: null,
         source: 'cache' as const,
       };
+    }
+
+    if (organizationId) {
+      await this.dataAuthorizations.ensureDimoTelemetryAuthorization(
+        organizationId,
+      );
+      await this.dataAuthEnforcement.assertDataAuthorization({
+        orgId: organizationId,
+        vehicleId,
+        sourceType: 'DIMO',
+        dataCategory: 'GPS_LOCATION',
+        purpose: 'LIVE_MAP',
+        processorType: 'SYNQDRIVE',
+        trackAccess: true,
+      });
     }
 
     try {
@@ -1747,7 +1785,10 @@ export class VehiclesService {
       year: dimoVehicle.year || new Date().getFullYear(),
       fuelType: fuelFromExtra,
       ...(vehicleTypeParsed && { vehicleType: vehicleTypeParsed }),
-      ...(stationId && { station: { connect: { id: stationId } } }),
+      ...(stationId && {
+        homeStation: { connect: { id: stationId } },
+        currentStation: { connect: { id: stationId } },
+      }),
       ...restExtra,
     };
 
@@ -1913,12 +1954,24 @@ export class VehiclesService {
       }
     }
 
+    void this.dataAuthorizations.ensureDimoTelemetryAuthorization(orgId);
+
     return vehicle;
   }
 
-  async getFleetConnectivity(organizationId: string) {
-    // Hard cap — see getFleetMapData. Large fleets need a paginated endpoint.
-    const FLEET_CONNECTIVITY_HARD_LIMIT = 1000;
+  async getFleetConnectivity(
+    organizationId: string,
+    query: FleetConnectivityQueryDto = {},
+  ): Promise<FleetConnectivityResponseDto> {
+    const generatedAt = new Date().toISOString();
+    const nowMs = Date.now();
+    const page = query.page ?? 1;
+    const limit =
+      query.limit ??
+      (query.page != null
+        ? DEFAULT_FLEET_CONNECTIVITY_LIMIT
+        : FLEET_CONNECTIVITY_HARD_LIMIT);
+
     const vehicles = await this.prisma.vehicle.findMany({
       where: { organizationId },
       orderBy: { createdAt: 'desc' },
@@ -1926,108 +1979,39 @@ export class VehiclesService {
       include: {
         dimoVehicle: true,
         latestState: true,
-        station: { select: { name: true } },
+        homeStation: { select: { name: true } },
       },
     });
 
-    const now = Date.now();
-    const items = vehicles.map((v) => {
-      const dv = v.dimoVehicle;
-      const ls = v.latestState;
-      const raw = (dv?.rawJson ?? {}) as Record<string, any>;
-      const aftermarket = raw?.aftermarketDevice as { serial?: string; pairedAt?: string } | undefined;
-      const synthetic = raw?.syntheticDevice as { tokenId?: number } | undefined;
+    let mapped = vehicles.map((v) => mapFleetConnectivityVehicle(v, nowMs));
 
-      const hasAftermarket = aftermarket?.serial != null;
-      const hasSynthetic = synthetic?.tokenId != null;
-      const connectionType = hasAftermarket ? 'Aftermarket Device' : hasSynthetic ? 'Synthetic Device' : dv ? 'DIMO' : 'Not Connected';
-      const sourceType = hasAftermarket ? 'OBD-II' : hasSynthetic ? 'API / Software' : dv ? 'DIMO Platform' : null;
+    if (query.status) {
+      mapped = mapped.filter((v) => v.connectionStatus === query.status);
+    }
+    if (query.q?.trim()) {
+      mapped = mapped.filter((v) =>
+        matchesFleetConnectivitySearch(v, query.q!),
+      );
+    }
 
-      const lastSeenAt = ls?.lastSeenAt ?? dv?.lastSignal ?? null;
-      const lastSyncedAt = dv?.syncedAt ?? null;
-
-      const rawSignals = (ls?.rawPayloadJson ?? null) as Record<string, unknown> | null;
-      const conn = extractConnectivitySnapshot(rawSignals ?? undefined);
-
-      let freshnessLabel = 'Unknown';
-      let diffMs = -1;
-      if (lastSeenAt) {
-        diffMs = now - new Date(lastSeenAt).getTime();
-        const mins = diffMs / 60000;
-        if (mins < 5) freshnessLabel = 'Live';
-        else if (mins < 60) freshnessLabel = `${Math.round(mins)} min ago`;
-        else if (mins < 1440) freshnessLabel = `${Math.round(mins / 60)}h ago`;
-        else freshnessLabel = `${Math.round(mins / 1440)}d ago`;
-      }
-
-      let connectionStatus: 'online' | 'standby' | 'offline' | 'not_connected';
-      let statusNote: string;
-
-      if (!dv) {
-        connectionStatus = 'not_connected';
-        statusNote = 'Vehicle is not linked to a DIMO data source';
-      } else if (diffMs >= 0 && diffMs < 900000) {
-        connectionStatus = 'online';
-        statusNote = 'Signals are being received normally';
-      } else if (diffMs >= 0 && diffMs < 86400000) {
-        connectionStatus = 'standby';
-        statusNote = 'No very recent activity — vehicle may be parked or inactive';
-      } else if (diffMs >= 86400000) {
-        const days = Math.round(diffMs / 86400000);
-        connectionStatus = 'offline';
-        statusNote = days > 7
-          ? 'No signals for an extended period — connection may be lost or device may no longer be sending data'
-          : 'No recent signals — connection may be interrupted';
-      } else {
-        connectionStatus = 'offline';
-        statusNote = 'No signal data available';
-      }
-
-      return {
-        vehicleId: v.id,
-        vin: v.vin,
-        licensePlate: v.licensePlate ?? null,
-        make: v.make,
-        model: v.model,
-        year: v.year,
-        station: v.station?.name ?? null,
-        connectionType,
-        sourceType,
-        provider: 'DIMO',
-        deviceSerial: aftermarket?.serial ?? null,
-        syntheticTokenId: synthetic?.tokenId ?? null,
-        dimoTokenId: dv?.tokenId ?? null,
-        connectionStatus,
-        statusNote,
-        online: connectionStatus === 'online',
-        lastSeenAt: lastSeenAt?.toISOString?.() ?? (typeof lastSeenAt === 'string' ? lastSeenAt : null),
-        lastSyncedAt: lastSyncedAt?.toISOString() ?? null,
-        freshnessLabel,
-        pairedAt: aftermarket?.pairedAt ?? dv?.createdAt?.toISOString() ?? null,
-        latitude: ls?.latitude ?? null,
-        longitude: ls?.longitude ?? null,
-        odometerKm: ls?.odometerKm != null ? Math.floor(ls.odometerKm) : null,
-        hasTelemetry: ls != null,
-        obdIsPluggedIn: conn.obdIsPluggedIn,
-        jammingDetectedCount: conn.jammingDetectedCount,
-        jammingIncidents: conn.jammingIncidents,
-      };
-    });
-
-    const online = items.filter((i) => i.connectionStatus === 'online').length;
-    const standby = items.filter((i) => i.connectionStatus === 'standby').length;
-    const offline = items.filter((i) => i.connectionStatus === 'offline').length;
-    const notConnected = items.filter((i) => i.connectionStatus === 'not_connected').length;
+    const summary = buildFleetConnectivitySummary(mapped);
+    const paginationResult = paginateFleetConnectivityVehicles(
+      mapped,
+      page,
+      limit,
+    );
 
     return {
-      summary: {
-        total: items.length,
-        online,
-        standby,
-        offline,
-        notConnected,
+      generatedAt,
+      thresholds: { ...FLEET_CONNECTIVITY_THRESHOLDS },
+      summary,
+      pagination: {
+        page: paginationResult.page,
+        limit: paginationResult.limit,
+        total: paginationResult.total,
+        totalInOrganization: vehicles.length,
       },
-      vehicles: items,
+      vehicles: paginationResult.pageItems,
     };
   }
 
@@ -2078,12 +2062,12 @@ export class VehiclesService {
 
     const taskPriority =
       urgency === 'CRITICAL'
-        ? 'URGENT'
+        ? 'CRITICAL'
         : urgency === 'HIGH'
           ? 'HIGH'
           : urgency === 'LOW'
             ? 'LOW'
-            : 'MEDIUM';
+            : 'NORMAL';
 
     try {
       await this.prisma.orgTask.create({
@@ -2094,7 +2078,7 @@ export class VehiclesService {
           description: body.description,
           category: 'VEHICLE_COMPLAINT',
           status: 'OPEN',
-          priority: taskPriority as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
+          priority: taskPriority,
         },
       });
     } catch (err: any) {

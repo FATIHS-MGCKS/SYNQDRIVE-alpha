@@ -89,7 +89,7 @@ function createAnalysisFixture(
       countryRoadSharePct: 10,
       longitudinalStressScore: 35,
       brakingStressScore: 30,
-      drivingStyleScore: 28,
+      drivingStressScore: 28,
     }),
   };
 
@@ -152,7 +152,7 @@ describe('computeUsageFactor', () => {
     const factor = svc.computeUsageFactor({
       vehicleId: 'v1', windowDays: 30, distanceKmWindow: 1000,
       citySharePct: 80, highwaySharePct: 10, countryRoadSharePct: 10,
-      longitudinalStressScore: null, brakingStressScore: null, drivingStyleScore: null,
+      longitudinalStressScore: null, brakingStressScore: null, stopGoStressScore: null, highSpeedStressScore: null, drivingStressScore: null,
     });
     expect(factor).toBeGreaterThan(1.0);
   });
@@ -161,7 +161,7 @@ describe('computeUsageFactor', () => {
     const factor = svc.computeUsageFactor({
       vehicleId: 'v1', windowDays: 30, distanceKmWindow: 1000,
       citySharePct: 5, highwaySharePct: 90, countryRoadSharePct: 5,
-      longitudinalStressScore: null, brakingStressScore: null, drivingStyleScore: null,
+      longitudinalStressScore: null, brakingStressScore: null, stopGoStressScore: null, highSpeedStressScore: null, drivingStressScore: null,
     });
     expect(factor).toBeLessThan(1.0);
   });
@@ -170,7 +170,7 @@ describe('computeUsageFactor', () => {
     const extreme = svc.computeUsageFactor({
       vehicleId: 'v1', windowDays: 30, distanceKmWindow: 1000,
       citySharePct: 100, highwaySharePct: 0, countryRoadSharePct: 0,
-      longitudinalStressScore: null, brakingStressScore: null, drivingStyleScore: null,
+      longitudinalStressScore: null, brakingStressScore: null, stopGoStressScore: null, highSpeedStressScore: null, drivingStressScore: null,
     });
     expect(extreme).toBeLessThanOrEqual(cfg.factorCaps.usageMax);
     expect(extreme).toBeGreaterThanOrEqual(cfg.factorCaps.usageMin);
@@ -190,7 +190,7 @@ describe('computeBehaviorFactor', () => {
     const factor = svc.computeBehaviorFactor({
       vehicleId: 'v1', windowDays: 30, distanceKmWindow: 1000,
       citySharePct: 50, highwaySharePct: 30, countryRoadSharePct: 20,
-      longitudinalStressScore: 10, brakingStressScore: 15, drivingStyleScore: 12,
+      longitudinalStressScore: 10, brakingStressScore: 15, stopGoStressScore: 8, highSpeedStressScore: 6, drivingStressScore: 12,
     });
     expect(factor).toBeGreaterThanOrEqual(0.97);
     expect(factor).toBeLessThanOrEqual(1.05);
@@ -200,7 +200,7 @@ describe('computeBehaviorFactor', () => {
     const factor = svc.computeBehaviorFactor({
       vehicleId: 'v1', windowDays: 30, distanceKmWindow: 1000,
       citySharePct: 50, highwaySharePct: 30, countryRoadSharePct: 20,
-      longitudinalStressScore: 85, brakingStressScore: 80, drivingStyleScore: 70,
+      longitudinalStressScore: 85, brakingStressScore: 80, stopGoStressScore: 70, highSpeedStressScore: 65, drivingStressScore: 70,
     });
     expect(factor).toBeGreaterThan(1.15);
     expect(factor).toBeLessThanOrEqual(cfg.factorCaps.behaviorMax);
@@ -210,7 +210,7 @@ describe('computeBehaviorFactor', () => {
     const extreme = svc.computeBehaviorFactor({
       vehicleId: 'v1', windowDays: 30, distanceKmWindow: 1000,
       citySharePct: 50, highwaySharePct: 30, countryRoadSharePct: 20,
-      longitudinalStressScore: 100, brakingStressScore: 100, drivingStyleScore: 100,
+      longitudinalStressScore: 100, brakingStressScore: 100, stopGoStressScore: 100, highSpeedStressScore: 100, drivingStressScore: 100,
     });
     expect(extreme).toBeLessThanOrEqual(cfg.factorCaps.behaviorMax);
     expect(extreme).toBeGreaterThanOrEqual(cfg.factorCaps.behaviorMin);

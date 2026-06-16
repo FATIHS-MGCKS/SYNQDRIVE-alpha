@@ -44,3 +44,13 @@ export type { TimelineProps, TimelineItem } from './timeline';
 
 export { VehicleMiniCard } from './vehicle-mini-card';
 export type { VehicleMiniCardProps } from './vehicle-mini-card';
+
+export { AppShell } from '../shell/app-shell';
+export type { AppShellProps, AppShellVariant } from '../shell/app-shell';
+export {
+  navItemClass,
+  subNavItemClass,
+  navSectionHeaderClass,
+  navSectionLabelClass,
+} from '../shell/nav-utils';
+export { CollapsedNavTooltip, NavComingSoonBadge } from '../shell/nav-primitives';

@@ -2,7 +2,9 @@ import { Navigation } from 'lucide-react';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Icon } from './ui/Icon';
 import { api } from '../../lib/api';
-import type { TripEnrichment, TripBehaviorEvent, SpeedingSection, EnergyEvent } from '../../lib/api';
+import type { TripEnrichment, TripBehaviorEvent, EnergyEvent } from '../../lib/api';
+import { VehicleStressBadge, VehicleStressPanel } from './VehicleStressPanel';
+import { resolveDrivingStressScore } from '../lib/scoreFormat';
 import { buildTripsMapGeoJson } from '../../lib/geospatial';
 import { useAddress } from '../../lib/useAddress';
 import { useRentalOrg } from '../RentalContext';
@@ -35,15 +37,8 @@ interface TripData {
   durationMinutes?: number;
   avgSpeedKmh?: number;
   maxSpeedKmh?: number;
-  // V4.6.95 — `drivingScore` is a legacy compatibility mirror. Prefer
-  // `drivingStyleScore` everywhere. Both are 0–100 model scores, never %.
-  drivingScore?: number | null;
-  drivingStyleScore?: number | null;
-  // V4.6.95 — `safetyScore` is null when route / speed-limit data is
-  // unavailable. Never coerce to 0/100.
-  safetyScore?: number | null;
-  hasSpeedingData?: boolean;
-  safetyDataConfidence?: 'none' | 'low' | 'medium' | 'high';
+  drivingStressScore?: number | null;
+  stressLevel?: 'low' | 'moderate' | 'high' | 'critical' | null;
   scoreSource?: 'trip_driving_impact' | 'vehicle_trip_compat' | 'derived';
   fuelUsedLiters?: number;
   avgConsumptionLPer100Km?: number;
@@ -60,15 +55,6 @@ interface TripData {
   avgRpm?: number;
   avgThrottlePosition?: number;
   avgEngineLoad?: number;
-  speedingPercent?: number;
-  maxOverSpeedKmh?: number;
-  speedingSegments?: number;
-  speedingSectionsJson?: SpeedingSection[];
-  speedingSectionCount?: number;
-  speedingDistanceM?: number;
-  speedingDurationS?: number;
-  speedingExposurePct?: number;
-  avgOverSpeedKmh?: number;
   harshBrakeCount?: number;
   harshAccelCount?: number;
   harshCornerCount?: number;
@@ -79,7 +65,6 @@ interface TripData {
   fullBrakingEvents?: number;
   corneringEvents?: number;
   abuseEvents?: number;
-  speedingEvents?: number;
   accelerationEventCount?: number;
   brakingEventCount?: number;
   abuseEventCount?: number;
@@ -808,12 +793,17 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
             const isSelected = selectedTrip?.id === trip.id;
             const events = totalEvents(trip);
             const isOngoing = trip.tripStatus === 'ONGOING';
-            // V4.6.95 — `drivingStyleScore` is the canonical scalar.
-            // `drivingScore` is a legacy compat mirror retained only for
-            // older trips where the canonical column is not yet populated.
-            // We never show a separate "Driving Score" anywhere in the UI.
-            const styleScore = trip.drivingStyleScore ?? trip.drivingScore ?? null;
-            const safetyScore = trip.safetyScore ?? null;
+            const stressScore = resolveDrivingStressScore(trip);
+            const stressLevel = trip.stressLevel ?? null;
+            const hardBrakes = trip.hardBrakingEvents ?? trip.hardBrakingCount ?? trip.harshBrakeCount ?? 0;
+            const brakeStressLabel =
+              hardBrakes >= 8
+                ? 'Hoch'
+                : hardBrakes >= 4
+                  ? 'Moderat'
+                  : hardBrakes > 0
+                    ? 'Niedrig'
+                    : null;
 
             return (
               <div key={trip.id} onClick={() => handleSelectTrip(trip)}
@@ -892,14 +882,13 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
                       value={events === null ? '…' : String(events)}
                       color={events === null ? undefined : events > 0 ? 'orange' : 'green'}
                       icon={<Icon name="zap" className="w-3 h-3" />} />
-                    <MetricTile isDark={isDark} label="Driving Style"
-                      value={styleScore != null ? <>{Math.round(styleScore)}<span className="text-muted-foreground font-normal text-[8px] ml-0.5">/100</span></> : '--'}
-                      color={styleScore != null ? (styleScore >= 90 ? 'green' : styleScore >= 75 ? 'blue' : 'orange') : undefined}
-                      icon={<Icon name="award" className="w-3 h-3" />} />
-                    <MetricTile isDark={isDark} label="Safety"
-                      value={safetyScore != null ? <>{Math.round(safetyScore)}<span className="text-muted-foreground font-normal text-[8px] ml-0.5">/100</span></> : '--'}
-                      color={safetyScore != null ? (safetyScore >= 90 ? 'green' : safetyScore >= 75 ? 'blue' : 'orange') : undefined}
-                      icon={<Icon name="shield" className="w-3 h-3" />} />
+                    <MetricTile isDark={isDark} label="Fahrbelastung"
+                      value={<VehicleStressBadge stressScore={stressScore} stressLevel={stressLevel} />}
+                      icon={<Icon name="gauge" className="w-3 h-3" />} />
+                    <MetricTile isDark={isDark} label="Bremsbelastung"
+                      value={brakeStressLabel ?? '--'}
+                      color={brakeStressLabel === 'Hoch' ? 'orange' : brakeStressLabel === 'Moderat' ? 'blue' : brakeStressLabel ? 'green' : undefined}
+                      icon={<Icon name="disc" className="w-3 h-3" />} />
                   </div>
 
                 </div>
@@ -914,10 +903,19 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
                         </div>
                       )}
 
-                      {/* A. Addresses (Start | End) */}
+                      {/* A. Addresses */}
                       <TripAddresses trip={trip} isDark={isDark} />
 
-                      {/* B. Driving Behavior Analysis (collapsible Accel / Brake / Abuse) */}
+                      <VehicleStressPanel
+                        stressScore={stressScore}
+                        stressLevel={stressLevel}
+                        hasEnoughData={stressScore != null}
+                        compact={false}
+                      />
+
+                      <TripTechnicalData trip={trip} />
+
+                      {/* B. Belastungsereignisse */}
                       <BehaviorAnalysis
                         trip={trip}
                         isDark={isDark}
@@ -1013,6 +1011,53 @@ export function TripsView({ isDarkMode, vehicleId, selectedDate, selectedDriver,
   );
 }
 
+function TripTechnicalData({ trip }: { trip: TripData; isDark?: boolean }) {
+  const hasRoad =
+    trip.citySharePercent != null ||
+    trip.highwaySharePercent != null ||
+    trip.countrySharePercent != null;
+  const hasSpeed = trip.avgSpeedKmh != null || trip.maxSpeedKmh != null;
+  if (!hasRoad && !hasSpeed) return null;
+
+  return (
+    <div className="rounded-xl border p-3 bg-card border-border">
+      <div className="flex items-center gap-1.5 mb-2.5">
+        <Icon name="route" className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+          Technische Tripdaten
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px]">
+        {trip.avgSpeedKmh != null && (
+          <span className="text-muted-foreground">
+            Ø Tempo <span className="text-foreground font-bold tabular-nums">{Math.round(trip.avgSpeedKmh)} km/h</span>
+          </span>
+        )}
+        {trip.maxSpeedKmh != null && (
+          <span className="text-muted-foreground">
+            Max. <span className="text-foreground font-bold tabular-nums">{Math.round(trip.maxSpeedKmh)} km/h</span>
+          </span>
+        )}
+        {trip.citySharePercent != null && (
+          <span className="text-muted-foreground">
+            Stadt <span className="text-foreground font-bold tabular-nums">{Math.round(trip.citySharePercent)}%</span>
+          </span>
+        )}
+        {trip.countrySharePercent != null && (
+          <span className="text-muted-foreground">
+            Land <span className="text-foreground font-bold tabular-nums">{Math.round(trip.countrySharePercent)}%</span>
+          </span>
+        )}
+        {trip.highwaySharePercent != null && (
+          <span className="text-muted-foreground">
+            Autobahn <span className="text-foreground font-bold tabular-nums">{Math.round(trip.highwaySharePercent)}%</span>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TripAddresses({ trip, isDark }: { trip: TripData; isDark: boolean }) {
   const { address: startAddr, loading: startLoading } = useAddress(trip.startLatitude, trip.startLongitude);
   const { address: endAddr, loading: endLoading } = useAddress(trip.endLatitude, trip.endLongitude);
@@ -1093,7 +1138,7 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
         <div className="flex items-center gap-2">
           <Icon name="loader-2" className={`w-4 h-4 animate-spin ${isDark ? 'text-indigo-400' : 'text-indigo-500'}`} />
           <span className={`text-xs font-medium ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}>
-            {enrichStatus === 'PENDING' ? 'Analysis queued...' : 'Analyzing driving behavior...'}
+            {enrichStatus === 'PENDING' ? 'Analyse in Warteschlange…' : 'Belastungsereignisse werden analysiert…'}
           </span>
         </div>
       </div>
@@ -1106,10 +1151,10 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
       <div className="rounded-lg p-4 mb-3 border border-border bg-card">
         <div className="flex items-center gap-2 mb-1">
           <Icon name="bar-chart-3" className={`w-4 h-4 text-muted-foreground`} />
-          <span className={`text-xs font-semibold text-foreground`}>Driving Behavior Analysis</span>
+          <span className={`text-xs font-semibold text-foreground`}>Belastungsereignisse</span>
         </div>
         <p className={`text-[10px] text-muted-foreground`}>
-          No high-frequency data available for this trip. This may happen for short trips or trips outside sensor coverage.
+          Keine Hochfrequenzdaten für diese Fahrt. Kurze Fahrten oder Lücken in der Sensorabdeckung sind möglich.
         </p>
       </div>
     );
@@ -1121,7 +1166,7 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
       <div className="rounded-lg p-4 mb-3 border border-border bg-card">
         <div className="flex items-center gap-2 mb-1">
           <Icon name="alert-circle" className={`w-4 h-4 text-destructive`} />
-          <span className={`text-xs font-semibold text-foreground`}>Driving Behavior Analysis</span>
+          <span className={`text-xs font-semibold text-foreground`}>Belastungsereignisse</span>
         </div>
         <p className={`text-[10px] text-muted-foreground`}>
           Analysis is not possible for this trip due to a permanent data issue.
@@ -1137,7 +1182,7 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Icon name="alert-triangle" className={`w-4 h-4 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />
-            <span className={`text-xs font-semibold text-foreground`}>Driving Behavior Analysis</span>
+            <span className={`text-xs font-semibold text-foreground`}>Belastungsereignisse</span>
           </div>
           <button onClick={onEnrich} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isDark ? 'bg-amber-600/20 text-amber-400 hover:bg-amber-600/30' : 'bg-amber-50 text-amber-600 hover:bg-amber-100'}`}>
             <Icon name="refresh-cw" className="w-3.5 h-3.5" /> Retry
@@ -1159,7 +1204,7 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Icon name="bar-chart-3" className={`w-4 h-4 ${isDark ? 'text-indigo-400' : 'text-indigo-500'}`} />
-            <span className={`text-xs font-semibold text-foreground`}>Driving Behavior Analysis</span>
+            <span className={`text-xs font-semibold text-foreground`}>Belastungsereignisse</span>
           </div>
           <button onClick={onEnrich} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${isDark ? 'bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}>
             <Icon name="activity" className="w-3.5 h-3.5" /> Analyze Behavior
@@ -1193,7 +1238,7 @@ function BehaviorAnalysis({ trip, isDark, events, loading, expandedSection, onTo
     },
     {
       key: 'abuse',
-      label: 'Abuse Detection',
+      label: 'Missbrauch',
       icon: <Icon name="shield" className="w-3.5 h-3.5" />,
       count: trip.abuseEvents ?? trip.abuseEventCount ?? abuseEvents.length,
       hardCount: 0,

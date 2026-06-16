@@ -81,7 +81,12 @@ export const DEFAULT_POLICY: TenantPolicy = {
 // ─── Dashboard Response DTOs ─────────────────────────────────────────
 
 export interface DashboardInsightsResponse {
-  generatedAt: string;
+  generatedAt: string | null;
+  hasRun: boolean;
+  lastRunAt: string | null;
+  stale: boolean;
+  activeInsightCount: number;
+  error: string | null;
   summary: { total: number; critical: number; warning: number; opportunity: number; info: number };
   insights: DashboardInsightDto[];
 }

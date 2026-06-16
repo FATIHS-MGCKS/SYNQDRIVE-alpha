@@ -47,7 +47,7 @@ export class ComplianceOverdueDetector implements InsightDetector {
         make: true,
         model: true,
         licensePlate: true,
-        stationId: true,
+        homeStationId: true,
         nextTuvDate: true,
         nextBokraftDate: true,
       },
@@ -136,8 +136,8 @@ export class ComplianceOverdueDetector implements InsightDetector {
           reasons,
           confidence: 0.95,
           dedupeKey: `${kind.key}:${v.id}`,
-          groupKey: v.stationId
-            ? `${kind.key}:${v.stationId}`
+          groupKey: v.homeStationId
+            ? `${kind.key}:${v.homeStationId}`
             : `${kind.key}_fleet`,
         });
       }

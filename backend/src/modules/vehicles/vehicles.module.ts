@@ -7,12 +7,14 @@ import { VehicleProviderConsentService } from './vehicle-provider-consent.servic
 import { VehicleExteriorImagesService } from './vehicle-exterior-images.service';
 import { DimoModule } from '../dimo/dimo.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
+import { DataAuthorizationsModule } from '../data-authorizations/data-authorizations.module';
 
 @Module({
   imports: [
     ConfigModule.forFeature(dimoConfig),
     DimoModule,
     forwardRef(() => VehicleIntelligenceModule),
+    DataAuthorizationsModule,
   ],
   controllers: [VehiclesController],
   providers: [

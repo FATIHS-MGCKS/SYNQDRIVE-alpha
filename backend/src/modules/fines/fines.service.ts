@@ -140,7 +140,7 @@ export class FinesService {
       type: 'CUSTOMER_FOLLOWUP',
       source: 'FINE',
       sourceType: 'SYSTEM',
-      priority: data.amountCents >= 10000 ? 'HIGH' : 'MEDIUM',
+      priority: data.amountCents >= 10000 ? 'HIGH' : 'NORMAL',
       vehicleId: data.vehicleId,
       customerId: customerId ?? undefined,
       dueDate: data.dueDate ? new Date(data.dueDate) : undefined,

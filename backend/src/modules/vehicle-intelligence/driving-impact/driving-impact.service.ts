@@ -19,9 +19,7 @@ import {
   computeStopGoStressScore,
   computeHighSpeedStressScore,
   computeThermalBrakeStressScore,
-  computeDrivingStyleScore,
-  computeSafetyScore,
-  hasSpeedingDataFromTrip,
+  computeDrivingStressScore,
 } from './driving-impact-scorer';
 
 // ── Public consumer DTOs ──────────────────────────────────────────────────────
@@ -35,7 +33,9 @@ export interface TripImpactForTire {
   countryRoadSharePct: number | null;
   longitudinalStressScore: number | null;
   brakingStressScore: number | null;
-  drivingStyleScore: number | null;
+  stopGoStressScore: number | null;
+  highSpeedStressScore: number | null;
+  drivingStressScore: number | null;
 }
 
 /** Fields consumed by Brake Health V2 from a single trip impact row. */
@@ -65,7 +65,9 @@ export interface VehicleImpactForTire {
   countryRoadSharePct: number | null;
   longitudinalStressScore: number | null;
   brakingStressScore: number | null;
-  drivingStyleScore: number | null;
+  stopGoStressScore: number | null;
+  highSpeedStressScore: number | null;
+  drivingStressScore: number | null;
 }
 
 /** Rolling vehicle-level fields consumed by Brake Health V2. */
@@ -338,36 +340,20 @@ export class DrivingImpactService {
       p95NegativeDecel,
     });
 
-    const drivingStyleScore = computeDrivingStyleScore({
+    const drivingStressScore = computeDrivingStressScore({
       longitudinalStressScore,
       brakingStressScore,
       stopGoStressScore,
       highSpeedStressScore,
     });
 
-    // V4.6.95 — Safety Score must be NULL when no route / speed-limit
-    // enrichment ran for this trip. Coercing the four speed-limit fields to 0
-    // would produce safetyScore = 100 ("perfectly safe"), which is dangerous
-    // and wrong. We distinguish:
-    //   - all speed-limit fields null     ⇒ no data        ⇒ safetyScore = null
-    //   - fields present (even all zero)  ⇒ data present   ⇒ compute via formula
-    // The exposure / section counters that ARE persisted on TripDrivingImpact
-    // are still recorded as 0 fallbacks — they describe "events seen" not
-    // "data quality". `safetyScore` itself is the only field that becomes
-    // null when the underlying enrichment never ran.
+    // Speeding/Safety score retired from rental and new impact persistence (V4.8.24).
+    // Trip-level speeding metrics remain on VehicleTrip for route enrichment traceability.
     const speedingExposurePct = trip.speedingExposurePct ?? 0;
     const speedingSectionCount = trip.speedingSectionCount ?? 0;
     const avgOverSpeedKmh = trip.avgOverSpeedKmh ?? 0;
     const maxOverSpeedKmh = trip.maxOverSpeedKmh ?? 0;
-    const hasSpeedingData = hasSpeedingDataFromTrip(trip);
-    const safetyScore: number | null = hasSpeedingData
-      ? computeSafetyScore({
-          speedingExposurePct,
-          maxOverSpeedKmh,
-          avgOverSpeedKmh,
-          speedingSectionCount,
-        })
-      : null;
+    const safetyScore: number | null = null;
     // NOTE (V4.6.83): `TripDrivingImpact.speedingSeverityScore` was previously
     // populated with an ad-hoc `maxOverSpeedKmh * 1.1 + avgOverSpeedKmh * 1.4`
     // formula but never read by any consumer. The canonical speeding-centric
@@ -409,7 +395,7 @@ export class DrivingImpactService {
         stopGoStressScore,
         highSpeedStressScore,
         thermalBrakeStressScore,
-        drivingStyleScore,
+        drivingStressScore,
         safetyScore,
         speedingExposurePct,
         speedingSectionCount,
@@ -459,7 +445,7 @@ export class DrivingImpactService {
         stopGoStressScore,
         highSpeedStressScore,
         thermalBrakeStressScore,
-        drivingStyleScore,
+        drivingStressScore,
         safetyScore,
         speedingExposurePct,
         speedingSectionCount,
@@ -485,15 +471,14 @@ export class DrivingImpactService {
       },
     });
 
-    // Compatibility mirror for one transition cycle.
-    // Canonical score source remains TripDrivingImpact.drivingStyleScore.
+    // Compatibility mirror: VehicleTrip.drivingScore stores stress (higher = more load).
     await this.prisma.vehicleTrip.update({
       where: { id: tripId },
-      data: { drivingScore: drivingStyleScore },
+      data: { drivingScore: drivingStressScore },
     });
 
     if (trip.drivingScore != null) {
-      const drift = Math.abs(trip.drivingScore - drivingStyleScore);
+      const drift = Math.abs(trip.drivingScore - drivingStressScore);
       const bucket =
         drift >= 20 ? 'gte20' : drift >= 10 ? 'gte10' : drift >= 5 ? 'gte5' : null;
       if (bucket) {
@@ -504,7 +489,7 @@ export class DrivingImpactService {
     this.logger.log(
       `DrivingImpact persisted: trip=${tripId} vehicle=${vehicleId} ` +
       `dist=${distanceKm.toFixed(1)}km long=${longitudinalStressScore} ` +
-      `brake=${brakingStressScore} style=${drivingStyleScore} safety=${safetyScore}`,
+      `brake=${brakingStressScore} stress=${drivingStressScore}`,
     );
 
     // ── Update rolling current aggregate ─────────────────────────────────────
@@ -587,7 +572,7 @@ export class DrivingImpactService {
         stopGoStressScore: wavg('stopGoStressScore'),
         highSpeedStressScore: wavg('highSpeedStressScore'),
         thermalBrakeStressScore: wavg('thermalBrakeStressScore'),
-        drivingStyleScore: wavg('drivingStyleScore'),
+        drivingStressScore: wavg('drivingStressScore'),
         safetyScore: wavg('safetyScore'),
         modelVersion: C.MODEL_VERSION,
       },
@@ -616,7 +601,7 @@ export class DrivingImpactService {
         stopGoStressScore: wavg('stopGoStressScore'),
         highSpeedStressScore: wavg('highSpeedStressScore'),
         thermalBrakeStressScore: wavg('thermalBrakeStressScore'),
-        drivingStyleScore: wavg('drivingStyleScore'),
+        drivingStressScore: wavg('drivingStressScore'),
         safetyScore: wavg('safetyScore'),
         modelVersion: C.MODEL_VERSION,
       },
@@ -642,7 +627,9 @@ export class DrivingImpactService {
         countryRoadSharePct: true,
         longitudinalStressScore: true,
         brakingStressScore: true,
-        drivingStyleScore: true,
+        stopGoStressScore: true,
+        highSpeedStressScore: true,
+        drivingStressScore: true,
       },
     });
     return row;
@@ -661,7 +648,9 @@ export class DrivingImpactService {
         countryRoadSharePct: true,
         longitudinalStressScore: true,
         brakingStressScore: true,
-        drivingStyleScore: true,
+        stopGoStressScore: true,
+        highSpeedStressScore: true,
+        drivingStressScore: true,
       },
     });
     return row;

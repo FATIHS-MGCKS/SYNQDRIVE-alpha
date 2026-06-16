@@ -208,12 +208,12 @@ export class TireWearModelService {
     const w = this.cfg.behaviorFactorWeights;
     const longScore = impact.longitudinalStressScore ?? 0;
     const brakeScore = impact.brakingStressScore ?? 0;
-    const styleScore = impact.drivingStyleScore ?? 0;
+    const stressScore = impact.drivingStressScore ?? 0;
 
     const weightedScore =
       w.longitudinal * longScore +
       w.braking * brakeScore +
-      w.drivingStyle * styleScore;
+      w.drivingStress * stressScore;
 
     let baseFactor = this.interpolateBehaviorFactor(weightedScore);
 
