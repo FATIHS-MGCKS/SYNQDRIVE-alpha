@@ -24,18 +24,12 @@ function getDtcCategory(code: string): string {
   }
 }
 
-function getSeverityDisplay(
-  severity: string | null | undefined,
-): 'low' | 'medium' | 'high' {
-  switch ((severity ?? '').toUpperCase()) {
-    case 'INFO':
-      return 'low';
-    case 'CRITICAL':
-      return 'high';
-    default:
-      return 'medium';
-  }
-}
+import {
+  getSeverityDisplay,
+  maxDtcSeverityBand,
+  normalizeDtcSeverityBand,
+  type DtcSeverityBand,
+} from './dtc-severity.util';
 
 function isDataStale(lastSuccessfulCheckAt: Date | null | undefined): boolean {
   if (!lastSuccessfulCheckAt) return true;
@@ -135,12 +129,20 @@ export class DtcService {
     const hasNeverBeenChecked = !lastCheckedAt;
 
     // Count real active faults (only meaningful when fresh)
-    const activeFaultCount =
+    const activeFaults =
       stale || hasNeverBeenChecked
-        ? 0
-        : await this.prisma.vehicleDtcEvent.count({
+        ? []
+        : await this.prisma.vehicleDtcEvent.findMany({
             where: { vehicleId, isActive: true },
+            select: { severity: true },
           });
+
+    const activeFaultCount = activeFaults.length;
+
+    const severityBands = activeFaults.map((f) =>
+      normalizeDtcSeverityBand(f.severity),
+    );
+    const worstSeverityBand = maxDtcSeverityBand(severityBands);
 
     type DtcStatus = 'clean' | 'active_faults' | 'stale' | 'unavailable';
     let status: DtcStatus;
@@ -170,8 +172,12 @@ export class DtcService {
               label: f.description ?? `DTC ${f.dtcCode}`,
               category: getDtcCategory(f.dtcCode),
               severity: getSeverityDisplay(f.severity),
+              severityRaw: f.severity ?? null,
+              severityBand: normalizeDtcSeverityBand(f.severity),
             }))
           : [],
+      worstSeverityBand:
+        status === 'active_faults' ? worstSeverityBand : ('unknown' as DtcSeverityBand),
       lastCheckedAt: lastCheckedAt?.toISOString() ?? null,
       lastSuccessfulCheckAt: lastSuccessfulCheckAt?.toISOString() ?? null,
       isStale: stale,

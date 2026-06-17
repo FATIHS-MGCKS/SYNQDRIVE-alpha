@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { BusinessInsightsService } from './business-insights.service';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
 import { InsightRankingService } from './insight-ranking.service';
@@ -18,16 +18,16 @@ import { ServiceBeforeBookingDetector } from './detectors/service-before-booking
 import { BatteryCriticalDetector } from './detectors/battery-critical.detector';
 import { TireCriticalDetector } from './detectors/tire-critical.detector';
 import { BrakeCriticalDetector } from './detectors/brake-critical.detector';
-import { ServiceOverdueDetector } from './detectors/service-overdue.detector';
-import { ComplianceOverdueDetector } from './detectors/compliance-overdue.detector';
+import { ComplianceOperationalDetector } from './detectors/compliance-operational.detector';
 import { PickupOverdueDetector } from './detectors/pickup-overdue.detector';
 
 import { DashboardInsightsController } from './dashboard-insights.controller';
 import { InternalBusinessInsightsController } from './internal-business-insights.controller';
 import { TasksModule } from '../tasks/tasks.module';
+import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 
 @Module({
-  imports: [TasksModule],
+  imports: [TasksModule, forwardRef(() => VehicleIntelligenceModule)],
   controllers: [DashboardInsightsController, InternalBusinessInsightsController],
   providers: [
     BusinessInsightsService,
@@ -48,8 +48,7 @@ import { TasksModule } from '../tasks/tasks.module';
     BatteryCriticalDetector,
     TireCriticalDetector,
     BrakeCriticalDetector,
-    ServiceOverdueDetector,
-    ComplianceOverdueDetector,
+    ComplianceOperationalDetector,
     PickupOverdueDetector,
   ],
   exports: [BusinessInsightsService, BusinessInsightsTriggerService],

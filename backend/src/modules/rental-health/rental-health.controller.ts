@@ -4,6 +4,8 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { VehicleHealth } from './rental-health.types';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 
 /**
  * Rental Health V1 — read-only endpoints.
@@ -21,7 +23,7 @@ import { RolesGuard } from '@shared/auth/roles.guard';
  * deterministic `unknown` + reasons entry, never silently dropped.
  */
 @Controller('organizations/:orgId')
-@UseGuards(OrgScopingGuard, RolesGuard)
+@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
 export class RentalHealthController {
   constructor(
     private readonly rentalHealth: RentalHealthService,
@@ -29,6 +31,7 @@ export class RentalHealthController {
   ) {}
 
   @Get('vehicles/:vehicleId/rental-health')
+  @RequirePermission('fleet', 'read')
   async getVehicleHealth(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
@@ -37,6 +40,7 @@ export class RentalHealthController {
   }
 
   @Get('rental-health')
+  @RequirePermission('fleet', 'read')
   async getFleetHealth(
     @Param('orgId') orgId: string,
     @Query('vehicleIds') vehicleIdsCsv?: string,

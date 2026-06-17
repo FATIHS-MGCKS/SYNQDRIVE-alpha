@@ -5,6 +5,13 @@ import { TireHealthService, TireHealthSummary } from '../vehicle-intelligence/ti
 import { BrakeHealthService, BrakeHealthSummaryDto } from '../vehicle-intelligence/brakes/brake-health.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
 import { HmSignalUsageService } from '../high-mobility/high-mobility-signal-usage.service';
+import type { ServiceComplianceEvaluation } from '../vehicle-intelligence/service-compliance/service-compliance.types';
+import { ServiceComplianceService } from '../vehicle-intelligence/service-compliance/service-compliance.service';
+import {
+  dtcBandToHealthState,
+  isSafetyCriticalDtcBand,
+  type DtcSeverityBand,
+} from '../vehicle-intelligence/dtc/dtc-severity.util';
 import {
   HealthState,
   ModuleHealth,
@@ -15,10 +22,14 @@ import {
   toIso,
 } from './rental-health.types';
 
-// ── Thresholds ───────────────────────────────────────────────────────────────
+export interface RentalHealthGateResult {
+  blocked: boolean;
+  reasons: string[];
+  healthGateStatus: 'OK' | 'BLOCKED' | 'UNAVAILABLE';
+  healthGateWarning: string | null;
+  manualReviewRequired: boolean;
+}
 
-/** Days remaining on TÜV / BOKraft below which we flip the module to warning. */
-const COMPLIANCE_WARNING_DAYS = 60;
 
 /**
  * Lifecycle statuses that keep a complaint "open" for rental-health purposes.
@@ -52,6 +63,7 @@ export class RentalHealthService {
     private readonly brakes: BrakeHealthService,
     private readonly dtc: DtcService,
     private readonly hm: HmSignalUsageService,
+    private readonly serviceCompliance: ServiceComplianceService,
   ) {}
 
   /**
@@ -71,9 +83,6 @@ export class RentalHealthService {
         nextBokraftDate: true,
         lastServiceDate: true,
         lastServiceOdometerKm: true,
-        nextServiceDueDate: true,
-        serviceIntervalManufacturerKm: true,
-        serviceIntervalManufacturerMonths: true,
       },
     });
     if (!vehicle) {
@@ -90,6 +99,7 @@ export class RentalHealthService {
       hmAiRes,
       currentOdoRes,
       complaintsRes,
+      complianceRes,
     ] = await Promise.allSettled([
       this.battery.getSummary(vehicleId),
       this.tires.getSummary(vehicleId),
@@ -109,6 +119,12 @@ export class RentalHealthService {
         orderBy: { createdAt: 'desc' },
         take: 25,
       }),
+      this.serviceCompliance.evaluateCompliance(vehicleId, {
+        lastTuvDate: vehicle.lastTuvDate,
+        nextTuvDate: vehicle.nextTuvDate,
+        lastBokraftDate: vehicle.lastBokraftDate,
+        nextBokraftDate: vehicle.nextBokraftDate,
+      }),
     ]);
 
     const batterySummary = unwrap(batteryRes);
@@ -116,19 +132,38 @@ export class RentalHealthService {
     const brakeSummary = unwrap(brakesRes) as BrakeHealthSummaryDto | null;
     const dtcSummary = unwrap(dtcRes);
     const hmAi = unwrap(hmAiRes);
-    const currentOdometer = unwrap(currentOdoRes)?.odometerKm ?? null;
-    const openComplaints = unwrap(complaintsRes) ?? [];
+    const complaintsLoaded = complaintsRes.status === 'fulfilled';
+    const openComplaints = complaintsLoaded ? (unwrap(complaintsRes) ?? []) : [];
+    const complianceEval = unwrap(complianceRes);
+    const serviceComplianceModule = complianceEval
+      ? this.serviceCompliance.toRentalModuleHealth(
+          complianceEval,
+          vehicle.lastServiceDate,
+          vehicle.nextTuvDate,
+          vehicle.nextBokraftDate,
+          vehicle.lastTuvDate,
+          vehicle.lastBokraftDate,
+        )
+      : {
+          state: 'unknown' as const,
+          reason: 'Service-Compliance konnte nicht geladen werden',
+          last_updated_at: null,
+          data_stale: true,
+          source: 'service_compliance',
+          evidence_type: 'unknown' as const,
+        };
 
     const modules = {
       battery: this.evaluateBattery(batterySummary, hmAi),
       tires: this.evaluateTires(tireSummary),
       brakes: this.evaluateBrakes(brakeSummary),
       error_codes: this.evaluateErrorCodes(dtcSummary),
-      service_compliance: this.evaluateServiceCompliance({
-        vehicle,
-        currentOdometer,
-      }),
-      complaints: this.evaluateComplaints(openComplaints),
+      service_compliance: {
+        ...serviceComplianceModule,
+        source: 'service_compliance',
+        evidence_type: this.serviceComplianceEvidenceType(complianceEval),
+      },
+      complaints: this.evaluateComplaints(openComplaints, complaintsLoaded),
       vehicle_alerts: this.evaluateVehicleAlerts(hmAi),
     } as const;
 
@@ -137,6 +172,9 @@ export class RentalHealthService {
       modules,
       openComplaints,
       hmAi,
+      complianceEval,
+      dtcSummary,
+      brakeSummary,
     );
 
     return {
@@ -159,17 +197,38 @@ export class RentalHealthService {
   async isRentalBlocked(
     orgId: string,
     vehicleId: string,
-  ): Promise<{ blocked: boolean; reasons: string[] }> {
+  ): Promise<RentalHealthGateResult> {
     try {
       const health = await this.getVehicleHealth(orgId, vehicleId);
-      return { blocked: health.rental_blocked, reasons: health.blocking_reasons };
+      if (health.rental_blocked) {
+        return {
+          blocked: true,
+          reasons: health.blocking_reasons,
+          healthGateStatus: 'BLOCKED',
+          healthGateWarning: null,
+          manualReviewRequired: false,
+        };
+      }
+      return {
+        blocked: false,
+        reasons: [],
+        healthGateStatus: 'OK',
+        healthGateWarning: null,
+        manualReviewRequired: false,
+      };
     } catch (err) {
-      // Fail-open: a broken health pipeline must NOT be able to block the
-      // whole bookings system. The UI still shows whatever surface it has.
+      const message = (err as Error).message;
       this.logger.warn(
-        `Rental-health gate skipped for ${vehicleId}: ${(err as Error).message}`,
+        `Rental-health gate unavailable for ${vehicleId}: ${message}`,
       );
-      return { blocked: false, reasons: [] };
+      return {
+        blocked: true,
+        reasons: ['Fahrzeug-Gesundheit konnte nicht geprüft werden'],
+        healthGateStatus: 'UNAVAILABLE',
+        healthGateWarning:
+          'Fahrzeug-Gesundheit konnte nicht vollständig geprüft werden. Manuelle Bestätigung erforderlich.',
+        manualReviewRequired: true,
+      };
     }
   }
 
@@ -196,6 +255,8 @@ export class RentalHealthService {
         reason: 'Keine Batterie-Daten verfügbar',
         last_updated_at: null,
         data_stale: true,
+        source: 'canonical_battery',
+        evidence_type: 'unknown',
       };
     }
 
@@ -249,6 +310,13 @@ export class RentalHealthService {
       reason,
       last_updated_at: toIso(observedAt),
       data_stale: isStale(observedAt),
+      source: warningLightActive ? 'hm_oem' : 'canonical_battery',
+      evidence_type:
+        lv?.estimatedHealth?.displayMode === 'BARS' && lv?.healthStatus
+          ? 'estimated'
+          : restingVoltage != null
+            ? 'measured'
+            : 'provider',
     };
   }
 
@@ -267,33 +335,19 @@ export class RentalHealthService {
         reason: 'Keine Reifendaten verfügbar',
         last_updated_at: null,
         data_stale: true,
+        source: 'tire_health',
+        evidence_type: 'unknown',
       };
     }
 
-    // Wear state — prefer canonical overallStatus from tire-status.ts; fall back
-    // to overallPercent buckets only when the canonical status is unavailable.
+    // Wear state — canonical overallStatus only (no parallel percent buckets).
     const canonicalWear = this.mapTireStatusToHealth(summary.overallStatus);
-    let wearState: HealthState;
-    let wearReason: string;
-    if (canonicalWear != null) {
-      wearState = canonicalWear.state;
-      wearReason = canonicalWear.reason;
-    } else {
-      const remaining = summary.overallPercent;
-      if (remaining == null || !Number.isFinite(remaining)) {
-        wearState = 'unknown';
-        wearReason = 'Kein Reifenverschleiß-Signal';
-      } else if (remaining <= 10) {
-        wearState = 'critical';
-        wearReason = `Restnutzbarkeit ${Math.round(remaining)} %`;
-      } else if (remaining <= 30) {
-        wearState = 'warning';
-        wearReason = `Restnutzbarkeit ${Math.round(remaining)} %`;
-      } else {
-        wearState = 'good';
-        wearReason = `Restnutzbarkeit ${Math.round(remaining)} %`;
-      }
-    }
+    const wearState: HealthState = canonicalWear?.state ?? 'unknown';
+    const wearReason: string =
+      canonicalWear?.reason ??
+      (summary.overallStatus === 'UNKNOWN'
+        ? 'Kein Reifenverschleiß-Signal'
+        : `Reifenzustand ${summary.overallStatus}`);
 
     // Pressure state — pressureContext is always present on a summary.
     const pressure = summary.pressureContext;
@@ -350,14 +404,16 @@ export class RentalHealthService {
       reason,
       last_updated_at: toIso(summary.latestMeasurementAt),
       data_stale: isStale(summary.latestMeasurementAt),
+      source: pressure.source === 'NONE' ? 'tire_health' : 'hm_oem',
+      evidence_type:
+        summary.latestMeasurementAt != null ? 'measured' : 'estimated',
     };
   }
 
   /**
-   * Brakes — reads {@link BrakeHealthService.getSummary}. The service
-   * already exposes `hasAlert` and `status` ("healthy" | "attention" |
-   * "critical"), so we mostly trust that. Restnutzbarkeit comes from
-   * `pads.healthPercent` and `discs.healthPercent` (min of both).
+   * Brakes — reads {@link BrakeHealthService.getSummary}. Uses
+   * `overallCondition` as the single canonical truth (estimates cap at WARNING;
+   * CRITICAL only from real safety signals).
    */
   private evaluateBrakes(summary: BrakeHealthSummaryDto | null): ModuleHealth {
     const updatedAt = summary?.lastRecalculatedAt ?? summary?.updatedAt ?? null;
@@ -368,6 +424,8 @@ export class RentalHealthService {
         reason: 'Keine Bremsen-Baseline hinterlegt',
         last_updated_at: toIso(updatedAt),
         data_stale: isStale(updatedAt),
+        source: 'brake_health',
+        evidence_type: 'unknown',
       };
     }
 
@@ -417,13 +475,19 @@ export class RentalHealthService {
       reason,
       last_updated_at: toIso(updatedAt),
       data_stale: isStale(updatedAt),
+      source: 'brake_health',
+      evidence_type:
+        summary.dataBasis === 'MEASURED' || summary.frontDataBasis === 'MEASURED'
+          ? 'measured'
+          : summary.dataBasis === 'ESTIMATED'
+            ? 'estimated'
+            : 'provider',
     };
   }
 
   /**
-   * Error Codes — reads {@link DtcService.getSummary}. V1 "red / yellow"
-   * pragmatic mapping: any fault at CRITICAL severity is treated as a
-   * red MIL and sets rental_blocked via the alerts path.
+   * Error Codes — reads {@link DtcService.getSummary}. Active faults use
+   * normalized severity bands; safety-critical bands block rental.
    */
   private evaluateErrorCodes(
     summary: Awaited<ReturnType<DtcService['getSummary']>> | null,
@@ -434,6 +498,8 @@ export class RentalHealthService {
         reason: 'Keine DTC-Daten verfügbar',
         last_updated_at: null,
         data_stale: true,
+        source: 'dtc_poll',
+        evidence_type: 'unknown',
       };
     }
 
@@ -445,6 +511,8 @@ export class RentalHealthService {
         reason: 'Noch keine DTC-Prüfung durchgeführt',
         last_updated_at: toIso(lastAt),
         data_stale: true,
+        source: 'dtc_poll',
+        evidence_type: 'unknown',
       };
     }
 
@@ -454,6 +522,8 @@ export class RentalHealthService {
         reason: 'DTC-Status veraltet',
         last_updated_at: toIso(lastAt),
         data_stale: true,
+        source: 'dtc_poll',
+        evidence_type: 'unknown',
       };
     }
 
@@ -463,15 +533,17 @@ export class RentalHealthService {
         reason: 'Keine aktiven Fehlercodes',
         last_updated_at: toIso(lastAt),
         data_stale: isStale(lastAt),
+        source: 'dtc_poll',
+        evidence_type: 'provider',
       };
     }
 
-    // Active faults — pick the max severity from the preview.
-    const hasCritical = summary.activeFaultPreview.some(
-      (f: any) => f.severity === 'high',
-    );
-    const state: HealthState = hasCritical ? 'critical' : 'warning';
-    const reason = hasCritical
+    const worstBand: DtcSeverityBand =
+      summary.worstSeverityBand ??
+      ('unknown' as DtcSeverityBand);
+    const state = dtcBandToHealthState(worstBand);
+    const safetyCritical = isSafetyCriticalDtcBand(worstBand);
+    const reason = safetyCritical
       ? `${summary.activeFaultCount} aktive Fehlercodes — sicherheitsrelevant`
       : `${summary.activeFaultCount} aktive Fehlercodes`;
 
@@ -480,121 +552,8 @@ export class RentalHealthService {
       reason,
       last_updated_at: toIso(lastAt),
       data_stale: isStale(lastAt),
-    };
-  }
-
-  /**
-   * Service & Compliance — mirrors the `service-info-status` endpoint
-   * logic but only for the fields that drive the health state:
-   *   - TÜV overdue/due-soon
-   *   - BOKraft overdue/due-soon
-   *   - Service overdue (based on nextServiceDueDate or km threshold)
-   *
-   * Spec: TÜV and BOKraft lapsed → critical + rental_blocked.
-   * Inspection overdue → warning (maintenance, not compliance).
-   */
-  private evaluateServiceCompliance(ctx: {
-    vehicle: {
-      lastTuvDate: Date | null;
-      nextTuvDate: Date | null;
-      lastBokraftDate: Date | null;
-      nextBokraftDate: Date | null;
-      lastServiceDate: Date | null;
-      lastServiceOdometerKm: number | null;
-      nextServiceDueDate: Date | null;
-      serviceIntervalManufacturerKm: number | null;
-      serviceIntervalManufacturerMonths: number | null;
-    };
-    currentOdometer: number | null;
-  }): ModuleHealth {
-    const now = new Date();
-    const MS_PER_DAY = 86_400_000;
-
-    const tuvDays =
-      ctx.vehicle.nextTuvDate != null
-        ? Math.floor((ctx.vehicle.nextTuvDate.getTime() - now.getTime()) / MS_PER_DAY)
-        : null;
-    const bokraftDays =
-      ctx.vehicle.nextBokraftDate != null
-        ? Math.floor((ctx.vehicle.nextBokraftDate.getTime() - now.getTime()) / MS_PER_DAY)
-        : null;
-
-    // Service remaining — replicates the logic of the service-info-status
-    // endpoint. We derive days + km based on last service and interval.
-    const { serviceOverdue, serviceMessage } = computeServiceOverdue(
-      ctx.vehicle,
-      ctx.currentOdometer,
-      now,
-    );
-
-    // Hard-compliance (TÜV / BOKraft lapsed) takes priority.
-    if (tuvDays != null && tuvDays < 0) {
-      return {
-        state: 'critical',
-        reason: `TÜV abgelaufen seit ${Math.abs(tuvDays)} Tag${Math.abs(tuvDays) === 1 ? '' : 'en'}`,
-        last_updated_at: toIso(ctx.vehicle.lastTuvDate ?? ctx.vehicle.nextTuvDate),
-        data_stale: false,
-      };
-    }
-    if (bokraftDays != null && bokraftDays < 0) {
-      return {
-        state: 'critical',
-        reason: `BOKraft abgelaufen seit ${Math.abs(bokraftDays)} Tag${Math.abs(bokraftDays) === 1 ? '' : 'en'}`,
-        last_updated_at: toIso(
-          ctx.vehicle.lastBokraftDate ?? ctx.vehicle.nextBokraftDate,
-        ),
-        data_stale: false,
-      };
-    }
-
-    // Soft warnings next — due soon or service overdue.
-    if (tuvDays != null && tuvDays <= COMPLIANCE_WARNING_DAYS) {
-      return {
-        state: 'warning',
-        reason: `TÜV läuft in ${tuvDays} Tag${tuvDays === 1 ? '' : 'en'} ab`,
-        last_updated_at: toIso(ctx.vehicle.nextTuvDate),
-        data_stale: false,
-      };
-    }
-    if (bokraftDays != null && bokraftDays <= COMPLIANCE_WARNING_DAYS) {
-      return {
-        state: 'warning',
-        reason: `BOKraft läuft in ${bokraftDays} Tag${bokraftDays === 1 ? '' : 'en'} ab`,
-        last_updated_at: toIso(ctx.vehicle.nextBokraftDate),
-        data_stale: false,
-      };
-    }
-    if (serviceOverdue) {
-      return {
-        state: 'warning',
-        reason: serviceMessage ?? 'Inspektion überfällig',
-        last_updated_at: toIso(ctx.vehicle.lastServiceDate),
-        data_stale: false,
-      };
-    }
-
-    // All green — but we need some data at all to even claim "good".
-    const hasAnyData =
-      ctx.vehicle.nextTuvDate != null ||
-      ctx.vehicle.nextBokraftDate != null ||
-      ctx.vehicle.lastServiceDate != null ||
-      ctx.vehicle.nextServiceDueDate != null;
-    if (!hasAnyData) {
-      return {
-        state: 'unknown',
-        reason: 'Keine Termine hinterlegt',
-        last_updated_at: null,
-        data_stale: true,
-      };
-    }
-
-    return {
-      state: 'good',
-      reason: 'Alle Termine gültig',
-      last_updated_at: toIso(
-        ctx.vehicle.lastServiceDate ?? ctx.vehicle.nextTuvDate ?? ctx.vehicle.nextBokraftDate,
-      ),
-      data_stale: false,
+      source: 'dtc_poll',
+      evidence_type: 'provider',
     };
   }
 
@@ -618,13 +577,27 @@ export class RentalHealthService {
       createdAt: Date;
       updatedAt: Date;
     }>,
+    loaded: boolean,
   ): ModuleHealth {
+    if (!loaded) {
+      return {
+        state: 'unknown',
+        reason: 'Reklamationen konnten nicht geladen werden',
+        last_updated_at: null,
+        data_stale: true,
+        source: 'complaints',
+        evidence_type: 'unknown',
+      };
+    }
+
     if (complaints.length === 0) {
       return {
         state: 'good',
         reason: 'Keine offenen Reklamationen',
         last_updated_at: null,
         data_stale: false,
+        source: 'complaints',
+        evidence_type: 'complaint',
       };
     }
 
@@ -638,6 +611,8 @@ export class RentalHealthService {
         reason: `Offene Sicherheits-Reklamation vom ${formatDate(safety.createdAt)}`,
         last_updated_at: safety.updatedAt.toISOString(),
         data_stale: false,
+        source: 'complaints',
+        evidence_type: 'complaint',
       };
     }
 
@@ -653,6 +628,8 @@ export class RentalHealthService {
             : `Offene Umwelt-Reklamation vom ${formatDate(drivability.createdAt)}`,
         last_updated_at: drivability.updatedAt.toISOString(),
         data_stale: false,
+        source: 'complaints',
+        evidence_type: 'complaint',
       };
     }
 
@@ -665,23 +642,19 @@ export class RentalHealthService {
           : `${complaints.length} offene Reklamationen`,
       last_updated_at: newestIso,
       data_stale: false,
+      source: 'complaints',
+      evidence_type: 'complaint',
     };
   }
 
   /**
    * Vehicle Alerts (OEM) — reads {@link HmSignalUsageService.getAiHealthCareSignals}.
-   * V1 covers the strictly structured HM signals only: Limp Mode, oil
-   * level, brake-lining pre-warning, tire-pressure warning, battery
-   * warning light.
    *
-   * IMPORTANT: warnings that already feed another module (tires, brakes,
-   * battery) are NOT double-counted here — the spec demands each warning
-   * lands in exactly one place. We intentionally ignore `brakeLining`
-   * (→ brakes), `tirePressureWarning` (→ tires), and `battery_low_warning`
-   * (→ battery) in this evaluator. What remains:
-   *   - Limp Mode         → critical + rental_blocked
-   *   - Oil level LOW     → critical + rental_blocked
-   *   - Oil level HIGH    → warning
+   * V1 covers limp mode + oil level only (brake/tire/battery routed to sibling modules).
+   *
+   * TODO(V2): consume {@link DashboardWarningLightsService} as single canonical truth
+   * instead of parallel HM boolean parsing — `rentalHealthReady` flag is set on the
+   * telltale read model for this migration.
    */
   private evaluateVehicleAlerts(
     hmAi: {
@@ -696,6 +669,8 @@ export class RentalHealthService {
         reason: 'Keine OEM-Warnleuchten-Quelle aktiv',
         last_updated_at: null,
         data_stale: false,
+        source: 'hm_oem',
+        evidence_type: 'unknown',
       };
     }
 
@@ -707,6 +682,8 @@ export class RentalHealthService {
         reason: 'Limp Mode aktiv',
         last_updated_at: lastUpdated,
         data_stale: isStale(lastUpdated),
+        source: 'hm_oem',
+        evidence_type: 'provider',
       };
     }
 
@@ -728,13 +705,49 @@ export class RentalHealthService {
       };
     }
 
-    // Nothing triggered — the OEM cluster is quiet.
+    const limpUnknown = hmAi.limpModeActive === null;
+    const oilUnknown = !oilStatus || oilStatus === 'UNKNOWN';
+    if (limpUnknown && oilUnknown) {
+      return {
+        state: 'unknown',
+        reason: 'Noch kein verwertbarer OEM-Warnleuchten-Status',
+        last_updated_at: lastUpdated,
+        data_stale: isStale(lastUpdated),
+      };
+    }
+
+    // Explicit quiet signals only — never infer "good" from missing data.
     return {
       state: 'good',
       reason: 'Keine OEM-Warnleuchten aktiv',
       last_updated_at: lastUpdated,
       data_stale: isStale(lastUpdated),
+      source: 'hm_oem',
+      evidence_type: 'provider',
     };
+  }
+
+  private serviceComplianceEvidenceType(
+    evaluation: ServiceComplianceEvaluation | null,
+  ): ModuleHealth['evidence_type'] {
+    if (!evaluation) return 'unknown';
+    if (evaluation.nextService.trackingStatus === 'TRACKED') return 'provider';
+    if (
+      evaluation.tuvBokraft.tuvValidTill ||
+      evaluation.tuvBokraft.bokraftValidTill
+    ) {
+      return 'manual';
+    }
+    return 'unknown';
+  }
+
+  private isBrakeBlockWorthy(summary: BrakeHealthSummaryDto | null): boolean {
+    if (!summary || summary.overallCondition !== 'CRITICAL') return false;
+    const basis = summary.dataBasis ?? summary.frontDataBasis;
+    if (basis === 'MEASURED') return true;
+    return (
+      summary.openAlerts?.some((a) => a.severity === 'critical') ?? false
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -748,47 +761,61 @@ export class RentalHealthService {
    */
   private collectBlockingReasons(
     modules: VehicleHealth['modules'],
-    openComplaints: Array<{ impact: string | null }>,
+    openComplaints: Array<{ impact: string | null; description?: string }>,
     hmAi: { limpModeActive: boolean | null; oilLevel: { status: string | null } | null } | null,
+    complianceEval: ServiceComplianceEvaluation | null,
+    dtcSummary: Awaited<ReturnType<DtcService['getSummary']>> | null,
+    brakeSummary: BrakeHealthSummaryDto | null,
   ): string[] {
     const reasons: string[] = [];
 
-    // Compliance first — lapsed TÜV / BOKraft. service_compliance already
-    // sets critical + a precise reason.
-    if (
-      modules.service_compliance.state === 'critical' &&
-      /abgelaufen/i.test(modules.service_compliance.reason)
-    ) {
-      reasons.push(modules.service_compliance.reason);
+    if (complianceEval?.tuvBokraft.tuvOverdue) {
+      const days = complianceEval.tuvBokraft.tuvRemainingDays;
+      reasons.push(
+        days != null
+          ? `TÜV abgelaufen seit ${Math.abs(days)} Tag${Math.abs(days) === 1 ? '' : 'en'}`
+          : 'TÜV abgelaufen',
+      );
+    }
+    if (complianceEval?.tuvBokraft.bokraftOverdue) {
+      const days = complianceEval.tuvBokraft.bokraftRemainingDays;
+      reasons.push(
+        days != null
+          ? `BOKraft abgelaufen seit ${Math.abs(days)} Tag${Math.abs(days) === 1 ? '' : 'en'}`
+          : 'BOKraft abgelaufen',
+      );
     }
 
-    // Safety complaints — impact=SAFETY on any open complaint.
     const safety = openComplaints.find((c) => c.impact === 'SAFETY');
     if (safety) {
       reasons.push('Offene Sicherheits-Reklamation');
     }
 
-    // Limp Mode always blocks.
+    const drivability = openComplaints.find((c) => c.impact === 'DRIVABILITY');
+    if (drivability) {
+      reasons.push('Offene Fahrbarkeits-Reklamation');
+    }
+
     if (hmAi?.limpModeActive === true) {
       reasons.push('Limp Mode aktiv');
     }
 
-    // Brakes critical blocks.
-    if (modules.brakes.state === 'critical') {
+    if (this.isBrakeBlockWorthy(brakeSummary)) {
       reasons.push(`Bremsen: ${modules.brakes.reason}`);
     }
 
-    // Tires critical blocks (covers both wear and low-pressure paths).
     if (modules.tires.state === 'critical') {
       reasons.push(`Reifen: ${modules.tires.reason}`);
     }
 
-    // Safety-relevant DTC (critical severity).
-    if (modules.error_codes.state === 'critical') {
+    const dtcBand = dtcSummary?.worstSeverityBand;
+    if (
+      modules.error_codes.state === 'critical' &&
+      (dtcBand ? isSafetyCriticalDtcBand(dtcBand) : true)
+    ) {
       reasons.push(`Fehlercodes: ${modules.error_codes.reason}`);
     }
 
-    // Oil minimum blocks.
     const oilStatus = (hmAi?.oilLevel?.status ?? '').toUpperCase();
     if (oilStatus === 'LOW' || oilStatus === 'MINIMUM') {
       reasons.push('Motoröl Minimum');
@@ -862,78 +889,4 @@ function readBatteryWarningLight(hmAi: any | null): boolean {
     }
   }
   return false;
-}
-
-/**
- * Mirrors the logic in `vehicle-intelligence.controller.ts::getServiceInfoStatus`
- * for the service-overdue flag. Only the boolean + a short message is
- * needed here; the full payload stays with the canonical endpoint.
- */
-function computeServiceOverdue(
-  vehicle: {
-    lastServiceDate: Date | null;
-    lastServiceOdometerKm: number | null;
-    serviceIntervalManufacturerKm: number | null;
-    serviceIntervalManufacturerMonths: number | null;
-    nextServiceDueDate: Date | null;
-  },
-  currentOdometer: number | null,
-  now: Date,
-): { serviceOverdue: boolean; serviceMessage: string | null } {
-  const MS_PER_DAY = 86_400_000;
-  const DAYS_PER_MONTH = 30.44;
-
-  // Preferred path: explicit nextServiceDueDate (operator-entered override).
-  if (vehicle.nextServiceDueDate != null) {
-    const daysLeft = Math.floor(
-      (vehicle.nextServiceDueDate.getTime() - now.getTime()) / MS_PER_DAY,
-    );
-    if (daysLeft < 0) {
-      return {
-        serviceOverdue: true,
-        serviceMessage: `Inspektion seit ${Math.abs(daysLeft)} Tag${Math.abs(daysLeft) === 1 ? '' : 'en'} überfällig`,
-      };
-    }
-  }
-
-  if (vehicle.lastServiceDate == null) {
-    return { serviceOverdue: false, serviceMessage: null };
-  }
-
-  const daysElapsed = Math.floor(
-    (now.getTime() - vehicle.lastServiceDate.getTime()) / MS_PER_DAY,
-  );
-
-  if (
-    vehicle.serviceIntervalManufacturerMonths != null &&
-    vehicle.serviceIntervalManufacturerMonths > 0
-  ) {
-    const intervalDays = Math.round(
-      vehicle.serviceIntervalManufacturerMonths * DAYS_PER_MONTH,
-    );
-    if (daysElapsed - intervalDays > 0) {
-      return {
-        serviceOverdue: true,
-        serviceMessage: `Inspektion seit ${daysElapsed - intervalDays} Tag${daysElapsed - intervalDays === 1 ? '' : 'en'} überfällig`,
-      };
-    }
-  }
-
-  if (
-    vehicle.lastServiceOdometerKm != null &&
-    currentOdometer != null &&
-    vehicle.serviceIntervalManufacturerKm != null &&
-    vehicle.serviceIntervalManufacturerKm > 0
-  ) {
-    const kmSince = Math.round(currentOdometer - vehicle.lastServiceOdometerKm);
-    const overKm = kmSince - vehicle.serviceIntervalManufacturerKm;
-    if (overKm > 0) {
-      return {
-        serviceOverdue: true,
-        serviceMessage: `Inspektion seit ${overKm} km überfällig`,
-      };
-    }
-  }
-
-  return { serviceOverdue: false, serviceMessage: null };
 }

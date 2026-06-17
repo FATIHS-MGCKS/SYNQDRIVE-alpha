@@ -1,4 +1,4 @@
-﻿import { Building2, Clock, CreditCard, Database, User, UserCog } from 'lucide-react';
+import { Building2, Clock, CreditCard, Database, User, UserCog } from 'lucide-react';
 import { Icon } from './ui/Icon';
 import { useState, useMemo, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 
@@ -44,7 +44,7 @@ type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billi
 // STATIONS & BRANCHES TAB â€” fully live-wired
 // ============================================
 // Reads from GET /organizations/:orgId/stations (and /stats), supports
-// add/edit/delete/activate-deactivate, Google Places autocomplete, and
+// add/edit/delete/activate-deactivate, Mapbox Search Box autocomplete, and
 // shows aggregate vehicle counts. Tenant-scoped via useRentalOrg.
 // ============================================
 // Geofence sliders are clamped to this range. Values outside get rejected
@@ -139,7 +139,9 @@ export function StationsTab() {
   const [assignFilter, setAssignFilter] = useState<'all' | 'unassigned' | 'this' | 'other'>('all');
 
   // Place autocomplete
-  const [suggestions, setSuggestions] = useState<import('../../lib/api').StationPlaceSuggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<
+    Array<import('../../lib/api').StationMapboxSuggestion & { sessionToken: string }>
+  >([]);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const suggestTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -290,29 +292,38 @@ export function StationsTab() {
     setSuggestOpen(true);
     suggestTimeout.current = setTimeout(() => {
       api.stations
-        .searchPlaces(orgId, value)
-        .then((res) => setSuggestions(Array.isArray(res) ? res : []))
+        .searchMapbox(orgId, value.trim())
+        .then((res) => {
+          const token = res.sessionToken;
+          setSuggestions(
+            (res.suggestions ?? []).map((s) => ({ ...s, sessionToken: token })),
+          );
+        })
         .catch(() => setSuggestions([]))
         .finally(() => setSuggestLoading(false));
     }, 350);
   };
 
-  const pickSuggestion = async (sug: import('../../lib/api').StationPlaceSuggestion) => {
-    if (!orgId) return;
+  const pickSuggestion = async (
+    sug: import('../../lib/api').StationMapboxSuggestion & { sessionToken: string },
+  ) => {
+    if (!orgId || !sug.sessionToken) return;
     setSuggestOpen(false);
     setSuggestions([]);
-    const details = await api.stations.placeDetails(orgId, sug.placeId).catch(() => null);
+    const details = await api.stations
+      .mapboxRetrieve(orgId, sug.mapboxId, sug.sessionToken)
+      .catch(() => null);
     setForm((prev) => ({
       ...prev,
-      name: prev.name || details?.name || sug.mainText,
-      address: details?.address ?? prev.address,
+      name: prev.name || details?.name || sug.name,
+      address: details?.street ?? details?.formattedAddress ?? prev.address,
       city: details?.city ?? prev.city,
       postalCode: details?.postalCode ?? prev.postalCode,
       country: details?.country ?? prev.country,
       latitude: details?.latitude ?? prev.latitude,
       longitude: details?.longitude ?? prev.longitude,
       phone: details?.phone ?? prev.phone,
-      googlePlaceId: sug.placeId,
+      googlePlaceId: details?.externalPlaceId ?? sug.mapboxId,
     }));
   };
 
@@ -767,7 +778,7 @@ export function StationsTab() {
                 <p className={`text-[11px] mt-0.5 ${textSecondary}`}>
                   {editingId
                     ? 'Aktualisieren Sie Adresse, Kontakt und Status dieses Standorts.'
-                    : 'Tippen Sie den Namen oder die Adresse ein â€” Google Places vervollstÃ¤ndigt automatisch.'}
+                    : 'Tippen Sie den Namen oder die Adresse ein — Mapbox schlägt passende Standorte vor.'}
                 </p>
               </div>
               <button
@@ -809,18 +820,18 @@ export function StationsTab() {
                     ) : (
                       suggestions.map((s) => (
                         <button
-                          key={s.placeId}
+                          key={s.mapboxId}
                           type="button"
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => pickSuggestion(s)}
                           className="w-full text-left px-3 py-2.5 text-xs border-b border-border last:border-b-0 transition-colors hover:bg-muted text-foreground"
                         >
                           <div className="font-medium flex items-center gap-1.5">
-                            <Icon name="map-pin" className="w-3.5 h-3.5 text-blue-500" /> {s.mainText}
+                            <Icon name="map-pin" className="w-3.5 h-3.5 text-blue-500" /> {s.name}
                           </div>
-                          {s.secondaryText && (
+                          {(s.placeFormatted || s.fullAddress) && (
                             <div className={`${textSecondary} text-[11px] mt-0.5 ml-5`}>
-                              {s.secondaryText}
+                              {s.placeFormatted || s.fullAddress}
                             </div>
                           )}
                         </button>

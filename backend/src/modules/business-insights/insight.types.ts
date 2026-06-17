@@ -69,6 +69,7 @@ export const DEFAULT_POLICY: TenantPolicy = {
     InsightType.PICKUP_OVERDUE,
     InsightType.TUV_OVERDUE,
     InsightType.BOKRAFT_OVERDUE,
+    InsightType.HM_SERVICE_NO_TRACKING,
   ],
   handoverBufferMin: 60,
   lowUtilizationDays: 7,

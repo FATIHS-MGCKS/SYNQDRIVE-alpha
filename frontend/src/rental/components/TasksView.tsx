@@ -7,7 +7,7 @@ import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
 import type { ApiTask, ApiTaskSummary, ApiTaskType, CreateTaskPayload, Station } from '../../lib/api';
 import { checklistPreviewForType } from '../lib/task-templates';
-import { PageHeader, StatusChip, PriorityBadge, EmptyState, ErrorState, DataTable } from '../../components/patterns';
+import { PageHeader, StatusChip, PriorityBadge, EmptyState, ErrorState, DataTable, AppDialog, FormDialog } from '../../components/patterns';
 import type { StatusTone, DataTableColumn } from '../../components/patterns';
 
 // View category → canonical backend TaskType.
@@ -53,7 +53,8 @@ interface Task {
   vehicleLicense: string;
   vehicleModel: string;
   station: string;
-  assignedTo: string;
+  assignedUserId: string;
+  assignedUserName: string;
   createdDate: string;
   dueDate: string;
   completedDate?: string;
@@ -64,7 +65,7 @@ interface Task {
 // ─── Backend (OrgTask) → view-model mapping ──────────────────────────
 // Tasks now come from GET /organizations/:org/tasks. The backend stores
 // enum values (status OPEN/IN_PROGRESS/DONE/CANCELLED, priority
-// LOW/MEDIUM/HIGH/URGENT) and a free-form category; we map them onto the
+// LOW/NORMAL/HIGH/CRITICAL) and a free-form category; we map them onto the
 // display vocabulary this view already uses.
 interface BackendTask {
   id: string;
@@ -150,13 +151,10 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
-  const [isNewTaskAnimating, setIsNewTaskAnimating] = useState(false);
-  const [isDetailAnimating, setIsDetailAnimating] = useState(false);
-  const [isDetailClosing, setIsDetailClosing] = useState(false);
   const [taskStep, setTaskStep] = useState(0);
   const [newTask, setNewTask] = useState({
     title: '', description: '', category: 'Maintenance' as TaskCategory, priority: 'Medium' as TaskPriority,
-    vehicleLicense: '', stationId: '', assignedTo: '', createdBy: '',
+    vehicleLicense: '', stationId: '', assignedUserId: '', createdBy: '',
     dueDate: '', estimatedDuration: '', notes: '',
   });
   const [taskFormErrors, setTaskFormErrors] = useState<Record<string, string>>({});
@@ -323,10 +321,11 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
         vehicleLicense: veh?.license || '',
         vehicleModel: veh?.model || '',
         station: stationName,
-        assignedTo: (() => {
-          const uid = (t as BackendTask & { assignedUserId?: string }).assignedUserId;
-          if (uid) return orgMembers.find((m) => m.id === uid)?.name ?? (t as BackendTask).assignedUserId ?? 'Unassigned';
-          return (t as BackendTask).assignedUserId || (isAuto ? 'System' : 'Unassigned');
+        assignedUserId: t.assignedUserId ?? '',
+        assignedUserName: (() => {
+          const uid = t.assignedUserId;
+          if (uid) return orgMembers.find((m) => m.id === uid)?.name ?? uid;
+          return isAuto ? 'System' : 'Unassigned';
         })(),
         createdDate: fmtDate(t.createdAt),
         dueDate: fmtDate(t.dueDate),
@@ -339,19 +338,11 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
 
   const openNewTask = () => {
     setIsNewTaskOpen(true);
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setIsNewTaskAnimating(true);
-      });
-    });
   };
 
   const closeNewTask = () => {
-    setIsNewTaskAnimating(false);
-    setTimeout(() => {
-      setIsNewTaskOpen(false);
-      resetNewTaskForm();
-    }, 400);
+    setIsNewTaskOpen(false);
+    resetNewTaskForm();
   };
 
   const openTaskDetail = (task: Task) => {
@@ -360,21 +351,11 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
     if (orgId) {
       api.tasks.get(orgId, task.id).then(setDetailFull).catch(() => setDetailFull(null));
     }
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setIsDetailAnimating(true);
-      });
-    });
   };
 
   const closeTaskDetail = () => {
-    setIsDetailAnimating(false);
-    setIsDetailClosing(true);
-    setTimeout(() => {
-      setSelectedTask(null);
-      setDetailFull(null);
-      setIsDetailClosing(false);
-    }, 400);
+    setSelectedTask(null);
+    setDetailFull(null);
   };
 
   useEffect(() => {
@@ -432,7 +413,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
   const resetNewTaskForm = () => {
     setNewTask({
       title: '', description: '', category: 'Maintenance', priority: 'Medium',
-      vehicleLicense: '', stationId: '', assignedTo: '', createdBy: '',
+      vehicleLicense: '', stationId: '', assignedUserId: '', createdBy: '',
       dueDate: '', estimatedDuration: '', notes: '',
     });
     setTaskFormErrors({});
@@ -446,7 +427,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
       if (!newTask.description.trim()) errors.description = 'Beschreibung erforderlich';
     } else if (step === 1) {
       if (!newTask.vehicleLicense) errors.vehicleLicense = 'Fahrzeug auswählen';
-      if (!newTask.assignedTo) errors.assignedTo = 'Zuweisung erforderlich';
+      if (!newTask.assignedUserId) errors.assignedUserId = 'Zuweisung erforderlich';
       if (!newTask.stationId) errors.stationId = 'Station erforderlich';
     } else if (step === 2) {
       if (!newTask.dueDate) errors.dueDate = 'Fälligkeitsdatum erforderlich';
@@ -479,7 +460,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
       priority: VIEW_PRIORITY_TO_API[newTask.priority] ?? 'NORMAL',
       category: newTask.category,
       dueDate: newTask.dueDate ? new Date(newTask.dueDate).toISOString() : undefined,
-      assignedUserId: newTask.assignedTo || undefined,
+      assignedUserId: newTask.assignedUserId || undefined,
       vehicleId: vehicle?.id,
       stationId: newTask.stationId || undefined,
       checklist: checklistItems.length
@@ -511,13 +492,13 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
       t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.vehicleLicense.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.vehicleModel.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.assignedTo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.assignedUserName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.id.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
     const matchesPriority = priorityFilter === 'all' || t.priority === priorityFilter;
     const matchesCategory = categoryFilter === 'all' || t.category === categoryFilter;
     const matchesVehicle = vehicleFilter === 'all' || t.vehicleLicense === vehicleFilter;
-    const matchesAssignee = assigneeFilter === 'all' || t.assignedTo === assigneeFilter;
+    const matchesAssignee = assigneeFilter === 'all' || t.assignedUserName === assigneeFilter;
     return matchesSearch && matchesStatus && matchesPriority && matchesCategory && matchesVehicle && matchesAssignee;
   });
 
@@ -545,7 +526,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
         return { value: license, label: `${license} – ${task.vehicleModel.split(' ').slice(0, 2).join(' ')}` };
       });
 
-  const uniqueAssignees = [...new Set(tasks.map(t => t.assignedTo))].filter(Boolean).map(assignee => {
+  const uniqueAssignees = [...new Set(tasks.map(t => t.assignedUserName))].filter(Boolean).map(assignee => {
     return { value: assignee, label: assignee };
   });
 
@@ -559,7 +540,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
   const vehicleCount = (vehicle: string) =>
     vehicle === 'all' ? tasks.length : tasks.filter(t => t.vehicleLicense === vehicle).length;
   const assigneeCount = (assignee: string) =>
-    assignee === 'all' ? tasks.length : tasks.filter(t => t.assignedTo === assignee).length;
+    assignee === 'all' ? tasks.length : tasks.filter(t => t.assignedUserName === assignee).length;
   const activeStatusLabel = statusFilter === 'all' ? 'All Status' : statusFilter;
   const activePriorityLabel = priorityFilter === 'all' ? 'All Priorities' : priorityFilter;
   const activeCategoryLabel = categoryFilter === 'all' ? 'All Categories' : categoryFilter;
@@ -661,9 +642,9 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
       cell: (task) => (
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-brand text-brand-foreground">
-            {task.assignedTo.split(' ').map((n) => n[0]).join('')}
+            {task.assignedUserName.split(' ').map((n) => n[0]).join('')}
           </div>
-          <span className="text-xs text-muted-foreground">{task.assignedTo}</span>
+          <span className="text-xs text-muted-foreground">{task.assignedUserName}</span>
         </div>
       ),
     },
@@ -727,15 +708,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
   return (
     <div className="relative">
       {/* Main Content with zoom-out effect */}
-      <div
-        className="space-y-5 transition-all duration-500 ease-out origin-center"
-        style={{
-          transform: (isNewTaskAnimating || isDetailAnimating) ? 'scale(0.92)' : 'scale(1)',
-          filter: (isNewTaskAnimating || isDetailAnimating) ? 'blur(12px)' : 'blur(0px)',
-          opacity: (isNewTaskAnimating || isDetailAnimating) ? 0.4 : 1,
-          pointerEvents: (isNewTaskOpen || selectedTask || isDetailClosing) ? 'none' : 'auto',
-        }}
-      >
+      <div className="space-y-5">
       <PageHeader
         title="Task Management"
         actions={(
@@ -1026,28 +999,14 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
 
       </div>{/* End of main content wrapper */}
 
-      {/* Task Detail Modal */}
-      {selectedTask && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={closeTaskDetail}>
-          <div
-            className="absolute inset-0 transition-all duration-500 ease-out"
-            style={{
-              backgroundColor: isDetailAnimating ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0)',
-            }}
-          />
-          <div onClick={(e) => e.stopPropagation()}
-            className={`relative w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-3xl border shadow-2xl transition-all duration-500 ease-out ${
-            'bg-card border-border'
-          }`}
-            style={{
-              transform: isDetailAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)',
-              opacity: isDetailAnimating ? 1 : 0,
-              boxShadow: isDetailAnimating
-                ? '0 25px 60px -12px rgba(0, 0, 0, 0.35), 0 0 40px -8px rgba(59, 130, 246, 0.15)'
-                : '0 10px 30px -12px rgba(0, 0, 0, 0)',
-            }}>
-            {/* Header */}
-            <div className="sticky top-0 z-10 px-8 pt-7 pb-5 border-b bg-card border-border">
+      <AppDialog
+        open={!!selectedTask}
+        onOpenChange={(open) => { if (!open) closeTaskDetail(); }}
+        maxWidthClassName="sm:max-w-3xl"
+      >
+        {selectedTask && (
+          <>
+            <div className="sticky top-0 z-10 border-b border-border bg-card px-6 pb-5 pt-6">
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -1094,15 +1053,11 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                       Set Waiting
                     </button>
                   )}
-                  <button onClick={closeTaskDetail}
-                    className="p-2 rounded-lg transition-colors hover:bg-muted text-muted-foreground">
-                    <Icon name="x" className="w-5 h-5" />
-                  </button>
                 </div>
               </div>
             </div>
 
-            <div className="p-8 space-y-5">
+            <div className="max-h-[min(70vh,100dvh-12rem)] overflow-y-auto p-6 space-y-5">
               {/* Description */}
               <div>
                 <h4 className={`text-xs uppercase tracking-wider font-semibold mb-2 ${textTertiary}`}>Description</h4>
@@ -1172,9 +1127,9 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                       <span className={`text-xs ${textSecondary}`}>Assigned To</span>
                       <div className="flex items-center gap-2">
                         <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-brand text-brand-foreground">
-                          {selectedTask.assignedTo.split(' ').map(n => n[0]).join('')}
+                          {selectedTask.assignedUserName.split(' ').map(n => n[0]).join('')}
                         </div>
-                        <span className={`text-xs font-medium ${textPrimary}`}>{selectedTask.assignedTo}</span>
+                        <span className={`text-xs font-medium ${textPrimary}`}>{selectedTask.assignedUserName}</span>
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
@@ -1297,12 +1252,61 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </AppDialog>
 
-      {/* New Task Modal */}
-      {isNewTaskOpen && (() => {
+      <FormDialog
+        open={isNewTaskOpen}
+        onOpenChange={(open) => { if (!open) closeNewTask(); }}
+        maxWidthClassName="sm:max-w-[680px]"
+        title="Neuen Task anlegen"
+        description={`Erstellt am ${new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })} · Alle Pflichtfelder ausfüllen`}
+        bodyClassName="p-0 flex flex-col"
+        footer={(
+          <div className="flex w-full items-center justify-between">
+            <button
+              type="button"
+              onClick={closeNewTask}
+              className="rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
+            >
+              Abbrechen
+            </button>
+            <div className="flex items-center gap-2.5">
+              {taskStep > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setTaskStep(taskStep - 1)}
+                  className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-all hover:bg-muted"
+                >
+                  <Icon name="chevron-left" className="w-3.5 h-3.5" />
+                  Zurück
+                </button>
+              )}
+              {taskStep < 3 ? (
+                <button
+                  type="button"
+                  onClick={handleTaskNextStep}
+                  className="sq-cta flex items-center gap-1.5 px-3 py-2 text-xs font-semibold"
+                >
+                  Weiter
+                  <Icon name="chevron-right" className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSubmitTask}
+                  className="sq-cta flex items-center gap-1.5 px-3 py-2 text-xs font-semibold"
+                >
+                  <Icon name="check-circle" className="w-3.5 h-3.5" />
+                  Task anlegen
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      >
+        {(() => {
         const steps = [
           { label: 'Grunddaten', icon: FileText },
           { label: 'Fahrzeug & Zuweisung', icon: Car },
@@ -1335,38 +1339,9 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
         const stationsList = orgStations.filter((s) => s.status === 'ACTIVE');
 
         return (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={closeNewTask}>
-            <div
-              className="absolute inset-0 transition-all duration-500 ease-out"
-              style={{
-                backgroundColor: isNewTaskAnimating ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0)',
-              }}
-            />
-            <div onClick={(e) => e.stopPropagation()}
-              className={`relative w-full max-w-[680px] max-h-[85vh] flex flex-col rounded-lg border shadow-2xl transition-all duration-500 ease-out ${
-                'bg-card border-border'
-              }`}
-              style={{
-                transform: isNewTaskAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)',
-                opacity: isNewTaskAnimating ? 1 : 0,
-                boxShadow: isNewTaskAnimating
-                  ? '0 25px 60px -12px rgba(0, 0, 0, 0.35), 0 0 40px -8px rgba(37, 99, 235, 0.15)'
-                  : '0 10px 30px -12px rgba(0, 0, 0, 0)',
-              }}>
-              {/* Header */}
-              <div className={`flex items-center justify-between px-7 py-3 border-b shrink-0 ${'border-border'}`}>
-                <div>
-                  <h2 className={`text-lg font-bold ${textPrimary}`}>Neuen Task anlegen</h2>
-                  <p className={`text-xs mt-0.5 ${textTertiary}`}>Erstellt am {today} · Alle Pflichtfelder ausfüllen</p>
-                </div>
-                <button onClick={closeNewTask}
-                  className="w-5 h-5 rounded-lg flex items-center justify-center transition-colors hover:bg-muted text-muted-foreground">
-                  <Icon name="x" className="w-5 h-5" />
-                </button>
-              </div>
-
+          <>
               {/* Step Indicator */}
-              <div className={`flex items-center gap-1 px-7 py-3 border-b shrink-0 ${'border-border'}`}>
+              <div className={`flex items-center gap-1 border-b shrink-0 px-5 py-3 ${'border-border'}`}>
                 {steps.map((s, i) => {
                   const StepIcon = s.icon;
                   const isActive = i === taskStep;
@@ -1466,11 +1441,11 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className={labelClass}>Zugewiesen an *</label>
-                        <select value={newTask.assignedTo} onChange={e => setNewTask({ ...newTask, assignedTo: e.target.value })} className={inputClass}>
+                        <select value={newTask.assignedUserId} onChange={e => setNewTask({ ...newTask, assignedUserId: e.target.value })} className={inputClass}>
                           <option value="">Mitarbeiter wählen...</option>
                           {assigneesList.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                         </select>
-                        {taskFormErrors.assignedTo && <p className="text-[11px] text-[color:var(--status-critical)] mt-1">{taskFormErrors.assignedTo}</p>}
+                        {taskFormErrors.assignedUserId && <p className="text-[11px] text-[color:var(--status-critical)] mt-1">{taskFormErrors.assignedUserId}</p>}
                       </div>
                       <div>
                         <label className={labelClass}>Station *</label>
@@ -1557,7 +1532,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                       'bg-muted/40 border-border divide-border/60'
                     }`}>
                       <SummaryRow label="Fahrzeug" value={newTask.vehicleLicense ? (uniqueVehicles.find(v => v.value === newTask.vehicleLicense)?.label || newTask.vehicleLicense) : ''} />
-                      <SummaryRow label="Zugewiesen an" value={orgMembers.find(m => m.id === newTask.assignedTo)?.name ?? newTask.assignedTo} />
+                      <SummaryRow label="Zugewiesen an" value={orgMembers.find(m => m.id === newTask.assignedUserId)?.name ?? newTask.assignedUserId} />
                       <SummaryRow
                         label="Station"
                         value={orgStations.find((s) => s.id === newTask.stationId)?.name ?? '—'}
@@ -1581,40 +1556,10 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                   </div>
                 )}
               </div>
-
-              {/* Footer */}
-              <div className={`flex items-center justify-between px-7 py-3 border-t shrink-0 ${'border-border'}`}>
-                <button onClick={closeNewTask}
-                  className="px-3 py-2 rounded-lg text-xs font-medium transition-all text-muted-foreground hover:text-foreground hover:bg-muted">
-                  Abbrechen
-                </button>
-                <div className="flex items-center gap-2.5">
-                  {taskStep > 0 && (
-                    <button onClick={() => setTaskStep(taskStep - 1)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-card text-foreground hover:bg-muted text-xs font-medium transition-all">
-                      <Icon name="chevron-left" className="w-3.5 h-3.5" />
-                      Zurück
-                    </button>
-                  )}
-                  {taskStep < 3 ? (
-                    <button onClick={handleTaskNextStep}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand hover:bg-[color:var(--brand-hover)] text-brand-foreground text-xs font-semibold shadow-md hover:shadow-lg transition-all">
-                      Weiter
-                      <Icon name="chevron-right" className="w-3.5 h-3.5" />
-                    </button>
-                  ) : (
-                    <button onClick={handleSubmitTask}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand hover:bg-[color:var(--brand-hover)] text-brand-foreground text-xs font-semibold shadow-md hover:shadow-lg transition-all">
-                      <Icon name="check-circle" className="w-3.5 h-3.5" />
-                      Task anlegen
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+          </>
         );
       })()}
+      </FormDialog>
     </div>
   );
 }

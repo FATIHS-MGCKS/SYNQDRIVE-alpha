@@ -115,13 +115,9 @@ export class BookingsService {
       endDate,
     });
 
-    // V4.6.76 Rental Health V1 — rental_blocked hard-gate. A vehicle
-    // with lapsed TÜV/BOKraft, critical tires/brakes, active Limp Mode,
-    // safety-relevant DTC, low oil, or an open safety-impact complaint
-    // must never accept a new booking. We fail OPEN (i.e. allow the
-    // create to proceed) if the health pipeline errors out — see
-    // RentalHealthService.isRentalBlocked — so a transient health-stack
-    // incident never freezes the whole bookings flow.
+    // V4.6.76 Rental Health V1 — rental_blocked hard-gate. On technical
+    // gate failure we do not silently pretend the vehicle is healthy: the
+    // response carries healthGateStatus=UNAVAILABLE + manualReviewRequired.
     const rentalGate = await this.rentalHealthService.isRentalBlocked(
       orgId,
       vehicleId,
@@ -223,7 +219,16 @@ export class BookingsService {
       })
       .catch(() => {});
 
-    return booking;
+    return {
+      ...booking,
+      healthGateStatus: rentalGate.healthGateStatus,
+      healthGateWarning: rentalGate.healthGateWarning,
+      manualReviewRequired: rentalGate.manualReviewRequired,
+    } as Booking & {
+      healthGateStatus?: string;
+      healthGateWarning?: string | null;
+      manualReviewRequired?: boolean;
+    };
   }
 
   async findAll(orgId: string, params?: ListBookingsQueryDto) {
@@ -1133,7 +1138,11 @@ export class BookingsService {
     });
 
     const stationIds = [
-      ...new Set(data.map((b) => b.pickupStationId).filter(Boolean) as string[]),
+      ...new Set(
+        data
+          .flatMap((b) => [b.pickupStationId, b.returnStationId])
+          .filter(Boolean) as string[],
+      ),
     ];
     const stations =
       stationIds.length > 0
@@ -1162,6 +1171,9 @@ export class BookingsService {
             Math.round((now.getTime() - b.startDate.getTime()) / 60_000),
           )
         : 0;
+      const pickupStationName = b.pickupStationId
+        ? stationMap.get(b.pickupStationId) || ''
+        : '';
       return {
         id: b.id,
         vehicleId: b.vehicleId,
@@ -1171,7 +1183,10 @@ export class BookingsService {
           (b as any).vehicle.vehicleName ||
           `${(b as any).vehicle.make} ${(b as any).vehicle.model}`,
         vehicleLicense: (b as any).vehicle.licensePlate || '',
-        station: b.pickupStationId ? stationMap.get(b.pickupStationId) || '' : '',
+        pickupStationId: b.pickupStationId ?? null,
+        pickupStationName,
+        station: pickupStationName,
+        stationLabel: pickupStationName,
         startDate: b.startDate.toISOString(),
         endDate: b.endDate.toISOString(),
         status: BOOKING_STATUS_DISPLAY[b.status] || b.status,
@@ -1184,6 +1199,84 @@ export class BookingsService {
         minutesOverdue,
       };
     });
+  }
+
+  private buildTodayReturnSignals(
+    booking: {
+      endDate: Date;
+      status: BookingStatus;
+      kmIncluded: number | null;
+      kmDriven: number | null;
+    },
+    pickup: HandoverProtocolDto | null,
+    ret: HandoverProtocolDto | null,
+    now: Date,
+    liveOdometerKm: number | null,
+  ) {
+    const warnings: string[] = [];
+    const isOverdue =
+      !ret && booking.endDate.getTime() < now.getTime() ? true : ret ? false : null;
+
+    const kmIncluded =
+      typeof booking.kmIncluded === 'number' && booking.kmIncluded > 0
+        ? booking.kmIncluded
+        : null;
+
+    let kmDriven: number | null =
+      typeof booking.kmDriven === 'number' ? booking.kmDriven : null;
+    if (kmDriven == null && pickup && liveOdometerKm != null) {
+      kmDriven = Math.max(0, Math.floor(liveOdometerKm - pickup.odometerKm));
+    }
+
+    let extraKm: number | null = null;
+    let kmExceeded: boolean | null = null;
+    if (kmIncluded != null && kmDriven != null) {
+      extraKm = Math.max(0, kmDriven - kmIncluded);
+      kmExceeded = extraKm > 0;
+    }
+
+    let returnProtocolStatus: string | null = null;
+    if (ret) returnProtocolStatus = 'COMPLETED';
+    else if (booking.status === 'ACTIVE') returnProtocolStatus = 'PENDING';
+
+    let hasError: boolean | null = null;
+    if (ret) {
+      const protocolIssue =
+        ret.warningLightsOn || (Array.isArray(ret.damageIds) && ret.damageIds.length > 0);
+      hasError = protocolIssue ? true : false;
+      if (ret.warningLightsOn) warnings.push('warning_lights');
+      if (Array.isArray(ret.damageIds) && ret.damageIds.length > 0) {
+        warnings.push('damages_reported');
+      }
+    }
+
+    if (isOverdue) warnings.push('overdue');
+    if (kmExceeded) warnings.push('km_exceeded');
+
+    const hasReturnIssues =
+      warnings.length > 0
+        ? true
+        : ret || isOverdue === false
+          ? false
+          : null;
+
+    const issueSummary =
+      warnings.length > 0
+        ? warnings.join(', ')
+        : null;
+
+    return {
+      kmIncluded,
+      kmDriven,
+      extraKm,
+      kmExceeded,
+      isOverdue,
+      returnProtocolStatus,
+      hasReturnIssues,
+      hasError,
+      warnings,
+      issueSummary,
+    };
   }
 
   async findTodaysReturns(orgId: string) {
@@ -1203,7 +1296,11 @@ export class BookingsService {
     });
 
     const stationIds = [
-      ...new Set(data.map((b) => b.returnStationId).filter(Boolean) as string[]),
+      ...new Set(
+        data
+          .flatMap((b) => [b.pickupStationId, b.returnStationId])
+          .filter(Boolean) as string[],
+      ),
     ];
     const stations =
       stationIds.length > 0
@@ -1216,10 +1313,45 @@ export class BookingsService {
       data.map((b) => b.id),
     );
 
+    const vehicleIds = [...new Set(data.map((b) => b.vehicleId))];
+    const odometerRows =
+      vehicleIds.length > 0
+        ? await this.prisma.vehicleLatestState
+            .findMany({
+              where: { vehicleId: { in: vehicleIds } },
+              select: { vehicleId: true, odometerKm: true },
+            })
+            .catch(() => [] as Array<{ vehicleId: string; odometerKm: number | null }>)
+        : [];
+    const odometerByVehicle = new Map(
+      odometerRows.map((r) => [
+        r.vehicleId,
+        typeof r.odometerKm === 'number' ? r.odometerKm : null,
+      ]),
+    );
+
     return data.map((b) => {
       const protocols = protocolsMap.get(b.id) ?? [];
       const pickup = protocols.find((p) => p.kind === 'PICKUP') ?? null;
       const ret = protocols.find((p) => p.kind === 'RETURN') ?? null;
+      const returnStationName = b.returnStationId
+        ? stationMap.get(b.returnStationId) || ''
+        : '';
+      const pickupStationName = b.pickupStationId
+        ? stationMap.get(b.pickupStationId) || ''
+        : '';
+      const signals = this.buildTodayReturnSignals(
+        {
+          endDate: b.endDate,
+          status: b.status,
+          kmIncluded: b.kmIncluded,
+          kmDriven: b.kmDriven,
+        },
+        pickup,
+        ret,
+        new Date(),
+        odometerByVehicle.get(b.vehicleId) ?? null,
+      );
       return {
         id: b.id,
         vehicleId: b.vehicleId,
@@ -1229,7 +1361,12 @@ export class BookingsService {
           (b as any).vehicle.vehicleName ||
           `${(b as any).vehicle.make} ${(b as any).vehicle.model}`,
         vehicleLicense: (b as any).vehicle.licensePlate || '',
-        station: b.returnStationId ? stationMap.get(b.returnStationId) || '' : '',
+        pickupStationId: b.pickupStationId ?? null,
+        pickupStationName,
+        returnStationId: b.returnStationId ?? null,
+        returnStationName,
+        station: returnStationName,
+        stationLabel: returnStationName,
         startDate: b.startDate.toISOString(),
         endDate: b.endDate.toISOString(),
         status: BOOKING_STATUS_DISPLAY[b.status] || b.status,
@@ -1237,6 +1374,7 @@ export class BookingsService {
         totalPrice: (b.totalPriceCents || 0) / 100,
         pickupProtocol: pickup,
         returnProtocol: ret,
+        ...signals,
       };
     });
   }

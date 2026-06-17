@@ -241,8 +241,11 @@ export interface ReturnTileItem {
   station: string;
   done: boolean;
   vehicleId: string;
-  hasError: boolean;
-  kmExceeded: boolean;
+  hasError?: boolean;
+  kmExceeded?: boolean;
+  extraKm?: number | null;
+  isOverdue?: boolean;
+  returnProtocolStatus?: string | null;
   hasAlert: boolean;
   bookingId?: string;
   startDate?: string;
@@ -262,6 +265,7 @@ interface StatInlineDetailProps {
   pickupAlerts: number;
   returnErrors: number;
   returnKmExceeded: number;
+  returnOverdue?: number;
   returnAlerts: number;
   borderColor: string;
   hideHeader?: boolean;
@@ -283,7 +287,7 @@ interface StatInlineDetailProps {
   stations?: Station[];
 }
 
-export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSelect, onItemHover, pickupItems, returnItems, pickupNeedsCleaning, pickupAlerts, returnErrors, returnKmExceeded, returnAlerts, borderColor, hideHeader, onConfirmPickup, onConfirmReturn, onOpenBookingById, stations }: StatInlineDetailProps) {
+export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSelect, onItemHover, pickupItems, returnItems, pickupNeedsCleaning, pickupAlerts, returnErrors, returnKmExceeded, returnOverdue = 0, returnAlerts, borderColor, hideHeader, onConfirmPickup, onConfirmReturn, onOpenBookingById, stations }: StatInlineDetailProps) {
   const { fleetVehicles } = useFleetVehicles();
 
   // V4.7.04/V4.7.06 — Pre-build the byId / byName indices once per
@@ -1045,22 +1049,24 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
               </div>
               {closeBtn}
             </div>}
-            {(returnErrors > 0 || returnKmExceeded > 0 || returnAlerts > 0) && (
+            {(returnErrors > 0 || returnKmExceeded > 0 || returnOverdue > 0 || returnAlerts > 0) && (
               <div className={`flex items-center gap-2 mb-3 px-3 py-2 rounded-xl ${isDarkMode ? 'bg-red-900/20 border border-red-800/30' : 'bg-red-50 border border-red-200/60'}`}>
                 <Icon name="alert-triangle" className="w-3.5 h-3.5 text-red-500 shrink-0" />
                 <span className={`text-[11px] font-medium ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>
                   {returnErrors > 0 && `${returnErrors} error code${returnErrors > 1 ? 's' : ''}`}
-                  {returnErrors > 0 && returnKmExceeded > 0 && ' · '}
+                  {returnErrors > 0 && (returnKmExceeded > 0 || returnOverdue > 0) && ' · '}
                   {returnKmExceeded > 0 && `${returnKmExceeded} km exceeded`}
-                  {(returnErrors > 0 || returnKmExceeded > 0) && returnAlerts > 0 && ' · '}
+                  {(returnErrors > 0 || returnKmExceeded > 0) && returnOverdue > 0 && ' · '}
+                  {returnOverdue > 0 && `${returnOverdue} overdue`}
+                  {(returnErrors > 0 || returnKmExceeded > 0 || returnOverdue > 0) && returnAlerts > 0 && ' · '}
                   {returnAlerts > 0 && `${returnAlerts} alert${returnAlerts > 1 ? 's' : ''}`}
                 </span>
               </div>
             )}
             <div className="space-y-1.5">
               {returnItems.map((r, i) => {
-                const hasIssues = r.hasError || r.kmExceeded || r.hasAlert;
-                const hasAlertOrError = r.hasAlert || r.hasError;
+                const hasIssues = !!(r.hasError || r.kmExceeded || r.hasAlert || r.isOverdue);
+                const hasAlertOrError = !!(r.hasAlert || r.hasError || r.isOverdue);
                 const linkedVehicle = r.vehicleId ? fleetVehicles.find(v => v.id === r.vehicleId) : null;
                 const canConfirm = !r.done && !!r.bookingId && !!onConfirmReturn;
                 return (
@@ -1077,7 +1083,25 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         {!r.done && hasIssues && (
                           <div className="flex items-center gap-1 mt-1 flex-wrap">
                             {r.hasError && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-100 text-red-700"><Icon name="shield-alert" className="w-2.5 h-2.5" />Error</span>}
-                            {r.kmExceeded && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-100 text-red-700"><Icon name="gauge" className="w-2.5 h-2.5" />km exceeded</span>}
+                            {r.kmExceeded && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-100 text-red-700">
+                                <Icon name="gauge" className="w-2.5 h-2.5" />
+                                {typeof r.extraKm === 'number' && r.extraKm > 0
+                                  ? `${r.extraKm} km über Limit`
+                                  : 'KM überschritten'}
+                              </span>
+                            )}
+                            {r.isOverdue && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-100 text-red-700">
+                                <Icon name="clock" className="w-2.5 h-2.5" />
+                                Überfällig
+                              </span>
+                            )}
+                            {r.returnProtocolStatus && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-muted text-muted-foreground">
+                                {r.returnProtocolStatus}
+                              </span>
+                            )}
                             {r.hasAlert && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-orange-100 text-orange-700"><Icon name="alert-triangle" className="w-2.5 h-2.5" />Alert</span>}
                           </div>
                         )}
@@ -1112,7 +1136,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
           OPERATIONAL_BLOCK label). Workshop "where" is approximated by
           the last-known address — workshop names are not yet persisted
           per the existing V4.6.84 architecture decision. */}
-      {activePopup === 'In Maintenance' && (() => {
+      {activePopup === 'Maintenance' && (() => {
         const vehicles = fleetVehicles.filter(v => v.status === 'Maintenance');
         const unplannedCount = vehicles.filter(v => v.maintenanceUrgency === 'urgent').length;
         return (

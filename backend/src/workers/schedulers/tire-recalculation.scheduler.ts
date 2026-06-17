@@ -6,6 +6,7 @@ import { TireSetupStatus, VehicleStatus } from '@prisma/client';
 
 import { QUEUE_NAMES } from '../queues/queue-names';
 import { PrismaService } from '@shared/database/prisma.service';
+import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 
 @Injectable()
 export class TireRecalculationScheduler {
@@ -18,6 +19,7 @@ export class TireRecalculationScheduler {
 
   @Interval(3600000)
   async enqueueTireRecalculationJobs(): Promise<void> {
+    if (!canEnqueueQueue(this.logger, 'tire-recalculation')) return;
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
     const setups = await this.prisma.vehicleTireSetup.findMany({

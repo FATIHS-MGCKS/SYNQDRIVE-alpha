@@ -8,7 +8,8 @@ import {
   Query,
   UseGuards,
   BadRequestException,
-  NotFoundException,
+  Delete,
+  Req,
 } from '@nestjs/common';
 import { BatteryService } from './battery/battery.service';
 import { TiresService } from './tires/tires.service';
@@ -35,10 +36,13 @@ import { HvBatteryHealthService } from './battery-health/hv-battery-health.servi
 import { BatteryV2Service } from './battery-health/battery-v2.service';
 import { CanonicalBatteryHealthService } from './battery-health/canonical-battery-health.service';
 import { BatteryEvidenceService } from './battery-health/battery-evidence.service';
-import { HealthSummaryService } from './health-summary/health-summary.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
+import { VehicleHealthTabSummaryService } from './health-summary/vehicle-health-tab-summary.service';
+import { DashboardWarningLightsService } from './dashboard-warning-lights/dashboard-warning-lights.service';
 import { HmVehicleActivationService } from '../high-mobility/high-mobility-vehicle-activation.service';
 import { HmSignalUsageService } from '../high-mobility/high-mobility-signal-usage.service';
+import { ServiceComplianceService } from './service-compliance/service-compliance.service';
+import { ComplianceTaskMaterializeService } from './service-compliance/compliance-task-materialize.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { VehicleOwnershipGuard } from '@shared/auth/vehicle-ownership.guard';
 import { PaginationParams } from '@shared/utils/pagination';
@@ -68,6 +72,11 @@ import {
   CreateBrakeSpecDto,
   UpdateBrakeSpecDto,
 } from './brakes/dto/brake-mutation.dto';
+import {
+  CreateVehicleServiceEventDto,
+  UpdateVehicleServiceEventDto,
+} from './service-events/dto';
+import { ServiceEventOrigin } from '@prisma/client';
 
 @Controller('vehicles/:vehicleId')
 @UseGuards(RolesGuard, VehicleOwnershipGuard)
@@ -100,10 +109,13 @@ export class VehicleIntelligenceController {
     private readonly batteryV2Service: BatteryV2Service,
     private readonly canonicalBatteryHealthService: CanonicalBatteryHealthService,
     private readonly batteryEvidenceService: BatteryEvidenceService,
-    private readonly healthSummaryService: HealthSummaryService,
+    private readonly vehicleHealthTabSummaryService: VehicleHealthTabSummaryService,
     private readonly aiHealthCareAggregationService: AiHealthCareAggregationService,
+    private readonly dashboardWarningLightsService: DashboardWarningLightsService,
     private readonly hmVehicleActivationService: HmVehicleActivationService,
     private readonly hmSignalUsageService: HmSignalUsageService,
+    private readonly serviceComplianceService: ServiceComplianceService,
+    private readonly complianceTaskMaterialize: ComplianceTaskMaterializeService,
     @Inject(forwardRef(() => InvoicesService))
     private readonly invoicesService: InvoicesService,
     @Inject(forwardRef(() => AiTireSpecJobService))
@@ -685,17 +697,34 @@ export class VehicleIntelligenceController {
   @Post('service-events')
   async createServiceEvent(
     @Param('vehicleId') vehicleId: string,
-    @Body() body: Omit<Prisma.VehicleServiceEventCreateInput, 'vehicle'>,
+    @Body() body: CreateVehicleServiceEventDto,
+    @Req() req: { user?: { id?: string } },
   ) {
-    return this.serviceEventsService.create(vehicleId, body);
+    return this.serviceEventsService.create(vehicleId, body, {
+      userId: req.user?.id ?? null,
+      origin: ServiceEventOrigin.MANUAL,
+    });
   }
 
   @Patch('service-events/:id')
   async updateServiceEvent(
+    @Param('vehicleId') vehicleId: string,
     @Param('id') id: string,
-    @Body() body: Prisma.VehicleServiceEventUpdateInput,
+    @Body() body: UpdateVehicleServiceEventDto,
+    @Req() req: { user?: { id?: string } },
   ) {
-    return this.serviceEventsService.update(id, body);
+    return this.serviceEventsService.update(vehicleId, id, body, {
+      userId: req.user?.id ?? null,
+    });
+  }
+
+  @Delete('service-events/:id')
+  async deleteServiceEvent(
+    @Param('vehicleId') vehicleId: string,
+    @Param('id') id: string,
+  ) {
+    await this.serviceEventsService.remove(vehicleId, id);
+    return { ok: true };
   }
 
   // --- Enrichment Jobs ---
@@ -1405,219 +1434,18 @@ export class VehicleIntelligenceController {
   // --- Service Info Status ---
   @Get('service-info-status')
   async getServiceInfoStatus(@Param('vehicleId') vehicleId: string) {
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: vehicleId },
-      select: {
-        serviceIntervalManufacturerKm: true,
-        serviceIntervalManufacturerMonths: true,
-        lastServiceDate: true,
-        lastServiceOdometerKm: true,
-        nextServiceDueDate: true,
-        lastTuvDate: true,
-        nextTuvDate: true,
-        lastBokraftDate: true,
-        nextBokraftDate: true,
-      },
-    });
+    return this.serviceComplianceService.buildServiceInfoStatus(vehicleId);
+  }
 
-    const latestState = await this.prisma.vehicleLatestState.findUnique({
-      where: { vehicleId },
-      select: { odometerKm: true },
-    });
-
-    const serviceEvents = await this.prisma.vehicleServiceEvent.findMany({
-      where: { vehicleId, eventType: { in: ['FULL_SERVICE', 'GENERAL_INSPECTION', 'OIL_CHANGE', 'REPAIR'] } },
-      orderBy: { eventDate: 'desc' },
-      take: 20,
-    });
-
-    const tuvEvents = await this.prisma.vehicleServiceEvent.findMany({
-      where: { vehicleId, eventType: 'TUV_INSPECTION' },
-      orderBy: { eventDate: 'desc' },
-      take: 10,
-    });
-
-    const bokraftEvents = await this.prisma.vehicleServiceEvent.findMany({
-      where: { vehicleId, eventType: 'BOKRAFT_INSPECTION' },
-      orderBy: { eventDate: 'desc' },
-      take: 10,
-    });
-
-    const latestServiceEvent = serviceEvents[0] ?? null;
-    const lastServiceDate = latestServiceEvent?.eventDate ?? vehicle?.lastServiceDate ?? null;
-    const lastServiceOdometer = latestServiceEvent?.odometerKm ?? vehicle?.lastServiceOdometerKm ?? null;
-    const intervalKm = vehicle?.serviceIntervalManufacturerKm ?? null;
-    const intervalMonths = vehicle?.serviceIntervalManufacturerMonths ?? null;
-    const currentOdometer = latestState?.odometerKm ?? null;
-    const hasServiceBaseline = lastServiceDate != null;
-
-    // Service remaining values — we now preserve the SIGN of each value so an
-    // overdue service (negative days/km) can be surfaced as critical in the
-    // Dashboard, Health Tab, AI Health Care Summary, and Business Insights.
-    // Previously these were clamped to Math.max(0, ...), which silently hid
-    // overdue vehicles as "0 km / 0 months remaining" = green in every UI.
-    let serviceRemainingPercent: number | null = null;
-    let serviceRemainingKm: number | null = null;
-    let serviceRemainingMonths: number | null = null;
-    // Higher-resolution remaining days — months are far too coarse for a
-    // vehicle that is e.g. 48 days overdue (would otherwise collapse to -2 mo).
-    let serviceRemainingDays: number | null = null;
-
-    const MS_PER_DAY = 24 * 60 * 60 * 1000;
-    const DAYS_PER_MONTH = 30.44;
-
-    if (hasServiceBaseline) {
-      const now = new Date();
-      const lastSvc = new Date(lastServiceDate!);
-      const daysElapsed = Math.floor((now.getTime() - lastSvc.getTime()) / MS_PER_DAY);
-
-      if (intervalMonths != null && intervalMonths > 0) {
-        const intervalDays = Math.round(intervalMonths * DAYS_PER_MONTH);
-        serviceRemainingDays = intervalDays - daysElapsed;
-        // Keep months as an integer, but allow it to go negative so the UI
-        // can render "überfällig seit 2 Monaten". Round-to-nearest rather
-        // than floor so -59 days → -2 months, not -1.
-        serviceRemainingMonths = Math.round(serviceRemainingDays / DAYS_PER_MONTH);
-      }
-
-      if (lastServiceOdometer != null && currentOdometer != null && intervalKm != null && intervalKm > 0) {
-        const kmSince = Math.round(currentOdometer - lastServiceOdometer);
-        serviceRemainingKm = intervalKm - kmSince;
-      }
-
-      const pcts: number[] = [];
-      if (intervalKm != null && intervalKm > 0 && serviceRemainingKm != null) {
-        // Percentages are still clamped 0..100 for the progress bar, but a
-        // negative remaining value correctly yields 0 % (not 100 %).
-        pcts.push(Math.max(0, Math.min(100, Math.round((serviceRemainingKm / intervalKm) * 100))));
-      }
-      if (intervalMonths != null && intervalMonths > 0 && serviceRemainingMonths != null) {
-        pcts.push(Math.max(0, Math.min(100, Math.round((serviceRemainingMonths / intervalMonths) * 100))));
-      }
-      if (pcts.length > 0) serviceRemainingPercent = Math.min(...pcts);
-    }
-
-    const now = new Date();
-    const tuvValidTill = vehicle?.nextTuvDate ?? null;
-    const bokraftValidTill = vehicle?.nextBokraftDate ?? null;
-    // TÜV / BOKraft remaining months are also allowed to go negative so a
-    // lapsed inspection shows up as overdue (red) rather than silently
-    // snapping to 0 months remaining = amber.
-    const tuvRemainingMonths = tuvValidTill
-      ? Math.round((tuvValidTill.getTime() - now.getTime()) / (DAYS_PER_MONTH * MS_PER_DAY))
-      : null;
-    const bokraftRemainingMonths = bokraftValidTill
-      ? Math.round((bokraftValidTill.getTime() - now.getTime()) / (DAYS_PER_MONTH * MS_PER_DAY))
-      : null;
-    const tuvRemainingDays = tuvValidTill
-      ? Math.floor((tuvValidTill.getTime() - now.getTime()) / MS_PER_DAY)
-      : null;
-    const bokraftRemainingDays = bokraftValidTill
-      ? Math.floor((bokraftValidTill.getTime() - now.getTime()) / MS_PER_DAY)
-      : null;
-
-    const mapEvent = (e: any) => ({
-      id: e.id, eventType: e.eventType, date: e.eventDate.toISOString(),
-      odometerKm: e.odometerKm, workshopName: e.workshopName, notes: e.notes,
-    });
-
-    // HM override: check for active HM Health signals for service distance/time
-    let hmServiceSource = false;
-    let hmLastUpdatedAt: string | null = null;
-    // Distinguish "HM is source but OEM didn't send this specific sub-signal"
-    // from "no HM at all". Mercedes fleet-clearance frequently ships
-    // time_to_next_service without distance_to_next_service, so the UI must
-    // know whether the missing km value is a provider gap or a data error.
-    let hmDistanceFromOem = false;
-    let hmTimeFromOem = false;
-    try {
-      const hmActive = await this.hmSignalUsageService.isHmHealthActive(vehicleId);
-      if (hmActive) {
-        const hmService = await this.hmSignalUsageService.getServiceInfoSignals(vehicleId);
-        if (hmService) {
-          if (hmService.distanceToNextServiceKm != null) {
-            // OEMs stream a signed value (negative = overdue) — keep it.
-            serviceRemainingKm = Math.round(hmService.distanceToNextServiceKm);
-            hmServiceSource = true;
-            hmDistanceFromOem = true;
-          }
-          if (hmService.timeToNextServiceDays != null) {
-            // Preserve day-level precision from the OEM. Months is just a
-            // rounded projection — useful as a rough summary but never
-            // authoritative when the OEM gives us days directly.
-            serviceRemainingDays = Math.round(hmService.timeToNextServiceDays);
-            serviceRemainingMonths = Math.round(hmService.timeToNextServiceDays / DAYS_PER_MONTH);
-            hmServiceSource = true;
-            hmTimeFromOem = true;
-          }
-          hmLastUpdatedAt = hmService.lastUpdatedAt;
-          const pcts: number[] = [];
-          if (intervalKm && intervalKm > 0 && serviceRemainingKm != null) {
-            pcts.push(Math.max(0, Math.min(100, Math.round((serviceRemainingKm / intervalKm) * 100))));
-          }
-          if (intervalMonths && intervalMonths > 0 && serviceRemainingMonths != null) {
-            pcts.push(Math.max(0, Math.min(100, Math.round((serviceRemainingMonths / intervalMonths) * 100))));
-          }
-          if (pcts.length > 0) serviceRemainingPercent = Math.min(...pcts);
-        }
-      }
-    } catch {
-      // Non-critical — HM service override is optional; fall through to manufacturer values
-    }
-
-    // Derived critical-state flags. UIs and the BusinessInsights detector
-    // read these instead of re-deriving them from the signed values, so the
-    // whole app is consistent about what "overdue" means.
-    //
-    //   overdue       → distance < 0 km  OR  days < 0
-    //   dueImminently → 0..7 days remaining  OR  0..500 km remaining
-    //                   (still positive, but close enough that a booking
-    //                   starting tomorrow might cross the threshold)
-    const serviceOverdueByDays = serviceRemainingDays != null && serviceRemainingDays < 0;
-    const serviceOverdueByKm = serviceRemainingKm != null && serviceRemainingKm < 0;
-    const serviceOverdue = serviceOverdueByDays || serviceOverdueByKm;
-    const serviceOverdueDays = serviceOverdueByDays ? Math.abs(serviceRemainingDays!) : null;
-    const serviceOverdueKm = serviceOverdueByKm ? Math.abs(serviceRemainingKm!) : null;
-    const serviceDueImminently =
-      !serviceOverdue &&
-      ((serviceRemainingDays != null && serviceRemainingDays >= 0 && serviceRemainingDays <= 7) ||
-        (serviceRemainingKm != null && serviceRemainingKm >= 0 && serviceRemainingKm <= 500));
-    const tuvOverdue = tuvRemainingDays != null && tuvRemainingDays < 0;
-    const bokraftOverdue = bokraftRemainingDays != null && bokraftRemainingDays < 0;
-
-    return {
-      hasServiceBaseline,
-      serviceRemainingPercent,
-      serviceRemainingKm,
-      serviceRemainingMonths,
-      serviceRemainingDays,
-      serviceOverdue,
-      serviceOverdueDays,
-      serviceOverdueKm,
-      serviceDueImminently,
-      intervalKm,
-      intervalMonths,
-      lastServiceDate: lastServiceDate?.toISOString?.() ?? null,
-      lastServiceOdometer,
-      lastServiceWorkshop: latestServiceEvent?.workshopName ?? null,
-      tuvValidTill: tuvValidTill?.toISOString() ?? null,
-      tuvRemainingMonths,
-      tuvRemainingDays,
-      tuvOverdue,
-      tuvLastDate: vehicle?.lastTuvDate?.toISOString() ?? null,
-      bokraftValidTill: bokraftValidTill?.toISOString() ?? null,
-      bokraftRemainingMonths,
-      bokraftRemainingDays,
-      bokraftOverdue,
-      bokraftLastDate: vehicle?.lastBokraftDate?.toISOString() ?? null,
-      serviceHistory: serviceEvents.map(mapEvent),
-      tuvHistory: tuvEvents.map(mapEvent),
-      bokraftHistory: bokraftEvents.map(mapEvent),
-      hmServiceSource,
-      hmLastUpdatedAt,
-      hmDistanceFromOem,
-      hmTimeFromOem,
-    };
+  @Post('compliance-task-signals/:signalKey/materialize')
+  async materializeComplianceTask(
+    @Param('vehicleId') vehicleId: string,
+    @Param('signalKey') signalKey: string,
+    @Req() req: { user?: { organizationId?: string } },
+  ) {
+    const orgId = req.user?.organizationId;
+    if (!orgId) throw new BadRequestException('Organization context required');
+    return this.complianceTaskMaterialize.materializeSignal(orgId, vehicleId, decodeURIComponent(signalKey));
   }
 
   // --- Document Extraction ---
@@ -1719,16 +1547,26 @@ export class VehicleIntelligenceController {
     };
   }
 
-  // --- AI Health Care Summary (legacy) ---
-  @Get('health-summary')
-  async getHealthSummary(@Param('vehicleId') vehicleId: string) {
-    return this.healthSummaryService.getSummary(vehicleId);
+  /** Canonical Health-tab summary — RentalHealthV1 is operational status truth. */
+  @Get('health/summary')
+  async getHealthTabSummary(
+    @Param('vehicleId') vehicleId: string,
+    @Req() req: { user?: { organizationId?: string } },
+  ) {
+    const orgId = req.user?.organizationId;
+    if (!orgId) throw new BadRequestException('Organization context required');
+    return this.vehicleHealthTabSummaryService.getSummary(orgId, vehicleId);
   }
 
   // --- AI Health Care (aggregated with HM indicators) ---
   @Get('health/ai-health-care')
   async getAiHealthCare(@Param('vehicleId') vehicleId: string) {
     return this.aiHealthCareAggregationService.getAiHealthCare(vehicleId);
+  }
+
+  @Get('health/dashboard-warning-lights')
+  async getDashboardWarningLights(@Param('vehicleId') vehicleId: string) {
+    return this.dashboardWarningLightsService.getDashboardWarningLights(vehicleId);
   }
 
   // ── High Mobility Vehicle Activation (Phase 3) ───────────────────────────────

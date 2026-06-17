@@ -1,6 +1,14 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { BrakeServiceKind, BrakeServiceSource } from '@prisma/client';
+import {
+  BrakeAxle,
+  BrakeEvidenceConfidence,
+  BrakeEvidenceSource,
+  BrakeServiceKind,
+  BrakeServiceSource,
+  ServiceEventOrigin,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { BrakeEvidenceService, BrakeEvidenceWriteInput } from './brake-evidence.service';
 import { BrakeHealthService } from './brake-health.service';
 
 export type BrakeLifecycleKind =
@@ -52,6 +60,7 @@ export class BrakeLifecycleService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly brakeHealth: BrakeHealthService,
+    private readonly brakeEvidence: BrakeEvidenceService,
   ) {}
 
   async recordService(input: RecordBrakeServiceInput): Promise<RecordBrakeServiceResult> {
@@ -90,6 +99,7 @@ export class BrakeLifecycleService {
         brakeServiceSource: source,
         brakeServiceScope: scope.length > 0 ? scope : undefined,
         brakeMeasuredSnapshot: hasMeasuredBaseline ? measured : undefined,
+        origin: source === BrakeServiceSource.AI_DOCUMENT ? ServiceEventOrigin.AI_UPLOAD : ServiceEventOrigin.MANUAL,
       },
     });
 
@@ -133,6 +143,18 @@ export class BrakeLifecycleService {
       },
     });
 
+    // Manual/API services with confirmed measurements become canonical BrakeEvidence.
+    // AI document uploads record evidence in document-extraction-apply (post-confirmation).
+    if (hasMeasuredBaseline && input.source !== 'ai_document') {
+      try {
+        await this.recordMeasuredEvidence(input, serviceEvent.id, measured, serviceDate);
+      } catch (err: any) {
+        this.logger.warn(
+          `Brake evidence write failed for vehicle ${input.vehicleId}: ${err?.message ?? err}`,
+        );
+      }
+    }
+
     return {
       serviceEventId: serviceEvent.id,
       lifecycleApplied,
@@ -140,6 +162,58 @@ export class BrakeLifecycleService {
       status,
       message,
     };
+  }
+
+  private async recordMeasuredEvidence(
+    input: RecordBrakeServiceInput,
+    serviceEventId: string,
+    measured: {
+      frontPadMm: number | null;
+      rearPadMm: number | null;
+      frontDiscMm: number | null;
+      rearDiscMm: number | null;
+    },
+    serviceDate: Date,
+  ): Promise<void> {
+    const odometerKm =
+      typeof input.odometerKm === 'number' && Number.isFinite(input.odometerKm)
+        ? Math.round(input.odometerKm)
+        : null;
+    const evidenceSource =
+      input.source === 'api'
+        ? BrakeEvidenceSource.MANUAL_MEASUREMENT
+        : BrakeEvidenceSource.WORKSHOP_REPORT;
+
+    const base = {
+      vehicleId: input.vehicleId,
+      source: evidenceSource,
+      confidence: BrakeEvidenceConfidence.HIGH,
+      mileageAtMeasurementKm: odometerKm,
+      measuredAt: serviceDate,
+      serviceEventId,
+      notes: input.notes?.trim() || null,
+    } satisfies Partial<BrakeEvidenceWriteInput>;
+
+    const rows: BrakeEvidenceWriteInput[] = [];
+    if (measured.frontPadMm != null || measured.frontDiscMm != null) {
+      rows.push({
+        ...base,
+        axle: BrakeAxle.FRONT,
+        measuredPadMm: measured.frontPadMm,
+        measuredDiscMm: measured.frontDiscMm,
+      });
+    }
+    if (measured.rearPadMm != null || measured.rearDiscMm != null) {
+      rows.push({
+        ...base,
+        axle: BrakeAxle.REAR,
+        measuredPadMm: measured.rearPadMm,
+        measuredDiscMm: measured.rearDiscMm,
+      });
+    }
+    if (rows.length > 0) {
+      await this.brakeEvidence.recordMany(rows);
+    }
   }
 
   private normalizeScope(scope?: BrakeLifecycleScope[]): BrakeLifecycleScope[] {

@@ -211,6 +211,14 @@ export function DataAuthorizationDetailDrawer({
             <DetailRow label="Quelle" value={labelSourceType(auth.sourceType)} />
             <DetailRow label="Verarbeiter" value={labelProcessor(auth)} />
             <DetailRow label="Scope" value={labelScope(auth.scopeKey)} />
+            {auth.scopeNote && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 px-4 pb-2">{auth.scopeNote}</p>
+            )}
+            {dimo && (auth.vehicleCount ?? 0) === 0 && auth.statusKey !== 'REVOKED' && (
+              <p className="text-xs text-muted-foreground px-4 pb-2">
+                Letzte Synchronisierung: {formatAuthDate(auth.lastSyncedAt ?? auth.updatedAt)}
+              </p>
+            )}
             <DetailRow label="Betroffene Objekte" value={affectedObjectsSummary(auth)} />
             <DetailRow label="Ablauf" value={formatAuthDate(auth.expiresAt)} />
             <DetailRow label="Letzter Zugriff" value={formatAuthDate(auth.lastAccessAt)} />

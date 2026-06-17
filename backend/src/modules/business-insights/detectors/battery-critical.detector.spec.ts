@@ -125,4 +125,30 @@ describe('BatteryCriticalDetector', () => {
     const result = await new BatteryCriticalDetector(prisma).detect(buildCtx());
     expect(result).toHaveLength(0);
   });
+
+  it('does not alert on WATCH estimated battery health', async () => {
+    const prisma = buildPrisma({
+      features: { publishedSohPct: 70, publicationState: 'STABLE', crankDrop: 1.0 },
+    });
+    const result = await new BatteryCriticalDetector(prisma).detect(buildCtx());
+    expect(result).toHaveLength(0);
+  });
+
+  it('alerts WARNING on low estimated battery health', async () => {
+    const prisma = buildPrisma({
+      features: { publishedSohPct: 50, publicationState: 'STABLE', crankDrop: 1.0 },
+    });
+    const result = await new BatteryCriticalDetector(prisma).detect(buildCtx());
+    expect(result).toHaveLength(1);
+    expect(result[0].severity).toBe(InsightSeverity.WARNING);
+  });
+
+  it('alerts CRITICAL on critical estimated battery health', async () => {
+    const prisma = buildPrisma({
+      features: { publishedSohPct: 35, publicationState: 'STABLE', crankDrop: 1.0 },
+    });
+    const result = await new BatteryCriticalDetector(prisma).detect(buildCtx());
+    expect(result).toHaveLength(1);
+    expect(result[0].severity).toBe(InsightSeverity.CRITICAL);
+  });
 });

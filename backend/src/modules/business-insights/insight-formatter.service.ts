@@ -28,6 +28,7 @@ const TITLE_TEMPLATES: Record<InsightType, string> = {
   // "… überfällig") so the escalation stays visible on the dashboard.
   [InsightType.TUV_OVERDUE]: '',
   [InsightType.BOKRAFT_OVERDUE]: '',
+  [InsightType.HM_SERVICE_NO_TRACKING]: '',
 };
 
 const ACTION_LABELS: Record<InsightType, string> = {
@@ -44,6 +45,7 @@ const ACTION_LABELS: Record<InsightType, string> = {
   [InsightType.PICKUP_OVERDUE]: 'Buchung öffnen',
   [InsightType.TUV_OVERDUE]: 'Fahrzeug prüfen',
   [InsightType.BOKRAFT_OVERDUE]: 'Fahrzeug prüfen',
+  [InsightType.HM_SERVICE_NO_TRACKING]: 'Fahrzeug ansehen',
 };
 
 const MAX_TITLE = 40;

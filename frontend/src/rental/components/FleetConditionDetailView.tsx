@@ -1,3 +1,7 @@
+/**
+ * @deprecated V4.8.67 — Replaced by `HealthVehicleDetailPanel` / `HealthVehicleDetailDrawer`
+ * in FleetConditionView. Kept for reference until module detail sections are fully migrated.
+ */
 import { AlertCircle, Battery, Bell, Calendar, CircleDot, Disc, MessageSquare, ShieldCheck, Wrench } from 'lucide-react';
 import { Icon } from './ui/Icon';
 import { useState, useEffect } from 'react';
@@ -10,8 +14,17 @@ import {
   type BrakeHealthDetail,
   type BatteryHealthSummary,
   type ServiceInfoStatus,
-  type HealthSummaryResponse,
+  type AiHealthCareResponse,
 } from '../../lib/api';
+import {
+  buildBokraftComplianceDisplay,
+  buildNextServiceDisplay,
+  buildTuvComplianceDisplay,
+  formatServiceEventTypeDe,
+  nextServiceToneClass,
+  serviceHistoryDisclaimer,
+} from '../lib/service-info-display';
+import { ComplianceTaskActions } from './ComplianceTaskActions';
 import type { ConditionCategory } from './FleetConditionView';
 
 interface FleetConditionDetailViewProps {
@@ -64,10 +77,8 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
   const [service, setService] = useState<ServiceInfoStatus | null>(null);
   const [dtcActive, setDtcActive] = useState<any[]>([]);
   const [dtcAll, setDtcAll] = useState<any[]>([]);
-  const [healthSummary, setHealthSummary] = useState<HealthSummaryResponse | null>(null);
-
+  const [aiResult, setAiResult] = useState<AiHealthCareResponse | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiResult, setAiResult] = useState<HealthSummaryResponse | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -108,7 +119,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
   const triggerAiAnalysis = async () => {
     setAiLoading(true);
     try {
-      const result = await api.vehicleIntelligence.healthSummary(vehicleId);
+      const result = await api.vehicleIntelligence.aiHealthCare(vehicleId);
       setAiResult(result);
     } catch { /* keep null */ }
     finally { setAiLoading(false); }
@@ -152,9 +163,9 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
           {category === 'brakes' && <BrakesDetail isDark={isDark} summary={brakeSummary} detail={brakeDetail} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
           {category === 'battery' && <BatteryDetail isDark={isDark} battery={battery} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
           {category === 'dtc' && <DtcDetail isDark={isDark} active={dtcActive} all={dtcAll} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
-          {category === 'service' && <ServiceDetail isDark={isDark} service={service} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
-          {category === 'tuev' && <TuevDetail isDark={isDark} service={service} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
-          {category === 'bokraft' && <BokraftDetail isDark={isDark} service={service} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
+          {category === 'service' && <ServiceDetail isDark={isDark} vehicleId={vehicleId} service={service} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
+          {category === 'tuev' && <TuevDetail isDark={isDark} vehicleId={vehicleId} service={service} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
+          {category === 'bokraft' && <BokraftDetail isDark={isDark} vehicleId={vehicleId} service={service} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
           {category === 'driver-feedback' && <DriverFeedbackDetail isDark={isDark} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
           {category === 'alerts' && <AlertsDetail isDark={isDark} tires={tiresSummary} brakeSummary={brakeSummary} brakeDetail={brakeDetail} battery={battery} dtcActive={dtcActive} cardClass={cardClass} textPrimary={textPrimary} textSecondary={textSecondary} textMuted={textMuted} />}
 
@@ -533,11 +544,6 @@ function BrakesDetail({
   detail,
   ...p
 }: DetailProps & { summary: BrakeHealthSummary | null; detail: BrakeHealthDetail | null }) {
-  const pct =
-    summary?.pads?.healthPercent != null || summary?.discs?.healthPercent != null
-      ? Math.min(summary?.pads?.healthPercent ?? 101, summary?.discs?.healthPercent ?? 101)
-      : null;
-  // Canonical condition is the single source of truth shown to operators.
   const condition = summary?.overallCondition ?? 'UNKNOWN';
   const condLabel =
     condition === 'UNKNOWN' ? '—' : condition.charAt(0) + condition.slice(1).toLowerCase();
@@ -567,34 +573,14 @@ function BrakesDetail({
         : summary?.stateClass === 'WARNING_ONLY'
           ? 'Warning only'
           : 'No baseline';
-  const statusLabel =
-    summary?.status === 'healthy'
-      ? 'Healthy'
-      : summary?.status === 'attention'
-        ? 'Attention'
-        : summary?.status === 'critical'
-          ? 'Critical'
-          : 'Pending baseline';
-  const statusColor =
-    summary?.status === 'healthy'
-      ? isDark
-        ? 'text-emerald-400'
-        : 'text-emerald-500'
-      : summary?.status === 'attention'
-        ? isDark
-          ? 'text-amber-400'
-          : 'text-amber-500'
-        : summary?.status === 'critical'
-          ? isDark
-            ? 'text-red-400'
-            : 'text-red-500'
-          : p.textMuted;
+  const openAlertCount = summary?.openAlerts?.length ?? 0;
 
   const watchpoints = [
     ...(summary?.reasons ?? []),
     ...(summary?.recommendations ?? []),
     ...(summary?.baselineWarnings ?? []),
     ...(summary?.provenanceWarnings ?? []),
+    ...(summary?.openAlerts ?? []).map((a) => a.message),
     ...(detail?.alerts ?? []).map((a) => a.message),
   ];
 
@@ -607,7 +593,7 @@ function BrakesDetail({
           label="Brake Condition"
           value={condLabel}
           colorClass={condColor}
-          sub={pct != null ? `Pad/disc est. ${Math.round(pct)}%` : 'evidence-based'}
+          sub={summary?.dataBasis ? `${BASIS_LABEL[summary.dataBasis] ?? 'Unknown'} basis` : stateLabel}
         />
         <StatBox
           {...p}
@@ -635,8 +621,7 @@ function BrakesDetail({
           isDark={isDark}
           label="Confidence"
           value={CONF_LABEL[summary?.confidenceLevel ?? 'UNKNOWN'] ?? 'Unknown'}
-          colorClass={statusColor}
-          sub={summary?.confidence?.score != null ? `Score: ${summary.confidence.score}` : statusLabel}
+          sub={openAlertCount > 0 ? `${openAlertCount} open alert${openAlertCount > 1 ? 's' : ''}` : (summary?.confidence?.score != null ? `Score: ${summary.confidence.score}` : stateLabel)}
         />
       </div>
 
@@ -690,7 +675,7 @@ function BrakesDetail({
 
       {(detail?.history?.length ?? 0) > 0 && (
         <div className={`${p.cardClass} p-5`}>
-          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>Service History</h3>
+          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>Bremsenservice-Historie</h3>
           <div className="space-y-2">
             {detail!.history.slice(0, 10).map((h) => (
               <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'bg-neutral-800/40' : 'bg-gray-50'}`}>
@@ -884,50 +869,66 @@ function DtcDetail({ isDark, active, all, ...p }: DetailProps & { active: any[];
   );
 }
 
-/* ─── SERVICE ─── */
-function ServiceDetail({ isDark, service: svc, ...p }: DetailProps & { service: ServiceInfoStatus | null }) {
-  const pct = svc?.serviceRemainingPercent ?? null;
-  // Mercedes fleet-clearance only ships time_to_next_service (days) today,
-  // not distance_to_next_service (km). Surface that gap explicitly rather
-  // than rendering "—" which looks like a data bug.
-  const hmActive = svc?.hmServiceSource === true;
-  const kmMissingFromOem = hmActive && svc?.hmDistanceFromOem === false;
-  const timeMissingFromOem = hmActive && svc?.hmTimeFromOem === false;
-  const kmValue =
-    svc?.serviceRemainingKm != null
-      ? `${svc.serviceRemainingKm.toLocaleString('de-DE')}`
-      : kmMissingFromOem
-        ? 'n/a'
-        : '—';
-  const kmSub = kmMissingFromOem ? 'vom OEM nicht geliefert' : 'estimated';
-  const timeSub = timeMissingFromOem ? 'vom OEM nicht geliefert' : 'until due';
+/* ─── SERVICE (HM/OEM Next Service) ─── */
+function ServiceDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & { vehicleId: string; service: ServiceInfoStatus | null }) {
+  const nsDisplay = buildNextServiceDisplay(svc);
+  const { days, km } = nsDisplay.daysKm;
+  const tracked = nsDisplay.trackingStatus === 'TRACKED';
+  const serviceSignals = svc?.taskSignals?.filter((s) => s.category === 'Maintenance') ?? [];
+
   return (
     <>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatBox {...p} isDark={isDark} label="Service Remaining" value={pct != null ? `${Math.round(pct)}%` : '—'} colorClass={pct != null ? getMetricColor(pct, isDark) : p.textMuted} sub="until next service" />
-        <StatBox {...p} isDark={isDark} label="Remaining KM" value={kmValue} sub={kmSub} colorClass={kmMissingFromOem ? p.textMuted : undefined} />
-        <StatBox {...p} isDark={isDark} label="Remaining Time" value={fmtRemTime(svc?.serviceRemainingMonths ?? null)} sub={timeSub} />
-        <StatBox {...p} isDark={isDark} label="Last Service" value={fmtDate(svc?.lastServiceDate ?? null)} sub={svc?.lastServiceWorkshop ?? ''} />
+      <div className={`${p.cardClass} p-5 mb-4 ${nsDisplay.tone === 'critical' ? 'border-red-300 dark:border-red-500/40' : nsDisplay.tone === 'warning' ? 'border-amber-300 dark:border-amber-500/40' : ''}`}>
+        <p className={`text-sm font-semibold mb-1 ${nextServiceToneClass(nsDisplay.tone)}`}>{nsDisplay.title}</p>
+        <p className={`text-base font-bold mb-2 ${p.textPrimary}`}>{nsDisplay.primaryLine}</p>
+        <p className={`text-xs mb-2 ${p.textMuted}`}>{nsDisplay.description}</p>
+        {nsDisplay.sourceLine && <p className={`text-xs ${p.textMuted}`}>{nsDisplay.sourceLine}</p>}
+        {nsDisplay.lastUpdatedLabel && (
+          <p className={`text-[11px] mt-2 ${p.textMuted}`}>{nsDisplay.lastUpdatedLabel}</p>
+        )}
+        {serviceSignals.length > 0 && (
+          <div className="mt-4">
+            <ComplianceTaskActions vehicleId={vehicleId} signals={serviceSignals} compact />
+          </div>
+        )}
       </div>
 
-      {hmActive && kmMissingFromOem && (
-        <div className={`${p.cardClass} p-3 text-xs ${p.textMuted} flex items-center gap-2`}>
-          <Icon name="info" className="w-3.5 h-3.5 flex-shrink-0" />
-          <span>
-            Kilometer bis zum nächsten Service werden vom OEM aktuell nicht gestreamt — nur Tage verfügbar.
-          </span>
+      {tracked && (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+          <StatBox
+            {...p}
+            isDark={isDark}
+            label="Restlaufzeit (Tage)"
+            value={days != null ? `${days} Tage` : '—'}
+            sub="Von HM/OEM geliefert"
+          />
+          <StatBox
+            {...p}
+            isDark={isDark}
+            label="Restlaufzeit (km)"
+            value={km != null ? km.toLocaleString('de-DE') : svc?.nextService?.hmDistanceFromOem === false ? 'Nicht geliefert' : '—'}
+            sub="Von HM/OEM geliefert"
+          />
+          <StatBox
+            {...p}
+            isDark={isDark}
+            label="Letzter Vollservice"
+            value={fmtDate(svc?.lastServiceDate ?? null)}
+            sub={svc?.lastServiceWorkshop ?? 'Historie — kein Next-Service-Reset'}
+          />
         </div>
       )}
 
       {svc?.serviceHistory && svc.serviceHistory.length > 0 && (
         <div className={`${p.cardClass} p-5`}>
-          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>Service History</h3>
+          <h3 className={`text-sm font-semibold mb-2 ${p.textPrimary}`}>Servicehistorie</h3>
+          <p className={`text-xs mb-3 ${p.textMuted}`}>{serviceHistoryDisclaimer()}</p>
           <div className="space-y-2">
             {svc.serviceHistory.slice(0, 10).map(h => (
               <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'bg-neutral-800/40' : 'bg-gray-50'}`}>
                 <Icon name="clock" className={`w-3 h-3 ${p.textMuted}`} />
-                <span className={`text-xs font-medium ${p.textPrimary}`}>{fmtDate(h.date)}</span>
-                <span className={`text-[10px] ${p.textMuted}`}>{h.eventType}</span>
+                <span className={`text-xs font-medium ${p.textPrimary}`}>{formatServiceEventTypeDe(h.eventType)}</span>
+                <span className={`text-[10px] ${p.textMuted}`}>{fmtDate(h.date)}</span>
                 {h.odometerKm != null && <span className={`text-[10px] ${p.textMuted}`}>{h.odometerKm.toLocaleString('de-DE')} km</span>}
                 {h.workshopName && <span className={`text-[10px] ${p.textMuted}`}>{h.workshopName}</span>}
               </div>
@@ -940,24 +941,33 @@ function ServiceDetail({ isDark, service: svc, ...p }: DetailProps & { service: 
 }
 
 /* ─── TÜV ─── */
-function TuevDetail({ isDark, service: svc, ...p }: DetailProps & { service: ServiceInfoStatus | null }) {
-  const remMo = svc?.tuvRemainingMonths ?? null;
-  const pct = remMo != null ? Math.min(100, Math.max(0, (remMo / 24) * 100)) : null;
+function TuevDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & { vehicleId: string; service: ServiceInfoStatus | null }) {
+  const tuv = buildTuvComplianceDisplay(svc);
+  const tuvSignals = svc?.taskSignals?.filter((s) => s.category === 'TÜV') ?? [];
   return (
     <>
+      <div className={`${p.cardClass} p-5 mb-4`}>
+        <p className={`text-lg font-bold ${nextServiceToneClass(tuv.tone)}`}>{tuv.label}</p>
+        <p className={`text-xs mt-1 ${p.textMuted}`}>Gültig bis: {tuv.validTill ?? '—'}</p>
+        <p className={`text-sm font-medium mt-2 ${nextServiceToneClass(tuv.tone)}`}>{tuv.detail}</p>
+        {tuv.blocksRentalHint && (
+          <p className="text-sm mt-3 font-bold text-red-600 dark:text-red-400">Nicht vermieten — TÜV abgelaufen</p>
+        )}
+        {tuvSignals.length > 0 && (
+          <div className="mt-4">
+            <ComplianceTaskActions vehicleId={vehicleId} signals={tuvSignals} compact />
+          </div>
+        )}
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <StatBox {...p} isDark={isDark} label="Valid Until" value={fmtDate(svc?.tuvValidTill ?? null)} colorClass={
-          remMo != null && remMo <= 2 ? (isDark ? 'text-red-400' : 'text-red-500') : remMo != null && remMo <= 6 ? (isDark ? 'text-amber-400' : 'text-amber-500') : undefined
-        } sub="TÜV expiry" />
-        <StatBox {...p} isDark={isDark} label="Remaining" value={fmtRemTime(remMo)} colorClass={
-          remMo != null && remMo <= 2 ? (isDark ? 'text-red-400' : 'text-red-500') : remMo != null && remMo <= 6 ? (isDark ? 'text-amber-400' : 'text-amber-500') : (isDark ? 'text-emerald-400' : 'text-emerald-500')
-        } />
-        <StatBox {...p} isDark={isDark} label="Last TÜV" value={fmtDate(svc?.tuvLastDate ?? null)} sub="previous inspection" />
+        <StatBox {...p} isDark={isDark} label="Gültig bis" value={fmtDate(svc?.tuvValidTill ?? null)} sub="TÜV-Termin" colorClass={nextServiceToneClass(tuv.tone)} />
+        <StatBox {...p} isDark={isDark} label="Status" value={tuv.label} sub={tuv.detail} colorClass={nextServiceToneClass(tuv.tone)} />
+        <StatBox {...p} isDark={isDark} label="Letzter TÜV" value={fmtDate(svc?.tuvLastDate ?? null)} sub="Vorherige Prüfung" />
       </div>
 
       {svc?.tuvHistory && svc.tuvHistory.length > 0 && (
-        <div className={`${p.cardClass} p-5`}>
-          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>TÜV History</h3>
+        <div className={`${p.cardClass} p-5 mt-4`}>
+          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>TÜV-Historie</h3>
           <div className="space-y-2">
             {svc.tuvHistory.map(h => (
               <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'bg-neutral-800/40' : 'bg-gray-50'}`}>
@@ -974,23 +984,33 @@ function TuevDetail({ isDark, service: svc, ...p }: DetailProps & { service: Ser
 }
 
 /* ─── BOKraft ─── */
-function BokraftDetail({ isDark, service: svc, ...p }: DetailProps & { service: ServiceInfoStatus | null }) {
-  const remMo = svc?.bokraftRemainingMonths ?? null;
+function BokraftDetail({ isDark, vehicleId, service: svc, ...p }: DetailProps & { vehicleId: string; service: ServiceInfoStatus | null }) {
+  const bok = buildBokraftComplianceDisplay(svc);
+  const bokSignals = svc?.taskSignals?.filter((s) => s.category === 'BOKraft') ?? [];
   return (
     <>
+      <div className={`${p.cardClass} p-5 mb-4`}>
+        <p className={`text-lg font-bold ${nextServiceToneClass(bok.tone)}`}>{bok.label}</p>
+        <p className={`text-xs mt-1 ${p.textMuted}`}>Gültig bis: {bok.validTill ?? '—'}</p>
+        <p className={`text-sm font-medium mt-2 ${nextServiceToneClass(bok.tone)}`}>{bok.detail}</p>
+        {bok.blocksRentalHint && (
+          <p className="text-sm mt-3 font-bold text-red-600 dark:text-red-400">Nicht vermieten — BOKraft abgelaufen</p>
+        )}
+        {bokSignals.length > 0 && (
+          <div className="mt-4">
+            <ComplianceTaskActions vehicleId={vehicleId} signals={bokSignals} compact />
+          </div>
+        )}
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <StatBox {...p} isDark={isDark} label="Valid Until" value={fmtDate(svc?.bokraftValidTill ?? null)} colorClass={
-          remMo != null && remMo <= 1 ? (isDark ? 'text-red-400' : 'text-red-500') : remMo != null && remMo <= 3 ? (isDark ? 'text-amber-400' : 'text-amber-500') : undefined
-        } sub="BOKraft expiry" />
-        <StatBox {...p} isDark={isDark} label="Remaining" value={fmtRemTime(remMo)} colorClass={
-          remMo != null && remMo <= 1 ? (isDark ? 'text-red-400' : 'text-red-500') : remMo != null && remMo <= 3 ? (isDark ? 'text-amber-400' : 'text-amber-500') : (isDark ? 'text-emerald-400' : 'text-emerald-500')
-        } />
-        <StatBox {...p} isDark={isDark} label="Last BOKraft" value={fmtDate(svc?.bokraftLastDate ?? null)} sub="previous inspection" />
+        <StatBox {...p} isDark={isDark} label="Gültig bis" value={fmtDate(svc?.bokraftValidTill ?? null)} sub="BOKraft-Termin" colorClass={nextServiceToneClass(bok.tone)} />
+        <StatBox {...p} isDark={isDark} label="Status" value={bok.label} sub={bok.detail} colorClass={nextServiceToneClass(bok.tone)} />
+        <StatBox {...p} isDark={isDark} label="Letzter BOKraft" value={fmtDate(svc?.bokraftLastDate ?? null)} sub="Vorherige Prüfung" />
       </div>
 
       {svc?.bokraftHistory && svc.bokraftHistory.length > 0 && (
-        <div className={`${p.cardClass} p-5`}>
-          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>BOKraft History</h3>
+        <div className={`${p.cardClass} p-5 mt-4`}>
+          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>BOKraft-Historie</h3>
           <div className="space-y-2">
             {svc.bokraftHistory.map(h => (
               <div key={h.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg ${isDark ? 'bg-neutral-800/40' : 'bg-gray-50'}`}>
@@ -1028,19 +1048,27 @@ function AlertsDetail({ isDark, tires, brakeSummary, brakeDetail, battery, dtcAc
   const allAlerts: { source: string; severity: 'critical' | 'warning' | 'info'; message: string }[] = [];
 
   (tires?.alerts ?? []).forEach(a => allAlerts.push({ source: 'Tires', severity: a.severity, message: a.message }));
-  (brakeSummary?.baselineWarnings ?? []).forEach(w =>
-    allAlerts.push({ source: 'Brakes', severity: 'warning', message: w }),
-  );
-  (brakeSummary?.provenanceWarnings ?? []).forEach(w =>
-    allAlerts.push({ source: 'Brakes', severity: 'info', message: w }),
-  );
-  (brakeDetail?.alerts ?? []).forEach((a) =>
+  (brakeSummary?.openAlerts ?? []).forEach((a) =>
     allAlerts.push({
       source: 'Brakes',
       severity: a.severity === 'critical' ? 'critical' : a.severity === 'warning' ? 'warning' : 'info',
       message: a.message,
     }),
   );
+  (brakeSummary?.baselineWarnings ?? []).forEach(w =>
+    allAlerts.push({ source: 'Brakes', severity: 'warning', message: w }),
+  );
+  (brakeSummary?.provenanceWarnings ?? []).forEach(w =>
+    allAlerts.push({ source: 'Brakes', severity: 'info', message: w }),
+  );
+  (brakeDetail?.alerts ?? []).forEach((a) => {
+    if (brakeSummary?.openAlerts?.some((o) => o.message === a.message)) return;
+    allAlerts.push({
+      source: 'Brakes',
+      severity: a.severity === 'critical' ? 'critical' : a.severity === 'warning' ? 'warning' : 'info',
+      message: a.message,
+    });
+  });
   (battery?.watchpoints ?? []).forEach(w => allAlerts.push({ source: 'Battery', severity: 'warning', message: w }));
   if (dtcActive.length > 0) allAlerts.push({ source: 'DTC', severity: dtcActive.length >= 3 ? 'critical' : 'warning', message: `${dtcActive.length} active error code(s)` });
 

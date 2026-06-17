@@ -38,6 +38,19 @@ export interface RestingVoltageClassification {
   batteryType: NormalizedBatteryType;
 }
 
+/** Minimal shape for ranking `VehicleBatterySpec` rows. */
+export interface VehicleBatterySpecCandidate {
+  batteryType: string | null;
+  batteryVolt: number | null;
+  sourceConfidence?: number | null;
+  createdAt?: Date | string | null;
+}
+
+export interface ClassifyRestingVoltageOptions {
+  /** True when a usable `VehicleBatterySpec` supplied the battery type. */
+  specProvided?: boolean;
+}
+
 interface RestingVoltageThresholds {
   /** >= good → GOOD */
   good: number;
@@ -113,19 +126,95 @@ export function statusToBars(status: BatteryHealthStatus | LvAggregateStatus): 0
  * no explicit lithium thresholds exist the status is UNSUPPORTED so no false
  * lead-acid alert is produced.
  */
+function specCreatedAtMs(spec: VehicleBatterySpecCandidate): number {
+  if (!spec.createdAt) return 0;
+  const d =
+    spec.createdAt instanceof Date ? spec.createdAt : new Date(spec.createdAt);
+  const t = d.getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
+function isCompleteBatterySpec(spec: VehicleBatterySpecCandidate): boolean {
+  const type = normalizeBatteryType(spec.batteryType);
+  const hasVolt = spec.batteryVolt != null && Number.isFinite(spec.batteryVolt);
+  return type !== 'UNKNOWN' && hasVolt;
+}
+
+function isPlausibleLvVolt(volt: number | null | undefined): boolean {
+  if (volt == null || !Number.isFinite(volt)) return false;
+  return Math.abs(volt - 12) <= 2;
+}
+
+function hasKnownBatteryType(spec: VehicleBatterySpecCandidate): boolean {
+  return normalizeBatteryType(spec.batteryType) !== 'UNKNOWN';
+}
+
+/**
+ * Pick the best available `VehicleBatterySpec` for a vehicle.
+ * Ranking: completeness (type+volt) → sourceConfidence → plausible 12 V volt →
+ * known type → newest on tie. Returns null when nothing usable exists.
+ */
+export function selectBestBatterySpec<T extends VehicleBatterySpecCandidate>(
+  specs: T[] | null | undefined,
+): T | null {
+  if (!specs?.length) return null;
+
+  const ranked = [...specs].sort((a, b) => {
+    const aComplete = isCompleteBatterySpec(a) ? 1 : 0;
+    const bComplete = isCompleteBatterySpec(b) ? 1 : 0;
+    if (bComplete !== aComplete) return bComplete - aComplete;
+
+    const aConf = a.sourceConfidence ?? 0;
+    const bConf = b.sourceConfidence ?? 0;
+    if (bConf !== aConf) return bConf - aConf;
+
+    const aPlausible = isPlausibleLvVolt(a.batteryVolt) ? 1 : 0;
+    const bPlausible = isPlausibleLvVolt(b.batteryVolt) ? 1 : 0;
+    if (bPlausible !== aPlausible) return bPlausible - aPlausible;
+
+    const aType = hasKnownBatteryType(a) ? 1 : 0;
+    const bType = hasKnownBatteryType(b) ? 1 : 0;
+    if (bType !== aType) return bType - aType;
+
+    return specCreatedAtMs(b) - specCreatedAtMs(a);
+  });
+
+  const best = ranked[0];
+  if (!best) return null;
+
+  if (
+    !hasKnownBatteryType(best) &&
+    !isPlausibleLvVolt(best.batteryVolt) &&
+    !isCompleteBatterySpec(best)
+  ) {
+    return null;
+  }
+
+  return best;
+}
+
+/** True when resting-voltage bands should be attributed to a vehicle battery spec. */
+export function specUsedForRestingThresholds(
+  spec: VehicleBatterySpecCandidate | null | undefined,
+): boolean {
+  if (!spec) return false;
+  return normalizeBatteryType(spec.batteryType) !== 'UNKNOWN';
+}
+
 export function classifyRestingVoltage(
   voltageV: number | null | undefined,
   batteryTypeRaw: string | null | undefined,
+  options?: ClassifyRestingVoltageOptions,
 ): RestingVoltageClassification {
   const batteryType = normalizeBatteryType(batteryTypeRaw);
+  const specProvided = options?.specProvided ?? false;
 
   if (batteryType === 'LITHIUM') {
     return { status: 'UNSUPPORTED', thresholdSource: 'UNSUPPORTED', batteryType };
   }
 
-  // Only AGM has distinct resting bands; EFB shares DEFAULT_RESTING_THRESHOLDS.
   const thresholdSource: RestingThresholdSource =
-    batteryType === 'AGM' ? 'BATTERY_SPEC' : 'DEFAULT';
+    specProvided && batteryType !== 'UNKNOWN' ? 'BATTERY_SPEC' : 'DEFAULT';
 
   if (voltageV == null || !Number.isFinite(voltageV)) {
     return { status: 'UNKNOWN', thresholdSource, batteryType };

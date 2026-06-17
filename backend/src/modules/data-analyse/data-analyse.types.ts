@@ -19,6 +19,23 @@ export type HfDetectionQuality =
   | 'Not available'
   | 'Unknown';
 
+export type HfReliabilityStatus = 'GOOD' | 'WATCH' | 'POOR' | 'MISSING';
+
+export type LaunchDetectionUsefulness =
+  | 'POSSIBLE'
+  | 'LIMITED'
+  | 'NOT_POSSIBLE'
+  | 'UNKNOWN';
+
+export type HfPracticalUse =
+  | 'Live Map'
+  | 'Trip Reconstruction'
+  | 'Launch-like Start Detection'
+  | 'Brake Health'
+  | 'Tire Health'
+  | 'Battery Health'
+  | 'Alerts';
+
 export type LaunchFeasibility =
   | 'Reliable'
   | 'Possible but weak'
@@ -79,7 +96,27 @@ export interface SignalArrivalRowDto {
 }
 
 export interface HighFrequencySignalDto {
+  signalKey: string;
   signalName: string;
+  displayName: string;
+  sourceProvider: string | null;
+  pollGroup: string;
+  storageTable: string;
+  sampleCount24h: number | null;
+  sampleCount7d: number | null;
+  firstSeenAt: string | null;
+  lastSeenAt: string | null;
+  medianIntervalMs: number | null;
+  p95IntervalMs: number | null;
+  minIntervalMs: number | null;
+  maxIntervalMs: number | null;
+  gapCount: number | null;
+  largestGapMs: number | null;
+  reliabilityStatus: HfReliabilityStatus;
+  practicalUse: HfPracticalUse[];
+  launchDetectionUsefulness: LaunchDetectionUsefulness;
+  explanation: string;
+  /** Legacy compatibility fields */
   observedIntervalMs: number | null;
   averageIntervalMs: number | null;
   dropoutCount: number | null;
@@ -118,6 +155,9 @@ export interface SignalGroupDefinitionDto {
   practicalUse: string;
   usedByModules: string[];
   detectionRelevance: string;
+  sourceProvider: string | null;
+  storageLocation: string | null;
+  limitations: string | null;
   currentAvailability: 'available' | 'partial' | 'missing' | 'unknown';
   availabilityNotes: string | null;
 }

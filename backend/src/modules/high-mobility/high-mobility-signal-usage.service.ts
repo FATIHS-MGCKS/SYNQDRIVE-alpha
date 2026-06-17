@@ -37,6 +37,13 @@ function getFreshnessStatus(
   return 'stale';
 }
 
+/** null/undefined signal values stay null — never coerce to false ("off"). */
+function toTriStateBoolean(sig: { value: unknown } | undefined | null): boolean | null {
+  if (sig == null) return null;
+  if (sig.value === null || sig.value === undefined) return null;
+  return Boolean(sig.value);
+}
+
 export interface HmServiceSignals {
   distanceToNextServiceKm: number | null;
   timeToNextServiceDays: number | null;
@@ -77,6 +84,22 @@ export interface HmAiHealthCareSignals {
   lastUpdatedAt: string | null;
   hmVehicleId: string;
   freshnessStatus: HmFreshnessStatus;
+}
+
+export interface HmAiHealthCareRawState {
+  signals: Record<string, HmSignalEntry>;
+  tirePressureStatuses: Record<string, string> | null;
+  lastSuccessAt: string | null;
+  lastErrorAt: string | null;
+  lastErrorMessage: string | null;
+  freshnessStatus: HmFreshnessStatus;
+  hmVehicleId: string | null;
+}
+
+export interface HmSignalEntry {
+  value: unknown;
+  unit?: string | null;
+  timestamp?: string | null;
 }
 
 export interface HmSignalGroupMeta {
@@ -259,8 +282,8 @@ export class HmSignalUsageService {
         unit: oilSig.unit ?? null,
         status: this.normalizeOilLevelStatus(oilSig.value),
       } : null,
-      limpModeActive: limpSig != null ? Boolean(limpSig.value) : null,
-      brakeLiningPreWarning: brakeSig != null ? Boolean(brakeSig.value) : null,
+      limpModeActive: toTriStateBoolean(limpSig),
+      brakeLiningPreWarning: toTriStateBoolean(brakeSig),
       tirePressureWarning,
       dashboardLights: signals['dashboard_lights.get.dashboard_lights']?.value ?? null,
       batteryVoltage: readNumeric('diagnostics.get.battery_voltage'),
@@ -281,6 +304,46 @@ export class HmSignalUsageService {
       lastUpdatedAt: state.lastSuccessAt?.toISOString() ?? null,
       hmVehicleId: state.hmVehicleId,
       freshnessStatus: getFreshnessStatus(state.lastSuccessAt, 'AI_HEALTH_CARE'),
+    };
+  }
+
+  /** Raw AI_HEALTH_CARE cache payload for canonical telltale read models. */
+  async getAiHealthCareRawState(vehicleId: string): Promise<HmAiHealthCareRawState | null> {
+    const state = await this.getGroupState(vehicleId, 'AI_HEALTH_CARE');
+    if (!state) {
+      return {
+        signals: {},
+        tirePressureStatuses: null,
+        lastSuccessAt: null,
+        lastErrorAt: null,
+        lastErrorMessage: null,
+        freshnessStatus: 'no_data',
+        hmVehicleId: await this.getLinkedHmVehicleId(vehicleId),
+      };
+    }
+
+    const data = (state.dataJson as Record<string, any> | null) ?? {};
+    const rawSignals: Record<string, any> = data.signals ?? {};
+    const signals: Record<string, HmSignalEntry> = {};
+    for (const [key, sig] of Object.entries(rawSignals)) {
+      if (!sig || typeof sig !== 'object') continue;
+      signals[key] = {
+        value: sig.value,
+        unit: sig.unit ?? null,
+        timestamp: sig.timestamp ?? null,
+      };
+    }
+
+    return {
+      signals,
+      tirePressureStatuses: (data.tirePressureStatuses as Record<string, string> | null) ?? null,
+      lastSuccessAt: state.lastSuccessAt?.toISOString() ?? null,
+      lastErrorAt: state.lastErrorAt?.toISOString() ?? null,
+      lastErrorMessage: state.lastErrorMessage ?? null,
+      freshnessStatus: state.lastSuccessAt
+        ? getFreshnessStatus(state.lastSuccessAt, 'AI_HEALTH_CARE')
+        : 'no_data',
+      hmVehicleId: state.hmVehicleId,
     };
   }
 

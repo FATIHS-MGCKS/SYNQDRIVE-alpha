@@ -21,15 +21,10 @@ import { BookingDocumentBundleService } from '@modules/documents/booking-documen
 import { WorkflowEventService } from '@modules/workflows/workflow-event.service';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
-// Enforces the booking lifecycle at the service layer:
-//   PICKUP  : requires Booking.status == CONFIRMED  -> transitions to ACTIVE
-//   RETURN  : requires Booking.status == ACTIVE     -> transitions to COMPLETED
-// Protocol rows are unique per (bookingId, kind); re-running a handover is
-// therefore not possible — the operator has to cancel the booking or open a
-// correction flow (future). Vehicle.status is intentionally NOT touched here:
-// V4.6.70 derives fleet-status from open booking rows, so transitioning the
-// booking itself is enough to flip the vehicle tile to "Active Rented" on
-// the dashboard without a second write.
+// V4.8.47 — Vehicle.status is updated explicitly on handover (Option A):
+//   PICKUP  → RENTED when vehicle is not IN_SERVICE / OUT_OF_SERVICE
+//   RETURN  → AVAILABLE when no other ACTIVE booking and not blocked by maintenance
+// Fleet read-models still derive rental state from open bookings as a safety net.
 @Injectable()
 export class BookingsHandoverService {
   constructor(
@@ -189,22 +184,53 @@ export class BookingsHandoverService {
         });
 
         // Keep vehicle.status consistent when the handover finalises or
-        // releases the car. The V4.6.70 derivation still works from open
-        // bookings, but writing the explicit value here avoids flicker on
-        // the fleet list between the status change and the next fetch.
+        // releases the car. Maintenance / out-of-service must not be overwritten.
+        const vehicleRow = await tx.vehicle.findFirst({
+          where: { id: booking.vehicleId, organizationId: orgId },
+          select: { status: true },
+        });
+        const blockedStatus =
+          vehicleRow?.status === VehicleStatus.IN_SERVICE ||
+          vehicleRow?.status === VehicleStatus.OUT_OF_SERVICE;
+
         if (kind === 'RETURN') {
-          await tx.vehicle.update({
-            where: { id: booking.vehicleId },
-            data: {
-              status: 'AVAILABLE' as VehicleStatus,
-              ...(actualStationId ? { currentStationId: actualStationId } : {}),
+          const otherActive = await tx.booking.count({
+            where: {
+              organizationId: orgId,
+              vehicleId: booking.vehicleId,
+              status: 'ACTIVE',
+              id: { not: bookingId },
             },
           });
-        } else if (kind === 'PICKUP' && actualStationId) {
-          await tx.vehicle.update({
-            where: { id: booking.vehicleId },
-            data: { currentStationId: actualStationId },
-          });
+          if (!blockedStatus && otherActive === 0) {
+            await tx.vehicle.update({
+              where: { id: booking.vehicleId },
+              data: {
+                status: VehicleStatus.AVAILABLE,
+                ...(actualStationId ? { currentStationId: actualStationId } : {}),
+              },
+            });
+          } else if (actualStationId) {
+            await tx.vehicle.update({
+              where: { id: booking.vehicleId },
+              data: { currentStationId: actualStationId },
+            });
+          }
+        } else if (kind === 'PICKUP') {
+          if (!blockedStatus) {
+            await tx.vehicle.update({
+              where: { id: booking.vehicleId },
+              data: {
+                status: VehicleStatus.RENTED,
+                ...(actualStationId ? { currentStationId: actualStationId } : {}),
+              },
+            });
+          } else if (actualStationId) {
+            await tx.vehicle.update({
+              where: { id: booking.vehicleId },
+              data: { currentStationId: actualStationId },
+            });
+          }
         }
 
         return [created, booking2] as const;

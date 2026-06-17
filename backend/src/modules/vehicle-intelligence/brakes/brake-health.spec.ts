@@ -301,8 +301,10 @@ describe('getSummary', () => {
     const r = await svc.getSummary('v1');
     expect(r.isInitialized).toBe(false);
     expect(r.stateClass).toBe('NO_BASELINE');
-    expect(r.status).toBe('awaiting_baseline');
+    expect(r.legacy.status).toBe('awaiting_baseline');
     expect(r.actions?.canAddBrakeService).toBe(true);
+    expect(r.frontAxle).toBeDefined();
+    expect(r.rearAxle).toBeDefined();
   });
 
   it('returns warning-only when legacy warning exists but no baseline', async () => {
@@ -342,10 +344,13 @@ describe('getSummary', () => {
     const r = await svc.getSummary('v1');
     expect(r.isInitialized).toBe(true);
     expect(r.stateClass).toBe('ESTIMATED');
-    expect(r.pads?.healthPercent).toBe(72);
-    expect(r.discs?.healthPercent).toBe(88);
+    expect(r.legacy.padsHealthPct).toBe(72);
+    expect(r.legacy.discsHealthPct).toBe(88);
+    expect(r.overallCondition).toBeDefined();
+    expect(r.frontAxle.condition).toBeDefined();
+    expect(r.alerts).toEqual(r.openAlerts);
     expect(r.confidence?.label).toBe('Medium');
-    expect(r.hasAlert).toBe(false);
+    expect(r.hasAlert).toBe(r.openAlerts.some((a) => a.severity === 'critical' || a.severity === 'warning'));
   });
 });
 
@@ -478,7 +483,105 @@ describe('canonical read model', () => {
 
     const r = await svc.getSummary('v1');
     expect(r.overallCondition).toBe('CRITICAL');
-    expect(r.openAlerts.some((a) => a.code === 'BRAKE_FLUID_WARNING')).toBe(true);
+    expect(r.openAlerts.some((a) => a.code === 'BRAKE_FLUID_WARNING' && a.severity === 'critical')).toBe(true);
+  });
+
+  it('DTC WARNING does not produce critical alert severity', async () => {
+    mockPrisma.brakeHealthCurrent.findUnique.mockResolvedValueOnce({
+      ...baseCurrent,
+      frontPadHealthPct: 80,
+      frontDiscHealthPct: 85,
+      rearPadHealthPct: 80,
+      rearDiscHealthPct: 85,
+      frontPadRemainingKm: 12000,
+      frontDiscRemainingKm: 20000,
+      rearPadRemainingKm: 12000,
+      rearDiscRemainingKm: 20000,
+    });
+    mockPrisma.vehicleServiceEvent.findFirst.mockResolvedValueOnce(null);
+    mockBrakeEvidence.listRecent.mockResolvedValueOnce([
+      {
+        id: 'e3',
+        vehicleId: 'v1',
+        source: 'DTC_SIGNAL',
+        axle: 'UNKNOWN',
+        measuredPadMm: null,
+        measuredDiscMm: null,
+        discCondition: null,
+        brakeFluidStatus: null,
+        dtcSeverity: 'WARNING',
+        immediateReplacement: null,
+        mileageAtMeasurementKm: null,
+        measuredAt: new Date('2026-05-26T00:00:00Z'),
+        createdAt: new Date('2026-05-26T00:00:00Z'),
+      },
+    ]);
+
+    const r = await svc.getSummary('v1');
+    const dtcAlert = r.openAlerts.find((a) => a.code === 'BRAKE_SYSTEM_DTC');
+    expect(dtcAlert).toBeDefined();
+    expect(dtcAlert?.severity).toBe('warning');
+    expect(r.overallCondition).not.toBe('CRITICAL');
+  });
+
+  it('DTC CRITICAL produces critical alert severity and condition', async () => {
+    mockPrisma.brakeHealthCurrent.findUnique.mockResolvedValueOnce({
+      ...baseCurrent,
+      frontPadHealthPct: 80,
+      frontDiscHealthPct: 85,
+      rearPadHealthPct: 80,
+      rearDiscHealthPct: 85,
+      frontPadRemainingKm: 12000,
+      frontDiscRemainingKm: 20000,
+      rearPadRemainingKm: 12000,
+      rearDiscRemainingKm: 20000,
+    });
+    mockPrisma.vehicleServiceEvent.findFirst.mockResolvedValueOnce(null);
+    mockBrakeEvidence.listRecent.mockResolvedValueOnce([
+      {
+        id: 'e4',
+        vehicleId: 'v1',
+        source: 'DTC_SIGNAL',
+        axle: 'UNKNOWN',
+        measuredPadMm: null,
+        measuredDiscMm: null,
+        discCondition: null,
+        brakeFluidStatus: null,
+        dtcSeverity: 'CRITICAL',
+        immediateReplacement: null,
+        mileageAtMeasurementKm: null,
+        measuredAt: new Date('2026-05-27T00:00:00Z'),
+        createdAt: new Date('2026-05-27T00:00:00Z'),
+      },
+    ]);
+
+    const r = await svc.getSummary('v1');
+    const dtcAlert = r.openAlerts.find((a) => a.code === 'BRAKE_SYSTEM_DTC');
+    expect(dtcAlert?.severity).toBe('critical');
+    expect(r.overallCondition).toBe('CRITICAL');
+  });
+
+  it('legacy pad percents do not override canonical overallCondition', async () => {
+    mockPrisma.brakeHealthCurrent.findUnique.mockResolvedValueOnce({
+      ...baseCurrent,
+      padsHealthPct: 5,
+      discsHealthPct: 5,
+      frontPadHealthPct: 5,
+      frontDiscHealthPct: 5,
+      rearPadHealthPct: 5,
+      rearDiscHealthPct: 5,
+      frontPadRemainingKm: 500,
+      frontDiscRemainingKm: 500,
+      rearPadRemainingKm: 500,
+      rearDiscRemainingKm: 500,
+    });
+    mockPrisma.vehicleServiceEvent.findFirst.mockResolvedValueOnce(null);
+    mockBrakeEvidence.listRecent.mockResolvedValueOnce([]);
+
+    const r = await svc.getSummary('v1');
+    expect(r.legacy.padsHealthPct).toBe(5);
+    expect(r.overallCondition).toBe('WARNING');
+    expect(r.legacy.status).not.toBe('critical');
   });
 });
 

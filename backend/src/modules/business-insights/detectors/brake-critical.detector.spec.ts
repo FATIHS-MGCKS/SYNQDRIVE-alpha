@@ -95,7 +95,7 @@ describe('BrakeCriticalDetector', () => {
     expect(result[0].severity).toBe(InsightSeverity.CRITICAL);
   });
 
-  it('does NOT alert on a WATCH-only estimated condition', async () => {
+  it('emits INFO insight on a WATCH-only estimated condition', async () => {
     const prisma = buildPrisma({
       current: {
         isInitialized: true,
@@ -112,7 +112,9 @@ describe('BrakeCriticalDetector', () => {
       evidence: [],
     });
     const result = await new BrakeCriticalDetector(prisma).detect(buildCtx());
-    expect(result).toHaveLength(0);
+    expect(result).toHaveLength(1);
+    expect(result[0].severity).toBe(InsightSeverity.INFO);
+    expect(result[0].title).toBe('Bremsen beobachten');
   });
 
   it('does NOT alert when there is no baseline and no evidence (UNKNOWN)', async () => {

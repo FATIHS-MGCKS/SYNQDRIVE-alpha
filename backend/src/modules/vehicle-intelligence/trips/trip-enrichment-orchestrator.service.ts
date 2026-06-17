@@ -23,6 +23,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { QUEUE_NAMES } from '../../../workers/queues/queue-names';
 import { TripBehaviorEnrichmentService } from './trip-behavior-enrichment.service';
 import type { TripBehaviorEnrichmentJobData } from '../../../workers/processors/trip-behavior-enrichment.processor';
+import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import type { DrivingImpactJobData } from '../../../workers/processors/driving-impact.processor';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
 import { TripReconciliationService } from './reconciliation/trip-reconciliation.service';
@@ -151,6 +152,8 @@ export class TripEnrichmentOrchestratorService {
 
     const delay = opts?.delayMs ?? HF_ENRICH_DELAY_MS;
     const jobId = `hf-enrich-${tripId}`;
+
+    if (!canEnqueueQueue(this.logger, 'trip-behavior-enrichment')) return false;
 
     try {
       await this.behaviorQueue.add(
@@ -289,6 +292,7 @@ export class TripEnrichmentOrchestratorService {
     organizationId: string | null,
   ): Promise<void> {
     const jobId = `driving-impact-${tripId}`;
+    if (!canEnqueueQueue(this.logger, 'driving-impact')) return;
     try {
       await this.drivingImpactQueue.add(
         'driving-impact-compute',

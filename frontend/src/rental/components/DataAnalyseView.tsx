@@ -369,26 +369,50 @@ export function DataAnalyseView() {
               <p className="text-xs text-muted-foreground">
                 ClickHouse: {hf.clickHouseAvailable ? 'available' : 'unavailable'} · Waypoints (24h): {hf.waypointCount24h ?? '—'}
               </p>
-              <div className="grid gap-3">
-                {hf.signals.map((s) => (
-                  <div key={s.signalName} className="rounded-lg border border-border/60 p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-sm">{s.signalName}</span>
-                      <StatusChip tone={statusChipTone(s.detectionQuality)}>{s.detectionQuality}</StatusChip>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2 text-xs text-muted-foreground">
-                      <span>Avg: {formatMs(s.averageIntervalMs)}</span>
-                      <span>Dropouts: {s.dropoutCount ?? '—'}</span>
-                      <span>Longest gap: {formatMs(s.longestGapMs)}</span>
-                      <span>Latency: {formatMs(s.providerToBackendLatencyMs)}</span>
-                    </div>
-                    {s.notes.length > 0 && (
-                      <ul className="mt-2 text-xs text-muted-foreground list-disc pl-4">
-                        {s.notes.map((n) => <li key={n}>{n}</li>)}
-                      </ul>
-                    )}
-                  </div>
-                ))}
+              <div className="overflow-x-auto rounded-lg border border-border/60">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/40 text-left">
+                    <tr>
+                      <th className="p-2 font-medium">Signal</th>
+                      <th className="p-2 font-medium">Reliability</th>
+                      <th className="p-2 font-medium">24h / 7d</th>
+                      <th className="p-2 font-medium">Median / P95</th>
+                      <th className="p-2 font-medium">Launch</th>
+                      <th className="p-2 font-medium">Last seen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {hf.signals.map((s) => (
+                      <tr key={s.signalKey} className="border-t border-border/40 align-top">
+                        <td className="p-2">
+                          <div className="font-mono">{s.displayName || s.signalName}</div>
+                          <div className="text-muted-foreground">{s.pollGroup} · {s.storageTable}</div>
+                          <div className="text-muted-foreground mt-1">{s.explanation}</div>
+                          {s.notes.length > 0 && (
+                            <ul className="mt-1 text-muted-foreground list-disc pl-4">
+                              {s.notes.map((n) => <li key={n}>{n}</li>)}
+                            </ul>
+                          )}
+                        </td>
+                        <td className="p-2">
+                          <StatusChip tone={statusChipTone(s.reliabilityStatus)}>{s.reliabilityStatus}</StatusChip>
+                        </td>
+                        <td className="p-2 text-muted-foreground">
+                          {s.sampleCount24h ?? '—'} / {s.sampleCount7d ?? '—'}
+                        </td>
+                        <td className="p-2 text-muted-foreground">
+                          {formatMs(s.medianIntervalMs)} / {formatMs(s.p95IntervalMs)}
+                          <div>Gaps: {s.gapCount ?? '—'}</div>
+                        </td>
+                        <td className="p-2">
+                          <StatusChip tone={statusChipTone(s.launchDetectionUsefulness)}>{s.launchDetectionUsefulness}</StatusChip>
+                          <div className="text-muted-foreground mt-1">{s.practicalUse.join(', ') || '—'}</div>
+                        </td>
+                        <td className="p-2 text-muted-foreground">{formatTs(s.lastSeenAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -432,6 +456,17 @@ export function DataAnalyseView() {
                     {section.notes.map((n) => (
                       <p key={n} className="text-xs text-amber-600 dark:text-amber-400">{n}</p>
                     ))}
+                    {Array.isArray((section.evidence as { consumedSignals?: unknown }).consumedSignals) && (
+                      <div className="text-xs space-y-1 mt-2">
+                        <div className="font-medium">Signal inputs</div>
+                        {((section.evidence as { consumedSignals: Array<{ signal: string; arriving: boolean; lastSeen: string | null; intervalStatus: string }> }).consumedSignals).map((sig) => (
+                          <div key={sig.signal} className="flex justify-between gap-2 text-muted-foreground">
+                            <span className="font-mono">{sig.signal}</span>
+                            <span>{sig.arriving ? sig.intervalStatus : 'missing'} · {formatTs(sig.lastSeen)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <pre className="text-[10px] bg-muted/40 rounded p-2 overflow-auto max-h-32">
                       {JSON.stringify(section.evidence, null, 2)}
                     </pre>
@@ -477,6 +512,15 @@ export function DataAnalyseView() {
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">{g.description}</p>
                   <p className="text-xs mt-2"><span className="font-medium">Use:</span> {g.practicalUse}</p>
+                  {g.sourceProvider && (
+                    <p className="text-xs mt-1 text-muted-foreground"><span className="font-medium">Source:</span> {g.sourceProvider}</p>
+                  )}
+                  {g.storageLocation && (
+                    <p className="text-xs text-muted-foreground"><span className="font-medium">Storage:</span> {g.storageLocation}</p>
+                  )}
+                  {g.limitations && (
+                    <p className="text-xs mt-1 text-amber-600 dark:text-amber-400">{g.limitations}</p>
+                  )}
                   <p className="text-xs"><span className="font-medium">Modules:</span> {g.usedByModules.join(', ')}</p>
                   {g.availabilityNotes && (
                     <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">{g.availabilityNotes}</p>

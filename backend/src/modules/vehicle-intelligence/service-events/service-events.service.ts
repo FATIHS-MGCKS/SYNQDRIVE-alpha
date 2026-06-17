@@ -1,5 +1,9 @@
-import { Injectable } from '@nestjs/common';
-import { VehicleServiceEvent, Prisma } from '@prisma/client';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ServiceEventOrigin,
+  ServiceEventType,
+  VehicleServiceEvent,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   parsePagination,
@@ -7,6 +11,18 @@ import {
   PaginationParams,
   PaginatedResult,
 } from '@shared/utils/pagination';
+import { CreateVehicleServiceEventDto } from './dto/create-vehicle-service-event.dto';
+import { UpdateVehicleServiceEventDto } from './dto/update-vehicle-service-event.dto';
+import {
+  FULL_SERVICE_BASELINE_EVENT_TYPES,
+  OIL_CHANGE_EVENT_TYPE,
+  SERVICE_HISTORY_EVENT_TYPES,
+} from './service-events.constants';
+
+export interface ServiceEventMutationContext {
+  userId?: string | null;
+  origin?: ServiceEventOrigin;
+}
 
 @Injectable()
 export class ServiceEventsService {
@@ -32,17 +48,115 @@ export class ServiceEventsService {
 
   async create(
     vehicleId: string,
-    data: Omit<Prisma.VehicleServiceEventCreateInput, 'vehicle'>,
+    dto: CreateVehicleServiceEventDto,
+    ctx: ServiceEventMutationContext = {},
   ): Promise<VehicleServiceEvent> {
-    return this.prisma.vehicleServiceEvent.create({
-      data: { ...data, vehicle: { connect: { id: vehicleId } } },
+    const eventDate = new Date(dto.eventDate);
+    const created = await this.prisma.vehicleServiceEvent.create({
+      data: {
+        vehicleId,
+        eventType: dto.eventType,
+        eventDate,
+        odometerKm: dto.odometerKm ?? null,
+        notes: dto.notes?.trim() || null,
+        workshopName: dto.workshopName?.trim() || null,
+        costCents: dto.costCents ?? null,
+        provider: dto.provider?.trim() || null,
+        documentUrl: dto.documentUrl ?? null,
+        origin: ctx.origin ?? dto.origin ?? ServiceEventOrigin.MANUAL,
+        createdById: ctx.userId ?? null,
+        updatedById: ctx.userId ?? null,
+      },
     });
+
+    await this.refreshVehicleHistoryDenorm(vehicleId);
+    return created;
   }
 
   async update(
+    vehicleId: string,
     id: string,
-    data: Prisma.VehicleServiceEventUpdateInput,
+    dto: UpdateVehicleServiceEventDto,
+    ctx: ServiceEventMutationContext = {},
   ): Promise<VehicleServiceEvent> {
-    return this.prisma.vehicleServiceEvent.update({ where: { id }, data });
+    const existing = await this.prisma.vehicleServiceEvent.findFirst({
+      where: { id, vehicleId },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Service event ${id} not found for vehicle ${vehicleId}`);
+    }
+
+    const data: Record<string, unknown> = {};
+    if (dto.eventType !== undefined) data.eventType = dto.eventType;
+    if (dto.eventDate !== undefined) data.eventDate = new Date(dto.eventDate);
+    if (dto.odometerKm !== undefined) data.odometerKm = dto.odometerKm;
+    if (dto.notes !== undefined) data.notes = dto.notes?.trim() || null;
+    if (dto.workshopName !== undefined) data.workshopName = dto.workshopName?.trim() || null;
+    if (dto.costCents !== undefined) data.costCents = dto.costCents;
+    if (dto.provider !== undefined) data.provider = dto.provider?.trim() || null;
+    if (dto.documentUrl !== undefined) data.documentUrl = dto.documentUrl;
+    if (dto.origin !== undefined) data.origin = dto.origin;
+    if (ctx.userId) data.updatedById = ctx.userId;
+
+    const updated = await this.prisma.vehicleServiceEvent.update({
+      where: { id: existing.id },
+      data,
+    });
+
+    await this.refreshVehicleHistoryDenorm(vehicleId);
+    return updated;
+  }
+
+  async remove(vehicleId: string, id: string): Promise<void> {
+    const result = await this.prisma.vehicleServiceEvent.deleteMany({
+      where: { id, vehicleId },
+    });
+    if (result.count === 0) {
+      throw new NotFoundException(`Service event ${id} not found for vehicle ${vehicleId}`);
+    }
+    await this.refreshVehicleHistoryDenorm(vehicleId);
+  }
+
+  /**
+   * Recomputes denormalized vehicle history fields from events.
+   * Never touches next-service intervals, nextServiceDueDate, or HM-derived truth.
+   */
+  async refreshVehicleHistoryDenorm(vehicleId: string): Promise<void> {
+    const [latestFullService, latestOilChange] = await Promise.all([
+      this.prisma.vehicleServiceEvent.findFirst({
+        where: {
+          vehicleId,
+          eventType: { in: FULL_SERVICE_BASELINE_EVENT_TYPES },
+        },
+        orderBy: { eventDate: 'desc' },
+        select: { eventDate: true, odometerKm: true },
+      }),
+      this.prisma.vehicleServiceEvent.findFirst({
+        where: { vehicleId, eventType: OIL_CHANGE_EVENT_TYPE },
+        orderBy: { eventDate: 'desc' },
+        select: { eventDate: true, odometerKm: true },
+      }),
+    ]);
+
+    await this.prisma.vehicle.update({
+      where: { id: vehicleId },
+      data: {
+        lastServiceDate: latestFullService?.eventDate ?? null,
+        lastServiceOdometerKm: latestFullService?.odometerKm ?? null,
+        lastOilChangeDate: latestOilChange?.eventDate ?? null,
+        lastOilChangeOdometerKm: latestOilChange?.odometerKm ?? null,
+      },
+    });
+  }
+
+  /** Count any documented service history row (incl. REPAIR) — not next-service truth. */
+  async hasAnyServiceHistory(vehicleId: string): Promise<boolean> {
+    const count = await this.prisma.vehicleServiceEvent.count({
+      where: {
+        vehicleId,
+        eventType: { in: SERVICE_HISTORY_EVENT_TYPES },
+      },
+    });
+    return count > 0;
   }
 }

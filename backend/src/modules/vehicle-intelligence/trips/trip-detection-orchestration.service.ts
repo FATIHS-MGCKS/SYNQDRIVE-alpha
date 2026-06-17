@@ -22,6 +22,7 @@ import type {
   VehicleLatestState,
 } from '@prisma/client';
 import { QUEUE_NAMES } from '../../../workers/queues/queue-names';
+import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import {
   TRIP_TRACKING_TRIGGERS,
   END_DETECTION_MODES,
@@ -228,6 +229,7 @@ export class TripDetectionOrchestrationService {
     dimoTokenId: number,
     delayMs = 0,
   ): Promise<void> {
+    if (!canEnqueueQueue(this.logger, 'trip-tracking')) return;
     await this.trackingQueue.add(
       'trip-tracking',
       {
@@ -252,6 +254,7 @@ export class TripDetectionOrchestrationService {
     dimoTokenId: number,
     delayMs?: number,
   ): Promise<void> {
+    if (!canEnqueueQueue(this.logger, 'trip-tracking')) return;
     await this.trackingQueue.add(
       'trip-tracking',
       {
@@ -276,6 +279,7 @@ export class TripDetectionOrchestrationService {
     dimoTokenId: number,
     delayMs?: number,
   ): Promise<void> {
+    if (!canEnqueueQueue(this.logger, 'trip-tracking')) return;
     await this.trackingQueue.add(
       'trip-tracking',
       {
@@ -300,6 +304,7 @@ export class TripDetectionOrchestrationService {
     dimoTokenId: number,
     delayMs?: number,
   ): Promise<void> {
+    if (!canEnqueueQueue(this.logger, 'trip-tracking')) return;
     await this.trackingQueue.add(
       'trip-tracking',
       {
@@ -323,6 +328,7 @@ export class TripDetectionOrchestrationService {
     organizationId: string | null,
     dimoTokenId: number,
   ): Promise<void> {
+    if (!canEnqueueQueue(this.logger, 'trip-tracking')) return;
     await this.trackingQueue.add(
       'trip-tracking',
       {

@@ -91,7 +91,12 @@ export class InsightTaskBridgeService {
           alertId: alert?.id ?? null,
           source: cfg.source,
           dueDate,
-          metadata: { generatedKey: dedupKey, insightType: c.type, insightSeverity: c.severity },
+          metadata: {
+            generatedKey: dedupKey,
+            insightType: c.type,
+            insightSeverity: c.severity,
+            suggestionOnly: c.severity === 'WARNING',
+          },
           checklist: checklistForType(cfg.taskType),
         });
         upserted++;

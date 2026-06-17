@@ -1,6 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
 import {
-  ALLOWED_VEHICLE_STATUSES,
   APPROVAL_REQUIRED_ACTIONS,
   LEGACY_ACTION_TO_CANONICAL,
   LEGACY_TRIGGER_TO_EVENT,
@@ -10,6 +9,7 @@ import {
   type WorkflowActionType,
   type WorkflowEventType,
 } from './workflow.constants';
+import { normalizeVehicleStatusInput } from './vehicle-status.util';
 
 export interface WorkflowTriggerDef {
   type: string;
@@ -114,17 +114,21 @@ export function validateWorkflowDefinition(input: {
     }
     const requiresApproval =
       action.requiresApproval === true || APPROVAL_REQUIRED_ACTIONS.has(canonical);
+    let config = action.config ?? {};
     if (canonical === 'vehicle.status.update') {
       const status = action.config?.status;
-      if (typeof status !== 'string' || !ALLOWED_VEHICLE_STATUSES.has(status)) {
+      const normalized =
+        typeof status === 'string' ? normalizeVehicleStatusInput(status) : undefined;
+      if (!normalized) {
         throw new BadRequestException(
           `vehicle.status.update requires a valid VehicleStatus (got: ${String(status)})`,
         );
       }
+      config = { ...config, status: normalized };
     }
     return {
       type: canonical,
-      config: action.config ?? {},
+      config,
       requiresApproval,
     };
   });

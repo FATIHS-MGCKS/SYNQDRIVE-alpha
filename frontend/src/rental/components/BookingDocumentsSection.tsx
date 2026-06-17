@@ -182,7 +182,13 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
           isDarkMode ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
         }`}>
           <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-          <span>Rechtliche Dokumente fehlen in Administration. Das Buchungsdokumentenpaket ist unvollständig.</span>
+          <span>
+            Dokumentenpaket unvollständig:{' '}
+            {(view?.missingLegalDocuments ?? [])
+              .map((d) => (d === 'TERMS_AND_CONDITIONS' ? 'AGB' : d === 'REVOCATION_POLICY' ? 'Widerrufsbelehrung' : d))
+              .join(' / ') || 'AGB/Widerrufsbelehrung'}{' '}
+            fehlt. Bitte in Administration → Unternehmen hochladen.
+          </span>
         </div>
       )}
 

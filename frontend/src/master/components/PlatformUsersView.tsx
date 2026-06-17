@@ -1,9 +1,21 @@
-import { Users, Search, Plus, MoreHorizontal, Shield, UserCog, Eye, EyeOff, Building2, CheckCircle, XCircle, Clock, X, Save, Trash2, Send, KeyRound } from 'lucide-react';
-import { useState } from 'react';
+import { Users, Search, Plus, MoreHorizontal, Building2, CheckCircle, XCircle, Clock, X, Save, Trash2, Send, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import type { PlatformUser, UserRole, UserStatus, Organization } from '../data/platform-data';
 import { generateId } from '../data/platform-data';
 import { toast } from 'sonner';
 import { api } from '../../lib/api';
+import {
+  PageHeader,
+  DataCard,
+  DataTable,
+  MetricCard,
+  StatusChip,
+  platformRoleTone,
+  userAccountStatusTone,
+  FormDialog,
+  ConfirmDialog,
+} from '../../components/patterns';
+import type { DataTableColumn } from '../../components/patterns';
 
 interface PlatformUsersViewProps {
   isDarkMode: boolean;
@@ -14,9 +26,10 @@ interface PlatformUsersViewProps {
   onDeleteUser: (id: string) => void;
 }
 
-const roleColors: Record<string, string> = { 'Master Admin': 'bg-red-50 text-red-700 border-red-200', 'Org Admin': 'bg-purple-50 text-purple-700 border-purple-200', 'Sub Admin': 'bg-blue-50 text-blue-700 border-blue-200', 'Worker': 'bg-amber-50 text-amber-700 border-amber-200', 'Driver': 'bg-indigo-50 text-indigo-700 border-indigo-200', 'Customer': 'bg-gray-100 text-gray-600 border-gray-200' };
+const inputClass =
+  'w-full px-3 py-2 rounded-lg border text-sm outline-none transition-colors bg-muted border-border text-foreground focus:border-ring';
 
-export function PlatformUsersView({ isDarkMode, users, organizations, onAddUser, onUpdateUser, onDeleteUser }: PlatformUsersViewProps) {
+export function PlatformUsersView({ users, organizations, onAddUser, onUpdateUser, onDeleteUser }: PlatformUsersViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -35,8 +48,31 @@ export function PlatformUsersView({ isDarkMode, users, organizations, onAddUser,
   const [showPassword, setShowPassword] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
 
-  const openCreate = () => { setFormName(''); setFormEmail(''); setFormRole('Org Admin'); setFormOrgId(''); setFormStatus('Invited'); setEditUser(null); setShowPasswordSection(false); setNewPassword(''); setShowPassword(false); setShowModal(true); };
-  const openEdit = (u: PlatformUser) => { setFormName(u.name); setFormEmail(u.email); setFormRole(u.role); setFormOrgId(u.organizationId); setFormStatus(u.status); setEditUser(u); setShowPasswordSection(false); setNewPassword(''); setShowPassword(false); setShowModal(true); };
+  const openCreate = () => {
+    setFormName('');
+    setFormEmail('');
+    setFormRole('Org Admin');
+    setFormOrgId('');
+    setFormStatus('Invited');
+    setEditUser(null);
+    setShowPasswordSection(false);
+    setNewPassword('');
+    setShowPassword(false);
+    setShowModal(true);
+  };
+
+  const openEdit = (u: PlatformUser) => {
+    setFormName(u.name);
+    setFormEmail(u.email);
+    setFormRole(u.role);
+    setFormOrgId(u.organizationId);
+    setFormStatus(u.status);
+    setEditUser(u);
+    setShowPasswordSection(false);
+    setNewPassword('');
+    setShowPassword(false);
+    setShowModal(true);
+  };
 
   const handleChangePassword = async () => {
     if (!editUser || !newPassword || newPassword.length < 6) {
@@ -58,149 +94,362 @@ export function PlatformUsersView({ isDarkMode, users, organizations, onAddUser,
   };
 
   const handleSave = () => {
-    const orgName = formOrgId === 'platform' ? 'SynqDrive (Platform)' : organizations.find(o => o.id === formOrgId)?.company_name || '';
+    const orgName = formOrgId === 'platform' ? 'SynqDrive (Platform)' : organizations.find((o) => o.id === formOrgId)?.company_name || '';
     if (editUser) {
-      onUpdateUser({ ...editUser, name: formName, email: formEmail, role: formRole, organizationId: formOrgId, organizationName: orgName, status: formStatus });
+      onUpdateUser({
+        ...editUser,
+        name: formName,
+        email: formEmail,
+        role: formRole,
+        organizationId: formOrgId,
+        organizationName: orgName,
+        status: formStatus,
+      });
     } else {
-      const initials = formName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+      const initials = formName
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
       onAddUser({
-        id: generateId('u'), name: formName, email: formEmail, role: formRole, organizationId: formOrgId, organizationName: orgName,
-        status: 'Invited', lastActive: 'Never', created_at: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        avatar: initials, last_login: 'Never',
+        id: generateId('u'),
+        name: formName,
+        email: formEmail,
+        role: formRole,
+        organizationId: formOrgId,
+        organizationName: orgName,
+        status: 'Invited',
+        lastActive: 'Never',
+        created_at: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        avatar: initials,
+        last_login: 'Never',
       });
       toast.success(`Invitation sent to ${formEmail}`);
     }
-    setShowModal(false); setEditUser(null);
+    setShowModal(false);
+    setEditUser(null);
   };
 
-  const filtered = users.filter(u => {
+  const filtered = users.filter((u) => {
     const q = searchQuery.toLowerCase();
-    return (u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.organizationName.toLowerCase().includes(q))
-      && (filterRole === 'all' || u.role === filterRole) && (filterStatus === 'all' || u.status === filterStatus);
+    return (
+      (u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.organizationName.toLowerCase().includes(q)) &&
+      (filterRole === 'all' || u.role === filterRole) &&
+      (filterStatus === 'all' || u.status === filterStatus)
+    );
   });
 
-  const cardClass = 'bg-card border border-border rounded-lg shadow-xs';
-  const inputClass = 'w-full px-3 py-2 rounded-lg border text-sm outline-none transition-colors bg-muted border-border text-foreground focus:border-ring';
+  const activeCount = users.filter((u) => u.status === 'Active').length;
+  const invitedCount = users.filter((u) => u.status === 'Invited').length;
+
+  const columns = useMemo<DataTableColumn<PlatformUser>[]>(
+    () => [
+      {
+        key: 'user',
+        header: 'User',
+        cell: (user) => (
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full sq-tone-brand text-xs font-semibold">
+              {user.avatar}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{user.name}</p>
+              <p className="text-xs text-muted-foreground">{user.email}</p>
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'role',
+        header: 'Role',
+        cell: (user) => (
+          <StatusChip tone={platformRoleTone(user.role)} className="text-xs">
+            {user.role}
+          </StatusChip>
+        ),
+      },
+      {
+        key: 'org',
+        header: 'Organization',
+        cell: (user) => (
+          <div className="flex items-center gap-2">
+            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs text-foreground">{user.organizationName}</span>
+          </div>
+        ),
+      },
+      {
+        key: 'status',
+        header: 'Status',
+        cell: (user) => (
+          <StatusChip
+            tone={userAccountStatusTone(user.status)}
+            icon={
+              user.status === 'Active' ? (
+                <CheckCircle className="h-3 w-3" />
+              ) : user.status === 'Invited' ? (
+                <Clock className="h-3 w-3" />
+              ) : (
+                <XCircle className="h-3 w-3" />
+              )
+            }
+            className="text-xs"
+          >
+            {user.status}
+          </StatusChip>
+        ),
+      },
+      {
+        key: 'lastActive',
+        header: 'Last Active',
+        cell: (user) => <span className="text-xs text-muted-foreground">{user.lastActive}</span>,
+      },
+    ],
+    [],
+  );
 
   return (
-    <div className="space-y-4 pb-6">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight text-foreground">Users</h1>
-          <p className="text-sm mt-1 font-medium text-muted-foreground">{filtered.length} platform users across all organizations</p>
-        </div>
-        <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-lg text-sm font-semibold shadow-sm hover:shadow-md transition-all">
-          <Plus className="w-5 h-5" />Invite User
-        </button>
+    <div className="space-y-5 pb-6">
+      <PageHeader
+        title="Users"
+        description={`${filtered.length} platform users across all organizations`}
+        icon={<Users className="h-4 w-4" />}
+        actions={
+          <button type="button" onClick={openCreate} className="sq-cta flex items-center gap-2 px-4 py-2 text-sm font-semibold">
+            <Plus className="h-5 w-5" />
+            Invite User
+          </button>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <MetricCard label="Total Users" value={users.length} status="neutral" icon={<Users className="h-4 w-4" />} />
+        <MetricCard label="Active" value={activeCount} status="success" />
+        <MetricCard label="Invited" value={invitedCount} status="info" />
+        <MetricCard label="Organizations" value={organizations.length} status="neutral" />
       </div>
 
-      <div className={`${cardClass} p-4`}>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex items-center gap-2 flex-1 px-3 py-2 rounded-md border bg-muted border-border">
-            <Search className={`w-4 h-4 shrink-0 text-muted-foreground`} />
-            <input type="text" placeholder="Search users..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={`flex-1 bg-transparent outline-none text-sm font-medium text-foreground placeholder:text-muted-foreground`} />
+      <DataCard flush bodyClassName="p-4">
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex flex-1 items-center gap-2 rounded-md border border-border bg-muted px-3 py-2">
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 bg-transparent text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground"
+            />
           </div>
-          <select value={filterRole} onChange={e => setFilterRole(e.target.value)} className={`px-3 py-2 rounded-md border text-xs font-semibold appearance-none cursor-pointer bg-muted border-border text-foreground`}><option value="all">All Roles</option><option>Master Admin</option><option>Org Admin</option><option>Sub Admin</option><option>Worker</option><option>Driver</option><option>Customer</option></select>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={`px-3 py-2 rounded-md border text-xs font-semibold appearance-none cursor-pointer bg-muted border-border text-foreground`}><option value="all">All Status</option><option>Active</option><option>Inactive</option><option>Invited</option></select>
+          <select
+            value={filterRole}
+            onChange={(e) => setFilterRole(e.target.value)}
+            className="cursor-pointer appearance-none rounded-md border border-border bg-muted px-3 py-2 text-xs font-semibold text-foreground"
+          >
+            <option value="all">All Roles</option>
+            <option>Master Admin</option>
+            <option>Org Admin</option>
+            <option>Sub Admin</option>
+            <option>Worker</option>
+            <option>Driver</option>
+            <option>Customer</option>
+          </select>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="cursor-pointer appearance-none rounded-md border border-border bg-muted px-3 py-2 text-xs font-semibold text-foreground"
+          >
+            <option value="all">All Status</option>
+            <option>Active</option>
+            <option>Inactive</option>
+            <option>Invited</option>
+          </select>
         </div>
-      </div>
+      </DataCard>
 
-      <div className={`${cardClass} overflow-hidden`}>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead><tr className={`border-b border-border bg-muted/50`}>
-              <th className={`text-left px-5 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>User</th>
-              <th className={`text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Role</th>
-              <th className={`text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Organization</th>
-              <th className={`text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Status</th>
-              <th className={`text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Last Active</th>
-              <th className="px-3 py-2"></th>
-            </tr></thead>
-            <tbody>
-              {filtered.map(user => (
-                <tr key={user.id} className="border-b border-border last:border-b-0 transition-colors hover:bg-muted/50">
-                  <td className="px-5 py-2"><div className="flex items-center gap-2.5"><div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0">{user.avatar}</div><div><p className={`text-sm font-semibold text-foreground`}>{user.name}</p><p className={`text-xs text-muted-foreground`}>{user.email}</p></div></div></td>
-                  <td className="px-3 py-2"><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold border ${roleColors[user.role]}`}>{user.role}</span></td>
-                  <td className="px-3 py-2"><div className="flex items-center gap-2"><Building2 className={`w-3.5 h-3.5 text-muted-foreground`} /><span className={`text-xs text-foreground`}>{user.organizationName}</span></div></td>
-                  <td className="px-3 py-2"><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold border ${user.status === 'Active' ? 'bg-green-50 text-green-700 border-green-200' : user.status === 'Invited' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>{user.status === 'Active' ? <CheckCircle className="w-3 h-3" /> : user.status === 'Invited' ? <Clock className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}{user.status}</span></td>
-                  <td className={`px-3 py-2 text-xs text-muted-foreground`}>{user.lastActive}</td>
-                  <td className="px-3 py-2"><div className="flex gap-1"><button onClick={() => openEdit(user)} className="p-1.5 rounded-lg transition-colors hover:bg-muted text-muted-foreground"><MoreHorizontal className="w-4 h-4" /></button><button onClick={() => setDeleteConfirm(user.id)} className="p-1.5 rounded-lg transition-colors hover:bg-red-50 text-muted-foreground hover:text-red-500 dark:hover:bg-red-900/30 dark:hover:text-red-400"><Trash2 className="w-4 h-4" /></button></div></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        columns={columns}
+        rows={filtered}
+        getRowKey={(u) => u.id}
+        empty="No users match your filters"
+        rowActions={(user) => (
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => openEdit(user)}
+              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeleteConfirm(user.id)}
+              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-[color:var(--status-critical)]"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      />
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center z-[100]">
-          <div className={`max-w-lg w-full mx-4 bg-card border border-border rounded-xl p-5 shadow-lg`}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-base font-semibold text-foreground">{editUser ? 'Edit User' : 'Invite User'}</h2>
-              <button onClick={() => { setShowModal(false); setEditUser(null); }} className="p-2 rounded-lg hover:bg-muted text-muted-foreground"><X className="w-5 h-5" /></button>
-            </div>
+      <FormDialog
+        open={showModal}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowModal(false);
+            setEditUser(null);
+          }
+        }}
+        title={editUser ? 'Edit User' : 'Invite User'}
+        maxWidthClassName="sm:max-w-lg"
+        footer={(
+          <div className="flex w-full gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setShowModal(false);
+                setEditUser(null);
+              }}
+              className="flex-1 rounded-lg border border-border bg-muted px-4 py-2.5 font-semibold text-foreground"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={!formName || !formEmail}
+              className="sq-cta flex flex-1 items-center justify-center gap-2 px-4 py-2.5 font-semibold disabled:opacity-50"
+            >
+              {editUser ? (
+                <>
+                  <Save className="h-4 w-4" />
+                  Save
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  Send Invitation
+                </>
+              )}
+            </button>
+          </div>
+        )}
+      >
             <div className="space-y-4">
-              <div><label className={`block text-sm font-semibold mb-1 text-foreground`}>Full Name *</label><input value={formName} onChange={e => setFormName(e.target.value)} className={inputClass} /></div>
-              <div><label className={`block text-sm font-semibold mb-1 text-foreground`}>Email *</label><input value={formEmail} onChange={e => setFormEmail(e.target.value)} className={inputClass} type="email" /></div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div><label className={`block text-sm font-semibold mb-1 text-foreground`}>Role</label><select value={formRole} onChange={e => setFormRole(e.target.value as UserRole)} className={inputClass}><option>Master Admin</option><option>Org Admin</option><option>Sub Admin</option><option>Worker</option><option>Driver</option><option>Customer</option></select></div>
-                <div><label className={`block text-sm font-semibold mb-1 text-foreground`}>Organization</label><select value={formOrgId} onChange={e => setFormOrgId(e.target.value)} className={inputClass}><option value="platform">SynqDrive (Platform)</option>{organizations.map(o => <option key={o.id} value={o.id}>{o.company_name}</option>)}</select></div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-foreground">Full Name *</label>
+                <input value={formName} onChange={(e) => setFormName(e.target.value)} className={inputClass} />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-foreground">Email *</label>
+                <input value={formEmail} onChange={(e) => setFormEmail(e.target.value)} className={inputClass} type="email" />
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-foreground">Role</label>
+                  <select value={formRole} onChange={(e) => setFormRole(e.target.value as UserRole)} className={inputClass}>
+                    <option>Master Admin</option>
+                    <option>Org Admin</option>
+                    <option>Sub Admin</option>
+                    <option>Worker</option>
+                    <option>Driver</option>
+                    <option>Customer</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-foreground">Organization</label>
+                  <select value={formOrgId} onChange={(e) => setFormOrgId(e.target.value)} className={inputClass}>
+                    <option value="platform">SynqDrive (Platform)</option>
+                    {organizations.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.company_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
               {editUser && (
-                <div><label className={`block text-sm font-semibold mb-1 text-foreground`}>Status</label><select value={formStatus} onChange={e => setFormStatus(e.target.value as UserStatus)} className={inputClass}><option>Active</option><option>Inactive</option><option>Invited</option></select></div>
+                <div>
+                  <label className="mb-1 block text-sm font-semibold text-foreground">Status</label>
+                  <select value={formStatus} onChange={(e) => setFormStatus(e.target.value as UserStatus)} className={inputClass}>
+                    <option>Active</option>
+                    <option>Inactive</option>
+                    <option>Invited</option>
+                  </select>
+                </div>
               )}
               {editUser && (
-                <div className="rounded-lg border border-border p-4 bg-muted/50">
+                <div className="rounded-lg border border-border bg-muted/50 p-4">
                   {!showPasswordSection ? (
-                    <button onClick={() => setShowPasswordSection(true)} className="flex items-center gap-2 text-sm font-semibold transition-colors text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">
-                      <KeyRound className="w-4 h-4" />Change Password
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordSection(true)}
+                      className="flex items-center gap-2 text-sm font-semibold text-[color:var(--brand)] transition-colors hover:opacity-80"
+                    >
+                      <KeyRound className="h-4 w-4" />
+                      Change Password
                     </button>
                   ) : (
                     <div className="space-y-3">
-                      <label className={`block text-sm font-semibold text-foreground`}>New Password</label>
+                      <label className="block text-sm font-semibold text-foreground">New Password</label>
                       <div className="relative">
                         <input
                           type={showPassword ? 'text' : 'password'}
                           value={newPassword}
-                          onChange={e => setNewPassword(e.target.value)}
+                          onChange={(e) => setNewPassword(e.target.value)}
                           placeholder="Min. 6 characters"
                           className={`${inputClass} pr-10`}
                         />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={handleChangePassword} disabled={passwordSaving || newPassword.length < 6} className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-md ${passwordSaving || newPassword.length < 6 ? 'opacity-50' : 'hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]'} transition-all`}>
-                          <KeyRound className="w-3.5 h-3.5" />{passwordSaving ? 'Saving...' : 'Update Password'}
+                        <button
+                          type="button"
+                          onClick={handleChangePassword}
+                          disabled={passwordSaving || newPassword.length < 6}
+                          className="sq-cta flex items-center gap-1.5 px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                        >
+                          <KeyRound className="h-3.5 w-3.5" />
+                          {passwordSaving ? 'Saving...' : 'Update Password'}
                         </button>
-                        <button onClick={() => { setShowPasswordSection(false); setNewPassword(''); setShowPassword(false); }} className="px-4 py-2 rounded-lg text-sm font-semibold text-muted-foreground hover:bg-muted">Cancel</button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPasswordSection(false);
+                            setNewPassword('');
+                            setShowPassword(false);
+                          }}
+                          className="rounded-lg px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted"
+                        >
+                          Cancel
+                        </button>
                       </div>
                     </div>
                   )}
                 </div>
               )}
             </div>
-            <div className="flex gap-3 mt-8">
-              <button onClick={() => { setShowModal(false); setEditUser(null); }} className={`flex-1 px-4 py-2.5 rounded-lg font-semibold bg-muted text-foreground border border-border`}>Cancel</button>
-              <button onClick={handleSave} disabled={!formName || !formEmail} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl font-semibold shadow-lg ${(!formName || !formEmail) ? 'opacity-50' : 'hover:shadow-xl'}`}>{editUser ? <><Save className="w-4 h-4" />Save</> : <><Send className="w-4 h-4" />Send Invitation</>}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      </FormDialog>
 
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center z-[100]">
-          <div className={`max-w-md w-full mx-4 bg-card border border-border rounded-xl p-5 shadow-lg`}>
-            <h3 className="text-base font-semibold mb-2 text-foreground">Delete User</h3>
-            <p className="mb-5 text-muted-foreground">Are you sure you want to remove this user?</p>
-            <div className="flex gap-3">
-              <button onClick={() => setDeleteConfirm(null)} className={`flex-1 px-4 py-2.5 rounded-lg font-semibold bg-muted text-foreground border border-border`}>Cancel</button>
-              <button onClick={() => { onDeleteUser(deleteConfirm); setDeleteConfirm(null); }} className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 shadow-lg">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={(open) => { if (!open) setDeleteConfirm(null); }}
+        title="Delete User"
+        description="Are you sure you want to remove this user?"
+        confirmLabel="Delete"
+        tone="critical"
+        onConfirm={() => {
+          if (deleteConfirm) onDeleteUser(deleteConfirm);
+          setDeleteConfirm(null);
+        }}
+      />
     </div>
   );
 }

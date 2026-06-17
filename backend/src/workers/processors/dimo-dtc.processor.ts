@@ -6,6 +6,7 @@ import { DimoTelemetryService } from '../../modules/dimo/dimo-telemetry.service'
 import { DimoAuthService } from '../../modules/dimo/dimo-auth.service';
 import { DtcService } from '../../modules/vehicle-intelligence/dtc/dtc.service';
 import { QUEUE_NAMES } from '../queues/queue-names';
+import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 
 // Supported job names on the DTC queue:
 //   dtc-poll         — legacy full-fleet scan (still works, but fans out)
@@ -43,6 +44,8 @@ export class DimoDtcProcessor extends WorkerHost {
     // Fan-out: enqueue one dtc-poll-vehicle job per vehicle instead of processing
     // the full fleet inline. This keeps a single job from blocking the worker
     // and allows BullMQ concurrency + retry to handle per-vehicle failures.
+    if (!canEnqueueQueue(this.logger, 'dtc-poll-fanout')) return;
+
     this.logger.log('Starting DTC poll fan-out');
 
     const vehicles = await this.prisma.vehicle.findMany({

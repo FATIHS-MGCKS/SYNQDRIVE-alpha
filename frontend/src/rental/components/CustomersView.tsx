@@ -23,6 +23,7 @@ import {
   DataTable,
   StatusChip,
   EmptyState,
+  FormDialog,
 } from '../../components/patterns';
 import type { DataTableColumn } from '../../components/patterns';
 import type { StatusTone } from '../../components/patterns';
@@ -231,8 +232,6 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
   const [isCustomerDetailClosing, setIsCustomerDetailClosing] = useState(false);
   const [cardFilter, setCardFilter] = useState<'all' | 'active' | 'suspended' | 'attention'>('all');
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
-  const [isAddCustomerAnimating, setIsAddCustomerAnimating] = useState(false);
-  const [isAddCustomerClosing, setIsAddCustomerClosing] = useState(false);
   const [addStep, setAddStep] = useState(0);
   const [newCustomer, setNewCustomer] = useState({
     firstName: '', lastName: '', email: '', phone: '', street: '', zip: '', city: 'Kassel',
@@ -281,21 +280,11 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
   const openAddCustomer = () => {
     resetAddCustomerForm();
     setIsAddCustomerOpen(true);
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setIsAddCustomerAnimating(true);
-      });
-    });
   };
 
   const closeAddCustomer = () => {
-    setIsAddCustomerAnimating(false);
-    setIsAddCustomerClosing(true);
-    setTimeout(() => {
-      setIsAddCustomerOpen(false);
-      setIsAddCustomerClosing(false);
-      resetAddCustomerForm();
-    }, 400);
+    setIsAddCustomerOpen(false);
+    resetAddCustomerForm();
   };
 
   const validateStep = (step: number): boolean => {
@@ -559,10 +548,10 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       <div
         className="space-y-5 transition-all duration-500 ease-out origin-center"
         style={{
-          transform: (isCustomerDetailAnimating || isAddCustomerAnimating) ? 'scale(0.92)' : 'scale(1)',
-          filter: (isCustomerDetailAnimating || isAddCustomerAnimating) ? 'blur(12px)' : 'blur(0px)',
-          opacity: (isCustomerDetailAnimating || isAddCustomerAnimating) ? 0.4 : 1,
-          pointerEvents: (selectedCustomer || isCustomerDetailClosing || isAddCustomerOpen || isAddCustomerClosing) ? 'none' : 'auto',
+          transform: isCustomerDetailAnimating ? 'scale(0.92)' : 'scale(1)',
+          filter: isCustomerDetailAnimating ? 'blur(12px)' : 'blur(0px)',
+          opacity: isCustomerDetailAnimating ? 0.4 : 1,
+          pointerEvents: (selectedCustomer || isCustomerDetailClosing) ? 'none' : 'auto',
         }}
       >
       {/* Header */}
@@ -759,8 +748,41 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
         />
       )}
 
-      {/* Add Customer Modal */}
-      {isAddCustomerOpen && (() => {
+      <FormDialog
+        open={isAddCustomerOpen}
+        onOpenChange={(open) => { if (!open) closeAddCustomer(); }}
+        maxWidthClassName="sm:max-w-[680px]"
+        title="Neuen Kunden anlegen"
+        description="Alle Pflichtfelder ausfüllen & Dokumente hochladen"
+        bodyClassName="p-0 flex flex-col"
+        footer={(
+          <div className="flex w-full items-center justify-between">
+            <button type="button" onClick={closeAddCustomer} className="rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground">
+              Abbrechen
+            </button>
+            <div className="flex items-center gap-2.5">
+              {addStep > 0 && (
+                <button type="button" onClick={() => setAddStep(addStep - 1)} className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-all hover:bg-muted">
+                  <Icon name="chevron-left" className="w-3.5 h-3.5" />
+                  Zurück
+                </button>
+              )}
+              {addStep < 3 ? (
+                <button type="button" onClick={handleNextStep} className="sq-cta flex items-center gap-1.5 px-3 py-2 text-xs font-semibold">
+                  Weiter
+                  <Icon name="chevron-right" className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <button type="button" onClick={handleSubmitCustomer} disabled={isSavingCustomer} className={`sq-cta flex items-center gap-1.5 px-3 py-2 text-xs font-semibold disabled:opacity-50 ${isSavingCustomer ? 'opacity-50' : ''}`}>
+                  {isSavingCustomer ? <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : <Icon name="check-circle" className="w-3.5 h-3.5" />}
+                  {isSavingCustomer ? 'Speichert…' : 'Kunden anlegen'}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      >
+        {(() => {
         const steps = [
           { label: 'Persönliche Daten', icon: User },
           { label: 'ID & Führerschein', icon: IdCard },
@@ -787,36 +809,8 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
         );
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={closeAddCustomer}>
-            <div
-              className="absolute inset-0 transition-all duration-500 ease-out"
-              style={{
-                backgroundColor: isAddCustomerAnimating ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0)',
-              }}
-            />
-            <div onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-[680px] max-h-[85vh] flex flex-col rounded-lg border border-border bg-card shadow-[var(--shadow-2)] transition-all duration-500 ease-out"
-              style={{
-                transform: isAddCustomerAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)',
-                opacity: isAddCustomerAnimating ? 1 : 0,
-              }}>
-              {/* Header */}
-              <div className="flex items-center justify-between px-7 py-3 border-b border-border shrink-0">
-                <div>
-                  <h2 className="text-lg font-bold text-foreground">Neuen Kunden anlegen</h2>
-                  <p className="text-xs mt-0.5 text-muted-foreground">Alle Pflichtfelder ausfüllen & Dokumente hochladen</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeAddCustomer}
-                  className="w-5 h-5 rounded-lg flex items-center justify-center transition-colors hover:bg-muted text-muted-foreground"
-                >
-                  <Icon name="x" className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Step Indicator */}
-              <div className="flex items-center gap-1 px-7 py-3 border-b border-border shrink-0">
+          <>
+              <div className="flex items-center gap-1 border-b border-border px-5 py-3 shrink-0">
                 {steps.map((s, i) => {
                   const StepIcon = s.icon;
                   const isActive = i === addStep;
@@ -846,7 +840,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto px-7 py-3">
+              <div className="max-h-[min(60vh,100dvh-14rem)] flex-1 overflow-y-auto px-5 py-3">
                 {addStep === 0 && (
                   <div className="space-y-4">
                     {sectionTitle(User, 'Persönliche Daten')}
@@ -1232,57 +1226,10 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                   </div>
                 )}
               </div>
-
-              {/* Footer */}
-              <div className="flex items-center justify-between px-7 py-3 border-t border-border shrink-0">
-                <button
-                  type="button"
-                  onClick={closeAddCustomer}
-                  className="px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground transition-all hover:text-foreground hover:bg-muted"
-                >
-                  Abbrechen
-                </button>
-                <div className="flex items-center gap-2.5">
-                  {addStep > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setAddStep(addStep - 1)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-card text-xs font-medium text-foreground transition-all hover:bg-muted"
-                    >
-                      <Icon name="chevron-left" className="w-3.5 h-3.5" />
-                      Zurück
-                    </button>
-                  )}
-                  {addStep < 3 ? (
-                    <button
-                      type="button"
-                      onClick={handleNextStep}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[color:var(--brand)] text-white text-xs font-semibold shadow-md transition-all hover:opacity-90"
-                    >
-                      Weiter
-                      <Icon name="chevron-right" className="w-3.5 h-3.5" />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleSubmitCustomer}
-                      disabled={isSavingCustomer}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold shadow-md transition-all ${
-                        isSavingCustomer
-                          ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                          : 'bg-[color:var(--status-positive)] text-white hover:opacity-90'
-                      }`}
-                    >
-                      {isSavingCustomer ? <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : <Icon name="check-circle" className="w-3.5 h-3.5" />}
-                      {isSavingCustomer ? 'Speichert…' : 'Kunden anlegen'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+          </>
         );
       })()}
+      </FormDialog>
     </div>
   );
 }

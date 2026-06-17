@@ -34,6 +34,8 @@ import {
   StatusChip,
   SectionHeader,
   DataCard,
+  FormDialog,
+  ConfirmDialog,
 } from '../../components/patterns';
 import type { StatusTone } from '../../components/patterns';
 
@@ -1559,34 +1561,35 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
         )}
       </DetailDrawer>
 
-      {/* Edit Booking Modal */}
-      {editingBooking && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={() => setEditingBooking(null)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className={`relative w-full max-w-2xl mx-4 rounded-lg shadow-2xl border overflow-hidden ${
-              'bg-card/95 border-border'
-            } max-h-[90vh] flex flex-col`}
-          >
-            {/* Header */}
-            <div className={`flex items-center justify-between px-3 py-3 border-b shrink-0 border-border`}>
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg sq-tone-brand`}>
-                  <Icon name="pencil" className={`w-5 h-5 text-[color:var(--brand)]`} />
-                </div>
-                <div>
-                  <h3 className={`text-base text-foreground`}>Buchung bearbeiten</h3>
-                  <p className={`text-xs text-muted-foreground`}>Ref: {editingBooking.bookingRef}</p>
-                </div>
-              </div>
-              <button onClick={() => setEditingBooking(null)} className={`p-1.5 rounded-lg transition-colors hover:bg-muted text-muted-foreground`}>
-                <Icon name="x" className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Scrollable Form */}
-            <div className="overflow-y-auto flex-1 px-3 py-3 space-y-5">
+      <FormDialog
+        open={!!editingBooking}
+        onOpenChange={(open) => { if (!open) setEditingBooking(null); }}
+        maxWidthClassName="sm:max-w-2xl"
+        title="Buchung bearbeiten"
+        description={editingBooking ? `Ref: ${editingBooking.bookingRef}` : undefined}
+        bodyClassName="p-0"
+        footer={(
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setEditingBooking(null)}
+              className="rounded-lg px-3 py-2 text-xs text-foreground transition-all hover:bg-muted"
+            >
+              Abbrechen
+            </button>
+            <button
+              type="button"
+              onClick={saveEdit}
+              className="sq-cta flex items-center gap-1.5 px-3 py-2 text-xs font-semibold"
+            >
+              <Icon name="save" className="w-3.5 h-3.5" />
+              Änderungen speichern
+            </button>
+          </div>
+        )}
+      >
+        {editingBooking && (
+            <div className="max-h-[min(70vh,100dvh-14rem)] overflow-y-auto px-3 py-3 space-y-5">
               {/* Section: Kunde & Fahrzeug */}
               <div>
                 <div className={`text-[11px] font-semibold uppercase tracking-wider mb-3 text-muted-foreground`}>Kunde & Fahrzeug</div>
@@ -1688,52 +1691,24 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
                 />
               </div>
             </div>
+        )}
+      </FormDialog>
 
-            {/* Footer */}
-            <div className={`flex items-center justify-end gap-3 px-3 py-3 border-t shrink-0 border-border`}>
-              <button
-                onClick={() => setEditingBooking(null)}
-                className={`px-3 py-2 rounded-lg text-xs transition-all ${
-                  'text-foreground hover:bg-muted'
-                }`}
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={saveEdit}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-lg hover:shadow-xl"
-              >
-                <Icon name="save" className="w-3.5 h-3.5" />
-                Änderungen speichern
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Cancel Confirmation Dialog */}
-      {cancelConfirmId && (() => {
+      <ConfirmDialog
+        open={!!cancelConfirmId}
+        onOpenChange={(open) => { if (!open) setCancelConfirmId(null); }}
+        title="Buchung stornieren?"
+        description="Möchten Sie diese Buchung wirklich stornieren? Diese Aktion kann nicht rückgängig gemacht werden."
+        confirmLabel="Stornieren"
+        cancelLabel="Zurück"
+        tone="critical"
+        onConfirm={executeCancel}
+      >
+        {(() => {
         const allBk = [...activeBookings, ...upcomingBookings, ...completedBookings];
         const booking = allBk.find(b => b.id === cancelConfirmId);
-        return (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={() => setCancelConfirmId(null)}>
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className={`relative w-full max-w-md mx-4 rounded-lg shadow-2xl border overflow-hidden ${
-                'bg-card/95 border-border'
-              }`}
-            >
-              <div className="p-8 text-center">
-                <div className={`w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center sq-tone-critical`}>
-                  <Icon name="alert-triangle" className={`w-5 h-5 text-[color:var(--status-critical)]`} />
-                </div>
-                <h3 className={`text-base mb-2 text-foreground`}>Buchung stornieren?</h3>
-                <p className={`text-xs mb-1 text-muted-foreground`}>
-                  Möchten Sie diese Buchung wirklich stornieren?
-                </p>
-                {booking && (
-                  <div className={`rounded-lg p-3 my-4 text-left text-xs space-y-1.5 bg-muted`}>
+        return booking ? (
+                  <div className={`rounded-lg p-3 my-2 text-left text-xs space-y-1.5 bg-muted`}>
                     <div className="flex justify-between">
                       <span className={'text-muted-foreground'}>Kunde</span>
                       <span className={'text-foreground'}>{booking.customer}</span>
@@ -1751,32 +1726,9 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
                       <span className={'text-[color:var(--status-critical)]'}>{booking.revenue}</span>
                     </div>
                   </div>
-                )}
-                <p className={`text-xs mb-3 ${'text-[color:var(--status-critical)]/80'}`}>
-                  Diese Aktion kann nicht rückgängig gemacht werden.
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setCancelConfirmId(null)}
-                    className={`flex-1 px-3 py-2.5 rounded-lg text-xs border transition-all ${
-                      'bg-card border-border text-foreground hover:bg-muted'
-                    }`}
-                  >
-                    Zurück
-                  </button>
-                  <button
-                    onClick={executeCancel}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs bg-red-600 text-white hover:bg-red-700 transition-all shadow-lg"
-                  >
-                    <Icon name="trash-2" className="w-3.5 h-3.5" />
-                    Stornieren
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+        ) : null;
+        })()}
+      </ConfirmDialog>
     </>
   );
 }

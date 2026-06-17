@@ -5,6 +5,8 @@ import { DtcService } from '../dtc/dtc.service';
 import { BrakeHealthService } from '../brakes/brake-health.service';
 import { TireHealthService } from '../tires/tire-health.service';
 import { CanonicalBatteryHealthService } from '../battery-health/canonical-battery-health.service';
+import { DashboardWarningLightsService } from '../dashboard-warning-lights/dashboard-warning-lights.service';
+import type { DashboardWarningLightsResponse } from '../dashboard-warning-lights/dashboard-warning-lights.types';
 
 // ── Public types ─────────────────────────────────────────────────────────────
 
@@ -77,6 +79,8 @@ export interface AiHealthCareResponse {
   hmFreshnessStatus: 'fresh' | 'aging' | 'stale' | 'no_data';
   hmLastErrorAt: string | null;
   hmLastErrorMessage: string | null;
+  /** Canonical dashboard warning lights read model (same shape as dedicated endpoint). */
+  dashboardWarningLights: DashboardWarningLightsResponse;
 }
 
 // ── German summary copy ───────────────────────────────────────────────────────
@@ -122,11 +126,12 @@ export class AiHealthCareAggregationService {
     private readonly brakeHealthService: BrakeHealthService,
     private readonly tireHealthService: TireHealthService,
     private readonly canonicalBatteryHealthService: CanonicalBatteryHealthService,
+    private readonly dashboardWarningLightsService: DashboardWarningLightsService,
   ) {}
 
   async getAiHealthCare(vehicleId: string): Promise<AiHealthCareResponse> {
     // Parallel read of all inputs — failures are silenced per-source
-    const [baseSummary, hmActive, dtcSummary, brakeHealth, tireHealth, batterySummary] =
+    const [baseSummary, hmActive, dtcSummary, brakeHealth, tireHealth, batterySummary, dashboardWarningLights] =
       await Promise.all([
         this.healthSummaryService.getSummary(vehicleId).catch(err => {
           this.logger.warn(`Health summary failed for ${vehicleId}: ${err?.message}`);
@@ -137,6 +142,10 @@ export class AiHealthCareAggregationService {
         this.brakeHealthService.getSummary(vehicleId).catch(() => null),
         this.tireHealthService.getSummary(vehicleId).catch(() => null),
         this.canonicalBatteryHealthService.getSummary(vehicleId).catch(() => null),
+        this.dashboardWarningLightsService.getDashboardWarningLights(vehicleId).catch(err => {
+          this.logger.warn(`Dashboard warning lights failed for ${vehicleId}: ${err?.message}`);
+          return null;
+        }),
       ]);
 
     const [hmSignals, hmMeta] = hmActive
@@ -211,6 +220,9 @@ export class AiHealthCareAggregationService {
       hmFreshnessStatus: hmSignals?.freshnessStatus ?? hmMeta.freshnessStatus ?? 'no_data',
       hmLastErrorAt: hmMeta.lastErrorAt ?? null,
       hmLastErrorMessage: hmMeta.lastErrorMessage ?? null,
+      dashboardWarningLights:
+        dashboardWarningLights ??
+        (await this.dashboardWarningLightsService.getDashboardWarningLights(vehicleId)),
     };
   }
 
@@ -271,9 +283,6 @@ export class AiHealthCareAggregationService {
     if (tireWarningAlerts.length > 0) {
       escalate('ATTENTION_NEEDED', `Reifenwarnung: ${tireWarningAlerts[0].message}`);
     }
-    if (tireHealth != null && tireHealth.overallPercent < 35) {
-      escalate('ATTENTION_NEEDED', `Reifenverschleiß: ${Math.round(tireHealth.overallPercent)}% verbleibend`);
-    }
     // LV is reported as "Estimated Battery Health" (behaviour-derived), never
     // as a workshop SOH. We escalate on the aggregated LV status, not a raw %.
     const lvStatus = batterySummary?.lv?.healthStatus ?? null;
@@ -294,7 +303,10 @@ export class AiHealthCareAggregationService {
         !brakeHealth ||
         (!brakeHealth.hasAlert &&
           (brakeHealth.overallCondition === 'GOOD' || brakeHealth.overallCondition === 'UNKNOWN'));
-      const hasGoodTire = !tireHealth || (tireHealth.overallPercent >= 60 && tireHealth.alerts.every(a => a.severity === 'info'));
+      const hasGoodTire =
+        !tireHealth ||
+        (['GOOD', 'WATCH'].includes(tireHealth.overallStatus) &&
+          tireHealth.alerts.every((a) => a.severity === 'info'));
       const hasGoodHm = !hmSignals || (
         hmSignals.limpModeActive === false &&
         hmSignals.brakeLiningPreWarning === false &&

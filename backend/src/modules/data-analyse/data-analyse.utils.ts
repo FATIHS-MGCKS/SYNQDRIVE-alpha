@@ -8,13 +8,17 @@ import type {
   DataFreshnessStatus,
   HealthCalcFreshness,
   HfDetectionQuality,
+  HfReliabilityStatus,
   IntervalStatus,
+  LaunchDetectionUsefulness,
   LaunchFeasibility,
 } from './data-analyse.types';
 import { LAUNCH_REQUIRED_SIGNALS } from './data-analyse-signal-catalog';
 
 export function computeIntervalStats(intervalsMs: number[]): {
   averageMs: number | null;
+  medianMs: number | null;
+  p95Ms: number | null;
   fastestMs: number | null;
   slowestMs: number | null;
   dropoutCount: number;
@@ -24,25 +28,77 @@ export function computeIntervalStats(intervalsMs: number[]): {
   if (valid.length === 0) {
     return {
       averageMs: null,
+      medianMs: null,
+      p95Ms: null,
       fastestMs: null,
       slowestMs: null,
       dropoutCount: 0,
       longestGapMs: null,
     };
   }
+  const sorted = [...valid].sort((a, b) => a - b);
   const sum = valid.reduce((a, b) => a + b, 0);
   const averageMs = Math.round(sum / valid.length);
-  const fastestMs = Math.min(...valid);
-  const slowestMs = Math.max(...valid);
+  const medianMs = Math.round(percentile(sorted, 0.5));
+  const p95Ms = Math.round(percentile(sorted, 0.95));
+  const fastestMs = sorted[0];
+  const slowestMs = sorted[sorted.length - 1];
   const expected = DEFAULT_SNAPSHOT_EXPECTED_INTERVAL_MS;
   const dropoutCount = valid.filter((v) => v > expected * 3).length;
   return {
     averageMs,
+    medianMs,
+    p95Ms,
     fastestMs,
     slowestMs,
     dropoutCount,
     longestGapMs: slowestMs,
   };
+}
+
+function percentile(sortedAsc: number[], p: number): number {
+  if (sortedAsc.length === 0) return NaN;
+  const idx = Math.min(sortedAsc.length - 1, Math.max(0, Math.ceil(p * sortedAsc.length) - 1));
+  return sortedAsc[idx];
+}
+
+export function classifyReliabilityStatus(params: {
+  sampleCount24h: number | null;
+  medianIntervalMs: number | null;
+  expectedIntervalMs: number | null;
+  hasPersistedValue: boolean;
+}): HfReliabilityStatus {
+  if (!params.hasPersistedValue || params.sampleCount24h === 0) return 'MISSING';
+  if (params.sampleCount24h == null || params.medianIntervalMs == null) return 'MISSING';
+  const expected = params.expectedIntervalMs ?? DEFAULT_SNAPSHOT_EXPECTED_INTERVAL_MS;
+  if (params.medianIntervalMs <= expected * 1.5) return 'GOOD';
+  if (params.medianIntervalMs <= expected * 4) return 'WATCH';
+  return 'POOR';
+}
+
+export function assessLaunchDetectionUsefulness(params: {
+  signalKey: string;
+  reliabilityStatus: HfReliabilityStatus;
+  medianIntervalMs: number | null;
+  sampleCount24h: number | null;
+}): LaunchDetectionUsefulness {
+  const launchSignals = new Set([
+    'speed',
+    'engine_load',
+    'longitudinal_acceleration',
+    'acceleration',
+    'throttle_position',
+    'throttle',
+    'engine_rpm',
+    'rpm',
+  ]);
+  if (!launchSignals.has(params.signalKey)) return 'UNKNOWN';
+  if (params.reliabilityStatus === 'MISSING') return 'NOT_POSSIBLE';
+  const interval = params.medianIntervalMs;
+  if (interval == null || (params.sampleCount24h ?? 0) < 3) return 'UNKNOWN';
+  if (interval <= LAUNCH_DETECTION_MIN_INTERVAL_MS * 2) return 'POSSIBLE';
+  if (interval <= LAUNCH_DETECTION_MIN_INTERVAL_MS * 8) return 'LIMITED';
+  return 'NOT_POSSIBLE';
 }
 
 export function classifyIntervalStatus(

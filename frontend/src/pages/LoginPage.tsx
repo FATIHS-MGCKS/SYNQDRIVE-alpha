@@ -19,8 +19,8 @@ const loginCopy: Record<string, { en: string; de: string }> = {
   pillFleet: { en: 'Live Tracking', de: 'Live-Tracking' },
   pillSecure: { en: 'Secure', de: 'Sicher' },
   pillRealtime: { en: 'Real-time', de: 'Echtzeit' },
-  trustCompanies: { en: '2,400+ Companies', de: '2.400+ Unternehmen' },
-  trustSubtitle: { en: 'move with SYNQDRIVE', de: 'fahren mit SYNQDRIVE' },
+  trustHeadline: { en: 'Fleet operations in one workspace', de: 'Flottenbetrieb in einer Oberfläche' },
+  trustSubtitle: { en: 'Telemetry, rentals, health and tasks — connected', de: 'Telemetrie, Vermietung, Health und Tasks — verbunden' },
   welcomeBack: { en: 'Welcome Back!', de: 'Willkommen zurück!' },
   subtitle: { en: 'Enter your details below to sign in.', de: 'Geben Sie Ihre Daten ein, um sich anzumelden.' },
   email: { en: 'Email', de: 'E-Mail' },
@@ -176,7 +176,7 @@ export default function LoginPage() {
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-white/15 shadow-sm"
                   style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(12px)' }}
                 >
-                  <Zap className="w-3 h-3 text-blue-300" />
+                  <Zap className="w-3 h-3 text-[color:var(--brand)]" />
                   <span className="text-[10px] text-white/90 font-medium tracking-wide">{t('fleetManagement')}</span>
                 </div>
 
@@ -210,24 +210,21 @@ export default function LoginPage() {
                   ))}
                 </div>
 
-                <div
-                  className="inline-flex items-center gap-2 p-2 rounded-xl border border-white/15 shadow-lg"
-                  style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)' }}
-                >
+                <div className="sq-glass inline-flex items-center gap-2 rounded-xl border border-white/15 p-2.5 shadow-[var(--shadow-md)]">
                   <div className="flex -space-x-1.5">
-                    {['#2563EB', '#3b82f6', '#60a5fa', '#93c5fd'].map((color, i) => (
+                    {['var(--brand)', 'color-mix(in srgb, var(--brand) 75%, white)', 'color-mix(in srgb, var(--brand) 55%, white)', 'color-mix(in srgb, var(--brand) 40%, white)'].map((color, i) => (
                       <div
                         key={i}
-                        className="w-5 h-5 rounded-full border border-black/20 flex items-center justify-center text-[8px] font-bold text-white shadow-sm"
+                        className="flex h-5 w-5 items-center justify-center rounded-full border border-black/20 text-[8px] font-bold text-white shadow-[var(--shadow-xs)]"
                         style={{ background: color }}
                       >
-                        {['M', 'A', 'J', 'K'][i]}
+                        {['F', 'L', 'O', 'T'][i]}
                       </div>
                     ))}
                   </div>
                   <div className="pr-2">
-                    <span className="block text-[10px] text-white/90 font-medium leading-none mb-0.5">{t('trustCompanies')}</span>
-                    <span className="block text-[8px] text-white/60 leading-none">{t('trustSubtitle')}</span>
+                    <span className="mb-0.5 block text-[10px] font-medium leading-none text-white/90">{t('trustHeadline')}</span>
+                    <span className="block text-[8px] leading-none text-white/60">{t('trustSubtitle')}</span>
                   </div>
                 </div>
               </div>

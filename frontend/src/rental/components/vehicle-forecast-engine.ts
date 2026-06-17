@@ -65,7 +65,7 @@ export interface PlanningItem {
   /** Humanized time string for display, e.g. "~3 weeks", "~2 months". null = omit. */
   displayTime: string | null;
   confidence: 'high' | 'medium' | 'low';
-  source: 'explicit_interval' | 'wear_model' | 'wear_heuristic' | 'time_only';
+  source: 'explicit_interval' | 'wear_model' | 'wear_heuristic' | 'time_only' | 'hm_oem';
 }
 
 // ── Internal ──────────────────────────────────────────────────────────────────
@@ -270,28 +270,19 @@ function buildOilItem(input: ForecastEngineInput, trend: MileageTrend): Planning
 
 function buildServiceItem(input: ForecastEngineInput, trend: MileageTrend): PlanningItem | null {
   const { service } = input;
-  // HM fleet-clearance fahrzeuge can ship `timeToNextServiceDays` /
-  // `distanceToNextServiceKm` without a local DB-baseline; we must not
-  // exclude them from the forecast in that case.
-  const hasSource =
-    service?.hasServiceBaseline ||
-    service?.hmServiceSource === true ||
-    service?.serviceRemainingDays != null ||
-    service?.serviceRemainingMonths != null ||
-    service?.serviceRemainingKm != null ||
-    service?.serviceOverdue === true;
-  if (!service || !hasSource) return null;
+  const tracked = service?.nextService?.trackingStatus === 'TRACKED';
+  if (!service || !tracked) return null;
 
-  const kmUntil = service.serviceRemainingKm;
-  const monthsUntil = service.serviceRemainingMonths;
+  const kmUntil = service.nextService?.distanceToNextServiceKm ?? service.serviceRemainingKm ?? null;
+  const daysUntilDirect = service.nextService?.timeToNextServiceDays ?? service.serviceRemainingDays ?? null;
 
   const daysFromKm = kmUntil != null && kmUntil > 0 ? kmUntil / trend.dailyKm : null;
-  const daysFromMonths = monthsUntil != null ? monthsUntil * 30.5 : null;
-  const bindingIsMonths = daysFromKm == null && daysFromMonths != null;
+  const daysFromHm = daysUntilDirect != null && daysUntilDirect > 0 ? daysUntilDirect : null;
+  const bindingIsMonths = false;
   const daysUntil =
-    daysFromKm != null && daysFromMonths != null
-      ? Math.min(daysFromKm, daysFromMonths)
-      : daysFromKm ?? daysFromMonths;
+    [daysFromKm, daysFromHm]
+      .filter((d): d is number => d != null)
+      .reduce((min, d) => (min == null || d < min ? d : min), null as number | null) ?? null;
 
   if (kmUntil == null && daysUntil == null) return null;
   if (!withinHorizon(kmUntil, daysUntil)) return null;
@@ -306,7 +297,7 @@ function buildServiceItem(input: ForecastEngineInput, trend: MileageTrend): Plan
     displayKm: bindingIsMonths ? null : humanizePlanningKm(kmUntil),
     displayTime: humanizePlanningDays(daysUntil, trend.confidence, bindingIsMonths),
     confidence: trend.confidence,
-    source: 'explicit_interval',
+    source: 'hm_oem',
   };
 }
 
@@ -364,11 +355,9 @@ function buildBrakeItem(input: ForecastEngineInput, trend: MileageTrend): Planni
     (input.brakeHealth.stateClass === 'MEASURED' || input.brakeHealth.stateClass === 'ESTIMATED')
   ) {
     const kmUntil =
-      input.brakeHealth.remainingKm ??
-      Math.min(
-        input.brakeHealth.pads?.estimatedLifetimeKm ?? Number.POSITIVE_INFINITY,
-        input.brakeHealth.discs?.estimatedLifetimeKm ?? Number.POSITIVE_INFINITY,
-      );
+      input.brakeHealth.estimatedReplacementDueInKm ??
+      input.brakeHealth.legacy?.remainingKm ??
+      null;
     if (kmUntil == null) return null;
     if (!Number.isFinite(kmUntil)) return null;
 

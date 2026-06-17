@@ -71,10 +71,10 @@ export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, on
 
   const itemCls = (on: boolean) => navItemClass(on);
 
-  const icon = 'w-4 h-4 shrink-0';
+  const icon = 'w-[14px] h-[14px] shrink-0';
 
   const sectionLabel = (text: string) => (
-    <div className={`${navSectionLabelClass} px-3 mt-5 mb-2`}>{text}</div>
+    <div className={`${navSectionLabelClass} mt-5 mb-1 px-2.5`}>{text}</div>
   );
 
   const collapsibleHeader = (key: string, label: string) => {
@@ -273,7 +273,7 @@ export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, on
       )}
 
       {/* ── DESKTOP SIDEBAR ── */}
-      <div className="hidden lg:flex w-[220px] h-screen flex-col shrink-0 border-r bg-sidebar border-sidebar-border">
+      <div className="hidden lg:flex w-[260px] h-screen flex-col shrink-0 border-r bg-sidebar border-sidebar-border">
         {/* Logo */}
         <div className="px-4 py-3 flex flex-col items-center gap-1.5 border-b border-sidebar-border">
           <img src={logo} alt="SynqDrive" className="h-7 w-auto object-contain" />

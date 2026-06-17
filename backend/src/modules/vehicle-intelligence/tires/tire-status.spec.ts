@@ -4,6 +4,8 @@ import {
   classifyUnevenWear,
   classifySeasonStatus,
   classifyConfidenceLevel,
+  confidenceLevelToLabel,
+  confidenceLevelToScore,
   resolveDisplayMode,
   classifyMeasurementOverdue,
   classifyTireAgeYears,
@@ -325,5 +327,16 @@ describe('alertTypeToCode', () => {
     expect(alertTypeToCode('AXLE_WEAR_IMBALANCE')).toBe('TIRE_WEAR_UNEVEN');
     expect(alertTypeToCode('ROTATION_OVERDUE')).toBe('TIRE_ROTATION_RECOMMENDED');
     expect(alertTypeToCode('SOMETHING_NEW')).toBe('TIRE_GENERIC');
+  });
+});
+
+describe('confidenceLevelToLabel / confidenceLevelToScore', () => {
+  it('keeps label and score aligned with canonical enum', () => {
+    expect(confidenceLevelToLabel('HIGH')).toBe('High');
+    expect(confidenceLevelToScore('HIGH')).toBe(85);
+    expect(confidenceLevelToLabel('MEDIUM')).toBe('Medium');
+    expect(confidenceLevelToScore('MEDIUM')).toBe(65);
+    expect(confidenceLevelToLabel('LOW')).toBe('Low');
+    expect(confidenceLevelToScore('UNKNOWN')).toBe(20);
   });
 });

@@ -9,6 +9,7 @@ import {
   BrakeEvidenceSource,
   BrakeWheelPosition,
   DocumentExtractionType,
+  ServiceEventOrigin,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BrakeLifecycleService } from '@modules/vehicle-intelligence/brakes/brake-lifecycle.service';
@@ -287,6 +288,7 @@ export class DocumentExtractionApplyService {
         notes: this.str(d.notes) ?? this.str(d.description),
         costCents: costCentsParsed,
         documentUrl: sourceFileUrl,
+        origin: ServiceEventOrigin.AI_UPLOAD,
       },
     });
 

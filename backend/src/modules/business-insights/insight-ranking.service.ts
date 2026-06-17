@@ -50,6 +50,7 @@ const TYPE_OPERATIONAL_WEIGHT: Record<InsightType, number> = {
   // imminent-vs-lapsed ordering.
   [InsightType.TUV_OVERDUE]: 13,
   [InsightType.BOKRAFT_OVERDUE]: 13,
+  [InsightType.HM_SERVICE_NO_TRACKING]: 1,
 };
 
 @Injectable()

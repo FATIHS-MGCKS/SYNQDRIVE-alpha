@@ -18,6 +18,7 @@ import {
   classifyFluidStatus,
   classifyMeasuredThickness,
   classifyDiscConditionLabel,
+  conditionToLegacyStatus,
   evidenceSourceToDataBasis,
   isAlertableCondition,
   strongerDataBasis,
@@ -121,16 +122,30 @@ export interface BrakeCanonicalAlertDto {
   axle?: 'FRONT' | 'REAR' | 'UNKNOWN';
 }
 
+export interface BrakeAxleSummaryDto {
+  condition: BrakeCondition;
+  dataBasis: BrakeDataBasis;
+  confidence: BrakeConfidenceLevel;
+  estimatedRemainingKmMin: number | null;
+  estimatedRemainingKmMax: number | null;
+}
+
+/** Legacy wear-model fields — not for UI; backward compatibility only. */
+export interface BrakeHealthLegacyDto {
+  padsHealthPct: number | null;
+  discsHealthPct: number | null;
+  padsRemainingKm: number | null;
+  discsRemainingKm: number | null;
+  status: string;
+  remainingKm: number | null;
+}
+
 export interface BrakeHealthSummaryDto {
   isInitialized: boolean;
   stateClass: BrakeStateClass;
-  status?: string;
   message?: string;
   actions?: { canAddBrakeService: boolean; canUseAiUpload: boolean };
-  pads?: { healthPercent: number; estimatedLifetimeKm: number | null };
-  discs?: { healthPercent: number; estimatedLifetimeKm: number | null };
   limitingComponent?: BrakeLimitingComponent;
-  remainingKm?: number | null;
   modeledComponents: BrakeModeledComponentsDto;
   modelCoverage: BrakeModelCoverageDto;
   lastChangeAt?: string | null;
@@ -142,16 +157,22 @@ export interface BrakeHealthSummaryDto {
   legacyHeuristic?: { available: boolean; note: string };
 
   // ── Canonical evidence-based read model ────────────────────────────────────
-  // The honest condition every consumer reads. Estimates cap at WARNING; a
-  // CRITICAL condition is only produced by a real safety signal.
   overallCondition: BrakeCondition;
   dataBasis: BrakeDataBasis;
   confidenceLevel: BrakeConfidenceLevel;
+  frontAxle: BrakeAxleSummaryDto;
+  rearAxle: BrakeAxleSummaryDto;
+  /** @deprecated Prefer `frontAxle` / `rearAxle`. */
   frontAxleCondition: BrakeCondition;
+  /** @deprecated Prefer `frontAxle` / `rearAxle`. */
   rearAxleCondition: BrakeCondition;
+  /** @deprecated Prefer `frontAxle` / `rearAxle`. */
   frontDataBasis: BrakeDataBasis;
+  /** @deprecated Prefer `frontAxle` / `rearAxle`. */
   rearDataBasis: BrakeDataBasis;
+  /** @deprecated Prefer `frontAxle` / `rearAxle`. */
   frontConfidence: BrakeConfidenceLevel;
+  /** @deprecated Prefer `frontAxle` / `rearAxle`. */
   rearConfidence: BrakeConfidenceLevel;
   estimatedFrontRemainingKmMin: number | null;
   estimatedFrontRemainingKmMax: number | null;
@@ -161,12 +182,15 @@ export interface BrakeHealthSummaryDto {
   estimatedReplacementDueInKm: number | null;
   reasons: string[];
   recommendations: string[];
+  /** Alias of `openAlerts` for API consumers. */
+  alerts: BrakeCanonicalAlertDto[];
   openAlerts: BrakeCanonicalAlertDto[];
   lastMeasurementAt: string | null;
   lastMeasurementMileageKm: number | null;
   lastServiceAt: string | null;
   lastServiceMileageKm: number | null;
   updatedAt: string | null;
+  legacy: BrakeHealthLegacyDto;
 }
 
 export type BrakeCanonicalReadModel = Pick<
@@ -263,8 +287,6 @@ export class BrakeHealthService {
 
     const padPct = current.padsHealthPct != null ? round2(current.padsHealthPct) : null;
     const discPct = current.discsHealthPct != null ? round2(current.discsHealthPct) : null;
-    const minPct = Math.min(padPct ?? 101, discPct ?? 101);
-    const status = minPct >= 60 ? 'healthy' : minPct >= 30 ? 'attention' : 'critical';
     const stateClass = this.deriveStateClass(current, modeledComponents);
     const limitingComponent = this.deriveLimitingComponent(current);
     const baselineWarnings = this.readWarningArray(current?.baselineWarnings);
@@ -279,32 +301,15 @@ export class BrakeHealthService {
       current.padsRemainingKm ?? Number.POSITIVE_INFINITY,
       current.discsRemainingKm ?? Number.POSITIVE_INFINITY,
     );
+    const roundedRemainingKm = Number.isFinite(remainingKm) ? Math.round(remainingKm) : null;
 
     const canonical = await this.buildCanonicalReadModel(vehicleId, current, modeledComponents);
 
-    return {
+    return this.composeSummaryDto({
       isInitialized: true,
       stateClass,
-      status,
       actions: { canAddBrakeService: true, canUseAiUpload: true },
-      pads:
-        padPct != null
-          ? {
-              healthPercent: Math.round(padPct),
-              estimatedLifetimeKm:
-                current.padsRemainingKm != null ? Math.round(current.padsRemainingKm) : null,
-            }
-          : undefined,
-      discs:
-        discPct != null
-          ? {
-              healthPercent: Math.round(discPct),
-              estimatedLifetimeKm:
-                current.discsRemainingKm != null ? Math.round(current.discsRemainingKm) : null,
-            }
-          : undefined,
       limitingComponent,
-      remainingKm: Number.isFinite(remainingKm) ? Math.round(remainingKm) : null,
       modeledComponents,
       modelCoverage: {
         distanceSinceAnchorKm:
@@ -327,13 +332,22 @@ export class BrakeHealthService {
       },
       baselineWarnings,
       provenanceWarnings: coverageWarnings,
-      hasAlert: current.hasAlert,
       legacyHeuristic: {
         available: false,
         note: 'Legacy brake-status is deprecated and not used as primary truth.',
       },
-      ...canonical,
-    };
+      canonical,
+      legacy: {
+        padsHealthPct: padPct != null ? Math.round(padPct) : null,
+        discsHealthPct: discPct != null ? Math.round(discPct) : null,
+        padsRemainingKm:
+          current.padsRemainingKm != null ? Math.round(current.padsRemainingKm) : null,
+        discsRemainingKm:
+          current.discsRemainingKm != null ? Math.round(current.discsRemainingKm) : null,
+        status: conditionToLegacyStatus(canonical.overallCondition, stateClass),
+        remainingKm: roundedRemainingKm,
+      },
+    });
   }
 
   async getDetail(vehicleId: string): Promise<BrakeHealthDetailDto> {
@@ -353,10 +367,11 @@ export class BrakeHealthService {
     });
 
     const impact = await this.drivingImpactService.getVehicleImpactForBrake(vehicleId);
-    const alerts =
-      summary.stateClass === 'NO_BASELINE' || summary.stateClass === 'WARNING_ONLY' || !current
-        ? []
-        : this.computeAlerts(current);
+    const alerts: BrakeAlert[] = summary.openAlerts.map((a) => ({
+      type: a.code,
+      severity: a.severity,
+      message: a.message,
+    }));
     const factors =
       summary.stateClass === 'NO_BASELINE' || summary.stateClass === 'WARNING_ONLY'
         ? {}
@@ -1504,10 +1519,9 @@ export class BrakeHealthService {
         ? 'No modeled brake baseline yet. Legacy telemetry indicates potential brake attention.'
         : 'Brake wear tracking awaits a valid brake service baseline with odometer and thickness anchor.';
 
-    return {
+    return this.composeSummaryDto({
       isInitialized: false,
       stateClass,
-      status: stateClass === 'WARNING_ONLY' ? 'warning_only' : 'awaiting_baseline',
       message: msg,
       actions: { canAddBrakeService: true, canUseAiUpload: true },
       modeledComponents,
@@ -1520,7 +1534,6 @@ export class BrakeHealthService {
         source: 'none',
       },
       limitingComponent: null,
-      remainingKm: null,
       lastChangeAt: null,
       lastRecalculatedAt: current?.lastRecalculatedAt?.toISOString() ?? null,
       confidence: { score: Math.round(current?.confidenceScore ?? 0), label: current?.confidenceLabel ?? 'Low' },
@@ -1532,7 +1545,6 @@ export class BrakeHealthService {
         stateClass === 'WARNING_ONLY'
           ? ['Legacy telemetry warning only; this is not a modeled brake wear estimate.']
           : [],
-      hasAlert: hasLegacyWarning || current?.hasAlert === true,
       legacyHeuristic: {
         available: legacyPad != null,
         note:
@@ -1540,7 +1552,100 @@ export class BrakeHealthService {
             ? `Legacy brakePadPercent=${Math.round(legacyPad)}% (supplement only, not modeled truth).`
             : 'No legacy brake telemetry available.',
       },
-      ...canonical,
+      canonical,
+      legacy: {
+        padsHealthPct: legacyPad != null ? Math.round(legacyPad) : null,
+        discsHealthPct: null,
+        padsRemainingKm: null,
+        discsRemainingKm: null,
+        status: conditionToLegacyStatus(canonical.overallCondition, stateClass),
+        remainingKm: null,
+      },
+      hasAlertOverride: hasLegacyWarning || current?.hasAlert === true,
+    });
+  }
+
+  /** Merge canonical read model + legacy wear fields into the public summary DTO. */
+  private composeSummaryDto(input: {
+    isInitialized: boolean;
+    stateClass: BrakeStateClass;
+    message?: string;
+    actions?: { canAddBrakeService: boolean; canUseAiUpload: boolean };
+    limitingComponent?: BrakeLimitingComponent;
+    modeledComponents: BrakeModeledComponentsDto;
+    modelCoverage: BrakeModelCoverageDto;
+    lastChangeAt?: string | null;
+    lastRecalculatedAt?: string | null;
+    confidence?: { score: number; label: string };
+    baselineWarnings: string[];
+    provenanceWarnings: string[];
+    legacyHeuristic?: { available: boolean; note: string };
+    canonical: BrakeCanonicalReadModel;
+    legacy: BrakeHealthLegacyDto;
+    hasAlertOverride?: boolean;
+  }): BrakeHealthSummaryDto {
+    const { canonical, legacy } = input;
+    const openAlerts = canonical.openAlerts;
+    const hasCanonicalAlert = openAlerts.some(
+      (a) => a.severity === 'critical' || a.severity === 'warning',
+    );
+    const frontAxle: BrakeAxleSummaryDto = {
+      condition: canonical.frontAxleCondition,
+      dataBasis: canonical.frontDataBasis,
+      confidence: canonical.frontConfidence,
+      estimatedRemainingKmMin: canonical.estimatedFrontRemainingKmMin,
+      estimatedRemainingKmMax: canonical.estimatedFrontRemainingKmMax,
+    };
+    const rearAxle: BrakeAxleSummaryDto = {
+      condition: canonical.rearAxleCondition,
+      dataBasis: canonical.rearDataBasis,
+      confidence: canonical.rearConfidence,
+      estimatedRemainingKmMin: canonical.estimatedRearRemainingKmMin,
+      estimatedRemainingKmMax: canonical.estimatedRearRemainingKmMax,
+    };
+
+    return {
+      isInitialized: input.isInitialized,
+      stateClass: input.stateClass,
+      message: input.message,
+      actions: input.actions,
+      limitingComponent: input.limitingComponent ?? null,
+      modeledComponents: input.modeledComponents,
+      modelCoverage: input.modelCoverage,
+      lastChangeAt: input.lastChangeAt,
+      lastRecalculatedAt: input.lastRecalculatedAt,
+      confidence: input.confidence,
+      baselineWarnings: input.baselineWarnings,
+      provenanceWarnings: input.provenanceWarnings,
+      hasAlert: hasCanonicalAlert || input.hasAlertOverride === true,
+      legacyHeuristic: input.legacyHeuristic,
+      overallCondition: canonical.overallCondition,
+      dataBasis: canonical.dataBasis,
+      confidenceLevel: canonical.confidenceLevel,
+      frontAxle,
+      rearAxle,
+      frontAxleCondition: canonical.frontAxleCondition,
+      rearAxleCondition: canonical.rearAxleCondition,
+      frontDataBasis: canonical.frontDataBasis,
+      rearDataBasis: canonical.rearDataBasis,
+      frontConfidence: canonical.frontConfidence,
+      rearConfidence: canonical.rearConfidence,
+      estimatedFrontRemainingKmMin: canonical.estimatedFrontRemainingKmMin,
+      estimatedFrontRemainingKmMax: canonical.estimatedFrontRemainingKmMax,
+      estimatedRearRemainingKmMin: canonical.estimatedRearRemainingKmMin,
+      estimatedRearRemainingKmMax: canonical.estimatedRearRemainingKmMax,
+      nextInspectionRecommendedInKm: canonical.nextInspectionRecommendedInKm,
+      estimatedReplacementDueInKm: canonical.estimatedReplacementDueInKm,
+      reasons: canonical.reasons,
+      recommendations: canonical.recommendations,
+      alerts: openAlerts,
+      openAlerts,
+      lastMeasurementAt: canonical.lastMeasurementAt,
+      lastMeasurementMileageKm: canonical.lastMeasurementMileageKm,
+      lastServiceAt: canonical.lastServiceAt,
+      lastServiceMileageKm: canonical.lastServiceMileageKm,
+      updatedAt: canonical.updatedAt,
+      legacy,
     };
   }
 
@@ -1722,8 +1827,9 @@ export class BrakeHealthService {
       code: BrakeAlertCode,
       message: string,
       axle?: 'FRONT' | 'REAR' | 'UNKNOWN',
+      severity?: 'info' | 'warning' | 'critical',
     ) => {
-      openAlerts.push({ code, severity: alertCodeSeverity(code), message, axle });
+      openAlerts.push({ code, severity: severity ?? alertCodeSeverity(code), message, axle });
     };
 
     if (!initialized) {
@@ -1760,11 +1866,37 @@ export class BrakeHealthService {
         );
       }
     }
-    if (fluidCondition === 'WARNING' || fluidCondition === 'CRITICAL') {
-      pushAlert('BRAKE_FLUID_WARNING', 'Bremsflüssigkeit auffällig — prüfen/wechseln');
+    if (fluidCondition === 'CRITICAL') {
+      pushAlert(
+        'BRAKE_FLUID_WARNING',
+        'Bremsflüssigkeit kritisch — sofort prüfen/wechseln',
+        undefined,
+        'critical',
+      );
+    } else if (fluidCondition === 'WARNING') {
+      pushAlert('BRAKE_FLUID_WARNING', 'Bremsflüssigkeit auffällig — prüfen/wechseln', undefined, 'warning');
     }
-    if (dtcCondition === 'WARNING' || dtcCondition === 'CRITICAL') {
-      pushAlert('BRAKE_SYSTEM_DTC', 'Bremssystem-Fehlercode aktiv — Diagnose empfohlen');
+    if (dtcCondition === 'CRITICAL') {
+      pushAlert(
+        'BRAKE_SYSTEM_DTC',
+        'Bremssystem-Fehlercode kritisch — sofortige Diagnose',
+        undefined,
+        'critical',
+      );
+    } else if (dtcCondition === 'WARNING') {
+      pushAlert(
+        'BRAKE_SYSTEM_DTC',
+        'Bremssystem-Fehlercode aktiv — Diagnose empfohlen',
+        undefined,
+        'warning',
+      );
+    } else if (dtcCondition === 'WATCH') {
+      pushAlert(
+        'BRAKE_SYSTEM_DTC',
+        'Bremssystem-Hinweis (Info-DTC) — bei Gelegenheit prüfen',
+        undefined,
+        'info',
+      );
     }
     if (inspectionOverdue) {
       pushAlert('BRAKE_INSPECTION_OVERDUE', 'Bremsenprüfung überfällig');

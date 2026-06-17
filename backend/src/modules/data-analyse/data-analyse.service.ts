@@ -11,10 +11,12 @@ import {
 } from './data-analyse-signal-catalog';
 import {
   assessLaunchFeasibility,
+  assessLaunchDetectionUsefulness,
   classifyDataFreshness,
   classifyHealthFreshness,
   classifyHfDetectionQuality,
   classifyIntervalStatus,
+  classifyReliabilityStatus,
   computeIntervalStats,
   filterConnectedVehicles,
   formatSignalValue,
@@ -24,12 +26,14 @@ import type {
   DataAnalyseVehicleDto,
   HealthTraceDto,
   HighFrequencyAnalysisDto,
+  HfPracticalUse,
   LaunchFeasibilityDto,
   PipelineDto,
   SignalArrivalRowDto,
   SignalGroupDefinitionDto,
   TelemetryOverviewDto,
 } from './data-analyse.types';
+import type { SignalCatalogEntry } from './data-analyse-signal-catalog';
 
 interface ClickHouseSnapshotStats {
   count: number;
@@ -37,6 +41,30 @@ interface ClickHouseSnapshotStats {
   minIntervalMs: number | null;
   maxIntervalMs: number | null;
   intervals: number[];
+}
+
+interface SignalColumnAggregate {
+  sampleCount24h: number;
+  sampleCount7d: number;
+  firstSeenAt: string | null;
+  lastSeenAt: string | null;
+}
+
+interface SignalIntervalStats {
+  medianIntervalMs: number | null;
+  p95IntervalMs: number | null;
+  minIntervalMs: number | null;
+  maxIntervalMs: number | null;
+  gapCount: number;
+  largestGapMs: number | null;
+  averageMs?: number | null;
+  medianMs?: number | null;
+  p95Ms?: number | null;
+  fastestMs?: number | null;
+  slowestMs?: number | null;
+  dropoutCount?: number;
+  longestGapMs?: number | null;
+  intervals?: number[];
 }
 
 @Injectable()
@@ -134,51 +162,143 @@ export class DataAnalyseService {
     const waypointCount = await this.countWaypoints24h(vehicleId);
 
     const hfCatalog = VEHICLE_LATEST_STATE_CATALOG.filter((c) => c.highFrequencyCandidate);
-    const signals = hfCatalog.map((entry) => {
-      const state = ctx.latestState;
-      const raw = state ? (state as Record<string, unknown>)[entry.field] : null;
-      const hasValue = raw != null;
-      const intervalStats = computeIntervalStats(ctx.chStats?.intervals ?? []);
-      const quality = classifyHfDetectionQuality(
-        intervalStats.averageMs,
-        (waypointCount ?? 0) > 0,
-      );
-      const notes: string[] = [];
-      if (!hasValue) {
-        notes.push('Signal not currently persisted in vehicle_latest_states.');
-      }
-      if ((waypointCount ?? 0) === 0) {
-        notes.push('No telemetry_waypoints rows in ClickHouse for analysis window.');
-      }
-      if (quality === 'Too sparse') {
-        notes.push('Not sufficient for reliable launch-like start detection.');
-      }
+    const columnAggregates = await this.querySignalColumnAggregates(vehicleId, hfCatalog);
+    const waypointSpeedStats =
+      (waypointCount ?? 0) > 0
+        ? await this.queryWaypointColumnStats(vehicleId, 'speed_kmh')
+        : null;
 
-      let providerLatency: number | null = null;
-      if (state?.sourceTimestamp && state?.providerFetchedAt) {
-        providerLatency =
-          state.providerFetchedAt.getTime() - state.sourceTimestamp.getTime();
-      }
+    const signals = await Promise.all(
+      hfCatalog.map(async (entry) => {
+        const state = ctx.latestState;
+        const raw = state ? (state as Record<string, unknown>)[entry.field] : null;
+        const hasValue = raw != null;
+        const colKey = entry.clickhouseColumn ?? entry.signalName;
+        const aggregate =
+          entry.signalName === 'speed' && waypointSpeedStats
+            ? waypointSpeedStats
+            : columnAggregates.get(colKey) ?? null;
 
-      return {
-        signalName: entry.signalName,
-        observedIntervalMs: intervalStats.averageMs,
-        averageIntervalMs: intervalStats.averageMs,
-        dropoutCount: intervalStats.dropoutCount,
-        longestGapMs: intervalStats.longestGapMs,
-        providerToBackendLatencyMs: providerLatency,
-        detectionQuality: hasValue ? quality : ('Not available' as const),
-        notes,
-      };
-    });
+        let intervalStats: ReturnType<typeof computeIntervalStats> | null = null;
+        if (aggregate?.intervals && aggregate.intervals.length > 0) {
+          intervalStats = computeIntervalStats(aggregate.intervals);
+        } else if (entry.clickhouseColumn && (aggregate?.sampleCount24h ?? 0) > 0) {
+          const colInterval = await this.queryColumnIntervalStats(
+            vehicleId,
+            entry.clickhouseColumn,
+            entry.clickhouseTable ?? 'telemetry_snapshots',
+          );
+          if (colInterval) {
+            intervalStats = {
+              averageMs: colInterval.averageMs ?? colInterval.medianIntervalMs ?? null,
+              medianMs: colInterval.medianIntervalMs ?? colInterval.medianMs ?? null,
+              p95Ms: colInterval.p95IntervalMs ?? colInterval.p95Ms ?? null,
+              fastestMs: colInterval.minIntervalMs ?? colInterval.fastestMs ?? null,
+              slowestMs: colInterval.maxIntervalMs ?? colInterval.slowestMs ?? null,
+              dropoutCount: colInterval.gapCount ?? colInterval.dropoutCount ?? 0,
+              longestGapMs: colInterval.largestGapMs ?? colInterval.longestGapMs ?? null,
+            };
+          }
+        }
+
+        const medianIntervalMs = intervalStats?.medianMs ?? null;
+        const sampleCount24h = aggregate?.sampleCount24h ?? (hasValue ? null : 0);
+        const reliabilityStatus = classifyReliabilityStatus({
+          sampleCount24h,
+          medianIntervalMs,
+          expectedIntervalMs: entry.expectedIntervalMs,
+          hasPersistedValue: hasValue || (sampleCount24h ?? 0) > 0,
+        });
+
+        const hasPersistedHf =
+          entry.signalName === 'speed'
+            ? (waypointCount ?? 0) > 0 || (sampleCount24h ?? 0) > 0
+            : (sampleCount24h ?? 0) > 0;
+
+        const quality = classifyHfDetectionQuality(
+          medianIntervalMs ?? intervalStats?.averageMs ?? null,
+          hasPersistedHf,
+        );
+        const launchDetectionUsefulness = assessLaunchDetectionUsefulness({
+          signalKey: entry.signalName,
+          reliabilityStatus,
+          medianIntervalMs,
+          sampleCount24h,
+        });
+
+        const notes: string[] = [];
+        if (!hasValue && (sampleCount24h ?? 0) === 0) {
+          notes.push('Signal not currently persisted for this vehicle.');
+        }
+        if (entry.clickhouseColumn == null) {
+          notes.push('No ClickHouse column mapped — interval stats from snapshots unavailable.');
+        }
+        if (!chAvailable) {
+          notes.push('ClickHouse unavailable — counts/intervals may be incomplete.');
+        }
+        if (entry.signalName === 'speed' && (waypointCount ?? 0) === 0) {
+          notes.push('No telemetry_waypoints in 24h — using snapshot-level speed only.');
+        }
+        if (quality === 'Too sparse') {
+          notes.push('Interval too sparse for reliable launch-like start detection.');
+        }
+
+        let providerLatency: number | null = null;
+        if (state?.sourceTimestamp && state?.providerFetchedAt) {
+          providerLatency =
+            state.providerFetchedAt.getTime() - state.sourceTimestamp.getTime();
+        }
+
+        const explanation = this.buildHfExplanation({
+          entry,
+          reliabilityStatus,
+          launchDetectionUsefulness,
+          sampleCount24h,
+          medianIntervalMs,
+          waypointCount,
+        });
+
+        return {
+          signalKey: entry.signalName,
+          signalName: entry.signalName,
+          displayName: entry.displayName ?? entry.signalName,
+          sourceProvider: state?.providerSource ?? state?.source ?? null,
+          pollGroup: entry.pollGroup ?? 'DIMO_SNAPSHOT',
+          storageTable: entry.storageTable ?? 'vehicle_latest_states',
+          sampleCount24h,
+          sampleCount7d: aggregate?.sampleCount7d ?? null,
+          firstSeenAt: aggregate?.firstSeenAt ?? state?.lastSeenAt?.toISOString() ?? null,
+          lastSeenAt: aggregate?.lastSeenAt ?? state?.lastSeenAt?.toISOString() ?? null,
+          medianIntervalMs,
+          p95IntervalMs: intervalStats?.p95Ms ?? null,
+          minIntervalMs: intervalStats?.fastestMs ?? null,
+          maxIntervalMs: intervalStats?.slowestMs ?? null,
+          gapCount: intervalStats?.dropoutCount ?? null,
+          largestGapMs: intervalStats?.longestGapMs ?? null,
+          reliabilityStatus,
+          practicalUse: this.resolvePracticalUse(entry),
+          launchDetectionUsefulness,
+          explanation,
+          observedIntervalMs: medianIntervalMs ?? intervalStats?.averageMs ?? null,
+          averageIntervalMs: intervalStats?.averageMs ?? medianIntervalMs,
+          dropoutCount: intervalStats?.dropoutCount ?? null,
+          longestGapMs: intervalStats?.longestGapMs ?? null,
+          providerToBackendLatencyMs: providerLatency,
+          detectionQuality: hasValue || (sampleCount24h ?? 0) > 0 ? quality : ('Not available' as const),
+          notes,
+        };
+      }),
+    );
 
     const snapshotOnly = (waypointCount ?? 0) === 0;
-    const anyHf = signals.some((s) => s.detectionQuality === 'Good for detection');
+    const anyHf = signals.some(
+      (s) => s.reliabilityStatus === 'GOOD' || s.detectionQuality === 'Good for detection',
+    );
 
     return {
       available: anyHf || signals.some((s) => s.observedIntervalMs != null),
       message: snapshotOnly
-        ? 'No high-frequency telemetry persisted for this vehicle. Only snapshot-level telemetry available.'
+        ? 'No high-frequency waypoint stream in ClickHouse (24h). Snapshot-level telemetry (~30s) may still be available per signal.'
         : null,
       snapshotLevelOnly: snapshotOnly,
       clickHouseAvailable: chAvailable,
@@ -203,10 +323,13 @@ export class DataAnalyseService {
     }
 
     const waypointCount = await this.countWaypoints24h(vehicleId);
+    const speedSignal = signalRows.find((s) => s.signalName === 'speed');
+    const hf = await this.getHighFrequency(orgId, vehicleId);
+    const speedHf = hf.signals.find((s) => s.signalKey === 'speed');
     const intervalStats = computeIntervalStats(ctx.chStats?.intervals ?? []);
     const assessment = assessLaunchFeasibility({
       availableSignalNames: available,
-      speedIntervalMs: intervalStats.averageMs,
+      speedIntervalMs: speedHf?.medianIntervalMs ?? speedSignal?.observedIntervalMs ?? intervalStats.medianMs,
       hasWaypointStream: (waypointCount ?? 0) > 0,
       snapshotOnly: (waypointCount ?? 0) === 0,
     });
@@ -223,10 +346,9 @@ export class DataAnalyseService {
       feasibility: assessment.feasibility,
       availableSignals: available,
       missingSignals: assessment.missingSignals,
-      observedIntervals: {
-        snapshot_poll: intervalStats.averageMs,
-        speed: intervalStats.averageMs,
-      },
+      observedIntervals: Object.fromEntries(
+        hf.signals.map((s) => [s.signalKey, s.medianIntervalMs]),
+      ),
       minimumViableIntervalMs: 500,
       providerLimitations,
       recommendation: assessment.recommendation,
@@ -237,6 +359,23 @@ export class DataAnalyseService {
   async getHealthTrace(orgId: string, vehicleId: string): Promise<HealthTraceDto> {
     await this.assertVehicle(orgId, vehicleId);
     const nowMs = Date.now();
+    const ctx = await this.loadVehicleContext(orgId, vehicleId);
+    const signalRows = this.buildSignalRows(ctx.latestState, ctx.chStats, ctx.nowMs);
+
+    const brakeSignals = ['speed', 'odometer', 'brake_pad_percent'];
+    const tireSignals = ['tire_pressure_fl', 'tire_pressure_fr', 'tire_pressure_rl', 'tire_pressure_rr', 'tire_health_percent', 'speed', 'odometer'];
+    const batterySignals = ['lv_battery_voltage', 'ev_soc', 'traction_battery_voltage', 'traction_battery_soh', 'traction_battery_power'];
+
+    const traceSignals = (keys: string[]) =>
+      keys.map((k) => {
+        const row = signalRows.find((r) => r.signalName === k);
+        return {
+          signal: k,
+          arriving: row?.persisted ?? false,
+          lastSeen: row?.lastSeen ?? null,
+          intervalStatus: row?.intervalStatus ?? 'Missing',
+        };
+      });
 
     const [brake, tireSetup, hvBattery, lvSnapshot, drivingImpact, eventCounts] =
       await Promise.all([
@@ -305,6 +444,9 @@ export class DataAnalyseService {
           harshBrakingEvents30d: eventCounts
             .filter((e) => e.eventType === 'HARSH_BRAKING' || e.eventType === 'EXTREME_BRAKING')
             .reduce((a, e) => a + e._count, 0),
+          consumedSignals: traceSignals(brakeSignals),
+          calculationBlocked: !brake?.isInitialized,
+          calculationWeakened: brakeMissing.length > 0,
         },
         notes: brake
           ? brakeMissing.length > 0
@@ -326,6 +468,9 @@ export class DataAnalyseService {
           activeSetupId: tireSetup?.id ?? null,
           overallHealthPercent: tireSetup?.overallHealthPercent ?? null,
           overallRemainingKm: tireSetup?.overallRemainingKm ?? null,
+          consumedSignals: traceSignals(tireSignals),
+          calculationBlocked: !tireSetup,
+          calculationWeakened: tireMissing.length > 0,
         },
         notes: [
           'Calculation input trace is not fully available in the current data model for per-signal tire inputs.',
@@ -346,6 +491,9 @@ export class DataAnalyseService {
           lvSoh: lvSnapshot?.sohPercent ?? null,
           hvPublishedSoh: hvBattery?.publishedSohPct ?? null,
           hvRawSoh: hvBattery?.rawSohPct ?? null,
+          consumedSignals: traceSignals(batterySignals),
+          calculationBlocked: batteryMissing.length === batterySignals.length,
+          calculationWeakened: batteryMissing.length > 0 && batteryMissing.length < batterySignals.length,
         },
         notes: batteryMissing.length
           ? ['Input-source mapping unavailable for some battery scopes.']
@@ -451,20 +599,8 @@ export class DataAnalyseService {
   }
 
   getSignalGroups(vehicleId?: string): SignalGroupDefinitionDto[] {
-    // vehicleId reserved for future per-vehicle availability without extra DB roundtrip in list endpoint
     void vehicleId;
-    return SIGNAL_GROUP_DEFINITIONS.map((g) => ({
-      id: g.id,
-      groupName: g.groupName,
-      description: g.description,
-      typicalSignals: [...g.typicalSignals],
-      expectedIntervalMs: g.expectedIntervalMs,
-      practicalUse: g.practicalUse,
-      usedByModules: [...g.usedByModules],
-      detectionRelevance: g.detectionRelevance,
-      currentAvailability: 'unknown' as const,
-      availabilityNotes: 'Select a vehicle and open Overview / Signal Logs for per-vehicle availability.',
-    }));
+    return SIGNAL_GROUP_DEFINITIONS.map((g) => this.mapSignalGroupDefinition(g, 'unknown', 'Select a vehicle and open Overview / Signal Logs for per-vehicle availability.'));
   }
 
   async getSignalGroupsForVehicle(
@@ -497,19 +633,215 @@ export class DataAnalyseService {
         notes = 'Signal not currently persisted for selected vehicle.';
       }
 
-      return {
-        id: g.id,
-        groupName: g.groupName,
-        description: g.description,
-        typicalSignals: [...g.typicalSignals],
-        expectedIntervalMs: g.expectedIntervalMs,
-        practicalUse: g.practicalUse,
-        usedByModules: [...g.usedByModules],
-        detectionRelevance: g.detectionRelevance,
-        currentAvailability: availability,
-        availabilityNotes: notes,
-      };
+      return this.mapSignalGroupDefinition(g, availability, notes);
     });
+  }
+
+  private mapSignalGroupDefinition(
+    g: (typeof SIGNAL_GROUP_DEFINITIONS)[number],
+    availability: SignalGroupDefinitionDto['currentAvailability'],
+    notes: string | null,
+  ): SignalGroupDefinitionDto {
+    return {
+      id: g.id,
+      groupName: g.groupName,
+      description: g.description,
+      typicalSignals: [...g.typicalSignals],
+      expectedIntervalMs: g.expectedIntervalMs,
+      practicalUse: g.practicalUse,
+      usedByModules: [...g.usedByModules],
+      detectionRelevance: g.detectionRelevance,
+      sourceProvider: (g as { sourceProvider?: string }).sourceProvider ?? null,
+      storageLocation: (g as { storageLocation?: string }).storageLocation ?? null,
+      limitations: (g as { limitations?: string }).limitations ?? null,
+      currentAvailability: availability,
+      availabilityNotes: notes,
+    };
+  }
+
+  private resolvePracticalUse(entry: SignalCatalogEntry): HfPracticalUse[] {
+    if (entry.practicalUse?.length) return [...entry.practicalUse];
+    const out = new Set<HfPracticalUse>();
+    for (const mod of entry.usedByModules) {
+      if (mod === 'Live Map') out.add('Live Map');
+      if (mod === 'Trips' || mod === 'Driving Analysis') out.add('Trip Reconstruction');
+      if (mod === 'Brake Health') out.add('Brake Health');
+      if (mod === 'Tire Health') out.add('Tire Health');
+      if (mod === 'Battery Health') out.add('Battery Health');
+      if (mod === 'Alerts') out.add('Alerts');
+    }
+    return [...out];
+  }
+
+  private buildHfExplanation(params: {
+    entry: SignalCatalogEntry;
+    reliabilityStatus: string;
+    launchDetectionUsefulness: string;
+    sampleCount24h: number | null;
+    medianIntervalMs: number | null;
+    waypointCount: number | null;
+  }): string {
+    const parts: string[] = [];
+    parts.push(`Reliability: ${params.reliabilityStatus}.`);
+    if (params.sampleCount24h != null) {
+      parts.push(`${params.sampleCount24h} samples in 24h.`);
+    }
+    if (params.medianIntervalMs != null) {
+      parts.push(`Median interval ~${Math.round(params.medianIntervalMs / 1000)}s.`);
+    }
+    if (params.launchDetectionUsefulness !== 'UNKNOWN') {
+      parts.push(`Launch detection: ${params.launchDetectionUsefulness}.`);
+    }
+    if (params.entry.signalName === 'speed' && (params.waypointCount ?? 0) === 0) {
+      parts.push('HF waypoint stream absent — speed from snapshots only.');
+    }
+    return parts.join(' ');
+  }
+
+  private async querySignalColumnAggregates(
+    vehicleId: string,
+    catalog: SignalCatalogEntry[],
+  ): Promise<Map<string, SignalColumnAggregate & { intervals?: number[] }>> {
+    const out = new Map<string, SignalColumnAggregate & { intervals?: number[] }>();
+    if (!this.clickHouse.isAvailable) return out;
+
+    const columns = [
+      ...new Set(
+        catalog
+          .map((c) => c.clickhouseColumn)
+          .filter((c): c is string => !!c),
+      ),
+    ];
+    if (columns.length === 0) return out;
+
+    const selects = columns
+      .map(
+        (col) => `
+          countIf(${col} IS NOT NULL AND recorded_at >= now() - INTERVAL 24 HOUR) AS ${col}_cnt_24h,
+          countIf(${col} IS NOT NULL AND recorded_at >= now() - INTERVAL 7 DAY) AS ${col}_cnt_7d,
+          minIf(recorded_at, ${col} IS NOT NULL AND recorded_at >= now() - INTERVAL 7 DAY) AS ${col}_first,
+          maxIf(recorded_at, ${col} IS NOT NULL AND recorded_at >= now() - INTERVAL 7 DAY) AS ${col}_last`,
+      )
+      .join(',\n');
+
+    try {
+      const client = this.clickHouse.getClient();
+      const result = await client.query({
+        query: `
+          SELECT ${selects}
+          FROM telemetry_snapshots
+          WHERE vehicle_id = {vehicleId:String}
+            AND recorded_at >= now() - INTERVAL 7 DAY
+        `,
+        query_params: { vehicleId },
+        format: 'JSONEachRow',
+      });
+      const rows = await result.json<Record<string, string | number>>();
+      const row = rows[0];
+      if (!row) return out;
+      for (const col of columns) {
+        out.set(col, {
+          sampleCount24h: Number(row[`${col}_cnt_24h`] ?? 0),
+          sampleCount7d: Number(row[`${col}_cnt_7d`] ?? 0),
+          firstSeenAt: row[`${col}_first`] ? String(row[`${col}_first`]) : null,
+          lastSeenAt: row[`${col}_last`] ? String(row[`${col}_last`]) : null,
+        });
+      }
+    } catch {
+      return out;
+    }
+    return out;
+  }
+
+  private async queryColumnIntervalStats(
+    vehicleId: string,
+    column: string,
+    table: 'telemetry_snapshots' | 'telemetry_waypoints',
+  ): Promise<SignalIntervalStats | null> {
+    if (!this.clickHouse.isAvailable) return null;
+    try {
+      const client = this.clickHouse.getClient();
+      const result = await client.query({
+        query: `
+          SELECT interval_ms
+          FROM (
+            SELECT dateDiff('millisecond',
+              lagInFrame(recorded_at) OVER (ORDER BY recorded_at),
+              recorded_at
+            ) AS interval_ms
+            FROM ${table}
+            WHERE vehicle_id = {vehicleId:String}
+              AND ${column} IS NOT NULL
+              AND recorded_at >= now() - INTERVAL {hours:UInt16} HOUR
+          )
+          WHERE interval_ms > 0
+          LIMIT 500
+        `,
+        query_params: { vehicleId, hours: CLICKHOUSE_ANALYSIS_WINDOW_HOURS },
+        format: 'JSONEachRow',
+      });
+      const rows = await result.json<{ interval_ms: number }>();
+      const stats = computeIntervalStats(rows.map((r) => r.interval_ms));
+      return {
+        medianIntervalMs: stats.medianMs,
+        p95IntervalMs: stats.p95Ms,
+        minIntervalMs: stats.fastestMs,
+        maxIntervalMs: stats.slowestMs,
+        gapCount: stats.dropoutCount,
+        largestGapMs: stats.longestGapMs,
+        averageMs: stats.averageMs,
+        medianMs: stats.medianMs,
+        p95Ms: stats.p95Ms,
+        fastestMs: stats.fastestMs,
+        slowestMs: stats.slowestMs,
+        dropoutCount: stats.dropoutCount,
+        intervals: rows.map((r) => r.interval_ms),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private async queryWaypointColumnStats(
+    vehicleId: string,
+    column: string,
+  ): Promise<(SignalColumnAggregate & { intervals?: number[] }) | null> {
+    if (!this.clickHouse.isAvailable) return null;
+    try {
+      const client = this.clickHouse.getClient();
+      const agg = await client.query({
+        query: `
+          SELECT
+            countIf(${column} IS NOT NULL AND recorded_at >= now() - INTERVAL 24 HOUR) AS cnt_24h,
+            countIf(${column} IS NOT NULL AND recorded_at >= now() - INTERVAL 7 DAY) AS cnt_7d,
+            minIf(recorded_at, ${column} IS NOT NULL) AS first_at,
+            maxIf(recorded_at, ${column} IS NOT NULL) AS last_at
+          FROM telemetry_waypoints
+          WHERE vehicle_id = {vehicleId:String}
+            AND recorded_at >= now() - INTERVAL 7 DAY
+        `,
+        query_params: { vehicleId },
+        format: 'JSONEachRow',
+      });
+      const rows = await agg.json<{
+        cnt_24h: string;
+        cnt_7d: string;
+        first_at: string | null;
+        last_at: string | null;
+      }>();
+      const row = rows[0];
+      if (!row) return null;
+      const intervals = await this.queryColumnIntervalStats(vehicleId, column, 'telemetry_waypoints');
+      return {
+        sampleCount24h: Number(row.cnt_24h ?? 0),
+        sampleCount7d: Number(row.cnt_7d ?? 0),
+        firstSeenAt: row.first_at,
+        lastSeenAt: row.last_at,
+        intervals: intervals?.intervals,
+      };
+    } catch {
+      return null;
+    }
   }
 
   private async loadVehicleContext(orgId: string, vehicleId: string) {

@@ -16,6 +16,8 @@ import {
   classifyHvSoh,
   classifyLvEstimatedHealth,
   classifyRestingVoltage,
+  selectBestBatterySpec,
+  specUsedForRestingThresholds,
   statusToBars,
   statusToLegacyCondition,
   type BatteryHealthStatus,
@@ -121,9 +123,8 @@ export class CanonicalBatteryHealthService {
       this.batteryHealthService.getSohTrend(vehicleId, 30),
       this.batteryV2Service.getV2Health(vehicleId),
       this.hvBatteryHealthService.getHvBatteryStatus(vehicleId),
-      this.prisma.vehicleBatterySpec.findFirst({
+      this.prisma.vehicleBatterySpec.findMany({
         where: { vehicleId },
-        orderBy: { createdAt: 'desc' },
       }),
       this.prisma.vehicleServiceEvent.findMany({
         where: { vehicleId, eventType: 'BATTERY_REPLACEMENT' },
@@ -153,6 +154,8 @@ export class CanonicalBatteryHealthService {
     ]);
 
     if (!vehicle) return null;
+
+    const selectedBatterySpec = selectBestBatterySpec(specs);
 
     const isEv =
       vehicle.fuelType === 'ELECTRIC' || vehicle.fuelType === 'PLUGIN_HYBRID';
@@ -239,7 +242,8 @@ export class CanonicalBatteryHealthService {
     const lvRestingVoltageValue = snapshotRestingVoltage ?? engineOffVoltage;
     const lvRestingClassification = classifyRestingVoltage(
       lvRestingVoltageValue,
-      specs?.batteryType ?? null,
+      selectedBatterySpec?.batteryType ?? null,
+      { specProvided: specUsedForRestingThresholds(selectedBatterySpec) },
     );
     const lvRestingMeasurementContext =
       lvRestingVoltageValue != null ? 'RESTING' : 'UNKNOWN';
@@ -615,12 +619,12 @@ export class CanonicalBatteryHealthService {
       // yellow "watch" box for a vehicle we simply have no samples for.
       condition: lvCondition,
       trendDirection,
-      specs: specs
+      specs: selectedBatterySpec
         ? {
-            batteryType: specs.batteryType,
-            batteryAmpere: specs.batteryAmpere,
-            batteryVolt: specs.batteryVolt,
-            sourceType: specs.sourceType,
+            batteryType: selectedBatterySpec.batteryType,
+            batteryAmpere: selectedBatterySpec.batteryAmpere,
+            batteryVolt: selectedBatterySpec.batteryVolt,
+            sourceType: selectedBatterySpec.sourceType,
           }
         : null,
       trend7: trend7.map((d) => ({

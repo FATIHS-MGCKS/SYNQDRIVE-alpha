@@ -6,6 +6,7 @@ import type {
   BrakeHealthSummary,
   RentalHealthState,
 } from '../../lib/api';
+import { hmTrackedServiceDays, hmTrackedServiceKm, isHmServiceTracked } from '../lib/service-info-display';
 import { type PlanningItem, runForecastEngine } from './vehicle-forecast-engine';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -46,10 +47,6 @@ const TIRE_ACTION_PCT = 20;
 const TIRE_LIMITED_PCT = 35;
 const TIRE_MONITOR_PCT = 60;
 
-const BRAKE_ACTION_PCT = 20;
-const BRAKE_LIMITED_PCT = 35;
-const BRAKE_MONITOR_PCT = 60;
-
 const SERVICE_ACTION_KM = 500;
 const SERVICE_LIMITED_KM = 2_000;
 const SERVICE_MONITOR_KM = 4_500;
@@ -63,29 +60,16 @@ function dtcEscalation(input: InsightsInput): 'critical' | 'warning' | 'none' {
   return 'none';
 }
 
-function brakeHealthPercent(brakes: BrakeHealthSummary | null): number | null {
-  if (!brakes) return null;
-  const pad = brakes.pads?.healthPercent ?? null;
-  const disc = brakes.discs?.healthPercent ?? null;
-  if (pad == null && disc == null) return null;
-  return Math.min(pad ?? 101, disc ?? 101);
-}
-
 type BrakeCanonicalLevel = 'critical' | 'warning' | 'watch' | 'good' | null;
 
-/** Canonical brake escalation from `overallCondition`, with % fallback when unknown. */
+/** Canonical brake escalation from `overallCondition` only. */
 export function brakeCanonicalLevel(brakes: BrakeHealthSummary | null): BrakeCanonicalLevel {
   const cond = brakes?.overallCondition;
   if (cond === 'CRITICAL') return 'critical';
   if (cond === 'WARNING') return 'warning';
   if (cond === 'WATCH') return 'watch';
   if (cond === 'GOOD') return 'good';
-  const pct = brakeHealthPercent(brakes);
-  if (pct == null) return null;
-  if (pct < BRAKE_ACTION_PCT) return 'critical';
-  if (pct < BRAKE_LIMITED_PCT) return 'warning';
-  if (pct < BRAKE_MONITOR_PCT) return 'watch';
-  return 'good';
+  return null;
 }
 
 function batteryCondition(
@@ -112,7 +96,8 @@ export function deriveReadiness(input: InsightsInput): ReadinessLevel {
 
   const tiresPct = tires?.overallPercent ?? null;
   const brakeLevel = brakeCanonicalLevel(brakes);
-  const svcKm = service?.serviceRemainingKm ?? null;
+  const svcKm = hmTrackedServiceKm(service);
+  const svcDays = hmTrackedServiceDays(service);
   const tuvMonths = service?.tuvRemainingMonths ?? null;
   const bokMonths = service?.bokraftRemainingMonths ?? null;
 
@@ -136,7 +121,7 @@ export function deriveReadiness(input: InsightsInput): ReadinessLevel {
     tires?.actionState === 'CHECK_SOON' ||
     brakeLevel === 'watch' ||
     (svcKm != null && svcKm < SERVICE_MONITOR_KM) ||
-    (service?.serviceRemainingMonths != null && service.serviceRemainingMonths < 2) ||
+    (svcDays != null && svcDays < 60) ||
     (tuvMonths != null && tuvMonths < 3) ||
     (bokMonths != null && bokMonths < 3) ||
     batCondition === 'attention' ||
@@ -153,13 +138,14 @@ export function deriveCostOutlook(input: InsightsInput): CostOutlookLevel {
   const batCondition = batteryCondition(battery);
 
   const tiresPct = tires?.overallPercent ?? null;
-  const brakesPct = brakeHealthPercent(brakes);
-  const svcKm = service?.serviceRemainingKm ?? null;
+  const brakeLevel = brakeCanonicalLevel(brakes);
+  const svcKm = hmTrackedServiceKm(service);
+  const svcDays = hmTrackedServiceDays(service);
 
   if (
     tires?.actionState === 'REPLACE' ||
     (tiresPct != null && tiresPct < 25) ||
-    (brakesPct != null && brakesPct < 25) ||
+    brakeLevel === 'critical' ||
     (svcKm != null && svcKm < SERVICE_LIMITED_KM) ||
     batCondition === 'attention'
   ) return 'Elevated';
@@ -167,7 +153,8 @@ export function deriveCostOutlook(input: InsightsInput): CostOutlookLevel {
   if (
     tires?.actionState === 'PLAN_SERVICE' ||
     (tiresPct != null && tiresPct < 55) ||
-    (brakesPct != null && brakesPct < 55) ||
+    brakeLevel === 'warning' ||
+    brakeLevel === 'watch' ||
     (svcKm != null && svcKm < SERVICE_MONITOR_KM) ||
     batCondition === 'watch'
   ) return 'Moderate Increase';
@@ -184,7 +171,8 @@ export function deriveDowntimeRisk(input: InsightsInput): DowntimeRiskLevel {
 
   const tiresPct = tires?.overallPercent ?? null;
   const brakeLevel = brakeCanonicalLevel(brakes);
-  const svcKm = service?.serviceRemainingKm ?? null;
+  const svcKm = hmTrackedServiceKm(service);
+  const svcDays = hmTrackedServiceDays(service);
 
   if (
     dtc === 'critical' ||
@@ -213,6 +201,7 @@ export function deriveVerdict(
   input: InsightsInput,
 ): string {
   const { tires, brakes, service } = input;
+  const svcKm = hmTrackedServiceKm(service);
   const brakeLevel = brakeCanonicalLevel(brakes);
   const dtc = dtcEscalation(input);
 
@@ -228,21 +217,21 @@ export function deriveVerdict(
   if (readiness === 'Action Needed') {
     if (tires && tires.overallPercent < TIRE_ACTION_PCT) return 'Tire wear below safe threshold — not fit for rental.';
     if (brakeLevel === 'critical') return 'Brake wear critical — remove from rotation until inspected.';
-    if (service?.serviceRemainingKm != null && service.serviceRemainingKm <= SERVICE_ACTION_KM) return 'Service overdue — take off rotation until completed.';
+    if (svcKm != null && svcKm <= SERVICE_ACTION_KM) return 'Service overdue — take off rotation until completed.';
     return 'Blocking condition detected — not recommended for active rental.';
   }
 
   if (readiness === 'Limited') {
     if (tires && tires.overallPercent < TIRE_LIMITED_PCT) return 'Usable — tire wear requires scheduling before the next booking.';
     if (brakeLevel === 'warning') return 'Usable — brake wear requires prompt planning.';
-    if (service?.serviceRemainingKm != null && service.serviceRemainingKm < SERVICE_LIMITED_KM) return 'Usable — service due soon. Plan before the next booking window.';
+    if (svcKm != null && svcKm < SERVICE_LIMITED_KM) return 'Usable — service due soon. Plan before the next booking window.';
     if (service?.tuvRemainingMonths != null && service.tuvRemainingMonths < 1) return 'TÜV deadline reached — book inspection immediately.';
     return 'Usable — maintenance required before the next booking window.';
   }
 
   if (readiness === 'Monitor') {
     const focus =
-      service?.serviceRemainingKm != null && service.serviceRemainingKm < SERVICE_MONITOR_KM ? 'Service due soon'
+      svcKm != null && svcKm < SERVICE_MONITOR_KM ? 'Service due soon'
       : tires && tires.overallPercent < TIRE_MONITOR_PCT ? 'Tire wear approaching limit'
       : brakeLevel === 'watch' ? 'Brake wear elevated'
       : service?.tuvRemainingMonths != null && service.tuvRemainingMonths < 3 ? 'TÜV window approaching'
@@ -263,6 +252,7 @@ export function deriveNextAction(
   input: InsightsInput,
 ): string {
   const { tires, brakes, service } = input;
+  const svcKm = hmTrackedServiceKm(service);
   const brakeLevel = brakeCanonicalLevel(brakes);
   const dtc = dtcEscalation(input);
 
@@ -280,7 +270,7 @@ export function deriveNextAction(
 
   if (readiness === 'Monitor') {
     if (service?.tuvRemainingMonths != null && service.tuvRemainingMonths < 3) return 'Plan TÜV appointment within 2–3 months.';
-    if (service?.serviceRemainingKm != null && service.serviceRemainingKm < SERVICE_MONITOR_KM) return 'Plan service before the next dense booking period.';
+    if (svcKm != null && svcKm < SERVICE_MONITOR_KM) return 'Plan service before the next dense booking period.';
     if (brakeLevel === 'watch') return 'Include brake check in the next downtime window.';
     return 'Plan service appointment within the upcoming booking window.';
   }
@@ -301,13 +291,7 @@ export function deriveConfidence(input: InsightsInput): string {
   // "Service is tracked" is broader than "DB baseline exists": for HM
   // fleet-clearance vehicles the OEM pushes remaining days/km directly,
   // which is a fully legitimate tracking source even without a DB event.
-  const serviceTracked =
-    service?.hasServiceBaseline ||
-    service?.hmServiceSource === true ||
-    service?.serviceRemainingDays != null ||
-    service?.serviceRemainingMonths != null ||
-    service?.serviceRemainingKm != null ||
-    service?.serviceOverdue === true;
+  const serviceTracked = isHmServiceTracked(service);
   if (serviceTracked) tracked.push('service');
 
   const missing: string[] = [];
@@ -340,7 +324,7 @@ export function deriveTrackedSystems(input: InsightsInput): string[] {
   if (tires && (tires.overallPercent != null || tires.actionState != null)) out.push('Tires');
   if (brakes && brakes.stateClass !== 'NO_BASELINE') out.push('Brakes');
   if (battery) out.push('Battery');
-  if (service) out.push('Service');
+  if (service?.nextService?.trackingStatus === 'TRACKED') out.push('Service');
   return out;
 }
 

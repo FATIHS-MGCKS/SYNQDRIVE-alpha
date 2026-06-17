@@ -23,6 +23,7 @@ import {
   isAllowedMimeType,
 } from './document-extraction.schemas';
 import { DocumentExtractionJobData } from './document-extraction.types';
+import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 
 /** Extra confirmedData keys (beyond schema) that the apply layer understands. */
 const APPLY_ALIAS_KEYS = new Set<string>([
@@ -295,6 +296,7 @@ export class DocumentExtractionService {
   }
 
   private async enqueue(extractionId: string, data: DocumentExtractionJobData) {
+    if (!canEnqueueQueue(this.logger, 'document-extraction')) return;
     try {
       await this.queue.add('extract', data, {
         jobId: `extract-${extractionId}`,

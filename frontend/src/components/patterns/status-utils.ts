@@ -133,3 +133,117 @@ export function toneForStatus(status: string | null | undefined): StatusTone {
     return 'noData';
   return 'neutral';
 }
+
+/* ── Master Admin / platform-specific tone maps (no per-page Tailwind rainbows) ── */
+
+export function platformRoleTone(role: string): StatusTone {
+  const map: Record<string, StatusTone> = {
+    'Master Admin': 'critical',
+    'Org Admin': 'ai',
+    'Sub Admin': 'info',
+    Worker: 'watch',
+    Driver: 'neutral',
+    Customer: 'neutral',
+  };
+  return map[role] ?? 'neutral';
+}
+
+export function userAccountStatusTone(status: string): StatusTone {
+  const s = String(status).toLowerCase();
+  if (s === 'active') return 'success';
+  if (s === 'invited') return 'info';
+  return 'neutral';
+}
+
+export function fleetVehicleStatusTone(status: string): StatusTone {
+  const s = String(status).toLowerCase().replace(/_/g, ' ');
+  if (s === 'available') return 'success';
+  if (s === 'rented' || s === 'active rented') return 'info';
+  if (s === 'maintenance') return 'warning';
+  if (s === 'blocked') return 'critical';
+  if (s === 'reserved') return 'watch';
+  return toneForStatus(status);
+}
+
+export function vehicleHealthLabelTone(health: string): StatusTone {
+  const s = String(health).toLowerCase();
+  if (s === 'good') return 'success';
+  if (s === 'warning') return 'warning';
+  return 'critical';
+}
+
+export function onlineSignalTone(status: string): StatusTone {
+  const s = String(status).toUpperCase();
+  if (s === 'ONLINE') return 'success';
+  if (s === 'STANDBY') return 'watch';
+  return 'neutral';
+}
+
+export function hmVehicleStateTone(state: string): StatusTone {
+  const s = String(state).toUpperCase();
+  if (s === 'LINKED_ACTIVE') return 'success';
+  if (s === 'APPROVED') return 'info';
+  if (s === 'CLEARANCE_PENDING' || s === 'ELIGIBLE') return 'watch';
+  if (s === 'REJECTED' || s === 'REVOKED') return 'critical';
+  if (s === 'ERROR') return 'warning';
+  return 'neutral';
+}
+
+export function hmClearanceTone(status: string): StatusTone {
+  const s = String(status).toUpperCase();
+  if (s === 'APPROVED') return 'success';
+  if (s === 'CLEARANCE_PENDING') return 'watch';
+  return 'neutral';
+}
+
+export function tokenAuthStatusTone(status: string): StatusTone {
+  const s = String(status).toUpperCase();
+  if (s === 'VALID') return 'success';
+  if (s === 'EXPIRED') return 'watch';
+  if (s === 'ERROR') return 'critical';
+  return 'noData';
+}
+
+export function workerMonitoringTone(status: string): StatusTone {
+  const s = String(status).toLowerCase();
+  if (s === 'healthy' || s === 'ok') return 'success';
+  if (s === 'idle') return 'neutral';
+  if (s === 'degraded') return 'watch';
+  if (s === 'warning') return 'warning';
+  if (['failed', 'critical', 'offline'].includes(s)) return 'critical';
+  if (s === 'busy') return 'info';
+  return 'neutral';
+}
+
+export function monitoringSystemHealthTone(health: string): StatusTone {
+  const s = String(health).toLowerCase();
+  if (s === 'healthy') return 'success';
+  if (s === 'degraded') return 'watch';
+  if (s === 'warning') return 'warning';
+  return 'critical';
+}
+
+export function pollLogStatusTone(status: string): StatusTone {
+  const s = String(status).toUpperCase();
+  if (s === 'SUCCESS') return 'success';
+  if (s === 'FAILURE' || s === 'TIMEOUT') return 'critical';
+  return 'neutral';
+}
+
+export function prospectStatusTone(status: string): StatusTone {
+  const map: Record<string, StatusTone> = {
+    New: 'neutral',
+    Enriched: 'ai',
+    'Ready to Contact': 'info',
+    Contacted: 'watch',
+    Replied: 'info',
+    Qualified: 'success',
+    'Not Interested': 'critical',
+    Converted: 'success',
+  };
+  return map[status] ?? toneForStatus(status);
+}
+
+export function prospectPriorityTone(priority: string): StatusTone {
+  return PRIORITY_TONE[normalizePriority(priority)] ?? 'neutral';
+}

@@ -74,7 +74,7 @@ describe('resolveReplacementPositions', () => {
 
 describe('rotation move maps', () => {
   // getRotationMoves is private but pure — exercise it via an instance with no DB use.
-  const svc = new TireLifecycleService({} as any, {} as any, {} as any);
+  const svc = new TireLifecycleService({} as any, {} as any, {} as any, {} as any);
   const moves = (template: string): Record<string, string> =>
     (svc as any).getRotationMoves(template);
 

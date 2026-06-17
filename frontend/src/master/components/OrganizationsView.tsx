@@ -5,7 +5,7 @@ import {
   Upload, Globe, Phone, Clock, Languages, User, Mail, ImageIcon,
 } from 'lucide-react';
 import type { Organization, OrgStatus, SubscriptionPlan } from '../data/platform-data';
-import { PageHeader, DataTable, StatusChip } from '../../components/patterns';
+import { PageHeader, DataTable, StatusChip, AppDialog, ConfirmDialog } from '../../components/patterns';
 import type { DataTableColumn } from '../../components/patterns';
 import type { StatusTone } from '../../components/patterns';
 
@@ -341,10 +341,14 @@ export function OrganizationsView({
         )}
       />
 
-      {/* ─── Create / Edit Modal ─── */}
-      {modalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-start justify-center z-[100] pt-6 pb-6 overflow-y-auto">
-          <div className={`w-full max-w-3xl mx-4 bg-card border border-border rounded-xl shadow-lg`}>
+      <AppDialog
+        open={modalOpen}
+        onOpenChange={(open) => { if (!open) closeModal(); }}
+        maxWidthClassName="sm:max-w-3xl"
+        hideClose
+        className="max-h-[min(92vh,100dvh)]"
+      >
+          <div className={`w-full bg-card`}>
 
             {/* Modal header */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-border">
@@ -556,11 +560,11 @@ export function OrganizationsView({
                       Abbrechen
                     </button>
                     {isEdit ? (
-                      <button onClick={handleSaveEdit} disabled={!step1Valid || saving} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl font-semibold transition-all shadow-lg ${(!step1Valid || saving) ? 'opacity-50' : 'hover:shadow-xl'}`}>
+                      <button onClick={handleSaveEdit} disabled={!step1Valid || saving} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 sq-cta rounded-xl font-semibold transition-all ${(!step1Valid || saving) ? 'opacity-50' : ''}`}>
                         <Save className="w-4 h-4" />{saving ? 'Speichern…' : 'Änderungen speichern'}
                       </button>
                     ) : (
-                      <button onClick={handleStep1Next} disabled={!step1Valid} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl font-semibold transition-all shadow-lg ${!step1Valid ? 'opacity-50' : 'hover:shadow-xl'}`}>
+                      <button onClick={handleStep1Next} disabled={!step1Valid} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 sq-cta rounded-xl font-semibold transition-all ${!step1Valid ? 'opacity-50' : ''}`}>
                         Weiter — Admin Account <ChevronRight className="w-4 h-4" />
                       </button>
                     )}
@@ -601,7 +605,7 @@ export function OrganizationsView({
                   </div>
 
                   <label className="flex items-center gap-3 cursor-pointer select-none text-muted-foreground">
-                    <input type="checkbox" checked={skipAdmin} onChange={e => setSkipAdmin(e.target.checked)} className="w-4 h-4 rounded accent-indigo-500" />
+                    <input type="checkbox" checked={skipAdmin} onChange={e => setSkipAdmin(e.target.checked)} className="h-4 w-4 rounded accent-[color:var(--brand)]" />
                     <span className="text-sm">Überspringen — Admin wird später angelegt</span>
                   </label>
 
@@ -609,7 +613,7 @@ export function OrganizationsView({
                     <button onClick={closeModal} className={`flex-1 px-4 py-2.5 rounded-lg font-semibold transition-all border bg-muted text-foreground hover:bg-muted/80 border-border`}>
                       Abbrechen
                     </button>
-                    <button onClick={handleFinalCreate} disabled={saving || !step2Valid} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl font-semibold transition-all shadow-lg ${(saving || !step2Valid) ? 'opacity-50' : 'hover:shadow-xl'}`}>
+                    <button onClick={handleFinalCreate} disabled={saving || !step2Valid} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 sq-cta rounded-xl font-semibold transition-all ${(saving || !step2Valid) ? 'opacity-50' : ''}`}>
                       <UserPlus className="w-4 h-4" />
                       {saving ? 'Erstelle…' : skipAdmin ? 'Organisation erstellen' : 'Organisation + Admin erstellen'}
                     </button>
@@ -618,34 +622,20 @@ export function OrganizationsView({
               )}
             </div>
           </div>
-        </div>
-      )}
+      </AppDialog>
 
-      {/* ─── Delete Confirm Modal ─── */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center z-[100]">
-          <div className={`max-w-md w-full mx-4 bg-card border border-border rounded-xl p-5 shadow-lg`}>
-            <h3 className="text-base font-semibold mb-2 text-foreground">Delete Organization</h3>
-            <p className="mb-5 text-muted-foreground">
-              Are you sure? This will remove all associated data and cannot be undone.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                className={`flex-1 px-4 py-2.5 rounded-lg font-semibold bg-muted text-foreground border border-border`}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => { onDeleteOrg(deleteConfirm); setDeleteConfirm(null); }}
-                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 shadow-lg"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={(open) => { if (!open) setDeleteConfirm(null); }}
+        title="Delete Organization"
+        description="Are you sure? This will remove all associated data and cannot be undone."
+        confirmLabel="Delete"
+        tone="critical"
+        onConfirm={() => {
+          if (deleteConfirm) onDeleteOrg(deleteConfirm);
+          setDeleteConfirm(null);
+        }}
+      />
     </div>
   );
 }

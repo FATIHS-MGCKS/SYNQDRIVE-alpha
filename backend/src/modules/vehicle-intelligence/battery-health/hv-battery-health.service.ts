@@ -138,9 +138,7 @@ export class HvBatteryHealthService {
     const sohSourceType =
       providerSohIsFresh && providerSohValue != null
         ? 'provider_reported'
-        : sohResult.method === 'degradation_model'
-          ? 'model_derived'
-          : 'telemetry_derived';
+        : 'telemetry_derived';
 
     return {
       isEv: true,

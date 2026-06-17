@@ -21,6 +21,19 @@ export {
   normalizeHealthState,
   normalizePriority,
   toneForStatus,
+  platformRoleTone,
+  userAccountStatusTone,
+  fleetVehicleStatusTone,
+  vehicleHealthLabelTone,
+  onlineSignalTone,
+  hmVehicleStateTone,
+  hmClearanceTone,
+  tokenAuthStatusTone,
+  workerMonitoringTone,
+  monitoringSystemHealthTone,
+  pollLogStatusTone,
+  prospectStatusTone,
+  prospectPriorityTone,
 } from './status-utils';
 export type { StatusTone, HealthState, TaskPriority } from './status-utils';
 
@@ -38,6 +51,9 @@ export type { DataTableProps, DataTableColumn } from './data-table';
 
 export { DetailDrawer } from './detail-drawer';
 export type { DetailDrawerProps } from './detail-drawer';
+
+export { AppDialog, FormDialog, ConfirmDialog } from './app-dialog';
+export type { AppDialogProps, FormDialogProps, ConfirmDialogProps } from './app-dialog';
 
 export { Timeline } from './timeline';
 export type { TimelineProps, TimelineItem } from './timeline';

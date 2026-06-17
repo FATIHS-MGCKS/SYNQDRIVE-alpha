@@ -19,6 +19,8 @@ export interface LiveTelemetrySnapshot {
 }
 
 export interface VehicleLiveMapData {
+  boundVehicleId: string | null;
+  boundOrgId: string | null;
   snapshot: LiveTelemetrySnapshot | null;
   targetPosition: [number, number] | null;
   lastConfirmedPosition: [number, number] | null;
@@ -45,11 +47,20 @@ export interface VehicleLiveMapData {
 
 interface VehicleLiveMapStore extends VehicleLiveMapData {
   patchState: (patch: Partial<VehicleLiveMapData>) => void;
+  bindToVehicle: (vehicleId: string, orgId: string) => void;
+  patchIfBound: (
+    vehicleId: string,
+    orgId: string,
+    patch: Partial<VehicleLiveMapData>,
+  ) => void;
+  unbind: () => void;
   reset: () => void;
 }
 
 function createInitialState(): VehicleLiveMapData {
   return {
+    boundVehicleId: null,
+    boundOrgId: null,
     snapshot: null,
     targetPosition: null,
     lastConfirmedPosition: null,
@@ -88,9 +99,35 @@ export function createDefaultLiveSnapshot(): LiveTelemetrySnapshot {
   };
 }
 
-export const useVehicleLiveMapStore = create<VehicleLiveMapStore>((set) => ({
+export function isStoreBoundToVehicle(
+  state: Pick<VehicleLiveMapData, 'boundVehicleId' | 'boundOrgId'>,
+  vehicleId: string | null,
+  orgId: string | null,
+): boolean {
+  return (
+    vehicleId != null &&
+    orgId != null &&
+    state.boundVehicleId === vehicleId &&
+    state.boundOrgId === orgId
+  );
+}
+
+export const useVehicleLiveMapStore = create<VehicleLiveMapStore>((set, get) => ({
   ...createInitialState(),
   patchState: (patch) => set((state) => ({ ...state, ...patch })),
+  bindToVehicle: (vehicleId, orgId) =>
+    set({
+      ...createInitialState(),
+      boundVehicleId: vehicleId,
+      boundOrgId: orgId,
+      loading: true,
+    }),
+  patchIfBound: (vehicleId, orgId, patch) => {
+    const state = get();
+    if (!isStoreBoundToVehicle(state, vehicleId, orgId)) return;
+    set({ ...state, ...patch });
+  },
+  unbind: () => set(createInitialState()),
   reset: () => set(createInitialState()),
 }));
 
@@ -105,4 +142,3 @@ export const selectIsLiveTracking = (state: VehicleLiveMapStore) =>
   state.isLiveTracking;
 export const selectLiveLoading = (state: VehicleLiveMapStore) => state.loading;
 export const selectLiveError = (state: VehicleLiveMapStore) => state.error;
-

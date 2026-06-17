@@ -376,21 +376,52 @@ export function alertTypeToCode(type: string): BrakeAlertCode {
   }
 }
 
-/** Severity that a canonical alert code maps to (info|warning|critical). */
+/** Severity that a canonical alert code maps to when no signal context is available. */
 export function alertCodeSeverity(code: BrakeAlertCode): 'info' | 'warning' | 'critical' {
   switch (code) {
     case 'BRAKE_PAD_CRITICAL':
     case 'BRAKE_DISC_CRITICAL':
-    case 'BRAKE_SYSTEM_DTC':
       return 'critical';
     case 'BRAKE_PAD_WARNING':
     case 'BRAKE_DISC_WARNING':
     case 'BRAKE_FLUID_WARNING':
     case 'BRAKE_INSPECTION_OVERDUE':
+    case 'BRAKE_SYSTEM_DTC':
       return 'warning';
     case 'BRAKE_HEALTH_LOW_CONFIDENCE':
     case 'BRAKE_GENERIC':
     default:
       return 'info';
+  }
+}
+
+/** Map a brake-system DTC condition band to alert severity (never auto-critical). */
+export function dtcConditionToAlertSeverity(
+  condition: BrakeCondition,
+): 'info' | 'warning' | 'critical' {
+  if (condition === 'CRITICAL') return 'critical';
+  if (condition === 'WARNING') return 'warning';
+  if (condition === 'WATCH') return 'info';
+  return 'info';
+}
+
+/** Map canonical condition to legacy summary status string (backward compat only). */
+export function conditionToLegacyStatus(
+  condition: BrakeCondition,
+  stateClass: string | null | undefined,
+): string {
+  const sc = (stateClass ?? '').toUpperCase();
+  if (sc === 'WARNING_ONLY') return 'warning_only';
+  if (sc === 'NO_BASELINE') return 'awaiting_baseline';
+  switch (condition) {
+    case 'GOOD':
+      return 'healthy';
+    case 'WATCH':
+    case 'WARNING':
+      return 'attention';
+    case 'CRITICAL':
+      return 'critical';
+    default:
+      return 'attention';
   }
 }

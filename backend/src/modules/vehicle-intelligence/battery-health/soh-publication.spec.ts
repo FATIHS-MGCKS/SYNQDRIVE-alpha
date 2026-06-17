@@ -194,8 +194,8 @@ describe('soh-publication utilities', () => {
   // ── HV Maturity ─────────────────────────────────────────────────
 
   describe('determineHvMaturity', () => {
-    it('allows degradation_model maturity to progress by observation duration', () => {
-      expect(determineHvMaturity({ validEstimateCount: 20, daysSinceFirstMeasurement: 30, method: 'degradation_model' })).toBe('STABLE');
+    it('treats degradation_model as insufficient (no maturity progression)', () => {
+      expect(determineHvMaturity({ validEstimateCount: 20, daysSinceFirstMeasurement: 30, method: 'degradation_model' })).toBe('INITIAL_CALIBRATION');
     });
 
     it('returns INITIAL_CALIBRATION for insufficient_data', () => {

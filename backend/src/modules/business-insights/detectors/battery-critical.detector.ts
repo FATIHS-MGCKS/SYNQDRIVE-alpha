@@ -10,6 +10,8 @@ import {
   classifyHvSoh,
   classifyLvEstimatedHealth,
   classifyRestingVoltage,
+  selectBestBatterySpec,
+  specUsedForRestingThresholds,
   type BatteryHealthStatus,
 } from '../../vehicle-intelligence/battery-health/battery-status';
 import {
@@ -125,11 +127,16 @@ export class BatteryCriticalDetector implements InsightDetector {
           crankDrop: true,
         },
       }),
-      // Battery spec (latest per vehicle) for chemistry-aware voltage bands.
+      // Battery specs — best spec per vehicle for chemistry-aware voltage bands.
       this.prisma.vehicleBatterySpec.findMany({
         where: { vehicleId: { in: vehicleIds } },
-        orderBy: { createdAt: 'desc' },
-        select: { vehicleId: true, batteryType: true, createdAt: true },
+        select: {
+          vehicleId: true,
+          batteryType: true,
+          batteryVolt: true,
+          sourceConfidence: true,
+          createdAt: true,
+        },
       }),
       // HV publication state (capacity/energy-based SOH).
       this.prisma.hvBatteryHealthCurrent.findMany({
@@ -192,11 +199,23 @@ export class BatteryCriticalDetector implements InsightDetector {
       });
     }
 
-    const batteryTypeByVehicle = new Map<string, string | null>();
+    const specsByVehicle = new Map<string, typeof specRows>();
     for (const spec of specRows) {
-      if (!batteryTypeByVehicle.has(spec.vehicleId)) {
-        batteryTypeByVehicle.set(spec.vehicleId, spec.batteryType ?? null);
-      }
+      const list = specsByVehicle.get(spec.vehicleId) ?? [];
+      list.push(spec);
+      specsByVehicle.set(spec.vehicleId, list);
+    }
+
+    const batterySpecByVehicle = new Map<
+      string,
+      { batteryType: string | null; specProvided: boolean }
+    >();
+    for (const [vehicleId, vehicleSpecs] of specsByVehicle) {
+      const best = selectBestBatterySpec(vehicleSpecs);
+      batterySpecByVehicle.set(vehicleId, {
+        batteryType: best?.batteryType ?? null,
+        specProvided: specUsedForRestingThresholds(best),
+      });
     }
 
     const hvCurrentByVehicle = new Map<
@@ -244,18 +263,25 @@ export class BatteryCriticalDetector implements InsightDetector {
     for (const v of vehicles) {
       const restingSamples = restingByVehicle.get(v.id) ?? [];
       const features = featuresByVehicle.get(v.id);
-      const batteryType = batteryTypeByVehicle.get(v.id) ?? null;
+      const batterySpec = batterySpecByVehicle.get(v.id) ?? {
+        batteryType: null,
+        specProvided: false,
+      };
 
       // ── LV resting voltage ───────────────────────────────────────────────
       const latestResting = restingSamples[0] ?? null;
       const restingClass = latestResting
-        ? classifyRestingVoltage(latestResting.restingVoltage, batteryType)
+        ? classifyRestingVoltage(latestResting.restingVoltage, batterySpec.batteryType, {
+            specProvided: batterySpec.specProvided,
+          })
         : null;
       const restingStatus = restingClass?.status ?? 'UNKNOWN';
       const secondResting = restingSamples[1] ?? null;
       const secondRestingBelowWarning = secondResting
         ? ['WARNING', 'CRITICAL'].includes(
-            classifyRestingVoltage(secondResting.restingVoltage, batteryType).status,
+            classifyRestingVoltage(secondResting.restingVoltage, batterySpec.batteryType, {
+              specProvided: batterySpec.specProvided,
+            }).status,
           )
         : false;
 

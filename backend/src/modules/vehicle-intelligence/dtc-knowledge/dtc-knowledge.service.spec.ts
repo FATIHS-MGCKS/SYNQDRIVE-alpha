@@ -1,4 +1,10 @@
 import { DtcKnowledgeService } from './dtc-knowledge.service';
+import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
+
+// Queue producers are gated on bootstrap Redis state — enable for unit tests.
+beforeAll(() => {
+  RuntimeStatusRegistry.setWorkersEnabled(true);
+});
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 

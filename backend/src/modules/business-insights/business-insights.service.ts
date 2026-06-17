@@ -11,7 +11,13 @@ import {
   RAW_HEALTH_INSIGHT_TYPES,
   type UpcomingBookingSlice,
 } from './insight-health-gate';
-import { DetectorContext, InsightCandidate, InsightDetector } from './insight.types';
+import {
+  InsightType,
+  InsightCandidate,
+  InsightDetector,
+  DetectorContext,
+  type TenantPolicy,
+} from './insight.types';
 
 import { TightHandoverDetector } from './detectors/tight-handover.detector';
 import { ReturnNeedsInspectionDetector } from './detectors/return-needs-inspection.detector';
@@ -22,8 +28,7 @@ import { ServiceBeforeBookingDetector } from './detectors/service-before-booking
 import { BatteryCriticalDetector } from './detectors/battery-critical.detector';
 import { TireCriticalDetector } from './detectors/tire-critical.detector';
 import { BrakeCriticalDetector } from './detectors/brake-critical.detector';
-import { ServiceOverdueDetector } from './detectors/service-overdue.detector';
-import { ComplianceOverdueDetector } from './detectors/compliance-overdue.detector';
+import { ComplianceOperationalDetector } from './detectors/compliance-operational.detector';
 import { PickupOverdueDetector } from './detectors/pickup-overdue.detector';
 
 @Injectable()
@@ -48,8 +53,7 @@ export class BusinessInsightsService {
     batteryCritical: BatteryCriticalDetector,
     tireCritical: TireCriticalDetector,
     brakeCritical: BrakeCriticalDetector,
-    serviceOverdue: ServiceOverdueDetector,
-    complianceOverdue: ComplianceOverdueDetector,
+    complianceOperational: ComplianceOperationalDetector,
     pickupOverdue: PickupOverdueDetector,
   ) {
     this.detectors = [
@@ -62,8 +66,7 @@ export class BusinessInsightsService {
       batteryCritical,
       tireCritical,
       brakeCritical,
-      serviceOverdue,
-      complianceOverdue,
+      complianceOperational,
       pickupOverdue,
     ];
   }
@@ -81,7 +84,7 @@ export class BusinessInsightsService {
     const ctx: DetectorContext = { organizationId, now: new Date(), policy };
 
     try {
-      const enabledDetectors = this.detectors.filter((d) => policy.enabledTypes.includes(d.type));
+      const enabledDetectors = this.detectors.filter((d) => this.isDetectorEnabled(d, policy));
       const allCandidates: InsightCandidate[] = [];
 
       // Detectors are independent (each queries its own data slice) — run them
@@ -273,5 +276,21 @@ export class BusinessInsightsService {
       labelById,
       ctx.now,
     );
+  }
+
+  private static readonly COMPLIANCE_INSIGHT_TYPES: InsightType[] = [
+    InsightType.SERVICE_OVERDUE,
+    InsightType.TUV_OVERDUE,
+    InsightType.BOKRAFT_OVERDUE,
+    InsightType.HM_SERVICE_NO_TRACKING,
+  ];
+
+  private isDetectorEnabled(detector: InsightDetector, policy: TenantPolicy): boolean {
+    if (detector instanceof ComplianceOperationalDetector) {
+      return BusinessInsightsService.COMPLIANCE_INSIGHT_TYPES.some((t) =>
+        policy.enabledTypes.includes(t),
+      );
+    }
+    return policy.enabledTypes.includes(detector.type);
   }
 }

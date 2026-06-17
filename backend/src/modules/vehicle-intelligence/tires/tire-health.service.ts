@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TireWearModelService, WearExplainability } from './tire-wear-model.service';
 import { DrivingImpactService } from '../driving-impact/driving-impact.service';
@@ -20,6 +20,8 @@ import {
   classifyUnevenWear,
   classifySeasonStatus,
   classifyConfidenceLevel,
+  confidenceLevelToLabel,
+  confidenceLevelToScore,
   resolveDisplayMode,
   classifyMeasurementOverdue,
   classifyTireAgeYears,
@@ -28,12 +30,10 @@ import {
   alertTypeToCode,
 } from './tire-status';
 import {
-  TirePosition,
   TireHealthStatus,
   TireChangeType,
   TireEventType,
   TireSetupStatus,
-  TireSeason,
 } from '@prisma/client';
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
@@ -222,7 +222,10 @@ export class TireHealthService {
       vehicleId,
       setup,
       wearAnalysis,
-      confidence.score,
+      this.resolveUnifiedConfidence(
+        setup,
+        this.resolveMeasurementState(wearAnalysis.explainability.currentTreadSource),
+      ).score,
     );
 
     return this.buildSummaryPayload(
@@ -256,7 +259,15 @@ export class TireHealthService {
       pressureContext,
     );
     const alerts = wearAnalysis
-      ? await this.detectAlerts(vehicleId, setup, wearAnalysis, confidence.score)
+      ? await this.detectAlerts(
+          vehicleId,
+          setup,
+          wearAnalysis,
+          this.resolveUnifiedConfidence(
+            setup,
+            this.resolveMeasurementState(wearAnalysis.explainability.currentTreadSource),
+          ).score,
+        )
       : [];
 
     const wheels = this.buildWheelEstimates(setup, wearAnalysis, confidence);
@@ -288,217 +299,6 @@ export class TireHealthService {
       measurements,
       alerts,
     };
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  ROTATION
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  async rotateTires(vehicleId: string, template: string, odometerKm?: number, notes?: string, userId?: string) {
-    const setup = await this.getActiveSetup(vehicleId);
-    if (!setup) throw new BadRequestException('No active tire setup');
-
-    const isStaggered = isStaggeredSetup(setup);
-    if (isStaggered && !this.wearModel.isRotationAllowedForStaggered(template)) {
-      throw new BadRequestException(`Rotation template "${template}" not allowed for staggered setups.`);
-    }
-
-    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId }, select: { organizationId: true } });
-    const moveMap = this.getRotationMoves(template);
-    const historyEntries: any[] = [];
-
-    for (const [fromPos, toPos] of Object.entries(moveMap)) {
-      historyEntries.push({
-        organizationId: vehicle!.organizationId,
-        vehicleId,
-        tireSetId: setup.id,
-        fromPosition: fromPos as TirePosition,
-        toPosition: toPos as TirePosition,
-        changedAt: new Date(),
-        odometerKm: odometerKm ?? null,
-        changeType: TireChangeType.ROTATE,
-        rotationTemplate: template,
-        notes: notes ?? null,
-        createdBy: userId ?? null,
-      });
-    }
-
-    await this.prisma.$transaction([
-      ...historyEntries.map(entry => this.prisma.tirePositionHistory.create({ data: entry })),
-      this.prisma.tireEvent.create({
-        data: {
-          organizationId: vehicle!.organizationId,
-          vehicleId,
-          tireSetId: setup.id,
-          type: TireEventType.ROTATION,
-          payload: { template, odometerKm, moves: moveMap },
-          createdBy: userId ?? null,
-        },
-      }),
-    ]);
-
-    await this.recalculate(vehicleId);
-    return { success: true, template, moves: moveMap, event: 'ROTATION' };
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  TIRE CHANGE
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  async changeTires(
-    vehicleId: string,
-    data: {
-      scope: 'single' | 'axle' | 'full_set';
-      positions?: string[];
-      newSetup?: {
-        brandModelFront?: string; brandModelRear?: string;
-        frontDimension?: string; rearDimension?: string;
-        tireSeason?: string; initialTreadDepthMm?: number;
-        initialTreadFrontMm?: number; initialTreadRearMm?: number;
-        name?: string;
-        tireCondition?: string;
-      };
-      odometerKm?: number; notes?: string;
-    },
-    userId?: string,
-  ) {
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: vehicleId },
-      select: { organizationId: true, fuelType: true, driveType: true },
-    });
-    if (!vehicle) throw new BadRequestException('Vehicle not found');
-
-    const currentSetup = await this.getActiveSetup(vehicleId);
-
-    if (data.scope === 'full_set') {
-      if (currentSetup) {
-        await this.prisma.vehicleTireSetup.update({
-          where: { id: currentSetup.id },
-          data: { removedAt: new Date(), removedOdometerKm: data.odometerKm, status: TireSetupStatus.STORED },
-        });
-      }
-
-      const regenPositional = this.wearModel.computePositionalRegenFactors(vehicle.fuelType ?? null, vehicle.driveType ?? null);
-      const fd = data.newSetup?.frontDimension;
-      const rd = data.newSetup?.rearDimension;
-      const staggered = isStaggeredSetup({ frontDimension: fd, rearDimension: rd });
-      const frontWidthMm = fd ? this.parseTireWidth(fd) : null;
-      const rearWidthMm = rd ? this.parseTireWidth(rd) : null;
-
-      const condition = data.newSetup?.tireCondition === 'NEW_INSTALLED' ? 'NEW_INSTALLED' as const
-        : data.newSetup?.tireCondition === 'ALREADY_MOUNTED' ? 'ALREADY_MOUNTED' as const
-        : 'UNKNOWN' as const;
-
-      const newSetup = await this.prisma.vehicleTireSetup.create({
-        data: {
-          organizationId: vehicle.organizationId,
-          vehicleId,
-          name: data.newSetup?.name ?? null,
-          brandModelFront: data.newSetup?.brandModelFront ?? null,
-          brandModelRear: data.newSetup?.brandModelRear ?? null,
-          frontDimension: fd ?? null,
-          rearDimension: rd ?? null,
-          tireSeason: (data.newSetup?.tireSeason as TireSeason) ?? 'ALL_SEASON',
-          initialTreadDepthMm: data.newSetup?.initialTreadDepthMm ?? null,
-          initialTreadFrontMm: data.newSetup?.initialTreadFrontMm ?? null,
-          initialTreadRearMm: data.newSetup?.initialTreadRearMm ?? null,
-          isStaggered: staggered,
-          regenBrakingFactor: regenPositional.overall,
-          regenBrakingFactorFront: regenPositional.front,
-          regenBrakingFactorRear: regenPositional.rear,
-          frontTireWidthMm: frontWidthMm,
-          rearTireWidthMm: rearWidthMm,
-          installedAt: new Date(),
-          installedOdometerKm: data.odometerKm ?? null,
-          status: TireSetupStatus.ACTIVE,
-          createdBy: userId ?? null,
-          tireCondition: condition,
-        },
-      });
-
-      await this.prisma.tireEvent.create({
-        data: {
-          organizationId: vehicle.organizationId,
-          vehicleId,
-          tireSetId: newSetup.id,
-          type: TireEventType.TIRE_CHANGE,
-          payload: { scope: 'full_set', odometerKm: data.odometerKm, notes: data.notes, tireCondition: condition },
-          createdBy: userId ?? null,
-        },
-      });
-
-      return { success: true, newSetupId: newSetup.id, scope: 'full_set' };
-    }
-
-    return { success: true, scope: data.scope, message: 'Partial replacement recorded' };
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  //  MEASUREMENT + CALIBRATION
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  async addMeasurement(
-    vehicleId: string,
-    data: {
-      frontLeftMm?: number; frontRightMm?: number;
-      rearLeftMm?: number; rearRightMm?: number;
-      odometerKm?: number; workshopName?: string; source?: string;
-    },
-    userId?: string,
-  ) {
-    const setup = await this.getActiveSetup(vehicleId);
-    if (!setup) throw new BadRequestException('No active tire setup');
-
-    const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId }, select: { organizationId: true } });
-
-    let resolvedOdometer = data.odometerKm ?? null;
-    if (resolvedOdometer == null) {
-      const latestState = await this.prisma.vehicleLatestState.findUnique({
-        where: { vehicleId },
-        select: { odometerKm: true },
-      });
-      resolvedOdometer = latestState?.odometerKm ?? null;
-    }
-
-    const measurement = await this.prisma.vehicleTireTreadMeasurement.create({
-      data: {
-        vehicleId,
-        tireSetup: { connect: { id: setup.id } },
-        frontLeftMm: data.frontLeftMm ?? null,
-        frontRightMm: data.frontRightMm ?? null,
-        rearLeftMm: data.rearLeftMm ?? null,
-        rearRightMm: data.rearRightMm ?? null,
-        odometerAtMeasurement: resolvedOdometer,
-        source: data.source ?? 'manual',
-        workshopName: data.workshopName ?? null,
-        isCalibrationPoint: true,
-        measuredAt: new Date(),
-      },
-    });
-
-    const kFactors = await this.wearModel.calibrateFromMeasurement(setup.id, {
-      frontLeftMm: data.frontLeftMm, frontRightMm: data.frontRightMm,
-      rearLeftMm: data.rearLeftMm, rearRightMm: data.rearRightMm,
-    });
-
-    await this.prisma.tireEvent.create({
-      data: {
-        organizationId: vehicle!.organizationId,
-        vehicleId,
-        tireSetId: setup.id,
-        type: TireEventType.MEASUREMENT,
-        payload: {
-          fl: data.frontLeftMm, fr: data.frontRightMm,
-          rl: data.rearLeftMm, rr: data.rearRightMm,
-          odometer: data.odometerKm, workshop: data.workshopName,
-          source: data.source ?? 'manual', kFactors,
-        },
-        createdBy: userId ?? null,
-      },
-    });
-
-    await this.recalculate(vehicleId);
-    return { measurement, kFactors };
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -543,8 +343,12 @@ export class TireHealthService {
 
     const healthStatus = this.classifyHealthStatus(setLevelPercent, lowestTread, setup.tireSeason);
 
-    const confLabel = confidence.label.toLowerCase();
-    const confDiscount = this.cfg.remainingKmConfidenceDiscount[confLabel] ?? 0.85;
+    const measurementState = this.resolveMeasurementState(
+      wearAnalysis.explainability.currentTreadSource,
+    );
+    const unified = this.resolveUnifiedConfidence(setup, measurementState);
+    const confDiscount =
+      this.cfg.remainingKmConfidenceDiscount[unified.label.toLowerCase()] ?? 0.85;
     const adjustedRemainingKm = Math.round(wearAnalysis.estimatedRemainingKm * confDiscount);
 
     await this.prisma.vehicleTireSetup.update({
@@ -553,8 +357,8 @@ export class TireHealthService {
         overallHealthPercent: setLevelPercent,
         overallRemainingKm: adjustedRemainingKm,
         healthStatus,
-        confidenceScore: confidence.score,
-        confidenceLabel: confidence.label,
+        confidenceScore: unified.score,
+        confidenceLabel: unified.label,
         tireSpecConfidence: confidence.tireSpecConfidence,
         dataCompletenessConfidence: confidence.dataCompletenessConfidence,
         modelConfidence: confidence.modelConfidence,
@@ -584,7 +388,7 @@ export class TireHealthService {
         citySharePercent: setup.totalKmOnSet > 0 ? Math.round(setup.cityKm / setup.totalKmOnSet * 100) : null,
         highwaySharePercent: setup.totalKmOnSet > 0 ? Math.round(setup.highwayKm / setup.totalKmOnSet * 100) : null,
         ruralSharePercent: setup.totalKmOnSet > 0 ? Math.round(setup.ruralKm / setup.totalKmOnSet * 100) : null,
-        confidenceScore: confidence.score,
+        confidenceScore: unified.score,
         wearRateMmPer1000km,
       },
     });
@@ -845,10 +649,31 @@ export class TireHealthService {
     ];
 
     for (const w of wheels) {
-      if (w.mm <= operationalReplace) {
-        alerts.push({ type: 'CRITICAL_TREAD', severity: 'critical', message: `${w.pos}: Tread at or below replace threshold (${w.mm.toFixed(1)} mm)`, position: w.pos, value: w.mm });
+      const treadStatus = classifyTreadStatus(w.mm, setup.tireSeason);
+      if (treadStatus === 'CRITICAL') {
+        alerts.push({
+          type: 'CRITICAL_TREAD',
+          severity: 'critical',
+          message: `${w.pos}: Tread at or below legal minimum (${w.mm.toFixed(1)} mm)`,
+          position: w.pos,
+          value: w.mm,
+        });
+      } else if (treadStatus === 'WARNING') {
+        alerts.push({
+          type: 'LOW_TREAD',
+          severity: 'warning',
+          message: `${w.pos}: Tread low — plan replacement (${w.mm.toFixed(1)} mm)`,
+          position: w.pos,
+          value: w.mm,
+        });
       } else if (w.mm <= operationalReplace + 0.3) {
-        alerts.push({ type: 'LOW_TREAD', severity: 'warning', message: `${w.pos}: Tread approaching replace limit (${w.mm.toFixed(1)} mm)`, position: w.pos, value: w.mm });
+        alerts.push({
+          type: 'LOW_TREAD',
+          severity: 'warning',
+          message: `${w.pos}: Tread approaching operational limit (${w.mm.toFixed(1)} mm)`,
+          position: w.pos,
+          value: w.mm,
+        });
       }
     }
 
@@ -1001,9 +826,14 @@ export class TireHealthService {
       effectiveWearRate > 0
         ? Math.round((1000 / effectiveWearRate) * 100) / 100
         : null;
-    const confLabel = confidence.label.toLowerCase();
+
+    const latestMeasurement = setup.measurements?.[0] ?? null;
+    const measurementState = this.resolveMeasurementState(
+      wearAnalysis.explainability.currentTreadSource,
+    );
+    const unified = this.resolveUnifiedConfidence(setup, measurementState);
     const confDiscount =
-      this.cfg.remainingKmConfidenceDiscount[confLabel] ?? 0.85;
+      this.cfg.remainingKmConfidenceDiscount[unified.label.toLowerCase()] ?? 0.85;
     const adjustedRemainingKm = Math.round(
       wearAnalysis.estimatedRemainingKm * confDiscount,
     );
@@ -1011,15 +841,11 @@ export class TireHealthService {
     const action = this.resolveActionState(
       adjustedRemainingKm,
       alerts,
-      confidence.score,
+      unified.score,
     );
-    const measurementState = this.resolveMeasurementState(
-      wearAnalysis.explainability.currentTreadSource,
-    );
-    const latestMeasurement = setup.measurements?.[0] ?? null;
     const dataQualityWarnings = this.resolveDataQualityWarnings({
       setup,
-      confidenceScore: confidence.score,
+      confidenceScore: unified.score,
       measurementState,
       pressureContext,
       alerts,
@@ -1039,8 +865,8 @@ export class TireHealthService {
       overallPercent: setLevelPercent,
       overallRemainingKm: adjustedRemainingKm,
       healthStatus,
-      confidenceScore: confidence.score,
-      confidenceLabel: confidence.label,
+      confidenceScore: unified.score,
+      confidenceLabel: unified.label,
       worstTirePosition: worst.pos,
       worstTirePercent: this.computeWheelPercentV2(
         worst.mm,
@@ -1595,6 +1421,36 @@ export class TireHealthService {
     }));
   }
 
+  private resolveUnifiedConfidence(
+    setup: any,
+    measurementState: 'measured' | 'estimated' | 'mixed',
+  ): { level: TireConfidenceLevel; label: string; score: number } {
+    const latestMeasurement = setup.measurements?.[0] ?? null;
+    const measuredVals = latestMeasurement
+      ? [
+          latestMeasurement.frontLeftMm,
+          latestMeasurement.frontRightMm,
+          latestMeasurement.rearLeftMm,
+          latestMeasurement.rearRightMm,
+        ].filter((v: any): v is number => v != null)
+      : [];
+    const level = classifyConfidenceLevel({
+      hasMeasurement: measuredVals.length > 0,
+      measurementAgeDays: latestMeasurement?.measuredAt
+        ? Math.floor(
+            (Date.now() - new Date(latestMeasurement.measuredAt).getTime()) / 86400000,
+          )
+        : null,
+      kmSinceMeasurement: null,
+      hasWearBaseline: true,
+    });
+    return {
+      level,
+      label: confidenceLevelToLabel(level),
+      score: confidenceLevelToScore(level),
+    };
+  }
+
   private computeUsageSplit(setup: any): { city: number; highway: number; rural: number } {
     const total = setup.totalKmOnSet || 1;
     return {
@@ -1602,17 +1458,6 @@ export class TireHealthService {
       highway: Math.round(setup.highwayKm / total * 100),
       rural: Math.round(setup.ruralKm / total * 100),
     };
-  }
-
-  private getRotationMoves(template: string): Record<string, string> {
-    switch (template) {
-      case 'front_to_rear': return { FRONT_LEFT: 'REAR_LEFT', FRONT_RIGHT: 'REAR_RIGHT', REAR_LEFT: 'FRONT_LEFT', REAR_RIGHT: 'FRONT_RIGHT' };
-      case 'cross': return { FRONT_LEFT: 'REAR_RIGHT', FRONT_RIGHT: 'REAR_LEFT', REAR_LEFT: 'FRONT_RIGHT', REAR_RIGHT: 'FRONT_LEFT' };
-      case 'side_swap': case 'side_swap_only': return { FRONT_LEFT: 'FRONT_RIGHT', FRONT_RIGHT: 'FRONT_LEFT', REAR_LEFT: 'REAR_RIGHT', REAR_RIGHT: 'REAR_LEFT' };
-      case 'same_axle_swap': return { FRONT_LEFT: 'FRONT_RIGHT', FRONT_RIGHT: 'FRONT_LEFT', REAR_LEFT: 'REAR_RIGHT', REAR_RIGHT: 'REAR_LEFT' };
-      case 'full_rotation': return { FRONT_LEFT: 'REAR_RIGHT', REAR_RIGHT: 'REAR_LEFT', REAR_LEFT: 'FRONT_RIGHT', FRONT_RIGHT: 'FRONT_LEFT' };
-      default: return {};
-    }
   }
 
   private parseTireWidth(dimension: string): number | null {

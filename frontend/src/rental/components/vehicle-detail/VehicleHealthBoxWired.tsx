@@ -1,0 +1,42 @@
+import { useEffectiveHealth, useFleetVehicles } from '../../FleetContext';
+import { useVehicleLiveMapStore } from '../../stores/useVehicleLiveMapStore';
+import type { VehicleData } from '../../data/vehicles';
+import { VehicleHealthBox } from './VehicleHealthBox';
+import { useVehicleHealthBoxData } from './useVehicleHealthBoxData';
+
+export interface VehicleHealthBoxWiredProps {
+  selectedVehicle: VehicleData | null;
+  isDarkMode: boolean;
+  onViewDetails?: () => void;
+}
+
+export function VehicleHealthBoxWired({
+  selectedVehicle,
+  isDarkMode,
+  onViewDetails,
+}: VehicleHealthBoxWiredProps) {
+  const vehicleId = selectedVehicle?.id ?? null;
+  const { health: rentalHealth, loading: rentalHealthLoading } = useEffectiveHealth(vehicleId);
+  const { healthError } = useFleetVehicles();
+  const lvBatteryVoltage = useVehicleLiveMapStore((state) =>
+    state.boundVehicleId === vehicleId ? state.snapshot?.lvBatteryVoltage ?? null : null,
+  );
+  const boxData = useVehicleHealthBoxData(vehicleId);
+
+  return (
+    <VehicleHealthBox
+      selectedVehicle={selectedVehicle}
+      isDarkMode={isDarkMode}
+      lvBatteryVoltage={lvBatteryVoltage}
+      rentalHealth={rentalHealth}
+      rentalHealthLoading={rentalHealthLoading}
+      healthError={healthError}
+      boxData={boxData}
+      onViewDetails={onViewDetails}
+    />
+  );
+}
+
+export function VehicleHealthBoxTelemetryBridge(props: VehicleHealthBoxWiredProps) {
+  return <VehicleHealthBoxWired {...props} />;
+}

@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { StationsService } from './stations.service';
+import { StationMapboxService } from './station-mapbox.service';
 import {
   CreateStationDto,
   UpdateStationDto,
@@ -18,6 +19,8 @@ import {
   SetStationVehiclesDto,
   AssignVehicleStationDto,
   UpdateVehicleCurrentStationDto,
+  StationMapboxSearchQueryDto,
+  StationMapboxRetrieveQueryDto,
 } from './dto';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
@@ -25,7 +28,10 @@ import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 @Controller('organizations/:orgId/stations')
 @UseGuards(OrgScopingGuard, RolesGuard)
 export class StationsController {
-  constructor(private readonly stationsService: StationsService) {}
+  constructor(
+    private readonly stationsService: StationsService,
+    private readonly stationMapbox: StationMapboxService,
+  ) {}
 
   @Get()
   async findAll(@Param('orgId') orgId: string, @Query() query: ListStationsQueryDto) {
@@ -37,14 +43,20 @@ export class StationsController {
     return this.stationsService.getStationStats(orgId);
   }
 
-  @Get('search-places')
-  async searchPlaces(@Query('q') query: string) {
-    return this.stationsService.searchPlaces(query ?? '');
+  @Get('search/mapbox')
+  async searchMapbox(@Query() query: StationMapboxSearchQueryDto) {
+    return this.stationMapbox.search(query.query, {
+      country: query.country,
+      limit: query.limit,
+    });
   }
 
-  @Get('place-details/:placeId')
-  async getPlaceDetails(@Param('placeId') placeId: string) {
-    return this.stationsService.getPlaceDetails(placeId);
+  @Get('search/mapbox/:mapboxId')
+  async retrieveMapbox(
+    @Param('mapboxId') mapboxId: string,
+    @Query() query: StationMapboxRetrieveQueryDto,
+  ) {
+    return this.stationMapbox.retrieve(mapboxId, query.sessionToken);
   }
 
   @Post('backfill-coordinates')

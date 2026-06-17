@@ -1,6 +1,6 @@
 import { ArrowLeft, Building2, Users, Car, Link2, CreditCard, Package, CheckCircle, XCircle, AlertTriangle, Clock, Edit2, Trash2, Plus, MoreHorizontal, Wifi, WifiOff, RefreshCw, Zap, Download } from 'lucide-react';
 import { useState } from 'react';
-import { PageHeader, DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader } from '../../components/patterns';
+import { PageHeader, DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader, HealthStatusChip, StatusDot, fleetVehicleStatusTone, platformRoleTone, userAccountStatusTone, onlineSignalTone } from '../../components/patterns';
 import type { Organization, OrgProduct, OrgIntegration, PlatformUser, RegisteredVehicle, ProductId, SubscriptionPlan } from '../data/platform-data';
 
 /* ── Design-system token helpers ── */
@@ -25,8 +25,7 @@ interface OrganizationDetailViewProps {
 type OrgTab = 'overview' | 'users' | 'vehicles' | 'integrations' | 'billing' | 'products';
 
 export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onUpdateOrg }: OrganizationDetailViewProps) {
-  const [activeTab, setActiveTab] = useState<OrgTab>('overview');const planColors: Record<string, string> = { Starter: 'bg-gray-100 text-gray-700 border-gray-200', Business: 'bg-blue-50 text-blue-700 border-blue-200', Enterprise: 'bg-purple-50 text-purple-700 border-purple-200', Custom: 'bg-amber-50 text-amber-700 border-amber-200' };
-  const statusColors: Record<string, string> = { Active: 'bg-green-50 text-green-700', Trial: 'bg-blue-50 text-blue-700', Suspended: 'bg-red-50 text-red-700', Churned: 'bg-gray-100 text-gray-500' };
+  const [activeTab, setActiveTab] = useState<OrgTab>('overview');
 
   const toggleProduct = (productId: ProductId) => {
     const updated = { ...org, products: org.products.map(p => p.id === productId ? { ...p, status: p.status === 'Active' ? 'Inactive' as const : 'Active' as const } : p) };
@@ -124,9 +123,9 @@ export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onU
             <tbody>
               {orgUsers.map(u => (
                 <tr key={u.id} className={`border-b last:border-b-0 border-border hover:bg-muted/50`}>
-                  <td className="px-6 py-3"><div className="flex items-center gap-3"><div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-[10px] font-semibold">{u.avatar}</div><div><p className={`text-sm font-semibold text-foreground`}>{u.name}</p><p className={`text-xs text-muted-foreground`}>{u.email}</p></div></div></td>
-                  <td className={`px-4 py-3 text-sm text-foreground`}>{u.role}</td>
-                  <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-semibold ${u.status === 'Active' ? 'bg-green-50 text-green-700' : u.status === 'Invited' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{u.status}</span></td>
+                  <td className="px-6 py-3"><div className="flex items-center gap-3"><div className="sq-tone-brand flex h-8 w-8 items-center justify-center rounded-full text-[10px] font-semibold text-[color:var(--brand)]">{u.avatar}</div><div><p className={`text-sm font-semibold text-foreground`}>{u.name}</p><p className={`text-xs text-muted-foreground`}>{u.email}</p></div></div></td>
+                  <td className="px-4 py-3"><StatusChip tone={platformRoleTone(u.role)} className="!text-xs">{u.role}</StatusChip></td>
+                  <td className="px-4 py-3"><StatusChip tone={userAccountStatusTone(u.status)} className="!text-xs">{u.status}</StatusChip></td>
                   <td className={`px-4 py-3 text-sm text-muted-foreground`}>{u.last_login}</td>
                 </tr>
               ))}
@@ -154,13 +153,17 @@ export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onU
                 {orgVehicles.map(v => (
                   <tr key={v.id} className={`border-b last:border-b-0 border-border hover:bg-muted/50`}>
                     <td className="px-6 py-3"><p className={`text-sm font-semibold text-foreground`}>{v.vehicleName}</p><p className={`text-xs font-mono text-muted-foreground`}>{v.vin}</p></td>
-                    <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${v.status === 'Available' ? 'bg-green-50 text-green-700' : v.status === 'Active Rented' ? 'bg-blue-50 text-blue-700' : v.status === 'Reserved' ? 'bg-purple-50 text-purple-700' : v.status === 'Maintenance' ? 'bg-orange-50 text-orange-700' : 'bg-red-50 text-red-700'}`}>{v.status}</span></td>
-                    <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${v.health === 'Good' ? 'bg-green-50 text-green-700' : v.health === 'Warning' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>{v.health}</span></td>
+                    <td className="px-4 py-3"><StatusChip tone={fleetVehicleStatusTone(v.status)} className="!text-xs">{v.status}</StatusChip></td>
+                    <td className="px-4 py-3"><HealthStatusChip state={v.health} label={v.health} className="!text-xs" /></td>
                     <td className={`px-4 py-3 text-sm text-muted-foreground`}>{v.station}</td>
                     <td className="px-4 py-3">{(() => {
                       const os = v.onlineStatus ?? (v.online ? 'ONLINE' : 'OFFLINE');
-                      const dc = os === 'ONLINE' ? 'bg-green-500' : os === 'STANDBY' ? 'bg-amber-500' : 'bg-gray-400';
-                      return <div className="flex items-center gap-1.5"><div className={`w-2 h-2 rounded-full ${dc}`} /><span className={`text-xs text-muted-foreground`}>{v.lastSignal}</span></div>;
+                      return (
+                        <div className="flex items-center gap-1.5">
+                          <StatusDot tone={onlineSignalTone(os)} />
+                          <span className={`text-xs text-muted-foreground`}>{v.lastSignal}</span>
+                        </div>
+                      );
                     })()}</td>
                   </tr>
                 ))}
@@ -177,22 +180,26 @@ export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onU
             <div key={integration.id} className={`${CARD} p-4`}>
               <div className="flex items-start justify-between mb-5">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${integration.status === 'Connected' ? 'bg-green-50' : 'bg-muted'}`}>
-                    {integration.status === 'Connected' ? <Wifi className="w-5 h-5 text-green-500" /> : <WifiOff className="w-5 h-5 text-gray-400" />}
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${integration.status === 'Connected' ? 'sq-tone-positive' : 'bg-muted'}`}>
+                    {integration.status === 'Connected' ? <Wifi className="h-5 w-5 text-[color:var(--status-positive)]" /> : <WifiOff className="h-5 w-5 text-muted-foreground" />}
                   </div>
                   <div>
                     <h3 className={`text-lg font-semibold text-foreground`}>{integration.name}</h3>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${integration.status === 'Connected' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{integration.status}</span>
+                    <StatusChip tone={integration.status === 'Connected' ? 'success' : 'neutral'} className="!text-xs">{integration.status}</StatusChip>
                   </div>
                 </div>
               </div>
               <div className="space-y-2.5 mb-5">
                 <div className="flex justify-between"><span className={`text-sm text-muted-foreground`}>API Key</span><span className={`text-sm font-mono text-foreground`}>{integration.apiKey || '—'}</span></div>
                 <div className="flex justify-between"><span className={`text-sm text-muted-foreground`}>Last Sync</span><span className={`text-sm text-foreground`}>{integration.lastSync}</span></div>
-                <div className="flex justify-between"><span className={`text-sm text-muted-foreground`}>Sync Status</span><span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${integration.syncStatus === 'Synced' ? 'bg-green-50 text-green-700' : integration.syncStatus === 'Failed' ? 'bg-red-50 text-red-700' : 'bg-gray-100 text-gray-500'}`}>{integration.syncStatus}</span></div>
+                <div className="flex justify-between"><span className={`text-sm text-muted-foreground`}>Sync Status</span><StatusChip tone={integration.syncStatus === 'Synced' ? 'success' : integration.syncStatus === 'Failed' ? 'critical' : 'neutral'} className="!text-xs">{integration.syncStatus}</StatusChip></div>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => toggleIntegration(integration.id)} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${integration.status === 'Connected' ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white hover:shadow-lg'}`}>
+                <button
+                  type="button"
+                  onClick={() => toggleIntegration(integration.id)}
+                  className={`flex-1 flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${integration.status === 'Connected' ? 'sq-press text-[color:var(--status-critical)]' : 'sq-cta'}`}
+                >
                   {integration.status === 'Connected' ? 'Disconnect' : 'Connect'}
                 </button>
                 {integration.status === 'Connected' && (
@@ -220,7 +227,7 @@ export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onU
             </div>
             <div className={`${CARD} p-5`}>
               <p className={`text-sm text-muted-foreground`}>Payment Status</p>
-              <p className={`text-2xl font-bold mt-1 ${org.invoices.some(i => i.status === 'Overdue') ? 'text-red-600' : 'text-green-600'}`}>{org.invoices.some(i => i.status === 'Overdue') ? 'Overdue' : 'Current'}</p>
+              <p className={`text-2xl font-bold mt-1 ${org.invoices.some(i => i.status === 'Overdue') ? 'text-[color:var(--status-critical)]' : 'text-[color:var(--status-positive)]'}`}>{org.invoices.some(i => i.status === 'Overdue') ? 'Overdue' : 'Current'}</p>
             </div>
           </div>
           <div className={`${CARD} overflow-hidden`}>
@@ -238,7 +245,7 @@ export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onU
                   <tr key={inv.id} className={`border-b last:border-b-0 border-border`}>
                     <td className={`px-6 py-3 text-sm font-mono font-semibold text-foreground`}>{inv.id}</td>
                     <td className={`px-4 py-3 text-right text-sm font-semibold text-foreground`}>€{inv.amount.toLocaleString()}</td>
-                    <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-lg text-xs font-semibold ${inv.status === 'Paid' ? 'bg-green-50 text-green-700' : inv.status === 'Overdue' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'}`}>{inv.status}</span></td>
+                    <td className="px-4 py-3"><StatusChip tone={inv.status === 'Paid' ? 'success' : inv.status === 'Overdue' ? 'critical' : 'watch'} className="!text-xs">{inv.status}</StatusChip></td>
                     <td className={`px-4 py-3 text-sm text-muted-foreground`}>{inv.date}</td>
                     <td className="px-4 py-3"><button className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}><Download className="w-4 h-4" /></button></td>
                   </tr>
@@ -253,20 +260,21 @@ export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onU
       {activeTab === 'products' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {org.products.map(product => (
-            <div key={product.id} className={`${CARD} p-4 ${product.status === 'Active' ? 'ring-2 ring-green-500/20' : ''}`}>
+            <div key={product.id} className={`${CARD} p-4 ${product.status === 'Active' ? 'ring-2 ring-[color:var(--status-positive)]/20' : ''}`}>
               <div className="flex items-start justify-between mb-4">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${product.status === 'Active' ? 'bg-green-50' : 'bg-muted'}`}>
-                  <Package className={`w-6 h-6 ${product.status === 'Active' ? 'text-green-500' : 'text-gray-400'}`} />
+                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${product.status === 'Active' ? 'sq-tone-positive' : 'bg-muted'}`}>
+                  <Package className={`h-6 w-6 ${product.status === 'Active' ? 'text-[color:var(--status-positive)]' : 'text-muted-foreground'}`} />
                 </div>
-                <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${product.status === 'Active' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{product.status}</span>
+                <StatusChip tone={product.status === 'Active' ? 'success' : 'neutral'} className="!text-xs">{product.status}</StatusChip>
               </div>
               <h3 className={`text-lg font-semibold mb-1 text-foreground`}>{product.name}</h3>
               <p className={`text-xs mb-5 text-muted-foreground`}>
                 {product.id === 'rental' ? 'Vehicle rental operations & booking management' : product.id === 'fleet' ? 'Fleet analytics, monitoring & maintenance' : 'Taxi dispatch, routing & driver management'}
               </p>
               <button
+                type="button"
                 onClick={() => toggleProduct(product.id)}
-                className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${product.status === 'Active' ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-gradient-to-br from-green-500 to-green-600 text-white hover:shadow-lg'}`}
+                className={`w-full flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${product.status === 'Active' ? 'sq-press text-[color:var(--status-critical)]' : 'sq-cta'}`}
               >
                 {product.status === 'Active' ? <><XCircle className="w-4 h-4" /> Disable Product</> : <><CheckCircle className="w-4 h-4" /> Enable Product</>}
               </button>

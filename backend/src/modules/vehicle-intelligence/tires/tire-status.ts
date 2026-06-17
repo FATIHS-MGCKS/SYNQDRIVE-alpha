@@ -170,6 +170,34 @@ export function classifyConfidenceLevel(args: {
   return 'LOW';
 }
 
+/** Map canonical confidence enum to the legacy label string (single source). */
+export function confidenceLevelToLabel(level: TireConfidenceLevel): string {
+  switch (level) {
+    case 'HIGH':
+      return 'High';
+    case 'MEDIUM':
+      return 'Medium';
+    case 'LOW':
+      return 'Low';
+    default:
+      return 'Low';
+  }
+}
+
+/** Map canonical confidence enum to a 0–100 score for legacy consumers. */
+export function confidenceLevelToScore(level: TireConfidenceLevel): number {
+  switch (level) {
+    case 'HIGH':
+      return 85;
+    case 'MEDIUM':
+      return 65;
+    case 'LOW':
+      return 40;
+    default:
+      return 20;
+  }
+}
+
 /** Translate the internal measurement state into the public display mode. */
 export function resolveDisplayMode(
   measurementState: 'measured' | 'estimated' | 'mixed' | null | undefined,

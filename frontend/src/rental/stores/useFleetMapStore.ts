@@ -1,6 +1,11 @@
 import { create } from 'zustand';
-import type { Feature, FeatureCollection, Point } from 'geojson';
+import type { Feature, Point } from 'geojson';
 import { api, type FleetMapVehicleResponse } from '../../lib/api';
+import {
+  buildFleetMapGeoJson,
+  type FleetMapFeatureVisualProperties,
+  type FleetMapVisualGeoJson,
+} from '../lib/fleetVisualState';
 import type {
   VehicleData,
   VehicleDisplayIgnition,
@@ -24,18 +29,14 @@ export interface FleetMapVehicle extends VehicleData {
   lastSeenAt: string | null;
 }
 
-export interface FleetMapFeatureProperties {
-  vehicleId: string;
-  label: string;
-  status: VehicleData['status'];
-  heading: number;
-  stationId: string | null;
-}
-
+export type FleetMapFeatureProperties = FleetMapFeatureVisualProperties;
 export type FleetMapFeature = Feature<Point, FleetMapFeatureProperties>;
-export type FleetMapGeoJson = FeatureCollection<Point, FleetMapFeatureProperties>;
+export type FleetMapGeoJson = FleetMapVisualGeoJson;
 
-interface FleetMapFilters {
+export const NO_STATION_FILTER = 'no-station';
+export const NO_LOCATION_FILTER = 'no-location';
+
+export interface FleetMapFilters {
   stationId: string;
 }
 
@@ -221,15 +222,6 @@ function normalizeFleetMapResponse(
   return [];
 }
 
-function hasCoordinates(vehicle: FleetMapVehicle): boolean {
-  return (
-    typeof vehicle.lat === 'number' &&
-    typeof vehicle.lng === 'number' &&
-    Number.isFinite(vehicle.lat) &&
-    Number.isFinite(vehicle.lng)
-  );
-}
-
 export const useFleetMapStore = create<FleetMapState>((set) => ({
   vehicles: [],
   filters: { stationId: ALL_STATIONS_FILTER },
@@ -336,27 +328,6 @@ export const selectVisibleFleetVehicles = (
   );
 };
 
-export const selectFleetGeoJson = (state: FleetMapState): FleetMapGeoJson => {
-  const features: FleetMapFeature[] = selectVisibleFleetVehicles(state)
-    .filter(hasCoordinates)
-    .map((vehicle) => ({
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: [vehicle.lng!, vehicle.lat!],
-      },
-      properties: {
-        vehicleId: vehicle.id,
-        label: vehicle.license || vehicle.model,
-        status: vehicle.status,
-        heading: vehicle.heading ?? 0,
-        stationId: vehicle.stationId,
-      },
-    }));
-
-  return {
-    type: 'FeatureCollection',
-    features,
-  };
-};
+export const selectFleetGeoJson = (state: FleetMapState): FleetMapGeoJson =>
+  buildFleetMapGeoJson(selectVisibleFleetVehicles(state));
 

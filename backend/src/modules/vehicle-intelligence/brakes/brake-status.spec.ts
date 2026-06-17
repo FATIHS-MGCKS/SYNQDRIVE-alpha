@@ -9,6 +9,8 @@ import {
   classifyFluidStatus,
   classifyMeasuredThickness,
   conditionToBars,
+  conditionToLegacyStatus,
+  dtcConditionToAlertSeverity,
   evidenceSourceToDataBasis,
   harshBrakeWearMultiplier,
   isAlertableCondition,
@@ -294,12 +296,23 @@ describe('alert code mapping', () => {
     expect(alertTypeToCode('something_else')).toBe('BRAKE_GENERIC');
   });
 
-  it('critical codes are critical, fluid/inspection are warnings, low-confidence is info', () => {
+  it('critical pad codes are critical; DTC default is warning; fluid/inspection are warnings; low-confidence is info', () => {
     expect(alertCodeSeverity('BRAKE_PAD_CRITICAL')).toBe('critical');
-    expect(alertCodeSeverity('BRAKE_SYSTEM_DTC')).toBe('critical');
+    expect(alertCodeSeverity('BRAKE_SYSTEM_DTC')).toBe('warning');
     expect(alertCodeSeverity('BRAKE_FLUID_WARNING')).toBe('warning');
     expect(alertCodeSeverity('BRAKE_INSPECTION_OVERDUE')).toBe('warning');
-    // Low confidence may only ever surface as an info/watch hint, never critical.
     expect(alertCodeSeverity('BRAKE_HEALTH_LOW_CONFIDENCE')).toBe('info');
+  });
+
+  it('maps DTC condition bands to alert severity', () => {
+    expect(dtcConditionToAlertSeverity('CRITICAL')).toBe('critical');
+    expect(dtcConditionToAlertSeverity('WARNING')).toBe('warning');
+    expect(dtcConditionToAlertSeverity('WATCH')).toBe('info');
+  });
+
+  it('maps canonical condition to legacy status from state class', () => {
+    expect(conditionToLegacyStatus('GOOD', 'ESTIMATED')).toBe('healthy');
+    expect(conditionToLegacyStatus('WARNING', 'ESTIMATED')).toBe('attention');
+    expect(conditionToLegacyStatus('UNKNOWN', 'NO_BASELINE')).toBe('awaiting_baseline');
   });
 });

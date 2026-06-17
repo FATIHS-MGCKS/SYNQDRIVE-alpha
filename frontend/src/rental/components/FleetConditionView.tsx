@@ -1,156 +1,150 @@
 import {
-  AlertCircle,
   AlertTriangle,
-  Battery,
-  Bell,
-  Calendar,
   Car,
-  CheckCircle,
   ChevronDown,
+  ChevronRight,
   CircleDot,
-  Disc,
-  MessageSquare,
+  RefreshCw,
   ShieldAlert,
   ShieldCheck,
-  Wrench,
   type LucideIcon,
 } from 'lucide-react';
 import { Icon } from './ui/Icon';
-import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react';
+import { useState, useEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import {
   PageHeader,
   MetricCard,
-  HealthStatusChip,
   StatusChip,
   EmptyState,
+  ErrorState,
   SkeletonMetricGrid,
-  SkeletonCard,
+  chipClassForTone,
 } from '../../components/patterns';
 import type { StatusTone } from '../../components/patterns';
 
 import { getShortModel } from '../data/vehicles';
-// V4.7.23 — health map now comes from the shared FleetProvider so this
-// view, FleetView, the Dashboard popups and the Vehicle-Detail header
-// all read the same canonical Rental-Health-V1 data.
 import { useFleetVehicles } from '../FleetContext';
 import { BrandLogo, getBrandFromModel } from './BrandLogo';
+import type { VehicleHealthResponse } from '../../lib/api';
 import {
-  api,
-  type TireHealthSummaryResponse,
-  type BrakeHealthSummary,
-  type BatteryHealthSummary,
-  type ServiceInfoStatus,
-  type VehicleHealthResponse,
-  type RentalHealthState,
-} from '../../lib/api';
+  moduleKeyToTab,
+  type HealthDetailTab,
+} from '../lib/health-detail-utils';
+import { HealthVehicleDetailDrawer } from './health/HealthVehicleDetailDrawer';
+import { HealthVehicleDetailPanel } from './health/HealthVehicleDetailPanel';
+import {
+  buildModuleChips,
+  computeFleetHealthKpis,
+  formatRelativeTime,
+  latestHealthGeneratedAt,
+  matchesDataQualityFilter,
+  matchesModuleFilter,
+  matchesStatusFilter,
+  operatorGroupForVehicle,
+  primaryOperatorReason,
+  priorityRank,
+  rentalGateLabel,
+  vehicleLastUpdatedIso,
+  type ModuleChipModel,
+  type OperatorDataQualityFilter,
+  type OperatorGroupKey,
+  type OperatorModuleFilter,
+  type OperatorSortMode,
+  type OperatorStatusFilter,
+} from '../lib/fleet-health-control-center';
 
-export type ConditionCategory = 'tires' | 'brakes' | 'battery' | 'dtc' | 'service' | 'tuev' | 'bokraft' | 'driver-feedback' | 'alerts';
+export type ConditionCategory =
+  | 'tires'
+  | 'brakes'
+  | 'battery'
+  | 'dtc'
+  | 'service'
+  | 'tuev'
+  | 'bokraft'
+  | 'driver-feedback'
+  | 'alerts';
 
 interface FleetConditionViewProps {
   onDrillDown?: (vehicleId: string, category: ConditionCategory) => void;
-  /** When true, page title is provided by FleetHubView. */
   embedded?: boolean;
 }
 
-type HealthCategory = 'all' | 'Good Health' | 'Warning' | 'Critical';
-type SortMode = 'critical-first' | 'alpha' | 'license';
-type ConditionGroupKey = 'critical' | 'warning' | 'healthy';
 type Tone = 'neutral' | 'success' | 'warning' | 'critical' | 'brand';
 
-// V4.7.27 — Effective status drives the actionability of the row.
-// `Unknown` is preserved internally so we can still surface a transparent
-// `Limited data` indicator on the affected row, but for grouping, counts
-// and the row-level pill it collapses into `Good Health` — matching what
-// every other Rental surface (FleetView, StatInlineDetail, Vehicle
-// Detail header) already does for unknown vehicles. Backend contract
-// (unknown is never silently promoted to good) is preserved at the
-// data layer; UI just stops treating "no health signal" as a separate
-// negative bucket alongside Critical/Warning.
-type EffectiveStatus = 'Critical' | 'Warning' | 'Good Health' | 'Unknown';
-
-function statusFromRentalHealth(state: RentalHealthState | undefined): EffectiveStatus {
-  if (state === 'critical') return 'Critical';
-  if (state === 'warning') return 'Warning';
-  if (state === 'good') return 'Good Health';
-  return 'Unknown';
-}
-
-function toneFromStatus(status: EffectiveStatus): Tone {
-  if (status === 'Critical') return 'critical';
-  if (status === 'Warning') return 'warning';
-  // V4.7.27 — `Unknown` shares the success tone in the row pill so it
-  // does not look "broken" while we still mark the data gap inline via
-  // the `Limited data` indicator.
-  return 'success';
-}
-
-const MODULE_LABELS: Record<string, string> = {
-  battery: 'Battery',
-  tires: 'Tires',
-  brakes: 'Brakes',
-  error_codes: 'Error codes',
-  service_compliance: 'Service / TÜV',
-  complaints: 'Complaints',
-  vehicle_alerts: 'Vehicle alerts',
+const GROUP_CONFIG: Record<
+  OperatorGroupKey,
+  { title: string; subtitle: string; emptyTitle: string; tone: Tone; icon: LucideIcon }
+> = {
+  action_required: {
+    title: 'Action Required',
+    subtitle: 'Blocked or critical — resolve before rental',
+    emptyTitle: 'No critical vehicles right now.',
+    tone: 'critical',
+    icon: ShieldAlert,
+  },
+  needs_review: {
+    title: 'Needs Review',
+    subtitle: 'Warning signals — schedule inspection',
+    emptyTitle: 'No vehicles need review.',
+    tone: 'warning',
+    icon: AlertTriangle,
+  },
+  limited_data: {
+    title: 'Limited Data',
+    subtitle:
+      'SynqDrive cannot fully assess these vehicles because data is missing, stale or unsupported.',
+    emptyTitle: 'All vehicles have assessable health data.',
+    tone: 'neutral',
+    icon: CircleDot,
+  },
+  good: {
+    title: 'Good',
+    subtitle: 'Confirmed ready for rental',
+    emptyTitle: 'No vehicle is currently fully ready.',
+    tone: 'success',
+    icon: ShieldCheck,
+  },
 };
 
-interface HealthReason {
-  module: string;
+const STATUS_FILTER_OPTIONS: Array<{
+  value: OperatorStatusFilter;
   label: string;
-  state: RentalHealthState;
-  reason: string;
-}
+  hint: string;
+  tone: StatusTone;
+}> = [
+  { value: 'all', label: 'All statuses', hint: 'full fleet', tone: 'info' },
+  { value: 'blocked', label: 'Blocked', hint: 'cannot be rented', tone: 'critical' },
+  { value: 'critical', label: 'Critical', hint: 'act now', tone: 'critical' },
+  { value: 'warning', label: 'Warning', hint: 'review soon', tone: 'warning' },
+  { value: 'limited', label: 'Limited data', hint: 'not fully assessable', tone: 'noData' },
+  { value: 'good', label: 'Good', hint: 'ready', tone: 'success' },
+];
 
-function collectReasons(health: VehicleHealthResponse | undefined): HealthReason[] {
-  if (!health) return [];
-  const out: HealthReason[] = [];
-  for (const [name, mod] of Object.entries(health.modules)) {
-    if (mod.state === 'critical' || mod.state === 'warning') {
-      out.push({
-        module: name,
-        label: MODULE_LABELS[name] ?? name.replace(/_/g, ' '),
-        state: mod.state,
-        reason: mod.reason,
-      });
-    }
-  }
-  out.sort((a, b) => (a.state === 'critical' ? -1 : 1) - (b.state === 'critical' ? -1 : 1));
-  return out;
-}
+const MODULE_FILTER_OPTIONS: Array<{ value: OperatorModuleFilter; label: string }> = [
+  { value: 'all', label: 'All modules' },
+  { value: 'battery', label: 'Battery' },
+  { value: 'tires', label: 'Tires' },
+  { value: 'brakes', label: 'Brakes' },
+  { value: 'error_codes', label: 'DTC' },
+  { value: 'service_compliance', label: 'Service / Compliance' },
+  { value: 'complaints', label: 'Complaints' },
+  { value: 'vehicle_alerts', label: 'OEM Alerts' },
+];
 
-interface VehicleConditionData {
-  tires: TireHealthSummaryResponse | null;
-  brakes: BrakeHealthSummary | null;
-  battery: BatteryHealthSummary | null;
-  service: ServiceInfoStatus | null;
-  dtcActive: any[];
-  dtcStats: { total?: number; lastChecked?: string } | null;
-}
+const DATA_QUALITY_OPTIONS: Array<{ value: OperatorDataQualityFilter; label: string }> = [
+  { value: 'all', label: 'All data quality' },
+  { value: 'fresh', label: 'Fresh' },
+  { value: 'stale', label: 'Stale' },
+  { value: 'no_tracking', label: 'No tracking' },
+  { value: 'estimated', label: 'Estimated' },
+];
 
-function formatRemainingTime(months: number | null): string {
-  if (months == null) return '—';
-  if (months < 0) return 'Overdue';
-  const m = Math.round(months);
-  if (m >= 12) return `${Math.floor(m / 12)}y ${m % 12}mo`;
-  return `${m} mo`;
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
-function formatEnumLabel(value: unknown, fallback = '—'): string {
-  if (typeof value !== 'string' || value.length === 0) return fallback;
-  return value.replace(/_/g, ' ').toLowerCase();
-}
-
-function healthRank(status: EffectiveStatus): number {
-  if (status === 'Critical') return 3;
-  if (status === 'Warning') return 2;
-  if (status === 'Good Health') return 1;
-  return 0;
-}
+const SORT_OPTIONS: Array<{ value: OperatorSortMode; label: string; helper: string }> = [
+  { value: 'priority', label: 'Priority', helper: 'blocked & critical first' },
+  { value: 'station', label: 'Station', helper: 'A-Z' },
+  { value: 'license', label: 'License plate', helper: 'A-Z' },
+  { value: 'updated', label: 'Last updated', helper: 'newest first' },
+];
 
 function toneClass(tone: Tone): string {
   if (tone === 'success') return 'sq-tone-success';
@@ -160,70 +154,7 @@ function toneClass(tone: Tone): string {
   return 'sq-tone-neutral';
 }
 
-function toneFromPercent(value: number | null | undefined): Tone {
-  if (value == null) return 'neutral';
-  if (value >= 70) return 'success';
-  if (value >= 40) return 'warning';
-  return 'critical';
-}
-
-// V4.7.x — Tire tone is driven by the canonical TireHealthService status
-// (GOOD | WATCH | WARNING | CRITICAL | UNKNOWN) so Fleet Condition shows the
-// SAME truth as Vehicle Detail / Vehicle Health, instead of re-bucketing a %.
-function toneFromTireStatus(status: string | null | undefined): Tone | null {
-  switch (status) {
-    case 'GOOD':
-      return 'success';
-    case 'WATCH':
-    case 'WARNING':
-      return 'warning';
-    case 'CRITICAL':
-      return 'critical';
-    case 'UNKNOWN':
-      return 'neutral';
-    default:
-      return null;
-  }
-}
-
-function healthLabelEx(status: EffectiveStatus, isLoading = false): string {
-  if (status === 'Critical') return 'Critical';
-  if (status === 'Warning') return 'Warning';
-  if (status === 'Unknown' && isLoading) return 'Checking…';
-  return 'Healthy';
-}
-
-function effectiveStatusToHealthState(status: EffectiveStatus): string {
-  if (status === 'Critical') return 'critical';
-  if (status === 'Warning') return 'warning';
-  return 'good';
-}
-
-function summaryToneToStatus(tone: Tone): StatusTone {
-  if (tone === 'success') return 'success';
-  if (tone === 'warning') return 'warning';
-  if (tone === 'critical') return 'critical';
-  if (tone === 'brand') return 'info';
-  return 'neutral';
-}
-
-function barClass(value: number | null | undefined): string {
-  const tone = toneFromPercent(value);
-  if (tone === 'success') return 'bg-[color:var(--status-success)]';
-  if (tone === 'warning') return 'bg-[color:var(--status-attention)]';
-  if (tone === 'critical') return 'bg-[color:var(--status-critical)]';
-  return 'bg-muted-foreground/30';
-}
-
-function textToneClass(tone: Tone): string {
-  if (tone === 'success') return 'text-[color:var(--status-success)]';
-  if (tone === 'warning') return 'text-[color:var(--status-attention)]';
-  if (tone === 'critical') return 'text-[color:var(--status-critical)]';
-  if (tone === 'brand') return 'text-[color:var(--brand)]';
-  return 'text-muted-foreground';
-}
-
-export function FleetConditionView({ onDrillDown, embedded = false }: FleetConditionViewProps) {
+export function FleetConditionView({ onDrillDown: _onDrillDown, embedded = false }: FleetConditionViewProps) {
   const systemDark = useSyncExternalStore(
     (onStoreChange) => {
       const el = document.documentElement;
@@ -234,143 +165,124 @@ export function FleetConditionView({ onDrillDown, embedded = false }: FleetCondi
     () => document.documentElement.classList.contains('dark'),
     () => false,
   );
-  const { fleetVehicles, healthMap, healthLoading } = useFleetVehicles();
 
-  const [filterCategory, setFilterCategory] = useState<HealthCategory>('all');
-  const [sortMode, setSortMode] = useState<SortMode>('critical-first');
+  const { fleetVehicles, healthMap, healthLoading, healthError, reloadHealth } = useFleetVehicles();
+
+  const [statusFilter, setStatusFilter] = useState<OperatorStatusFilter>('all');
+  const [moduleFilter, setModuleFilter] = useState<OperatorModuleFilter>('all');
+  const [dataQualityFilter, setDataQualityFilter] = useState<OperatorDataQualityFilter>('all');
+  const [sortMode, setSortMode] = useState<OperatorSortMode>('priority');
   const [searchQuery, setSearchQuery] = useState('');
-  const [conditionData, setConditionData] = useState<Record<string, VehicleConditionData>>({});
-  const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
-  const [expandedVehicleId, setExpandedVehicleId] = useState<string | null>(null);
-  const [expandedGroups, setExpandedGroups] = useState<Set<ConditionGroupKey>>(new Set());
-  const [isHealthFilterOpen, setIsHealthFilterOpen] = useState(false);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+  const [detailTab, setDetailTab] = useState<HealthDetailTab>('overview');
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Set<OperatorGroupKey>>(new Set());
+  const [isStatusFilterOpen, setIsStatusFilterOpen] = useState(false);
+  const [isModuleFilterOpen, setIsModuleFilterOpen] = useState(false);
+  const [isDataFilterOpen, setIsDataFilterOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const didInitGroups = useRef(false);
 
-  const statusFor = useCallback(
-    (vehicleId: string): EffectiveStatus => {
-      const health = healthMap.get(vehicleId);
-      if (!health) return 'Unknown';
-      return statusFromRentalHealth(health.overall_state);
-    },
-    [healthMap],
+  const vehicleIds = useMemo(() => fleetVehicles.map((v) => v.id), [fleetVehicles]);
+  const kpis = useMemo(
+    () => computeFleetHealthKpis(vehicleIds, healthMap),
+    [vehicleIds, healthMap],
   );
+  const lastGeneratedAt = useMemo(() => latestHealthGeneratedAt(healthMap), [healthMap]);
 
-  const statusCounts = useMemo(() => {
-    let good = 0, warning = 0, critical = 0, unknown = 0;
-    for (const v of fleetVehicles) {
-      const s = statusFor(v.id);
-      if (s === 'Critical') critical++;
-      else if (s === 'Warning') warning++;
-      else if (s === 'Good Health') good++;
-      else unknown++;
+  useEffect(() => {
+    if (didInitGroups.current || healthLoading) return;
+    didInitGroups.current = true;
+    const next = new Set<OperatorGroupKey>();
+    if (kpis.blocked > 0 || kpis.critical > 0) {
+      next.add('action_required');
+    } else if (kpis.warning > 0) {
+      next.add('needs_review');
     }
-    return { good, warning, critical, unknown };
-  }, [fleetVehicles, statusFor]);
-
-  const totalCount = fleetVehicles.length;
-  const goodCount = statusCounts.good;
-  const warningCount = statusCounts.warning;
-  const criticalCount = statusCounts.critical;
-  const unknownCount = statusCounts.unknown;
-  const healthPending = healthLoading && unknownCount > 0;
-  // V4.7.27 — Unknown rolls into Healthy visually, but we keep the raw
-  // count for the optional "limited data" subline + per-row indicator.
-  const healthyCount = goodCount + unknownCount;
+    if (kpis.good > 0 && kpis.good <= 8) next.add('good');
+    setExpandedGroups(next);
+  }, [healthLoading, kpis]);
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    const base = fleetVehicles.filter(v => {
-      const status = statusFor(v.id);
-      if (filterCategory !== 'all') {
-        // V4.7.27 — Healthy filter includes Unknown vehicles (they look
-        // healthy on every other surface; here we just transparently
-        // mark the data gap on the row).
-        if (filterCategory === 'Good Health') {
-          if (status !== 'Good Health' && status !== 'Unknown') return false;
-        } else if (status !== filterCategory) {
-          return false;
-        }
-      }
+    const base = fleetVehicles.filter((v) => {
+      const health = healthMap.get(v.id);
+      if (!matchesStatusFilter(statusFilter, health)) return false;
+      if (!matchesModuleFilter(moduleFilter, health)) return false;
+      if (!matchesDataQualityFilter(dataQualityFilter, health)) return false;
       if (!q) return true;
-      const haystack = [v.model, v.make, v.license, v.station, v.year?.toString()].filter(Boolean).join(' ').toLowerCase();
+      const haystack = [v.model, v.make, v.license, v.station, v.year?.toString()]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
       return haystack.includes(q);
     });
+
     const sorted = [...base];
-    if (sortMode === 'critical-first') {
-      sorted.sort(
-        (a, b) =>
-          healthRank(statusFor(b.id)) - healthRank(statusFor(a.id)) ||
-          (a.license ?? '').localeCompare(b.license ?? ''),
-      );
-    } else if (sortMode === 'alpha') {
-      sorted.sort((a, b) => (a.model ?? '').localeCompare(b.model ?? ''));
-    } else {
-      sorted.sort((a, b) => (a.license ?? '').localeCompare(b.license ?? ''));
-    }
+    sorted.sort((a, b) => {
+      const ha = healthMap.get(a.id);
+      const hb = healthMap.get(b.id);
+      if (sortMode === 'priority') {
+        return (
+          priorityRank(hb) - priorityRank(ha) ||
+          (a.license ?? '').localeCompare(b.license ?? '', 'de')
+        );
+      }
+      if (sortMode === 'station') {
+        return (a.station ?? '').localeCompare(b.station ?? '', 'de');
+      }
+      if (sortMode === 'license') {
+        return (a.license ?? '').localeCompare(b.license ?? '', 'de');
+      }
+      const ua = vehicleLastUpdatedIso(ha);
+      const ub = vehicleLastUpdatedIso(hb);
+      return Date.parse(ub ?? '0') - Date.parse(ua ?? '0');
+    });
     return sorted;
-  }, [fleetVehicles, filterCategory, sortMode, searchQuery, statusFor]);
+  }, [
+    fleetVehicles,
+    healthMap,
+    statusFilter,
+    moduleFilter,
+    dataQualityFilter,
+    searchQuery,
+    sortMode,
+  ]);
 
   const groupedVehicles = useMemo(() => {
-    const healthyVehicles = filtered.filter(v => {
-      const s = statusFor(v.id);
-      return s === 'Good Health' || s === 'Unknown';
-    });
-    const limitedInHealthy = healthyVehicles.filter(v => statusFor(v.id) === 'Unknown').length;
-    const groups: Array<{
-      key: ConditionGroupKey;
-      title: string;
-      subtitle: string;
-      tone: Tone;
-      vehicles: typeof filtered;
-    }> = [
-      { key: 'critical', title: 'Critical', subtitle: 'Immediate action', tone: 'critical',
-        vehicles: filtered.filter(v => statusFor(v.id) === 'Critical') },
-      { key: 'warning', title: 'Warning', subtitle: 'Monitor soon', tone: 'warning',
-        vehicles: filtered.filter(v => statusFor(v.id) === 'Warning') },
-      { key: 'healthy', title: 'Healthy',
-        subtitle: limitedInHealthy > 0 ? `No current attention · ${limitedInHealthy} with limited data` : 'No current attention',
-        tone: 'success',
-        vehicles: healthyVehicles },
-    ];
-    return groups.filter(group => group.vehicles.length > 0);
-  }, [filtered, statusFor]);
-
-  // Groups stay collapsed on first render so the user lands on a calm,
-  // overview-first surface (KPIs + group headers only). Opening a group is
-  // an explicit user action — either by clicking the group header or by
-  // selecting a vehicle, which auto-expands the group it lives in (see
-  // toggleVehicle). Expand-all / Collapse-all buttons remain available for
-  // bulk control.
-
-  const loadVehicleCondition = useCallback(async (vehicleId: string) => {
-    if (conditionData[vehicleId] || loadingIds.has(vehicleId)) return;
-    setLoadingIds(prev => new Set(prev).add(vehicleId));
-    try {
-      const [tires, brakes, battery, service, dtcActive, dtcStats] = await Promise.all([
-        api.vehicleIntelligence.tireHealthSummary(vehicleId).catch(() => null),
-        api.vehicleIntelligence.brakeHealthSummary(vehicleId).catch(() => null),
-        api.vehicleIntelligence.batteryHealthSummary(vehicleId).catch(() => null),
-        api.vehicleIntelligence.serviceInfoStatus(vehicleId).catch(() => null),
-        api.vehicleIntelligence.dtcActive(vehicleId).catch(() => []),
-        api.vehicleIntelligence.dtcStats(vehicleId).catch(() => null),
-      ]);
-      setConditionData(prev => ({
-        ...prev,
-        [vehicleId]: { tires, brakes, battery, service, dtcActive: Array.isArray(dtcActive) ? dtcActive : [], dtcStats },
-      }));
-    } catch {
-      /* keep current state */
-    } finally {
-      setLoadingIds(prev => { const next = new Set(prev); next.delete(vehicleId); return next; });
+    const buckets: Record<OperatorGroupKey, typeof filtered> = {
+      action_required: [],
+      needs_review: [],
+      limited_data: [],
+      good: [],
+    };
+    for (const v of filtered) {
+      const health = healthMap.get(v.id);
+      buckets[operatorGroupForVehicle(health)].push(v);
     }
-  }, [conditionData, loadingIds]);
+    return (Object.keys(GROUP_CONFIG) as OperatorGroupKey[]).map((key) => ({
+      key,
+      ...GROUP_CONFIG[key],
+      vehicles: buckets[key],
+    }));
+  }, [filtered, healthMap]);
 
-  useEffect(() => {
-    if (expandedVehicleId) loadVehicleCondition(expandedVehicleId);
-  }, [expandedVehicleId, loadVehicleCondition]);
+  const selectedVehicle = useMemo(
+    () => fleetVehicles.find((v) => v.id === selectedVehicleId) ?? null,
+    [fleetVehicles, selectedVehicleId],
+  );
+  const selectedHealth = selectedVehicleId ? healthMap.get(selectedVehicleId) : undefined;
 
-  const toggleGroup = (group: ConditionGroupKey) => {
-    setExpandedGroups(prev => {
+  const openVehicleDetail = (vehicleId: string, tab: HealthDetailTab = 'overview') => {
+    setSelectedVehicleId(vehicleId);
+    setDetailTab(tab);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setMobileDrawerOpen(true);
+    }
+  };
+
+  const toggleGroup = (group: OperatorGroupKey) => {
+    setExpandedGroups((prev) => {
       const next = new Set(prev);
       if (next.has(group)) next.delete(group);
       else next.add(group);
@@ -378,406 +290,182 @@ export function FleetConditionView({ onDrillDown, embedded = false }: FleetCondi
     });
   };
 
-  const applyHealthFilter = (category: HealthCategory) => {
-    const nextCategory = filterCategory === category && category !== 'all' ? 'all' : category;
-    setFilterCategory(nextCategory);
-    if (nextCategory !== 'all') {
-      const groupKey: ConditionGroupKey =
-        nextCategory === 'Critical'
-          ? 'critical'
-          : nextCategory === 'Warning'
-            ? 'warning'
-            : 'healthy';
-      setExpandedGroups(prev => new Set(prev).add(groupKey));
+  const applyStatusFilter = (value: OperatorStatusFilter) => {
+    setStatusFilter((prev) => (prev === value && value !== 'all' ? 'all' : value));
+    if (value === 'blocked' || value === 'critical') {
+      setExpandedGroups((prev) => new Set(prev).add('action_required'));
+    } else if (value === 'warning') {
+      setExpandedGroups((prev) => new Set(prev).add('needs_review'));
+    } else if (value === 'limited') {
+      setExpandedGroups((prev) => new Set(prev).add('limited_data'));
+    } else if (value === 'good') {
+      setExpandedGroups((prev) => new Set(prev).add('good'));
     }
   };
 
   const clearSelection = () => {
-    setFilterCategory('all');
+    setStatusFilter('all');
+    setModuleFilter('all');
+    setDataQualityFilter('all');
     setSearchQuery('');
-    setIsHealthFilterOpen(false);
+    setIsStatusFilterOpen(false);
+    setIsModuleFilterOpen(false);
+    setIsDataFilterOpen(false);
     setIsSortOpen(false);
   };
 
-  const toggleVehicle = (vehicleId: string) => {
-    setExpandedVehicleId(prev => (prev === vehicleId ? null : vehicleId));
-  };
+  const hasActiveFilters =
+    statusFilter !== 'all' ||
+    moduleFilter !== 'all' ||
+    dataQualityFilter !== 'all' ||
+    searchQuery.trim().length > 0;
 
-  const expandAllGroups = () => {
-    setExpandedGroups(new Set(groupedVehicles.map(group => group.key)));
-  };
-
-  const collapseAllGroups = () => {
-    setExpandedGroups(new Set());
-    setExpandedVehicleId(null);
-  };
-
-  const renderConditionTiles = (vehicle: any, cd: VehicleConditionData | undefined, isLoading: boolean) => {
-    const tirePctRaw = cd?.tires?.overallPercent ?? vehicle.tires;
-    const tirePct =
-      typeof tirePctRaw === 'number' && Number.isFinite(tirePctRaw) ? tirePctRaw : null;
-    const tireRemKm = cd?.tires?.overallRemainingKm;
-    const tireWarnCount =
-      (cd?.tires?.dataQualityWarnings?.length ?? 0) +
-      (cd?.tires?.pressureContext?.warningHints?.length ?? 0);
-
-    const brakePct =
-      cd?.brakes?.pads?.healthPercent != null || cd?.brakes?.discs?.healthPercent != null
-        ? Math.min(cd?.brakes?.pads?.healthPercent ?? 101, cd?.brakes?.discs?.healthPercent ?? 101)
-        : null;
-    const brakeState =
-      cd?.brakes?.stateClass === 'MEASURED'
-        ? 'Measured'
-        : cd?.brakes?.stateClass === 'ESTIMATED'
-          ? 'Estimated'
-          : cd?.brakes?.stateClass === 'WARNING_ONLY'
-            ? 'Warning only'
-            : 'No baseline';
-    // Canonical condition is the single source of truth for the brake tile.
-    const brakeCondition = cd?.brakes?.overallCondition ?? 'UNKNOWN';
-    const brakeConditionLabel: Record<string, string> = {
-      GOOD: 'Good', WATCH: 'Watch', WARNING: 'Warning', CRITICAL: 'Critical', UNKNOWN: '—',
-    };
-    const brakeTone: Tone =
-      brakeCondition === 'GOOD'
-        ? 'success'
-        : brakeCondition === 'WATCH'
-          ? 'warning'
-          : brakeCondition === 'WARNING'
-            ? 'warning'
-            : brakeCondition === 'CRITICAL'
-              ? 'critical'
-              : 'neutral';
-    const brakeFrontMin = cd?.brakes?.estimatedFrontRemainingKmMin ?? null;
-    const brakeFrontMax = cd?.brakes?.estimatedFrontRemainingKmMax ?? null;
-    const brakeRangeMeta =
-      brakeFrontMin != null
-        ? `~${Math.round((brakeFrontMin) / 1000)}k${brakeFrontMax != null && brakeFrontMax !== brakeFrontMin ? `–${Math.round(brakeFrontMax / 1000)}k` : ''} km front`
-        : cd?.brakes?.remainingKm != null
-          ? `~${Math.round(cd.brakes.remainingKm / 1000)}k km projected`
-          : brakeState;
-
-    const batteryPubState = cd?.battery?.lv?.publicationState ?? cd?.battery?.currentState?.publicationState;
-    const batteryCalibrating = batteryPubState === 'INITIAL_CALIBRATION';
-    const batteryStabilizing = batteryPubState === 'STABILIZING';
-    const batterySoh = batteryCalibrating
-      ? null
-      : (cd?.battery?.lv?.healthPercent ?? cd?.battery?.currentState?.publishedSohPct ?? cd?.battery?.currentState?.sohPercent ?? null);
-    const batteryEstimate = cd?.battery?.lv?.estimatedHealthPercent ?? cd?.battery?.currentState?.estimatedSohPct ?? null;
-    const batteryVoltage = cd?.battery?.lv?.telemetry?.voltageV ?? cd?.battery?.currentState?.voltageV;
-    const batteryPct = batterySoh ?? batteryEstimate;
-    const batteryCondition = cd?.battery?.lv?.condition ?? cd?.battery?.condition;
-    // LV "Estimated Battery Health" status — shown as a word, not an SOH %.
-    const batteryEstStatus =
-      cd?.battery?.lv?.estimatedHealth?.status ??
-      (batteryCondition === 'good' ? 'GOOD' : batteryCondition === 'watch' ? 'WATCH' : batteryCondition === 'attention' ? 'WARNING' : 'UNKNOWN');
-    const batteryStatusLabel: Record<string, string> = { GOOD: 'Good', WATCH: 'Watch', WARNING: 'Warning', CRITICAL: 'Critical', UNKNOWN: '—', UNSUPPORTED: 'Not rated' };
-    const batteryResting = cd?.battery?.lv?.restingVoltage?.valueV ?? cd?.battery?.lv?.telemetry?.restingVoltage ?? null;
-
-    const activeDtcCount = cd?.dtcActive?.length ?? 0;
-    const errorCodesState = healthMap.get(vehicle.id)?.modules?.error_codes?.state;
-    const dtcTone: Tone =
-      errorCodesState === 'critical'
-        ? 'critical'
-        : errorCodesState === 'warning'
-          ? 'warning'
-          : activeDtcCount > 0
-            ? 'warning'
-            : 'success';
-    const servicePct = cd?.service?.serviceRemainingPercent ?? null;
-    const serviceKm = cd?.service?.serviceRemainingKm;
-    const serviceMonths = cd?.service?.serviceRemainingMonths;
-    const tuvMonths = cd?.service?.tuvRemainingMonths ?? null;
-    const bokraftMonths = cd?.service?.bokraftRemainingMonths ?? null;
-
-    const tireAlerts = cd?.tires?.alerts ?? [];
-    const batteryWatchpoints = cd?.battery?.watchpoints ?? [];
-    const warningAlerts =
-      tireAlerts.filter(a => a.severity === 'warning').length +
-      batteryWatchpoints.length;
-    const criticalAlerts =
-      tireAlerts.filter(a => a.severity === 'critical').length +
-      (cd?.brakes?.hasAlert ? 1 : 0) +
-      (errorCodesState === 'critical' ? 1 : 0);
-
-    const tiles = [
-      {
-        key: 'tires',
-        icon: CircleDot,
-        label: 'Tires',
-        value: tirePct != null ? `${Math.round(tirePct)}%` : '—',
-        meta: tireRemKm != null ? `~${Math.round(tireRemKm / 1000)}k km left` : formatEnumLabel(cd?.tires?.actionState, 'No km estimate'),
-        percent: tirePct,
-        tone: (() => {
-          // Prefer canonical tire status; fall back to % bucket for legacy payloads.
-          const canon = toneFromTireStatus(cd?.tires?.overallStatus);
-          const base = canon ?? toneFromPercent(tirePct);
-          // A data-quality / pressure hint should never let a healthy tile read "all good".
-          return tireWarnCount > 0 && base === 'success' ? ('warning' as Tone) : base;
-        })(),
-        category: 'tires' as ConditionCategory,
-      },
-      {
-        key: 'brakes',
-        icon: Disc,
-        label: 'Brakes',
-        value: brakeCondition !== 'UNKNOWN' ? brakeConditionLabel[brakeCondition] : (brakePct != null ? `${Math.round(brakePct)}%` : '—'),
-        meta: brakeRangeMeta,
-        percent: brakePct,
-        tone: brakeCondition !== 'UNKNOWN' ? brakeTone : toneFromPercent(brakePct),
-        category: 'brakes' as ConditionCategory,
-      },
-      {
-        key: 'battery',
-        icon: Battery,
-        label: 'Battery Health',
-        value: batteryCalibrating
-          ? 'Calibrating'
-          : batteryStatusLabel[batteryEstStatus] && batteryStatusLabel[batteryEstStatus] !== '—'
-            ? batteryStatusLabel[batteryEstStatus]
-            : batteryVoltage != null
-              ? `${batteryVoltage.toFixed(1)}V`
-              : '—',
-        meta: batteryCalibrating
-          ? 'Learning baseline'
-          : batteryResting != null
-            ? `Resting ${batteryResting.toFixed(2)}V`
-            : batteryStabilizing
-              ? 'Estimated'
-              : batteryCondition ?? 'No signal',
-        percent: batteryPct,
-        tone: batteryCalibrating ? 'brand' as Tone : batteryCondition === 'attention' ? 'critical' as Tone : batteryCondition === 'watch' ? 'warning' as Tone : toneFromPercent(batteryPct),
-        category: 'battery' as ConditionCategory,
-      },
-      {
-        key: 'dtc',
-        icon: AlertCircle,
-        label: 'Error Codes',
-        value: activeDtcCount > 0 ? `${activeDtcCount} active` : 'Clear',
-        meta: cd?.dtcStats?.lastChecked ? `Checked ${formatDate(cd.dtcStats.lastChecked)}` : 'No active DTCs',
-        percent: activeDtcCount > 0 ? Math.max(8, 100 - activeDtcCount * 20) : 100,
-        tone: dtcTone,
-        category: 'dtc' as ConditionCategory,
-      },
-      {
-        key: 'service',
-        icon: Wrench,
-        label: 'Service',
-        value: servicePct != null ? `${Math.round(servicePct)}%` : '—',
-        meta: serviceKm != null || serviceMonths != null
-          ? `${serviceKm != null ? `${serviceKm.toLocaleString('de-DE')} km` : ''}${serviceKm != null && serviceMonths != null ? ' / ' : ''}${serviceMonths != null ? formatRemainingTime(serviceMonths) : ''}`
-          : cd?.service?.lastServiceDate ? `Last ${formatDate(cd.service.lastServiceDate)}` : 'No schedule',
-        percent: servicePct,
-        tone: toneFromPercent(servicePct),
-        category: 'service' as ConditionCategory,
-      },
-      {
-        key: 'tuev',
-        icon: ShieldCheck,
-        label: 'TÜV',
-        value: tuvMonths != null ? formatRemainingTime(tuvMonths) : '—',
-        meta: cd?.service?.tuvValidTill ? `Valid till ${formatDate(cd.service.tuvValidTill)}` : 'No due date',
-        percent: tuvMonths != null ? Math.min(100, Math.max(0, (tuvMonths / 24) * 100)) : null,
-        tone: tuvMonths != null && tuvMonths <= 2 ? 'critical' as Tone : tuvMonths != null && tuvMonths <= 6 ? 'warning' as Tone : tuvMonths != null ? 'success' as Tone : 'neutral' as Tone,
-        category: 'tuev' as ConditionCategory,
-      },
-      {
-        key: 'bokraft',
-        icon: Calendar,
-        label: 'BOKraft',
-        value: bokraftMonths != null ? formatRemainingTime(bokraftMonths) : '—',
-        meta: cd?.service?.bokraftValidTill ? `Valid till ${formatDate(cd.service.bokraftValidTill)}` : 'No due date',
-        percent: bokraftMonths != null ? Math.min(100, Math.max(0, (bokraftMonths / 12) * 100)) : null,
-        tone: bokraftMonths != null && bokraftMonths <= 1 ? 'critical' as Tone : bokraftMonths != null && bokraftMonths <= 3 ? 'warning' as Tone : bokraftMonths != null ? 'success' as Tone : 'neutral' as Tone,
-        category: 'bokraft' as ConditionCategory,
-      },
-      {
-        key: 'driver-feedback',
-        icon: MessageSquare,
-        label: 'Driver Feedback',
-        value: '0 entries',
-        meta: 'No feedback recorded',
-        percent: null,
-        tone: 'neutral' as Tone,
-        category: 'driver-feedback' as ConditionCategory,
-      },
-      {
-        key: 'alerts',
-        icon: Bell,
-        label: 'Alerts',
-        value: criticalAlerts + warningAlerts > 0 ? `${criticalAlerts + warningAlerts} open` : 'No alerts',
-        meta: criticalAlerts > 0 ? `${criticalAlerts} critical` : warningAlerts > 0 ? `${warningAlerts} warning` : 'All clear',
-        percent: criticalAlerts + warningAlerts > 0 ? 35 : 100,
-        tone: criticalAlerts > 0 ? 'critical' as Tone : warningAlerts > 0 ? 'warning' as Tone : 'success' as Tone,
-        category: 'alerts' as ConditionCategory,
-      },
-    ];
-
-    if (isLoading && !cd) {
-      return (
-        <div className="px-3 py-6">
-          <SkeletonCard className="border-0 shadow-none bg-transparent p-2" />
-        </div>
-      );
-    }
-
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 p-2.5 border-t border-border/60 bg-muted/15">
-        {tiles.map(tile => (
-          <ConditionTile
-            key={tile.key}
-            icon={tile.icon}
-            label={tile.label}
-            value={tile.value}
-            meta={tile.meta}
-            percent={tile.percent}
-            tone={tile.tone}
-            onClick={() => onDrillDown?.(vehicle.id, tile.category)}
-          />
-        ))}
-      </div>
-    );
-  };
-
-  // V4.7.27 — KPI cards mirror the canonical Healthy/Warning/Critical
-  // shape every other Rental surface uses; Unknown is folded into Healthy
-  // and surfaced only as a small subline (`X with limited data`) so the
-  // page never invents a fourth bucket that disagrees with FleetView /
-  // Dashboard / Vehicle-Detail.
-  const healthyPct = Math.round((healthyCount / Math.max(totalCount, 1)) * 100);
-  const summaryCards = [
+  const kpiCards = [
     {
-      label: 'Total',
-      value: totalCount,
-      meta: healthPending
-        ? `Checking ${unknownCount} of ${totalCount}`
-        : 'vehicles monitored',
-      category: 'all' as HealthCategory,
-      tone: 'brand' as Tone,
-      icon: Car,
+      key: 'blocked',
+      label: 'Blocked',
+      value: kpis.blocked,
+      hint: 'cannot be rented',
+      filter: 'blocked' as OperatorStatusFilter,
+      tone: 'critical' as StatusTone,
+      icon: ShieldAlert,
+      emphasize: true,
     },
     {
-      label: 'Healthy',
-      value: healthyCount,
-      meta:
-        unknownCount > 0
-          ? `${healthyPct}% · ${unknownCount} with limited data`
-          : `${healthyPct}% of fleet`,
-      category: 'Good Health' as HealthCategory,
-      tone: 'success' as Tone,
-      icon: CheckCircle,
-    },
-    {
-      label: 'Warning',
-      value: warningCount,
-      meta: warningCount > 0 ? `${warningCount} need review` : 'none open',
-      category: 'Warning' as HealthCategory,
-      tone: 'warning' as Tone,
+      key: 'critical',
+      label: 'Critical',
+      value: kpis.critical,
+      hint: 'act now',
+      filter: 'critical' as OperatorStatusFilter,
+      tone: 'critical' as StatusTone,
       icon: AlertTriangle,
     },
     {
-      label: 'Critical',
-      value: criticalCount,
-      meta: criticalCount > 0 ? `${criticalCount} act now` : 'all clear',
-      category: 'Critical' as HealthCategory,
-      tone: 'critical' as Tone,
-      icon: ShieldAlert,
-    },
-  ];
-
-  const healthFilterOptions: Array<{
-    category: HealthCategory;
-    label: string;
-    count: number;
-    tone: Tone;
-    helper: string;
-  }> = [
-    {
-      category: 'all',
-      label: 'All',
-      count: totalCount,
-      tone: 'brand',
-      helper: 'full fleet',
-    },
-    {
-      category: 'Critical',
-      label: 'Critical',
-      count: criticalCount,
-      tone: criticalCount > 0 ? 'critical' : 'neutral',
-      helper: criticalCount > 0 ? 'act now' : 'none',
-    },
-    {
-      category: 'Warning',
+      key: 'warning',
       label: 'Warning',
-      count: warningCount,
-      tone: warningCount > 0 ? 'warning' : 'neutral',
-      helper: warningCount > 0 ? 'review' : 'none',
+      value: kpis.warning,
+      hint: 'review soon',
+      filter: 'warning' as OperatorStatusFilter,
+      tone: 'warning' as StatusTone,
+      icon: AlertTriangle,
     },
     {
-      category: 'Good Health',
-      label: 'Healthy',
-      count: healthyCount,
-      tone: 'success',
-      helper: unknownCount > 0 ? `${unknownCount} limited data` : 'clear',
+      key: 'limited',
+      label: 'Limited Data',
+      value: kpis.limited,
+      hint: 'not fully assessable',
+      filter: 'limited' as OperatorStatusFilter,
+      tone: 'noData' as StatusTone,
+      icon: CircleDot,
+    },
+    {
+      key: 'good',
+      label: 'Good',
+      value: kpis.good,
+      hint: 'ready',
+      filter: 'good' as OperatorStatusFilter,
+      tone: 'success' as StatusTone,
+      icon: ShieldCheck,
+    },
+    {
+      key: 'total',
+      label: 'Total',
+      value: kpis.total,
+      hint: kpis.naModuleVehicles > 0 ? `${kpis.naModuleVehicles} no tracking` : 'vehicles',
+      filter: 'all' as OperatorStatusFilter,
+      tone: 'info' as StatusTone,
+      icon: Car,
     },
   ];
 
-  const sortOptions: Array<{ value: SortMode; label: string; helper: string }> = [
-    { value: 'critical-first', label: 'Priority', helper: 'critical first' },
-    { value: 'alpha', label: 'Model', helper: 'A-Z' },
-    { value: 'license', label: 'Plate', helper: 'license' },
-  ];
-
-  const hasActiveSelection = filterCategory !== 'all' || searchQuery.trim().length > 0;
-  const activeFilterLabel =
-    healthFilterOptions.find(option => option.category === filterCategory)?.label ?? 'All';
-  const activeSortLabel = sortOptions.find(option => option.value === sortMode)?.label ?? 'Priority';
-  const selectionLabel = hasActiveSelection ? 'selection' : 'fleet';
-  const activeGroupCount = expandedGroups.size;
+  const headerActions = (
+    <div className="flex flex-col items-end gap-1.5">
+      <button
+        type="button"
+        onClick={() => reloadHealth()}
+        disabled={healthLoading}
+        className="sq-press inline-flex items-center gap-2 rounded-lg border border-border/70 bg-card px-3 py-2 text-xs font-semibold text-foreground transition-all hover:bg-muted disabled:opacity-60"
+      >
+        <RefreshCw className={`h-3.5 w-3.5 ${healthLoading ? 'animate-spin' : ''}`} />
+        Refresh
+      </button>
+      {lastGeneratedAt && (
+        <span className="text-[10px] text-muted-foreground">
+          Updated {formatRelativeTime(lastGeneratedAt)}
+        </span>
+      )}
+    </div>
+  );
 
   return (
-    <div className={`${embedded ? '' : 'max-w-[1600px] mx-auto'} space-y-5`}>
+    <div className={`${embedded ? '' : 'max-w-[1600px] mx-auto'}`}>
+      <div className="flex flex-col lg:flex-row lg:items-start lg:gap-3">
+        <div className="min-w-0 flex-1 space-y-5">
       {!embedded && (
-      <PageHeader
-        title="Health"
-        status={
-          healthPending ? (
-            <StatusChip tone="neutral" icon={
-              <span className="h-2 w-2 rounded-full border-[1.5px] border-current border-t-transparent animate-spin" />
-            }>
-              Refreshing
-            </StatusChip>
-          ) : undefined
-        }
-      />
-      )}
-      {embedded && healthPending && (
-        <div className="flex justify-end">
-          <StatusChip tone="neutral" icon={
-            <span className="h-2 w-2 rounded-full border-[1.5px] border-current border-t-transparent animate-spin" />
-          }>
-            Refreshing
-          </StatusChip>
-        </div>
+        <PageHeader
+          title="Health Control Center"
+          description="Operative vehicle readiness, safety signals and compliance blockers."
+          actions={headerActions}
+          status={
+            healthLoading ? (
+              <StatusChip
+                tone="neutral"
+                icon={
+                  <span className="h-2 w-2 rounded-full border-[1.5px] border-current border-t-transparent animate-spin" />
+                }
+              >
+                Refreshing
+              </StatusChip>
+            ) : healthError ? (
+              <StatusChip tone="critical">Data unavailable</StatusChip>
+            ) : undefined
+          }
+          meta={
+            lastGeneratedAt ? (
+              <span>Health snapshot · {new Date(lastGeneratedAt).toLocaleString('de-DE')}</span>
+            ) : undefined
+          }
+        />
       )}
 
-      {healthLoading && totalCount === 0 ? (
-        <SkeletonMetricGrid count={4} />
+      {embedded && (
+        <div className="flex items-center justify-end gap-2">{headerActions}</div>
+      )}
+
+      {healthError && !healthLoading && (
+        <ErrorState
+          compact
+          title="Health data could not be loaded."
+          description={healthError}
+          onRetry={() => reloadHealth()}
+          retryLabel="Retry"
+          className="sq-card rounded-2xl shadow-[var(--shadow-1)]"
+        />
+      )}
+
+      {healthLoading && kpis.total === 0 ? (
+        <SkeletonMetricGrid count={6} />
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-          {summaryCards.map(card => {
-            const active = filterCategory === card.category;
-            const ToneIcon = card.icon;
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 snap-x snap-mandatory lg:mx-0 lg:grid lg:grid-cols-3 lg:overflow-visible lg:px-0 xl:grid-cols-6">
+          {kpiCards.map((card) => {
+            const active = statusFilter === card.filter && card.filter !== 'all';
+            const CardIcon = card.icon;
             return (
               <MetricCard
-                key={card.label}
+                key={card.key}
                 label={card.label}
                 value={card.value}
-                hint={card.meta}
-                icon={<ToneIcon className="w-4 h-4" />}
-                status={summaryToneToStatus(card.tone)}
-                onClick={() => applyHealthFilter(card.category)}
-                className={active ? 'ring-2 ring-[color:var(--brand)]' : undefined}
+                hint={card.hint}
+                icon={<CardIcon className="w-4 h-4" />}
+                status={card.tone}
+                onClick={() => applyStatusFilter(card.filter)}
+                className={`min-w-[140px] shrink-0 snap-start lg:min-w-0 ${
+                  active
+                    ? 'ring-2 ring-[color:var(--brand)]'
+                    : card.emphasize && card.value > 0
+                      ? 'ring-1 ring-[color:color-mix(in_srgb,var(--status-critical)_25%,transparent)]'
+                      : ''
+                }`}
               />
             );
           })}
@@ -785,309 +473,252 @@ export function FleetConditionView({ onDrillDown, embedded = false }: FleetCondi
       )}
 
       <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
-        {/* V4.7.29 — Match Customers/Financial-Insights control rhythm:
-            compact card title, search first, dropdown-style filters, and
-            active-state chips on the right. This replaces the bespoke
-            health-chip grid so the page reads like the rest of Rental. */}
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <Icon name="filter" className="h-4 w-4 text-muted-foreground" />
             <div className="min-w-0">
-              <h2 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">Filters</h2>
+              <h2 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">
+                Filters
+              </h2>
               <p className="mt-0.5 text-[10px] text-muted-foreground">
-                Showing {filtered.length} of {totalCount} vehicles
+                Showing {filtered.length} of {kpis.total} vehicles
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {filterCategory !== 'all' && (
-              <button
-                type="button"
-                onClick={() => setFilterCategory('all')}
-                className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-brand"
-              >
-                {activeFilterLabel} active ×
-              </button>
-            )}
-            {searchQuery && (
-              <span className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-neutral">
-                Search active
-              </span>
-            )}
-            {hasActiveSelection && (
-              <button
-                type="button"
-                onClick={clearSelection}
-                className="sq-press flex items-center gap-1.5 rounded-lg border border-[color:color-mix(in_srgb,var(--status-critical)_35%,transparent)] bg-[color:color-mix(in_srgb,var(--status-critical)_8%,transparent)] px-2.5 py-1.5 text-[10px] font-semibold text-[color:var(--status-critical)] transition-all hover:bg-[color:color-mix(in_srgb,var(--status-critical)_14%,transparent)]"
-              >
-                <Icon name="x" className="h-3.5 w-3.5" />
-                Clear filters
-              </button>
-            )}
-          </div>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="sq-press flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-2.5 py-1.5 text-[10px] font-semibold text-foreground transition-all hover:bg-muted"
+            >
+              <Icon name="x" className="h-3.5 w-3.5" />
+              Clear filters
+            </button>
+          )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-[240px] flex-1">
-            <Icon name="search" className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[220px] flex-1">
+            <Icon
+              name="search"
+              className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            />
             <input
               value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search model, plate or station..."
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search plate, vehicle or station…"
               className="w-full rounded-lg border border-border/70 bg-card py-2.5 pl-10 pr-4 text-xs text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]"
             />
           </div>
 
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => { setIsHealthFilterOpen(!isHealthFilterOpen); setIsSortOpen(false); }}
-              className={`sq-press flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-all ${
-                filterCategory !== 'all'
-                  ? 'border-[color:color-mix(in_srgb,var(--brand)_35%,transparent)] bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
-                  : 'border-border/70 bg-card text-foreground hover:bg-muted'
-              }`}
-            >
-              <span>{filterCategory === 'all' ? 'Health status' : activeFilterLabel}</span>
-              <Icon name="chevron-down" className={`h-3.5 w-3.5 transition-transform ${isHealthFilterOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {isHealthFilterOpen && (
-              <div className="sq-overlay animate-fade-up absolute left-0 top-full z-50 mt-2 min-w-[210px] overflow-hidden rounded-lg p-1">
-                {healthFilterOptions.map(option => (
-                  <button
-                    key={option.category}
-                    type="button"
-                    onClick={() => {
-                      applyHealthFilter(option.category);
-                      setIsHealthFilterOpen(false);
-                    }}
-                    className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-medium transition-colors ${
-                      option.category === filterCategory
-                        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
-                        : 'text-foreground hover:bg-muted'
-                    }`}
-                  >
-                    <span>{option.label}</span>
-                    <StatusChip tone={summaryToneToStatus(option.tone)} className="text-[10px] font-bold tabular-nums">
-                      {option.count}
-                    </StatusChip>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <FilterDropdown
+            label={statusFilter === 'all' ? 'Status' : STATUS_FILTER_OPTIONS.find((o) => o.value === statusFilter)?.label ?? 'Status'}
+            open={isStatusFilterOpen}
+            onToggle={() => {
+              setIsStatusFilterOpen(!isStatusFilterOpen);
+              setIsModuleFilterOpen(false);
+              setIsDataFilterOpen(false);
+              setIsSortOpen(false);
+            }}
+            active={statusFilter !== 'all'}
+          >
+            {STATUS_FILTER_OPTIONS.map((option) => (
+              <FilterOption
+                key={option.value}
+                selected={statusFilter === option.value}
+                onClick={() => {
+                  applyStatusFilter(option.value);
+                  setIsStatusFilterOpen(false);
+                }}
+                label={option.label}
+                hint={option.hint}
+                count={
+                  option.value === 'all'
+                    ? kpis.total
+                    : option.value === 'blocked'
+                      ? kpis.blocked
+                      : option.value === 'critical'
+                        ? kpis.critical
+                        : option.value === 'warning'
+                          ? kpis.warning
+                          : option.value === 'limited'
+                            ? kpis.limited
+                            : kpis.good
+                }
+                tone={option.tone}
+              />
+            ))}
+          </FilterDropdown>
 
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => { setIsSortOpen(!isSortOpen); setIsHealthFilterOpen(false); }}
-              className="sq-press flex items-center gap-2 rounded-lg border border-border/70 bg-card px-3.5 py-2.5 text-xs font-medium text-foreground transition-all hover:bg-muted"
-            >
-              <span>Sort: {activeSortLabel}</span>
-              <Icon name="chevron-down" className={`h-3.5 w-3.5 transition-transform ${isSortOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {isSortOpen && (
-              <div className="sq-overlay animate-fade-up absolute left-0 top-full z-50 mt-2 min-w-[180px] overflow-hidden rounded-lg p-1">
-                {sortOptions.map(option => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => {
-                      setSortMode(option.value);
-                      setIsSortOpen(false);
-                    }}
-                    className={`w-full rounded-lg px-3 py-2.5 text-left text-xs font-medium transition-colors ${
-                      option.value === sortMode
-                        ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
-                        : 'text-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {option.label}
-                    <span className="ml-1 text-[10px] text-muted-foreground">· {option.helper}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <FilterDropdown
+            label={
+              moduleFilter === 'all'
+                ? 'Module'
+                : MODULE_FILTER_OPTIONS.find((o) => o.value === moduleFilter)?.label ?? 'Module'
+            }
+            open={isModuleFilterOpen}
+            onToggle={() => {
+              setIsModuleFilterOpen(!isModuleFilterOpen);
+              setIsStatusFilterOpen(false);
+              setIsDataFilterOpen(false);
+              setIsSortOpen(false);
+            }}
+            active={moduleFilter !== 'all'}
+          >
+            {MODULE_FILTER_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  setModuleFilter(option.value === moduleFilter && option.value !== 'all' ? 'all' : option.value);
+                  setIsModuleFilterOpen(false);
+                }}
+                className={`w-full rounded-lg px-3 py-2.5 text-left text-xs font-medium transition-colors ${
+                  moduleFilter === option.value
+                    ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
+                    : 'text-foreground hover:bg-muted'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </FilterDropdown>
 
-          <div className="ml-auto flex items-center gap-1.5">
-            <button onClick={expandAllGroups} className="sq-press flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-2.5 text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border">
-              <Icon name="chevron-down" className="h-3.5 w-3.5 text-muted-foreground" />
-              Expand
-            </button>
-            <button onClick={collapseAllGroups} className="sq-press flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-2.5 text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border">
-              <Icon name="chevron-down" className="h-3.5 w-3.5 rotate-180 text-muted-foreground" />
-              Collapse
-            </button>
-          </div>
-        </div>
+          <FilterDropdown
+            label={
+              dataQualityFilter === 'all'
+                ? 'Data quality'
+                : DATA_QUALITY_OPTIONS.find((o) => o.value === dataQualityFilter)?.label ??
+                  'Data quality'
+            }
+            open={isDataFilterOpen}
+            onToggle={() => {
+              setIsDataFilterOpen(!isDataFilterOpen);
+              setIsStatusFilterOpen(false);
+              setIsModuleFilterOpen(false);
+              setIsSortOpen(false);
+            }}
+            active={dataQualityFilter !== 'all'}
+          >
+            {DATA_QUALITY_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  setDataQualityFilter(
+                    option.value === dataQualityFilter && option.value !== 'all'
+                      ? 'all'
+                      : option.value,
+                  );
+                  setIsDataFilterOpen(false);
+                }}
+                className={`w-full rounded-lg px-3 py-2.5 text-left text-xs font-medium transition-colors ${
+                  dataQualityFilter === option.value
+                    ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
+                    : 'text-foreground hover:bg-muted'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </FilterDropdown>
 
-        <div className="mt-2 text-[10px] font-medium text-muted-foreground">
-          {activeGroupCount > 0
-            ? `${activeGroupCount} group${activeGroupCount === 1 ? '' : 's'} expanded · details load on demand`
-            : 'All groups collapsed · details load on demand'}
+          <FilterDropdown
+            label={`Sort: ${SORT_OPTIONS.find((o) => o.value === sortMode)?.label ?? 'Priority'}`}
+            open={isSortOpen}
+            onToggle={() => {
+              setIsSortOpen(!isSortOpen);
+              setIsStatusFilterOpen(false);
+              setIsModuleFilterOpen(false);
+              setIsDataFilterOpen(false);
+            }}
+            active={false}
+          >
+            {SORT_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  setSortMode(option.value);
+                  setIsSortOpen(false);
+                }}
+                className={`w-full rounded-lg px-3 py-2.5 text-left text-xs font-medium transition-colors ${
+                  sortMode === option.value
+                    ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
+                    : 'text-foreground hover:bg-muted'
+                }`}
+              >
+                {option.label}
+                <span className="ml-1 text-[10px] text-muted-foreground">· {option.helper}</span>
+              </button>
+            ))}
+          </FilterDropdown>
         </div>
       </div>
 
       {filtered.length === 0 ? (
         <EmptyState
           compact
-          icon={<Icon name="check-circle" className="h-5 w-5" />}
-          title={`No vehicles match the current filter${searchQuery ? ' or search' : ''}.`}
+          icon={<Icon name="search" className="h-5 w-5" />}
+          title="No vehicles found for this filter."
           className="sq-card rounded-2xl shadow-[var(--shadow-1)]"
         />
       ) : (
         <div className="space-y-2.5">
-          {groupedVehicles.map(group => {
+          {groupedVehicles.map((group) => {
             const isGroupOpen = expandedGroups.has(group.key);
-            const groupPct = Math.round((group.vehicles.length / Math.max(filtered.length, 1)) * 100);
+            const GroupIcon = group.icon;
             return (
-              <section key={group.key} className="sq-card rounded-2xl overflow-hidden shadow-[var(--shadow-1)]">
+              <section
+                key={group.key}
+                className="sq-card rounded-2xl overflow-hidden shadow-[var(--shadow-1)]"
+              >
                 <button
+                  type="button"
                   onClick={() => toggleGroup(group.key)}
                   className="w-full px-3 py-3 flex items-center justify-between gap-3 text-left hover:bg-muted/35 transition-colors"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className={`h-8 w-8 rounded-xl flex items-center justify-center ${toneClass(group.tone)}`}>
-                      {group.key === 'critical' ? <ShieldAlert className="h-4 w-4" /> : group.key === 'warning' ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                    <span
+                      className={`h-8 w-8 rounded-xl flex items-center justify-center ${toneClass(group.tone)}`}
+                    >
+                      <GroupIcon className="h-4 w-4" />
                     </span>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <h2 className="text-[13px] font-semibold text-foreground">{group.title}</h2>
-                        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground">{group.vehicles.length}</span>
+                        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground">
+                          {group.vehicles.length}
+                        </span>
                       </div>
-                      <p className="text-[10px] text-muted-foreground">{group.subtitle} · {groupPct}% of {selectionLabel}</p>
+                      <p className="text-[10px] text-muted-foreground">{group.subtitle}</p>
                     </div>
                   </div>
-                  <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isGroupOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown
+                    className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isGroupOpen ? 'rotate-180' : ''}`}
+                  />
                 </button>
 
-                {isGroupOpen && (
-                  <div className="border-t border-border/60 divide-y divide-border/50">
-                    {group.vehicles.map(vehicle => {
-                      const cd = conditionData[vehicle.id];
-                      const isVehicleOpen = expandedVehicleId === vehicle.id;
-                      const isLoading = loadingIds.has(vehicle.id);
-                      const brand = getBrandFromModel({ make: vehicle.make, model: vehicle.model });
+                {isGroupOpen && group.vehicles.length === 0 && (
+                  <EmptyState compact title={group.emptyTitle} className="border-t border-border/60" />
+                )}
 
-                      const health = healthMap.get(vehicle.id);
-                      const status = statusFor(vehicle.id);
-                      const statusTone: Tone = toneFromStatus(status);
-                      const reasons = collectReasons(health);
-                      const blocked = health?.rental_blocked ?? false;
-                      const blockingReasons = health?.blocking_reasons ?? [];
-
-                      const odomKm =
-                        vehicle.odometerKm != null && vehicle.odometerKm > 0
-                          ? Number(vehicle.odometerKm)
-                          : typeof vehicle.odometer === 'number' && Number.isFinite(vehicle.odometer) && vehicle.odometer > 0
-                            ? vehicle.odometer
-                            : null;
-                      const odometer = odomKm != null ? `${Math.round(odomKm).toLocaleString('de-DE')} km` : '—';
-
-                      return (
-                        <div key={vehicle.id} className={`bg-card ${isVehicleOpen ? 'p-2.5 sm:p-3' : ''}`}>
-                          <div
-                            className={
-                              isVehicleOpen
-                                ? `rounded-2xl border ${statusTone === 'critical' ? 'border-[color:var(--status-critical)]/40' : statusTone === 'warning' ? 'border-[color:var(--status-attention)]/40' : 'border-border/70'} bg-background shadow-[var(--shadow-2)] overflow-hidden`
-                                : ''
-                            }
-                          >
-                            <button
-                              onClick={() => toggleVehicle(vehicle.id)}
-                              className={`w-full px-3 py-2.5 flex items-start gap-2.5 text-left transition-colors ${isVehicleOpen ? 'bg-muted/30' : 'hover:bg-muted/35'}`}
-                            >
-                              <div className="h-9 w-9 rounded-xl bg-muted/70 flex items-center justify-center shrink-0 mt-0.5">
-                                <BrandLogo brand={brand} size={18} isDarkMode={systemDark} />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                  <span className="truncate text-[12px] font-semibold text-foreground">
-                                    {[vehicle.make, getShortModel(vehicle.model), vehicle.year].filter(Boolean).join(' ')}
-                                  </span>
-                                  <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">{vehicle.license}</span>
-                                </div>
-                                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
-                                  <span className="truncate">{vehicle.station || 'No station'}</span>
-                                  <span>{odometer}</span>
-                                  {status === 'Unknown' && !healthPending && (
-                                    <span
-                                      className="sq-tone-neutral inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-semibold"
-                                      title="Backend has no full health signal yet — treated as healthy on every other surface"
-                                    >
-                                      <CircleDot className="h-2.5 w-2.5" />
-                                      Limited data
-                                    </span>
-                                  )}
-                                  {status === 'Unknown' && healthPending && (
-                                    <span className="sq-tone-neutral inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-semibold">
-                                      <span className="h-2 w-2 rounded-full border-[1.5px] border-current border-t-transparent animate-spin" />
-                                      Checking
-                                    </span>
-                                  )}
-                                </div>
-                                {/* V4.7.28 — Inline reasons removed from the
-                                    collapsed row to keep the list scannable.
-                                    The full breakdown is shown when the row
-                                    is expanded (see "Why this status" panel
-                                    below). The aggregate count gives the
-                                    operator enough signal to decide whether
-                                    a drill-down is worth it. */}
-                                {!isVehicleOpen && (reasons.length > 0 || blockingReasons.length > 0) && (
-                                  <div className="mt-1 text-[10px] font-medium text-muted-foreground">
-                                    {blockingReasons.length + reasons.length} reason{blockingReasons.length + reasons.length === 1 ? '' : 's'} · expand to view
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
-                                {blocked && (
-                                  <StatusChip tone="critical">Blocked</StatusChip>
-                                )}
-                                <HealthStatusChip
-                                  state={effectiveStatusToHealthState(status)}
-                                  label={healthLabelEx(status, healthPending)}
-                                  dot={false}
-                                />
-                                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isVehicleOpen ? 'rotate-180' : ''}`} />
-                              </div>
-                            </button>
-
-                            {isVehicleOpen && (reasons.length > 0 || blockingReasons.length > 0) && (
-                              <div className="px-3 pt-2.5 pb-1 border-t border-border/60 bg-muted/15">
-                                <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
-                                  Why this status
-                                </div>
-                                <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                                  {blockingReasons.map((reason, idx) => (
-                                    <span
-                                      key={`block-${idx}`}
-                                      className="inline-flex items-center gap-1 rounded-md sq-tone-critical px-1.5 py-0.5 text-[10px] font-medium"
-                                    >
-                                      <ShieldAlert className="h-3 w-3" />
-                                      <span className="truncate max-w-[40ch] sm:max-w-none">{reason}</span>
-                                    </span>
-                                  ))}
-                                  {reasons.map(r => (
-                                    <span
-                                      key={r.module}
-                                      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
-                                        r.state === 'critical' ? 'sq-tone-critical' : 'sq-tone-warning'
-                                      }`}
-                                    >
-                                      <span className="font-semibold">{r.label}:</span>
-                                      <span className="truncate max-w-[44ch] sm:max-w-none">{r.reason}</span>
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {isVehicleOpen && renderConditionTiles(vehicle, cd, isLoading)}
-                          </div>
-                        </div>
-                      );
-                    })}
+                {isGroupOpen && group.vehicles.length > 0 && (
+                  <div className="border-t border-border/60 p-2 space-y-2 md:p-0 md:space-y-0 md:divide-y md:divide-border/50">
+                    {group.vehicles.map((vehicle) => (
+                      <OperatorVehicleRow
+                        key={vehicle.id}
+                        vehicle={vehicle}
+                        health={healthMap.get(vehicle.id)}
+                        healthLoading={healthLoading}
+                        systemDark={systemDark}
+                        selected={selectedVehicleId === vehicle.id}
+                        onOpen={() => openVehicleDetail(vehicle.id)}
+                        onModuleClick={(chipKey) =>
+                          openVehicleDetail(vehicle.id, moduleKeyToTab(chipKey))
+                        }
+                      />
+                    ))}
                   </div>
                 )}
               </section>
@@ -1095,43 +726,230 @@ export function FleetConditionView({ onDrillDown, embedded = false }: FleetCondi
           })}
         </div>
       )}
+        </div>
+
+        {selectedVehicle && (
+          <div className="hidden lg:flex w-[min(440px,36vw)] xl:w-[480px] shrink-0 sticky top-4 max-h-[calc(100vh-5rem)] rounded-2xl border border-border overflow-hidden shadow-[var(--shadow-1)]">
+            <HealthVehicleDetailPanel
+              vehicle={selectedVehicle}
+              health={selectedHealth}
+              healthLoading={healthLoading}
+              initialTab={detailTab}
+              onClose={() => setSelectedVehicleId(null)}
+              className="w-full"
+            />
+          </div>
+        )}
+      </div>
+
+      <HealthVehicleDetailDrawer
+        vehicle={selectedVehicle}
+        health={selectedHealth}
+        healthLoading={healthLoading}
+        open={mobileDrawerOpen && !!selectedVehicle}
+        onOpenChange={(open) => {
+          setMobileDrawerOpen(open);
+          if (!open) setSelectedVehicleId(null);
+        }}
+        initialTab={detailTab}
+      />
     </div>
   );
 }
 
-function ConditionTile({ icon: IconCmp, label, value, meta, percent, tone, onClick }: {
-  icon: LucideIcon;
+function FilterDropdown({
+  label,
+  open,
+  onToggle,
+  active,
+  children,
+}: {
   label: string;
-  value: string;
-  meta: string;
-  percent: number | null;
-  tone: Tone;
-  onClick?: () => void;
+  open: boolean;
+  onToggle: () => void;
+  active: boolean;
+  children: ReactNode;
 }) {
-  const width = percent == null ? 10 : Math.min(Math.max(percent, 6), 100);
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`sq-press flex items-center gap-2 rounded-lg border px-3 py-2.5 text-xs font-medium transition-all ${
+          active
+            ? 'border-[color:color-mix(in_srgb,var(--brand)_35%,transparent)] bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
+            : 'border-border/70 bg-card text-foreground hover:bg-muted'
+        }`}
+      >
+        <span>{label}</span>
+        <Icon name="chevron-down" className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="sq-overlay animate-fade-up absolute left-0 top-full z-50 mt-2 min-w-[210px] overflow-hidden rounded-lg p-1">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FilterOption({
+  label,
+  hint,
+  count,
+  tone,
+  selected,
+  onClick,
+}: {
+  label: string;
+  hint: string;
+  count: number;
+  tone: StatusTone;
+  selected: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="sq-card-elevated rounded-xl px-3 py-2.5 text-left"
+      className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-medium transition-colors ${
+        selected
+          ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
+          : 'text-foreground hover:bg-muted'
+      }`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className={`h-7 w-7 rounded-lg flex items-center justify-center ${toneClass(tone)}`}>
-            <IconCmp className="h-3.5 w-3.5" />
-          </span>
-          <div className="min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-[0.07em] text-muted-foreground">{label}</div>
-            <div className="mt-0.5 truncate text-[10px] text-muted-foreground">{meta}</div>
+      <span>
+        {label}
+        <span className="ml-1 text-[10px] text-muted-foreground">· {hint}</span>
+      </span>
+      <StatusChip tone={tone} className="text-[10px] font-bold tabular-nums">
+        {count}
+      </StatusChip>
+    </button>
+  );
+}
+
+function ModuleChip({
+  chip,
+  onClick,
+}: {
+  chip: ModuleChipModel;
+  onClick?: () => void;
+}) {
+  const content = (
+  <>
+      <span className="font-semibold">{chip.label}</span>
+      <span className="text-muted-foreground">·</span>
+      <span className="truncate">{chip.detail}</span>
+    </>
+  );
+  const className = `inline-flex max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${chipClassForTone(chip.tone)}`;
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={`${className} sq-press`}>
+        {content}
+      </button>
+    );
+  }
+  return <span className={className}>{content}</span>;
+}
+
+function OperatorVehicleRow({
+  vehicle,
+  health,
+  healthLoading,
+  systemDark,
+  selected,
+  onOpen,
+  onModuleClick,
+}: {
+  vehicle: ReturnType<typeof useFleetVehicles>['fleetVehicles'][number];
+  health: VehicleHealthResponse | undefined;
+  healthLoading: boolean;
+  systemDark: boolean;
+  selected: boolean;
+  onOpen: () => void;
+  onModuleClick: (moduleKey: ModuleChipModel['key']) => void;
+}) {
+  const brand = getBrandFromModel({ make: vehicle.make, model: vehicle.model });
+  const chips = buildModuleChips(health);
+  const gate = rentalGateLabel(health);
+  const primaryReason = primaryOperatorReason(health);
+
+  const odomKm =
+    vehicle.odometerKm != null && vehicle.odometerKm > 0
+      ? Number(vehicle.odometerKm)
+      : typeof vehicle.odometer === 'number' &&
+          Number.isFinite(vehicle.odometer) &&
+          vehicle.odometer > 0
+        ? vehicle.odometer
+        : null;
+  const odometer = odomKm != null ? `${Math.round(odomKm).toLocaleString('de-DE')} km` : '—';
+  const lastUpdated = formatRelativeTime(vehicleLastUpdatedIso(health));
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`sq-press w-full text-left rounded-xl border transition-colors md:rounded-none md:border-0 ${
+        selected
+          ? 'border-[color:var(--brand)] bg-[color:var(--brand-soft)]/40 ring-1 ring-[color:var(--brand)]/20'
+          : 'border-border/60 bg-card hover:bg-muted/35 md:bg-transparent'
+      }`}
+    >
+      <div className="flex flex-col gap-2 px-3 py-3 md:flex-row md:items-center md:gap-3 md:py-2.5">
+        <div className="flex min-w-0 flex-1 items-start gap-2.5">
+          <div className="h-9 w-9 rounded-xl bg-muted/70 flex items-center justify-center shrink-0">
+            <BrandLogo brand={brand} size={18} isDarkMode={systemDark} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="truncate text-[12px] font-semibold text-foreground">
+                {[vehicle.make, getShortModel(vehicle.model), vehicle.year]
+                  .filter(Boolean)
+                  .join(' ')}
+              </span>
+              <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[11px] font-bold text-foreground">
+                {vehicle.license}
+              </span>
+            </div>
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+              <span className="truncate">{vehicle.station || 'No station'}</span>
+              <span>{odometer}</span>
+              <span>Health {healthLoading && !health ? '…' : lastUpdated}</span>
+            </div>
           </div>
         </div>
-        <div className={`shrink-0 text-[13px] font-semibold ${textToneClass(tone)}`}>{value}</div>
-      </div>
-      {percent != null && (
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-          <div className={`h-full rounded-full ${barClass(percent)}`} style={{ width: `${width}%` }} />
+
+        <div
+          className="flex min-w-0 flex-wrap items-center gap-1 md:flex-1 md:justify-center"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          {!health && !healthLoading ? (
+            <StatusChip tone="noData">Health status unavailable</StatusChip>
+          ) : (
+            chips.map((chip) => (
+              <ModuleChip
+                key={chip.key}
+                chip={chip}
+                onClick={() => onModuleClick(chip.key)}
+              />
+            ))
+          )}
         </div>
-      )}
+
+        <div className="flex shrink-0 items-center justify-between gap-2 md:min-w-[180px] md:justify-end">
+          <div className="min-w-0 text-left md:text-right">
+            <StatusChip tone={gate.tone}>{gate.label}</StatusChip>
+            <p className="mt-1 max-w-[32ch] truncate text-[10px] text-muted-foreground md:ml-auto">
+              {primaryReason}
+            </p>
+          </div>
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </div>
+      </div>
     </button>
   );
 }

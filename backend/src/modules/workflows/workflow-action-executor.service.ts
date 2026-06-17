@@ -6,12 +6,12 @@ import {
 import {
   Prisma,
   TaskPriority,
-  VehicleStatus,
   WorkflowActionRunStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
-import { normalizeTaskPriorityInput } from '@modules/business-insights/insight-task.mapper';
+import { normalizeTaskPriority } from '@modules/tasks/task-priority.util';
+import { normalizeVehicleStatus } from './vehicle-status.util';
 import type { WorkflowActionDef } from './workflow-definition.validator';
 
 export interface ActionExecutionContext {
@@ -101,7 +101,7 @@ export class WorkflowActionExecutorService {
   }
 
   private mapPriority(raw: unknown): TaskPriority {
-    return normalizeTaskPriorityInput(String(raw ?? '')) ?? 'NORMAL';
+    return normalizeTaskPriority(String(raw ?? ''));
   }
 
   private async execTaskCreate(
@@ -175,7 +175,9 @@ export class WorkflowActionExecutorService {
     if (!vehicleId) {
       throw new BadRequestException('vehicle.status.update requires payload.vehicleId');
     }
-    const status = String(action.config?.status ?? '') as VehicleStatus;
+    const status = normalizeVehicleStatus(
+      typeof action.config?.status === 'string' ? action.config.status : undefined,
+    );
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId, organizationId: ctx.organizationId },
       select: { id: true },

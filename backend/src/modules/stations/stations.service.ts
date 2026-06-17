@@ -12,6 +12,7 @@ import {
 import { CreateStationDto } from './dto/create-station.dto';
 import { UpdateStationDto } from './dto/update-station.dto';
 import { ListStationsQueryDto } from './dto/list-stations-query.dto';
+import { mapboxAccessToken, resolveGeocodeCountryFilter } from './station-geocode.util';
 
 const STATION_STATUS_VALUES: StationStatus[] = ['ACTIVE', 'INACTIVE', 'ARCHIVED'];
 
@@ -768,90 +769,6 @@ export class StationsService {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // Google Places autocomplete (address lookup for create/edit form)
-  // ─────────────────────────────────────────────────────────────
-
-  async searchPlaces(query: string): Promise<StationPlaceSuggestion[]> {
-    if (!query || query.trim().length < 2) return [];
-
-    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-    if (!apiKey) return [];
-
-    try {
-      // Stations are physical locations that may be either plain addresses or
-      // named establishments (branch offices) — allow both.
-      const url =
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
-        `?input=${encodeURIComponent(query.trim())}` +
-        `&types=geocode|establishment` +
-        `&language=de` +
-        `&key=${apiKey}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.status !== 'OK') return [];
-
-      return (data.predictions ?? []).map((p: any) => ({
-        placeId: p.place_id,
-        mainText: p.structured_formatting?.main_text ?? p.description ?? '',
-        secondaryText: p.structured_formatting?.secondary_text ?? '',
-        description: p.description ?? '',
-      }));
-    } catch (err) {
-      this.logger.warn(`searchPlaces failed: ${(err as Error).message}`);
-      return [];
-    }
-  }
-
-  async getPlaceDetails(placeId: string): Promise<StationPlaceDetails | null> {
-    if (!placeId) return null;
-
-    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-    if (!apiKey) return null;
-
-    try {
-      const fields = [
-        'name',
-        'formatted_address',
-        'formatted_phone_number',
-        'geometry',
-        'address_components',
-        'url',
-      ].join(',');
-      const url =
-        `https://maps.googleapis.com/maps/api/place/details/json` +
-        `?place_id=${placeId}` +
-        `&language=de` +
-        `&fields=${fields}` +
-        `&key=${apiKey}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.status !== 'OK' || !data.result) return null;
-
-      const r = data.result;
-      const components: Array<{ types: string[]; long_name: string }> = r.address_components ?? [];
-      const get = (type: string) =>
-        components.find((c) => c.types.includes(type))?.long_name ?? null;
-
-      const street = [get('route'), get('street_number')].filter(Boolean).join(' ').trim() || null;
-
-      return {
-        name: r.name ?? null,
-        address: street ?? r.formatted_address ?? null,
-        city: get('locality') ?? get('sublocality') ?? get('postal_town') ?? null,
-        postalCode: get('postal_code'),
-        country: get('country'),
-        latitude: r.geometry?.location?.lat ?? null,
-        longitude: r.geometry?.location?.lng ?? null,
-        phone: r.formatted_phone_number ?? null,
-        googleMapsUrl: r.url ?? null,
-      };
-    } catch (err) {
-      this.logger.warn(`getPlaceDetails failed: ${(err as Error).message}`);
-      return null;
-    }
-  }
-
-  // ─────────────────────────────────────────────────────────────
   // Mapbox forward-geocoding (address → lat/lng)
   // ─────────────────────────────────────────────────────────────
   // Used both by create/update (auto-fill) and by the one-shot backfill
@@ -875,7 +792,7 @@ export class StationsService {
     postalCode: string | null | undefined;
     country: string | null | undefined;
   }): Promise<{ latitude: number; longitude: number } | null> {
-    const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+    const token = mapboxAccessToken();
     if (!token) return null;
 
     // We need at least the street (`address`) plus one of city/postal to
@@ -894,22 +811,13 @@ export class StationsService {
     );
     const query = queryParts.join(', ');
 
-    // Restrict to DE/AT/CH by default (same market as the rest of the
-    // platform). The free tier permits the `country` filter without extra
-    // cost. If the country field is set we honour it; otherwise we still
-    // allow worldwide so a tenant operating outside DACH isn't blocked.
-    const countryFilter =
-      countryPart.toLowerCase().includes('österreich') || countryPart.toLowerCase() === 'at'
-        ? 'at'
-        : countryPart.toLowerCase().includes('schweiz') || countryPart.toLowerCase() === 'ch'
-          ? 'ch'
-          : 'de';
+    const countryFilter = resolveGeocodeCountryFilter(countryPart);
 
     const url =
       `https://api.mapbox.com/geocoding/v5/mapbox.places/` +
       `${encodeURIComponent(query)}.json` +
-      `?country=${countryFilter}` +
-      `&types=address,postcode,place` +
+      `?${countryFilter ? `country=${countryFilter}&` : ''}` +
+      `types=address,postcode,place` +
       `&limit=1` +
       `&language=de` +
       `&access_token=${token}`;

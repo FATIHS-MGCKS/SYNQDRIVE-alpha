@@ -7,6 +7,7 @@ import { VehicleStatus } from '@prisma/client';
 import { QUEUE_NAMES } from '../queues/queue-names';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripReconciliationService } from '@modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
+import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 
 /**
  * Enqueues DIMO snapshot poll jobs on a fixed 30 s cadence.
@@ -74,6 +75,7 @@ export class DimoSnapshotScheduler {
 
   @Interval(30000)
   async enqueueSnapshotJobs(): Promise<void> {
+    if (!canEnqueueQueue(this.logger, 'dimo-snapshot')) return;
     const tickStartedAt = new Date();
 
     // Resume-gap detection runs BEFORE the normal enqueue body so that the

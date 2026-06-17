@@ -8,6 +8,7 @@ import {
   OrgInvoiceStatus,
   OrgInvoiceType,
   Prisma,
+  TaskPriority,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
@@ -448,21 +449,59 @@ export class InvoicesService {
     currency?: string;
     kmIncluded?: number | null;
   }) {
-    const days = Math.max(1, Math.ceil((booking.endDate.getTime() - booking.startDate.getTime()) / 86400000));
-    const totalCents = booking.totalPriceCents || (booking.dailyRateCents || 0) * days;
-    if (totalCents <= 0) return null;
+    const snapshot = await this.prisma.bookingPriceSnapshot.findFirst({
+      where: { bookingId: booking.id, organizationId: orgId },
+      include: { lineItems: { orderBy: { sortOrder: 'asc' } } },
+    });
 
-    const unitNet = Math.round((booking.dailyRateCents || Math.round(totalCents / days)) / 1.19);
-    const lineItems: InvoiceLineItemInput[] = [
-      {
-        description: `Fahrzeugmiete (${days} Tage)`,
-        quantity: days,
-        unitPriceNetCents: unitNet,
-        taxRate: 19,
-        bookingId: booking.id,
-        vehicleId: booking.vehicleId,
-      },
-    ];
+    let lineItems: InvoiceLineItemInput[];
+    let totalCents: number;
+    let currency = booking.currency || 'EUR';
+
+    if (snapshot?.lineItems?.length) {
+      // Source of truth: BookingPriceSnapshot (+ line items). Legacy booking
+      // price fields are compatibility mirrors only.
+      currency = snapshot.currency || currency;
+      totalCents = snapshot.totalGrossCents;
+      lineItems = snapshot.lineItems
+        .filter((li) => li.type !== 'DEPOSIT' && li.type !== 'TAX')
+        .map((li) => ({
+          description: li.label,
+          quantity: Math.max(1, li.quantity),
+          unitPriceNetCents: Math.round(li.totalNetCents / Math.max(1, li.quantity)),
+          taxRate: li.taxRatePercent,
+          bookingId: booking.id,
+          vehicleId: booking.vehicleId,
+        }));
+      if (lineItems.length === 0) {
+        lineItems = [{
+          description: `Fahrzeugmiete (${snapshot.rentalDays} Tage)`,
+          quantity: snapshot.rentalDays,
+          unitPriceNetCents: Math.round(snapshot.subtotalNetCents / Math.max(1, snapshot.rentalDays)),
+          taxRate: snapshot.taxRatePercent,
+          bookingId: booking.id,
+          vehicleId: booking.vehicleId,
+        }];
+      }
+    } else {
+      // Defensive fallback when snapshot missing (e.g. legacy bookings).
+      const days = Math.max(1, Math.ceil((booking.endDate.getTime() - booking.startDate.getTime()) / 86400000));
+      totalCents = booking.totalPriceCents || (booking.dailyRateCents || 0) * days;
+      if (totalCents <= 0) return null;
+      const unitNet = Math.round((booking.dailyRateCents || Math.round(totalCents / days)) / 1.19);
+      lineItems = [
+        {
+          description: `Fahrzeugmiete (${days} Tage)`,
+          quantity: days,
+          unitPriceNetCents: unitNet,
+          taxRate: 19,
+          bookingId: booking.id,
+          vehicleId: booking.vehicleId,
+        },
+      ];
+    }
+
+    if (totalCents <= 0) return null;
 
     const dueDate = new Date(booking.startDate);
     dueDate.setDate(dueDate.getDate() + 14);
@@ -476,7 +515,7 @@ export class InvoicesService {
       description: `Mietrechnung für Buchungszeitraum ${booking.startDate.toLocaleDateString('de-DE')} – ${booking.endDate.toLocaleDateString('de-DE')}`,
       lineItems,
       totalCents,
-      currency: booking.currency || 'EUR',
+      currency,
       invoiceDate: new Date().toISOString(),
       dueDate: dueDate.toISOString(),
     });
@@ -626,6 +665,13 @@ export class InvoicesService {
     return vendorName ?? vendor.name;
   }
 
+  private resolveUnpaidTaskPriority(totalCents: number, dueDate?: string): TaskPriority {
+    const dueMs = dueDate ? new Date(dueDate).getTime() : NaN;
+    const isOverdue = Number.isFinite(dueMs) && dueMs < Date.now();
+    if (isOverdue) return totalCents >= 50000 ? 'CRITICAL' : 'HIGH';
+    return totalCents >= 50000 ? 'HIGH' : 'NORMAL';
+  }
+
   private async createUnpaidTask(
     orgId: string,
     invoiceId: string,
@@ -645,7 +691,7 @@ export class InvoicesService {
       type: 'INVOICE_REQUIRED',
       source: 'INVOICE',
       sourceType: 'SYSTEM',
-      priority: totalCents >= 50000 ? 'HIGH' : 'NORMAL',
+      priority: this.resolveUnpaidTaskPriority(totalCents, dueDate),
       invoiceId,
       dueDate: dueDate ? new Date(dueDate) : undefined,
     });

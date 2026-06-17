@@ -217,16 +217,7 @@ export function determineHvMaturity(input: HvMaturityInput): PublicationState {
   const { validEstimateCount, daysSinceFirstMeasurement, method } = input;
   const days = daysSinceFirstMeasurement ?? 0;
 
-  if (method === 'insufficient_data') {
-    return 'INITIAL_CALIBRATION';
-  }
-
-  // Model-only path: no energy measurements available (e.g. DIMO does not
-  // provide energyUsedKwh for this vehicle). Progress based on observation
-  // duration alone; confidence stays "low" but the estimate is still useful.
-  if (method === 'degradation_model') {
-    if (days >= 14) return 'STABLE';
-    if (days >= 7) return 'STABILIZING';
+  if (method === 'insufficient_data' || method === 'degradation_model') {
     return 'INITIAL_CALIBRATION';
   }
 

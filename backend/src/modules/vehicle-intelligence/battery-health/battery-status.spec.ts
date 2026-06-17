@@ -4,7 +4,9 @@ import {
   classifyHvSoh,
   classifyLvEstimatedHealth,
   classifyRestingVoltage,
+  isAlertableStatus,
   normalizeBatteryType,
+  selectBestBatterySpec,
   statusToBars,
   statusToLegacyCondition,
 } from './battery-status';
@@ -24,14 +26,26 @@ describe('battery-status', () => {
   });
 
   describe('classifyRestingVoltage', () => {
-    it('AGM 12.55V → WATCH', () => {
-      const r = classifyRestingVoltage(12.55, 'AGM');
+    it('AGM 12.55V → WATCH with BATTERY_SPEC when spec provided', () => {
+      const r = classifyRestingVoltage(12.55, 'AGM', { specProvided: true });
       expect(r.status).toBe('WATCH');
       expect(r.thresholdSource).toBe('BATTERY_SPEC');
     });
 
     it('AGM 12.05V → CRITICAL', () => {
-      expect(classifyRestingVoltage(12.05, 'AGM').status).toBe('CRITICAL');
+      expect(classifyRestingVoltage(12.05, 'AGM', { specProvided: true }).status).toBe('CRITICAL');
+    });
+
+    it('EFB with spec → BATTERY_SPEC threshold source', () => {
+      const r = classifyRestingVoltage(12.55, 'EFB', { specProvided: true });
+      expect(r.status).toBe('GOOD');
+      expect(r.thresholdSource).toBe('BATTERY_SPEC');
+    });
+
+    it('LEAD_ACID with spec → BATTERY_SPEC threshold source', () => {
+      const r = classifyRestingVoltage(12.1, 'Lead-Acid', { specProvided: true });
+      expect(r.status).toBe('WARNING');
+      expect(r.thresholdSource).toBe('BATTERY_SPEC');
     });
 
     it('UNKNOWN/default 12.55V → GOOD', () => {
@@ -45,13 +59,57 @@ describe('battery-status', () => {
     });
 
     it('Lithium without explicit thresholds → UNSUPPORTED (no false alert)', () => {
-      const r = classifyRestingVoltage(12.1, 'Lithium');
+      const r = classifyRestingVoltage(12.1, 'Lithium', { specProvided: true });
       expect(r.status).toBe('UNSUPPORTED');
       expect(r.thresholdSource).toBe('UNSUPPORTED');
     });
 
     it('no voltage → UNKNOWN', () => {
-      expect(classifyRestingVoltage(null, 'AGM').status).toBe('UNKNOWN');
+      expect(classifyRestingVoltage(null, 'AGM', { specProvided: true }).status).toBe('UNKNOWN');
+    });
+  });
+
+  describe('selectBestBatterySpec', () => {
+    const older = new Date('2026-01-01T00:00:00.000Z');
+    const newer = new Date('2026-06-01T00:00:00.000Z');
+
+    it('prefers complete spec with type + volt over newer incomplete row', () => {
+      const best = selectBestBatterySpec([
+        { batteryType: null, batteryVolt: 12, sourceConfidence: 1, createdAt: newer },
+        { batteryType: 'AGM', batteryVolt: 12, sourceConfidence: 0.5, createdAt: older },
+      ]);
+      expect(best?.batteryType).toBe('AGM');
+    });
+
+    it('prefers higher sourceConfidence when completeness ties', () => {
+      const best = selectBestBatterySpec([
+        { batteryType: 'EFB', batteryVolt: 12, sourceConfidence: 0.4, createdAt: newer },
+        { batteryType: 'EFB', batteryVolt: 12, sourceConfidence: 0.9, createdAt: older },
+      ]);
+      expect(best?.sourceConfidence).toBe(0.9);
+    });
+
+    it('picks newest spec on full tie', () => {
+      const best = selectBestBatterySpec([
+        { batteryType: 'AGM', batteryVolt: 12, sourceConfidence: 0.8, createdAt: older },
+        { batteryType: 'AGM', batteryVolt: 12, sourceConfidence: 0.8, createdAt: newer },
+      ]);
+      expect(best?.createdAt).toBe(newer);
+    });
+
+    it('returns null for empty specs without crashing', () => {
+      expect(selectBestBatterySpec([])).toBeNull();
+      expect(selectBestBatterySpec(null)).toBeNull();
+    });
+  });
+
+  describe('isAlertableStatus', () => {
+    it('Watch does not alert; Warning/Critical do', () => {
+      expect(isAlertableStatus('WATCH')).toBe(false);
+      expect(isAlertableStatus('WARNING')).toBe(true);
+      expect(isAlertableStatus('CRITICAL')).toBe(true);
+      expect(isAlertableStatus('UNKNOWN')).toBe(false);
+      expect(isAlertableStatus('UNSUPPORTED')).toBe(false);
     });
   });
 

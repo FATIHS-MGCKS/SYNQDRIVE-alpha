@@ -141,6 +141,7 @@ interface FleetContextValue {
    */
   healthMap: Map<string, VehicleHealthResponse>;
   healthLoading: boolean;
+  healthError: string | null;
   reloadHealth: () => void;
 }
 
@@ -151,6 +152,7 @@ const FleetCtx = createContext<FleetContextValue>({
   countdown: 30,
   healthMap: new Map(),
   healthLoading: false,
+  healthError: null,
   reloadHealth: () => {},
 });
 
@@ -164,7 +166,7 @@ export function FleetProvider({ children }: { children: ReactNode }) {
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fleetVehicleIds = useMemo(() => fleetVehicles.map(v => v.id), [fleetVehicles]);
-  const { map: healthMap, loading: healthLoading, reload: reloadHealth } =
+  const { map: healthMap, loading: healthLoading, error: healthError, reload: reloadHealth } =
     useFleetHealthMap(orgId, fleetVehicleIds);
 
   const refresh = useCallback(async () => {
@@ -216,7 +218,7 @@ export function FleetProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <FleetCtx.Provider value={{ fleetVehicles, loading, refresh, countdown, healthMap, healthLoading, reloadHealth }}>
+    <FleetCtx.Provider value={{ fleetVehicles, loading, refresh, countdown, healthMap, healthLoading, healthError, reloadHealth }}>
       {children}
     </FleetCtx.Provider>
   );

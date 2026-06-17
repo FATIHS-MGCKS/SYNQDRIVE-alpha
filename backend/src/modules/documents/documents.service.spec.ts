@@ -112,7 +112,7 @@ describe('DocumentNumberingService', () => {
     const svc = new DocumentNumberingService(prisma);
     const year = new Date().getUTCFullYear();
     const num = await svc.nextNumber('org-1', DOCUMENT_TYPE.FINAL_INVOICE);
-    expect(num).toMatch(new RegExp(`^SR-${year}-0001-[A-Z0-9]{4}$`));
+    expect(num).toMatch(new RegExp(`^SR-${year}-[A-Z0-9]{4}$`));
   });
 });
 
@@ -250,7 +250,8 @@ describe('BookingDocumentBundleService', () => {
     const numbering = {} as any;
     const invoices = {} as any;
     const renderer = { renderPdf: jest.fn() } as any;
-    const svc = new BookingDocumentBundleService(prisma, config, generatedDocs, legalDocs, numbering, invoices, renderer);
+    const taskAutomation = { ensureBookingLifecycleTasks: jest.fn() } as any;
+    const svc = new BookingDocumentBundleService(prisma, config, generatedDocs, legalDocs, numbering, invoices, renderer, taskAutomation);
     return { svc, generatedDocs, renderer };
   }
 
@@ -269,7 +270,8 @@ describe('BookingDocumentBundleService', () => {
     const { svc } = makeService(prisma);
     const view = await svc.getBundleView('org-1', 'bk-1');
     expect(view.legal.missing).toEqual([DOCUMENT_TYPE.TERMS_AND_CONDITIONS, DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]);
-    expect(view.warnings[0]).toContain('Rechtliche Dokumente fehlen');
+    expect(view.missingLegalDocuments).toEqual(['TERMS_AND_CONDITIONS', 'REVOCATION_POLICY']);
+    expect(view.warnings[0]).toContain('Dokumentenpaket unvollständig');
   });
 
   it('getBundleView has no warning once both legal docs are attached', async () => {

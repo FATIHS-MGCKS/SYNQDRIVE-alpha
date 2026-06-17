@@ -75,6 +75,7 @@ export interface BundleView {
   };
   documents: ReturnType<GeneratedDocumentsService['toDto']>[];
   legal: { termsAttached: boolean; withdrawalAttached: boolean; missing: string[] };
+  missingLegalDocuments: string[];
   warnings: string[];
 }
 
@@ -137,12 +138,19 @@ export class BookingDocumentBundleService {
     const termsAttached = !!bundle.termsDocumentId;
     const withdrawalAttached = !!bundle.withdrawalDocumentId;
     const missing: string[] = [];
-    if (!termsAttached) missing.push(DOCUMENT_TYPE.TERMS_AND_CONDITIONS);
-    if (!withdrawalAttached) missing.push(DOCUMENT_TYPE.WITHDRAWAL_INFORMATION);
+    const missingLegalDocuments: string[] = [];
+    if (!termsAttached) {
+      missing.push(DOCUMENT_TYPE.TERMS_AND_CONDITIONS);
+      missingLegalDocuments.push('TERMS_AND_CONDITIONS');
+    }
+    if (!withdrawalAttached) {
+      missing.push(DOCUMENT_TYPE.WITHDRAWAL_INFORMATION);
+      missingLegalDocuments.push('REVOCATION_POLICY');
+    }
     const warnings: string[] = [];
     if (missing.length) {
       warnings.push(
-        'Rechtliche Dokumente fehlen in Administration. Das Buchungsdokumentenpaket ist unvollständig.',
+        'Dokumentenpaket unvollständig: AGB/Widerrufsbelehrung fehlt. Bitte in Administration → Unternehmen hochladen.',
       );
     }
     return {
@@ -155,6 +163,7 @@ export class BookingDocumentBundleService {
       },
       documents: documents.map((d) => this.generatedDocs.toDto(d)),
       legal: { termsAttached, withdrawalAttached, missing },
+      missingLegalDocuments,
       warnings,
     };
   }

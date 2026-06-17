@@ -1,15 +1,21 @@
-import type { SignalModuleUsage } from './data-analyse.types';
+import type { HfPracticalUse, SignalModuleUsage } from './data-analyse.types';
 import { DEFAULT_SNAPSHOT_EXPECTED_INTERVAL_MS } from './data-analyse.constants';
 
 export interface SignalCatalogEntry {
   field: string;
   signalName: string;
+  displayName?: string;
   signalGroup: string;
   unit: string | null;
   expectedIntervalMs: number | null;
   highFrequencyCandidate: boolean;
   usedByModules: SignalModuleUsage[];
   storageLocation: string;
+  storageTable?: string;
+  pollGroup?: string;
+  clickhouseColumn?: string | null;
+  clickhouseTable?: 'telemetry_snapshots' | 'telemetry_waypoints' | null;
+  practicalUse?: HfPracticalUse[];
 }
 
 export const VEHICLE_LATEST_STATE_CATALOG: SignalCatalogEntry[] = [
@@ -36,12 +42,18 @@ export const VEHICLE_LATEST_STATE_CATALOG: SignalCatalogEntry[] = [
   {
     field: 'speedKmh',
     signalName: 'speed',
+    displayName: 'Speed',
     signalGroup: 'location_gps',
     unit: 'km/h',
     expectedIntervalMs: DEFAULT_SNAPSHOT_EXPECTED_INTERVAL_MS,
     highFrequencyCandidate: true,
     usedByModules: ['Trips', 'Driving Analysis', 'Live Map', 'Brake Health', 'Tire Health'],
     storageLocation: 'vehicle_latest_states.speed_kmh',
+    storageTable: 'vehicle_latest_states',
+    pollGroup: 'DIMO_SNAPSHOT',
+    clickhouseColumn: 'speed_kmh',
+    clickhouseTable: 'telemetry_snapshots',
+    practicalUse: ['Live Map', 'Trip Reconstruction', 'Launch-like Start Detection', 'Brake Health', 'Tire Health'],
   },
   {
     field: 'odometerKm',
@@ -66,12 +78,18 @@ export const VEHICLE_LATEST_STATE_CATALOG: SignalCatalogEntry[] = [
   {
     field: 'engineLoad',
     signalName: 'engine_load',
+    displayName: 'Engine load',
     signalGroup: 'high_frequency_driving',
     unit: '%',
     expectedIntervalMs: DEFAULT_SNAPSHOT_EXPECTED_INTERVAL_MS,
     highFrequencyCandidate: true,
     usedByModules: ['Driving Analysis'],
     storageLocation: 'vehicle_latest_states.engine_load',
+    storageTable: 'vehicle_latest_states',
+    pollGroup: 'DIMO_SNAPSHOT',
+    clickhouseColumn: 'engine_load',
+    clickhouseTable: 'telemetry_snapshots',
+    practicalUse: ['Launch-like Start Detection', 'Trip Reconstruction'],
   },
   {
     field: 'lvBatteryVoltage',
@@ -96,12 +114,18 @@ export const VEHICLE_LATEST_STATE_CATALOG: SignalCatalogEntry[] = [
   {
     field: 'tractionBatteryPowerKw',
     signalName: 'traction_battery_power',
+    displayName: 'Traction battery power',
     signalGroup: 'battery_energy',
     unit: 'kW',
     expectedIntervalMs: DEFAULT_SNAPSHOT_EXPECTED_INTERVAL_MS,
     highFrequencyCandidate: true,
     usedByModules: ['Battery Health', 'Driving Analysis'],
     storageLocation: 'vehicle_latest_states.traction_battery_power_kw',
+    storageTable: 'vehicle_latest_states',
+    pollGroup: 'DIMO_SNAPSHOT',
+    clickhouseColumn: 'traction_kw',
+    clickhouseTable: 'telemetry_snapshots',
+    practicalUse: ['Battery Health', 'Trip Reconstruction'],
   },
   {
     field: 'tractionBatterySohPercent',
@@ -216,12 +240,18 @@ export const VEHICLE_LATEST_STATE_CATALOG: SignalCatalogEntry[] = [
   {
     field: 'coolantTempC',
     signalName: 'coolant_temp',
+    displayName: 'Coolant temperature',
     signalGroup: 'high_frequency_driving',
     unit: '°C',
     expectedIntervalMs: DEFAULT_SNAPSHOT_EXPECTED_INTERVAL_MS,
     highFrequencyCandidate: true,
     usedByModules: ['Driving Analysis', 'Alerts'],
     storageLocation: 'vehicle_latest_states.coolant_temp_c',
+    storageTable: 'vehicle_latest_states',
+    pollGroup: 'DIMO_SNAPSHOT',
+    clickhouseColumn: null,
+    clickhouseTable: null,
+    practicalUse: ['Alerts'],
   },
   {
     field: 'obdDtcList',
@@ -277,9 +307,12 @@ export const SIGNAL_GROUP_DEFINITIONS = [
     typicalSignals: ['vin', 'make', 'model', 'year', 'provider_binding'],
     expectedIntervalMs: null,
     practicalUse: 'Master Data, Vehicle Matching, Fleet Overview.',
-    usedByModules: ['Fleet', 'Bookings'],
+    usedByModules: ['Fleet', 'Bookings', 'Data Authorization'],
     detectionRelevance: 'Low — contextual only',
     catalogGroups: [] as string[],
+    sourceProvider: 'SynqDrive / DIMO / High Mobility',
+    storageLocation: 'vehicles, dimo_vehicles',
+    limitations: 'Not a telemetry stream — static or slow-changing master data.',
   },
   {
     id: 'location_gps',
@@ -288,9 +321,12 @@ export const SIGNAL_GROUP_DEFINITIONS = [
     typicalSignals: ['latitude', 'longitude', 'speed', 'heading'],
     expectedIntervalMs: DEFAULT_SNAPSHOT_EXPECTED_INTERVAL_MS,
     practicalUse: 'Live Map, Trips, Pickup/Return, Geofencing, Movement Detection.',
-    usedByModules: ['Trips', 'Live Map', 'Driving Analysis'],
+    usedByModules: ['Trips', 'Live Map', 'Driving Analysis', 'Fleet Condition', 'Alerts'],
     detectionRelevance: 'High for movement and speed-based events',
     catalogGroups: ['location_gps'],
+    sourceProvider: 'DIMO snapshot poll (~30s)',
+    storageLocation: 'vehicle_latest_states + ClickHouse telemetry_snapshots',
+    limitations: 'HF route replay needs telemetry_waypoints — often empty if HF stream not persisted.',
   },
   {
     id: 'odometer_mileage',
@@ -299,9 +335,12 @@ export const SIGNAL_GROUP_DEFINITIONS = [
     typicalSignals: ['odometer'],
     expectedIntervalMs: DEFAULT_SNAPSHOT_EXPECTED_INTERVAL_MS,
     practicalUse: 'Bookings, Return Checks, Maintenance, Service, Tire/Brake Wear.',
-    usedByModules: ['Trips', 'Brake Health', 'Tire Health'],
+    usedByModules: ['Trips', 'Brake Health', 'Tire Health', 'Fleet Condition'],
     detectionRelevance: 'Medium — wear modeling input',
     catalogGroups: ['odometer_mileage'],
+    sourceProvider: 'DIMO snapshot poll',
+    storageLocation: 'vehicle_latest_states.odometer_km + telemetry_snapshots',
+    limitations: 'Sparse updates on some vehicles; odometer may jump after reconnect.',
   },
   {
     id: 'trip_movement',
@@ -310,9 +349,12 @@ export const SIGNAL_GROUP_DEFINITIONS = [
     typicalSignals: ['ignition', 'motion', 'trip_boundaries'],
     expectedIntervalMs: DEFAULT_SNAPSHOT_EXPECTED_INTERVAL_MS,
     practicalUse: 'Trip History, Driving Analysis, Abuse/Misuse, Rental Context.',
-    usedByModules: ['Trips', 'Driving Analysis'],
+    usedByModules: ['Trips', 'Driving Analysis', 'Alerts'],
     detectionRelevance: 'High for trip context',
     catalogGroups: ['trip_movement'],
+    sourceProvider: 'DIMO snapshot / segment events',
+    storageLocation: 'vehicle_latest_states + vehicle_trips (DIMO segments)',
+    limitations: 'Canonical trip boundaries come from DIMO segments, not ad-hoc ignition toggles alone.',
   },
   {
     id: 'high_frequency_driving',
@@ -329,9 +371,12 @@ export const SIGNAL_GROUP_DEFINITIONS = [
     ],
     expectedIntervalMs: 500,
     practicalUse: 'Harsh acceleration, harsh braking, launch-like start, driving impact.',
-    usedByModules: ['Driving Analysis', 'Brake Health', 'Tire Health'],
+    usedByModules: ['Driving Analysis', 'Brake Health', 'Tire Health', 'Alerts'],
     detectionRelevance: 'Critical for event detection',
     catalogGroups: ['high_frequency_driving'],
+    sourceProvider: 'DIMO TELEMETRY_EVENTS (1s) when enabled; else ~30s snapshots',
+    storageLocation: 'telemetry_waypoints (HF) or telemetry_snapshots (snapshot-level)',
+    limitations: 'Launch-like start detection needs sub-second speed/accel/throttle — snapshot-only is insufficient.',
   },
   {
     id: 'brake_relevant',
@@ -346,9 +391,12 @@ export const SIGNAL_GROUP_DEFINITIONS = [
     ],
     expectedIntervalMs: null,
     practicalUse: 'Brake Health, estimated remaining km, risk indicators.',
-    usedByModules: ['Brake Health', 'Driving Analysis'],
+    usedByModules: ['Brake Health', 'Driving Analysis', 'Fleet Condition'],
     detectionRelevance: 'High for brake wear modeling',
     catalogGroups: ['brake_relevant'],
+    sourceProvider: 'Driving events + modeled wear (not always direct brake sensors)',
+    storageLocation: 'brake_health_current, driving_events, vehicle_latest_states',
+    limitations: 'Direct brake-pad telemetry is rare; most signals are inferred from trips/events.',
   },
   {
     id: 'tire_relevant',
@@ -364,9 +412,12 @@ export const SIGNAL_GROUP_DEFINITIONS = [
     ],
     expectedIntervalMs: null,
     practicalUse: 'Tire Health, tread estimation, wear acceleration.',
-    usedByModules: ['Tire Health', 'Driving Analysis'],
+    usedByModules: ['Tire Health', 'Driving Analysis', 'Fleet Condition', 'Alerts'],
     detectionRelevance: 'Medium–High',
     catalogGroups: ['tire_relevant'],
+    sourceProvider: 'TPMS when available; else trip/driving-style inference',
+    storageLocation: 'vehicle_latest_states tire_pressure_* + vehicle_tire_setup',
+    limitations: 'Per-wheel pressure may be missing; tread depth often estimated not measured live.',
   },
   {
     id: 'battery_energy',
@@ -382,9 +433,12 @@ export const SIGNAL_GROUP_DEFINITIONS = [
     ],
     expectedIntervalMs: DEFAULT_SNAPSHOT_EXPECTED_INTERVAL_MS,
     practicalUse: 'Battery Health, Range, Alerts, Fleet Readiness.',
-    usedByModules: ['Battery Health', 'Alerts', 'Live Map'],
+    usedByModules: ['Battery Health', 'Alerts', 'Live Map', 'Fleet Condition'],
     detectionRelevance: 'Low for driving events, high for health',
     catalogGroups: ['battery_energy'],
+    sourceProvider: 'DIMO snapshot + HM streams (LV/HV)',
+    storageLocation: 'vehicle_latest_states, battery_health_snapshots, hv_battery_health_current',
+    limitations: 'HV SOH may publish slowly; LV resting voltage needs ignition-off context.',
   },
   {
     id: 'dtc_diagnostic',
@@ -393,9 +447,12 @@ export const SIGNAL_GROUP_DEFINITIONS = [
     typicalSignals: ['obd_dtc_list', 'dtc_events'],
     expectedIntervalMs: null,
     practicalUse: 'Vehicle Health, Alerts, Maintenance, AI DTC Knowledge.',
-    usedByModules: ['Alerts'],
+    usedByModules: ['Alerts', 'Fleet Condition'],
     detectionRelevance: 'Diagnostic, not driving dynamics',
     catalogGroups: ['dtc_diagnostic'],
+    sourceProvider: 'DIMO DTC poll / HM diagnostic',
+    storageLocation: 'vehicle_latest_states.obd_dtc_list, dtc tables',
+    limitations: 'Codes may lag behind active faults; not all vehicles expose full OBD set.',
   },
   {
     id: 'connectivity_device',
@@ -403,9 +460,12 @@ export const SIGNAL_GROUP_DEFINITIONS = [
     description: 'Provider-/Hardware-Verbindungsstatus, last seen, data freshness.',
     typicalSignals: ['online', 'last_seen', 'provider_fetched_at'],
     expectedIntervalMs: DEFAULT_SNAPSHOT_EXPECTED_INTERVAL_MS,
-    practicalUse: 'Fleet Connectivity, Data Reliability, Debugging.',
-    usedByModules: ['Live Map', 'Alerts'],
+    practicalUse: 'Fleet Connectivity, Data Reliability, Debugging, Data Authorization scope.',
+    usedByModules: ['Live Map', 'Alerts', 'Data Authorization'],
     detectionRelevance: 'Meta — data quality gate',
     catalogGroups: ['connectivity_device'],
+    sourceProvider: 'DIMO / High Mobility connectivity layer',
+    storageLocation: 'vehicle_latest_states, dimo_poll_logs',
+    limitations: 'Online/standby classification depends on last_seen thresholds — not provider-native status.',
   },
 ] as const;

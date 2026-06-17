@@ -30,7 +30,8 @@ import {
   Globe,
 } from 'lucide-react';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { PageHeader, DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader } from '../../components/patterns';
+import { PageHeader, DataTable, MetricCard, DataCard, EmptyState, ErrorState, StatusChip, StatusDot, SectionHeader, DetailDrawer, tokenAuthStatusTone, workerMonitoringTone, monitoringSystemHealthTone, pollLogStatusTone } from '../../components/patterns';
+import type { DataTableColumn } from '../../components/patterns';
 import { api } from '../../lib/api';
 
 /* ── Design-system token helpers ── */
@@ -44,31 +45,6 @@ const TAB_ACTIVE = 'sq-tab-active flex items-center gap-2 px-5 py-2 rounded-xl t
 const TAB_IDLE = 'sq-tab flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap text-muted-foreground hover:text-foreground';
 
 
-
-const HEALTH_COLORS = {
-  healthy: { bg: 'bg-emerald-500/15', text: 'text-emerald-600', border: 'border-emerald-500/30' },
-  warning: { bg: 'bg-amber-500/15', text: 'text-amber-600', border: 'border-amber-500/30' },
-  critical: { bg: 'bg-red-500/15', text: 'text-red-600', border: 'border-red-500/30' },
-};
-
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  healthy: { bg: 'bg-emerald-500/15', text: 'text-emerald-600' },
-  idle: { bg: 'bg-gray-500/10', text: 'text-gray-500' },
-  warning: { bg: 'bg-amber-500/15', text: 'text-amber-600' },
-  degraded: { bg: 'bg-red-500/15', text: 'text-red-600' },
-  failed: { bg: 'bg-red-500/20', text: 'text-red-600' },
-  busy: { bg: 'bg-blue-500/15', text: 'text-blue-600' },
-  offline: { bg: 'bg-gray-500/20', text: 'text-gray-500' },
-};
-
-// ─── Token & Auth Health Sub-Panel ─────────────────────────────────
-
-const TOKEN_STATUS_STYLE: Record<string, { icon: typeof ShieldCheck; color: string; bgColor: string }> = {
-  VALID: { icon: ShieldCheck, color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
-  EXPIRED: { icon: ShieldAlert, color: 'text-amber-500', bgColor: 'bg-amber-500/10' },
-  ERROR: { icon: ShieldX, color: 'text-red-500', bgColor: 'bg-red-500/10' },
-  NEVER_ACQUIRED: { icon: ShieldQuestion, color: 'text-gray-400', bgColor: 'bg-gray-500/10' },
-};
 
 function formatTtl(seconds: number | null): string {
   if (seconds == null || seconds <= 0) return 'expired';
@@ -106,27 +82,37 @@ interface TokenCardData {
   avgFetchDurationMs: number | null;
 }
 
-function TokenStatusCard({ data }: { data: TokenCardData;  }) {
-  const s = TOKEN_STATUS_STYLE[data.status] ?? TOKEN_STATUS_STYLE.NEVER_ACQUIRED;
-  const StatusIcon = s.icon;
+function tokenStatusIcon(status: string) {
+  const s = String(status).toUpperCase();
+  if (s === 'VALID') return ShieldCheck;
+  if (s === 'EXPIRED') return ShieldAlert;
+  if (s === 'ERROR') return ShieldX;
+  return ShieldQuestion;
+}
+
+function TokenStatusCard({ data }: { data: TokenCardData }) {
+  const tone = tokenAuthStatusTone(data.status);
+  const StatusIcon = tokenStatusIcon(data.status);
   const successRate = data.totalFetches > 0 ? Math.round((data.totalSuccesses / data.totalFetches) * 100) : null;
 
   return (
-    <div className={`rounded-xl border p-4 sq-CARD`}>
-      <div className="flex items-center justify-between mb-3">
+    <DataCard bodyClassName="p-4">
+      <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${s.bgColor}`}>
-            <StatusIcon className={`w-4 h-4 ${s.color}`} />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+            <StatusIcon className="h-4 w-4" />
           </div>
           <div>
-            <p className={`text-sm font-semibold text-foreground`}>{data.label}</p>
-            <p className={`text-[11px] font-medium ${s.color}`}>{data.status}</p>
+            <p className="text-sm font-semibold text-foreground">{data.label}</p>
+            <StatusChip tone={tone} className="!text-[10px] mt-0.5">
+              {data.status}
+            </StatusChip>
           </div>
         </div>
         {data.ttlRemainingSeconds != null && data.ttlRemainingSeconds > 0 && (
-          <div className={`text-right`}>
-            <p className={`text-[10px] uppercase tracking-wider font-bold text-muted-foreground`}>TTL</p>
-            <p className={`text-sm font-bold tabular-nums ${data.ttlRemainingSeconds < 300 ? 'text-amber-500' : 'text-foreground'}`}>
+          <div className="text-right">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">TTL</p>
+            <p className={`text-sm font-bold tabular-nums ${data.ttlRemainingSeconds < 300 ? 'text-[color:var(--status-watch)]' : 'text-foreground'}`}>
               {formatTtl(data.ttlRemainingSeconds)}
             </p>
           </div>
@@ -134,48 +120,52 @@ function TokenStatusCard({ data }: { data: TokenCardData;  }) {
       </div>
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-        <div className={'text-muted-foreground'}>Last acquired</div>
-        <div className={`text-right font-medium text-foreground`}>{timeAgo(data.lastAcquiredAt)}</div>
+        <div className="text-muted-foreground">Last acquired</div>
+        <div className="text-right font-medium text-foreground">{timeAgo(data.lastAcquiredAt)}</div>
 
-        <div className={'text-muted-foreground'}>Expires at</div>
-        <div className={`text-right font-medium text-foreground`}>
+        <div className="text-muted-foreground">Expires at</div>
+        <div className="text-right font-medium text-foreground">
           {data.expiresAt ? new Date(data.expiresAt).toLocaleTimeString() : '—'}
         </div>
 
-        <div className={'text-muted-foreground'}>Fetches</div>
-        <div className={`text-right font-medium text-foreground`}>
-          {data.totalFetches} <span className="text-emerald-500">({data.totalSuccesses})</span> / <span className="text-red-500">{data.totalFailures}</span>
+        <div className="text-muted-foreground">Fetches</div>
+        <div className="text-right font-medium text-foreground">
+          {data.totalFetches}{' '}
+          <span className="text-[color:var(--status-positive)]">({data.totalSuccesses})</span> /{' '}
+          <span className="text-[color:var(--status-critical)]">{data.totalFailures}</span>
         </div>
 
-        <div className={'text-muted-foreground'}>Success rate</div>
-        <div className={`text-right font-medium ${successRate != null && successRate < 80 ? 'text-red-500' : 'text-foreground'}`}>
+        <div className="text-muted-foreground">Success rate</div>
+        <div className={`text-right font-medium ${successRate != null && successRate < 80 ? 'text-[color:var(--status-critical)]' : 'text-foreground'}`}>
           {successRate != null ? `${successRate}%` : '—'}
         </div>
 
-        <div className={'text-muted-foreground'}>Avg fetch time</div>
-        <div className={`text-right font-medium text-foreground`}>
+        <div className="text-muted-foreground">Avg fetch time</div>
+        <div className="text-right font-medium text-foreground">
           {data.avgFetchDurationMs != null ? `${data.avgFetchDurationMs} ms` : '—'}
         </div>
 
         {data.consecutiveFailures > 0 && (
           <>
-            <div className="text-red-500 font-medium">Consec. failures</div>
-            <div className="text-right font-bold text-red-500">{data.consecutiveFailures}</div>
+            <div className="font-medium text-[color:var(--status-critical)]">Consec. failures</div>
+            <div className="text-right font-bold text-[color:var(--status-critical)]">{data.consecutiveFailures}</div>
           </>
         )}
       </div>
 
       {data.lastError && (
-        <div className={`mt-3 p-2.5 rounded-lg text-xs sq-tone-critical border border-border`}>
-          <div className="flex items-center gap-1.5 mb-1">
-            <AlertCircle className="w-3 h-3 text-red-500 shrink-0" />
-            <span className="text-red-500 font-semibold">Last error {data.lastErrorHttpStatus ? `(HTTP ${data.lastErrorHttpStatus})` : ''}</span>
-            <span className={`ml-auto text-muted-foreground`}>{timeAgo(data.lastErrorAt)}</span>
+        <div className="sq-tone-critical mt-3 rounded-lg border border-border p-2.5 text-xs">
+          <div className="mb-1 flex items-center gap-1.5">
+            <AlertCircle className="h-3 w-3 shrink-0 text-[color:var(--status-critical)]" />
+            <span className="font-semibold text-[color:var(--status-critical)]">
+              Last error {data.lastErrorHttpStatus ? `(HTTP ${data.lastErrorHttpStatus})` : ''}
+            </span>
+            <span className="ml-auto text-muted-foreground">{timeAgo(data.lastErrorAt)}</span>
           </div>
-          <p className={`break-words text-[color:var(--status-critical)]`}>{data.lastError}</p>
+          <p className="break-words text-[color:var(--status-critical)]">{data.lastError}</p>
         </div>
       )}
-    </div>
+    </DataCard>
   );
 }
 
@@ -227,50 +217,45 @@ function TokenAuthHealthPanel({ tokenHealth,
     return 'warning';
   }, [tokenHealth, vehicleEntries]);
 
-  const overallStyle = HEALTH_COLORS[overallHealth as keyof typeof HEALTH_COLORS] ?? HEALTH_COLORS.healthy;
+  const overallTone = useMemo(() => monitoringSystemHealthTone(overallHealth), [overallHealth]);
 
   return (
-    <div className={CARD}>
-      {/* Header */}
-      <div className={`px-5 py-3 border-b flex items-center justify-between border-border`}>
-        <div className="flex items-center gap-3">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center sq-tone-info`}>
-            <Key className={`w-4 h-4 text-[color:var(--status-info)]`} />
-          </div>
-          <div>
-            <h2 className={`text-sm font-semibold text-foreground`}>Token & Auth Health</h2>
-            <p className={`text-xs mt-0.5 text-muted-foreground`}>Developer JWT + Vehicle JWT lifecycle, diagnostics & event history</p>
-          </div>
-        </div>
+    <DataCard
+      title="Token & Auth Health"
+      description="Developer JWT + Vehicle JWT lifecycle, diagnostics & event history"
+      actions={
         <div className="flex items-center gap-2">
           {tokenHealth && (
-            <span className={`text-xs px-2.5 py-1 rounded-lg font-semibold ${overallStyle.bg} ${overallStyle.text} ${overallStyle.border} border`}>
+            <StatusChip tone={overallTone}>
               {overallHealth === 'healthy' ? 'All tokens healthy' : overallHealth === 'critical' ? 'Token errors' : 'Token warnings'}
-            </span>
+            </StatusChip>
           )}
           <button
+            type="button"
             onClick={onRefresh}
             disabled={tokenHealthLoading}
-            className={`p-1.5 rounded-lg hover:bg-muted text-muted-foreground`}
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${tokenHealthLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${tokenHealthLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
-      </div>
-
+      }
+      bodyClassName="p-5 space-y-5"
+    >
       {tokenHealthLoading && !tokenHealth ? (
-        <div className="p-8 flex justify-center">
-          <Loader2 className={`w-6 h-6 animate-spin text-[color:var(--status-info)]`} />
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-[color:var(--status-info)]" />
         </div>
       ) : !tokenHealth ? (
-        <div className={`p-6 text-center text-muted-foreground`}>
-          <ShieldQuestion className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">Token health data unavailable. The backend may not be running.</p>
-        </div>
+        <EmptyState
+          compact
+          icon={<ShieldQuestion className="h-8 w-8" />}
+          title="Token health unavailable"
+          description="The backend may not be running."
+        />
       ) : (
-        <div className="p-5 space-y-5">
-          {/* Developer + Vehicle JWT status cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             <TokenStatusCard
               data={{
                 label: 'Developer JWT',
@@ -360,13 +345,13 @@ function TokenAuthHealthPanel({ tokenHealth,
                         </td>
                         <td className="px-3 py-1.5">
                           {evt.success ? (
-                            <span className="inline-flex items-center gap-1 text-emerald-500">
-                              <CheckCircle className="w-3 h-3" /> OK
-                            </span>
+                            <StatusChip tone="success" className="!text-[10px]">
+                              <CheckCircle className="h-3 w-3" /> OK
+                            </StatusChip>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-red-500">
-                              <XCircle className="w-3 h-3" /> FAIL
-                            </span>
+                            <StatusChip tone="critical" className="!text-[10px]">
+                              <XCircle className="h-3 w-3" /> FAIL
+                            </StatusChip>
                           )}
                         </td>
                         <td className={`px-3 py-1.5 tabular-nums text-muted-foreground`}>
@@ -377,7 +362,7 @@ function TokenAuthHealthPanel({ tokenHealth,
                         </td>
                         <td className={`px-3 py-1.5 max-w-[220px] text-muted-foreground`}>
                           {evt.errorMessage ? (
-                            <span className="text-red-500 truncate block" title={evt.errorMessage}>
+                            <span className="block truncate text-[color:var(--status-critical)]" title={evt.errorMessage}>
                               {evt.httpStatus ? `HTTP ${evt.httpStatus}: ` : ''}{evt.errorMessage}
                             </span>
                           ) : evt.ttlSeconds != null ? (
@@ -477,9 +462,9 @@ function TokenAuthHealthPanel({ tokenHealth,
               </div>
             )}
           </div>
-        </div>
+        </>
       )}
-    </div>
+    </DataCard>
   );
 }
 
@@ -589,7 +574,7 @@ export function SystemMonitoringView() {
   }, [autoRefresh, loadAll]);
 
   const health = summary?.systemHealth ?? 'healthy';
-  const healthStyle = HEALTH_COLORS[health as keyof typeof HEALTH_COLORS] ?? HEALTH_COLORS.healthy;
+  const healthTone = monitoringSystemHealthTone(health);
 
   return (
     <div className="space-y-4 pb-6">
@@ -598,7 +583,7 @@ export function SystemMonitoringView() {
         eyebrow="Master Admin"
         description="Visibility and control over polling, workers, and request health"
         icon={<Activity className="w-4 h-4" />}
-        status={<StatusChip tone={health === 'healthy' ? 'success' : health === 'degraded' ? 'watch' : 'critical'}>{health}</StatusChip>}
+        status={<StatusChip tone={healthTone}>{health}</StatusChip>}
         actions={
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
@@ -628,62 +613,47 @@ export function SystemMonitoringView() {
         </div>
       ) : (
         <>
-          {/* System health strip */}
-          <div className={`${CARD} p-5`}>
+          <DataCard bodyClassName="p-5">
             <div className="flex flex-wrap items-center gap-4">
-              <div className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border ${healthStyle.bg} ${healthStyle.border}`}>
-                {health === 'healthy' && <CheckCircle className={`w-5 h-5 ${healthStyle.text}`} />}
-                {health === 'warning' && <AlertTriangle className={`w-5 h-5 ${healthStyle.text}`} />}
-                {health === 'critical' && <XCircle className={`w-5 h-5 ${healthStyle.text}`} />}
-                <span className={`text-sm font-bold capitalize ${healthStyle.text}`}>System: {health}</span>
-              </div>
-              <span className={`text-sm font-medium text-muted-foreground`}>
+              <StatusChip tone={healthTone} dot className="px-5 py-2.5 text-sm font-bold capitalize">
+                System: {health}
+              </StatusChip>
+              <span className="text-sm font-medium text-muted-foreground">
                 Providers · Polling · Workers · Tokens
               </span>
             </div>
-          </div>
+          </DataCard>
 
-          {/* KPI cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-5">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
             {[
-              { label: 'Total requests', value: summary?.totalRequests ?? 0, icon: Activity },
-              { label: 'Successful', value: summary?.successfulRequests ?? 0, icon: CheckCircle, green: true },
-              { label: 'Failed', value: summary?.failedRequests ?? 0, icon: XCircle, red: true },
-              { label: 'Error rate', value: `${summary?.errorRatePercent ?? 0}%`, icon: BarChart3, red: (summary?.errorRatePercent ?? 0) > 10 },
-              { label: 'Active workers', value: summary?.activeWorkers ?? 0, icon: Server },
-              { label: 'Unhealthy', value: summary?.unhealthyWorkers ?? 0, icon: AlertTriangle, red: (summary?.unhealthyWorkers ?? 0) > 0 },
-              { label: 'Polling jobs', value: summary?.pollingJobsRunning ?? 0, icon: Zap },
-              { label: 'Delayed/Stuck', value: summary?.delayedOrStuckJobs ?? 0, icon: Clock, red: (summary?.delayedOrStuckJobs ?? 0) > 5 },
-              { label: 'Vehicles polled', value: summary?.vehiclesPolledRecently ?? 0, icon: Car },
-              { label: 'Avg response', value: summary?.avgResponseTimeMs != null ? `${summary.avgResponseTimeMs} ms` : '—', icon: Gauge },
-              { label: 'Retries', value: summary?.retryCount ?? 0, icon: RefreshCw },
-              { label: 'Stale vehicles', value: summary?.staleVehicles ?? 0, icon: AlertCircle, red: (summary?.staleVehicles ?? 0) > 0 },
-            ].map(({ label, value, icon: Icon, green, red }) => (
-              <div key={label} className={`${CARD} p-5 flex flex-col items-center justify-center text-center`}>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${red ? ('sq-tone-critical') : green ? ('sq-tone-success') : ('bg-muted')}`}>
-                  <Icon className={`w-5 h-5 ${red ? 'text-red-500' : green ? 'text-emerald-500' : 'text-muted-foreground'}`} />
-                </div>
-                <span className={`text-2xl font-extrabold tracking-tight text-foreground`}>{value}</span>
-                <div className={`text-xs font-bold mt-1 uppercase tracking-wider text-muted-foreground`}>{label}</div>
-              </div>
+              { label: 'Total requests', value: summary?.totalRequests ?? 0, icon: Activity, status: 'neutral' as const },
+              { label: 'Successful', value: summary?.successfulRequests ?? 0, icon: CheckCircle, status: 'success' as const },
+              { label: 'Failed', value: summary?.failedRequests ?? 0, icon: XCircle, status: 'critical' as const },
+              { label: 'Error rate', value: `${summary?.errorRatePercent ?? 0}%`, icon: BarChart3, status: (summary?.errorRatePercent ?? 0) > 10 ? 'critical' as const : 'neutral' as const },
+              { label: 'Active workers', value: summary?.activeWorkers ?? 0, icon: Server, status: 'info' as const },
+              { label: 'Unhealthy', value: summary?.unhealthyWorkers ?? 0, icon: AlertTriangle, status: (summary?.unhealthyWorkers ?? 0) > 0 ? 'critical' as const : 'success' as const },
+              { label: 'Polling jobs', value: summary?.pollingJobsRunning ?? 0, icon: Zap, status: 'info' as const },
+              { label: 'Delayed/Stuck', value: summary?.delayedOrStuckJobs ?? 0, icon: Clock, status: (summary?.delayedOrStuckJobs ?? 0) > 5 ? 'warning' as const : 'neutral' as const },
+              { label: 'Vehicles polled', value: summary?.vehiclesPolledRecently ?? 0, icon: Car, status: 'neutral' as const },
+              { label: 'Avg response', value: summary?.avgResponseTimeMs != null ? `${summary.avgResponseTimeMs} ms` : '—', icon: Gauge, status: 'neutral' as const },
+              { label: 'Retries', value: summary?.retryCount ?? 0, icon: RefreshCw, status: 'watch' as const },
+              { label: 'Stale vehicles', value: summary?.staleVehicles ?? 0, icon: AlertCircle, status: (summary?.staleVehicles ?? 0) > 0 ? 'warning' as const : 'success' as const },
+            ].map(({ label, value, icon: Icon, status }) => (
+              <MetricCard key={label} label={label} value={value} status={status} icon={<Icon className="h-4 w-4" />} />
             ))}
           </div>
 
           {/* Alerts */}
           {alerts.length > 0 && (
-            <div className={CARD}>
-              <div className={`px-5 py-3 border-b border-border`}>
-                <h2 className={`text-sm font-semibold text-foreground`}>Alerts & anomalies</h2>
-              </div>
-              <div className="divide-y divide-gray-100">
-                {alerts.slice(0, 10).map((a, i) => (
-                  <div
-                    key={i}
-                    className={`px-5 py-3 flex items-start gap-3 hover:bg-muted/50`}
+            <DataCard title="Alerts & anomalies" flush bodyClassName="divide-y divide-border">
+              {alerts.slice(0, 10).map((a, i) => (
+                <div key={i} className="flex items-start gap-3 px-5 py-3 hover:bg-muted/50">
+                  <StatusChip
+                    tone={a.severity === 'critical' ? 'critical' : a.severity === 'warning' ? 'warning' : 'info'}
+                    className="shrink-0 !px-1.5 !py-1"
                   >
-                    {a.severity === 'critical' && <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />}
-                    {a.severity === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />}
-                    {a.severity === 'info' && <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />}
+                    {a.severity === 'critical' ? <XCircle className="h-3.5 w-3.5" /> : a.severity === 'warning' ? <AlertTriangle className="h-3.5 w-3.5" /> : <Info className="h-3.5 w-3.5" />}
+                  </StatusChip>
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium text-foreground`}>{a.title}</p>
                       <p className={`text-xs mt-0.5 text-muted-foreground`}>{a.summary}</p>
@@ -694,10 +664,9 @@ export function SystemMonitoringView() {
                     <span className={`text-[10px] shrink-0 text-muted-foreground`}>
                       {a.lastSeen ? new Date(a.lastSeen).toLocaleString() : ''}
                     </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              ))}
+            </DataCard>
           )}
 
           {/* DIMO signal polling (by job type) */}
@@ -709,7 +678,6 @@ export function SystemMonitoringView() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-5">
                 {summary.workers.filter((w: any) => w.total > 0).map((w: any) => {
-                  const sc = STATUS_COLORS[w.status] ?? STATUS_COLORS.idle;
                   const rate = w.total > 0 ? Math.round((w.success / w.total) * 100) : 0;
                   return (
                     <div
@@ -717,8 +685,10 @@ export function SystemMonitoringView() {
                       className={`rounded-xl border p-4 border-border`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className={`text-sm font-medium text-foreground`}>{w.name}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-lg ${sc.bg} ${sc.text}`}>{w.status}</span>
+                        <span className="text-sm font-medium text-foreground">{w.name}</span>
+                        <StatusChip tone={workerMonitoringTone(w.status)} className="!text-xs">
+                          {w.status}
+                        </StatusChip>
                       </div>
                       <div className={`mt-2 text-xs text-muted-foreground`}>
                         {w.total} runs · {rate}% success
@@ -753,25 +723,23 @@ export function SystemMonitoringView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {workers.map((w) => {
-                    const sc = STATUS_COLORS[w.status] ?? STATUS_COLORS.idle;
-                    return (
+                  {workers.map((w) => (
                       <tr
                         key={w.queueKey}
-                        className={`border-t border-border hover:bg-muted/50`}
+                        className="border-t border-border hover:bg-muted/50"
                       >
                         <td className="px-5 py-3">
-                          <p className={`font-medium text-foreground`}>{w.name}</p>
-                          <p className={`text-[11px] text-muted-foreground`}>{w.description}</p>
+                          <p className="font-medium text-foreground">{w.name}</p>
+                          <p className="text-[11px] text-muted-foreground">{w.description}</p>
                         </td>
                         <td className="px-5 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-medium ${sc.bg} ${sc.text}`}>
+                          <StatusChip tone={workerMonitoringTone(w.status)} className="!text-xs">
                             {w.status}
-                          </span>
+                          </StatusChip>
                         </td>
-                        <td className={`px-5 py-3 text-foreground`}>{w.total}</td>
-                        <td className={`px-5 py-3 text-foreground`}>{w.failed}</td>
-                        <td className={`px-5 py-3 ${w.failureRatio > 20 ? 'text-red-500' : 'text-foreground'}`}>{w.failureRatio}%</td>
+                        <td className="px-5 py-3 text-foreground">{w.total}</td>
+                        <td className="px-5 py-3 text-foreground">{w.failed}</td>
+                        <td className={`px-5 py-3 ${w.failureRatio > 20 ? 'text-[color:var(--status-critical)]' : 'text-foreground'}`}>{w.failureRatio}%</td>
                         <td className={`px-5 py-3 text-xs text-muted-foreground`}>
                           {w.lastSuccessAt ? new Date(w.lastSuccessAt).toLocaleString() : '—'}
                         </td>
@@ -784,8 +752,7 @@ export function SystemMonitoringView() {
                           </button>
                         </td>
                       </tr>
-                    );
-                  })}
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -875,17 +842,9 @@ export function SystemMonitoringView() {
                             {log.vehicleName || log.vin || log.vehicleId || '—'}
                           </td>
                           <td className="px-5 py-2.5">
-                            <span
-                              className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
-                                log.status === 'SUCCESS'
-                                  ? 'bg-emerald-500/15 text-emerald-600'
-                                  : log.status === 'FAILURE' || log.status === 'TIMEOUT'
-                                    ? 'bg-red-500/15 text-red-600'
-                                    : 'sq-chip-neutral'
-                              }`}
-                            >
+                            <StatusChip tone={pollLogStatusTone(log.status)} className="!text-xs">
                               {log.status}
-                            </span>
+                            </StatusChip>
                           </td>
                           <td className={`px-5 py-2.5 text-foreground`}>
                             {log.durationMs != null ? `${log.durationMs} ms` : '—'}
@@ -953,7 +912,7 @@ export function SystemMonitoringView() {
               <div><span className={'text-muted-foreground'}>Vehicle</span><p className={'text-foreground'}>{detailLog.vehicleName || detailLog.vin || detailLog.vehicleId || '—'}</p></div>
               {detailLog.durationMs != null && <div><span className={'text-muted-foreground'}>Duration</span><p className={'text-foreground'}>{detailLog.durationMs} ms</p></div>}
               {detailLog.retryCount != null && <div><span className={'text-muted-foreground'}>Retries</span><p className={'text-foreground'}>{detailLog.retryCount}</p></div>}
-              {detailLog.errorMessage && <div><span className={'text-muted-foreground'}>Error</span><p className={`text-red-600 text-[color:var(--status-critical)]`}>{detailLog.errorMessage}</p></div>}
+              {detailLog.errorMessage && <div><span className="text-muted-foreground">Error</span><p className="text-[color:var(--status-critical)]">{detailLog.errorMessage}</p></div>}
             </div>
           </div>
         </div>

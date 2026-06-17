@@ -11,6 +11,7 @@ import {
   type TripTrackingJobData,
 } from '../../modules/vehicle-intelligence/trips/trip-detection.types';
 import { TripReconciliationService } from '../../modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service';
+import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 
 /** Threshold: a POSSIBLE_END state older than this triggers event-based repair */
 const STUCK_POSSIBLE_END_THRESHOLD_MS = 30 * 60_000; // 30 minutes
@@ -55,6 +56,7 @@ export class TripTrackingRecoveryScheduler implements OnModuleInit {
    */
   @Interval(120_000)
   async recoverStaleTripStates(): Promise<void> {
+    if (!canEnqueueQueue(this.logger, 'trip-tracking-recovery')) return;
     const now = new Date();
 
     const staleStates =

@@ -1,4 +1,5 @@
 import { InsightSeverity, TaskPriority } from '@prisma/client';
+export { normalizeTaskPriority, normalizeTaskPriorityInput } from '@modules/tasks/task-priority.util';
 
 /** Map dashboard insight severity → canonical TaskPriority. */
 export function mapInsightSeverityToTaskPriority(severity: InsightSeverity): TaskPriority {
@@ -12,14 +13,4 @@ export function mapInsightSeverityToTaskPriority(severity: InsightSeverity): Tas
     default:
       return 'NORMAL';
   }
-}
-
-/** Normalize legacy priority strings from workflows / external callers. */
-export function normalizeTaskPriorityInput(raw?: string | null): TaskPriority | undefined {
-  if (!raw) return undefined;
-  const v = raw.toUpperCase();
-  if (v === 'URGENT') return 'CRITICAL';
-  if (v === 'MEDIUM') return 'NORMAL';
-  if (v === 'LOW' || v === 'NORMAL' || v === 'HIGH' || v === 'CRITICAL') return v as TaskPriority;
-  return undefined;
 }

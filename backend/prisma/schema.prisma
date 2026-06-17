@@ -226,6 +226,14 @@ enum ServiceEventType {
   OTHER
 }
 
+enum ServiceEventOrigin {
+  MANUAL
+  AI_UPLOAD
+  WORKSHOP_DOCUMENT
+  IMPORT
+  OEM
+}
+
 enum BrakeServiceKind {
   INSPECTION_ONLY
   PADS_SERVICE
@@ -427,6 +435,7 @@ enum InsightType {
   PICKUP_OVERDUE
   TUV_OVERDUE
   BOKRAFT_OVERDUE
+  HM_SERVICE_NO_TRACKING
 }
 
 enum InsightSeverity {
@@ -1507,6 +1516,8 @@ model Tire {
   burnoutEvents        Int              @default(0) @map("burnout_events")
   lastRecalculatedAt   DateTime?        @map("last_recalculated_at")
   active               Boolean          @default(true)
+  mountedAt            DateTime?        @map("mounted_at")
+  dismountedAt         DateTime?        @map("dismounted_at")
   createdAt            DateTime         @default(now()) @map("created_at")
   updatedAt            DateTime         @updatedAt @map("updated_at")
 
@@ -1686,6 +1697,9 @@ model VehicleServiceEvent {
   costCents             Int?                @map("cost_cents")
   provider              String?
   documentUrl           String?             @map("document_url")
+  origin                ServiceEventOrigin  @default(MANUAL) @map("origin")
+  createdById           String?             @map("created_by_id")
+  updatedById           String?             @map("updated_by_id")
   brakeServiceKind      BrakeServiceKind?   @map("brake_service_kind")
   brakeServiceSource    BrakeServiceSource? @map("brake_service_source")
   brakeServiceScope     Json?               @map("brake_service_scope")

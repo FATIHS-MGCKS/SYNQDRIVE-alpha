@@ -9,6 +9,10 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { TireWearModelService } from './tire-wear-model.service';
 import { TireHealthService } from './tire-health.service';
+import {
+  TireIdentityService,
+  dbPosToWheel,
+} from './tire-identity.service';
 import { isStaggeredSetup } from './tire-health.config';
 
 export type TireMeasurementSource =
@@ -176,6 +180,7 @@ export class TireLifecycleService {
     private readonly prisma: PrismaService,
     private readonly wearModel: TireWearModelService,
     private readonly tireHealthService: TireHealthService,
+    private readonly tireIdentity: TireIdentityService,
   ) {}
 
   async recordMeasurement(command: RecordTireMeasurementCommand) {
@@ -278,6 +283,7 @@ export class TireLifecycleService {
     const resolvedOdometer = await this.resolveOdometer(vehicleId, data.odometerKm);
 
     if (data.archiveCurrent !== false && currentSetup) {
+      await this.tireIdentity.dismountAllForSetup(currentSetup.id, new Date());
       await this.prisma.vehicleTireSetup.update({
         where: { id: currentSetup.id },
         data: {
@@ -332,6 +338,17 @@ export class TireLifecycleService {
       },
     });
 
+    await this.tireIdentity.createTireSet({
+      setup: newSetup,
+      treadByPosition: {
+        FL: data.initialTreadFrontMm ?? data.initialTreadDepthMm ?? undefined,
+        FR: data.initialTreadFrontMm ?? data.initialTreadDepthMm ?? undefined,
+        RL: data.initialTreadRearMm ?? data.initialTreadDepthMm ?? undefined,
+        RR: data.initialTreadRearMm ?? data.initialTreadDepthMm ?? undefined,
+      },
+      mountedAt: new Date(),
+    });
+
     await this.prisma.tireEvent.create({
       data: {
         organizationId: vehicle.organizationId,
@@ -380,41 +397,47 @@ export class TireLifecycleService {
     const resolvedOdometer = await this.resolveOdometer(vehicleId, data.odometerKm);
     const wear = await this.wearModel.computeWearAnalysis(vehicleId);
 
-    await this.prisma.$transaction([
-      ...Object.entries(moveMap).map(([fromPos, toPos]) =>
-        this.prisma.tirePositionHistory.create({
-          data: {
-            organizationId: vehicle.organizationId,
-            vehicleId,
-            tireSetId: setup.id,
-            fromPosition: fromPos as any,
-            toPosition: toPos as any,
-            changedAt: now,
-            odometerKm: resolvedOdometer,
-            changeType: TireChangeType.ROTATE,
-            rotationTemplate: data.template,
-            notes: data.notes ?? null,
-            createdBy: data.userId ?? null,
-          },
-        }),
-      ),
-      this.prisma.tireEvent.create({
-        data: {
-          organizationId: vehicle.organizationId,
-          vehicleId,
-          tireSetId: setup.id,
-          type: TireEventType.ROTATION,
-          payload: {
-            command: 'rotateTires',
-            template: data.template,
-            odometerKm: resolvedOdometer,
-            notes: data.notes ?? null,
-            moves: moveMap,
-          },
-          createdBy: data.userId ?? null,
+    await this.tireIdentity.ensureTiresForSetup({
+      setup,
+      treadByPosition: wear
+        ? {
+            FL: wear.frontLeftMm,
+            FR: wear.frontRightMm,
+            RL: wear.rearLeftMm,
+            RR: wear.rearRightMm,
+          }
+        : undefined,
+      mountedAt: setup.installedAt ?? now,
+    });
+
+    await this.tireIdentity.applyRotation({
+      organizationId: vehicle.organizationId,
+      vehicleId,
+      tireSetId: setup.id,
+      moveMap,
+      changedAt: now,
+      odometerKm: resolvedOdometer,
+      rotationTemplate: data.template,
+      notes: data.notes ?? null,
+      userId: data.userId ?? null,
+    });
+
+    await this.prisma.tireEvent.create({
+      data: {
+        organizationId: vehicle.organizationId,
+        vehicleId,
+        tireSetId: setup.id,
+        type: TireEventType.ROTATION,
+        payload: {
+          command: 'rotateTires',
+          template: data.template,
+          odometerKm: resolvedOdometer,
+          notes: data.notes ?? null,
+          moves: moveMap,
         },
-      }),
-    ]);
+        createdBy: data.userId ?? null,
+      },
+    });
 
     if (wear) {
       const oldByPos: Record<WheelPos, number> = {
@@ -446,6 +469,18 @@ export class TireLifecycleService {
         triggerRecalculate: false,
         userId: data.userId,
       });
+
+      const tiresAfter = await this.tireIdentity.getActiveTiresForSetup(setup.id);
+      await Promise.all(
+        tiresAfter.map((tire) =>
+          this.prisma.tire.update({
+            where: { id: tire.id },
+            data: {
+              estimatedTreadMm: rotated[dbPosToWheel(tire.currentPosition)],
+            },
+          }),
+        ),
+      );
     }
 
     await this.tireHealthService.recalculate(vehicleId);
@@ -528,40 +563,57 @@ export class TireLifecycleService {
       });
     }
 
-    await this.prisma.$transaction([
-      ...positions.map((pos) =>
-        this.prisma.tirePositionHistory.create({
-          data: {
-            organizationId: vehicle.organizationId,
-            vehicleId: command.vehicleId,
-            tireSetId: setup.id,
-            fromPosition: toDbPosition(pos) as any,
-            toPosition: toDbPosition(pos) as any,
-            changedAt: now,
-            odometerKm: resolvedOdometer,
-            changeType: TireChangeType.REPLACE,
-            notes: command.notes ?? null,
-            createdBy: command.userId ?? null,
-          },
-        }),
-      ),
-      this.prisma.tireEvent.create({
-        data: {
-          organizationId: vehicle.organizationId,
-          vehicleId: command.vehicleId,
-          tireSetId: setup.id,
-          type: TireEventType.TIRE_CHANGE,
-          payload: {
-            command: 'replaceTires',
-            scope: command.scope,
-            positions,
-            odometerKm: resolvedOdometer,
-            notes: command.notes ?? null,
-          },
-          createdBy: command.userId ?? null,
+    await this.tireIdentity.ensureTiresForSetup({
+      setup,
+      treadByPosition: {
+        FL: values.FL,
+        FR: values.FR,
+        RL: values.RL,
+        RR: values.RR,
+      },
+      mountedAt: setup.installedAt ?? now,
+    });
+
+    for (const pos of positions) {
+      const isFront = pos.startsWith('F');
+      const replacementMm = values[pos];
+      await this.tireIdentity.replaceAtPosition({
+        organizationId: vehicle.organizationId,
+        vehicleId: command.vehicleId,
+        tireSetId: setup.id,
+        position: pos,
+        initialTreadDepthMm: replacementMm,
+        brand: isFront
+          ? command.newSetup?.brandModelFront ?? setup.brandModelFront
+          : command.newSetup?.brandModelRear ?? setup.brandModelRear,
+        tireModel: isFront
+          ? command.newSetup?.brandModelFront ?? setup.brandModelFront
+          : command.newSetup?.brandModelRear ?? setup.brandModelRear,
+        dotCode: isFront ? setup.dotCodeFront : setup.dotCodeRear,
+        seasonType: setup.tireSeason,
+        odometerKm: resolvedOdometer,
+        notes: command.notes ?? null,
+        userId: command.userId ?? null,
+        mountedAt: now,
+      });
+    }
+
+    await this.prisma.tireEvent.create({
+      data: {
+        organizationId: vehicle.organizationId,
+        vehicleId: command.vehicleId,
+        tireSetId: setup.id,
+        type: TireEventType.TIRE_CHANGE,
+        payload: {
+          command: 'replaceTires',
+          scope: command.scope,
+          positions,
+          odometerKm: resolvedOdometer,
+          notes: command.notes ?? null,
         },
-      }),
-    ]);
+        createdBy: command.userId ?? null,
+      },
+    });
 
     await this.recordMeasurement({
       vehicleId: command.vehicleId,

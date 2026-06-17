@@ -8,7 +8,7 @@ describe('CanonicalBatteryHealthService', () => {
     const prisma = {
       vehicle: { findUnique: jest.fn() },
       vehicleLatestState: { findUnique: jest.fn() },
-      vehicleBatterySpec: { findFirst: jest.fn() },
+      vehicleBatterySpec: { findMany: jest.fn() },
       vehicleServiceEvent: { findMany: jest.fn() },
     } as any;
 
@@ -59,7 +59,7 @@ describe('CanonicalBatteryHealthService', () => {
       tractionBatteryCurrentEnergyKwh: 50,
       tractionBatteryAddedEnergyKwh: 6,
     });
-    prisma.vehicleBatterySpec.findFirst.mockResolvedValue(null);
+    prisma.vehicleBatterySpec.findMany.mockResolvedValue([]);
     prisma.vehicleServiceEvent.findMany.mockResolvedValue([]);
 
     batteryHealthService.getLatest.mockResolvedValue({
@@ -286,13 +286,16 @@ describe('CanonicalBatteryHealthService', () => {
   it('uses AGM bands from the battery spec for resting voltage', async () => {
     const { svc } = buildService();
     const prisma = (svc as any).prisma;
-    prisma.vehicleBatterySpec.findFirst.mockResolvedValue({
-      batteryType: 'AGM',
-      batteryAmpere: 80,
-      batteryVolt: 12,
-      sourceType: 'MANUAL',
-      createdAt: now,
-    });
+    prisma.vehicleBatterySpec.findMany.mockResolvedValue([
+      {
+        batteryType: 'AGM',
+        batteryAmpere: 80,
+        batteryVolt: 12,
+        sourceType: 'MANUAL',
+        sourceConfidence: 0.9,
+        createdAt: now,
+      },
+    ]);
     const summary = await svc.getSummary('veh-1');
     // AGM: 12.4 is in 12.30–12.59 → WATCH, thresholdSource BATTERY_SPEC.
     expect(summary?.lv.restingVoltage.status).toBe('WATCH');
@@ -339,5 +342,71 @@ describe('CanonicalBatteryHealthService', () => {
     expect(summary?.hv.status).toBe('estimate_unavailable');
     expect(summary?.hv.sohSource).toBeNull();
     expect(summary?.hv.noFallbackSoh).toBe(true);
+  });
+
+  it('ignores legacy degradation_model HV SOH and does not publish it', async () => {
+    const { svc, hvBatteryHealthService } = buildService();
+    const prisma = (svc as any).prisma;
+    prisma.vehicleLatestState.findUnique.mockResolvedValue({
+      lastSeenAt: now,
+      lvBatteryVoltage: 12.4,
+      evSoc: 66,
+      rangeKm: 278,
+      tractionBatterySohPercent: null,
+      tractionBatteryTemperatureC: 24,
+      tractionBatteryChargingPowerKw: null,
+      tractionBatteryIsCharging: false,
+      tractionBatteryChargingCableConnected: false,
+      tractionBatteryCurrentVoltage: 351,
+      tractionBatteryGrossCapacityKwh: 76,
+      tractionBatteryCurrentEnergyKwh: 50,
+      tractionBatteryAddedEnergyKwh: null,
+    });
+    hvBatteryHealthService.getHvBatteryStatus.mockResolvedValue({
+      publishedSohPercent: 72,
+      rawSohPercent: 72,
+      sohPercent: 72,
+      sohMethod: 'degradation_model',
+      maturityConfidence: 'low',
+      publicationState: SohPublicationState.STABLE,
+      currentSocPercent: 66,
+      estimatedRangeKm: 278,
+      snapshotCount: 40,
+      sohInterpretation: { label: 'Estimated', color: 'amber', description: '' },
+      chargingSessions: [],
+      recentTrend: [],
+    });
+
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.hv.healthPercent).toBeNull();
+    expect(summary?.hv.healthStatus).toBe('UNKNOWN');
+    expect(summary?.hv.status).toBe('estimate_unavailable');
+  });
+
+  it('selects the best battery spec by completeness, not just newest row', async () => {
+    const { svc } = buildService();
+    const prisma = (svc as any).prisma;
+    prisma.vehicleBatterySpec.findMany.mockResolvedValue([
+      {
+        batteryType: null,
+        batteryVolt: 12,
+        batteryAmpere: null,
+        sourceType: 'MANUAL',
+        sourceConfidence: 1,
+        createdAt: new Date('2026-06-01T10:00:00.000Z'),
+      },
+      {
+        batteryType: 'EFB',
+        batteryVolt: 12,
+        batteryAmpere: 70,
+        sourceType: 'MANUAL',
+        sourceConfidence: 0.6,
+        createdAt: new Date('2026-01-01T10:00:00.000Z'),
+      },
+    ]);
+
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.specs?.batteryType).toBe('EFB');
+    expect(summary?.lv.restingVoltage.thresholdSource).toBe('BATTERY_SPEC');
   });
 });

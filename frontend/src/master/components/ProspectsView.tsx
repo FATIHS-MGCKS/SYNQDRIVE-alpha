@@ -1,6 +1,18 @@
-import { Building2, Search, Plus, Upload, Download, Sparkles, MapPin, Table2, Map, X, ExternalLink, Phone, Mail, Globe, ChevronRight, User, MessageSquare, ArrowUpDown, Send, CheckCircle, Clock, AlertTriangle, XCircle, Star, Tag, FileText, ArrowRight, Users } from 'lucide-react';
+import { Building2, Search, Plus, Upload, Sparkles, MapPin, Table2, Map, X, ExternalLink, Phone, Mail, Globe, ChevronRight, User, Send, CheckCircle, AlertTriangle, FileText, ArrowRight, Users, ArrowUpDown } from 'lucide-react';
 import { useState, useMemo } from 'react';
-import { PageHeader, DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader } from '../../components/patterns';
+import {
+  PageHeader,
+  MetricCard,
+  DataCard,
+  EmptyState,
+  StatusChip,
+  StatusDot,
+  PriorityBadge,
+  DetailDrawer,
+  FormDialog,
+  prospectStatusTone,
+  prospectPriorityTone,
+} from '../../components/patterns';
 import { toast } from 'sonner';
 
 /* ── Design-system token helpers ── */
@@ -10,11 +22,12 @@ const INPUT =
 const LABEL = 'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
 const HEAD = 'text-xs font-semibold uppercase tracking-wider text-muted-foreground';
 const TAB_BAR = 'sq-tab-bar flex gap-1 p-1 rounded-2xl overflow-x-auto w-fit';
-const TAB_ACTIVE = 'sq-tab-active flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap';
-const TAB_IDLE = 'sq-tab flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap text-muted-foreground hover:text-foreground';
 
-
-// === DATA TYPES ===
+function mapPinToneClass(priority: ProspectPriority): string {
+  if (priority === 'High') return 'text-[color:var(--status-critical)] fill-[color:var(--status-critical)]';
+  if (priority === 'Medium') return 'text-[color:var(--status-watch)] fill-[color:var(--status-watch)]';
+  return 'text-[color:var(--status-info)] fill-[color:var(--status-info)]';
+}
 type ProspectStatus = 'New' | 'Enriched' | 'Ready to Contact' | 'Contacted' | 'Replied' | 'Qualified' | 'Not Interested' | 'Converted';
 type ProspectPriority = 'Low' | 'Medium' | 'High';
 type ProspectSource = 'Manual' | 'CSV Import' | 'Web Scraping' | 'Referral' | 'LinkedIn' | 'Event';
@@ -61,23 +74,6 @@ interface Prospect {
   lat: number;
   lng: number;
 }
-
-const statusColors: Record<ProspectStatus, string> = {
-  'New': 'bg-gray-100 text-gray-700 border-gray-200',
-  'Enriched': 'bg-purple-50 text-purple-700 border-purple-200',
-  'Ready to Contact': 'bg-blue-50 text-blue-700 border-blue-200',
-  'Contacted': 'bg-amber-50 text-amber-700 border-amber-200',
-  'Replied': 'bg-indigo-50 text-indigo-700 border-indigo-200',
-  'Qualified': 'bg-green-50 text-green-700 border-green-200',
-  'Not Interested': 'bg-red-50 text-red-600 border-red-200',
-  'Converted': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-};
-
-const priorityColors: Record<ProspectPriority, string> = {
-  Low: 'bg-gray-100 text-gray-600',
-  Medium: 'bg-amber-50 text-amber-700',
-  High: 'bg-red-50 text-red-700',
-};
 
 // === COMPONENT ===
 export function ProspectsView() {
@@ -264,9 +260,21 @@ export function ProspectsView() {
                     <td className={`px-4 py-3.5 text-sm text-muted-foreground`}>{p.businessType}</td>
                     <td className={`px-4 py-3.5 text-sm text-muted-foreground`}>{p.city}</td>
                     <td className={`px-4 py-3.5 text-sm font-medium text-foreground`}>{p.fleetSizeEstimate || '—'}</td>
-                    <td className="px-4 py-3.5"><span className={`px-2 py-0.5 rounded-lg text-[11px] font-semibold border ${statusColors[p.status]}`}>{p.status}</span></td>
-                    <td className="px-4 py-3.5"><span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${priorityColors[p.priority]}`}>{p.priority}</span></td>
-                    <td className={`px-4 py-3.5 text-sm text-muted-foreground`}>{p.assignedTo || <span className="text-amber-500 text-xs font-semibold">Unassigned</span>}</td>
+                    <td className="px-4 py-3.5">
+                      <StatusChip tone={prospectStatusTone(p.status)} className="!text-[11px]">
+                        {p.status}
+                      </StatusChip>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <PriorityBadge priority={p.priority} className="!text-[11px]" />
+                    </td>
+                    <td className={`px-4 py-3.5 text-sm text-muted-foreground`}>
+                      {p.assignedTo || (
+                        <StatusChip tone="watch" className="!text-[10px]">
+                          Unassigned
+                        </StatusChip>
+                      )}
+                    </td>
                     <td className={`px-4 py-3.5 text-sm text-muted-foreground`}>{p.nextAction}</td>
                   </tr>
                 ))}
@@ -293,7 +301,7 @@ export function ProspectsView() {
                     <button key={p.id} onClick={() => setSelectedProspect(p)}
                       className="absolute group" style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -100%)' }}>
                       <div className={`relative ${selectedProspect?.id === p.id ? 'scale-125' : 'hover:scale-110'} transition-transform`}>
-                        <MapPin className={`w-7 h-7 drop-shadow-lg ${p.priority === 'High' ? 'text-red-500 fill-red-500' : p.priority === 'Medium' ? 'text-amber-500 fill-amber-500' : 'text-blue-500 fill-blue-500'}`} />
+                        <MapPin className={`h-7 w-7 drop-shadow-lg ${mapPinToneClass(p.priority)}`} />
                       </div>
                       <div className={`absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg text-[10px] font-semibold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-lg bg-muted/50`}>
                         {p.companyName}
@@ -306,44 +314,96 @@ export function ProspectsView() {
             {/* Legend */}
             <div className={`absolute bottom-4 left-4 px-3 py-2 rounded-xl backdrop-blur-sm bg-muted/50`}>
               <div className="flex items-center gap-3 text-[10px] font-semibold">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" />High</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" />Medium</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" />Low</span>
+                <span className="flex items-center gap-1">
+                  <StatusDot tone="critical" />
+                  High
+                </span>
+                <span className="flex items-center gap-1">
+                  <StatusDot tone="watch" />
+                  Medium
+                </span>
+                <span className="flex items-center gap-1">
+                  <StatusDot tone="info" />
+                  Low
+                </span>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* === DETAIL DRAWER === */}
-      {selectedProspect && (
-        <div className="fixed inset-y-0 right-0 w-full sm:w-[480px] z-[90] flex" onClick={() => setSelectedProspect(null)}>
-          <div className="flex-1" />
-          <div className={`w-full sm:w-[480px] h-full border-l shadow-2xl overflow-y-auto sq-CARD`} onClick={e => e.stopPropagation()}>
-            <div className="px-5 py-3">
-              {/* Close & Header */}
-              <div className="flex items-start justify-between mb-5">
-                <div>
-                  <h2 className={`text-base font-bold text-foreground`}>{selectedProspect.companyName}</h2>
-                  <p className={`text-sm text-muted-foreground`}>{selectedProspect.businessType} · {selectedProspect.city}</p>
-                </div>
-                <button onClick={() => setSelectedProspect(null)} className={`p-2 rounded-xl hover:bg-muted`}><X className="w-5 h-5" /></button>
-              </div>
-
-              {/* Status & Priority */}
-              <div className="flex items-center gap-2 mb-5">
-                <select value={selectedProspect.status} onChange={e => updateProspectStatus(selectedProspect.id, e.target.value as ProspectStatus)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border appearance-none cursor-pointer ${statusColors[selectedProspect.status]}`}>
-                  {(['New','Enriched','Ready to Contact','Contacted','Replied','Qualified','Not Interested','Converted'] as ProspectStatus[]).map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <span className={`px-2 py-1 rounded-md text-xs font-semibold ${priorityColors[selectedProspect.priority]}`}>{selectedProspect.priority}</span>
-              </div>
-
-              {/* Contact Info */}
-              <div className={`p-4 rounded-2xl border mb-4 space-y-2.5 bg-muted/50 border-border`}>
+      <DetailDrawer
+        open={!!selectedProspect}
+        onOpenChange={(open) => !open && setSelectedProspect(null)}
+        title={selectedProspect?.companyName ?? ''}
+        description={selectedProspect ? `${selectedProspect.businessType} · ${selectedProspect.city}` : undefined}
+        widthClassName="sm:max-w-[480px]"
+        status={
+          selectedProspect ? (
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedProspect.status}
+                onChange={(e) => updateProspectStatus(selectedProspect.id, e.target.value as ProspectStatus)}
+                className="rounded-lg border border-border bg-muted px-2 py-1 text-xs font-semibold text-foreground"
+              >
+                {(['New', 'Enriched', 'Ready to Contact', 'Contacted', 'Replied', 'Qualified', 'Not Interested', 'Converted'] as ProspectStatus[]).map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <PriorityBadge priority={selectedProspect.priority} />
+            </div>
+          ) : undefined
+        }
+        footer={
+          selectedProspect ? (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => updateProspectStatus(selectedProspect.id, 'Contacted')}
+                className="sq-press flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-semibold"
+              >
+                <Send className="h-3 w-3" />
+                Mark Contacted
+              </button>
+              <button
+                type="button"
+                onClick={() => handleConvert(selectedProspect)}
+                className="sq-cta flex items-center gap-1.5 px-3 py-2 text-xs font-semibold"
+              >
+                <ArrowRight className="h-3 w-3" />
+                Convert to Org
+              </button>
+              <a
+                href={`https://${selectedProspect.website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="sq-press flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-semibold"
+              >
+                <ExternalLink className="h-3 w-3" />
+                Open Website
+              </a>
+            </div>
+          ) : undefined
+        }
+      >
+        {selectedProspect && (
+          <>
+              <div className={`mb-4 space-y-2.5 rounded-2xl border border-border bg-muted/50 p-4`}>
                 <div className="flex items-center gap-2"><Mail className={`w-3.5 h-3.5 text-muted-foreground`} /><span className={`text-sm text-foreground`}>{selectedProspect.email}</span></div>
                 <div className="flex items-center gap-2"><Phone className={`w-3.5 h-3.5 text-muted-foreground`} /><span className={`text-sm text-foreground`}>{selectedProspect.phone}</span></div>
-                <div className="flex items-center gap-2"><Globe className={`w-3.5 h-3.5 text-muted-foreground`} /><a href={`https://${selectedProspect.website}`} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-500 hover:underline flex items-center gap-1">{selectedProspect.website} <ExternalLink className="w-3 h-3" /></a></div>
+                <div className="flex items-center gap-2">
+                  <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                  <a
+                    href={`https://${selectedProspect.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-sm text-[color:var(--brand)] hover:underline"
+                  >
+                    {selectedProspect.website} <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
                 <div className="flex items-center gap-2"><Users className={`w-3.5 h-3.5 text-muted-foreground`} /><span className={`text-sm text-foreground`}>Est. fleet: {selectedProspect.fleetSizeEstimate || '—'} vehicles</span></div>
                 <div className="flex items-center gap-2"><User className={`w-3.5 h-3.5 text-muted-foreground`} /><span className={`text-sm text-foreground`}>Assigned: {selectedProspect.assignedTo || 'Unassigned'}</span></div>
               </div>
@@ -358,8 +418,11 @@ export function ProspectsView() {
               )}
 
               {/* AI Summary */}
-              <div className={`p-4 rounded-2xl border mb-4 sq-tone-ai border border-border`}>
-                <div className="flex items-center gap-2 mb-3"><Sparkles className="w-4 h-4 text-purple-500" /><h4 className={`text-sm font-bold sq-tone-ai`}>AI Summary</h4></div>
+              <div className="sq-tone-ai mb-4 rounded-2xl border border-border p-4">
+                <div className="mb-3 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-[color:var(--status-ai)]" />
+                  <h4 className="text-sm font-bold text-foreground">AI Summary</h4>
+                </div>
                 <div className="space-y-2 text-xs">
                   <div><span className={`font-semibold text-muted-foreground`}>Category:</span> <span className={'text-muted-foreground'}>{selectedProspect.aiSummary.category}</span></div>
                   <div><span className={`font-semibold text-muted-foreground`}>Product Fit:</span> <span className={'text-muted-foreground'}>{selectedProspect.aiSummary.productFit}</span></div>
@@ -368,19 +431,24 @@ export function ProspectsView() {
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="flex flex-wrap gap-2 mb-5">
-                <button onClick={() => updateProspectStatus(selectedProspect.id, 'Contacted')} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all border-border`}><Send className="w-3 h-3" />Mark Contacted</button>
-                <button onClick={() => handleConvert(selectedProspect)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-gradient-to-br from-green-500 to-green-600 text-white shadow hover:shadow-lg transition-all"><ArrowRight className="w-3 h-3" />Convert to Org</button>
-                <a href={`https://${selectedProspect.website}`} target="_blank" rel="noopener noreferrer" className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all border-border`}><ExternalLink className="w-3 h-3" />Open Website</a>
-              </div>
-
-              {/* Add Note */}
               <div className="mb-4">
-                <h4 className={`text-sm font-bold mb-2 text-foreground`}>Notes</h4>
-                <div className="flex gap-2 mb-3">
-                  <input value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Add a note..." onKeyDown={e => e.key === 'Enter' && addNote()} className={`flex-1 px-3 py-2 rounded-xl border text-sm outline-none border-border`} />
-                  <button onClick={addNote} disabled={!newNote.trim()} className={`px-3 py-2 rounded-xl text-sm font-semibold bg-indigo-500 text-white ${!newNote.trim() ? 'opacity-50' : 'hover:bg-indigo-600'}`}>Add</button>
+                <h4 className="mb-2 text-sm font-bold text-foreground">Notes</h4>
+                <div className="mb-3 flex gap-2">
+                  <input
+                    value={newNote}
+                    onChange={(e) => setNewNote(e.target.value)}
+                    placeholder="Add a note..."
+                    onKeyDown={(e) => e.key === 'Enter' && addNote()}
+                    className="flex-1 rounded-xl border border-border px-3 py-2 text-sm outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={addNote}
+                    disabled={!newNote.trim()}
+                    className="sq-cta px-3 py-2 text-sm font-semibold disabled:opacity-50"
+                  >
+                    Add
+                  </button>
                 </div>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
                   {selectedProspect.notes.map(note => (
@@ -407,19 +475,22 @@ export function ProspectsView() {
                   ))}
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </DetailDrawer>
 
-      {/* === ADD PROSPECT MODAL === */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100]">
-          <div className={`max-w-lg w-full mx-4 rounded-2xl p-8 shadow-2xl border sq-CARD border-border`}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className={`text-base font-bold text-foreground`}>Add Prospect</h2>
-              <button onClick={() => setShowAddModal(false)} className={`p-2 rounded-xl hover:bg-muted`}><X className="w-5 h-5" /></button>
-            </div>
+      <FormDialog
+        open={showAddModal}
+        onOpenChange={setShowAddModal}
+        title="Add Prospect"
+        maxWidthClassName="sm:max-w-lg"
+        footer={(
+          <div className="flex w-full gap-3">
+            <button type="button" onClick={() => setShowAddModal(false)} className="sq-press flex-1 rounded-xl border border-border px-4 py-2.5 font-semibold">Cancel</button>
+            <button type="button" onClick={handleAddProspect} disabled={!addForm.companyName} className="sq-cta flex flex-1 items-center justify-center gap-2 px-4 py-2.5 font-semibold disabled:opacity-50"><Plus className="w-4 h-4" />Add Prospect</button>
+          </div>
+        )}
+      >
             <div className="space-y-4">
               <div><label className={`block text-sm font-semibold mb-1 text-foreground`}>Company Name *</label><input value={addForm.companyName} onChange={e => setAddForm(f => ({ ...f, companyName: e.target.value }))} className={inputClass} /></div>
               <div className="grid grid-cols-2 gap-4">
@@ -439,23 +510,14 @@ export function ProspectsView() {
                 <div><label className={`block text-sm font-semibold mb-1 text-foreground`}>Fleet Size Estimate</label><input value={addForm.fleetSizeEstimate} onChange={e => setAddForm(f => ({ ...f, fleetSizeEstimate: e.target.value }))} className={inputClass} type="number" /></div>
               </div>
             </div>
-            <div className="flex gap-3 mt-8">
-              <button onClick={() => setShowAddModal(false)} className={`flex-1 px-4 py-2.5 rounded-xl font-semibold border-border`}>Cancel</button>
-              <button onClick={handleAddProspect} disabled={!addForm.companyName} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl font-semibold shadow-lg ${!addForm.companyName ? 'opacity-50' : 'hover:shadow-xl'}`}><Plus className="w-4 h-4" />Add Prospect</button>
-            </div>
-          </div>
-        </div>
-      )}
+      </FormDialog>
 
-      {/* === IMPORT CSV MODAL === */}
-      {showImportModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100]">
-          <div className={`max-w-lg w-full mx-4 rounded-2xl p-8 shadow-2xl border sq-CARD border-border`}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className={`text-base font-bold text-foreground`}>Import CSV</h2>
-              <button onClick={() => setShowImportModal(false)} className={`p-2 rounded-xl hover:bg-muted`}><X className="w-5 h-5" /></button>
-            </div>
-
+      <FormDialog
+        open={showImportModal}
+        onOpenChange={setShowImportModal}
+        title="Import CSV"
+        maxWidthClassName="sm:max-w-lg"
+      >
             {importStep === 'upload' && (
               <>
                 <div
@@ -463,7 +525,7 @@ export function ProspectsView() {
                   onDragLeave={() => setImportDragOver(false)}
                   onDrop={e => { e.preventDefault(); setImportDragOver(false); setImportFile('prospects_batch_13.csv'); }}
                   onClick={() => setImportFile('prospects_batch_13.csv')}
-                  className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all ${importDragOver ? 'border-indigo-500 bg-indigo-50/50' : 'text-muted-foreground'}`}
+                  className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all ${importDragOver ? 'border-[color:var(--brand)] bg-[color:var(--brand-soft)]' : 'text-muted-foreground border-border'}`}
                 >
                   <Upload className={`w-10 h-10 mx-auto mb-3 text-muted-foreground`} />
                   <p className={`text-sm font-medium text-muted-foreground`}>Drop CSV file here or click to browse</p>
@@ -471,13 +533,13 @@ export function ProspectsView() {
                 </div>
                 {importFile && (
                   <div className={`mt-4 p-3 rounded-xl border flex items-center justify-between bg-muted/50 border-border`}>
-                    <div className="flex items-center gap-2"><FileText className="w-4 h-4 text-indigo-500" /><span className={`text-sm font-medium text-foreground`}>{importFile}</span></div>
-                    <span className="text-xs text-green-600 font-semibold">Valid</span>
+                    <div className="flex items-center gap-2"><FileText className="w-4 h-4 text-[color:var(--brand)]" /><span className={`text-sm font-medium text-foreground`}>{importFile}</span></div>
+                    <StatusChip tone="success" className="!text-xs">Valid</StatusChip>
                   </div>
                 )}
                 <div className="flex gap-3 mt-6">
                   <button onClick={() => setShowImportModal(false)} className={`flex-1 px-4 py-2.5 rounded-xl font-semibold border-border`}>Cancel</button>
-                  <button onClick={() => setImportStep('mapping')} disabled={!importFile} className={`flex-1 px-4 py-2.5 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl font-semibold shadow-lg ${!importFile ? 'opacity-50' : 'hover:shadow-xl'}`}>Next: Preview</button>
+                  <button onClick={() => setImportStep('mapping')} disabled={!importFile} className="sq-cta flex-1 px-4 py-2.5 font-semibold disabled:opacity-50">Next: Preview</button>
                 </div>
               </>
             )}
@@ -495,36 +557,41 @@ export function ProspectsView() {
                     </tbody>
                   </table>
                 </div>
-                <div className={`p-3 rounded-xl border mb-4 sq-tone-watch border border-border`}>
-                  <p className="text-xs text-amber-700 flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 shrink-0" />1 potential duplicate detected (CityRide Essen → similar to existing entry). Will be skipped.</p>
+                <div className="mb-4 rounded-xl border border-border sq-tone-watch p-3">
+                  <p className="flex items-center gap-1.5 text-xs text-[color:var(--status-watch)]"><AlertTriangle className="w-3.5 h-3.5 shrink-0" />1 potential duplicate detected (CityRide Essen → similar to existing entry). Will be skipped.</p>
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setImportStep('upload')} className={`flex-1 px-4 py-2.5 rounded-xl font-semibold border-border`}>Back</button>
-                  <button onClick={handleImport} className="flex-1 px-4 py-2.5 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl">Import 2 Prospects</button>
+                  <button onClick={handleImport} className="sq-cta flex-1 px-4 py-2.5 font-semibold">Import 2 Prospects</button>
                 </div>
               </>
             )}
 
             {importStep === 'result' && (
               <>
-                <div className="text-center mb-6">
-                  <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3"><CheckCircle className="w-8 h-8 text-green-500" /></div>
+                <div className="mb-6 text-center">
+                  <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full sq-tone-success">
+                    <CheckCircle className="h-8 w-8 text-[color:var(--status-positive)]" />
+                  </div>
                   <h3 className={`text-lg font-bold text-foreground`}>Import Complete</h3>
                 </div>
-                <div className="grid grid-cols-2 gap-3 mb-6">
-                  {[['Imported','2','text-green-600'],['Skipped','0','text-gray-500'],['Duplicates','1','text-amber-600'],['Errors','0','text-red-600']].map(([label,count,color]) => (
-                    <div key={label} className={`p-3 rounded-xl border text-center bg-muted/50 border-border`}>
-                      <p className={`text-2xl font-bold ${color}`}>{count}</p>
-                      <p className={`text-xs text-muted-foreground`}>{label}</p>
+                <div className="mb-6 grid grid-cols-2 gap-3">
+                  {([
+                    ['Imported', '2', 'success'],
+                    ['Skipped', '0', 'neutral'],
+                    ['Duplicates', '1', 'watch'],
+                    ['Errors', '0', 'critical'],
+                  ] as const).map(([label, count, tone]) => (
+                    <div key={label} className={`rounded-xl border border-border bg-muted/50 p-3 text-center`}>
+                      <p className="text-2xl font-bold text-foreground">{count}</p>
+                      <StatusChip tone={tone} className="mt-1 !text-[10px]">{label}</StatusChip>
                     </div>
                   ))}
                 </div>
-                <button onClick={() => setShowImportModal(false)} className="w-full px-4 py-2.5 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl">Done</button>
+                <button onClick={() => setShowImportModal(false)} className="sq-cta w-full px-4 py-2.5 font-semibold">Done</button>
               </>
             )}
-          </div>
-        </div>
-      )}
+      </FormDialog>
     </div>
   );
 }

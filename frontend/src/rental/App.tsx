@@ -1,14 +1,7 @@
 
 import { Icon } from './components/ui/Icon';
-import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
-import {
-  api,
-  type TireHealthSummaryResponse,
-  type BrakeHealthSummary,
-  type BatteryHealthSummary,
-  type ServiceInfoStatus,
-  type AiHealthCareResponse,
-} from '../lib/api';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { api } from '../lib/api';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { NewTaskModal } from './components/NewTaskModal';
@@ -25,8 +18,6 @@ import { SettingsView } from './components/SettingsView';
 import { StationsView } from './components/stations/StationsView';
 import { StationDetailView } from './components/stations/StationDetailView';
 import { NewBookingView } from './components/NewBookingView';
-import { FleetConditionDetailView } from './components/FleetConditionDetailView';
-import type { ConditionCategory } from './components/FleetConditionView';
 import { FinanceView } from './components/FinanceView';
 import type { FinanceTab } from './components/FinanceView';
 import { TasksView } from './components/TasksView';
@@ -38,11 +29,9 @@ import { BrandLogo, getBrandFromModel } from './components/BrandLogo';
 import { VehicleData } from './data/vehicles';
 import { RentalProvider, useRentalOrg } from './RentalContext';
 import { FleetProvider, useFleetVehicles, useEffectiveHealth } from './FleetContext';
-import { collectRentalHealthReasons } from './rental-health-ui';
 import { DashboardInsightsProvider } from './DashboardInsightsContext';
 import { HandoverProvider } from './HandoverContext';
 import { Toaster } from 'sonner';
-import { LiveMapOverview } from './components/LiveMapOverview';
 import { useLiveVehicleTelemetry } from './hooks/useLiveVehicleTelemetry';
 import { useVehicleLiveMapStore } from './stores/useVehicleLiveMapStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -58,725 +47,10 @@ import { WhatsAppBusinessView } from './components/WhatsAppBusinessView';
 import { PartsAccessoriesView } from './components/PartsAccessoriesView';
 import { InsurancesView } from './components/InsurancesView';
 import { VoiceAssistantView } from './components/VoiceAssistantView';
-import { VehicleInsightsCard } from './components/VehicleInsightsCard';
 import { AppErrorBoundary } from '../components/AppErrorBoundary';
 import { AppShell } from '../components/shell';
-import vhBrakeIcon from '../assets/icons/vehicle-health/brake.svg';
-import vhMotorFilterIcon from '../assets/icons/vehicle-health/motor-filter.svg';
-import vhCarBatteryIcon from '../assets/icons/vehicle-health/car-battery.svg';
-import tellTaleOilIcon from '../assets/icons/telltale/oil.svg';
-import tellTaleCelIcon from '../assets/icons/telltale/cel.svg';
-import tellTaleBrakePadIcon from '../assets/icons/telltale/brake-pad.svg';
-import tellTaleTirePressureIcon from '../assets/icons/telltale/tire-pressure.svg';
-import tellTaleBatteryWarningIcon from '../assets/icons/telltale/battery.svg';
-
-/* ────────────────────────────────────────────────────────────────────────
-   Vehicle Health Box – Figma-aligned, API-wired
-   ──────────────────────────────────────────────────────────────────────── */
-interface VehicleHealthBoxWiredProps {
-  selectedVehicle: VehicleData | null;
-  isDarkMode: boolean;
-  lvBatteryVoltage: number | null;
-  onViewDetails?: () => void;
-}
-
-function VehicleHealthBoxWired({ selectedVehicle, isDarkMode, lvBatteryVoltage, onViewDetails }: VehicleHealthBoxWiredProps) {
-  const [tires, setTires] = useState<TireHealthSummaryResponse | null>(null);
-  const [brakes, setBrakes] = useState<BrakeHealthSummary | null>(null);
-  const [battery, setBattery] = useState<BatteryHealthSummary | null>(null);
-  const [service, setService] = useState<ServiceInfoStatus | null>(null);
-  const [dtcCount, setDtcCount] = useState(0);
-  const [aiHealthCare, setAiHealthCare] = useState<AiHealthCareResponse | null>(null);
-
-  const vehicleId = selectedVehicle?.id ?? null;
-  const { status: rentalStatus, health: rentalHealth, loading: rentalHealthLoading } =
-    useEffectiveHealth(vehicleId);
-  const rentalReasons = collectRentalHealthReasons(rentalHealth);
-  const rentalCriticalCount = rentalReasons.filter((r) => r.state === 'critical').length;
-  const rentalWarningCount = rentalReasons.filter((r) => r.state === 'warning').length;
-  const errorCodesRentalState = rentalHealth?.modules.error_codes?.state;
-
-  useEffect(() => {
-    if (!vehicleId) {
-      setTires(null); setBrakes(null); setBattery(null); setService(null);
-      setDtcCount(0); setAiHealthCare(null);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      const [t, b, bat, svc, dtc, ai] = await Promise.all([
-        api.vehicleIntelligence.tireHealthSummary(vehicleId).catch(() => null),
-        api.vehicleIntelligence.brakeHealthSummary(vehicleId).catch(() => null),
-        api.vehicleIntelligence.batteryHealthSummary(vehicleId).catch(() => null),
-        api.vehicleIntelligence.serviceInfoStatus(vehicleId).catch(() => null),
-        api.vehicleIntelligence.dtcActive(vehicleId).catch(() => []),
-        api.vehicleIntelligence.aiHealthCare(vehicleId).catch(() => null),
-      ]);
-      if (cancelled) return;
-      setTires(t); setBrakes(b); setBattery(bat); setService(svc);
-      setDtcCount(Array.isArray(dtc) ? dtc.length : 0);
-      setAiHealthCare(ai);
-    })();
-    return () => { cancelled = true; };
-  }, [vehicleId]);
-
-  const dm = isDarkMode;
-
-  const brakesPercent =
-    brakes?.pads?.healthPercent != null || brakes?.discs?.healthPercent != null
-      ? Math.min(brakes?.pads?.healthPercent ?? 101, brakes?.discs?.healthPercent ?? 101)
-      : null;
-  const brakesVal = brakesPercent ?? 0;
-  const tiresVal = tires?.overallPercent ?? selectedVehicle?.tires ?? 0;
-  const batteryPubState = battery?.lv?.publicationState ?? battery?.currentState?.publicationState ?? 'INITIAL_CALIBRATION';
-  const soh =
-    battery?.lv?.healthPercent ??
-    (batteryPubState === 'INITIAL_CALIBRATION'
-      ? null
-      : (battery?.currentState?.publishedSohPct ?? battery?.currentState?.sohPercent ?? null));
-  const estimatedSoh = battery?.lv?.estimatedHealthPercent ?? battery?.currentState?.estimatedSohPct ?? null;
-  const voltage = battery?.lv?.telemetry?.voltageV ?? battery?.currentState?.voltageV ?? lvBatteryVoltage;
-  const batteryScore = soh ?? estimatedSoh ?? null;
-  const batteryVal = batteryScore ?? 0;
-  const batteryCondition = battery?.lv?.condition ?? battery?.condition ?? null;
-
-  const brakesTracked = brakesPercent != null;
-  const tiresTracked = tires?.overallPercent != null || (selectedVehicle?.tires != null && selectedVehicle.tires > 0);
-  const batteryTracked = batteryScore != null;
-  const trackedFlags = [brakesTracked, tiresTracked, batteryTracked];
-  const trackedValues = [brakesVal, tiresVal, batteryVal].filter((_, i) => trackedFlags[i]);
-  const untrackedCount = 3 - trackedValues.length;
-  const trackedCount = trackedValues.length;
-
-  // Critical / due-soon counts drive the overall status. Brakes use the generic
-  // wear scale; battery and tires use their canonical status so Dashboard and
-  // Health Tab always agree on the same green/amber/red state for a vehicle.
-  const tireCanon = tires?.overallStatus ?? null;
-  const brakeCond = brakes?.overallCondition;
-  const brakeCritical =
-    brakeCond === 'CRITICAL' ||
-    ((brakeCond == null || brakeCond === 'UNKNOWN') && brakesTracked && brakesVal < 30);
-  const tireCritical = tiresTracked && (tireCanon ? tireCanon === 'CRITICAL' : tiresVal < 30);
-  const batteryCriticalFlag = batteryTracked && batteryCondition === 'attention';
-  const brakeDueSoon =
-    brakeCond === 'WARNING' ||
-    brakeCond === 'WATCH' ||
-    ((brakeCond == null || brakeCond === 'UNKNOWN') && brakesTracked && brakesVal >= 30 && brakesVal < 60);
-  const tireDueSoon = tiresTracked && (tireCanon ? (tireCanon === 'WARNING' || tireCanon === 'WATCH') : (tiresVal >= 30 && tiresVal < 60));
-  const batteryDueSoonFlag = batteryTracked && batteryCondition === 'watch';
-  const localCriticalCount = [brakeCritical, tireCritical, batteryCriticalFlag].filter(Boolean).length;
-  const localDueSoonCount = [brakeDueSoon, tireDueSoon, batteryDueSoonFlag].filter(Boolean).length;
-  const statCriticalCount = rentalHealth ? rentalCriticalCount : localCriticalCount;
-  const statWarningCount = rentalHealth ? rentalWarningCount : localDueSoonCount;
-
-  // Overall badge + summary tiles use Rental-Health-V1 (same map as Dashboard,
-  // FleetView, header chip and Health tab) — not binary "any DTC = critical".
-  type OverallState = 'insufficient' | 'good' | 'warning' | 'critical';
-  const overallState: OverallState = (() => {
-    if (rentalHealthLoading && !rentalHealth) return 'insufficient';
-    if (rentalStatus === 'Critical') return 'critical';
-    if (rentalStatus === 'Warning') return 'warning';
-    if (rentalStatus === 'Good Health') return 'good';
-    if (trackedCount === 0) return 'insufficient';
-    return 'good';
-  })();
-  const overallStatusLabel = (() => {
-    if (rentalHealthLoading && !rentalHealth) return 'Loading…';
-    if (rentalStatus === 'Critical') return 'Critical';
-    if (rentalStatus === 'Warning') return 'Warning';
-    if (rentalStatus === 'Good Health') return 'Good Health';
-    if (trackedCount === 0) return 'Insufficient Data';
-    return 'Good Health';
-  })();
-  const overallTitle = (() => {
-    const parts: string[] = [];
-    if (rentalHealth?.rental_blocked && rentalHealth.blocking_reasons.length > 0) {
-      parts.push(`Blocked: ${rentalHealth.blocking_reasons.join(' · ')}`);
-    }
-    for (const r of rentalReasons) {
-      parts.push(`${r.label}: ${r.reason}`);
-    }
-    return parts.join(' · ') || undefined;
-  })();
-  const overallDot =
-    overallState === 'insufficient'
-      ? 'bg-[color:var(--status-nodata)]'
-      : overallState === 'good'
-      ? 'bg-[color:var(--status-positive)]'
-      : overallState === 'warning'
-      ? 'bg-[color:var(--status-watch)]'
-      : 'bg-[color:var(--status-critical)]';
-  const overallAccentRing =
-    overallState === 'insufficient'
-      ? 'sq-tone-nodata ring-[color:var(--status-nodata-soft)]'
-      : overallState === 'good'
-      ? 'sq-tone-success ring-[color:var(--status-positive-soft)]'
-      : overallState === 'warning'
-      ? 'sq-tone-watch ring-[color:var(--status-watch-soft)]'
-      : 'sq-tone-critical ring-[color:var(--status-critical-soft)]';
-
-  const getStatus = (v: number, tracked: boolean) => {
-    if (!tracked) return { label: 'No Data', labelColor: 'text-muted-foreground', bar: 'bg-muted' };
-    if (v >= 80) return { label: 'Excellent', labelColor: 'text-[color:var(--status-positive)]', bar: 'bg-[color:var(--status-positive)]' };
-    if (v >= 60) return { label: 'Monitor', labelColor: 'text-[color:var(--status-watch)]', bar: 'bg-[color:var(--status-watch)]' };
-    if (v >= 30) return { label: 'Due soon', labelColor: 'text-[color:var(--status-warning)]', bar: 'bg-[color:var(--status-warning)]' };
-    return { label: 'Critical', labelColor: 'text-[color:var(--status-critical)]', bar: 'bg-[color:var(--status-critical)]' };
-  };
-
-  // Battery uses the canonical condition from the backend
-  // (CanonicalBatteryHealthService) so the Dashboard Vehicle Health box and
-  // the Health Tab render the identical green/amber/red status for the same
-  // vehicle. The generic wear-scale (80/60/30) only fits brakes and tires.
-  //
-  // Thresholds (mirrored from backend, for voltage-only fallback):
-  //   voltage < 12.0 → Attention (red)   — starting unlikely
-  //   voltage < 12.4 → Monitor   (amber) — starting difficulty possible
-  //   SOH    < 50   → Attention (red)
-  //   SOH    < 75   → Monitor   (amber)
-  const getBatteryStatus = (
-    v: number,
-    tracked: boolean,
-    condition: string | null | undefined,
-    voltageV: number | null | undefined,
-  ) => {
-    if (!tracked) return { label: 'No Data', labelColor: 'text-muted-foreground', bar: 'bg-muted' };
-    if (condition === 'good') return { label: 'Healthy', labelColor: 'text-[color:var(--status-positive)]', bar: 'bg-[color:var(--status-positive)]' };
-    if (condition === 'watch') return { label: 'Monitor', labelColor: 'text-[color:var(--status-watch)]', bar: 'bg-[color:var(--status-watch)]' };
-    if (condition === 'attention') return { label: 'Attention', labelColor: 'text-[color:var(--status-critical)]', bar: 'bg-[color:var(--status-critical)]' };
-    if (voltageV != null) {
-      if (voltageV < 12.0) return { label: 'Attention', labelColor: 'text-[color:var(--status-critical)]', bar: 'bg-[color:var(--status-critical)]' };
-      if (voltageV < 12.4) return { label: 'Monitor', labelColor: 'text-[color:var(--status-watch)]', bar: 'bg-[color:var(--status-watch)]' };
-      return { label: 'Healthy', labelColor: 'text-[color:var(--status-positive)]', bar: 'bg-[color:var(--status-positive)]' };
-    }
-    if (v < 50) return { label: 'Attention', labelColor: 'text-[color:var(--status-critical)]', bar: 'bg-[color:var(--status-critical)]' };
-    if (v < 75) return { label: 'Monitor', labelColor: 'text-[color:var(--status-watch)]', bar: 'bg-[color:var(--status-watch)]' };
-    return { label: 'Healthy', labelColor: 'text-[color:var(--status-positive)]', bar: 'bg-[color:var(--status-positive)]' };
-  };
-
-  const brakesDetail = (() => {
-    const remKm = brakes?.remainingKm ?? null;
-    if (remKm != null) return `~${Math.round(remKm / 1000)}k km`;
-    if (brakes?.stateClass === 'WARNING_ONLY') return 'Warning-only telemetry';
-    if (brakes?.stateClass === 'NO_BASELINE') return 'No baseline';
-    if (brakesVal >= 80) return 'Healthy estimate';
-    if (brakesVal >= 60) return 'Check soon';
-    return brakesTracked ? 'Service needed' : 'No tracking';
-  })();
-
-  const tiresDetail = (() => {
-    const remKm = tires?.overallRemainingKm;
-    if (remKm != null) return `~${Math.round(remKm / 1000)}k km`;
-    if (tires?.actionState === 'REPLACE') return 'Replace now';
-    if (tires?.actionState === 'PLAN_SERVICE') return 'Plan service';
-    if (tires?.actionState === 'CHECK_SOON') return 'Check soon';
-    return tiresTracked ? 'Model estimate unavailable' : 'No tracking';
-  })();
-
-  const batteryDetail = (() => {
-    if (batteryPubState === 'INITIAL_CALIBRATION') return 'Calibrating (estimate unavailable)';
-    if (batteryPubState === 'STABILIZING') return voltage != null ? `~${voltage.toFixed(1)}V · Stabilizing` : 'Stabilizing';
-    const vStr = voltage != null ? `${voltage.toFixed(1)}V` : null;
-    // Surface the critical message inline so operators don't need to open
-    // the Health Tab to see why the battery is amber/red.
-    if (batteryCondition === 'attention') {
-      return vStr
-        ? `${vStr} · Kritisch — Starthilfe/Austausch empfohlen`
-        : 'Kritisch — Starthilfe/Austausch empfohlen';
-    }
-    if (batteryCondition === 'watch') {
-      return vStr
-        ? `${vStr} · Startschwierigkeiten möglich`
-        : 'Startschwierigkeiten möglich';
-    }
-    if (soh != null) return vStr ?? 'SOH tracked';
-    if (vStr) return vStr;
-    return 'Estimate unavailable';
-  })();
-
-  const healthItems = [
-    {
-      key: 'brakes', label: 'Brakes', value: brakesVal, detail: brakesDetail, tracked: brakesTracked,
-      iconBg: '',
-      icon: <img src={vhBrakeIcon} alt="" aria-hidden="true" className={`w-5 h-5 object-contain ${dm ? 'invert' : ''}`} />,
-    },
-    {
-      key: 'tires', label: 'Tires', value: tiresVal, detail: tiresDetail, tracked: tiresTracked,
-      iconBg: '',
-      icon: <img src={vhMotorFilterIcon} alt="" aria-hidden="true" className={`w-5 h-5 object-contain rotate-90 ${dm ? 'invert' : ''}`} />,
-    },
-    {
-      key: 'battery', label: 'Battery', value: batteryVal, detail: batteryDetail, tracked: batteryTracked,
-      iconBg: '',
-      icon: <img src={vhCarBatteryIcon} alt="" aria-hidden="true" className={`w-5 h-5 object-contain ${dm ? 'invert' : ''}`} />,
-    },
-  ];
-
-  // Service status — prefer day-level precision from the backend and keep
-  // the sign so an overdue vehicle renders red instead of being silently
-  // clamped to 0 weeks remaining.
-  const svcOverdue = service?.serviceOverdue === true;
-  const svcImminent = service?.serviceDueImminently === true && !svcOverdue;
-  const svcRemDays = service?.serviceRemainingDays ?? null;
-  const svcRemMonths = service?.serviceRemainingMonths ?? null;
-  const svcOverdueDays = service?.serviceOverdueDays ?? null;
-  const svcOverdueKm = service?.serviceOverdueKm ?? null;
-  const svcRemKm = service?.serviceRemainingKm;
-  const tuvDate = service?.tuvValidTill ? new Date(service.tuvValidTill).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : null;
-  const tuvOverdue = service?.tuvOverdue === true;
-  const tuvDays = service?.tuvRemainingDays ?? null;
-  const tuvImminent = !tuvOverdue && tuvDays != null && tuvDays >= 0 && tuvDays <= 60;
-  const bokraftDate = service?.bokraftValidTill
-    ? new Date(service.bokraftValidTill).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    : null;
-  const bokraftOverdue = service?.bokraftOverdue === true;
-  const bokraftDays = service?.bokraftRemainingDays ?? null;
-  const bokraftImminent = !bokraftOverdue && bokraftDays != null && bokraftDays >= 0 && bokraftDays <= 60;
-
-  const divider = <div className="border-t my-3 border-border" />;
-
-  return (
-    <div className={`group relative flex h-full flex-col rounded-xl p-3 border transition-shadow duration-300 ease-[var(--ease-out-soft)] hover:shadow-md ${
-      'border-border bg-card text-foreground shadow-sm'
-    }`}>
-      <style>{`
-        @keyframes barFillUp { from { width: 0%; } }
-        @keyframes calibDots { 0%,20%{opacity:.2} 50%{opacity:1} 100%{opacity:.2} }
-      `}</style>
-
-      <div className="mb-2.5 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <h3 className={`text-[11px] font-bold tracking-[-0.01em] ${'text-foreground'}`}>Vehicle Health</h3>
-          <span
-            title={overallTitle}
-            className={`inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[9.5px] font-bold ring-1 ${overallAccentRing}`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${overallDot}`} />
-            {overallStatusLabel}
-          </span>
-        </div>
-        <span className={`shrink-0 text-[10px] font-semibold ${'text-muted-foreground'}`}>
-          {trackedCount}/3 tracked
-        </span>
-      </div>
-
-      <div className="mb-2.5 grid grid-cols-3 gap-1.5">
-        {([
-          {
-            label: 'Critical',
-            value: statCriticalCount,
-            tone: statCriticalCount > 0
-              ? 'border-transparent sq-tone-critical'
-              : 'border-transparent sq-tone-success',
-          },
-          {
-            label: 'Due soon',
-            value: statWarningCount,
-            tone: statWarningCount > 0
-              ? 'border-transparent sq-tone-watch'
-              : 'border-border bg-muted/40 text-muted-foreground',
-          },
-          {
-            label: 'Faults',
-            value: dtcCount,
-            tone:
-              dtcCount === 0
-                ? 'border-border bg-muted/40 text-muted-foreground'
-                : errorCodesRentalState === 'critical'
-                  ? 'border-transparent sq-tone-critical'
-                  : 'border-transparent sq-tone-watch',
-          },
-        ] as const).map((stat) => (
-          <div key={stat.label} className={`rounded-[10px] border px-1.5 py-1.5 text-center ${stat.tone}`}>
-            <div className="font-mono text-[15px] font-bold leading-none tabular-nums">{stat.value}</div>
-            <div className="mt-0.5 truncate text-[9px] font-semibold leading-none tracking-[-0.01em]">{stat.label}</div>
-          </div>
-        ))}
-      </div>
-      {untrackedCount > 0 && (
-        <div className="mb-2 flex items-start gap-1.5 rounded-[10px] border border-transparent px-2 py-1.5 sq-tone-info">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-px shrink-0">
-            <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
-          </svg>
-          <span className="text-[9.5px] leading-snug">
-            {untrackedCount} of 3 health dimensions untracked — enable tracking for accurate results.
-          </span>
-        </div>
-      )}
-
-      {divider}
-
-      {/* Health Items */}
-      <div className="space-y-2">
-        {healthItems.map((item, idx) => {
-          const isCalibrating = item.key === 'battery' && batteryPubState === 'INITIAL_CALIBRATION';
-          const isStabilizing = item.key === 'battery' && batteryPubState === 'STABILIZING';
-          const isUntracked = !item.tracked && !isCalibrating && !isStabilizing;
-          const st = item.key === 'battery'
-            ? getBatteryStatus(item.value, item.tracked, batteryCondition, voltage)
-            : getStatus(item.value, item.tracked);
-          // The 12V battery never shows an SOH %; its status word (with colour)
-          // already conveys watch/attention, so it gets no separate badge.
-          const showBadge =
-            !isCalibrating && !isStabilizing && !isUntracked &&
-            item.key !== 'battery' && item.value < 60;
-          return (
-            <div key={item.key} className={`rounded-[13px] border border-border bg-muted/40 px-2 py-2 transition-colors ${isUntracked ? 'opacity-70' : ''}`}>
-              <div className="flex gap-2.5 items-center">
-              <div className={`w-8 h-8 rounded-[10px] border border-border bg-card flex items-center justify-center flex-shrink-0 ${item.iconBg}`}>
-                {item.icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className={`text-[10px] font-bold flex-1 tracking-[-0.01em] ${'text-foreground'}`}>{item.label}</span>
-                  {isCalibrating && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${'sq-tone-info border-transparent'}`}>
-                      Calibrating
-                      <span className="inline-flex ml-0.5">
-                        {[0, 1, 2].map(i => <span key={i} className="inline-block w-1 h-1 rounded-full mx-px" style={{ backgroundColor: 'currentColor', animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}
-                      </span>
-                    </span>
-                  )}
-                  {isStabilizing && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${'sq-tone-watch border-transparent'}`}>Estimated</span>
-                  )}
-                  {isUntracked && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${'sq-tone-neutral border-transparent'}`}>No Data</span>
-                  )}
-                  {showBadge && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${
-                      item.key === 'battery'
-                        ? (batteryCondition === 'attention'
-                            ? 'sq-tone-critical border-transparent'
-                            : 'sq-tone-watch border-transparent')
-                        : (item.value < 30 ? 'sq-tone-critical border-transparent' : 'sq-tone-watch border-transparent')
-                    }`}>{st.label}</span>
-                  )}
-                  {isCalibrating ? (
-                    <span className={`font-mono text-xs ${'text-muted-foreground'}`}>—</span>
-                  ) : isUntracked ? (
-                    <span className={`font-mono text-xs ${'text-muted-foreground'}`}>—</span>
-                  ) : item.key === 'battery' ? (
-                    // LV "Estimated Battery Health" — status word, not an SOH %.
-                    <span className={`text-[10px] font-bold tracking-[-0.01em] ${st.labelColor}`}>{isStabilizing ? `~${st.label}` : st.label}</span>
-                  ) : (
-                    <span className={`font-mono text-[10px] font-bold tabular-nums ${isStabilizing ? 'text-foreground/70' : 'text-foreground'}`}>{item.value > 0 ? `${isStabilizing ? '~' : ''}${Math.round(item.value)}%` : '—'}</span>
-                  )}
-                </div>
-                {isCalibrating ? (
-                  <div className={`w-full rounded-full h-2 overflow-hidden ${'bg-muted'}`}>
-                    <div className="h-full rounded-full bg-[color:var(--status-info-soft)]" style={{ width: '30%', animation: `barFillUp 2s cubic-bezier(0.16,1,0.3,1) infinite alternate` }} />
-                  </div>
-                ) : isUntracked ? (
-                  <div className={`w-full rounded-full h-2 ${'bg-muted'}`}>
-                    <div className="h-full rounded-full bg-muted" style={{ width: '100%' }} />
-                  </div>
-                ) : (
-                  <div className={`w-full rounded-full h-2 overflow-hidden ${'bg-muted'}`}>
-                    <div className={`h-full rounded-full ${isStabilizing ? 'bg-[color:var(--status-watch)]' : st.bar}`}
-                      style={{ width: `${Math.min(item.value, 100)}%`, animation: `barFillUp 0.8s cubic-bezier(0.16,1,0.3,1) ${idx * 0.15}s both` }}
-                    />
-                  </div>
-                )}
-                <div className="flex items-baseline gap-1 mt-0.5">
-                  {isCalibrating ? (
-                    <span className="text-[10px] text-[color:var(--status-info)]">Initial calibration in progress</span>
-                  ) : isStabilizing ? (
-                    <>
-                      <span className="text-[10px] font-semibold text-[color:var(--status-watch)]">Estimated SOH</span>
-                      <span className={`text-[10px] ${'text-muted-foreground'}`}>· {item.detail}</span>
-                    </>
-                  ) : isUntracked ? (
-                    <span className={`text-[10px] ${'text-muted-foreground'}`}>Enable tracking for accurate health data</span>
-                  ) : (
-                    <>
-                      <span className={`text-[10px] font-semibold ${st.labelColor}`}>{item.value > 0 ? st.label : ''}</span>
-                      <span className={`text-[10px] ${'text-muted-foreground'}`}>· {item.detail}</span>
-                    </>
-                  )}
-                </div>
-              </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {divider}
-
-      {/* ── Tacho Warnleuchten (Quick-View)
-            Compact mirror of the dedicated warning-light strip in the
-            Health Tab (HealthErrorsView). Shows 5 dashboard tell-tale
-            icons (Motoröl, Motorkontrollleuchte, Bremsbelag, Reifendruck,
-            Batterie-Warnleuchte) with active/off/no-data state, derived
-            from the same `aiHealthCare.indicators` payload so the
-            Dashboard and the Health Tab can never disagree.
-            Only rendered when HM/OEM dashboard streaming is active for
-            the vehicle (`hmHealthActive`), to avoid a misleading "alle
-            Aus"-line on fleets without OEM stream coverage. */}
-      {aiHealthCare?.hmHealthActive && (() => {
-        type Tone = 'alert' | 'ok' | 'neutral' | 'muted';
-        const freshness = aiHealthCare.hmFreshnessStatus;
-        const streamCold = freshness === 'no_data';
-        const resolveFlag = (
-          value: boolean | null | undefined,
-          activeText: string,
-          okText: string,
-        ): { text: string; tone: Tone } => {
-          if (value === true) return { text: activeText, tone: 'alert' };
-          if (value === false) return { text: okText, tone: 'ok' };
-          if (streamCold) return { text: 'Noch keine Daten', tone: 'neutral' };
-          // warn_flag semantics: missing push on a fresh stream === light is off
-          return { text: okText, tone: 'ok' };
-        };
-        const oilLow = aiHealthCare.hmIndicators?.oilLevel?.status === 'LOW';
-        const oilHasData = aiHealthCare.oilLevelDisplay && aiHealthCare.oilLevelDisplay.mode !== 'no_data';
-        const oilTone: Tone = oilLow ? 'alert' : oilHasData ? 'ok' : streamCold ? 'neutral' : 'muted';
-        const cel = resolveFlag(aiHealthCare.indicators?.limpMode, 'Aktiv', 'Aus');
-        const brakePad = resolveFlag(aiHealthCare.indicators?.brakeWarning, 'Aktiv', 'Aus');
-        const tirePressure = resolveFlag(aiHealthCare.indicators?.tirePressureWarning, 'Aktiv', 'Aus');
-        const batteryLight = resolveFlag(aiHealthCare.indicators?.batteryWarningLight, 'Aktiv', 'Aus');
-
-        const items: Array<{ key: string; label: string; tone: Tone; text: string; icon: string; rotate?: boolean }> = [
-          { key: 'oil', label: 'Motoröl', tone: oilTone, text: oilLow ? 'Niedrig' : oilHasData ? (aiHealthCare.oilLevelDisplay?.label ?? 'OK') : streamCold ? 'Noch keine Daten' : 'Kein Push', icon: tellTaleOilIcon },
-          { key: 'cel', label: 'Motor-K.', tone: cel.tone, text: cel.text, icon: tellTaleCelIcon },
-          { key: 'brake-pad', label: 'Bremsbelag', tone: brakePad.tone, text: brakePad.text, icon: tellTaleBrakePadIcon },
-          { key: 'tire-pressure', label: 'Reifendruck', tone: tirePressure.tone, text: tirePressure.text, icon: tellTaleTirePressureIcon },
-          { key: 'battery-light', label: 'Batterie', tone: batteryLight.tone, text: batteryLight.text, icon: tellTaleBatteryWarningIcon },
-        ];
-
-        const activeAlerts = items.filter(it => it.tone === 'alert').length;
-        const lastUpdateLabel = (() => {
-          if (!aiHealthCare.lastHmUpdate) return null;
-          const ms = Date.now() - new Date(aiHealthCare.lastHmUpdate).getTime();
-          const h = Math.floor(ms / 3600000);
-          const d = Math.floor(h / 24);
-          if (d >= 1) return `vor ${d}d`;
-          return `vor ${h < 1 ? '<1h' : `${h}h`}`;
-        })();
-
-        const iconBgFor = (tone: Tone): string => {
-          if (tone === 'alert') return 'bg-[color:var(--status-watch-soft)]';
-          if (tone === 'ok') return 'bg-[color:var(--status-positive-soft)]';
-          if (tone === 'muted') return 'bg-muted';
-          return 'bg-muted';
-        };
-
-        return (
-          <>
-            <div className="mb-2">
-              <div className="flex items-center gap-1.5 mb-2">
-                <span className={`text-[10px] font-semibold ${'text-foreground'}`}>Tacho Warnleuchten</span>
-                {activeAlerts > 0 ? (
-                  <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${'sq-tone-watch'}`}>
-                    {activeAlerts} aktiv
-                  </span>
-                ) : (
-                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold border sq-tone-success">
-                    Alle aus
-                  </span>
-                )}
-                {freshness === 'stale' && (
-                  <span className="inline-flex items-center gap-0.5 text-[9px] font-medium text-[color:var(--status-watch)]">
-                    <Icon name="alert-triangle" className="w-2.5 h-2.5" />
-                    Veraltet
-                  </span>
-                )}
-                {lastUpdateLabel && freshness !== 'stale' && (
-                  <span className={`ml-auto text-[9px] ${'text-muted-foreground'}`}>{lastUpdateLabel}</span>
-                )}
-              </div>
-              <div className="grid grid-cols-5 gap-1.5">
-                {items.map(it => (
-                  <button
-                    key={it.key}
-                    type="button"
-                    onClick={onViewDetails}
-                    title={`${it.label}: ${it.text}`}
-                    className={`group flex flex-col items-center gap-1 px-1 py-1.5 rounded-lg border transition-colors ${
-                      it.tone === 'alert'
-                        ? 'border-[color:var(--status-watch-soft)] hover:bg-[color:var(--status-watch-soft)]'
-                        : 'border-border hover:bg-muted'
-                    }`}
-                  >
-                    <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${iconBgFor(it.tone)}`}>
-                      <img
-                        src={it.icon}
-                        alt=""
-                        aria-hidden="true"
-                        className={`w-3.5 h-3.5 object-contain transition-opacity ${
-                          it.tone === 'alert' ? 'opacity-95' : it.tone === 'ok' ? 'opacity-50 grayscale' : 'opacity-30 grayscale'
-                        }`}
-                      />
-                    </div>
-                    <span className={`text-[9px] leading-none truncate w-full text-center ${
-                      it.tone === 'alert'
-                        ? 'text-[color:var(--status-watch)] font-semibold'
-                        : 'text-muted-foreground'
-                    }`}>{it.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            {divider}
-          </>
-        );
-      })()}
-
-      {/* Compliance & Service Tracking
-          Three discrete tracking dimensions from the health module:
-          Service (manufacturer maintenance interval), TÜV (HU/AU
-          Hauptuntersuchung) and BOKraft (commercial passenger transport
-          permit). Each tile uses the same critical/imminent/normal tone
-          logic so operators can scan all three deadlines at a glance. */}
-      <div className="grid grid-cols-3 gap-1.5">
-        {(() => {
-          type Tone = 'critical' | 'imminent' | 'normal' | 'muted';
-          const toneRing = (tone: Tone): string => {
-            if (tone === 'critical') return 'border-transparent bg-[color:var(--status-critical-soft)]';
-            if (tone === 'imminent') return 'border-transparent bg-[color:var(--status-watch-soft)]';
-            if (tone === 'muted') return 'border-border bg-muted/40';
-            return 'border-border bg-card';
-          };
-          const toneIcon = (tone: Tone): string => {
-            if (tone === 'critical') return 'text-[color:var(--status-critical)]';
-            if (tone === 'imminent') return 'text-[color:var(--status-watch)]';
-            if (tone === 'muted') return 'text-muted-foreground';
-            return 'text-[color:var(--brand)]';
-          };
-          const toneTitle = (tone: Tone): string => {
-            if (tone === 'critical') return 'text-[color:var(--status-critical)]';
-            if (tone === 'imminent') return 'text-[color:var(--status-watch)]';
-            if (tone === 'muted') return 'text-muted-foreground';
-            return 'text-foreground';
-          };
-          const toneValue = (tone: Tone): string => {
-            if (tone === 'critical') return 'text-[color:var(--status-critical)]';
-            if (tone === 'imminent') return 'text-[color:var(--status-watch)]';
-            if (tone === 'muted') return 'text-muted-foreground';
-            return 'text-foreground/90';
-          };
-
-          const svcTone: Tone = svcOverdue ? 'critical' : svcImminent ? 'imminent' : (svcRemDays != null || service?.lastServiceDate) ? 'normal' : 'muted';
-          const tuvTone: Tone = tuvOverdue ? 'critical' : tuvImminent ? 'imminent' : tuvDate ? 'normal' : 'muted';
-          const bokraftTone: Tone = bokraftOverdue ? 'critical' : bokraftImminent ? 'imminent' : bokraftDate ? 'normal' : 'muted';
-
-          const svcStatusText = (() => {
-            if (svcOverdue) {
-              const parts: string[] = [];
-              if (svcOverdueDays != null) parts.push(`${svcOverdueDays}d`);
-              if (svcOverdueKm != null) parts.push(`${svcOverdueKm.toLocaleString('de-DE')} km`);
-              return parts.length ? `−${parts.join(' / ')}` : 'Überfällig';
-            }
-            if (svcRemDays != null) {
-              if (svcRemDays <= 90) return `in ${svcRemDays} T`;
-              return `in ${svcRemMonths ?? Math.round(svcRemDays / 30)} M`;
-            }
-            if (service?.lastServiceDate) return `zuletzt ${new Date(service.lastServiceDate).toLocaleDateString('de-DE', { month: '2-digit', year: '2-digit' })}`;
-            return 'Kein Tracking';
-          })();
-          const svcSubText = (() => {
-            if (svcOverdue) return 'überfällig';
-            if (svcRemKm != null && svcRemKm >= 0) return `${svcRemKm.toLocaleString('de-DE')} km`;
-            if (service?.intervalMonths != null) return `Intervall ${service.intervalMonths} M`;
-            return 'Service';
-          })();
-
-          const tuvStatusText = (() => {
-            if (tuvOverdue && tuvDays != null) return `−${Math.abs(tuvDays)} T`;
-            if (tuvOverdue) return 'Abgelaufen';
-            if (tuvDate) return tuvDate;
-            return 'Kein Tracking';
-          })();
-          const tuvSubText = (() => {
-            if (tuvOverdue) return 'HU abgelaufen';
-            if (tuvDays != null && tuvDays >= 0) return `noch ${tuvDays} T`;
-            return 'Hauptuntersuchung';
-          })();
-
-          const bokraftStatusText = (() => {
-            if (bokraftOverdue && bokraftDays != null) return `−${Math.abs(bokraftDays)} T`;
-            if (bokraftOverdue) return 'Abgelaufen';
-            if (bokraftDate) return bokraftDate;
-            return 'Kein Tracking';
-          })();
-          const bokraftSubText = (() => {
-            if (bokraftOverdue) return 'BOKraft abgelaufen';
-            if (bokraftDays != null && bokraftDays >= 0) return `noch ${bokraftDays} T`;
-            return 'Personenbeförderung';
-          })();
-
-          const items: Array<{
-            key: string;
-            label: string;
-            icon: ReactNode;
-            tone: Tone;
-            status: string;
-            sub: string;
-          }> = [
-            {
-              key: 'service',
-              label: 'Service',
-              icon: <Icon name="wrench" className={`w-3 h-3 ${toneIcon(svcTone)}`} />,
-              tone: svcTone,
-              status: svcStatusText,
-              sub: svcSubText,
-            },
-            {
-              key: 'tuv',
-              label: 'TÜV',
-              icon: <Icon name="clipboard-list" className={`w-3 h-3 ${toneIcon(tuvTone)}`} />,
-              tone: tuvTone,
-              status: tuvStatusText,
-              sub: tuvSubText,
-            },
-            {
-              key: 'bokraft',
-              label: 'BOKraft',
-              icon: <Icon name="file-text" className={`w-3 h-3 ${toneIcon(bokraftTone)}`} />,
-              tone: bokraftTone,
-              status: bokraftStatusText,
-              sub: bokraftSubText,
-            },
-          ];
-
-          return items.map(it => (
-            <div
-              key={it.key}
-              className={`rounded-[10px] border px-2 py-1.5 transition-colors ${toneRing(it.tone)} ${it.tone === 'muted' ? 'opacity-80' : ''}`}
-            >
-              <div className="mb-1 flex items-center gap-1">
-                {it.icon}
-                <span className={`text-[10px] font-bold tracking-[-0.01em] ${toneTitle(it.tone)}`}>{it.label}</span>
-              </div>
-              <div className={`text-[10.5px] font-bold leading-none tabular-nums ${toneValue(it.tone)}`}>{it.status}</div>
-              <div className={`mt-0.5 truncate text-[9px] leading-none ${'text-muted-foreground'}`} title={it.sub}>
-                {it.sub}
-              </div>
-            </div>
-          ));
-        })()}
-      </div>
-
-      {divider}
-
-      {/* Footer CTAs */}
-      <div className="pt-1">
-        <button
-          onClick={onViewDetails}
-          className="group flex w-full items-center justify-between rounded-[12px] px-2.5 py-2 text-[11px] font-bold transition-[background-color,color,transform] duration-300 ease-[var(--ease-out-soft)] active:scale-[0.99] sq-tone-brand hover:opacity-90"
-        >
-          <span>View Health Details</span>
-          <span className="flex h-5 w-5 items-center justify-center rounded-full transition-transform duration-300 ease-[var(--ease-out-soft)] group-hover:translate-x-0.5 bg-[color:var(--card)]/70">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-              strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </span>
-        </button>
-      </div>
-    </div>
-  );
-}
+import { VehicleHealthBoxTelemetryBridge } from './components/vehicle-detail';
+import { OverviewLiveMapCard } from './components/vehicle-detail/OverviewLiveMapCard';
 
 // Views that render the vehicle detail header (incl. <VehicleConnectionBadge>).
 // The live-telemetry binder must cover the same set so the Online/Offline +
@@ -869,133 +143,13 @@ function VehicleConnectionBadge() {
   );
 }
 
-function OverviewLiveMapCard({
-  selectedVehicle,
-  orgId,
-  isDarkMode,
-}: {
-  selectedVehicle: VehicleData | null;
-  orgId: string;
-  isDarkMode: boolean;
-}) {
-  const liveTelemetry = useVehicleLiveMapStore(
-    useShallow((state) => ({
-      targetPosition: state.targetPosition,
-      heading: state.heading,
-      speedKmh: state.speedKmh,
-      isLiveTracking: state.isLiveTracking,
-      snapshot: state.snapshot,
-      displayState: state.displayState,
-    })),
-  );
-
-  return (
-    <div className="rounded-xl p-3 border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
-      <div className="group relative h-[340px] rounded-lg overflow-hidden transition-all duration-300">
-        <LiveMapOverview
-          className="w-full h-full"
-          targetPosition={liveTelemetry.targetPosition}
-          initialPosition={
-            selectedVehicle?.lat != null && selectedVehicle?.lng != null
-              ? [selectedVehicle.lng, selectedVehicle.lat]
-              : null
-          }
-          heading={liveTelemetry.heading}
-          speedKmh={liveTelemetry.speedKmh}
-          licensePlate={selectedVehicle?.license ?? ''}
-          waitingForPosition={!!selectedVehicle && !!orgId && !liveTelemetry.targetPosition}
-          isLiveTracking={liveTelemetry.isLiveTracking}
-          isDarkMode={isDarkMode}
-        />
-
-        <div className="absolute bottom-0 left-0 right-0 p-2 opacity-85 group-hover:opacity-100 transition-opacity duration-700 ease-[var(--ease-out-soft)]">
-          <div className="sq-map-liquid-glass rounded-xl p-1.5">
-            {(() => {
-              const stateLabel = liveTelemetry.displayState;
-              const stateColor =
-                stateLabel === 'MOVING'
-                  ? 'text-[color:var(--status-positive)]'
-                  : stateLabel === 'IDLE'
-                  ? 'text-[color:var(--status-watch)]'
-                  : 'text-muted-foreground';
-              return (
-                <div className="grid grid-cols-3 gap-1">
-                  <div className="sq-map-liquid-tile flex flex-col items-center justify-center rounded-[10px] px-1 py-1">
-                    <Icon name="circle" className={`w-2.5 h-2.5 mb-0.5 ${stateColor}`} />
-                    <span className={`text-[8px] mb-0 ${'text-muted-foreground'}`}>
-                      State
-                    </span>
-                    <span className={`text-[10px] font-bold ${stateColor}`}>{stateLabel}</span>
-                  </div>
-
-                  <div className="sq-map-liquid-tile flex flex-col items-center justify-center rounded-[10px] px-1 py-1">
-                    <Icon name="droplet"
-                      className="w-2.5 h-2.5 mb-0.5 text-[color:var(--status-positive)]"
-                    />
-                    <span className={`text-[8px] mb-0 ${'text-muted-foreground'}`}>
-                      {selectedVehicle?.isElectric ? 'Energy' : 'Fuel'}
-                    </span>
-                    <span className={`text-[10px] font-bold ${'text-foreground'}`}>
-                      {Math.round(
-                        selectedVehicle?.isElectric
-                          ? (liveTelemetry.snapshot?.battery ?? selectedVehicle?.battery ?? 0)
-                          : (liveTelemetry.snapshot?.fuel ?? selectedVehicle?.fuel ?? 0),
-                      )}
-                      <span className="text-[8px] font-normal text-muted-foreground">%</span>
-                    </span>
-                  </div>
-
-                  <div className="sq-map-liquid-tile flex flex-col items-center justify-center rounded-[10px] px-1 py-1">
-                    <Icon name="gauge" className="w-2.5 h-2.5 text-muted-foreground mb-0.5" />
-                    <span className={`text-[8px] mb-0 ${'text-muted-foreground'}`}>
-                      Odometer
-                    </span>
-                    <span className={`text-[10px] font-bold ${'text-foreground'}`}>
-                      {selectedVehicle
-                        ? (liveTelemetry.snapshot?.odometer ?? selectedVehicle.odometer).toLocaleString('de-DE')
-                        : '—'}{' '}
-                      <span className="text-[8px] font-normal text-muted-foreground">km</span>
-                    </span>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function VehicleHealthBoxTelemetryBridge({
-  selectedVehicle,
-  isDarkMode,
-  onViewDetails,
-}: {
-  selectedVehicle: VehicleData | null;
-  isDarkMode: boolean;
-  onViewDetails?: () => void;
-}) {
-  const lvBatteryVoltage = useVehicleLiveMapStore(
-    (state) => state.snapshot?.lvBatteryVoltage ?? null,
-  );
-  return (
-    <VehicleHealthBoxWired
-      selectedVehicle={selectedVehicle}
-      isDarkMode={isDarkMode}
-      lvBatteryVoltage={lvBatteryVoltage}
-      onViewDetails={onViewDetails}
-    />
-  );
-}
-
 // V4.7.23 — Vehicle-Detail header health chip. Reads the canonical
 // Rental-Health-V1 status from the shared FleetProvider map so the
 // header pill never disagrees with FleetView, FleetCondition or the
 // Dashboard popups. Falls back to a neutral "Loading…" pill while the
 // batched health request is in flight.
 function VehicleHealthChip({ vehicleId }: { vehicleId: string | null }) {
-  const { status, health } = useEffectiveHealth(vehicleId);
+  const { status, health, loading } = useEffectiveHealth(vehicleId);
   const reasons: string[] = [];
   if (health?.rental_blocked && health.blocking_reasons.length > 0) {
     reasons.push(`Blocked: ${health.blocking_reasons.join(' · ')}`);
@@ -1008,6 +162,9 @@ function VehicleHealthChip({ vehicleId }: { vehicleId: string | null }) {
     }
   }
   const title = reasons.join(' · ') || undefined;
+  if (loading && !health) {
+    return <HealthStatusChip state="unknown" label="Loading…" icon={<Icon name="heart" className="w-3 h-3" />} title="Loading rental health…" />;
+  }
   if (status === 'Critical') {
     return <HealthStatusChip state="critical" label="Critical" icon={<Icon name="heart" className="w-3 h-3" />} title={title} />;
   }
@@ -1017,7 +174,7 @@ function VehicleHealthChip({ vehicleId }: { vehicleId: string | null }) {
   if (status === 'Good Health') {
     return <HealthStatusChip state="good" label="Good Health" icon={<Icon name="heart" className="w-3 h-3" />} title={title} />;
   }
-  return <HealthStatusChip state="unknown" label="Loading…" icon={<Icon name="heart" className="w-3 h-3" />} title="Loading rental health…" />;
+  return <HealthStatusChip state="no_data" label="Limited Data" icon={<Icon name="heart" className="w-3 h-3" />} title={title ?? 'Insufficient rental health data'} />;
 }
 
 type RentalSettingsTab =
@@ -1069,7 +226,7 @@ function RentalAppContent() {
   const [isCleaningDropdownOpen, setIsCleaningDropdownOpen] = useState(false);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [autoOpenNewTask, setAutoOpenNewTask] = useState(false);
-  const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'price-tariffs' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'fleet-condition-detail' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant'>(() =>
+  const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'price-tariffs' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant'>(() =>
     readPersistedSettingsView() ? 'settings' : 'dashboard',
   );
   const [detailCustomer, setDetailCustomer] = useState<any>(null);
@@ -1082,8 +239,6 @@ function RentalAppContent() {
   // `setPendingBookingDetailId(null)` über den Reset-Callback zurück.
   const [pendingBookingDetailId, setPendingBookingDetailId] = useState<string | null>(null);
   const [settingsTab, setSettingsTab] = useState<RentalSettingsTab>(readPersistedSettingsTab);
-  const [conditionDrillVehicleId, setConditionDrillVehicleId] = useState<string | null>(null);
-  const [conditionDrillCategory, setConditionDrillCategory] = useState<ConditionCategory>('tires');
   const [fleetTab, setFleetTab] = useState<FleetTab>('status');
   const [financeTab, setFinanceTab] = useState<FinanceTab>('invoices');
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>(null);
@@ -1646,11 +801,6 @@ function RentalAppContent() {
             activeTab={fleetTab}
             onTabChange={setFleetTab}
             onVehicleSelect={handleVehicleSelect}
-            onDrillDown={(vehicleId, category) => {
-              setConditionDrillVehicleId(vehicleId);
-              setConditionDrillCategory(category);
-              setCurrentView('fleet-condition-detail');
-            }}
             onOpenVendorDetail={(vendor) => { setDetailVendorId(vendor.id); setCurrentView('vendor-detail'); }}
           />
         ) : currentView === 'damages' ? (
@@ -1688,13 +838,6 @@ function RentalAppContent() {
             highlightedTaskId={highlightedTaskId}
             onHighlightConsumed={() => setHighlightedTaskId(null)}
           />
-        ) : currentView === 'fleet-condition-detail' && conditionDrillVehicleId ? (
-          <FleetConditionDetailView
-            isDarkMode={isDarkMode}
-            vehicleId={conditionDrillVehicleId}
-            category={conditionDrillCategory}
-            onBack={() => { setCurrentView('fleet'); setFleetTab('health'); }}
-          />
         ) : currentView === 'document-upload' ? (
           <DocumentUploadView isDarkMode={isDarkMode} />
         ) : currentView === 'ai-assistant' ? (
@@ -1728,28 +871,17 @@ function RentalAppContent() {
           <NewBookingView onBack={() => setCurrentView('bookings')} onCustomerCreated={(c) => setNewlyCreatedCustomers(prev => [c, ...prev])} onBookingCreated={(b) => { setCreatedBookings(prev => [b, ...prev]); bumpBookingsVersion(); }} />
         ) : (
           <>
-        {/* Main Grid - Top Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-          {/* Left Column - Map and AI Summary */}
-          <div className={"col-span-2 flex flex-col gap-3 transition-all duration-300"}>
+        {/* Overview — map + canonical health (insights removed; see Health tab) */}
+        <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
             <OverviewLiveMapCard
               selectedVehicle={selectedVehicle}
               orgId={orgId}
               isDarkMode={isDarkMode}
             />
-
-            {/* Vehicle Insights — data-driven operational widget */}
-            <VehicleInsightsCard
-              vehicleId={selectedVehicle?.id ?? null}
-              isDarkMode={isDarkMode}
-            />
           </div>
 
-          {/* Right Column - Health Box */}
-          <div className="flex flex-col gap-4">
-            {/* Overall Health Box */}
-            <div className="flex flex-col gap-4 h-full">
-            {/* Box 1: Vehicle Health (Figma design) */}
+          <div className="flex min-h-0 flex-col">
             <VehicleHealthBoxTelemetryBridge
               selectedVehicle={selectedVehicle}
               isDarkMode={isDarkMode}
@@ -1759,8 +891,6 @@ function RentalAppContent() {
                 }
               }}
             />
-
-            </div>
           </div>
         </div>
 

@@ -36,7 +36,6 @@ const ICON_REL_FROM_RENTAL = 'components/ui/Icon';
 
 const SKIP_FILES = new Set(
   [
-    'components/Sidebar.tsx',
     'components/ui/Icon.tsx',
     'RentalLayout.tsx',
   ].map((p) => p.split('/').join(path.sep)),

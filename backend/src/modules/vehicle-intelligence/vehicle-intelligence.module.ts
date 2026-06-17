@@ -6,6 +6,7 @@ import { TiresService } from './tires/tires.service';
 import { TireWearModelService } from './tires/tire-wear-model.service';
 import { TireHealthService } from './tires/tire-health.service';
 import { TireLifecycleService } from './tires/tire-lifecycle.service';
+import { TireIdentityService } from './tires/tire-identity.service';
 import { BrakesService } from './brakes/brakes.service';
 import { BrakeHealthService } from './brakes/brake-health.service';
 import { BrakeEvidenceService } from './brakes/brake-evidence.service';
@@ -38,6 +39,12 @@ import { BatteryEvidenceService } from './battery-health/battery-evidence.servic
 import { CanonicalBatteryHealthService } from './battery-health/canonical-battery-health.service';
 import { HealthSummaryService } from './health-summary/health-summary.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
+import { VehicleHealthTabSummaryService } from './health-summary/vehicle-health-tab-summary.service';
+import { RentalHealthModule } from '../rental-health/rental-health.module';
+import { DashboardWarningLightsService } from './dashboard-warning-lights/dashboard-warning-lights.service';
+import { ServiceComplianceService } from './service-compliance/service-compliance.service';
+import { ComplianceTaskMaterializeService } from './service-compliance/compliance-task-materialize.service';
+import { TasksModule } from '../tasks/tasks.module';
 import { DrivingImpactService } from './driving-impact/driving-impact.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
 import { DimoModule } from '../dimo/dimo.module';
@@ -67,6 +74,8 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     forwardRef(() => MisuseCasesModule),
     forwardRef(() => InvoicesModule),
     forwardRef(() => HighMobilityModule),
+    forwardRef(() => RentalHealthModule),
+    TasksModule,
     BullModule.registerQueue(
       { name: QUEUE_NAMES.TRIP_TRACKING },
       { name: QUEUE_NAMES.TRIP_BEHAVIOR_ENRICHMENT },
@@ -81,6 +90,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     TireWearModelService,
     TireHealthService,
     TireLifecycleService,
+    TireIdentityService,
     BrakesService,
     BrakeHealthService,
     BrakeEvidenceService,
@@ -116,6 +126,10 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     CanonicalBatteryHealthService,
     HealthSummaryService,
     AiHealthCareAggregationService,
+    VehicleHealthTabSummaryService,
+    DashboardWarningLightsService,
+    ServiceComplianceService,
+    ComplianceTaskMaterializeService,
     DrivingImpactService,
     EnergyEventsService,
     // ── New refactored providers ──
@@ -142,6 +156,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     TireWearModelService,
     TireHealthService,
     TireLifecycleService,
+    TireIdentityService,
     BrakesService,
     BrakeHealthService,
     BrakeEvidenceService,
@@ -166,6 +181,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     BatteryV2Service,
     BatteryEvidenceService,
     CanonicalBatteryHealthService,
+    ServiceComplianceService,
     DrivingImpactService,
     EnergyEventsService,
     TripDecisionEngine,

@@ -223,7 +223,13 @@ export function ScheduleBox({ isDarkMode: _isDarkMode, onOpenBookingById, statio
     if (!stationFilter) return null;
     const ids = new Set<string>();
     for (const v of fleetVehicles) {
-      if ((v.station || '') === stationFilter) ids.add(v.id);
+      if (
+        v.stationId === stationFilter ||
+        v.homeStationId === stationFilter ||
+        v.currentStationId === stationFilter
+      ) {
+        ids.add(v.id);
+      }
     }
     return ids;
   }, [fleetVehicles, stationFilter]);

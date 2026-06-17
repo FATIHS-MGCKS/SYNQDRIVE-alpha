@@ -4,6 +4,7 @@ import { Queue } from 'bullmq';
 import { DtcKnowledge, DtcVehicleKnowledge, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
+import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import {
   getDtcStandardType,
   getDtcSystemCategory,
@@ -286,6 +287,7 @@ export class DtcKnowledgeService {
     data: DtcEnrichmentJobData,
     jobId: string,
   ): Promise<void> {
+    if (!canEnqueueQueue(this.logger, 'dtc-knowledge')) return;
     try {
       await this.queue.add(name, data, {
         jobId,

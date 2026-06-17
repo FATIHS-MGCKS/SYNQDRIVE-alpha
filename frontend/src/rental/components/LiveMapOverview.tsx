@@ -33,37 +33,20 @@ export interface LiveMapOverviewProps {
   isLiveTracking?: boolean;
   className?: string;
   isDarkMode?: boolean;
+  operatorHint?: string | null;
+  operatorHintSub?: string | null;
 }
 
-function createCalloutEl(plate: string, isDark: boolean): HTMLDivElement {
+function createCalloutEl(plate: string): HTMLDivElement {
   const callout = document.createElement('div');
-  callout.style.position = 'absolute';
-  callout.style.bottom = '100%';
-  callout.style.marginBottom = '6px';
-  callout.style.left = '50%';
-  callout.style.transform = 'translateX(-50%)';
-  callout.style.padding = '4px 10px';
-  callout.style.borderRadius = '8px';
-  callout.style.fontFamily = 'Manrope, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
-  callout.style.fontSize = '8px';
-  callout.style.fontWeight = '600';
-  callout.style.letterSpacing = '0.05em';
-  callout.style.whiteSpace = 'nowrap';
-  callout.style.background = isDark ? 'rgba(30, 41, 59, 0.85)' : 'rgba(255, 255, 255, 0.85)';
-  callout.style.backdropFilter = 'blur(4px)';
-  callout.style.color = isDark ? 'rgb(226, 232, 240)' : 'rgb(30, 41, 59)';
-  callout.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)';
-  callout.style.border = `1px solid ${isDark ? 'rgba(71, 85, 105, 0.5)' : 'rgba(203, 213, 225, 0.6)'}`;
-  callout.textContent = plate;
+  callout.className = 'sq-map-marker-callout';
+
+  const label = document.createElement('span');
+  label.textContent = plate;
+  callout.appendChild(label);
 
   const line = document.createElement('div');
-  line.style.position = 'absolute';
-  line.style.top = '100%';
-  line.style.left = '50%';
-  line.style.transform = 'translateX(-50%)';
-  line.style.width = '1px';
-  line.style.height = '6px';
-  line.style.background = isDark ? 'rgba(71, 85, 105, 0.8)' : 'rgba(148, 163, 184, 0.8)';
+  line.className = 'sq-map-marker-callout-line';
   callout.appendChild(line);
 
   return callout;
@@ -97,6 +80,8 @@ export function LiveMapOverview({
   isLiveTracking = false,
   className = '',
   isDarkMode = false,
+  operatorHint = null,
+  operatorHintSub = null,
 }: LiveMapOverviewProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -130,7 +115,7 @@ export function LiveMapOverview({
         wrap.style.width = '32px';
         wrap.style.height = '32px';
         const sedanEl = createSedanMarkerEl(smoothRotation, LIVE_ACCENT, LIVE_GLOW, isDarkMode);
-        const callout = createCalloutEl(licensePlate, isDarkMode);
+        const callout = createCalloutEl(licensePlate);
         wrap.appendChild(callout);
         wrap.appendChild(sedanEl);
         markerWrapRef.current = wrap;
@@ -147,8 +132,8 @@ export function LiveMapOverview({
       if (wrap) {
         const sedanWrap = wrap.querySelector('.synq-sedan-marker') as HTMLDivElement | null;
         if (sedanWrap) updateSedanRotation(sedanWrap, smoothRotation);
-        const callout = wrap.querySelector('div:first-child') as HTMLElement | null;
-        if (callout && !callout.classList.contains('synq-sedan-marker')) callout.textContent = licensePlate;
+        const callout = wrap.querySelector('.sq-map-marker-callout span') as HTMLElement | null;
+        if (callout) callout.textContent = licensePlate;
       }
     },
     [loaded, licensePlate, isDarkMode],
@@ -284,9 +269,9 @@ export function LiveMapOverview({
     <div className={`relative w-full h-full ${className}`}>
       <div ref={mapContainerRef} className="w-full h-full" />
       {isInitialLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-card/50 backdrop-blur-[1px] rounded-lg z-10">
-          <div className="flex flex-col items-center gap-2">
-            <svg className="w-6 h-6 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black/10 backdrop-blur-[2px]">
+          <div className="sq-map-liquid-loading flex flex-col items-center gap-2">
+            <svg className="h-6 w-6 animate-spin text-[color:var(--brand)]" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
@@ -295,36 +280,65 @@ export function LiveMapOverview({
         </div>
       )}
       {waitingForPosition && loaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[1px] rounded-lg text-foreground">
-          <div className="max-w-[280px] px-3 py-2 bg-card/85 backdrop-blur-sm border border-border rounded-lg text-center">
-            <p className="text-xs font-medium">Keine Live-Position</p>
-            <p className="text-xs mt-1 opacity-90">Fahrzeug mit DIMO verbinden für Echtzeit-Standort</p>
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black/25 backdrop-blur-[2px]">
+          <div className="sq-map-liquid-empty mx-3 max-w-[17.5rem]">
+            <p className="text-xs font-semibold text-foreground">
+              {operatorHint ?? 'No coordinates available'}
+            </p>
+            {(operatorHintSub ?? !operatorHint) && (
+              <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                {operatorHintSub ??
+                  (isLiveTracking
+                    ? 'Waiting for live GPS signal'
+                    : 'Connect vehicle telematics for live location')}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+      {operatorHint && !waitingForPosition && loaded && (
+        <div className="pointer-events-none absolute top-2.5 right-2.5 z-10 max-w-[13.75rem] sm:top-3 sm:right-3">
+          <div className="sq-map-liquid-badge">
+            <p className="text-[9px] font-semibold leading-snug text-foreground">{operatorHint}</p>
+            {operatorHintSub && (
+              <p className="text-[8px] leading-snug text-muted-foreground">{operatorHintSub}</p>
+            )}
           </div>
         </div>
       )}
       {currentAddress && currentAddress.formatted !== '—' && !waitingForPosition && (
-        <div className="absolute top-3 left-3 max-w-[220px]">
-          <div className="px-2.5 py-1.5 sq-map-liquid-glass rounded-lg text-foreground">
-            <p className="text-[8px] font-semibold leading-tight truncate">{currentAddress.street ? `${currentAddress.street}${currentAddress.houseNumber ? ` ${currentAddress.houseNumber}` : ''}` : currentAddress.city ?? '—'}</p>
+        <div className="pointer-events-none absolute top-2.5 left-2.5 z-10 max-w-[13.75rem] sm:top-3 sm:left-3">
+          <div className="sq-map-liquid-badge">
+            <p className="truncate text-[8px] font-semibold leading-tight text-foreground">
+              {currentAddress.street
+                ? `${currentAddress.street}${currentAddress.houseNumber ? ` ${currentAddress.houseNumber}` : ''}`
+                : (currentAddress.city ?? '—')}
+            </p>
             {currentAddress.street && currentAddress.city && (
-              <p className="text-[9px] leading-tight truncate text-muted-foreground">{currentAddress.city}</p>
+              <p className="truncate text-[9px] leading-tight text-muted-foreground">
+                {currentAddress.city}
+              </p>
             )}
           </div>
         </div>
       )}
       <style>{`
         .mapboxgl-ctrl-group {
-          background: rgba(255, 255, 255, 0.74) !important;
-          border: 1px solid rgba(255, 255, 255, 0.64) !important;
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 2px 8px rgba(15, 23, 42, 0.08) !important;
-          backdrop-filter: blur(22px) saturate(180%) !important;
-          -webkit-backdrop-filter: blur(22px) saturate(180%) !important;
-          border-radius: 8px !important;
+          background: var(--map-glass-bg-strong) !important;
+          border: 1px solid var(--map-glass-border) !important;
+          box-shadow:
+            inset 0 1px 0 var(--map-glass-highlight),
+            var(--map-glass-shadow) !important;
+          backdrop-filter: blur(var(--map-glass-blur)) saturate(185%) !important;
+          -webkit-backdrop-filter: blur(var(--map-glass-blur)) saturate(185%) !important;
+          border-radius: 10px !important;
         }
         .dark .mapboxgl-ctrl-group {
-          background: rgba(15, 23, 42, 0.72) !important;
-          border-color: rgba(255, 255, 255, 0.18) !important;
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 8px rgba(0, 0, 0, 0.22) !important;
+          background: var(--map-glass-bg-strong) !important;
+          border-color: var(--map-glass-border) !important;
+          box-shadow:
+            inset 0 1px 0 var(--map-glass-highlight),
+            var(--map-glass-shadow) !important;
         }
         .mapboxgl-ctrl-group button {
           background: transparent !important;

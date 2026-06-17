@@ -6,7 +6,7 @@ import { api } from '../../lib/api';
 import type { Vendor, VendorCategory, VendorSource, VendorSourceType, VendorInput, VendorMapboxSuggestion } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
-import { PageHeader, StatusChip, EmptyState, SkeletonCard } from '../../components/patterns';
+import { PageHeader, StatusChip, EmptyState, SkeletonCard, FormDialog } from '../../components/patterns';
 
 // ── constants ──────────────────────────────────────────
 
@@ -678,29 +678,47 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
         </div>
       )}
 
-      {/* ── Create / Edit Modal ── */}
-      {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={closeModal}>
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl bg-popover border border-border"
-            onClick={(e) => e.stopPropagation()}>
-            {/* Modal header */}
-            <div className={`sticky top-0 z-10 flex items-center justify-between p-5 border-b ${'bg-popover border-border'}`}>
-              <div>
-                <h2 className={`text-base font-bold ${'text-foreground'}`}>
-                  {editVendor ? 'Edit Vendor' : 'Add New Vendor'}
-                </h2>
-                <p className={`text-[11px] mt-0.5 ${'text-muted-foreground'}`}>
-                  {editVendor ? 'Update vendor master data — vehicles are linked on the detail page' : 'Search a business to prefill, or fill in the details manually'}
-                </p>
-              </div>
-              <button onClick={closeModal}
-                className="p-1.5 rounded-lg transition hover:bg-muted text-muted-foreground">
-                <Icon name="x" className="w-4 h-4" />
+      <FormDialog
+        open={showCreate}
+        onOpenChange={(open) => { if (!open) closeModal(); }}
+        maxWidthClassName="sm:max-w-2xl"
+        title={editVendor ? 'Edit Vendor' : 'Add New Vendor'}
+        description={editVendor ? 'Update vendor master data — vehicles are linked on the detail page' : 'Search a business to prefill, or fill in the details manually'}
+        bodyClassName="p-0"
+        footer={(
+          <div className="flex w-full items-center justify-between">
+            <div>
+              {editVendor && canManage && (
+                <button
+                  type="button"
+                  onClick={() => { handleDelete(editVendor.id); closeModal(); }}
+                  className="text-[11px] text-[color:var(--status-critical)] transition hover:opacity-80"
+                >
+                  Delete Vendor
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={closeModal}
+                className="rounded-lg px-4 py-2 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving || !form.name.trim() || !canManage}
+                className="sq-cta rounded-lg px-4 py-2 text-xs font-medium disabled:opacity-50"
+              >
+                {saving ? <Icon name="loader-2" className="h-3.5 w-3.5 animate-spin" /> : editVendor ? 'Save Changes' : 'Create Vendor'}
               </button>
             </div>
-
-            <div className="p-5 space-y-5">
+          </div>
+        )}
+      >
+            <div className="max-h-[min(65vh,100dvh-14rem)] space-y-5 overflow-y-auto p-5">
               {/* Mapbox POI search — prefill only (create flow) */}
               {!editVendor && (
                 <div>
@@ -855,29 +873,7 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
                   rows={2} className={`${inputClass} resize-none`} />
               </div>
             </div>
-
-            {/* Modal footer */}
-            <div className={`sticky bottom-0 p-5 border-t flex items-center justify-between ${'bg-popover border-border'}`}>
-              <div>
-                {editVendor && canManage && (
-                  <button onClick={() => { handleDelete(editVendor.id); closeModal(); }}
-                    className="text-[11px] text-[color:var(--status-critical)] hover:opacity-80 transition">Delete Vendor</button>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={closeModal}
-                  className="px-4 py-2 rounded-lg text-xs font-medium transition text-muted-foreground hover:text-foreground hover:bg-muted">
-                  Cancel
-                </button>
-                <button onClick={handleSave} disabled={saving || !form.name.trim() || !canManage}
-                  className="px-4 py-2 rounded-lg text-xs font-medium bg-brand text-brand-foreground hover:bg-[color:var(--brand-hover)] transition disabled:opacity-50 shadow-sm">
-                  {saving ? <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : editVendor ? 'Save Changes' : 'Create Vendor'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </FormDialog>
     </div>
   );
 }

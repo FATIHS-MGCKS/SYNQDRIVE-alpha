@@ -24,6 +24,15 @@ export interface RentalHealthModule {
   reason: string;
   last_updated_at: string | null;
   data_stale: boolean;
+  source?: string;
+  evidence_type?:
+    | 'measured'
+    | 'estimated'
+    | 'provider'
+    | 'manual'
+    | 'document'
+    | 'complaint'
+    | 'unknown';
 }
 
 export interface VehicleHealthResponse {
@@ -654,6 +663,7 @@ export interface BookingDocumentBundleView {
   };
   documents: GeneratedDocumentDto[];
   legal: { termsAttached: boolean; withdrawalAttached: boolean; missing: string[] };
+  missingLegalDocuments: string[];
   warnings: string[];
 }
 
@@ -2269,10 +2279,16 @@ export const api = {
     bookings: (orgId: string, stationId: string) =>
       get<StationBookingRow[]>(`/organizations/${orgId}/stations/${stationId}/bookings`),
     stats: (orgId: string) => get<StationsStats>(`/organizations/${orgId}/stations/stats`),
-    searchPlaces: (orgId: string, q: string) =>
-      get<StationPlaceSuggestion[]>(`/organizations/${orgId}/stations/search-places?q=${encodeURIComponent(q)}`),
-    placeDetails: (orgId: string, placeId: string) =>
-      get<StationPlaceDetails | null>(`/organizations/${orgId}/stations/place-details/${placeId}`),
+    searchMapbox: (orgId: string, query: string, opts?: { country?: string; limit?: number }) => {
+      const q = new URLSearchParams({ query });
+      if (opts?.country) q.set('country', opts.country);
+      if (opts?.limit != null) q.set('limit', String(opts.limit));
+      return get<StationMapboxSearchResult>(`/organizations/${orgId}/stations/search/mapbox?${q.toString()}`);
+    },
+    mapboxRetrieve: (orgId: string, mapboxId: string, sessionToken: string) =>
+      get<StationMapboxPrefill | null>(
+        `/organizations/${orgId}/stations/search/mapbox/${encodeURIComponent(mapboxId)}?sessionToken=${encodeURIComponent(sessionToken)}`,
+      ),
     /**
      * Replace this station's vehicle list with `vehicleIds` (SET semantics).
      * Vehicles previously assigned to this station that are not in the list
@@ -2715,7 +2731,8 @@ export const api = {
     brakeHealthRecalculate: (vehicleId: string) => post<any>(`/vehicles/${vehicleId}/brake-health/recalculate`, {}),
     createBrakeSpec: (vehicleId: string, data: any) => post<any>(`/vehicles/${vehicleId}/brakes`, data),
     tripProfile: (vehicleId: string) => get<TripProfile>(`/vehicles/${vehicleId}/trip-profile`),
-    serviceEvents: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/service-events`),
+    serviceEvents: (vehicleId: string) =>
+      get<{ data: VehicleServiceEventRecord[] }>(`/vehicles/${vehicleId}/service-events`),
     dtc: (vehicleId: string) => get<any[]>(`/vehicles/${vehicleId}/dtc`),
     dtcActive: (vehicleId: string) => get<any[]>(`/vehicles/${vehicleId}/dtc/active`),
     dtcStats: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/dtc/stats`),
@@ -2791,17 +2808,27 @@ export const api = {
       get<any[]>(`/vehicles/${vehicleId}/battery-health/trend` + (days ? `?days=${days}` : '')),
     batteryHealthSummary: (vehicleId: string) => get<BatteryHealthSummary>(`/vehicles/${vehicleId}/battery-health-summary`),
     batteryHealthDetail: (vehicleId: string) => get<BatteryHealthDetail>(`/vehicles/${vehicleId}/battery-health-detail`),
-    createServiceEvent: (vehicleId: string, data: any) => post<any>(`/vehicles/${vehicleId}/service-events`, data),
+    createServiceEvent: (vehicleId: string, data: CreateVehicleServiceEventInput) =>
+      post<VehicleServiceEventRecord>(`/vehicles/${vehicleId}/service-events`, data),
+    updateServiceEvent: (vehicleId: string, eventId: string, data: UpdateVehicleServiceEventInput) =>
+      patch<VehicleServiceEventRecord>(`/vehicles/${vehicleId}/service-events/${eventId}`, data),
+    deleteServiceEvent: (vehicleId: string, eventId: string) =>
+      del<{ ok: boolean }>(`/vehicles/${vehicleId}/service-events/${eventId}`),
     createTireSetup: (vehicleId: string, data: any) => post<any>(`/vehicles/${vehicleId}/tires`, data),
     addTireMeasurement: (vehicleId: string, tireSetupId: string, data: any) =>
       post<any>(`/vehicles/${vehicleId}/tires/${tireSetupId}/measurements`, data),
-    healthSummary: (vehicleId: string) => get<HealthSummaryResponse>(`/vehicles/${vehicleId}/health-summary`),
+    healthTabSummary: (vehicleId: string) =>
+      get<VehicleHealthTabSummaryDto>(`/vehicles/${vehicleId}/health/summary`),
     oilChangeStatus: (vehicleId: string) => get<OilChangeStatus>(`/vehicles/${vehicleId}/oil-change-status`),
     createOilChangeEvent: (vehicleId: string, data: any) => post<any>(`/vehicles/${vehicleId}/service-events`, { ...data, eventType: 'OIL_CHANGE' }),
     hvBatteryStatus: (vehicleId: string) => get<HvBatteryStatus>(`/vehicles/${vehicleId}/hv-battery-status`),
     serviceInfoStatus: (vehicleId: string) => get<ServiceInfoStatus>(`/vehicles/${vehicleId}/service-info-status`),
+    materializeComplianceTask: (vehicleId: string, signalKey: string) =>
+      post<ApiTask>(`/vehicles/${vehicleId}/compliance-task-signals/${encodeURIComponent(signalKey)}/materialize`, {}),
     // Phase 3: AI Health Care with HM indicators
     aiHealthCare: (vehicleId: string) => get<AiHealthCareResponse>(`/vehicles/${vehicleId}/health/ai-health-care`),
+    dashboardWarningLights: (vehicleId: string) =>
+      get<DashboardWarningLightsResponse>(`/vehicles/${vehicleId}/health/dashboard-warning-lights`),
     // Phase 3: HM vehicle activation
     hmStatus: (vehicleId: string) => get<HmVehicleStatusDto>(`/vehicles/${vehicleId}/high-mobility-status`),
     hmCheckEligibility: (vehicleId: string) => post<any>(`/vehicles/${vehicleId}/high-mobility/check-eligibility`, {}),
@@ -3627,7 +3654,90 @@ export interface HvBatteryStatus {
   currentTelemetry?: BatteryCurrentTelemetrySection | null;
 }
 
+export type ServiceEventOrigin =
+  | 'MANUAL'
+  | 'AI_UPLOAD'
+  | 'WORKSHOP_DOCUMENT'
+  | 'IMPORT'
+  | 'OEM';
+
+export type ServiceEventType =
+  | 'OIL_CHANGE'
+  | 'TIRE_ROTATION'
+  | 'BRAKE_SERVICE'
+  | 'BATTERY_REPLACEMENT'
+  | 'GENERAL_INSPECTION'
+  | 'TUV_INSPECTION'
+  | 'BOKRAFT_INSPECTION'
+  | 'FULL_SERVICE'
+  | 'REPAIR'
+  | 'OTHER';
+
+export interface VehicleServiceEventRecord {
+  id: string;
+  vehicleId: string;
+  eventType: ServiceEventType;
+  eventDate: string;
+  odometerKm: number | null;
+  notes: string | null;
+  workshopName: string | null;
+  costCents: number | null;
+  provider: string | null;
+  documentUrl: string | null;
+  origin: ServiceEventOrigin;
+  createdById: string | null;
+  updatedById: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateVehicleServiceEventInput {
+  eventType: ServiceEventType;
+  eventDate: string;
+  odometerKm?: number;
+  notes?: string;
+  workshopName?: string;
+  costCents?: number;
+  provider?: string;
+  documentUrl?: string;
+  origin?: ServiceEventOrigin;
+}
+
+export interface UpdateVehicleServiceEventInput {
+  eventType?: ServiceEventType;
+  eventDate?: string;
+  odometerKm?: number | null;
+  notes?: string | null;
+  workshopName?: string | null;
+  costCents?: number | null;
+  provider?: string | null;
+  documentUrl?: string | null;
+  origin?: ServiceEventOrigin;
+}
+
+export type ServiceTrackingStatus = 'TRACKED' | 'NO_TRACKING' | 'STALE';
+export type ServiceComplianceSeverity = 'GOOD' | 'WARNING' | 'CRITICAL' | 'INFO';
+
+export interface NextServiceCompliance {
+  trackingStatus: ServiceTrackingStatus;
+  source: 'HM_OEM' | null;
+  distanceToNextServiceKm: number | null;
+  timeToNextServiceDays: number | null;
+  lastUpdatedAt: string | null;
+  serviceSourceLabel: string | null;
+  severity: ServiceComplianceSeverity;
+  blocksRental: boolean;
+  title: string;
+  description: string;
+  message: string;
+  hmDistanceFromOem: boolean;
+  hmTimeFromOem: boolean;
+  hmDerivedDueDate: string | null;
+}
+
 export interface ServiceInfoStatus {
+  nextService?: NextServiceCompliance;
+  hasServiceHistory?: boolean;
   hasServiceBaseline: boolean;
   serviceRemainingPercent: number | null;
   serviceRemainingKm: number | null;
@@ -3670,6 +3780,23 @@ export interface ServiceInfoStatus {
   hmDistanceFromOem?: boolean;
   /** True when OEM streams `maintenance.time_to_next_service` for this vehicle. */
   hmTimeFromOem?: boolean;
+  /** Actionable compliance task signals from ServiceComplianceService. */
+  taskSignals?: ComplianceTaskSignal[];
+}
+
+export interface ComplianceTaskSignal {
+  signalKey: string;
+  dedupeKey: string;
+  kind: string;
+  title: string;
+  message: string;
+  actionLabel: string;
+  severity: 'WARNING' | 'CRITICAL';
+  suggestionOnly: boolean;
+  blocksRental: boolean;
+  dueDate: string | null;
+  category: string;
+  taskType: string;
 }
 
 export interface OilChangeStatus {
@@ -3811,14 +3938,29 @@ export interface BrakeCanonicalAlert {
   axle?: 'FRONT' | 'REAR' | 'UNKNOWN';
 }
 
+export interface BrakeAxleSummary {
+  condition: BrakeCondition;
+  dataBasis: BrakeDataBasis;
+  confidence: BrakeConfidenceLevel;
+  estimatedRemainingKmMin: number | null;
+  estimatedRemainingKmMax: number | null;
+}
+
+/** Legacy wear-model fields — backward compatibility only; do not display in UI. */
+export interface BrakeHealthLegacy {
+  padsHealthPct: number | null;
+  discsHealthPct: number | null;
+  padsRemainingKm: number | null;
+  discsRemainingKm: number | null;
+  status: string;
+  remainingKm: number | null;
+}
+
 export interface BrakeHealthSummary {
   isInitialized: boolean;
   stateClass: BrakeStateClass;
-  status?: string;
   message?: string;
   actions?: { canAddBrakeService: boolean; canUseAiUpload: boolean };
-  pads?: { healthPercent: number; estimatedLifetimeKm: number | null };
-  discs?: { healthPercent: number; estimatedLifetimeKm: number | null };
   limitingComponent?:
     | 'FRONT_PADS'
     | 'REAR_PADS'
@@ -3827,7 +3969,6 @@ export interface BrakeHealthSummary {
     | 'PADS_SET'
     | 'DISCS_SET'
     | null;
-  remainingKm?: number | null;
   modeledComponents: BrakeModeledComponents;
   modelCoverage: BrakeModelCoverage;
   lastChangeAt?: string | null;
@@ -3838,10 +3979,12 @@ export interface BrakeHealthSummary {
   hasAlert?: boolean;
   legacyHeuristic?: { available: boolean; note: string };
 
-  // ── Canonical read model (honest condition / data basis / confidence) ──────
+  // ── Canonical read model ─────────────────────────────────────────────────
   overallCondition: BrakeCondition;
   dataBasis: BrakeDataBasis;
   confidenceLevel: BrakeConfidenceLevel;
+  frontAxle: BrakeAxleSummary;
+  rearAxle: BrakeAxleSummary;
   frontAxleCondition: BrakeCondition;
   rearAxleCondition: BrakeCondition;
   frontDataBasis: BrakeDataBasis;
@@ -3856,12 +3999,14 @@ export interface BrakeHealthSummary {
   estimatedReplacementDueInKm: number | null;
   reasons: string[];
   recommendations: string[];
+  alerts: BrakeCanonicalAlert[];
   openAlerts: BrakeCanonicalAlert[];
   lastMeasurementAt: string | null;
   lastMeasurementMileageKm: number | null;
   lastServiceAt: string | null;
   lastServiceMileageKm: number | null;
   updatedAt: string | null;
+  legacy: BrakeHealthLegacy;
 }
 
 export interface BrakeHealthDetail {
@@ -4211,6 +4356,8 @@ export interface DataAuthorizationDto {
   revokedAt: string | null;
   expiresAt: string | null;
   notes: string | null;
+  scopeNote: string | null;
+  lastSyncedAt: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -4318,13 +4465,35 @@ export interface DataAnalyseSignalRow {
   persisted: boolean;
 }
 
+export type DataAnalyseHfReliability = 'GOOD' | 'WATCH' | 'POOR' | 'MISSING';
+export type DataAnalyseLaunchUsefulness = 'POSSIBLE' | 'LIMITED' | 'NOT_POSSIBLE' | 'UNKNOWN';
+
 export interface DataAnalyseHighFrequency {
   available: boolean;
   message: string | null;
   snapshotLevelOnly: boolean;
   clickHouseAvailable: boolean;
   signals: Array<{
+    signalKey: string;
     signalName: string;
+    displayName: string;
+    sourceProvider: string | null;
+    pollGroup: string;
+    storageTable: string;
+    sampleCount24h: number | null;
+    sampleCount7d: number | null;
+    firstSeenAt: string | null;
+    lastSeenAt: string | null;
+    medianIntervalMs: number | null;
+    p95IntervalMs: number | null;
+    minIntervalMs: number | null;
+    maxIntervalMs: number | null;
+    gapCount: number | null;
+    largestGapMs: number | null;
+    reliabilityStatus: DataAnalyseHfReliability;
+    practicalUse: string[];
+    launchDetectionUsefulness: DataAnalyseLaunchUsefulness;
+    explanation: string;
     observedIntervalMs: number | null;
     averageIntervalMs: number | null;
     dropoutCount: number | null;
@@ -4388,6 +4557,9 @@ export interface DataAnalyseSignalGroup {
   practicalUse: string;
   usedByModules: string[];
   detectionRelevance: string;
+  sourceProvider: string | null;
+  storageLocation: string | null;
+  limitations: string | null;
   currentAvailability: string;
   availabilityNotes: string | null;
 }
@@ -4532,7 +4704,7 @@ export interface AdminFleetConnectivityResponse {
   vehicles: AdminFleetConnectivityVehicle[];
 }
 
-/** AI Health Care Summary response (agent contract). */
+/** AI Health Care legacy agent fields (internal to ai-health-care endpoint only). */
 export interface HealthSummaryResponse {
   overallStatus: { level: 'good' | 'watch' | 'attention'; title: string; shortSummary: string };
   positives: string[];
@@ -4542,6 +4714,119 @@ export interface HealthSummaryResponse {
   maintenanceFocus: Array<{ area: string; priority: 'low' | 'medium' | 'high'; reason: string }>;
   dataConfidence: { level: 'low' | 'medium' | 'high'; reason: string };
 }
+
+export type VehicleHealthSummaryState = 'good' | 'warning' | 'critical' | 'unknown';
+export type VehicleHealthDataQualityLevel = 'high' | 'medium' | 'low' | 'unknown';
+export type VehicleHealthFindingSeverity = 'critical' | 'warning' | 'info' | 'unknown';
+export type VehicleHealthTargetModalKey =
+  | 'battery'
+  | 'tires'
+  | 'brakes'
+  | 'dtc'
+  | 'service'
+  | 'complaints'
+  | 'warnings'
+  | null;
+
+export type VehicleHealthComplianceDateState = 'good' | 'warning' | 'critical' | 'unknown';
+
+export interface ServiceComplianceModuleState {
+  state: 'good' | 'warning' | 'critical' | 'unknown' | 'no_tracking';
+  label: string;
+  reason?: string;
+  nextService?: {
+    source: 'hm_oem';
+    daysRemaining?: number;
+    kmRemaining?: number;
+  } | null;
+  tuev?: {
+    dueDate?: string;
+    state: VehicleHealthComplianceDateState;
+  };
+  bokraft?: {
+    dueDate?: string;
+    state: VehicleHealthComplianceDateState;
+  };
+}
+
+export interface VehicleHealthModuleStateBase {
+  state: string;
+  label: string;
+  reason?: string;
+}
+
+export type VehicleHealthFindingModule =
+  | 'battery'
+  | 'tires'
+  | 'brakes'
+  | 'error_codes'
+  | 'service_compliance'
+  | 'complaints'
+  | 'vehicle_alerts'
+  | 'oem_hm'
+  | 'unknown';
+
+/** Canonical Health-tab summary DTO — matches backend VehicleHealthTabSummaryDto. */
+export interface VehicleHealthTabSummaryDto {
+  vehicleId: string;
+  generatedAt: string;
+  overall: {
+    state: VehicleHealthSummaryState;
+    label: string;
+    headline: string;
+    description: string;
+    rentalBlocked: boolean;
+    blockingReasons: string[];
+  };
+  dataQuality: {
+    level: VehicleHealthDataQualityLevel;
+    label: string;
+    reasons: string[];
+  };
+  findings: Array<{
+    id: string;
+    module: VehicleHealthFindingModule | string;
+    severity: VehicleHealthFindingSeverity;
+    title: string;
+    description: string;
+    evidence?: string[];
+    targetModalKey?: VehicleHealthTargetModalKey;
+  }>;
+  moduleStates: Record<string, VehicleHealthModuleStateBase | ServiceComplianceModuleState> & {
+    service_compliance?: ServiceComplianceModuleState;
+  };
+  sourceStatus: {
+    rentalHealth: 'loaded' | 'endpoint_error';
+    aiHealthCare: 'loaded' | 'not_available' | 'endpoint_error';
+    highMobility: 'fresh' | 'stale' | 'no_data' | 'not_connected' | 'sync_error' | 'unknown';
+    dimo: 'fresh' | 'stale' | 'no_data' | 'not_connected' | 'unknown';
+  };
+  degradedDependencies: Array<{
+    source: string;
+    status: string;
+    message: string;
+  }>;
+  oemIndicators?: {
+    supported: boolean;
+    freshness: 'fresh' | 'stale' | 'no_data' | 'unknown';
+    indicators: Array<{
+      key: string;
+      label: string;
+      status: 'active' | 'inactive' | 'unknown' | 'stale';
+      severity: 'critical' | 'warning' | 'info' | 'unknown';
+      description?: string;
+    }>;
+  };
+  nextService?: {
+    trackingStatus: 'TRACKED' | 'NO_TRACKING' | 'STALE';
+    displayLine: string;
+    days: number | null;
+    km: number | null;
+  };
+}
+
+/** @deprecated Use VehicleHealthTabSummaryDto */
+export type VehicleHealthTabSummary = VehicleHealthTabSummaryDto;
 
 // ── Phase 3: High Mobility Vehicle Activation types ──────
 
@@ -4657,6 +4942,50 @@ export interface AiHealthIndicators {
   batteryWarningLight: boolean | null;
 }
 
+export type DashboardWarningLightState =
+  | 'active'
+  | 'off_confirmed'
+  | 'no_event_yet'
+  | 'unsupported'
+  | 'stale'
+  | 'error';
+
+export type DashboardWarningSeverity = 'info' | 'warning' | 'critical' | 'unknown';
+
+export type DashboardRentalImpact =
+  | 'none'
+  | 'watch'
+  | 'inspect_before_next_rental'
+  | 'block_rental';
+
+export interface DashboardWarningLight {
+  key: string;
+  label: string;
+  state: DashboardWarningLightState;
+  severity: DashboardWarningSeverity;
+  supported: boolean | null;
+  observedAt: string | null;
+  sourceSignal: string | null;
+  sourceTimestamp: string | null;
+  rawValue?: unknown;
+  reason: string;
+  action: string;
+  rentalImpact: DashboardRentalImpact;
+}
+
+export interface DashboardWarningLightsResponse {
+  vehicleId: string;
+  provider: 'HIGH_MOBILITY' | 'DIMO' | 'NONE' | 'UNKNOWN';
+  connectionStatus: 'connected' | 'not_connected' | 'provider_error' | 'unknown';
+  supportStatus: 'supported' | 'not_supported' | 'unknown' | 'not_connected' | 'no_data';
+  freshness: 'fresh' | 'aging' | 'stale' | 'no_data' | 'error';
+  overallStatus: 'good' | 'warning' | 'critical' | 'unknown';
+  lastObservedAt: string | null;
+  message: string;
+  lights: DashboardWarningLight[];
+  rentalHealthReady: boolean;
+}
+
 export interface AiHealthCareResponse extends HealthSummaryResponse {
   // ── New canonical fields ────────────────────────────────────────────────
   aiStatus: AiHealthStatusLevel;
@@ -4671,6 +5000,7 @@ export interface AiHealthCareResponse extends HealthSummaryResponse {
   hmFreshnessStatus?: HmFreshnessStatus;
   hmLastErrorAt?: string | null;
   hmLastErrorMessage?: string | null;
+  dashboardWarningLights: DashboardWarningLightsResponse;
 }
 
 // ── Vendor types ────────────────────────────────────────
@@ -5001,6 +5331,33 @@ export interface StationGeocodingBackfillResult {
   }>;
 }
 
+export interface StationMapboxSuggestion {
+  mapboxId: string;
+  name: string;
+  fullAddress: string | null;
+  placeFormatted: string | null;
+}
+
+export interface StationMapboxSearchResult {
+  sessionToken: string;
+  suggestions: StationMapboxSuggestion[];
+}
+
+export interface StationMapboxPrefill {
+  name: string | null;
+  formattedAddress: string | null;
+  street: string | null;
+  postalCode: string | null;
+  city: string | null;
+  country: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  phone: string | null;
+  externalPlaceId: string | null;
+  source: 'MAPBOX';
+}
+
+/** @deprecated Legacy Google Places shape — use StationMapboxSuggestion */
 export interface StationPlaceSuggestion {
   placeId: string;
   mainText: string;

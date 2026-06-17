@@ -100,6 +100,7 @@ export class DataAuthorizationsService {
     const statusKey = this.effectiveStatus(auth, now);
     const purposes = this.resolvePurposes(auth);
     const vehicleIds = this.jsonStringArray(auth.vehicleIds);
+    const scopeNote = this.resolveScopeNote(auth, vehicleIds);
 
     return {
       id: auth.id,
@@ -141,9 +142,23 @@ export class DataAuthorizationsService {
       revokedAt: auth.revokedAt,
       expiresAt: auth.expiresAt,
       notes: auth.notes,
+      scopeNote,
+      lastSyncedAt: auth.updatedAt,
       createdAt: auth.createdAt,
       updatedAt: auth.updatedAt,
     };
+  }
+
+  private resolveScopeNote(
+    auth: Pick<OrgDataAuthorization, 'systemKey' | 'status' | 'revokeReason'>,
+    vehicleIds: string[],
+  ): string | null {
+    if (auth.systemKey !== DIMO_TELEMETRY_SYSTEM_KEY) return null;
+    if (auth.status === 'REVOKED') return auth.revokeReason ?? 'Authorization revoked.';
+    if (vehicleIds.length === 0) {
+      return 'Keine aktuell verbundenen DIMO-Fahrzeuge. Scope ist leer — keine aktive Fahrzeugfreigabe.';
+    }
+    return `${vehicleIds.length} verbundene(s) DIMO-Fahrzeug(e) im Scope.`;
   }
 
   private resolvePurposes(auth: OrgDataAuthorization): string[] {
@@ -231,10 +246,16 @@ export class DataAuthorizationsService {
     };
 
     if (existing.status !== 'REVOKED') {
-      if (vehicleIds.length > 0 && existing.status !== 'ACTIVE') {
-        updateData.status = 'ACTIVE';
-        updateData.grantedAt = existing.grantedAt ?? new Date();
-        updateData.grantedByName = existing.grantedByName ?? 'System';
+      if (vehicleIds.length > 0) {
+        if (existing.status !== 'ACTIVE') {
+          updateData.status = 'ACTIVE';
+          updateData.grantedAt = existing.grantedAt ?? new Date();
+          updateData.grantedByName = existing.grantedByName ?? 'System';
+        }
+      } else {
+        updateData.status = 'PENDING';
+        updateData.customerIds = [];
+        updateData.bookingIds = [];
       }
     }
 

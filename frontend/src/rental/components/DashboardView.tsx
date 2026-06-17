@@ -1,4 +1,4 @@
-﻿
+
 import { Icon } from './ui/Icon';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { VehicleData } from '../data/vehicles';
@@ -18,6 +18,10 @@ import {
   StatusChip,
 } from '../../components/patterns';
 import type { StatusTone } from '../../components/patterns';
+import {
+  type FleetStatusTabKey,
+  countFleetStatusTab,
+} from '../lib/vehicle-status';
 
 // V4.6.95 — Dashboard station filter is now wired end-to-end. The dropdown
 // loads the org's real station catalogue (`api.stations.list`), the choice
@@ -26,7 +30,7 @@ import type { StatusTone } from '../../components/patterns';
 // filter to the vehicle list, today's pickups/returns, the BusinessInsights
 // box (vehicle-health alerts) and the ScheduleBox (lane chart). `null`
 // represents the explicit "All Stations" choice.
-const STATION_FILTER_STORAGE_KEY = 'synqdrive.dashboard.selectedStationName';
+const STATION_FILTER_STORAGE_KEY = 'synqdrive.dashboard.selectedStationId';
 
 // V4.6.94 — Monthly KPI tiles (Umsatz / Gewinn / Ausgaben) above the
 // "Insights from your Business" row. Mirrors the bucketing logic used by
@@ -180,7 +184,7 @@ export function DashboardView({ onVehicleSelect, onItemHover, onOpenVehicleById,
   const [stationsApi, setStationsApi] = useState<Station[]>([]);
   const [isStationDropdownOpen, setIsStationDropdownOpen] = useState(false);
   const stationDropdownRef = useRef<HTMLDivElement | null>(null);
-  const [fleetStatusTab, setFleetStatusTab] = useState<'Available' | 'Reserved' | 'Active Rented' | 'In Maintenance'>('Available');
+  const [fleetStatusTab, setFleetStatusTab] = useState<FleetStatusTabKey>('Available');
   const [todayTab, setTodayTab] = useState<'Pick Up Today' | 'Return Today'>('Pick Up Today');
 
   // V4.6.95 — Live station catalogue. Failure is silent — the dropdown then
@@ -327,8 +331,11 @@ export function DashboardView({ onVehicleSelect, onItemHover, onOpenVehicleById,
   };
 
   const pickupItems = useMemo(() => {
-    const rows = selectedStationName
-      ? todayPickupsApi.filter((p: any) => (p?.station || '') === selectedStationName)
+    const rows = selectedStationId
+      ? todayPickupsApi.filter((p: any) => {
+          const sid = p?.pickupStationId;
+          return sid ? sid === selectedStationId : false;
+        })
       : todayPickupsApi;
     return rows.map((p: any) => {
       const license = p.vehicleLicense || '';
@@ -342,7 +349,7 @@ export function DashboardView({ onVehicleSelect, onItemHover, onOpenVehicleById,
         vehicle: p.vehicleName || '',
         plate: license,
         customer: p.customerName || '',
-        station: p.station || '',
+        station: p.stationLabel || p.pickupStationName || p.station || '',
         done: !!p.pickupProtocol,
         vehicleId: v?.id || p.vehicleId || '',
         needsCleaning: v ? v.cleaningStatus !== 'Clean' : false,
@@ -358,14 +365,17 @@ export function DashboardView({ onVehicleSelect, onItemHover, onOpenVehicleById,
         minutesOverdue: typeof p.minutesOverdue === 'number' ? p.minutesOverdue : 0,
       };
     });
-  }, [todayPickupsApi, vehicleLookup, locale, selectedStationName]);
+  }, [todayPickupsApi, vehicleLookup, locale, selectedStationId]);
   const pickupNeedsCleaning = pickupItems.filter(p => p.needsCleaning).length;
   const pickupAlerts = pickupItems.filter(p => p.hasAlert).length;
   const pickupOverdueCount = pickupItems.filter(p => p.isOverdue && !p.done).length;
 
   const returnItems = useMemo(() => {
-    const rows = selectedStationName
-      ? todayReturnsApi.filter((r: any) => (r?.station || '') === selectedStationName)
+    const rows = selectedStationId
+      ? todayReturnsApi.filter((r: any) => {
+          const sid = r?.returnStationId;
+          return sid ? sid === selectedStationId : false;
+        })
       : todayReturnsApi;
     return rows.map((r: any) => {
       const license = r.vehicleLicense || '';
@@ -376,20 +386,24 @@ export function DashboardView({ onVehicleSelect, onItemHover, onOpenVehicleById,
         vehicle: r.vehicleName || '',
         plate: license,
         customer: r.customerName || '',
-        station: r.station || '',
+        station: r.stationLabel || r.returnStationName || r.station || '',
         done: !!r.returnProtocol,
         vehicleId: v?.id || r.vehicleId || '',
-        hasError: false,
-        kmExceeded: false,
+        hasError: r.hasError === true,
+        kmExceeded: r.kmExceeded === true,
+        extraKm: typeof r.extraKm === 'number' ? r.extraKm : null,
+        isOverdue: r.isOverdue === true,
+        returnProtocolStatus: r.returnProtocolStatus ?? null,
         hasAlert: v ? !!v.alert : false,
         startDate: String(r.startDate ?? ''),
         endDate: String(r.endDate ?? ''),
         pickupOdometerKm: r.pickupProtocol?.odometerKm ?? null,
       };
     });
-  }, [todayReturnsApi, vehicleLookup, locale, selectedStationName]);
+  }, [todayReturnsApi, vehicleLookup, locale, selectedStationId]);
   const returnErrors = returnItems.filter(r => r.hasError).length;
   const returnKmExceeded = returnItems.filter(r => r.kmExceeded).length;
+  const returnOverdue = returnItems.filter(r => r.isOverdue && !r.done).length;
   const returnAlerts = returnItems.filter(r => r.hasAlert).length;
 
   // V4.6.75 — open the Übergabeprotokoll dialog from the Pick-Up / Return
@@ -725,7 +739,7 @@ export function DashboardView({ onVehicleSelect, onItemHover, onOpenVehicleById,
               onOpenVehicle={onOpenVehicleById}
               onOpenView={onOpenRentalView}
               notifications={dashboardNotifications}
-              stationFilter={selectedStationName}
+              stationFilter={selectedStationId}
             />
 
             {/* Right: Fleet Status with tab switcher */}
@@ -760,7 +774,7 @@ export function DashboardView({ onVehicleSelect, onItemHover, onOpenVehicleById,
                     // have exceeded the booking's km allowance, so the
                     // dispatcher sees the overage without opening each card.
                     { key: 'Active Rented' as const, label: t('dashboard.rented'), count: activeRentedVehicles.length, tone: 'brand' as const, warn: activeRentedOverKm },
-                    { key: 'In Maintenance' as const, label: t('dashboard.maintenanceTab'), count: filteredFleetVehicles.filter(v => v.status === 'Maintenance').length, tone: 'critical' as const, warn: 0 },
+                    { key: 'Maintenance' as const, label: t('dashboard.maintenanceTab'), count: countFleetStatusTab(filteredFleetVehicles, 'Maintenance'), tone: 'critical' as const, warn: 0 },
                   ]).map(tab => {
                     const isActive = fleetStatusTab === tab.key;
                     const toneCls = `sq-tone-${tab.tone}`;
@@ -817,6 +831,7 @@ export function DashboardView({ onVehicleSelect, onItemHover, onOpenVehicleById,
                   pickupAlerts={pickupAlerts}
                   returnErrors={returnErrors}
                   returnKmExceeded={returnKmExceeded}
+                  returnOverdue={returnOverdue}
                   returnAlerts={returnAlerts}
                   borderColor="border-transparent"
                   hideHeader
@@ -837,7 +852,7 @@ export function DashboardView({ onVehicleSelect, onItemHover, onOpenVehicleById,
               dashboard's own design tokens. The grid stays single-column on
               compact viewports so neither widget collapses. */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <ScheduleBox isDarkMode={systemDark} onOpenBookingById={onOpenBookingById} stationFilter={selectedStationName} />
+            <ScheduleBox isDarkMode={systemDark} onOpenBookingById={onOpenBookingById} stationFilter={selectedStationId} />
 
             {/* Today's Activity with tab switcher */}
             <div className="sq-card overflow-hidden animate-fade-up">
@@ -894,6 +909,7 @@ export function DashboardView({ onVehicleSelect, onItemHover, onOpenVehicleById,
                   pickupAlerts={pickupAlerts}
                   returnErrors={returnErrors}
                   returnKmExceeded={returnKmExceeded}
+                  returnOverdue={returnOverdue}
                   returnAlerts={returnAlerts}
                   borderColor="border-transparent"
                   hideHeader

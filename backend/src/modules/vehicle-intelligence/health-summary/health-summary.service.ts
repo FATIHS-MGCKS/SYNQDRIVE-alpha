@@ -8,6 +8,12 @@ import { ServiceEventsService } from '../service-events/service-events.service';
 import { TripsService } from '../trips/trips.service';
 import { DrivingEventsService } from '../driving-events/driving-events.service';
 import { CanonicalBatteryHealthService } from '../battery-health/canonical-battery-health.service';
+import { ServiceComplianceService } from '../service-compliance/service-compliance.service';
+import { FULL_SERVICE_BASELINE_EVENT_TYPES } from '../service-events/service-events.constants';
+import {
+  NEXT_SERVICE_WARNING_DAYS,
+  NEXT_SERVICE_WARNING_KM,
+} from '../service-compliance/service-compliance.config';
 
 /** Structured agent request payload (extensible for Driver Feedback later). */
 export interface HealthSummaryAgentInput {
@@ -25,10 +31,12 @@ export interface HealthSummaryAgentInput {
     errorCodes: { activeCount: number; totalRecent: number; lastCheckedAt: string | null; hasData: boolean } | null;
     brakes: {
       stateClass: string | null;
+      overallCondition: string | null;
       hasBaseline: boolean;
       remainingKm: number | null;
       confidenceLabel: string | null;
       hasAlert: boolean;
+      openAlertCount: number;
       hasData: boolean;
     } | null;
     tires: {
@@ -48,14 +56,15 @@ export interface HealthSummaryAgentInput {
       lastOdometerKm: number | null;
       eventCount: number;
       hasData: boolean;
-      // Next-service horizon — new fields so the AI Health Care summary can
-      // explicitly flag overdue services instead of silently ignoring them.
+      trackingStatus: 'TRACKED' | 'NO_TRACKING' | 'STALE' | null;
       remainingDays: number | null;
       remainingKm: number | null;
       overdue: boolean;
       overdueDays: number | null;
       overdueKm: number | null;
       dueImminently: boolean;
+      severity: 'GOOD' | 'WARNING' | 'CRITICAL' | 'INFO' | null;
+      message: string | null;
     } | null;
     oilChange: { lastChangedAt: string | null; eventCount: number; hasData: boolean } | null;
   };
@@ -100,6 +109,7 @@ export class HealthSummaryService {
     private readonly serviceEventsService: ServiceEventsService,
     private readonly tripsService: TripsService,
     private readonly drivingEventsService: DrivingEventsService,
+    private readonly serviceCompliance: ServiceComplianceService,
   ) {}
 
   async getSummary(vehicleId: string): Promise<HealthSummaryAgentResponse> {
@@ -118,21 +128,13 @@ export class HealthSummaryService {
         year: true,
         vin: true,
         fuelType: true,
-        serviceIntervalManufacturerKm: true,
-        serviceIntervalManufacturerMonths: true,
         lastServiceDate: true,
         lastServiceOdometerKm: true,
-        nextServiceDueDate: true,
       },
     });
     if (!vehicle) {
       throw new Error('Vehicle not found');
     }
-
-    const latestStateRow = await this.prisma.vehicleLatestState.findUnique({
-      where: { vehicleId },
-      select: { odometerKm: true },
-    });
 
     const now = new Date();
     const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
@@ -147,6 +149,7 @@ export class HealthSummaryService {
       serviceEventsPaginated,
       tripStats,
       recentTrips,
+      nextServiceCompliance,
     ] = await Promise.all([
       this.dtcService.getStats(vehicleId).catch(() => null),
       this.dtcService.findByVehicle(vehicleId).then((r) => (Array.isArray(r) ? r.slice(0, 50) : [])).catch(() => []),
@@ -173,11 +176,15 @@ export class HealthSummaryService {
         select: { distanceKm: true, citySharePercent: true, highwaySharePercent: true, countrySharePercent: true },
         take: 100,
       }).catch(() => []),
+      this.serviceCompliance.evaluateNextService(vehicleId, now).catch(() => null),
     ]);
 
     const serviceEvents = Array.isArray((serviceEventsPaginated as any).data) ? (serviceEventsPaginated as any).data : [];
     const oilEvents = serviceEvents.filter((e: any) => e.eventType === 'OIL_CHANGE');
-    const lastService = serviceEvents[0] ?? null;
+    const lastService =
+      serviceEvents.find((e: any) =>
+        FULL_SERVICE_BASELINE_EVENT_TYPES.includes(e.eventType),
+      ) ?? null;
     const lastOil = oilEvents[0] ?? null;
     const hasBrakeService = serviceEvents.some((e: any) => e.eventType === 'BRAKE_SERVICE');
 
@@ -277,11 +284,16 @@ export class HealthSummaryService {
           : { activeCount: 0, totalRecent: 0, lastCheckedAt: null, hasData: false },
         brakes: {
           stateClass: brakeSummary?.stateClass ?? null,
+          overallCondition: brakeSummary?.overallCondition ?? null,
           hasBaseline:
             brakeSummary?.stateClass === 'MEASURED' || brakeSummary?.stateClass === 'ESTIMATED',
-          remainingKm: brakeSummary?.remainingKm ?? null,
-          confidenceLabel: brakeSummary?.confidence?.label ?? null,
+          remainingKm:
+            brakeSummary?.estimatedReplacementDueInKm ??
+            brakeSummary?.legacy?.remainingKm ??
+            null,
+          confidenceLabel: brakeSummary?.confidenceLevel ?? brakeSummary?.confidence?.label ?? null,
           hasAlert: brakeSummary?.hasAlert === true,
+          openAlertCount: brakeSummary?.openAlerts?.length ?? 0,
           hasData: brakeSummary != null || hasBrakeService,
         },
         tires: {
@@ -296,54 +308,39 @@ export class HealthSummaryService {
           hasData: tireSummary != null && tireSummary.overallStatus !== 'UNKNOWN',
         },
         serviceInfo: (() => {
-          // Compute remaining days/km and overdue flags from the same
-          // manufacturer-interval inputs the Service Info card uses. This
-          // keeps the AI summary consistent with the Health Tab UI without
-          // needing a second round-trip to the service-info-status endpoint.
-          const MS_PER_DAY = 24 * 60 * 60 * 1000;
-          const DAYS_PER_MONTH = 30.44;
-          const baselineDate: Date | null =
-            (lastService as any)?.eventDate ?? vehicle.lastServiceDate ?? null;
-          const baselineOdo: number | null =
-            (lastService as any)?.odometerKm ?? vehicle.lastServiceOdometerKm ?? null;
-          const intervalMonths = vehicle.serviceIntervalManufacturerMonths ?? null;
-          const intervalKm = vehicle.serviceIntervalManufacturerKm ?? null;
-          const currentOdo = latestStateRow?.odometerKm ?? null;
-
-          let remainingDays: number | null = null;
-          let remainingKm: number | null = null;
-          if (baselineDate && intervalMonths != null && intervalMonths > 0) {
-            const intervalDays = Math.round(intervalMonths * DAYS_PER_MONTH);
-            const elapsedDays = Math.floor(
-              (now.getTime() - new Date(baselineDate).getTime()) / MS_PER_DAY,
-            );
-            remainingDays = intervalDays - elapsedDays;
-          }
-          if (baselineOdo != null && currentOdo != null && intervalKm != null && intervalKm > 0) {
-            remainingKm = intervalKm - Math.round(currentOdo - baselineOdo);
-          }
-
+          const ns = nextServiceCompliance;
+          const tracked = ns?.trackingStatus === 'TRACKED';
+          const remainingDays = tracked ? ns.timeToNextServiceDays : null;
+          const remainingKm = tracked ? ns.distanceToNextServiceKm : null;
           const overdueByDays = remainingDays != null && remainingDays < 0;
           const overdueByKm = remainingKm != null && remainingKm < 0;
-          const overdue = overdueByDays || overdueByKm;
+          const overdue = tracked && (overdueByDays || overdueByKm);
           const overdueDays = overdueByDays ? Math.abs(remainingDays!) : null;
           const overdueKm = overdueByKm ? Math.abs(remainingKm!) : null;
           const dueImminently =
+            tracked &&
             !overdue &&
-            ((remainingDays != null && remainingDays >= 0 && remainingDays <= 7) ||
-              (remainingKm != null && remainingKm >= 0 && remainingKm <= 500));
+            ((remainingDays != null &&
+              remainingDays >= 0 &&
+              remainingDays <= NEXT_SERVICE_WARNING_DAYS) ||
+              (remainingKm != null &&
+                remainingKm >= 0 &&
+                remainingKm <= NEXT_SERVICE_WARNING_KM));
 
           return {
             lastServiceAt: (lastService as any)?.eventDate ?? null,
             lastOdometerKm: (lastService as any)?.odometerKm ?? null,
             eventCount: serviceEvents.length,
-            hasData: serviceEvents.length > 0,
+            hasData: serviceEvents.length > 0 || tracked,
+            trackingStatus: ns?.trackingStatus ?? null,
             remainingDays,
             remainingKm,
             overdue,
             overdueDays,
             overdueKm,
             dueImminently,
+            severity: ns?.severity ?? null,
+            message: ns?.message ?? null,
           };
         })(),
         oilChange: {
@@ -407,7 +404,16 @@ export class HealthSummaryService {
       maintenanceFocus.push({ area: 'tires', priority: (m.tires.treadPercentEstimate ?? 0) < 25 ? 'high' : 'medium', reason: 'Tread wear' });
     }
 
-    if (m.brakes?.stateClass === 'MEASURED') {
+    if (m.brakes?.overallCondition === 'CRITICAL') {
+      watchpoints.push('Brake condition is critical — immediate workshop inspection recommended.');
+      maintenanceFocus.push({ area: 'brakes', priority: 'high', reason: 'Critical brake condition' });
+    } else if (
+      m.brakes?.overallCondition === 'WARNING' ||
+      m.brakes?.overallCondition === 'WATCH'
+    ) {
+      watchpoints.push('Brake condition needs attention — plan service soon.');
+      maintenanceFocus.push({ area: 'brakes', priority: 'medium', reason: 'Brake wear attention' });
+    } else if (m.brakes?.stateClass === 'MEASURED') {
       positives.push('Brake health is based on measured baseline data.');
     } else if (m.brakes?.stateClass === 'ESTIMATED') {
       positives.push('Brake health is available as an estimate with baseline context.');

@@ -115,14 +115,7 @@ interface BusinessInsightsBoxProps {
    * Notifications card on the Dashboard anymore).
    */
   notifications?: DashboardNotificationItem[];
-  /**
-   * V4.6.95 — Active station filter from the dashboard's station picker.
-   * `null` ⇒ no filter („All Stations"). When set, vehicle-health alerts
-   * (BATTERY_CRITICAL / SERVICE_OVERDUE) and the vehicle-side filtering of
-   * business-insight rows scope down to vehicles whose `station` name
-   * matches. Insights that aren't tied to a single vehicle (e.g.
-   * organisation-level signals) keep flowing through unchanged.
-   */
+  /** Station id filter (`null` = all stations). */
   stationFilter?: string | null;
 }
 
@@ -147,7 +140,12 @@ export function BusinessInsightsBox({ isDarkMode, onOpenVehicle, onOpenView, not
   // slice of the fleet. `null`/empty filter ⇒ pass through unchanged.
   const filteredFleetVehicles = useMemo(() => {
     if (!stationFilter) return fleetVehicles;
-    return fleetVehicles.filter((v) => (v.station || '') === stationFilter);
+    return fleetVehicles.filter(
+      (v) =>
+        v.stationId === stationFilter ||
+        v.homeStationId === stationFilter ||
+        v.currentStationId === stationFilter,
+    );
   }, [fleetVehicles, stationFilter]);
   const { alerts: vehicleHealthAlerts, counts: vehicleHealthSummary } = useVehicleHealthAlerts(filteredFleetVehicles);
   const [activeTab, setActiveTab] = useState<InsightsTab>('business');

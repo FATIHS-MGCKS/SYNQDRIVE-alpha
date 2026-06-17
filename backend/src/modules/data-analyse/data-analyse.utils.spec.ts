@@ -10,6 +10,8 @@ describe('data-analyse.utils', () => {
     it('returns null averages for empty input', () => {
       expect(computeIntervalStats([])).toEqual({
         averageMs: null,
+        medianMs: null,
+        p95Ms: null,
         fastestMs: null,
         slowestMs: null,
         dropoutCount: 0,

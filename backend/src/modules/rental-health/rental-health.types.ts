@@ -21,6 +21,17 @@ export interface ModuleHealth {
   reason: string;
   last_updated_at: string | null; // ISO 8601 — null when no data has ever been seen
   data_stale: boolean;
+  /** Data origin when known — e.g. hm_oem, dtc_poll, canonical_battery. */
+  source?: string;
+  /** How the module state was derived — never fabricated. */
+  evidence_type?:
+    | 'measured'
+    | 'estimated'
+    | 'provider'
+    | 'manual'
+    | 'document'
+    | 'complaint'
+    | 'unknown';
 }
 
 export interface VehicleHealth {
