@@ -776,6 +776,15 @@ export function NewBookingView({ onBack, onCustomerCreated, onBookingCreated }: 
           description: reasons.join(' · '),
           duration: 8000,
         });
+      } else if (code === 'VEHICLE_HEALTH_GATE_UNAVAILABLE') {
+        // Health gate failed technically — never a silent fail-open. The
+        // operator is told the check could not run, not that the car is fine.
+        toast.error('Health-Prüfung nicht verfügbar', {
+          description:
+            body?.message ||
+            'Fahrzeug-Gesundheit konnte nicht geprüft werden — manuelle Prüfung erforderlich. Buchung wurde nicht freigegeben.',
+          duration: 9000,
+        });
       } else if (
         (code === 'CUSTOMER_BOOKING_BLOCKED' ||
           code === 'CUSTOMER_CONFIRMATION_BLOCKED' ||

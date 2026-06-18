@@ -55,6 +55,7 @@ export interface CreateManualTaskInput extends TaskLinks {
   estimatedCostCents?: number | null;
   metadata?: Prisma.InputJsonValue;
   checklist?: Array<{ title: string; description?: string; sortOrder?: number }>;
+  blocksVehicleAvailability?: boolean;
 }
 
 export interface UpdateTaskInput {
@@ -67,6 +68,7 @@ export interface UpdateTaskInput {
   actualCostCents?: number | null;
   metadata?: Prisma.InputJsonValue;
   category?: string;
+  blocksVehicleAvailability?: boolean;
 }
 
 export interface ListTasksFilters {
@@ -139,6 +141,7 @@ export class TasksService {
       estimatedCostCents: t.estimatedCostCents ?? null,
       actualCostCents: t.actualCostCents ?? null,
       resolutionNote: t.resolutionNote || null,
+      blocksVehicleAvailability: t.blocksVehicleAvailability ?? false,
       metadata: t.metadata ?? null,
       isOverdue: this.isOverdue(t, now),
       dueDate: (t.dueDate as Date)?.toISOString?.() || null,
@@ -448,6 +451,7 @@ export class TasksService {
         assignedUserId: input.assignedUserId ?? undefined,
         dueDate: input.dueDate ? new Date(input.dueDate) : null,
         estimatedCostCents: input.estimatedCostCents ?? undefined,
+        blocksVehicleAvailability: input.blocksVehicleAvailability ?? false,
         metadata: input.metadata,
         createdByUserId: createdByUserId ?? null,
         checklistItems: checklist
@@ -493,6 +497,7 @@ export class TasksService {
       assignedUserId?: string;
       dueDate?: string;
       estimatedCostCents?: number;
+      blocksVehicleAvailability?: boolean;
     },
     createdByUserId?: string,
   ) {
@@ -546,6 +551,9 @@ export class TasksService {
     if (data.estimatedCostCents !== undefined) update.estimatedCostCents = data.estimatedCostCents;
     if (data.actualCostCents !== undefined) update.actualCostCents = data.actualCostCents;
     if (data.metadata !== undefined) update.metadata = data.metadata;
+    if (data.blocksVehicleAvailability !== undefined) {
+      update.blocksVehicleAvailability = data.blocksVehicleAvailability;
+    }
     update.updatedByUserId = actorUserId ?? null;
 
     await this.prisma.orgTask.update({ where: { id }, data: update });
@@ -773,6 +781,7 @@ export class TasksService {
       metadata?: Prisma.InputJsonValue;
       // Applied only when a brand-new task is created (never on escalation).
       checklist?: Array<{ title: string; description?: string; sortOrder?: number }>;
+      blocksVehicleAvailability?: boolean;
     },
   ) {
     const existing = await this.prisma.orgTask.findFirst({
@@ -805,6 +814,7 @@ export class TasksService {
           dueDate: payload.dueDate ?? null,
           source: payload.source,
           metadata: payload.metadata,
+          blocksVehicleAvailability: payload.blocksVehicleAvailability ?? existing!.blocksVehicleAvailability,
         },
       });
       return this.format(task);
@@ -841,6 +851,7 @@ export class TasksService {
         source: payload.source,
         dedupKey,
         metadata: payload.metadata,
+        blocksVehicleAvailability: payload.blocksVehicleAvailability ?? false,
         checklistItems: checklist
           ? {
               create: checklist.map((c, i) => ({

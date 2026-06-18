@@ -34,6 +34,12 @@ export {
   pollLogStatusTone,
   prospectStatusTone,
   prospectPriorityTone,
+  activityActionTone,
+  activityEntityTone,
+  supportStatusTone,
+  subscriptionStatusTone,
+  paymentStatusTone,
+  planTone,
 } from './status-utils';
 export type { StatusTone, HealthState, TaskPriority } from './status-utils';
 

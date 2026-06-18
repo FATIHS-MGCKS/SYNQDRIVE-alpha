@@ -9,6 +9,7 @@ import {
   UseGuards,
   BadRequestException,
   Delete,
+  NotImplementedException,
   Req,
 } from '@nestjs/common';
 import { BatteryService } from './battery/battery.service';
@@ -31,6 +32,14 @@ import { EnergyEventsService } from './energy-events/energy-events.service';
 import { TripAnalyticsCanonicalService } from './trips/trip-analytics-canonical.service';
 import { DriverScoreService } from './trips/driver-score.service';
 import { DamagesService } from './damages/damages.service';
+import {
+  AddDamageImageDto,
+  AnalyzeExteriorPhotosDto,
+  CreateDamageDto,
+  MarkDamageRepairedDto,
+  PlaceDamageOnVehicleDto,
+  UpdateDamageDto,
+} from './damages/dto';
 import { BatteryHealthService } from './battery-health/battery-health.service';
 import { HvBatteryHealthService } from './battery-health/hv-battery-health.service';
 import { BatteryV2Service } from './battery-health/battery-v2.service';
@@ -43,6 +52,7 @@ import { HmVehicleActivationService } from '../high-mobility/high-mobility-vehic
 import { HmSignalUsageService } from '../high-mobility/high-mobility-signal-usage.service';
 import { ServiceComplianceService } from './service-compliance/service-compliance.service';
 import { ComplianceTaskMaterializeService } from './service-compliance/compliance-task-materialize.service';
+import { VehicleFileSummaryService } from './vehicle-file/vehicle-file-summary.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { VehicleOwnershipGuard } from '@shared/auth/vehicle-ownership.guard';
 import { PaginationParams } from '@shared/utils/pagination';
@@ -116,6 +126,7 @@ export class VehicleIntelligenceController {
     private readonly hmSignalUsageService: HmSignalUsageService,
     private readonly serviceComplianceService: ServiceComplianceService,
     private readonly complianceTaskMaterialize: ComplianceTaskMaterializeService,
+    private readonly vehicleFileSummaryService: VehicleFileSummaryService,
     @Inject(forwardRef(() => InvoicesService))
     private readonly invoicesService: InvoicesService,
     @Inject(forwardRef(() => AiTireSpecJobService))
@@ -1283,22 +1294,62 @@ export class VehicleIntelligenceController {
   @Post('damages')
   async createDamage(
     @Param('vehicleId') vehicleId: string,
-    @Body() body: any,
+    @Body() body: CreateDamageDto,
   ) {
-    return this.damagesService.create({ vehicleId, ...body });
+    return this.damagesService.create(vehicleId, body);
+  }
+
+  /**
+   * Exterior photo damage analysis — contract only until a vision pipeline is wired.
+   * Does NOT return fake suggestions. Frontend gates the flow behind
+   * VITE_DAMAGE_AI_INTAKE_ENABLED.
+   */
+  @Post('damages/ai-analyze-exterior')
+  analyzeExteriorPhotosForDamage(
+    @Param('vehicleId') _vehicleId: string,
+    @Body() _body: AnalyzeExteriorPhotosDto,
+  ) {
+    throw new NotImplementedException({
+      code: 'DAMAGE_AI_ANALYZE_NOT_AVAILABLE',
+      message:
+        'Exterior photo damage analysis is not available yet. Use document-extraction DAMAGE uploads for report documents, or create damages manually.',
+    });
+  }
+
+  @Patch('damages/:id')
+  async updateDamage(
+    @Param('vehicleId') vehicleId: string,
+    @Param('id') id: string,
+    @Body() body: UpdateDamageDto,
+  ) {
+    return this.damagesService.update(vehicleId, id, body);
+  }
+
+  @Patch('damages/:id/place')
+  async placeDamageOnVehicle(
+    @Param('vehicleId') vehicleId: string,
+    @Param('id') id: string,
+    @Body() body: PlaceDamageOnVehicleDto,
+  ) {
+    return this.damagesService.placeOnVehicle(vehicleId, id, body);
   }
 
   @Patch('damages/:id/repair')
-  async markDamageRepaired(@Param('id') id: string) {
-    return this.damagesService.markRepaired(id);
+  async markDamageRepaired(
+    @Param('vehicleId') vehicleId: string,
+    @Param('id') id: string,
+    @Body() body: MarkDamageRepairedDto,
+  ) {
+    return this.damagesService.markRepaired(vehicleId, id, body);
   }
 
   @Post('damages/:id/images')
   async addDamageImage(
+    @Param('vehicleId') vehicleId: string,
     @Param('id') id: string,
-    @Body() body: { imageData: string; caption?: string },
+    @Body() body: AddDamageImageDto,
   ) {
-    return this.damagesService.addImage(id, body.imageData, body.caption);
+    return this.damagesService.addImage(vehicleId, id, body.imageData, body.caption, body.uploadedBy);
   }
 
   // --- Battery Health (12V) ---
@@ -1429,6 +1480,12 @@ export class VehicleIntelligenceController {
   @Get('battery-health-detail')
   async getBatteryHealthDetail(@Param('vehicleId') vehicleId: string) {
     return this.canonicalBatteryHealthService.getDetail(vehicleId);
+  }
+
+  // --- Vehicle file summary (Documents tab read model) ---
+  @Get('file-summary')
+  async getVehicleFileSummary(@Param('vehicleId') vehicleId: string) {
+    return this.vehicleFileSummaryService.buildSummary(vehicleId);
   }
 
   // --- Service Info Status ---

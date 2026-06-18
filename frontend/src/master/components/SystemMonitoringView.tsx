@@ -272,7 +272,7 @@ function TokenAuthHealthPanel({ tokenHealth,
               />
             ))}
             {vehicleEntries.length === 0 && (
-              <div className={`rounded-xl border p-4 flex items-center justify-center sq-CARD`}>
+              <div className={`rounded-xl border p-4 flex items-center justify-center sq-card`}>
                 <p className={`text-xs text-muted-foreground`}>No vehicle JWTs acquired yet</p>
               </div>
             )}

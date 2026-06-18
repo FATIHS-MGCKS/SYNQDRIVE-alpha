@@ -38,20 +38,17 @@ import {
   Wifi,
 } from 'lucide-react';
 import { useState } from 'react';
+import {
+  PageHeader,
+  StatusChip,
+  StatusDot,
+} from '../../components/patterns';
+import { navItemClass } from '../../components/shell';
 
 interface ArchitekturViewProps {
-  isDarkMode: boolean;
+  /** @deprecated Theme is token-driven via CSS variables — prop kept for App.tsx compat. */
+  isDarkMode?: boolean;
 }
-
-/* ------------------------------------------------------------------ */
-/*  Styling helpers                                                    */
-/* ------------------------------------------------------------------ */
-
-const CARD = (_d: boolean) =>
-  'rounded-lg border overflow-hidden shadow-sm bg-card border-border';
-
-const BADGE = (color: string) =>
-  `inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${color}`;
 
 /* ------------------------------------------------------------------ */
 /*  Category definitions                                               */
@@ -151,16 +148,16 @@ interface HealthCalcEntry {
 }
 
 const HEALTH_CALCS: HealthCalcEntry[] = [
-  { name: 'Dashboard Warning Lights (Tacho Telltales Read Model)', icon: Activity, inputs: ['HmSignalGroupState AI_HEALTH_CARE cache (per-signal value + timestamp)', 'HM link + isHmHealthActive', 'Vehicle.fuelType (ICE vs EV battery action text)', 'Tire pressure statuses from HM payload'], algorithm: 'V4.8.59: DashboardWarningLightsService maps HM signals to canonical lights (engine_limp_mode, engine_oil_level, brake_lining_wear_pre_warning, tire_pressure_warning, battery_warning_light, check_engine_light only when MIL in dashboard_lights). States: active | off_confirmed | no_event_yet | unsupported | stale | error — null never implies off. Per-signal freshness from signal timestamp, group freshness as fallback. Always returns envelope for not_connected / inactive HM / no_data. Embedded in AiHealthCareAggregationService as dashboardWarningLights; rentalHealthReady flag reserved for vehicle_alerts convergence.', output: 'DashboardWarningLightsResponse: provider, connectionStatus, supportStatus, freshness, overallStatus, message, lights[] with severity/reason/action/rentalImpact. GET /vehicles/:id/health/dashboard-warning-lights + ai-health-care.dashboardWarningLights.', color: 'text-sky-400' },
-  { name: 'Brake Health V2 (Canonical Evidence-Based Refactor)', icon: Disc, inputs: ['BrakeEvidence rows (MANUAL_MEASUREMENT/WORKSHOP_REPORT/AI_UPLOAD/SERVICE_INVOICE/INSPECTION_PROTOCOL/DTC_SIGNAL/BRAKE_WEAR_SENSOR/TELEMATICS_ESTIMATION) — real mm only from trusted sources', 'Brake lifecycle events (inspection/pads/discs/fluid/full) with optional measured snapshot', 'TripDrivingImpact rows since anchor (canonical temporal wear exposure) + harsh-brake rate/100km', 'VehicleDrivingImpactCurrent only as uncovered-gap fallback', 'Vehicle master (fuelType, brakeForceFrontPercent)', 'Odometer progression', 'Latest BRAKE_SERVICE event'], algorithm: 'V4.8.54 finalize: public BrakeHealthSummary = canonical read model (overallCondition, frontAxle/rearAxle, alerts, km ranges) + legacy{padsHealthPct,discsHealthPct} for backward compat only. DTC alert severity from evidence dtcSeverity band (not blanket critical). getDetail alerts = openAlerts. Manual lifecycle → BrakeEvidence; AI_UPLOAD evidence only post user confirmation in document-extraction. V4.8.2: ONE shared rule set lives in brakes/brake-status.ts (pure functions) — BrakeHealthService, BrakeCriticalDetector, Rental Health and AI Health Care call into it, no second brake threshold definition. The wear MODEL math stays (achsweise front/rear: Pads base=usable_mm/70k, Discs 2.0mm/90k, rate = base × bias × usage × stopDensity × hardBrake × fullBraking × reku × k (+highSpeed+thermal for discs), accumulated per trip since anchor, rolling only for uncovered gaps) and drives remaining-km. STATUS is decoupled: classifyEstimatedCondition caps a pure estimate at WARNING; classifyMeasuredThickness / fluid / disc-doc / DTC / immediate-replacement can be CRITICAL. overallCondition = aggregateBrakeCondition(front, rear, systemSafety) with CRITICAL-wins, UNKNOWN ignored. Harsh braking ONLY scales a wear multiplier (0–1/100km 1.00x · 1–3 1.15x · 3–6 1.35x · 6+ 1.60x, configurable) — never a CRITICAL by itself. Honesty-first: measurement/document/sensor = truth, projection = ESTIMATED; dataBasis (MEASURED/DOCUMENTED/SENSOR/ESTIMATED/UNKNOWN) + confidence (HIGH/MEDIUM/LOW/UNKNOWN, day/km gated, estimate never HIGH) never present an estimate as a measurement; remaining life is always a confidence-widened [min,max] range, never false precision. BrakeEvidence is the canonical observation store (BrakeEvidenceService) — TELEMATICS_ESTIMATION can never carry real mm; AI-upload writes confirmed evidence on apply. All thresholds central in brake-health.config.ts (conditionBands, confidenceLevels, remainingKmRange, inspection, harshBraking, measurementFreshness).', output: 'Canonical read model (single source of truth): overallCondition + front/rearAxleCondition (GOOD/WATCH/WARNING/CRITICAL/UNKNOWN), dataBasis + front/rearDataBasis, confidenceLevel + front/rearConfidence, estimatedFront/RearRemainingKmMin/Max (range), nextInspectionRecommendedInKm, estimatedReplacementDueInKm, reasons[], recommendations[], openAlerts[] (canonical codes BRAKE_PAD_WARNING/CRITICAL, BRAKE_SYSTEM_DTC, BRAKE_FLUID_WARNING, BRAKE_INSPECTION_OVERDUE, BRAKE_HEALTH_LOW_CONFIDENCE), lastMeasurement/Service At+MileageKm — plus legacy pads/discs health, limitingComponent, remainingKm, stateClass, coverage kept for back-compat. Consumed by Vehicle Detail (Quick Box + Detail Modal), Fleet Condition tile/detail, Rental Health (evaluateBrakes), AI Health Care and the BRAKE_CRITICAL dashboard insight (estimate caps WARNING, CRITICAL only with a real signal). Runtime consumers use /brake-health/summary + /brake-health/detail.', color: 'text-red-400' },
-  { name: 'Tire Health V2 (Canonical Lifecycle + Wear Model + Canonical Status)', icon: Disc, inputs: ['Canonical tire lifecycle commands via TireLifecycleService (install, rotate, replace single/axle/full, activate stored set)', 'Per-tire identity via Tire model (TireIdentityService: currentPosition, mountedAt/dismountedAt, TireMeasurement, TirePositionHistory with tireId)', 'Canonical recordMeasurement pipeline (manual/workshop/ai_confirmed/calibration)', 'AI tire spec + tire condition + setup metadata', 'Driving Impact Engine V1', 'Vehicle master data', 'Trip temperature + speed', 'DIMO tire pressure (numeric) + HM pressure freshness/status context', 'k-factor calibration + regression data points', 'DOT code (tire age)'], algorithm: 'V4.8.53 finalize: ONE mutation path — TireLifecycleService only (TireHealthService/TiresService are read-only for health/summary). Rotation updates Tire.currentPosition + position history with tireId (not audit-only). Partial replace dismounts old tire (active=false, dismountedAt) and creates new Tire + TireMeasurement; other wheels unchanged. Full set archives setup tires and creates four new identities. ONE shared rule set in tires/tire-status.ts. TireCriticalDetector reads TireHealthService.getSummary (no parallel DB re-aggregation). confidence + confidenceLabel from classifyConfidenceLevel only. Rental Health uses overallStatus only (no overallPercent fallback).', output: 'Canonical read model (single source of truth): overallStatus (GOOD/WATCH/WARNING/CRITICAL/UNKNOWN), displayMode, confidence, lowestTreadMm + lowestTreadPosition, measuredTreadMm/estimatedTreadMm/displayTreadMm, lastMeasurementAt, measurementAgeDays, estimatedRemainingKm, pressureStatus, seasonStatus, unevenWearStatus, recommendations, alerts (canonical codes TIRE_TREAD_LOW/CRITICAL, TIRE_PRESSURE_LOW/HIGH, TIRE_SEASON_MISMATCH, TIRE_AGE_WARNING, TIRE_MEASUREMENT_OVERDUE, TIRE_WEAR_UNEVEN, TIRE_ROTATION_RECOMMENDED) — plus legacy overallPercent/actionState kept for back-compat. Consumed by Vehicle Detail, Fleet Condition, Rental Health, TireCriticalDetector.', color: 'text-amber-400' },
-  { name: 'Oil Health', icon: Droplet, inputs: ['Oil life signal', 'Mileage since change', 'Engine hours'], algorithm: 'Decay from last change + signal', output: 'Oil life %, next change estimate', color: 'text-yellow-400' },
-  { name: 'Battery (HV)', icon: Battery, inputs: ['Provider-reported DIMO SOH evidence', 'Document/manual/workshop SOH evidence (BatteryEvidence)', 'HV telemetry snapshots (SoC/range/temperature/charging state/power/current energy/gross capacity)', 'Energy throughput between SoC readings', 'Nominal capacity from vehicle master'], algorithm: 'V4.8.52: canonical precedence is provider_reported SOH (fresh) → reported SOH (document/manual/workshop) → telemetry_derived capacity/energy measurement. The age/km degradation fallback and `degradation_model` maturity/source paths were REMOVED — legacy DB rows with method=degradation_model are defensively ignored (never published, never alert basis). When no reliable basis exists HV SOH is unavailable/unknown (status estimate_unavailable, noFallbackSoh:true). SOH bands (shared battery-status.ts): ≥80 GOOD · 70–79 WATCH · 60–69 WARNING · <60 CRITICAL.', output: 'Canonical hv section: healthStatus (GOOD/WATCH/WARNING/CRITICAL/UNKNOWN), sohPct + healthPercent, sohSource (PROVIDER/CAPACITY_ESTIMATE/DOCUMENT/MANUAL), noFallbackSoh, method, evidenceType, freshness, publication state, telemetry context, charging sessions, trend and interpretation', color: 'text-emerald-400' },
-  { name: 'Battery (LV) V2 — Estimated Battery Health', icon: Battery, inputs: ['DIMO lowVoltageBatteryCurrentVoltage (+ source timestamp)', 'Rest voltage (RESTING context, engine-off)', 'Crank drop + recovery', 'Rest stability', 'VehicleBatterySpec rows (batteryType/batteryVolt/sourceConfidence)', 'Document-confirmed LV workshop measurements'], algorithm: 'V4.8.52: LV is behaviour-derived „Estimated Battery Health" (no voltage→SOH table). `selectBestBatterySpec()` picks the best VehicleBatterySpec per vehicle (complete type+volt → confidence → plausible 12V → known type → newest). `classifyRestingVoltage` sets thresholdSource: BATTERY_SPEC when a usable spec with known chemistry supplied the type (AGM/EFB/LEAD_ACID), DEFAULT without spec, UNSUPPORTED for LITHIUM. Estimated Health bands: 80–100 GOOD · 60–79 WATCH · 40–59 WARNING · 0–39 CRITICAL → 3-bar UI. Resting bands: DEFAULT/LEAD_ACID/EFB ≥12.50/12.20/12.00, AGM ≥12.60/12.30/12.10. Final lv.healthStatus aggregates both; BatteryCriticalDetector uses the same rules (WATCH never alerts; resting WARNING needs two consecutive qualified samples).', output: 'Canonical lv section: healthStatus, estimatedHealth {status, scorePct (internal), displayMode:BARS, bars 0–3, label „Estimated Battery Health", confidence, calibrationStatus}, restingVoltage {valueV, status, thresholdSource BATTERY_SPEC/DEFAULT/UNSUPPORTED, batteryType, measurementContext}, condition, method, freshness, calibration progress, telemetry + evidence provenance, watchpoints + recommendations', color: 'text-cyan-400' },
-  { name: 'Error Codes (DTC)', icon: Wrench, inputs: ['obdDTCList signal (DIMO)', 'Poll freshness timestamp', 'Active vs cleared state diff', 'Occurrence count'], algorithm: 'Poll every 3 h → diff active codes → clear disappeared → stale if > 6 h since last success', output: 'status (clean/active_faults/stale/unavailable), activeFaultCount, lastSuccessfulCheckAt, history', color: 'text-violet-400' },
-  { name: 'Driving Impact Engine V1 (shared layer)', icon: Layers, inputs: ['VehicleTrip: distanceKm, city/highway/country%, hardAccelCount, hardBrakeCount, fullBrakingCount, kickdownCount, brakingEventCount', 'SMART5/UNKNOWN: TripBehaviorEvent (peakDecelMs2, startSpeedKmh, endSpeedKmh, classification)', 'LTE_R1: DrivingEvent (source=TELEMETRY_EVENTS, severity-based peak decel proxy)', 'Route speed context (avg/max speed, road shares — not rental safety score)'], algorithm: 'V3 hardware-aware ingestion: branches on hardwareType. Per-100km normalization + weighted component stress scores (longitudinal/braking/stop-go/high-speed/thermal) + distance-weighted 30-day rolling aggregate. V4.8.24: one canonical 0–100 vehicle stress scalar per trip — drivingStressScore (reference-deduction over stress components; higher = more vehicle load). Speed-limit/speeding signals remain internal for tire/brake/high-speed stress only; safetyScore retired from rental exposure and new writes.', output: 'TripDrivingImpact (per trip): 5 component stress scores, usage split, per-100km rates, p95 decel, meanBrakeEnergy, drivingStressScore (@map driving_style_score). VehicleDrivingImpactCurrent (per vehicle): rolling 30-day distance-weighted stress aggregate — consumed by Tire Health V2, Brake Health V2, rental vehicle-stress summaries. VehicleTrip.drivingScore mirrors drivingStressScore for legacy compat.', color: 'text-orange-400' },
-  { name: 'AI Tire Spec Agent', icon: Disc, inputs: ['User-provided: tire brand, model, dimension (size), load index, speed index', 'Vehicle year from master data', 'Available in: Vehicle Registration Modal + Health Errors View'], algorithm: 'V4.2.4: SSE streaming via DIMO Agent from registration form. Stream timeout 300s + 120s inactivity detection. Prompt is knowledge-based (no web search) for fast response. Requests 55+ fields (EU label, UTQG, dimensional, bias/sensitivity, OE markings). Data mapping: legalMinTreadDepthMm→legalMinimumMm, practicalReplacementDepthMm→recommendedReplacementDepthMm for wear model. Result shown in collapsible preview table. On registration: AI tire spec JSON stored alongside typed load/speed index columns.', output: 'AI tire spec JSON on VehicleTireSetup.aiTireSpec. DB columns: load_index_front, speed_index_front, load_index_rear, speed_index_rear, dot_code_front, dot_code_rear. Fields: matchedBrand/Model/Variant, seasonType, EU label classes, UTQG ratings, newTreadDepthMm, practicalReplacementDepthMm, bias/sensitivity values (0-1), confidenceScore (0-1), source URLs. Metadata: userConfirmedSpec, specSourceType, fetchedAt, jobId. Manual tread/calibration never touched. Consumed by Tire Health V2 wear engine for model-aware baseline and factor tuning.', color: 'text-purple-400' },
-  { name: 'AI Assistant (Chat Agent) — V4.9.2 SSE', icon: Zap, inputs: ['User chat message (rental AIAssistantView)', 'Per-org DIMO chat agent (OrganizationChatAgent: agentName=<shortCode>_chatagent, dimoAgentId)', 'Fleet context: registered vehicles (make/model/year, plate, name, VIN, DIMO tokenId, fuel) injected per message + license-plate/name/make-model/VIN/tokenId resolution hint', 'DIMO Agents API (agents.dimo.zone), Developer-JWT Bearer + DIMO_API_KEY/USER_WALLET in agent secrets'], algorithm: 'V4.9.2: the chat runs over the DIMO SSE stream endpoint POST /agents/:id/stream (DimoAgentsService.sendMessageStream), NOT the synchronous /agents/:id/message which returns 504 for any request that requires real agent work (tool calls / telemetry lookups). Flow: Frontend streamChatMessage (POST fetch + ReadableStream reader, Authorization header) → ChatController POST /organizations/:orgId/chat/message/stream (SSE: text/event-stream, X-Accel-Buffering:no, RolesGuard) → ChatService.streamMessage: ensureAgent (create+persist per-org agent if missing, auto shortCode) → save user ChatMessage → build fleet-enriched prompt + tokenIds → sendMessageStream with onChunk forwarding live progress (reasoning/tool_call/tool_return labels) as SSE `progress` events → on agent expiry (404/410) recreate agent once and retry → persist assistant ChatMessage → emit final `result`. SSE events: status / progress / result / error. The non-streaming ChatService.sendMessage (used by WhatsApp AI suggestions) was also moved onto the stream path, so it is 504-fest too. Sibling agent consumers (AI Upload = DimoDocumentAgentService, DTC research = DtcAiResearchService, vehicle/tire specs) already used sendMessageStream — unchanged.', output: 'Persisted ChatMessage rows (role user/assistant, organizationId-scoped) returned via GET /chat/history; live assistant answer streamed to AIAssistantView with a live "thinking"/tool-step indicator. No fabricated fleet facts — fleet context only resolves which vehicle the user means.', color: 'text-purple-400' },
+  { name: 'Dashboard Warning Lights (Tacho Telltales Read Model)', icon: Activity, inputs: ['HmSignalGroupState AI_HEALTH_CARE cache (per-signal value + timestamp)', 'HM link + isHmHealthActive', 'Vehicle.fuelType (ICE vs EV battery action text)', 'Tire pressure statuses from HM payload'], algorithm: 'V4.8.59: DashboardWarningLightsService maps HM signals to canonical lights (engine_limp_mode, engine_oil_level, brake_lining_wear_pre_warning, tire_pressure_warning, battery_warning_light, check_engine_light only when MIL in dashboard_lights). States: active | off_confirmed | no_event_yet | unsupported | stale | error — null never implies off. Per-signal freshness from signal timestamp, group freshness as fallback. Always returns envelope for not_connected / inactive HM / no_data. Embedded in AiHealthCareAggregationService as dashboardWarningLights; rentalHealthReady flag reserved for vehicle_alerts convergence.', output: 'DashboardWarningLightsResponse: provider, connectionStatus, supportStatus, freshness, overallStatus, message, lights[] with severity/reason/action/rentalImpact. GET /vehicles/:id/health/dashboard-warning-lights + ai-health-care.dashboardWarningLights.', color: 'text-[color:var(--brand)]' },
+  { name: 'Brake Health V2 (Canonical Evidence-Based Refactor)', icon: Disc, inputs: ['BrakeEvidence rows (MANUAL_MEASUREMENT/WORKSHOP_REPORT/AI_UPLOAD/SERVICE_INVOICE/INSPECTION_PROTOCOL/DTC_SIGNAL/BRAKE_WEAR_SENSOR/TELEMATICS_ESTIMATION) — real mm only from trusted sources', 'Brake lifecycle events (inspection/pads/discs/fluid/full) with optional measured snapshot', 'TripDrivingImpact rows since anchor (canonical temporal wear exposure) + harsh-brake rate/100km', 'VehicleDrivingImpactCurrent only as uncovered-gap fallback', 'Vehicle master (fuelType, brakeForceFrontPercent)', 'Odometer progression', 'Latest BRAKE_SERVICE event'], algorithm: 'V4.8.54 finalize: public BrakeHealthSummary = canonical read model (overallCondition, frontAxle/rearAxle, alerts, km ranges) + legacy{padsHealthPct,discsHealthPct} for backward compat only. DTC alert severity from evidence dtcSeverity band (not blanket critical). getDetail alerts = openAlerts. Manual lifecycle → BrakeEvidence; AI_UPLOAD evidence only post user confirmation in document-extraction. V4.8.2: ONE shared rule set lives in brakes/brake-status.ts (pure functions) — BrakeHealthService, BrakeCriticalDetector, Rental Health and AI Health Care call into it, no second brake threshold definition. The wear MODEL math stays (achsweise front/rear: Pads base=usable_mm/70k, Discs 2.0mm/90k, rate = base × bias × usage × stopDensity × hardBrake × fullBraking × reku × k (+highSpeed+thermal for discs), accumulated per trip since anchor, rolling only for uncovered gaps) and drives remaining-km. STATUS is decoupled: classifyEstimatedCondition caps a pure estimate at WARNING; classifyMeasuredThickness / fluid / disc-doc / DTC / immediate-replacement can be CRITICAL. overallCondition = aggregateBrakeCondition(front, rear, systemSafety) with CRITICAL-wins, UNKNOWN ignored. Harsh braking ONLY scales a wear multiplier (0–1/100km 1.00x · 1–3 1.15x · 3–6 1.35x · 6+ 1.60x, configurable) — never a CRITICAL by itself. Honesty-first: measurement/document/sensor = truth, projection = ESTIMATED; dataBasis (MEASURED/DOCUMENTED/SENSOR/ESTIMATED/UNKNOWN) + confidence (HIGH/MEDIUM/LOW/UNKNOWN, day/km gated, estimate never HIGH) never present an estimate as a measurement; remaining life is always a confidence-widened [min,max] range, never false precision. BrakeEvidence is the canonical observation store (BrakeEvidenceService) — TELEMATICS_ESTIMATION can never carry real mm; AI-upload writes confirmed evidence on apply. All thresholds central in brake-health.config.ts (conditionBands, confidenceLevels, remainingKmRange, inspection, harshBraking, measurementFreshness).', output: 'Canonical read model (single source of truth): overallCondition + front/rearAxleCondition (GOOD/WATCH/WARNING/CRITICAL/UNKNOWN), dataBasis + front/rearDataBasis, confidenceLevel + front/rearConfidence, estimatedFront/RearRemainingKmMin/Max (range), nextInspectionRecommendedInKm, estimatedReplacementDueInKm, reasons[], recommendations[], openAlerts[] (canonical codes BRAKE_PAD_WARNING/CRITICAL, BRAKE_SYSTEM_DTC, BRAKE_FLUID_WARNING, BRAKE_INSPECTION_OVERDUE, BRAKE_HEALTH_LOW_CONFIDENCE), lastMeasurement/Service At+MileageKm — plus legacy pads/discs health, limitingComponent, remainingKm, stateClass, coverage kept for back-compat. Consumed by Vehicle Detail (Quick Box + Detail Modal), Fleet Condition tile/detail, Rental Health (evaluateBrakes), AI Health Care and the BRAKE_CRITICAL dashboard insight (estimate caps WARNING, CRITICAL only with a real signal). Runtime consumers use /brake-health/summary + /brake-health/detail.', color: 'text-[color:var(--status-critical)]' },
+  { name: 'Tire Health V2 (Canonical Lifecycle + Wear Model + Canonical Status)', icon: Disc, inputs: ['Canonical tire lifecycle commands via TireLifecycleService (install, rotate, replace single/axle/full, activate stored set)', 'Per-tire identity via Tire model (TireIdentityService: currentPosition, mountedAt/dismountedAt, TireMeasurement, TirePositionHistory with tireId)', 'Canonical recordMeasurement pipeline (manual/workshop/ai_confirmed/calibration)', 'AI tire spec + tire condition + setup metadata', 'Driving Impact Engine V1', 'Vehicle master data', 'Trip temperature + speed', 'DIMO tire pressure (numeric) + HM pressure freshness/status context', 'k-factor calibration + regression data points', 'DOT code (tire age)'], algorithm: 'V4.8.53 finalize: ONE mutation path — TireLifecycleService only (TireHealthService/TiresService are read-only for health/summary). Rotation updates Tire.currentPosition + position history with tireId (not audit-only). Partial replace dismounts old tire (active=false, dismountedAt) and creates new Tire + TireMeasurement; other wheels unchanged. Full set archives setup tires and creates four new identities. ONE shared rule set in tires/tire-status.ts. TireCriticalDetector reads TireHealthService.getSummary (no parallel DB re-aggregation). confidence + confidenceLabel from classifyConfidenceLevel only. Rental Health uses overallStatus only (no overallPercent fallback).', output: 'Canonical read model (single source of truth): overallStatus (GOOD/WATCH/WARNING/CRITICAL/UNKNOWN), displayMode, confidence, lowestTreadMm + lowestTreadPosition, measuredTreadMm/estimatedTreadMm/displayTreadMm, lastMeasurementAt, measurementAgeDays, estimatedRemainingKm, pressureStatus, seasonStatus, unevenWearStatus, recommendations, alerts (canonical codes TIRE_TREAD_LOW/CRITICAL, TIRE_PRESSURE_LOW/HIGH, TIRE_SEASON_MISMATCH, TIRE_AGE_WARNING, TIRE_MEASUREMENT_OVERDUE, TIRE_WEAR_UNEVEN, TIRE_ROTATION_RECOMMENDED) — plus legacy overallPercent/actionState kept for back-compat. Consumed by Vehicle Detail, Fleet Condition, Rental Health, TireCriticalDetector.', color: 'text-[color:var(--status-watch)]' },
+  { name: 'Oil Health', icon: Droplet, inputs: ['Oil life signal', 'Mileage since change', 'Engine hours'], algorithm: 'Decay from last change + signal', output: 'Oil life %, next change estimate', color: 'text-[color:var(--status-watch)]' },
+  { name: 'Battery (HV)', icon: Battery, inputs: ['Provider-reported DIMO SOH evidence', 'Document/manual/workshop SOH evidence (BatteryEvidence)', 'HV telemetry snapshots (SoC/range/temperature/charging state/power/current energy/gross capacity)', 'Energy throughput between SoC readings', 'Nominal capacity from vehicle master'], algorithm: 'V4.8.52: canonical precedence is provider_reported SOH (fresh) → reported SOH (document/manual/workshop) → telemetry_derived capacity/energy measurement. The age/km degradation fallback and `degradation_model` maturity/source paths were REMOVED — legacy DB rows with method=degradation_model are defensively ignored (never published, never alert basis). When no reliable basis exists HV SOH is unavailable/unknown (status estimate_unavailable, noFallbackSoh:true). SOH bands (shared battery-status.ts): ≥80 GOOD · 70–79 WATCH · 60–69 WARNING · <60 CRITICAL.', output: 'Canonical hv section: healthStatus (GOOD/WATCH/WARNING/CRITICAL/UNKNOWN), sohPct + healthPercent, sohSource (PROVIDER/CAPACITY_ESTIMATE/DOCUMENT/MANUAL), noFallbackSoh, method, evidenceType, freshness, publication state, telemetry context, charging sessions, trend and interpretation', color: 'text-[color:var(--status-positive)]' },
+  { name: 'Battery (LV) V2 — Estimated Battery Health', icon: Battery, inputs: ['DIMO lowVoltageBatteryCurrentVoltage (+ source timestamp)', 'Rest voltage (RESTING context, engine-off)', 'Crank drop + recovery', 'Rest stability', 'VehicleBatterySpec rows (batteryType/batteryVolt/sourceConfidence)', 'Document-confirmed LV workshop measurements'], algorithm: 'V4.8.52: LV is behaviour-derived „Estimated Battery Health" (no voltage→SOH table). `selectBestBatterySpec()` picks the best VehicleBatterySpec per vehicle (complete type+volt → confidence → plausible 12V → known type → newest). `classifyRestingVoltage` sets thresholdSource: BATTERY_SPEC when a usable spec with known chemistry supplied the type (AGM/EFB/LEAD_ACID), DEFAULT without spec, UNSUPPORTED for LITHIUM. Estimated Health bands: 80–100 GOOD · 60–79 WATCH · 40–59 WARNING · 0–39 CRITICAL → 3-bar UI. Resting bands: DEFAULT/LEAD_ACID/EFB ≥12.50/12.20/12.00, AGM ≥12.60/12.30/12.10. Final lv.healthStatus aggregates both; BatteryCriticalDetector uses the same rules (WATCH never alerts; resting WARNING needs two consecutive qualified samples).', output: 'Canonical lv section: healthStatus, estimatedHealth {status, scorePct (internal), displayMode:BARS, bars 0–3, label „Estimated Battery Health", confidence, calibrationStatus}, restingVoltage {valueV, status, thresholdSource BATTERY_SPEC/DEFAULT/UNSUPPORTED, batteryType, measurementContext}, condition, method, freshness, calibration progress, telemetry + evidence provenance, watchpoints + recommendations', color: 'text-[color:var(--brand)]' },
+  { name: 'Error Codes (DTC)', icon: Wrench, inputs: ['obdDTCList signal (DIMO)', 'Poll freshness timestamp', 'Active vs cleared state diff', 'Occurrence count'], algorithm: 'Poll every 3 h → diff active codes → clear disappeared → stale if > 6 h since last success', output: 'status (clean/active_faults/stale/unavailable), activeFaultCount, lastSuccessfulCheckAt, history', color: 'text-[color:var(--status-ai)]' },
+  { name: 'Driving Impact Engine V1 (shared layer)', icon: Layers, inputs: ['VehicleTrip: distanceKm, city/highway/country%, hardAccelCount, hardBrakeCount, fullBrakingCount, kickdownCount, brakingEventCount', 'SMART5/UNKNOWN: TripBehaviorEvent (peakDecelMs2, startSpeedKmh, endSpeedKmh, classification)', 'LTE_R1: DrivingEvent (source=TELEMETRY_EVENTS, severity-based peak decel proxy)', 'Route speed context (avg/max speed, road shares — not rental safety score)'], algorithm: 'V3 hardware-aware ingestion: branches on hardwareType. Per-100km normalization + weighted component stress scores (longitudinal/braking/stop-go/high-speed/thermal) + distance-weighted 30-day rolling aggregate. V4.8.24: one canonical 0–100 vehicle stress scalar per trip — drivingStressScore (reference-deduction over stress components; higher = more vehicle load). Speed-limit/speeding signals remain internal for tire/brake/high-speed stress only; safetyScore retired from rental exposure and new writes.', output: 'TripDrivingImpact (per trip): 5 component stress scores, usage split, per-100km rates, p95 decel, meanBrakeEnergy, drivingStressScore (@map driving_style_score). VehicleDrivingImpactCurrent (per vehicle): rolling 30-day distance-weighted stress aggregate — consumed by Tire Health V2, Brake Health V2, rental vehicle-stress summaries. VehicleTrip.drivingScore mirrors drivingStressScore for legacy compat.', color: 'text-[color:var(--status-watch)]' },
+  { name: 'AI Tire Spec Agent', icon: Disc, inputs: ['User-provided: tire brand, model, dimension (size), load index, speed index', 'Vehicle year from master data', 'Available in: Vehicle Registration Modal + Health Errors View'], algorithm: 'V4.2.4: SSE streaming via DIMO Agent from registration form. Stream timeout 300s + 120s inactivity detection. Prompt is knowledge-based (no web search) for fast response. Requests 55+ fields (EU label, UTQG, dimensional, bias/sensitivity, OE markings). Data mapping: legalMinTreadDepthMm→legalMinimumMm, practicalReplacementDepthMm→recommendedReplacementDepthMm for wear model. Result shown in collapsible preview table. On registration: AI tire spec JSON stored alongside typed load/speed index columns.', output: 'AI tire spec JSON on VehicleTireSetup.aiTireSpec. DB columns: load_index_front, speed_index_front, load_index_rear, speed_index_rear, dot_code_front, dot_code_rear. Fields: matchedBrand/Model/Variant, seasonType, EU label classes, UTQG ratings, newTreadDepthMm, practicalReplacementDepthMm, bias/sensitivity values (0-1), confidenceScore (0-1), source URLs. Metadata: userConfirmedSpec, specSourceType, fetchedAt, jobId. Manual tread/calibration never touched. Consumed by Tire Health V2 wear engine for model-aware baseline and factor tuning.', color: 'text-[color:var(--status-ai)]' },
+  { name: 'AI Assistant (Chat Agent) — V4.9.2 SSE', icon: Zap, inputs: ['User chat message (rental AIAssistantView)', 'Per-org DIMO chat agent (OrganizationChatAgent: agentName=<shortCode>_chatagent, dimoAgentId)', 'Fleet context: registered vehicles (make/model/year, plate, name, VIN, DIMO tokenId, fuel) injected per message + license-plate/name/make-model/VIN/tokenId resolution hint', 'DIMO Agents API (agents.dimo.zone), Developer-JWT Bearer + DIMO_API_KEY/USER_WALLET in agent secrets'], algorithm: 'V4.9.2: the chat runs over the DIMO SSE stream endpoint POST /agents/:id/stream (DimoAgentsService.sendMessageStream), NOT the synchronous /agents/:id/message which returns 504 for any request that requires real agent work (tool calls / telemetry lookups). Flow: Frontend streamChatMessage (POST fetch + ReadableStream reader, Authorization header) → ChatController POST /organizations/:orgId/chat/message/stream (SSE: text/event-stream, X-Accel-Buffering:no, RolesGuard) → ChatService.streamMessage: ensureAgent (create+persist per-org agent if missing, auto shortCode) → save user ChatMessage → build fleet-enriched prompt + tokenIds → sendMessageStream with onChunk forwarding live progress (reasoning/tool_call/tool_return labels) as SSE `progress` events → on agent expiry (404/410) recreate agent once and retry → persist assistant ChatMessage → emit final `result`. SSE events: status / progress / result / error. The non-streaming ChatService.sendMessage (used by WhatsApp AI suggestions) was also moved onto the stream path, so it is 504-fest too. Sibling agent consumers (AI Upload = DimoDocumentAgentService, DTC research = DtcAiResearchService, vehicle/tire specs) already used sendMessageStream — unchanged.', output: 'Persisted ChatMessage rows (role user/assistant, organizationId-scoped) returned via GET /chat/history; live assistant answer streamed to AIAssistantView with a live "thinking"/tool-step indicator. No fabricated fleet facts — fleet context only resolves which vehicle the user means.', color: 'text-[color:var(--status-ai)]' },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -193,14 +190,13 @@ const TRIP_FLOWS: TripFlowEntry[] = [
 interface ConnectivityState {
   label: string;
   rule: string;
-  color: string;
-  dotColor: string;
+  tone: 'success' | 'watch' | 'critical';
 }
 
 const CONNECTIVITY_STATES: ConnectivityState[] = [
-  { label: 'Online', rule: 'Last signal < 10 min ago', color: 'bg-emerald-500/15 text-emerald-500', dotColor: 'bg-emerald-500' },
-  { label: 'Standby', rule: 'Last signal 10 – 60 min ago', color: 'bg-amber-500/15 text-amber-500', dotColor: 'bg-amber-500' },
-  { label: 'Offline', rule: 'Last signal > 60 min or no signal', color: 'bg-red-500/15 text-red-500', dotColor: 'bg-red-500' },
+  { label: 'Online', rule: 'Last signal < 10 min ago', tone: 'success' },
+  { label: 'Standby', rule: 'Last signal 10 – 60 min ago', tone: 'watch' },
+  { label: 'Offline', rule: 'Last signal > 60 min or no signal', tone: 'critical' },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -216,6 +212,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Vehicle File Summary — Fahrzeugakte Documents Tab (V4.8.95)', icon: FileText,
+    endpoint: '`GET /api/v1/vehicles/:vehicleId/file-summary` (RolesGuard + VehicleOwnershipGuard) → `VehicleFileSummary`. Keine Object-Storage-URLs; Dokument-Download weiter über authentifizierte Extraction-Routen.',
+    service: '`VehicleFileSummaryService.buildSummary` komponiert read-only: Vehicle-Stammdaten, `RentalHealthService.getVehicleHealth` (rentalHealthStatus/blocked), `ServiceComplianceService.buildServiceInfoStatus` (TÜV/BOKraft/Next Service via `evaluateCompliance` — expiring_soon/expired nur hier), Prisma `VehicleDocumentExtraction` (Lifecycle-Status), Fixkosten aus Vehicle-Master (`leasingRateCents`, `insuranceCostCents`, `taxCostCents`), variable Ø aus Service-Events, technische Specs (Master + Telemetrie/latest state), Timeline (Extractions + Service-History). `vehicle-file-category.mapper` mappt 13 UI-Kategorien; Compliance-Kategorien übernehmen kanonischen Status, nicht Dokument-Heuristik.',
+    dataSource: 'Frontend `DocumentsView` → `api.vehicleIntelligence.vehicleFileSummary`. Typen: `frontend/src/rental/lib/vehicle-file-summary.types.ts`. Booking-Dokumente (`BookingDocumentBundle`) bleiben getrennt. AI Upload (`DocumentUploadView`) unverändert kompatibel. **V4.8.96**: Operator-Cockpit-UI — 13 Kategorie-Karten, KPI-Zeile, Fixkosten/Technik-Accordions, `VehicleDocumentUploadDrawer` (Upload/Review im Tab), shared `document-extraction.shared.ts` + `useDocumentExtractionFlow`.' },
   { name: 'Price Tariffs — zentrale Pricing-Wahrheit (V4.8.22–23)', icon: Tag,
     endpoint: '`GET /organizations/:orgId/price-tariffs` (Katalog), `POST .../price-tariffs/groups`, `PATCH .../groups/:id`, `POST .../groups/:id/version`, `PATCH .../versions/:id`, `POST .../versions/:id/activate`, `POST .../assignments`, `PATCH .../assignments/:id/deactivate`, `GET .../unassigned-vehicles`, `POST .../pricing/simulate`.',
     service: '`PricingService` berechnet Mietpreise (Tag/Woche/Monat), Extras, Versicherungen, Kilometerpakete, Kaution, MwSt. `PriceTariffsService` verwaltet Gruppen/Versionen/Zuweisungen. `BookingsService.create/update` ruft Pricing auf, speichert `BookingPriceSnapshot` + Line Items, synct Legacy-Booking-Felder. Frontend: `price-tariffs/*` (Katalog-UI), `usePriceTariffs`/`usePricingSimulation`, `NewBookingView` sendet `pricingInput`.',
@@ -238,7 +238,7 @@ const FRONTEND_FLOWS: FrontendFlowEntry[] = [
     dataSource: 'Frontend `frontend/src/rental/components/bookings/*` + `entityMappers` (`no_show`, `statusEnum`, strukturierte `extras`, `totalPriceCents`). Keine Dashboard-KPI-Dominanz auf der Listen-Seite. Offen: Payment/Document/Handover-Toolbar-Filter (DTO-Felder fehlen teilweise), vollständiges Finance-Read-Model (`paidAmount`/`openAmount`). Tests: `booking-conflict.util.spec.ts`.' },
   { name: 'Workflow Automation — tenant runtime (V4.8.15)', icon: Zap,
     endpoint: 'Org-scoped REST unter `/api/v1/organizations/:orgId/workflows`: CRUD + `GET /stats`, `GET /:id/runs`, `GET /runs/:runId`, `POST /:id/test`, `POST /action-runs/:actionRunId/approve|reject`. Alle Routen `OrgScopingGuard` + `RolesGuard` (`ORG_ADMIN`, `SUB_ADMIN`, `MASTER_ADMIN`).',
-    service: 'Vier Ebenen: (A) `OrgWorkflow` Definition mit DTO-Validation (`workflow-definition.validator.ts` — keine `eval`, blockierte Auto-AI-Actions, `normalizeVehicleStatusInput` für `vehicle.status.update`); (B) `WorkflowEventService.emitEvent` / `scheduleEmit`; (C) `WorkflowEngineService` — Trigger-Match, Scope, sichere Conditions, idempotencyKey pro org; (D) `OrgWorkflowRun` + `OrgWorkflowActionRun` + optional `OrgWorkflowApproval`. MVP-Actions: `task.create` (via `TasksService.upsertByDedup`, `normalizeTaskPriority`), `alert.create`, `vehicle.status.update` (`vehicle-status.util.ts` — Maintenance→IN_SERVICE), `notification.prepare` (draft only), `workflow.approval.request`, `ai.suggest_action` (immer WAITING_APPROVAL). Booking-Return-Hook in `BookingsHandoverService` emittiert `booking.returned` + `booking.completed`.',
+    service: 'Vier Ebenen: (A) `OrgWorkflow` Definition mit DTO-Validation (`workflow-definition.validator.ts` — keine `eval`, blockierte Auto-AI-Actions, `normalizeVehicleStatusInput` für `vehicle.status.update`); (B) `WorkflowEventService.emitEvent` / `scheduleEmit`; (C) `WorkflowEngineService` — Trigger-Match, Scope, sichere Conditions, idempotencyKey pro org; (D) `OrgWorkflowRun` + `OrgWorkflowActionRun` + optional `OrgWorkflowApproval`. MVP-Actions: `task.create` (via `TasksService.upsertByDedup`, `normalizeTaskPriority`), `alert.create`, `vehicle.status.update` (`vehicle-status.util.ts` — `normalizeVehicleStatusForPrisma(input: unknown)`: mappt UI-/DE-Labels Maintenance/In Wartung→IN_SERVICE, Active Rented→RENTED, Unavailable/Nicht verfügbar→OUT_OF_SERVICE, Reserviert→RESERVED; kein direkter `as VehicleStatus`-Cast; ungültige Werte → controlled `BadRequestException` → Action FAILED, nie ungültiger Status an Prisma), `notification.prepare` (draft only), `workflow.approval.request`, `ai.suggest_action` (immer WAITING_APPROVAL). Booking-Return-Hook in `BookingsHandoverService` emittiert `booking.returned` + `booking.completed`. Handover (V4.8.77, Option A): Pickup setzt `Vehicle.status=RENTED`, weist aber IN_SERVICE/OUT_OF_SERVICE-Fahrzeuge mit `HANDOVER_PICKUP_VEHICLE_BLOCKED` ab (Transaktion rollt zurück); Return setzt AVAILABLE nur ohne andere ACTIVE-Buchung und nicht bei IN_SERVICE/OUT_OF_SERVICE.',
     dataSource: 'Prisma migration `20260616140000_workflow_automation_runtime`. Frontend `WorkflowAutomationView` — Beta badge, echte Stats/Runs, Manual Test. Offen: Health/DTC/Invoice-Event-Hooks (Service vorhanden, noch nicht überall verdrahtet).' },
   { name: 'Misuse / Abuse Prüffälle — informative Case-Schicht (V4.8.11)', icon: AlertTriangle,
     endpoint: 'Read-only `GET /api/v1/organizations/:orgId/misuse-cases` (Filter vehicleId/tripId/bookingId/customerId/category/type/severity) und `GET .../:id`. Keine POST/PATCH/Resolve-Routen. Customer-Filter erzwingt `attributionScope=BOOKING_CUSTOMER` + `ASSIGNED_BOOKING_CUSTOMER` + `isPrivateTripSnapshot=false`.',
@@ -250,8 +250,8 @@ const FRONTEND_FLOWS: FrontendFlowEntry[] = [
     dataSource: 'Prisma: `CustomerDocument`, `CustomerTimelineEvent`, `CustomerEligibilityPolicy`; Customer-Felder inkl. normalized + verification + archive; **V4.8.13** indexes `(organizationId, archivedAt|status|riskLevel)`. Frontend **V4.8.13**: Wizards + Detail nutzen `customerDocuments.upload/review/list` (kein PATCH von idFrontUrl mehr); `NewBookingView` status CONFIRMED nur bei `canConfirmBooking`; legacy `POST /customers/documents` nur backward-compat.' },
   { name: 'Task Action Layer — zentraler operativer Layer über Health/Alerts/Booking/Vendor/Document (V4.8.3)', icon: ListTodo,
     endpoint: 'Vereinheitlichte org-scoped REST-API unter `/api/v1/organizations/:orgId/tasks`: `GET /tasks` (Filter status/priority/type/source/assignedUserId/vehicleId/bookingId/customerId/vendorId/alertId/documentId/dueFrom/dueTo/overdue/search), `GET /tasks/summary` (Dashboard-Counts open/dueToday/overdue/critical/assignedToMe/byStatus/byPriority), `GET /tasks/:id` (Voll-Detail inkl. Checklist/Comments/Attachments/Timeline), `POST /tasks` (manuell), `PATCH /tasks/:id`, `PATCH /tasks/:id/{assign,start,waiting,complete,cancel}`, `POST /tasks/:id/{comments,checklist,attachments}`, `PATCH /tasks/:id/checklist/:itemId`. Convenience: `GET /vehicles|bookings|vendors|customers/:id/tasks`. Alle Routen unter `OrgScopingGuard` + `RolesGuard`. Frontend `lib/api.ts` exponiert das voll typisierte `api.tasks`-Namespace (ApiTask-Read-Model, Summary, Filters, Create-Payload, alle Mutationen + forVehicle/forBooking/forVendor/forCustomer).',
-    service: 'Zentraler `backend/src/modules/tasks/tasks.service.ts` ist die einzige Schreib-/Lese-Wahrheit für Tasks. **V4.8.16**: `TaskPriority` LOW|NORMAL|HIGH|CRITICAL (Migration `20260616160000`); kanonisches `assignedUserId`; Checklisten auto-seed aus `task-templates.ts`. **V4.8.46**: `task-priority.util.ts` (`normalizeTaskPriority`, legacy MEDIUM/URGENT mapping). `insight-task-bridge.service.ts` mappt Insights → ALERT-Tasks mit `alertId` + Severity→Priority (`insight-task.mapper.ts`); Tire/Brake WATCH → INFO-Alerts → NORMAL Tasks. `task-automation.service.ts` Booking-Lifecycle; `BookingDocumentBundleService.syncMissingDocumentTasks` für fehlende Bundle-Dokumente. Dedup via `@@unique([organizationId, dedupKey])`. Health/Alert/Booking/Document bleiben Wahrheit.',
-    dataSource: 'Frontend V4.8.16: `TasksView` Summary via `GET /tasks/summary`; `VehicleTasksView` via `forVehicle`; `NewTaskModal` + `rental/lib/task-templates.ts`; Detail mit Links/Kosten/Comments/Attachments. Tests `tasks.service.spec.ts` 13 grün.' },
+    service: 'Zentraler `backend/src/modules/tasks/tasks.service.ts` ist die einzige Schreib-/Lese-Wahrheit für Tasks. **V4.8.16**: `TaskPriority` LOW|NORMAL|HIGH|CRITICAL (Migration `20260616160000`); kanonisches `assignedUserId`; Checklisten auto-seed aus `task-templates.ts`. **V4.8.46**: `task-priority.util.ts` (`normalizeTaskPriority`, legacy MEDIUM/URGENT mapping). `insight-task-bridge.service.ts` mappt Insights → ALERT-Tasks mit `alertId` + Severity→Priority (`insight-task.mapper.ts`); Tire/Brake WATCH → INFO-Alerts → NORMAL Tasks. `task-automation.service.ts` Booking-Lifecycle; `BookingDocumentBundleService.syncMissingDocumentTasks` für fehlende Bundle-Dokumente. **V4.9.18**: `vehicle-cleaning-task.service.ts` materialisiert bei `PATCH .../vehicles/:id/status` mit `cleaningStatus=NEEDS_CLEANING` eine `VEHICLE_CLEANING`-Task (`dedupKey: vehicle:cleaning:{vehicleId}`, `blocksVehicleAvailability: true`); bei `CLEAN` werden offene Cleaning-Tasks mit Resolution Note abgeschlossen. Dedup via `@@unique([organizationId, dedupKey])` + offene-Task-Scan. Health/Alert/Booking/Document bleiben Wahrheit.',
+    dataSource: 'Frontend V4.8.16: `TasksView` Summary via `GET /tasks/summary`; `VehicleTasksView` via `forVehicle` + `tasksRefreshToken` (V4.9.18 Refetch nach Cleaning-Status); Detail-Drawer + `task-operator.utils` (Source/Blocking/Next-Best-Action, V4.9.17). Backend `OrgTask.blocksVehicleAvailability` (default false), gesetzt bei Compliance-Materialize, Damage-Repair und VEHICLE_CLEANING. `App.tsx` persistiert Cleaning-Status via API, Toast nach `cleaningTask.action`. Tests `tasks.service.spec.ts`, `vehicle-cleaning-task.service.spec.ts`, `task-operator.utils.test.ts`.' },
   { name: 'Storage & Scalability — Retention, Logging, Object-Storage-Foundation (V4.7.61)', icon: Layers,
     endpoint: 'Keine neue HTTP-Route. Datei-Uploads (`POST .../org-logos`, `.../customers/documents`, `.../fines/upload`, `.../invoices/upload`, `support/upload`) laufen jetzt durch `StorageService.finalizeUpload(subdir, file, orgId?)` und liefern dieselbe `/uploads/...`-URL (Driver `local`, Default) bzw. eine Object-Storage-URL (Driver `s3`). Neue ENV-Schalter steuern Verhalten ohne Code-Änderung (`DATA_RETENTION_*`, `LOG_LEVEL`, `HTTP_BODY_LIMIT`, `STORAGE_*`, `RAW_PAYLOAD_MAX_BYTES`).',
     service: 'Worker/Jobs: neuer `backend/src/workers/schedulers/data-retention.scheduler.ts` (täglich 03:30) prunt append-only Tabellen in PK-Batches mit ENV-Altersfenstern (`config/retention.config.ts`, Master-Switch `DATA_RETENTION_ENABLED`); neuer `storage-orphan-sweep.scheduler.ts` (wöchentlich, Dry-Run/Default aus). Logging: `main.ts` `resolveLogLevels()` setzt Prod-Default `error,warn,log` (kein debug/verbose) und `useBodyParser`-Limit; `request-logging.interceptor.ts` überspringt 2xx/3xx in Prod; `global-exception.filter.ts` drosselt 5xx-Stacktraces pro Signatur; HM-MQTT Per-Message-Log → `debug`. Storage: `shared/storage/storage.service.ts` (+`storage.module.ts`, @Global, `config/storage.config.ts`) mit Drivern `local`/`s3` (lazy, optionaler `@aws-sdk/client-s3`), `removeByPublicUrl` für Logo-Replace. Härtung: `DamagesService.validateImageData` (Größen-/MIME-Limit), `shared/utils/json-payload.util.ts#capRawPayload` (opt-in) in DIMO-Snapshot- und HM-Ingestion-Schreibpfaden.',
@@ -264,6 +264,11 @@ const FRONTEND_FLOWS: FrontendFlowEntry[] = [
     endpoint: 'Keine neue Route. `TasksView` liest jetzt `GET /api/v1/organizations/:orgId/tasks` (`api.tasks.list(orgId)`) statt eines leeren Mock-Arrays; das Service-Info-Modal in `HealthErrorsView` filtert dieselbe Liste auf `vehicleId` + `source = INSIGHT_*` und offene Status. Geschrieben werden Tasks ausschließlich serverseitig durch die Bridge — nicht über die CRUD-Route.',
     service: 'Neuer `backend/src/modules/business-insights/insight-task-bridge.service.ts`: `materialize(orgId, candidates)` nimmt die rohen (pre-group, pre-limit) Insight-Kandidaten der Typen `SERVICE_OVERDUE` / `TUV_OVERDUE` / `BOKRAFT_OVERDUE`, bildet `dedupKey = <type>:<vehicleId>` und mappt Severity→Priorität (WARNING→HIGH „bald fällig“, CRITICAL→URGENT „überfällig“). `TasksService.upsertByDedup` und `closeStaleInsightTasks` sind die einzigen Schreibpfade: ein offener Task wird in-place eskaliert, ein verwaister (Insight verschwunden) wird auf `DONE` gesetzt. Aufruf erfolgt in `BusinessInsightsService.runForOrganization` direkt nach `repo.publishInsights`, isoliert per try/catch, damit ein Bridge-Fehler den Insight-Run nie abbricht. `ServiceOverdueDetector` priorisiert jetzt `nextServiceDueDate` (Operator-Override) und liefert `timeContext.dueDate`; neuer `ComplianceOverdueDetector` deckt TÜV/BOKraft ab (Warnschwelle 60 Tage, `null`-Datum „No tracking“ → kein Task).',
     dataSource: 'Schema-Delta: `OrgTask.source` (z. B. `INSIGHT_SERVICE` / `INSIGHT_COMPLIANCE`) und unique `OrgTask.dedupKey` (Migration `20260608000000_service_compliance_auto_tasks`, additiv/NULL-safe); `InsightType` um `TUV_OVERDUE` / `BOKRAFT_OVERDUE` erweitert und in `DEFAULT_POLICY.enabledTypes` aktiviert. Severity-Wahrheit bleibt in den Detectors; die Bridge dupliziert keine Schwellenlogik. Derselbe `dedupKey` überspannt „imminent“ und „overdue“, sodass ein einzelner Task eskaliert statt neuer Karteileichen. Frontend mappt Backend-Enums (Status/Priorität) auf das bestehende TasksView-Vokabular und reichert Tasks über den FleetContext mit Fahrzeug-Metadaten an.' },
+  { name: 'Vehicle Damage Lifecycle & API Foundation (V4.8.98)', icon: Car,
+    endpoint: 'Erweitert bestehende Vehicle-Intelligence-Routen unter `VehicleOwnershipGuard`: `GET /api/v1/vehicles/:vehicleId/damages` (alle Schäden, sortiert: blockierende/offene zuerst), `GET .../damages/active` (nur OPEN/IN_REPAIR, `repairedAt` null), `GET .../damages/stats` (Kernzähler + `insights`: Most affected view, Repair-/Estimated-/Charged-Kosten getrennt, Avg repair duration, Evidence completion, Repeat clusters, Heatmap-Zellen pro View). Fleet: `GET /api/v1/organizations/:orgId/damages/stats` (`OrgScopingGuard`) — Status/Severity/RentalImpact/View-Aggregation, Backlog, Modell-Breakdown, Booking/Customer-Kontext. `POST .../damages` mit validiertem `CreateDamageDto`. `PATCH .../damages/:id` …',
+    service: '`damages.service.ts` + `damage-analytics.ts` (V4.9.12): Vehicle-`getStats` liefert `insights`; `getFleetStats(orgId)` aggregiert ohne Image-Payload. `DamagesOrgController` unter Org-Scope. Bestehend: DTO-Validierung, FK-Checks, `validateImagePayload`, AI-Upload/Exterior-Intake wie V4.9.11.',
+    dataSource: 'Prisma `VehicleDamage` (+ FKs). Frontend Vehicle Detail: `DamageControlSummary` (Queue), `DamageInsightsSection` (einklappbar), `DamageHeatmapOverlay` (≥3 Pins/View). Fleet: `api.damages.fleetStats` + `useFleetDamageStats` — für Reports/Fleet Condition vorbereitet, nicht im Vehicle Tab eingebunden. Kosten: estimated ≠ repair ≠ charged.',
+  },
   { name: 'Damage Map Model Templates — wiederverwendbare Exterior-Fotos (V4.7.58)', icon: Car,
     endpoint: 'NEU: `GET /api/v1/admin/vehicle-exterior-model-images` listet alle Modell-Template-Sets (Summary je `modelKey`, Views, Count, updatedAt). Mit Query `?make=&model=` liefert derselbe Pfad die einzelnen Template-Bilder für dieses Modell. `PUT /api/v1/admin/vehicle-exterior-model-images/:view` schreibt ein komprimiertes Data-URI-Bild als Template für `{ make, model, imageData, caption?, sourceVehicleId? }`. `GET /api/v1/admin/vehicles/:vehicleId/exterior-images/effective` und `GET /api/v1/vehicles/:vehicleId/exterior-images/effective` liefern `vehicle`, `model`, `effective`, `modelKey`; effective priorisiert vehicle override vor model fallback. `POST /api/v1/admin/vehicles/:vehicleId/exterior-images/:view/save-as-model` kopiert ein vorhandenes Fahrzeugbild ins Modell-Template. `POST /api/v1/admin/vehicles/:vehicleId/exterior-images/:view/apply-model` kopiert ein Library-Template als Fahrzeug-Override.',
     service: '`backend/src/modules/vehicles/vehicle-exterior-images.service.ts` bleibt Owner der Damage-Map-Bilder und wurde um Modell-Templates erweitert: `buildModelKey(make, model)` normalisiert den Schlüssel, `listEffectiveByVehicle(vehicleId)` lädt Vehicle-Metadaten, `VehicleExteriorImage[]` und `VehicleExteriorModelImage[]` und merged pro View mit Override-Reihenfolge Vehicle > Model. `upsertModelImage` nutzt dieselbe Data-URI-Whitelist und 5-MB-Grenze wie Fahrzeugbilder. `saveVehicleImageAsModelTemplate` übernimmt das aktuelle Fahrzeugfoto als reusable Template; `applyModelTemplateToVehicle` kopiert ein Template bewusst in `vehicle_exterior_images`, damit das Ziel-Fahrzeug danach einen klaren Override besitzt.',
@@ -361,7 +366,7 @@ const FRONTEND_FLOWS: FrontendFlowEntry[] = [
   { name: 'Trips View', icon: MapPin, endpoint: 'GET /api/v1/vehicle-intelligence/trips + /trips/stats + /trips/driver-score', service: 'VehicleIntelligenceController → TripAnalyticsCanonicalService + DriverScoreService', dataSource: 'Canonical trip analytics DTO (event semantics, style/safety split, assignment/private truth)' },
   { name: 'Fleet Condition', icon: Gauge, endpoint: '(aggregated)', service: 'Aggregated health across fleet', dataSource: '% bars per category' },
   { name: 'Vehicle Logbook (V3.5)', icon: BookOpen, endpoint: 'GET /api/v1/admin/vehicle-logbook, GET .../detail', service: 'VehicleLogbookService → assembles from VehicleLatestState, DimoPollLog, VehicleTripDetectionState, VehicleTrip, VehicleDtcEvent, BatteryFeatures, HvBatteryHealthCurrent', dataSource: 'Per-vehicle debug console: overview, signal coverage (18 signals in 5 groups), worker timeline (50 recent poll logs), trip detection state machine, HF enrichment runs, DTC events, UI field mapping (15 fields traced to signal origin), raw payloads. Activation via VehicleLogbookConfig (time-limited per vehicle).' },
-  { name: 'Business Insights (V3.6.3 + V4.6.28 + V4.6.30 + V4.6.33 + V4.6.34 + V4.6.35 + V4.6.56 + V4.6.59 shell + V4.6.60 right-sidebar symmetry + V4.6.81 pickup-overdue + V4.6.90 unified-insights-tabs + V4.8.17 operator-cockpit)', icon: Zap, endpoint: 'GET /organizations/:orgId/dashboard-insights, GET .../summary, POST /admin/business-insights/run/:orgId', service: 'BusinessInsightsService → 9 detectors (TightHandover, ReturnNeedsInspection, StationShortage, LowUtilization, ServiceWindow, ServiceBeforeBooking, BatteryCritical, ServiceOverdue, PickupOverdue) → ranking → grouping (V4.6.33: persists per-entity breakdown in metrics.entities[] so the dashboard can drill into grouped insights without an extra API roundtrip) → gateHealthInsights (V4.8.17: raw BATTERY/TIRE/BRAKE nur bei anstehender Buchung, sonst Health-Tab only) → formatting → DashboardInsightsRepository. BusinessInsightsTriggerService (Redis debounce). BusinessInsightsScheduler (active-tenant aware). V4.6.35: BatteryCriticalDetector now consumes BatteryFeatures.publishedSohPct (V2 publication pipeline — outlier-suppressed, hysteresis-stabilized) as SOH source instead of the raw BatteryHealthSnapshot.sohPercent. This closes the last gap in the V4.6.28 "single source of truth" contract: previously the detector bypassed the V2 pipeline and could emit CRITICAL alerts for transient sensor outliers that the Health Tab correctly suppressed (observed case: WOB X 6511 raw snapshot 25 % vs published 86 %). Publication state is honored — INITIAL_CALIBRATION skips the SOH path entirely so freshly-onboarded vehicles do not trigger spurious alarms; STABILIZING and above use publishedSohPct; if the V2 row exists but nothing is published yet, the detector does NOT fall back to the raw snapshot (the outlier that suppressed publication was the reason to begin with). Each emitted candidate carries metrics.sohSource ∈ {v2_published | legacy_snapshot | suppressed_calibrating | suppressed_outlier} for audit. Voltage path is unchanged. Frontend: BusinessInsightsBox component (live API, 5min refresh, skeleton/empty/error states, V4.6.33: expandable rows with per-vehicle list + direct navigation to vehicle overview / bookings / stations via App.tsx callbacks; vehicle lookup resolved via shared FleetContext, no extra fetch; V4.6.34: per-vehicle detail line now surfaces the detector-curated reasons[0] as primary text — e.g. "SOH 25% (< 50%)" for an SOH-triggered battery critical rather than mechanically rendering all raw metrics. The detector is the source of truth for WHICH metric drove the alert; the frontend renders that decision rather than overlaying unrelated carrier values like alternator charge voltage next to an SOH trigger).', dataSource: 'V3.6.3: Live frontend wiring. BusinessInsightsBox replaces static placeholder in DashboardView. Fetches persisted insights (no recalc). Severity-aware card rows (CRITICAL/WARNING/OPPORTUNITY/INFO). Truncation guards, keyboard accessibility, grouped count badges. V4.6.28: BatteryCriticalDetector surfaces vehicles whose 12V battery hits canonical risk thresholds (voltage <12.0V or SOH <50% → CRITICAL; <12.4V or <75% SOH → WARNING, 72h freshness window, dedupe per-vehicle, grouped per-station). V4.6.30: ServiceOverdueDetector surfaces vehicles whose next manufacturer service is past-due or imminent. Classification mirrors ServiceInfoStatus (serviceRemainingDays<0 or serviceRemainingKm<0 → CRITICAL; 0..7d or 0..500km → WARNING). Data source: vehicle.serviceIntervalManufacturerKm/Months + latest FULL_SERVICE/GENERAL_INSPECTION/OIL_CHANGE/REPAIR event + latestState.odometerKm. Grouped per station, dedupe per-vehicle. TYPE_OPERATIONAL_WEIGHT=13 (par with BATTERY_CRITICAL). Dark/light mode. Design-consistent with surrounding dashboard cards. V4.6.55 (Dashboard render split — Business Insights ↔ Vehicle Alerts): BusinessInsightsBox no longer renders BATTERY_CRITICAL or SERVICE_OVERDUE rows inline; it filters them out via `VEHICLE_HEALTH_TYPES = [BATTERY_CRITICAL, SERVICE_OVERDUE]` and, when the fleet has ≥1 warning/critical vehicle, renders a single compact pointer banner summarising "X kritisch · Y Warnung" that invokes a new `onOpenVehicleAlerts` callback. DashboardView wires this callback to setActivePopup("Vehicle Alerts") so the pointer opens the existing dedicated Vehicle-Alerts popup instead of duplicating its content. Detectors, persistence and aggregation are unchanged — both insight types are still generated, ranked and stored; only the dashboard presentation layer suppresses them in favor of the Vehicle-Alerts popup + RightSidebar. RightSidebar vehicleAlerts now uses `v.alert` as the primary reason string, sorts critical > warning > info, renders severity-coloured dots, a dedicated empty state, and exposes a stable `#vehicle-alerts-section` anchor for deep-linking from the dashboard. V4.6.90 (Unified Insights Tabs — Dashboard): BusinessInsightsBox becomes the single „Insights from your Business" panel with three sub-tabs at the top — `Business` (alle non-vehicle-health Insights), `Vehicle Alerts` (BATTERY_CRITICAL + SERVICE_OVERDUE aus `useVehicleHealthAlerts`), `Notifications` (aus dem via Prop gereichten `dashboardNotifications`-Stream). Die separaten Dashboard-Kacheln „Vehicle Alerts" und „Notifications" in Row 2 der Business-Ansicht sowie ihre col-span-2 Expanded-Popups sind entfernt (Driver Feedback bleibt). Der V4.6.55 Pointer-Button innerhalb der Insights-Box entfällt ebenfalls — seine Aufgabe erfüllt nun der zweite Tab. Props-Delta: `notifications?: DashboardNotificationItem[]` in, `onOpenVehicleAlerts` out. Keine Änderung an Detector-/Ranking-/Grouping-/Persistenz-Schicht. RightSidebar, Tasks-View und AI-Health-Care-Surfaces sind unberührt. V4.6.56 (Vehicle Alerts live-wiring — sidebar + dashboard tile + popup now derived from DashboardInsights): new DashboardInsightsContext (frontend/src/rental/DashboardInsightsContext.tsx) provides a single subscription to GET /organizations/:orgId/dashboard-insights; useVehicleHealthAlerts(fleetVehicles) reduces BATTERY_CRITICAL + SERVICE_OVERDUE insights into one row per vehicle (prefers metrics.entities[] per-entity breakdown, falls back to entityIds[], accumulates reasons, keeps highest severity). RightSidebar vehicle-alerts useMemo, BusinessInsightsBox pointer summary (vehicleHealthSummary.critical/.warning) AND DashboardView Vehicle-Alerts tile count + expanded popup now all consume the same derived alerts — previously they read from Vehicle.healthStatus (admin DB column, never auto-computed) and v.alert (never populated by the vehicles DTO), so vehicles with a real CRITICAL "service overdue" or WARNING "battery" rendered nothing on these three surfaces while the Vehicle Health Center showed them correctly. DashboardView expanded Vehicle-Alerts popup no longer renders its hardcoded P0420/C0035/P0171/B1234/P0301/P0217 demo-map keyed by fictional v1–v9 IDs; it renders real detector data (severity badge, BATTERY/SERVICE kind pills, primaryReason + secondary reasons) with click-through to VehicleDetail via onVehicleSelect. App.tsx wraps RentalAppContent in <DashboardInsightsProvider> inside <FleetProvider>. Staleness note: dashboard insights are persisted by the scheduled detector runs (BusinessInsightsScheduler @Interval 30 min, reduced in the overnight window); for immediate effect after data changes the master-admin endpoint POST /admin/business-insights/run/:orgId forces an on-demand run.' },
+  { name: 'Business Insights (V3.6.3 + V4.6.28 + V4.6.30 + V4.6.33 + V4.6.34 + V4.6.35 + V4.6.56 + V4.6.59 shell + V4.6.60 right-sidebar symmetry + V4.6.81 pickup-overdue + V4.6.90 unified-insights-tabs + V4.8.17 operator-cockpit + V4.8.83 action-queue + V4.8.84 now-next-today-ops + V4.8.85 fleet-state-board + V4.8.86 control-signals + V4.8.87 business-pulse + V4.8.90 predictive-operations + V4.8.91 station-command + V4.8.92 operator-focus + V4.8.93 drilldown-drawer + V4.8.94 data-trust)', icon: Zap, endpoint: 'GET /organizations/:orgId/dashboard-insights, GET .../summary, POST /admin/business-insights/run/:orgId', service: 'BusinessInsightsService → 9 detectors (TightHandover, ReturnNeedsInspection, StationShortage, LowUtilization, ServiceWindow, ServiceBeforeBooking, BatteryCritical, ServiceOverdue, PickupOverdue) → ranking → grouping (V4.6.33: persists per-entity breakdown in metrics.entities[] so the dashboard can drill into grouped insights without an extra API roundtrip) → gateHealthInsights (V4.8.17: raw BATTERY/TIRE/BRAKE nur bei anstehender Buchung, sonst Health-Tab only) → formatting → DashboardInsightsRepository. BusinessInsightsTriggerService (Redis debounce). BusinessInsightsScheduler (active-tenant aware). V4.6.35: BatteryCriticalDetector now consumes BatteryFeatures.publishedSohPct (V2 publication pipeline — outlier-suppressed, hysteresis-stabilized) as SOH source instead of the raw BatteryHealthSnapshot.sohPercent. This closes the last gap in the V4.6.28 "single source of truth" contract: previously the detector bypassed the V2 pipeline and could emit CRITICAL alerts for transient sensor outliers that the Health Tab correctly suppressed (observed case: WOB X 6511 raw snapshot 25 % vs published 86 %). Publication state is honored — INITIAL_CALIBRATION skips the SOH path entirely so freshly-onboarded vehicles do not trigger spurious alarms; STABILIZING and above use publishedSohPct; if the V2 row exists but nothing is published yet, the detector does NOT fall back to the raw snapshot (the outlier that suppressed publication was the reason to begin with). Each emitted candidate carries metrics.sohSource ∈ {v2_published | legacy_snapshot | suppressed_calibrating | suppressed_outlier} for audit. Voltage path is unchanged. Frontend: BusinessInsightsBox component (live API, 5min refresh, skeleton/empty/error states, V4.6.33: expandable rows with per-vehicle list + direct navigation to vehicle overview / bookings / stations via App.tsx callbacks; vehicle lookup resolved via shared FleetContext, no extra fetch; V4.6.34: per-vehicle detail line now surfaces the detector-curated reasons[0] as primary text — e.g. "SOH 25% (< 50%)" for an SOH-triggered battery critical rather than mechanically rendering all raw metrics. The detector is the source of truth for WHICH metric drove the alert; the frontend renders that decision rather than overlaying unrelated carrier values like alternator charge voltage next to an SOH trigger).', dataSource: 'V3.6.3: Live frontend wiring. BusinessInsightsBox replaces static placeholder in DashboardView. Fetches persisted insights (no recalc). Severity-aware card rows (CRITICAL/WARNING/OPPORTUNITY/INFO). Truncation guards, keyboard accessibility, grouped count badges. V4.6.28: BatteryCriticalDetector surfaces vehicles whose 12V battery hits canonical risk thresholds (voltage <12.0V or SOH <50% → CRITICAL; <12.4V or <75% SOH → WARNING, 72h freshness window, dedupe per-vehicle, grouped per-station). V4.6.30: ServiceOverdueDetector surfaces vehicles whose next manufacturer service is past-due or imminent. Classification mirrors ServiceInfoStatus (serviceRemainingDays<0 or serviceRemainingKm<0 → CRITICAL; 0..7d or 0..500km → WARNING). Data source: vehicle.serviceIntervalManufacturerKm/Months + latest FULL_SERVICE/GENERAL_INSPECTION/OIL_CHANGE/REPAIR event + latestState.odometerKm. Grouped per station, dedupe per-vehicle. TYPE_OPERATIONAL_WEIGHT=13 (par with BATTERY_CRITICAL). Dark/light mode. Design-consistent with surrounding dashboard cards. V4.6.55 (Dashboard render split — Business Insights ↔ Vehicle Alerts): BusinessInsightsBox no longer renders BATTERY_CRITICAL or SERVICE_OVERDUE rows inline; it filters them out via `VEHICLE_HEALTH_TYPES = [BATTERY_CRITICAL, SERVICE_OVERDUE]` and, when the fleet has ≥1 warning/critical vehicle, renders a single compact pointer banner summarising "X kritisch · Y Warnung" that invokes a new `onOpenVehicleAlerts` callback. DashboardView wires this callback to setActivePopup("Vehicle Alerts") so the pointer opens the existing dedicated Vehicle-Alerts popup instead of duplicating its content. Detectors, persistence and aggregation are unchanged — both insight types are still generated, ranked and stored; only the dashboard presentation layer suppresses them in favor of the Vehicle-Alerts popup + RightSidebar. RightSidebar vehicleAlerts now uses `v.alert` as the primary reason string, sorts critical > warning > info, renders severity-coloured dots, a dedicated empty state, and exposes a stable `#vehicle-alerts-section` anchor for deep-linking from the dashboard. V4.6.90 (Unified Insights Tabs — Dashboard): BusinessInsightsBox becomes the single „Insights from your Business" panel with three sub-tabs at the top — `Business` (alle non-vehicle-health Insights), `Vehicle Alerts` (BATTERY_CRITICAL + SERVICE_OVERDUE aus `useVehicleHealthAlerts`), `Notifications` (aus dem via Prop gereichten `dashboardNotifications`-Stream). Die separaten Dashboard-Kacheln „Vehicle Alerts" und „Notifications" in Row 2 der Business-Ansicht sowie ihre col-span-2 Expanded-Popups sind entfernt (Driver Feedback bleibt). Der V4.6.55 Pointer-Button innerhalb der Insights-Box entfällt ebenfalls — seine Aufgabe erfüllt nun der zweite Tab. Props-Delta: `notifications?: DashboardNotificationItem[]` in, `onOpenVehicleAlerts` out. Keine Änderung an Detector-/Ranking-/Grouping-/Persistenz-Schicht. RightSidebar, Tasks-View und AI-Health-Care-Surfaces sind unberührt. V4.8.83 (Dashboard Action Queue): `BusinessInsightsBox` im Control Center durch `ActionQueue` ersetzt (`frontend/src/rental/components/dashboard/ActionQueue.tsx` + `actionQueueBuilder.ts`). `useDashboardViewModel` merged via `buildUnifiedActionQueue` drei kanonische Quellen ohne Fake-Alerts: (1) `useVehicleHealthAlerts(filteredFleet)` — Rental-Health, deduped pro Fahrzeug; (2) `useDashboardInsights().insights` station-gefiltert via `fleetById`, Vehicle-Health-Insight-Typen deduped wenn Health-Alert existiert; (3) Today Pickup/Return-Tiles (overdue + ≤60min). Sortierung: Critical → Overdue → zeitnahe Ops → Warning → Info; Top 3–5 pinned. CTAs: open vehicle/booking/rental/stations, start handover pickup/return. `BusinessPulse` zeigt nur noch Finanz-KPIs. RightSidebar + `BusinessInsightsBox.tsx` (Typ-Export) unverändert als separate Surfaces. V4.8.84 (Now & Next + Today Operations): `NowNextTimeline` und `TodayOperations` konsumieren dieselben Today-Pickup/Return-APIs wie zuvor (`api.bookings.todayPickups/todayReturns`), gemappt via `mapPickupItems`/`mapReturnItems` mit Station-Filter. `operationsBuilder.ts` baut Lane-Timeline (now/next60/later-today/tomorrow) und Ops-Buckets (todo/in-progress/completed); Risiken aus `fleetById` + `useVehicleHealthAlerts` (nicht `Vehicle.healthStatus`). Handover-CTAs über `HandoverContext`; Refresh via `handover:completed` → `loadTodayBookings` unverändert. `ScheduleBox.tsx` bleibt im Repo, wird im Dashboard nicht mehr gerendert. V4.8.85 (Fleet State Board): `FleetStateBoard` klassifiziert station-gefilterte Fahrzeuge via `fleetStateBuilder.ts` in Lanes (critical/overdue/due-soon/maintenance/cleaning/ready/rented/reserved); Daten aus `FleetContext.healthMap` + `useVehicleHealthAlerts` + Fleet-Status-Kontext (`activeReturnAt`, `reservedPickupAt`, `cleaningStatus`). KPI-Strip filtert per `fleetBoardFilter`. `StatInlineDetail` bleibt für Legacy-Popups, Dashboard-Fleet nutzt kompakte `FleetBoardVehicleRow` mit Open-Vehicle-CTA. V4.8.86 (Control Signals): `controlSignalsBuilder.ts` berechnet drei vertrauenswürdige Kontrollsignale aus bestehendem View-Model — keine zusätzlichen API-Calls. (1) `computeVehicleTelemetryFreshness`: klassifiziert `filteredFleetVehicles` per `lastSignal`/`isFresh`/`onlineStatus`/`isVehicleOffline` in fresh/stale/offline/unknown; `hasReliableTimestamps=false` → UI zeigt „Data freshness unavailable“ statt Fake-Minuten; Sync-Status aus `deriveDataSyncStatus` + Telemetrie-Heuristik. (2) `computeFleetReadiness`: Status-Tiers Strong/Stable/Needs Attention/Critical/Not enough data aus Breakdown (ready, blocked, overdueReturns, criticalAlerts, cleaningNeeded, staleData, conflicts); `scorePercent` nur wenn `hasReliableBasis`. (3) `buildEnhancedStationHealth`: pro Station available/ready, today pickups/returns, overdue, cleaning, blocked (`healthMap.rental_blocked`), critical alerts (`useVehicleHealthAlerts`), `statusSeverity` für Badge; All-Stations-Vergleichsliste mit Klick → `applyStationFilter`. UI: `DataFreshnessIndicator`, `FleetReadinessScore`, `StationHealthPanel` in `DashboardView` (Freshness+Readiness nebeneinander, Station Health unten). V4.8.87 (Business Pulse + derived ops): `businessPulseBuilder.ts` berechnet sekundären Finanz-Bereich aus `api.invoices.list` + `financial-insights.logic` (issuedRevenue/expenses/open/overdue receivables, MoM-Deltas nur bei belastbarer Basis). Utilization = activeRented/fleet (nur bei geladener Flotte); Revenue/Fahrzeug nur bei MTD+Denominator; Lost Revenue Risk = überfällige Forderungen (keine Prognosen). `BusinessPulse` am Dashboard-Ende unter Control Signals. `deriveOperationalInsights.ts` leitet cross-modulare Ops-Hinweise (Pickup nicht ready, Return blockiert Folgebooking, Critical+Pickup, Reserved nicht ready, Fleet stale/offline, Handover-Backlog) und merged sie in `buildUnifiedActionQueue` mit `source`-Tags (`dashboard-insights`|`derived-operations`|`financial`|`booking`). Operative Mini-Metriken aus altem BusinessPulse entfernt. new DashboardInsightsContext (frontend/src/rental/DashboardInsightsContext.tsx) provides a single subscription to GET /organizations/:orgId/dashboard-insights; useVehicleHealthAlerts(fleetVehicles) reduces BATTERY_CRITICAL + SERVICE_OVERDUE insights into one row per vehicle (prefers metrics.entities[] per-entity breakdown, falls back to entityIds[], accumulates reasons, keeps highest severity). RightSidebar vehicle-alerts useMemo, BusinessInsightsBox pointer summary (vehicleHealthSummary.critical/.warning) AND DashboardView Vehicle-Alerts tile count + expanded popup now all consume the same derived alerts — previously they read from Vehicle.healthStatus (admin DB column, never auto-computed) and v.alert (never populated by the vehicles DTO), so vehicles with a real CRITICAL "service overdue" or WARNING "battery" rendered nothing on these three surfaces while the Vehicle Health Center showed them correctly. DashboardView expanded Vehicle-Alerts popup no longer renders its hardcoded P0420/C0035/P0171/B1234/P0301/P0217 demo-map keyed by fictional v1–v9 IDs; it renders real detector data (severity badge, BATTERY/SERVICE kind pills, primaryReason + secondary reasons) with click-through to VehicleDetail via onVehicleSelect. App.tsx wraps RentalAppContent in <DashboardInsightsProvider> inside <FleetProvider>. Staleness note: dashboard insights are persisted by the scheduled detector runs (BusinessInsightsScheduler @Interval 30 min, reduced in the overnight window); for immediate effect after data changes the master-admin endpoint POST /admin/business-insights/run/:orgId forces an on-demand run. V4.8.93 (Dashboard Drilldown Drawer): `DashboardDrilldownDrawer` (Sheet/DetailDrawer, mobile full-screen) öffnet bei KPI-Klick (`activateKpiTarget` → `openDrilldown`), Action-Queue-Zeile, Fleet-Lane-Tab, Stations-Metrik-Pill und Business-Pulse-Metrik. Inhalt aus `dashboardDrilldownBuilder.ts` auf Basis des bestehenden `useDashboardViewModel`-Snapshots (Fleet Board, Today Pickups/Returns, Action Queue, Health Alerts, Invoices, Now/Next Timeline, Station Health) — keine duplizierte Business-Logik. Listen-Typen: vehicles | bookings | alerts | financial | timeline; Zeilen-CTAs via `dashboardDrilldownCta.ts` (open vehicle/booking/rental/handover/invoice/finance). Bestehende Filter-Navigation (Fleet Board, Station Filter, Handover) bleibt parallel aktiv. V4.8.94 (Data Trust Layer): `dataTrustBuilder.ts` leitet pro Domain (fleet/telemetry/booking/handover/financial/insights) Status Live|Fresh|Partial|Stale|Error|Unavailable aus bestehenden Context-/API-Signalen (`FleetContext`, `DashboardInsightsContext`, Today-Bookings-API, Invoices-API, `computeVehicleTelemetryFreshness`) — ohne Fake-Timestamps („Freshness unknown“ wenn keine Basis). `DataFreshnessIndicator` zeigt kompaktes Trust-Panel; `DataTrustHint` nur bei eingeschränkter KPI-/Section-Basis; KPIs mit API-Fehler zeigen `—` statt falscher Zahlen.' },
   { name: 'Refuel & Recharge Events (V4.6.78 — Vehicle Intelligence)', icon: Fuel,
     endpoint: 'NEU (tenant-scoped via bestehendem `VehicleOwnershipGuard` + `RolesGuard`, Controller `@Controller("vehicles/:vehicleId")`): (1) GET /api/v1/vehicles/:vehicleId/energy-events?from=<iso>&to=<iso> → `EnergyEvent[]` sortiert nach `startTime ASC`. Elemente: `{ id, vehicleId, dimoSegmentId, kind: "REFUEL"|"RECHARGE", detectionMechanism, startTime, endTime, durationSeconds, startLatitude?, startLongitude?, endLatitude?, endLongitude?, fuelDeltaLiters?, fuelDeltaPercent?, socDeltaPercent?, energyDeltaKwh?, odometerStartKm?, odometerEndKm?, confidence: "HIGH"|"MEDIUM"|"LOW" }`. (2) POST /api/v1/vehicles/:vehicleId/energy-events/detect → Body `{ from?, to? }`, default Window = letzte 30 Tage → `{ fetched, created, updated, skipped, events: EnergyEvent[] }` — on-demand Trigger der Detection (zusätzlich zum automatischen Reconciliation-Hook). (3) GET /api/v1/vehicles/:vehicleId/trips-timeline?from=<iso>&to=<iso>&driver=<opt> → `TimelineItem[]` sortiert nach `startTime DESC` mit discriminated-union `itemType: "trip"|"energy-event"` — Server-merged Variante für Clients, die eine einzige Payload bevorzugen (aktuelles Frontend lädt Trips + Events parallel und merged lokal, dieser Endpoint steht für V2-Clients bereit). Alle drei Routen sind strikt tenant-scoped via `VehicleOwnershipGuard`, der bereits validiert dass `vehicleId` zur `user.organizationId` gehört.',
     service: 'NEU (Backend): `backend/src/modules/dimo/queries/trip-segments.query.ts` — `DimoDetectionMechanism` erweitert um `refuel` + `recharge` (die beiden Energy-Detektoren der DIMO Telemetry API). `backend/src/modules/dimo/queries/energy-event-segments.query.ts` (neu): `buildEnergyEventSegmentsQuery(tokenId, from, to, mechanism)` baut eine mechanism-spezifische GraphQL-Query mit passenden `signalRequests` — für `refuel`: Odometer MIN/MAX + `powertrainFuelSystemAbsoluteLevel` MIN/MAX + `powertrainFuelSystemRelativeLevel` MIN/MAX; für `recharge`: Odometer MIN/MAX + `powertrainTractionBatteryStateOfChargeCurrent` MIN/MAX + `powertrainTractionBatteryStateOfChargeCurrentEnergy` MIN/MAX. `backend/src/modules/dimo/dimo-segments.service.ts` — neues Interface `DimoEnergyEventSegment` (Union der beiden Mechanism-Shapes, mit nullable Fuel-/SoC-Feldern je nach Mechanism), neue public Method `fetchEnergyEventSegments(tokenId, from, to, mechanisms=["refuel","recharge"])` die pro Mechanism sequenziell `fetchEnergyEventSegmentsWithJwt` aufruft, die Ergebnisse konkateniert und chronologisch sortiert. Private `parseEnergyEventSegment(tokenId, mechanism, segment)` berechnet Deltas aus MIN/MAX-Signal-Aggregaten (`posDelta(min, max) = max > min ? max - min : null`) + extrahiert Start-/End-Geo + Odometer-Snapshot + baut `segmentId = "dimo-{mechanism}-{tokenId}-{startTs}"` als Idempotenz-Key. NEU (Sub-Modul): `backend/src/modules/vehicle-intelligence/energy-events/energy-events.types.ts` definiert `EnergyEventDto` (Frontend-Contract) + `TimelineItem` (Union-Type für die Merge-Funktion) + `toEnergyEventDto(row)` Prisma-Row → DTO-Mapper. `energy-events.service.ts` implementiert `EnergyEventsService` mit drei public Methods: `listEnergyEvents(vehicleId, { from?, to? })` — einfacher Read mit optionalem Zeit-Range-Filter + `orderBy: startTime ASC` + `toEnergyEventDto`-Mapping. `detectEnergyEvents(vehicleId, { from, to })` — fetcht `vehicle.dimoVehicle.tokenId` (bricht ab wenn kein Token), ruft `dimoSegments.fetchEnergyEventSegments(tokenId, from, to)`, iteriert über alle Segmente, verwirft non-persistable (via `isSegmentPersistable`: kein endTime, `isOngoing=true`, `durationSeconds<=0`, oder Delta unter Threshold) und ruft pro Segment `upsertSegment`. `buildTripsTimeline(vehicleId, hydratedTrips, { from?, to? })` — lädt `listEnergyEvents`, mapped beide Listen zu discriminated-union Items (`itemType: "trip"|"energy-event"`) und sortiert DESC by `startTime`. Private Helper: `isSegmentPersistable` (Refuel requires `fuelDeltaLiters > 1.0`; Recharge requires `socDeltaPercent ≥ 1 || energyDeltaKwh > 0`), `upsertSegment` (idempotent via `findUnique({ where: { dimoSegmentId } })` + conditional `update`/`create` — Prisma-`upsert` vermieden weil kein natürlicher compound key, nur der synthetische segmentId), `scoreConfidence` (deterministisch: Refuel HIGH ab ≥10 L + Geo-Koord, MEDIUM ab ≥3 L, sonst LOW; Recharge HIGH ab ≥20 % SoC + Geo, MEDIUM ab ≥5 %, sonst LOW). Registrierung: `VehicleIntelligenceModule` um `EnergyEventsService` in `providers` + `exports` erweitert. Controller: `VehicleIntelligenceController` konstruktor-injected `EnergyEventsService`, drei neue Methoden (`getEnergyEvents`, `detectEnergyEvents`, `getTripsTimeline`). Reconciliation-Hook: `TripReconciliationService.reconcileWindow` bekommt `@Optional() energyEventsService?: EnergyEventsService` injiziert, neuer Step 5 am Ende des bestehenden try-Blocks vor dem catch: `await this.energyEventsService.detectEnergyEvents(vehicleId, { from, to })` in einem eigenen try/catch (Logger warnt, bricht NIE Trip-Reconciliation ab). Damit läuft Energy-Event-Detection automatisch mit jedem bestehenden Tiered-Reconciliation-Lauf (fast/warm/cold) — kein neuer Worker, kein neuer Scheduler nötig. Scope-Ausschluss: Segmente von anderen Mechanisms (changePointDetection, frequencyAnalysis, ignitionDetection) werden von `fetchTripSegments` weiterhin für Trip-Detection genutzt — die Routen sind disjunkt, keine Kollision. V4.7.38 (Coalescing-Layer): `EnergyEventsService.detectEnergyEvents` schiebt JETZT zwischen `fetchEnergyEventSegments` und `upsertSegment` zwei zusätzliche Schritte ein: (a) `coalesceSegments(persistableSegments)` gruppiert benachbarte DIMO-Sub-Segmente desselben `mechanism` zu einem logischen Event, wenn der zeitliche Gap zwischen `endTime` von Segment N und `startTime` von Segment N+1 ≤ Mechanism-Budget liegt (RECHARGE 30 min, REFUEL 5 min) UND die Geo-Distanz zwischen Vorgänger-End und Nachfolger-Start ≤ 250 m beträgt (Haversine-Formel; Geo-Check wird übersprungen wenn eine Seite keine Koords hat → Time-only Merge). Hintergrund: DIMOs `RechargeDetector` emittiert ein neues Segment, sobald das `powertrainTractionBatteryStateOfChargeCurrent`-Signal kurz pausiert (Battery-Management-Pause, AC-Charger-Reconnect, DC-Phase-Switch); für die UX-Wahrheit „ein Stecker drin = ein Event" müssen diese Sub-Windows zu einem logischen Event verschmolzen werden — analog zum bestehenden Trip-Reconciliation-Repair-Pattern. (b) `mergeGroup(group)` merged die Sub-Segmente: `startTime = min`, `endTime = max`, `durationSeconds` neu berechnet aus dem Range, Deltas additiv summiert (`sumPositive` über `fuelDeltaLiters`/`socDeltaPercent`/`energyDeltaKwh`), Snapshot-Envelope-Werte (`fuelStartLiters`/`socStartPercent`/`energyStartKwh` etc.) als MIN/MAX über die Gruppe (so beschreiben die persistierten Start/End-Werte das gesamte Merge-Window, nicht nur das erste/letzte Sub-Segment). Single-Segment-Gruppen behalten ihre native DIMO `segmentId` (Backwards-Compat). Multi-Segment-Gruppen bekommen einen deterministischen `coalescedSegmentId = "dimo-{mechanism}-coalesced-{tokenId}-{firstStartMs}"`, der bei Reruns stabil bleibt — auch wenn DIMO später noch ein Sub-Fragment innerhalb des Fensters nachreicht, fällt es in denselben Bucket und triggert ein Update statt einer Duplikat-Row. (c) Zusätzlich `pruneStaleSubSegments(vehicleId, from, to, keepIds)`: nach dem Persist-Loop werden Rows aus früheren (pre-coalescing) Runs, deren rohe `dimoSegmentId` jetzt unter ein Coalesced-Bucket fällt und damit NICHT in der `keepIds`-Set des aktuellen Runs ist, via `deleteMany` chirurgisch gelöscht — strikt bounded auf `(vehicleId, startTime ∈ [from, to])`, sodass keine historischen Daten außerhalb des Detect-Fensters berührt werden. Audit-Trail: jedes coalesced Event speichert in `rawDetectionMeta.coalescedFromCount` (Anzahl) + `rawDetectionMeta.coalescedFromSegmentIds` (Array der ursprünglichen DIMO-Sub-Segment-IDs) — Single-Segmente landen mit Count=1 und ihrer eigenen ID drin. `DetectEnergyEventsResult` additiv um `coalescedGroups` + `prunedStale` erweitert (rückwärtskompatibel; bestehende Konsumenten in `vehicle-intelligence.controller.ts` und `trip-reconciliation.service.ts` brechen nicht). Konstanten in `energy-events.service.ts`: `COALESCE_GAP_SECONDS_RECHARGE=1800`, `COALESCE_GAP_SECONDS_REFUEL=300`, `COALESCE_GEO_RADIUS_M=250`. DIMO bleibt ungebrochen Source-of-Truth — kein Detection-Algorithmus erfunden, nur eine dünne Repair-Schicht analog zu `TripReconciliationService`.',
@@ -369,7 +374,7 @@ const FRONTEND_FLOWS: FrontendFlowEntry[] = [
   { name: 'High Mobility Compatibility Check (V4.6.77 — Master Admin)', icon: ShieldCheck, endpoint: 'NEU (alle MASTER_ADMIN-geguarded): GET /api/v1/admin/high-mobility/compatibility/brands → `{ brands: CompatibilityBrandOption[] }` (distinct Brand-Liste aus `hm_compatibility_records`, sortiert nach `brandDisplayName`). GET /api/v1/admin/high-mobility/compatibility/models?brand=<brand> → `{ models: CompatibilityModelOption[] }` (distinct Models pro Brand + optionale Year-Ranges für das UI-Year-Hinting). GET /api/v1/admin/high-mobility/compatibility/check?brand=<brand>&model=<model>&year=<optionalNumber> → `CompatibilityCheckResponse` mit `{ found: boolean, brand, model, modelYearRange, record: {...}, overall: HmCompatibilityOverall, eligibility: { mode, label, description }, onboarding: { mode, label, description, steps: string[] }, healthApp: AppCoverageSummary, telemetryApp: AppCoverageSummary, confidence, supportSource, notes, lastReviewedAt, generatedAt, notFoundReason? }`. Die Response ist vollständig präsentationsbereit — das Frontend rendert sie 1:1 in Cards ohne zusätzliche Business-Logik.',
     service: 'NEU: Sub-Modul `backend/src/modules/high-mobility/compatibility/` mit 4 Dateien. (1) `hm-compatibility.types.ts`: kanonische Types (`CompatibilityBrandOption`, `CompatibilityModelOption`, `CompatibilityCheckResponse`, `SignalCoverageItem`, `AppCoverageSummary`, `OnboardingGuidance`, `EligibilitySummary`) + Konstanten `PRESENT_COVERAGES = [CONFIRMED, EXPECTED]`, `MISSING_COVERAGES = [UNVERIFIED, MISSING]`, `SUPPORTED_RATIO = 0.9`, `NOT_RECOMMENDED_RATIO = 0.5` für die deterministische App-Status-Ableitung. (2) `hm-compatibility.dto.ts`: `CompatibilityCheckQueryDto` + `CompatibilityListModelsQueryDto` (class-validator `@IsString`, `@IsOptional`, `@IsNumber`). (3) `hm-compatibility.service.ts`: öffentliche API `listBrands()`, `listModels(brand)`, `check({ brand, model, year? })`. `check` ruft `findRecord` — year-matching via `yearFits(year, from, to)` (null-from = Anfang offen, null-to = kein Ende; mehrfache Matches → engster Range gewinnt via numeric-sort der Range-Breite). App-Status (Health + Telemetry) deterministisch aus der Signal-Coverage abgeleitet: `buildAppSummary` sammelt `SignalCoverageItem[]`, `deriveAppStatus` berechnet `presentRequired / totalRequired` und mappt `>= SUPPORTED_RATIO` → SUPPORTED, `< NOT_RECOMMENDED_RATIO` → NOT_RECOMMENDED, sonst PARTIAL. `computeOverall` kombiniert beide App-Statuses + confidence → GOOD/LIMITED/WEAK. `buildOnboarding` erzeugt strukturierte Steps je nach Eligibility/Onboarding-Mode (PRECHECK_CONNECT → „Eligibility API triggern → User-Consent → OAuth-Connect"; DIRECT_CONNECT → „OAuth-Connect direkt"; MANUAL_REVIEW → „Support-Request / VIN-Check / Fleet-Clearance"). `buildFallbackOnboarding` + `buildNotFoundReason` liefern saubere Antworten bei unbekannten Brand/Model-Kombis. `upsertRecord(payload)` ist für Seed-Idempotenz — NICHT via Prisma-`upsert` (nullable compound keys sind in der where-Klausel unzulässig) sondern via `findFirst({ brand, model, modelYearFrom: payload.modelYearFrom ?? null, modelYearTo: payload.modelYearTo ?? null })` → conditional `update`/`create`. Anschließend werden die Signals via `deleteMany({ recordId })` + bulk-`createMany` atomar ersetzt. (4) `hm-compatibility.controller.ts`: drei GET-Endpoints mit `@Roles(PlatformRole.MASTER_ADMIN)`-Guard + `@UseGuards(JwtAuthGuard, RolesGuard)` (identisches Muster wie die bestehende High-Mobility-Admin-Data-View). `HighMobilityModule` erweitert um Controller + Service (in `providers` + `exports`), sodass der Service später auch von einem Landing-Page-Widget oder Onboarding-Wizard konsumiert werden kann ohne die Business-Logik zu duplizieren.',
     dataSource: 'NEU: Prisma-Schema additiv erweitert um 7 Enums + 2 Models. Enums: `HmCompatibilityEligibilityMode { AVAILABLE, NOT_AVAILABLE, SUPPORT_REQUEST, VIN_DEPENDENT }` (Eligibility API-Verfügbarkeit — AVAILABLE = HM Eligibility-Route live; NOT_AVAILABLE = keine Route aber Direct-Connect möglich; SUPPORT_REQUEST = Kontakt zu HM Support nötig; VIN_DEPENDENT = VIN-spezifische Prüfung nötig). `HmCompatibilityOnboardingMode { PRECHECK_CONNECT, DIRECT_CONNECT, MANUAL_REVIEW }` (Onboarding-Weg — Vor-Check via Eligibility dann Connect; direkter OAuth-Connect; manuelle Review nötig). `HmCompatibilityAppStatus { SUPPORTED, PARTIAL, NOT_RECOMMENDED }` (pro APP abgeleitet aus Signal-Coverage). `HmCompatibilityOverall { GOOD, LIMITED, WEAK }` (Gesamt-Einstufung). `HmCompatibilityConfidence { HIGH, MEDIUM, LOW }` (Datenqualität des Records). `HmCompatibilityApp { HEALTH, TELEMETRY }` (Signal-Zuordnung). `HmSignalCoverage { CONFIRMED, EXPECTED, UNVERIFIED, MISSING }` (Feingranulare Coverage-Stufen pro Signalgruppe — CONFIRMED = in Produktion beobachtet, EXPECTED = aus HM-Docs erwartet aber nicht selbst verifiziert, UNVERIFIED = unklar ob verfügbar, MISSING = bestätigt nicht verfügbar). Models: `HighMobilityCompatibilityRecord` (Tabelle `hm_compatibility_records`) mit Feldern `id (uuid PK)`, `brand (lowercased-key)`, `brandDisplayName`, `model (lowercased-key)`, `modelDisplayName`, `modelYearFrom?`, `modelYearTo?`, `supportFromText?` (freie Beschreibung z. B. „ab MY 2020"), `eligibilityMode`, `onboardingMode`, `healthAppStatus?`, `telemetryAppStatus?`, `overallStatus?`, `supportSource?` (z. B. „HM Docs 2026-03", „Sandbox Test 2026-04"), `confidence (default MEDIUM)`, `notes?`, `lastReviewedAt?`, `createdAt`, `updatedAt`. Constraint: `@@unique([brand, model, modelYearFrom, modelYearTo])` (Name `uq_hm_compat_record`) + Indizes `@@index([brand])`, `@@index([brand, model])`, `@@index([eligibilityMode])`. `HighMobilityCompatibilitySignal` (Tabelle `hm_compatibility_signals`) mit `id`, `recordId (FK onDelete: Cascade)`, `app (HmCompatibilityApp)`, `signalGroup (String, z. B. "odometer")`, `signalGroupLabel (String — menschenlesbar z. B. "Odometer")`, `required (boolean)`, `coverage (HmSignalCoverage)`, `confidence (HmCompatibilityConfidence default MEDIUM)`, `notes?`, `createdAt`, `updatedAt`. Migration `20260420060000_hm_compatibility_matrix/migration.sql` via `npx prisma db execute` manuell appliziert und via `npx prisma migrate resolve --applied` markiert (P3009-Altblockade-Muster, identisch zu V4.6.74/V4.6.75/V4.6.76). Prisma-Client regeneriert (EPERM-Workaround: DLL temporär umbenannt, dann `prisma generate`, dann Backup entfernt). Signalgruppen-Modell (produktorientiert): HEALTH-APP = 5 Gruppen — `odometer` (required), `fuel_level` (required), `engine_oil_life` (optional), `tire_pressures` (required), `dtc_codes` (optional); TELEMETRY-APP = 5 Gruppen — `gps_latitude` (required), `gps_longitude` (required), `timestamp` (required), `speed` (optional), `heading` (optional). Seed: `backend/scripts/seed-hm-compatibility.ts` mit 20+ realistischen Brand/Model-Kombinationen (VW Golf, VW Passat, Audi A4, Audi Q5, BMW 3er, BMW X3, Mercedes C-Klasse, Mercedes E-Klasse, Porsche Taycan, Tesla Model 3, Tesla Model Y, Škoda Octavia, Seat Leon, Ford Focus, Opel Astra, Renault Clio, Peugeot 208, Citroën C3, Kia Ceed, Hyundai i30, Toyota Corolla) mit variierender Coverage: VW-Group (Golf 8, Audi Q5) → Eligibility AVAILABLE + Health SUPPORTED + Telemetry SUPPORTED; Tesla → VIN_DEPENDENT + MANUAL_REVIEW (wegen Tesla-spezifischer OAuth-Pfad); kleinere Marken → PARTIAL oder SUPPORT_REQUEST. Ausführung via `npx ts-node backend/scripts/seed-hm-compatibility.ts` (idempotent, kann mehrfach laufen). Frontend: `frontend/src/lib/api.ts` exponiert `api.hmCompatibility.{ listBrands, listModels, check }` + 1:1 gespiegelte Types (`HmCompatibilityEligibilityMode`, `HmCompatibilityOnboardingMode`, `HmCompatibilityAppStatus`, `HmCompatibilityOverall`, `HmCompatibilityConfidence`, `HmCompatibilityApp`, `HmSignalCoverage`, `CompatibilityBrandOption`, `CompatibilityModelOption`, `CompatibilityCheckResponse`, `SignalCoverageItem`, `AppCoverageSummary`, `EligibilitySummary`, `OnboardingGuidance`). Neue Seite `frontend/src/master/components/HighMobilityCompatibilityView.tsx` — vollständige Master-Admin-Page mit: (a) Header + Domain-Rules-Notice, (b) `LookupForm` (Brand-Select von `listBrands`, Model-Select dynamisch via `useDebounced`+`listModels`, optional Year-Input), (c) `SummaryCard` (Overall-Pill + Eligibility-Pill + Onboarding-Pill + Brand/Model-Zeile + Year-Range), (d) zwei nebeneinander liegende `AppCard`s (Health + Telemetry) mit `AppStatusPill` + `SignalCoverageTable` (Spalten: Signal, Required, Coverage, Confidence, Notes) + menschenlesbarer Zusammenfassung, (e) `OnboardingCard` mit strukturierter Step-Liste + Eligibility-Mode-Beschreibung, (f) `SourceCard` (Confidence-Pill + Support-Source + Notes + Last-Reviewed-Timestamp). Lokale Badge-Components (`Pill`, `AppStatusPill`, `OverallPill`, `EligibilityPill`, `OnboardingPill`, `ConfidencePill`, `CoveragePill`) im bestehenden HM-Admin-Design (`rounded-full text-[11px] font-medium`, kontrastreich Dark/Light). Routing: `frontend/src/master/components/Sidebar.tsx` erweitert um `MasterView`-Variante `hm-compatibility` + Nav-Button mit `ShieldCheck`-Icon direkt unter „High Mobility". `frontend/src/master/App.tsx` rendert die View bei `currentView === "hm-compatibility"`. Not touched: HM-MQTT/Polling/Health-Ingestion (keine Zeile geändert), HmLatestHealthState, HmSignalUsageService, bestehende High-Mobility-Admin-Data-View, DIMO-Integration, Rental Health V1, Booking-Gate, alle Rental-Views, alle Workers/Scheduler. Alle Änderungen strikt additiv — keine bestehende Route, kein Request-Shape, kein Response-Feld verändert. Backend + Frontend Typecheck beide grün.' },
-  { name: 'Rental Health V1 (V4.6.76)', icon: Activity, endpoint: 'NEU: GET /api/v1/organizations/:orgId/vehicles/:vehicleId/rental-health — liefert den kanonischen `VehicleHealth`-Output pro Fahrzeug: `{ vehicle_id, organization_id, overall_state: "good"|"warning"|"critical"|"unknown"|"n_a", rental_blocked: boolean, blocking_reasons: string[], modules: { battery, tires, brakes, error_codes, service_compliance, complaints, vehicle_alerts: ModuleHealth }, generated_at: ISO }` wobei jedes `ModuleHealth = { state, reason: string, last_updated_at: ISO|null, data_stale: boolean }`. `data_stale = true` wenn `last_updated_at` > 48h alt (`RENTAL_HEALTH_STALE_MS = 48 * 60 * 60 * 1000`). NEU: GET .../rental-health?vehicleIds=a,b,c — Fleet-Batch-Read, intern in 20er-Batches um DB-Last zu begrenzen, Response `{ vehicles: VehicleHealth[] }`. Einzelne Vehicle-Reads mit Fehler werden als `overall_state=unknown` eingetragen statt den ganzen Batch zu killen (fail-open). Beide Routen sind tenant-scoped (orgId in Path + where-clause im Service). POST /api/v1/organizations/:orgId/bookings ist unverändert im Request-Shape, aber wirft JETZT zusätzlich `409 Conflict` mit `{ message: "Dieses Fahrzeug ist aktuell nicht vermietbar. <reasons>", code: "VEHICLE_RENTAL_BLOCKED", blockingReasons: string[], vehicleId }` wenn `rental_blocked=true`. Der Gate läuft nach dem V4.6.74 Overlap-Gate, also bekommt der Client für dasselbe Fahrzeug im selben Zeitraum entweder `VEHICLE_BOOKING_OVERLAP` ODER `VEHICLE_RENTAL_BLOCKED` (nie beides — `VEHICLE_BOOKING_OVERLAP` hat Priorität).', service: 'NEU: Top-Level-Modul `backend/src/modules/rental-health/` mit 4 Dateien. (1) `rental-health.types.ts`: kanonische Types + Helper (`HealthState`, `ModuleHealth`, `VehicleHealth`, `VehicleHealthStatus` Type-Alias — `RentalHealthService` aggregiert, `RENTAL_HEALTH_STALE_MS`, `HEALTH_SEVERITY`-Ranking {n_a:-1, good:0, unknown:1, warning:2, critical:3}, `computeOverallState(modules)`, `maxSeverity(states)`, `isStale(iso, now?)`, `toIso(value)`, `RentalBlockedErrorPayload`). (2) `rental-health.service.ts`: `RentalHealthService.getVehicleHealth(orgId, vehicleId)` fan-out-liest via `Promise.allSettled` die 7 Module: `CanonicalBatteryHealthService.getSummary(vehicleId)`, `TireHealthService.getSummary(vehicleId)`, `BrakeHealthService.getSummary(vehicleId)`, `DtcService.getSummary(vehicleId)`, `HmSignalUsageService.getAiHealthCareSignals(vehicleId)` (mit `.catch(() => null)`), `prisma.vehicleLatestState.findUnique(...odometerKm)`, `prisma.vehicleComplaint.findMany({ status IN [OPEN, IN_REVIEW, CONFIRMED, ACTIVE], take: 25 })`. Dann 7 private `evaluate*`-Methoden pro Modul. `computeOverallState` + `collectBlockingReasons` produzieren die finale `VehicleHealth`. `isRentalBlocked(orgId, vehicleId)` ist ein leaner Wrapper für den Booking-Gate, der dieselbe `getVehicleHealth`-Logik reuset damit UI-Signal und Backend-Hard-Gate deterministisch identisch sind. (3) `rental-health.controller.ts`: zwei GET-Routen + interne 20er-Batch-Chunks für Fleet-Reads. (4) `rental-health.module.ts`: importiert `VehicleIntelligenceModule` + `HighMobilityModule` via `forwardRef` (um zirkuläre Deps zu vermeiden), registriert `RentalHealthController` + `RentalHealthService`, exportiert den Service. Modul ist in `backend/src/app.module.ts` registriert. `backend/src/modules/bookings/bookings.service.ts`: `RentalHealthService` per `@Inject(forwardRef(() => RentalHealthService))` injiziert; in `create()` direkt nach dem V4.6.74 Overlap-Check steht der Gate — bei `blocked=true` wird `ConflictException` mit Code `VEHICLE_RENTAL_BLOCKED` geworfen. `bookings.module.ts`: `RentalHealthModule` per `forwardRef` importiert.', dataSource: 'Module-Evaluator-Mapping (V1 Spec): BATTERY — Input `CanonicalBatteryHealthService.getSummary` (`sohPercent`, `voltage`, `condition`). SoH ≤ 40 % → critical, ≤ 60 % → warning, sonst good. Zusätzlich: HM-AI-Signal `batteryWarningLight=true` → critical (blockiert NICHT explizit rental_blocked — die Warnung fließt aber ins overall_state ein). Reason-Format: "Batterie-SoH X % (kritisch)" oder "Batteriezustand gut (SoH X %)". TIRES — Input `TireHealthService.getSummary` (`overallState` ∈ OK/WARNING/CRITICAL). Direkte 1:1-Abbildung OK→good, WARNING→warning, CRITICAL→critical. Bei critical → blockiert rental_blocked (Safety). Reason nimmt den Grund aus dem Summary (worst-tire tread depth / pressure). BRAKES — analog zu TIRES. Bei CRITICAL → critical + blockiert rental_blocked. ERROR CODES — Input `DtcService.getSummary` (`activeDtcs`, pro DTC `severity` + `category`). Jeder aktive DTC mit `severity=CRITICAL` oder `category` ∈ {SAFETY, DRIVABILITY} → critical + blockiert rental_blocked. Jeder aktive DTC mit `severity=WARNING` → warning. Reason: "X aktive Fehlercodes (Safety-relevant)". SERVICE & COMPLIANCE — Inputs: `Vehicle.tuvValidUntil`, `Vehicle.bokraftValidUntil`, `Vehicle.serviceIntervalManufacturerKm/Months` + `Vehicle.nextServiceAtKm/Date` + `VehicleLatestState.odometerKm`. `computeServiceOverdue` bestimmt TÜV/BOKraft-Status: überfällig → critical + blockiert rental_blocked; ≤ 30 Tage → warning. Service-Intervall: überfällig (days<0 oder km<0) → warning; ≤ 7 Tage oder ≤ 500 km → warning. Reason: "TÜV überfällig seit X Tagen" / "Service fällig in Y Tagen". COMPLAINTS — Input `prisma.vehicleComplaint` mit `status IN [OPEN, IN_REVIEW, CONFIRMED, ACTIVE]` (ACTIVE aus Legacy-Schema). `impact=SAFETY` → critical + blockiert rental_blocked. `impact=DRIVABILITY` oder `ENVIRONMENT` → warning. `impact=COMFORT` oder `null` → good (null = keine Impact-Klassifizierung, legacy-safe). Reason: "N offene Reklamationen" + Impact-Detail. VEHICLE ALERTS — Input `HmSignalUsageService.getAiHealthCareSignals` (5 strukturierte Booleans aus `HmLatestHealthState`): `limpModeActive` → critical + blockiert rental_blocked (Safety-Signal). `tirePressureWarning` → warning. `oilLevelWarning` → warning. `brakeLiningPreWarning` → warning. `batteryWarningLight` wird im Battery-Modul gehandhabt (Doppelzählung vermeiden). Alle 5 false → good. Reason formatiert aktive Warnleuchten. `computeOverallState` (deterministisch): filtert `n_a` raus (nicht-anwendbare Module z. B. Batterie-Modul für Verbrenner ohne HV-Batterie); wenn KEIN anwendbares Modul mehr übrig → `unknown`; wenn irgendein Modul `critical` → `critical`; sonst wenn irgendein Modul `warning` → `warning`; sonst wenn irgendein Modul `unknown` → `unknown`; sonst alle `good` → `good`. `collectBlockingReasons` sammelt die reasons aller Module die blockieren (Safety-Impact-Complaints, TÜV/BOKraft überfällig, Limp Mode aktiv, Bremsen/Reifen CRITICAL, Safety-DTC aktiv). Freshness: jedes Modul trägt `last_updated_at` aus dem jeweiligen Source-Record (Battery: `batteryHealthSnapshot.createdAt`, Tires: `tireHealthSnapshot.createdAt`, Brakes: `brakeHealthSnapshot.createdAt`, DTC: max `VehicleDtcEvent.lastSeenAt`, Service: max von `Vehicle.tuvValidUntil`/`nextServiceDate`/etc., Complaints: `VehicleComplaint.createdAt`, Vehicle Alerts: `HmLatestHealthState.updatedAt`) und `data_stale=true` wenn > 48 h alt. Frontend-Integration: `frontend/src/lib/api.ts` exponiert `api.rentalHealth.getVehicle(orgId, vehicleId)` + `api.rentalHealth.getFleet(orgId, vehicleIds?)` + die kanonischen Types `RentalHealthState`, `RentalHealthModule`, `VehicleHealthResponse` (1:1-Spiegel des Backend-`VehicleHealth`). `frontend/src/rental/hooks/useVehicleHealth.ts` stellt zwei Hooks bereit: `useVehicleHealth(orgId, vehicleId)` für Einzelfahrzeug-Fetch mit `reload()`-Callback (nach Handover etc.) und `useFleetHealthMap(orgId, vehicleIds?)` mit `Map<vehicleId, VehicleHealthResponse>` für O(1)-Lookups in Tabellen-Rendern. `frontend/src/rental/components/rental-health/RentalHealthBadge.tsx` stellt `RentalHealthBadge` (5-State-Pille + optionaler „Nicht vermietbar"-Overlay mit `showBlockingLabel` prop + hover-title mit `blocking_reasons.join(" · ")`) und `RentalHealthModuleRow` (für Module-Breakdown in Detail-Sheets) bereit. Drei Frontend-Einstiegspunkte: (1) `FleetView.tsx` — `useFleetHealthMap` für die nach Station gefilterten Vehicles; in Available- und Reserved-Tabellen erscheint neben dem Kennzeichen eine rote „Nicht vermietbar"-Pille wenn `rental_blocked=true`; Health-Spalte rendert den `RentalHealthBadge` sobald Health-Daten da sind (legacy `HealthFleetIcon` als Fallback). Ready-Badge wird suppressed bei `rental_blocked=true` in Available. Auch Active-Rented + Maintenance-Tabellen zeigen den Badge. (2) `NewBookingView.tsx` — `useFleetHealthMap` über die volle `fleetVehicles`-Liste (IDs nicht gefiltert, um Refetches bei Suche/Filter zu vermeiden); Vehicle-Picker-Row zeigt die „Nicht vermietbar"-Pille neben dem Kennzeichen bei `rental_blocked=true`; zusätzlich erkennt der Catch-Handler in `handleSaveBooking` den neuen Error-Code `VEHICLE_RENTAL_BLOCKED` und rendert einen dedizierten Toast mit `blockingReasons.join(" · ")` (8 s Dauer, „Fahrzeug nicht vermietbar"-Titel). (3) `BookingsView.tsx` — `useVehicleHealth` am Component-Top-Level (nicht conditional — hooks müssen unconditional laufen) mit `detailVehicleId` aus dem aktuellen Detail-Booking; im Detail-Sheet einer CONFIRMED/PENDING-Buchung erscheint bei `rental_blocked=true` ein roter Warn-Banner mit Pille + `blocking_reasons`, und der „Pickup bestätigen"-Button wird deaktiviert + zeigt bei Klick einen Error-Toast (Hard-Konsistenz mit `BookingsService.create`-Gate). Explizit NICHT in V1: Operator-Override, konfigurierbare Block-Rules, Confidence-Scores, Eskalations-Logik, fein granulares DTC-Code-Mapping (aktuell nur severity/category), Audit-Log der Health-Evaluations, Multi-Value-Battery-Weighting (SoH × SoC × Warning-Light), freeform-telltale-Parser für nicht-HM OEM-Alerts (Coolant/ABS/ESC/Airbag/Charging). Prisma-Schema-Erweiterung: Enum `ComplaintImpact` (SAFETY|DRIVABILITY|ENVIRONMENT|COMFORT) neu, `ComplaintLifecycleStatus` additiv um OPEN|IN_REVIEW|CONFIRMED|REJECTED erweitert (ACTIVE/RESOLVED bleiben für Rückwärtskompatibilität), `VehicleComplaint.impact` nullable neu. Migration `20260420050000_rental_health_complaints_impact` manuell appliziert (P3009-Altblockade, Muster aus vorherigen Migrationen). Not touched: Battery-V2/Canonical-Battery-Health/Tire-Health/Brake-Health/DTC-Service/Service-Info/HmLatestHealthState-Berechnungen (keine Zeile geändert — nur konsumiert), Overlap-Gate (V4.6.74), Handover-Protocol (V4.6.75), Invoice-Hook, DIMO/HM/Trip-Detection/Reconciliation/AI-Health-Care, alle anderen Rental-Views (Customers, Insights, Dashboard, Settings), alle Workers/Scheduler. Keine Änderung an bestehenden Request-Shapes; alle neuen Response-Felder additiv. Backend + Frontend Typecheck beide grün.' },
+  { name: 'Rental Health V1 (V4.6.76)', icon: Activity, endpoint: 'NEU: GET /api/v1/organizations/:orgId/vehicles/:vehicleId/rental-health — liefert den kanonischen `VehicleHealth`-Output pro Fahrzeug: `{ vehicle_id, organization_id, overall_state: "good"|"warning"|"critical"|"unknown"|"n_a", rental_blocked: boolean, blocking_reasons: string[], modules: { battery, tires, brakes, error_codes, service_compliance, complaints, vehicle_alerts: ModuleHealth }, generated_at: ISO }` wobei jedes `ModuleHealth = { state, reason: string, last_updated_at: ISO|null, data_stale: boolean }`. `data_stale = true` wenn `last_updated_at` > 48h alt (`RENTAL_HEALTH_STALE_MS = 48 * 60 * 60 * 1000`). NEU: GET .../rental-health?vehicleIds=a,b,c — Fleet-Batch-Read, intern in 20er-Batches um DB-Last zu begrenzen, Response `{ vehicles: VehicleHealth[] }`. Einzelne Vehicle-Reads mit Fehler werden als `overall_state=unknown` eingetragen statt den ganzen Batch zu killen (fail-open). Beide Routen sind tenant-scoped (orgId in Path + where-clause im Service). POST /api/v1/organizations/:orgId/bookings ist unverändert im Request-Shape, aber wirft JETZT zusätzlich `409 Conflict` mit `{ message: "Dieses Fahrzeug ist aktuell nicht vermietbar. <reasons>", code: "VEHICLE_RENTAL_BLOCKED", blockingReasons: string[], vehicleId }` wenn `rental_blocked=true`. **V4.8.76 (fail-closed)**: `isRentalBlocked` liefert jetzt `healthGateStatus: "OK"|"BLOCKED"|"UNAVAILABLE"|"UNKNOWN"` + `manualReviewRequired`. Bei technischem Gate-Ausfall (Aggregation wirft) → `blocked=true` + `UNAVAILABLE` (kein stilles fail-open). Booking Create/Update (`enforceRentalHealthGate`) trennt die Fälle: technischer Ausfall → `409 { code: "VEHICLE_HEALTH_GATE_UNAVAILABLE", manualReviewRequired: true }`, echter Block → `VEHICLE_RENTAL_BLOCKED`. Der Gate läuft nach dem V4.6.74 Overlap-Gate, also bekommt der Client für dasselbe Fahrzeug im selben Zeitraum entweder `VEHICLE_BOOKING_OVERLAP` ODER `VEHICLE_RENTAL_BLOCKED` (nie beides — `VEHICLE_BOOKING_OVERLAP` hat Priorität).', service: 'NEU: Top-Level-Modul `backend/src/modules/rental-health/` mit 4 Dateien. (1) `rental-health.types.ts`: kanonische Types + Helper (`HealthState`, `ModuleHealth`, `VehicleHealth`, `VehicleHealthStatus` Type-Alias — `RentalHealthService` aggregiert, `RENTAL_HEALTH_STALE_MS`, `HEALTH_SEVERITY`-Ranking {n_a:-1, good:0, unknown:1, warning:2, critical:3}, `computeOverallState(modules)`, `maxSeverity(states)`, `isStale(iso, now?)`, `toIso(value)`, `RentalBlockedErrorPayload`). (2) `rental-health.service.ts`: `RentalHealthService.getVehicleHealth(orgId, vehicleId)` fan-out-liest via `Promise.allSettled` die 7 Module: `CanonicalBatteryHealthService.getSummary(vehicleId)`, `TireHealthService.getSummary(vehicleId)`, `BrakeHealthService.getSummary(vehicleId)`, `DtcService.getSummary(vehicleId)`, `HmSignalUsageService.getAiHealthCareSignals(vehicleId)` (mit `.catch(() => null)`), `prisma.vehicleLatestState.findUnique(...odometerKm)`, `prisma.vehicleComplaint.findMany({ status IN [OPEN, IN_REVIEW, CONFIRMED, ACTIVE], take: 25 })`. Dann 7 private `evaluate*`-Methoden pro Modul. `computeOverallState` + `collectBlockingReasons` produzieren die finale `VehicleHealth`. `isRentalBlocked(orgId, vehicleId)` ist ein leaner Wrapper für den Booking-Gate, der dieselbe `getVehicleHealth`-Logik reuset damit UI-Signal und Backend-Hard-Gate deterministisch identisch sind. (3) `rental-health.controller.ts`: zwei GET-Routen + interne 20er-Batch-Chunks für Fleet-Reads. (4) `rental-health.module.ts`: importiert `VehicleIntelligenceModule` + `HighMobilityModule` via `forwardRef` (um zirkuläre Deps zu vermeiden), registriert `RentalHealthController` + `RentalHealthService`, exportiert den Service. Modul ist in `backend/src/app.module.ts` registriert. `backend/src/modules/bookings/bookings.service.ts`: `RentalHealthService` per `@Inject(forwardRef(() => RentalHealthService))` injiziert; in `create()` direkt nach dem V4.6.74 Overlap-Check steht der Gate — bei `blocked=true` wird `ConflictException` mit Code `VEHICLE_RENTAL_BLOCKED` geworfen. `bookings.module.ts`: `RentalHealthModule` per `forwardRef` importiert.', dataSource: 'Module-Evaluator-Mapping (V1 Spec): BATTERY — Input `CanonicalBatteryHealthService.getSummary` (`sohPercent`, `voltage`, `condition`). SoH ≤ 40 % → critical, ≤ 60 % → warning, sonst good. Zusätzlich: HM-AI-Signal `batteryWarningLight=true` → critical (blockiert NICHT explizit rental_blocked — die Warnung fließt aber ins overall_state ein). Reason-Format: "Batterie-SoH X % (kritisch)" oder "Batteriezustand gut (SoH X %)". TIRES — Input `TireHealthService.getSummary` (`overallState` ∈ OK/WARNING/CRITICAL). Direkte 1:1-Abbildung OK→good, WARNING→warning, CRITICAL→critical. Bei critical → blockiert rental_blocked (Safety). Reason nimmt den Grund aus dem Summary (worst-tire tread depth / pressure). BRAKES — analog zu TIRES. Bei CRITICAL → critical + blockiert rental_blocked. ERROR CODES — Input `DtcService.getSummary` (`activeDtcs`, pro DTC `severity` + `category`). Jeder aktive DTC mit `severity=CRITICAL` oder `category` ∈ {SAFETY, DRIVABILITY} → critical + blockiert rental_blocked. Jeder aktive DTC mit `severity=WARNING` → warning. Reason: "X aktive Fehlercodes (Safety-relevant)". SERVICE & COMPLIANCE — Inputs: `Vehicle.tuvValidUntil`, `Vehicle.bokraftValidUntil`, `Vehicle.serviceIntervalManufacturerKm/Months` + `Vehicle.nextServiceAtKm/Date` + `VehicleLatestState.odometerKm`. `computeServiceOverdue` bestimmt TÜV/BOKraft-Status: überfällig → critical + blockiert rental_blocked; ≤ 30 Tage → warning. Service-Intervall: überfällig (days<0 oder km<0) → warning; ≤ 7 Tage oder ≤ 500 km → warning. Reason: "TÜV überfällig seit X Tagen" / "Service fällig in Y Tagen". COMPLAINTS — Input `prisma.vehicleComplaint` mit `status IN [OPEN, IN_REVIEW, CONFIRMED, ACTIVE]` (ACTIVE aus Legacy-Schema). `impact=SAFETY` → critical + blockiert rental_blocked. `impact=DRIVABILITY` oder `ENVIRONMENT` → warning. `impact=COMFORT` oder `null` → good (null = keine Impact-Klassifizierung, legacy-safe). Reason: "N offene Reklamationen" + Impact-Detail. VEHICLE ALERTS — Input `HmSignalUsageService.getAiHealthCareSignals` (5 strukturierte Booleans aus `HmLatestHealthState`): `limpModeActive` → critical + blockiert rental_blocked (Safety-Signal). `tirePressureWarning` → warning. `oilLevelWarning` → warning. `brakeLiningPreWarning` → warning. `batteryWarningLight` wird im Battery-Modul gehandhabt (Doppelzählung vermeiden). Alle 5 false → good. Reason formatiert aktive Warnleuchten. `computeOverallState` (deterministisch): filtert `n_a` raus (nicht-anwendbare Module z. B. Batterie-Modul für Verbrenner ohne HV-Batterie); wenn KEIN anwendbares Modul mehr übrig → `unknown`; wenn irgendein Modul `critical` → `critical`; sonst wenn irgendein Modul `warning` → `warning`; sonst wenn irgendein Modul `unknown` → `unknown`; sonst alle `good` → `good`. `collectBlockingReasons` sammelt die reasons aller Module die blockieren (Safety-Impact-Complaints, TÜV/BOKraft überfällig, Limp Mode aktiv, Bremsen/Reifen CRITICAL, Safety-DTC aktiv). Freshness: jedes Modul trägt `last_updated_at` aus dem jeweiligen Source-Record (Battery: `batteryHealthSnapshot.createdAt`, Tires: `tireHealthSnapshot.createdAt`, Brakes: `brakeHealthSnapshot.createdAt`, DTC: max `VehicleDtcEvent.lastSeenAt`, Service: max von `Vehicle.tuvValidUntil`/`nextServiceDate`/etc., Complaints: `VehicleComplaint.createdAt`, Vehicle Alerts: `HmLatestHealthState.updatedAt`) und `data_stale=true` wenn > 48 h alt. Frontend-Integration: `frontend/src/lib/api.ts` exponiert `api.rentalHealth.getVehicle(orgId, vehicleId)` + `api.rentalHealth.getFleet(orgId, vehicleIds?)` + die kanonischen Types `RentalHealthState`, `RentalHealthModule`, `VehicleHealthResponse` (1:1-Spiegel des Backend-`VehicleHealth`). `frontend/src/rental/hooks/useVehicleHealth.ts` stellt zwei Hooks bereit: `useVehicleHealth(orgId, vehicleId)` für Einzelfahrzeug-Fetch mit `reload()`-Callback (nach Handover etc.) und `useFleetHealthMap(orgId, vehicleIds?)` mit `Map<vehicleId, VehicleHealthResponse>` für O(1)-Lookups in Tabellen-Rendern. `frontend/src/rental/components/rental-health/RentalHealthBadge.tsx` stellt `RentalHealthBadge` (5-State-Pille + optionaler „Nicht vermietbar"-Overlay mit `showBlockingLabel` prop + hover-title mit `blocking_reasons.join(" · ")`) und `RentalHealthModuleRow` (für Module-Breakdown in Detail-Sheets) bereit. Drei Frontend-Einstiegspunkte: (1) `FleetView.tsx` — `useFleetHealthMap` für die nach Station gefilterten Vehicles; in Available- und Reserved-Tabellen erscheint neben dem Kennzeichen eine rote „Nicht vermietbar"-Pille wenn `rental_blocked=true`; Health-Spalte rendert den `RentalHealthBadge` sobald Health-Daten da sind (legacy `HealthFleetIcon` als Fallback). Ready-Badge wird suppressed bei `rental_blocked=true` in Available. Auch Active-Rented + Maintenance-Tabellen zeigen den Badge. (2) `NewBookingView.tsx` — `useFleetHealthMap` über die volle `fleetVehicles`-Liste (IDs nicht gefiltert, um Refetches bei Suche/Filter zu vermeiden); Vehicle-Picker-Row zeigt die „Nicht vermietbar"-Pille neben dem Kennzeichen bei `rental_blocked=true`; zusätzlich erkennt der Catch-Handler in `handleSaveBooking` den neuen Error-Code `VEHICLE_RENTAL_BLOCKED` und rendert einen dedizierten Toast mit `blockingReasons.join(" · ")` (8 s Dauer, „Fahrzeug nicht vermietbar"-Titel). (3) `BookingsView.tsx` — `useVehicleHealth` am Component-Top-Level (nicht conditional — hooks müssen unconditional laufen) mit `detailVehicleId` aus dem aktuellen Detail-Booking; im Detail-Sheet einer CONFIRMED/PENDING-Buchung erscheint bei `rental_blocked=true` ein roter Warn-Banner mit Pille + `blocking_reasons`, und der „Pickup bestätigen"-Button wird deaktiviert + zeigt bei Klick einen Error-Toast (Hard-Konsistenz mit `BookingsService.create`-Gate). Explizit NICHT in V1: Operator-Override, konfigurierbare Block-Rules, Confidence-Scores, Eskalations-Logik, fein granulares DTC-Code-Mapping (aktuell nur severity/category), Audit-Log der Health-Evaluations, Multi-Value-Battery-Weighting (SoH × SoC × Warning-Light), freeform-telltale-Parser für nicht-HM OEM-Alerts (Coolant/ABS/ESC/Airbag/Charging). Prisma-Schema-Erweiterung: Enum `ComplaintImpact` (SAFETY|DRIVABILITY|ENVIRONMENT|COMFORT) neu, `ComplaintLifecycleStatus` additiv um OPEN|IN_REVIEW|CONFIRMED|REJECTED erweitert (ACTIVE/RESOLVED bleiben für Rückwärtskompatibilität), `VehicleComplaint.impact` nullable neu. Migration `20260420050000_rental_health_complaints_impact` manuell appliziert (P3009-Altblockade, Muster aus vorherigen Migrationen). Not touched: Battery-V2/Canonical-Battery-Health/Tire-Health/Brake-Health/DTC-Service/Service-Info/HmLatestHealthState-Berechnungen (keine Zeile geändert — nur konsumiert), Overlap-Gate (V4.6.74), Handover-Protocol (V4.6.75), Invoice-Hook, DIMO/HM/Trip-Detection/Reconciliation/AI-Health-Care, alle anderen Rental-Views (Customers, Insights, Dashboard, Settings), alle Workers/Scheduler. Keine Änderung an bestehenden Request-Shapes; alle neuen Response-Felder additiv. Backend + Frontend Typecheck beide grün.' },
   { name: 'Bookings Pickup-Überfälligkeit (V4.6.81 — Backdate, No-Show, PICKUP_OVERDUE-Insight)', icon: AlertTriangle,
     endpoint: 'NEU: POST /api/v1/organizations/:orgId/bookings/:id/no-show — Body `{ reason?: string | null }` → 200 `{ id, status: "NO_SHOW", cancelledAt, notes, ... }`. Guardrails: Booking muss status=CONFIRMED UND startDate < now() haben (sonst 400/404). Transition: `status=NO_SHOW`, `cancelledAt=now()`, `Vehicle.status=AVAILABLE`, optionaler `reason` wird als `[No-Show <ISO>] <reason>` an `Booking.notes` appendet. ERWEITERT: POST /api/v1/organizations/:orgId/bookings/:id/handover/pickup — Body-Shape additiv um `performedAt?: string | null` erweitert (ISO-8601). Server-Validierung: nicht in der Zukunft; nicht älter als 7 Tage vor `booking.startDate` (sonst 400). Leer lassen → DB-`now()` wird verwendet (altes Verhalten). Nur für PICKUP-Kind relevant; RETURN ignoriert das Feld. ERWEITERT: GET /api/v1/organizations/:orgId/bookings/today/pickups — zusätzlich zu den heutigen Pickups werden jetzt auch überfällige bestätigte Bookings der letzten 7 Tage zurückgegeben (`status=CONFIRMED`, `startDate < todayStart`, `handoverProtocols NONE kind=PICKUP`). Jeder Eintrag enthält additiv `isOverdue: boolean` + `minutesOverdue: number`. Response-Shape ist rückwärtskompatibel (heute-Pickups: `isOverdue=false`, `minutesOverdue=0`). NEU: Insight-Type `PICKUP_OVERDUE` auf GET /organizations/:orgId/dashboard-insights (actionType=navigate_booking, metrics.minutesOverdue, metrics.bookingId, severity INFO/WARNING/CRITICAL).',
     service: 'ERWEITERT: `BookingsHandoverService.createHandover` (`backend/src/modules/bookings/bookings-handover.service.ts`) fetched `booking.startDate` jetzt mit in die initiale `findUnique`-Query und ruft vor dem `prisma.$transaction` die neue private Methode `resolvePerformedAt(payload, kind, startDate)` auf: (a) gibt `null` zurück wenn `payload.performedAt` leer/null ist (DB fällt auf `now()` zurück); (b) wirft `BadRequestException` wenn kein gültiger ISO-8601-String; (c) wirft `BadRequestException` wenn Timestamp in der Zukunft liegt (>60 s Skew erlaubt); (d) wirft `BadRequestException` wenn Timestamp > 7 Tage vor `booking.startDate`; (e) nur für `kind=PICKUP` relevant — für RETURN wird das Feld stillschweigend ignoriert. In der Transaction wird das resultierende `performedAt` conditional ins `BookingHandoverProtocol.create`-Payload gespreadet (`...(performedAt ? { performedAt } : {})`), sodass Clients ohne das Feld weiterhin die DB-Default-Zeit bekommen. NEU: `BookingsService.markNoShow(orgId, id, reason?)` (`backend/src/modules/bookings/bookings.service.ts`): lädt Booking + Vehicle, verifiziert `status=CONFIRMED` + `startDate < now()`, baut `nextNotes`-String mit ISO-Timestamp-Präfix, führt `prisma.$transaction([booking.update, vehicle.update])` atomic aus. Neuer Controller-Endpoint `POST /:id/no-show` in `bookings.controller.ts`. ERWEITERT: `BookingsService.findTodaysPickups` — zweites `OR`-Branch in der `findMany`-Query (`status=CONFIRMED`, `startDate ∈ [now-7d, todayStart)`, `handoverProtocols NONE kind=PICKUP`); Mapping-Step berechnet pro Row `isOverdue = startDate < todayStart` + `minutesOverdue = Math.floor((now - startDate) / 60_000)`. NEU: `PickupOverdueDetector` (`backend/src/modules/business-insights/detectors/pickup-overdue.detector.ts`) implementiert `InsightDetector` mit 4 Schwellen: `OVERDUE_THRESHOLD_MIN=30`, `WARNING_THRESHOLD_MIN=120`, `CRITICAL_THRESHOLD_MIN=1440`, `LOOKBACK_DAYS=7`. `detect(ctx)` query-pattern identisch zu `findTodaysPickups`-Overdue-Branch, aber gefiltert auf ≥30 min overdue; baut `InsightCandidate` pro Booking mit severity INFO (<2 h) / WARNING (<24 h) / CRITICAL (≥24 h) und metrics `{ minutesOverdue, bookingId, customerName, vehicleLicense, startDate }`. Registriert in `BusinessInsightsModule.providers` + `BusinessInsightsService.detectors[]`. `InsightFormatterService.TITLE_TEMPLATES.PICKUP_OVERDUE=""` (nutzt detector-eigenen Title) + `ACTION_LABELS.PICKUP_OVERDUE="Buchung öffnen"`. `InsightGroupingService.GROUP_TEMPLATES.PICKUP_OVERDUE` liefert einen kondensierten Mehr-Bookings-Text. `InsightRankingService.TYPE_OPERATIONAL_WEIGHT.PICKUP_OVERDUE=15` (über BATTERY_CRITICAL/SERVICE_OVERDUE bei 13, weil direkter Kundenimpact). `DEFAULT_POLICY.enabledTypes` um PICKUP_OVERDUE erweitert.',
@@ -388,7 +393,7 @@ const FRONTEND_FLOWS: FrontendFlowEntry[] = [
   { name: 'Users & Roles Security (V4.8.33 + V4.8.40 Final-QA)', icon: ShieldCheck, endpoint: 'GET /api/v1/organizations/:orgId/users (users-roles.read), GET .../users/:id (read), POST .../users (write; service requires manage for ORG_ADMIN/custom permissions/manual password), PATCH .../users/:id (write + manage for role/permissions/status), DELETE .../users/:id (manage), POST .../users/:userId/change-password (manage), POST .../users/:userId/membership (manage), POST .../users/:userId/assign-role (manage). MASTER_ADMIN `/admin/users*` unchanged (RolesGuard; responses via `mapUser` — no passwordHash).', service: 'UsersController + UsersService hardened: all org routes use OrgScopingGuard + PermissionsGuard + `@RequirePermission("users-roles", read|write|manage)`. **V4.8.40**: PermissionsGuard no longer trusts stale JWT `membershipRole` — ORG_ADMIN only via DB membership; `evaluateModulePermission` cascades manage→write→read; `createOrgUser`/`createInvite` call `assertMembershipPermission(manage)` for privileged provisioning; `assignRoleToUser` uses `org-admin-protection.util` (last active ORG_ADMIN); system role templates cannot have permissions/membershipRole mutated; admin user create/update responses omit passwordHash.', dataSource: 'Frontend `users-roles/*` module (5 tabs) + `RentalContext.hasPermission(read|write|manage)`. Tests: `users.service.spec.ts`, `permissions.guard.spec.ts`, `organization-invite.service.spec.ts`, `organization-role.service.spec.ts`.' },
   { name: 'Fleet Connectivity (V4.8.37)', icon: Wifi, endpoint: 'GET /api/v1/organizations/:orgId/fleet-connectivity?page&limit&status&q — read-only tenant telemetry overview. OrgScopingGuard + PermissionsGuard (`fleet-connectivity.read`). No connect/sync/unlink/remap/write actions on this route.', service: 'VehiclesService.getFleetConnectivity + `fleet-connectivity.util.ts`: derives connectionStatus (not_connected / online <15m / standby <24h / offline), signal availability map (gps/odometer/speed/fuel/evSoc/dtc/obdPlug/jamming), `signalCoveragePercent` + `readinessScore`/`readinessLevel`, masked device/token IDs, jamming snapshot indication (`jammingSnapshotNote`, max one `jammingIncidents` row with `isSnapshotIndication`). Summary computed on full filtered org set (hard cap 1000); pagination optional — default returns all vehicles when no query params (backward compatible).', dataSource: 'Prisma: Vehicle + DimoVehicle + VehicleLatestState + homeStation. `extractConnectivitySnapshot` (OBD plug + jamming from rawPayloadJson). Thresholds exposed in response (`onlineMaxMinutes: 15`, `standbyMaxHours: 24`). Tests: fleet-connectivity.util.spec.ts, vehicles.controller.fleet-connectivity.spec.ts.' },
   { name: 'Fleet Connectivity UI (V4.8.38)', icon: Wifi, endpoint: '(consumes) GET /api/v1/organizations/:orgId/fleet-connectivity — single GET on tab mount; filters/search are client-side (optional server query params typed in `api.vehicles.fleetConnectivity`).', service: 'Rental Administration → Settings tab `fleet-connection`: `FleetConnectivityTab` + `fleet-connectivity/*` (utils, badges, `FleetConnectivityDetailDrawer`). KPI strip (total/connected/online/standby/offline/not connected/OBD unplugged/avg readiness), filter bar (status/readiness/signal), desktop `DataTable` + mobile cards, read-only `DetailDrawer` (connection summary, masked device identity, telemetry readiness, signal matrix, OBD & jamming snapshot, location/odometer). No Connect/Remap/Unlink/Sync/Refresh/Task actions.', dataSource: 'Frontend types in `frontend/src/lib/api.ts` (`FleetConnectivityResponse`, `FleetConnectivityVehicle`, signal/readiness enums). `SettingsView` imports extracted tab only — legacy inline `FleetConnectionTab` removed. OBD display via `obdPlugDisplay()`; jamming labeled “Latest snapshot indication”; readiness titled as telemetry data confidence (not vehicle health).' },
-  { name: 'Data Authorization & Consent Center (V4.8.42 + V4.8.48 scope)', icon: ShieldCheck, endpoint: 'GET/POST/PATCH /api/v1/organizations/:orgId/data-authorizations (+ /stats, /audit-log, /sync-system-authorizations, /:id/grant, /:id/revoke). OrgScopingGuard + PermissionsGuard (`data-authorization` read/write/manage). **V4.8.48**: DIMO system auth sync sets PENDING + clears stale scope when 0 DIMO vehicles; response adds `scopeNote`, `lastSyncedAt`.', service: 'Backend: DataAuthorizationsService + Enforcement + DIMO ensure. Frontend: Settings `data-authorization` tab — KPIs, filters, DetailDrawer shows scopeNote + zero-vehicle message.', dataSource: 'Prisma `OrgDataAuthorization`; DIMO Telemetry Authorization auto-sync idempotent; revoked never auto-reactivated.' },
+  { name: 'Data Authorization & Consent Center (V4.8.42 + V4.8.48 scope)', icon: ShieldCheck, endpoint: 'GET/POST/PATCH /api/v1/organizations/:orgId/data-authorizations (+ /stats, /audit-log, /sync-system-authorizations, /:id/grant, /:id/revoke). OrgScopingGuard + PermissionsGuard (`data-authorization` read/write/manage). **V4.8.48**: DIMO system auth sync sets PENDING + clears stale scope when 0 DIMO vehicles; response adds `scopeNote`, `lastSyncedAt`. **V4.8.76**: response adds defensive `hasActiveScope` + `scopeStatus` (`NO_ACTIVE_VEHICLES`|`ACTIVE`|`PENDING`|`REVOKED`|`EXPIRED`); sync only writes on real scope/status/spec change (no `updatedAt` churn on read paths) and records an audit entry with added/removed vehicleIds whenever the scope changes.', service: 'Backend: DataAuthorizationsService + Enforcement + DIMO ensure (`ensureDimoTelemetryAuthorization` with `sameIdSet` change detection + audit). Frontend: Settings `data-authorization` tab — KPIs, filters, DetailDrawer shows scopeNote + explicit Scope-Status row (vehicle count) + zero-vehicle message.', dataSource: 'Prisma `OrgDataAuthorization`; DIMO Telemetry Authorization auto-sync idempotent; revoked never auto-reactivated; scope changes audited.' },
   { name: 'Data Analyse (V4.8.48 — per-signal HF)', icon: Activity, endpoint: 'GET .../data-analyse/vehicles/:vehicleId/high-frequency returns per-signal: sampleCount24h/7d, median/p95 intervals, reliabilityStatus, launchDetectionUsefulness, practicalUse, explanation. Signal groups include sourceProvider, storageLocation, limitations. Health trace evidence includes consumedSignals[]. OrgScopingGuard + `data-analyse.read`.', service: 'DataAnalyseService: ClickHouse per-column aggregates + optional waypoint speed stream; no fake samples. Launch feasibility uses per-signal intervals. Frontend DataAnalyseView HF table + enriched groups/health trace.', dataSource: 'vehicle_latest_states, telemetry_snapshots, telemetry_waypoints (when populated), health read models.' },
   { name: 'Access Control Center (V4.8.34 + V4.8.36 QA)', icon: ShieldCheck, endpoint: 'GET/POST /api/v1/organizations/:orgId/invites, POST .../invites/:id/resend (manage), DELETE .../invites/:id (manage); POST /api/v1/invites/validate + /accept (public, token-based). GET/POST/PATCH/DELETE /api/v1/organizations/:orgId/roles, POST .../roles/:id/duplicate, GET .../roles/:id/permission-preview, POST .../users/:userId/assign-role (manage), GET .../users/:userId/security-activity (read). **V4.8.36**: `GET /organizations/:orgId/activity-log` requires `users-roles.read` (Security tab); `POST .../users` accepts `organizationRoleId`; invites reject active members.', service: 'OrganizationInviteService (create/list/resend/revoke/validate/accept — bcrypt tokenHash + sha256 tokenLookup, 7-day expiry, TransactionalMailService log-fallback; blocks invite for ACTIVE membership; accept audit distinguishes new user vs reactivation), OrganizationRoleService (CRUD/duplicate/assign, `ensureDefaultRoles` on org create + lazy list), UserAccessAuditService (granular `metaJson.auditAction` codes → ActivityLog via AuditService). UsersModule registers OrganizationInvitesController, OrganizationRolesController, PublicInvitesController. AuthGuard public paths for invite validate/accept. ActivityLogController org route: OrgScopingGuard + PermissionsGuard.', dataSource: 'Prisma: `OrganizationInviteStatus`, `OrganizationRole`, `OrganizationUserInvite`, `OrganizationMembership.organizationRoleId`; ActivityEntity + ORGANIZATION_INVITE/ORGANIZATION_ROLE. Migration `20260617140000_organization_access_control`. 10 system role templates in `organization-role.defaults.ts`. MembershipRole enum preserved; templates supply permissions JSON + optional role label. Security activity returns lastLoginAt, inviteStatus, auditTimeline — null/empty when unavailable (no fake 2FA/sessions). Tests: organization-invite.service.spec, organization-role.service.spec.' },
   { name: 'Tenant Organization Profile (V4.6.63 — superseded by V4.8.30)', icon: Building2, endpoint: 'GET /api/v1/organizations/:orgId/profile, PATCH /api/v1/organizations/:orgId/profile, POST /api/v1/organizations/:orgId/profile/logo (multipart/form-data, max 2 MB image/*)', service: 'OrganizationsService.getTenantProfile / updateTenantProfile (allow-listed field set, empty-string → NULL normalization, MASTER_ADMIN-only platform fields like status/shortCode/businessType excluded). TenantOrganizationProfileController guarded by OrgScopingGuard + RolesGuard; PATCH and POST /logo additionally require platformRole=MASTER_ADMIN OR membershipRole=ORG_ADMIN. Logo upload uses multer diskStorage to `<cwd>/uploads/org-logos/<sanitizedOrgId>-<ts>-<rand><ext>`; the existing main.ts useStaticAssets("uploads", "/uploads/") serves the file back. After a successful upload the controller calls updateTenantProfile({ logoUrl }) so the new URL is persisted on the Organization record in the same request.', dataSource: 'Schema (`organizations` table) extended with `state`, `zip`, `tax_id`, `timezone`, `language`, `manager_name`, `manager_email` (migration 20260420010000_add_organization_profile_fields, all TEXT NULL). Existing fields reused: `company_name`, `address`, `city`, `country`, `phone`, `email`, `website`, `logo_url`. Frontend: `api.organizations.getProfile / updateProfile / uploadLogo` (`frontend/src/lib/api.ts`). RentalContext.setOrgBranding({ orgName?, orgLogoUrl? }) (`frontend/src/rental/RentalContext.tsx`) updates in-memory state AND patches `localStorage.synqdrive_user.organizationLogoUrl/.organizationName` via `patchStoredUser` (`frontend/src/lib/auth.ts`) so the V4.6.59 RightSidebar branding header re-renders immediately after Save/Upload — no page reload, no re-login. CompanyProfileTab (`frontend/src/rental/components/SettingsView.tsx`) is fully backend-backed: legacy `RENTAL_COMPANY_PROFILE_STORAGE_PREFIX` localStorage layer was deleted; load via getProfile, save via updateProfile, logo upload via hidden file-input + uploadLogo + setOrgBranding round-trip. Permission gate: only ORG_ADMIN (or hasPermission("settings","write")) can enter Edit-Mode; everyone else sees read-only fields. Closes the V4.6.59 note about the logo-upload placeholder ("until an upload handler writes Organization.logoUrl, every org renders the name-fallback branch") — tenant ORG_ADMINs can now actually populate the logo without going through the MASTER_ADMIN /admin/organizations route.' },
@@ -428,7 +433,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
   {
     name: 'DIMO',
     icon: Radio,
-    color: 'text-cyan-400',
+    color: 'text-[color:var(--brand)]',
     apis: [
       { label: 'Telemetry GraphQL', detail: 'signalsLatest, signals history, segments' },
       { label: 'REST API', detail: 'Vehicles, device status' },
@@ -438,7 +443,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
   {
     name: 'Mapbox',
     icon: Globe,
-    color: 'text-blue-400',
+    color: 'text-[color:var(--brand)]',
     apis: [
       { label: 'Directions API', detail: 'Route reconstruction, road types' },
       { label: 'Geocoding API', detail: 'Address lookup / reverse geocode' },
@@ -448,7 +453,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
   {
     name: 'Stripe',
     icon: Zap,
-    color: 'text-violet-400',
+    color: 'text-[color:var(--status-ai)]',
     apis: [
       { label: 'Billing', detail: 'Subscriptions & invoices' },
       { label: 'Payments', detail: 'Payment processing' },
@@ -460,65 +465,68 @@ const INTEGRATIONS: IntegrationEntry[] = [
 /*  Reusable sub-components                                            */
 /* ------------------------------------------------------------------ */
 
-function FlowArrow({ isDarkMode }: { isDarkMode: boolean }) {
-  return (
-    <ArrowRight
-      size={14}
-      className={`shrink-0 ${isDarkMode ? 'text-neutral-600' : 'text-gray-300'}`}
-    />
-  );
+function FlowArrow() {
+  return <ArrowRight size={14} className="shrink-0 text-muted-foreground/50" />;
 }
 
 function SourceBadge({ label }: { label: string }) {
-  return <span className={BADGE('bg-cyan-500/15 text-cyan-500')}>{label}</span>;
+  return <StatusChip tone="info">{label}</StatusChip>;
 }
 
 function StorageBadge({ label }: { label: string }) {
-  return <span className={BADGE('bg-violet-500/15 text-violet-500')}><Database size={10} />{label}</span>;
+  return (
+    <StatusChip tone="ai" icon={<Database size={10} />}>
+      {label}
+    </StatusChip>
+  );
 }
 
 function ConsumerBadge({ label }: { label: string }) {
-  return <span className={BADGE('bg-emerald-500/15 text-emerald-500')}>{label}</span>;
+  return <StatusChip tone="success">{label}</StatusChip>;
 }
 
 function WorkerBadge({ label }: { label: string }) {
-  return <span className={BADGE('bg-amber-500/15 text-amber-500')}><Cpu size={10} />{label}</span>;
+  return (
+    <StatusChip tone="watch" icon={<Cpu size={10} />}>
+      {label}
+    </StatusChip>
+  );
 }
 
 /* ------------------------------------------------------------------ */
 /*  Section renderers                                                  */
 /* ------------------------------------------------------------------ */
 
-function OverviewSection({ d }: { d: boolean }) {
+function OverviewSection() {
   const layers: { label: string; icon: React.ElementType; items: string[]; color: string }[] = [
-    { label: 'External Sources', icon: Globe, items: ['DIMO Telemetry', 'DIMO Webhooks', 'Mapbox', 'Stripe'], color: 'border-cyan-500/40' },
-    { label: 'Ingestion Layer', icon: Server, items: ['SnapshotPollingWorker', 'TripDetectionWorker', 'DtcPollingJob', 'Webhook Handlers'], color: 'border-amber-500/40' },
-    { label: 'Storage Layer', icon: Database, items: ['VehicleLatestState', 'VehicleTrip', 'ActiveDtc', 'HealthScores', 'Prisma / PostgreSQL'], color: 'border-violet-500/40' },
-    { label: 'Business Logic', icon: Cpu, items: ['HealthCalculationWorker', 'EnrichmentJobProcessor', 'Connectivity Logic', 'AI Analysis'], color: 'border-emerald-500/40' },
-    { label: 'API Layer', icon: Code2, items: ['/api/v1/vehicles', '/api/v1/dimo/*', '/api/v1/vehicle-intelligence/*', '/api/v1/health/*'], color: 'border-blue-500/40' },
-    { label: 'Frontend', icon: Monitor, items: ['Next.js App Router', 'Vehicle Detail', 'Live Map', 'Health Dashboard', 'Trips View'], color: 'border-pink-500/40' },
+    { label: 'External Sources', icon: Globe, items: ['DIMO Telemetry', 'DIMO Webhooks', 'Mapbox', 'Stripe'], color: 'border-[color:var(--brand)]/40' },
+    { label: 'Ingestion Layer', icon: Server, items: ['SnapshotPollingWorker', 'TripDetectionWorker', 'DtcPollingJob', 'Webhook Handlers'], color: 'border-[color:var(--status-watch)]/40' },
+    { label: 'Storage Layer', icon: Database, items: ['VehicleLatestState', 'VehicleTrip', 'ActiveDtc', 'HealthScores', 'Prisma / PostgreSQL'], color: 'border-[color:var(--status-ai)]/40' },
+    { label: 'Business Logic', icon: Cpu, items: ['HealthCalculationWorker', 'EnrichmentJobProcessor', 'Connectivity Logic', 'AI Analysis'], color: 'border-[color:var(--status-positive)]/40' },
+    { label: 'API Layer', icon: Code2, items: ['/api/v1/vehicles', '/api/v1/dimo/*', '/api/v1/vehicle-intelligence/*', '/api/v1/health/*'], color: 'border-[color:var(--brand)]/40' },
+    { label: 'Frontend', icon: Monitor, items: ['Next.js App Router', 'Vehicle Detail', 'Live Map', 'Health Dashboard', 'Trips View'], color: 'border-border' },
   ];
 
   return (
     <div className="space-y-4">
-      <p className={`text-sm leading-relaxed ${d ? 'text-neutral-400' : 'text-gray-500'}`}>
+      <p className={`text-sm leading-relaxed text-muted-foreground`}>
         SynqDrive is a multi-tenant SaaS platform for fleet, rental, telematics, vehicle health, maintenance, AI-assisted analysis, and operations management. Data flows from external telemetry providers through ingestion workers into a normalised storage layer, is processed by business-logic workers, and served to the frontend through versioned API routes.
       </p>
       <div className="grid gap-3">
         {layers.map((layer, idx) => {
           const Icon = layer.icon;
           return (
-            <div key={layer.label} className={`${CARD(d)} p-4 border-l-2 ${layer.color}`}>
+            <div key={layer.label} className={`sq-card p-4 border-l-2 ${layer.color}`}>
               <div className="flex items-center gap-2 mb-2">
                 {idx > 0 && (
-                  <span className={`text-[10px] font-bold uppercase tracking-widest mr-2 ${d ? 'text-neutral-600' : 'text-gray-300'}`}>↓</span>
+                  <span className={`text-[10px] font-bold uppercase tracking-widest mr-2 text-muted-foreground/50`}>↓</span>
                 )}
-                <Icon size={16} className={d ? 'text-neutral-400' : 'text-gray-500'} />
-                <span className={`text-sm font-semibold ${d ? 'text-neutral-200' : 'text-gray-800'}`}>{layer.label}</span>
+                <Icon size={16} className="text-muted-foreground" />
+                <span className={`text-sm font-semibold text-foreground`}>{layer.label}</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {layer.items.map((item) => (
-                  <span key={item} className={`text-[11px] px-2 py-0.5 rounded-md font-medium ${d ? 'bg-neutral-800 text-neutral-300' : 'bg-gray-100 text-gray-600'}`}>
+                  <span key={item} className={`text-[11px] px-2 py-0.5 rounded-md font-medium bg-muted text-muted-foreground`}>
                     {item}
                   </span>
                 ))}
@@ -531,36 +539,36 @@ function OverviewSection({ d }: { d: boolean }) {
   );
 }
 
-function SignalsSection({ d }: { d: boolean }) {
+function SignalsSection() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-3 mb-2">
-        <span className={BADGE('bg-cyan-500/15 text-cyan-500')}>Source</span>
-        <span className={BADGE('bg-amber-500/15 text-amber-500')}><Cpu size={10} />Worker</span>
-        <span className={BADGE('bg-violet-500/15 text-violet-500')}><Database size={10} />Storage</span>
-        <span className={BADGE('bg-emerald-500/15 text-emerald-500')}>Consumer</span>
+        <StatusChip tone="info">Source</StatusChip>
+        <WorkerBadge label="Worker" />
+        <StorageBadge label="Storage" />
+        <StatusChip tone="success">Consumer</StatusChip>
       </div>
       {SIGNALS.map((sig) => {
         const Icon = sig.icon;
         return (
-          <div key={sig.name} className={`${CARD(d)} p-4`}>
+          <div key={sig.name} className={`sq-card p-4`}>
             <div className="flex items-center gap-2 mb-3">
-              <Icon size={16} className={d ? 'text-neutral-300' : 'text-gray-700'} />
-              <span className={`text-sm font-semibold ${d ? 'text-neutral-200' : 'text-gray-800'}`}>{sig.name}</span>
-              <span className={`ml-auto text-[10px] font-medium px-2 py-0.5 rounded-full ${d ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500'}`}>
+              <Icon size={16} className="text-foreground/90" />
+              <span className={`text-sm font-semibold text-foreground`}>{sig.name}</span>
+              <span className={`ml-auto text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground`}>
                 <Clock size={10} className="inline mr-1 -mt-px" />{sig.interval}
               </span>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <SourceBadge label={sig.source} />
-              <FlowArrow isDarkMode={d} />
+              <FlowArrow />
               <WorkerBadge label={sig.worker} />
-              <FlowArrow isDarkMode={d} />
+              <FlowArrow />
               <StorageBadge label={sig.storage} />
-              <FlowArrow isDarkMode={d} />
+              <FlowArrow />
               {sig.consumers.map((c, i) => (
                 <span key={c} className="contents">
-                  {i > 0 && <span className={`text-[10px] ${d ? 'text-neutral-600' : 'text-gray-300'}`}>/</span>}
+                  {i > 0 && <span className={`text-[10px] text-muted-foreground/50`}>/</span>}
                   <ConsumerBadge label={c} />
                 </span>
               ))}
@@ -572,26 +580,26 @@ function SignalsSection({ d }: { d: boolean }) {
   );
 }
 
-function WorkersSection({ d }: { d: boolean }) {
+function WorkersSection() {
   return (
     <div className="space-y-3">
       {WORKERS.map((w) => {
         const Icon = w.icon;
         return (
-          <div key={w.name} className={`${CARD(d)} p-4`}>
+          <div key={w.name} className={`sq-card p-4`}>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-500/15">
                 <Icon size={16} className="text-amber-500" />
               </div>
               <div>
-                <span className={`text-sm font-semibold block ${d ? 'text-neutral-200' : 'text-gray-800'}`}>{w.name}</span>
-                <span className={`text-[11px] ${d ? 'text-neutral-500' : 'text-gray-400'}`}>{w.trigger}</span>
+                <span className={`text-sm font-semibold block text-foreground`}>{w.name}</span>
+                <span className={`text-[11px] text-muted-foreground`}>{w.trigger}</span>
               </div>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className={BADGE('bg-blue-500/15 text-blue-400')}>{w.action}</span>
-              <FlowArrow isDarkMode={d} />
-              <span className={BADGE('bg-emerald-500/15 text-emerald-500')}>{w.output}</span>
+              <StatusChip tone="info">{w.action}</StatusChip>
+              <FlowArrow />
+              <StatusChip tone="success">{w.output}</StatusChip>
             </div>
           </div>
         );
@@ -600,35 +608,35 @@ function WorkersSection({ d }: { d: boolean }) {
   );
 }
 
-function HealthSection({ d }: { d: boolean }) {
+function HealthSection() {
   return (
     <div className="space-y-3">
       {HEALTH_CALCS.map((h) => {
         const Icon = h.icon;
         return (
-          <div key={h.name} className={`${CARD(d)} p-4`}>
+          <div key={h.name} className={`sq-card p-4`}>
             <div className="flex items-center gap-2 mb-3">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-neutral-800/60`}>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-muted/60`}>
                 <Icon size={16} className={h.color} />
               </div>
-              <span className={`text-sm font-semibold ${d ? 'text-neutral-200' : 'text-gray-800'}`}>{h.name}</span>
+              <span className={`text-sm font-semibold text-foreground`}>{h.name}</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${d ? 'text-neutral-500' : 'text-gray-400'}`}>Inputs</span>
+                <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 text-muted-foreground`}>Inputs</span>
                 <div className="flex flex-wrap gap-1">
                   {h.inputs.map((inp) => (
-                    <span key={inp} className={`text-[11px] px-2 py-0.5 rounded-md ${d ? 'bg-neutral-800 text-neutral-300' : 'bg-gray-100 text-gray-600'}`}>{inp}</span>
+                    <span key={inp} className={`text-[11px] px-2 py-0.5 rounded-md bg-muted text-muted-foreground`}>{inp}</span>
                   ))}
                 </div>
               </div>
               <div>
-                <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${d ? 'text-neutral-500' : 'text-gray-400'}`}>Algorithm</span>
-                <span className={`text-[11px] font-mono leading-snug ${d ? 'text-neutral-300' : 'text-gray-600'}`}>{h.algorithm}</span>
+                <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 text-muted-foreground`}>Algorithm</span>
+                <span className={`text-[11px] font-mono leading-snug text-muted-foreground`}>{h.algorithm}</span>
               </div>
               <div>
-                <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${d ? 'text-neutral-500' : 'text-gray-400'}`}>Output</span>
-                <span className={BADGE('bg-emerald-500/15 text-emerald-500')}>{h.output}</span>
+                <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 text-muted-foreground`}>Output</span>
+                <StatusChip tone="success">{h.output}</StatusChip>
               </div>
             </div>
           </div>
@@ -638,77 +646,77 @@ function HealthSection({ d }: { d: boolean }) {
   );
 }
 
-function TripsSection({ d }: { d: boolean }) {
-  const h3 = `text-sm font-semibold mb-2 ${d ? 'text-neutral-200' : 'text-gray-800'}`;
-  const body = `text-xs leading-relaxed ${d ? 'text-neutral-400' : 'text-gray-600'}`;
-  const code = `px-1 py-0.5 rounded text-[11px] font-mono ${d ? 'bg-neutral-800 text-violet-400' : 'bg-gray-100 text-violet-600'}`;
+function TripsSection() {
+  const h3 = `text-sm font-semibold mb-2 text-foreground`;
+  const body = `text-xs leading-relaxed text-muted-foreground`;
+  const code = `px-1 py-0.5 rounded text-[11px] font-mono bg-muted font-mono text-[color:var(--status-ai)]`;
   const row = `flex items-center gap-1.5 flex-wrap mb-1`;
 
   return (
     <div className="space-y-3">
       {/* Signal Groups */}
-      <div className={`${CARD(d)} p-4`}>
+      <div className={`sq-card p-4`}>
         <div className="flex items-center gap-2 mb-3">
-          <Radio size={15} className="text-violet-500" />
-          <span className={`text-sm font-bold ${d ? 'text-neutral-100' : 'text-gray-900'}`}>V3 Signal Groups</span>
+          <Radio size={15} className="text-[color:var(--status-ai)]" />
+          <span className={`text-sm font-bold text-foreground`}>V3 Signal Groups</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
-            { name: 'TripDetectionCore', interval: '20-second buckets', color: 'text-violet-400', signals: ['isIgnitionOn → MAX', 'speed → AVG', 'powertrainTransmissionTravelledDistance → MAX', 'powertrainFuelSystemAbsoluteLevel → AVG', 'powertrainTractionBatteryStateOfChargeCurrentEnergy → AVG'], purpose: 'Primary source for trip start / end detection' },
-            { name: 'RouteEnrichment', interval: '7-second buckets', color: 'text-blue-400', signals: ['currentLocationCoordinates → RAND', 'speed → AVG'], purpose: 'GPS route, geocoding, live waypoints' },
-            { name: 'Performance', interval: '15-second buckets', color: 'text-orange-400', signals: ['powertrainCombustionEngineECT → AVG', 'powertrainCombustionEngineSpeed → AVG', 'obdThrottlePosition → AVG', 'obdEngineLoad → AVG'], purpose: 'Engine activity confirmation for IDLE/END verdict' },
+            { name: 'TripDetectionCore', interval: '20-second buckets', color: 'text-[color:var(--status-ai)]', signals: ['isIgnitionOn → MAX', 'speed → AVG', 'powertrainTransmissionTravelledDistance → MAX', 'powertrainFuelSystemAbsoluteLevel → AVG', 'powertrainTractionBatteryStateOfChargeCurrentEnergy → AVG'], purpose: 'Primary source for trip start / end detection' },
+            { name: 'RouteEnrichment', interval: '7-second buckets', color: 'text-[color:var(--brand)]', signals: ['currentLocationCoordinates → RAND', 'speed → AVG'], purpose: 'GPS route, geocoding, live waypoints' },
+            { name: 'Performance', interval: '15-second buckets', color: 'text-[color:var(--status-watch)]', signals: ['powertrainCombustionEngineECT → AVG', 'powertrainCombustionEngineSpeed → AVG', 'obdThrottlePosition → AVG', 'obdEngineLoad → AVG'], purpose: 'Engine activity confirmation for IDLE/END verdict' },
           ].map(g => (
-            <div key={g.name} className={`rounded-lg p-3 ${d ? 'bg-neutral-800/60' : 'bg-gray-50'}`}>
+            <div key={g.name} className={`rounded-lg p-3 bg-muted/50`}>
               <p className={`text-xs font-bold mb-1 ${g.color}`}>{g.name}</p>
-              <p className={`text-[11px] mb-2 ${d ? 'text-neutral-500' : 'text-gray-400'}`}>{g.interval}</p>
-              <ul className={`space-y-0.5 text-[11px] mb-2 ${d ? 'text-neutral-400' : 'text-gray-500'}`}>
+              <p className={`text-[11px] mb-2 text-muted-foreground`}>{g.interval}</p>
+              <ul className={`space-y-0.5 text-[11px] mb-2 text-muted-foreground`}>
                 {g.signals.map(s => <li key={s} className="truncate">• {s}</li>)}
               </ul>
-              <p className={`text-[11px] italic ${d ? 'text-neutral-500' : 'text-gray-400'}`}>{g.purpose}</p>
+              <p className={`text-[11px] italic text-muted-foreground`}>{g.purpose}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* State Machine */}
-      <div className={`${CARD(d)} p-4`}>
+      <div className={`sq-card p-4`}>
         <div className="flex items-center gap-2 mb-3">
-          <Cpu size={15} className="text-emerald-500" />
-          <span className={`text-sm font-bold ${d ? 'text-neutral-100' : 'text-gray-900'}`}>V3 State Machine</span>
+          <Cpu size={15} className="text-[color:var(--status-positive)]" />
+          <span className={`text-sm font-bold text-foreground`}>V3 State Machine</span>
         </div>
         <div className={row}>
           {[
-            { label: 'RESTING', color: 'bg-neutral-500/20 text-neutral-400' },
+            { label: 'RESTING', color: 'bg-muted text-muted-foreground' },
             { label: '→', color: '' },
-            { label: 'POSSIBLE_START', color: 'bg-yellow-500/20 text-yellow-400' },
+            { label: 'POSSIBLE_START', color: 'bg-yellow-500/20 text-[color:var(--status-watch)]' },
             { label: '→', color: '' },
-            { label: 'ACTIVE_TRIP', color: 'bg-emerald-500/20 text-emerald-400' },
+            { label: 'ACTIVE_TRIP', color: 'bg-[color:var(--status-positive)]/15 text-[color:var(--status-positive)]' },
             { label: '⇄', color: '' },
-            { label: 'IDLE_WITHIN_TRIP', color: 'bg-blue-500/20 text-blue-400' },
+            { label: 'IDLE_WITHIN_TRIP', color: 'bg-[color:var(--brand)]/15 text-[color:var(--brand)]' },
           ].map((s, i) => s.color ? (
             <span key={i} className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${s.color}`}>{s.label}</span>
           ) : (
-            <span key={i} className={`text-xs ${d ? 'text-neutral-500' : 'text-gray-400'}`}>{s.label}</span>
+            <span key={i} className={`text-xs text-muted-foreground`}>{s.label}</span>
           ))}
         </div>
         <div className={`${row} mt-1`}>
-          <span className={`text-xs ${d ? 'text-neutral-500' : 'text-gray-400'}`}>↓ inactivity evidence</span>
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400">POSSIBLE_END</span>
-          <span className={`text-xs ${d ? 'text-neutral-500' : 'text-gray-400'}`}>→ stability window → CUSUM validation → finalize →</span>
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-neutral-500/20 text-neutral-400">RESTING</span>
+          <span className={`text-xs text-muted-foreground`}>↓ inactivity evidence</span>
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-orange-500/20 text-[color:var(--status-watch)]">POSSIBLE_END</span>
+          <span className={`text-xs text-muted-foreground`}>→ stability window → CUSUM validation → finalize →</span>
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">RESTING</span>
         </div>
       </div>
 
       {/* Trip End — V3 Hardened Logic */}
-      <div className={`${CARD(d)} p-4`}>
+      <div className={`sq-card p-4`}>
         <div className="flex items-center gap-2 mb-1">
-          <Zap size={15} className="text-orange-400" />
-          <span className={`text-sm font-bold ${d ? 'text-neutral-100' : 'text-gray-900'}`}>Trip End — V3 Hardened Logic (CUSUM)</span>
-          <span className={BADGE('bg-orange-500/15 text-orange-400')}>v3.0</span>
+          <Zap size={15} className="text-[color:var(--status-watch)]" />
+          <span className={`text-sm font-bold text-foreground`}>Trip End — V3 Hardened Logic (CUSUM)</span>
+          <StatusChip tone="watch">v3.0</StatusChip>
         </div>
         <p className={`${body} mb-3`}>
-          <strong className="text-orange-400">v2.2 fix:</strong> Stale ignition-ON no longer blocks Trip End.
-          <strong className="text-cyan-400"> v2.3 additions:</strong> EV/HYBRID stops are now correctly classified
+          <strong className="text-[color:var(--status-watch)]">v2.2 fix:</strong> Stale ignition-ON no longer blocks Trip End.
+          <strong className="text-[color:var(--brand)]"> v2.3 additions:</strong> EV/HYBRID stops are now correctly classified
           as IDLE when signal frequency is still active (not just ICE engines). Continuity evaluation is
           time-based (last 120s) instead of fixed last-5-points. evaluateFrequency() uses profile thresholds
           (resting = 0.5 pt/min, not the old hardcoded 1.0 pt/min). hasActivityResumed() requires real speed,
@@ -716,9 +724,9 @@ function TripsSection({ d }: { d: boolean }) {
         </p>
         <div className="space-y-2">
           {[
-            { label: 'PRIMARY evidence (no ignition required)', color: 'text-emerald-400', items: ['No speed / no movement in recent 120s core window', 'No odometer progress across window', 'Signal frequency drop to resting level (< 0.5 pt/min per profile)', 'Signal silence (0 points in time window)', 'Stale ignition-ON + no perf + no energy change (stale-ignition guard)'] },
-            { label: 'EV/HYBRID IDLE path (v2.3 new)', color: 'text-cyan-400', items: ['Stopped + signal frequency still active (≥ 2 pt/min) → IDLE (not POSSIBLE_END)', 'Stopped + light energy activity (regen, warm-down) → IDLE', 'ICE perf signals (RPM/throttle/load) not required for EV/HYBRID'] },
-            { label: 'SECONDARY / bonus evidence', color: 'text-blue-400', items: ['Ignition-off confirmed (HIGH confidence bonus, still not required)', 'Energy / fuel activity ceased', 'Performance signals all inactive'] },
+            { label: 'PRIMARY evidence (no ignition required)', color: 'text-[color:var(--status-positive)]', items: ['No speed / no movement in recent 120s core window', 'No odometer progress across window', 'Signal frequency drop to resting level (< 0.5 pt/min per profile)', 'Signal silence (0 points in time window)', 'Stale ignition-ON + no perf + no energy change (stale-ignition guard)'] },
+            { label: 'EV/HYBRID IDLE path (v2.3 new)', color: 'text-[color:var(--brand)]', items: ['Stopped + signal frequency still active (≥ 2 pt/min) → IDLE (not POSSIBLE_END)', 'Stopped + light energy activity (regen, warm-down) → IDLE', 'ICE perf signals (RPM/throttle/load) not required for EV/HYBRID'] },
+            { label: 'SECONDARY / bonus evidence', color: 'text-[color:var(--brand)]', items: ['Ignition-off confirmed (HIGH confidence bonus, still not required)', 'Energy / fuel activity ceased', 'Performance signals all inactive'] },
           ].map(g => (
             <div key={g.label}>
               <p className={`text-[11px] font-semibold mb-1 ${g.color}`}>{g.label}</p>
@@ -728,11 +736,11 @@ function TripsSection({ d }: { d: boolean }) {
             </div>
           ))}
         </div>
-        <div className={`mt-3 rounded-lg p-3 ${d ? 'bg-orange-900/20 border border-orange-800/30' : 'bg-orange-50 border border-orange-200/50'}`}>
-          <p className={`text-[11px] font-semibold mb-1 ${d ? 'text-orange-300' : 'text-orange-700'}`}>End Detection Mode Priority</p>
+        <div className={`mt-3 rounded-lg p-3 bg-muted/50 border border-[color:var(--status-watch)]/30`}>
+          <p className={`text-[11px] font-semibold mb-1 text-[color:var(--status-watch)]`}>End Detection Mode Priority</p>
           <div className="flex flex-wrap gap-1.5">
             {['CUSUM_VALIDATED', 'FREQUENCY_DROP_TIMEOUT', 'NO_ACTIVITY_TIMEOUT', 'COMPOSITE_INACTIVITY', 'IGNITION_OFF_CONFIRMED'].map((m, i) => (
-              <span key={m} className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${i === 0 ? 'bg-emerald-500/20 text-emerald-400' : i === 4 ? 'bg-neutral-500/20 text-neutral-400' : 'bg-orange-500/15 text-orange-400'}`}>
+              <span key={m} className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${i === 0 ? 'bg-[color:var(--status-positive)]/15 text-[color:var(--status-positive)]' : i === 4 ? 'bg-muted text-muted-foreground' : 'bg-[color:var(--status-watch)]/15 text-[color:var(--status-watch)]'}`}>
                 {i + 1}. {m}
               </span>
             ))}
@@ -741,16 +749,16 @@ function TripsSection({ d }: { d: boolean }) {
       </div>
 
       {/* Idle-Timeout in ACTIVE_TICK (V4.6.31) */}
-      <div className={`${CARD(d)} p-4`}>
+      <div className={`sq-card p-4`}>
         <div className="flex items-center gap-2 mb-2">
-          <Clock size={15} className="text-amber-400" />
-          <span className={`text-sm font-bold ${d ? 'text-neutral-100' : 'text-gray-900'}`}>
+          <Clock size={15} className="text-[color:var(--status-watch)]" />
+          <span className={`text-sm font-bold text-foreground`}>
             ACTIVE_TICK Idle-Timeout (No-Core-Data Branch)
           </span>
-          <span className={BADGE('bg-amber-500/15 text-amber-400')}>v4.6.31</span>
+          <StatusChip tone="watch">v4.6.31</StatusChip>
         </div>
         <p className={`${body} mb-2`}>
-          DIMO stoppt den Core-Stream oft nach Ignition-off → <code className="text-amber-400">processActiveTick</code> sah
+          DIMO stoppt den Core-Stream oft nach Ignition-off → <code className="text-[color:var(--status-watch)]">processActiveTick</code> sah
           endlos <code>corePoints.length === 0</code> und blieb im <code>ACTIVE_TRIP</code>-Loop (<code>no_core_data_keep_open</code>).
           Der FSM erreichte nie <code>POSSIBLE_END</code>, bis nach 2 h der <code>STALE_ONGOING</code>-Repair griff —
           Trip blieb UI-seitig bis zu 2 h als "ongoing" sichtbar.
@@ -764,16 +772,16 @@ function TripsSection({ d }: { d: boolean }) {
             { step: '4', label: 'POSSIBLE_END_CHECK → FINALIZE', desc: 'CUSUM/hard-timeout evaluiert das Fenster um anchorAt. TripDecisionEngine.finalizeTrip schreibt tripStatus=COMPLETED mit endTime aus der bestehenden Priority-Kette (cusumSegmentEnd → lastMeaningfulMovementAt → lastWaypoint → possibleEndAt → now).' },
           ].map(s => (
             <div key={s.step} className="flex gap-3">
-              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${d ? 'bg-neutral-700 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>{s.step}</span>
+              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-muted text-[color:var(--status-watch)]`}>{s.step}</span>
               <div>
-                <p className={`text-xs font-semibold ${d ? 'text-neutral-200' : 'text-gray-700'}`}>{s.label}</p>
-                <p className={`text-[11px] ${d ? 'text-neutral-500' : 'text-gray-400'}`}>{s.desc}</p>
+                <p className={`text-xs font-semibold text-foreground/90`}>{s.label}</p>
+                <p className={`text-[11px] text-muted-foreground`}>{s.desc}</p>
               </div>
             </div>
           ))}
         </div>
-        <div className={`mt-3 rounded-lg p-2 ${d ? 'bg-amber-900/20 border border-amber-800/30' : 'bg-amber-50 border border-amber-200/50'}`}>
-          <p className={`text-[11px] ${d ? 'text-amber-300' : 'text-amber-700'}`}>
+        <div className={`mt-3 rounded-lg p-2 bg-muted/50 border border-[color:var(--status-watch)]/30`}>
+          <p className={`text-[11px] text-[color:var(--status-watch)]`}>
             Ownership-Regel bleibt: nur <code>TripDecisionEngine</code> mutiert <code>tripStatus</code>. Der
             Orchestrator schaltet ausschliesslich den FSM-State (<code>VehicleTripDetectionState.state</code>) und
             enqueued Jobs. Threshold via <code>worker.tripEndMinInactivityBeforeCusumMs</code> (default 180 000 ms).
@@ -782,13 +790,13 @@ function TripsSection({ d }: { d: boolean }) {
       </div>
 
       {/* Mid-Trip Gap Split (V4.6.32) */}
-      <div className={`${CARD(d)} p-4`}>
+      <div className={`sq-card p-4`}>
         <div className="flex items-center gap-2 mb-2">
-          <Activity size={15} className="text-fuchsia-400" />
-          <span className={`text-sm font-bold ${d ? 'text-neutral-100' : 'text-gray-900'}`}>
+          <Activity size={15} className="text-[color:var(--status-ai)]" />
+          <span className={`text-sm font-bold text-foreground`}>
             Mid-Trip Gap Split (Ignition-off innerhalb eines Trips)
           </span>
-          <span className={BADGE('bg-fuchsia-500/15 text-fuchsia-400')}>v4.6.32</span>
+          <StatusChip tone="ai">v4.6.32</StatusChip>
         </div>
         <p className={`${body} mb-2`}>
           Ein aktiver Trip mit einer Motor-Aus-Pause (typisch: Kaffee holen, kurz abholen) sendet bei vielen DIMO-Fahrzeugen
@@ -797,17 +805,17 @@ function TripsSection({ d }: { d: boolean }) {
           diese Situation in zwei Pfaden (live + retro) und splittet über <code>TripDecisionEngine.splitTripAtGap</code>.
         </p>
         <div className="grid md:grid-cols-2 gap-3 mb-3">
-          <div className={`rounded-lg p-3 ${d ? 'bg-fuchsia-900/15 border border-fuchsia-800/30' : 'bg-fuchsia-50 border border-fuchsia-200/50'}`}>
-            <p className={`text-[11px] font-semibold mb-1 ${d ? 'text-fuchsia-300' : 'text-fuchsia-700'}`}>Live-Pfad (Prevention)</p>
-            <p className={`text-[11px] ${d ? 'text-fuchsia-200/80' : 'text-fuchsia-800/80'}`}>
+          <div className={`rounded-lg p-3 bg-muted/50 border border-[color:var(--status-ai)]/30`}>
+            <p className={`text-[11px] font-semibold mb-1 text-[color:var(--status-ai)]`}>Live-Pfad (Prevention)</p>
+            <p className={`text-[11px] text-muted-foreground`}>
               <code>processActiveTick</code> → <code>findMidTripGap</code> über Core-Samples +
               synthetischer Anker aus <code>lastMeaningfulMovementAt</code>. Split sofort beim nächsten Tick nach Restart,
               sobald Daten wieder fliessen.
             </p>
           </div>
-          <div className={`rounded-lg p-3 ${d ? 'bg-fuchsia-900/15 border border-fuchsia-800/30' : 'bg-fuchsia-50 border border-fuchsia-200/50'}`}>
-            <p className={`text-[11px] font-semibold mb-1 ${d ? 'text-fuchsia-300' : 'text-fuchsia-700'}`}>Retro-Pfad (Repair)</p>
-            <p className={`text-[11px] ${d ? 'text-fuchsia-200/80' : 'text-fuchsia-800/80'}`}>
+          <div className={`rounded-lg p-3 bg-muted/50 border border-[color:var(--status-ai)]/30`}>
+            <p className={`text-[11px] font-semibold mb-1 text-[color:var(--status-ai)]`}>Retro-Pfad (Repair)</p>
+            <p className={`text-[11px] text-muted-foreground`}>
               <code>TripReconciliationService.repairIntraTripGapSplits</code> läuft in fast/warm/cold-Tiers über
               <code>VehicleTripWaypoint</code>-Reihen. Splittet bereits finalisierte Trips rekursiv (bis zu 6 Splits pro Original).
             </p>
@@ -824,16 +832,16 @@ function TripsSection({ d }: { d: boolean }) {
             { step: '6b', label: 'Retro: Segment 2 finalisieren', desc: 'TripDecisionEngine.finalizeRepairedTrip(secondTripId, endTime=originalEnd, endMode=INTRA_TRIP_GAP_SPLIT_REPAIR). Rekursiv weiter-scannen, ob secondTrip selbst einen Gap enthält.' },
           ].map(s => (
             <div key={s.step} className="flex gap-3">
-              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${d ? 'bg-neutral-700 text-fuchsia-400' : 'bg-fuchsia-50 text-fuchsia-600'}`}>{s.step}</span>
+              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-muted text-[color:var(--status-ai)]`}>{s.step}</span>
               <div>
-                <p className={`text-xs font-semibold ${d ? 'text-neutral-200' : 'text-gray-700'}`}>{s.label}</p>
-                <p className={`text-[11px] ${d ? 'text-neutral-500' : 'text-gray-400'}`}>{s.desc}</p>
+                <p className={`text-xs font-semibold text-foreground/90`}>{s.label}</p>
+                <p className={`text-[11px] text-muted-foreground`}>{s.desc}</p>
               </div>
             </div>
           ))}
         </div>
-        <div className={`mt-3 rounded-lg p-2 ${d ? 'bg-fuchsia-900/20 border border-fuchsia-800/30' : 'bg-fuchsia-50 border border-fuchsia-200/50'}`}>
-          <p className={`text-[11px] ${d ? 'text-fuchsia-300' : 'text-fuchsia-700'}`}>
+        <div className="mt-3 rounded-lg border border-[color:var(--status-ai)]/30 bg-muted/50 p-2">
+          <p className={`text-[11px] text-[color:var(--status-ai)]`}>
             Validiert am Mercedes-Trip <code>b263cdb8</code> (17.04.2026): 1 Trip (75 Waypoints, 2 km, 13.96 min) →
             2 Trips ({'{'}30 + 45{'}'} Waypoints, 1.03 km / 1.11 km). Gap=203 s, Drift=4 m. Audit via
             <code>TripRepair.repairType=INTRA_TRIP_GAP_SPLIT</code>.
@@ -842,11 +850,11 @@ function TripsSection({ d }: { d: boolean }) {
       </div>
 
       {/* CUSUM End Validation Flow */}
-      <div className={`${CARD(d)} p-4`}>
+      <div className={`sq-card p-4`}>
         <div className="flex items-center gap-2 mb-3">
-          <Activity size={15} className="text-cyan-400" />
-          <span className={`text-sm font-bold ${d ? 'text-neutral-100' : 'text-gray-900'}`}>CUSUM End Validation Flow</span>
-          <span className={BADGE('bg-cyan-500/15 text-cyan-400')}>Targeted only</span>
+          <Activity size={15} className="text-[color:var(--brand)]" />
+          <span className={`text-sm font-bold text-foreground`}>CUSUM End Validation Flow</span>
+          <StatusChip tone="neutral">Targeted only</StatusChip>
         </div>
         <div className="space-y-1.5">
           {[
@@ -859,10 +867,10 @@ function TripsSection({ d }: { d: boolean }) {
             { step: '5', label: 'Timeout fallback (30 min default)', desc: 'If all attempts exhausted without CUSUM confirmation, TRIP_END_TIMEOUT_MS forces finalization. End time uses lastMeaningfulMovementAt priority.' },
           ].map(s => (
             <div key={s.step} className="flex gap-3">
-              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${d ? 'bg-neutral-700 text-cyan-400' : 'bg-cyan-50 text-cyan-600'}`}>{s.step}</span>
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-[color:var(--brand)]">{s.step}</span>
               <div>
-                <p className={`text-xs font-semibold ${d ? 'text-neutral-200' : 'text-gray-700'}`}>{s.label}</p>
-                <p className={`text-[11px] ${d ? 'text-neutral-500' : 'text-gray-400'}`}>{s.desc}</p>
+                <p className={`text-xs font-semibold text-foreground/90`}>{s.label}</p>
+                <p className={`text-[11px] text-muted-foreground`}>{s.desc}</p>
               </div>
             </div>
           ))}
@@ -870,15 +878,15 @@ function TripsSection({ d }: { d: boolean }) {
       </div>
 
       {/* End Time Selection + Finalization */}
-      <div className={`${CARD(d)} p-4`}>
+      <div className={`sq-card p-4`}>
         <div className="flex items-center gap-2 mb-3">
-          <Clock size={15} className="text-amber-400" />
-          <span className={`text-sm font-bold ${d ? 'text-neutral-100' : 'text-gray-900'}`}>End Time Selection & Finalization</span>
+          <Clock size={15} className="text-[color:var(--status-watch)]" />
+          <span className={`text-sm font-bold text-foreground`}>End Time Selection & Finalization</span>
         </div>
         <div className="space-y-2 mb-3">
-          <p className={`${body} font-semibold ${d ? 'text-amber-300' : 'text-amber-700'}`}>End timestamp priority (most → least reliable):</p>
+          <p className={`${body} font-semibold text-[color:var(--status-watch)]`}>End timestamp priority (most → least reliable):</p>
           {['1. CUSUM cusumSegmentEnd — validated change-point (most accurate)', '2. lastMeaningfulMovementAt — last confirmed movement observed', '3. lastWaypoint.recordedAt — last GPS fix', '4. possibleEndAt — first inactivity candidate', '5. now() — absolute fallback'].map((p, i) => (
-            <div key={i} className={`text-[11px] px-2 py-1 rounded ${i === 0 ? (d ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-700') : (d ? 'text-neutral-400' : 'text-gray-500')}`}>{p}</div>
+            <div key={i} className={`rounded px-2 py-1 text-[11px] ${i === 0 ? 'bg-[color:var(--status-positive)]/15 text-[color:var(--status-positive)]' : 'text-muted-foreground'}`}>{p}</div>
           ))}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -888,9 +896,9 @@ function TripsSection({ d }: { d: boolean }) {
             { label: 'Success → HF Enrichment', items: ['Trip status set to COMPLETED', 'BullMQ job: hf-enrich queued (5s delay)', 'High-frequency 1s segments fetched'] },
             { label: 'Post-HF → Driving Impact', items: ['TripBehaviorEvent records created', 'VehicleDrivingImpactCurrent updated', 'Tire + Brake health modules consume output'] },
           ].map(g => (
-            <div key={g.label} className={`rounded-lg p-3 ${d ? 'bg-neutral-800/60' : 'bg-gray-50'}`}>
-              <p className={`text-xs font-semibold mb-1.5 ${d ? 'text-neutral-300' : 'text-gray-700'}`}>{g.label}</p>
-              <ul className={`space-y-0.5 text-[11px] ${d ? 'text-neutral-500' : 'text-gray-500'}`}>
+            <div key={g.label} className={`rounded-lg p-3 bg-muted/50`}>
+              <p className={`text-xs font-semibold mb-1.5 text-foreground/90`}>{g.label}</p>
+              <ul className="space-y-0.5 text-[11px] text-muted-foreground">
                 {g.items.map(i => <li key={i}>• {i}</li>)}
               </ul>
             </div>
@@ -899,9 +907,9 @@ function TripsSection({ d }: { d: boolean }) {
       </div>
 
       {/* Legacy V1 isolation notice */}
-      <div className={`${CARD(d)} p-4 border-l-4 ${d ? 'border-amber-700/60' : 'border-amber-300'}`}>
-        <p className={`text-xs font-bold mb-1 ${d ? 'text-amber-300' : 'text-amber-700'}`}>⚠ LEGACY V1 PATH — DEPRECATED (v2.3)</p>
-        <p className={`text-[11px] leading-relaxed ${d ? 'text-neutral-400' : 'text-gray-600'}`}>
+      <div className="sq-card border-l-4 border-[color:var(--status-watch)]/40 p-4">
+        <p className={`text-xs font-bold mb-1 text-[color:var(--status-watch)]`}>⚠ LEGACY V1 PATH — DEPRECATED (v2.3)</p>
+        <p className={`text-[11px] leading-relaxed text-muted-foreground`}>
           <code className="font-mono">POST /vehicles/:id/trips/sync</code> calls the V1 ignition-based trip detection path
           (<code className="font-mono">DimoSegmentsService.fetchAndDetectTrips → detectTrips</code>).
           This is <strong>NOT</strong> the live V3 engine. It is retained only for historical back-fill or admin debugging.
@@ -917,16 +925,16 @@ function TripsSection({ d }: { d: boolean }) {
       {TRIP_FLOWS.filter(t => t.name !== 'Trip Detection').map((t) => {
         const Icon = t.icon;
         return (
-          <div key={t.name} className={`${CARD(d)} p-4`}>
+          <div key={t.name} className={`sq-card p-4`}>
             <div className="flex items-center gap-2 mb-3">
-              <Icon size={16} className={d ? 'text-neutral-300' : 'text-gray-700'} />
-              <span className={`text-sm font-semibold ${d ? 'text-neutral-200' : 'text-gray-800'}`}>{t.name}</span>
+              <Icon size={16} className="text-foreground/90" />
+              <span className={`text-sm font-semibold text-foreground`}>{t.name}</span>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <SourceBadge label={t.source} />
-              <FlowArrow isDarkMode={d} />
-              <span className={BADGE('bg-amber-500/15 text-amber-500')}>{t.process}</span>
-              <FlowArrow isDarkMode={d} />
+              <FlowArrow />
+              <StatusChip tone="neutral">{t.process}</StatusChip>
+              <FlowArrow />
               <StorageBadge label={t.storage} />
             </div>
           </div>
@@ -936,47 +944,49 @@ function TripsSection({ d }: { d: boolean }) {
   );
 }
 
-function ConnectivitySection({ d }: { d: boolean }) {
+function ConnectivitySection() {
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {CONNECTIVITY_STATES.map((s) => (
-          <div key={s.label} className={`${CARD(d)} p-5 text-center`}>
-            <div className={`w-4 h-4 rounded-full mx-auto mb-3 ${s.dotColor} shadow-[0_0_10px] shadow-current`} />
-            <span className={`text-base font-bold block mb-1 ${d ? 'text-neutral-100' : 'text-gray-800'}`}>{s.label}</span>
-            <span className={`text-xs ${d ? 'text-neutral-400' : 'text-gray-500'}`}>{s.rule}</span>
+          <div key={s.label} className="sq-card p-5 text-center">
+            <div className="mx-auto mb-3 flex justify-center">
+              <StatusDot tone={s.tone} pulse className="!h-4 !w-4" />
+            </div>
+            <span className="mb-1 block text-base font-bold text-foreground">{s.label}</span>
+            <span className="text-xs text-muted-foreground">{s.rule}</span>
           </div>
         ))}
       </div>
-      <div className={`${CARD(d)} p-4`}>
+      <div className={`sq-card p-4`}>
         <div className="flex items-center gap-2 mb-2">
-          <RefreshCw size={14} className={d ? 'text-neutral-400' : 'text-gray-500'} />
-          <span className={`text-sm font-semibold ${d ? 'text-neutral-200' : 'text-gray-800'}`}>Freshness Calculation</span>
+          <RefreshCw size={14} className="text-muted-foreground" />
+          <span className={`text-sm font-semibold text-foreground`}>Freshness Calculation</span>
         </div>
-        <p className={`text-xs leading-relaxed ${d ? 'text-neutral-400' : 'text-gray-500'}`}>
-          Computed from <code className={`px-1 py-0.5 rounded text-[11px] ${d ? 'bg-neutral-800 text-violet-400' : 'bg-gray-100 text-violet-600'}`}>VehicleLatestState.updatedAt</code> vs current time. The delta determines which state badge is shown in the UI. Values are refreshed every time the <code className={`px-1 py-0.5 rounded text-[11px] ${d ? 'bg-neutral-800 text-violet-400' : 'bg-gray-100 text-violet-600'}`}>SnapshotPollingWorker</code> runs.
+        <p className={`text-xs leading-relaxed text-muted-foreground`}>
+          Computed from <code className={`px-1 py-0.5 rounded text-[11px] bg-muted font-mono text-[color:var(--status-ai)]`}>VehicleLatestState.updatedAt</code> vs current time. The delta determines which state badge is shown in the UI. Values are refreshed every time the <code className={`px-1 py-0.5 rounded text-[11px] bg-muted font-mono text-[color:var(--status-ai)]`}>SnapshotPollingWorker</code> runs.
         </p>
       </div>
     </div>
   );
 }
 
-function FrontendFlowSection({ d }: { d: boolean }) {
+function FrontendFlowSection() {
   return (
     <div className="space-y-3">
       {FRONTEND_FLOWS.map((f) => {
         const Icon = f.icon;
         return (
-          <div key={f.name} className={`${CARD(d)} p-4`}>
+          <div key={f.name} className={`sq-card p-4`}>
             <div className="flex items-center gap-2 mb-3">
-              <Icon size={16} className={d ? 'text-neutral-300' : 'text-gray-700'} />
-              <span className={`text-sm font-semibold ${d ? 'text-neutral-200' : 'text-gray-800'}`}>{f.name}</span>
+              <Icon size={16} className="text-foreground/90" />
+              <span className={`text-sm font-semibold text-foreground`}>{f.name}</span>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className={`text-[11px] font-mono px-2 py-0.5 rounded-md ${d ? 'bg-neutral-800 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>{f.endpoint}</span>
-              <FlowArrow isDarkMode={d} />
-              <span className={BADGE('bg-amber-500/15 text-amber-500')}>{f.service}</span>
-              <FlowArrow isDarkMode={d} />
+              <span className={`text-[11px] font-mono px-2 py-0.5 rounded-md bg-muted font-mono text-[color:var(--brand)]`}>{f.endpoint}</span>
+              <FlowArrow />
+              <StatusChip tone="neutral">{f.service}</StatusChip>
+              <FlowArrow />
               <StorageBadge label={f.dataSource} />
             </div>
           </div>
@@ -986,25 +996,28 @@ function FrontendFlowSection({ d }: { d: boolean }) {
   );
 }
 
-function ModulesSection({ d }: { d: boolean }) {
+function ModulesSection() {
   return (
     <div className="space-y-4">
       {MODULES.map((m) => (
-        <div key={m.name} className={`${CARD(d)} p-4`}>
+        <div key={m.name} className={`sq-card p-4`}>
           <div className="flex items-center gap-2 mb-3">
-            <Layers size={16} className={m.status === 'active' ? 'text-emerald-500' : (d ? 'text-neutral-500' : 'text-gray-400')} />
-            <span className={`text-sm font-semibold ${d ? 'text-neutral-200' : 'text-gray-800'}`}>{m.name}</span>
-            <span className={BADGE(m.status === 'active' ? 'bg-emerald-500/15 text-emerald-500' : 'bg-neutral-500/15 text-neutral-400')}>
+            <Layers size={16} className={m.status === 'active' ? 'text-[color:var(--status-positive)]' : 'text-muted-foreground'} />
+            <span className={`text-sm font-semibold text-foreground`}>{m.name}</span>
+            <StatusChip tone={m.status === 'active' ? 'success' : 'neutral'}>
               {m.status === 'active' ? 'Active' : 'Coming Soon'}
-            </span>
+            </StatusChip>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {m.sections.map((sec) => (
-              <span key={sec} className={`text-[11px] px-2.5 py-1 rounded-lg font-medium ${
-                m.status === 'active'
-                  ? (d ? 'bg-neutral-800 text-neutral-300' : 'bg-gray-100 text-gray-700')
-                  : (d ? 'bg-neutral-800/50 text-neutral-500' : 'bg-gray-50 text-gray-400')
-              }`}>
+              <span
+                key={sec}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-medium ${
+                  m.status === 'active'
+                    ? 'bg-muted text-foreground/80'
+                    : 'bg-muted/50 text-muted-foreground'
+                }`}
+              >
                 {sec}
               </span>
             ))}
@@ -1015,25 +1028,25 @@ function ModulesSection({ d }: { d: boolean }) {
   );
 }
 
-function IntegrationsSection({ d }: { d: boolean }) {
+function IntegrationsSection() {
   return (
     <div className="space-y-4">
       {INTEGRATIONS.map((intg) => {
         const Icon = intg.icon;
         return (
-          <div key={intg.name} className={`${CARD(d)} p-4`}>
+          <div key={intg.name} className={`sq-card p-4`}>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-neutral-800/60">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted/60">
                 <Icon size={16} className={intg.color} />
               </div>
-              <span className={`text-sm font-bold ${d ? 'text-neutral-200' : 'text-gray-800'}`}>{intg.name}</span>
+              <span className={`text-sm font-bold text-foreground`}>{intg.name}</span>
             </div>
             <div className="space-y-2">
               {intg.apis.map((a) => (
-                <div key={a.label} className={`flex items-start gap-2 text-xs ${d ? 'text-neutral-400' : 'text-gray-500'}`}>
+                <div key={a.label} className={`flex items-start gap-2 text-xs text-muted-foreground`}>
                   <ChevronRight size={12} className="mt-0.5 shrink-0" />
                   <div>
-                    <span className={`font-semibold ${d ? 'text-neutral-200' : 'text-gray-700'}`}>{a.label}</span>
+                    <span className={`font-semibold text-foreground/90`}>{a.label}</span>
                     <span className="mx-1">—</span>
                     <span>{a.detail}</span>
                   </div>
@@ -1051,59 +1064,55 @@ function IntegrationsSection({ d }: { d: boolean }) {
 /*  Main export                                                        */
 /* ------------------------------------------------------------------ */
 
-export function ArchitekturView({ isDarkMode }: ArchitekturViewProps) {
+export function ArchitekturView(_props: ArchitekturViewProps) {
   const [active, setActive] = useState<CategoryId>('overview');
-  const d = isDarkMode;
-
   const activeCat = CATEGORIES.find((c) => c.id === active)!;
 
   const renderContent = () => {
     switch (active) {
-      case 'overview': return <OverviewSection d={d} />;
-      case 'signals': return <SignalsSection d={d} />;
-      case 'workers': return <WorkersSection d={d} />;
-      case 'health': return <HealthSection d={d} />;
-      case 'trips': return <TripsSection d={d} />;
-      case 'connectivity': return <ConnectivitySection d={d} />;
-      case 'frontend': return <FrontendFlowSection d={d} />;
-      case 'modules': return <ModulesSection d={d} />;
-      case 'integrations': return <IntegrationsSection d={d} />;
+      case 'overview': return <OverviewSection />;
+      case 'signals': return <SignalsSection />;
+      case 'workers': return <WorkersSection />;
+      case 'health': return <HealthSection />;
+      case 'trips': return <TripsSection />;
+      case 'connectivity': return <ConnectivitySection />;
+      case 'frontend': return <FrontendFlowSection />;
+      case 'modules': return <ModulesSection />;
+      case 'integrations': return <IntegrationsSection />;
     }
   };
 
   return (
-    <div className="flex h-full gap-6">
-      {/* ---- Left sidebar navigation ---- */}
-      <nav className={`w-56 shrink-0 ${CARD(d)} p-2 self-start sticky top-4`}>
-        <div className="px-3 pt-2 pb-3">
-          <span className={`text-xs font-bold uppercase tracking-widest ${d ? 'text-neutral-500' : 'text-gray-400'}`}>Architecture</span>
+    <div className="flex h-full flex-col gap-6 lg:flex-row">
+      <nav className="sq-card sticky top-4 w-full shrink-0 self-start p-2 lg:w-56">
+        <div className="px-3 pb-3 pt-2">
+          <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Architecture</span>
         </div>
-        {CATEGORIES.map((cat) => {
-          const Icon = cat.icon;
-          const isActive = cat.id === active;
-          return (
-            <button
-              key={cat.id}
-              onClick={() => setActive(cat.id)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-sm transition-all ${
-                isActive
-                  ? (d ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-900')
-                  : (d ? 'text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700')
-              }`}
-            >
-              <Icon size={15} className={isActive ? (d ? 'text-cyan-400' : 'text-blue-600') : ''} />
-              <span className="font-medium truncate">{cat.label}</span>
-            </button>
-          );
-        })}
+        <div className="flex gap-1 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible lg:pb-0">
+          {CATEGORIES.map((cat) => {
+            const Icon = cat.icon;
+            const isActive = cat.id === active;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setActive(cat.id)}
+                className={navItemClass(isActive)}
+              >
+                <Icon size={15} className={isActive ? 'text-[color:var(--brand)]' : ''} />
+                <span className="truncate font-medium">{cat.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </nav>
 
-      {/* ---- Main content ---- */}
-      <div className="flex-1 min-w-0">
-        <div className="mb-5">
-          <h2 className={`text-xl font-bold ${d ? 'text-neutral-100' : 'text-gray-900'}`}>{activeCat.label}</h2>
-          <p className={`text-sm mt-0.5 ${d ? 'text-neutral-500' : 'text-gray-400'}`}>{activeCat.description}</p>
-        </div>
+      <div className="min-w-0 flex-1">
+        <PageHeader
+          title={activeCat.label}
+          description={activeCat.description}
+          className="mb-5"
+        />
         {renderContent()}
       </div>
     </div>

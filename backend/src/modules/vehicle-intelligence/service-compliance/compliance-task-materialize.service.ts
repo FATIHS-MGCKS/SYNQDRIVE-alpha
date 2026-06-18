@@ -56,6 +56,7 @@ export class ComplianceTaskMaterializeService {
       vehicleId,
       source: src.source,
       dueDate: signal.dueDate ? new Date(signal.dueDate) : null,
+      blocksVehicleAvailability: signal.blocksRental,
       metadata: {
         generatedKey: signal.dedupeKey,
         insightType: signal.insightType,

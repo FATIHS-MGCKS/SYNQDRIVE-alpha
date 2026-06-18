@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import {
   BookingStatus,
+  DamageSource,
   HandoverKind,
   VehicleStatus,
   Prisma,
@@ -22,8 +23,13 @@ import { WorkflowEventService } from '@modules/workflows/workflow-event.service'
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // V4.8.47 — Vehicle.status is updated explicitly on handover (Option A):
-//   PICKUP  → RENTED when vehicle is not IN_SERVICE / OUT_OF_SERVICE
-//   RETURN  → AVAILABLE when no other ACTIVE booking and not blocked by maintenance
+//   PICKUP  → RENTED when vehicle is AVAILABLE / RESERVED. A vehicle that is
+//             IN_SERVICE / OUT_OF_SERVICE is NOT handed out: pickup is rejected
+//             with a controlled HANDOVER_PICKUP_VEHICLE_BLOCKED conflict so we
+//             never leave a booking ACTIVE while the car stays blocked.
+//   RETURN  → AVAILABLE only when no other ACTIVE booking exists and the car is
+//             not IN_SERVICE / OUT_OF_SERVICE (maintenance/out-of-service are
+//             never overwritten). One-way returns always update currentStationId.
 // Fleet read-models still derive rental state from open bookings as a safety net.
 @Injectable()
 export class BookingsHandoverService {
@@ -49,6 +55,7 @@ export class BookingsHandoverService {
       select: {
         id: true,
         vehicleId: true,
+        customerId: true,
         status: true,
         startDate: true,
         pickupStationId: true,
@@ -217,20 +224,43 @@ export class BookingsHandoverService {
             });
           }
         } else if (kind === 'PICKUP') {
-          if (!blockedStatus) {
-            await tx.vehicle.update({
-              where: { id: booking.vehicleId },
-              data: {
-                status: VehicleStatus.RENTED,
-                ...(actualStationId ? { currentStationId: actualStationId } : {}),
-              },
-            });
-          } else if (actualStationId) {
-            await tx.vehicle.update({
-              where: { id: booking.vehicleId },
-              data: { currentStationId: actualStationId },
+          // A vehicle in maintenance / out-of-service must never be handed out.
+          // Fail with a controlled conflict — the surrounding $transaction rolls
+          // back the protocol + booking transition, so we never end up with an
+          // ACTIVE booking on a blocked car. The operator must release the
+          // vehicle status (e.g. back to AVAILABLE) before retrying the pickup.
+          if (blockedStatus) {
+            throw new ConflictException({
+              message:
+                'Übergabe nicht möglich: Fahrzeug ist aktuell in Wartung bzw. nicht verfügbar (IN_SERVICE/OUT_OF_SERVICE). Bitte Fahrzeugstatus zuerst freigeben.',
+              code: 'HANDOVER_PICKUP_VEHICLE_BLOCKED',
+              vehicleStatus: vehicleRow?.status ?? null,
             });
           }
+          await tx.vehicle.update({
+            where: { id: booking.vehicleId },
+            data: {
+              status: VehicleStatus.RENTED,
+              ...(actualStationId ? { currentStationId: actualStationId } : {}),
+            },
+          });
+        }
+
+        if (damageIds.length > 0) {
+          const handoverSource =
+            kind === 'PICKUP' ? DamageSource.PICKUP_HANDOVER : DamageSource.RETURN_HANDOVER;
+          await tx.vehicleDamage.updateMany({
+            where: {
+              id: { in: damageIds },
+              vehicleId: booking.vehicleId,
+            },
+            data: {
+              bookingId,
+              customerId: booking.customerId,
+              handoverProtocolId: created.id,
+              source: handoverSource,
+            },
+          });
         }
 
         return [created, booking2] as const;

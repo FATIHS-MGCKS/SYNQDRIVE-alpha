@@ -1,29 +1,10 @@
 import { useMemo } from 'react';
 import type { BookingUiRow } from '../../lib/entityMappers';
 import type { VehicleData } from '../../data/vehicles';
-import { BookingStatusBadge, type BookingUiStatus } from './bookingStatus';
+import { BookingStatusBadge, bookingTimelineSolidBarClass, type BookingUiStatus } from './bookingStatus';
 import { bookingEndIso, bookingRef, bookingStartIso, parseIso, rowStatus } from './bookingUtils';
 
 const MS_DAY = 86_400_000;
-
-function barColor(status: BookingUiStatus): string {
-  switch (status) {
-    case 'active':
-      return 'bg-[color:var(--brand)]';
-    case 'confirmed':
-      return 'bg-[color:var(--status-attention)]';
-    case 'pending':
-      return 'bg-amber-500/80';
-    case 'completed':
-      return 'bg-[color:var(--status-success)]/70';
-    case 'no_show':
-      return 'bg-[color:var(--status-critical)]/80';
-    case 'cancelled':
-      return 'bg-muted-foreground/40';
-    default:
-      return 'bg-muted';
-  }
-}
 
 function vehicleLabel(v: VehicleData): string {
   const head = [v.make, v.model].filter(Boolean).join(' ').trim();
@@ -135,7 +116,7 @@ export function BookingsTimelineView({
                         key={booking.id}
                         type="button"
                         onClick={() => onSelectBooking(booking.id)}
-                        className={`absolute top-2 h-7 rounded-md px-1.5 text-[9px] font-semibold text-white truncate shadow-sm hover:opacity-90 ${barColor(status)}`}
+                        className={`absolute top-2 h-7 rounded-md px-1.5 text-[9px] font-semibold text-white truncate shadow-sm hover:opacity-90 ${bookingTimelineSolidBarClass(status)}`}
                         style={{ left: `${left}%`, width: `${width}%`, minWidth: '48px' }}
                         title={`${bookingRef(booking.id)} · ${booking.customer}`}
                       >

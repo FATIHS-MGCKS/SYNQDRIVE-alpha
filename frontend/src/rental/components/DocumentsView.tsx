@@ -1,150 +1,448 @@
+import { useMemo, useState } from 'react';
 import { Icon } from './ui/Icon';
 import { VehicleData } from '../data/vehicles';
 import {
-  PageHeader,
-  MetricCard,
   DataCard,
-  StatusChip,
   EmptyState,
+  ErrorState,
+  MetricCard,
+  SectionHeader,
+  SkeletonMetricGrid,
+  SkeletonRows,
+  StatusChip,
+  Timeline,
 } from '../../components/patterns';
+import type { TimelineItem } from '../../components/patterns';
+import {
+  formatEuroAmount,
+  uiStatusLabel,
+  uiStatusTone,
+  type VehicleDocumentCategoryId,
+  type VehicleDocumentCategorySummary,
+  type VehicleFileSummary,
+} from '../lib/vehicle-file-summary.types';
+import { useVehicleFileSummary } from '../hooks/useVehicleFileSummary';
+import {
+  CATEGORY_UI_META,
+  formatStatusSource,
+  MANDATORY_CATEGORY_IDS,
+  rentalHealthLabelDe,
+  sortDocumentCategories,
+  type CategoryUiMeta,
+} from './documents/vehicle-file.constants';
+import {
+  VehicleDocumentUploadDrawer,
+  type DocumentDrawerMode,
+} from './documents/VehicleDocumentUploadDrawer';
 
 interface DocumentsViewProps {
   vehicle?: VehicleData | null;
 }
 
-type TuvRow = { date: string; org: string; km: string; result: string; next: string };
-type ServiceRow = { date: string; art: string; workshop: string; km: string; cost: string };
-type RepairRow = { date: string; repair: string; workshop: string; km: string; cost: string };
+interface DrawerState {
+  categoryId: VehicleDocumentCategoryId;
+  mode: DocumentDrawerMode;
+  extractionId?: string | null;
+  fileName?: string | null;
+}
 
-const tuvHistory: TuvRow[] = [];
-const serviceHistory: ServiceRow[] = [];
-const repairHistory: RepairRow[] = [];
+function formatFileDate(iso: string | null | undefined, withTime = false): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    ...(withTime ? { hour: '2-digit', minute: '2-digit' } : {}),
+  });
+}
+
+function formatSpecValue(value: string | number | null): string {
+  if (value == null || value === '') return 'Nicht hinterlegt';
+  return String(value);
+}
+
+function fixedCostStatusLabel(status: string): string {
+  if (status === 'verified') return 'Verifiziert';
+  if (status === 'missing_evidence') return 'Nachweis fehlt';
+  return 'Nicht hinterlegt';
+}
+
+function fixedCostStatusTone(status: string): 'success' | 'watch' | 'neutral' {
+  if (status === 'verified') return 'success';
+  if (status === 'missing_evidence') return 'watch';
+  return 'neutral';
+}
+
+function complianceSummaryLabel(summary: VehicleFileSummary): string {
+  const parts: string[] = [];
+  const tuv = summary.canonicalStatus.serviceCompliance.tuv;
+  const bok = summary.canonicalStatus.serviceCompliance.bokraft;
+  if (tuv) parts.push(`TÜV: ${uiStatusLabel(tuv.uiStatus, true)}`);
+  if (bok) parts.push(`BOKraft: ${uiStatusLabel(bok.uiStatus, true)}`);
+  if (parts.length === 0) return 'Keine Daten';
+  return parts.join(' · ');
+}
+
+function timelineTone(
+  status: string,
+): 'success' | 'watch' | 'critical' | 'info' | 'neutral' {
+  if (status === 'applied' || status === 'verified') return 'success';
+  if (status === 'needs_review' || status === 'processing' || status === 'expiring_soon') return 'watch';
+  if (status === 'expired' || status === 'error') return 'critical';
+  if (status === 'info') return 'info';
+  return 'neutral';
+}
 
 export function DocumentsView({ vehicle }: DocumentsViewProps) {
-  const dash = '—';
-  const vehicleName = vehicle ? [vehicle.make, vehicle.model].filter(Boolean).join(' ') : 'Kein Fahrzeug ausgewählt';
-  const vehicleSubtitle = vehicle ? [vehicle.license, vehicle.station].filter(Boolean).join(' · ') : 'Wähle ein Fahrzeug aus, um Dokumente und Fixkosten zu prüfen.';
-  const monthlyLines = [
-    { label: 'Leasing/Finanzierung', value: vehicle?.leasingRate ?? dash, tone: 'info' as const },
-    { label: 'Versicherung', value: vehicle?.insuranceCost ?? dash, tone: 'success' as const },
-    { label: 'Kfz-Steuer', value: vehicle?.taxCost ?? dash, tone: 'warning' as const },
-    { label: 'Wartung & Service (Ø)', value: dash, tone: 'neutral' as const },
-    { label: 'Reparaturen (Ø)', value: dash, tone: 'neutral' as const },
-  ];
-  const configuredCostLines = monthlyLines.filter((line) => line.value !== dash && line.value !== '').length;
+  const { summary, loading, error, reload } = useVehicleFileSummary(vehicle?.id);
+  const [drawer, setDrawer] = useState<DrawerState | null>(null);
 
-  const documentCards = [
-    {
-      title: 'Leasing/Finanzierung',
-      description: 'Vertrag, Laufzeit, Rate und Restwert',
-      icon: 'receipt',
-      tone: 'info' as const,
-      action: 'Vertrag hinzufügen',
-    },
-    {
-      title: 'Versicherung',
-      description: 'Police, Deckung und Selbstbeteiligung',
-      icon: 'shield',
-      tone: 'success' as const,
-      action: 'Police hinzufügen',
-    },
-    {
-      title: 'Kfz-Steuer',
-      description: 'Bescheid und jährliche Steuerlast',
-      icon: 'dollar-sign',
-      tone: 'warning' as const,
-      action: 'Bescheid hinzufügen',
-    },
-    {
-      title: 'Zulassung',
-      description: 'Fahrzeugschein und Halterdaten',
-      icon: 'car',
-      tone: 'brand' as const,
-      action: 'Dokument hinzufügen',
-    },
-  ];
+  const vehicleName = vehicle
+    ? [vehicle.make, vehicle.model].filter(Boolean).join(' ') || 'Fahrzeug'
+    : 'Kein Fahrzeug ausgewählt';
+  const licensePlate = summary?.vehicle.licensePlate ?? vehicle?.license ?? null;
+  const vin = summary?.vehicle.vin ?? null;
+  const odometer =
+    summary?.vehicle.odometerKm != null
+      ? `${Math.round(summary.vehicle.odometerKm).toLocaleString('de-DE')} km`
+      : null;
 
-  const evidenceSections = [
-    { title: 'TÜV / HU', subtitle: 'Prüftermine und Ergebnisnachweise', icon: 'clipboard-check', tone: 'success' as const, rows: tuvHistory.length },
-    { title: 'Service', subtitle: 'Inspektionen, Ölwechsel und Wartung', icon: 'wrench', tone: 'info' as const, rows: serviceHistory.length },
-    { title: 'Reparaturen', subtitle: 'Werkstattrechnungen und Schadenbelege', icon: 'file-signature', tone: 'critical' as const, rows: repairHistory.length },
-  ];
+  const sortedCategories = useMemo(
+    () => (summary ? sortDocumentCategories(summary.documentCategories) : []),
+    [summary],
+  );
+
+  const missingMandatory = summary
+    ? summary.mandatoryDocumentCoverage.total - summary.mandatoryDocumentCoverage.configured
+    : null;
+
+  const hasVariableCosts =
+    summary &&
+    (summary.variableCostAverages.serviceAverageMonthly != null ||
+      summary.variableCostAverages.repairAverageMonthly != null);
+
+  const timelineItems: TimelineItem[] = useMemo(() => {
+    if (!summary) return [];
+    return summary.timeline.map((item) => ({
+      id: item.id,
+      title: item.title,
+      time: formatFileDate(item.occurredAt, true),
+      description: item.subtitle ?? undefined,
+      tone: timelineTone(item.uiStatus),
+      meta: (
+        <StatusChip tone="neutral" className="!text-[9px]">
+          Quelle: {formatStatusSource(item.source)}
+        </StatusChip>
+      ),
+    }));
+  }, [summary]);
+
+  const openUpload = (categoryId: VehicleDocumentCategoryId) => {
+    setDrawer({ categoryId, mode: 'upload' });
+  };
+
+  const openReview = (category: VehicleDocumentCategorySummary) => {
+    if (!category.latestExtractionId) return;
+    setDrawer({
+      categoryId: category.id,
+      mode: category.uiStatus === 'needs_review' ? 'review' : 'view',
+      extractionId: category.latestExtractionId,
+      fileName: category.latestFileName,
+    });
+  };
+
+  if (!vehicle?.id) {
+    return (
+      <EmptyState
+        icon={<Icon name="file-text" className="w-5 h-5" />}
+        title="Kein Fahrzeug ausgewählt"
+        description="Wähle ein Fahrzeug aus, um die Fahrzeugakte zu öffnen."
+      />
+    );
+  }
 
   return (
-    <div className="space-y-5">
-      <PageHeader
-        eyebrow="Fahrzeug"
-        title="Fahrzeugakte"
-        description={vehicleSubtitle}
-        icon={<Icon name="file-text" className="w-4 h-4" />}
-        meta={<span className="text-[11px] text-muted-foreground truncate">{vehicleName}</span>}
-      />
-      <div className="grid grid-cols-3 gap-2">
-        <MetricCard label="Dokumente" value="0/4" status="warning" />
-        <MetricCard
-          label="Kosten"
-          value={`${configuredCostLines}/5`}
-          status={configuredCostLines >= 3 ? 'success' : 'neutral'}
-        />
-        <MetricCard
-          label="Nachweise"
-          value={String(tuvHistory.length + serviceHistory.length + repairHistory.length)}
-          status="neutral"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] gap-3 items-start">
-        <DataCard
-          title="Dokumentenstatus"
-          description="Pflichtunterlagen pro Fahrzeug, priorisiert nach operativer Relevanz."
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {documentCards.map((doc) => (
-              <DocumentTile
-                key={doc.title}
-                icon={doc.icon}
-                title={doc.title}
-                description={doc.description}
-                action={doc.action}
-                tone={doc.tone}
-              />
-            ))}
-          </div>
-        </DataCard>
-
-        <DataCard
-          title="Monatliche Fixkosten"
-          description="Finanzielle Grundlast des Fahrzeugs auf einen Blick."
-        >
-          <div className="space-y-2.5">
-            {monthlyLines.map((item) => (
-              <CostRow key={item.label} label={item.label} value={item.value} tone={item.tone} />
-            ))}
-            <div className="pt-3 mt-3 border-t border-border flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-foreground">Gesamt pro Monat</span>
-              <span className="text-[13px] font-bold tabular-nums text-foreground">
-                {vehicle?.totalMonthlyCost ?? dash}
-              </span>
+    <div className="space-y-6 pb-8">
+      {/* ── Header ── */}
+      <header className="sq-card-elevated rounded-2xl border border-border/70 bg-card/60 p-4 sm:p-5 backdrop-blur-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 space-y-2">
+            <p className="sq-section-label">Fahrzeugakte</p>
+            <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+              {vehicleName}
+            </h1>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+              {licensePlate ? (
+                <span className="inline-flex items-center gap-1 font-semibold text-foreground">
+                  <Icon name="hash" className="w-3 h-3" />
+                  {licensePlate}
+                </span>
+              ) : null}
+              {vin ? <span className="font-mono text-[10px]">VIN {vin}</span> : null}
+              {odometer ? <span>{odometer}</span> : null}
             </div>
           </div>
-        </DataCard>
-      </div>
 
-      <DataCard
-        title="Nachweise & Historie"
-        description="TÜV, Service und Reparaturen als ein gemeinsamer Verlauf statt getrennter leerer Tabellen."
-      >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-          {evidenceSections.map((section) => (
-            <EvidenceCard key={section.title} {...section} />
-          ))}
+          {summary ? (
+            <div className="flex flex-wrap gap-1.5 lg:max-w-md lg:justify-end">
+              <StatusChip
+                tone={
+                  summary.canonicalStatus.rentalHealthStatus === 'blocked' ||
+                  summary.canonicalStatus.rentalHealthStatus === 'critical'
+                    ? 'critical'
+                    : summary.canonicalStatus.rentalHealthStatus === 'warning'
+                      ? 'watch'
+                      : 'success'
+                }
+              >
+                Rental Health: {rentalHealthLabelDe(summary.canonicalStatus.rentalHealthStatus)}
+              </StatusChip>
+              {missingMandatory != null && missingMandatory > 0 ? (
+                <StatusChip tone="watch">{missingMandatory} Pflichtdok. fehlen</StatusChip>
+              ) : null}
+              {summary.pendingReviews.count > 0 ? (
+                <StatusChip tone="watch">{summary.pendingReviews.count} zur Prüfung</StatusChip>
+              ) : null}
+              {summary.canonicalStatus.serviceCompliance.tuv?.uiStatus === 'expiring_soon' ||
+              summary.canonicalStatus.serviceCompliance.tuv?.uiStatus === 'expired' ? (
+                <StatusChip tone="watch">
+                  TÜV: {uiStatusLabel(summary.canonicalStatus.serviceCompliance.tuv.uiStatus, true)}
+                </StatusChip>
+              ) : null}
+              {summary.canonicalStatus.serviceCompliance.bokraft?.uiStatus === 'expiring_soon' ||
+              summary.canonicalStatus.serviceCompliance.bokraft?.uiStatus === 'expired' ? (
+                <StatusChip tone="watch">
+                  BOKraft: {uiStatusLabel(summary.canonicalStatus.serviceCompliance.bokraft.uiStatus, true)}
+                </StatusChip>
+              ) : null}
+            </div>
+          ) : null}
         </div>
-      </DataCard>
+
+        {summary ? (
+          <p className="mt-3 border-t border-border/60 pt-3 text-[10px] leading-relaxed text-muted-foreground">
+            {summary.canonicalStatus.note}
+            <span className="mx-1">·</span>
+            Quelle Rental Health: {formatStatusSource(summary.canonicalStatus.rentalHealthSource)}
+          </p>
+        ) : null}
+      </header>
+
+      {error ? (
+        <ErrorState
+          compact
+          title="Fahrzeugakte nicht verfügbar"
+          description={error}
+          onRetry={() => void reload()}
+          retryLabel="Erneut laden"
+        />
+      ) : null}
+
+      {/* ── KPI Row ── */}
+      {loading && !summary ? (
+        <SkeletonMetricGrid count={5} />
+      ) : summary ? (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          <MetricCard
+            label="Pflichtdokumente"
+            value={`${summary.mandatoryDocumentCoverage.configured}/${summary.mandatoryDocumentCoverage.total}`}
+            status={
+              summary.mandatoryDocumentCoverage.configured >= summary.mandatoryDocumentCoverage.total
+                ? 'success'
+                : 'warning'
+            }
+          />
+          <MetricCard
+            label="Offene Reviews"
+            value={String(summary.pendingReviews.count)}
+            status={summary.pendingReviews.count > 0 ? 'warning' : 'neutral'}
+          />
+          <MetricCard
+            label="Fehlende Pflicht"
+            value={missingMandatory != null ? String(missingMandatory) : '—'}
+            status={missingMandatory && missingMandatory > 0 ? 'warning' : 'success'}
+          />
+          <MetricCard label="Compliance" value={complianceSummaryLabel(summary)} status="neutral" />
+          <MetricCard
+            label="Fixkosten / Monat"
+            value={formatEuroAmount(summary.fixedCosts.monthlyTotal)}
+            status={summary.fixedCosts.monthlyTotal != null ? 'success' : 'neutral'}
+          />
+        </div>
+      ) : null}
+
+      {loading && !summary ? (
+        <SkeletonRows rows={6} />
+      ) : summary ? (
+        <>
+          {/* ── Compliance & Dokumente ── */}
+          <section className="space-y-3">
+            <SectionHeader
+              title="Compliance & Dokumente"
+              description="Status aus kanonischen Quellen — Upload und Review direkt aus der Karte."
+            />
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+              {sortedCategories.map((cat) => (
+                <DocumentCategoryCard
+                  key={cat.id}
+                  category={cat}
+                  onUpload={() => openUpload(cat.id)}
+                  onReview={() => openReview(cat)}
+                  onView={() => openReview(cat)}
+                />
+              ))}
+            </div>
+          </section>
+
+          {/* ── Fixkosten + Technische Daten ── */}
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <DataCard
+              title="Feste monatliche Fahrzeugkosten"
+              description="Finanzielle Grundlast — getrennt von variablen Wartungskosten."
+            >
+              <div className="space-y-2">
+                {summary.fixedCosts.items.map((item) => (
+                  <div
+                    key={item.key}
+                    className="rounded-xl border border-border/70 bg-muted/20 px-3 py-2.5 transition-colors hover:bg-muted/30"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold text-foreground">{item.label}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          Quelle: {formatStatusSource(item.source)}
+                        </p>
+                        {item.evidenceFileName ? (
+                          <p className="mt-0.5 truncate text-[9px] text-muted-foreground/80">
+                            Nachweis: {item.evidenceFileName}
+                          </p>
+                        ) : null}
+                      </div>
+                      <StatusChip tone={fixedCostStatusTone(item.status)}>
+                        {fixedCostStatusLabel(item.status)}
+                      </StatusChip>
+                    </div>
+                    <div className="mt-2 flex items-end justify-between gap-2">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground">Monatlich</p>
+                        <p className="text-[13px] font-bold tabular-nums text-foreground">
+                          {formatEuroAmount(item.amountMonthly)}
+                        </p>
+                      </div>
+                      {item.amountYearly != null ? (
+                        <div className="text-right">
+                          <p className="text-[10px] text-muted-foreground">Jährlich</p>
+                          <p className="text-[11px] font-semibold tabular-nums text-muted-foreground">
+                            {formatEuroAmount(item.amountYearly)}
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+                <div className="mt-2 flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 px-3 py-3">
+                  <span className="text-[12px] font-semibold text-foreground">Gesamt pro Monat</span>
+                  <span className="text-[15px] font-bold tabular-nums text-foreground">
+                    {formatEuroAmount(summary.fixedCosts.monthlyTotal)}
+                  </span>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Fehlende Beträge können im Fahrzeugstamm (Master Admin) gepflegt werden.
+                </p>
+              </div>
+            </DataCard>
+
+            <DataCard
+              title="Technische Fahrzeugdaten"
+              description="Stammdaten und Telemetrie — read-only."
+            >
+              <div className="space-y-4">
+                <SpecAccordion title="Allgemeine Technische Daten" rows={summary.technicalSpecs.general} defaultOpen />
+                <SpecAccordion
+                  title="LV Battery Daten"
+                  rows={summary.technicalSpecs.lvBattery}
+                  defaultOpen={summary.technicalSpecs.lvBattery.length > 0}
+                  emptyMessage="Keine LV-Battery-Spezifikationen im Fahrzeugstamm hinterlegt."
+                />
+                {summary.technicalSpecs.hvBattery && summary.technicalSpecs.hvBattery.length > 0 ? (
+                  <SpecAccordion title="HV Battery" rows={summary.technicalSpecs.hvBattery} />
+                ) : null}
+                {summary.technicalSpecs.tankEngine && summary.technicalSpecs.tankEngine.length > 0 ? (
+                  <SpecAccordion title="Tank / Motor" rows={summary.technicalSpecs.tankEngine} />
+                ) : null}
+              </div>
+            </DataCard>
+          </div>
+
+          {hasVariableCosts ? (
+            <DataCard
+              title="Variable Durchschnittskosten"
+              description={`Basierend auf ${summary.variableCostAverages.sampleServiceEvents} Service- und ${summary.variableCostAverages.sampleRepairEvents} Reparatur-Events — nicht in Fixkosten enthalten.`}
+            >
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="rounded-xl border border-border bg-muted/20 px-3 py-2.5">
+                  <p className="text-[10px] text-muted-foreground">Wartung & Service (Ø)</p>
+                  <p className="text-[14px] font-bold tabular-nums text-foreground">
+                    {formatEuroAmount(summary.variableCostAverages.serviceAverageMonthly)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-border bg-muted/20 px-3 py-2.5">
+                  <p className="text-[10px] text-muted-foreground">Reparaturen (Ø)</p>
+                  <p className="text-[14px] font-bold tabular-nums text-foreground">
+                    {formatEuroAmount(summary.variableCostAverages.repairAverageMonthly)}
+                  </p>
+                </div>
+              </div>
+            </DataCard>
+          ) : null}
+
+          {/* ── Timeline ── */}
+          <DataCard
+            title="Timeline / Audit Trail"
+            description="Dokumente, Service-Events und Compliance-Einträge chronologisch."
+          >
+            {timelineItems.length > 0 ? (
+              <Timeline items={timelineItems} />
+            ) : (
+              <EmptyState
+                compact
+                icon={<Icon name="history" className="w-4 h-4" />}
+                title="Noch keine Einträge"
+                description="Hochgeladene Dokumente und Service-Events erscheinen hier."
+              />
+            )}
+          </DataCard>
+        </>
+      ) : !error ? (
+        <EmptyState
+          icon={<Icon name="file-text" className="w-5 h-5" />}
+          title="Keine Daten"
+          description="Für dieses Fahrzeug liegen noch keine Akten-Daten vor."
+        />
+      ) : null}
+
+      {drawer && vehicle.id ? (
+        <VehicleDocumentUploadDrawer
+          open={!!drawer}
+          onOpenChange={(open) => {
+            if (!open) setDrawer(null);
+          }}
+          vehicleId={vehicle.id}
+          vehicleLabel={vehicleName}
+          categoryId={drawer.categoryId}
+          mode={drawer.mode}
+          extractionId={drawer.extractionId}
+          fileName={drawer.fileName}
+          onComplete={() => void reload()}
+        />
+      ) : null}
     </div>
   );
 }
 
-function toneClass(tone: 'brand' | 'info' | 'success' | 'warning' | 'critical' | 'neutral') {
+function categoryToneClass(tone: CategoryUiMeta['tone']): string {
   if (tone === 'brand') return 'sq-tone-brand';
   if (tone === 'info') return 'sq-tone-info';
   if (tone === 'success') return 'sq-tone-success';
@@ -153,95 +451,169 @@ function toneClass(tone: 'brand' | 'info' | 'success' | 'warning' | 'critical' |
   return 'sq-tone-neutral';
 }
 
-function DocumentTile({
-  icon,
-  title,
-  description,
-  action,
-  tone,
+function DocumentCategoryCard({
+  category,
+  onUpload,
+  onReview,
+  onView,
 }: {
-  icon: string;
-  title: string;
-  description: string;
-  action: string;
-  tone: 'brand' | 'info' | 'success' | 'warning';
+  category: VehicleDocumentCategorySummary;
+  onUpload: () => void;
+  onReview: () => void;
+  onView: () => void;
 }) {
+  const meta = CATEGORY_UI_META[category.id];
+  const isMandatory = MANDATORY_CATEGORY_IDS.includes(category.id);
+  const isPriority =
+    category.uiStatus === 'needs_review' ||
+    category.uiStatus === 'error' ||
+    category.uiStatus === 'expired' ||
+    category.uiStatus === 'missing';
+  const isCompact =
+    category.uiStatus === 'verified' || category.uiStatus === 'applied';
+
   return (
-    <div className="rounded-xl border border-border bg-muted/30 p-3 sq-card-elevated transition-colors">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2.5 min-w-0">
-          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${toneClass(tone)}`}>
-            <Icon name={icon} className="w-4 h-4" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold text-foreground">{title}</p>
-            <p className="text-[10px] mt-0.5 text-muted-foreground">{description}</p>
-          </div>
+    <article
+      className={`group sq-card-elevated flex flex-col rounded-xl border bg-card/50 p-3 transition-all duration-200 hover:border-border hover:bg-muted/20 ${
+        isPriority ? 'border-[color:var(--status-watch)]/35' : 'border-border/70'
+      } ${isCompact ? 'opacity-95' : ''}`}
+    >
+      <div className="flex items-start gap-2.5">
+        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${categoryToneClass(meta.tone)}`}>
+          <Icon name={meta.icon} className="w-4 h-4" />
         </div>
-        <StatusChip tone="warning">Fehlt</StatusChip>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <h3 className="text-[12px] font-semibold text-foreground">{meta.shortTitle}</h3>
+            {isMandatory ? (
+              <span className="rounded-md bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Pflichtdokument
+              </span>
+            ) : (
+              <span className="text-[9px] text-muted-foreground">Optional</span>
+            )}
+          </div>
+          <p className="mt-0.5 text-[10px] text-muted-foreground line-clamp-2">{meta.description}</p>
+        </div>
+        <StatusChip tone={uiStatusTone(category.uiStatus)} className="shrink-0">
+          {category.uiStatus === 'processing' ? (
+            <span className="inline-flex items-center gap-1">
+              <Icon name="loader-2" className="h-3 w-3 animate-spin" />
+              {uiStatusLabel(category.uiStatus, true)}
+            </span>
+          ) : (
+            uiStatusLabel(category.uiStatus, true)
+          )}
+        </StatusChip>
       </div>
+
+      <div className="mt-2.5 space-y-1 text-[10px] text-muted-foreground">
+        <p>
+          Quelle: <span className="font-medium text-foreground">{formatStatusSource(category.statusSource)}</span>
+        </p>
+        {category.latestFileName ? (
+          <p className="truncate">
+            Letzte Datei: <span className="text-foreground">{category.latestFileName}</span>
+          </p>
+        ) : category.documentCount === 0 ? (
+          <p className="italic">{meta.emptyHint}</p>
+        ) : null}
+        {category.complianceDisplay?.validTill ? (
+          <p>
+            Frist:{' '}
+            <span className="font-medium text-foreground">
+              {formatFileDate(category.complianceDisplay.validTill)}
+            </span>
+            <span className="ml-1 text-[9px]">(Service Compliance)</span>
+          </p>
+        ) : null}
+        {category.documentCount > 1 ? (
+          <p>{category.documentCount} Dokumente in dieser Kategorie</p>
+        ) : null}
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {category.latestExtractionId ? (
+          <button
+            type="button"
+            onClick={onView}
+            className="sq-press inline-flex items-center gap-1 rounded-lg border border-border bg-card/80 px-2.5 py-1.5 text-[10px] font-semibold text-foreground"
+          >
+            <Icon name="eye" className="w-3 h-3" />
+            Ansehen
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={onUpload}
+          className="sq-press inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-[10px] font-semibold text-primary-foreground"
+        >
+          <Icon name="upload" className="w-3 h-3" />
+          {category.latestFileName ? 'Ersetzen' : 'Hochladen'}
+        </button>
+        {category.uiStatus === 'needs_review' && category.latestExtractionId ? (
+          <button
+            type="button"
+            onClick={onReview}
+            className="sq-press inline-flex items-center gap-1 rounded-lg border border-[color:var(--status-watch)]/40 bg-[color:var(--status-watch)]/10 px-2.5 py-1.5 text-[10px] font-semibold text-[color:var(--status-watch)]"
+          >
+            <Icon name="clipboard-check" className="w-3 h-3" />
+            Zur Prüfung
+          </button>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
+function SpecAccordion({
+  title,
+  rows,
+  defaultOpen = false,
+  emptyMessage,
+}: {
+  title: string;
+  rows: Array<{ key: string; label: string; value: string | number | null; source: string }>;
+  defaultOpen?: boolean;
+  emptyMessage?: string;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const hasValues = rows.some((r) => r.value != null && r.value !== '');
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border/70">
       <button
         type="button"
-        disabled
-        className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card/70 px-2.5 py-2 text-[10px] font-semibold text-muted-foreground opacity-60 cursor-not-allowed"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 bg-muted/20 px-3 py-2.5 text-left sq-press"
       >
-        <Icon name="upload" className="w-3.5 h-3.5" />
-        {action}
+        <span className="text-[11px] font-semibold text-foreground">{title}</span>
+        <Icon name={open ? 'chevron-up' : 'chevron-down'} className="w-4 h-4 text-muted-foreground" />
       </button>
-    </div>
-  );
-}
-
-function CostRow({ label, value, tone }: { label: string; value: string; tone: 'info' | 'success' | 'warning' | 'neutral' }) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2">
-      <div className="flex items-center gap-2 min-w-0">
-        <span className={`w-2 h-2 rounded-full shrink-0 ${toneClass(tone)}`} />
-        <span className="text-[10px] font-medium text-muted-foreground truncate">{label}</span>
-      </div>
-      <span className="text-[11px] font-semibold tabular-nums text-foreground">{value}</span>
-    </div>
-  );
-}
-
-function EvidenceCard({
-  title,
-  subtitle,
-  icon,
-  tone,
-  rows,
-}: {
-  title: string;
-  subtitle: string;
-  icon: string;
-  tone: 'info' | 'success' | 'critical';
-  rows: number;
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-muted/30 p-3 min-h-[150px] flex flex-col sq-card-elevated transition-colors">
-      <div className="flex items-start justify-between gap-3">
-        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${toneClass(tone)}`}>
-          <Icon name={icon} className="w-4 h-4" />
+      {open ? (
+        <div className="border-t border-border/60">
+          {!hasValues && emptyMessage ? (
+            <p className="px-3 py-3 text-[11px] text-muted-foreground">{emptyMessage}</p>
+          ) : (
+            rows.map((row, i) => (
+              <div
+                key={row.key}
+                className={`flex items-center justify-between gap-3 px-3 py-2 ${i > 0 ? 'border-t border-border/40' : ''}`}
+              >
+                <span className="text-[10px] text-muted-foreground">{row.label}</span>
+                <div className="text-right">
+                  <span className="text-[11px] font-medium tabular-nums text-foreground">
+                    {formatSpecValue(row.value)}
+                  </span>
+                  <p className="text-[9px] text-muted-foreground/70">
+                    {formatStatusSource(row.source)}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
         </div>
-        <StatusChip tone="neutral">{rows} Einträge</StatusChip>
-      </div>
-      <div className="mt-3">
-        <p className="text-[11px] font-semibold text-foreground">{title}</p>
-        <p className="text-[10px] mt-0.5 text-muted-foreground">{subtitle}</p>
-      </div>
-      <div className="mt-auto pt-4">
-        {rows === 0 ? (
-          <EmptyState
-            compact
-            icon={<Icon name="file" className="w-3.5 h-3.5" />}
-            title="Noch keine Nachweise"
-            description="Noch keine Nachweise hinterlegt"
-            className="!py-4 !px-0"
-          />
-        ) : (
-          <button type="button" className="text-[10px] font-semibold text-[color:var(--brand)]">Verlauf anzeigen</button>
-        )}
-      </div>
+      ) : null}
     </div>
   );
 }

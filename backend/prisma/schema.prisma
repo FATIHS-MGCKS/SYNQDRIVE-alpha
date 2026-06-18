@@ -607,6 +607,54 @@ enum DamageSeverity {
   CRITICAL
 }
 
+enum DamageStatus {
+  OPEN
+  IN_REPAIR
+  REPAIRED
+  ARCHIVED
+}
+
+enum DamageLocationView {
+  FRONT
+  LEFT
+  RIGHT
+  REAR
+  ROOF
+  UNKNOWN
+}
+
+enum DamageSource {
+  MANUAL
+  PICKUP_HANDOVER
+  RETURN_HANDOVER
+  AI_UPLOAD
+  WORKSHOP
+  INSPECTION
+}
+
+enum DamageRentalImpact {
+  NONE
+  WATCH
+  BLOCK_RENTAL
+  SAFETY_CRITICAL
+}
+
+enum DamageEvidenceStatus {
+  MISSING
+  PARTIAL
+  COMPLETE
+  DISPUTED
+}
+
+enum DamageLiabilityStatus {
+  NOT_APPLICABLE
+  NEEDS_REVIEW
+  CUSTOMER_RESPONSIBLE
+  COMPANY_RESPONSIBLE
+  INSURANCE_CLAIM
+  DISPUTED
+}
+
 enum DtcSeverity {
   INFO
   WARNING
@@ -2103,6 +2151,8 @@ model Customer {
   timelineEvents        CustomerTimelineEvent[]
   misuseCases           MisuseCase[]
 
+  vehicleDamages        VehicleDamage[]
+
   @@index([organizationId])
   @@index([email])
   @@index([organizationId, emailNormalized])
@@ -2231,6 +2281,7 @@ model Booking {
   handoverProtocols     BookingHandoverProtocol[]
   misuseCases           MisuseCase[]
   priceSnapshots        BookingPriceSnapshot[]
+  vehicleDamages        VehicleDamage[]
 
   @@index([organizationId])
   @@index([customerId])
@@ -2550,6 +2601,7 @@ model BookingHandoverProtocol {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicleDamages VehicleDamage[]
 
   @@unique([bookingId, kind])
   @@index([organizationId])
@@ -2802,6 +2854,9 @@ model OrgTask {
   estimatedCostCents Int?      @map("estimated_cost_cents")
   actualCostCents    Int?      @map("actual_cost_cents")
   resolutionNote  String?      @map("resolution_note")
+  // V4.9.17 — When true, operators should treat this task as blocking vehicle
+  // rental/availability until resolved. Default false for all legacy rows.
+  blocksVehicleAvailability Boolean @default(false) @map("blocks_vehicle_availability")
   metadata        Json?
   createdByUserId String?      @map("created_by_user_id")
   updatedByUserId String?      @map("updated_by_user_id")
@@ -2823,6 +2878,7 @@ model OrgTask {
   comments      TaskComment[]
   attachments   TaskAttachment[]
   events        TaskEvent[]
+  vehicleDamages VehicleDamage[]
 
   @@index([organizationId])
   @@index([status])
@@ -3744,34 +3800,60 @@ model DtcVehicleKnowledge {
 // ------------------------------------------------
 
 model VehicleDamage {
-  id                 String         @id @default(uuid())
-  vehicleId          String         @map("vehicle_id")
-  damageType         DamageType     @map("damage_type")
-  severity           DamageSeverity @default(MINOR)
-  description        String?
-  locationX          Float?         @map("location_x")
-  locationY          Float?         @map("location_y")
-  locationLabel      String?        @map("location_label")
-  estimatedCostCents Int?           @map("estimated_cost_cents")
-  reportedBy         String?        @map("reported_by")
-  repairedAt         DateTime?      @map("repaired_at")
-  createdAt          DateTime       @default(now()) @map("created_at")
-  updatedAt          DateTime       @updatedAt @map("updated_at")
+  id                   String                @id @default(uuid())
+  vehicleId            String                @map("vehicle_id")
+  damageType           DamageType            @map("damage_type")
+  severity             DamageSeverity        @default(MINOR)
+  status               DamageStatus          @default(OPEN)
+  description          String?
+  locationView         DamageLocationView    @default(UNKNOWN) @map("location_view")
+  locationX            Float?                @map("location_x")
+  locationY            Float?                @map("location_y")
+  locationLabel        String?               @map("location_label")
+  estimatedCostCents   Int?                  @map("estimated_cost_cents")
+  repairCostCents      Int?                  @map("repair_cost_cents")
+  chargedToCustomerCents Int?                @map("charged_to_customer_cents")
+  depositHoldCents     Int?                  @map("deposit_hold_cents")
+  source               DamageSource          @default(MANUAL)
+  rentalImpact         DamageRentalImpact    @default(NONE) @map("rental_impact")
+  evidenceStatus       DamageEvidenceStatus  @default(MISSING) @map("evidence_status")
+  liabilityStatus      DamageLiabilityStatus @default(NOT_APPLICABLE) @map("liability_status")
+  liabilityNote        String?               @map("liability_note")
+  bookingId            String?               @map("booking_id")
+  customerId           String?               @map("customer_id")
+  handoverProtocolId   String?               @map("handover_protocol_id")
+  taskId               String?               @map("task_id")
+  reportedBy           String?               @map("reported_by")
+  repairStartedAt      DateTime?             @map("repair_started_at")
+  repairedAt           DateTime?             @map("repaired_at")
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
 
-  vehicle Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  images  VehicleDamageImage[]
+  vehicle            Vehicle                   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  booking            Booking?                  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  customer           Customer?                 @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  handoverProtocol   BookingHandoverProtocol?  @relation(fields: [handoverProtocolId], references: [id], onDelete: SetNull)
+  task               OrgTask?                  @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  images             VehicleDamageImage[]
 
   @@index([vehicleId])
   @@index([damageType])
+  @@index([status])
+  @@index([bookingId])
+  @@index([customerId])
+  @@index([handoverProtocolId])
+  @@index([taskId])
   @@map("vehicle_damages")
 }
 
 model VehicleDamageImage {
-  id        String   @id @default(uuid())
-  damageId  String   @map("damage_id")
-  imageData String   @map("image_data")
-  caption   String?
-  createdAt DateTime @default(now()) @map("created_at")
+  id         String   @id @default(uuid())
+  damageId   String   @map("damage_id")
+  imageData  String   @map("image_data")
+  mimeType   String?  @map("mime_type")
+  caption    String?
+  uploadedBy String?  @map("uploaded_by")
+  createdAt  DateTime @default(now()) @map("created_at")
 
   damage VehicleDamage @relation(fields: [damageId], references: [id], onDelete: Cascade)
 

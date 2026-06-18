@@ -3,6 +3,7 @@ import { Icon } from '../ui/Icon';
 import { useEffect, useMemo, useState } from 'react';
 
 import { api, type Station } from '../../../lib/api';
+import type { DamageSeverity } from '../../lib/damage.types';
 import { stationsForPickup, stationsForReturn } from '../../lib/stationBookingUtils';
 import { SignaturePad } from './SignaturePad';
 
@@ -21,6 +22,7 @@ export type HandoverDialogKind = 'PICKUP' | 'RETURN';
 export interface HandoverDialogBookingInfo {
   id: string;
   vehicleId: string;
+  customerId?: string | null;
   vehicleName: string;
   plate: string;
   customerName: string;
@@ -303,10 +305,13 @@ export function HandoverProtocolDialog({
     try {
       const created = await api.vehicleIntelligence.createDamage(booking.vehicleId, {
         damageType: newDamage.damageType,
-        severity: newDamage.severity,
+        severity: newDamage.severity as DamageSeverity,
         description: newDamage.description || undefined,
         locationLabel: newDamage.locationLabel || undefined,
         reportedBy: staffName || 'Handover',
+        source: kind === 'PICKUP' ? 'PICKUP_HANDOVER' : 'RETURN_HANDOVER',
+        bookingId: booking.id,
+        customerId: booking.customerId ?? undefined,
       });
       const row: DamageRow = {
         id: String(created.id),

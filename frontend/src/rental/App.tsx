@@ -1,6 +1,7 @@
 
 import { Icon } from './components/ui/Icon';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
@@ -254,6 +255,9 @@ function RentalAppContent() {
   const showVehicleDetailChrome = VEHICLE_DETAIL_VIEWS.has(currentView);
   const [activeBookingRef, setActiveBookingRef] = useState<string | null>(null);
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
+  const [highlightedVehicleTaskId, setHighlightedVehicleTaskId] = useState<string | null>(null);
+  const [vehicleTasksRefreshToken, setVehicleTasksRefreshToken] = useState(0);
+  const [cleaningStatusBusy, setCleaningStatusBusy] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
   useEffect(() => {
@@ -338,21 +342,79 @@ function RentalAppContent() {
   const hasActiveFilters = selectedDriver !== 'all' || selectedDate !== '';
 
   // Handle cleaning status change
+  const persistCleaningStatus = useCallback(
+    async (apiStatus: 'CLEAN' | 'NEEDS_CLEANING') => {
+      if (!orgId || !selectedVehicle?.id || cleaningStatusBusy) return;
+      setCleaningStatusBusy(true);
+      try {
+        const res = await api.vehicles.updateOperationalStatus(orgId, selectedVehicle.id, {
+          cleaningStatus: apiStatus,
+        });
+        const uiStatus = apiStatus === 'NEEDS_CLEANING' ? 'Needs Cleaning' : 'Clean';
+        setCleaningStatus(uiStatus);
+        setSelectedVehicle((prev) => (prev ? { ...prev, cleaningStatus: uiStatus } : prev));
+        setVehicleTasksRefreshToken((t) => t + 1);
+        void refreshFleet();
+
+        const action = res.cleaningTask?.action;
+        if (apiStatus === 'NEEDS_CLEANING') {
+          if (action === 'created') {
+            toast.success('Reinigungsaufgabe erstellt', {
+              description: 'Die Aufgabe erscheint im Task-Tab dieses Fahrzeugs.',
+            });
+            if (res.cleaningTask?.taskId) {
+              setHighlightedVehicleTaskId(res.cleaningTask.taskId);
+              setCurrentView('vehicle-tasks');
+            }
+          } else if (action === 'existing') {
+            toast.info('Offene Reinigungsaufgabe bereits vorhanden', {
+              description: 'Es wurde keine Duplikat-Aufgabe erstellt.',
+            });
+            if (res.cleaningTask?.taskId) {
+              setHighlightedVehicleTaskId(res.cleaningTask.taskId);
+              setCurrentView('vehicle-tasks');
+            }
+          } else {
+            toast.warning('Reinigungsstatus gespeichert', {
+              description: 'Die Reinigungsaufgabe konnte nicht angelegt werden.',
+            });
+          }
+        } else if (action === 'completed') {
+          toast.success('Reinigungsaufgabe abgeschlossen', {
+            description:
+              (res.cleaningTask?.completedCount ?? 0) > 1
+                ? `${res.cleaningTask?.completedCount} offene Reinigungsaufgaben wurden abgeschlossen.`
+                : 'Fahrzeug als sauber markiert.',
+          });
+        } else {
+          toast.success('Fahrzeug als sauber markiert');
+        }
+      } catch (err) {
+        toast.error('Reinigungsstatus konnte nicht gespeichert werden', {
+          description: err instanceof Error ? err.message : 'Unbekannter Fehler',
+        });
+        throw err;
+      } finally {
+        setCleaningStatusBusy(false);
+      }
+    },
+    [cleaningStatusBusy, orgId, refreshFleet, selectedVehicle?.id],
+  );
+
   const handleCleaningStatusChange = (newStatus: 'Clean' | 'Needs Cleaning') => {
     if (newStatus === 'Needs Cleaning') {
       setShowCleaningWarning(true);
       setIsCleaningDropdownOpen(false);
     } else {
-      setCleaningStatus(newStatus);
       setIsCleaningDropdownOpen(false);
+      void persistCleaningStatus('CLEAN');
     }
   };
 
   // Confirm cleaning status change
   const confirmCleaningChange = () => {
-    setCleaningStatus('Needs Cleaning');
     setShowCleaningWarning(false);
-    // Here you would create a cleaning task
+    void persistCleaningStatus('NEEDS_CLEANING');
   };
 
   // Handle vehicle status change
@@ -768,6 +830,7 @@ function RentalAppContent() {
               if (v) { setSelectedVehicle(v); setCurrentView('overview'); }
             }}
             onOpenRentalView={(view) => handleViewChange(view)}
+            onOpenFinanceView={(view) => handleViewChange(view)}
             onOpenBookingById={(bookingId) => {
               setPendingBookingDetailId(bookingId);
               setCurrentView('bookings');
@@ -804,13 +867,39 @@ function RentalAppContent() {
             onOpenVendorDetail={(vendor) => { setDetailVendorId(vendor.id); setCurrentView('vendor-detail'); }}
           />
         ) : currentView === 'damages' ? (
-          <DamagesView isDarkMode={isDarkMode} vehicleId={selectedVehicle?.id} />
+          <DamagesView
+            isDarkMode={isDarkMode}
+            vehicleId={selectedVehicle?.id}
+            onOpenVehicleTasks={(taskId) => {
+              if (taskId) setHighlightedVehicleTaskId(taskId);
+              setCurrentView('vehicle-tasks');
+            }}
+          />
         ) : currentView === 'documents' ? (
           <DocumentsView vehicle={selectedVehicle} />
         ) : currentView === 'vehicle-bookings' ? (
-          <VehicleBookingsView isDarkMode={isDarkMode} vehicle={selectedVehicle} />
+          <VehicleBookingsView
+            isDarkMode={isDarkMode}
+            vehicle={selectedVehicle}
+            onCreateBooking={() => setCurrentView('new-booking')}
+            onOpenBooking={(bookingId) => {
+              setPendingBookingDetailId(bookingId);
+              setCurrentView('bookings');
+            }}
+            onOpenVehicleTasks={() => setCurrentView('vehicle-tasks')}
+          />
         ) : currentView === 'vehicle-tasks' ? (
-          <VehicleTasksView isDarkMode={isDarkMode} vehicle={selectedVehicle} />
+          <VehicleTasksView
+            isDarkMode={isDarkMode}
+            vehicle={selectedVehicle}
+            highlightTaskId={highlightedVehicleTaskId}
+            onHighlightConsumed={() => setHighlightedVehicleTaskId(null)}
+            tasksRefreshToken={vehicleTasksRefreshToken}
+            onOpenInGlobalTasks={(taskId) => {
+              setHighlightedTaskId(taskId);
+              handleViewChange('tasks');
+            }}
+          />
         ) : currentView === 'customers' ? (
           <CustomersView onOpenCustomerDetail={(c) => { setDetailCustomer(c); setCurrentView('customer-detail'); }} additionalCustomers={newlyCreatedCustomers} />
         ) : currentView === 'customer-detail' && detailCustomer ? (
@@ -914,24 +1003,27 @@ function RentalAppContent() {
                 <Icon name="alert-triangle" className="w-5 h-5" />
               </div>
               <h3 className="text-base font-semibold text-foreground font-display">
-                Cleaning Task Required
+                Reinigungsaufgabe anlegen
               </h3>
             </div>
             <p className="mb-5 text-sm text-muted-foreground">
-              Setting the vehicle status to "Needs Cleaning" will automatically create a cleaning task. The vehicle will be marked as unavailable until the cleaning is completed.
+              Der Reinigungsstatus wird auf „Needs Cleaning“ gesetzt und eine echte Reinigungsaufgabe
+              für dieses Fahrzeug erstellt — sofern noch keine offene Aufgabe existiert.
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => setShowCleaningWarning(false)}
-                className="flex-1 px-3 py-2 rounded-md font-medium transition-all duration-200 bg-muted text-foreground hover:bg-accent border border-border sq-press"
+                disabled={cleaningStatusBusy}
+                className="flex-1 px-3 py-2 rounded-md font-medium transition-all duration-200 bg-muted text-foreground hover:bg-accent border border-border sq-press disabled:opacity-60"
               >
-                Cancel
+                Abbrechen
               </button>
               <button
                 onClick={confirmCleaningChange}
-                className="flex-1 px-3 py-2 rounded-md font-semibold text-white transition-all duration-200 shadow-sm sq-press bg-[color:var(--status-watch)] hover:opacity-90"
+                disabled={cleaningStatusBusy}
+                className="flex-1 px-3 py-2 rounded-md font-semibold text-white transition-all duration-200 shadow-sm sq-press bg-[color:var(--status-watch)] hover:opacity-90 disabled:opacity-60"
               >
-                Create Task
+                {cleaningStatusBusy ? 'Wird gespeichert…' : 'Bestätigen'}
               </button>
             </div>
           </div>

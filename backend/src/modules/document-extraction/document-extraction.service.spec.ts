@@ -85,6 +85,23 @@ describe('DocumentExtractionService', () => {
     });
   });
 
+  describe('toPublicExtraction', () => {
+    it('strips storage keys and URLs from API responses', () => {
+      const { svc } = makeService();
+      const publicRow = svc.toPublicExtraction({
+        id: 'e1',
+        objectKey: 'private/key.pdf',
+        sourceFileUrl: 'https://bucket.example.com/secret.pdf',
+        storageProvider: 's3',
+        status: 'APPLIED',
+      });
+      expect(publicRow).not.toHaveProperty('objectKey');
+      expect(publicRow).not.toHaveProperty('sourceFileUrl');
+      expect(publicRow).not.toHaveProperty('storageProvider');
+      expect(publicRow.hasStoredFile).toBe(true);
+    });
+  });
+
   describe('getForVehicle (cross-vehicle IDOR guard)', () => {
     it('throws NotFound when the extraction belongs to a different vehicle', async () => {
       const { svc } = makeService({

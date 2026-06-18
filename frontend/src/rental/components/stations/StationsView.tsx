@@ -439,6 +439,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
         open={formOpen}
         station={editing}
         saving={saving}
+        orgId={orgId}
         onClose={() => setFormOpen(false)}
         onSubmit={handleSave}
       />

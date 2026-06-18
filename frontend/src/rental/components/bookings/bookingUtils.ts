@@ -120,3 +120,28 @@ export function formatCents(cents: number | null | undefined, currency = 'EUR'):
     maximumFractionDigits: 0,
   }).format(cents / 100);
 }
+
+/** Normalizes paginated or legacy array booking list API responses. */
+export function unwrapBookingListResponse(res: unknown): unknown[] {
+  if (Array.isArray(res)) return res;
+  if (res && typeof res === 'object') {
+    const record = res as { data?: unknown; items?: unknown };
+    if (Array.isArray(record.data)) return record.data;
+    if (Array.isArray(record.items)) return record.items;
+  }
+  return [];
+}
+
+export interface BookingListMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export function unwrapBookingListMeta(res: unknown): BookingListMeta | null {
+  if (!res || typeof res !== 'object' || Array.isArray(res)) return null;
+  const meta = (res as { meta?: BookingListMeta }).meta;
+  if (!meta || typeof meta.total !== 'number') return null;
+  return meta;
+}

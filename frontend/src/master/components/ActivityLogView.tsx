@@ -6,7 +6,6 @@ import {
   CreditCard,
   Cpu,
   LifeBuoy,
-  Loader2,
   MapPin,
   Package,
   Plug,
@@ -18,10 +17,22 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  PageHeader,
+  DataCard,
+  MetricCard,
+  StatusChip,
+  EmptyState,
+  ErrorState,
+  SkeletonRows,
+  activityActionTone,
+} from '../../components/patterns';
+import { Button } from '../../components/ui/button';
 import { api } from '../../lib/api';
 
 export interface ActivityLogViewProps {
-  isDarkMode: boolean;
+  /** @deprecated Theme is token-driven via CSS variables — prop kept for App.tsx compat. */
+  isDarkMode?: boolean;
 }
 
 export interface ActivityLogEntry {
@@ -78,35 +89,23 @@ const ACTION_OPTIONS = [
   ['CANCEL', 'Cancel'],
 ] as const;
 
-const ENTITY_UI: Record<string, { Icon: LucideIcon; L: string; D: string }> = {
-  ORGANIZATION: { Icon: Building2, L: 'text-blue-600 bg-blue-50', D: 'text-blue-400 bg-blue-500/15' },
-  USER: { Icon: Users, L: 'text-purple-600 bg-purple-50', D: 'text-purple-400 bg-purple-500/15' },
-  VEHICLE: { Icon: Car, L: 'text-indigo-600 bg-indigo-50', D: 'text-indigo-400 bg-indigo-500/15' },
-  BOOKING: { Icon: Calendar, L: 'text-amber-600 bg-amber-50', D: 'text-amber-400 bg-amber-500/15' },
-  CUSTOMER: { Icon: UserCircle, L: 'text-cyan-600 bg-cyan-50', D: 'text-cyan-400 bg-cyan-500/15' },
-  PROSPECT: { Icon: UserPlus, L: 'text-fuchsia-600 bg-fuchsia-50', D: 'text-fuchsia-400 bg-fuchsia-500/15' },
-  INTEGRATION: { Icon: Plug, L: 'text-teal-600 bg-teal-50', D: 'text-teal-400 bg-teal-500/15' },
-  SUBSCRIPTION: { Icon: CreditCard, L: 'text-emerald-600 bg-emerald-50', D: 'text-emerald-400 bg-emerald-500/15' },
-  STATION: { Icon: MapPin, L: 'text-orange-600 bg-orange-50', D: 'text-orange-400 bg-orange-500/15' },
-  PRODUCT: { Icon: Package, L: 'text-slate-600 bg-slate-100', D: 'text-slate-300 bg-slate-500/15' },
-  DIMO_VEHICLE: { Icon: Cpu, L: 'text-violet-600 bg-violet-50', D: 'text-violet-400 bg-violet-500/15' },
-  SUPPORT_TICKET: { Icon: LifeBuoy, L: 'text-rose-600 bg-rose-50', D: 'text-rose-400 bg-rose-500/15' },
+const ENTITY_ICONS: Record<string, LucideIcon> = {
+  ORGANIZATION: Building2,
+  USER: Users,
+  VEHICLE: Car,
+  BOOKING: Calendar,
+  CUSTOMER: UserCircle,
+  PROSPECT: UserPlus,
+  INTEGRATION: Plug,
+  SUBSCRIPTION: CreditCard,
+  STATION: MapPin,
+  PRODUCT: Package,
+  DIMO_VEHICLE: Cpu,
+  SUPPORT_TICKET: LifeBuoy,
 };
 
-const ACTION_BADGE: Record<string, { L: string; D: string }> = {
-  CREATE: { L: 'bg-emerald-50 text-emerald-800 border-emerald-200', D: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
-  UPDATE: { L: 'bg-blue-50 text-blue-800 border-blue-200', D: 'bg-blue-500/15 text-blue-300 border-blue-500/30' },
-  DELETE: { L: 'bg-red-50 text-red-800 border-red-200', D: 'bg-red-500/15 text-red-300 border-red-500/30' },
-  LOGIN: { L: 'bg-purple-50 text-purple-800 border-purple-200', D: 'bg-purple-500/15 text-purple-300 border-purple-500/30' },
-  LOGOUT: { L: 'bg-slate-100 text-slate-800 border-slate-200', D: 'bg-slate-500/15 text-slate-300 border-slate-500/30' },
-  CONNECT: { L: 'bg-teal-50 text-teal-800 border-teal-200', D: 'bg-teal-500/15 text-teal-300 border-teal-500/30' },
-  DISCONNECT: { L: 'bg-orange-50 text-orange-800 border-orange-200', D: 'bg-orange-500/15 text-orange-300 border-orange-500/30' },
-  REGISTER: { L: 'bg-green-50 text-green-800 border-green-200', D: 'bg-green-500/15 text-green-300 border-green-500/30' },
-  IMPORT: { L: 'bg-cyan-50 text-cyan-800 border-cyan-200', D: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30' },
-  CONVERT: { L: 'bg-amber-50 text-amber-900 border-amber-200', D: 'bg-amber-500/15 text-amber-200 border-amber-500/30' },
-  SYNC: { L: 'bg-indigo-50 text-indigo-800 border-indigo-200', D: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' },
-  CANCEL: { L: 'bg-rose-50 text-rose-800 border-rose-200', D: 'bg-rose-500/15 text-rose-300 border-rose-500/30' },
-};
+const INPUT =
+  'px-3 py-2 rounded-lg border text-sm font-medium bg-muted/50 border-border text-foreground outline-none focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--ring)]';
 
 function formatRelativeTime(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -139,18 +138,12 @@ function pageList(cur: number, total: number): (number | '…')[] {
   return out;
 }
 
-function entityRow(entity: string) {
-  const key = (entity || '').toUpperCase();
-  return ENTITY_UI[key] ?? { Icon: Activity, L: 'text-gray-600 bg-gray-100', D: 'text-gray-400 bg-neutral-500/15' };
+function entityIcon(entity: string): LucideIcon {
+  return ENTITY_ICONS[(entity || '').toUpperCase()] ?? Activity;
 }
 
-function badgeClass(isDark: boolean, action: string): string {
-  const a = (action || '').toUpperCase();
-  const pair = ACTION_BADGE[a] ?? { L: 'bg-gray-100 text-gray-800 border-gray-200', D: 'bg-neutral-500/15 text-gray-300 border-neutral-600/40' };
-  return `inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${isDark ? pair.D : pair.L}`;
-}
-
-export function ActivityLogView({ isDarkMode }: ActivityLogViewProps) {
+export function ActivityLogView(_props: ActivityLogViewProps) {
+  void _props;
   const [page, setPage] = useState(1);
   const [entity, setEntity] = useState('');
   const [action, setAction] = useState('');
@@ -196,32 +189,63 @@ export function ActivityLogView({ isDarkMode }: ActivityLogViewProps) {
     return rows.filter((r) => (r.description ?? '').toLowerCase().includes(q));
   }, [rows, searchQuery]);
 
-  const card = 'bg-card border border-border rounded-lg shadow-xs';
-  const field = 'px-3 py-2 rounded-md border text-sm font-semibold bg-muted border-border text-foreground';
   const totalPages = meta?.totalPages ?? 1;
   const pages = pageList(page, totalPages);
   const emptyApi = !loading && !error && rows.length === 0;
   const emptySearch = !loading && !error && rows.length > 0 && filteredRows.length === 0;
 
   return (
-    <div className="space-y-4 pb-6">
-      <div>
-        <h1 className="text-lg font-semibold tracking-tight text-foreground">Activity Log</h1>
-        <p className="text-sm mt-1 font-medium text-muted-foreground">
-          Platform-wide audit trail and administrative events
-        </p>
-      </div>
+    <div className="space-y-5 pb-8">
+      <PageHeader
+        title="Activity Log"
+        eyebrow="Master Admin"
+        description="Platform-wide audit trail and administrative events"
+        icon={<Activity className="w-4 h-4" />}
+        actions={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void load()}
+            disabled={loading}
+            className="gap-2"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        }
+        meta={
+          meta ? (
+            <>
+              <span>{meta.total.toLocaleString()} total events</span>
+              <span className="text-border">·</span>
+              <span>
+                Page {meta.page} of {totalPages}
+              </span>
+            </>
+          ) : undefined
+        }
+      />
 
-      <div className={`${card} p-4`}>
-        <div className="flex flex-col lg:flex-row gap-3 flex-wrap">
-          <div className="flex items-center gap-2 flex-1 px-3 py-2 rounded-md border min-w-[200px] bg-muted border-border">
-            <Search className={`w-4 h-4 shrink-0 text-muted-foreground`} />
+      {meta && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <MetricCard label="Total events" value={meta.total.toLocaleString()} status="info" />
+          <MetricCard label="This page" value={filteredRows.length} status="neutral" />
+          <MetricCard label="Page size" value={meta.limit} status="neutral" />
+          <MetricCard label="Pages" value={totalPages} status="neutral" />
+        </div>
+      )}
+
+      <DataCard title="Filters" flush>
+        <div className="p-4 flex flex-col lg:flex-row gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-1 px-3 py-2 rounded-lg border min-w-[200px] bg-muted/50 border-border">
+            <Search className="w-4 h-4 shrink-0 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search description…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`flex-1 bg-transparent outline-none text-sm font-medium text-foreground placeholder:text-muted-foreground`}
+              className="flex-1 bg-transparent outline-none text-sm font-medium text-foreground placeholder:text-muted-foreground"
             />
           </div>
           <select
@@ -230,7 +254,7 @@ export function ActivityLogView({ isDarkMode }: ActivityLogViewProps) {
               setEntity(e.target.value);
               setPage(1);
             }}
-            className={`${field} appearance-none cursor-pointer min-w-[150px]`}
+            className={`${INPUT} appearance-none cursor-pointer min-w-[150px]`}
             aria-label="Filter by entity"
           >
             {ENTITY_OPTIONS.map(([v, l]) => (
@@ -245,7 +269,7 @@ export function ActivityLogView({ isDarkMode }: ActivityLogViewProps) {
               setAction(e.target.value);
               setPage(1);
             }}
-            className={`${field} appearance-none cursor-pointer min-w-[140px]`}
+            className={`${INPUT} appearance-none cursor-pointer min-w-[140px]`}
             aria-label="Filter by action"
           >
             {ACTION_OPTIONS.map(([v, l]) => (
@@ -254,65 +278,80 @@ export function ActivityLogView({ isDarkMode }: ActivityLogViewProps) {
               </option>
             ))}
           </select>
-          <button
-            type="button"
-            onClick={() => void load()}
-            disabled={loading}
-            className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md border text-sm font-semibold disabled:opacity-50 bg-muted border-border text-foreground hover:bg-muted/80"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
         </div>
-      </div>
+      </DataCard>
 
-      <div className={`${card} overflow-hidden relative min-h-[200px]`}>
-        {loading && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-card/70">
-            <Loader2 className={`w-8 h-8 animate-spin text-muted-foreground`} />
-            <span className="text-sm font-medium text-muted-foreground">Loading activity…</span>
-          </div>
+      <DataCard flush bodyClassName="relative min-h-[200px]">
+        {loading && <SkeletonRows rows={8} />}
+        {error && (
+          <ErrorState error={error} onRetry={() => void load()} compact />
         )}
-        {error && <div className="px-6 py-8 text-center text-sm text-destructive">{error}</div>}
-        {emptyApi && <div className={`px-6 py-16 text-center text-sm font-medium text-muted-foreground`}>No activity found</div>}
-        {emptySearch && <div className={`px-6 py-16 text-center text-sm font-medium text-muted-foreground`}>No activity matches your search</div>}
+        {emptyApi && (
+          <EmptyState
+            icon={<Activity className="w-5 h-5" />}
+            title="No activity found"
+            description="Try adjusting your filters or check back later."
+            compact
+          />
+        )}
+        {emptySearch && (
+          <EmptyState
+            icon={<Search className="w-5 h-5" />}
+            title="No matches"
+            description="No activity matches your search on this page."
+            compact
+          />
+        )}
         {!loading && !error && filteredRows.length > 0 && (
           <div className="divide-y divide-border">
             {filteredRows.map((entry) => {
-              const { Icon, L, D } = entityRow(entry.entity);
-              const shell = isDarkMode ? D : L;
-              const iconTint = shell.split(' ')[0];
+              const Icon = entityIcon(entry.entity);
               const label = String(entry.action ?? '').replace(/_/g, ' ');
+              const tone = activityActionTone(entry.action);
               return (
-                <div key={entry.id} className="flex items-start gap-4 px-5 py-2.5 hover:bg-muted/50">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${shell}`}>
-                    <Icon className={`w-4 h-4 ${iconTint}`} />
+                <div
+                  key={entry.id}
+                  className="flex items-start gap-4 px-4 py-3 hover:bg-muted/40 transition-colors"
+                >
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 sq-tone-brand">
+                    <Icon className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-start gap-2 justify-between">
                       <div className="flex flex-wrap items-center gap-2 min-w-0">
-                        <span className={badgeClass(isDarkMode, String(entry.action))}>{label}</span>
-                        <p className={`text-sm font-semibold break-words text-foreground`}>{entry.description}</p>
+                        <StatusChip tone={tone} dot>
+                          {label}
+                        </StatusChip>
+                        <p className="text-sm font-semibold break-words text-foreground">
+                          {entry.description}
+                        </p>
                       </div>
-                      <span className={`text-xs whitespace-nowrap shrink-0 text-muted-foreground`} title={entry.createdAt ? new Date(entry.createdAt).toLocaleString() : undefined}>
+                      <span
+                        className="text-xs whitespace-nowrap shrink-0 text-muted-foreground tabular-nums"
+                        title={entry.createdAt ? new Date(entry.createdAt).toLocaleString() : undefined}
+                      >
                         {formatRelativeTime(entry.createdAt)}
                       </span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
                       {entry.userName ? (
-                        <span className="text-muted-foreground">
-                          <span className="text-muted-foreground/70">User </span>
+                        <span>
+                          <span className="opacity-70">User </span>
                           <span className="font-medium text-foreground">{entry.userName}</span>
                         </span>
                       ) : null}
-                      {entry.userName && entry.organizationName ? <span className="text-muted-foreground/50">·</span> : null}
+                      {entry.userName && entry.organizationName ? (
+                        <span className="opacity-40">·</span>
+                      ) : null}
                       {entry.organizationName ? (
                         <span className="flex items-center gap-1 min-w-0">
-                          <Building2 className="w-3 h-3 shrink-0 text-muted-foreground" />
-                          <span className="truncate text-muted-foreground">{entry.organizationName}</span>
+                          <Building2 className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{entry.organizationName}</span>
                         </span>
                       ) : null}
-                      {!entry.userName && !entry.organizationName ? <span className="text-muted-foreground">System</span> : null}
+                      {!entry.userName && !entry.organizationName ? (
+                        <span>System</span>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -320,35 +359,53 @@ export function ActivityLogView({ isDarkMode }: ActivityLogViewProps) {
             })}
           </div>
         )}
-      </div>
+      </DataCard>
 
       {!loading && !error && meta && totalPages > 1 && (
-        <div className={`${card} px-4 py-3 flex flex-wrap items-center justify-between gap-3`}>
-          <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className={`px-3 py-2 rounded-xl text-sm font-bold border disabled:opacity-40 ${isDarkMode ? 'border-neutral-700/50 text-gray-200 hover:bg-neutral-800/50' : 'border-gray-200/80 text-gray-800 hover:bg-gray-50'}`}>
-            Previous
-          </button>
-          <div className="flex flex-wrap justify-center gap-1">
-            {pages.map((item, idx) =>
-              item === '…' ? (
-                <span key={idx} className={`px-2 text-sm text-muted-foreground`}>
-                  …
-                </span>
-              ) : (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setPage(item)}
-                  className={`min-w-[2.25rem] px-2 py-2 rounded-lg text-sm font-semibold border ${item === page ? 'bg-primary text-primary-foreground border-primary' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}
-                >
-                  {item}
-                </button>
-              ),
-            )}
+        <DataCard flush>
+          <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Previous
+            </Button>
+            <div className="flex flex-wrap justify-center gap-1">
+              {pages.map((item, idx) =>
+                item === '…' ? (
+                  <span key={idx} className="px-2 text-sm text-muted-foreground">
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setPage(item)}
+                    className={`min-w-[2.25rem] px-2 py-1.5 rounded-lg text-sm font-semibold border transition-colors ${
+                      item === page
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'border-transparent text-muted-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    {item}
+                  </button>
+                ),
+              )}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Next
+            </Button>
           </div>
-          <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="px-3 py-2 rounded-lg text-sm font-semibold border border-border disabled:opacity-40 text-foreground hover:bg-muted/50">
-            Next
-          </button>
-        </div>
+        </DataCard>
       )}
     </div>
   );

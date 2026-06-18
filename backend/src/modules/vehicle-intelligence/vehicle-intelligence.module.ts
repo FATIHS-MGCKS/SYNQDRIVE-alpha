@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { VehicleIntelligenceController } from './vehicle-intelligence.controller';
+import { DamagesOrgController } from './damages/damages-org.controller';
 import { BatteryService } from './battery/battery.service';
 import { TiresService } from './tires/tires.service';
 import { TireWearModelService } from './tires/tire-wear-model.service';
@@ -44,6 +45,7 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
 import { DashboardWarningLightsService } from './dashboard-warning-lights/dashboard-warning-lights.service';
 import { ServiceComplianceService } from './service-compliance/service-compliance.service';
 import { ComplianceTaskMaterializeService } from './service-compliance/compliance-task-materialize.service';
+import { VehicleFileSummaryService } from './vehicle-file/vehicle-file-summary.service';
 import { TasksModule } from '../tasks/tasks.module';
 import { DrivingImpactService } from './driving-impact/driving-impact.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
@@ -83,7 +85,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
       { name: QUEUE_NAMES.DTC_KNOWLEDGE_ENRICHMENT },
     ),
   ],
-  controllers: [VehicleIntelligenceController],
+  controllers: [VehicleIntelligenceController, DamagesOrgController],
   providers: [
     BatteryService,
     TiresService,
@@ -130,6 +132,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     DashboardWarningLightsService,
     ServiceComplianceService,
     ComplianceTaskMaterializeService,
+    VehicleFileSummaryService,
     DrivingImpactService,
     EnergyEventsService,
     // ── New refactored providers ──

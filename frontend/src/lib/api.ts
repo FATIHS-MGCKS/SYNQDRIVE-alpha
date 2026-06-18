@@ -1,4 +1,32 @@
 import { getToken, clearAuth } from './auth';
+import type {
+  AddDamageImageInput,
+  CreateVehicleDamageInput,
+  DamageResponse,
+  DamageStatsResponse,
+  FleetDamageStatsResponse,
+  MarkDamageRepairedInput,
+  PlaceDamageOnVehicleInput,
+  UpdateVehicleDamageInput,
+} from '../rental/lib/damage.types';
+
+export type {
+  AddDamageImageInput,
+  CreateVehicleDamageInput,
+  DamageEvidenceStatus,
+  DamageImageResponse,
+  DamageLocationView,
+  DamageRentalImpact,
+  DamageResponse,
+  DamageSeverity,
+  DamageSource,
+  DamageStatsResponse,
+  DamageStatus,
+  FleetDamageStatsResponse,
+  MarkDamageRepairedInput,
+  PlaceDamageOnVehicleInput,
+  UpdateVehicleDamageInput,
+} from '../rental/lib/damage.types';
 
 const BASE_URL = '/api/v1';
 
@@ -533,6 +561,7 @@ export interface ApiTask {
   estimatedCostCents: number | null;
   actualCostCents: number | null;
   resolutionNote: string | null;
+  blocksVehicleAvailability: boolean;
   metadata: Record<string, unknown> | null;
   isOverdue: boolean;
   dueDate: string | null;
@@ -594,6 +623,8 @@ export interface CreateTaskPayload {
   documentId?: string;
   stationId?: string;
   estimatedCostCents?: number;
+  blocksVehicleAvailability?: boolean;
+  metadata?: Record<string, unknown>;
   checklist?: Array<{ title: string; description?: string; sortOrder?: number }>;
 }
 
@@ -706,6 +737,19 @@ export type BookingStationContext = {
   latitude: number | null;
   longitude: number | null;
 };
+
+/** Query params for `GET /organizations/:orgId/bookings` (all optional, backward-compatible). */
+export interface BookingsListParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  vehicleId?: string;
+  customerId?: string;
+  stationId?: string;
+  from?: string;
+  to?: string;
+  search?: string;
+}
 
 export type BookingDetailDto = {
   core: {
@@ -1736,6 +1780,19 @@ export const api = {
       post<VehicleComplaint>(`/organizations/${orgId}/vehicles/${vehicleId}/complaints`, body),
     registerFromDimo: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/vehicles/register-from-dimo`, data),
     deregister: (vehicleId: string) => post<{ success: boolean; deregisteredVehicle: any }>(`/admin/vehicles/${vehicleId}/deregister`, {}),
+    updateOperationalStatus: (
+      orgId: string,
+      vehicleId: string,
+      data: { cleaningStatus?: 'CLEAN' | 'NEEDS_CLEANING'; status?: string; healthStatus?: string },
+    ) =>
+      patch<{
+        vehicle: Record<string, unknown>;
+        cleaningTask?: {
+          action: 'created' | 'existing' | 'updated' | 'completed' | 'none';
+          taskId?: string;
+          completedCount?: number;
+        };
+      }>(`/organizations/${orgId}/vehicles/${vehicleId}/status`, data),
     getAiSpecs: (params?: { vin?: string; tokenId?: string; dimoVehicleId?: string; make?: string; model?: string; year?: string }) =>
       get<AiSpecsResponse>('/vehicles/register/ai-specs' + buildQuery(params ?? {})),
 
@@ -1860,17 +1917,7 @@ export const api = {
   bookings: {
     list: (
       orgId: string,
-      params?: {
-        page?: number;
-        limit?: number;
-        status?: string;
-        vehicleId?: string;
-        customerId?: string;
-        stationId?: string;
-        from?: string;
-        to?: string;
-        search?: string;
-      },
+      params?: BookingsListParams,
     ) => {
       const q = new URLSearchParams();
       if (params?.page != null) q.set('page', String(params.page));
@@ -2489,6 +2536,11 @@ export const api = {
       return res.json() as Promise<{ url: string }>;
     },
   },
+  damages: {
+    /** Org-scoped fleet damage analytics (for Fleet/Reports surfaces). */
+    fleetStats: (orgId: string) =>
+      get<FleetDamageStatsResponse>(`/organizations/${orgId}/damages/stats`),
+  },
   tasks: {
     list: (orgId: string, filters?: TaskListFilters) => {
       const q = new URLSearchParams();
@@ -2506,7 +2558,7 @@ export const api = {
     update: (
       orgId: string,
       id: string,
-      data: Partial<Pick<CreateTaskPayload, 'title' | 'description' | 'category' | 'priority' | 'dueDate' | 'assignedUserId' | 'estimatedCostCents'>> & { actualCostCents?: number },
+      data: Partial<Pick<CreateTaskPayload, 'title' | 'description' | 'category' | 'priority' | 'dueDate' | 'assignedUserId' | 'estimatedCostCents' | 'blocksVehicleAvailability'>> & { actualCostCents?: number },
     ) => patch<ApiTask>(`/organizations/${orgId}/tasks/${id}`, data),
     assign: (orgId: string, id: string, assignedUserId: string | null) =>
       patch<ApiTask>(`/organizations/${orgId}/tasks/${id}/assign`, { assignedUserId }),
@@ -2796,12 +2848,42 @@ export const api = {
       ),
     enrichTripBehavior: (vehicleId: string, tripId: string) =>
       post<any>(`/vehicles/${vehicleId}/trips/${tripId}/behavior-enrich`, {}),
-    damages: (vehicleId: string) => get<any[]>(`/vehicles/${vehicleId}/damages`),
-    damagesActive: (vehicleId: string) => get<any[]>(`/vehicles/${vehicleId}/damages/active`),
-    damageStats: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/damages/stats`),
-    createDamage: (vehicleId: string, data: any) => post<any>(`/vehicles/${vehicleId}/damages`, data),
-    repairDamage: (vehicleId: string, damageId: string) => patch<any>(`/vehicles/${vehicleId}/damages/${damageId}/repair`, {}),
-    addDamageImage: (vehicleId: string, damageId: string, data: any) => post<any>(`/vehicles/${vehicleId}/damages/${damageId}/images`, data),
+    getVehicleDamages: (vehicleId: string) =>
+      get<DamageResponse[]>(`/vehicles/${vehicleId}/damages`),
+    getVehicleDamagesActive: (vehicleId: string) =>
+      get<DamageResponse[]>(`/vehicles/${vehicleId}/damages/active`),
+    getDamageStats: (vehicleId: string) =>
+      get<DamageStatsResponse>(`/vehicles/${vehicleId}/damages/stats`),
+    createVehicleDamage: (vehicleId: string, data: CreateVehicleDamageInput) =>
+      post<DamageResponse>(`/vehicles/${vehicleId}/damages`, data),
+    analyzeExteriorPhotosForDamage: (
+      vehicleId: string,
+      images: Array<{ view: string; imageData: string; fileName?: string }>,
+    ) =>
+      post<{ suggestions: unknown[]; warning: string }>(
+        `/vehicles/${vehicleId}/damages/ai-analyze-exterior`,
+        { images },
+      ),
+    updateVehicleDamage: (vehicleId: string, damageId: string, data: UpdateVehicleDamageInput) =>
+      patch<DamageResponse>(`/vehicles/${vehicleId}/damages/${damageId}`, data),
+    placeVehicleDamage: (vehicleId: string, damageId: string, data: PlaceDamageOnVehicleInput) =>
+      patch<DamageResponse>(`/vehicles/${vehicleId}/damages/${damageId}/place`, data),
+    markDamageRepaired: (vehicleId: string, damageId: string, data: MarkDamageRepairedInput = {}) =>
+      patch<DamageResponse>(`/vehicles/${vehicleId}/damages/${damageId}/repair`, data),
+    addDamageImage: (vehicleId: string, damageId: string, data: AddDamageImageInput) =>
+      post<DamageResponse>(`/vehicles/${vehicleId}/damages/${damageId}/images`, data),
+    /** @deprecated Use getVehicleDamages */
+    damages: (vehicleId: string) => get<DamageResponse[]>(`/vehicles/${vehicleId}/damages`),
+    /** @deprecated Use getVehicleDamagesActive */
+    damagesActive: (vehicleId: string) => get<DamageResponse[]>(`/vehicles/${vehicleId}/damages/active`),
+    /** @deprecated Use getDamageStats */
+    damageStats: (vehicleId: string) => get<DamageStatsResponse>(`/vehicles/${vehicleId}/damages/stats`),
+    /** @deprecated Use createVehicleDamage */
+    createDamage: (vehicleId: string, data: CreateVehicleDamageInput) =>
+      post<DamageResponse>(`/vehicles/${vehicleId}/damages`, data),
+    /** @deprecated Use markDamageRepaired */
+    repairDamage: (vehicleId: string, damageId: string, data: MarkDamageRepairedInput = {}) =>
+      patch<DamageResponse>(`/vehicles/${vehicleId}/damages/${damageId}/repair`, data),
     batteryHealth: (vehicleId: string) => get<any[]>(`/vehicles/${vehicleId}/battery-health`),
     batteryHealthLatest: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/battery-health/latest`),
     batteryHealthTrend: (vehicleId: string, days?: number) =>
@@ -2823,6 +2905,10 @@ export const api = {
     createOilChangeEvent: (vehicleId: string, data: any) => post<any>(`/vehicles/${vehicleId}/service-events`, { ...data, eventType: 'OIL_CHANGE' }),
     hvBatteryStatus: (vehicleId: string) => get<HvBatteryStatus>(`/vehicles/${vehicleId}/hv-battery-status`),
     serviceInfoStatus: (vehicleId: string) => get<ServiceInfoStatus>(`/vehicles/${vehicleId}/service-info-status`),
+    vehicleFileSummary: (vehicleId: string) =>
+      get<import('../rental/lib/vehicle-file-summary.types').VehicleFileSummary>(
+        `/vehicles/${vehicleId}/file-summary`,
+      ),
     materializeComplianceTask: (vehicleId: string, signalKey: string) =>
       post<ApiTask>(`/vehicles/${vehicleId}/compliance-task-signals/${encodeURIComponent(signalKey)}/materialize`, {}),
     // Phase 3: AI Health Care with HM indicators
@@ -4357,6 +4443,10 @@ export interface DataAuthorizationDto {
   expiresAt: string | null;
   notes: string | null;
   scopeNote: string | null;
+  /** Defensive scope-usability signal (e.g. NO_ACTIVE_VEHICLES, ACTIVE, PENDING, REVOKED, EXPIRED). */
+  scopeStatus?: string | null;
+  /** False when the authorization has no currently usable scope (e.g. 0 connected DIMO vehicles). */
+  hasActiveScope?: boolean;
   lastSyncedAt: string;
   createdAt: string;
   updatedAt: string;

@@ -22,10 +22,12 @@ import {
   toIso,
 } from './rental-health.types';
 
+export type RentalHealthGateStatus = 'OK' | 'BLOCKED' | 'UNAVAILABLE' | 'UNKNOWN';
+
 export interface RentalHealthGateResult {
   blocked: boolean;
   reasons: string[];
-  healthGateStatus: 'OK' | 'BLOCKED' | 'UNAVAILABLE';
+  healthGateStatus: RentalHealthGateStatus;
   healthGateWarning: string | null;
   manualReviewRequired: boolean;
 }

@@ -30,6 +30,11 @@ import {
   FuelType,
 } from '@prisma/client';
 import { FleetConnectivityQueryDto } from './dto/fleet-connectivity-query.dto';
+import { VehicleCleaningTaskService } from '../tasks/vehicle-cleaning-task.service';
+
+interface VehicleStatusAuthRequest {
+  user?: { id?: string };
+}
 
 type VehicleExteriorView = 'FRONT' | 'LEFT' | 'RIGHT' | 'REAR' | 'ROOF';
 
@@ -58,6 +63,7 @@ export class VehiclesController {
   constructor(
     private readonly vehiclesService: VehiclesService,
     private readonly exteriorImagesService: VehicleExteriorImagesService,
+    private readonly vehicleCleaningTasks: VehicleCleaningTaskService,
   ) {}
 
   // ── Admin (platform-wide) ─────────────────────────────────────────
@@ -243,6 +249,7 @@ export class VehiclesController {
   async updateVehicleStatus(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
+    @Req() req: VehicleStatusAuthRequest,
     @Body()
     body: {
       status?: VehicleStatus;
@@ -261,7 +268,24 @@ export class VehiclesController {
     }
     if (body.cleaningStatus) data.cleaningStatus = body.cleaningStatus;
     if (body.healthStatus) data.healthStatus = body.healthStatus;
-    return this.vehiclesService.update(vehicleId, data, orgId);
+
+    const vehicle = await this.vehiclesService.update(vehicleId, data, orgId);
+
+    let cleaningTask: Awaited<
+      ReturnType<VehicleCleaningTaskService['ensureCleaningTask']>
+    > | null = null;
+
+    if (body.cleaningStatus === 'NEEDS_CLEANING') {
+      cleaningTask = await this.vehicleCleaningTasks.ensureCleaningTask(orgId, vehicleId);
+    } else if (body.cleaningStatus === 'CLEAN') {
+      cleaningTask = await this.vehicleCleaningTasks.completeOpenCleaningTasks(
+        orgId,
+        vehicleId,
+        req.user?.id,
+      );
+    }
+
+    return { vehicle, cleaningTask };
   }
 
   @Get('organizations/:orgId/fleet-connectivity')

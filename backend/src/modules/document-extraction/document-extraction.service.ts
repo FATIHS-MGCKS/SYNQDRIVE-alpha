@@ -145,24 +145,44 @@ export class DocumentExtractionService {
 
   // ── reads (vehicle-scoped) ──────────────────────────────────────────────
 
-  listForVehicle(vehicleId: string) {
-    return this.prisma.vehicleDocumentExtraction.findMany({
-      where: { vehicleId },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
-  }
-
+  /** Internal — full record including storage keys (never expose via HTTP). */
   async getForVehicle(vehicleId: string, extractionId: string) {
     const record = await this.prisma.vehicleDocumentExtraction.findUnique({
       where: { id: extractionId },
     });
-    // Cross-vehicle IDOR guard — VehicleOwnershipGuard only validates the path
-    // vehicleId; the extractionId is not implicitly scoped to that vehicle.
     if (!record || record.vehicleId !== vehicleId) {
       throw new NotFoundException('Document extraction not found');
     }
     return record;
+  }
+
+  /** API-safe projection — no object keys or storage URLs. */
+  toPublicExtraction<T extends { objectKey?: string | null; sourceFileUrl?: string | null; storageProvider?: string | null }>(
+    record: T,
+  ) {
+    const { objectKey, sourceFileUrl, storageProvider, ...rest } = record;
+    return {
+      ...rest,
+      hasStoredFile: Boolean(objectKey),
+    };
+  }
+
+  async getPublicForVehicle(vehicleId: string, extractionId: string) {
+    const record = await this.getForVehicle(vehicleId, extractionId);
+    return this.toPublicExtraction(record);
+  }
+
+  async listPublicForVehicle(vehicleId: string) {
+    const rows = await this.prisma.vehicleDocumentExtraction.findMany({
+      where: { vehicleId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+    return rows.map((r) => this.toPublicExtraction(r));
+  }
+
+  listForVehicle(vehicleId: string) {
+    return this.listPublicForVehicle(vehicleId);
   }
 
   // ── retry ───────────────────────────────────────────────────────────────

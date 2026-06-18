@@ -247,3 +247,49 @@ export function prospectStatusTone(status: string): StatusTone {
 export function prospectPriorityTone(priority: string): StatusTone {
   return PRIORITY_TONE[normalizePriority(priority)] ?? 'neutral';
 }
+
+/* ── Activity log / support / subscriptions (Master Admin) ── */
+
+export function activityActionTone(action: string | null | undefined): StatusTone {
+  const s = String(action ?? '').toUpperCase().replace(/_/g, ' ').trim();
+  if (['CREATE', 'CREATED', 'REGISTER', 'CONNECT'].includes(s)) return 'success';
+  if (['UPDATE', 'UPDATED', 'LOGIN', 'LOGOUT', 'SYNC', 'IMPORT', 'CONVERT'].includes(s)) return 'info';
+  if (['DELETE', 'DELETED', 'REMOVE', 'DISCONNECT', 'CANCEL'].includes(s)) return 'critical';
+  return 'neutral';
+}
+
+/** Entity type chips use a single calm tone — no per-entity rainbow. */
+export function activityEntityTone(): StatusTone {
+  return 'neutral';
+}
+
+export function supportStatusTone(status: string | null | undefined): StatusTone {
+  const s = String(status ?? '').toLowerCase().replace(/_/g, ' ').trim();
+  if (s === 'open' || s === 'new') return 'info';
+  if (s === 'in progress' || s === 'working') return 'watch';
+  if (s === 'waiting' || s === 'pending') return 'watch';
+  if (s === 'resolved') return 'success';
+  if (s === 'closed') return 'noData';
+  if (s === 'escalated' || s === 'urgent') return 'critical';
+  if (s === 'cancelled') return 'noData';
+  return toneForStatus(status);
+}
+
+export function subscriptionStatusTone(status: string | null | undefined): StatusTone {
+  return toneForStatus(status);
+}
+
+export function paymentStatusTone(status: string | null | undefined): StatusTone {
+  const s = String(status ?? '').toLowerCase().trim();
+  if (s === 'paid') return 'success';
+  if (s === 'pending' || s === 'due soon' || s === 'trial') return 'watch';
+  if (s === 'overdue' || s === 'failed' || s === 'past due') return 'critical';
+  return toneForStatus(status);
+}
+
+export function planTone(plan: string | null | undefined): StatusTone {
+  const s = String(plan ?? '').toLowerCase().trim();
+  if (s === 'enterprise' || s === 'custom') return 'info';
+  if (s === 'business') return 'info';
+  return 'neutral';
+}

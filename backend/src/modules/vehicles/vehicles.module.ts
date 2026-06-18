@@ -8,6 +8,7 @@ import { VehicleExteriorImagesService } from './vehicle-exterior-images.service'
 import { DimoModule } from '../dimo/dimo.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 import { DataAuthorizationsModule } from '../data-authorizations/data-authorizations.module';
+import { TasksModule } from '../tasks/tasks.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { DataAuthorizationsModule } from '../data-authorizations/data-authorizat
     DimoModule,
     forwardRef(() => VehicleIntelligenceModule),
     DataAuthorizationsModule,
+    TasksModule,
   ],
   controllers: [VehiclesController],
   providers: [

@@ -68,6 +68,11 @@ const VEHICLE_STATUS_MAP: Record<VehicleStatus, string> = {
   RESERVED: 'Reserved',
 };
 
+// Rental Fleet/Dashboard status keys. Deliberately collapses BOTH IN_SERVICE
+// and OUT_OF_SERVICE into a single `Maintenance` bucket — the rental UI does
+// not distinguish "scheduled service" from "operational block" at the tab
+// level. Must stay in sync with the frontend `PRISMA_TO_FLEET_STATUS_KEY`
+// (frontend/src/rental/lib/vehicle-status.ts), which mirrors this mapping.
 const RENTAL_STATUS_MAP: Record<VehicleStatus, string> = {
   AVAILABLE: 'Available',
   RENTED: 'Active Rented',

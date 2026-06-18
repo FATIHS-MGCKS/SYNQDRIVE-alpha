@@ -5,6 +5,17 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { api } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
+import {
+  ACCEPT_ATTR,
+  DOC_TYPE_LABELS,
+  EXTRACTION_TEMPLATES,
+  buildReviewFields,
+  mapFlowStatus,
+  type FlowStatus,
+  type Plausibility,
+  type PlausibilityStatus,
+  type ReviewField,
+} from './documents/document-extraction.shared';
 
 interface DocumentUploadViewProps {
   isDarkMode: boolean;
@@ -12,194 +23,7 @@ interface DocumentUploadViewProps {
 
 interface VehicleOption { id: string; name: string; }
 
-// Field templates per SynqDrive document type. Keys are aligned 1:1 with the
-// backend document-extraction schema (and the confirm/apply contract), so the
-// values the worker extracts map straight onto these fields. Labels here are
-// the human-review labels; the worker decides the actual values.
-const EXTRACTION_TEMPLATES: Record<string, Array<{ key: string; label: string }>> = {
-  SERVICE: [
-    { key: 'eventDate', label: 'Service Date' },
-    { key: 'odometerKm', label: 'Odometer (km)' },
-    { key: 'workshopName', label: 'Workshop' },
-    { key: 'description', label: 'Description' },
-    { key: 'costCents', label: 'Cost (cents)' },
-    { key: 'invoiceNumber', label: 'Invoice number' },
-    { key: 'nextServiceDate', label: 'Next service date' },
-    { key: 'nextServiceMileageKm', label: 'Next service mileage (km)' },
-  ],
-  OIL_CHANGE: [
-    { key: 'eventDate', label: 'Oil Change Date' },
-    { key: 'odometerKm', label: 'Odometer (km)' },
-    { key: 'workshopName', label: 'Workshop' },
-    { key: 'oilType', label: 'Oil type' },
-    { key: 'quantityLiters', label: 'Quantity (liters)' },
-    { key: 'notes', label: 'Notes' },
-    { key: 'nextOilChangeDate', label: 'Next oil change date' },
-    { key: 'nextOilChangeMileageKm', label: 'Next oil change mileage (km)' },
-  ],
-  TIRE: [
-    { key: 'eventDate', label: 'Tire Change Date' },
-    { key: 'odometerKm', label: 'Odometer (km)' },
-    { key: 'workshopName', label: 'Workshop' },
-    { key: 'season', label: 'Season (summer/winter/all_season)' },
-    { key: 'tireBrand', label: 'Tire brand' },
-    { key: 'tireModel', label: 'Tire model' },
-    { key: 'tireSize', label: 'Tire size' },
-    { key: 'dot', label: 'DOT code' },
-    { key: 'action', label: 'Action (measure/rotate/change/install)' },
-    { key: 'treadDepthMm.fl', label: 'Tread FL (mm)' },
-    { key: 'treadDepthMm.fr', label: 'Tread FR (mm)' },
-    { key: 'treadDepthMm.rl', label: 'Tread RL (mm)' },
-    { key: 'treadDepthMm.rr', label: 'Tread RR (mm)' },
-  ],
-  BRAKE: [
-    { key: 'eventDate', label: 'Brake Service Date' },
-    { key: 'odometerKm', label: 'Odometer (km)' },
-    { key: 'workshopName', label: 'Workshop' },
-    { key: 'serviceKind', label: 'Service Kind (inspection_only/pads_service/discs_service/brake_fluid_service/full_brake_service)' },
-    { key: 'scopeCsv', label: 'Scope CSV (front_pads,rear_pads,front_discs,rear_discs)' },
-    { key: 'frontPadMm', label: 'Front Pad Thickness (mm)' },
-    { key: 'rearPadMm', label: 'Rear Pad Thickness (mm)' },
-    { key: 'frontDiscMm', label: 'Front Disc Thickness (mm)' },
-    { key: 'rearDiscMm', label: 'Rear Disc Thickness (mm)' },
-    { key: 'description', label: 'Description / Notes' },
-    { key: 'costCents', label: 'Cost (cents)' },
-  ],
-  BATTERY: [
-    { key: 'eventDate', label: 'Battery Service Date' },
-    { key: 'odometerKm', label: 'Odometer (km)' },
-    { key: 'workshopName', label: 'Workshop' },
-    { key: 'recordKind', label: 'Record Kind (measurement/replacement)' },
-    { key: 'scope', label: 'Scope (lv/hv)' },
-    { key: 'batteryType', label: 'Battery type' },
-    { key: 'voltageV', label: 'Measured Voltage (V)' },
-    { key: 'sohPercent', label: 'SOH (%)' },
-    { key: 'restingVoltage', label: 'Resting Voltage (V)' },
-    { key: 'testResult', label: 'Test result' },
-    { key: 'notes', label: 'Notes' },
-  ],
-  TUV_REPORT: [
-    { key: 'eventDate', label: 'TÜV Inspection Date' },
-    { key: 'odometerKm', label: 'Mileage (km)' },
-    { key: 'workshopName', label: 'Inspector / Station' },
-    { key: 'result', label: 'Result' },
-    { key: 'validUntil', label: 'Valid until' },
-    { key: 'defects', label: 'Defects' },
-    { key: 'reportNumber', label: 'Report number' },
-    { key: 'notes', label: 'Notes' },
-  ],
-  BOKRAFT_REPORT: [
-    { key: 'eventDate', label: 'BOKraft Inspection Date' },
-    { key: 'odometerKm', label: 'Mileage (km)' },
-    { key: 'workshopName', label: 'Inspector / Station' },
-    { key: 'result', label: 'Result' },
-    { key: 'validUntil', label: 'Valid until' },
-    { key: 'defects', label: 'Defects' },
-    { key: 'reportNumber', label: 'Report number' },
-    { key: 'notes', label: 'Notes' },
-  ],
-  VEHICLE_CONDITION: [
-    { key: 'eventDate', label: 'Report Date' },
-    { key: 'odometerKm', label: 'Odometer (km)' },
-    { key: 'description', label: 'Condition Summary' },
-  ],
-  INVOICE: [
-    { key: 'eventDate', label: 'Invoice Date' },
-    { key: 'invoiceDate', label: 'Invoice Date (alt)' },
-    { key: 'dueDate', label: 'Due date' },
-    { key: 'title', label: 'Title' },
-    { key: 'description', label: 'Description' },
-    { key: 'vendorName', label: 'Vendor' },
-    { key: 'invoiceNumber', label: 'Invoice number' },
-    { key: 'totalCents', label: 'Amount (cents)' },
-  ],
-  DAMAGE: [
-    { key: 'eventDate', label: 'Incident Date' },
-    { key: 'odometerKm', label: 'Mileage (km)' },
-    { key: 'location', label: 'Location' },
-    { key: 'damageArea', label: 'Damage area' },
-    { key: 'description', label: 'Damage Description' },
-    { key: 'severity', label: 'Severity (MINOR/MODERATE/MAJOR/CRITICAL)' },
-    { key: 'estimatedCostGross', label: 'Estimated cost (gross)' },
-  ],
-  ACCIDENT: [
-    { key: 'eventDate', label: 'Accident Date' },
-    { key: 'odometerKm', label: 'Mileage (km)' },
-    { key: 'location', label: 'Location' },
-    { key: 'description', label: 'Accident Description' },
-    { key: 'policeReport', label: 'Police report reference' },
-    { key: 'opponentInvolved', label: 'Opponent involved' },
-    { key: 'drivableAfterIncident', label: 'Drivable after incident' },
-    { key: 'severity', label: 'Severity (MINOR/MODERATE/MAJOR/CRITICAL)' },
-    { key: 'estimatedCostGross', label: 'Estimated cost (gross)' },
-  ],
-  FINE: [
-    { key: 'eventDate', label: 'Date' },
-    { key: 'description', label: 'Reason' },
-    { key: 'totalCents', label: 'Amount (cents)' },
-    { key: 'reportNumber', label: 'Reference number' },
-  ],
-  OTHER: [
-    { key: 'eventDate', label: 'Date' },
-    { key: 'description', label: 'Description' },
-  ],
-};
-
-const DOC_TYPE_LABELS: Record<string, string> = {
-  SERVICE: 'Service Record',
-  OIL_CHANGE: 'Oil Change',
-  TIRE: 'Tire Service',
-  BRAKE: 'Brake Service',
-  BATTERY: 'Battery Service',
-  TUV_REPORT: 'TÜV Report',
-  BOKRAFT_REPORT: 'BOKraft Report',
-  VEHICLE_CONDITION: 'Vehicle Condition Report',
-  INVOICE: 'Invoice',
-  DAMAGE: 'Damage Report',
-  ACCIDENT: 'Accident Report',
-  FINE: 'Fine',
-  OTHER: 'Other Document',
-};
-
-const ACCEPT_ATTR = '.pdf,.jpg,.jpeg,.png,.webp,.txt';
-
-/**
- * Flow status drives the whole UI. It is derived from the server-side extraction
- * lifecycle (QUEUED → PROCESSING → READY_FOR_REVIEW → APPLIED / FAILED) plus the
- * two purely client-side transitions (uploading, applying). No fake analysis,
- * no field-level confidence — everything shown comes from the backend.
- */
-type FlowStatus =
-  | 'idle'
-  | 'uploading'
-  | 'queued'
-  | 'processing'
-  | 'ready'
-  | 'applying'
-  | 'done'
-  | 'failed';
-
-type PlausibilityStatus = 'OK' | 'WARNING' | 'BLOCKER';
-
-interface PlausibilityCheck {
-  code: string;
-  status: PlausibilityStatus;
-  message: string;
-  source: string;
-}
-
-interface Plausibility {
-  overallStatus: PlausibilityStatus;
-  checks: PlausibilityCheck[];
-  recommendedHumanReviewNotes?: string[];
-  dimoContextAvailable?: boolean;
-}
-
-interface ReviewField {
-  key: string;
-  label: string;
-  value: string;
-}
+const mapStatus = mapFlowStatus;
 
 interface FiledDocument {
   id: string;
@@ -214,45 +38,6 @@ function getFileIcon(name: string) {
   if (['jpg', 'jpeg', 'png', 'webp'].includes(ext || '')) return <Icon name="image" className="w-5 h-5 text-blue-500" />;
   if (['xlsx', 'xls', 'csv'].includes(ext || '')) return <Icon name="file-spreadsheet" className="w-5 h-5 text-green-500" />;
   return <Icon name="file" className="w-5 h-5 text-gray-500" />;
-}
-
-/** Maps the server record status to our flow status. */
-function mapStatus(serverStatus: string | undefined): FlowStatus {
-  switch (serverStatus) {
-    case 'QUEUED':
-    case 'PENDING':
-      return 'queued';
-    case 'PROCESSING':
-      return 'processing';
-    case 'READY_FOR_REVIEW':
-      return 'ready';
-    case 'CONFIRMED':
-      return 'applying';
-    case 'APPLIED':
-      return 'done';
-    case 'FAILED':
-      return 'failed';
-    default:
-      return 'processing';
-  }
-}
-
-/** Reads a (possibly dotted) key out of the server's extractedData object. */
-function readField(extracted: Record<string, any> | null | undefined, key: string): string {
-  if (!extracted) return '';
-  let v: any;
-  if (key.includes('.')) {
-    const [parent, child] = key.split('.');
-    v = extracted?.[parent]?.[child];
-  } else {
-    v = extracted?.[key];
-  }
-  return v == null ? '' : String(v);
-}
-
-function buildReviewFields(docType: string, extracted: Record<string, any> | null | undefined): ReviewField[] {
-  const template = EXTRACTION_TEMPLATES[docType] || EXTRACTION_TEMPLATES.OTHER;
-  return template.map((f) => ({ key: f.key, label: f.label, value: readField(extracted, f.key) }));
 }
 
 export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {

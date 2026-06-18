@@ -11,7 +11,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { normalizeTaskPriority } from '@modules/tasks/task-priority.util';
-import { normalizeVehicleStatus } from './vehicle-status.util';
+import { normalizeVehicleStatusForPrisma } from './vehicle-status.util';
 import type { WorkflowActionDef } from './workflow-definition.validator';
 
 export interface ActionExecutionContext {
@@ -175,9 +175,10 @@ export class WorkflowActionExecutorService {
     if (!vehicleId) {
       throw new BadRequestException('vehicle.status.update requires payload.vehicleId');
     }
-    const status = normalizeVehicleStatus(
-      typeof action.config?.status === 'string' ? action.config.status : undefined,
-    );
+    // Never cast config straight to VehicleStatus — workflow configs may carry
+    // UI labels ("Maintenance", "In Wartung", …). Normalise defensively so only
+    // valid enum values reach Prisma; invalid input fails the action cleanly.
+    const status = normalizeVehicleStatusForPrisma(action.config?.status);
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId, organizationId: ctx.organizationId },
       select: { id: true },

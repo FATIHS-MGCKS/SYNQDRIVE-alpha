@@ -93,7 +93,7 @@ function QueryConsole({ vehicle, onClose }: { vehicle: AdminFleetConnectivityVeh
   }, [vehicle]);
 
   const bg = 'bg-muted/30';
-  const cardBg = 'sq-CARD';
+  const cardBg = 'sq-card';
   const textP = 'text-foreground';
   const textM = 'text-muted-foreground';
 
@@ -108,7 +108,7 @@ function QueryConsole({ vehicle, onClose }: { vehicle: AdminFleetConnectivityVeh
               {vehicle.make} {vehicle.model} · Token #{vehicle.dimoTokenId ?? '—'}
             </span>
           </div>
-          <button onClick={onClose} className={`p-1 rounded-lg hover:bg-neutral-700 ${textM}`}><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className={`p-1 rounded-lg hover:bg-muted ${textM}`}><X className="w-4 h-4" /></button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           <div className="flex gap-2">
@@ -327,7 +327,7 @@ export function FleetConnectionView() {
               onClick={() => setStatusFilter(key)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                 statusFilter === key
-                  ? 'bg-blue-600 text-white shadow-sm'
+                  ? 'bg-[color:var(--brand)] text-[color:var(--brand-foreground)] shadow-sm'
                   : 'bg-muted text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -440,8 +440,8 @@ export function FleetConnectionView() {
                       <h4 className={`text-[10px] uppercase tracking-wider font-bold mb-3 ${textMuted}`}>OBD & cellular</h4>
                       <div className={`rounded-xl border px-3 py-3 space-y-3 border-border`}>
                         <div className="flex items-center gap-2">
-                          {v.obdIsPluggedIn === true && <><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /><span className={`text-xs font-medium ${textPrimary}`}>OBD Device Plugged IN</span></>}
-                          {v.obdIsPluggedIn === false && <><XCircle className="w-4 h-4 text-red-500 shrink-0" /><span className={`text-xs font-medium ${textPrimary}`}>OBD Device NOT plugged in</span></>}
+                          {v.obdIsPluggedIn === true && <><CheckCircle2 className="w-4 h-4 text-[color:var(--status-positive)] shrink-0" /><span className={`text-xs font-medium ${textPrimary}`}>OBD Device Plugged IN</span></>}
+                          {v.obdIsPluggedIn === false && <><XCircle className="w-4 h-4 text-[color:var(--status-critical)] shrink-0" /><span className={`text-xs font-medium ${textPrimary}`}>OBD Device NOT plugged in</span></>}
                           {v.obdIsPluggedIn == null && <span className={`text-xs ${textMuted}`}>OBD plug-in: no snapshot data</span>}
                         </div>
                         <div>
@@ -558,7 +558,7 @@ export function FleetConnectionView() {
                         <div className={`w-full h-1.5 rounded-full overflow-hidden mt-3 bg-muted`}>
                           <div
                             className={`h-full rounded-full transition-all ${
-                              v.signalCoverage >= 70 ? 'bg-emerald-500' : v.signalCoverage >= 40 ? 'bg-amber-500' : 'bg-gray-400'
+                              v.signalCoverage >= 70 ? 'bg-[color:var(--status-positive)]' : v.signalCoverage >= 40 ? 'bg-[color:var(--status-watch)]' : 'bg-[color:var(--status-nodata)]'
                             }`}
                             style={{ width: `${Math.min(v.signalCoverage, 100)}%` }}
                           />

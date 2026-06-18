@@ -70,6 +70,45 @@ export class BookingsService {
     private readonly stationValidation: StationValidationService,
   ) {}
 
+  /**
+   * Enforce the rental-health gate for booking create/update. Fails CLOSED in
+   * both failure modes, but surfaces them as DISTINCT, explainable errors:
+   *   - a genuine health block → VEHICLE_RENTAL_BLOCKED (with reasons)
+   *   - a technically unavailable/unknown gate → VEHICLE_HEALTH_GATE_UNAVAILABLE
+   *     (+ manualReviewRequired) so the operator never books on a check that
+   *     silently failed open.
+   */
+  private enforceRentalHealthGate(
+    rentalGate: Awaited<ReturnType<RentalHealthService['isRentalBlocked']>>,
+    vehicleId: string,
+  ): void {
+    if (
+      rentalGate.healthGateStatus === 'UNAVAILABLE' ||
+      rentalGate.healthGateStatus === 'UNKNOWN'
+    ) {
+      throw new ConflictException({
+        message:
+          rentalGate.healthGateWarning ??
+          'Fahrzeug-Gesundheit konnte nicht geprüft werden — manuelle Prüfung erforderlich. Buchung wurde nicht freigegeben.',
+        code: 'VEHICLE_HEALTH_GATE_UNAVAILABLE',
+        healthGateStatus: rentalGate.healthGateStatus,
+        manualReviewRequired: true,
+        blockingReasons: rentalGate.reasons,
+        vehicleId,
+      });
+    }
+    if (rentalGate.blocked) {
+      throw new ConflictException({
+        message:
+          'Dieses Fahrzeug ist aktuell nicht vermietbar. ' +
+          rentalGate.reasons.join(' · '),
+        code: 'VEHICLE_RENTAL_BLOCKED',
+        blockingReasons: rentalGate.reasons,
+        vehicleId,
+      });
+    }
+  }
+
   async create(orgId: string, data: Omit<Prisma.BookingCreateInput, 'organization'>): Promise<Booking> {
     // V4.6.74 — server-side gate: prevent double-booking the SAME vehicle
     // within overlapping time windows. The frontend already tries to block
@@ -122,16 +161,7 @@ export class BookingsService {
       orgId,
       vehicleId,
     );
-    if (rentalGate.blocked) {
-      throw new ConflictException({
-        message:
-          'Dieses Fahrzeug ist aktuell nicht vermietbar. ' +
-          rentalGate.reasons.join(' · '),
-        code: 'VEHICLE_RENTAL_BLOCKED',
-        blockingReasons: rentalGate.reasons,
-        vehicleId,
-      });
-    }
+    this.enforceRentalHealthGate(rentalGate, vehicleId);
 
     const customerId: string | undefined =
       anyData.customerId ?? anyData.customer?.connect?.id;
@@ -1503,16 +1533,7 @@ export class BookingsService {
         orgId,
         nextVehicleId,
       );
-      if (rentalGate.blocked) {
-        throw new ConflictException({
-          message:
-            'Dieses Fahrzeug ist aktuell nicht vermietbar. ' +
-            rentalGate.reasons.join(' · '),
-          code: 'VEHICLE_RENTAL_BLOCKED',
-          blockingReasons: rentalGate.reasons,
-          vehicleId: nextVehicleId,
-        });
-      }
+      this.enforceRentalHealthGate(rentalGate, nextVehicleId);
     }
 
     if (customerOrDatesChanged || statusChanged) {
@@ -1630,9 +1651,18 @@ export class BookingsService {
           cancelledAt: new Date(),
         },
       }),
-      this.prisma.vehicle.update({
-        where: { id: booking.vehicleId },
-        data: { status: 'AVAILABLE' as VehicleStatus },
+      // Release the car for a replacement booking — but NEVER overwrite a
+      // maintenance / out-of-service state (same invariant the handover
+      // service enforces). `updateMany` + notIn applies the AVAILABLE flip
+      // only when the vehicle is not IN_SERVICE / OUT_OF_SERVICE.
+      this.prisma.vehicle.updateMany({
+        where: {
+          id: booking.vehicleId,
+          status: {
+            notIn: [VehicleStatus.IN_SERVICE, VehicleStatus.OUT_OF_SERVICE],
+          },
+        },
+        data: { status: VehicleStatus.AVAILABLE },
       }),
     ]);
 
@@ -1705,9 +1735,17 @@ export class BookingsService {
           notes: nextNotes,
         },
       }),
-      this.prisma.vehicle.update({
-        where: { id: booking.vehicleId },
-        data: { status: 'AVAILABLE' as VehicleStatus },
+      // Reopen the car for a replacement booking without clobbering a
+      // maintenance / out-of-service state (mirrors cancel() + the handover
+      // invariant). Only flips to AVAILABLE when not IN_SERVICE/OUT_OF_SERVICE.
+      this.prisma.vehicle.updateMany({
+        where: {
+          id: booking.vehicleId,
+          status: {
+            notIn: [VehicleStatus.IN_SERVICE, VehicleStatus.OUT_OF_SERVICE],
+          },
+        },
+        data: { status: VehicleStatus.AVAILABLE },
       }),
     ]);
 

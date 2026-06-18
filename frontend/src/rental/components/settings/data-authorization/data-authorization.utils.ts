@@ -103,6 +103,33 @@ export function formatAuthDate(iso: string | null | undefined): string {
   }
 }
 
+const SCOPE_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: 'Aktiv nutzbar',
+  PENDING: 'Wartet auf Freigabe',
+  NO_ACTIVE_VEHICLES: 'Kein aktiver Fahrzeug-Scope',
+  REVOKED: 'Widerrufen',
+  EXPIRED: 'Abgelaufen',
+};
+
+/**
+ * Human label for the defensive `scopeStatus` field. Falls back to a derived
+ * value when the backend has not (yet) populated the field, so an empty
+ * vehicle scope never reads as a normal active authorization.
+ */
+export function labelScopeStatus(auth: DataAuthorizationDto): string {
+  const status =
+    auth.scopeStatus ??
+    (auth.statusKey === 'ACTIVE' && (auth.vehicleCount ?? 0) === 0
+      ? 'NO_ACTIVE_VEHICLES'
+      : auth.statusKey);
+  const base = SCOPE_STATUS_LABELS[status] ?? status;
+  const count = auth.vehicleCount ?? auth.vehicleIds?.length ?? 0;
+  if (auth.scopeKey === 'CONNECTED_VEHICLES' || auth.scopeKey === 'VEHICLE') {
+    return `${base} · ${count} Fahrzeug${count === 1 ? '' : 'e'}`;
+  }
+  return base;
+}
+
 export function affectedObjectsSummary(auth: DataAuthorizationDto): string {
   const v = auth.vehicleCount ?? auth.vehicleIds?.length ?? 0;
   const c = auth.customerIds?.length ?? 0;

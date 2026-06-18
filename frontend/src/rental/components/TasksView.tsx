@@ -7,29 +7,15 @@ import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
 import type { ApiTask, ApiTaskSummary, ApiTaskType, CreateTaskPayload, Station } from '../../lib/api';
 import { checklistPreviewForType } from '../lib/task-templates';
+import {
+  CATEGORY_TO_TASK_TYPE,
+  TASK_CATEGORIES,
+  VIEW_PRIORITY_TO_API,
+  type TaskCategory,
+  type TaskPriorityView,
+} from '../lib/task-create.utils';
 import { PageHeader, StatusChip, PriorityBadge, EmptyState, ErrorState, DataTable, AppDialog, FormDialog } from '../../components/patterns';
 import type { StatusTone, DataTableColumn } from '../../components/patterns';
-
-// View category → canonical backend TaskType.
-const CATEGORY_TO_TASK_TYPE: Record<string, ApiTaskType> = {
-  Cleaning: 'VEHICLE_CLEANING',
-  Maintenance: 'VEHICLE_SERVICE',
-  Repair: 'REPAIR',
-  Inspection: 'VEHICLE_INSPECTION',
-  Damage: 'REPAIR',
-  'TÜV': 'VEHICLE_INSPECTION',
-  Insurance: 'CUSTOM',
-  Documents: 'DOCUMENT_REVIEW',
-  'Tire Change': 'TIRE_CHECK',
-  'Oil Change': 'VEHICLE_SERVICE',
-};
-
-const VIEW_PRIORITY_TO_API: Record<string, CreateTaskPayload['priority']> = {
-  Low: 'LOW',
-  Medium: 'NORMAL',
-  High: 'HIGH',
-  Critical: 'CRITICAL',
-};
 
 interface TasksViewProps {
   autoOpenNewTask?: boolean;
@@ -39,8 +25,7 @@ interface TasksViewProps {
 }
 
 type TaskStatus = 'Open' | 'In Progress' | 'Waiting' | 'Completed' | 'Overdue';
-type TaskPriority = 'Low' | 'Medium' | 'High' | 'Critical';
-type TaskCategory = 'Cleaning' | 'Maintenance' | 'Repair' | 'Inspection' | 'Damage' | 'TÜV' | 'Insurance' | 'Documents' | 'Tire Change' | 'Oil Change';
+type TaskPriority = TaskPriorityView;
 
 interface Task {
   id: string;
@@ -83,7 +68,7 @@ interface BackendTask {
   metadata?: Record<string, unknown> | null;
 }
 
-const KNOWN_CATEGORIES: TaskCategory[] = ['Cleaning', 'Maintenance', 'Repair', 'Inspection', 'Damage', 'TÜV', 'Insurance', 'Documents', 'Tire Change', 'Oil Change'];
+const KNOWN_CATEGORIES: TaskCategory[] = [...TASK_CATEGORIES];
 
 function mapCategory(c?: string | null): TaskCategory {
   if (c && (KNOWN_CATEGORIES as string[]).includes(c)) return c as TaskCategory;
@@ -1333,7 +1318,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
           </div>
         );
         const today = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const allCategories: TaskCategory[] = ['Cleaning', 'Maintenance', 'Repair', 'Inspection', 'Damage', 'TÜV', 'Insurance', 'Documents', 'Tire Change', 'Oil Change'];
+        const allCategories: TaskCategory[] = [...TASK_CATEGORIES];
         const allPriorities: TaskPriority[] = ['Low', 'Medium', 'High', 'Critical'];
         const assigneesList = orgMembers;
         const stationsList = orgStations.filter((s) => s.status === 'ACTIVE');

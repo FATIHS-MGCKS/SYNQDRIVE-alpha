@@ -47,7 +47,7 @@ export class DocumentExtractionController {
     @Param('vehicleId') vehicleId: string,
     @Param('extractionId') extractionId: string,
   ) {
-    return this.service.getForVehicle(vehicleId, extractionId);
+    return this.service.getPublicForVehicle(vehicleId, extractionId);
   }
 
   /** Real multipart upload → store + create record + enqueue extraction job. */

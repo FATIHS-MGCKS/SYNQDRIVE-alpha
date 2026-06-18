@@ -1,0 +1,549 @@
+import type { RefObject } from 'react';
+import type { TranslationKey } from '../../i18n/translations/en';
+import type { Locale } from '../../i18n/LanguageContext';
+import type { Station } from '../../../lib/api';
+import type { VehicleData } from '../../data/vehicles';
+import type { DashboardInsight } from '../../DashboardInsightsContext';
+import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
+import type { PredictiveOperationsInsight } from './derivePredictiveOperationsInsights';
+import type { DashboardNotificationItem } from '../BusinessInsightsBox';
+import type { FleetStatusTabKey } from '../../lib/vehicle-status';
+import type { StatusTone } from '../../../components/patterns';
+import type { DashboardDrilldownContent, DashboardDrilldownTarget } from './dashboardDrilldownTypes';
+import type { DataTrustLayer, DashboardTrustHint } from './dataTrustBuilder';
+
+export const STATION_FILTER_STORAGE_KEY = 'synqdrive.dashboard.selectedStationId';
+export const OPERATOR_FOCUS_MODE_STORAGE_KEY = 'synqdrive.dashboard.operatorFocusMode';
+
+export type TodayTabKey = 'Pick Up Today' | 'Return Today';
+
+export type KpiTone = 'success' | 'critical' | 'brand' | 'info' | 'watch';
+
+export type DataSyncStatus = 'live' | 'partial' | 'stale' | 'offline';
+
+export type DashboardTimeframe = 'today' | 'next24h';
+
+export type OperationalKpiTarget =
+  | 'ready-to-rent'
+  | 'active-rented'
+  | 'due-soon'
+  | 'overdue-returns'
+  | 'maintenance'
+  | 'critical-alerts';
+
+export interface ControlCenterStatus {
+  stationLabel: string;
+  vehicleCount: number;
+  importantEventCount: number;
+  lastSyncLabel: string;
+  syncStatus: DataSyncStatus;
+}
+
+export interface ControlCenterKpi {
+  id: OperationalKpiTarget;
+  label: string;
+  displayValue: string;
+  numericValue: number | null;
+  tone: StatusTone;
+  hint?: string;
+  zeroIsPositive?: boolean;
+  trustHint?: DashboardTrustHint;
+}
+
+export interface FinanceKpi {
+  id: string;
+  label: string;
+  value: string;
+  hint?: string;
+  tone: KpiTone;
+  trend?: {
+    label: string;
+    direction: 'up' | 'down';
+    invert?: boolean;
+  };
+}
+
+export interface DashboardViewProps {
+  onVehicleSelect?: (vehicle: VehicleData) => void;
+  onItemHover?: (vehicleName: string | null) => void;
+  onOpenVehicleById?: (vehicleId: string) => void;
+  onOpenRentalView?: (view: 'bookings' | 'stations') => void;
+  onOpenBookingById?: (bookingId: string) => void;
+  onOpenFinanceView?: (view: 'financial-insights' | 'invoices') => void;
+}
+
+export interface DashboardInvoice {
+  id: string;
+  type: string;
+  status?: string;
+  totalCents: number | null;
+  currency?: string | null;
+  invoiceDate: string | null;
+  dueDate?: string | null;
+  paidAt?: string | null;
+  createdAt: string | null;
+  vehicleId?: string | null;
+  customerId?: string | null;
+}
+
+/** Today pickup/return row shape from bookings API (partial — defensive mapping). */
+export interface TodayBookingApiRow {
+  id?: string;
+  vehicleId?: string;
+  vehicleLicense?: string;
+  vehicleName?: string;
+  customerName?: string;
+  startDate?: string;
+  endDate?: string;
+  pickupStationId?: string;
+  returnStationId?: string;
+  pickupStationName?: string;
+  returnStationName?: string;
+  stationLabel?: string;
+  station?: string;
+  pickupProtocol?: unknown;
+  returnProtocol?: unknown;
+  isOverdue?: boolean;
+  minutesOverdue?: number;
+  hasError?: boolean;
+  kmExceeded?: boolean;
+  extraKm?: number | null;
+  returnProtocolStatus?: string | null;
+  pickupProtocolOdometerKm?: number | null;
+}
+
+export interface OperationalKpi {
+  id: string;
+  label: string;
+  value: string;
+  hint?: string;
+  tone: KpiTone;
+  trend?: {
+    label: string;
+    direction: 'up' | 'down';
+    invert?: boolean;
+  };
+}
+
+export type ActionQueueSeverity = 'critical' | 'warning' | 'attention' | 'info';
+
+export type ActionQueueCategory =
+  | 'vehicle'
+  | 'booking'
+  | 'financial'
+  | 'notification'
+  | 'handover'
+  | 'health'
+  | 'operations'
+  | 'task';
+
+export type ActionQueueCta =
+  | 'open-vehicle'
+  | 'open-booking'
+  | 'start-handover-pickup'
+  | 'start-handover-return'
+  | 'open-rental'
+  | 'open-stations';
+
+export type ActionQueueFilterTab =
+  | 'all'
+  | 'critical'
+  | 'operations'
+  | 'vehicle'
+  | 'financial'
+  | 'notifications';
+
+export interface ActionQueueEmptySummary {
+  title: string;
+  subtitle: string;
+  readyCount: number;
+  upcomingHandovers: number;
+  syncLabel: string;
+  readyLabel: string;
+  handoverLabel: string;
+}
+
+export type InsightDataSource =
+  | 'dashboard-insights'
+  | 'derived-operations'
+  | 'predictive-operations'
+  | 'financial'
+  | 'booking';
+
+export interface ActionQueueItem {
+  id: string;
+  source: InsightDataSource;
+  severity: ActionQueueSeverity;
+  category: ActionQueueCategory;
+  title: string;
+  reason: string;
+  entityLabel?: string;
+  timeLabel?: string;
+  timeSortMs: number;
+  priority: number;
+  tone: StatusTone;
+  cta: ActionQueueCta;
+  vehicleId?: string;
+  bookingId?: string;
+  insightId?: string;
+  insight?: DashboardInsight;
+  pickupItem?: PickupTileItem;
+  returnItem?: ReturnTileItem;
+  predictiveInsight?: PredictiveOperationsInsight;
+  isOverdue: boolean;
+  pinned?: boolean;
+}
+
+export interface FleetStateTab {
+  key: FleetStatusTabKey;
+  label: string;
+  count: number;
+  tone: 'success' | 'warning' | 'brand' | 'critical';
+  warn: number;
+}
+
+export type FleetBoardSeverity = 'critical' | 'warning' | 'attention' | 'info' | 'healthy';
+
+export type FleetBoardLane =
+  | 'all'
+  | 'critical'
+  | 'overdue'
+  | 'due-soon'
+  | 'maintenance'
+  | 'cleaning'
+  | 'ready'
+  | 'rented'
+  | 'reserved';
+
+export interface FleetBoardLaneSummary {
+  lane: FleetBoardLane;
+  label: string;
+  count: number;
+  severity: FleetBoardSeverity;
+}
+
+export interface FleetBoardItem {
+  vehicleId: string;
+  lane: Exclude<FleetBoardLane, 'all'>;
+  severity: FleetBoardSeverity;
+  statusLabel: string;
+  license: string;
+  makeModel?: string;
+  station?: string;
+  nextAppointment?: string;
+  fuelLabel: string | null;
+  lastSeenLabel: string | null;
+  criticalHint?: string;
+  sortPriority: number;
+  isOffline: boolean;
+  isStale: boolean;
+}
+
+export interface FleetBoardModel {
+  items: FleetBoardItem[];
+  lanes: FleetBoardLaneSummary[];
+  filteredItems: FleetBoardItem[];
+}
+
+export interface FleetStateItem {
+  tab: FleetStateTab;
+  vehicles: VehicleData[];
+}
+
+export interface TimelineItem {
+  id: string;
+  label: string;
+  sublabel?: string;
+  startAt: string;
+  endAt: string;
+  status: 'active' | 'upcoming' | 'completed';
+  vehicleId?: string;
+  bookingId?: string;
+}
+
+export type OperationEventType =
+  | 'pickup'
+  | 'return'
+  | 'handover'
+  | 'cleaning'
+  | 'maintenance'
+  | 'booking-conflict';
+
+export type OperationEventStatus =
+  | 'due-soon'
+  | 'overdue'
+  | 'completed'
+  | 'pending'
+  | 'blocked'
+  | 'in-progress';
+
+export type OperationTimelineLane = 'now' | 'next60' | 'later-today' | 'tomorrow';
+
+export type TodayOpsBucket = 'todo' | 'in-progress' | 'completed';
+
+export type OperationCta =
+  | 'start-pickup'
+  | 'start-return'
+  | 'open-booking'
+  | 'open-vehicle'
+  | 'open-rental';
+
+export interface OperationTimelineItem {
+  id: string;
+  type: OperationEventType;
+  lane: OperationTimelineLane;
+  status: OperationEventStatus;
+  timeMs: number;
+  timeLabel: string;
+  vehicleLabel: string;
+  vehicleId?: string;
+  customer?: string;
+  bookingId?: string;
+  station?: string;
+  risks: string[];
+  tone: StatusTone;
+  cta: OperationCta;
+  pickupItem?: PickupTileItem;
+  returnItem?: ReturnTileItem;
+  completed: boolean;
+  sortPriority: number;
+}
+
+export interface TodayOperationItem {
+  id: string;
+  bucket: TodayOpsBucket;
+  type: OperationEventType;
+  status: OperationEventStatus;
+  timeMs: number;
+  timeLabel: string;
+  vehicleLabel: string;
+  vehicleId?: string;
+  customer?: string;
+  bookingId?: string;
+  station?: string;
+  risks: string[];
+  tone: StatusTone;
+  cta: OperationCta;
+  pickupItem?: PickupTileItem;
+  returnItem?: ReturnTileItem;
+  completed: boolean;
+  sortPriority: number;
+}
+
+export interface NowNextTimelineModel {
+  lanes: Record<OperationTimelineLane, OperationTimelineItem[]>;
+  totalCount: number;
+}
+
+export interface TodayOperationsModel {
+  todo: TodayOperationItem[];
+  inProgress: TodayOperationItem[];
+  completed: TodayOperationItem[];
+  totalCount: number;
+}
+
+export type StationDataFreshness =
+  | 'live'
+  | 'partial'
+  | 'stale'
+  | 'offline'
+  | 'no-vehicles';
+
+export interface StationHealthSummary {
+  stationId: string;
+  stationName: string;
+  vehicleCount: number;
+  availableCount: number;
+  rentedCount: number;
+  reservedCount: number;
+  maintenanceCount: number;
+  needsCleaningCount: number;
+  alertCount: number;
+  pickupsToday: number;
+  returnsToday: number;
+  overdueCount: number;
+  criticalAlerts: number;
+  blockedCount: number;
+  readyCount: number;
+  dueTodayCount: number;
+  capacityGap: number;
+  dataFreshness: StationDataFreshness;
+  statusSeverity: 'healthy' | 'attention' | 'warning' | 'critical';
+}
+
+export interface StationVehicleChip {
+  vehicleId: string;
+  label: string;
+  hint?: string;
+}
+
+export interface UnassignedFleetSummary {
+  count: number;
+  vehicles: StationVehicleChip[];
+}
+
+export interface StationCommandDetail {
+  station: StationHealthSummary;
+  readyVehicles: StationVehicleChip[];
+  blockedVehicles: StationVehicleChip[];
+  criticalVehicles: StationVehicleChip[];
+  pickups: PickupTileItem[];
+  returns: ReturnTileItem[];
+  timelineItems: OperationTimelineItem[];
+  actionItems: ActionQueueItem[];
+}
+
+export interface FleetReadinessBreakdown {
+  ready: number;
+  blocked: number;
+  overdueReturns: number;
+  criticalAlerts: number;
+  cleaningNeeded: number;
+  staleData: number;
+  conflicts: number;
+}
+
+export type FleetReadinessStatus =
+  | 'strong'
+  | 'stable'
+  | 'needs-attention'
+  | 'critical'
+  | 'not-enough-data';
+
+export interface FleetReadinessSummary {
+  status: FleetReadinessStatus;
+  statusLabel: string;
+  scorePercent: number | null;
+  breakdown: FleetReadinessBreakdown;
+  hasReliableBasis: boolean;
+}
+
+export interface DataFreshnessSummary {
+  fleetLoading: boolean;
+  fleetCountdownSec: number;
+  insightsLoading: boolean;
+  insightsStale: boolean;
+  insightsGeneratedAt: string | null;
+  insightsError: boolean;
+  todayBookingsLoaded: boolean;
+  invoicesLoaded: boolean;
+  todayBookingsError: boolean;
+  invoicesError: boolean;
+}
+
+export interface BusinessPulseMetric {
+  id: string;
+  label: string;
+  value: string | number;
+  tone: StatusTone;
+  hint?: string;
+}
+
+export type { BusinessPulseSnapshot, BusinessPulseMetricItem, BusinessPulseDrilldown } from './businessPulseBuilder';
+
+export interface MonthlyKpiSnapshot {
+  revenueCents: number;
+  expenseCents: number;
+  profitCents: number;
+  revenueCount: number;
+  expenseCount: number;
+  revenueDeltaPct: number | null;
+  expenseDeltaPct: number | null;
+  profitDeltaPct: number | null;
+  monthLabel: string;
+}
+
+export interface FocusNotReadyVehicle {
+  vehicleId: string;
+  label: string;
+  status: string;
+  reason: string;
+}
+
+export interface DashboardViewModel {
+  systemDark: boolean;
+  locale: Locale;
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
+  dateLabel: string;
+
+  controlCenterStatus: ControlCenterStatus;
+  controlCenterKpis: ControlCenterKpi[];
+  activateKpiTarget: (target: OperationalKpiTarget) => void;
+  drilldownTarget: DashboardDrilldownTarget | null;
+  drilldown: DashboardDrilldownContent | null;
+  openDrilldown: (target: DashboardDrilldownTarget) => void;
+  closeDrilldown: () => void;
+
+  criticalOnly: boolean;
+  setCriticalOnly: (value: boolean) => void;
+  operatorFocusMode: boolean;
+  setOperatorFocusMode: (value: boolean) => void;
+  focusNotReadyVehicles: FocusNotReadyVehicle[];
+  timeframe: DashboardTimeframe;
+  setTimeframe: (value: DashboardTimeframe) => void;
+  isRefreshing: boolean;
+  refreshAll: () => Promise<void>;
+
+  stations: Station[];
+  selectedStationId: string | null;
+  selectedStationName: string | null;
+  isStationDropdownOpen: boolean;
+  stationDropdownRef: RefObject<HTMLDivElement | null>;
+  setIsStationDropdownOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  applyStationFilter: (stationId: string | null) => void;
+
+  fleetVehicles: VehicleData[];
+  filteredFleetVehicles: VehicleData[];
+  availableVehicles: VehicleData[];
+  reservedVehicles: VehicleData[];
+  activeRentedVehicles: VehicleData[];
+
+  invoicesLoaded: boolean;
+  invoicesError: boolean;
+  monthlyKpis: MonthlyKpiSnapshot;
+  fmtMonthlyEUR: (cents: number) => string;
+  financeKpis: FinanceKpi[];
+
+  fleetStatusTab: FleetStatusTabKey;
+  setFleetStatusTab: (tab: FleetStatusTabKey) => void;
+  fleetStateTabs: FleetStateTab[];
+  fleetBoardFilter: FleetBoardLane;
+  setFleetBoardFilter: (lane: FleetBoardLane) => void;
+  fleetBoard: FleetBoardModel;
+
+  todayTab: TodayTabKey;
+  setTodayTab: (tab: TodayTabKey) => void;
+
+  pickupItems: PickupTileItem[];
+  returnItems: ReturnTileItem[];
+  pickupNeedsCleaning: number;
+  pickupAlerts: number;
+  pickupOverdueCount: number;
+  returnErrors: number;
+  returnKmExceeded: number;
+  returnOverdue: number;
+  returnAlerts: number;
+
+  handleConfirmPickup: (item: PickupTileItem) => void;
+  handleConfirmReturn: (item: ReturnTileItem) => void;
+
+  dashboardNotifications: DashboardNotificationItem[];
+  actionQueue: ActionQueueItem[];
+  actionQueueLoading: boolean;
+  actionQueueError: boolean;
+  actionQueueEmptySummary: ActionQueueEmptySummary;
+  todayBookingsLoaded: boolean;
+  todayBookingsError: boolean;
+  nowNextTimeline: NowNextTimelineModel;
+  todayOperations: TodayOperationsModel;
+  stationHealth: StationHealthSummary[];
+  stationCommandDetail: StationCommandDetail | null;
+  unassignedFleet: UnassignedFleetSummary;
+  dataFreshness: DataFreshnessSummary;
+  dataTrust: DataTrustLayer;
+  vehicleTelemetryFreshness: import('./controlSignalsBuilder').VehicleTelemetryFreshness;
+  businessPulse: import('./businessPulseBuilder').BusinessPulseSnapshot;
+  fleetReadiness: FleetReadinessSummary;
+}
+
+export type { VehicleTelemetryFreshness } from './controlSignalsBuilder';

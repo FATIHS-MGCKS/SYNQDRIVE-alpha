@@ -27,6 +27,7 @@ function baseTask(over: Record<string, unknown> = {}) {
     estimatedCostCents: null,
     actualCostCents: null,
     resolutionNote: null,
+    blocksVehicleAvailability: false,
     metadata: null,
     dueDate: null,
     startedAt: null,

@@ -388,7 +388,7 @@ export function StationDetailView({
         <HandoverTab station={station} t={t} />
       )}
 
-      <StationFormModal open={formOpen} station={station} saving={saving} onClose={() => setFormOpen(false)} onSubmit={handleSave} />
+      <StationFormModal open={formOpen} station={station} saving={saving} orgId={orgId} onClose={() => setFormOpen(false)} onSubmit={handleSave} />
       <StationAssignVehicleModal
         station={assignOpen ? station : null}
         onClose={() => setAssignOpen(false)}

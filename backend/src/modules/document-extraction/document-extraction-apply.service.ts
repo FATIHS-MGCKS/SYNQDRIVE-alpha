@@ -105,11 +105,11 @@ export class DocumentExtractionApplyService {
     }
 
     if (docType === 'DAMAGE' || docType === 'ACCIDENT') {
-      await this.damagesService.create({
-        vehicleId,
+      await this.damagesService.create(vehicleId, {
         damageType: (d.damageType as any) || 'SCRATCH',
         description: typeof d.description === 'string' ? d.description : `${docType} report`,
         severity: (d.severity as any) || 'MODERATE',
+        source: 'AI_UPLOAD',
       });
       return {};
     }

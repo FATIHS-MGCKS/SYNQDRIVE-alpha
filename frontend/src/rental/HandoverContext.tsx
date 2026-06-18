@@ -87,6 +87,7 @@ export function HandoverProvider({
         setBooking({
           id: seed.id ?? bookingId,
           vehicleId: seed.vehicleId ?? '',
+          customerId: seed.customerId ?? null,
           vehicleName: seed.vehicleName ?? '—',
           plate: seed.plate ?? '',
           customerName: seed.customerName ?? '',
@@ -116,6 +117,7 @@ export function HandoverProvider({
         setBooking({
           id: detail.core.bookingId,
           vehicleId: detail.vehicle.vehicleId,
+          customerId: detail.customer.customerId,
           vehicleName: detail.vehicle.displayName,
           plate: detail.vehicle.licensePlate ?? '',
           customerName: detail.customer.fullName ?? '',
@@ -144,6 +146,7 @@ export function HandoverProvider({
           setBooking({
             id: full.id,
             vehicleId: full.vehicleId,
+            customerId: full.customerId ?? null,
             vehicleName: full.vehicleName,
             plate: full.vehicleLicense ?? '',
             customerName: full.customerName ?? '',

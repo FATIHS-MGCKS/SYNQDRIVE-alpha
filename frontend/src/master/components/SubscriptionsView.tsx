@@ -1,14 +1,71 @@
-import { CreditCard, TrendingUp, Building2, CheckCircle, AlertTriangle, DollarSign, FileText, Clock, ArrowUpRight, Download, Plus, MoreHorizontal } from 'lucide-react';
+import {
+  CreditCard,
+  Building2,
+  CheckCircle,
+  AlertTriangle,
+  DollarSign,
+  Clock,
+  Download,
+} from 'lucide-react';
 import { useState } from 'react';
+import {
+  PageHeader,
+  MetricCard,
+  DataCard,
+  DataTable,
+  StatusChip,
+  SectionHeader,
+  paymentStatusTone,
+  planTone,
+} from '../../components/patterns';
+import { Button } from '../../components/ui/button';
 
 interface SubscriptionsViewProps {
-  isDarkMode: boolean;
+  /** @deprecated Theme is token-driven via CSS variables — prop kept for App.tsx compat. */
+  isDarkMode?: boolean;
 }
 
 const plans = [
-  { name: 'Starter', price: 490, interval: '/mo', vehicles: 'Up to 25', features: ['Basic fleet tracking', 'Up to 3 users', 'Email support', 'Standard reports'], orgs: 8, color: 'from-gray-500 to-gray-600' },
-  { name: 'Business', price: 990, interval: '/mo', vehicles: 'Up to 75', features: ['Advanced analytics', 'Up to 10 users', 'Priority support', 'Custom reports', 'API access'], orgs: 6, color: 'from-blue-500 to-indigo-600', popular: true },
-  { name: 'Enterprise', price: 2490, interval: '/mo', vehicles: 'Unlimited', features: ['Full platform access', 'Unlimited users', 'Dedicated support', 'White-label', 'SLA guarantee', 'Custom integrations'], orgs: 3, color: 'from-purple-500 to-violet-600' },
+  {
+    name: 'Starter',
+    price: 490,
+    interval: '/mo',
+    vehicles: 'Up to 25',
+    features: ['Basic fleet tracking', 'Up to 3 users', 'Email support', 'Standard reports'],
+    orgs: 8,
+    popular: false,
+  },
+  {
+    name: 'Business',
+    price: 990,
+    interval: '/mo',
+    vehicles: 'Up to 75',
+    features: [
+      'Advanced analytics',
+      'Up to 10 users',
+      'Priority support',
+      'Custom reports',
+      'API access',
+    ],
+    orgs: 6,
+    popular: true,
+  },
+  {
+    name: 'Enterprise',
+    price: 2490,
+    interval: '/mo',
+    vehicles: 'Unlimited',
+    features: [
+      'Full platform access',
+      'Unlimited users',
+      'Dedicated support',
+      'White-label',
+      'SLA guarantee',
+      'Custom integrations',
+    ],
+    orgs: 3,
+    popular: false,
+  },
 ];
 
 const invoices = [
@@ -22,58 +79,70 @@ const invoices = [
   { id: 'INV-2026-0335', org: 'VeloFleet Leipzig', amount: 490, status: 'Paid', date: 'Mar 1, 2026', plan: 'Starter' },
 ];
 
-export function SubscriptionsView({ isDarkMode }: SubscriptionsViewProps) {
+const TAB_BAR = 'sq-tab-bar flex gap-1 p-1 rounded-xl w-fit';
+
+export function SubscriptionsView(_props: SubscriptionsViewProps) {
+  void _props;
   const [activeTab, setActiveTab] = useState<'plans' | 'invoices'>('plans');
 
-  const cardClass = `rounded-2xl shadow-sm border ${
-    isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'
-  }`;
-
   return (
-    <div className="space-y-4 pb-6">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <h1 className={`text-2xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Subscriptions & Billing</h1>
-          <p className={`text-base mt-2 font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Manage plans, subscriptions, and invoices</p>
-        </div>
-      </div>
+    <div className="space-y-5 pb-8">
+      <PageHeader
+        title="Subscriptions & Billing"
+        eyebrow="Master Admin"
+        description="Manage plans, subscriptions, and invoices"
+        icon={<CreditCard className="w-4 h-4" />}
+      />
 
-      {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          { label: 'Monthly Revenue', value: '€38,200', change: '+9.8%', icon: DollarSign, iconBg: isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50', iconColor: 'text-emerald-500' },
-          { label: 'Active Subscriptions', value: '58', change: '+3', icon: CheckCircle, iconBg: isDarkMode ? 'bg-green-500/10' : 'bg-green-50', iconColor: 'text-green-500' },
-          { label: 'Trial Accounts', value: '5', change: '+2', icon: Clock, iconBg: isDarkMode ? 'bg-blue-500/10' : 'bg-blue-50', iconColor: 'text-blue-500' },
-          { label: 'Overdue Invoices', value: '3', change: '', icon: AlertTriangle, iconBg: isDarkMode ? 'bg-red-500/10' : 'bg-red-50', iconColor: 'text-red-500' },
-        ].map(kpi => (
-          <div key={kpi.label} className={`${cardClass} p-4 flex flex-col items-center justify-center text-center`}>
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 ${kpi.iconBg}`}>
-              <kpi.icon className={`w-6 h-6 ${kpi.iconColor}`} />
-            </div>
-            <p className={`text-2xl font-extrabold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{kpi.value}</p>
-            <p className={`text-sm font-bold mt-1.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{kpi.label}</p>
-          </div>
-        ))}
+        <MetricCard
+          label="Monthly Revenue"
+          value="€38,200"
+          icon={<DollarSign className="w-4 h-4" />}
+          trend={{ label: '+9.8%', direction: 'up' }}
+          status="success"
+        />
+        <MetricCard
+          label="Active Subscriptions"
+          value="58"
+          icon={<CheckCircle className="w-4 h-4" />}
+          trend={{ label: '+3', direction: 'up' }}
+          status="success"
+        />
+        <MetricCard
+          label="Trial Accounts"
+          value="5"
+          icon={<Clock className="w-4 h-4" />}
+          trend={{ label: '+2', direction: 'up' }}
+          status="info"
+        />
+        <MetricCard
+          label="Overdue Invoices"
+          value="3"
+          icon={<AlertTriangle className="w-4 h-4" />}
+          status="critical"
+        />
       </div>
 
-      {/* Tab Switcher */}
-      <div className={`flex gap-1 p-1.5 rounded-2xl w-fit ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-100'}`}>
+      <div className={TAB_BAR}>
         <button
+          type="button"
           onClick={() => setActiveTab('plans')}
-          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+          className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
             activeTab === 'plans'
-              ? isDarkMode ? 'bg-neutral-700 text-white shadow-sm' : 'bg-white text-gray-900 shadow-sm'
-              : isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
+              ? 'sq-tab-active bg-card text-foreground shadow-sm ring-1 ring-border'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           Plans
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab('invoices')}
-          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+          className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
             activeTab === 'invoices'
-              ? isDarkMode ? 'bg-neutral-700 text-white shadow-sm' : 'bg-white text-gray-900 shadow-sm'
-              : isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'
+              ? 'sq-tab-active bg-card text-foreground shadow-sm ring-1 ring-border'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           Invoices
@@ -83,89 +152,120 @@ export function SubscriptionsView({ isDarkMode }: SubscriptionsViewProps) {
       {activeTab === 'plans' ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {plans.map((plan) => (
-            <div key={plan.name} className={`${cardClass} p-4 relative ${plan.popular ? 'ring-2 ring-indigo-500/30' : ''}`}>
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="px-3 py-1 bg-indigo-600 text-white text-xs font-semibold rounded-full shadow-lg">Most Popular</span>
+            <DataCard
+              key={plan.name}
+              className={plan.popular ? 'ring-1 ring-[color:var(--brand)]/30' : undefined}
+              title={
+                <div className="flex items-center gap-2">
+                  <span>{plan.name}</span>
+                  {plan.popular && (
+                    <StatusChip tone="info">Current highlight</StatusChip>
+                  )}
                 </div>
-              )}
-              <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${plan.color} flex items-center justify-center mb-4`}>
-                <CreditCard className="w-6 h-6 text-white" />
+              }
+              description={plan.vehicles}
+            >
+              <div className="flex items-baseline gap-1 mb-4">
+                <span className="font-mono text-2xl font-bold tabular-nums text-foreground">
+                  €{plan.price}
+                </span>
+                <span className="text-sm text-muted-foreground">{plan.interval}</span>
               </div>
-              <h3 className={`text-base font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{plan.name}</h3>
-              <div className="flex items-baseline gap-1 mb-1">
-                <span className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>€{plan.price}</span>
-                <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{plan.interval}</span>
-              </div>
-              <p className={`text-xs mb-4 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{plan.vehicles} vehicles</p>
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-xl mb-5 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-50'}`}>
-                <Building2 className={`w-4 h-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-                <span className={`text-sm font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>{plan.orgs} organizations</span>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-5 bg-muted/50 border border-border">
+                <Building2 className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-semibold text-foreground tabular-nums">
+                  {plan.orgs} organizations
+                </span>
               </div>
               <ul className="space-y-2.5">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
-                    <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{f}</span>
+                    <CheckCircle className="w-4 h-4 text-[color:var(--status-positive)] shrink-0" />
+                    <span className="text-sm text-muted-foreground">{f}</span>
                   </li>
                 ))}
               </ul>
-            </div>
+            </DataCard>
           ))}
         </div>
       ) : (
-        <div className={`${cardClass} overflow-hidden`}>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className={`border-b ${isDarkMode ? 'border-neutral-800' : 'border-gray-100'}`}>
-                  <th className={`text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Invoice</th>
-                  <th className={`text-left px-3 py-3 text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Organization</th>
-                  <th className={`text-left px-3 py-3 text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Plan</th>
-                  <th className={`text-right px-3 py-3 text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Amount</th>
-                  <th className={`text-left px-3 py-3 text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Status</th>
-                  <th className={`text-left px-3 py-3 text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Date</th>
-                  <th className="px-3 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoices.map((inv) => (
-                  <tr key={inv.id} className={`border-b last:border-b-0 transition-colors ${isDarkMode ? 'border-neutral-800 hover:bg-neutral-800' : 'border-gray-50 hover:bg-gray-50'}`}>
-                    <td className="px-5 py-3">
-                      <span className={`text-sm font-mono font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{inv.id}</span>
-                    </td>
-                    <td className={`px-3 py-3 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{inv.org}</td>
-                    <td className="px-3 py-3">
-                      <span className={`text-xs font-semibold px-2 py-1 rounded-lg border ${
-                        inv.plan === 'Enterprise' ? 'bg-purple-50 text-purple-700 border-purple-200'
-                        : inv.plan === 'Business' ? 'bg-blue-50 text-blue-700 border-blue-200'
-                        : inv.plan === 'Custom' ? 'bg-amber-50 text-amber-700 border-amber-200'
-                        : 'bg-gray-100 text-gray-700 border-gray-200'
-                      }`}>{inv.plan}</span>
-                    </td>
-                    <td className={`px-3 py-3 text-right text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>€{inv.amount.toLocaleString()}</td>
-                    <td className="px-3 py-3">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border ${
-                        inv.status === 'Paid' ? 'bg-green-50 text-green-700 border-green-200'
-                        : inv.status === 'Overdue' ? 'bg-red-50 text-red-700 border-red-200'
-                        : 'bg-amber-50 text-amber-700 border-amber-200'
-                      }`}>
-                        {inv.status === 'Paid' ? <CheckCircle className="w-3 h-3" /> : inv.status === 'Overdue' ? <AlertTriangle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                        {inv.status}
-                      </span>
-                    </td>
-                    <td className={`px-3 py-3 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{inv.date}</td>
-                    <td className="px-3 py-3">
-                      <button className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-700 text-gray-400' : 'hover:bg-gray-100 text-gray-400'}`}>
-                        <Download className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <DataCard flush>
+          <SectionHeader
+            title="Invoices"
+            description="Recent billing documents across organizations"
+            className="px-4 pt-4"
+          />
+          <DataTable
+            card={false}
+            rows={invoices}
+            getRowKey={(inv) => inv.id}
+            columns={[
+              {
+                key: 'id',
+                header: 'Invoice',
+                cell: (inv) => (
+                  <span className="text-sm font-mono font-semibold text-foreground">{inv.id}</span>
+                ),
+              },
+              {
+                key: 'org',
+                header: 'Organization',
+                cell: (inv) => <span className="text-xs text-foreground">{inv.org}</span>,
+              },
+              {
+                key: 'plan',
+                header: 'Plan',
+                cell: (inv) => (
+                  <StatusChip tone={planTone(inv.plan)}>{inv.plan}</StatusChip>
+                ),
+              },
+              {
+                key: 'amount',
+                header: 'Amount',
+                align: 'right',
+                numeric: true,
+                cell: (inv) => (
+                  <span className="text-xs font-semibold tabular-nums text-foreground">
+                    €{inv.amount.toLocaleString()}
+                  </span>
+                ),
+              },
+              {
+                key: 'status',
+                header: 'Status',
+                cell: (inv) => (
+                  <StatusChip
+                    tone={paymentStatusTone(inv.status)}
+                    icon={
+                      inv.status === 'Paid' ? (
+                        <CheckCircle className="w-3 h-3" />
+                      ) : inv.status === 'Overdue' ? (
+                        <AlertTriangle className="w-3 h-3" />
+                      ) : (
+                        <Clock className="w-3 h-3" />
+                      )
+                    }
+                    dot
+                  >
+                    {inv.status}
+                  </StatusChip>
+                ),
+              },
+              {
+                key: 'date',
+                header: 'Date',
+                cell: (inv) => (
+                  <span className="text-xs text-muted-foreground">{inv.date}</span>
+                ),
+              },
+            ]}
+            rowActions={() => (
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8">
+                <Download className="w-4 h-4" />
+              </Button>
+            )}
+          />
+        </DataCard>
       )}
     </div>
   );

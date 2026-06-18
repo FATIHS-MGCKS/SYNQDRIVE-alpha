@@ -111,6 +111,11 @@ export class CreateTaskDto {
   @ValidateNested({ each: true })
   @Type(() => ChecklistItemDto)
   checklist?: ChecklistItemDto[];
+
+  /** When true, task blocks vehicle rental until resolved (V4.9.17). */
+  @IsOptional()
+  @IsBoolean()
+  blocksVehicleAvailability?: boolean;
 }
 
 export class UpdateTaskDto {
@@ -150,9 +155,11 @@ export class UpdateTaskDto {
   @IsInt()
   @Min(0)
   actualCostCents?: number;
-}
 
-export class AssignTaskDto {
+  @IsOptional()
+  @IsBoolean()
+  blocksVehicleAvailability?: boolean;
+}
   // null clears the assignment.
   @IsOptional()
   @IsString()

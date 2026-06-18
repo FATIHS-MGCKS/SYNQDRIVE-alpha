@@ -101,6 +101,11 @@ export class DataAuthorizationsService {
     const purposes = this.resolvePurposes(auth);
     const vehicleIds = this.jsonStringArray(auth.vehicleIds);
     const scopeNote = this.resolveScopeNote(auth, vehicleIds);
+    const { scopeStatus, hasActiveScope } = this.resolveScopeState(
+      auth,
+      statusKey,
+      vehicleIds,
+    );
 
     return {
       id: auth.id,
@@ -143,10 +148,49 @@ export class DataAuthorizationsService {
       expiresAt: auth.expiresAt,
       notes: auth.notes,
       scopeNote,
+      scopeStatus,
+      hasActiveScope,
       lastSyncedAt: auth.updatedAt,
       createdAt: auth.createdAt,
       updatedAt: auth.updatedAt,
     };
+  }
+
+  /**
+   * Defensive scope-state signal so the UI never paints a misleading green
+   * "active" badge for an authorization whose scope is empty, revoked or
+   * expired. Adds explicit fields next to `scopeNote` / `vehicleCount`
+   * instead of forcing a new DB enum/migration.
+   */
+  private resolveScopeState(
+    auth: Pick<OrgDataAuthorization, 'systemKey' | 'scope'>,
+    statusKey: DataAuthorizationStatus,
+    vehicleIds: string[],
+  ): { scopeStatus: string; hasActiveScope: boolean } {
+    if (statusKey === 'REVOKED') {
+      return { scopeStatus: 'REVOKED', hasActiveScope: false };
+    }
+    if (statusKey === 'EXPIRED') {
+      return { scopeStatus: 'EXPIRED', hasActiveScope: false };
+    }
+
+    // Vehicle-scoped authorizations (esp. the system DIMO telemetry record)
+    // must not look usable while there are no vehicles in scope.
+    const isVehicleScoped =
+      auth.systemKey === DIMO_TELEMETRY_SYSTEM_KEY ||
+      auth.scope === 'CONNECTED_VEHICLES' ||
+      auth.scope === 'VEHICLE';
+    if (isVehicleScoped && vehicleIds.length === 0) {
+      return { scopeStatus: 'NO_ACTIVE_VEHICLES', hasActiveScope: false };
+    }
+
+    if (statusKey === 'ACTIVE') {
+      return { scopeStatus: 'ACTIVE', hasActiveScope: true };
+    }
+    if (statusKey === 'PENDING') {
+      return { scopeStatus: 'PENDING', hasActiveScope: false };
+    }
+    return { scopeStatus: statusKey, hasActiveScope: false };
   }
 
   private resolveScopeNote(
@@ -229,6 +273,9 @@ export class DataAuthorizationsService {
       return;
     }
 
+    const previousVehicleIds = this.jsonStringArray(existing.vehicleIds);
+    const scopeChanged = !this.sameIdSet(previousVehicleIds, vehicleIds);
+
     const updateData: Prisma.OrgDataAuthorizationUpdateInput = {
       title: spec.title,
       description: spec.description,
@@ -245,24 +292,76 @@ export class DataAuthorizationsService {
       riskLevel: spec.riskLevel,
     };
 
+    // Revoked/suspended authorizations are never silently reactivated by the
+    // automatic sync — we still refresh the scope, but the lifecycle status
+    // change must come from an explicit grant.
+    let targetStatus: DataAuthorizationStatus = existing.status;
     if (existing.status !== 'REVOKED') {
       if (vehicleIds.length > 0) {
         if (existing.status !== 'ACTIVE') {
+          targetStatus = 'ACTIVE';
           updateData.status = 'ACTIVE';
           updateData.grantedAt = existing.grantedAt ?? new Date();
           updateData.grantedByName = existing.grantedByName ?? 'System';
         }
-      } else {
+      } else if (existing.status !== 'PENDING') {
+        // No connected DIMO vehicles → not a usable active scope.
+        targetStatus = 'PENDING';
         updateData.status = 'PENDING';
         updateData.customerIds = [];
         updateData.bookingIds = [];
       }
     }
 
+    const statusChanged = targetStatus !== existing.status;
+    const specDrift =
+      existing.title !== spec.title ||
+      existing.riskLevel !== spec.riskLevel ||
+      existing.scope !== spec.scope ||
+      existing.processorName !== spec.processorName ||
+      existing.destination !== spec.destination ||
+      existing.moduleOrigin !== spec.moduleOrigin;
+
+    // Skip the write entirely when nothing changed so `updatedAt` only moves
+    // on a real scope/status/spec change (this runs on every read path).
+    if (!scopeChanged && !statusChanged && !specDrift) {
+      return;
+    }
+
     await this.prisma.orgDataAuthorization.update({
       where: { id: existing.id },
       data: updateData,
     });
+
+    if (scopeChanged) {
+      const added = vehicleIds.filter((id) => !previousVehicleIds.includes(id));
+      const removed = previousVehicleIds.filter(
+        (id) => !vehicleIds.includes(id),
+      );
+      void this.audit.record({
+        actorOrganizationId: orgId,
+        action: 'UPDATE',
+        entity: 'DATA_AUTHORIZATION',
+        entityId: existing.id,
+        description: `DIMO telemetry scope synced: ${vehicleIds.length} connected vehicle(s)`,
+        changeSummary: `+${added.length} / -${removed.length}; status=${targetStatus}`,
+        metaJson: {
+          systemKey: DIMO_TELEMETRY_SYSTEM_KEY,
+          isSystemGenerated: true,
+          vehicleCount: vehicleIds.length,
+          addedVehicleIds: added,
+          removedVehicleIds: removed,
+          status: targetStatus,
+        },
+      });
+    }
+  }
+
+  /** Order-insensitive equality check for two id arrays. */
+  private sameIdSet(a: string[], b: string[]): boolean {
+    if (a.length !== b.length) return false;
+    const setB = new Set(b);
+    return a.every((id) => setB.has(id));
   }
 
   async syncSystemAuthorizations(orgId: string) {

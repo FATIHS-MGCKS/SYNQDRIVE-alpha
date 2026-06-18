@@ -177,7 +177,7 @@ function VehicleRow({
     try { await onRemove(vehicle.id, vehicle.vin); } finally { setLoading(null); setConfirmRemove(false); }
   };
 
-  const rowBg = 'sq-CARD';
+  const rowBg = 'sq-card';
   const mutedFg = 'text-muted-foreground';
 
   return (
@@ -335,7 +335,7 @@ function VehicleSection({
   onViewHistory: (v: HmVehicleDto) => void;
   badge?: React.ReactNode;
 }) {
-  const headerBg = 'sq-CARD';
+  const headerBg = 'sq-card';
   return (
     <div>
       <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border mb-3 ${headerBg}`}>
@@ -399,7 +399,7 @@ function AddVehicleModal({ onClose,
   };
 
   const overlay = 'fixed inset-0 bg-black/50 backdrop-blur-[2px] z-50 flex items-center justify-center p-4';
-  const CARD = `w-full max-w-md rounded-xl border shadow-2xl p-6 sq-CARD`;const LABEL = 'block text-xs font-medium mb-1.5 text-muted-foreground';
+  const CARD = `w-full max-w-md rounded-xl border shadow-2xl p-6 sq-card`;const LABEL = 'block text-xs font-medium mb-1.5 text-muted-foreground';
 
   return (
     <div className={overlay} onClick={onClose}>
@@ -484,7 +484,7 @@ function HistoryModal({
   }, [vehicle.id]);
 
   const overlay = 'fixed inset-0 bg-black/50 backdrop-blur-[2px] z-50 flex items-center justify-center p-4';
-  const CARD = `w-full max-w-lg rounded-xl border shadow-2xl sq-CARD`;
+  const CARD = `w-full max-w-lg rounded-xl border shadow-2xl sq-card`;
 
   return (
     <div className={overlay} onClick={onClose}>
@@ -559,7 +559,7 @@ function EligibilityTab({ onAddToList,
   };
 
   const INPUT = `px-3 py-2 rounded-lg border text-sm border-border focus:outline-none focus:ring-2 focus:ring-blue-500/30`;
-  const cardCls = `rounded-xl border sq-CARD`;
+  const cardCls = `rounded-xl border sq-card`;
 
   return (
     <div className="space-y-5">
@@ -896,7 +896,7 @@ function DualAppStreamingTab() {
   const [loading, setLoading] = useState(true);
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
 
-  const cardCls = `rounded-xl border sq-CARD`;
+  const cardCls = `rounded-xl border sq-card`;
   const mutedFg = 'text-muted-foreground';
 
   const load = useCallback(async () => {
@@ -1047,7 +1047,7 @@ function StreamingTab() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterVin, setFilterVin] = useState('');
 
-  const cardCls = `rounded-xl border sq-CARD`;
+  const cardCls = `rounded-xl border sq-card`;
   const mutedFg = 'text-muted-foreground';
   const LABEL = `text-xs font-medium ${mutedFg}`;
 

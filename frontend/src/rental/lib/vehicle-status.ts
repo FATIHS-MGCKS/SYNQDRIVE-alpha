@@ -1,6 +1,16 @@
 /**
- * Canonical fleet status keys used for dashboard tabs and filters.
- * Prisma VehicleStatus is mapped to these keys in the backend fleet read-model.
+ * Three-layer status model — keep these strictly separate:
+ *   • Prisma / DB truth : AVAILABLE | RENTED | IN_SERVICE | OUT_OF_SERVICE | RESERVED
+ *   • UI key (this file): Available | Active Rented | Reserved | Maintenance | (Unavailable)
+ *   • UI label          : localised strings (dashboard.* i18n) — labels only,
+ *                         NEVER used in filters (no `status === "In Maintenance"`).
+ *
+ * Decision (must match backend RENTAL_STATUS_MAP in vehicles.service.ts): the
+ * rental Fleet/Dashboard collapse BOTH IN_SERVICE and OUT_OF_SERVICE into the
+ * single "Maintenance" bucket. The backend read-model therefore only ever emits
+ * Available / Active Rented / Reserved / Maintenance for rental surfaces. The
+ * legacy "Unavailable" key is kept tolerated below for backward-compat but is
+ * not produced by the rental read-model.
  */
 export type FleetStatusKey = 'Available' | 'Active Rented' | 'Reserved' | 'Maintenance' | 'Unavailable';
 
@@ -13,13 +23,17 @@ export const FLEET_STATUS_TAB_KEYS = [
 
 export type FleetStatusTabKey = (typeof FLEET_STATUS_TAB_KEYS)[number];
 
-/** Prisma enum → fleet status key (rental UI). */
+/**
+ * Prisma enum → rental fleet status key. Mirrors the backend RENTAL_STATUS_MAP:
+ * OUT_OF_SERVICE is intentionally bucketed under "Maintenance" (not a separate
+ * "Unavailable" bucket) so Fleet/Dashboard counts stay consistent with the API.
+ */
 export const PRISMA_TO_FLEET_STATUS_KEY: Record<string, FleetStatusKey> = {
   AVAILABLE: 'Available',
   RENTED: 'Active Rented',
   RESERVED: 'Reserved',
   IN_SERVICE: 'Maintenance',
-  OUT_OF_SERVICE: 'Unavailable',
+  OUT_OF_SERVICE: 'Maintenance',
 };
 
 /** Fleet status key → i18n label key suffix (dashboard.*). */
@@ -30,7 +44,11 @@ export const FLEET_STATUS_LABEL_KEY: Record<FleetStatusTabKey, string> = {
   Maintenance: 'maintenanceTab',
 };
 
-/** Match a vehicle's fleet read-model status to a dashboard tab key. */
+/**
+ * Match a vehicle's fleet read-model status to a dashboard tab key.
+ * The Maintenance tab also absorbs any legacy "Unavailable" value so older
+ * rows / clients never silently fall out of the count.
+ */
 export function fleetStatusMatchesTab(
   vehicleStatus: string | null | undefined,
   tab: FleetStatusTabKey,

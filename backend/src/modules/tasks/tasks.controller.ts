@@ -92,6 +92,7 @@ export class TasksController {
         documentId: body.documentId,
         estimatedCostCents: body.estimatedCostCents,
         checklist: body.checklist,
+        blocksVehicleAvailability: body.blocksVehicleAvailability,
         metadata: body.stationId ? { stationId: body.stationId } : undefined,
       },
       req.user?.id,
@@ -117,6 +118,7 @@ export class TasksController {
         assignedUserId: body.assignedUserId,
         estimatedCostCents: body.estimatedCostCents,
         actualCostCents: body.actualCostCents,
+        blocksVehicleAvailability: body.blocksVehicleAvailability,
       },
       req.user?.id,
     );

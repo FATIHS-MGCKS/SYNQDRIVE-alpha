@@ -1,360 +1,661 @@
 
-import { Icon } from './ui/Icon';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  EmptyState,
+  ErrorState,
+  PriorityBadge,
+  StatusChip,
+} from '../../components/patterns';
 import { api } from '../../lib/api';
+import type { ApiTask } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
 import type { VehicleData } from '../data/vehicles';
+import {
+  countVehicleTasks,
+  formatTaskDueDate,
+  matchesVehicleTaskFilter,
+  vehicleTaskPriorityLabel,
+  vehicleTaskStatusLabel,
+  vehicleTaskStatusTone,
+  type VehicleTaskFilter,
+} from '../lib/task-display.utils';
+import {
+  countBlockingTasks,
+  deriveNextBookingContext,
+  groupVehicleTasks,
+  matchesBlockingFilter,
+  parseVehicleOperatorTaskList,
+  pickNextBestAction,
+  taskSourceBadgeLabel,
+  type VehicleTaskOperatorRow,
+} from '../lib/task-operator.utils';
+import { CreateVehicleTaskDialog } from './tasks/CreateVehicleTaskDialog';
+import {
+  TaskBlockingBadgePill,
+  TaskDueBeforeBookingPill,
+  TaskSourceBadgePill,
+  VehicleTaskActionCenter,
+} from './tasks/VehicleTaskActionCenter';
+import { VehicleTaskDetailDrawer } from './tasks/VehicleTaskDetailDrawer';
+import { Icon } from './ui/Icon';
 
 interface VehicleTasksViewProps {
   isDarkMode: boolean;
   vehicle?: VehicleData | null;
+  vehicleVin?: string | null;
+  highlightTaskId?: string | null;
+  onHighlightConsumed?: () => void;
+  onOpenInGlobalTasks?: (taskId: string) => void;
+  tasksRefreshToken?: number;
 }
 
-type TaskFilter = 'all' | 'open' | 'in-progress' | 'overdue' | 'completed';
-type TaskStatus = Exclude<TaskFilter, 'all'>;
-type TaskPriority = 'critical' | 'high' | 'medium' | 'low';
+const FILTER_CHIPS: Array<{ id: VehicleTaskFilter; label: string }> = [
+  { id: 'all', label: 'Alle' },
+  { id: 'blocking', label: 'Blockiert' },
+  { id: 'open', label: 'Offen' },
+  { id: 'in-progress', label: 'In Arbeit' },
+  { id: 'waiting', label: 'Wartend' },
+  { id: 'overdue', label: 'Überfällig' },
+  { id: 'done', label: 'Erledigt' },
+  { id: 'cancelled', label: 'Storniert' },
+];
 
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  status: TaskStatus;
-  priority: TaskPriority;
-  category: string;
-  assignee: string;
-  dueAt: Date | null;
-  createdAt: Date | null;
+const IS_DEV = import.meta.env.DEV;
+
+function statusToneToChip(
+  tone: ReturnType<typeof vehicleTaskStatusTone>,
+): 'success' | 'watch' | 'warning' | 'critical' | 'info' | 'neutral' {
+  if (tone === 'critical') return 'critical';
+  if (tone === 'warning') return 'warning';
+  if (tone === 'success') return 'success';
+  if (tone === 'info') return 'info';
+  return 'neutral';
 }
 
-function parseDate(value: unknown): Date | null {
-  if (!value) return null;
-  const d = new Date(String(value));
-  return Number.isFinite(d.getTime()) ? d : null;
-}
-
-function normalizeStatus(raw: unknown, dueAt: Date | null): TaskStatus {
-  const status = String(raw ?? '').toLowerCase().replace(/[_\s]+/g, '-');
-  if (status.includes('complete') || status.includes('done') || status.includes('closed')) return 'completed';
-  if (status.includes('progress')) return 'in-progress';
-  if (status.includes('overdue')) return 'overdue';
-  if (dueAt && dueAt.getTime() < Date.now()) return 'overdue';
-  return 'open';
-}
-
-function normalizePriority(raw: unknown): TaskPriority {
-  const priority = String(raw ?? '').toLowerCase();
-  if (priority.includes('critical') || priority.includes('urgent')) return 'critical';
-  if (priority.includes('high')) return 'high';
-  if (priority.includes('low')) return 'low';
-  if (priority.includes('normal') || priority.includes('medium')) return 'medium';
-  return 'medium';
-}
-
-function formatDate(date: Date | null): string {
-  if (!date) return 'Kein Fälligkeitsdatum';
-  return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
-}
-
-function toneClass(tone: 'brand' | 'info' | 'success' | 'warning' | 'critical' | 'neutral') {
-  if (tone === 'brand') return 'sq-tone-brand';
-  if (tone === 'info') return 'sq-tone-info';
-  if (tone === 'success') return 'sq-tone-success';
-  if (tone === 'warning') return 'sq-tone-warning';
-  if (tone === 'critical') return 'sq-tone-critical';
-  return 'sq-tone-neutral';
-}
-
-function statusMeta(status: TaskStatus) {
-  if (status === 'overdue') return { label: 'Überfällig', tone: 'critical' as const, icon: 'alert-triangle' };
-  if (status === 'in-progress') return { label: 'In Bearbeitung', tone: 'warning' as const, icon: 'clock' };
-  if (status === 'completed') return { label: 'Erledigt', tone: 'success' as const, icon: 'check-circle-2' };
-  return { label: 'Offen', tone: 'info' as const, icon: 'clipboard-list' };
-}
-
-function priorityMeta(priority: TaskPriority) {
-  if (priority === 'critical') return { label: 'Critical', className: 'text-red-600' };
-  if (priority === 'high') return { label: 'High', className: 'text-orange-600' };
-  if (priority === 'low') return { label: 'Low', className: 'text-muted-foreground' };
-  return { label: 'Medium', className: 'text-amber-600' };
-}
-
-function normalizeTask(raw: any): Task {
-  const dueAt = parseDate(raw?.dueDate ?? raw?.dueAt ?? raw?.deadline);
-  return {
-    id: String(raw?.id ?? crypto.randomUUID?.() ?? Math.random()),
-    title: String(raw?.title ?? raw?.name ?? 'Untitled task'),
-    description: String(raw?.description ?? raw?.notes ?? ''),
-    status: normalizeStatus(raw?.status, dueAt),
-    priority: normalizePriority(raw?.priority),
-    category: String(raw?.category ?? raw?.type ?? 'General'),
-    assignee: String(raw?.assignedUserId ?? raw?.assignedTo ?? raw?.assignee ?? raw?.ownerName ?? 'Unassigned'),
-    dueAt,
-    createdAt: parseDate(raw?.createdAt ?? raw?.createdDate),
-  };
-}
-
-export function VehicleTasksView({ isDarkMode: _isDarkMode, vehicle }: VehicleTasksViewProps) {
+export function VehicleTasksView({
+  isDarkMode: _isDarkMode,
+  vehicle,
+  vehicleVin,
+  highlightTaskId,
+  onHighlightConsumed,
+  onOpenInGlobalTasks,
+  tasksRefreshToken,
+}: VehicleTasksViewProps) {
   const { orgId } = useRentalOrg();
-  const [filter, setFilter] = useState<TaskFilter>('all');
-  const [rows, setRows] = useState<any[]>([]);
+  const [filter, setFilter] = useState<VehicleTaskFilter>('all');
+  const [rows, setRows] = useState<ApiTask[]>([]);
   const [loading, setLoading] = useState(false);
-  const [errored, setErrored] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [orgMembers, setOrgMembers] = useState<{ id: string; name: string }[]>([]);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
+  const canCreate = Boolean(orgId && vehicle?.id);
+
+  const assigneeNameById = useMemo(
+    () => new Map(orgMembers.map((m) => [m.id, m.name])),
+    [orgMembers],
+  );
+
+  const nextBooking = useMemo(() => deriveNextBookingContext(vehicle), [vehicle]);
+
+  const checklistByTaskId = useMemo(() => {
+    const map = new Map<string, { done: number; total: number }>();
+    for (const task of rows) {
+      const items = task.checklist ?? [];
+      if (items.length > 0) {
+        map.set(task.id, {
+          done: items.filter((i) => i.isDone).length,
+          total: items.length,
+        });
+      }
+    }
+    return map;
+  }, [rows]);
+
+  const loadTasks = useCallback(async (opts?: { silent?: boolean }) => {
     if (!orgId || !vehicle?.id) {
       setRows([]);
-      setLoading(false);
+      setError(null);
+      return;
+    }
+    if (!opts?.silent) setLoading(true);
+    setError(null);
+    try {
+      const res = await api.tasks.forVehicle(orgId, vehicle.id);
+      setRows(Array.isArray(res) ? res : []);
+    } catch {
+      setRows([]);
+      setError('Aufgaben für dieses Fahrzeug konnten nicht geladen werden.');
+    } finally {
+      if (!opts?.silent) setLoading(false);
+    }
+  }, [orgId, vehicle?.id]);
+
+  useEffect(() => {
+    void loadTasks();
+  }, [loadTasks, tasksRefreshToken]);
+
+  useEffect(() => {
+    setDetailOpen(false);
+    setSelectedTaskId(null);
+    setFilter('all');
+  }, [vehicle?.id]);
+
+  useEffect(() => {
+    if (!orgId) {
+      setOrgMembers([]);
       return;
     }
     let cancelled = false;
-    setLoading(true);
-    setErrored(false);
-    api.tasks
-      .forVehicle(orgId, vehicle.id)
+    api.users
+      .listByOrg(orgId)
       .then((res) => {
         if (cancelled) return;
-        const arr = Array.isArray(res) ? res : [];
-        setRows(arr);
+        const list = Array.isArray(res) ? res : [];
+        setOrgMembers(
+          list.map((u) => ({
+            id: u.id,
+            name: u.name || `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email || u.id,
+          })),
+        );
       })
       .catch(() => {
-        if (!cancelled) {
-          setRows([]);
-          setErrored(true);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setOrgMembers([]);
       });
-    return () => { cancelled = true; };
-  }, [orgId, vehicle?.id]);
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
 
   const tasks = useMemo(() => {
     if (!vehicle?.id) return [];
-    return rows
-      .map(normalizeTask)
-      .sort((a, b) => {
-        const statusRank: Record<TaskStatus, number> = { overdue: 0, open: 1, 'in-progress': 2, completed: 3 };
-        const statusDelta = statusRank[a.status] - statusRank[b.status];
-        if (statusDelta !== 0) return statusDelta;
-        return (a.dueAt?.getTime() ?? Number.MAX_SAFE_INTEGER) - (b.dueAt?.getTime() ?? Number.MAX_SAFE_INTEGER);
-      });
-  }, [rows, vehicle?.id]);
+    return parseVehicleOperatorTaskList(rows, nextBooking, assigneeNameById);
+  }, [rows, vehicle?.id, nextBooking, assigneeNameById]);
 
-  const filteredTasks = filter === 'all' ? tasks : tasks.filter(t => t.status === filter);
-  const openCount = tasks.filter(t => t.status === 'open').length;
-  const inProgressCount = tasks.filter(t => t.status === 'in-progress').length;
-  const overdueCount = tasks.filter(t => t.status === 'overdue').length;
-  const completedCount = tasks.filter(t => t.status === 'completed').length;
-  const actionableCount = openCount + inProgressCount + overdueCount;
+  const counts = useMemo(() => {
+    const base = countVehicleTasks(tasks);
+    return { ...base, blocking: countBlockingTasks(tasks) };
+  }, [tasks]);
+
+  const nextBestAction = useMemo(() => pickNextBestAction(tasks), [tasks]);
+
+  const filteredTasks = useMemo(() => {
+    if (filter === 'blocking') return tasks.filter(matchesBlockingFilter);
+    return tasks.filter((t) => matchesVehicleTaskFilter(t, filter));
+  }, [filter, tasks]);
+
+  const taskGroups = useMemo(() => {
+    if (filter !== 'all') return [];
+    return groupVehicleTasks(filteredTasks);
+  }, [filter, filteredTasks]);
+
   const vehicleLabel = vehicle
     ? [vehicle.make, vehicle.model].filter(Boolean).join(' ') || vehicle.license
     : 'Kein Fahrzeug ausgewählt';
-  const nextTask = tasks.find((task) => task.status === 'overdue') ?? tasks.find((task) => task.status === 'open') ?? tasks.find((task) => task.status === 'in-progress') ?? null;
+
+  const plateLabel = vehicle?.license ?? '';
+
+  const openTaskDetail = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    setDetailOpen(true);
+  };
+
+  const handleTaskUpdated = useCallback((updated: ApiTask) => {
+    setRows((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+  }, []);
+
+  const handleTaskCreated = useCallback(
+    (created: ApiTask) => {
+      setRows((prev) => {
+        if (prev.some((t) => t.id === created.id)) return prev;
+        return [created, ...prev];
+      });
+      setFilter('all');
+      void loadTasks({ silent: true });
+    },
+    [loadTasks],
+  );
+
+  const openCreate = () => {
+    if (!canCreate) return;
+    setCreateOpen(true);
+  };
+
+  useEffect(() => {
+    if (!highlightTaskId || !tasks.some((t) => t.id === highlightTaskId)) return;
+    openTaskDetail(highlightTaskId);
+    const el = document.querySelector(`[data-vehicle-task-id="${highlightTaskId}"]`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const timer = window.setTimeout(() => onHighlightConsumed?.(), 4000);
+    return () => window.clearTimeout(timer);
+  }, [highlightTaskId, onHighlightConsumed, tasks]);
+
+  if (error && !loading && tasks.length === 0) {
+    return (
+      <ErrorState
+        title="Aufgaben konnten nicht geladen werden"
+        description="Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
+        error={IS_DEV ? error : undefined}
+        onRetry={() => void loadTasks()}
+        retryLabel="Erneut laden"
+        className="sq-card rounded-xl shadow-[var(--shadow-1)]"
+      />
+    );
+  }
+
+  const hasOpenTasks = counts.active > 0;
 
   return (
-    <div className="space-y-5">
-      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-start gap-3 min-w-0">
-            <div className="sq-tone-warning w-10 h-10 rounded-xl flex items-center justify-center shrink-0">
-              <Icon name="list-todo" className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-[13px] font-semibold tracking-[-0.003em] text-foreground">Fahrzeug Task Board</h3>
-              <p className="text-[11px] mt-0.5 text-muted-foreground truncate">{vehicleLabel}</p>
-              <p className="text-[10px] mt-1 text-muted-foreground">
-                {nextTask
-                  ? `Nächster Fokus: ${nextTask.title} · fällig ${formatDate(nextTask.dueAt)}`
-                  : 'Keine offenen Aufgaben für dieses Fahrzeug.'}
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 w-full xl:w-auto xl:min-w-[520px]">
-            <TaskMetric label="Alle" value={tasks.length} tone="neutral" active={filter === 'all'} onClick={() => setFilter('all')} />
-            <TaskMetric label="Offen" value={openCount} tone={openCount > 0 ? 'info' : 'neutral'} active={filter === 'open'} onClick={() => setFilter('open')} />
-            <TaskMetric label="In Arbeit" value={inProgressCount} tone={inProgressCount > 0 ? 'warning' : 'neutral'} active={filter === 'in-progress'} onClick={() => setFilter('in-progress')} />
-            <TaskMetric label="Überfällig" value={overdueCount} tone={overdueCount > 0 ? 'critical' : 'neutral'} active={filter === 'overdue'} onClick={() => setFilter('overdue')} />
-            <TaskMetric label="Erledigt" value={completedCount} tone="success" active={filter === 'completed'} onClick={() => setFilter('completed')} />
-          </div>
+    <div className="space-y-4 animate-fade-up">
+      {/* ── Operational header ── */}
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="sq-section-label">Fahrzeugbetrieb</p>
+          <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground font-display mt-0.5">
+            Aufgaben &amp; Aktionen
+          </h3>
+          <p className="text-[12px] text-muted-foreground mt-0.5 truncate">
+            {vehicleLabel}
+            {plateLabel ? (
+              <span className="text-muted-foreground/70"> · {plateLabel}</span>
+            ) : null}
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={openCreate}
+          disabled={!canCreate}
+          className="sm:hidden w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50 sq-press"
+        >
+          <Icon name="plus" className="w-3.5 h-3.5" />
+          Neue Aufgabe erstellen
+        </button>
+      </header>
+
+      {/* ── Summary metric strip ── */}
+      <div
+        className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-0.5 px-0.5 snap-x snap-mandatory scrollbar-thin"
+        role="tablist"
+        aria-label="Aufgabenfilter"
+      >
+        {FILTER_CHIPS.map((chip) => {
+          const value =
+            chip.id === 'all'
+              ? counts.total
+              : chip.id === 'blocking'
+                ? counts.blocking
+                : chip.id === 'open'
+                  ? counts.open
+                  : chip.id === 'in-progress'
+                    ? counts.inProgress
+                    : chip.id === 'waiting'
+                      ? counts.waiting
+                      : chip.id === 'overdue'
+                        ? counts.overdue
+                        : chip.id === 'done'
+                          ? counts.done
+                          : counts.cancelled;
+          const isActive = filter === chip.id;
+          const isAlert =
+            (chip.id === 'blocking' || chip.id === 'overdue') && value > 0;
+
+          return (
+            <FilterMetric
+              key={chip.id}
+              label={chip.label}
+              value={value}
+              active={isActive}
+              alert={isAlert}
+              onClick={() => setFilter(chip.id)}
+            />
+          );
+        })}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)] gap-3 items-start">
-        <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="sq-tone-brand w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
-                <Icon name="clipboard-list" className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <h4 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">Task Queue</h4>
-                <p className="text-[10px] text-muted-foreground">
-                  {filter === 'all' ? 'Alle Aufgaben nach Dringlichkeit sortiert.' : `${filteredTasks.length} Aufgaben in dieser Auswahl.`}
-                </p>
-              </div>
-            </div>
-            <span className="px-2 py-1 rounded-full text-[10px] font-semibold sq-tone-neutral">
-              {actionableCount} aktiv
-            </span>
-          </div>
+      {/* ── Next best action + context strip ── */}
+      <VehicleTaskActionCenter
+        nextAction={nextBestAction}
+        nextBooking={nextBooking}
+        blockingCount={counts.blocking}
+        activeCount={counts.active}
+        overdueCount={counts.overdue}
+        onOpenTask={openTaskDetail}
+        onCreateTask={openCreate}
+        canCreate={canCreate}
+      />
 
-          {loading ? (
-            <div className="min-h-[240px] flex items-center justify-center">
-              <Icon name="loader-2" className="w-5 h-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : errored ? (
-            <EmptyTaskState title="Tasks konnten nicht geladen werden" subtitle="Die Aufgaben erscheinen wieder, sobald die Anfrage erfolgreich ist." tone="critical" />
-          ) : !vehicle?.id ? (
-            <EmptyTaskState title="Kein Fahrzeug ausgewählt" subtitle="Wähle ein Fahrzeug aus, um dessen Aufgaben zu sehen." tone="neutral" />
-          ) : filteredTasks.length === 0 ? (
-            <EmptyTaskState
-              title={tasks.length === 0 ? 'Keine Tasks für dieses Fahrzeug' : 'Keine Tasks in dieser Auswahl'}
-              subtitle={tasks.length === 0 ? 'Sobald Reinigung, Wartung oder Schäden als Aufgabe erfasst werden, landet alles in dieser Queue.' : 'Wähle eine andere Status-Kachel, um weitere Aufgaben zu sehen.'}
-              tone={tasks.length === 0 ? 'success' : 'neutral'}
-            />
-          ) : (
-            <div className="space-y-2">
-              {filteredTasks.map((task) => (
-                <TaskRow key={task.id} task={task} />
-              ))}
-            </div>
+      {/* ── Task queue ── */}
+      <section className="sq-card rounded-xl shadow-[var(--shadow-1)] overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border/70">
+          <div className="min-w-0">
+            <h4 className="text-[13px] font-semibold text-foreground tracking-[-0.003em]">
+              Aufgabenliste
+            </h4>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {filter === 'all'
+                ? 'Nach Dringlichkeit gruppiert'
+                : `${filteredTasks.length} Aufgabe${filteredTasks.length === 1 ? '' : 'n'}`}
+            </p>
+          </div>
+          {!loading && filteredTasks.length > 0 && (
+            <span className="sq-chip sq-chip-neutral text-[10px] tabular-nums shrink-0">
+              {counts.active} aktiv
+            </span>
           )}
         </div>
 
-        <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="sq-tone-info w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
-              <Icon name="wrench" className="w-4 h-4" />
+        <div className="p-3 sm:p-4">
+          {loading ? (
+            <TaskRowSkeletonList count={5} />
+          ) : !vehicle?.id ? (
+            <EmptyState
+              compact
+              icon={<Icon name="car" className="w-5 h-5" />}
+              title="Kein Fahrzeug ausgewählt"
+              description="Wählen Sie ein Fahrzeug aus, um dessen Aufgaben zu sehen."
+            />
+          ) : filteredTasks.length === 0 ? (
+            <EmptyState
+              compact
+              icon={
+                <Icon
+                  name={tasks.length === 0 ? 'check-circle-2' : 'filter'}
+                  className="w-5 h-5"
+                />
+              }
+              title={
+                tasks.length === 0
+                  ? 'Keine Aufgaben für dieses Fahrzeug.'
+                  : 'Keine Aufgaben in dieser Auswahl'
+              }
+              description={
+                tasks.length === 0
+                  ? 'Dieses Fahrzeug hat aktuell keine operativen Blocker.'
+                  : 'Wählen Sie einen anderen Filter.'
+              }
+              action={
+                tasks.length === 0 && canCreate ? (
+                  <button
+                    type="button"
+                    onClick={openCreate}
+                    className="sq-cta inline-flex items-center gap-1.5 px-4 py-2 text-[12px] font-semibold"
+                  >
+                    <Icon name="plus" className="w-3.5 h-3.5" />
+                    Neue Aufgabe erstellen
+                  </button>
+                ) : undefined
+              }
+            />
+          ) : filter === 'all' && taskGroups.length > 0 ? (
+            <div className="space-y-2">
+              {taskGroups.map((group) => {
+                const collapsed = collapsedGroups[group.id] ?? group.id === 'completed';
+                return (
+                  <div key={group.id} className="rounded-lg border border-border/70 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCollapsedGroups((prev) => ({ ...prev, [group.id]: !collapsed }))
+                      }
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-muted/30 text-left sq-press transition-colors hover:bg-muted/50"
+                      aria-expanded={!collapsed}
+                    >
+                      <span className="text-[11px] font-semibold text-foreground">{group.label}</span>
+                      <span className="text-[10px] text-muted-foreground tabular-nums flex items-center gap-1">
+                        {group.tasks.length}
+                        <Icon
+                          name={collapsed ? 'chevron-down' : 'chevron-up'}
+                          className="w-3.5 h-3.5"
+                        />
+                      </span>
+                    </button>
+                    {!collapsed && (
+                      <div className="divide-y divide-border/50">
+                        {group.tasks.map((task) => (
+                          <TaskRow
+                            key={task.id}
+                            task={task}
+                            selected={selectedTaskId === task.id && detailOpen}
+                            highlighted={highlightTaskId === task.id}
+                            checklist={checklistByTaskId.get(task.id)}
+                            onClick={() => openTaskDetail(task.id)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <div>
-              <h4 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">Operations Fokus</h4>
-              <p className="text-[10px] text-muted-foreground">Was Disposition und Werkstatt zuerst sehen sollten.</p>
+          ) : (
+            <div className="rounded-lg border border-border/70 overflow-hidden divide-y divide-border/50">
+              {filteredTasks.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  selected={selectedTaskId === task.id && detailOpen}
+                  highlighted={highlightTaskId === task.id}
+                  checklist={checklistByTaskId.get(task.id)}
+                  onClick={() => openTaskDetail(task.id)}
+                />
+              ))}
             </div>
-          </div>
+          )}
 
-          <div className="space-y-2">
-            <FocusLine icon="alert-triangle" label="SLA Risiko" value={overdueCount > 0 ? `${overdueCount} überfällig` : 'Keine Überfälligkeit'} tone={overdueCount > 0 ? 'critical' : 'success'} />
-            <FocusLine icon="clock" label="In Bearbeitung" value={`${inProgressCount} aktiv`} tone={inProgressCount > 0 ? 'warning' : 'neutral'} />
-            <FocusLine icon="clipboard-list" label="Backlog" value={`${openCount} offen`} tone={openCount > 0 ? 'info' : 'neutral'} />
-          </div>
-
-          <button
-            type="button"
-            disabled
-            className="mt-4 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card/70 px-3 py-2 text-[10px] font-semibold text-muted-foreground opacity-60 cursor-not-allowed"
-          >
-            <Icon name="plus" className="w-3.5 h-3.5" />
-            Neue Fahrzeugaufgabe
-          </button>
+          {error && tasks.length > 0 && (
+            <div
+              className="mt-3 rounded-lg border border-[color:var(--status-attention)]/30 bg-[color:var(--status-attention-soft)] px-3 py-2 text-[11px] text-foreground"
+              role="status"
+            >
+              Die Liste konnte nicht aktualisiert werden. Angezeigt werden die zuletzt geladenen
+              Daten.{' '}
+              <button
+                type="button"
+                onClick={() => void loadTasks()}
+                className="font-semibold underline sq-press"
+              >
+                Erneut laden
+              </button>
+            </div>
+          )}
         </div>
-      </div>
+      </section>
+
+      {!loading && !hasOpenTasks && tasks.length > 0 && filter === 'all' && (
+        <p className="text-[11px] text-center text-muted-foreground px-4">
+          Alle Aufgaben abgeschlossen oder storniert — Fahrzeug operativ frei.
+        </p>
+      )}
+
+      <CreateVehicleTaskDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        vehicle={vehicle}
+        vehicleVin={vehicleVin}
+        onCreated={handleTaskCreated}
+      />
+
+      <VehicleTaskDetailDrawer
+        open={detailOpen}
+        onOpenChange={(open) => {
+          setDetailOpen(open);
+          if (!open) setSelectedTaskId(null);
+        }}
+        orgId={orgId}
+        taskId={selectedTaskId}
+        vehicle={vehicle}
+        orgMembers={orgMembers}
+        onTaskUpdated={handleTaskUpdated}
+        onOpenInGlobalTasks={onOpenInGlobalTasks}
+      />
     </div>
   );
 }
 
-function TaskMetric({
+/* ── Filter metric chip ── */
+
+function FilterMetric({
   label,
   value,
-  tone,
   active,
+  alert,
   onClick,
 }: {
   label: string;
   value: number;
-  tone: 'info' | 'success' | 'warning' | 'critical' | 'neutral';
   active: boolean;
+  alert: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={active}
       onClick={onClick}
-      aria-pressed={active}
-      className={`rounded-xl px-3 py-2 text-left transition-all duration-200 ${toneClass(tone)} ${
+      className={[
+        'snap-start shrink-0 rounded-lg px-3 py-2 text-left min-w-[76px] transition-all duration-200 sq-press',
+        'border',
         active
-          ? 'shadow-[inset_0_0_0_1px_currentColor,0_6px_14px_rgba(15,23,42,0.12)]'
-          : 'opacity-75 hover:opacity-100 hover:shadow-sm'
-      }`}
+          ? 'border-[color:var(--brand)]/40 bg-[color:var(--brand-soft)] shadow-[var(--shadow-xs)]'
+          : 'border-border/70 bg-card hover:bg-muted/40 hover:border-border',
+      ].join(' ')}
     >
-      <p className="text-[16px] leading-none font-bold tabular-nums">{value}</p>
-      <p className="text-[9px] mt-1 font-semibold uppercase tracking-wider opacity-75 truncate">{label}</p>
+      <p
+        className={[
+          'text-[15px] leading-none font-semibold tabular-nums',
+          alert && !active ? 'text-[color:var(--status-critical)]' : 'text-foreground',
+        ].join(' ')}
+      >
+        {value}
+      </p>
+      <p className="text-[9px] mt-1 font-medium uppercase tracking-wider text-muted-foreground truncate">
+        {label}
+      </p>
     </button>
   );
 }
 
-function EmptyTaskState({ title, subtitle, tone }: { title: string; subtitle: string; tone: 'success' | 'critical' | 'neutral' }) {
+/* ── Task row ── */
+
+function TaskRow({
+  task,
+  selected,
+  highlighted,
+  checklist,
+  onClick,
+}: {
+  task: VehicleTaskOperatorRow;
+  selected?: boolean;
+  highlighted?: boolean;
+  checklist?: { done: number; total: number };
+  onClick: () => void;
+}) {
+  const tone = vehicleTaskStatusTone(task.displayStatus, task.isOverdue);
+  const label = vehicleTaskStatusLabel(task.displayStatus, task.isOverdue);
+  const chipTone = statusToneToChip(tone);
+
   return (
-    <div className="min-h-[240px] rounded-xl border border-dashed border-border bg-muted/30 flex flex-col items-center justify-center px-4 text-center">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${toneClass(tone)}`}>
-        <Icon name={tone === 'critical' ? 'alert-circle' : 'check-circle-2'} className="w-5 h-5" />
+    <button
+      type="button"
+      data-vehicle-task-id={task.id}
+      onClick={onClick}
+      aria-current={selected ? 'true' : undefined}
+      className={[
+        'group w-full text-left px-3 py-2.5 transition-all duration-200 sq-press',
+        'hover:bg-muted/40',
+        selected
+          ? 'bg-[color:var(--brand-soft)] border-l-2 border-l-[color:var(--brand)]'
+          : 'border-l-2 border-l-transparent',
+        highlighted && !selected
+          ? 'ring-1 ring-inset ring-[color:var(--brand)]/25 bg-[color:var(--brand-soft)]/50'
+          : '',
+      ].join(' ')}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          {/* Badge row */}
+          <div className="flex items-center gap-1.5 flex-wrap mb-1">
+            <StatusChip tone={chipTone} className="text-[10px] py-0">
+              {label}
+            </StatusChip>
+            <PriorityBadge
+              priority={task.priority}
+              label={vehicleTaskPriorityLabel(task.priority)}
+              className="text-[10px] py-0"
+            />
+            <TaskSourceBadgePill label={taskSourceBadgeLabel(task.sourceBadge)} />
+            <TaskBlockingBadgePill badge={task.blockingBadge} />
+            {task.isDueBeforeNextBooking && <TaskDueBeforeBookingPill />}
+          </div>
+
+          {/* Title */}
+          <p className="text-[13px] font-semibold text-foreground leading-snug truncate group-hover:text-foreground">
+            {task.title}
+          </p>
+
+          {/* Meta row */}
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
+            <span
+              className={[
+                'inline-flex items-center gap-1 tabular-nums',
+                task.isOverdue ? 'text-[color:var(--status-critical)] font-medium' : '',
+              ].join(' ')}
+            >
+              <Icon name="calendar" className="w-3 h-3 shrink-0" />
+              {task.isOverdue ? 'Überfällig · ' : ''}
+              {formatTaskDueDate(task.dueDate)}
+            </span>
+            <span className="inline-flex items-center gap-1 truncate max-w-[140px]">
+              <Icon name="user" className="w-3 h-3 shrink-0" />
+              {task.assigneeLabel}
+            </span>
+            {checklist && (
+              <span className="inline-flex items-center gap-1 tabular-nums">
+                <Icon name="clipboard-check" className="w-3 h-3 shrink-0" />
+                {checklist.done}/{checklist.total}
+              </span>
+            )}
+            <span className="hidden sm:inline-flex items-center gap-1 truncate max-w-[120px]">
+              {task.category}
+            </span>
+          </div>
+        </div>
+
+        <Icon
+          name="chevron-right"
+          className="w-4 h-4 text-muted-foreground/40 shrink-0 mt-1 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-muted-foreground"
+          aria-hidden
+        />
       </div>
-      <p className="text-[12px] font-semibold text-foreground">{title}</p>
-      <p className="text-[10px] text-muted-foreground mt-1 max-w-[320px]">{subtitle}</p>
-    </div>
+    </button>
   );
 }
 
-function TaskRow({ task }: { task: Task }) {
-  const s = statusMeta(task.status);
-  const p = priorityMeta(task.priority);
+/* ── Loading skeletons shaped like task rows ── */
+
+function TaskRowSkeletonList({ count }: { count: number }) {
   return (
-    <div className="rounded-xl border border-border bg-muted/30 p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2.5 min-w-0">
-          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${toneClass(s.tone)}`}>
-            <Icon name={s.icon} className="w-4 h-4" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-[12px] font-semibold text-foreground truncate">{task.title}</p>
-              <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${toneClass(s.tone)}`}>{s.label}</span>
-              <span className={`text-[10px] font-semibold ${p.className}`}>· {p.label}</span>
+    <div className="rounded-lg border border-border/70 overflow-hidden divide-y divide-border/50" aria-hidden>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="px-3 py-2.5 flex items-start gap-3 animate-pulse">
+          <div className="flex-1 space-y-2">
+            <div className="flex gap-2">
+              <div className="h-5 w-14 rounded-full bg-muted" />
+              <div className="h-5 w-12 rounded-full bg-muted" />
+              <div className="h-5 w-16 rounded-full bg-muted/70" />
             </div>
-            {task.description && (
-              <p className="text-[10px] text-muted-foreground mt-1 line-clamp-1">{task.description}</p>
-            )}
-            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
-              <span className="inline-flex items-center gap-1">
-                <Icon name="calendar" className="w-3 h-3" />
-                Fällig {formatDate(task.dueAt)}
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <Icon name="user" className="w-3 h-3" />
-                {task.assignee}
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <Icon name="filter" className="w-3 h-3" />
-                {task.category}
-              </span>
+            <div className="h-3.5 rounded bg-muted" style={{ width: `${55 + (i % 3) * 12}%` }} />
+            <div className="flex gap-3">
+              <div className="h-2.5 w-20 rounded bg-muted/70" />
+              <div className="h-2.5 w-16 rounded bg-muted/70" />
             </div>
           </div>
         </div>
-        <Icon name="chevron-right" className="w-4 h-4 text-muted-foreground/60 shrink-0 mt-1" />
-      </div>
-    </div>
-  );
-}
-
-function FocusLine({
-  icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: string;
-  label: string;
-  value: string;
-  tone: 'info' | 'success' | 'warning' | 'critical' | 'neutral';
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-muted/30 px-3 py-2 flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2 min-w-0">
-        <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${toneClass(tone)}`}>
-          <Icon name={icon} className="w-3.5 h-3.5" />
-        </span>
-        <span className="text-[10px] font-medium text-muted-foreground truncate">{label}</span>
-      </div>
-      <span className="text-[10px] font-semibold text-foreground tabular-nums">{value}</span>
+      ))}
     </div>
   );
 }

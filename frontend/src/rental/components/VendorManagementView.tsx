@@ -482,9 +482,7 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
               <Icon name="chevron-down" className={`h-3.5 w-3.5 transition-transform ${showScopeFilter ? 'rotate-180' : ''}`} />
             </button>
             {showScopeFilter && (
-              <div className={`absolute right-0 top-full z-50 mt-2 min-w-[220px] overflow-hidden rounded-lg border shadow-xl sm:left-0 sm:right-auto ${
-                'bg-popover border-border'
-              }`}>
+              <div className="absolute right-0 top-full z-50 mt-2 min-w-[220px] overflow-hidden rounded-lg border border-border bg-popover shadow-[var(--shadow-2)] sm:left-0 sm:right-auto">
                 {[
                   { value: 'ALL' as const, label: 'All partners', icon: Briefcase },
                   { value: 'ACTIVE' as const, label: 'Active partners', icon: Wrench },
@@ -537,9 +535,7 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
               <Icon name="chevron-down" className={`h-3.5 w-3.5 transition-transform ${showCategoryFilter ? 'rotate-180' : ''}`} />
             </button>
             {showCategoryFilter && (
-              <div className={`absolute right-0 top-full z-50 mt-2 min-w-[250px] overflow-hidden rounded-lg border shadow-xl sm:left-0 sm:right-auto ${
-                'bg-popover border-border'
-              }`}>
+              <div className="absolute right-0 top-full z-50 mt-2 min-w-[250px] overflow-hidden rounded-lg border border-border bg-popover shadow-[var(--shadow-2)] sm:left-0 sm:right-auto">
                 {([{ value: 'ALL' as const, label: 'All categories', icon: Briefcase }, ...CATEGORIES]).map((cat) => {
                   const CatIcon = cat.icon;
                   const selected = catFilter === cat.value;
@@ -607,6 +603,7 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
                 key={v.id}
                 role="button"
                 tabIndex={0}
+                aria-label={`Open vendor ${v.name}`}
                 className="group sq-card sq-press w-full cursor-pointer rounded-2xl p-4 text-left shadow-[var(--shadow-1)] transition-all hover:bg-muted/35"
                 onClick={() => onOpenDetail?.(v)}
                 onKeyDown={(event) => {
@@ -660,6 +657,7 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
 
                   <button
                     type="button"
+                    aria-label={`Edit vendor ${v.name}`}
                     onClick={(event) => {
                       event.stopPropagation();
                       openEdit(v);
