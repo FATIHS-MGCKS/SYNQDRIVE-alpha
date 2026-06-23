@@ -117,6 +117,8 @@ export interface VehicleFileSummary {
     occurredAt: string;
     uiStatus: string;
     source: string;
+    relatedExtractionId?: string | null;
+    relatedServiceEventId?: string | null;
   }>;
 }
 

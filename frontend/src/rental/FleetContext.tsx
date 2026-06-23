@@ -24,6 +24,11 @@ function mapApiToVehicleData(v: any): VehicleData {
   const healthStatus = (v.healthStatus || 'Good Health') as VehicleData['healthStatus'];
 
   const onlineStatus = (['ONLINE', 'STANDBY', 'OFFLINE'].includes(v.onlineStatus) ? v.onlineStatus : undefined) as VehicleOnlineStatus | undefined;
+  const telemetryFreshness = (['live', 'standby', 'signal_delayed', 'offline', 'no_signal'].includes(
+    v.telemetryFreshness,
+  )
+    ? v.telemetryFreshness
+    : undefined) as VehicleData['telemetryFreshness'];
   const displayState = (['MOVING', 'IDLE', 'PARKED'].includes(v.displayState) ? v.displayState : undefined) as VehicleDisplayState | undefined;
   const displayIgnition = (['ON', 'OFF', 'UNKNOWN'].includes(v.displayIgnition) ? v.displayIgnition : undefined) as VehicleDisplayIgnition | undefined;
 
@@ -97,6 +102,7 @@ function mapApiToVehicleData(v: any): VehicleData {
     signalAgeMs: typeof v.signalAgeMs === 'number' ? v.signalAgeMs : undefined,
     isFresh: typeof v.isFresh === 'boolean' ? v.isFresh : undefined,
     onlineStatus,
+    telemetryFreshness,
     displayState,
     displayIgnition,
     isLiveTracking: typeof v.isLiveTracking === 'boolean' ? v.isLiveTracking : undefined,

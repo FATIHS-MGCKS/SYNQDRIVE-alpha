@@ -1,10 +1,8 @@
 import { Icon } from '../ui/Icon';
-import { StatusChip, SkeletonMetricGrid } from '../../../components/patterns';
+import { SkeletonRows } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
-import type { BusinessPulseDrilldown, BusinessPulseMetricItem } from './businessPulseBuilder';
-import { DataTrustHint } from './DataTrustHint';
-import { sectionTrustHint } from './dataTrustBuilder';
-import { DashboardPanelHeader, PANEL_BODY_CLASS, panelShellClass } from './dashboardShell';
+import type { BusinessPulseCompactMetric, BusinessPulseDrilldown } from './businessPulseBuilder';
+import { panelShellClass } from './dashboardShell';
 import type { DashboardViewModel } from './dashboardTypes';
 
 interface BusinessPulseProps {
@@ -12,132 +10,129 @@ interface BusinessPulseProps {
   onOpenFinanceView?: (view: BusinessPulseDrilldown) => void;
 }
 
-function PulseMetric({
+function CompactMetric({
   metric,
-  de,
   vm,
 }: {
-  metric: BusinessPulseMetricItem;
-  de: boolean;
+  metric: BusinessPulseCompactMetric;
   vm: DashboardViewModel;
 }) {
-  const clickable = !metric.unavailable;
-  const Wrapper = clickable ? 'button' : 'div';
-
+  const clickable = metric.available;
   return (
-    <Wrapper
-      type={clickable ? 'button' : undefined}
+    <button
+      type="button"
+      disabled={!clickable}
       onClick={
         clickable
           ? () => vm.openDrilldown({ type: 'business-metric', metricId: metric.id })
           : undefined
       }
-      className={[
-        'rounded-xl border border-border/50 bg-card/30 px-3 py-2.5 text-left transition-colors duration-150',
+      className={cn(
+        '-mx-1 min-w-0 rounded-md px-1 py-0.5 text-left transition-colors',
         clickable
-          ? 'sq-press min-h-11 hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]'
-          : '',
-        metric.unavailable ? 'opacity-70' : '',
-      ].join(' ')}    >
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-[10px] font-medium text-muted-foreground">{metric.label}</p>        {metric.trend && !metric.unavailable ? (
-          <span
-            className={[
-              'text-[9px] font-semibold tabular-nums',
-              metric.trend.invert
-                ? metric.trend.direction === 'up'
-                  ? 'text-[color:var(--status-critical)]'
-                  : 'text-[color:var(--status-success)]'
-                : metric.trend.direction === 'up'
-                  ? 'text-[color:var(--status-success)]'
-                  : 'text-[color:var(--status-critical)]',
-            ].join(' ')}
-          >
-            {metric.trend.label}
-          </span>
-        ) : null}
-      </div>
-      <p className="mt-1 text-lg font-bold tabular-nums tracking-tight text-foreground">{metric.value}</p>
+          ? 'sq-press hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]'
+          : 'cursor-default',
+      )}
+    >
+      <p className="truncate text-[10.5px] font-medium tracking-[-0.01em] text-muted-foreground">
+        {metric.label}
+      </p>
+      <p
+        className={cn(
+          'mt-0.5 truncate text-[16px] font-semibold tabular-nums leading-none tracking-[-0.02em]',
+          !metric.available
+            ? 'text-muted-foreground'
+            : metric.emphasize
+              ? 'text-[color:var(--status-critical)]'
+              : 'text-foreground',
+        )}
+      >
+        {metric.value}
+      </p>
       {metric.hint ? (
-        <p className="mt-0.5 text-[9px] text-muted-foreground">{metric.hint}</p>
-      ) : null}
-      {clickable ? (
-        <p className="mt-1 text-[9px] font-medium text-primary/80">
-          {de ? 'Details öffnen' : 'Open details'}
+        <p
+          className={cn(
+            'mt-0.5 truncate text-[10px] leading-snug',
+            metric.emphasize ? 'text-[color:var(--status-critical)]/80' : 'text-muted-foreground',
+          )}
+        >
+          {metric.hint}
         </p>
       ) : null}
-    </Wrapper>
+    </button>
   );
 }
 
-export function BusinessPulse({ vm }: BusinessPulseProps) {
+export function BusinessPulse({ vm, onOpenFinanceView }: BusinessPulseProps) {
   const { businessPulse, locale } = vm;
   const de = locale === 'de';
+  const { compact } = businessPulse;
+
+  const subline = [
+    compact.monthLabel,
+    businessPulse.hasFinancialData
+      ? de
+        ? `${compact.invoiceCount} Rechnung(en)`
+        : `${compact.invoiceCount} invoice${compact.invoiceCount === 1 ? '' : 's'}`
+      : null,
+    businessPulse.stationScoped ? (de ? 'Stations-Scope' : 'Station scope') : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <section
-      className={panelShellClass('tertiary')}
-      aria-label={de ? 'Business Pulse' : 'Business Pulse'}
+      className={panelShellClass('tertiary', 'border-solid border-border/55 bg-card/55 shadow-none')}
+      aria-label="Business Pulse"
     >
-      <DashboardPanelHeader
-        icon={<Icon name="wallet" className="h-4 w-4 text-muted-foreground" />}
-        iconToneClass="bg-muted/40"
-        title="Business Pulse"
-        subtitle={
-          de
-            ? 'Finanz- & Business-KPIs · sekundär zur Operation'
-            : 'Financial & business KPIs · secondary to operations'
-        }
-        trailing={
-          <div className="flex flex-col items-end gap-1">
-            {businessPulse.stationScoped ? (
-              <StatusChip tone="info" className="text-[10px]">
-                {de ? 'Stations-Scope' : 'Station scope'}
-              </StatusChip>
-            ) : null}
-            <DataTrustHint
-              hint={sectionTrustHint('finance', vm.dataTrust)}
-              locale={locale}
-              className="text-right"
-            />
-          </div>
-        }
-      />
-
-      <div className={cn(PANEL_BODY_CLASS, 'space-y-3')}>        {businessPulse.loading ? (
-          <SkeletonMetricGrid count={3} className="!grid-cols-1 sm:!grid-cols-3" />
-        ) : businessPulse.error ? (
-          <div className="rounded-xl border border-border/50 bg-muted/20 px-3 py-4 text-center">
-            <p className="text-[12px] font-medium text-foreground">
-              {de ? 'Finanzdaten nicht verfügbar' : 'Financial data unavailable'}
-            </p>
-            <p className="mt-1 text-[10px] text-muted-foreground">
-              {de ? 'Rechnungen konnten nicht geladen werden.' : 'Invoices could not be loaded.'}
-            </p>
-          </div>
-        ) : !businessPulse.hasFinancialData && businessPulse.secondaryMetrics.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border/60 bg-muted/10 px-3 py-5 text-center">
-            <p className="text-[12px] font-medium text-foreground">{businessPulse.emptyTitle}</p>
-            <p className="mt-1 text-[10px] text-muted-foreground">{businessPulse.emptySubtitle}</p>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              {businessPulse.primaryMetrics.map((metric) => (
-                <PulseMetric key={metric.id} metric={metric} de={de} vm={vm} />
-              ))}
-            </div>
-
-            {businessPulse.secondaryMetrics.length > 0 ? (
-              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                {businessPulse.secondaryMetrics.map((metric) => (
-                  <PulseMetric key={metric.id} metric={metric} de={de} vm={vm} />
-                ))}
-              </div>
-            ) : null}
-          </>
-        )}
+      <div className="flex items-center justify-between gap-2 px-3.5 pt-2.5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="h-2 w-2 shrink-0 rounded-full bg-[color:var(--brand)]" aria-hidden />
+          <h2 className="text-[13px] font-semibold leading-tight tracking-[-0.01em] text-foreground">
+            Business Pulse
+          </h2>
+        </div>
+        <button
+          type="button"
+          onClick={() => onOpenFinanceView?.('invoices')}
+          className="sq-press inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md px-1.5 text-[11px] font-medium text-[color:var(--brand)] transition-colors hover:bg-[color:var(--brand-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+        >
+          {de ? 'Abrechnung öffnen' : 'Open billing'}
+          <Icon name="arrow-right" className="h-3 w-3" />
+        </button>
       </div>
+      <p className="mt-0.5 truncate px-3.5 text-[11px] leading-snug text-muted-foreground">{subline}</p>
+
+      {businessPulse.loading ? (
+        <div className="px-3.5 py-3" aria-busy>
+          <SkeletonRows rows={2} />
+        </div>
+      ) : businessPulse.error ? (
+        <div className="px-3.5 py-3">
+          <p className="text-[12px] font-medium text-foreground">
+            {de ? 'Finanzdaten nicht verfügbar' : 'Financial data unavailable'}
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground text-pretty">
+            {de ? 'Rechnungen konnten nicht geladen werden.' : 'Invoices could not be loaded.'}
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 px-3.5 pb-2.5 pt-2 sm:grid-cols-4">
+            <CompactMetric metric={compact.revenue} vm={vm} />
+            <CompactMetric metric={compact.profit} vm={vm} />
+            <CompactMetric metric={compact.openReceivables} vm={vm} />
+            <CompactMetric metric={compact.overdueReceivables} vm={vm} />
+          </div>
+          {compact.expenses ? (
+            <p className="border-t border-border/30 px-3.5 py-1.5 text-[10.5px] text-muted-foreground">
+              {compact.expenses.label}:{' '}
+              <span className="font-medium tabular-nums text-foreground/85">{compact.expenses.value}</span>
+              {compact.expenses.hint ? ` · ${compact.expenses.hint}` : ''}
+            </p>
+          ) : null}
+        </>
+      )}
     </section>
   );
 }

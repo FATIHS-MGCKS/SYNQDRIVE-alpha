@@ -1,6 +1,6 @@
 import type { VehicleHealthAlert } from '../../DashboardInsightsContext';
 import type { VehicleData } from '../../data/vehicles';
-import { isVehicleOffline } from '../../data/vehicles';
+import { resolveTelemetryFreshness } from '../../lib/telemetryFreshness';
 import type { VehicleHealthResponse } from '../../../lib/api';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
 import type { Station } from '../../../lib/api';
@@ -31,11 +31,14 @@ export interface VehicleTelemetryFreshness {
 }
 
 function classifyTelemetry(v: VehicleData): VehicleTelemetryBucket {
-  if (isVehicleOffline(v)) return 'offline';
-  if (!v.lastSignal) return 'unknown';
-  if (v.onlineStatus === 'STANDBY' || v.isFresh === false) return 'stale';
-  if (v.onlineStatus === 'ONLINE' || v.isFresh === true) return 'fresh';
-  return 'unknown';
+  // Central 5-state freshness. STANDBY counts as fresh (normal quiet state);
+  // only soft-offline (signal_delayed, 24–48h) is "stale", and real offline /
+  // never-reported map to offline / unknown.
+  const f = resolveTelemetryFreshness(v);
+  if (f.isOffline) return 'offline';
+  if (f.isNoSignal) return 'unknown';
+  if (f.isSignalDelayed) return 'stale';
+  return 'fresh';
 }
 
 export function computeVehicleTelemetryFreshness(input: {
@@ -259,7 +262,7 @@ export function stationDataFreshnessLabel(
   const de = locale === 'de';
   if (freshness === 'live') return de ? 'Live' : 'Live';
   if (freshness === 'partial') return de ? 'Teilweise' : 'Partial';
-  if (freshness === 'stale') return de ? 'Veraltet' : 'Stale';
+  if (freshness === 'stale') return de ? 'Signal verzögert' : 'Signal delayed';
   if (freshness === 'offline') return de ? 'Offline' : 'Offline';
   return de ? 'Keine Fahrzeuge' : 'No vehicles';
 }
@@ -391,7 +394,7 @@ export function syncStatusDisplay(status: DataSyncStatus, locale: string): strin
   const de = locale === 'de';
   if (status === 'live') return de ? 'Live' : 'Live';
   if (status === 'partial') return de ? 'Teilweise' : 'Partial';
-  if (status === 'stale') return de ? 'Veraltet' : 'Stale';
+  if (status === 'stale') return de ? 'Signal verzögert' : 'Signal delayed';
   return de ? 'Offline' : 'Offline';
 }
 

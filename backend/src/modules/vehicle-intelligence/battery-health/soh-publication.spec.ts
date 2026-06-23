@@ -6,6 +6,7 @@ import {
   determineLvMaturity,
   getLvCalibrationProgress,
   determineHvMaturity,
+  isLegacyHvDegradationModel,
   combinedConfidence,
   mapSignalConfidence,
   daysBetween,
@@ -195,6 +196,7 @@ describe('soh-publication utilities', () => {
 
   describe('determineHvMaturity', () => {
     it('treats degradation_model as insufficient (no maturity progression)', () => {
+      expect(isLegacyHvDegradationModel('degradation_model')).toBe(true);
       expect(determineHvMaturity({ validEstimateCount: 20, daysSinceFirstMeasurement: 30, method: 'degradation_model' })).toBe('INITIAL_CALIBRATION');
     });
 

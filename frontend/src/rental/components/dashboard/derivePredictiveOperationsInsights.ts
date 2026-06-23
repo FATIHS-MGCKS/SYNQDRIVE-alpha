@@ -1,7 +1,7 @@
 import type { DashboardInsight } from '../../DashboardInsightsContext';
 import type { VehicleHealthAlert } from '../../DashboardInsightsContext';
 import type { VehicleData } from '../../data/vehicles';
-import { isVehicleOffline } from '../../data/vehicles';
+import { resolveTelemetryFreshness } from '../../lib/telemetryFreshness';
 import type { VehicleHealthResponse } from '../../../lib/api';
 import type { Station } from '../../../lib/api';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
@@ -83,11 +83,13 @@ function readEvSoc(v: VehicleData): number | null {
 function telemetryRiskBucket(
   v: VehicleData,
 ): 'offline' | 'stale' | 'unknown' | 'fresh' | 'none' {
-  if (isVehicleOffline(v)) return 'offline';
-  if (!v.lastSignal) return 'none';
-  if (v.onlineStatus === 'STANDBY' || v.isFresh === false) return 'stale';
-  if (v.onlineStatus === 'ONLINE' || v.isFresh === true) return 'fresh';
-  return 'unknown';
+  // Central 5-state freshness. STANDBY is normal (fresh); only soft-offline
+  // (signal_delayed, 24–48h) is "stale", offline ≥48h, never-reported → none.
+  const f = resolveTelemetryFreshness(v);
+  if (f.isOffline) return 'offline';
+  if (f.isNoSignal) return 'none';
+  if (f.isSignalDelayed) return 'stale';
+  return 'fresh';
 }
 
 function pickupWithinWindow(startMs: number | null, now: number, windowMs: number): boolean {

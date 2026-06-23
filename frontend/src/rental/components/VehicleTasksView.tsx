@@ -1,5 +1,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { SupportContextButton } from '../../components/support/SupportContextButton';
 import {
   EmptyState,
   ErrorState,
@@ -19,6 +20,8 @@ import {
   vehicleTaskStatusTone,
   type VehicleTaskFilter,
 } from '../lib/task-display.utils';
+import { isServiceMaintenanceTask, taskTypeLabel } from '../lib/service-task-semantics';
+import { isActiveTask } from '../components/service-center/service-center.utils';
 import {
   countBlockingTasks,
   deriveNextBookingContext,
@@ -46,6 +49,7 @@ interface VehicleTasksViewProps {
   highlightTaskId?: string | null;
   onHighlightConsumed?: () => void;
   onOpenInGlobalTasks?: (taskId: string) => void;
+  onOpenServiceCenter?: () => void;
   tasksRefreshToken?: number;
 }
 
@@ -79,6 +83,7 @@ export function VehicleTasksView({
   highlightTaskId,
   onHighlightConsumed,
   onOpenInGlobalTasks,
+  onOpenServiceCenter,
   tasksRefreshToken,
 }: VehicleTasksViewProps) {
   const { orgId } = useRentalOrg();
@@ -192,6 +197,11 @@ export function VehicleTasksView({
     return groupVehicleTasks(filteredTasks);
   }, [filter, filteredTasks]);
 
+  const maintenanceOpenCount = useMemo(
+    () => rows.filter((t) => isActiveTask(t) && isServiceMaintenanceTask(t)).length,
+    [rows],
+  );
+
   const vehicleLabel = vehicle
     ? [vehicle.make, vehicle.model].filter(Boolean).join(' ') || vehicle.license
     : 'Kein Fahrzeug ausgewählt';
@@ -264,15 +274,35 @@ export function VehicleTasksView({
             ) : null}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          disabled={!canCreate}
-          className="sm:hidden w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50 sq-press"
-        >
-          <Icon name="plus" className="w-3.5 h-3.5" />
-          Neue Aufgabe erstellen
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <SupportContextButton
+            kind="task"
+            contextData={{
+              vehicleId: vehicle?.id,
+              licensePlate: plateLabel,
+              selectedTab: 'vehicle-tasks',
+            }}
+          />
+          {onOpenServiceCenter && maintenanceOpenCount > 0 && (
+            <button
+              type="button"
+              onClick={onOpenServiceCenter}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border/70 bg-card px-3 py-2 text-[11px] font-semibold hover:bg-muted/40 sq-press"
+            >
+              <Icon name="wrench" className="w-3.5 h-3.5" />
+              Service Center ({maintenanceOpenCount})
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={openCreate}
+            disabled={!canCreate}
+            className="sm:hidden w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50 sq-press"
+          >
+            <Icon name="plus" className="w-3.5 h-3.5" />
+            Neue Aufgabe erstellen
+          </button>
+        </div>
       </header>
 
       {/* ── Summary metric strip ── */}
@@ -588,6 +618,11 @@ function TaskRow({
               className="text-[10px] py-0"
             />
             <TaskSourceBadgePill label={taskSourceBadgeLabel(task.sourceBadge)} />
+            {isServiceMaintenanceTask({ type: task.apiType, category: task.category }) && (
+              <span className="inline-flex items-center rounded-md border border-[color:var(--brand)]/20 bg-[color:var(--brand-soft)] px-1.5 py-0.5 text-[9px] font-semibold text-[color:var(--brand-ink)]">
+                Wartung
+              </span>
+            )}
             <TaskBlockingBadgePill badge={task.blockingBadge} />
             {task.isDueBeforeNextBooking && <TaskDueBeforeBookingPill />}
           </div>
@@ -596,6 +631,11 @@ function TaskRow({
           <p className="text-[13px] font-semibold text-foreground leading-snug truncate group-hover:text-foreground">
             {task.title}
           </p>
+          {isServiceMaintenanceTask({ type: task.apiType, category: task.category }) && (
+            <p className="text-[10px] text-muted-foreground truncate">
+              {taskTypeLabel({ type: task.apiType, category: task.category, metadata: task.metadata })}
+            </p>
+          )}
 
           {/* Meta row */}
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">

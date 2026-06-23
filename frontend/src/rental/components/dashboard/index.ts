@@ -29,6 +29,7 @@ export { ControlKpiStrip } from './ControlKpiStrip';
 export { ActionQueue } from './ActionQueue';
 export { FleetStateBoard } from './FleetStateBoard';
 export { NowNextTimeline } from './NowNextTimeline';
+export { OperationsSchedulePanel } from './OperationsSchedulePanel';
 export { TodayOperations } from './TodayOperations';
 export { StationHealthPanel } from './StationHealthPanel';
 export {
@@ -47,8 +48,12 @@ export {
   DashboardSectionLabel,
   INTERACTIVE_ROW_CLASS,
   INTERACTIVE_TAB_CLASS,
+  META_TEXT_CLASS,
+  MICRO_LABEL_CLASS,
   PANEL_BODY_CLASS,
   PANEL_BODY_SCROLL_CLASS,
   PANEL_HEADER_CLASS,
+  ROW_BODY_CLASS,
+  ROW_TITLE_CLASS,
   panelShellClass,
 } from './dashboardShell';

@@ -202,6 +202,7 @@ export interface FleetMapVehicleDto
   signalAgeMs: number;
   isFresh: boolean;
   onlineStatus: string;
+  telemetryFreshness: string;
   displayState: string;
   displayIgnition: string;
   isLiveTracking: boolean;
@@ -608,6 +609,7 @@ export class VehiclesService {
       signalAgeMs: interpreted.signalAgeMs,
       isFresh: interpreted.isFresh,
       onlineStatus: interpreted.onlineStatus,
+      telemetryFreshness: interpreted.telemetryFreshness,
       displayState: interpreted.displayState,
       displayIgnition: interpreted.displayIgnition,
       isLiveTracking: interpreted.isLiveTracking,
@@ -727,6 +729,7 @@ export class VehiclesService {
       signalAgeMs: interpreted.signalAgeMs,
       isFresh: interpreted.isFresh,
       onlineStatus: interpreted.onlineStatus,
+      telemetryFreshness: interpreted.telemetryFreshness,
       displayState: interpreted.displayState,
       displayIgnition: interpreted.displayIgnition,
       isLiveTracking: interpreted.isLiveTracking,
@@ -1242,6 +1245,7 @@ export class VehiclesService {
         signalAgeMs: interpreted.signalAgeMs,
         isFresh: interpreted.isFresh,
         onlineStatus: interpreted.onlineStatus,
+        telemetryFreshness: interpreted.telemetryFreshness,
         displayState: interpreted.displayState,
         displayIgnition: interpreted.displayIgnition,
         isLiveTracking: interpreted.isLiveTracking,
@@ -1428,6 +1432,7 @@ export class VehiclesService {
       signalAgeMs: interpreted.signalAgeMs,
       isFresh: interpreted.isFresh,
       onlineStatus: interpreted.onlineStatus,
+      telemetryFreshness: interpreted.telemetryFreshness,
       displayState: interpreted.displayState,
       displayIgnition: interpreted.displayIgnition,
       isLiveTracking: interpreted.isLiveTracking,

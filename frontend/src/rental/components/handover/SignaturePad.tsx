@@ -17,6 +17,8 @@ interface SignaturePadProps {
   onDataUrlChange: (value: string | null) => void;
   required?: boolean;
   helperText?: string;
+  /** Canvas CSS height (default 140px). Operator handover uses taller pads. */
+  canvasHeight?: number | string;
 }
 
 type Mode = 'draw' | 'type';
@@ -30,6 +32,7 @@ export function SignaturePad({
   onDataUrlChange,
   required,
   helperText,
+  canvasHeight = 140,
 }: SignaturePadProps) {
   const [mode, setMode] = useState<Mode>('draw');
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -207,7 +210,7 @@ export function SignaturePad({
             onPointerLeave={handlePointerUp}
             style={{
               width: '100%',
-              height: '140px',
+              height: typeof canvasHeight === 'number' ? `${canvasHeight}px` : canvasHeight,
               touchAction: 'none',
               cursor: 'crosshair',
             }}

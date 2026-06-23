@@ -14,6 +14,7 @@ import {
   specUsedForRestingThresholds,
   type BatteryHealthStatus,
 } from '../../vehicle-intelligence/battery-health/battery-status';
+import { isLegacyHvDegradationModel } from '../../vehicle-intelligence/battery-health/soh-publication';
 import {
   DetectorContext,
   InsightCandidate,
@@ -145,6 +146,7 @@ export class BatteryCriticalDetector implements InsightDetector {
           vehicleId: true,
           publishedSohPct: true,
           publicationState: true,
+          publicationMethod: true,
         },
       }),
       // Workshop / document / manual / provider HV SOH — same evidence basis as
@@ -220,12 +222,17 @@ export class BatteryCriticalDetector implements InsightDetector {
 
     const hvCurrentByVehicle = new Map<
       string,
-      { publishedSohPct: number | null; publicationState: string | null }
+      {
+        publishedSohPct: number | null;
+        publicationState: string | null;
+        publicationMethod: string | null;
+      }
     >();
     for (const h of hvCurrentRows) {
       hvCurrentByVehicle.set(h.vehicleId, {
         publishedSohPct: h.publishedSohPct ?? null,
         publicationState: (h.publicationState as string | null) ?? null,
+        publicationMethod: (h.publicationMethod as string | null) ?? null,
       });
     }
 
@@ -370,6 +377,7 @@ export class BatteryCriticalDetector implements InsightDetector {
 
         const capacitySoh =
           hvCurrent &&
+          !isLegacyHvDegradationModel(hvCurrent.publicationMethod) &&
           hvCurrent.publicationState !== BatteryCriticalDetector.INITIAL_CALIBRATION
             ? hvCurrent.publishedSohPct
             : null;

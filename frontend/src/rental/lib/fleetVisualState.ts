@@ -2,6 +2,7 @@ import type { Feature, FeatureCollection, Point } from 'geojson';
 import type { VehicleData } from '../data/vehicles';
 import type { VehicleHealthResponse } from '../../lib/api';
 import { isVehicleOffline } from '../data/vehicles';
+import { resolveTelemetryFreshness } from './telemetryFreshness';
 
 export type FleetVisualStatus =
   | 'ready'
@@ -77,6 +78,7 @@ export type FleetVisualStateVehicle = Pick<
   | 'healthStatus'
   | 'onlineStatus'
   | 'lastSignal'
+  | 'signalAgeMs'
   | 'isFresh'
   | 'activeBookingId'
   | 'reservedBookingId'
@@ -131,7 +133,9 @@ export const FLEET_MAP_LEGEND_ITEMS: ReadonlyArray<{
   { mapTone: 'maintenance', label: 'Maintenance' },
   { mapTone: 'blocked', label: 'Blocked' },
   { mapTone: 'offline', label: 'Offline' },
-  { mapTone: 'stale', label: 'Stale Signal' },
+  // Amber map tone is now produced only for attention/warning vehicles, never
+  // for normal standby telemetry — so the legend reads "Needs Attention".
+  { mapTone: 'stale', label: 'Needs Attention' },
 ];
 
 export function getFleetMapToneHex(tone: FleetMapTone): string {
@@ -182,14 +186,15 @@ function isHealthWarning(
   );
 }
 
-function isStaleSignal(
+// Soft-offline ("signal delayed") detection: 24–48h since last signal. This is
+// NOT the same as STANDBY (15min–24h, perfectly normal) — STANDBY never sets
+// this flag, so a quiet-but-healthy device is never downgraded or warned.
+function isSignalDelayed(
   vehicle: FleetVisualStateVehicle,
   offline: boolean,
 ): boolean {
   if (offline) return false;
-  if (vehicle.onlineStatus === 'STANDBY') return true;
-  if (vehicle.isFresh === false && !!vehicle.lastSignal) return true;
-  return false;
+  return resolveTelemetryFreshness(vehicle).isSignalDelayed;
 }
 
 function mapVisualStatusToMapTone(visualStatus: FleetVisualStatus): FleetMapTone {
@@ -273,8 +278,8 @@ function deriveReason(
   if (flags.healthCritical) return 'Critical vehicle health';
   if (vehicle.activeIsOverdue) return 'Return overdue';
   if (vehicle.reservedIsOverdue) return 'Pickup overdue';
-  if (flags.isOffline) return 'Vehicle offline — check device';
-  if (flags.isStale) return 'Telemetry signal is stale';
+  if (flags.isOffline) return 'Vehicle offline — no signal for 48h+';
+  if (flags.isStale) return 'Signal delayed — no data for 24h+';
   if (flags.healthWarning) return 'Warning health status';
   if (vehicle.maintenanceUrgency === 'urgent') return 'Urgent maintenance';
   return undefined;
@@ -298,7 +303,11 @@ export function deriveFleetVisualState(
   const maintenanceCritical =
     isMaintenance && vehicle.maintenanceUrgency === 'urgent';
   const isOffline = isVehicleOffline(vehicle);
-  const isStale = isStaleSignal(vehicle, isOffline);
+  // `isStale` now means soft-offline / signal_delayed (24–48h). STANDBY is never
+  // stale. Stale is never the *primary* visual status anymore — a delayed-signal
+  // Ready vehicle still reads as Ready, with the delay shown only as a secondary
+  // telemetry hint.
+  const isStale = isSignalDelayed(vehicle, isOffline);
 
   let visualStatus: FleetVisualStatus;
   if (isBlocked) {
@@ -307,8 +316,6 @@ export function deriveFleetVisualState(
     visualStatus = 'maintenance';
   } else if (isOffline) {
     visualStatus = 'offline';
-  } else if (isStale) {
-    visualStatus = 'stale';
   } else if (rentalStatus === 'active_rented') {
     visualStatus = 'active';
   } else if (rentalStatus === 'reserved') {
@@ -336,13 +343,13 @@ export function deriveFleetVisualState(
     attentionLevel = 'critical';
   } else if (
     isOffline ||
-    isStale ||
     healthWarning ||
     vehicle.reservedIsOverdue ||
     vehicle.maintenanceUrgency === 'planned'
   ) {
     attentionLevel = 'warning';
-  } else if (rentalStatus === 'reserved') {
+  } else if (isStale || rentalStatus === 'reserved') {
+    // Soft-offline / signal delayed is only a low-priority (info) hint.
     attentionLevel = 'info';
   }
 
@@ -351,8 +358,6 @@ export function deriveFleetVisualState(
     readiness = 'blocked';
   } else if (isOffline) {
     readiness = 'offline';
-  } else if (isStale) {
-    readiness = 'stale';
   } else if (
     rentalStatus === 'available' &&
     !healthWarning &&

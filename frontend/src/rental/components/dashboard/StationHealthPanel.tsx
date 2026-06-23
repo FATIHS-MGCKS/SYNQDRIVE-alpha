@@ -66,10 +66,10 @@ function MetricPill({
           'sq-press hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
       )}
     >
-      <p className="truncate text-[9px] text-muted-foreground">{label}</p>
+      <p className="truncate text-[11px] text-muted-foreground">{label}</p>
       <p
         className={cn(
-          'mt-0.5 text-sm font-bold tabular-nums leading-none',
+          'mt-1 text-[17px] font-bold tabular-nums leading-none',
           tone === 'critical' && value > 0 && 'text-[color:var(--status-critical)]',
           tone === 'watch' && value > 0 && 'text-[color:var(--status-watch)]',
           tone === 'success' && 'text-[color:var(--status-positive)]',
@@ -116,8 +116,8 @@ function StationCommandCard({
     >
       <div className="flex items-start justify-between gap-2 px-3 py-2.5">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[12px] font-semibold text-foreground">{station.stationName}</p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">
+          <p className="truncate text-[14px] font-semibold text-foreground">{station.stationName}</p>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
             {station.vehicleCount} {de ? 'Fahrzeuge' : 'vehicles'}
             {station.capacityGap > 0 ? (
               <span className="text-[color:var(--status-watch)]">
@@ -128,10 +128,10 @@ function StationCommandCard({
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <StatusChip tone={stationSeverityTone(station.statusSeverity)} className="text-[9px]">
+          <StatusChip tone={stationSeverityTone(station.statusSeverity)}>
             {severityLabel(station.statusSeverity, de)}
           </StatusChip>
-          <StatusChip tone={stationDataFreshnessTone(station.dataFreshness)} className="text-[8px]">
+          <StatusChip tone={stationDataFreshnessTone(station.dataFreshness)}>
             {stationDataFreshnessLabel(station.dataFreshness, de ? 'de' : 'en')}
           </StatusChip>
         </div>
@@ -206,7 +206,7 @@ function VehicleChipRow({
 
   return (
     <div className="space-y-1.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
       <div className="flex flex-wrap gap-1.5">
         {items.map((v) => (
           <button
@@ -214,7 +214,7 @@ function VehicleChipRow({
             type="button"
             onClick={() => onOpenVehicle?.(v.vehicleId)}
             className={cn(
-              'rounded-lg px-2 py-1 text-left text-[10px] font-medium transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+              'rounded-lg px-2.5 py-1 text-left text-[12px] font-medium transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
               toneClass,
             )}
             title={v.hint}
@@ -240,15 +240,15 @@ function HandoverMiniList({
 }) {
   if (items.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border/50 px-2.5 py-2 text-[10px] text-muted-foreground">
+      <div className="rounded-lg border border-dashed border-border/50 px-2.5 py-2 text-[12px] text-muted-foreground">
         {de ? 'Keine Einträge' : 'No items'}
       </div>
     );
   }
 
   return (
-    <div className="space-y-1">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
+    <div className="space-y-1.5">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
       <ul className="space-y-1">
         {items.slice(0, 5).map((item) => (
           <li key={item.bookingId ?? `${item.plate}-${item.time}`}>
@@ -256,12 +256,12 @@ function HandoverMiniList({
               type="button"
               disabled={!item.bookingId}
               onClick={() => item.bookingId && onOpenBooking?.(item.bookingId)}
-              className="flex w-full min-h-9 items-center gap-2 rounded-lg border border-border/45 bg-card/30 px-2 py-1.5 text-left text-[11px] transition-colors hover:bg-muted/25 disabled:cursor-default disabled:opacity-80"
+              className="flex w-full min-h-10 items-center gap-2.5 rounded-lg border border-border/45 bg-card/30 px-2.5 py-2 text-left text-[12.5px] transition-colors hover:bg-muted/25 disabled:cursor-default disabled:opacity-80"
             >
               <span className="shrink-0 tabular-nums text-muted-foreground">{item.time}</span>
               <span className="min-w-0 flex-1 truncate font-medium text-foreground">{item.plate}</span>
               {item.isOverdue ? (
-                <StatusChip tone="critical" className="text-[8px]">
+                <StatusChip tone="critical">
                   {de ? 'Überfällig' : 'Overdue'}
                 </StatusChip>
               ) : null}
@@ -297,8 +297,8 @@ function StationDetailView({
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[14px] font-semibold text-foreground">{s.stationName}</p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
+          <p className="text-[16px] font-semibold text-foreground">{s.stationName}</p>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
             {s.vehicleCount} {de ? 'Fahrzeuge' : 'vehicles'} · {s.readyCount}{' '}
             {de ? 'bereit' : 'ready'} · {s.dueTodayCount} {de ? 'heute fällig' : 'due today'}
           </p>
@@ -312,7 +312,7 @@ function StationDetailView({
             <button
               type="button"
               onClick={onClearStation}
-              className="sq-btn sq-btn-secondary min-h-8 px-2 text-[10px]"
+              className="sq-btn sq-btn-secondary min-h-9 px-2.5 text-[12px]"
             >
               {de ? 'Alle Stationen' : 'All stations'}
             </button>
@@ -380,11 +380,11 @@ function StationDetailView({
       </div>
 
       <div className="space-y-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           {de ? 'Nächste 24h' : 'Next 24h'}
         </p>
         {detail.timelineItems.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[12px] text-muted-foreground">
             {de ? 'Keine anstehenden Ereignisse' : 'No upcoming events'}
           </p>
         ) : (
@@ -392,11 +392,11 @@ function StationDetailView({
             {detail.timelineItems.map((item) => (
               <li
                 key={item.id}
-                className="flex items-center gap-2 rounded-lg border border-border/45 bg-card/25 px-2.5 py-1.5 text-[11px]"
+                className="flex items-center gap-2.5 rounded-lg border border-border/45 bg-card/25 px-2.5 py-2 text-[12.5px]"
               >
                 <span className="shrink-0 tabular-nums text-muted-foreground">{item.timeLabel}</span>
                 <span className="min-w-0 flex-1 truncate font-medium">{item.vehicleLabel}</span>
-                <StatusChip tone={item.tone} className="text-[8px] capitalize">
+                <StatusChip tone={item.tone} className="capitalize">
                   {item.type}
                 </StatusChip>
               </li>
@@ -406,22 +406,22 @@ function StationDetailView({
       </div>
 
       <div className="space-y-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           {de ? 'Stations-Aktionen' : 'Station actions'}
         </p>
         {detail.actionItems.length === 0 ? (
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[12px] text-muted-foreground">
             {de ? 'Keine dringenden Aktionen für diese Station' : 'No urgent actions for this station'}
           </p>
         ) : (
-          <ul className="space-y-1">
+          <ul className="space-y-1.5">
             {detail.actionItems.map((item) => (
               <li
                 key={item.id}
-                className="rounded-lg border border-border/45 bg-card/25 px-2.5 py-2 text-[11px]"
+                className="rounded-lg border border-border/45 bg-card/25 px-2.5 py-2.5 text-[12.5px]"
               >
-                <p className="font-medium text-foreground">{item.title}</p>
-                <p className="mt-0.5 line-clamp-2 text-muted-foreground">{item.reason}</p>
+                <p className="font-semibold text-foreground">{item.title}</p>
+                <p className="mt-0.5 line-clamp-2 text-muted-foreground text-pretty">{item.reason}</p>
               </li>
             ))}
           </ul>
@@ -448,24 +448,24 @@ function UnassignedFleetBanner({
       <div className="flex items-start gap-2">
         <Icon name="alert-triangle" className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--status-watch)]" />
         <div className="min-w-0 flex-1 space-y-1.5">
-          <p className="text-[11px] font-semibold text-foreground">
+          <p className="text-[12.5px] font-semibold text-foreground">
             {de
               ? `${unassignedFleet.count} Fahrzeuge ohne Stationszuordnung`
               : `${unassignedFleet.count} vehicles without station assignment`}
           </p>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             {unassignedFleet.vehicles.map((v) => (
               <button
                 key={v.vehicleId}
                 type="button"
                 onClick={() => onOpenVehicleById?.(v.vehicleId)}
-                className="rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium hover:bg-muted"
+                className="rounded-md bg-muted/50 px-2 py-0.5 text-[12px] font-medium hover:bg-muted"
               >
                 {v.label}
               </button>
             ))}
             {unassignedFleet.count > unassignedFleet.vehicles.length ? (
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-[12px] text-muted-foreground">
                 +{unassignedFleet.count - unassignedFleet.vehicles.length}
               </span>
             ) : null}
@@ -507,10 +507,10 @@ export function StationHealthPanel({
         {stationHealth.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-10 text-center">
             <Icon name="map-pin" className="h-8 w-8 text-muted-foreground/50" />
-            <p className="text-[12px] font-semibold text-foreground">
+            <p className="text-[13px] font-semibold text-foreground">
               {de ? 'Keine Stationen konfiguriert' : 'No stations configured'}
             </p>
-            <p className="max-w-xs text-[11px] text-muted-foreground">
+            <p className="max-w-xs text-[12px] text-muted-foreground text-pretty">
               {de
                 ? 'Stationen erscheinen hier, sobald sie angelegt sind.'
                 : 'Stations will appear here once configured.'}

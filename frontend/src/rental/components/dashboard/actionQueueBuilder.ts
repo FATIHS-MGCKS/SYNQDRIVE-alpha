@@ -9,10 +9,12 @@ import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
 import type { DashboardNotificationItem } from '../BusinessInsightsBox';
 import type {
   ActionQueueCategory,
+  ActionQueueChildSeverity,
   ActionQueueCta,
   ActionQueueEmptySummary,
   ActionQueueFilterTab,
   ActionQueueItem,
+  ActionQueueModuleTarget,
   ActionQueueSeverity,
   InsightDataSource,
 } from './dashboardTypes';
@@ -63,6 +65,74 @@ function severityToTone(s: ActionQueueSeverity): StatusTone {
   if (s === 'warning') return 'watch';
   if (s === 'attention') return 'info';
   return 'neutral';
+}
+
+const HEALTH_MODULE_TARGETS = new Set<string>([
+  'battery',
+  'brakes',
+  'tires',
+  'service_compliance',
+  'error_codes',
+  'complaints',
+  'vehicle_alerts',
+]);
+
+function toModuleTarget(moduleKey: string): ActionQueueModuleTarget {
+  return HEALTH_MODULE_TARGETS.has(moduleKey)
+    ? (moduleKey as ActionQueueModuleTarget)
+    : 'overview';
+}
+
+/** Localized "Open <module>" CTA labels (data structure prepared for deep links). */
+function healthModuleCtaLabel(moduleKey: string, de: boolean): string {
+  switch (moduleKey) {
+    case 'battery':
+      return de ? 'Batterie öffnen' : 'Open battery';
+    case 'tires':
+      return de ? 'Reifen öffnen' : 'Open tires';
+    case 'brakes':
+      return de ? 'Bremsen öffnen' : 'Open brakes';
+    case 'service_compliance':
+      return de ? 'Service öffnen' : 'Open service';
+    case 'error_codes':
+      return de ? 'Fehlercodes öffnen' : 'Open error codes';
+    case 'complaints':
+      return de ? 'Beschwerden öffnen' : 'Open complaints';
+    default:
+      return de ? 'Fahrzeug öffnen' : 'Open vehicle';
+  }
+}
+
+function healthModuleLabel(moduleKey: string, fallback: string, de: boolean): string {
+  if (!de) return fallback;
+  switch (moduleKey) {
+    case 'battery':
+      return 'Batterie';
+    case 'tires':
+      return 'Reifen';
+    case 'brakes':
+      return 'Bremsen';
+    case 'service_compliance':
+      return 'Service & Inspektion';
+    case 'error_codes':
+      return 'Fehlercodes';
+    case 'complaints':
+      return 'Beschwerden';
+    case 'vehicle_alerts':
+      return 'OEM-Warnleuchten';
+    default:
+      return fallback;
+  }
+}
+
+/** Effective display severity for a health module child action. */
+function healthChildSeverity(
+  moduleKey: string,
+  severity: ActionQueueSeverity,
+): ActionQueueChildSeverity {
+  // An overdue service inspection ranks between critical and warning.
+  if (moduleKey === 'service_compliance' && severity === 'critical') return 'overdue';
+  return severity;
 }
 
 function insightCategory(type: InsightType): ActionQueueCategory {
@@ -168,9 +238,55 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
   const seenDerived = new Set<string>();
   const seenPredictive = new Set<string>();
 
+  const de = input.locale === 'de';
   for (const alert of input.vehicleHealthAlerts) {
     if (seenVehicleHealth.has(alert.vehicleId)) continue;
     seenVehicleHealth.add(alert.vehicleId);
+    const entityLabel = alert.license || alert.model || undefined;
+    const groupKey = `vehicle-health:${alert.vehicleId}`;
+    const now = Date.now();
+
+    // Preferred path: structured per-module findings from canonical
+    // Rental-Health-V1. Each affected module becomes its own atomic action so
+    // the renderer can group them with one child per module — no string parsing.
+    if (alert.modules && alert.modules.length > 0) {
+      for (const mod of alert.modules) {
+        const severity = healthToSeverity(mod.severity);
+        const isOverdue = mod.module === 'service_compliance' && severity === 'critical';
+        const moduleLabel = healthModuleLabel(mod.module, mod.label, de);
+        items.push({
+          id: `health-${alert.vehicleId}-${mod.module}`,
+          source: 'dashboard-insights',
+          severity,
+          category: 'health',
+          title: mod.reason || moduleLabel,
+          reason: mod.dataStale
+            ? de
+              ? 'Daten veraltet'
+              : 'Data stale'
+            : '',
+          entityLabel,
+          timeLabel: undefined,
+          timeSortMs: now,
+          priority: computePriority(severity, isOverdue, now),
+          tone: severityToTone(severity),
+          cta: 'open-vehicle',
+          ctaLabel: healthModuleCtaLabel(mod.module, de),
+          vehicleId: alert.vehicleId,
+          isOverdue,
+          groupKey,
+          groupType: 'vehicle-health',
+          module: toModuleTarget(mod.module),
+          moduleLabel,
+          childSeverity: healthChildSeverity(mod.module, severity),
+          detail: mod.dataStale ? (de ? 'Daten veraltet' : 'Data stale') : undefined,
+        });
+      }
+      continue;
+    }
+
+    // Fallback (legacy / insight-only derivation without module breakdown):
+    // keep the single combined item so nothing regresses.
     const severity = healthToSeverity(alert.severity);
     items.push({
       id: `health-${alert.vehicleId}`,
@@ -182,14 +298,17 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
         alert.secondaryReasons.length > 0
           ? alert.secondaryReasons.slice(0, 2).join(' · ')
           : 'Rental health module reported an issue',
-      entityLabel: alert.license || alert.model || undefined,
+      entityLabel,
       timeLabel: undefined,
-      timeSortMs: Date.now(),
-      priority: computePriority(severity, severity === 'critical', Date.now()),
+      timeSortMs: now,
+      priority: computePriority(severity, severity === 'critical', now),
       tone: severityToTone(severity),
       cta: 'open-vehicle',
       vehicleId: alert.vehicleId,
       isOverdue: severity === 'critical',
+      groupKey,
+      groupType: 'vehicle-health',
+      module: 'overview',
     });
   }
 
@@ -212,11 +331,28 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
       ? 'financial'
       : 'dashboard-insights';
 
+    const insightCat = insightCategory(insight.type);
+    let insightGroupKey: string | undefined;
+    let insightGroupType: ActionQueueItem['groupType'];
+    if (insightCat === 'health' && vehicleId) {
+      insightGroupKey = `vehicle-health:${vehicleId}`;
+      insightGroupType = 'vehicle-health';
+    } else if (bookingId) {
+      insightGroupKey = `booking:${bookingId}`;
+      insightGroupType = 'booking';
+    } else if (vehicleId) {
+      insightGroupKey = `vehicle-ops:${vehicleId}`;
+      insightGroupType = 'vehicle-ops';
+    } else if (FINANCIAL_TYPES.has(insight.type)) {
+      insightGroupKey = `finance:${insight.id}`;
+      insightGroupType = 'finance';
+    }
+
     items.push({
       id: `insight-${insight.id}`,
       source,
       severity,
-      category: insightCategory(insight.type),
+      category: insightCat,
       title: insight.title,
       reason: insight.message || insight.reasons?.[0] || '',
       entityLabel: entityLabelFromInsight(insight, input.fleetById),
@@ -230,6 +366,9 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
       insightId: insight.id,
       insight,
       isOverdue,
+      groupKey: insightGroupKey,
+      groupType: insightGroupType,
+      module: insightCat === 'health' && vehicleId ? 'overview' : undefined,
     });
   }
 
@@ -267,6 +406,8 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
       bookingId: p.bookingId,
       pickupItem: p,
       isOverdue,
+      groupKey: `booking:${p.bookingId}`,
+      groupType: 'booking',
     });
   }
 
@@ -309,6 +450,8 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
       bookingId: r.bookingId,
       returnItem: r,
       isOverdue,
+      groupKey: `booking:${r.bookingId}`,
+      groupType: 'booking',
     });
   }
 
@@ -328,6 +471,8 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
       tone: severityToTone(severity),
       cta: 'open-rental',
       isOverdue: false,
+      groupKey: `notification-thread:${n.title}`,
+      groupType: 'notification-thread',
     });
   }
 

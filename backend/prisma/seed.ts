@@ -32,6 +32,22 @@ async function main() {
   });
   console.log('  Integrations catalog created');
 
+  // ---- BILLING PRICEBOOK (shell — tiers/prices configured later by Master Admin) ----
+  const existingDefaultBook = await prisma.billingPriceBook.findFirst({
+    where: { isDefault: true },
+  });
+  if (!existingDefaultBook) {
+    await prisma.billingPriceBook.create({
+      data: {
+        name: 'SynqDrive Platform — Per Connected Vehicle',
+        productKey: 'FLEET',
+        isDefault: true,
+        currency: 'EUR',
+      },
+    });
+    console.log('  Default billing price book created (no active version / no prices yet)');
+  }
+
   // ---- MASTER ADMIN USER ----
   await prisma.user.create({
     data: {

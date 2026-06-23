@@ -41,6 +41,7 @@ export interface TaskLinks {
   fineId?: string | null;
   invoiceId?: string | null;
   assignedUserId?: string | null;
+  serviceCaseId?: string | null;
 }
 
 export interface CreateManualTaskInput extends TaskLinks {
@@ -83,6 +84,7 @@ export interface ListTasksFilters {
   vendorId?: string;
   alertId?: string;
   documentId?: string;
+  serviceCaseId?: string;
   dueFrom?: string;
   dueTo?: string;
   overdue?: boolean;
@@ -137,6 +139,7 @@ export class TasksService {
       documentId: t.documentId || null,
       fineId: t.fineId || null,
       invoiceId: t.invoiceId || null,
+      serviceCaseId: t.serviceCaseId || null,
       assignedUserId: t.assignedUserId || null,
       estimatedCostCents: t.estimatedCostCents ?? null,
       actualCostCents: t.actualCostCents ?? null,
@@ -248,6 +251,22 @@ export class TasksService {
         throw new BadRequestException('Document not found in this organization');
       }
     }
+    if (links.serviceCaseId) {
+      const sc = await this.prisma.serviceCase.findFirst({
+        where: { id: links.serviceCaseId, organizationId: orgId },
+        select: { id: true, vehicleId: true, vendorId: true, status: true },
+      });
+      if (!sc) throw new BadRequestException('Service case not found in this organization');
+      if (sc.status === 'COMPLETED' || sc.status === 'CANCELLED') {
+        throw new BadRequestException('Cannot link tasks to a completed or cancelled service case');
+      }
+      if (links.vehicleId && links.vehicleId !== sc.vehicleId) {
+        throw new BadRequestException('Task vehicle does not match service case vehicle');
+      }
+      if (links.vendorId && sc.vendorId && links.vendorId !== sc.vendorId) {
+        throw new BadRequestException('Task vendor does not match service case vendor');
+      }
+    }
   }
 
   private async recordEvent(
@@ -292,17 +311,28 @@ export class TasksService {
     const now = new Date();
     const where: Prisma.OrgTaskWhereInput = { organizationId: orgId };
 
+    const vehicleId = filters.vehicleId?.trim() || undefined;
+    const vendorId = filters.vendorId?.trim() || undefined;
+    const bookingId = filters.bookingId?.trim() || undefined;
+    const customerId = filters.customerId?.trim() || undefined;
+    const assignedUserId = filters.assignedUserId?.trim() || undefined;
+    const alertId = filters.alertId?.trim() || undefined;
+    const documentId = filters.documentId?.trim() || undefined;
+    const serviceCaseId = filters.serviceCaseId?.trim() || undefined;
+    const search = filters.search?.trim() || undefined;
+
     if (filters.status) where.status = Array.isArray(filters.status) ? { in: filters.status } : filters.status;
     if (filters.priority) where.priority = Array.isArray(filters.priority) ? { in: filters.priority } : filters.priority;
     if (filters.type) where.type = Array.isArray(filters.type) ? { in: filters.type } : filters.type;
     if (filters.sourceType) where.sourceType = Array.isArray(filters.sourceType) ? { in: filters.sourceType } : filters.sourceType;
-    if (filters.assignedUserId) where.assignedUserId = filters.assignedUserId;
-    if (filters.vehicleId) where.vehicleId = filters.vehicleId;
-    if (filters.bookingId) where.bookingId = filters.bookingId;
-    if (filters.customerId) where.customerId = filters.customerId;
-    if (filters.vendorId) where.vendorId = filters.vendorId;
-    if (filters.alertId) where.alertId = filters.alertId;
-    if (filters.documentId) where.documentId = filters.documentId;
+    if (assignedUserId) where.assignedUserId = assignedUserId;
+    if (vehicleId) where.vehicleId = vehicleId;
+    if (bookingId) where.bookingId = bookingId;
+    if (customerId) where.customerId = customerId;
+    if (vendorId) where.vendorId = vendorId;
+    if (alertId) where.alertId = alertId;
+    if (documentId) where.documentId = documentId;
+    if (serviceCaseId) where.serviceCaseId = serviceCaseId;
 
     if (filters.dueFrom || filters.dueTo) {
       where.dueDate = {};
@@ -315,15 +345,28 @@ export class TasksService {
       where.dueDate = { ...(where.dueDate as object), lt: now };
     }
 
-    if (filters.search) {
+    if (search) {
       where.OR = [
-        { title: { contains: filters.search, mode: 'insensitive' } },
-        { description: { contains: filters.search, mode: 'insensitive' } },
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
       ];
     }
 
     const tasks = await this.prisma.orgTask.findMany({
       where,
+      include: {
+        attachments: {
+          select: {
+            id: true,
+            fileUrl: true,
+            fileName: true,
+            mimeType: true,
+            size: true,
+            uploadedByUserId: true,
+            createdAt: true,
+          },
+        },
+      },
       orderBy: [{ priority: 'desc' }, { dueDate: 'asc' }, { createdAt: 'desc' }],
     });
     return tasks.map((t) => this.format(t, now));
@@ -352,26 +395,41 @@ export class TasksService {
   }
 
   async getTasksForVehicle(orgId: string, vehicleId: string, opts?: { activeOnly?: boolean }) {
+    const id = vehicleId?.trim();
+    if (!id) throw new BadRequestException('vehicleId is required');
+    await this.assertLinksBelongToOrg(orgId, { vehicleId: id });
     return this.listTasks(orgId, {
-      vehicleId,
+      vehicleId: id,
       ...(opts?.activeOnly ? { status: ACTIVE_TASK_STATUSES } : {}),
     });
   }
 
   async getTasksForBooking(orgId: string, bookingId: string) {
-    return this.listTasks(orgId, { bookingId });
+    const id = bookingId?.trim();
+    if (!id) throw new BadRequestException('bookingId is required');
+    await this.assertLinksBelongToOrg(orgId, { bookingId: id });
+    return this.listTasks(orgId, { bookingId: id });
   }
 
   async getTasksForCustomer(orgId: string, customerId: string) {
-    return this.listTasks(orgId, { customerId });
+    const id = customerId?.trim();
+    if (!id) throw new BadRequestException('customerId is required');
+    await this.assertLinksBelongToOrg(orgId, { customerId: id });
+    return this.listTasks(orgId, { customerId: id });
   }
 
   async getTasksForVendor(orgId: string, vendorId: string) {
-    return this.listTasks(orgId, { vendorId });
+    const id = vendorId?.trim();
+    if (!id) throw new BadRequestException('vendorId is required');
+    await this.assertLinksBelongToOrg(orgId, { vendorId: id });
+    return this.listTasks(orgId, { vendorId: id });
   }
 
   async getTasksForAlert(orgId: string, alertId: string) {
-    return this.listTasks(orgId, { alertId });
+    const id = alertId?.trim();
+    if (!id) throw new BadRequestException('alertId is required');
+    await this.assertLinksBelongToOrg(orgId, { alertId: id });
+    return this.listTasks(orgId, { alertId: id });
   }
 
   async getDashboardSummary(orgId: string, currentUserId?: string) {
@@ -448,6 +506,7 @@ export class TasksService {
         documentId: input.documentId ?? undefined,
         fineId: input.fineId ?? undefined,
         invoiceId: input.invoiceId ?? undefined,
+        serviceCaseId: input.serviceCaseId ?? undefined,
         assignedUserId: input.assignedUserId ?? undefined,
         dueDate: input.dueDate ? new Date(input.dueDate) : null,
         estimatedCostCents: input.estimatedCostCents ?? undefined,

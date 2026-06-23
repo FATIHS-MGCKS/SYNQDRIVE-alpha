@@ -3,8 +3,6 @@ import { Icon } from '../ui/Icon';
 import { SkeletonRows, StatusChip } from '../../../components/patterns';
 import { OperationEventRow, OperationsEmptyState } from './OperationEventRow';
 import {
-  DashboardPanelHeader,
-  PANEL_BODY_SCROLL_CLASS,
   panelShellClass,
 } from './dashboardShell';
 import type { DashboardViewModel, TodayOpsBucket } from './dashboardTypes';
@@ -20,6 +18,53 @@ interface TodayOpsHandlers {
   onOpenVehicleById?: (vehicleId: string) => void;
   onOpenBookingById?: (bookingId: string) => void;
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
+}
+
+function MinimalTodayHeader({
+  title,
+  subtitle,
+  totalCount,
+  overdueCount,
+  de,
+}: {
+  title: string;
+  subtitle: string;
+  totalCount: number;
+  overdueCount: number;
+  de: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-2 border-b border-border/35 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <span
+          className={[
+            'h-2 w-2 shrink-0 rounded-full',
+            overdueCount > 0 ? 'bg-[color:var(--status-critical)]' : 'bg-[color:var(--status-watch)]',
+          ].join(' ')}
+          aria-hidden
+        />
+        <div className="min-w-0">
+          <h2 className="text-[13px] font-semibold leading-tight tracking-[-0.01em] text-foreground text-balance">
+            {title}
+          </h2>
+          <p className="mt-0.5 truncate text-[11px] leading-snug text-muted-foreground">{subtitle}</p>
+        </div>
+      </div>
+
+      {totalCount > 0 ? (
+        <div className="flex shrink-0 items-center gap-2 sm:justify-end">
+          {overdueCount > 0 ? (
+            <span className="text-[11px] font-medium tabular-nums text-[color:var(--status-critical)]">
+              {overdueCount} {de ? 'überfällig' : 'overdue'}
+            </span>
+          ) : null}
+          <span className="text-[11px] font-medium tabular-nums text-muted-foreground">
+            {totalCount} {de ? 'Einträge' : 'items'}
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function BucketSection({
@@ -43,43 +88,38 @@ function BucketSection({
   if (items.length === 0) return null;
 
   return (
-    <section className="space-y-2">
+    <section className="space-y-1.5">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1 text-left transition-colors hover:bg-muted/30"
         aria-expanded={open}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Icon
             name={isCompleted ? 'check-circle' : bucket === 'in-progress' ? 'activity' : 'list-todo'}
             className={[
-              'h-4 w-4',
+              'h-3.5 w-3.5',
               bucket === 'in-progress' ? 'text-[color:var(--status-watch)]' : 'text-muted-foreground',
             ].join(' ')}
           />
-          <span
-            className={[
-              'font-semibold uppercase tracking-widest text-muted-foreground',
-              isCompleted ? 'text-[9px]' : 'text-[10px]',
-            ].join(' ')}
-          >
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             {title}
           </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <StatusChip tone={isCompleted ? 'success' : bucket === 'in-progress' ? 'watch' : 'neutral'} className="text-[9px]">
+          <StatusChip tone={isCompleted ? 'success' : bucket === 'in-progress' ? 'watch' : 'neutral'} className="px-1.5 py-0.5 text-[9.5px]">
             {items.length}
           </StatusChip>
           <Icon
             name="chevron-down"
-            className={['h-4 w-4 text-muted-foreground transition-transform', open ? 'rotate-180' : ''].join(' ')}
+            className={['h-3.5 w-3.5 text-muted-foreground transition-transform', open ? 'rotate-180' : ''].join(' ')}
           />
         </div>
       </button>
 
       {open && (
-        <div className={['space-y-2', isCompleted ? 'opacity-75' : ''].join(' ')}>
+        <div className={['space-y-1.5', isCompleted ? 'opacity-75' : ''].join(' ')}>
           {items.map((item) => (
             <OperationEventRow
               key={item.id}
@@ -130,39 +170,29 @@ export function TodayOperations({
 
   return (
     <section
-      className={panelShellClass('primary')}
+      className={panelShellClass('tertiary', 'h-full border-solid border-border/55 bg-card/55 shadow-none')}
       aria-label={de ? 'Heutige Operationen' : 'Today Operations'}
     >
-      <DashboardPanelHeader
-        icon={<Icon name="clock" className="h-4 w-4" />}
-        iconToneClass="sq-tone-watch"
+      <MinimalTodayHeader
         title={de ? 'Heutige Operationen' : 'Today Operations'}
         subtitle={
           (de ? 'To Do · In Bearbeitung · Erledigt' : 'To do · In progress · Completed') +
           (selectedStationName ? ` · ${selectedStationName}` : '')
         }
-        trailing={
-          todayOperations.totalCount > 0 ? (
-            <div className="flex shrink-0 items-center gap-1.5">
-              {overdueCount > 0 && (
-                <StatusChip tone="critical" className="text-[10px]">
-                  {overdueCount} {de ? 'überfällig' : 'overdue'}
-                </StatusChip>
-              )}
-              <StatusChip tone="watch">{todayOperations.totalCount}</StatusChip>
-            </div>
-          ) : undefined
-        }
+        totalCount={todayOperations.totalCount}
+        overdueCount={overdueCount}
+        de={de}
       />
       {todayBookingsError && (
-        <div className="border-b border-border/40 bg-muted/30 px-4 py-2 text-[11px] text-muted-foreground">
+        <div className="border-b border-border/40 bg-muted/30 px-4 py-2.5 text-[12px] text-muted-foreground">
           {de
             ? 'Operationsdaten teilweise nicht verfügbar.'
             : 'Operations data partially unavailable.'}
         </div>
       )}
 
-      <div className={PANEL_BODY_SCROLL_CLASS}>        {!todayBookingsLoaded ? (
+      <div className="max-h-[min(560px,72vh)] flex-1 overflow-y-auto px-3 py-2.5">
+        {!todayBookingsLoaded ? (
           <SkeletonRows rows={5} />
         ) : todayOperations.totalCount === 0 ? (
           <OperationsEmptyState
@@ -171,7 +201,7 @@ export function TodayOperations({
             stationName={selectedStationName}
           />
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <BucketSection
               bucket="todo"
               title={de ? 'To Do' : 'To do'}

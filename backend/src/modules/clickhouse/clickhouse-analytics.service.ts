@@ -25,6 +25,35 @@ function parseClickHouseUtcDateTime(value: string | null | undefined): Date | nu
 }
 
 /**
+ * Normalizes a ClickHouse min_time/max_time value into an ISO string, mapping
+ * the epoch/zero sentinel (empty parts or non-time partitions) to null.
+ */
+function normalizeStorageTimestamp(value: string | null | undefined): string | null {
+  const parsed = parseClickHouseUtcDateTime(value);
+  if (!parsed || Number.isNaN(parsed.getTime()) || parsed.getTime() <= 0) {
+    return null;
+  }
+  return parsed.toISOString();
+}
+
+export interface ClickHouseTableStorageStat {
+  table: string;
+  rowCount: number;
+  compressedBytes: number;
+  uncompressedBytes: number;
+  oldestRecordAt: string | null;
+  newestRecordAt: string | null;
+}
+
+export interface ClickHouseStorageStats {
+  tableCount: number;
+  totalRows: number;
+  totalCompressedBytes: number;
+  totalUncompressedBytes: number;
+  tables: ClickHouseTableStorageStat[];
+}
+
+/**
  * ClickHouseAnalyticsService
  *
  * Query layer for analytical detectors. Returns structured domain objects,
@@ -352,6 +381,93 @@ export class ClickHouseAnalyticsService {
         result: 'error',
       });
       throw err;
+    }
+  }
+
+  /**
+   * Best-effort storage statistics for the analytics mirror, read entirely from
+   * `system.parts` (metadata only — no scan of the data tables, so this stays
+   * cheap even on large tables). Row counts and oldest/newest timestamps come
+   * from per-part metadata; for the monthly time-partitioned mirror tables
+   * `min_time`/`max_time` track the event-time range.
+   *
+   * Returns null when ClickHouse is unavailable or the query fails — callers
+   * (health/readiness, data-analyse) must treat this as optional and never let
+   * it slow down or break a request. A short server-side execution cap guards
+   * against pathological cases.
+   */
+  async getStorageStats(): Promise<ClickHouseStorageStats | null> {
+    if (!this.ch.isAvailable) {
+      return null;
+    }
+
+    const client = this.ch.getClient();
+
+    try {
+      const result = await client.query({
+        query: `
+          SELECT
+            table                            AS table,
+            sum(rows)                        AS row_count,
+            sum(data_compressed_bytes)       AS compressed_bytes,
+            sum(data_uncompressed_bytes)     AS uncompressed_bytes,
+            min(min_time)                    AS oldest_record_at,
+            max(max_time)                    AS newest_record_at
+          FROM system.parts
+          WHERE database = {db: String} AND active
+          GROUP BY table
+          ORDER BY table
+        `,
+        query_params: { db: this.ch.databaseName },
+        format: 'JSONEachRow',
+        clickhouse_settings: { max_execution_time: 5 },
+      });
+
+      const rows = await result.json<{
+        table: string;
+        row_count: number;
+        compressed_bytes: number;
+        uncompressed_bytes: number;
+        oldest_record_at: string | null;
+        newest_record_at: string | null;
+      }>();
+
+      const tables: ClickHouseTableStorageStat[] = rows.map((r) => ({
+        table: r.table,
+        rowCount: Number(r.row_count ?? 0),
+        compressedBytes: Number(r.compressed_bytes ?? 0),
+        uncompressedBytes: Number(r.uncompressed_bytes ?? 0),
+        oldestRecordAt: normalizeStorageTimestamp(r.oldest_record_at),
+        newestRecordAt: normalizeStorageTimestamp(r.newest_record_at),
+      }));
+
+      this.metrics?.clickHouseAnalyticsQueries.inc({
+        query: 'storage_stats',
+        result: 'success',
+      });
+
+      return {
+        tableCount: tables.length,
+        totalRows: tables.reduce((acc, t) => acc + t.rowCount, 0),
+        totalCompressedBytes: tables.reduce(
+          (acc, t) => acc + t.compressedBytes,
+          0,
+        ),
+        totalUncompressedBytes: tables.reduce(
+          (acc, t) => acc + t.uncompressedBytes,
+          0,
+        ),
+        tables,
+      };
+    } catch (err: unknown) {
+      this.metrics?.clickHouseAnalyticsQueries.inc({
+        query: 'storage_stats',
+        result: 'error',
+      });
+      this.logger.warn(
+        `ClickHouse storage stats query failed (best-effort): ${(err as Error).message}`,
+      );
+      return null;
     }
   }
 }

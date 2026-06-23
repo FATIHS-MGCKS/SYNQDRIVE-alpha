@@ -354,6 +354,70 @@ describe('getSummary', () => {
   });
 });
 
+describe('getDetail', () => {
+  const detailCurrent = {
+    isInitialized: true,
+    anchorOdometerKm: 42000,
+    frontPadAnchorMm: 12,
+    rearPadAnchorMm: 10,
+    frontDiscAnchorMm: 28,
+    rearDiscAnchorMm: 26,
+    frontPadEstimatedMm: 9.5,
+    rearPadEstimatedMm: 8.2,
+    frontDiscEstimatedMm: 26,
+    rearDiscEstimatedMm: 24.5,
+    frontPadHealthPct: 72,
+    rearPadHealthPct: 68,
+    frontDiscHealthPct: 88,
+    rearDiscHealthPct: 85,
+    frontPadRemainingKm: 28000,
+    rearPadRemainingKm: 26000,
+    frontDiscRemainingKm: 55000,
+    rearDiscRemainingKm: 52000,
+    frontPadWearRateMmPerKm: 0.0003,
+    rearPadWearRateMmPerKm: 0.00028,
+    frontDiscWearRateMmPerKm: 0.0001,
+    rearDiscWearRateMmPerKm: 0.00009,
+    frontPadKFactor: 1,
+    rearPadKFactor: 1,
+    frontDiscKFactor: 1,
+    rearDiscKFactor: 1,
+    padsHealthPct: 72,
+    padsRemainingKm: 28000,
+    discsHealthPct: 88,
+    discsRemainingKm: 55000,
+    anchorServiceDate: new Date('2024-06-01'),
+    distanceSinceAnchorKm: 8000,
+    modeledDistanceKm: 7200,
+    modeledTripCount: 44,
+    modelCoverageRatio: 0.9,
+    modelingSource: 'trip_impacts',
+    baselineWarnings: [],
+    confidenceScore: 62,
+    confidenceLabel: 'Medium',
+    hasAlert: false,
+  };
+
+  it('nests wear-model estimates under legacy (UI must use summary canonical fields)', async () => {
+    mockPrisma.brakeHealthCurrent.findUnique
+      .mockResolvedValueOnce(detailCurrent)
+      .mockResolvedValueOnce(detailCurrent);
+    mockPrisma.vehicleBrakeReferenceSpec.findMany.mockResolvedValueOnce([]);
+    mockPrisma.vehicleServiceEvent.findMany.mockResolvedValueOnce([]);
+
+    const d = await svc.getDetail('v1');
+
+    expect(d.summary.overallCondition).toBeDefined();
+    expect(d.summary.frontAxle.condition).toBeDefined();
+    expect(d.summary.rearAxle.condition).toBeDefined();
+    expect(d.legacy.frontPads?.estimatedMm).toBe(9.5);
+    expect(d.legacy.frontPads?.healthPct).toBe(72);
+    expect((d as { frontPads?: unknown }).frontPads).toBeUndefined();
+    expect(d.alerts).toHaveLength(d.summary.openAlerts.length);
+    expect(d.alerts[0]?.message).toBe(d.summary.openAlerts[0]?.message);
+  });
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 //  CANONICAL READ MODEL (evidence-based honesty)
 // ═══════════════════════════════════════════════════════════════════════════════

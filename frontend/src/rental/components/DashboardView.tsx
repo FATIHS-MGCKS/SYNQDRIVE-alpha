@@ -6,15 +6,12 @@ import {
   DashboardDrilldownDrawer,
   DASHBOARD_LAYOUT,
   DashboardSectionLabel,
-  DataFreshnessIndicator,
-  FleetReadinessScore,
   FleetStateBoard,
   FocusDataFreshnessBanner,
   FocusHandoverPanels,
   FocusNotReadyVehicles,
   NowNextTimeline,
-  StationHealthPanel,
-  TodayOperations,
+  OperationsSchedulePanel,
   useDashboardViewModel,
   type DashboardViewProps,
 } from './dashboard';
@@ -47,7 +44,7 @@ export function DashboardView({
   if (vm.operatorFocusMode) {
     return (
       <>
-        <div className={DASHBOARD_LAYOUT.focusShell}>
+        <div className={`${DASHBOARD_LAYOUT.focusShell} animate-fade-up`}>
           <DashboardControlHeader vm={vm} />
 
           <div className={DASHBOARD_LAYOUT.focusStack}>
@@ -75,50 +72,34 @@ export function DashboardView({
 
   return (
     <>
-      <div className={`${DASHBOARD_LAYOUT.shell} animate-fade-up`}>
-      <DashboardControlHeader vm={vm} />
-      <ControlKpiStrip vm={vm} />
-
-      <div className={DASHBOARD_LAYOUT.opsStack}>
-        <DashboardSectionLabel>
-          {vm.locale === 'de' ? 'Operative Steuerung' : 'Operational control'}
-        </DashboardSectionLabel>
-
-        <ActionQueue vm={vm} {...handlers} />
-
-        <div className={DASHBOARD_LAYOUT.opsGrid}>
-          <NowNextTimeline vm={vm} {...handlers} />
-          <TodayOperations vm={vm} {...handlers} />
+      <div className={DASHBOARD_LAYOUT.shell}>
+        <div className="animate-fade-up" style={{ animationDelay: '0ms' }}>
+          <DashboardControlHeader vm={vm} />
+        </div>
+        <div className="animate-fade-up" style={{ animationDelay: '70ms' }}>
+          <ControlKpiStrip vm={vm} />
         </div>
 
-        <FleetStateBoard
-          vm={vm}
-          onVehicleSelect={onVehicleSelect}
-          onOpenVehicleById={onOpenVehicleById}
-        />
-      </div>
-
-      <div className={DASHBOARD_LAYOUT.opsStack}>
-        <DashboardSectionLabel>
-          {vm.locale === 'de' ? 'Kontrollsignale' : 'Control signals'}
-        </DashboardSectionLabel>
-
-        <div className={DASHBOARD_LAYOUT.signalsGrid}>
-          <DataFreshnessIndicator vm={vm} />
-          <FleetReadinessScore vm={vm} />
+        <div className="animate-fade-up" style={{ animationDelay: '120ms' }}>
+          <BusinessPulse vm={vm} onOpenFinanceView={onOpenFinanceView} />
         </div>
 
-        <StationHealthPanel
-          vm={vm}
-          onSelectStation={vm.applyStationFilter}
-          onOpenVehicleById={onOpenVehicleById}
-          onOpenBookingById={onOpenBookingById}
-        />
-      </div>
+        <div className={`${DASHBOARD_LAYOUT.opsStack} animate-fade-up`} style={{ animationDelay: '180ms' }}>
+          <DashboardSectionLabel>
+            {vm.locale === 'de' ? 'Operative Steuerung' : 'Operational control'}
+          </DashboardSectionLabel>
 
-      <div className={DASHBOARD_LAYOUT.financeZone}>
-        <BusinessPulse vm={vm} onOpenFinanceView={onOpenFinanceView} />
-      </div>
+          <div className={DASHBOARD_LAYOUT.opsGrid}>
+            <ActionQueue vm={vm} {...handlers} />
+            <OperationsSchedulePanel vm={vm} {...handlers} />
+          </div>
+
+          <FleetStateBoard
+            vm={vm}
+            onVehicleSelect={onVehicleSelect}
+            onOpenVehicleById={onOpenVehicleById}
+          />
+        </div>
       </div>
       <DashboardDrilldownDrawer
         vm={vm}

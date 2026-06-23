@@ -1,4 +1,4 @@
-import { Building2, Clock, CreditCard, Database, User, UserCog } from 'lucide-react';
+import { Building2, User } from 'lucide-react';
 import { Icon } from './ui/Icon';
 import { useState, useMemo, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 
@@ -8,9 +8,11 @@ import { isVehicleAtHomeStation } from '../../lib/geospatial';
 import { UsersRolesTab } from './UsersRolesTab';
 import { DataAuthorizationTab } from './DataAuthorizationTab';
 import { LegalDocumentsTab } from './LegalDocumentsTab';
+import { RentalRulesTab } from './settings/rental-rules/RentalRulesTab';
 import { AccountInformationTab } from './settings/AccountInformationTab';
 import { CompanyInformationTab } from './settings/CompanyInformationTab';
 import { FleetConnectivityTab } from './settings/FleetConnectivityTab';
+import { BillingTab } from './billing/BillingTab';
 import {
   PageHeader,
   DataCard,
@@ -38,7 +40,7 @@ interface SettingsViewProps {
   onNavigateToStations?: () => void;
 }
 
-type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents';
+type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents' | 'rental-rules';
 
 // ============================================
 // STATIONS & BRANCHES TAB â€” fully live-wired
@@ -1810,424 +1812,6 @@ function formatLastActive(iso: string | null): string {
 // UsersRolesTab is now imported from './UsersRolesTab'
 
 // ============================================
-// BILLING & SUBSCRIPTIONS TAB
-// ============================================
-function BillingTab() {
-  type BillingSubscriptionDto = {
-    id: string;
-    plan?: string | null;
-    status?: string | null;
-    mrr?: number | null;
-    currentPeriodStart?: string | null;
-    currentPeriodEnd?: string | null;
-    invoices?: BillingInvoiceDto[];
-  };
-  type BillingInvoiceDto = {
-    id: string;
-    amount?: number | null;
-    amountCents?: number | null;
-    status?: string | null;
-    date?: string | null;
-    invoiceDate?: string | null;
-    dueDate?: string | null;
-    paidAt?: string | null;
-    invoicePdfUrl?: string | null;
-    stripeInvoiceId?: string | null;
-    plan?: string | null;
-  };
-
-  const { orgId } = useRentalOrg();
-  const [subscription, setSubscription] = useState<BillingSubscriptionDto | null>(null);
-  const [invoices, setInvoices] = useState<BillingInvoiceDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [invoiceSearch, setInvoiceSearch] = useState('');
-  const [invoiceStatus, setInvoiceStatus] = useState<'all' | 'paid' | 'pending' | 'overdue'>('all');
-
-  const cardClass = 'sq-card rounded-2xl p-5 shadow-[var(--shadow-1)]';
-  const spinnerClass = 'border-[color:var(--brand)]';
-  const inputClass =
-    'w-full px-3 py-2.5 rounded-xl border border-border/70 bg-card text-xs text-foreground placeholder:text-muted-foreground transition-all duration-200 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]';
-  const planCatalog = [
-    { name: 'Starter', aliases: ['Starter'], price: 'â‚¬24,99', desc: 'Bis 4 Fahrzeuge', features: ['Bis 4 Fahrzeuge', '2 Benutzer', 'Basis-Telematik', 'E-Mail Support'], tone: 'sq-tone-neutral' },
-    { name: 'Professional', aliases: ['Professional', 'Business'], price: 'â‚¬20,99', desc: 'Bis 12 Fahrzeuge', features: ['Bis 12 Fahrzeuge', '10 Benutzer', 'Erweiterte Telematik', 'AI Insights', 'PrioritÃ¤ts-Support', 'API Zugang'], tone: 'sq-tone-brand' },
-    { name: 'Enterprise', aliases: ['Enterprise', 'Custom'], price: 'â‚¬18,99', desc: 'Ab 12+ Fahrzeuge', features: ['Ab 12+ Fahrzeuge', 'Unbegrenzte Benutzer', 'Premium Telematik', 'AI Fleet Assistant', 'Dedizierter Support', 'Custom Integrationen'], tone: 'sq-tone-success' },
-  ];
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!orgId) {
-      setSubscription(null);
-      setInvoices([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    Promise.all([
-      api.billing.orgSubscriptions().catch(() => null),
-      api.billing.orgInvoices().catch(() => null),
-    ])
-      .then(([subscriptionResult, invoiceResult]) => {
-        if (cancelled) return;
-        const nextSubscription = Array.isArray(subscriptionResult)
-          ? (subscriptionResult[0] ?? null)
-          : (subscriptionResult as BillingSubscriptionDto | null);
-        const invoiceList = Array.isArray(invoiceResult)
-          ? invoiceResult
-          : (invoiceResult != null && Array.isArray((invoiceResult as { data?: BillingInvoiceDto[] }).data))
-            ? (invoiceResult as { data: BillingInvoiceDto[] }).data
-            : [];
-        setSubscription(nextSubscription);
-        setInvoices(invoiceList.length > 0 ? invoiceList : (nextSubscription?.invoices ?? []));
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        setError((e as Error).message || 'Billing data could not be loaded');
-        setSubscription(null);
-        setInvoices([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [orgId]);
-
-  const formatMoney = (value: number | null | undefined) =>
-    typeof value === 'number'
-      ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value)
-      : 'â€”';
-  const invoiceAmount = (invoice: BillingInvoiceDto) =>
-    typeof invoice.amount === 'number'
-      ? invoice.amount
-      : typeof invoice.amountCents === 'number'
-        ? invoice.amountCents / 100
-        : null;
-  const formatDateShort = (iso: string | null | undefined) => {
-    if (!iso) return 'â€”';
-    try {
-      return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    } catch {
-      return iso;
-    }
-  };
-  const normalizeStatus = (status: string | null | undefined) => (status ?? 'Pending').toLowerCase();
-  const statusLabel = (status: string | null | undefined) => {
-    const normalized = normalizeStatus(status);
-    if (normalized === 'paid') return 'Bezahlt';
-    if (normalized === 'overdue' || normalized === 'uncollectible') return 'ÃœberfÃ¤llig';
-    if (normalized === 'open' || normalized === 'pending' || normalized === 'draft') return 'Offen';
-    return status ?? 'Offen';
-  };
-  const statusTone = (status: string | null | undefined) => {
-    const normalized = normalizeStatus(status);
-    if (normalized === 'paid') return 'sq-tone-success';
-    if (normalized === 'overdue' || normalized === 'uncollectible') return 'sq-tone-critical';
-    return 'sq-tone-warning';
-  };
-
-  const currentPlanName = subscription?.plan ?? null;
-  const currentPlan = planCatalog.find(plan => plan.aliases.some(alias => alias.toLowerCase() === currentPlanName?.toLowerCase())) ?? null;
-  const currentMrr = subscription?.mrr ?? (invoices[0] ? invoiceAmount(invoices[0]) : null);
-  const paidInvoiceCount = invoices.filter(invoice => normalizeStatus(invoice.status) === 'paid').length;
-  const openInvoiceCount = invoices.filter(invoice => normalizeStatus(invoice.status) !== 'paid').length;
-  const filteredInvoices = useMemo(() => {
-    const q = invoiceSearch.trim().toLowerCase();
-    return invoices.filter(invoice => {
-      const normalized = normalizeStatus(invoice.status);
-      if (invoiceStatus === 'paid' && normalized !== 'paid') return false;
-      if (invoiceStatus === 'pending' && !['open', 'pending', 'draft'].includes(normalized)) return false;
-      if (invoiceStatus === 'overdue' && !['overdue', 'uncollectible'].includes(normalized)) return false;
-      if (!q) return true;
-      return [invoice.id, invoice.stripeInvoiceId, invoice.plan, statusLabel(invoice.status)]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-        .includes(q);
-    });
-  }, [invoices, invoiceSearch, invoiceStatus]);
-  const hasActiveFilters = invoiceSearch.trim().length > 0 || invoiceStatus !== 'all';
-  const clearFilters = () => {
-    setInvoiceSearch('');
-    setInvoiceStatus('all');
-  };
-  const statusOptions = [
-    { key: 'all', label: 'All invoices', count: invoices.length },
-    { key: 'paid', label: 'Paid', count: paidInvoiceCount },
-    { key: 'pending', label: 'Open', count: invoices.filter(invoice => ['open', 'pending', 'draft'].includes(normalizeStatus(invoice.status))).length },
-    { key: 'overdue', label: 'Overdue', count: invoices.filter(invoice => ['overdue', 'uncollectible'].includes(normalizeStatus(invoice.status))).length },
-  ] as const;
-  const activeStatus = statusOptions.find(option => option.key === invoiceStatus) ?? statusOptions[0];
-  const summaryCards = [
-    { label: 'Current Plan', value: currentPlan?.name ?? 'Setup', meta: subscription?.status ?? 'No subscription record', icon: CreditCard, tone: subscription ? 'sq-tone-brand' : 'sq-tone-warning' },
-    { label: 'Monthly', value: formatMoney(currentMrr), meta: 'MRR from Billing API', icon: Database, tone: currentMrr ? 'sq-tone-success' : 'sq-tone-neutral' },
-    { label: 'Renewal', value: formatDateShort(subscription?.currentPeriodEnd), meta: subscription?.currentPeriodStart ? `Since ${formatDateShort(subscription.currentPeriodStart)}` : 'No period synced', icon: Clock, tone: subscription?.currentPeriodEnd ? 'sq-tone-info' : 'sq-tone-neutral' },
-    { label: 'Invoices', value: invoices.length, meta: `${openInvoiceCount} open Â· ${paidInvoiceCount} paid`, icon: UserCog, tone: openInvoiceCount > 0 ? 'sq-tone-warning' : 'sq-tone-success' },
-  ];
-
-  return (
-    <div className="max-w-[1600px] mx-auto space-y-5">
-      <div className="min-h-8 flex items-start justify-between gap-4 flex-wrap">
-        <div className="min-w-0">
-          <h2 className="text-[22px] leading-tight font-semibold tracking-[-0.018em] text-foreground">Billing & Subscriptions</h2>
-          <p className="text-[13px] mt-1 text-muted-foreground">
-            Tenant-scoped subscription status, billing period and invoice history from the existing Billing API.
-          </p>
-        </div>
-        <span className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold ${subscription ? 'sq-tone-success' : 'sq-tone-warning'}`}>
-          <Icon name={subscription ? 'check-circle-2' : 'alert-circle'} className="w-4 h-4" />
-          {subscription ? 'Billing synced' : 'Billing setup needed'}
-        </span>
-      </div>
-
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-24">
-          <div className={`w-8 h-8 border-2 border-t-transparent rounded-full animate-spin ${spinnerClass}`} />
-          <p className="text-xs mt-3 text-muted-foreground">Loading billing data...</p>
-        </div>
-      ) : (
-        <>
-          {error && (
-            <div className="rounded-2xl p-4 sq-tone-critical text-xs font-semibold">
-              <Icon name="alert-circle" className="w-4 h-4 inline mr-2" />
-              {error}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-            {summaryCards.map(card => {
-              const CardIcon = card.icon;
-              return (
-                <div key={card.label} className={`${cardClass} transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-2)]`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-[11px] uppercase tracking-[0.08em] font-semibold text-muted-foreground">{card.label}</p>
-                      <p className="mt-2 text-[22px] leading-none font-semibold tracking-[-0.02em] text-foreground tabular-nums truncate">{card.value}</p>
-                      <p className="mt-1 text-[11px] text-muted-foreground truncate">{card.meta}</p>
-                    </div>
-                    <div className={`${card.tone} w-10 h-10 rounded-xl flex items-center justify-center shrink-0`}>
-                      <CardIcon className="w-5 h-5" />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)] gap-4">
-            <div className="space-y-4">
-              <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
-                <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
-                  <div>
-                    <p className="text-[13px] font-semibold text-foreground">Plan Workspace</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      Current plan is derived from `GET /billing/subscriptions`; catalog prices are display-only until checkout is connected.
-                    </p>
-                  </div>
-                  {currentPlan && (
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold sq-tone-brand">
-                      <Icon name="check" className="w-3 h-3" />
-                      {currentPlan.name}
-                    </span>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
-                  {planCatalog.map(plan => {
-                    const isCurrent = plan.aliases.some(alias => alias.toLowerCase() === currentPlanName?.toLowerCase());
-                    return (
-                      <div key={plan.name} className={`rounded-2xl border border-border/70 bg-card/70 p-4 transition-all ${isCurrent ? 'ring-1 ring-[var(--brand)] shadow-[var(--shadow-2)]' : 'hover:bg-muted/30'}`}>
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">{plan.name}</h3>
-                            <p className="mt-1 text-[11px] text-muted-foreground">{plan.desc}</p>
-                          </div>
-                          <div className={`${plan.tone} w-9 h-9 rounded-xl flex items-center justify-center`}>
-                            <Icon name={isCurrent ? 'check-circle-2' : 'credit-card'} className="w-4 h-4" />
-                          </div>
-                        </div>
-                        <div className="mt-4">
-                          <span className="text-[26px] leading-none font-semibold tracking-[-0.03em] text-foreground tabular-nums">{plan.price}</span>
-                          <span className="block mt-1 text-[11px] text-muted-foreground">pro Fahrzeug / Monat</span>
-                        </div>
-                        <ul className="mt-4 space-y-2">
-                          {plan.features.map(feature => (
-                            <li key={feature} className="flex items-start gap-2 text-xs text-muted-foreground">
-                              <Icon name="check-circle" className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[var(--brand)]" />
-                              <span>{feature}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        <button
-                          type="button"
-                          disabled
-                          title={isCurrent ? 'Aktueller Plan' : 'Planwechsel-Flow ist noch nicht angebunden'}
-                          className={`mt-4 w-full py-2.5 rounded-xl text-xs font-semibold transition-colors ${
-                            isCurrent
-                              ? 'sq-tone-success cursor-default'
-                              : 'border border-border/70 bg-muted/40 text-muted-foreground cursor-not-allowed'
-                          }`}
-                        >
-                          {isCurrent ? 'Aktueller Plan' : plan.name === 'Enterprise' ? 'Kontakt Ã¼ber Support' : 'Upgrade vorbereiten'}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className={cardClass}>
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <div>
-                    <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-foreground">Subscription Summary</h3>
-                    <p className="text-[11px] text-muted-foreground">Live status from tenant billing scope</p>
-                  </div>
-                  <span className={`px-2 py-1 rounded-lg text-[10px] font-semibold ${subscription ? 'sq-tone-success' : 'sq-tone-warning'}`}>
-                    {subscription?.status ?? 'Missing'}
-                  </span>
-                </div>
-                <div className="space-y-3">
-                  {[
-                    { label: 'Plan', value: currentPlan?.name ?? subscription?.plan ?? 'â€”' },
-                    { label: 'Monthly recurring', value: formatMoney(currentMrr) },
-                    { label: 'Current period start', value: formatDateShort(subscription?.currentPeriodStart) },
-                    { label: 'Current period end', value: formatDateShort(subscription?.currentPeriodEnd) },
-                    { label: 'Subscription ID', value: subscription?.id ?? 'â€”' },
-                  ].map(item => (
-                    <div key={item.label} className="flex items-center justify-between gap-3 py-1.5 border-b border-border/40 last:border-b-0">
-                      <span className="text-xs text-muted-foreground">{item.label}</span>
-                      <span className="text-xs font-semibold text-foreground text-right truncate">{item.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className={cardClass}>
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div>
-                    <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-foreground">Zahlungsmethode</h3>
-                    <p className="text-[11px] text-muted-foreground">Stripe payment method is not exposed by the current tenant endpoint.</p>
-                  </div>
-                  <span className="px-2 py-1 rounded-lg text-[10px] font-semibold sq-tone-neutral">Not synced</span>
-                </div>
-                <div className="rounded-2xl border border-dashed border-border/70 bg-muted/30 p-4 text-center">
-                  <div className="sq-tone-neutral w-10 h-10 rounded-xl mx-auto mb-2 flex items-center justify-center">
-                    <Icon name="credit-card" className="w-5 h-5" />
-                  </div>
-                  <p className="text-xs font-semibold text-foreground">Keine Zahlungsmethode im API-Response</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">Die alte Demo-Mastercard wurde entfernt, damit hier keine falschen Zahlungsdaten angezeigt werden.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
-            <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
-              <div>
-                <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-foreground">Rechnungsverlauf</h3>
-                <p className="text-[11px] text-muted-foreground">
-                  Showing {filteredInvoices.length} of {invoices.length} invoices Â· active scope: {activeStatus.label}
-                </p>
-              </div>
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition-colors text-[var(--brand)] hover:bg-[var(--brand-soft)]"
-                >
-                  Clear filters
-                </button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_220px] gap-3 mb-4">
-              <div className="relative">
-                <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                <input
-                  value={invoiceSearch}
-                  onChange={e => setInvoiceSearch(e.target.value)}
-                  placeholder="Search invoice ID, Stripe ID or plan..."
-                  className={`${inputClass} !pl-9`}
-                />
-              </div>
-              <select
-                value={invoiceStatus}
-                onChange={e => setInvoiceStatus(e.target.value as typeof invoiceStatus)}
-                className={inputClass}
-              >
-                {statusOptions.map(option => (
-                  <option key={option.key} value={option.key}>{option.label} ({option.count})</option>
-                ))}
-              </select>
-            </div>
-
-            {filteredInvoices.length === 0 ? (
-              <div className="text-center py-12 rounded-2xl border border-dashed border-border/70 bg-muted/30">
-                <div className="sq-tone-neutral w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center">
-                  <Icon name="file-text" className="w-6 h-6" />
-                </div>
-                <p className="text-sm font-semibold text-foreground">Keine Rechnungen gefunden</p>
-                <p className="text-xs mt-1 text-muted-foreground">
-                  {hasActiveFilters ? 'Passe Suche oder Statusfilter an.' : 'Sobald Billing-Rechnungen synchronisiert sind, erscheinen sie hier.'}
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto rounded-xl">
-                <table className="w-full min-w-[720px]">
-                  <thead>
-                    <tr className="bg-muted/40">
-                      <th className="text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Rechnungs-Nr.</th>
-                      <th className="text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Plan</th>
-                      <th className="text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Datum</th>
-                      <th className="text-right px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Betrag</th>
-                      <th className="text-center px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Status</th>
-                      <th className="text-right px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Download</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredInvoices.map(invoice => {
-                      const pdfUrl = invoice.invoicePdfUrl;
-                      return (
-                        <tr key={invoice.id} className="border-t border-border/50 transition-colors hover:bg-muted/30">
-                          <td className="px-3 py-2.5 text-xs font-mono font-medium text-foreground">{invoice.stripeInvoiceId ?? invoice.id}</td>
-                          <td className="px-3 py-2.5 text-xs text-muted-foreground">{invoice.plan ?? currentPlan?.name ?? 'â€”'}</td>
-                          <td className="px-3 py-2.5 text-xs text-muted-foreground">{formatDateShort(invoice.date ?? invoice.invoiceDate)}</td>
-                          <td className="px-3 py-2.5 text-xs font-semibold text-right text-foreground">{formatMoney(invoiceAmount(invoice))}</td>
-                          <td className="px-3 py-2.5 text-center">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold ${statusTone(invoice.status)}`}>
-                              <Icon name={normalizeStatus(invoice.status) === 'paid' ? 'check' : 'clock'} className="w-3 h-3" /> {statusLabel(invoice.status)}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5 text-right">
-                            {pdfUrl ? (
-                              <a href={pdfUrl} target="_blank" rel="noreferrer" className="inline-flex p-1.5 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Rechnung herunterladen">
-                                <Icon name="download" className="w-5 h-5" />
-                              </a>
-                            ) : (
-                              <span className="inline-flex p-1.5 rounded-lg text-muted-foreground/50" title="Kein PDF hinterlegt">
-                                <Icon name="download" className="w-5 h-5" />
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ============================================
 // MAIN SETTINGS VIEW
 // ============================================
 export function SettingsView({
@@ -2239,6 +1823,7 @@ export function SettingsView({
   const activeTab = controlledTab;
   const canWriteDataAuth = hasPermission('data-authorization', 'write');
   const canManageDataAuth = hasPermission('data-authorization', 'manage');
+  const canWriteRentalRules = hasPermission('company-info', 'write');
   const bridgeDark = useDocumentDark();
 
   return (
@@ -2260,6 +1845,7 @@ export function SettingsView({
         <DataAuthorizationTab canWrite={canWriteDataAuth} canManage={canManageDataAuth} />
       )}
       {activeTab === 'legal-documents' && <LegalDocumentsTab isDarkMode={bridgeDark} />}
+      {activeTab === 'rental-rules' && <RentalRulesTab canWrite={canWriteRentalRules} />}
     </div>
   );
 }

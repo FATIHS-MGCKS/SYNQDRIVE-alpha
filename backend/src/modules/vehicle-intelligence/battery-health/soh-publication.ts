@@ -207,6 +207,11 @@ export function determineLvMaturity(input: LvMaturityInput): PublicationState {
 
 // ── HV Maturity ─────────────────────────────────────────────────────────────────
 
+/** Legacy degradation_model values are ignored and must not publish HV SOH. */
+export function isLegacyHvDegradationModel(method: string | null | undefined): boolean {
+  return method === 'degradation_model';
+}
+
 export interface HvMaturityInput {
   validEstimateCount: number;
   daysSinceFirstMeasurement: number | null;
@@ -217,7 +222,7 @@ export function determineHvMaturity(input: HvMaturityInput): PublicationState {
   const { validEstimateCount, daysSinceFirstMeasurement, method } = input;
   const days = daysSinceFirstMeasurement ?? 0;
 
-  if (method === 'insufficient_data' || method === 'degradation_model') {
+  if (method === 'insufficient_data' || isLegacyHvDegradationModel(method)) {
     return 'INITIAL_CALIBRATION';
   }
 

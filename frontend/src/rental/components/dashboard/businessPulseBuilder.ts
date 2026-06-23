@@ -27,6 +27,32 @@ export interface BusinessPulseMetricItem {
   drilldown?: BusinessPulseDrilldown;
 }
 
+/** A single value in the compact financial snapshot. */
+export interface BusinessPulseCompactMetric {
+  /** Drilldown metric id reused by the existing drawer (no new truth). */
+  id: string;
+  label: string;
+  value: string;
+  /** Optional sub-line (e.g. "4 open"). */
+  hint?: string;
+  /** False when the value could not be computed (renders dimmed). */
+  available: boolean;
+  /** True for overdue receivables > 0 → subtle critical emphasis. */
+  emphasize?: boolean;
+}
+
+/** Compact, scan-friendly financial snapshot (max 4 primary values + expenses). */
+export interface BusinessPulseCompact {
+  monthLabel: string;
+  invoiceCount: number;
+  revenue: BusinessPulseCompactMetric;
+  profit: BusinessPulseCompactMetric;
+  openReceivables: BusinessPulseCompactMetric;
+  overdueReceivables: BusinessPulseCompactMetric;
+  /** Only present when real expense data exists. */
+  expenses: BusinessPulseCompactMetric | null;
+}
+
 export interface BusinessPulseSnapshot {
   loading: boolean;
   error: boolean;
@@ -35,6 +61,8 @@ export interface BusinessPulseSnapshot {
   hasFinancialData: boolean;
   primaryMetrics: BusinessPulseMetricItem[];
   secondaryMetrics: BusinessPulseMetricItem[];
+  /** Structured values for the compact snapshot UI. */
+  compact: BusinessPulseCompact;
   emptyTitle: string;
   emptySubtitle: string;
 }
@@ -267,6 +295,69 @@ export function buildBusinessPulseSnapshot(input: {
     });
   }
 
+  const profitAvailable = monthly.revenueCount > 0 || monthly.expenseCount > 0;
+  const compact: BusinessPulseCompact = {
+    monthLabel: monthly.monthLabel,
+    invoiceCount: monthly.revenueCount,
+    revenue: {
+      id: 'revenue',
+      label: input.labels.revenue,
+      value: hasFinancialData
+        ? input.fmtEUR(monthly.revenueCents)
+        : de
+          ? 'Noch kein Umsatz'
+          : 'No revenue yet',
+      hint: hasFinancialData ? input.labels.invoicesShort(monthly.revenueCount) : undefined,
+      available: hasFinancialData,
+    },
+    profit: {
+      id: 'profit',
+      label: input.labels.profit,
+      value: profitAvailable
+        ? input.fmtEUR(monthly.profitCents)
+        : de
+          ? 'Nicht berechnet'
+          : 'Not calculated',
+      hint: profitAvailable ? monthly.monthLabel : undefined,
+      available: profitAvailable,
+    },
+    openReceivables: {
+      id: 'unpaid',
+      label: input.labels.unpaid,
+      value: input.fmtEUR(openCents),
+      hint:
+        openReceivables.length > 0
+          ? de
+            ? `${openReceivables.length} offen`
+            : `${openReceivables.length} open`
+          : undefined,
+      available: true,
+    },
+    overdueReceivables: {
+      id: 'lost-revenue-risk',
+      label: input.labels.lostRevenueRisk,
+      value: input.fmtEUR(overdueCents),
+      hint:
+        overdueReceivables.length > 0
+          ? de
+            ? `${overdueReceivables.length} überfällig`
+            : `${overdueReceivables.length} overdue`
+          : undefined,
+      available: true,
+      emphasize: overdueCents > 0,
+    },
+    expenses:
+      monthly.expenseCount > 0
+        ? {
+            id: 'expenses',
+            label: input.labels.expenses,
+            value: input.fmtEUR(monthly.expenseCents),
+            hint: input.labels.invoicesShort(monthly.expenseCount),
+            available: true,
+          }
+        : null,
+  };
+
   return {
     loading: !input.invoicesLoaded,
     error: input.invoicesError,
@@ -275,6 +366,7 @@ export function buildBusinessPulseSnapshot(input: {
     hasFinancialData,
     primaryMetrics,
     secondaryMetrics,
+    compact,
     emptyTitle: input.labels.emptyTitle,
     emptySubtitle: input.labels.emptySubtitle,
   };

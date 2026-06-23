@@ -738,6 +738,13 @@ export class DimoSegmentsService {
   // UTILITIES
   // ────────────────────────────────────────────────────────
 
+  // TODO(hf-mirror): This existing post-trip-enrichment HF fetch is the intended
+  // future hook to best-effort mirror normalized HF points into ClickHouse via
+  // ClickHouseHfService.insertHfPoints(). It must stay fire-and-forget (failures
+  // swallowed) and MUST NOT change DIMO polling frequencies or the 1s window.
+  // Mapping: speed→speed, rpm/engineLoad/throttle/tractionBatteryPowerKw→powertrain
+  // (see hf-signal-map.ts). Deliberately NOT wired here yet to avoid touching the
+  // trip enrichment path in this step (see Step 4 scope).
   async fetchHighFrequency(
     tokenId: number,
     from: Date,

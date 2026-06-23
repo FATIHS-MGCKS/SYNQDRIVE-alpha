@@ -1,34 +1,38 @@
-import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { VoiceAssistantService } from './voice-assistant.service';
+import {
+  UpdateVoiceAssistantDto,
+  ListVoiceConversationsQueryDto,
+  AssignPhoneNumberDto,
+  UpdateTelephonySettingsDto,
+} from './dto';
 
 @Controller('organizations/:orgId/voice-assistant')
 @UseGuards(OrgScopingGuard, RolesGuard)
 export class VoiceAssistantController {
-  private readonly logger = new Logger(VoiceAssistantController.name);
-
   constructor(private readonly service: VoiceAssistantService) {}
 
   @Get()
   async get(@Param('orgId') orgId: string) {
-    return this.service.getOrCreate(orgId);
+    return this.service.getOrCreateAssistantForOrg(orgId);
   }
 
   @Patch()
-  async update(@Param('orgId') orgId: string, @Body() body: any) {
-    return this.service.update(orgId, body);
+  async update(@Param('orgId') orgId: string, @Body() body: UpdateVoiceAssistantDto) {
+    return this.service.updateAssistant(orgId, body);
   }
 
   @Post('activate')
   async activate(@Param('orgId') orgId: string) {
-    return this.service.activate(orgId);
+    return this.service.activateAssistant(orgId);
   }
 
   @Post('deactivate')
   async deactivate(@Param('orgId') orgId: string) {
-    return this.service.deactivate(orgId);
+    return this.service.deactivateAssistant(orgId);
   }
 
   @Get('readiness')
@@ -49,14 +53,50 @@ export class VoiceAssistantController {
   @Get('conversations')
   async conversations(
     @Param('orgId') orgId: string,
-    @Query('limit') limit?: string,
+    @Query() query: ListVoiceConversationsQueryDto,
   ) {
-    return this.service.getConversations(orgId, limit ? parseInt(limit, 10) : 50);
+    return this.service.listConversations(orgId, query);
+  }
+
+  @Get('analytics')
+  async analytics(@Param('orgId') orgId: string) {
+    return this.service.getConversationAnalytics(orgId);
   }
 
   @Post('conversations/sync')
   async syncConversations(@Param('orgId') orgId: string) {
     return this.service.syncConversations(orgId);
+  }
+
+  @Get('phone-numbers')
+  async phoneNumbers(@Param('orgId') orgId: string) {
+    return this.service.listProviderPhoneNumbers(orgId);
+  }
+
+  @Post('phone-number/assign')
+  async assignPhoneNumber(
+    @Param('orgId') orgId: string,
+    @Body() body: AssignPhoneNumberDto,
+  ) {
+    return this.service.assignPhoneNumber(orgId, body.phoneNumberId);
+  }
+
+  @Post('phone-number/unassign')
+  async unassignPhoneNumber(@Param('orgId') orgId: string) {
+    return this.service.unassignPhoneNumber(orgId);
+  }
+
+  @Post('telephony/refresh')
+  async refreshTelephony(@Param('orgId') orgId: string) {
+    return this.service.refreshTelephonyStatus(orgId);
+  }
+
+  @Patch('telephony-settings')
+  async telephonySettings(
+    @Param('orgId') orgId: string,
+    @Body() body: UpdateTelephonySettingsDto,
+  ) {
+    return this.service.updateTelephonySettings(orgId, body);
   }
 }
 
@@ -73,10 +113,11 @@ export class VoiceAssistantAdminController {
 
   @Get('organizations/:orgId')
   async orgDetail(@Param('orgId') orgId: string) {
-    const assistant = await this.service.get(orgId);
-    if (!assistant) return { exists: false };
-    const readiness = await this.service.getReadiness(orgId);
-    const conversations = await this.service.getConversations(orgId, 10);
-    return { exists: true, assistant, readiness, recentConversations: conversations };
+    return this.service.getAdminOrgDetail(orgId);
+  }
+
+  @Post('organizations/:orgId/sync')
+  async syncOrganization(@Param('orgId') orgId: string) {
+    return this.service.adminSyncOrganization(orgId);
   }
 }

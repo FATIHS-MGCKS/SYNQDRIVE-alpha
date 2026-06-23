@@ -35,6 +35,7 @@ export const en = {
   'nav.dataAuthorization': 'Data Authorization & Consent',
   'nav.legalDocuments': 'Legal Documents',
   'nav.billingSubscription': 'Billing & Subscription',
+  'nav.rentalRules': 'Rental Rules',
   'nav.support': 'Support',
   'nav.helpCenter': 'Help Center',
   'nav.dataAnalyse': 'Data Analyse',
@@ -48,7 +49,17 @@ export const en = {
   // ─── Fleet hub tabs ───
   'fleetTab.status': 'Status',
   'fleetTab.health': 'Health',
-  'fleetTab.service': 'Service',
+  'fleetTab.service': 'Maintenance',
+
+  // ─── Service Center (Fleet hub) ───
+  'serviceCenter.eyebrow': 'Fleet operations',
+  'serviceCenter.title': 'Service Center',
+  'serviceCenter.subtitle': 'Operational hub for maintenance, repairs, inspections, vendors, and service tasks. Health remains diagnosis — execution happens here.',
+  'serviceCenter.tab.overview': 'Overview',
+  'serviceCenter.tab.tasks': 'Tasks',
+  'serviceCenter.tab.schedule': 'Schedule',
+  'serviceCenter.tab.vendors': 'Vendors',
+  'serviceCenter.tab.history': 'History',
 
   // ─── TopBar ───
   'topbar.searchPlaceholder': 'Search vehicles, bookings, customers...',
@@ -68,7 +79,7 @@ export const en = {
   'view.healthErrors': 'Health & Errors',
   'view.fleet': 'Fleet',
   'view.fleetHealth': 'Health',
-  'view.fleetService': 'Service',
+  'view.fleetService': 'Maintenance',
   'view.damages': 'Damages',
   'view.documents': 'Documents',
   'view.customers': 'Customers',
@@ -102,6 +113,7 @@ export const en = {
   'settingsTab.billing': 'Billing & Subscription',
   'settingsTab.dataAuthorization': 'Data Authorization & Consent Center',
   'settingsTab.legalDocuments': 'Legal Documents',
+  'settingsTab.rentalRules': 'Rental Rules',
 
   // ─── Finance Tabs ───
   'financeTab.invoices': 'Invoices',

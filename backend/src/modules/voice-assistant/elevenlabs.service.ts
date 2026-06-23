@@ -1,4 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+  BadGatewayException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 export interface ElevenLabsVoice {
@@ -9,20 +14,28 @@ export interface ElevenLabsVoice {
   preview_url?: string;
 }
 
-interface ElevenLabsAgent {
+export interface ElevenLabsAgent {
   agent_id: string;
   name?: string;
 }
 
-interface ElevenLabsConversation {
+export interface ElevenLabsConversation {
   conversation_id: string;
   agent_id: string;
   status: string;
   start_time_unix_secs?: number;
   end_time_unix_secs?: number;
-  transcript?: string;
-  metadata?: Record<string, any>;
+  transcript?: string | unknown;
+  metadata?: Record<string, unknown>;
 }
+
+export interface ElevenLabsPhoneNumber {
+  phone_number_id: string;
+  phone_number?: string;
+  agent_id?: string | null;
+}
+
+const REQUEST_TIMEOUT_MS = 30_000;
 
 @Injectable()
 export class ElevenLabsService {
@@ -38,6 +51,10 @@ export class ElevenLabsService {
     return Boolean(this.apiKey);
   }
 
+  getConnectionStatus(): 'NOT_CONFIGURED' | 'CONNECTED' | 'DEGRADED' {
+    return this.isConfigured() ? 'CONNECTED' : 'NOT_CONFIGURED';
+  }
+
   private headers(): Record<string, string> {
     return {
       'xi-api-key': this.apiKey,
@@ -45,196 +62,181 @@ export class ElevenLabsService {
     };
   }
 
+  private ensureConfigured(): void {
+    if (!this.apiKey) {
+      throw new ServiceUnavailableException(
+        'ElevenLabs is not configured. Set ELEVENLABS_API_KEY on the server.',
+      );
+    }
+  }
+
+  private async request<T>(
+    path: string,
+    init?: RequestInit,
+    options?: { allowDegraded?: boolean },
+  ): Promise<T> {
+    this.ensureConfigured();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const res = await fetch(`${this.baseUrl}${path}`, {
+        ...init,
+        headers: { ...this.headers(), ...(init?.headers ?? {}) },
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        this.logger.warn(`ElevenLabs ${init?.method ?? 'GET'} ${path} failed: ${res.status}`);
+        throw new BadGatewayException(
+          `ElevenLabs API error (${res.status})${text ? `: ${text.slice(0, 200)}` : ''}`,
+        );
+      }
+      if (res.status === 204) return undefined as T;
+      return (await res.json()) as T;
+    } catch (err: unknown) {
+      if (err instanceof BadGatewayException || err instanceof ServiceUnavailableException) {
+        throw err;
+      }
+      const message = err instanceof Error ? err.message : 'Unknown ElevenLabs error';
+      this.logger.error(`ElevenLabs request error on ${path}: ${message}`);
+      if (options?.allowDegraded) {
+        throw new ServiceUnavailableException(`ElevenLabs unavailable: ${message}`);
+      }
+      throw new BadGatewayException(`ElevenLabs request failed: ${message}`);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   async listVoices(): Promise<ElevenLabsVoice[]> {
-    if (!this.apiKey) return [];
+    if (!this.isConfigured()) return [];
     try {
-      const res = await fetch(`${this.baseUrl}/voices`, { headers: this.headers() });
-      if (!res.ok) { this.logger.warn(`listVoices failed: ${res.status}`); return []; }
-      const data = await res.json();
-      return (data.voices ?? []).map((v: any) => ({
-        voice_id: v.voice_id,
-        name: v.name,
-        category: v.category,
-        labels: v.labels,
-        preview_url: v.preview_url,
+      const data = await this.request<{ voices?: unknown[] }>('/voices');
+      return (data.voices ?? []).map((v: Record<string, unknown>) => ({
+        voice_id: String(v.voice_id),
+        name: String(v.name),
+        category: v.category ? String(v.category) : undefined,
+        labels: v.labels as Record<string, string> | undefined,
+        preview_url: v.preview_url ? String(v.preview_url) : undefined,
       }));
-    } catch (err: any) {
-      this.logger.error(`listVoices error: ${err.message}`);
-      return [];
+    } catch (err: unknown) {
+      if (err instanceof ServiceUnavailableException) return [];
+      throw err;
     }
   }
 
-  async createAgent(params: {
-    name: string;
-    systemPrompt: string;
-    greetingMessage?: string;
-    voiceId?: string;
-    language?: string;
-  }): Promise<{ agentId: string } | null> {
-    if (!this.apiKey) return null;
-    try {
-      const body: any = {
-        conversation_config: {
-          agent: {
-            prompt: {
-              prompt: params.systemPrompt,
-            },
-            first_message: params.greetingMessage || `Hello, this is ${params.name}. How can I help you?`,
-            language: params.language || 'en',
-          },
-          tts: params.voiceId ? { voice_id: params.voiceId } : undefined,
+  async createOrUpdateAgent(
+    agentId: string | null,
+    params: {
+      name: string;
+      systemPrompt: string;
+      greetingMessage?: string;
+      voiceId?: string;
+      language?: string;
+    },
+  ): Promise<{ agentId: string }> {
+    const body = {
+      conversation_config: {
+        agent: {
+          prompt: { prompt: params.systemPrompt },
+          first_message:
+            params.greetingMessage || `Hello, this is ${params.name}. How can I help you?`,
+          language: params.language || 'en',
         },
-        name: params.name,
-        platform_settings: {},
-      };
+        tts: params.voiceId ? { voice_id: params.voiceId } : undefined,
+      },
+      name: params.name,
+      platform_settings: {},
+    };
 
-      const res = await fetch(`${this.baseUrl}/convai/agents/create`, {
-        method: 'POST',
-        headers: this.headers(),
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        this.logger.warn(`createAgent failed: ${res.status} ${text}`);
-        return null;
-      }
-      const data = await res.json();
-      return { agentId: data.agent_id };
-    } catch (err: any) {
-      this.logger.error(`createAgent error: ${err.message}`);
-      return null;
-    }
-  }
-
-  async updateAgent(agentId: string, params: {
-    name?: string;
-    systemPrompt?: string;
-    greetingMessage?: string;
-    voiceId?: string;
-    language?: string;
-  }): Promise<boolean> {
-    if (!this.apiKey || !agentId) return false;
-    try {
-      const body: any = {
-        conversation_config: {
-          agent: {
-            prompt: params.systemPrompt ? { prompt: params.systemPrompt } : undefined,
-            first_message: params.greetingMessage,
-            language: params.language,
-          },
-          tts: params.voiceId ? { voice_id: params.voiceId } : undefined,
-        },
-        name: params.name,
-      };
-
-      const res = await fetch(`${this.baseUrl}/convai/agents/${agentId}`, {
+    if (agentId) {
+      await this.request(`/convai/agents/${agentId}`, {
         method: 'PATCH',
-        headers: this.headers(),
         body: JSON.stringify(body),
       });
-      if (!res.ok) {
-        this.logger.warn(`updateAgent failed: ${res.status}`);
-        return false;
-      }
-      return true;
-    } catch (err: any) {
-      this.logger.error(`updateAgent error: ${err.message}`);
-      return false;
+      return { agentId };
     }
-  }
 
-  async deleteAgent(agentId: string): Promise<boolean> {
-    if (!this.apiKey || !agentId) return false;
-    try {
-      const res = await fetch(`${this.baseUrl}/convai/agents/${agentId}`, {
-        method: 'DELETE',
-        headers: this.headers(),
-      });
-      return res.ok;
-    } catch {
-      return false;
-    }
+    const data = await this.request<{ agent_id: string }>('/convai/agents/create', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    return { agentId: data.agent_id };
   }
 
   async getAgent(agentId: string): Promise<ElevenLabsAgent | null> {
-    if (!this.apiKey || !agentId) return null;
+    if (!this.isConfigured() || !agentId) return null;
     try {
-      const res = await fetch(`${this.baseUrl}/convai/agents/${agentId}`, {
-        headers: this.headers(),
-      });
-      if (!res.ok) return null;
-      return await res.json();
+      return await this.request<ElevenLabsAgent>(`/convai/agents/${agentId}`);
     } catch {
       return null;
     }
   }
 
   async listConversations(agentId: string): Promise<ElevenLabsConversation[]> {
-    if (!this.apiKey || !agentId) return [];
-    try {
-      const res = await fetch(`${this.baseUrl}/convai/conversations?agent_id=${agentId}`, {
-        headers: this.headers(),
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return data.conversations ?? [];
-    } catch {
-      return [];
-    }
+    if (!this.isConfigured() || !agentId) return [];
+    const data = await this.request<{ conversations?: ElevenLabsConversation[] }>(
+      `/convai/conversations?agent_id=${encodeURIComponent(agentId)}`,
+    );
+    return data.conversations ?? [];
   }
 
   async getConversation(conversationId: string): Promise<ElevenLabsConversation | null> {
-    if (!this.apiKey || !conversationId) return null;
+    if (!this.isConfigured() || !conversationId) return null;
     try {
-      const res = await fetch(`${this.baseUrl}/convai/conversations/${conversationId}`, {
-        headers: this.headers(),
-      });
-      if (!res.ok) return null;
-      return await res.json();
+      return await this.request<ElevenLabsConversation>(
+        `/convai/conversations/${encodeURIComponent(conversationId)}`,
+      );
     } catch {
       return null;
     }
   }
 
-  async getSignedUrl(agentId: string): Promise<string | null> {
-    if (!this.apiKey || !agentId) return null;
+  async getSignedTestUrl(
+    agentId: string,
+  ): Promise<{ signedUrl: string; expiresAt: string | null }> {
+    const data = await this.request<{
+      signed_url?: string;
+      expires_at?: string;
+      expiration_time_unix_secs?: number;
+    }>(`/convai/conversation/get_signed_url?agent_id=${encodeURIComponent(agentId)}`);
+    if (!data.signed_url) {
+      throw new BadGatewayException('ElevenLabs did not return a signed test URL');
+    }
+    let expiresAt: string | null = null;
+    if (data.expires_at) {
+      expiresAt = data.expires_at;
+    } else if (data.expiration_time_unix_secs) {
+      expiresAt = new Date(data.expiration_time_unix_secs * 1000).toISOString();
+    }
+    return { signedUrl: data.signed_url, expiresAt };
+  }
+
+  async listPhoneNumbers(): Promise<ElevenLabsPhoneNumber[]> {
+    if (!this.isConfigured()) return [];
     try {
-      const res = await fetch(`${this.baseUrl}/convai/conversation/get_signed_url?agent_id=${agentId}`, {
-        headers: this.headers(),
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data.signed_url ?? null;
-    } catch {
-      return null;
+      const data = await this.request<{ phone_numbers?: ElevenLabsPhoneNumber[] } | ElevenLabsPhoneNumber[]>(
+        '/convai/phone-numbers',
+      );
+      if (Array.isArray(data)) return data;
+      return data.phone_numbers ?? [];
+    } catch (err: unknown) {
+      if (err instanceof ServiceUnavailableException) return [];
+      throw err;
     }
   }
 
-  async getPhoneNumbers(): Promise<any[]> {
-    if (!this.apiKey) return [];
-    try {
-      const res = await fetch(`${this.baseUrl}/convai/phone-numbers`, {
-        headers: this.headers(),
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return data.phone_numbers ?? data ?? [];
-    } catch {
-      return [];
-    }
+  async assignPhoneNumberToAgent(agentId: string, phoneNumberId: string): Promise<void> {
+    await this.request(`/convai/phone-numbers/${encodeURIComponent(phoneNumberId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ agent_id: agentId }),
+    });
   }
 
-  async assignPhoneToAgent(agentId: string, phoneNumberId: string): Promise<boolean> {
-    if (!this.apiKey) return false;
-    try {
-      const res = await fetch(`${this.baseUrl}/convai/phone-numbers/${phoneNumberId}/agent`, {
-        method: 'PATCH',
-        headers: this.headers(),
-        body: JSON.stringify({ agent_id: agentId }),
-      });
-      return res.ok;
-    } catch {
-      return false;
-    }
+  async unassignPhoneNumberFromAgent(phoneNumberId: string): Promise<void> {
+    await this.request(`/convai/phone-numbers/${encodeURIComponent(phoneNumberId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ agent_id: null }),
+    });
   }
 }

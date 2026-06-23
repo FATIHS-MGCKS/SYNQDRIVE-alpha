@@ -35,7 +35,12 @@ export class HealthService {
     ]);
 
     const checks = { postgres, redis, clickhouse, workers };
-    const allHealthy = Object.values(checks).every((c) => c.status === 'ok');
+
+    // ClickHouse is an OPTIONAL analytics/telemetry mirror. It must never drag
+    // the overall operational readiness into 'degraded'. Only the hard
+    // dependencies (PostgreSQL, Redis, workers runtime) determine the status.
+    const hardChecks = [postgres, redis, workers];
+    const allHealthy = hardChecks.every((c) => c.status === 'ok');
     const status = allHealthy ? 'ok' : 'degraded';
 
     return { status, checks };
@@ -67,65 +72,69 @@ export class HealthService {
 
   private async checkClickHouse(): Promise<DependencyStatus> {
     const start = Date.now();
-    const status = this.clickHouse.getStatus();
+    const ch = this.clickHouse.getStatus();
 
-    if (!status.configured) {
-      return {
-        status: 'error',
-        responseMs: Date.now() - start,
-        error: status.lastError ?? 'clickhouse_not_configured',
-        details: {
-          configured: status.configured,
-          available: status.available,
-          database: status.database,
-        },
-      };
+    // Map the granular ClickHouse status onto the binary dependency status.
+    // 'disabled' (intentionally off) and 'available' are NOT faults; only
+    // 'degraded' (configured but unreachable) and 'schema_error' are.
+    const depStatus: 'ok' | 'error' =
+      ch.status === 'available' || ch.status === 'disabled' ? 'ok' : 'error';
+
+    const details: Record<string, unknown> = {
+      status: ch.status,
+      configured: ch.configured,
+      available: ch.available,
+      database: ch.database,
+      lastPingAt: ch.lastPingAt,
+      lastSchemaInitAt: ch.lastSchemaInitAt,
+      lastSchemaError: ch.lastSchemaError,
+      appliedMigrationCount: ch.appliedMigrationCount,
+      pendingMigrationCount: ch.pendingMigrationCount,
+    };
+
+    // Only probe ingestion when fully available; failures here are informational
+    // and must not turn the optional mirror into a hard failure.
+    if (ch.status === 'available') {
+      try {
+        const ingestion =
+          await this.clickHouseAnalytics.summarizeRecentIngestion(
+            new Date(Date.now() - 15 * 60_000),
+          );
+        details.recentSnapshotCount = ingestion.snapshotCount;
+        details.recentStateChangeCount = ingestion.stateChangeCount;
+        details.latestSnapshotAt =
+          ingestion.latestSnapshotAt?.toISOString() ?? null;
+        details.latestStateChangeAt =
+          ingestion.latestStateChangeAt?.toISOString() ?? null;
+      } catch (err: any) {
+        this.logger.warn(
+          `Readiness check — ClickHouse ingestion probe failed: ${err?.message}`,
+        );
+        details.ingestionError = err?.message;
+      }
+
+      // Best-effort storage stats (metadata-only, capped) — never blocks or
+      // fails the readiness response.
+      try {
+        const storage = await this.clickHouseAnalytics.getStorageStats();
+        if (storage) {
+          details.storage = storage;
+        }
+      } catch (err: any) {
+        this.logger.warn(
+          `Readiness check — ClickHouse storage stats failed: ${err?.message}`,
+        );
+      }
     }
 
-    if (!status.available) {
-      return {
-        status: 'error',
-        responseMs: Date.now() - start,
-        error: status.lastError ?? 'clickhouse_unavailable',
-        details: {
-          configured: status.configured,
-          available: status.available,
-          database: status.database,
-        },
-      };
-    }
-
-    try {
-      const ingestion = await this.clickHouseAnalytics.summarizeRecentIngestion(
-        new Date(Date.now() - 15 * 60_000),
-      );
-      return {
-        status: 'ok',
-        responseMs: Date.now() - start,
-        details: {
-          configured: status.configured,
-          available: status.available,
-          database: status.database,
-          recentSnapshotCount: ingestion.snapshotCount,
-          recentStateChangeCount: ingestion.stateChangeCount,
-          latestSnapshotAt: ingestion.latestSnapshotAt?.toISOString() ?? null,
-          latestStateChangeAt:
-            ingestion.latestStateChangeAt?.toISOString() ?? null,
-        },
-      };
-    } catch (err: any) {
-      this.logger.warn(`Readiness check — ClickHouse failed: ${err?.message}`);
-      return {
-        status: 'error',
-        responseMs: Date.now() - start,
-        error: err?.message,
-        details: {
-          configured: status.configured,
-          available: status.available,
-          database: status.database,
-        },
-      };
-    }
+    return {
+      status: depStatus,
+      responseMs: Date.now() - start,
+      ...(depStatus === 'error'
+        ? { error: ch.lastSchemaError ?? ch.lastError ?? ch.status }
+        : {}),
+      details,
+    };
   }
 
   private async checkWorkerRuntime(): Promise<DependencyStatus> {

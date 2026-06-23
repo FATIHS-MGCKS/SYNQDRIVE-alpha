@@ -9,7 +9,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { join } from 'path';
 import Redis from 'ioredis';
 
-import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig } from '@config/index';
+import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig } from '@config/index';
 
 import { PrismaModule } from '@shared/database/prisma.module';
 import { RedisModule } from '@shared/redis/redis.module';
@@ -37,6 +37,7 @@ import { RentalDrivingAnalysisModule } from '@modules/rental-driving-analysis/re
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { SupportModule } from '@modules/support/support.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
+import { ServiceCasesModule } from '@modules/service-cases/service-cases.module';
 import { FinesModule } from '@modules/fines/fines.module';
 import { InvoicesModule } from '@modules/invoices/invoices.module';
 import { VendorsModule } from '@modules/vendors/vendors.module';
@@ -46,12 +47,14 @@ import { WorkflowsModule } from '@modules/workflows/workflows.module';
 import { PartsAccessoriesModule } from '@modules/parts-accessories/parts-accessories.module';
 import { InsurancesModule } from '@modules/insurances/insurances.module';
 import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.module';
+import { WhatsAppModule } from '@modules/whatsapp/whatsapp.module';
 import { BusinessInsightsModule } from '@modules/business-insights/business-insights.module';
 import { HighMobilityModule } from '@modules/high-mobility/high-mobility.module';
 import { RentalHealthModule } from '@modules/rental-health/rental-health.module';
 import { DocumentExtractionModule } from '@modules/document-extraction/document-extraction.module';
 import { DocumentsModule } from '@modules/documents/documents.module';
 import { PricingModule } from '@modules/pricing/pricing.module';
+import { RentalRulesModule } from '@modules/rental-rules/rental-rules.module';
 import { WorkersModule } from '@workers/workers.module';
 import { AuthApiModule } from '@modules/auth/auth.module';
 import { AccountModule } from '@modules/account/account.module';
@@ -121,7 +124,7 @@ export class AppModule {
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
-          load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig],
+          load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig],
         }),
 
         // Global throttler: 200 requests per minute per IP (normal API usage)
@@ -193,6 +196,7 @@ export class AppModule {
         ActivityLogModule,
         SupportModule,
         TasksModule,
+        ServiceCasesModule,
         FinesModule,
         InvoicesModule,
         VendorsModule,
@@ -202,12 +206,14 @@ export class AppModule {
         PartsAccessoriesModule,
         InsurancesModule,
         VoiceAssistantModule,
+        WhatsAppModule,
         BusinessInsightsModule,
         HighMobilityModule,
         RentalHealthModule,
         DocumentExtractionModule,
         DocumentsModule,
         PricingModule,
+        RentalRulesModule,
 
         // Workers / processors / schedulers. Non-Redis schedulers inside this
         // module (e.g. brake recalc, trip reconciliation, HM polling) also live

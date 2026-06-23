@@ -1,4 +1,4 @@
-import { LayoutDashboard, DollarSign, Calendar, Car, Users, CheckSquare, FileText, Tag, Settings, Building2, Wifi, MapPin, UserCog, CreditCard, Plus, Upload, Menu, X, Shield, Package, Lock, HelpCircle, Zap, Phone, Truck, Headphones, ChevronRight, User, PanelLeftClose, PanelLeftOpen, ListTodo, MessageSquare, Activity } from 'lucide-react';
+import { LayoutDashboard, DollarSign, Calendar, Car, Users, CheckSquare, FileText, Tag, Settings, Building2, Wifi, MapPin, UserCog, CreditCard, Plus, Upload, Menu, X, Shield, ShieldCheck, Package, Lock, HelpCircle, Zap, Phone, Truck, Headphones, ChevronRight, User, PanelLeftClose, PanelLeftOpen, ListTodo, MessageSquare, Activity } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
@@ -14,7 +14,7 @@ import {
 import synqdriveLogoLight from '../../assets/synqdrive-logo-light.png';
 import synqdriveLogoDark from '../../assets/synqdrive-logo-dark.png';
 
-type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents';
+type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents' | 'rental-rules';
 
 interface SidebarProps {
   onNewTaskClick?: () => void;
@@ -26,9 +26,10 @@ interface SidebarProps {
   onSettingsTabChange?: (tab: SettingsTab) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  supportUnreadCount?: number;
 }
 
-export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onViewChange, onFleetTabChange, settingsTab, onSettingsTabChange, isCollapsed = false, onToggleCollapse }: SidebarProps) {
+export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onViewChange, onFleetTabChange, settingsTab, onSettingsTabChange, isCollapsed = false, onToggleCollapse, supportUnreadCount = 0 }: SidebarProps) {
   const { t } = useLanguage();
   const { hasPermission } = useRentalOrg();
   const canDataAnalyse = hasPermission('data-analyse', 'read');
@@ -233,6 +234,9 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
           <button onClick={() => { onSettingsTabChange?.('data-authorization'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'data-authorization')}>
             <Lock className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.dataAuthorization')}</span>
           </button>
+          <button onClick={() => { onSettingsTabChange?.('rental-rules'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'rental-rules')}>
+            <ShieldCheck className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.rentalRules')}</span>
+          </button>
           <button onClick={() => { onSettingsTabChange?.('billing'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'billing')}>
             <CreditCard className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.billingSubscription')}</span>
           </button>
@@ -242,7 +246,11 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
       {/* SUPPORT */}
       <div className="mt-5 mb-1.5">
         <button onClick={() => handleViewChange('support')} className={navBtnClass(currentView === 'support')}>
-          <Headphones className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.support')}</span>
+          <Headphones className="w-[14px] h-[14px] shrink-0" />
+          <span className="flex-1 text-left">{t('nav.support')}</span>
+          {supportUnreadCount > 0 && (
+            <span className="sq-chip sq-chip-neutral !text-[8.5px] !px-1.5 !py-[1px] tabular-nums">{supportUnreadCount}</span>
+          )}
         </button>
         <button onClick={() => handleViewChange('help-center')} className={navBtnClass(currentView === 'help-center')}>
           <HelpCircle className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.helpCenter')}</span>
@@ -427,7 +435,14 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
               </button>
 
               <button onClick={() => handleViewChange('support')} className={collapsedBtnClass(currentView === 'support')}>
-                <Headphones className="w-[14px] h-[14px]" />
+                <span className="relative">
+                  <Headphones className="w-[14px] h-[14px]" />
+                  {supportUnreadCount > 0 && (
+                    <span className="absolute -right-1.5 -top-1.5 min-w-[14px] rounded-full bg-[color:var(--brand)] px-0.5 text-center text-[8px] font-bold leading-[14px] text-white">
+                      {supportUnreadCount > 9 ? '9+' : supportUnreadCount}
+                    </span>
+                  )}
+                </span>
                 <CollapsedTooltip label={t('nav.support')} />
               </button>
             </nav>

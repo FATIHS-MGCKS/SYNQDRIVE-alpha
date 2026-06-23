@@ -1,13 +1,17 @@
 import type { BookingDetailDto } from '../../../lib/api';
 import { normalizeBookingStatus } from '../bookings/bookingStatus';
+import {
+  deriveBookingPickupGate,
+  deriveBookingReturnGate,
+  type BookingHandoverGate,
+} from '../../lib/bookingHandoverGates';
 import type {
   BookingActionGate,
-  BookingActionKey,
   BookingActionMatrix,
   BookingPrimaryAction,
 } from './bookingDetailTypes';
 
-function gate(allowed: boolean, reason?: string): BookingActionGate {
+function gate(allowed: boolean, reason?: string): BookingHandoverGate {
   return allowed ? { allowed: true } : { allowed: false, reason };
 }
 
@@ -47,34 +51,23 @@ export function getBookingActionMatrix(detail: BookingDetailDto): BookingActionM
     return gate(true);
   })();
 
-  const pickup: BookingActionGate = (() => {
-    if (status !== 'confirmed' && status !== 'pending') {
-      return gate(false, 'Pickup nur bei bestätigter oder ausstehender Buchung möglich');
-    }
-    if (hasPickup) return gate(false, 'Pickup-Protokoll bereits vorhanden');
-    if (rentalBlocked) {
-      return gate(
-        false,
-        `Pickup nicht möglich: ${detail.health.blockingReasons.join(' · ') || 'Fahrzeug rental_blocked'}`,
-      );
-    }
-    if (detail.eligibility && !detail.eligibility.canStartRental) {
-      return gate(
-        false,
-        detail.eligibility.blockingReasons.join(' · ') || 'Kunde nicht mietberechtigt',
-      );
-    }
-    return gate(true);
-  })();
+  const pickup = deriveBookingPickupGate({
+    statusEnum: detail.core.statusEnum,
+    status: detail.core.status,
+    hasPickupProtocol: hasPickup,
+    hasReturnProtocol: hasReturn,
+    rentalBlocked,
+    blockingReasons: detail.health.blockingReasons,
+    canStartRental: detail.eligibility?.canStartRental ?? null,
+    eligibilityBlockingReasons: detail.eligibility?.blockingReasons,
+  });
 
-  const ret: BookingActionGate = (() => {
-    if (status !== 'active') {
-      return gate(false, 'Return nicht möglich, weil Buchung nicht aktiv ist');
-    }
-    if (!hasPickup) return gate(false, 'Return erst nach Pickup möglich');
-    if (hasReturn) return gate(false, 'Rückgabe bereits erfasst');
-    return gate(true);
-  })();
+  const ret = deriveBookingReturnGate({
+    statusEnum: detail.core.statusEnum,
+    status: detail.core.status,
+    hasPickupProtocol: hasPickup,
+    hasReturnProtocol: hasReturn,
+  });
 
   const final_invoice: BookingActionGate = (() => {
     if (status !== 'completed' && status !== 'active') {

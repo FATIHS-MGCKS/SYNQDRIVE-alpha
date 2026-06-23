@@ -233,8 +233,8 @@ export function buildDataTrustLayer(input: {
           ? 'Keine zuverlässigen Timestamps'
           : 'No reliable timestamps'
         : isDe
-          ? `${tlm.freshCount} frisch · ${tlm.staleCount} stale · ${tlm.offlineCount + tlm.unknownCount} offline/unbekannt`
-          : `${tlm.freshCount} fresh · ${tlm.staleCount} stale · ${tlm.offlineCount + tlm.unknownCount} offline/unknown`,
+          ? `${tlm.freshCount} frisch · ${tlm.staleCount} verzögert · ${tlm.offlineCount + tlm.unknownCount} offline/unbekannt`
+          : `${tlm.freshCount} fresh · ${tlm.staleCount} delayed · ${tlm.offlineCount + tlm.unknownCount} offline/unknown`,
     timestampLabel: tlm.hasReliableTimestamps
       ? tlm.lastRefreshLabel
       : isDe

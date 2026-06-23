@@ -1,5 +1,6 @@
 import { Info, MapPin, Radio, Shield } from 'lucide-react';
 import { DetailDrawer, StatusChip } from '../../../../components/patterns';
+import { SupportContextButton } from '../../../../components/support/SupportContextButton';
 import type { FleetConnectivityVehicle } from '../../../../lib/api';
 import { formatOdometerKmFloor } from '../../../../lib/formatVehicleDisplay';
 import {
@@ -227,6 +228,20 @@ export function FleetConnectivityDetailDrawer({
             <DetailRow label="Station" value={vehicle.station ?? '—'} />
           </div>
         </DetailSection>
+
+        <SupportContextButton
+          kind="fleet-connectivity"
+          className="w-full"
+          contextData={{
+            vehicleId: vehicle.vehicleId,
+            licensePlate: vehicle.licensePlate,
+            vin: vehicle.vin,
+            connectionStatus: vehicle.connectionStatus,
+            lastSeen: vehicle.lastSeenAt,
+            provider: vehicle.provider,
+            readinessLevel: vehicle.readinessLevel,
+          }}
+        />
       </div>
     </DetailDrawer>
   );

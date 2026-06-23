@@ -45,6 +45,8 @@ export class TripMetricsService implements OnModuleInit {
   readonly tripQualityAnomalies: Counter<string>;
   readonly clickHouseMirrorWrites: Counter<string>;
   readonly clickHouseAnalyticsQueries: Counter<string>;
+  readonly hfPointsInsertedTotal: Counter<string>;
+  readonly hfEventsDetectedTotal: Counter<string>;
   readonly tripEvidencePaths: Counter<string>;
   readonly tripAssignmentResolutions: Counter<string>;
   readonly tripScoreDrift: Counter<string>;
@@ -166,6 +168,18 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_clickhouse_analytics_queries_total',
       help: 'Total ClickHouse analytics query executions by query/result',
       labelNames: ['query', 'result'],
+      registers: [this.registry],
+    });
+
+    this.hfPointsInsertedTotal = new Counter({
+      name: 'synqdrive_clickhouse_hf_points_inserted_total',
+      help: 'Total high-frequency telemetry points inserted into ClickHouse',
+      registers: [this.registry],
+    });
+
+    this.hfEventsDetectedTotal = new Counter({
+      name: 'synqdrive_clickhouse_hf_events_detected_total',
+      help: 'Total high-frequency derived events inserted into ClickHouse',
       registers: [this.registry],
     });
 

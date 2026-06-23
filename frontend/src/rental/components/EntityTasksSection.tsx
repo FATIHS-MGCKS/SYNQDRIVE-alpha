@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Icon } from './ui/Icon';
 import type { ApiTask, ApiTaskPriority, ApiTaskStatus } from '../../lib/api';
+import { taskTypeLabel, TASK_STATUS_LABEL_DE, TASK_PRIORITY_LABEL_DE } from '../lib/service-task-semantics';
 
 /**
  * Reusable embeddable task list for entity detail pages (Vehicle / Booking /
@@ -21,13 +22,7 @@ interface EntityTasksSectionProps {
   activeOnly?: boolean;
 }
 
-const STATUS_LABEL: Record<ApiTaskStatus, string> = {
-  OPEN: 'Open',
-  IN_PROGRESS: 'In Progress',
-  WAITING: 'Waiting',
-  DONE: 'Done',
-  CANCELLED: 'Cancelled',
-};
+const STATUS_LABEL: Record<ApiTaskStatus, string> = TASK_STATUS_LABEL_DE;
 
 function statusTone(status: ApiTaskStatus): string {
   switch (status) {
@@ -56,6 +51,10 @@ function priorityTone(priority: ApiTaskPriority): string {
     default:
       return 'text-amber-600';
   }
+}
+
+function priorityLabel(priority: ApiTaskPriority): string {
+  return TASK_PRIORITY_LABEL_DE[priority] ?? priority;
 }
 
 function fmt(iso: string | null): string {
@@ -144,13 +143,13 @@ export function EntityTasksSection({ isDark = false, title, emptyHint, fetchTask
                           Überfällig
                         </span>
                       )}
-                      <span className={`text-[10px] font-semibold ${priorityTone(t.priority)}`}>· {t.priority}</span>
+                      <span className={`text-[10px] font-semibold ${priorityTone(t.priority)}`}>· {priorityLabel(t.priority)}</span>
                     </div>
                     <div className={`mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] ${textSecondary}`}>
                       <span className="inline-flex items-center gap-1">
                         <Icon name="calendar" className="w-3 h-3" /> Fällig {fmt(t.dueDate)}
                       </span>
-                      <span>{t.type.replace(/_/g, ' ')}</span>
+                      <span>{taskTypeLabel(t)}</span>
                       {cost && (
                         <span className="inline-flex items-center gap-1">
                           <Icon name="euro" className="w-3 h-3" /> {cost}

@@ -1,6 +1,7 @@
 import { Moon, Sun, Bell, Home, Search, Settings, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { clearAuth, getStoredUser } from '../../lib/auth';
+import { OperatorEntryButton } from '../../operator/components/OperatorEntryButton';
 import type { MasterView } from './Sidebar';
 
 // ISO-2 code pills instead of emoji flags (anti-emoji design policy,
@@ -98,6 +99,7 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'dashboard', s
 
       {/* Actions */}
       <div className="flex items-center gap-2 shrink-0">
+        <OperatorEntryButton />
         <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-1.5 rounded-md transition-colors hover:bg-muted text-muted-foreground">
           {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>

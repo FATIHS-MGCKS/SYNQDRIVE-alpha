@@ -40,7 +40,7 @@ export function FocusDataFreshnessBanner({ vm }: { vm: DashboardViewModel }) {
         type="button"
         onClick={() => void vm.refreshAll()}
         disabled={vm.isRefreshing}
-        className="sq-btn sq-btn-secondary min-h-9 shrink-0 text-[11px]"
+        className="sq-btn sq-btn-secondary min-h-10 shrink-0 text-[12px]"
       >
         {de ? 'Aktualisieren' : 'Refresh'}
       </button>
@@ -81,7 +81,7 @@ function HandoverRow({
           <p className="truncate text-[12px] text-muted-foreground">{customer}</p>
         ) : null}
       </div>
-      <StatusChip tone={tone} className="shrink-0 text-[10px]">
+      <StatusChip tone={tone} className="shrink-0">
         {tone === 'critical' ? '!' : 'Due'}
       </StatusChip>
     </Wrapper>
@@ -103,8 +103,8 @@ function FocusPanel({
 }) {
   return (
     <section className={panelShellClass('secondary')}>
-      <div className="flex items-center justify-between gap-2 border-b border-border/50 px-4 py-3">
-        <h2 className="text-[13px] font-semibold text-foreground">{title}</h2>
+      <div className="flex items-center justify-between gap-2 border-b border-border/50 px-4 py-3.5">
+        <h2 className="text-[15px] font-semibold text-foreground">{title}</h2>
         <StatusChip tone={tone === 'critical' ? 'critical' : tone === 'watch' ? 'watch' : 'neutral'}>
           {count}
         </StatusChip>
@@ -184,8 +184,8 @@ export function FocusNotReadyVehicles({
 
   return (
     <section className={panelShellClass('secondary')}>
-      <div className="flex items-center justify-between gap-2 border-b border-border/50 px-4 py-3">
-        <h2 className="text-[13px] font-semibold text-foreground">
+      <div className="flex items-center justify-between gap-2 border-b border-border/50 px-4 py-3.5">
+        <h2 className="text-[15px] font-semibold text-foreground">
           {de ? 'Fahrzeuge nicht bereit' : 'Vehicles not ready'}
         </h2>
         <StatusChip tone={items.length > 0 ? 'watch' : 'success'}>{items.length}</StatusChip>

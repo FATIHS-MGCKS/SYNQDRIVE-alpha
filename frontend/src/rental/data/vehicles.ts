@@ -1,3 +1,5 @@
+import { resolveTelemetryFreshness, type TelemetryFreshness } from '../lib/telemetryFreshness';
+
 export type VehicleDisplayState = 'MOVING' | 'IDLE' | 'PARKED';
 export type VehicleOnlineStatus = 'ONLINE' | 'STANDBY' | 'OFFLINE';
 export type VehicleDisplayIgnition = 'ON' | 'OFF' | 'UNKNOWN';
@@ -72,6 +74,8 @@ export interface VehicleData {
   signalAgeMs?: number;
   isFresh?: boolean;
   onlineStatus?: VehicleOnlineStatus;
+  /** Canonical 5-state telemetry freshness from the backend (additive). */
+  telemetryFreshness?: TelemetryFreshness;
   displayState?: VehicleDisplayState;
   displayIgnition?: VehicleDisplayIgnition;
   isLiveTracking?: boolean;
@@ -118,31 +122,19 @@ export function getShortModel(model: string): string {
   return model.replace(/ \d{4}$/, '');
 }
 
-// V4.7.62 — Canonical "vehicle offline" predicate. A vehicle counts as
-// offline once its last telemetry signal is ≥ 24h old, which the backend
-// already encodes as `onlineStatus === 'OFFLINE'`
-// (see `vehicle-state-interpreter.ts > STANDBY_THRESHOLD_MS`). Every
-// surface (Fleet page Fleet-Status, Dashboard Fleet-Status, booking
-// picker) reads this single helper so the "Last Signal 1 day → offline"
-// rule never drifts between views.
-//
-// V4.7.63 — Also treat "Last Signal unavailable" as offline: a vehicle
-// that has never reported telemetry (no `lastSignal` timestamp) and is
-// not currently ONLINE/STANDBY is offline too (e.g. KS FH 660E). The
-// `onlineStatus !== 'ONLINE'/'STANDBY'` guard means a freshly reporting
-// vehicle can never be misclassified by the empty-signal branch.
+// V4.9.16 — Canonical "vehicle offline" predicate, now driven by the central
+// age-based telemetry-freshness logic (`resolveTelemetryFreshness`). A vehicle
+// only counts as offline once its last signal is ≥ 48h old (real OFFLINE) or it
+// has never reported a valid signal (NO_SIGNAL). STANDBY (15min–24h) and
+// SIGNAL_DELAYED / soft-offline (24–48h) are NOT offline — they are normal /
+// secondary telemetry states and must keep a vehicle bookable & "Ready".
+// Every surface (Fleet page Fleet-Status, Dashboard Fleet-Status, booking
+// picker) reads this single helper so the rule never drifts between views.
 export function isVehicleOffline(
-  v: Pick<VehicleData, 'onlineStatus' | 'lastSignal'>,
+  v: Pick<VehicleData, 'onlineStatus' | 'lastSignal' | 'signalAgeMs'>,
 ): boolean {
-  if (v.onlineStatus === 'OFFLINE') return true;
-  if (
-    v.onlineStatus !== 'ONLINE' &&
-    v.onlineStatus !== 'STANDBY' &&
-    !v.lastSignal
-  ) {
-    return true;
-  }
-  return false;
+  const f = resolveTelemetryFreshness(v);
+  return f.isOffline || f.isNoSignal;
 }
 
 export const VEHICLE_OFFLINE_LABEL = 'Vehicle Offline - Check Device';

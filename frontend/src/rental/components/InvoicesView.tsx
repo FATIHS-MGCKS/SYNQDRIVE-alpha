@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 
 import { api } from '../../lib/api';
+import { SupportContextButton } from '../../components/support/SupportContextButton';
 import { useRentalOrg } from '../RentalContext';
 import type { Invoice, InvoiceStats } from './invoices/invoiceTypes';
 import {
@@ -916,6 +917,16 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-end">
+            <SupportContextButton
+              kind="invoice"
+              contextData={{
+                invoiceId: invoice.id,
+                invoiceNumber: displayNumber(invoice),
+                amountCents: invoice.totalCents,
+                status: invoice.status,
+                title: invoice.title,
+              }}
+            />
             {showIssue && (
               <button type="button" onClick={handleIssue} disabled={issuing} className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white rounded-xl text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50">
                 {issuing ? <Icon name="loader-2" className="w-3 h-3 animate-spin" /> : <Icon name="file-text" className="w-3 h-3" />}

@@ -63,6 +63,7 @@ function makePrisma() {
     fine: { findFirst: jest.fn() },
     orgInvoice: { findFirst: jest.fn() },
     vehicleDocumentExtraction: { findUnique: jest.fn() },
+    serviceCase: { findFirst: jest.fn() },
     $transaction: jest.fn(),
   };
 }
@@ -214,6 +215,18 @@ describe('TasksService', () => {
   it('throws NotFound when cancelling a task that is not in the caller org', async () => {
     prisma.orgTask.findFirst.mockResolvedValue(null);
     await expect(svc.cancelTask('orgX', 't1')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('rejects vendor task lookup when vendor is not in org', async () => {
+    prisma.vendor.findFirst.mockResolvedValue(null);
+    await expect(svc.getTasksForVendor('org1', 'vendor-other')).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.orgTask.findMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects vehicle task lookup when vehicle is not in org', async () => {
+    prisma.vehicle.findFirst.mockResolvedValue(null);
+    await expect(svc.getTasksForVehicle('org1', 'veh-other')).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.orgTask.findMany).not.toHaveBeenCalled();
   });
 
   it('aggregates a dashboard summary from grouped counts', async () => {

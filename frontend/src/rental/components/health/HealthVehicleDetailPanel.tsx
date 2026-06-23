@@ -1,3 +1,4 @@
+import { SupportContextButton } from '../../../components/support/SupportContextButton';
 import {
   AlertCircle,
   Battery,
@@ -35,6 +36,8 @@ import { buildModuleChips, formatRelativeTime } from '../../lib/fleet-health-con
 import { RENTAL_HEALTH_MODULE_LABELS } from '../../rental-health-ui';
 import { buildBokraftComplianceDisplay, buildNextServiceDisplay, buildTuvComplianceDisplay } from '../../lib/service-info-display';
 import { DetailSection, HealthModuleCard } from './HealthModuleCard';
+import { HealthServiceActions } from './HealthServiceActions';
+import type { HealthActionModule } from '../../lib/health-task-bridge.utils';
 
 export interface HealthVehicleDetailPanelProps {
   vehicle: VehicleData;
@@ -42,7 +45,46 @@ export interface HealthVehicleDetailPanelProps {
   healthLoading?: boolean;
   initialTab?: HealthDetailTab;
   onClose: () => void;
+  onOpenServiceCenter?: () => void;
+  onOpenExistingTask?: (taskId: string) => void;
   className?: string;
+}
+
+function ModuleServiceFooter({
+  vehicleId,
+  module,
+  rentalModule,
+  contextLines,
+  dtcCodes,
+  complianceSignals,
+  onOpenServiceCenter,
+  onOpenExistingTask,
+  compact,
+}: {
+  vehicleId: string;
+  module: HealthActionModule;
+  rentalModule?: import('../../../lib/api').RentalHealthModule;
+  contextLines?: string[];
+  dtcCodes?: string[];
+  complianceSignals?: import('../../../lib/api').ComplianceTaskSignal[] | null;
+  onOpenServiceCenter?: () => void;
+  onOpenExistingTask?: (taskId: string) => void;
+  compact?: boolean;
+}) {
+  return (
+    <HealthServiceActions
+      vehicleId={vehicleId}
+      healthModule={module}
+      rentalModule={rentalModule}
+      contextLines={contextLines}
+      dtcCodes={dtcCodes}
+      complianceSignals={complianceSignals}
+      onOpenServiceCenter={onOpenServiceCenter}
+      onOpenExistingTask={onOpenExistingTask}
+      compact={compact}
+      className="pt-1"
+    />
+  );
 }
 
 export function HealthVehicleDetailPanel({
@@ -51,6 +93,8 @@ export function HealthVehicleDetailPanel({
   healthLoading,
   initialTab = 'overview',
   onClose,
+  onOpenServiceCenter,
+  onOpenExistingTask,
   className,
 }: HealthVehicleDetailPanelProps) {
   const [activeTab, setActiveTab] = useState<HealthDetailTab>(initialTab);
@@ -134,8 +178,8 @@ export function HealthVehicleDetailPanel({
             </DetailSection>
           )}
 
-          <DetailSection title="Recommended actions">
-            <ul className="space-y-1.5">
+          <DetailSection title="Empfohlene Maßnahmen">
+            <ul className="space-y-1.5 mb-3">
               {actions.map((action) => (
                 <li key={action} className="text-[12px] text-foreground flex gap-2">
                   <span className="text-muted-foreground">·</span>
@@ -143,6 +187,23 @@ export function HealthVehicleDetailPanel({
                 </li>
               ))}
             </ul>
+            <div className="space-y-2">
+              {(['tires', 'brakes', 'battery', 'error_codes', 'service_compliance'] as const).map((key) => {
+                const mod = health?.modules[key];
+                if (!mod || (mod.state !== 'critical' && mod.state !== 'warning')) return null;
+                return (
+                  <ModuleServiceFooter
+                    key={key}
+                    vehicleId={vehicle.id}
+                    module={key}
+                    rentalModule={mod}
+                    onOpenServiceCenter={onOpenServiceCenter}
+                    onOpenExistingTask={onOpenExistingTask}
+                    compact
+                  />
+                );
+              })}
+            </div>
           </DetailSection>
 
           <DetailSection title="Data trust">
@@ -181,6 +242,7 @@ export function HealthVehicleDetailPanel({
         Number.isFinite(pct) &&
         (s?.displayMode === 'MEASURED' || s?.displayMode === 'ESTIMATED');
       return (
+        <div className="space-y-3">
         <HealthModuleCard
           title="Tires"
           icon={CircleDot}
@@ -209,44 +271,50 @@ export function HealthVehicleDetailPanel({
           percentLabel={s?.displayMode === 'ESTIMATED' ? 'Estimated tread life' : 'Tread life'}
           showPercent={showPct}
         />
+        <ModuleServiceFooter
+          vehicleId={vehicle.id}
+          module="tires"
+          rentalModule={health?.modules.tires}
+          contextLines={[
+            s?.displayTreadMm != null ? `Profiltiefe: ${s.displayTreadMm.toFixed(1)} mm` : '',
+          ].filter(Boolean)}
+          onOpenServiceCenter={onOpenServiceCenter}
+          onOpenExistingTask={onOpenExistingTask}
+        />
+        </div>
       );
     }
 
     if (activeTab === 'brakes') {
       const b = data.brakeSummary;
       const cond = b?.overallCondition ?? 'UNKNOWN';
-      const minKm = b?.estimatedFrontRemainingKmMin;
-      const showPct =
-        minKm != null &&
-        b?.stateClass === 'MEASURED' &&
-        cond !== 'UNKNOWN';
-      const pct =
-        showPct && b?.estimatedReplacementDueInKm
-          ? Math.min(100, Math.max(0, (minKm / b.estimatedReplacementDueInKm) * 100))
-          : null;
+      const frontMin =
+        b?.frontAxle?.estimatedRemainingKmMin ?? b?.estimatedFrontRemainingKmMin;
+      const frontRange =
+        frontMin != null ? `~${Math.round(frontMin / 1000)}k km` : '—';
       return (
+        <div className="space-y-3">
         <HealthModuleCard
           title="Brakes"
           icon={Disc}
           rentalModule={health?.modules.brakes}
           keyValues={[
             { label: 'Condition', value: cond },
-            { label: 'Evidence', value: b?.stateClass ?? '—' },
-            {
-              label: 'Est. remaining (front)',
-              value:
-                minKm != null
-                  ? `~${Math.round(minKm / 1000)}k km`
-                  : b?.estimatedReplacementDueInKm != null
-                    ? `~${Math.round(b.estimatedReplacementDueInKm / 1000)}k km projected`
-                    : '—',
-            },
+            { label: 'Data basis', value: b?.dataBasis ?? '—' },
+            { label: 'Confidence', value: b?.confidenceLevel ?? '—' },
+            { label: 'Front remaining', value: frontRange },
             { label: 'Open alerts', value: String(b?.openAlerts?.length ?? 0) },
           ]}
-          percent={pct}
-          percentLabel="Remaining wear (estimated)"
-          showPercent={pct != null}
         />
+        <ModuleServiceFooter
+          vehicleId={vehicle.id}
+          module="brakes"
+          rentalModule={health?.modules.brakes}
+          contextLines={[`Zustand: ${cond}`]}
+          onOpenServiceCenter={onOpenServiceCenter}
+          onOpenExistingTask={onOpenExistingTask}
+        />
+        </div>
       );
     }
 
@@ -263,6 +331,7 @@ export function HealthVehicleDetailPanel({
       const isEstimated = est != null && soh == null;
       const displayPct = calibrating ? null : (soh ?? est);
       return (
+        <div className="space-y-3">
         <HealthModuleCard
           title="Battery"
           icon={Battery}
@@ -300,13 +369,26 @@ export function HealthVehicleDetailPanel({
           percentLabel={isEstimated ? 'Estimated SOH' : 'SOH'}
           showPercent={displayPct != null && !calibrating}
         />
+        <ModuleServiceFooter
+          vehicleId={vehicle.id}
+          module="battery"
+          rentalModule={health?.modules.battery}
+          onOpenServiceCenter={onOpenServiceCenter}
+          onOpenExistingTask={onOpenExistingTask}
+        />
+        </div>
       );
     }
 
     if (activeTab === 'dtc') {
       const active = data.dtcActive;
       const mod = health?.modules.error_codes;
+      const codes = active.map((code) => {
+        const c = code as { code?: string; dtcCode?: string };
+        return String(c.code ?? c.dtcCode ?? '');
+      }).filter(Boolean);
       return (
+        <div className="space-y-3">
         <HealthModuleCard
           title="Diagnostic trouble codes"
           icon={AlertCircle}
@@ -319,14 +401,25 @@ export function HealthVehicleDetailPanel({
         >
           {active.length > 0 && (
             <ul className="mt-2 space-y-1 max-h-40 overflow-y-auto text-[11px]">
-              {active.slice(0, 8).map((code: any, i) => (
+              {active.slice(0, 8).map((code, i) => {
+                const c = code as { code?: string; dtcCode?: string };
+                return (
                 <li key={i} className="rounded-md bg-muted/50 px-2 py-1 font-mono">
-                  {code.code ?? code.dtcCode ?? JSON.stringify(code).slice(0, 80)}
+                  {c.code ?? c.dtcCode ?? JSON.stringify(code).slice(0, 80)}
                 </li>
-              ))}
+              );})}
             </ul>
           )}
         </HealthModuleCard>
+        <ModuleServiceFooter
+          vehicleId={vehicle.id}
+          module="error_codes"
+          rentalModule={mod}
+          dtcCodes={codes}
+          onOpenServiceCenter={onOpenServiceCenter}
+          onOpenExistingTask={onOpenExistingTask}
+        />
+        </div>
       );
     }
 
@@ -347,6 +440,15 @@ export function HealthVehicleDetailPanel({
               { label: 'TÜV', value: tuv.label },
               { label: 'BOKraft', value: bok.label },
             ]}
+          />
+          <ModuleServiceFooter
+            vehicleId={vehicle.id}
+            module="service_compliance"
+            rentalModule={health?.modules.service_compliance}
+            complianceSignals={svc?.taskSignals}
+            contextLines={[tuv.label, bok.label].filter((l) => l && l !== '—')}
+            onOpenServiceCenter={onOpenServiceCenter}
+            onOpenExistingTask={onOpenExistingTask}
           />
         </div>
       );
@@ -445,6 +547,18 @@ export function HealthVehicleDetailPanel({
         </div>
 
         <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          <SupportContextButton
+            kind="vehicle-health"
+            size="sm"
+            contextData={{
+              vehicleId: vehicle.id,
+              licensePlate: vehicle.license,
+              selectedTab: activeTab,
+              overallState: health?.overall_state,
+              healthStatusSummary: health?.overall_state,
+              lastTelemetryAt: health?.generated_at,
+            }}
+          />
           <HealthStatusChip
             state={overallChipState}
             label={healthLoading && !health ? 'Loading…' : overallStateLabel(health?.overall_state)}

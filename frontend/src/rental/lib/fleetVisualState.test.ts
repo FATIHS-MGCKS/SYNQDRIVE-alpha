@@ -33,9 +33,13 @@ describe('deriveFleetVisualState', () => {
     expect(state.attentionLevel).toBe('none');
   });
 
-  it('available + offline => offline / not ready', () => {
+  it('available + offline (>=48h) => offline / not ready', () => {
     const state = deriveFleetVisualState(
-      base({ onlineStatus: 'OFFLINE', isFresh: false }),
+      base({
+        onlineStatus: 'OFFLINE',
+        isFresh: false,
+        lastSignal: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString(),
+      }),
     );
     expect(state.visualStatus).toBe('offline');
     expect(state.readiness).toBe('offline');
@@ -117,19 +121,35 @@ describe('deriveFleetVisualState', () => {
     expect(state.mapTone).toBe('unknown');
   });
 
-  it('stale telemetry => stale / warning', () => {
+  it('STANDBY (a few hours) stays Ready — never stale / warning', () => {
     const state = deriveFleetVisualState(
       base({
         onlineStatus: 'STANDBY',
         isFresh: false,
-        lastSignal: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+        lastSignal: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(),
       }),
     );
-    expect(state.visualStatus).toBe('stale');
+    expect(state.visualStatus).toBe('ready');
+    expect(state.isStale).toBe(false);
+    expect(state.isOffline).toBe(false);
+    expect(state.readiness).toBe('ready');
+    expect(state.attentionLevel).toBe('none');
+  });
+
+  it('signal delayed / soft offline (24–48h) => Ready with low (info) attention', () => {
+    const state = deriveFleetVisualState(
+      base({
+        onlineStatus: 'STANDBY',
+        isFresh: false,
+        lastSignal: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(),
+      }),
+    );
+    // Soft offline is a secondary telemetry hint — the primary stays Ready.
+    expect(state.visualStatus).toBe('ready');
+    expect(state.isOffline).toBe(false);
     expect(state.isStale).toBe(true);
-    expect(state.readiness).toBe('stale');
-    expect(state.mapTone).toBe('stale');
-    expect(state.attentionLevel).toBe('warning');
+    expect(state.attentionLevel).toBe('info');
+    expect(state.reason).toContain('Signal delayed');
   });
 
   it('ghost active without booking id demotes rental status to available', () => {

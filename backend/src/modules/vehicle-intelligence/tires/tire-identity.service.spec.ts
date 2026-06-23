@@ -112,6 +112,142 @@ describe('TireIdentityService', () => {
     expect(created.id).toBe('new-tire');
   });
 
+  it('replaceAtPosition works when no active tire exists at position', async () => {
+    const prisma = buildPrisma();
+    prisma.tire.findFirst.mockResolvedValue(null);
+    prisma.tire.create.mockResolvedValue({
+      id: 'fresh-tire',
+      currentPosition: TirePosition.FRONT_LEFT,
+      initialTreadDepthMm: 7,
+    });
+    prisma.tirePositionHistory.create.mockResolvedValue({});
+    prisma.tireMeasurement.create.mockResolvedValue({});
+
+    const svc = new TireIdentityService(prisma);
+    const created = await svc.replaceAtPosition({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      tireSetId: 'setup-1',
+      position: 'FL',
+      initialTreadDepthMm: 7,
+    });
+
+    expect(prisma.tire.update).not.toHaveBeenCalled();
+    expect(prisma.tire.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          currentPosition: TirePosition.FRONT_LEFT,
+          initialTreadDepthMm: 7,
+          active: true,
+        }),
+      }),
+    );
+    expect(prisma.tirePositionHistory.create).toHaveBeenCalledTimes(1);
+    expect(prisma.tireMeasurement.create).toHaveBeenCalled();
+    expect(created.id).toBe('fresh-tire');
+  });
+
+  it('replaceAtPosition sets dismountedAt on the previous tire and writes history', async () => {
+    const prisma = buildPrisma();
+    const mountedAt = new Date('2026-06-01T12:00:00.000Z');
+    prisma.tire.findFirst.mockResolvedValue({
+      id: 'old',
+      currentPosition: TirePosition.REAR_LEFT,
+    });
+    prisma.tire.update.mockResolvedValue({});
+    prisma.tire.create.mockResolvedValue({ id: 'new', currentPosition: TirePosition.REAR_LEFT });
+    prisma.tirePositionHistory.create.mockResolvedValue({});
+    prisma.tireMeasurement.create.mockResolvedValue({});
+
+    const svc = new TireIdentityService(prisma);
+    await svc.replaceAtPosition({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      tireSetId: 'setup-1',
+      position: 'RL',
+      initialTreadDepthMm: 8,
+      mountedAt,
+      odometerKm: 12000,
+    });
+
+    expect(prisma.tire.update).toHaveBeenCalledWith({
+      where: { id: 'old' },
+      data: { active: false, dismountedAt: mountedAt },
+    });
+    expect(prisma.tirePositionHistory.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          tireId: 'old',
+          changeType: 'REPLACE',
+          fromPosition: TirePosition.REAR_LEFT,
+          toPosition: TirePosition.REAR_LEFT,
+        }),
+      }),
+    );
+    expect(prisma.tirePositionHistory.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          tireId: 'new',
+          fromPosition: null,
+          toPosition: TirePosition.REAR_LEFT,
+        }),
+      }),
+    );
+  });
+
+  it('applyRotation keeps tire IDs stable and only changes currentPosition', async () => {
+    const prisma = buildPrisma();
+    const tireA = { id: 'keep-a', currentPosition: TirePosition.FRONT_LEFT };
+    const tireB = { id: 'keep-b', currentPosition: TirePosition.FRONT_RIGHT };
+    prisma.tire.findMany
+      .mockResolvedValueOnce([tireA, tireB])
+      .mockResolvedValueOnce([
+        { ...tireA, currentPosition: TirePosition.FRONT_RIGHT },
+        { ...tireB, currentPosition: TirePosition.FRONT_LEFT },
+      ]);
+    prisma.tire.update.mockImplementation(({ where, data }: { where: { id: string }; data: { currentPosition: TirePosition } }) =>
+      Promise.resolve({ id: where.id, currentPosition: data.currentPosition }),
+    );
+    prisma.tirePositionHistory.create.mockResolvedValue({});
+
+    const svc = new TireIdentityService(prisma);
+    await svc.applyRotation({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      tireSetId: 'setup-1',
+      moveMap: {
+        FRONT_LEFT: 'FRONT_RIGHT',
+        FRONT_RIGHT: 'FRONT_LEFT',
+      },
+      changedAt: new Date(),
+    });
+
+    expect(prisma.tire.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'keep-a' } }),
+    );
+    expect(prisma.tire.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'keep-b' } }),
+    );
+    expect(prisma.tirePositionHistory.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('applyRotation returns early when no active tires exist', async () => {
+    const prisma = buildPrisma();
+    prisma.tire.findMany.mockResolvedValue([]);
+
+    const svc = new TireIdentityService(prisma);
+    const result = await svc.applyRotation({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      tireSetId: 'setup-1',
+      moveMap: { FRONT_LEFT: 'REAR_LEFT' },
+      changedAt: new Date(),
+    });
+
+    expect(result).toEqual([]);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it('ensureTiresForSetup backfills four tires without crashing on empty input', async () => {
     const prisma = buildPrisma();
     prisma.tire.findMany.mockResolvedValue([]);

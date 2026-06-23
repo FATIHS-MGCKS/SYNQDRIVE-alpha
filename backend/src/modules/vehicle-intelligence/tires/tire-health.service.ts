@@ -130,6 +130,13 @@ export interface TireHealthSummary {
   seasonStatus: TireStatus;
   unevenWearStatus: TireStatus;
   recommendations: string[];
+
+  /** Whether the vehicle has an ACTIVE tire setup (canonical data-quality flag). */
+  hasActiveSet: boolean;
+  /** Whether the vehicle has any tire setup records (active or stored). */
+  hasSetups: boolean;
+  /** Whether tread measurements exist for this vehicle. */
+  hasMeasurements: boolean;
 }
 
 export interface TireHealthDetail {
@@ -199,6 +206,17 @@ export class TireHealthService {
   //  GET SUMMARY (Quick Box DTO)
   // ═══════════════════════════════════════════════════════════════════════════
 
+  /**
+   * Tire inventory / measurement flags for consumers that need data-quality
+   * context when {@link getSummary} returns null (no active set).
+   */
+  async getTireDataQuality(vehicleId: string): Promise<
+    Pick<TireHealthSummary, 'hasActiveSet' | 'hasSetups' | 'hasMeasurements'>
+  > {
+    const setup = await this.getActiveSetup(vehicleId);
+    return this.resolveInventoryFlags(vehicleId, setup);
+  }
+
   async getSummary(
     vehicleId: string,
     readContext: TireReadContext = {},
@@ -206,12 +224,13 @@ export class TireHealthService {
     const setup = await this.getActiveSetup(vehicleId);
     if (!setup) return null;
 
+    const inventoryFlags = await this.resolveInventoryFlags(vehicleId, setup);
     const pressureContext = await this.resolvePressureContext(
       vehicleId,
       readContext.hmTirePressure ?? null,
     );
     const wearAnalysis = await this.wearModel.computeWearAnalysis(vehicleId);
-    if (!wearAnalysis) return this.buildEmptySummary(setup, pressureContext);
+    if (!wearAnalysis) return this.buildEmptySummary(setup, pressureContext, inventoryFlags);
 
     const baseConfidence = await this.computeConfidence(vehicleId, setup);
     const confidence = this.applyPressureConfidenceOverlay(
@@ -234,6 +253,7 @@ export class TireHealthService {
       confidence,
       alerts,
       pressureContext,
+      inventoryFlags,
     );
   }
 
@@ -274,6 +294,7 @@ export class TireHealthService {
     const usageSplit = this.computeUsageSplit(setup);
     const rotationHistory = await this.getRotationHistory(vehicleId);
     const measurements = await this.getMeasurements(vehicleId, setup.id);
+    const inventoryFlags = await this.resolveInventoryFlags(vehicleId, setup);
 
     const summary = wearAnalysis
       ? this.buildSummaryPayload(
@@ -282,8 +303,9 @@ export class TireHealthService {
           confidence,
           alerts,
           pressureContext,
+          inventoryFlags,
         )
-      : this.buildEmptySummary(setup, pressureContext);
+      : this.buildEmptySummary(setup, pressureContext, inventoryFlags);
 
     return {
       summary,
@@ -779,6 +801,7 @@ export class TireHealthService {
     confidence: ConfidenceDimensions,
     alerts: TireAlert[],
     pressureContext: TirePressureContext,
+    inventoryFlags: Pick<TireHealthSummary, 'hasActiveSet' | 'hasSetups' | 'hasMeasurements'>,
   ): TireHealthSummary {
     const wheels = [
       { pos: 'FL', mm: wearAnalysis.frontLeftMm },
@@ -901,6 +924,7 @@ export class TireHealthService {
       pressureContext,
       latestMeasurementAt: latestMeasurement?.measuredAt?.toISOString() ?? null,
       ...canonical,
+      ...inventoryFlags,
     };
   }
 
@@ -1330,6 +1354,21 @@ export class TireHealthService {
     });
   }
 
+  private async resolveInventoryFlags(
+    vehicleId: string,
+    activeSetup: { measurements?: unknown[] } | null,
+  ): Promise<Pick<TireHealthSummary, 'hasActiveSet' | 'hasSetups' | 'hasMeasurements'>> {
+    const [setupCount, measurementCount] = await Promise.all([
+      this.prisma.vehicleTireSetup.count({ where: { vehicleId } }),
+      this.prisma.vehicleTireTreadMeasurement.count({ where: { vehicleId } }),
+    ]);
+    const hasActiveSet = activeSetup != null;
+    const hasSetups = setupCount > 0;
+    const hasMeasurements =
+      measurementCount > 0 || (activeSetup?.measurements?.length ?? 0) > 0;
+    return { hasActiveSet, hasSetups, hasMeasurements };
+  }
+
   /**
    * V2 wheel percent: uses resolved reference new tread and operational replacement threshold.
    */
@@ -1471,6 +1510,11 @@ export class TireHealthService {
   private buildEmptySummary(
     setup: any,
     pressureContext?: TirePressureContext,
+    inventoryFlags: Pick<TireHealthSummary, 'hasActiveSet' | 'hasSetups' | 'hasMeasurements'> = {
+      hasActiveSet: true,
+      hasSetups: true,
+      hasMeasurements: (setup.measurements?.length ?? 0) > 0,
+    },
   ): TireHealthSummary {
     const resolvedPressure = pressureContext ?? {
       source: 'NONE' as const,
@@ -1554,6 +1598,7 @@ export class TireHealthService {
       seasonStatus: seasonResult.status,
       unevenWearStatus: 'UNKNOWN',
       recommendations,
+      ...inventoryFlags,
     };
   }
 }

@@ -59,10 +59,13 @@ import {
   StatusDot,
 } from '../../components/patterns';
 import { MisuseCasesPanel } from './MisuseCasesPanel';
+import { HealthServiceActions } from './health/HealthServiceActions';
 
 interface HealthErrorsViewProps {
   vehicleId?: string;
   fuelType?: string;
+  onOpenServiceCenter?: () => void;
+  onOpenExistingTask?: (taskId: string) => void;
 }
 
 function formatEnumLabel(value: unknown, fallback = '—'): string {
@@ -143,7 +146,12 @@ function formatMeasuredAgo(iso: string | null | undefined): string | null {
   return `${months} mo ago`;
 }
 
-export function HealthErrorsView({ vehicleId, fuelType }: HealthErrorsViewProps) {
+export function HealthErrorsView({
+  vehicleId,
+  fuelType,
+  onOpenServiceCenter,
+  onOpenExistingTask,
+}: HealthErrorsViewProps) {
   const isEv = fuelType === 'Electric' || fuelType === 'PHEV';
   const { orgId, userRole } = useRentalOrg();
   const { health: rentalHealth, loading: rentalHealthLoading } = useEffectiveHealth(vehicleId ?? null);
@@ -2557,6 +2565,19 @@ export function HealthErrorsView({ vehicleId, fuelType }: HealthErrorsViewProps)
                 </>
               );
             })()}
+            {vehicleId && (
+              <HealthServiceActions
+                vehicleId={vehicleId}
+                healthModule="error_codes"
+                rentalModule={rentalHealth?.modules.error_codes}
+                dtcCodes={(dtcDetail?.currentFaults?.activeFaults ?? []).map((c: { dtcCode?: string; code?: string }) =>
+                  String(c.dtcCode ?? c.code ?? ''),
+                ).filter(Boolean)}
+                onOpenServiceCenter={onOpenServiceCenter}
+                onOpenExistingTask={onOpenExistingTask}
+                className="mt-4 pt-4 border-t border-border"
+              />
+            )}
           </div>
         </div>,
         document.body
@@ -2986,6 +3007,17 @@ export function HealthErrorsView({ vehicleId, fuelType }: HealthErrorsViewProps)
               )}
             </div>
 
+            {vehicleId && (
+              <HealthServiceActions
+                vehicleId={vehicleId}
+                healthModule="battery"
+                rentalModule={rentalHealth?.modules.battery}
+                onOpenServiceCenter={onOpenServiceCenter}
+                onOpenExistingTask={onOpenExistingTask}
+                className="mt-4 pt-4 border-t border-border"
+              />
+            )}
+
           </div>
         </div>,
         document.body
@@ -3132,11 +3164,6 @@ export function HealthErrorsView({ vehicleId, fuelType }: HealthErrorsViewProps)
               const val = 'text-sm font-bold text-foreground';
               const sub = 'text-[10px] text-muted-foreground';
 
-              const mkBar = (pct: number) => {
-                const c = pct >= 60 ? 'bg-green-500' : pct >= 30 ? 'bg-amber-500' : 'bg-red-500';
-                return <div className={`w-full h-1.5 rounded-full overflow-hidden mt-1.5 'bg-muted'`}><div className={`h-full rounded-full transition-all ${c}`} style={{ width: `${Math.min(pct, 100)}%` }} /></div>;
-              };
-
               const statusBadgeCls =
                 stateClass === 'MEASURED'
                   ? 'sq-chip-success'
@@ -3153,24 +3180,6 @@ export function HealthErrorsView({ vehicleId, fuelType }: HealthErrorsViewProps)
                     : stateClass === 'WARNING_ONLY'
                       ? 'Warning only'
                       : 'No baseline';
-
-              const axleCard = (label: string, est: any | null | undefined) => {
-                if (!est) return null;
-                const mm = est.estimatedMm ?? est.anchorMm;
-                const remKm = est.remainingKm;
-                return (
-                  <div className={`rounded-xl p-4 ${cardBg}`}>
-                    <p className={`${lbl} mb-2`}>{label}</p>
-                    <div className="flex items-baseline gap-2 mb-1">
-                      <span className={`text-xl font-bold text-foreground`}>{mm != null ? `${mm.toFixed(1)} mm` : '—'}</span>
-                      {remKm != null && <span className={`text-xs text-muted-foreground`}>~{Math.round(remKm).toLocaleString('de-DE')} km left</span>}
-                    </div>
-                    {est.wearRateMmPerKm != null && (
-                      <p className={sub}>Wear rate: {est.wearRateMmPerKm.toFixed(3)} mm/100km · k={est.kFactor?.toFixed(2) ?? '—'}</p>
-                    )}
-                  </div>
-                );
-              };
 
               return (
                 <>
@@ -3227,8 +3236,8 @@ export function HealthErrorsView({ vehicleId, fuelType }: HealthErrorsViewProps)
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold 'sq-chip-neutral'`}>{BRAKE_CONFIDENCE_LABEL[bhs.confidenceLevel] ?? 'Unknown'} confidence</span>
                         </div>
                         <div className="grid grid-cols-2 gap-3 mb-3">
-                          {axleRow('Front Axle', bhs.frontAxleCondition, bhs.frontDataBasis, bhs.frontConfidence, bhs.estimatedFrontRemainingKmMin, bhs.estimatedFrontRemainingKmMax)}
-                          {axleRow('Rear Axle', bhs.rearAxleCondition, bhs.rearDataBasis, bhs.rearConfidence, bhs.estimatedRearRemainingKmMin, bhs.estimatedRearRemainingKmMax)}
+                          {axleRow('Front Axle', bhs.frontAxle?.condition ?? bhs.frontAxleCondition, bhs.frontAxle?.dataBasis ?? bhs.frontDataBasis, bhs.frontAxle?.confidence ?? bhs.frontConfidence, bhs.frontAxle?.estimatedRemainingKmMin ?? bhs.estimatedFrontRemainingKmMin, bhs.frontAxle?.estimatedRemainingKmMax ?? bhs.estimatedFrontRemainingKmMax)}
+                          {axleRow('Rear Axle', bhs.rearAxle?.condition ?? bhs.rearAxleCondition, bhs.rearAxle?.dataBasis ?? bhs.rearDataBasis, bhs.rearAxle?.confidence ?? bhs.rearConfidence, bhs.rearAxle?.estimatedRemainingKmMin ?? bhs.estimatedRearRemainingKmMin, bhs.rearAxle?.estimatedRemainingKmMax ?? bhs.estimatedRearRemainingKmMax)}
                         </div>
                         <div className="grid grid-cols-2 gap-3 mb-3">
                           <div className={`rounded-xl p-3 ${cardBg}`}>
@@ -3307,22 +3316,8 @@ export function HealthErrorsView({ vehicleId, fuelType }: HealthErrorsViewProps)
                     </>
                   )}
 
-                  {/* ── INITIALIZED: B) Axle Health Visualization ── */}
-                  {v2 && (
-                    <div className="mb-4">
-                      <h3 className={hSec}>Axle Health</h3>
-                      <div className="grid grid-cols-2 gap-3 mb-3">
-                        {axleCard('Brake Pads — Front', bhd?.frontPads)}
-                        {axleCard('Brake Pads — Rear', bhd?.rearPads)}
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        {axleCard('Brake Discs — Front', bhd?.frontDiscs)}
-                        {axleCard('Brake Discs — Rear', bhd?.rearDiscs)}
-                      </div>
-                      {bhd?.distanceSinceAnchorKm != null && (
-                        <p className={`text-[10px] mt-2 text-muted-foreground/70`}>{bhd.distanceSinceAnchorKm.toLocaleString('de-DE')} km since anchor service</p>
-                      )}
-                    </div>
+                  {v2 && bhd?.distanceSinceAnchorKm != null && (
+                    <p className={`text-[10px] mb-4 text-muted-foreground/70`}>{bhd.distanceSinceAnchorKm.toLocaleString('de-DE')} km since anchor service</p>
                   )}
 
                   {/* ── INITIALIZED: Alerts ── */}
@@ -3481,6 +3476,21 @@ export function HealthErrorsView({ vehicleId, fuelType }: HealthErrorsViewProps)
                 </>
               );
             })()}
+            {vehicleId && (
+              <HealthServiceActions
+                vehicleId={vehicleId}
+                healthModule="brakes"
+                rentalModule={rentalHealth?.modules.brakes}
+                contextLines={[
+                  brakeHealthSummary?.overallCondition
+                    ? `Zustand: ${brakeHealthSummary.overallCondition}`
+                    : '',
+                ].filter(Boolean)}
+                onOpenServiceCenter={onOpenServiceCenter}
+                onOpenExistingTask={onOpenExistingTask}
+                className="mt-4 pt-4 border-t border-border"
+              />
+            )}
           </div>
         </div>,
         document.body
@@ -4441,6 +4451,21 @@ export function HealthErrorsView({ vehicleId, fuelType }: HealthErrorsViewProps)
                   </div>
                 )}
               </div>
+            )}
+            {vehicleId && (
+              <HealthServiceActions
+                vehicleId={vehicleId}
+                healthModule="tires"
+                rentalModule={rentalHealth?.modules.tires}
+                contextLines={[
+                  tireHealth?.displayTreadMm != null
+                    ? `Profiltiefe: ${tireHealth.displayTreadMm.toFixed(1)} mm`
+                    : '',
+                ].filter(Boolean)}
+                onOpenServiceCenter={onOpenServiceCenter}
+                onOpenExistingTask={onOpenExistingTask}
+                className="mt-4 pt-4 border-t border-border"
+              />
             )}
           </div>
         </div>,

@@ -1,11 +1,12 @@
 import { Activity, Briefcase, Car } from 'lucide-react';
 import { FleetView } from './FleetView';
 import { FleetConditionView, type ConditionCategory } from './FleetConditionView';
-import { VendorManagementView } from './VendorManagementView';
+import { ServiceCenterView } from './service-center/ServiceCenterView';
 import { PageHeader } from '../../components/patterns';
 import { useLanguage } from '../i18n/LanguageContext';
 import type { VehicleData } from '../data/vehicles';
 import type { Vendor } from '../../lib/api';
+import type { ServiceCenterNavState } from '../lib/service-center-navigation';
 
 export type FleetTab = 'status' | 'health' | 'service';
 
@@ -15,6 +16,12 @@ interface FleetHubViewProps {
   onVehicleSelect?: (vehicle: VehicleData) => void;
   onDrillDown?: (vehicleId: string, category: ConditionCategory) => void;
   onOpenVendorDetail?: (vendor: Vendor) => void;
+  onOpenGlobalTasks?: (taskId: string) => void;
+  onCreateTask?: () => void;
+  onOpenVehicle?: (vehicleId: string) => void;
+  serviceCenterNavigation?: ServiceCenterNavState | null;
+  onServiceCenterNavigationConsumed?: () => void;
+  onOpenServiceCenter?: (nav?: Partial<ServiceCenterNavState>) => void;
 }
 
 const TAB_ICONS = {
@@ -29,6 +36,12 @@ export function FleetHubView({
   onVehicleSelect,
   onDrillDown,
   onOpenVendorDetail,
+  onOpenGlobalTasks,
+  onCreateTask,
+  onOpenVehicle,
+  serviceCenterNavigation,
+  onServiceCenterNavigationConsumed,
+  onOpenServiceCenter,
 }: FleetHubViewProps) {
   const { t } = useLanguage();
 
@@ -68,10 +81,22 @@ export function FleetHubView({
         <FleetView embedded onVehicleSelect={onVehicleSelect} />
       )}
       {activeTab === 'health' && (
-        <FleetConditionView embedded onDrillDown={onDrillDown} />
+        <FleetConditionView
+          embedded
+          onDrillDown={onDrillDown}
+          onOpenServiceCenter={() => onOpenServiceCenter?.()}
+          onOpenExistingTask={onOpenGlobalTasks}
+        />
       )}
       {activeTab === 'service' && (
-        <VendorManagementView embedded onOpenDetail={onOpenVendorDetail} />
+        <ServiceCenterView
+          onOpenVendorDetail={onOpenVendorDetail}
+          onOpenGlobalTasks={onOpenGlobalTasks}
+          onCreateTask={onCreateTask}
+          onOpenVehicle={onOpenVehicle}
+          navigation={serviceCenterNavigation}
+          onNavigationConsumed={onServiceCenterNavigationConsumed}
+        />
       )}
     </div>
   );

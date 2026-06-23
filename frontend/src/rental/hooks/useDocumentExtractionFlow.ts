@@ -11,12 +11,15 @@ import {
 export interface UseDocumentExtractionFlowOptions {
   vehicleId: string;
   initialDocType?: string;
+  /** Form field `source` on multipart upload (e.g. operator_app, documents_tab). */
+  uploadSource?: string;
   onComplete?: () => void;
 }
 
 export function useDocumentExtractionFlow({
   vehicleId,
   initialDocType = 'SERVICE',
+  uploadSource = 'documents_tab',
   onComplete,
 }: UseDocumentExtractionFlowOptions) {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -121,7 +124,7 @@ export function useDocumentExtractionFlow({
           vehicleId,
           file,
           documentType,
-          'documents_tab',
+          uploadSource,
         );
         setExtractionId(res.id);
         setConfirmedDocType(res.documentType || documentType);
@@ -132,7 +135,7 @@ export function useDocumentExtractionFlow({
         setFlow('failed');
       }
     },
-    [documentType, startPolling, vehicleId],
+    [documentType, startPolling, uploadSource, vehicleId],
   );
 
   const handleRetry = useCallback(async () => {

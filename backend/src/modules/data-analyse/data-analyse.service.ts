@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import type { VehicleLatestState } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ClickHouseService } from '@modules/clickhouse/clickhouse.service';
+import { ClickHouseHfService } from '@modules/clickhouse/clickhouse-hf.service';
 import { VehiclesService } from '@modules/vehicles/vehicles.service';
 import { ONLINE_MAX_MS, STANDBY_MAX_MS } from '@modules/vehicles/fleet-connectivity.util';
 import { CLICKHOUSE_ANALYSIS_WINDOW_HOURS } from './data-analyse.constants';
@@ -73,6 +74,7 @@ export class DataAnalyseService {
     private readonly prisma: PrismaService,
     private readonly clickHouse: ClickHouseService,
     private readonly vehiclesService: VehiclesService,
+    private readonly clickHouseHf: ClickHouseHfService,
   ) {}
 
   async listConnectedVehicles(orgId: string): Promise<DataAnalyseVehicleDto[]> {
@@ -295,6 +297,10 @@ export class DataAnalyseService {
       (s) => s.reliabilityStatus === 'GOOD' || s.detectionQuality === 'Good for detection',
     );
 
+    // Best-effort HF-layer status from the ClickHouse telemetry_hf_* mirror.
+    // Analytics-only and must never break this endpoint — failures are swallowed.
+    const hfStatus = await this.loadHfLayerStatus(vehicleId, ctx.nowMs);
+
     return {
       available: anyHf || signals.some((s) => s.observedIntervalMs != null),
       message: snapshotOnly
@@ -304,7 +310,52 @@ export class DataAnalyseService {
       clickHouseAvailable: chAvailable,
       signals,
       waypointCount24h: waypointCount,
+      ...hfStatus,
     };
+  }
+
+  /**
+   * Best-effort read of the HF mirror layer status (telemetry_hf_*). Returns an
+   * empty object on any failure so getHighFrequency never breaks. Analytics-only.
+   */
+  private async loadHfLayerStatus(
+    vehicleId: string,
+    nowMs: number,
+  ): Promise<Partial<HighFrequencyAnalysisDto>> {
+    if (!this.clickHouse.isAvailable) {
+      return { hfConfigured: this.clickHouse.isConfigured };
+    }
+
+    const from = new Date(nowMs - 24 * 60 * 60 * 1000);
+    const to = new Date(nowMs);
+
+    try {
+      const [availability, recent] = await Promise.all([
+        this.clickHouseHf.getHfAvailability(vehicleId, from, to),
+        this.clickHouseHf.getRecentHfEvents(vehicleId, from, to, 50),
+      ]);
+
+      return {
+        hfConfigured: this.clickHouse.isConfigured,
+        hfPointCount24h: availability.available ? availability.pointCount : null,
+        hfLatestPointAt: availability.latestPointAt,
+        hfSignalGroupsSeen: availability.signalGroups,
+        hfRecentEvents: recent.available
+          ? recent.events.map((e) => ({
+              eventType: e.eventType,
+              severity: e.severity,
+              eventStart: e.eventStart,
+              eventEnd: e.eventEnd,
+              durationMs: e.durationMs,
+              confidence: e.confidence,
+              primaryValue: e.primaryValue,
+              primaryUnit: e.primaryUnit,
+            }))
+          : [],
+      };
+    } catch {
+      return { hfConfigured: this.clickHouse.isConfigured };
+    }
   }
 
   async getLaunchFeasibility(

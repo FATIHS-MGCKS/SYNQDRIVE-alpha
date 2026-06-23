@@ -1,7 +1,76 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import {
+  Prisma,
+  VoiceAssistant,
+  VoiceAssistantStatus,
+  VoiceConnectionStatus,
+  VoiceConversationDirection,
+  VoiceConversationOutcome,
+  VoiceConversationStatus,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ElevenLabsService } from './elevenlabs.service';
-import { VoiceAssistantStatus } from '@prisma/client';
+import {
+  UpdateVoiceAssistantDto,
+  ListVoiceConversationsQueryDto,
+  UpdateTelephonySettingsDto,
+} from './dto';
+import {
+  buildPermissionsPromptSection,
+  buildToolPolicyForAssistant,
+  resolveToolPermissions,
+  syncLegacyBooleansFromToolPermissions,
+  validateToolPermissionsUpdate,
+} from './voice-assistant-permissions';
+import {
+  buildAdminWarnings,
+  readinessPercent,
+  resolveProviderWarning,
+  startOfToday,
+} from './voice-assistant-admin.util';
+import {
+  buildConversationWhere,
+  extractConversationLinks,
+  hasConversationTranscript,
+  isConversationEscalated,
+  maskCallerNumber,
+  minimalConversationMetadata,
+} from './voice-conversation.util';
+import {
+  computeTelephonyStatus,
+  hasPhoneNumberAssigned,
+  isTelephonyLiveModeRequested,
+  mapProviderPhoneNumbers,
+  type ProviderPhoneNumberView,
+} from './voice-assistant-telephony.util';
+import {
+  buildTestSessionWarnings,
+  isTestSessionBlocked,
+  type VoiceTestSessionResponse,
+} from './voice-assistant-test.util';
+
+export { buildToolPolicyForAssistant } from './voice-assistant-permissions';
+export type { VoiceToolPolicy, VoiceToolPermissionsMap } from './voice-assistant-permissions';
+
+export interface ReadinessCheck {
+  key: string;
+  label: string;
+  ok: boolean;
+  required: boolean;
+}
+
+export interface ReadinessResult {
+  ready: boolean;
+  checks: ReadinessCheck[];
+  missing: string[];
+}
 
 @Injectable()
 export class VoiceAssistantService {
@@ -12,173 +81,351 @@ export class VoiceAssistantService {
     private readonly elevenLabs: ElevenLabsService,
   ) {}
 
-  async getOrCreate(organizationId: string) {
-    let assistant = await this.prisma.voiceAssistant.findUnique({
+  async getOrCreateAssistantForOrg(organizationId: string) {
+    const existing = await this.prisma.voiceAssistant.findUnique({
       where: { organizationId },
     });
-    if (!assistant) {
-      assistant = await this.prisma.voiceAssistant.create({
-        data: { organizationId },
-      });
-    }
-    return assistant;
+    if (existing) return this.formatAssistant(existing);
+
+    const created = await this.prisma.voiceAssistant.create({
+      data: {
+        organizationId,
+        connectionStatus: this.mapConnectionStatus(),
+      },
+    });
+    return this.formatAssistant(created);
   }
 
-  async get(organizationId: string) {
-    return this.prisma.voiceAssistant.findUnique({
+  async getAssistantForOrg(organizationId: string) {
+    const assistant = await this.prisma.voiceAssistant.findUnique({
       where: { organizationId },
     });
+    return assistant ? this.formatAssistant(assistant) : null;
   }
 
-  async update(organizationId: string, data: {
-    name?: string;
-    role?: string;
-    personality?: string;
-    language?: string;
-    voiceId?: string;
-    voiceName?: string;
-    greetingMessage?: string;
-    systemPrompt?: string;
-    companyContext?: string;
-    businessRules?: string;
-    forbiddenActions?: string;
-    knowledgeSnippets?: string;
-    telephonyEnabled?: boolean;
-    inboundEnabled?: boolean;
-    outboundEnabled?: boolean;
-    permAnswerQuestions?: boolean;
-    permManageBookings?: boolean;
-    permWorkshopHandling?: boolean;
-    permBreakdownSupport?: boolean;
-    permContactCustomers?: boolean;
-    permContactVendors?: boolean;
-    permCreateActions?: boolean;
-    escalationPhone?: string;
-    escalationUserId?: string;
-    escalationDepartment?: string;
-    escalateOnLowConf?: boolean;
-    escalateOnSensitive?: boolean;
-    escalateOnRequest?: boolean;
-    fallbackMessage?: string;
-    businessHoursStart?: string;
-    businessHoursEnd?: string;
-    businessHoursTimezone?: string;
-    afterHoursMessage?: string;
-  }) {
-    const assistant = await this.getOrCreate(organizationId);
-    return this.prisma.voiceAssistant.update({
+  async updateAssistant(organizationId: string, dto: UpdateVoiceAssistantDto) {
+    const assistant = await this.requireAssistantRow(organizationId);
+    const data = this.mapUpdateDto(dto, assistant);
+
+    const updated = await this.prisma.voiceAssistant.update({
       where: { id: assistant.id },
       data,
     });
+    return this.formatAssistant(updated);
   }
 
-  async activate(organizationId: string) {
-    const assistant = await this.getOrCreate(organizationId);
+  async activateAssistant(organizationId: string) {
+    const assistant = await this.requireAssistantRow(organizationId);
+    const readiness = this.computeReadiness(assistant, { forActivation: true });
 
-    if (!assistant.name) throw new BadRequestException('Assistant name is required');
-    if (!assistant.systemPrompt) throw new BadRequestException('System prompt is required');
+    if (!readiness.ready) {
+      throw new BadRequestException({
+        message: 'Voice assistant is not ready for activation',
+        missing: readiness.missing,
+        checks: readiness.checks.filter((c) => c.required && !c.ok),
+      });
+    }
 
-    if (!assistant.elevenLabsAgentId && this.elevenLabs.isConfigured()) {
-      const prompt = this.buildFullPrompt(assistant);
-      const result = await this.elevenLabs.createAgent({
+    const prompt = this.buildFullPrompt(assistant);
+    let agentId = assistant.elevenLabsAgentId;
+
+    try {
+      const result = await this.elevenLabs.createOrUpdateAgent(agentId, {
         name: assistant.name,
         systemPrompt: prompt,
         greetingMessage: assistant.greetingMessage ?? undefined,
         voiceId: assistant.voiceId ?? undefined,
         language: assistant.language,
       });
-      if (result) {
-        await this.prisma.voiceAssistant.update({
-          where: { id: assistant.id },
-          data: { elevenLabsAgentId: result.agentId },
-        });
+      agentId = result.agentId;
+
+      if (assistant.telephonyEnabled && assistant.inboundEnabled && assistant.elevenLabsPhoneNumberId) {
+        await this.elevenLabs.assignPhoneNumberToAgent(agentId, assistant.elevenLabsPhoneNumberId);
       }
-    } else if (assistant.elevenLabsAgentId && this.elevenLabs.isConfigured()) {
-      const prompt = this.buildFullPrompt(assistant);
-      await this.elevenLabs.updateAgent(assistant.elevenLabsAgentId, {
-        name: assistant.name,
-        systemPrompt: prompt,
-        greetingMessage: assistant.greetingMessage ?? undefined,
-        voiceId: assistant.voiceId ?? undefined,
-        language: assistant.language,
+    } catch (err: unknown) {
+      this.logger.error(
+        `Activation failed for org ${organizationId}: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+      throw err;
+    }
+
+    const activated = await this.prisma.voiceAssistant.update({
+      where: { id: assistant.id },
+      data: {
+        status: VoiceAssistantStatus.ACTIVE,
+        elevenLabsAgentId: agentId,
+        connectionStatus: VoiceConnectionStatus.CONNECTED,
+        lastProvisionedAt: new Date(),
+        activatedAt: new Date(),
+        deactivatedAt: null,
+      },
+    });
+
+    return this.formatAssistant(activated);
+  }
+
+  async deactivateAssistant(organizationId: string) {
+    const assistant = await this.requireAssistantRow(organizationId);
+    const deactivated = await this.prisma.voiceAssistant.update({
+      where: { id: assistant.id },
+      data: {
+        status: VoiceAssistantStatus.INACTIVE,
+        deactivatedAt: new Date(),
+      },
+    });
+    return this.formatAssistant(deactivated);
+  }
+
+  async getTestSession(organizationId: string): Promise<VoiceTestSessionResponse> {
+    const assistant = await this.requireAssistantRow(organizationId);
+    const readiness = this.computeReadiness(assistant, { forActivation: false });
+    const warnings = buildTestSessionWarnings(assistant);
+
+    if (!this.elevenLabs.isConfigured()) {
+      throw new ServiceUnavailableException(
+        'ElevenLabs is not configured. Set ELEVENLABS_API_KEY on the server.',
+      );
+    }
+
+    if (!assistant.elevenLabsAgentId) {
+      throw new BadRequestException({
+        message: 'Agent not provisioned yet. Activate the assistant first.',
+        warnings,
+        readinessSummary: { ready: readiness.ready, missing: readiness.missing },
       });
     }
 
-    return this.prisma.voiceAssistant.update({
-      where: { id: assistant.id },
-      data: { status: VoiceAssistantStatus.ACTIVE },
-    });
-  }
+    const readinessSummary = {
+      ready: readiness.ready,
+      missing: readiness.missing,
+    };
 
-  async deactivate(organizationId: string) {
-    const assistant = await this.getOrCreate(organizationId);
-    return this.prisma.voiceAssistant.update({
-      where: { id: assistant.id },
-      data: { status: VoiceAssistantStatus.INACTIVE },
-    });
-  }
-
-  async getTestSession(organizationId: string) {
-    const assistant = await this.getOrCreate(organizationId);
-    if (!assistant.elevenLabsAgentId) {
-      return { signedUrl: null, agentId: null, message: 'Agent not provisioned yet. Activate the assistant first.' };
+    if (isTestSessionBlocked(assistant)) {
+      return {
+        agentId: assistant.elevenLabsAgentId,
+        provider: assistant.provider,
+        status: 'blocked',
+        instructions:
+          'Complete voice and system prompt in Configuration before starting a live test session.',
+        expiresAt: null,
+        warnings,
+        readinessSummary,
+        developerDetails: null,
+      };
     }
-    const signedUrl = await this.elevenLabs.getSignedUrl(assistant.elevenLabsAgentId);
-    return { signedUrl, agentId: assistant.elevenLabsAgentId };
+
+    const { signedUrl, expiresAt } = await this.elevenLabs.getSignedTestUrl(
+      assistant.elevenLabsAgentId,
+    );
+
+    const fallbackExpiry = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+    return {
+      agentId: assistant.elevenLabsAgentId,
+      provider: assistant.provider,
+      status: 'ready',
+      instructions:
+        'Start the test session and speak through your selected scenario. Live transcript integration is coming soon — use this session to validate tone, greeting, and escalation behavior.',
+      expiresAt: expiresAt ?? fallbackExpiry,
+      warnings,
+      readinessSummary,
+      developerDetails: { signedUrl },
+    };
   }
 
   async listVoices() {
     return this.elevenLabs.listVoices();
   }
 
-  async getConversations(organizationId: string, limit = 50) {
-    return this.prisma.voiceConversation.findMany({
+  async listConversations(organizationId: string, query: ListVoiceConversationsQueryDto = {}) {
+    const limit = query.limit ?? 50;
+    const offset =
+      query.page != null ? (query.page - 1) * limit : (query.offset ?? 0);
+    const where = buildConversationWhere(organizationId, query);
+
+    const [items, total] = await Promise.all([
+      this.prisma.voiceConversation.findMany({
+        where,
+        orderBy: { startedAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      this.prisma.voiceConversation.count({ where }),
+    ]);
+
+    return {
+      items: items.map((c) => this.formatConversation(c)),
+      total,
+      limit,
+      offset,
+      page: query.page ?? Math.floor(offset / limit) + 1,
+    };
+  }
+
+  async getConversationAnalytics(organizationId: string) {
+    const conversations = await this.prisma.voiceConversation.findMany({
       where: { organizationId },
-      orderBy: { startedAt: 'desc' },
-      take: limit,
+      select: {
+        outcome: true,
+        status: true,
+        durationSeconds: true,
+        escalationReason: true,
+      },
     });
+
+    const totalCalls = conversations.length;
+    const answeredCalls = conversations.filter(
+      (c) =>
+        c.outcome === VoiceConversationOutcome.RESOLVED ||
+        c.outcome === VoiceConversationOutcome.ESCALATED ||
+        (c.durationSeconds != null && c.durationSeconds > 0),
+    ).length;
+    const missedCalls = conversations.filter(
+      (c) =>
+        c.outcome === VoiceConversationOutcome.ABANDONED ||
+        c.outcome === VoiceConversationOutcome.FAILED,
+    ).length;
+    const escalatedCalls = conversations.filter((c) => isConversationEscalated(c)).length;
+
+    const durations = conversations
+      .map((c) => c.durationSeconds)
+      .filter((d): d is number => d != null && d > 0);
+    const totalTalkTimeSeconds = durations.reduce((sum, d) => sum + d, 0);
+    const avgDurationSeconds =
+      durations.length > 0 ? Math.round(totalTalkTimeSeconds / durations.length) : 0;
+    const escalationRate =
+      totalCalls > 0 ? Math.round((escalatedCalls / totalCalls) * 1000) / 1000 : 0;
+
+    const callsByOutcome: Record<string, number> = {};
+    for (const outcome of Object.values(VoiceConversationOutcome)) {
+      callsByOutcome[outcome] = conversations.filter((c) => c.outcome === outcome).length;
+    }
+
+    const reasonCounts = new Map<string, number>();
+    for (const conv of conversations) {
+      const reason = conv.escalationReason?.trim();
+      if (!reason || !isConversationEscalated(conv)) continue;
+      reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
+    }
+    const topEscalationReasons = [...reasonCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([reason, count]) => ({ reason, count }));
+
+    const hasEscalationInsightData = escalatedCalls >= 3 && topEscalationReasons.length > 0;
+    const topEscalationInsight = hasEscalationInsightData
+      ? `Most conversations are escalated because of “${topEscalationReasons[0].reason}”.`
+      : null;
+
+    return {
+      totalCalls,
+      answeredCalls,
+      missedCalls,
+      escalatedCalls,
+      escalationRate,
+      avgDurationSeconds,
+      totalTalkTimeSeconds,
+      totalTalkMinutes: Math.round((totalTalkTimeSeconds / 60) * 10) / 10,
+      callsByOutcome,
+      topEscalationReasons,
+      knowledgeGaps: {
+        available: false,
+        message:
+          'Knowledge gap detection requires labeled training data — not enough structured call outcomes yet.',
+      },
+      insights: {
+        hasEnoughData: hasEscalationInsightData,
+        topEscalationInsight,
+      },
+    };
   }
 
   async syncConversations(organizationId: string) {
-    const assistant = await this.get(organizationId);
-    if (!assistant?.elevenLabsAgentId) return { synced: 0 };
+    const assistant = await this.prisma.voiceAssistant.findUnique({
+      where: { organizationId },
+    });
+    if (!assistant) {
+      throw new NotFoundException('Voice assistant not found for organization');
+    }
+    if (!assistant.elevenLabsAgentId) {
+      return { synced: 0, message: 'No ElevenLabs agent provisioned' };
+    }
 
-    const remote = await this.elevenLabs.listConversations(assistant.elevenLabsAgentId);
+    let remote;
+    try {
+      remote = await this.elevenLabs.listConversations(assistant.elevenLabsAgentId);
+    } catch (err: unknown) {
+      this.logger.error(
+        `Conversation sync failed for org ${organizationId}: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+      throw err;
+    }
+
     let synced = 0;
-
     for (const conv of remote) {
+      const providerId = conv.conversation_id;
       const exists = await this.prisma.voiceConversation.findFirst({
-        where: { elevenLabsConvId: conv.conversation_id },
+        where: {
+          organizationId,
+          OR: [
+            { providerConversationId: providerId },
+            { elevenLabsConvId: providerId },
+          ],
+        },
       });
       if (exists) continue;
 
-      const detail = await this.elevenLabs.getConversation(conv.conversation_id);
+      const detail = await this.elevenLabs.getConversation(providerId);
+      const durationSeconds =
+        conv.end_time_unix_secs && conv.start_time_unix_secs
+          ? conv.end_time_unix_secs - conv.start_time_unix_secs
+          : null;
 
-      const durationSeconds = conv.end_time_unix_secs && conv.start_time_unix_secs
-        ? conv.end_time_unix_secs - conv.start_time_unix_secs
-        : null;
+      const transcriptSource = detail?.transcript ?? conv.transcript;
+      const transcript =
+        typeof transcriptSource === 'string'
+          ? transcriptSource
+          : JSON.stringify(transcriptSource ?? '');
 
       await this.prisma.voiceConversation.create({
         data: {
           organizationId,
           voiceAssistantId: assistant.id,
-          elevenLabsConvId: conv.conversation_id,
-          direction: 'inbound',
+          providerConversationId: providerId,
+          elevenLabsConvId: providerId,
+          providerAgentId: conv.agent_id,
+          direction: VoiceConversationDirection.INBOUND,
           durationSeconds,
-          outcome: conv.status === 'done' ? 'RESOLVED' : 'FAILED',
-          transcript: typeof detail?.transcript === 'string' ? detail.transcript : JSON.stringify(detail?.transcript ?? ''),
-          summary: detail?.metadata?.summary ?? null,
-          startedAt: conv.start_time_unix_secs ? new Date(conv.start_time_unix_secs * 1000) : new Date(),
-          endedAt: conv.end_time_unix_secs ? new Date(conv.end_time_unix_secs * 1000) : null,
+          status:
+            conv.status === 'done'
+              ? VoiceConversationStatus.COMPLETED
+              : VoiceConversationStatus.FAILED,
+          outcome:
+            conv.status === 'done'
+              ? VoiceConversationOutcome.RESOLVED
+              : VoiceConversationOutcome.FAILED,
+          transcript,
+          summary:
+            typeof detail?.metadata?.summary === 'string'
+              ? detail.metadata.summary
+              : null,
+          metadata: detail?.metadata ? (detail.metadata as Prisma.InputJsonValue) : undefined,
+          startedAt: conv.start_time_unix_secs
+            ? new Date(conv.start_time_unix_secs * 1000)
+            : new Date(),
+          endedAt: conv.end_time_unix_secs
+            ? new Date(conv.end_time_unix_secs * 1000)
+            : null,
         },
       });
 
-      if (durationSeconds) {
+      if (durationSeconds && durationSeconds > 0) {
         await this.prisma.voiceAssistant.update({
           where: { id: assistant.id },
           data: {
             totalCalls: { increment: 1 },
             answeredCalls: { increment: 1 },
+            totalTalkTimeSeconds: { increment: durationSeconds },
             totalTalkMinutes: { increment: durationSeconds / 60 },
           },
         });
@@ -186,72 +433,612 @@ export class VoiceAssistantService {
       synced++;
     }
 
+    await this.prisma.voiceAssistant.update({
+      where: { id: assistant.id },
+      data: { lastSyncedAt: new Date() },
+    });
+
     return { synced };
   }
 
-  async getReadiness(organizationId: string) {
-    const a = await this.get(organizationId);
-    if (!a) return { ready: false, checks: [] };
-
-    const checks = [
-      { key: 'name', label: 'Assistant name', ok: Boolean(a.name) },
-      { key: 'systemPrompt', label: 'System prompt', ok: Boolean(a.systemPrompt) },
-      { key: 'voice', label: 'Voice selected', ok: Boolean(a.voiceId) },
-      { key: 'greeting', label: 'Greeting message', ok: Boolean(a.greetingMessage) },
-      { key: 'escalation', label: 'Escalation configured', ok: Boolean(a.escalationPhone || a.escalationUserId) },
-      { key: 'elevenlabs', label: 'ElevenLabs connected', ok: this.elevenLabs.isConfigured() },
-      { key: 'agentProvisioned', label: 'Agent provisioned', ok: Boolean(a.elevenLabsAgentId) },
-    ];
-
-    return { ready: checks.every(c => c.ok), checks };
+  async listProviderPhoneNumbers(organizationId: string) {
+    return this.buildPhoneNumberList(organizationId);
   }
 
-  async getAdminOverview() {
-    const assistants = await this.prisma.voiceAssistant.findMany({
-      include: { organization: { select: { id: true, companyName: true } } },
-      orderBy: { updatedAt: 'desc' },
+  async assignPhoneNumber(organizationId: string, phoneNumberId: string) {
+    const assistant = await this.requireAssistantRow(organizationId);
+    if (!assistant.elevenLabsAgentId) {
+      throw new BadRequestException(
+        'Agent not provisioned. Activate the assistant before assigning a phone number.',
+      );
+    }
+    if (!this.elevenLabs.isConfigured()) {
+      throw new ServiceUnavailableException('ElevenLabs is not configured on the server.');
+    }
+
+    const numbers = await this.elevenLabs.listPhoneNumbers();
+    const selected = numbers.find((n) => n.phone_number_id === phoneNumberId);
+    if (!selected) {
+      throw new BadRequestException('Phone number not found in ElevenLabs account.');
+    }
+
+    await this.elevenLabs.assignPhoneNumberToAgent(
+      assistant.elevenLabsAgentId,
+      phoneNumberId,
+    );
+
+    const updated = await this.prisma.voiceAssistant.update({
+      where: { id: assistant.id },
+      data: {
+        elevenLabsPhoneNumberId: phoneNumberId,
+        phoneNumberId: phoneNumberId,
+        phoneNumber: selected.phone_number ?? assistant.phoneNumber,
+        telephonyEnabled: true,
+        connectionStatus: VoiceConnectionStatus.CONNECTED,
+      },
     });
 
-    const totalCalls = assistants.reduce((s: number, a) => s + a.totalCalls, 0);
-    const totalMinutes = assistants.reduce((s: number, a) => s + a.totalTalkMinutes, 0);
+    return this.formatAssistant(updated);
+  }
 
+  async unassignPhoneNumber(organizationId: string) {
+    const assistant = await this.requireAssistantRow(organizationId);
+    const phoneNumberId =
+      assistant.elevenLabsPhoneNumberId ?? assistant.phoneNumberId;
+    if (!phoneNumberId) {
+      throw new BadRequestException('No phone number is assigned to this assistant.');
+    }
+    if (!this.elevenLabs.isConfigured()) {
+      throw new ServiceUnavailableException('ElevenLabs is not configured on the server.');
+    }
+
+    await this.elevenLabs.unassignPhoneNumberFromAgent(phoneNumberId);
+
+    const updated = await this.prisma.voiceAssistant.update({
+      where: { id: assistant.id },
+      data: {
+        elevenLabsPhoneNumberId: null,
+        phoneNumberId: null,
+        phoneNumber: null,
+        inboundEnabled: false,
+      },
+    });
+
+    return this.formatAssistant(updated);
+  }
+
+  async refreshTelephonyStatus(organizationId: string) {
+    const assistant = await this.requireAssistantRow(organizationId);
+    const phoneNumbers = await this.buildPhoneNumberList(organizationId);
+
+    let next = assistant;
+    if (assistant.elevenLabsAgentId && this.elevenLabs.isConfigured()) {
+      const assigned = phoneNumbers.find((n) => n.assignedToThisAssistant);
+      const patch: Prisma.VoiceAssistantUpdateInput = {
+        connectionStatus: this.elevenLabs.isConfigured()
+          ? VoiceConnectionStatus.CONNECTED
+          : VoiceConnectionStatus.NOT_CONFIGURED,
+      };
+      if (assigned) {
+        patch.elevenLabsPhoneNumberId = assigned.phoneNumberId;
+        patch.phoneNumberId = assigned.phoneNumberId;
+        patch.phoneNumber = assigned.phoneNumber;
+      }
+      next = await this.prisma.voiceAssistant.update({
+        where: { id: assistant.id },
+        data: patch,
+      });
+    }
+
+    const telephonyStatus = computeTelephonyStatus(next, this.elevenLabs.isConfigured());
     return {
-      assistants: assistants.map((a) => ({
-        organizationId: a.organizationId,
-        organizationName: a.organization.companyName,
-        name: a.name,
-        status: a.status,
-        voiceName: a.voiceName,
-        language: a.language,
-        telephonyEnabled: a.telephonyEnabled,
-        phoneNumber: a.phoneNumber,
-        totalCalls: a.totalCalls,
-        answeredCalls: a.answeredCalls,
-        totalTalkMinutes: a.totalTalkMinutes,
-        elevenLabsAgentId: a.elevenLabsAgentId,
-        updatedAt: a.updatedAt,
-      })),
-      summary: { totalOrgs: assistants.length, totalCalls, totalMinutes },
+      assistant: this.formatAssistant(next),
+      phoneNumbers,
+      telephonyStatus,
     };
   }
 
-  private buildFullPrompt(assistant: any): string {
+  async updateTelephonySettings(organizationId: string, dto: UpdateTelephonySettingsDto) {
+    const assistant = await this.requireAssistantRow(organizationId);
+    const telephonyEnabled = dto.telephonyEnabled ?? assistant.telephonyEnabled;
+    const inboundEnabled = dto.inboundEnabled ?? assistant.inboundEnabled;
+    const outboundEnabled = dto.outboundEnabled ?? assistant.outboundEnabled;
+
+    const wantsLiveTelephony = telephonyEnabled || inboundEnabled;
+    if (wantsLiveTelephony && !hasPhoneNumberAssigned(assistant)) {
+      throw new BadRequestException(
+        'Assign a phone number before enabling telephony or inbound calls.',
+      );
+    }
+
+    if (outboundEnabled && !this.elevenLabs.isConfigured()) {
+      throw new BadRequestException('ElevenLabs must be configured before enabling outbound calls.');
+    }
+
+    const updated = await this.prisma.voiceAssistant.update({
+      where: { id: assistant.id },
+      data: {
+        telephonyEnabled,
+        inboundEnabled,
+        outboundEnabled,
+      },
+    });
+
+    return this.formatAssistant(updated);
+  }
+
+  getReadiness(organizationId: string): Promise<ReadinessResult> {
+    return this.prisma.voiceAssistant
+      .findUnique({ where: { organizationId } })
+      .then((assistant) => {
+        if (!assistant) {
+          return {
+            ready: false,
+            checks: [],
+            missing: ['Voice assistant not configured'],
+          };
+        }
+        return this.computeReadiness(assistant, { forActivation: true });
+      });
+  }
+
+  async getAdminOverview() {
+    const providerConfigured = this.elevenLabs.isConfigured();
+    const todayStart = startOfToday();
+
+    const [organizations, assistants, callsTodayGroups, lastCallGroups] = await Promise.all([
+      this.prisma.organization.findMany({
+        select: { id: true, companyName: true },
+        orderBy: { companyName: 'asc' },
+      }),
+      this.prisma.voiceAssistant.findMany(),
+      this.prisma.voiceConversation.groupBy({
+        by: ['organizationId'],
+        where: { startedAt: { gte: todayStart } },
+        _count: { _all: true },
+      }),
+      this.prisma.voiceConversation.groupBy({
+        by: ['organizationId'],
+        _max: { startedAt: true },
+      }),
+    ]);
+
+    const assistantByOrg = new Map(assistants.map((a) => [a.organizationId, a]));
+    const callsTodayMap = new Map(
+      callsTodayGroups.map((g) => [g.organizationId, g._count._all]),
+    );
+    const lastCallMap = new Map(
+      lastCallGroups.map((g) => [g.organizationId, g._max.startedAt]),
+    );
+
+    const rows = organizations.map((org) => {
+      const assistant = assistantByOrg.get(org.id);
+      if (!assistant) {
+        return {
+          organizationId: org.id,
+          organizationName: org.companyName,
+          assistantStatus: 'NOT_CONFIGURED',
+          readinessPercent: 0,
+          missingReadinessItemsCount: 0,
+          elevenLabsConnected: providerConfigured,
+          agentProvisioned: false,
+          telephonyEnabled: false,
+          phoneNumber: null,
+          inboundEnabled: false,
+          outboundEnabled: false,
+          totalCalls: 0,
+          callsToday: callsTodayMap.get(org.id) ?? 0,
+          escalatedCalls: 0,
+          missedCalls: 0,
+          lastCallAt: lastCallMap.get(org.id)?.toISOString() ?? null,
+          lastSyncedAt: null,
+          providerWarning: resolveProviderWarning(providerConfigured, null, null),
+          lastError: null,
+          connectionStatus: null,
+          telephonyLabel: 'Not configured',
+        };
+      }
+
+      const readiness = this.computeReadiness(assistant, { forActivation: false });
+      const telephony = computeTelephonyStatus(assistant, providerConfigured);
+
+      return {
+        organizationId: org.id,
+        organizationName: org.companyName,
+        assistantStatus: assistant.status,
+        readinessPercent: readinessPercent(readiness),
+        missingReadinessItemsCount: readiness.missing.length,
+        elevenLabsConnected: providerConfigured,
+        agentProvisioned: Boolean(assistant.elevenLabsAgentId),
+        telephonyEnabled: assistant.telephonyEnabled,
+        phoneNumber: assistant.phoneNumber,
+        inboundEnabled: assistant.inboundEnabled,
+        outboundEnabled: assistant.outboundEnabled,
+        totalCalls: assistant.totalCalls,
+        callsToday: callsTodayMap.get(org.id) ?? 0,
+        escalatedCalls: assistant.escalatedCalls,
+        missedCalls: assistant.missedCalls,
+        lastCallAt: lastCallMap.get(org.id)?.toISOString() ?? null,
+        lastSyncedAt: assistant.lastSyncedAt?.toISOString() ?? null,
+        providerWarning: resolveProviderWarning(providerConfigured, assistant, telephony),
+        lastError:
+          assistant.connectionStatus === VoiceConnectionStatus.ERROR
+            ? 'Connection status: ERROR'
+            : null,
+        connectionStatus: assistant.connectionStatus,
+        telephonyLabel: telephony.label,
+      };
+    });
+
+    const configuredRows = rows.filter((r) => r.assistantStatus !== 'NOT_CONFIGURED');
+    const activeCount = configuredRows.filter((r) => r.assistantStatus === VoiceAssistantStatus.ACTIVE).length;
+    const totalCalls = configuredRows.reduce((s, r) => s + r.totalCalls, 0);
+    const totalTalkTimeSeconds = assistants.reduce((s, a) => s + a.totalTalkTimeSeconds, 0);
+
+    return {
+      assistants: rows,
+      summary: {
+        totalOrgs: organizations.length,
+        configuredOrgs: configuredRows.length,
+        activeOrgs: activeCount,
+        totalCalls,
+        totalTalkTimeSeconds,
+        totalMinutes: Math.round((totalTalkTimeSeconds / 60) * 10) / 10,
+        costTrackingConnected: false,
+        costTrackingMessage: 'Cost tracking not connected yet',
+      },
+      providerConfigured,
+    };
+  }
+
+  async adminSyncOrganization(orgId: string) {
+    const org = await this.prisma.organization.findUnique({ where: { id: orgId } });
+    if (!org) {
+      throw new NotFoundException('Organization not found');
+    }
+    return this.syncConversations(orgId);
+  }
+
+  async getAdminOrgDetail(orgId: string) {
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { id: true, companyName: true },
+    });
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    const assistant = await this.prisma.voiceAssistant.findUnique({
+      where: { organizationId: orgId },
+    });
+    if (!assistant) {
+      return {
+        exists: false,
+        organization,
+        warnings: [
+          resolveProviderWarning(this.elevenLabs.isConfigured(), null, null) ??
+            'No voice assistant configured for this organization.',
+        ].filter(Boolean),
+        costTracking: {
+          connected: false,
+          message: 'Cost tracking not connected yet',
+        },
+      };
+    }
+
+    const providerConfigured = this.elevenLabs.isConfigured();
+    const readiness = this.computeReadiness(assistant, { forActivation: false });
+    const telephonyStatus = computeTelephonyStatus(assistant, providerConfigured);
+    const conversations = await this.listConversations(orgId, { limit: 10 });
+    const warnings = buildAdminWarnings(assistant, readiness, telephonyStatus, providerConfigured);
+
+    return {
+      exists: true,
+      organization,
+      assistant: this.formatAssistantSummary(assistant),
+      readiness,
+      telephonyStatus,
+      warnings,
+      providerConfigured,
+      recentConversations: conversations.items.map((c) => this.stripConversationForAdmin(c)),
+      costTracking: {
+        connected: false,
+        message: 'Cost tracking not connected yet',
+      },
+    };
+  }
+
+  assertOrgAccess(requestedOrgId: string, scopedOrgId: string | undefined) {
+    if (scopedOrgId && scopedOrgId !== requestedOrgId) {
+      throw new ForbiddenException('Cross-tenant access denied');
+    }
+  }
+
+  private async requireAssistantRow(organizationId: string): Promise<VoiceAssistant> {
+    const assistant = await this.prisma.voiceAssistant.findUnique({
+      where: { organizationId },
+    });
+    if (!assistant) {
+      return this.prisma.voiceAssistant.create({
+        data: {
+          organizationId,
+          connectionStatus: this.mapConnectionStatus(),
+        },
+      });
+    }
+    return assistant;
+  }
+
+  private mapConnectionStatus(): VoiceConnectionStatus {
+    if (!this.elevenLabs.isConfigured()) return VoiceConnectionStatus.NOT_CONFIGURED;
+    return VoiceConnectionStatus.CONNECTED;
+  }
+
+  private hasEscalationConfigured(assistant: VoiceAssistant): boolean {
+    if (assistant.escalationPhone?.trim() || assistant.escalationUserId) return true;
+    return Boolean(assistant.fallbackMessage?.trim());
+  }
+
+  private computeReadiness(
+    assistant: VoiceAssistant,
+    options: { forActivation: boolean },
+  ): ReadinessResult {
+    const telephonyRequired =
+      options.forActivation && isTelephonyLiveModeRequested(assistant);
+
+    const checks: ReadinessCheck[] = [
+      { key: 'name', label: 'Assistant name', ok: Boolean(assistant.name?.trim()), required: true },
+      {
+        key: 'systemPrompt',
+        label: 'System prompt',
+        ok: Boolean(assistant.systemPrompt?.trim()),
+        required: true,
+      },
+      { key: 'voice', label: 'Voice selected', ok: Boolean(assistant.voiceId?.trim()), required: true },
+      {
+        key: 'greeting',
+        label: 'Greeting message',
+        ok: Boolean(assistant.greetingMessage?.trim()),
+        required: true,
+      },
+      {
+        key: 'escalation',
+        label: 'Escalation or fallback configured',
+        ok: this.hasEscalationConfigured(assistant),
+        required: true,
+      },
+      {
+        key: 'elevenlabs',
+        label: 'ElevenLabs connected',
+        ok: this.elevenLabs.isConfigured(),
+        required: true,
+      },
+      {
+        key: 'agentProvisioned',
+        label: 'Agent provisioned',
+        ok: Boolean(assistant.elevenLabsAgentId) || options.forActivation,
+        required: options.forActivation ? false : true,
+      },
+      {
+        key: 'phoneConnected',
+        label: 'Phone number assigned',
+        ok: hasPhoneNumberAssigned(assistant),
+        required: telephonyRequired,
+      },
+    ];
+
+    const missing = checks.filter((c) => c.required && !c.ok).map((c) => c.label);
+    const ready = missing.length === 0;
+
+    return { ready, checks, missing };
+  }
+
+  private mapUpdateDto(
+    dto: UpdateVoiceAssistantDto,
+    assistant: VoiceAssistant,
+  ): Prisma.VoiceAssistantUpdateInput {
+    const {
+      escalationTriggers,
+      businessHours,
+      permModifyRecords,
+      toolPermissions,
+      ...rest
+    } = dto;
+
+    const data: Prisma.VoiceAssistantUpdateInput = { ...rest };
+
+    if (toolPermissions !== undefined) {
+      const current = resolveToolPermissions(assistant);
+      const merged = validateToolPermissionsUpdate(toolPermissions, current, assistant);
+      data.toolPermissions = merged as Prisma.InputJsonValue;
+      Object.assign(data, syncLegacyBooleansFromToolPermissions(merged));
+    }
+
+    if (escalationTriggers !== undefined) {
+      data.escalationTriggers = escalationTriggers as Prisma.InputJsonValue;
+    }
+    if (businessHours !== undefined) {
+      data.businessHours = businessHours as Prisma.InputJsonValue;
+    }
+    if (permModifyRecords !== undefined) {
+      data.permModifyRecords = permModifyRecords;
+      data.permCreateActions = permModifyRecords;
+    }
+
+    return data;
+  }
+
+  private formatAssistant(assistant: VoiceAssistant) {
+    const toolPermissions = resolveToolPermissions(assistant);
+    const toolPolicy = buildToolPolicyForAssistant(assistant);
+    const telephonyStatus = computeTelephonyStatus(assistant, this.elevenLabs.isConfigured());
+    return {
+      ...assistant,
+      toolPermissions,
+      toolPolicy,
+      telephonyStatus,
+      totalTalkMinutes:
+        assistant.totalTalkMinutes > 0
+          ? assistant.totalTalkMinutes
+          : assistant.totalTalkTimeSeconds / 60,
+    };
+  }
+
+  private async buildPhoneNumberList(organizationId: string): Promise<ProviderPhoneNumberView[]> {
+    const assistant = await this.requireAssistantRow(organizationId);
+    if (!this.elevenLabs.isConfigured()) {
+      return [];
+    }
+    const numbers = await this.elevenLabs.listPhoneNumbers();
+    return mapProviderPhoneNumbers(numbers, assistant.elevenLabsAgentId);
+  }
+
+  private formatAssistantSummary(assistant: VoiceAssistant) {
+    return {
+      id: assistant.id,
+      organizationId: assistant.organizationId,
+      name: assistant.name,
+      role: assistant.role,
+      language: assistant.language,
+      voiceId: assistant.voiceId,
+      voiceName: assistant.voiceName,
+      status: assistant.status,
+      telephonyEnabled: assistant.telephonyEnabled,
+      inboundEnabled: assistant.inboundEnabled,
+      outboundEnabled: assistant.outboundEnabled,
+      phoneNumber: assistant.phoneNumber,
+      elevenLabsAgentId: assistant.elevenLabsAgentId,
+      connectionStatus: assistant.connectionStatus,
+      provider: assistant.provider,
+      hasAgent: Boolean(assistant.elevenLabsAgentId),
+      totalCalls: assistant.totalCalls,
+      answeredCalls: assistant.answeredCalls,
+      missedCalls: assistant.missedCalls,
+      escalatedCalls: assistant.escalatedCalls,
+      totalTalkTimeSeconds: assistant.totalTalkTimeSeconds,
+      totalTalkMinutes: assistant.totalTalkMinutes,
+      activatedAt: assistant.activatedAt,
+      deactivatedAt: assistant.deactivatedAt,
+      updatedAt: assistant.updatedAt,
+    };
+  }
+
+  private formatConversation(conv: {
+    id: string;
+    organizationId: string;
+    voiceAssistantId: string | null;
+    providerConversationId: string | null;
+    elevenLabsConvId: string | null;
+    callerNumber: string | null;
+    direction: VoiceConversationDirection;
+    durationSeconds: number | null;
+    status: VoiceConversationStatus;
+    outcome: VoiceConversationOutcome;
+    transcript: string | null;
+    summary: string | null;
+    escalationReason: string | null;
+    actionsPerformed: string[];
+    errorMessage: string | null;
+    metadata: Prisma.JsonValue | null;
+    startedAt: Date;
+    endedAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }) {
+    const links = extractConversationLinks(conv.metadata);
+    const escalated = isConversationEscalated(conv);
+    const hasTranscript = hasConversationTranscript(conv.transcript);
+
+    return {
+      id: conv.id,
+      startedAt: conv.startedAt,
+      direction: conv.direction.toLowerCase(),
+      callerNumber: maskCallerNumber(conv.callerNumber),
+      durationSeconds: conv.durationSeconds,
+      status: conv.status.toLowerCase(),
+      outcome: conv.outcome,
+      summary: conv.summary,
+      transcript: hasTranscript ? conv.transcript : null,
+      hasTranscript,
+      escalated,
+      escalationReason: conv.escalationReason,
+      linkedBookingId: links.linkedBookingId,
+      linkedCustomerId: links.linkedCustomerId,
+      linkedVehicleId: links.linkedVehicleId,
+      taskId: links.taskId,
+      metadata: minimalConversationMetadata(conv.metadata),
+      organizationId: conv.organizationId,
+      voiceAssistantId: conv.voiceAssistantId,
+      providerConversationId: conv.providerConversationId,
+      elevenLabsConvId: conv.elevenLabsConvId,
+      actionsPerformed: conv.actionsPerformed,
+      errorMessage: conv.errorMessage,
+      endedAt: conv.endedAt,
+      createdAt: conv.createdAt,
+      updatedAt: conv.updatedAt,
+    };
+  }
+
+  private stripConversationForAdmin(conv: {
+    id: string;
+    startedAt: Date;
+    direction: string;
+    callerNumber: string | null;
+    durationSeconds: number | null;
+    status: string;
+    outcome: VoiceConversationOutcome;
+    summary: string | null;
+    hasTranscript: boolean;
+    escalated: boolean;
+    escalationReason: string | null;
+    transcript: string | null;
+    metadata: Record<string, unknown> | null;
+    actionsPerformed: string[];
+    errorMessage: string | null;
+    organizationId: string;
+    voiceAssistantId: string | null;
+    providerConversationId: string | null;
+    elevenLabsConvId: string | null;
+    linkedBookingId: string | null;
+    linkedCustomerId: string | null;
+    linkedVehicleId: string | null;
+    taskId: string | null;
+    endedAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }) {
+    const {
+      transcript: _transcript,
+      metadata: _metadata,
+      actionsPerformed: _actions,
+      errorMessage: _error,
+      organizationId: _org,
+      voiceAssistantId: _assistant,
+      providerConversationId: _provider,
+      elevenLabsConvId: _eleven,
+      linkedBookingId,
+      linkedCustomerId,
+      linkedVehicleId,
+      taskId,
+      ...rest
+    } = conv;
+    return {
+      ...rest,
+      linkedBookingId,
+      linkedCustomerId,
+      linkedVehicleId,
+      taskId,
+    };
+  }
+
+  private buildFullPrompt(assistant: VoiceAssistant): string {
     const parts: string[] = [];
     if (assistant.systemPrompt) parts.push(assistant.systemPrompt);
     if (assistant.companyContext) parts.push(`\n\nCompany Context:\n${assistant.companyContext}`);
     if (assistant.businessRules) parts.push(`\n\nBusiness Rules:\n${assistant.businessRules}`);
     if (assistant.forbiddenActions) parts.push(`\n\nForbidden Actions:\n${assistant.forbiddenActions}`);
     if (assistant.knowledgeSnippets) parts.push(`\n\nKnowledge Base:\n${assistant.knowledgeSnippets}`);
-
-    const perms: string[] = [];
-    if (assistant.permAnswerQuestions) perms.push('answer questions');
-    if (assistant.permManageBookings) perms.push('manage bookings');
-    if (assistant.permWorkshopHandling) perms.push('handle workshop requests');
-    if (assistant.permBreakdownSupport) perms.push('provide breakdown support');
-    if (assistant.permContactCustomers) perms.push('contact customers');
-    if (assistant.permContactVendors) perms.push('contact vendors');
-    if (assistant.permCreateActions) perms.push('create/update/delete records');
-    if (perms.length > 0) parts.push(`\n\nYou are allowed to: ${perms.join(', ')}.`);
+    parts.push(buildPermissionsPromptSection(assistant));
 
     if (assistant.escalateOnRequest || assistant.escalateOnLowConf || assistant.escalateOnSensitive) {
       const triggers: string[] = [];
@@ -259,7 +1046,9 @@ export class VoiceAssistantService {
       if (assistant.escalateOnLowConf) triggers.push('when you are not confident in your answer');
       if (assistant.escalateOnSensitive) triggers.push('for sensitive topics');
       parts.push(`\n\nEscalation: Transfer the call ${triggers.join(', ')}.`);
-      if (assistant.fallbackMessage) parts.push(`If no agent is available, say: "${assistant.fallbackMessage}"`);
+      if (assistant.fallbackMessage) {
+        parts.push(`If no agent is available, say: "${assistant.fallbackMessage}"`);
+      }
     }
 
     return parts.join('');

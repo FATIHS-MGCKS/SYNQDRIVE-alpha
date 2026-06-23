@@ -328,9 +328,8 @@ export class CanonicalBatteryHealthService {
         ? 'DOCUMENT'
         : 'MANUAL';
 
-    // Capacity/energy measurement from the HV service. After the fallback
-    // removal `publishedSohPercent`/`rawSohPercent` are only populated when a
-    // capacity_measurement / energy_throughput basis existed.
+    // Capacity/energy measurement from the HV service — publishedSohPercent/rawSohPercent
+    // are only used when method is capacity_measurement or energy_throughput.
     const hvMeasuredMethod = hvStatusAny?.sohMethod as string | undefined;
     const hvMeasuredSoh =
       hvMeasuredMethod === 'capacity_measurement' ||
@@ -528,7 +527,7 @@ export class CanonicalBatteryHealthService {
         healthStatus: hvHealthStatus,
         condition: hvCondition,
         healthPercent: hvHealthPercent,
-        // Real SOH only — provider/capacity/document/manual. No age/km model.
+        // Real SOH only: provider, capacity, document, or manual.
         sohPct: hvHealthPercent,
         sohSource: hvSohSource,
         noFallbackSoh: true as const,

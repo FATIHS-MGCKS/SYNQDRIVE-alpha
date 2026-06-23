@@ -1,11 +1,10 @@
 import {
   Briefcase, Building2, Car, Cog, Eye, Factory, FileSearch, Globe, Mail, MapPin,
-  Paintbrush, Phone, Shield, ShieldCheck, ShoppingCart, Sparkles, Tag, Truck, User, Wrench,
+  Paintbrush, Phone, Shield, ShieldCheck, ShoppingCart, Sparkles, Tag, Truck, User, Wrench, ClipboardList,
 } from 'lucide-react';
 import { Icon } from './ui/Icon';
 import { useState, useEffect, useCallback } from 'react';
 
-import { EntityTasksSection } from './EntityTasksSection';
 import { PageHeader, StatusChip, EmptyState, SkeletonCard } from '../../components/patterns';
 import { api } from '../../lib/api';
 import type {
@@ -14,27 +13,20 @@ import type {
 } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
+import { ServiceTaskCreateModal } from './service-center/ServiceTaskCreateModal';
+import { VendorOperationalTasks, useVendorTaskStats } from './vendors/VendorOperationalTasks';
+import {
+  formatVendorAddress,
+  getVendorCategoryIcon,
+  getVendorCategoryLabel,
+  VENDOR_CATEGORIES,
+  VENDOR_SERVICE_AREAS,
+} from '../lib/vendor-directory.utils';
 
 // ── shared constants ───────────────────────────────────
 
-const CATEGORIES: { value: VendorCategory; label: string; icon: typeof Wrench }[] = [
-  { value: 'WORKSHOP', label: 'Workshop', icon: Wrench },
-  { value: 'SERVICE_PARTNER', label: 'Service Partner', icon: Cog },
-  { value: 'PAINT_SHOP', label: 'Paint Shop', icon: Paintbrush },
-  { value: 'BODY_REPAIR', label: 'Body Repair', icon: Car },
-  { value: 'AUTO_GLASS', label: 'Auto Glass', icon: Eye },
-  { value: 'TIRE_DEALER', label: 'Tire Dealer', icon: Truck },
-  { value: 'PARTS_DEALER', label: 'Parts Dealer', icon: ShoppingCart },
-  { value: 'DETAILING', label: 'Detailing', icon: Sparkles },
-  { value: 'TUV_STATION', label: 'TÜV Station', icon: Shield },
-  { value: 'ONLINE_SUPPLIER', label: 'Online Supplier', icon: Globe },
-  { value: 'INSURANCE', label: 'Insurance', icon: ShieldCheck },
-  { value: 'APPRAISER', label: 'Appraiser', icon: FileSearch },
-  { value: 'TOWING', label: 'Towing', icon: Truck },
-  { value: 'DEALERSHIP', label: 'Dealership', icon: Building2 },
-  { value: 'OEM_SERVICE', label: 'OEM Service', icon: Factory },
-  { value: 'OTHER', label: 'Other', icon: Briefcase },
-];
+const CATEGORIES = VENDOR_CATEGORIES;
+const SERVICE_AREA_OPTIONS = [...VENDOR_SERVICE_AREAS];
 
 const RELATION_TYPES: { value: VendorVehicleRelationType; label: string }[] = [
   { value: 'PRIMARY_WORKSHOP', label: 'Primary Workshop' },
@@ -46,33 +38,25 @@ const RELATION_TYPES: { value: VendorVehicleRelationType; label: string }[] = [
   { value: 'OTHER', label: 'Other' },
 ];
 
-const SERVICE_AREA_OPTIONS = [
-  'Tires', 'Brakes', 'Oil / Service', 'Body Repair', 'Paint', 'Auto Glass',
-  'Inspections (TÜV/HU)', 'Parts Supply', 'Detailing / Reconditioning',
-  'Battery / EV Service', 'Roadside / Towing', 'General Workshop',
-  'Windshield', 'Suspension', 'Exhaust', 'AC / Climate', 'Electrical',
-];
-
 function getCategoryLabel(cat: VendorCategory) {
-  return CATEGORIES.find((c) => c.value === cat)?.label ?? cat;
+  return getVendorCategoryLabel(cat);
 }
 function getCategoryIcon(cat: VendorCategory) {
-  return CATEGORIES.find((c) => c.value === cat)?.icon ?? Briefcase;
+  return getVendorCategoryIcon(cat);
 }
 function getRelationLabel(rel: VendorVehicleRelationType) {
   return RELATION_TYPES.find((r) => r.value === rel)?.label ?? rel;
 }
 
-type DetailTab = 'overview' | 'vehicles' | 'invoices' | 'documents' | 'service' | 'tasks' | 'history';
+type DetailTab = 'overview' | 'vehicles' | 'tasks' | 'invoices' | 'documents' | 'history';
 
 const TABS: { value: DetailTab; label: string }[] = [
-  { value: 'overview', label: 'Overview' },
-  { value: 'vehicles', label: 'Vehicles' },
-  { value: 'invoices', label: 'Invoices' },
-  { value: 'documents', label: 'Documents' },
-  { value: 'service', label: 'Service' },
-  { value: 'tasks', label: 'Repair Tasks' },
-  { value: 'history', label: 'History' },
+  { value: 'overview', label: 'Übersicht' },
+  { value: 'vehicles', label: 'Fahrzeuge' },
+  { value: 'tasks', label: 'Aufgaben' },
+  { value: 'invoices', label: 'Rechnungen' },
+  { value: 'documents', label: 'Dokumente' },
+  { value: 'history', label: 'Aktivität' },
 ];
 
 // ── types ──────────────────────────────────────────────
@@ -156,9 +140,11 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
   const [documents, setDocuments] = useState<Array<Record<string, unknown>>>([]);
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [documentsLoaded, setDocumentsLoaded] = useState(false);
-  const [serviceHistory, setServiceHistory] = useState<Array<Record<string, unknown>>>([]);
-  const [serviceLoading, setServiceLoading] = useState(false);
-  const [serviceLoaded, setServiceLoaded] = useState(false);
+  const [allVendors, setAllVendors] = useState<Vendor[]>([]);
+  const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const [createTaskVehicleId, setCreateTaskVehicleId] = useState<string | null>(null);
+
+  const taskStats = useVendorTaskStats(orgId, vendorId);
 
   const cardClass = 'sq-card rounded-xl';
 
@@ -173,6 +159,11 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
   }, [orgId, vendorId]);
 
   useEffect(() => { loadVendor(); }, [loadVendor]);
+
+  useEffect(() => {
+    if (!orgId) return;
+    api.vendors.list(orgId).then(setAllVendors).catch(() => setAllVendors([]));
+  }, [orgId]);
 
   // lazy-load invoices when tab opens
   useEffect(() => {
@@ -206,15 +197,10 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
     }
   }, [activeTab, orgId, vendorId, documentsLoaded]);
 
-  useEffect(() => {
-    if (activeTab === 'service' && orgId && !serviceLoaded) {
-      setServiceLoading(true);
-      api.vendors.serviceHistory(orgId, vendorId)
-        .then((rows) => setServiceHistory(Array.isArray(rows) ? rows : []))
-        .catch(() => setServiceHistory([]))
-        .finally(() => { setServiceLoading(false); setServiceLoaded(true); });
-    }
-  }, [activeTab, orgId, vendorId, serviceLoaded]);
+  const openCreateTask = (vehicleId?: string | null) => {
+    setCreateTaskVehicleId(vehicleId ?? null);
+    setCreateTaskOpen(true);
+  };
 
   // ── editing master data ──────────────────────────────
 
@@ -368,7 +354,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
   }
 
   const CatIcon = getCategoryIcon(vendor.category);
-  const address = [vendor.street, vendor.postalCode, vendor.city, vendor.country].filter(Boolean).join(', ');
+  const address = formatVendorAddress(vendor);
 
   // ── edit mode (master data) ──────────────────────────
 
@@ -500,7 +486,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
             className="inline-flex items-center gap-1.5 p-1.5 rounded-lg transition hover:bg-muted text-muted-foreground hover:text-foreground"
           >
             <Icon name="arrow-left" className="w-4 h-4" />
-            <span>Back to vendors</span>
+            <span>Zurück zum Partnerverzeichnis</span>
           </button>
         )}
         title={vendor.name}
@@ -509,22 +495,33 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
         status={(
           <>
             {!vendor.isActive && (
-              <StatusChip tone="watch">Inactive</StatusChip>
+              <StatusChip tone="watch">Inaktiv</StatusChip>
             )}
             {vendor.source === 'MAPBOX' && (
               <StatusChip tone="info">Mapbox</StatusChip>
             )}
           </>
         )}
-        actions={canManage ? (
-          <button
-            type="button"
-            onClick={startEdit}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition bg-muted text-foreground hover:bg-accent"
-          >
-            <Icon name="edit-3" className="w-3.5 h-3.5" /> Edit
-          </button>
-        ) : undefined}
+        actions={(
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => openCreateTask()}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] hover:opacity-90"
+            >
+              <ClipboardList className="w-3.5 h-3.5" /> Service-Aufgabe
+            </button>
+            {canManage && (
+              <button
+                type="button"
+                onClick={startEdit}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition bg-muted text-foreground hover:bg-accent"
+              >
+                <Icon name="edit-3" className="w-3.5 h-3.5" /> Bearbeiten
+              </button>
+            )}
+          </div>
+        )}
       />
 
       {/* Tab bar */}
@@ -532,7 +529,8 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
         {TABS.map((t) => {
           const count =
             t.value === 'vehicles' ? vendor.linkedVehicleCount :
-            t.value === 'invoices' ? vendor.invoiceCount : undefined;
+            t.value === 'invoices' ? vendor.invoiceCount :
+            t.value === 'tasks' ? taskStats.open : undefined;
           const active = activeTab === t.value;
           return (
             <button key={t.value} onClick={() => setActiveTab(t.value)}
@@ -554,8 +552,31 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
       {/* ── Overview tab ── */}
       {activeTab === 'overview' && (
         <div className="space-y-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="sq-card rounded-xl p-3 text-center">
+              <p className="text-lg font-bold tabular-nums text-foreground">{taskStats.open}</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Offen</p>
+            </div>
+            <div className="sq-card rounded-xl p-3 text-center">
+              <p className="text-lg font-bold tabular-nums text-foreground">{taskStats.completed}</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Erledigt</p>
+            </div>
+            <div className="sq-card rounded-xl p-3 text-center">
+              <p className="text-lg font-bold tabular-nums text-foreground">{vendor.linkedVehicleCount}</p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Fahrzeuge</p>
+            </div>
+            <div className="sq-card rounded-xl p-3 text-center">
+              <p className="text-[11px] font-semibold text-foreground">
+                {taskStats.lastActivity
+                  ? taskStats.lastActivity.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })
+                  : '—'}
+              </p>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Letzte Nutzung</p>
+            </div>
+          </div>
+
           <div className={`${cardClass} p-5`}>
-            <h3 className={`text-xs font-semibold mb-4 ${'text-muted-foreground'}`}>Contact & Address</h3>
+            <h3 className={`text-xs font-semibold mb-4 ${'text-muted-foreground'}`}>Kontakt & Adresse</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {address && <InfoRow icon={MapPin} label="Address" value={address} />}
               {vendor.phone && <InfoRow icon={Phone} label="Phone" value={vendor.phone} href={`tel:${vendor.phone}`} />}
@@ -568,7 +589,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
 
             {vendor.serviceAreas.length > 0 && (
               <div className="mt-5">
-                <h4 className={`text-[11px] font-medium mb-2 ${'text-muted-foreground'}`}>Service Areas</h4>
+                <h4 className={`text-[11px] font-medium mb-2 ${'text-muted-foreground'}`}>Leistungsbereiche</h4>
                 <div className="flex flex-wrap gap-1.5">
                   {vendor.serviceAreas.map((sa) => (
                     <StatusChip key={sa} tone="info">{sa}</StatusChip>
@@ -581,7 +602,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
           {vendor.contactName && (
             <div className={`${cardClass} p-5`}>
               <h3 className={`text-xs font-semibold mb-4 flex items-center gap-2 ${'text-muted-foreground'}`}>
-                <Icon name="user" className="w-3.5 h-3.5" /> Contact Person
+                <Icon name="user" className="w-3.5 h-3.5" /> Ansprechpartner
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <InfoRow icon={User} label="Name" value={vendor.contactName} />
@@ -595,7 +616,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
 
           {vendor.notes && (
             <div className={`${cardClass} p-5`}>
-              <h3 className={`text-xs font-semibold mb-3 ${'text-muted-foreground'}`}>Internal Notes</h3>
+              <h3 className={`text-xs font-semibold mb-3 ${'text-muted-foreground'}`}>Interne Notizen</h3>
               <p className={`text-xs whitespace-pre-wrap ${'text-foreground/80'}`}>{vendor.notes}</p>
             </div>
           )}
@@ -612,31 +633,33 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
         <div className={`${cardClass} p-5`}>
           <div className="flex items-center justify-between mb-4">
             <h3 className={`text-xs font-semibold flex items-center gap-2 ${'text-muted-foreground'}`}>
-              <Icon name="car" className="w-3.5 h-3.5" /> Linked Vehicles ({vendor.linkedVehicleCount})
+              <Icon name="car" className="w-3.5 h-3.5" /> Verknüpfte Fahrzeuge ({vendor.linkedVehicleCount})
             </h3>
-            {canManage && (
-              <button onClick={openCreateLink}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition ${
-                  'bg-muted text-foreground hover:bg-accent'
-                }`}>
-                <Icon name="plus" className="w-3 h-3" /> Link Vehicle
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {canManage && (
+                <button onClick={openCreateLink}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition ${
+                    'bg-muted text-foreground hover:bg-accent'
+                  }`}>
+                  <Icon name="plus" className="w-3 h-3" /> Fahrzeug verknüpfen
+                </button>
+              )}
+            </div>
           </div>
 
           {vendor.linkedVehicles.length === 0 ? (
             <EmptyState
               compact
               icon={<Icon name="car" className="h-5 w-5" />}
-              title="No vehicles linked yet"
-              description="Link fleet vehicles to track preferred workshops and service relationships."
+              title="Noch keine Fahrzeuge verknüpft"
+              description="Verknüpfen Sie Flottenfahrzeuge, um bevorzugte Werkstätten und Service-Beziehungen zu pflegen."
               action={canManage ? (
                 <button
                   type="button"
                   onClick={openCreateLink}
                   className="inline-flex items-center gap-1 rounded-lg bg-muted px-2.5 py-1.5 text-[10px] font-medium text-foreground hover:bg-accent transition"
                 >
-                  <Icon name="plus" className="w-3 h-3" /> Link Vehicle
+                  <Icon name="plus" className="w-3 h-3" /> Fahrzeug verknüpfen
                 </button>
               ) : undefined}
             />
@@ -652,7 +675,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
                       <span className={`text-[10px] ${'text-muted-foreground'}`}>{lv.licensePlate ?? lv.vin}</span>
                       <StatusChip tone="neutral">{getRelationLabel(lv.relationType)}</StatusChip>
                       {lv.isPreferred && (
-                        <StatusChip tone="watch">Preferred</StatusChip>
+                        <StatusChip tone="info">Bevorzugt</StatusChip>
                       )}
                       {lv.priority != null && (
                         <span className={`text-[9px] ${'text-muted-foreground'}`}>Prio {lv.priority}</span>
@@ -660,8 +683,18 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
                     </div>
                     {lv.notes && <p className={`mt-1 text-[10px] ${'text-muted-foreground'}`}>{lv.notes}</p>}
                   </div>
-                  {canManage && (
-                    <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => openCreateTask(lv.id)}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-semibold border border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]"
+                        title="Service-Aufgabe für dieses Fahrzeug"
+                      >
+                        <ClipboardList className="w-3 h-3" />
+                        Aufgabe
+                      </button>
+                      {canManage && (
+                        <>
                       <button onClick={() => openEditLink(lv)}
                         className="p-1.5 rounded-lg transition hover:bg-muted text-muted-foreground hover:text-foreground">
                         <Icon name="edit-3" className="w-3.5 h-3.5" />
@@ -670,8 +703,9 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
                         className="p-1.5 rounded-lg transition hover:bg-[color:var(--status-critical-soft)] text-muted-foreground hover:text-[color:var(--status-critical)]">
                         <Icon name="unlink" className="w-3.5 h-3.5" />
                       </button>
+                        </>
+                      )}
                     </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -752,47 +786,12 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
         </div>
       )}
 
-      {/* ── Service / Maintenance tab ── */}
-      {activeTab === 'service' && (
-        <div className={`${cardClass} p-5`}>
-          <h3 className={`text-xs font-semibold mb-4 flex items-center gap-2 ${'text-muted-foreground'}`}>
-            <Icon name="wrench" className="w-3.5 h-3.5" /> Service History
-          </h3>
-          {serviceLoading ? (
-            <SkeletonCard className="border-0 shadow-none bg-transparent p-0" />
-          ) : serviceHistory.length === 0 ? (
-            <EmptyState
-              compact
-              icon={<Icon name="wrench" className="h-5 w-5" />}
-              title="No service history yet"
-              description="Service and maintenance cases handled by this vendor will appear here once recorded."
-            />
-          ) : (
-            <div className="space-y-2">
-              {serviceHistory.map((row, idx) => {
-                const eventLabel = formatRecordDate(row.eventDate);
-                return (
-                <div key={String(row.id ?? idx)} className="flex items-center justify-between gap-3 py-2 border-b border-border/50 last:border-0">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-medium text-foreground truncate">{String(row.title ?? row.description ?? 'Service')}</p>
-                    {eventLabel != null && (
-                      <p className="text-[10px] text-muted-foreground">{eventLabel}</p>
-                    )}
-                  </div>
-                </div>
-              );})}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Repair / Vendor Tasks tab ── */}
+      {/* ── Vendor Tasks tab (real task data, no fake service history) ── */}
       {activeTab === 'tasks' && orgId && (
-        <EntityTasksSection
-          title="Repair Tasks"
-          emptyHint="Keine Tasks für diese Werkstatt. Reparatur-Tasks erscheinen hier, sobald sie diesem Vendor zugeordnet werden."
-          fetchTasks={() => api.tasks.forVendor(orgId, vendorId)}
-          deps={[orgId, vendorId]}
+        <VendorOperationalTasks
+          orgId={orgId}
+          vendorId={vendorId}
+          onCreateTask={() => openCreateTask()}
         />
       )}
 
@@ -921,6 +920,17 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
           </div>
         </div>
       )}
+
+      <ServiceTaskCreateModal
+        open={createTaskOpen}
+        onOpenChange={(open) => {
+          setCreateTaskOpen(open);
+          if (!open) setCreateTaskVehicleId(null);
+        }}
+        vendors={allVendors.length > 0 ? allVendors : vendor ? [vendor] : []}
+        defaultVendorId={vendor.id}
+        defaultVehicleId={createTaskVehicleId}
+      />
     </div>
   );
 }

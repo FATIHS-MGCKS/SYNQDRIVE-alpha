@@ -1,12 +1,12 @@
 import {
   AlertTriangle,
-  Car,
   ChevronDown,
   ChevronRight,
   CircleDot,
   RefreshCw,
   ShieldAlert,
   ShieldCheck,
+  SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react';
 import { Icon } from './ui/Icon';
@@ -21,6 +21,7 @@ import {
   chipClassForTone,
 } from '../../components/patterns';
 import type { StatusTone } from '../../components/patterns';
+import { cn } from '../../components/ui/utils';
 
 import { getShortModel } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
@@ -33,7 +34,7 @@ import {
 import { HealthVehicleDetailDrawer } from './health/HealthVehicleDetailDrawer';
 import { HealthVehicleDetailPanel } from './health/HealthVehicleDetailPanel';
 import {
-  buildModuleChips,
+  buildFleetHealthDisplay,
   computeFleetHealthKpis,
   formatRelativeTime,
   latestHealthGeneratedAt,
@@ -41,11 +42,9 @@ import {
   matchesModuleFilter,
   matchesStatusFilter,
   operatorGroupForVehicle,
-  primaryOperatorReason,
   priorityRank,
-  rentalGateLabel,
   vehicleLastUpdatedIso,
-  type ModuleChipModel,
+  type HealthIssueChip,
   type OperatorDataQualityFilter,
   type OperatorGroupKey,
   type OperatorModuleFilter,
@@ -67,6 +66,8 @@ export type ConditionCategory =
 interface FleetConditionViewProps {
   onDrillDown?: (vehicleId: string, category: ConditionCategory) => void;
   embedded?: boolean;
+  onOpenServiceCenter?: () => void;
+  onOpenExistingTask?: (taskId: string) => void;
 }
 
 type Tone = 'neutral' | 'success' | 'warning' | 'critical' | 'brand';
@@ -91,34 +92,19 @@ const GROUP_CONFIG: Record<
   },
   limited_data: {
     title: 'Limited Data',
-    subtitle:
-      'SynqDrive cannot fully assess these vehicles because data is missing, stale or unsupported.',
+    subtitle: 'Health cannot be fully assessed — data is missing, stale or unsupported.',
     emptyTitle: 'All vehicles have assessable health data.',
     tone: 'neutral',
     icon: CircleDot,
   },
   good: {
-    title: 'Good',
+    title: 'Healthy',
     subtitle: 'Confirmed ready for rental',
     emptyTitle: 'No vehicle is currently fully ready.',
     tone: 'success',
     icon: ShieldCheck,
   },
 };
-
-const STATUS_FILTER_OPTIONS: Array<{
-  value: OperatorStatusFilter;
-  label: string;
-  hint: string;
-  tone: StatusTone;
-}> = [
-  { value: 'all', label: 'All statuses', hint: 'full fleet', tone: 'info' },
-  { value: 'blocked', label: 'Blocked', hint: 'cannot be rented', tone: 'critical' },
-  { value: 'critical', label: 'Critical', hint: 'act now', tone: 'critical' },
-  { value: 'warning', label: 'Warning', hint: 'review soon', tone: 'warning' },
-  { value: 'limited', label: 'Limited data', hint: 'not fully assessable', tone: 'noData' },
-  { value: 'good', label: 'Good', hint: 'ready', tone: 'success' },
-];
 
 const MODULE_FILTER_OPTIONS: Array<{ value: OperatorModuleFilter; label: string }> = [
   { value: 'all', label: 'All modules' },
@@ -146,6 +132,8 @@ const SORT_OPTIONS: Array<{ value: OperatorSortMode; label: string; helper: stri
   { value: 'updated', label: 'Last updated', helper: 'newest first' },
 ];
 
+const MAX_VISIBLE_ISSUE_CHIPS = 3;
+
 function toneClass(tone: Tone): string {
   if (tone === 'success') return 'sq-tone-success';
   if (tone === 'warning') return 'sq-tone-warning';
@@ -154,7 +142,12 @@ function toneClass(tone: Tone): string {
   return 'sq-tone-neutral';
 }
 
-export function FleetConditionView({ onDrillDown: _onDrillDown, embedded = false }: FleetConditionViewProps) {
+export function FleetConditionView({
+  onDrillDown: _onDrillDown,
+  embedded = false,
+  onOpenServiceCenter,
+  onOpenExistingTask,
+}: FleetConditionViewProps) {
   const systemDark = useSyncExternalStore(
     (onStoreChange) => {
       const el = document.documentElement;
@@ -177,7 +170,7 @@ export function FleetConditionView({ onDrillDown: _onDrillDown, embedded = false
   const [detailTab, setDetailTab] = useState<HealthDetailTab>('overview');
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<OperatorGroupKey>>(new Set());
-  const [isStatusFilterOpen, setIsStatusFilterOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [isModuleFilterOpen, setIsModuleFilterOpen] = useState(false);
   const [isDataFilterOpen, setIsDataFilterOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
@@ -194,12 +187,12 @@ export function FleetConditionView({ onDrillDown: _onDrillDown, embedded = false
     if (didInitGroups.current || healthLoading) return;
     didInitGroups.current = true;
     const next = new Set<OperatorGroupKey>();
-    if (kpis.blocked > 0 || kpis.critical > 0) {
+    if (kpis.actionRequired > 0) {
       next.add('action_required');
-    } else if (kpis.warning > 0) {
+    } else if (kpis.needsReview > 0) {
       next.add('needs_review');
     }
-    if (kpis.good > 0 && kpis.good <= 8) next.add('good');
+    if (kpis.healthy > 0 && kpis.healthy <= 8) next.add('good');
     setExpandedGroups(next);
   }, [healthLoading, kpis]);
 
@@ -292,9 +285,9 @@ export function FleetConditionView({ onDrillDown: _onDrillDown, embedded = false
 
   const applyStatusFilter = (value: OperatorStatusFilter) => {
     setStatusFilter((prev) => (prev === value && value !== 'all' ? 'all' : value));
-    if (value === 'blocked' || value === 'critical') {
+    if (value === 'action') {
       setExpandedGroups((prev) => new Set(prev).add('action_required'));
-    } else if (value === 'warning') {
+    } else if (value === 'review') {
       setExpandedGroups((prev) => new Set(prev).add('needs_review'));
     } else if (value === 'limited') {
       setExpandedGroups((prev) => new Set(prev).add('limited_data'));
@@ -308,11 +301,13 @@ export function FleetConditionView({ onDrillDown: _onDrillDown, embedded = false
     setModuleFilter('all');
     setDataQualityFilter('all');
     setSearchQuery('');
-    setIsStatusFilterOpen(false);
     setIsModuleFilterOpen(false);
     setIsDataFilterOpen(false);
     setIsSortOpen(false);
   };
+
+  const advancedActiveCount =
+    (moduleFilter !== 'all' ? 1 : 0) + (dataQualityFilter !== 'all' ? 1 : 0);
 
   const hasActiveFilters =
     statusFilter !== 'all' ||
@@ -322,59 +317,41 @@ export function FleetConditionView({ onDrillDown: _onDrillDown, embedded = false
 
   const kpiCards = [
     {
-      key: 'blocked',
-      label: 'Blocked',
-      value: kpis.blocked,
-      hint: 'cannot be rented',
-      filter: 'blocked' as OperatorStatusFilter,
+      key: 'action',
+      label: 'Action required',
+      value: kpis.actionRequired,
+      hint: kpis.blocked > 0 ? `${kpis.blocked} blocked` : 'blocked or critical',
+      filter: 'action' as OperatorStatusFilter,
       tone: 'critical' as StatusTone,
       icon: ShieldAlert,
       emphasize: true,
     },
     {
-      key: 'critical',
-      label: 'Critical',
-      value: kpis.critical,
-      hint: 'act now',
-      filter: 'critical' as OperatorStatusFilter,
-      tone: 'critical' as StatusTone,
-      icon: AlertTriangle,
-    },
-    {
-      key: 'warning',
-      label: 'Warning',
-      value: kpis.warning,
-      hint: 'review soon',
-      filter: 'warning' as OperatorStatusFilter,
+      key: 'review',
+      label: 'Needs review',
+      value: kpis.needsReview,
+      hint: 'inspect soon',
+      filter: 'review' as OperatorStatusFilter,
       tone: 'warning' as StatusTone,
       icon: AlertTriangle,
     },
     {
-      key: 'limited',
-      label: 'Limited Data',
-      value: kpis.limited,
-      hint: 'not fully assessable',
-      filter: 'limited' as OperatorStatusFilter,
-      tone: 'noData' as StatusTone,
-      icon: CircleDot,
-    },
-    {
-      key: 'good',
-      label: 'Good',
-      value: kpis.good,
-      hint: 'ready',
+      key: 'healthy',
+      label: 'Healthy',
+      value: kpis.healthy,
+      hint: 'ready for rental',
       filter: 'good' as OperatorStatusFilter,
       tone: 'success' as StatusTone,
       icon: ShieldCheck,
     },
     {
-      key: 'total',
-      label: 'Total',
-      value: kpis.total,
-      hint: kpis.naModuleVehicles > 0 ? `${kpis.naModuleVehicles} no tracking` : 'vehicles',
-      filter: 'all' as OperatorStatusFilter,
-      tone: 'info' as StatusTone,
-      icon: Car,
+      key: 'limited',
+      label: 'Limited data',
+      value: kpis.limited,
+      hint: kpis.naModuleVehicles > 0 ? `${kpis.naModuleVehicles} no tracking` : 'not fully assessable',
+      filter: 'limited' as OperatorStatusFilter,
+      tone: 'noData' as StatusTone,
+      icon: CircleDot,
     },
   ];
 
@@ -400,7 +377,7 @@ export function FleetConditionView({ onDrillDown: _onDrillDown, embedded = false
   return (
     <div className={`${embedded ? '' : 'max-w-[1600px] mx-auto'}`}>
       <div className="flex flex-col lg:flex-row lg:items-start lg:gap-3">
-        <div className="min-w-0 flex-1 space-y-5">
+        <div className="min-w-0 flex-1 space-y-4">
       {!embedded && (
         <PageHeader
           title="Health Control Center"
@@ -444,9 +421,9 @@ export function FleetConditionView({ onDrillDown: _onDrillDown, embedded = false
       )}
 
       {healthLoading && kpis.total === 0 ? (
-        <SkeletonMetricGrid count={6} />
+        <SkeletonMetricGrid count={4} />
       ) : (
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 snap-x snap-mandatory lg:mx-0 lg:grid lg:grid-cols-3 lg:overflow-visible lg:px-0 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {kpiCards.map((card) => {
             const active = statusFilter === card.filter && card.filter !== 'all';
             const CardIcon = card.icon;
@@ -459,46 +436,22 @@ export function FleetConditionView({ onDrillDown: _onDrillDown, embedded = false
                 icon={<CardIcon className="w-4 h-4" />}
                 status={card.tone}
                 onClick={() => applyStatusFilter(card.filter)}
-                className={`min-w-[140px] shrink-0 snap-start lg:min-w-0 ${
+                className={
                   active
                     ? 'ring-2 ring-[color:var(--brand)]'
                     : card.emphasize && card.value > 0
                       ? 'ring-1 ring-[color:color-mix(in_srgb,var(--status-critical)_25%,transparent)]'
                       : ''
-                }`}
+                }
               />
             );
           })}
         </div>
       )}
 
-      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <Icon name="filter" className="h-4 w-4 text-muted-foreground" />
-            <div className="min-w-0">
-              <h2 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">
-                Filters
-              </h2>
-              <p className="mt-0.5 text-[10px] text-muted-foreground">
-                Showing {filtered.length} of {kpis.total} vehicles
-              </p>
-            </div>
-          </div>
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={clearSelection}
-              className="sq-press flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-2.5 py-1.5 text-[10px] font-semibold text-foreground transition-all hover:bg-muted"
-            >
-              <Icon name="x" className="h-3.5 w-3.5" />
-              Clear filters
-            </button>
-          )}
-        </div>
-
+      <div className="sq-card rounded-2xl p-3 shadow-[var(--shadow-1)]">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-[220px] flex-1">
+          <div className="relative min-w-[200px] flex-1">
             <Icon
               name="search"
               className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
@@ -512,123 +465,10 @@ export function FleetConditionView({ onDrillDown: _onDrillDown, embedded = false
           </div>
 
           <FilterDropdown
-            label={statusFilter === 'all' ? 'Status' : STATUS_FILTER_OPTIONS.find((o) => o.value === statusFilter)?.label ?? 'Status'}
-            open={isStatusFilterOpen}
-            onToggle={() => {
-              setIsStatusFilterOpen(!isStatusFilterOpen);
-              setIsModuleFilterOpen(false);
-              setIsDataFilterOpen(false);
-              setIsSortOpen(false);
-            }}
-            active={statusFilter !== 'all'}
-          >
-            {STATUS_FILTER_OPTIONS.map((option) => (
-              <FilterOption
-                key={option.value}
-                selected={statusFilter === option.value}
-                onClick={() => {
-                  applyStatusFilter(option.value);
-                  setIsStatusFilterOpen(false);
-                }}
-                label={option.label}
-                hint={option.hint}
-                count={
-                  option.value === 'all'
-                    ? kpis.total
-                    : option.value === 'blocked'
-                      ? kpis.blocked
-                      : option.value === 'critical'
-                        ? kpis.critical
-                        : option.value === 'warning'
-                          ? kpis.warning
-                          : option.value === 'limited'
-                            ? kpis.limited
-                            : kpis.good
-                }
-                tone={option.tone}
-              />
-            ))}
-          </FilterDropdown>
-
-          <FilterDropdown
-            label={
-              moduleFilter === 'all'
-                ? 'Module'
-                : MODULE_FILTER_OPTIONS.find((o) => o.value === moduleFilter)?.label ?? 'Module'
-            }
-            open={isModuleFilterOpen}
-            onToggle={() => {
-              setIsModuleFilterOpen(!isModuleFilterOpen);
-              setIsStatusFilterOpen(false);
-              setIsDataFilterOpen(false);
-              setIsSortOpen(false);
-            }}
-            active={moduleFilter !== 'all'}
-          >
-            {MODULE_FILTER_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  setModuleFilter(option.value === moduleFilter && option.value !== 'all' ? 'all' : option.value);
-                  setIsModuleFilterOpen(false);
-                }}
-                className={`w-full rounded-lg px-3 py-2.5 text-left text-xs font-medium transition-colors ${
-                  moduleFilter === option.value
-                    ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
-                    : 'text-foreground hover:bg-muted'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </FilterDropdown>
-
-          <FilterDropdown
-            label={
-              dataQualityFilter === 'all'
-                ? 'Data quality'
-                : DATA_QUALITY_OPTIONS.find((o) => o.value === dataQualityFilter)?.label ??
-                  'Data quality'
-            }
-            open={isDataFilterOpen}
-            onToggle={() => {
-              setIsDataFilterOpen(!isDataFilterOpen);
-              setIsStatusFilterOpen(false);
-              setIsModuleFilterOpen(false);
-              setIsSortOpen(false);
-            }}
-            active={dataQualityFilter !== 'all'}
-          >
-            {DATA_QUALITY_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  setDataQualityFilter(
-                    option.value === dataQualityFilter && option.value !== 'all'
-                      ? 'all'
-                      : option.value,
-                  );
-                  setIsDataFilterOpen(false);
-                }}
-                className={`w-full rounded-lg px-3 py-2.5 text-left text-xs font-medium transition-colors ${
-                  dataQualityFilter === option.value
-                    ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
-                    : 'text-foreground hover:bg-muted'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </FilterDropdown>
-
-          <FilterDropdown
             label={`Sort: ${SORT_OPTIONS.find((o) => o.value === sortMode)?.label ?? 'Priority'}`}
             open={isSortOpen}
             onToggle={() => {
               setIsSortOpen(!isSortOpen);
-              setIsStatusFilterOpen(false);
               setIsModuleFilterOpen(false);
               setIsDataFilterOpen(false);
             }}
@@ -653,7 +493,116 @@ export function FleetConditionView({ onDrillDown: _onDrillDown, embedded = false
               </button>
             ))}
           </FilterDropdown>
+
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((v) => !v)}
+            className={`sq-press flex items-center gap-2 rounded-lg border px-3 py-2.5 text-xs font-medium transition-all ${
+              advancedActiveCount > 0
+                ? 'border-[color:color-mix(in_srgb,var(--brand)_35%,transparent)] bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
+                : 'border-border/70 bg-card text-foreground hover:bg-muted'
+            }`}
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span>More filters</span>
+            {advancedActiveCount > 0 && (
+              <span className="rounded-full bg-[color:var(--brand)] px-1.5 text-[9px] font-bold text-white">
+                {advancedActiveCount}
+              </span>
+            )}
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="sq-press flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-2.5 py-2.5 text-[11px] font-semibold text-foreground transition-all hover:bg-muted"
+            >
+              <Icon name="x" className="h-3.5 w-3.5" />
+              Clear
+            </button>
+          )}
         </div>
+
+        {advancedOpen && (
+          <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-border/50 pt-2.5">
+            <FilterDropdown
+              label={
+                moduleFilter === 'all'
+                  ? 'Module'
+                  : MODULE_FILTER_OPTIONS.find((o) => o.value === moduleFilter)?.label ?? 'Module'
+              }
+              open={isModuleFilterOpen}
+              onToggle={() => {
+                setIsModuleFilterOpen(!isModuleFilterOpen);
+                setIsDataFilterOpen(false);
+                setIsSortOpen(false);
+              }}
+              active={moduleFilter !== 'all'}
+            >
+              {MODULE_FILTER_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    setModuleFilter(option.value === moduleFilter && option.value !== 'all' ? 'all' : option.value);
+                    setIsModuleFilterOpen(false);
+                  }}
+                  className={`w-full rounded-lg px-3 py-2.5 text-left text-xs font-medium transition-colors ${
+                    moduleFilter === option.value
+                      ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
+                      : 'text-foreground hover:bg-muted'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </FilterDropdown>
+
+            <FilterDropdown
+              label={
+                dataQualityFilter === 'all'
+                  ? 'Data quality'
+                  : DATA_QUALITY_OPTIONS.find((o) => o.value === dataQualityFilter)?.label ??
+                    'Data quality'
+              }
+              open={isDataFilterOpen}
+              onToggle={() => {
+                setIsDataFilterOpen(!isDataFilterOpen);
+                setIsModuleFilterOpen(false);
+                setIsSortOpen(false);
+              }}
+              active={dataQualityFilter !== 'all'}
+            >
+              {DATA_QUALITY_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    setDataQualityFilter(
+                      option.value === dataQualityFilter && option.value !== 'all'
+                        ? 'all'
+                        : option.value,
+                    );
+                    setIsDataFilterOpen(false);
+                  }}
+                  className={`w-full rounded-lg px-3 py-2.5 text-left text-xs font-medium transition-colors ${
+                    dataQualityFilter === option.value
+                      ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
+                      : 'text-foreground hover:bg-muted'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </FilterDropdown>
+
+            <p className="ml-auto text-[10px] text-muted-foreground">
+              Showing {filtered.length} of {kpis.total} vehicles
+            </p>
+          </div>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -665,65 +614,63 @@ export function FleetConditionView({ onDrillDown: _onDrillDown, embedded = false
         />
       ) : (
         <div className="space-y-2.5">
-          {groupedVehicles.map((group) => {
-            const isGroupOpen = expandedGroups.has(group.key);
-            const GroupIcon = group.icon;
-            return (
-              <section
-                key={group.key}
-                className="sq-card rounded-2xl overflow-hidden shadow-[var(--shadow-1)]"
-              >
-                <button
-                  type="button"
-                  onClick={() => toggleGroup(group.key)}
-                  className="w-full px-3 py-3 flex items-center justify-between gap-3 text-left hover:bg-muted/35 transition-colors"
+          {groupedVehicles
+            .filter((group) => group.vehicles.length > 0)
+            .map((group) => {
+              const isGroupOpen = expandedGroups.has(group.key);
+              const GroupIcon = group.icon;
+              return (
+                <section
+                  key={group.key}
+                  className="sq-card rounded-2xl overflow-hidden shadow-[var(--shadow-1)]"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span
-                      className={`h-8 w-8 rounded-xl flex items-center justify-center ${toneClass(group.tone)}`}
-                    >
-                      <GroupIcon className="h-4 w-4" />
-                    </span>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-[13px] font-semibold text-foreground">{group.title}</h2>
-                        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground">
-                          {group.vehicles.length}
-                        </span>
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.key)}
+                    className="w-full px-3 py-2.5 flex items-center justify-between gap-3 text-left hover:bg-muted/35 transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span
+                        className={`h-7 w-7 rounded-lg flex items-center justify-center ${toneClass(group.tone)}`}
+                      >
+                        <GroupIcon className="h-3.5 w-3.5" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-[12.5px] font-semibold text-foreground">{group.title}</h2>
+                          <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold text-muted-foreground tabular-nums">
+                            {group.vehicles.length}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">{group.subtitle}</p>
                       </div>
-                      <p className="text-[10px] text-muted-foreground">{group.subtitle}</p>
                     </div>
-                  </div>
-                  <ChevronDown
-                    className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isGroupOpen ? 'rotate-180' : ''}`}
-                  />
-                </button>
+                    <ChevronDown
+                      className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isGroupOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
 
-                {isGroupOpen && group.vehicles.length === 0 && (
-                  <EmptyState compact title={group.emptyTitle} className="border-t border-border/60" />
-                )}
-
-                {isGroupOpen && group.vehicles.length > 0 && (
-                  <div className="border-t border-border/60 p-2 space-y-2 md:p-0 md:space-y-0 md:divide-y md:divide-border/50">
-                    {group.vehicles.map((vehicle) => (
-                      <OperatorVehicleRow
-                        key={vehicle.id}
-                        vehicle={vehicle}
-                        health={healthMap.get(vehicle.id)}
-                        healthLoading={healthLoading}
-                        systemDark={systemDark}
-                        selected={selectedVehicleId === vehicle.id}
-                        onOpen={() => openVehicleDetail(vehicle.id)}
-                        onModuleClick={(chipKey) =>
-                          openVehicleDetail(vehicle.id, moduleKeyToTab(chipKey))
-                        }
-                      />
-                    ))}
-                  </div>
-                )}
-              </section>
-            );
-          })}
+                  {isGroupOpen && (
+                    <div className="border-t border-border/60 divide-y divide-border/40">
+                      {group.vehicles.map((vehicle) => (
+                        <OperatorVehicleRow
+                          key={vehicle.id}
+                          vehicle={vehicle}
+                          health={healthMap.get(vehicle.id)}
+                          healthLoading={healthLoading}
+                          systemDark={systemDark}
+                          selected={selectedVehicleId === vehicle.id}
+                          onOpen={() => openVehicleDetail(vehicle.id)}
+                          onModuleClick={(chipKey) =>
+                            openVehicleDetail(vehicle.id, moduleKeyToTab(chipKey))
+                          }
+                        />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
         </div>
       )}
         </div>
@@ -736,6 +683,8 @@ export function FleetConditionView({ onDrillDown: _onDrillDown, embedded = false
               healthLoading={healthLoading}
               initialTab={detailTab}
               onClose={() => setSelectedVehicleId(null)}
+              onOpenServiceCenter={onOpenServiceCenter}
+              onOpenExistingTask={onOpenExistingTask}
               className="w-full"
             />
           </div>
@@ -752,6 +701,8 @@ export function FleetConditionView({ onDrillDown: _onDrillDown, embedded = false
           if (!open) setSelectedVehicleId(null);
         }}
         initialTab={detailTab}
+        onOpenServiceCenter={onOpenServiceCenter}
+        onOpenExistingTask={onOpenExistingTask}
       />
     </div>
   );
@@ -793,66 +744,33 @@ function FilterDropdown({
   );
 }
 
-function FilterOption({
-  label,
-  hint,
-  count,
-  tone,
-  selected,
-  onClick,
-}: {
-  label: string;
-  hint: string;
-  count: number;
-  tone: StatusTone;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-xs font-medium transition-colors ${
-        selected
-          ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)]'
-          : 'text-foreground hover:bg-muted'
-      }`}
-    >
-      <span>
-        {label}
-        <span className="ml-1 text-[10px] text-muted-foreground">· {hint}</span>
-      </span>
-      <StatusChip tone={tone} className="text-[10px] font-bold tabular-nums">
-        {count}
-      </StatusChip>
-    </button>
-  );
-}
-
-function ModuleChip({
+function IssueChip({
   chip,
   onClick,
 }: {
-  chip: ModuleChipModel;
+  chip: HealthIssueChip;
   onClick?: () => void;
 }) {
+  const className = `inline-flex max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${chipClassForTone(chip.tone)}`;
   const content = (
-  <>
+    <>
       <span className="font-semibold">{chip.label}</span>
-      <span className="text-muted-foreground">·</span>
+      <span className="opacity-60">·</span>
       <span className="truncate">{chip.detail}</span>
     </>
   );
-  const className = `inline-flex max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${chipClassForTone(chip.tone)}`;
-
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className={`${className} sq-press`}>
+      <button type="button" onClick={onClick} title={chip.reason} className={`${className} sq-press`}>
         {content}
       </button>
     );
   }
-  return <span className={className}>{content}</span>;
+  return (
+    <span className={className} title={chip.reason}>
+      {content}
+    </span>
+  );
 }
 
 function OperatorVehicleRow({
@@ -870,12 +788,10 @@ function OperatorVehicleRow({
   systemDark: boolean;
   selected: boolean;
   onOpen: () => void;
-  onModuleClick: (moduleKey: ModuleChipModel['key']) => void;
+  onModuleClick: (moduleKey: HealthIssueChip['key']) => void;
 }) {
   const brand = getBrandFromModel({ make: vehicle.make, model: vehicle.model });
-  const chips = buildModuleChips(health);
-  const gate = rentalGateLabel(health);
-  const primaryReason = primaryOperatorReason(health);
+  const display = buildFleetHealthDisplay(health);
 
   const odomKm =
     vehicle.odometerKm != null && vehicle.odometerKm > 0
@@ -888,23 +804,45 @@ function OperatorVehicleRow({
   const odometer = odomKm != null ? `${Math.round(odomKm).toLocaleString('de-DE')} km` : '—';
   const lastUpdated = formatRelativeTime(vehicleLastUpdatedIso(health));
 
+  const visibleChips = display.secondaryIssues.slice(0, MAX_VISIBLE_ISSUE_CHIPS);
+  const hiddenChipCount = display.secondaryIssues.length - visibleChips.length;
+  const isAction = display.band === 'blocked' || display.band === 'critical';
+
+  // Subtle full-row tint only for the most urgent band — never a left accent bar.
+  const tint = isAction
+    ? 'bg-[color:color-mix(in_srgb,var(--status-critical)_4%,transparent)]'
+    : '';
+
+  const primaryTextTone = isAction
+    ? 'text-[color:var(--status-critical)]'
+    : display.band === 'review'
+      ? 'text-foreground'
+      : 'text-muted-foreground';
+
+  const showClearSummary =
+    display.secondaryIssues.length === 0 && !display.primaryIssue && display.clearModuleCount > 0;
+  const showMetaRow =
+    visibleChips.length > 0 ||
+    hiddenChipCount > 0 ||
+    Boolean(display.dataQualityNote) ||
+    showClearSummary;
+
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className={`sq-press w-full text-left rounded-xl border transition-colors md:rounded-none md:border-0 ${
-        selected
-          ? 'border-[color:var(--brand)] bg-[color:var(--brand-soft)]/40 ring-1 ring-[color:var(--brand)]/20'
-          : 'border-border/60 bg-card hover:bg-muted/35 md:bg-transparent'
-      }`}
+    <div
+      className={cn(
+        'group flex items-start gap-2 px-3 py-2.5 transition-colors hover:bg-muted/25',
+        tint,
+        selected && 'bg-[color:var(--brand-soft)]/40',
+      )}
     >
-      <div className="flex flex-col gap-2 px-3 py-3 md:flex-row md:items-center md:gap-3 md:py-2.5">
-        <div className="flex min-w-0 flex-1 items-start gap-2.5">
-          <div className="h-9 w-9 rounded-xl bg-muted/70 flex items-center justify-center shrink-0">
-            <BrandLogo brand={brand} size={18} isDarkMode={systemDark} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <div className="h-8 w-8 shrink-0 rounded-lg bg-muted/70 flex items-center justify-center">
+        <BrandLogo brand={brand} size={16} isDarkMode={systemDark} />
+      </div>
+
+      <div className="min-w-0 flex-1 space-y-1">
+        <button type="button" onClick={onOpen} className="w-full space-y-1 text-left">
+          <div className="flex items-start gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
               <span className="truncate text-[12px] font-semibold text-foreground">
                 {[vehicle.make, getShortModel(vehicle.model), vehicle.year]
                   .filter(Boolean)
@@ -914,42 +852,69 @@ function OperatorVehicleRow({
                 {vehicle.license}
               </span>
             </div>
-            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
-              <span className="truncate">{vehicle.station || 'No station'}</span>
-              <span>{odometer}</span>
-              <span>Health {healthLoading && !health ? '…' : lastUpdated}</span>
-            </div>
+            <StatusChip
+              tone={display.primaryBadge.tone}
+              className="shrink-0 px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
+            >
+              {healthLoading && !health ? '…' : display.primaryBadge.label}
+            </StatusChip>
           </div>
-        </div>
 
-        <div
-          className="flex min-w-0 flex-wrap items-center gap-1 md:flex-1 md:justify-center"
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-        >
-          {!health && !healthLoading ? (
-            <StatusChip tone="noData">Health status unavailable</StatusChip>
-          ) : (
-            chips.map((chip) => (
-              <ModuleChip
-                key={chip.key}
-                chip={chip}
-                onClick={() => onModuleClick(chip.key)}
-              />
-            ))
-          )}
-        </div>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+            <span className="truncate">{vehicle.station || 'No station'}</span>
+            <span aria-hidden>·</span>
+            <span className="tabular-nums">{odometer}</span>
+            <span aria-hidden>·</span>
+            <span>Health {healthLoading && !health ? '…' : lastUpdated}</span>
+            {display.rentalBlocked && (
+              <>
+                <span aria-hidden>·</span>
+                <span className="font-medium text-[color:var(--status-critical)]">Rental blocked</span>
+              </>
+            )}
+          </div>
 
-        <div className="flex shrink-0 items-center justify-between gap-2 md:min-w-[180px] md:justify-end">
-          <div className="min-w-0 text-left md:text-right">
-            <StatusChip tone={gate.tone}>{gate.label}</StatusChip>
-            <p className="mt-1 max-w-[32ch] truncate text-[10px] text-muted-foreground md:ml-auto">
-              {primaryReason}
+          {display.primaryIssue && (
+            <p className={cn('line-clamp-1 text-[11px] font-medium leading-snug text-pretty', primaryTextTone)}>
+              {display.primaryIssue}
             </p>
+          )}
+        </button>
+
+        {showMetaRow && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {visibleChips.map((chip) => (
+              <IssueChip key={chip.key} chip={chip} onClick={() => onModuleClick(chip.key)} />
+            ))}
+            {hiddenChipCount > 0 && (
+              <span className="text-[10px] font-medium text-muted-foreground">+{hiddenChipCount} more</span>
+            )}
+            {showClearSummary && (
+              <span className="text-[10px] text-muted-foreground">
+                {display.clearModuleCount} modules clear
+              </span>
+            )}
+            {display.dataQualityNote && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                {(visibleChips.length > 0 || hiddenChipCount > 0 || showClearSummary) && (
+                  <span aria-hidden>·</span>
+                )}
+                <CircleDot className="h-3 w-3 opacity-70" />
+                {display.dataQualityNote}
+              </span>
+            )}
           </div>
-          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </div>
+        )}
       </div>
-    </button>
+
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Open health for ${vehicle.license}`}
+        className="sq-press inline-flex min-h-8 shrink-0 items-center gap-1 self-center rounded-md px-1.5 text-[10.5px] font-medium text-muted-foreground opacity-90 transition-colors hover:bg-muted/40 hover:text-foreground group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
   );
 }

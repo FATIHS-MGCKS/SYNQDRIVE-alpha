@@ -1,6 +1,7 @@
 import { AlertTriangle, Loader2, ShieldOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { DetailDrawer, StatusChip, Timeline, type TimelineItem } from '../../../../components/patterns';
+import { SupportContextButton } from '../../../../components/support/SupportContextButton';
 import { api, type DataAuthorizationAuditEntry, type DataAuthorizationDto } from '../../../../lib/api';
 import {
   DIMO_REVOKE_IMPACT,
@@ -303,6 +304,17 @@ export function DataAuthorizationDetailDrawer({
             <Timeline items={timelineFromAuth} />
           )}
         </DetailSection>
+
+        {auth && (
+          <SupportContextButton
+            kind="data-authorization"
+            contextData={{
+              authorizationId: auth.id,
+              status: auth.statusKey,
+              partnerName: auth.title,
+            }}
+          />
+        )}
       </div>
     </DetailDrawer>
   );

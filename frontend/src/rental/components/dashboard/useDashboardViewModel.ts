@@ -50,7 +50,6 @@ import { deriveOperationalInsights } from './deriveOperationalInsights';
 import { derivePredictiveOperationsInsights } from './derivePredictiveOperationsInsights';
 import {
   getFocusNotReadyVehicles,
-  readOperatorFocusModePreference,
   persistOperatorFocusModePreference,
 } from './dashboardFocusMode';
 import { buildNowNextTimeline, buildTodayOperations } from './operationsBuilder';
@@ -129,9 +128,11 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   const [fleetBoardFilter, setFleetBoardFilter] = useState<FleetBoardLane>('all');
   const [todayTab, setTodayTab] = useState<TodayTabKey>('Pick Up Today');
   const [criticalOnly, setCriticalOnly] = useState(false);
-  const [operatorFocusMode, setOperatorFocusModeState] = useState(() =>
-    readOperatorFocusModePreference(),
-  );
+  // Operator focus mode no longer has a header toggle; the dashboard now always
+  // renders the clean standard layout. State + setter are kept for backward
+  // compatibility (dependent surfaces / vm type) but are not auto-enabled, so a
+  // previously persisted preference can never trap the user in focus mode.
+  const [operatorFocusMode, setOperatorFocusModeState] = useState(false);
   const [drilldownTarget, setDrilldownTarget] = useState<DashboardDrilldownTarget | null>(null);
 
   const openDrilldown = useCallback((target: DashboardDrilldownTarget) => {

@@ -8,3 +8,4 @@ export { default as retentionConfig } from './retention.config';
 export { default as storageConfig } from './storage.config';
 export { default as documentExtractionConfig } from './document-extraction.config';
 export { default as documentsConfig } from './documents.config';
+export { default as whatsappConfig } from './whatsapp.config';

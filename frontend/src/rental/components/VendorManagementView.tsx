@@ -1,4 +1,4 @@
-import { Briefcase, Building2, Car, Cog, Eye, Factory, FileSearch, Globe, Paintbrush, Shield, ShieldCheck, ShoppingCart, Sparkles, Tag, Truck, Wrench } from 'lucide-react';
+import { Briefcase, Building2, Car, Cog, Eye, Factory, FileSearch, Globe, Paintbrush, Shield, ShieldCheck, ShoppingCart, Sparkles, Star, Tag, Truck, Wrench } from 'lucide-react';
 import { Icon } from './ui/Icon';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
@@ -7,40 +7,24 @@ import type { Vendor, VendorCategory, VendorSource, VendorSourceType, VendorInpu
 import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
 import { PageHeader, StatusChip, EmptyState, SkeletonCard, FormDialog } from '../../components/patterns';
+import { ServiceTaskCreateModal } from './service-center/ServiceTaskCreateModal';
+import { VendorDirectoryCard } from './vendors/VendorDirectoryCard';
+import {
+  filterVendorDirectory,
+  getVendorCategoryLabel,
+  VENDOR_CATEGORIES,
+  VENDOR_SERVICE_AREAS,
+  vendorHasPreferredLink,
+  type VendorDirectoryScope,
+} from '../lib/vendor-directory.utils';
 
 // ── constants ──────────────────────────────────────────
 
-const CATEGORIES: { value: VendorCategory; label: string; icon: typeof Wrench }[] = [
-  { value: 'WORKSHOP', label: 'Workshop', icon: Wrench },
-  { value: 'SERVICE_PARTNER', label: 'Service Partner', icon: Cog },
-  { value: 'PAINT_SHOP', label: 'Paint Shop', icon: Paintbrush },
-  { value: 'BODY_REPAIR', label: 'Body Repair', icon: Car },
-  { value: 'AUTO_GLASS', label: 'Auto Glass', icon: Eye },
-  { value: 'TIRE_DEALER', label: 'Tire Dealer', icon: Truck },
-  { value: 'PARTS_DEALER', label: 'Parts Dealer', icon: ShoppingCart },
-  { value: 'DETAILING', label: 'Detailing', icon: Sparkles },
-  { value: 'TUV_STATION', label: 'TÜV Station', icon: Shield },
-  { value: 'ONLINE_SUPPLIER', label: 'Online Supplier', icon: Globe },
-  { value: 'INSURANCE', label: 'Insurance', icon: ShieldCheck },
-  { value: 'APPRAISER', label: 'Appraiser', icon: FileSearch },
-  { value: 'TOWING', label: 'Towing', icon: Truck },
-  { value: 'DEALERSHIP', label: 'Dealership', icon: Building2 },
-  { value: 'OEM_SERVICE', label: 'OEM Service', icon: Factory },
-  { value: 'OTHER', label: 'Other', icon: Briefcase },
-];
-
-const SERVICE_AREA_OPTIONS = [
-  'Tires', 'Brakes', 'Oil / Service', 'Body Repair', 'Paint', 'Auto Glass',
-  'Inspections (TÜV/HU)', 'Parts Supply', 'Detailing / Reconditioning',
-  'Battery / EV Service', 'Roadside / Towing', 'General Workshop',
-  'Windshield', 'Suspension', 'Exhaust', 'AC / Climate', 'Electrical',
-];
+const CATEGORIES = VENDOR_CATEGORIES;
+const SERVICE_AREA_OPTIONS = [...VENDOR_SERVICE_AREAS];
 
 function getCategoryLabel(cat: VendorCategory): string {
-  return CATEGORIES.find((c) => c.value === cat)?.label ?? cat;
-}
-function getCategoryIcon(cat: VendorCategory) {
-  return CATEGORIES.find((c) => c.value === cat)?.icon ?? Briefcase;
+  return getVendorCategoryLabel(cat);
 }
 
 // ── types ──────────────────────────────────────────────
@@ -49,9 +33,11 @@ interface VendorManagementViewProps {
   onOpenDetail?: (vendor: Vendor) => void;
   /** When true, page title is provided by FleetHubView. */
   embedded?: boolean;
+  /** When true, nested inside ServiceCenterView — hide duplicate KPI strip. */
+  embeddedInServiceCenter?: boolean;
 }
 
-type VendorScopeFilter = 'ALL' | 'ACTIVE' | 'LINKED';
+type VendorScopeFilter = VendorDirectoryScope;
 
 type MapboxSuggestionWithToken = VendorMapboxSuggestion & { sessionToken: string };
 
@@ -89,7 +75,11 @@ const emptyForm: VendorFormData = {
 
 // ── component ──────────────────────────────────────────
 
-export function VendorManagementView({ onOpenDetail, embedded = false }: VendorManagementViewProps) {
+export function VendorManagementView({
+  onOpenDetail,
+  embedded = false,
+  embeddedInServiceCenter = false,
+}: VendorManagementViewProps) {
   const { orgId, hasPermission } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
   const canManage = hasPermission('vendor-management', 'write');
@@ -98,9 +88,12 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState<VendorCategory | 'ALL'>('ALL');
+  const [serviceAreaFilter, setServiceAreaFilter] = useState<string | 'ALL'>('ALL');
   const [scopeFilter, setScopeFilter] = useState<VendorScopeFilter>('ALL');
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
   const [showScopeFilter, setShowScopeFilter] = useState(false);
+  const [showServiceAreaFilter, setShowServiceAreaFilter] = useState(false);
+  const [createTaskVendor, setCreateTaskVendor] = useState<Vendor | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [editVendor, setEditVendor] = useState<Vendor | null>(null);
   const [saving, setSaving] = useState(false);
@@ -128,22 +121,16 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
 
   // ── filtering ────────────────────────────────────────
 
-  const filtered = useMemo(() => {
-    let list = vendors;
-    if (catFilter !== 'ALL') list = list.filter((v) => v.category === catFilter);
-    if (scopeFilter === 'ACTIVE') list = list.filter((v) => v.isActive);
-    if (scopeFilter === 'LINKED') list = list.filter((v) => v.linkedVehicleCount > 0);
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter((v) =>
-        v.name.toLowerCase().includes(q) ||
-        v.city?.toLowerCase().includes(q) ||
-        v.contactName?.toLowerCase().includes(q) ||
-        v.serviceAreas.some((sa) => sa.toLowerCase().includes(q)),
-      );
-    }
-    return list;
-  }, [vendors, catFilter, scopeFilter, search]);
+  const filtered = useMemo(
+    () =>
+      filterVendorDirectory(vendors, {
+        search,
+        category: catFilter,
+        serviceArea: serviceAreaFilter,
+        scope: scopeFilter,
+      }),
+    [vendors, catFilter, serviceAreaFilter, scopeFilter, search],
+  );
 
   const stats = useMemo(() => {
     const active = vendors.filter((v) => v.isActive).length;
@@ -158,19 +145,36 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
       : vendors.filter((vendor) => vendor.category === category).length;
   const scopeCount = (scope: VendorScopeFilter) => {
     if (scope === 'ACTIVE') return stats.active;
+    if (scope === 'INACTIVE') return inactiveCount;
     if (scope === 'LINKED') return stats.withVehicles;
+    if (scope === 'PREFERRED') return vendors.filter(vendorHasPreferredLink).length;
     return vendors.length;
   };
+  const serviceAreaCount = (area: string | 'ALL') =>
+    area === 'ALL' ? vendors.length : vendors.filter((v) => v.serviceAreas?.includes(area)).length;
   const inactiveCount = vendors.filter((vendor) => !vendor.isActive).length;
-  const activeCategoryLabel = catFilter === 'ALL' ? 'All categories' : getCategoryLabel(catFilter);
-  const activeScopeLabel = scopeFilter === 'ACTIVE' ? 'Active partners' : scopeFilter === 'LINKED' ? 'Vehicle-linked' : 'All partners';
-  const hasActiveFilters = Boolean(search.trim()) || catFilter !== 'ALL' || scopeFilter !== 'ALL';
+  const activeCategoryLabel = catFilter === 'ALL'
+    ? (embeddedInServiceCenter ? 'Alle Kategorien' : 'All categories')
+    : getCategoryLabel(catFilter);
+  const activeScopeLabel =
+    scopeFilter === 'ACTIVE' ? (embeddedInServiceCenter ? 'Aktive Partner' : 'Active partners') :
+    scopeFilter === 'INACTIVE' ? (embeddedInServiceCenter ? 'Inaktive Partner' : 'Inactive partners') :
+    scopeFilter === 'LINKED' ? (embeddedInServiceCenter ? 'Mit Fahrzeugen' : 'Vehicle-linked') :
+    scopeFilter === 'PREFERRED' ? (embeddedInServiceCenter ? 'Bevorzugte Partner' : 'Preferred partners') :
+    (embeddedInServiceCenter ? 'Alle Partner' : 'All partners');
+  const activeServiceAreaLabel = serviceAreaFilter === 'ALL'
+    ? (embeddedInServiceCenter ? 'Alle Leistungen' : 'All service areas')
+    : serviceAreaFilter;
+  const hasActiveFilters =
+    Boolean(search.trim()) || catFilter !== 'ALL' || serviceAreaFilter !== 'ALL' || scopeFilter !== 'ALL';
   const clearFilters = () => {
     setSearch('');
     setCatFilter('ALL');
+    setServiceAreaFilter('ALL');
     setScopeFilter('ALL');
     setShowCategoryFilter(false);
     setShowScopeFilter(false);
+    setShowServiceAreaFilter(false);
   };
 
   // ── Mapbox POI search (suggest → select → retrieve → prefill) ──
@@ -330,7 +334,21 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
   return (
     <div className={`${embedded ? '' : 'max-w-[1600px] mx-auto'} space-y-5`}>
       {embedded ? (
-        addVendorAction ? <div className="flex justify-end">{addVendorAction}</div> : null
+        embeddedInServiceCenter ? (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Partnerverzeichnis
+              </p>
+              <h3 className="text-sm font-semibold tracking-[-0.02em] text-foreground">
+                Dienstleister & Werkstätten
+              </h3>
+            </div>
+            {addVendorAction}
+          </div>
+        ) : addVendorAction ? (
+          <div className="flex justify-end">{addVendorAction}</div>
+        ) : null
       ) : (
       <PageHeader
         title="Service"
@@ -339,6 +357,7 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
       )}
 
       {/* Segment metrics */}
+      {!embeddedInServiceCenter && (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {[
           {
@@ -404,6 +423,7 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
           );
         })}
       </div>
+      )}
 
       {/* Search + Filter */}
       <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
@@ -411,9 +431,13 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
           <div className="flex min-w-0 items-center gap-2.5">
             <Icon name="filter" className="h-4 w-4 text-muted-foreground" />
             <div className="min-w-0">
-              <h2 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">Filters</h2>
+              <h2 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">
+                {embeddedInServiceCenter ? 'Partnerverzeichnis filtern' : 'Filters'}
+              </h2>
               <p className="mt-0.5 text-[10px] text-muted-foreground">
-                Showing {filtered.length} of {vendors.length} partners
+                {embeddedInServiceCenter
+                  ? `${filtered.length} von ${vendors.length} Partnern`
+                  : `Showing ${filtered.length} of ${vendors.length} partners`}
               </p>
             </div>
           </div>
@@ -425,6 +449,15 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
                 className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-brand"
               >
                 {activeCategoryLabel} active ×
+              </button>
+            )}
+            {serviceAreaFilter !== 'ALL' && (
+              <button
+                type="button"
+                onClick={() => setServiceAreaFilter('ALL')}
+                className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-info"
+              >
+                {activeServiceAreaLabel} ×
               </button>
             )}
             {scopeFilter !== 'ALL' && (
@@ -460,7 +493,9 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search vendors, city, contact or service area..."
+              placeholder={embeddedInServiceCenter
+                ? 'Partner, Ort, Kontakt oder Leistung suchen…'
+                : 'Search vendors, city, contact or service area...'}
               className="w-full rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground py-2.5 pl-10 pr-4 text-xs outline-none transition-all focus:border-[color:var(--brand)]"
             />
           </div>
@@ -470,6 +505,7 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
               type="button"
               onClick={() => {
                 setShowCategoryFilter(false);
+                setShowServiceAreaFilter(false);
                 setShowScopeFilter(!showScopeFilter);
               }}
               className={`flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-all ${
@@ -484,9 +520,11 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
             {showScopeFilter && (
               <div className="absolute right-0 top-full z-50 mt-2 min-w-[220px] overflow-hidden rounded-lg border border-border bg-popover shadow-[var(--shadow-2)] sm:left-0 sm:right-auto">
                 {[
-                  { value: 'ALL' as const, label: 'All partners', icon: Briefcase },
-                  { value: 'ACTIVE' as const, label: 'Active partners', icon: Wrench },
-                  { value: 'LINKED' as const, label: 'Vehicle-linked', icon: Car },
+                  { value: 'ALL' as const, label: embeddedInServiceCenter ? 'Alle Partner' : 'All partners', icon: Briefcase },
+                  { value: 'ACTIVE' as const, label: embeddedInServiceCenter ? 'Aktive Partner' : 'Active partners', icon: Wrench },
+                  { value: 'INACTIVE' as const, label: embeddedInServiceCenter ? 'Inaktive Partner' : 'Inactive partners', icon: Tag },
+                  { value: 'LINKED' as const, label: embeddedInServiceCenter ? 'Mit Fahrzeugen' : 'Vehicle-linked', icon: Car },
+                  { value: 'PREFERRED' as const, label: embeddedInServiceCenter ? 'Bevorzugte Partner' : 'Preferred partners', icon: Star },
                 ].map((scope) => {
                   const ScopeIcon = scope.icon;
                   const selected = scopeFilter === scope.value;
@@ -523,6 +561,70 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
               type="button"
               onClick={() => {
                 setShowScopeFilter(false);
+                setShowCategoryFilter(false);
+                setShowServiceAreaFilter(!showServiceAreaFilter);
+              }}
+              className={`flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-all ${
+                serviceAreaFilter !== 'ALL'
+                  ? 'bg-[color:var(--brand-soft)] border-transparent text-[color:var(--brand-ink)]'
+                  : 'bg-card border-border text-foreground hover:bg-muted'
+              }`}
+            >
+              <span className="max-w-[140px] truncate">{activeServiceAreaLabel}</span>
+              <Icon name="chevron-down" className={`h-3.5 w-3.5 transition-transform ${showServiceAreaFilter ? 'rotate-180' : ''}`} />
+            </button>
+            {showServiceAreaFilter && (
+              <div className="absolute right-0 top-full z-50 mt-2 max-h-[280px] min-w-[240px] overflow-y-auto rounded-lg border border-border bg-popover shadow-[var(--shadow-2)] sm:left-0 sm:right-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setServiceAreaFilter('ALL');
+                    setShowServiceAreaFilter(false);
+                  }}
+                  className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-xs font-medium transition-colors ${
+                    serviceAreaFilter === 'ALL'
+                      ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
+                      : 'text-foreground hover:bg-muted'
+                  }`}
+                >
+                  <span>{embeddedInServiceCenter ? 'Alle Leistungen' : 'All service areas'}</span>
+                  <span className="rounded-md px-1.5 py-0.5 text-[10px] font-bold tabular-nums sq-tone-neutral">
+                    {serviceAreaCount('ALL')}
+                  </span>
+                </button>
+                {SERVICE_AREA_OPTIONS.map((area) => {
+                  const selected = serviceAreaFilter === area;
+                  return (
+                    <button
+                      key={area}
+                      type="button"
+                      onClick={() => {
+                        setServiceAreaFilter(area);
+                        setShowServiceAreaFilter(false);
+                      }}
+                      className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-xs font-medium transition-colors ${
+                        selected
+                          ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
+                          : 'text-foreground hover:bg-muted'
+                      }`}
+                    >
+                      <span className="truncate">{area}</span>
+                      <span className="rounded-md px-1.5 py-0.5 text-[10px] font-bold tabular-nums sq-tone-neutral">
+                        {serviceAreaCount(area)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                setShowScopeFilter(false);
+                setShowServiceAreaFilter(false);
                 setShowCategoryFilter(!showCategoryFilter);
               }}
               className={`flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-all ${
@@ -595,84 +697,16 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
           />
         </div>
       ) : (
-        <div className="space-y-2">
-          {filtered.map((v) => {
-            const CatIcon = getCategoryIcon(v.category);
-            return (
-              <div
-                key={v.id}
-                role="button"
-                tabIndex={0}
-                aria-label={`Open vendor ${v.name}`}
-                className="group sq-card sq-press w-full cursor-pointer rounded-2xl p-4 text-left shadow-[var(--shadow-1)] transition-all hover:bg-muted/35"
-                onClick={() => onOpenDetail?.(v)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    onOpenDetail?.(v);
-                  }
-                }}
-              >
-                <div className="flex items-center gap-4">
-                  {/* Icon */}
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl sq-tone-brand">
-                    <CatIcon className="h-5 w-5" />
-                  </div>
-
-                  {/* Main info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate text-sm font-semibold text-foreground">{v.name}</span>
-                      <StatusChip tone={v.sourceType === 'ONLINE_VENDOR' ? 'ai' : 'neutral'}>
-                        {v.sourceType === 'ONLINE_VENDOR' ? 'Online' : 'Local'}
-                      </StatusChip>
-                      {!v.isActive && (
-                        <StatusChip tone="watch">Inactive</StatusChip>
-                      )}
-                    </div>
-                    <div className="mt-0.5 flex items-center gap-3 text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <StatusChip tone="neutral">{getCategoryLabel(v.category)}</StatusChip>
-                      </span>
-                      {v.city && <span className="flex items-center gap-1"><Icon name="map-pin" className="w-3 h-3" />{v.city}</span>}
-                      {v.contactName && <span className="flex items-center gap-1"><Icon name="user" className="w-3 h-3" />{v.contactName}</span>}
-                    </div>
-                  </div>
-
-                  {/* Service areas */}
-                  <div className="hidden md:flex items-center gap-1 max-w-[200px] overflow-hidden">
-                    {v.serviceAreas.slice(0, 3).map((sa) => (
-                      <StatusChip key={sa} tone="info" className="whitespace-nowrap text-[9px]">{sa}</StatusChip>
-                    ))}
-                    {v.serviceAreas.length > 3 && (
-                      <span className="text-[9px] text-muted-foreground">+{v.serviceAreas.length - 3}</span>
-                    )}
-                  </div>
-
-                  {/* Vehicle count */}
-                  <div className="shrink-0 text-center text-muted-foreground">
-                    <div className="text-sm font-bold text-foreground tabular-nums">{v.linkedVehicleCount}</div>
-                    <div className="text-[9px]">Vehicles</div>
-                  </div>
-
-                  <button
-                    type="button"
-                    aria-label={`Edit vendor ${v.name}`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      openEdit(v);
-                    }}
-                    className="hidden rounded-lg border border-border text-foreground hover:bg-muted px-2.5 py-1.5 text-[10px] font-semibold transition-all sm:inline-flex"
-                  >
-                    Edit
-                  </button>
-
-                  {/* Arrow */}
-                  <Icon name="chevron-right" className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                </div>
-              </div>
-            );
-          })}
+        <div className="space-y-3">
+          {filtered.map((v) => (
+            <VendorDirectoryCard
+              key={v.id}
+              vendor={v}
+              onView={(vendor) => onOpenDetail?.(vendor)}
+              onEdit={canManage ? openEdit : undefined}
+              onCreateTask={() => setCreateTaskVendor(v)}
+            />
+          ))}
         </div>
       )}
 
@@ -872,6 +906,15 @@ export function VendorManagementView({ onOpenDetail, embedded = false }: VendorM
               </div>
             </div>
       </FormDialog>
+
+      <ServiceTaskCreateModal
+        open={createTaskVendor != null}
+        onOpenChange={(open) => {
+          if (!open) setCreateTaskVendor(null);
+        }}
+        vendors={vendors}
+        defaultVendorId={createTaskVendor?.id ?? null}
+      />
     </div>
   );
 }

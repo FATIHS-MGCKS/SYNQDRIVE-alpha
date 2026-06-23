@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, ActivityAction, ActivityEntity } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService, AuditContext } from '@modules/activity-log/audit.service';
+import { ServiceCasesService } from '@modules/service-cases/service-cases.service';
 import {
   CreateVendorDto,
   UpdateVendorDto,
@@ -29,6 +30,7 @@ export class VendorsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly serviceCases: ServiceCasesService,
   ) {}
 
   // ── master data ────────────────────────────────────────────────────────────
@@ -388,13 +390,12 @@ export class VendorsService {
   }
 
   /**
-   * Vendor service/maintenance history is not modeled yet (the legacy
-   * PartnerServiceCase world was removed). Returns empty until a canonical
-   * ServiceCase model exists — no dummy logic.
+   * Completed canonical service cases for this vendor (V4.9.49).
+   * Returns [] when no cases exist — no fabricated history.
    */
   async getServiceHistory(orgId: string, vendorId: string) {
     await this.assertVendor(orgId, vendorId);
-    return [] as Array<Record<string, unknown>>;
+    return this.serviceCases.listCompletedForVendor(orgId, vendorId);
   }
 
   async getStats(orgId: string) {

@@ -323,6 +323,59 @@ enum InvoiceStatus {
   UNCOLLECTIBLE
 }
 
+enum BillingModel {
+  PER_CONNECTED_VEHICLE
+}
+
+enum BillingInterval {
+  MONTHLY
+}
+
+enum BillingPriceVersionStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum BillingTierMode {
+  VOLUME
+  GRADUATED
+}
+
+enum BillingUsageCalculationStatus {
+  OK
+  PRICE_NOT_CONFIGURED
+  NO_ACTIVE_PRICE_VERSION
+  NO_BILLABLE_VEHICLES
+}
+
+enum BillingPaymentMethodType {
+  CARD
+  SEPA_DEBIT
+  UNKNOWN
+}
+
+enum BillingPaymentMethodStatus {
+  ACTIVE
+  EXPIRED
+  REQUIRES_ACTION
+  FAILED
+  DETACHED
+}
+
+enum StripeWebhookEventStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+enum BillingOrgPriceOverrideStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
 enum ProspectStatus {
   NEW
   CONTACTED
@@ -668,19 +721,50 @@ enum TirePosition {
   REAR_RIGHT
 }
 
-enum TicketStatus {
+enum SupportTicketStatus {
   OPEN
   IN_PROGRESS
-  WAITING
+  WAITING_FOR_CUSTOMER
   RESOLVED
   CLOSED
 }
 
-enum TicketPriority {
+enum SupportTicketPriority {
   LOW
-  MEDIUM
+  NORMAL
   HIGH
-  URGENT
+  CRITICAL
+}
+
+enum SupportTicketCategory {
+  APP
+  VEHICLE
+  BOOKING
+  BILLING
+  DIMO_TELEMETRY
+  ACCOUNT
+  DOCUMENTS
+  DATA_AUTHORIZATION
+  HEALTH
+  OTHER
+}
+
+enum SupportTicketRelatedEntityType {
+  VEHICLE
+  BOOKING
+  INVOICE
+  CUSTOMER
+  USER
+  AUTHORIZATION
+  CONNECTIVITY
+  HEALTH
+  OTHER
+}
+
+enum SupportMessageSenderRole {
+  USER
+  MASTER_ADMIN
+  SYSTEM
 }
 
 enum CleaningStatus {
@@ -747,10 +831,17 @@ model Organization {
   vehicleComplaints         VehicleComplaint[]
   orgIntegrations           OrganizationIntegration[]
   subscriptions             BillingSubscription[]
+  billingUsageSnapshots     BillingUsageSnapshot[]
+  billingPaymentMethods     BillingPaymentMethod[]
+  billingOrgPriceOverrides  BillingOrganizationPriceOverride[]
+  billingAuditLogs          BillingAuditLog[]
   customers                 Customer[]
   customerDocuments         CustomerDocument[]
   customerTimelineEvents    CustomerTimelineEvent[]
   customerEligibilityPolicy CustomerEligibilityPolicy?
+  organizationRentalRules   OrganizationRentalRules?
+  rentalVehicleCategories   RentalVehicleCategory[]
+  vehicleRentalRequirementOverrides VehicleRentalRequirementOverride[]
   bookings                  Booking[]
   bookingHandoverProtocols  BookingHandoverProtocol[]
   activityLogs              ActivityLog[]
@@ -761,6 +852,10 @@ model Organization {
   whatsappConfig            OrgWhatsAppConfig?
   whatsappConversations     WhatsAppConversation[]
   whatsappMessages          WhatsAppMessage[]
+  whatsappWebhookEvents     WhatsAppWebhookEvent[]
+  whatsappConsents          WhatsAppConsent[]
+  whatsappTemplates         WhatsAppTemplate[]
+  whatsappAiSuggestions     WhatsAppAiSuggestion[]
   voiceAssistant            VoiceAssistant?
   voiceConversations        VoiceConversation[]
   insightPolicy             TenantInsightPolicy?
@@ -830,6 +925,7 @@ model User {
   invitesSent              OrganizationUserInvite[] @relation("InvitesSent")
   invitesAccepted          OrganizationUserInvite[] @relation("InvitesAccepted")
   organizationRolesCreated OrganizationRole[]       @relation("RolesCreated")
+  billingPriceVersionsCreated BillingPriceVersion[] @relation("BillingPriceVersionsCreated")
 
   @@map("users")
 }
@@ -1127,6 +1223,8 @@ model Vehicle {
   /// @deprecated Legacy admin-set column. Canonical health is RentalHealthService / VehicleHealthStatus — do not read for UI or booking gates.
   healthStatus                      HealthStatus      @default(GOOD) @map("health_status")
   notes                             String?
+  /// When true, vehicle is excluded from per-vehicle billing (manual override).
+  billingExcluded                   Boolean           @default(false) @map("billing_excluded")
   leasingRateCents                  Int?              @map("leasing_rate_cents")
   insuranceCostCents                Int?              @map("insurance_cost_cents")
   taxCostCents                      Int?              @map("tax_cost_cents")
@@ -1216,9 +1314,14 @@ model Vehicle {
   hmSignalGroupStates    HmSignalGroupState[]
   providerConsents       VehicleProviderConsent[]
   tariffAssignments      VehicleTariffAssignment[]
+  rentalCategoryId       String?                      @map("rental_category_id")
+  rentalCategory         RentalVehicleCategory?       @relation(fields: [rentalCategoryId], references: [id], onDelete: SetNull)
+  rentalRequirementOverride VehicleRentalRequirementOverride?
+  whatsappConversations     WhatsAppConversation[]
 
   @@unique([vin, organizationId])
   @@index([organizationId])
+  @@index([rentalCategoryId])
   @@index([homeStationId])
   @@index([currentStationId])
   @@index([expectedStationId])
@@ -2021,6 +2124,70 @@ model OrganizationIntegration {
 // BILLING
 // ------------------------------------------------
 
+model BillingPriceBook {
+  id           String         @id @default(uuid())
+  name         String
+  productKey   String         @map("product_key")
+  billingModel BillingModel   @default(PER_CONNECTED_VEHICLE) @map("billing_model")
+  interval     BillingInterval @default(MONTHLY)
+  currency     String         @default("EUR")
+  isDefault    Boolean        @default(false) @map("is_default")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  versions            BillingPriceVersion[]
+  usageSnapshots      BillingUsageSnapshot[]
+  orgPriceOverrides   BillingOrganizationPriceOverride[]
+  subscriptions       BillingSubscription[]
+
+  @@index([productKey])
+  @@index([isDefault])
+  @@map("billing_price_books")
+}
+
+model BillingPriceVersion {
+  id              String                    @id @default(uuid())
+  priceBookId     String                    @map("price_book_id")
+  versionNumber   Int                       @map("version_number")
+  versionLabel    String?                   @map("version_label")
+  status          BillingPriceVersionStatus @default(DRAFT)
+  effectiveFrom   DateTime?                 @map("effective_from")
+  effectiveTo     DateTime?                 @map("effective_to")
+  tierMode        BillingTierMode           @default(VOLUME) @map("tier_mode")
+  createdByUserId String?                   @map("created_by_user_id")
+  publishedAt     DateTime?                 @map("published_at")
+  createdAt       DateTime                  @default(now()) @map("created_at")
+  updatedAt       DateTime                  @updatedAt @map("updated_at")
+
+  priceBook         BillingPriceBook                   @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
+  createdByUser     User?                              @relation("BillingPriceVersionsCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  tiers             BillingPriceTier[]
+  usageSnapshots    BillingUsageSnapshot[]
+  orgPriceOverrides BillingOrganizationPriceOverride[]
+  subscriptions     BillingSubscription[]
+
+  @@unique([priceBookId, versionNumber])
+  @@index([priceBookId, status])
+  @@map("billing_price_versions")
+}
+
+model BillingPriceTier {
+  id              String   @id @default(uuid())
+  priceVersionId  String   @map("price_version_id")
+  minVehicles     Int      @map("min_vehicles")
+  maxVehicles     Int?     @map("max_vehicles")
+  unitPriceCents  Int?     @map("unit_price_cents")
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  priceVersion   BillingPriceVersion    @relation(fields: [priceVersionId], references: [id], onDelete: Cascade)
+  usageSnapshots BillingUsageSnapshot[]
+
+  @@index([priceVersionId, sortOrder])
+  @@map("billing_price_tiers")
+}
+
 model BillingSubscription {
   id                   String        @id @default(uuid())
   organizationId       String        @map("organization_id")
@@ -2030,13 +2197,18 @@ model BillingSubscription {
   currentPeriodStart   DateTime?     @map("current_period_start")
   currentPeriodEnd     DateTime?     @map("current_period_end")
   cancelAtPeriodEnd    Boolean       @default(false) @map("cancel_at_period_end")
+  priceBookId          String?       @map("price_book_id")
+  priceVersionId       String?       @map("price_version_id")
   createdAt            DateTime      @default(now()) @map("created_at")
   updatedAt            DateTime      @updatedAt @map("updated_at")
 
-  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  priceBook    BillingPriceBook?   @relation(fields: [priceBookId], references: [id], onDelete: SetNull)
+  priceVersion BillingPriceVersion? @relation(fields: [priceVersionId], references: [id], onDelete: SetNull)
   invoices     BillingInvoice[]
 
   @@index([organizationId])
+  @@index([priceBookId])
   @@map("billing_subscriptions")
 }
 
@@ -2055,9 +2227,139 @@ model BillingInvoice {
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
   subscription BillingSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  lines        BillingInvoiceLine[]
 
   @@index([subscriptionId])
   @@map("billing_invoices")
+}
+
+model BillingInvoiceLine {
+  id               String    @id @default(uuid())
+  invoiceId        String    @map("invoice_id")
+  usageSnapshotId  String?   @map("usage_snapshot_id")
+  description      String
+  quantity         Int
+  unitAmountCents  Int?      @map("unit_amount_cents")
+  subtotalCents    Int       @map("subtotal_cents")
+  taxRateBps       Int?      @map("tax_rate_bps")
+  taxCents         Int?      @map("tax_cents")
+  totalCents       Int       @map("total_cents")
+  periodStart      DateTime? @map("period_start")
+  periodEnd        DateTime? @map("period_end")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  invoice       BillingInvoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  usageSnapshot BillingUsageSnapshot? @relation(fields: [usageSnapshotId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId])
+  @@index([usageSnapshotId])
+  @@map("billing_invoice_lines")
+}
+
+model BillingUsageSnapshot {
+  id                    String                        @id @default(uuid())
+  organizationId        String                        @map("organization_id")
+  periodStart           DateTime                      @map("period_start")
+  periodEnd             DateTime                      @map("period_end")
+  connectedVehicleCount Int                           @map("connected_vehicle_count")
+  billableVehicleCount  Int                           @map("billable_vehicle_count")
+  billableVehicleIds    Json                          @map("billable_vehicle_ids")
+  excludedVehicleIds    Json                          @default("[]") @map("excluded_vehicle_ids")
+  excludedReasonSummary Json?                         @map("excluded_reason_summary")
+  priceBookId           String?                       @map("price_book_id")
+  priceVersionId        String?                       @map("price_version_id")
+  priceTierId           String?                       @map("price_tier_id")
+  unitPriceCents        Int?                          @map("unit_price_cents")
+  subtotalCents         Int?                          @map("subtotal_cents")
+  taxCents              Int?                          @map("tax_cents")
+  totalCents            Int?                          @map("total_cents")
+  currency              String                        @default("EUR")
+  calculationStatus     BillingUsageCalculationStatus @map("calculation_status")
+  createdAt             DateTime                      @default(now()) @map("created_at")
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  priceBook    BillingPriceBook?    @relation(fields: [priceBookId], references: [id], onDelete: SetNull)
+  priceVersion BillingPriceVersion? @relation(fields: [priceVersionId], references: [id], onDelete: SetNull)
+  priceTier    BillingPriceTier?    @relation(fields: [priceTierId], references: [id], onDelete: SetNull)
+  invoiceLines BillingInvoiceLine[]
+
+  @@index([organizationId, periodStart])
+  @@index([priceVersionId])
+  @@map("billing_usage_snapshots")
+}
+
+model BillingPaymentMethod {
+  id                    String                     @id @default(uuid())
+  organizationId        String                     @map("organization_id")
+  stripePaymentMethodId String?                    @unique @map("stripe_payment_method_id")
+  type                  BillingPaymentMethodType   @default(UNKNOWN)
+  brand                 String?
+  last4                 String?
+  expMonth              Int?                       @map("exp_month")
+  expYear               Int?                       @map("exp_year")
+  isDefault             Boolean                    @default(false) @map("is_default")
+  status                BillingPaymentMethodStatus @default(ACTIVE)
+  createdAt             DateTime                   @default(now()) @map("created_at")
+  updatedAt             DateTime                   @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("billing_payment_methods")
+}
+
+model StripeWebhookEvent {
+  id            String                   @id @default(uuid())
+  stripeEventId String                   @unique @map("stripe_event_id")
+  type          String
+  status        StripeWebhookEventStatus @default(RECEIVED)
+  payloadHash   String?                  @map("payload_hash")
+  errorMessage  String?                  @map("error_message")
+  processedAt   DateTime?                @map("processed_at")
+  createdAt     DateTime                 @default(now()) @map("created_at")
+
+  @@index([status, createdAt])
+  @@map("stripe_webhook_events")
+}
+
+model BillingAuditLog {
+  id             String   @id @default(uuid())
+  organizationId String?  @map("organization_id")
+  actorUserId    String?  @map("actor_user_id")
+  action         String
+  entityType     String   @map("entity_type")
+  entityId       String?  @map("entity_id")
+  beforeJson     Json?    @map("before_json")
+  afterJson      Json?    @map("after_json")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([entityType, entityId])
+  @@map("billing_audit_logs")
+}
+
+model BillingOrganizationPriceOverride {
+  id                      String                        @id @default(uuid())
+  organizationId          String                        @map("organization_id")
+  priceBookId             String?                       @map("price_book_id")
+  priceVersionId          String?                       @map("price_version_id")
+  customUnitPriceCents    Int?                          @map("custom_unit_price_cents")
+  customMonthlyMinimumCents Int?                        @map("custom_monthly_minimum_cents")
+  reason                  String?
+  validFrom               DateTime                      @map("valid_from")
+  validTo                 DateTime?                     @map("valid_to")
+  status                  BillingOrgPriceOverrideStatus @default(ACTIVE)
+  createdAt               DateTime                      @default(now()) @map("created_at")
+  updatedAt               DateTime                      @updatedAt @map("updated_at")
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  priceBook    BillingPriceBook?    @relation(fields: [priceBookId], references: [id], onDelete: SetNull)
+  priceVersion BillingPriceVersion? @relation(fields: [priceVersionId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@map("billing_organization_price_overrides")
 }
 
 // ------------------------------------------------
@@ -2152,6 +2454,8 @@ model Customer {
   misuseCases           MisuseCase[]
 
   vehicleDamages        VehicleDamage[]
+  whatsappConversations WhatsAppConversation[]
+  whatsappConsents      WhatsAppConsent[]
 
   @@index([organizationId])
   @@index([email])
@@ -2238,6 +2542,118 @@ model CustomerEligibilityPolicy {
 }
 
 // ------------------------------------------------
+// RENTAL RULES & VEHICLE ELIGIBILITY
+// ------------------------------------------------
+
+enum RentalForeignTravelPolicy {
+  ALLOWED
+  APPROVAL_REQUIRED
+  NOT_ALLOWED
+}
+
+enum RentalAdditionalDriverPolicy {
+  ALLOWED
+  APPROVAL_REQUIRED
+  NOT_ALLOWED
+}
+
+enum RentalYoungDriverPolicy {
+  ALLOWED
+  FEE_REQUIRED
+  NOT_ALLOWED
+}
+
+enum RentalVehicleCategoryType {
+  ECONOMY
+  COMPACT
+  TRANSPORTER
+  PREMIUM
+  PERFORMANCE
+  LUXURY
+  EV_PERFORMANCE
+  CUSTOM
+}
+
+model OrganizationRentalRules {
+  id                         String                      @id @default(uuid())
+  organizationId             String                      @unique @map("organization_id")
+  minimumAgeYears            Int?                        @map("minimum_age_years")
+  minimumLicenseHoldingMonths Int?                       @map("minimum_license_holding_months")
+  depositAmountCents         Int?                        @map("deposit_amount_cents")
+  depositCurrency            String                      @default("EUR") @map("deposit_currency")
+  creditCardRequired         Boolean?
+  foreignTravelPolicy        RentalForeignTravelPolicy?
+  additionalDriverPolicy     RentalAdditionalDriverPolicy?
+  youngDriverPolicy          RentalYoungDriverPolicy?
+  insuranceRequirement       String?                     @map("insurance_requirement")
+  manualApprovalRequired     Boolean?                    @map("manual_approval_required")
+  notes                      String?
+  isActive                   Boolean                     @default(true) @map("is_active")
+  createdAt                  DateTime                    @default(now()) @map("created_at")
+  updatedAt                  DateTime                    @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_rental_rules")
+}
+
+model RentalVehicleCategory {
+  id                          String                      @id @default(uuid())
+  organizationId              String                      @map("organization_id")
+  name                        String
+  description                 String?
+  type                        RentalVehicleCategoryType?
+  color                       String?
+  icon                        String?
+  minimumAgeYears             Int?                        @map("minimum_age_years")
+  minimumLicenseHoldingMonths Int?                        @map("minimum_license_holding_months")
+  depositAmountCents          Int?                        @map("deposit_amount_cents")
+  depositCurrency             String?                     @map("deposit_currency")
+  creditCardRequired          Boolean?                    @map("credit_card_required")
+  foreignTravelPolicy         RentalForeignTravelPolicy?
+  additionalDriverPolicy      RentalAdditionalDriverPolicy?
+  youngDriverPolicy           RentalYoungDriverPolicy?
+  insuranceRequirement        String?                     @map("insurance_requirement")
+  manualApprovalRequired      Boolean?                    @map("manual_approval_required")
+  notes                       String?
+  isActive                    Boolean                     @default(true) @map("is_active")
+  createdAt                   DateTime                    @default(now()) @map("created_at")
+  updatedAt                   DateTime                    @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicles     Vehicle[]
+
+  @@index([organizationId])
+  @@index([organizationId, isActive])
+  @@map("rental_vehicle_categories")
+}
+
+model VehicleRentalRequirementOverride {
+  id                          String                      @id @default(uuid())
+  organizationId              String                      @map("organization_id")
+  vehicleId                   String                      @unique @map("vehicle_id")
+  minimumAgeYears             Int?                        @map("minimum_age_years")
+  minimumLicenseHoldingMonths Int?                        @map("minimum_license_holding_months")
+  depositAmountCents          Int?                        @map("deposit_amount_cents")
+  depositCurrency             String?                     @map("deposit_currency")
+  creditCardRequired          Boolean?                    @map("credit_card_required")
+  foreignTravelPolicy         RentalForeignTravelPolicy?
+  additionalDriverPolicy      RentalAdditionalDriverPolicy?
+  youngDriverPolicy           RentalYoungDriverPolicy?
+  insuranceRequirement        String?                     @map("insurance_requirement")
+  manualApprovalRequired      Boolean?                    @map("manual_approval_required")
+  notes                       String?
+  createdAt                   DateTime                    @default(now()) @map("created_at")
+  updatedAt                   DateTime                    @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("vehicle_rental_requirement_overrides")
+}
+
+// ------------------------------------------------
 // BOOKINGS
 // ------------------------------------------------
 
@@ -2282,6 +2698,7 @@ model Booking {
   misuseCases           MisuseCase[]
   priceSnapshots        BookingPriceSnapshot[]
   vehicleDamages        VehicleDamage[]
+  whatsappConversations WhatsAppConversation[]
 
   @@index([organizationId])
   @@index([customerId])
@@ -2682,42 +3099,58 @@ model ActivityLog {
 // ------------------------------------------------
 
 model SupportTicket {
-  id              String         @id @default(uuid())
-  ticketNumber    Int            @unique @default(autoincrement()) @map("ticket_number")
-  organizationId  String?        @map("organization_id")
-  createdByUserId String?        @map("created_by_user_id")
-  reporterEmail   String         @map("reporter_email")
-  reporterName    String?        @map("reporter_name")
-  subject         String
-  description     String
-  status          TicketStatus   @default(OPEN)
-  priority        TicketPriority @default(MEDIUM)
-  assignedTo      String?        @map("assigned_to")
-  lastActivityAt  DateTime       @default(now()) @map("last_activity_at")
-  resolvedAt      DateTime?      @map("resolved_at")
-  closedAt        DateTime?      @map("closed_at")
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
+  id                String                          @id @default(uuid())
+  ticketNumber      Int                             @unique @default(autoincrement()) @map("ticket_number")
+  organizationId    String?                         @map("organization_id")
+  createdByUserId   String?                         @map("created_by_user_id")
+  reporterEmail     String                          @map("reporter_email")
+  reporterName      String?                         @map("reporter_name")
+  subject           String
+  description       String
+  category          SupportTicketCategory           @default(OTHER)
+  status            SupportTicketStatus             @default(OPEN)
+  priority          SupportTicketPriority           @default(NORMAL)
+  assignedToUserId  String?                         @map("assigned_to")
+  relatedEntityType SupportTicketRelatedEntityType? @map("related_entity_type")
+  relatedEntityId   String?                         @map("related_entity_id")
+  sourcePage        String?                         @map("source_page")
+  lastMessageAt     DateTime                        @default(now()) @map("last_message_at")
+  lastMessageByRole SupportMessageSenderRole?       @map("last_message_by_role")
+  firstResponseAt   DateTime?                       @map("first_response_at")
+  resolvedAt        DateTime?                       @map("resolved_at")
+  closedAt          DateTime?                       @map("closed_at")
+  reopenedAt        DateTime?                       @map("reopened_at")
+  unreadForUser     Boolean                         @default(false) @map("unread_for_user")
+  unreadForAdmin    Boolean                         @default(true) @map("unread_for_admin")
+  metadata          Json?
+  createdAt         DateTime                        @default(now()) @map("created_at")
+  updatedAt         DateTime                        @updatedAt @map("updated_at")
 
-  messages SupportMessage[]
+  messages SupportTicketMessage[]
 
   @@index([status])
   @@index([priority])
+  @@index([category])
   @@index([organizationId])
   @@index([createdAt])
   @@index([ticketNumber])
+  @@index([lastMessageAt])
+  @@index([assignedToUserId])
+  @@index([unreadForAdmin])
   @@map("support_tickets")
 }
 
-model SupportMessage {
-  id         String   @id @default(uuid())
-  ticketId   String   @map("ticket_id")
-  senderId   String?  @map("sender_id")
-  senderName String   @map("sender_name")
-  senderRole String   @default("user") @map("sender_role")
-  content    String
-  imageUrl   String?  @map("image_url")
-  createdAt  DateTime @default(now()) @map("created_at")
+model SupportTicketMessage {
+  id           String                   @id @default(uuid())
+  ticketId     String                   @map("ticket_id")
+  senderUserId String?                  @map("sender_id")
+  senderName   String                   @map("sender_name")
+  senderRole   SupportMessageSenderRole @default(USER) @map("sender_role")
+  body         String                   @map("content")
+  isInternal   Boolean                  @default(false) @map("is_internal")
+  imageUrl     String?                  @map("image_url")
+  attachments  Json?
+  createdAt    DateTime                 @default(now()) @map("created_at")
 
   ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
@@ -2869,11 +3302,13 @@ model OrgTask {
   source          String?      @map("source")
   sourceType      TaskSource   @default(MANUAL) @map("source_type")
   dedupKey        String?      @map("dedup_key")
+  serviceCaseId   String?      @map("service_case_id")
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
 
   fine          Fine?               @relation(fields: [fineId], references: [id], onDelete: SetNull)
   invoice       OrgInvoice?         @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  serviceCase   ServiceCase?        @relation(fields: [serviceCaseId], references: [id], onDelete: SetNull)
   checklistItems TaskChecklistItem[]
   comments      TaskComment[]
   attachments   TaskAttachment[]
@@ -2896,6 +3331,7 @@ model OrgTask {
   @@index([documentId])
   @@index([assignedUserId])
   @@index([createdByUserId])
+  @@index([serviceCaseId])
   // Task list is per-org filtered by status; dueDate is the common sort.
   @@index([organizationId, status])
   @@index([organizationId, assignedUserId])
@@ -2972,6 +3408,118 @@ model TaskEvent {
 
   @@index([taskId])
   @@map("task_events")
+}
+
+// ------------------------------------------------
+// SERVICE CASES (V4.9.49 — canonical maintenance/repair cases)
+// ------------------------------------------------
+// A ServiceCase groups related OrgTasks under one operational workshop case.
+// Tasks remain the unit of work; serviceCaseId on OrgTask is optional so legacy
+// rows and standalone tasks keep working without backfill.
+
+enum ServiceCaseCategory {
+  SERVICE
+  REPAIR
+  INSPECTION
+  TUV_HU
+  TIRES
+  BRAKES
+  BATTERY
+  DAMAGE
+  DIAGNOSTIC
+}
+
+enum ServiceCaseStatus {
+  OPEN
+  SCHEDULED
+  IN_PROGRESS
+  WAITING_VENDOR
+  WAITING_PARTS
+  COMPLETED
+  CANCELLED
+}
+
+enum ServiceCaseSource {
+  MANUAL
+  HEALTH
+  DTC
+  DAMAGE
+  BOOKING
+  DOCUMENT
+  SERVICE_COMPLIANCE
+}
+
+model ServiceCase {
+  id                 String              @id @default(uuid())
+  organizationId     String              @map("organization_id")
+  vehicleId          String              @map("vehicle_id")
+  vendorId           String?             @map("vendor_id")
+  title              String
+  description        String?
+  category           ServiceCaseCategory
+  status             ServiceCaseStatus   @default(OPEN)
+  priority           TaskPriority        @default(NORMAL)
+  source             ServiceCaseSource   @default(MANUAL)
+  openedAt           DateTime            @default(now()) @map("opened_at")
+  scheduledAt        DateTime?           @map("scheduled_at")
+  expectedReadyAt    DateTime?           @map("expected_ready_at")
+  completedAt        DateTime?           @map("completed_at")
+  cancelledAt        DateTime?           @map("cancelled_at")
+  estimatedCostCents Int?                @map("estimated_cost_cents")
+  actualCostCents    Int?                @map("actual_cost_cents")
+  downtimeStart      DateTime?           @map("downtime_start")
+  downtimeEnd        DateTime?           @map("downtime_end")
+  blocksRental       Boolean             @default(false) @map("blocks_rental")
+  completionNotes    String?             @map("completion_notes")
+  documentId         String?             @map("document_id")
+  metadata           Json?
+  createdByUserId    String?             @map("created_by_user_id")
+  updatedByUserId    String?             @map("updated_by_user_id")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  tasks       OrgTask[]
+  comments    ServiceCaseComment[]
+  attachments ServiceCaseAttachment[]
+
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([vendorId])
+  @@index([status])
+  @@index([category])
+  @@index([organizationId, status])
+  @@index([organizationId, vehicleId])
+  @@index([organizationId, vendorId])
+  @@map("service_cases")
+}
+
+model ServiceCaseComment {
+  id            String   @id @default(uuid())
+  serviceCaseId String   @map("service_case_id")
+  userId        String?  @map("user_id")
+  body          String
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  serviceCase ServiceCase @relation(fields: [serviceCaseId], references: [id], onDelete: Cascade)
+
+  @@index([serviceCaseId])
+  @@map("service_case_comments")
+}
+
+model ServiceCaseAttachment {
+  id               String   @id @default(uuid())
+  serviceCaseId    String   @map("service_case_id")
+  fileUrl          String   @map("file_url")
+  fileName         String?  @map("file_name")
+  mimeType         String?  @map("mime_type")
+  size             Int?
+  uploadedByUserId String?  @map("uploaded_by_user_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  serviceCase ServiceCase @relation(fields: [serviceCaseId], references: [id], onDelete: Cascade)
+
+  @@index([serviceCaseId])
+  @@map("service_case_attachments")
 }
 
 // ------------------------------------------------
@@ -4739,71 +5287,261 @@ enum WhatsAppAiMode {
   FULL
 }
 
+enum WhatsAppProviderStatus {
+  NOT_CONFIGURED
+  CONFIGURED
+  CONNECTED
+  ERROR
+}
+
+enum WhatsAppMessageDeliveryStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum WhatsAppConversationStatus {
+  OPEN
+  PENDING_HUMAN
+  CLOSED
+}
+
+enum WhatsAppTemplateCategory {
+  BOOKING_CONFIRMATION
+  PICKUP_REMINDER
+  RETURN_REMINDER
+  MISSING_DOCUMENTS
+  PAYMENT_REMINDER
+  DEPOSIT_REMINDER
+  DAMAGE_FOLLOWUP
+  HANDOVER_LINK
+  RETURN_LINK
+  SUPPORT_UPDATE
+  VEHICLE_READY
+}
+
+enum WhatsAppTemplateProviderStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  DISABLED
+}
+
 model OrgWhatsAppConfig {
-  id                  String         @id @default(uuid())
-  organizationId      String         @unique @map("organization_id")
-  isConnected         Boolean        @default(false) @map("is_connected")
-  isActive            Boolean        @default(false) @map("is_active")
-  phoneNumber         String?        @map("phone_number")
-  businessName        String?        @map("business_name")
-  aiMode              WhatsAppAiMode @default(SUGGEST_ONLY) @map("ai_mode")
-  aiCanCreateTasks    Boolean        @default(false) @map("ai_can_create_tasks")
-  aiCanCreateSupport  Boolean        @default(false) @map("ai_can_create_support")
-  aiCanUseBookings    Boolean        @default(true) @map("ai_can_use_bookings")
-  aiCanContactVendors Boolean        @default(false) @map("ai_can_contact_vendors")
-  aiEscalationEnabled Boolean        @default(true) @map("ai_escalation_enabled")
-  connectedAt         DateTime?      @map("connected_at")
-  connectedByName     String?        @map("connected_by_name")
-  createdAt           DateTime       @default(now()) @map("created_at")
-  updatedAt           DateTime       @updatedAt @map("updated_at")
+  id                  String                @id @default(uuid())
+  organizationId      String                @unique @map("organization_id")
+  isConnected         Boolean               @default(false) @map("is_connected")
+  isActive            Boolean               @default(false) @map("is_active")
+  phoneNumber         String?               @map("phone_number")
+  phoneNumberId       String?               @map("phone_number_id")
+  wabaId              String?               @map("waba_id")
+  businessName        String?               @map("business_name")
+  providerStatus      WhatsAppProviderStatus @default(NOT_CONFIGURED) @map("provider_status")
+  webhookVerifyToken  String?               @map("webhook_verify_token")
+  appSecretConfigured Boolean               @default(false) @map("app_secret_configured")
+  accessTokenConfigured Boolean             @default(false) @map("access_token_configured")
+  metaApiVersion      String                @default("v21.0") @map("meta_api_version")
+  lastWebhookAt       DateTime?             @map("last_webhook_at")
+  serviceWindowOpen   Boolean               @default(false) @map("service_window_open")
+  aiMode              WhatsAppAiMode        @default(SUGGEST_ONLY) @map("ai_mode")
+  aiCanCreateTasks    Boolean               @default(false) @map("ai_can_create_tasks")
+  aiCanCreateSupport  Boolean               @default(false) @map("ai_can_create_support")
+  aiCanUseBookings    Boolean               @default(true) @map("ai_can_use_bookings")
+  aiCanContactVendors Boolean               @default(false) @map("ai_can_contact_vendors")
+  aiEscalationEnabled Boolean               @default(true) @map("ai_escalation_enabled")
+  connectedAt         DateTime?             @map("connected_at")
+  connectedByName     String?               @map("connected_by_name")
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
+  @@index([phoneNumberId])
   @@map("org_whatsapp_configs")
 }
 
 model WhatsAppConversation {
-  id                 String    @id @default(uuid())
-  organizationId     String    @map("organization_id")
-  contactPhone       String    @map("contact_phone")
-  contactName        String?   @map("contact_name")
-  lastMessageAt      DateTime? @map("last_message_at")
-  lastMessagePreview String?   @map("last_message_preview")
-  unreadCount        Int       @default(0) @map("unread_count")
-  status             String    @default("open")
-  assignedTo         String?   @map("assigned_to")
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
+  id                     String                   @id @default(uuid())
+  organizationId         String                   @map("organization_id")
+  contactPhone           String                   @map("contact_phone")
+  contactPhoneNormalized String                   @map("contact_phone_normalized")
+  contactName            String?                  @map("contact_name")
+  phoneNumberId          String?                  @map("phone_number_id")
+  customerId             String?                  @map("customer_id")
+  bookingId              String?                  @map("booking_id")
+  vehicleId              String?                  @map("vehicle_id")
+  lastMessageAt          DateTime?                @map("last_message_at")
+  lastMessagePreview     String?                  @map("last_message_preview")
+  lastCustomerMessageAt  DateTime?                @map("last_customer_message_at")
+  unreadCount            Int                      @default(0) @map("unread_count")
+  status                 WhatsAppConversationStatus @default(OPEN)
+  assignedTo             String?                  @map("assigned_to")
+  lastDetectedIntent     String?                  @map("last_detected_intent")
+  createdAt              DateTime                 @default(now()) @map("created_at")
+  updatedAt              DateTime                 @updatedAt @map("updated_at")
 
   organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  booking      Booking?          @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  vehicle      Vehicle?          @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   messages     WhatsAppMessage[]
+  aiSuggestions WhatsAppAiSuggestion[]
 
-  @@unique([organizationId, contactPhone])
+  @@unique([organizationId, contactPhoneNormalized])
   @@index([organizationId])
+  @@index([organizationId, customerId])
+  @@index([organizationId, bookingId])
   @@index([lastMessageAt])
   @@map("whatsapp_conversations")
 }
 
 model WhatsAppMessage {
-  id             String   @id @default(uuid())
-  organizationId String   @map("organization_id")
-  conversationId String   @map("conversation_id")
-  direction      String
-  senderType     String   @map("sender_type")
-  senderName     String?  @map("sender_name")
-  content        String
-  aiGenerated    Boolean  @default(false) @map("ai_generated")
-  aiSuggested    Boolean  @default(false) @map("ai_suggested")
-  status         String   @default("sent")
-  createdAt      DateTime @default(now()) @map("created_at")
+  id                String                      @id @default(uuid())
+  organizationId    String                      @map("organization_id")
+  conversationId    String                      @map("conversation_id")
+  direction         String
+  senderType        String                      @map("sender_type")
+  senderName        String?                     @map("sender_name")
+  content           String
+  messageType       String                      @default("text") @map("message_type")
+  templateName      String?                     @map("template_name")
+  providerMessageId String?                     @unique @map("provider_message_id")
+  idempotencyKey    String?                     @unique @map("idempotency_key")
+  aiGenerated       Boolean                     @default(false) @map("ai_generated")
+  aiSuggested       Boolean                     @default(false) @map("ai_suggested")
+  status            WhatsAppMessageDeliveryStatus @default(QUEUED)
+  failureReason     String?                     @map("failure_reason")
+  createdAt         DateTime                    @default(now()) @map("created_at")
+  updatedAt         DateTime                    @updatedAt @map("updated_at")
 
   organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   conversation WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  aiSuggestions WhatsAppAiSuggestion[] @relation("TriggerMessage")
+  sentAiSuggestion WhatsAppAiSuggestion? @relation("SentAiMessage")
 
   @@index([conversationId, createdAt])
   @@index([organizationId])
+  @@index([providerMessageId])
   @@map("whatsapp_messages")
+}
+
+model WhatsAppWebhookEvent {
+  id              String    @id @default(uuid())
+  organizationId  String?   @map("organization_id")
+  phoneNumberId   String?   @map("phone_number_id")
+  externalEventId String    @map("external_event_id")
+  eventType       String?   @map("event_type")
+  payload         Json
+  headers         Json?
+  signatureValid  Boolean?  @map("signature_valid")
+  processedAt     DateTime? @map("processed_at")
+  processingError String?   @map("processing_error")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@unique([externalEventId])
+  @@index([organizationId, createdAt])
+  @@index([phoneNumberId])
+  @@map("whatsapp_webhook_events")
+}
+
+model WhatsAppConsent {
+  id                   String    @id @default(uuid())
+  organizationId       String    @map("organization_id")
+  phoneNormalized      String    @map("phone_normalized")
+  customerId           String?   @map("customer_id")
+  optedInAt            DateTime? @map("opted_in_at")
+  optedOutAt           DateTime? @map("opted_out_at")
+  marketingAllowed     Boolean   @default(false) @map("marketing_allowed")
+  transactionalAllowed Boolean   @default(true) @map("transactional_allowed")
+  source               String?
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer?    @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, phoneNormalized])
+  @@index([organizationId, customerId])
+  @@map("whatsapp_consents")
+}
+
+model WhatsAppTemplate {
+  id                 String                       @id @default(uuid())
+  organizationId     String                       @map("organization_id")
+  name               String
+  language           String                       @default("de")
+  category           WhatsAppTemplateCategory
+  bodyTemplate       String                       @map("body_template")
+  variableSchema     Json?                        @map("variable_schema")
+  providerStatus     WhatsAppTemplateProviderStatus @default(DRAFT) @map("provider_status")
+  providerTemplateId String?                      @map("provider_template_id")
+  createdAt          DateTime                     @default(now()) @map("created_at")
+  updatedAt          DateTime                     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, name, language])
+  @@index([organizationId, category])
+  @@map("whatsapp_templates")
+}
+
+enum WhatsAppAiIntent {
+  GENERAL
+  BOOKING_STATUS
+  BOOKING_CHANGE
+  PICKUP_INFO
+  RETURN_INFO
+  DOCUMENTS
+  PAYMENT
+  DEPOSIT
+  DAMAGE
+  ACCIDENT
+  VEHICLE_STATUS
+  VEHICLE_WARNING
+  LOCATION
+  SUPPORT
+  COMPLAINT
+  OPT_OUT
+  UNKNOWN
+}
+
+enum WhatsAppAiDecision {
+  SUGGEST_ONLY
+  AUTO_ALLOWED
+  HUMAN_REQUIRED
+}
+
+model WhatsAppAiSuggestion {
+  id                String             @id @default(uuid())
+  organizationId    String             @map("organization_id")
+  conversationId    String             @map("conversation_id")
+  triggerMessageId  String?            @map("trigger_message_id")
+  suggestedReply    String             @map("suggested_reply")
+  intent            WhatsAppAiIntent   @map("intent")
+  confidence        Float
+  riskFlags         Json               @default("[]") @map("risk_flags")
+  usedTools         Json               @default("[]") @map("used_tools")
+  sourceContextIds  Json?              @map("source_context_ids")
+  decision          WhatsAppAiDecision
+  humanReason       String?            @map("human_reason")
+  approvedByUserId  String?            @map("approved_by_user_id")
+  sentMessageId     String?            @unique @map("sent_message_id")
+  createdAt         DateTime           @default(now()) @map("created_at")
+
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  conversation   WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  triggerMessage WhatsAppMessage?     @relation("TriggerMessage", fields: [triggerMessageId], references: [id], onDelete: SetNull)
+  sentMessage    WhatsAppMessage?     @relation("SentAiMessage", fields: [sentMessageId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, conversationId, createdAt])
+  @@index([conversationId])
+  @@map("whatsapp_ai_suggestions")
 }
 
 // ------------------------------------------------
@@ -5313,10 +6051,35 @@ enum VoiceAssistantStatus {
   INACTIVE
 }
 
+enum VoiceConnectionStatus {
+  NOT_CONFIGURED
+  DEGRADED
+  CONNECTED
+  ERROR
+}
+
+enum VoiceConversationDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum VoiceConversationStatus {
+  ACTIVE
+  COMPLETED
+  FAILED
+}
+
+enum VoiceConversationOutcome {
+  RESOLVED
+  ESCALATED
+  FAILED
+  ABANDONED
+}
+
 model VoiceAssistant {
   id             String       @id @default(uuid())
   organizationId String       @unique @map("organization_id")
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   name            String  @default("AI Assistant")
   role            String?
@@ -5332,20 +6095,32 @@ model VoiceAssistant {
   forbiddenActions  String? @map("forbidden_actions") @db.Text
   knowledgeSnippets String? @map("knowledge_snippets") @db.Text
 
-  elevenLabsAgentId String? @map("elevenlabs_agent_id")
-  phoneNumberId     String? @map("phone_number_id")
-  phoneNumber       String? @map("phone_number")
-  telephonyEnabled  Boolean @default(false) @map("telephony_enabled")
-  inboundEnabled    Boolean @default(true) @map("inbound_enabled")
-  outboundEnabled   Boolean @default(false) @map("outbound_enabled")
+  provider                  String                @default("elevenlabs")
+  elevenLabsAgentId         String?               @map("elevenlabs_agent_id")
+  elevenLabsPhoneNumberId   String?               @map("elevenlabs_phone_number_id")
+  phoneNumberId             String?               @map("phone_number_id")
+  phoneNumber               String?               @map("phone_number")
+  connectionStatus          VoiceConnectionStatus @default(NOT_CONFIGURED) @map("connection_status")
+  lastProvisionedAt         DateTime?             @map("last_provisioned_at")
+  lastSyncedAt              DateTime?             @map("last_synced_at")
+  telephonyEnabled          Boolean               @default(false) @map("telephony_enabled")
+  inboundEnabled            Boolean               @default(true) @map("inbound_enabled")
+  outboundEnabled           Boolean               @default(false) @map("outbound_enabled")
 
-  permAnswerQuestions  Boolean @default(true) @map("perm_answer_questions")
-  permManageBookings   Boolean @default(false) @map("perm_manage_bookings")
-  permWorkshopHandling Boolean @default(false) @map("perm_workshop_handling")
-  permBreakdownSupport Boolean @default(false) @map("perm_breakdown_support")
-  permContactCustomers Boolean @default(false) @map("perm_contact_customers")
-  permContactVendors   Boolean @default(false) @map("perm_contact_vendors")
-  permCreateActions    Boolean @default(false) @map("perm_create_actions")
+  permAnswerQuestions      Boolean @default(true) @map("perm_answer_questions")
+  permManageBookings       Boolean @default(false) @map("perm_manage_bookings")
+  permCreateBookingDrafts  Boolean @default(false) @map("perm_create_booking_drafts")
+  permCancelBookings       Boolean @default(false) @map("perm_cancel_bookings")
+  permCreateTasks          Boolean @default(false) @map("perm_create_tasks")
+  permWorkshopHandling     Boolean @default(false) @map("perm_workshop_handling")
+  permBreakdownSupport     Boolean @default(false) @map("perm_breakdown_support")
+  permContactCustomers     Boolean @default(false) @map("perm_contact_customers")
+  permContactVendors       Boolean @default(false) @map("perm_contact_vendors")
+  permModifyRecords        Boolean @default(false) @map("perm_modify_records")
+  permCreateActions        Boolean @default(false) @map("perm_create_actions")
+  permEmergencyHandling    Boolean @default(false) @map("perm_emergency_handling")
+
+  toolPermissions Json? @map("tool_permissions")
 
   escalationPhone      String? @map("escalation_phone")
   escalationUserId     String? @map("escalation_user_id")
@@ -5354,61 +6129,66 @@ model VoiceAssistant {
   escalateOnSensitive  Boolean @default(true) @map("escalate_on_sensitive")
   escalateOnRequest    Boolean @default(true) @map("escalate_on_request")
   fallbackMessage      String? @map("fallback_message")
+  escalationTriggers   Json?   @map("escalation_triggers")
 
   businessHoursStart    String? @map("business_hours_start")
   businessHoursEnd      String? @map("business_hours_end")
   businessHoursTimezone String? @map("business_hours_timezone")
   afterHoursMessage     String? @map("after_hours_message")
+  businessHours         Json?   @map("business_hours")
 
   status VoiceAssistantStatus @default(DRAFT)
 
-  totalCalls       Int   @default(0) @map("total_calls")
-  answeredCalls    Int   @default(0) @map("answered_calls")
-  missedCalls      Int   @default(0) @map("missed_calls")
-  escalatedCalls   Int   @default(0) @map("escalated_calls")
-  totalTalkMinutes Float @default(0) @map("total_talk_minutes")
+  totalCalls            Int @default(0) @map("total_calls")
+  answeredCalls         Int @default(0) @map("answered_calls")
+  missedCalls           Int @default(0) @map("missed_calls")
+  escalatedCalls        Int @default(0) @map("escalated_calls")
+  totalTalkTimeSeconds  Int @default(0) @map("total_talk_time_seconds")
+  totalTalkMinutes      Float @default(0) @map("total_talk_minutes")
 
   conversations VoiceConversation[]
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  activatedAt  DateTime? @map("activated_at")
+  deactivatedAt DateTime? @map("deactivated_at")
 
   @@index([status])
   @@map("voice_assistants")
 }
 
-enum VoiceConversationOutcome {
-  RESOLVED
-  ESCALATED
-  FAILED
-  ABANDONED
-}
-
 model VoiceConversation {
-  id               String         @id @default(uuid())
-  organizationId   String         @map("organization_id")
-  organization     Organization   @relation(fields: [organizationId], references: [id])
-  voiceAssistantId String         @map("voice_assistant_id")
-  voiceAssistant   VoiceAssistant @relation(fields: [voiceAssistantId], references: [id])
+  id               String          @id @default(uuid())
+  organizationId   String          @map("organization_id")
+  organization     Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  voiceAssistantId String?         @map("voice_assistant_id")
+  voiceAssistant   VoiceAssistant? @relation(fields: [voiceAssistantId], references: [id], onDelete: SetNull)
 
-  elevenLabsConvId String?                  @map("elevenlabs_conv_id")
-  callerNumber     String?                  @map("caller_number")
-  direction        String                   @default("inbound")
-  durationSeconds  Int?                     @map("duration_seconds")
-  outcome          VoiceConversationOutcome @default(RESOLVED)
-  transcript       String?                  @db.Text
-  summary          String?
-  escalationReason String?                  @map("escalation_reason")
-  actionsPerformed String[]                 @map("actions_performed")
-  errorMessage     String?                  @map("error_message")
+  providerConversationId String? @map("provider_conversation_id")
+  elevenLabsConvId     String? @map("elevenlabs_conv_id")
+  providerAgentId      String? @map("provider_agent_id")
+  callerNumber         String? @map("caller_number")
+  direction            VoiceConversationDirection @default(INBOUND)
+  durationSeconds      Int?    @map("duration_seconds")
+  status               VoiceConversationStatus    @default(COMPLETED)
+  outcome              VoiceConversationOutcome   @default(RESOLVED)
+  transcript           String? @db.Text
+  summary              String?
+  escalationReason     String? @map("escalation_reason")
+  actionsPerformed     String[] @map("actions_performed")
+  errorMessage         String? @map("error_message")
+  metadata             Json?
 
   startedAt DateTime  @default(now()) @map("started_at")
   endedAt   DateTime? @map("ended_at")
   createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
   @@index([organizationId, startedAt])
   @@index([voiceAssistantId])
   @@index([outcome])
+  @@index([providerConversationId])
+  @@index([elevenLabsConvId])
   @@map("voice_conversations")
 }
 

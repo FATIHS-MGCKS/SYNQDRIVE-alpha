@@ -11,6 +11,10 @@ import {
   vehicleHasFleetLocation,
   type FleetVisualState,
 } from './fleetVisualState';
+import {
+  fleetOperationalSortScore,
+  resolveFleetVehicleDisplayState,
+} from './fleetVehicleDisplay';
 
 export type FleetCommandTab =
   | 'Attention'
@@ -60,26 +64,38 @@ export function hasCriticalOrWarningDtc(
   return mod?.state === 'critical' || mod?.state === 'warning';
 }
 
-/** Whether a vehicle belongs in the Attention operator bucket. */
+/**
+ * Whether a vehicle belongs in the Attention operator bucket.
+ *
+ * Telemetry freshness is treated as a secondary signal: a genuinely offline
+ * device (≥48h) is attention-worthy and soft-offline / signal_delayed (24–48h)
+ * gets a low-priority slot, but STANDBY (15min–24h) is normal telemetry and
+ * never inflates the Attention counts or drags Ready vehicles in.
+ */
 export function isFleetAttentionVehicle(
   visual: FleetVisualState,
   vehicle: VehicleData,
   health?: VehicleHealthResponse | null,
 ): boolean {
+  const healthWarning =
+    health?.overall_state === 'warning' || vehicle.healthStatus === 'Warning';
+
+  // Operational reasons (independent of telemetry freshness).
   if (visual.isBlocked || hasCriticalOrWarningDtc(health)) return true;
-  if (visual.attentionLevel === 'critical' || visual.attentionLevel === 'warning') {
+  if (visual.attentionLevel === 'critical') return true; // blocked / health-critical / maintenance-urgent / return overdue
+  if (vehicle.reservedIsOverdue) return true;
+  if (healthWarning) return true;
+  if (vehicle.maintenanceUrgency === 'urgent' || vehicle.maintenanceUrgency === 'planned') {
     return true;
   }
-  if (visual.isOffline || visual.isStale) return true;
   if (!visual.hasLocation && vehicle.status !== 'Maintenance') return true;
-  if (visual.rentalStatus === 'available' && !visual.isReady) return true;
-  if (
-    visual.rentalStatus === 'active_rented' &&
-    (visual.isOffline || visual.isStale)
-  ) {
-    return true;
-  }
-  if (vehicle.maintenanceUrgency === 'urgent') return true;
+
+  // Telemetry reasons. Offline (≥48h) is a real connectivity problem; soft
+  // offline / signal_delayed (24–48h, `visual.isStale`) is a low-priority hint.
+  // STANDBY is never an attention reason.
+  if (visual.isOffline) return true;
+  if (visual.isStale) return true;
+
   return false;
 }
 
@@ -178,7 +194,9 @@ export function vehicleMatchesCommandTab(
     case 'Maintenance':
       return vehicle.status === 'Maintenance';
     case 'Offline':
-      return visual.isOffline || visual.isStale;
+      // Offline = genuinely offline device only. Stale is a secondary signal
+      // state, not offline, and must not be counted here.
+      return visual.isOffline;
     case 'All':
       return true;
     default:
@@ -198,41 +216,60 @@ function vehicleStationLabel(v: VehicleData): string {
   return named ?? v.station ?? '';
 }
 
+function appointmentTime(vehicle: VehicleData): number {
+  return Math.min(
+    vehicle.activeReturnAt ? new Date(vehicle.activeReturnAt).getTime() : Infinity,
+    vehicle.reservedPickupAt ? new Date(vehicle.reservedPickupAt).getTime() : Infinity,
+  );
+}
+
+/**
+ * Operational sort. Critical/blocked/warning stay on top (even when stale or
+ * offline), normal ready vehicles in the middle, non-urgent offline vehicles
+ * at the very bottom, and outdated-signal vehicles nudged down — mirroring the
+ * Dashboard Fleet State Board ordering. The Attention tab keeps its dedicated
+ * priority ranking.
+ */
 export function sortFleetContexts(
   contexts: FleetVehicleContext[],
   tab: FleetCommandTab,
 ): FleetVehicleContext[] {
-  const sorted = [...contexts];
-  sorted.sort((a, b) => {
+  const scored = contexts.map((ctx) => ({
+    ctx,
+    score: fleetOperationalSortScore(
+      resolveFleetVehicleDisplayState(ctx.vehicle, {
+        rentalHealth: ctx.health,
+        visual: ctx.visual,
+      }),
+    ),
+  }));
+
+  scored.sort((a, b) => {
     if (tab === 'Attention') {
       const rank =
-        attentionSortRank(a.visual, a.vehicle) -
-        attentionSortRank(b.visual, b.vehicle);
+        attentionSortRank(a.ctx.visual, a.ctx.vehicle) -
+        attentionSortRank(b.ctx.visual, b.ctx.vehicle);
       if (rank !== 0) return rank;
+    } else if (b.score !== a.score) {
+      return b.score - a.score;
     }
 
-    const aCrit = a.visual.attentionLevel === 'critical' ? 0 : 1;
-    const bCrit = b.visual.attentionLevel === 'critical' ? 0 : 1;
+    const aCrit = a.ctx.visual.attentionLevel === 'critical' ? 0 : 1;
+    const bCrit = b.ctx.visual.attentionLevel === 'critical' ? 0 : 1;
     if (aCrit !== bCrit) return aCrit - bCrit;
 
-    const aTime = Math.min(
-      a.vehicle.activeReturnAt ? new Date(a.vehicle.activeReturnAt).getTime() : Infinity,
-      a.vehicle.reservedPickupAt ? new Date(a.vehicle.reservedPickupAt).getTime() : Infinity,
-    );
-    const bTime = Math.min(
-      b.vehicle.activeReturnAt ? new Date(b.vehicle.activeReturnAt).getTime() : Infinity,
-      b.vehicle.reservedPickupAt ? new Date(b.vehicle.reservedPickupAt).getTime() : Infinity,
-    );
+    const aTime = appointmentTime(a.ctx.vehicle);
+    const bTime = appointmentTime(b.ctx.vehicle);
     if (aTime !== bTime) return aTime - bTime;
 
-    const stationCmp = vehicleStationLabel(a.vehicle).localeCompare(
-      vehicleStationLabel(b.vehicle),
+    const stationCmp = vehicleStationLabel(a.ctx.vehicle).localeCompare(
+      vehicleStationLabel(b.ctx.vehicle),
     );
     if (stationCmp !== 0) return stationCmp;
 
-    return a.vehicle.license.localeCompare(b.vehicle.license);
+    return a.ctx.vehicle.license.localeCompare(b.ctx.vehicle.license);
   });
-  return sorted;
+  return scored.map((s) => s.ctx);
 }
 
 export function computeCommandTabCounts(
@@ -264,7 +301,7 @@ export function resolveOperatorTabForVehicle(
   if (isFleetAttentionVehicle(ctx.visual, ctx.vehicle, ctx.health)) {
     return 'Attention';
   }
-  if (ctx.visual.isOffline || ctx.visual.isStale) return 'Offline';
+  if (ctx.visual.isOffline) return 'Offline';
   if (ctx.vehicle.status === 'Active Rented') return 'Active';
   if (ctx.vehicle.status === 'Reserved') return 'Reserved';
   if (ctx.vehicle.status === 'Maintenance') return 'Maintenance';

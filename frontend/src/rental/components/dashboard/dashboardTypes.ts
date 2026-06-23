@@ -90,6 +90,7 @@ export interface DashboardInvoice {
 export interface TodayBookingApiRow {
   id?: string;
   vehicleId?: string;
+  customerId?: string | null;
   vehicleLicense?: string;
   vehicleName?: string;
   customerName?: string;
@@ -110,6 +111,8 @@ export interface TodayBookingApiRow {
   extraKm?: number | null;
   returnProtocolStatus?: string | null;
   pickupProtocolOdometerKm?: number | null;
+  status?: string;
+  statusEnum?: string;
 }
 
 export interface OperationalKpi {
@@ -144,6 +147,48 @@ export type ActionQueueCta =
   | 'start-handover-return'
   | 'open-rental'
   | 'open-stations';
+
+/**
+ * Coarse contextual bucket a set of atomic actions belongs to. Used to group
+ * several messages about the same real-world entity into a single Group Item
+ * (e.g. all health modules of one vehicle).
+ */
+export type ActionQueueGroupType =
+  | 'vehicle-health'
+  | 'vehicle-ops'
+  | 'station-ops'
+  | 'booking'
+  | 'customer-docs'
+  | 'finance'
+  | 'notification-thread';
+
+/**
+ * Optional deep-link target for a child action. Mirrors the canonical
+ * Rental-Health-V1 module keys plus a generic vehicle overview fallback.
+ * Navigation may fall back to "open vehicle" when a module-level deep link
+ * does not exist yet, but the structure is already prepared.
+ */
+export type ActionQueueModuleTarget =
+  | 'battery'
+  | 'brakes'
+  | 'tires'
+  | 'service_compliance'
+  | 'error_codes'
+  | 'complaints'
+  | 'vehicle_alerts'
+  | 'overview';
+
+/**
+ * Display severity for grouped child actions / group headers. Extends the
+ * atomic {@link ActionQueueSeverity} with an `overdue` tier that ranks between
+ * `critical` and `warning` (e.g. an overdue service inspection).
+ */
+export type ActionQueueChildSeverity =
+  | 'critical'
+  | 'overdue'
+  | 'warning'
+  | 'attention'
+  | 'info';
 
 export type ActionQueueFilterTab =
   | 'all'
@@ -192,7 +237,83 @@ export interface ActionQueueItem {
   predictiveInsight?: PredictiveOperationsInsight;
   isOverdue: boolean;
   pinned?: boolean;
+
+  // ── Grouping metadata (optional, additive) ──────────────────────────────
+  /** Stable key that ties several atomic items to the same real-world entity. */
+  groupKey?: string;
+  /** Coarse contextual bucket this item belongs to. */
+  groupType?: ActionQueueGroupType;
+  /** Canonical module this item targets (health modules). */
+  module?: ActionQueueModuleTarget;
+  /** Human label for the module/sub-category (e.g. "Battery", "Tires"). */
+  moduleLabel?: string;
+  /** Optional secondary line shown below the title in grouped child layout. */
+  detail?: string;
+  /** Effective display severity when rendered as a grouped child. */
+  childSeverity?: ActionQueueChildSeverity;
+  /** Optional CTA label override (e.g. "Open battery"). */
+  ctaLabel?: string;
+  stationId?: string;
+  customerId?: string;
 }
+
+/**
+ * A single, concrete atomic action. Functionally identical to the historical
+ * {@link ActionQueueItem}; the explicit `kind` discriminator lets the renderer
+ * distinguish leaves from groups in {@link ActionQueueEntry}.
+ */
+export type ActionQueueLeafItem = ActionQueueItem & { kind: 'leaf' };
+
+/**
+ * One child action inside a grouped item. Carries everything the renderer and
+ * existing navigation need; `itemId` references the underlying atomic
+ * {@link ActionQueueItem} so drilldowns keep resolving by id.
+ */
+export interface ActionQueueChildAction {
+  id: string;
+  /** Underlying atomic item id (drilldown lookup compatible). */
+  itemId: string;
+  severity: ActionQueueChildSeverity;
+  category: ActionQueueCategory;
+  module?: ActionQueueModuleTarget;
+  moduleLabel?: string;
+  title: string;
+  detail?: string;
+  timeLabel?: string;
+  timeSortMs: number;
+  priority: number;
+  cta: ActionQueueCta;
+  ctaLabel?: string;
+  vehicleId?: string;
+  bookingId?: string;
+  stationId?: string;
+  customerId?: string;
+  isOverdue: boolean;
+}
+
+/** A grouped item with a header and several child actions. */
+export interface ActionQueueGroupItem {
+  kind: 'group';
+  id: string;
+  groupKey: string;
+  groupType: ActionQueueGroupType;
+  /** Highest severity across all children. */
+  severity: ActionQueueChildSeverity;
+  category: ActionQueueCategory;
+  title: string;
+  subtitle: string;
+  entityLabel?: string;
+  vehicleId?: string;
+  bookingId?: string;
+  stationId?: string;
+  customerId?: string;
+  children: ActionQueueChildAction[];
+  /** Max child priority — used to order the group among leaves. */
+  priority: number;
+}
+
+/** A render-level entry: either a single leaf or a multi-child group. */
+export type ActionQueueEntry = ActionQueueLeafItem | ActionQueueGroupItem;
 
 export interface FleetStateTab {
   key: FleetStatusTabKey;
@@ -231,8 +352,19 @@ export interface FleetBoardItem {
   makeModel?: string;
   station?: string;
   nextAppointment?: string;
+  /** Legacy text label (e.g. "Fuel 22%") — kept for compatibility; the row UI
+   *  now renders a compact icon + bar + percent instead. */
   fuelLabel: string | null;
+  /** Canonical fuel/SoC percentage (0–100) for the compact energy bar. */
+  fuelPercent: number | null;
+  /** Whether the vehicle is electric (selects battery vs. fuel icon). */
+  isElectric: boolean;
   lastSeenLabel: string | null;
+  /** Central telemetry-freshness label (Live / Standby · 3h / Signal delayed ·
+   *  30h / Offline · 2d / No signal · Setup check). Same logic as Fleet Page. */
+  telemetryLabel: string | null;
+  /** True only for genuine connectivity problems (offline / no_signal). */
+  showTelemetryWarning: boolean;
   criticalHint?: string;
   sortPriority: number;
   isOffline: boolean;

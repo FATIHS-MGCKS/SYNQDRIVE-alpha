@@ -38,10 +38,11 @@ export const TASK_CHECKLIST_TEMPLATES: Partial<Record<TaskType, string[]>> = {
     'Ergebnis dokumentieren',
   ],
   BRAKE_CHECK: [
-    'Bremsverhalten prüfen',
-    'Belag-/Scheibenzustand prüfen',
-    'Geräusche/Vibrationen prüfen',
+    'Sichtprüfung',
+    'Probefahrt',
+    'Messwerte eintragen',
     'Ergebnis dokumentieren',
+    'Rechnung/Dokument hochladen',
   ],
   BATTERY_CHECK: ['Spannung/SOH prüfen', 'Startverhalten prüfen', 'Messwert dokumentieren'],
   VEHICLE_CLEANING: [
@@ -57,10 +58,11 @@ export const TASK_CHECKLIST_TEMPLATES: Partial<Record<TaskType, string[]>> = {
     'Ergebnis dokumentieren',
   ],
   VEHICLE_INSPECTION: [
-    'Fahrzeug visuell prüfen',
-    'Relevante Fehlercodes prüfen',
-    'Sicherheitsrelevante Mängel dokumentieren',
-    'Maßnahmen festlegen',
+    'Termin buchen',
+    'Fahrzeug vorbereiten',
+    'Prüfung durchführen',
+    'Ergebnis dokumentieren',
+    'Dokument hochladen',
   ],
 };
 

@@ -565,24 +565,19 @@ function BrakesDetail({
     if (min != null && max != null) return min === max ? `${f(min)} km` : `${f(min)}–${f(max)} km`;
     return `~${f((min ?? max) as number)} km`;
   };
-  const stateLabel =
-    summary?.stateClass === 'MEASURED'
-      ? 'Measured'
-      : summary?.stateClass === 'ESTIMATED'
-        ? 'Estimated'
-        : summary?.stateClass === 'WARNING_ONLY'
-          ? 'Warning only'
-          : 'No baseline';
+  const frontAxle = summary?.frontAxle;
+  const rearAxle = summary?.rearAxle;
+  const frontRange = fmtRange(
+    frontAxle?.estimatedRemainingKmMin ?? summary?.estimatedFrontRemainingKmMin,
+    frontAxle?.estimatedRemainingKmMax ?? summary?.estimatedFrontRemainingKmMax,
+  );
+  const rearRange = fmtRange(
+    rearAxle?.estimatedRemainingKmMin ?? summary?.estimatedRearRemainingKmMin,
+    rearAxle?.estimatedRemainingKmMax ?? summary?.estimatedRearRemainingKmMax,
+  );
+  const axleCondLabel = (c: string | undefined) =>
+    c && c !== 'UNKNOWN' ? c.charAt(0) + c.slice(1).toLowerCase() : '—';
   const openAlertCount = summary?.openAlerts?.length ?? 0;
-
-  const watchpoints = [
-    ...(summary?.reasons ?? []),
-    ...(summary?.recommendations ?? []),
-    ...(summary?.baselineWarnings ?? []),
-    ...(summary?.provenanceWarnings ?? []),
-    ...(summary?.openAlerts ?? []).map((a) => a.message),
-    ...(detail?.alerts ?? []).map((a) => a.message),
-  ];
 
   return (
     <>
@@ -593,14 +588,7 @@ function BrakesDetail({
           label="Brake Condition"
           value={condLabel}
           colorClass={condColor}
-          sub={summary?.dataBasis ? `${BASIS_LABEL[summary.dataBasis] ?? 'Unknown'} basis` : stateLabel}
-        />
-        <StatBox
-          {...p}
-          isDark={isDark}
-          label="Remaining (F / R)"
-          value={fmtRange(summary?.estimatedFrontRemainingKmMin, summary?.estimatedFrontRemainingKmMax)}
-          sub={`Rear: ${fmtRange(summary?.estimatedRearRemainingKmMin, summary?.estimatedRearRemainingKmMax)}`}
+          sub={`${BASIS_LABEL[summary?.dataBasis ?? 'UNKNOWN'] ?? 'Unknown'} basis`}
         />
         <StatBox
           {...p}
@@ -614,16 +602,79 @@ function BrakesDetail({
                 ? isDark ? 'text-blue-400' : 'text-blue-600'
                 : undefined
           }
-          sub={summary?.nextInspectionRecommendedInKm != null ? `Inspect in ~${Math.round(summary.nextInspectionRecommendedInKm).toLocaleString('de-DE')} km` : stateLabel}
         />
         <StatBox
           {...p}
           isDark={isDark}
           label="Confidence"
           value={CONF_LABEL[summary?.confidenceLevel ?? 'UNKNOWN'] ?? 'Unknown'}
-          sub={openAlertCount > 0 ? `${openAlertCount} open alert${openAlertCount > 1 ? 's' : ''}` : (summary?.confidence?.score != null ? `Score: ${summary.confidence.score}` : stateLabel)}
+          sub={openAlertCount > 0 ? `${openAlertCount} open alert${openAlertCount > 1 ? 's' : ''}` : undefined}
+        />
+        <StatBox
+          {...p}
+          isDark={isDark}
+          label="Inspection recommended in"
+          value={
+            summary?.nextInspectionRecommendedInKm != null
+              ? `${Math.round(summary.nextInspectionRecommendedInKm).toLocaleString('de-DE')} km`
+              : '—'
+          }
         />
       </div>
+
+      <div className={`${p.cardClass} p-5`}>
+        <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>Axle Condition</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className={`rounded-xl p-4 ${isDark ? 'bg-neutral-800/40' : 'bg-gray-50'}`}>
+            <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${p.textMuted}`}>Front Axle</p>
+            <p className={`text-lg font-bold ${p.textPrimary}`}>{axleCondLabel(frontAxle?.condition)}</p>
+            <p className={`text-[10px] mt-1 ${p.textSecondary}`}>
+              {BASIS_LABEL[frontAxle?.dataBasis ?? 'UNKNOWN'] ?? 'Unknown'} · {CONF_LABEL[frontAxle?.confidence ?? 'UNKNOWN'] ?? 'Unknown'} confidence
+            </p>
+            <p className={`text-xs mt-2 ${p.textSecondary}`}>Remaining life: <span className={`font-semibold ${p.textPrimary}`}>{frontRange}</span></p>
+          </div>
+          <div className={`rounded-xl p-4 ${isDark ? 'bg-neutral-800/40' : 'bg-gray-50'}`}>
+            <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 ${p.textMuted}`}>Rear Axle</p>
+            <p className={`text-lg font-bold ${p.textPrimary}`}>{axleCondLabel(rearAxle?.condition)}</p>
+            <p className={`text-[10px] mt-1 ${p.textSecondary}`}>
+              {BASIS_LABEL[rearAxle?.dataBasis ?? 'UNKNOWN'] ?? 'Unknown'} · {CONF_LABEL[rearAxle?.confidence ?? 'UNKNOWN'] ?? 'Unknown'} confidence
+            </p>
+            <p className={`text-xs mt-2 ${p.textSecondary}`}>Remaining life: <span className={`font-semibold ${p.textPrimary}`}>{rearRange}</span></p>
+          </div>
+        </div>
+      </div>
+
+      {(summary?.openAlerts?.length ?? 0) > 0 && (
+        <div className={`${p.cardClass} p-5`}>
+          <h3 className={`text-sm font-semibold mb-3 ${p.textPrimary}`}>Open Alerts</h3>
+          <ul className="space-y-2">
+            {summary!.openAlerts.map((a, i) => (
+              <li key={i} className={`text-xs flex items-start gap-2 ${
+                a.severity === 'critical' ? (isDark ? 'text-red-400' : 'text-red-600')
+                : a.severity === 'warning' ? (isDark ? 'text-amber-400' : 'text-amber-600')
+                : p.textSecondary
+              }`}>
+                <Icon name="alert-triangle" className="w-3 h-3 mt-0.5 shrink-0" />
+                {a.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {(summary?.reasons?.length ?? 0) > 0 && (
+        <div className={`${p.cardClass} p-5`}>
+          <h3 className={`text-sm font-semibold mb-2 ${p.textPrimary}`}>Reasons</h3>
+          <WatchpointList items={summary!.reasons} isDark={isDark} textSecondary={p.textSecondary} />
+        </div>
+      )}
+
+      {(summary?.recommendations?.length ?? 0) > 0 && (
+        <div className={`${p.cardClass} p-5`}>
+          <h3 className={`text-sm font-semibold mb-2 ${p.textPrimary}`}>Recommendations</h3>
+          <RecommendationList items={summary!.recommendations} isDark={isDark} textSecondary={p.textSecondary} />
+        </div>
+      )}
 
       {summary?.modelCoverage && (
         <div className={`${p.cardClass} p-5`}>
@@ -663,13 +714,6 @@ function BrakesDetail({
           <p className={`text-[10px] mt-3 ${p.textMuted}`}>
             Source: {summary.modelCoverage.source}
           </p>
-        </div>
-      )}
-
-      {watchpoints.length > 0 && (
-        <div className={`${p.cardClass} p-5 space-y-4`}>
-          <h3 className={`text-sm font-semibold mb-2 ${p.textPrimary}`}>Watchpoints</h3>
-          <WatchpointList items={watchpoints} isDark={isDark} textSecondary={p.textSecondary} />
         </div>
       )}
 

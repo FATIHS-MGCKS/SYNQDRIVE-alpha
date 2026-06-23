@@ -220,12 +220,18 @@ export type BrakeCanonicalReadModel = Pick<
   | 'updatedAt'
 >;
 
-export interface BrakeHealthDetailDto {
-  summary: BrakeHealthSummaryDto;
+/** Wear-model axle estimates — backward compatibility only; UI must not read these. */
+export interface BrakeHealthDetailLegacyDto {
   frontPads: AxleEstimate | null;
   rearPads: AxleEstimate | null;
   frontDiscs: AxleEstimate | null;
   rearDiscs: AxleEstimate | null;
+}
+
+export interface BrakeHealthDetailDto {
+  summary: BrakeHealthSummaryDto;
+  /** Legacy wear-model estimates (mm/healthPct). Not part of canonical brake truth. */
+  legacy: BrakeHealthDetailLegacyDto;
   specs: Record<string, unknown> | null;
   history: Array<Record<string, unknown>>;
   alerts: BrakeAlert[];
@@ -388,50 +394,52 @@ export class BrakeHealthService {
 
     return {
       summary,
-      frontPads:
-        current && summary.modeledComponents.frontPads
-          ? this.toAxleEstimate(
-              current.frontPadAnchorMm,
-              current.frontPadEstimatedMm,
-              current.frontPadHealthPct,
-              current.frontPadRemainingKm,
-              current.frontPadWearRateMmPerKm,
-              current.frontPadKFactor,
-            )
-          : null,
-      rearPads:
-        current && summary.modeledComponents.rearPads
-          ? this.toAxleEstimate(
-              current.rearPadAnchorMm,
-              current.rearPadEstimatedMm,
-              current.rearPadHealthPct,
-              current.rearPadRemainingKm,
-              current.rearPadWearRateMmPerKm,
-              current.rearPadKFactor,
-            )
-          : null,
-      frontDiscs:
-        current && summary.modeledComponents.frontDiscs
-          ? this.toAxleEstimate(
-              current.frontDiscAnchorMm,
-              current.frontDiscEstimatedMm,
-              current.frontDiscHealthPct,
-              current.frontDiscRemainingKm,
-              current.frontDiscWearRateMmPerKm,
-              current.frontDiscKFactor,
-            )
-          : null,
-      rearDiscs:
-        current && summary.modeledComponents.rearDiscs
-          ? this.toAxleEstimate(
-              current.rearDiscAnchorMm,
-              current.rearDiscEstimatedMm,
-              current.rearDiscHealthPct,
-              current.rearDiscRemainingKm,
-              current.rearDiscWearRateMmPerKm,
-              current.rearDiscKFactor,
-            )
-          : null,
+      legacy: {
+        frontPads:
+          current && summary.modeledComponents.frontPads
+            ? this.toAxleEstimate(
+                current.frontPadAnchorMm,
+                current.frontPadEstimatedMm,
+                current.frontPadHealthPct,
+                current.frontPadRemainingKm,
+                current.frontPadWearRateMmPerKm,
+                current.frontPadKFactor,
+              )
+            : null,
+        rearPads:
+          current && summary.modeledComponents.rearPads
+            ? this.toAxleEstimate(
+                current.rearPadAnchorMm,
+                current.rearPadEstimatedMm,
+                current.rearPadHealthPct,
+                current.rearPadRemainingKm,
+                current.rearPadWearRateMmPerKm,
+                current.rearPadKFactor,
+              )
+            : null,
+        frontDiscs:
+          current && summary.modeledComponents.frontDiscs
+            ? this.toAxleEstimate(
+                current.frontDiscAnchorMm,
+                current.frontDiscEstimatedMm,
+                current.frontDiscHealthPct,
+                current.frontDiscRemainingKm,
+                current.frontDiscWearRateMmPerKm,
+                current.frontDiscKFactor,
+              )
+            : null,
+        rearDiscs:
+          current && summary.modeledComponents.rearDiscs
+            ? this.toAxleEstimate(
+                current.rearDiscAnchorMm,
+                current.rearDiscEstimatedMm,
+                current.rearDiscHealthPct,
+                current.rearDiscRemainingKm,
+                current.rearDiscWearRateMmPerKm,
+                current.rearDiscKFactor,
+              )
+            : null,
+      },
       specs: specs[0] ?? null,
       history: history.map((e) => ({
         id: e.id,

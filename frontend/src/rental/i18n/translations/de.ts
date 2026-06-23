@@ -37,6 +37,7 @@ export const de: Record<TranslationKey, string> = {
   'nav.dataAuthorization': 'Data Authorization & Consent',
   'nav.legalDocuments': 'Rechtliche Dokumente',
   'nav.billingSubscription': 'Abrechnung & Abonnement',
+  'nav.rentalRules': 'Mietregeln',
   'nav.support': 'Support',
   'nav.helpCenter': 'Hilfe-Center',
   'nav.dataAnalyse': 'Data Analyse',
@@ -49,7 +50,17 @@ export const de: Record<TranslationKey, string> = {
 
   'fleetTab.status': 'Status',
   'fleetTab.health': 'Health',
-  'fleetTab.service': 'Service',
+  'fleetTab.service': 'Instandhaltung',
+
+  // ─── Service Center (Fleet-Hub) ───
+  'serviceCenter.eyebrow': 'Flottenbetrieb',
+  'serviceCenter.title': 'Service Center',
+  'serviceCenter.subtitle': 'Operative Zentrale für Wartung, Reparaturen, TÜV/HU, Partner und Serviceaufgaben. Health bleibt Diagnose — Ausführung passiert hier.',
+  'serviceCenter.tab.overview': 'Übersicht',
+  'serviceCenter.tab.tasks': 'Aufgaben',
+  'serviceCenter.tab.schedule': 'Planung',
+  'serviceCenter.tab.vendors': 'Partner',
+  'serviceCenter.tab.history': 'Verlauf',
 
   // ─── TopBar ───
   'topbar.searchPlaceholder': 'Fahrzeuge, Buchungen, Kunden suchen...',
@@ -69,7 +80,7 @@ export const de: Record<TranslationKey, string> = {
   'view.healthErrors': 'Gesundheit & Fehler',
   'view.fleet': 'Flotte',
   'view.fleetHealth': 'Health',
-  'view.fleetService': 'Service',
+  'view.fleetService': 'Instandhaltung',
   'view.damages': 'Schaeden',
   'view.documents': 'Dokumente',
   'view.customers': 'Kunden',
@@ -174,6 +185,7 @@ export const de: Record<TranslationKey, string> = {
   'settingsTab.billing': 'Abrechnung & Abonnement',
   'settingsTab.dataAuthorization': 'Data Authorization & Consent Center',
   'settingsTab.legalDocuments': 'Rechtliche Dokumente',
+  'settingsTab.rentalRules': 'Mietregeln',
 
   // ─── Finance Tabs ───
   'financeTab.invoices': 'Rechnungen',

@@ -13,7 +13,11 @@ describe('BatteryCriticalDetector', () => {
     batteryType?: string | null;
     snapshots?: Array<{ restingVoltage: number | null; voltageV: number; engineRunning: boolean; recordedAt: Date }>;
     features?: { publishedSohPct: number | null; publicationState: string; crankDrop: number | null } | null;
-    hvCurrent?: { publishedSohPct: number | null; publicationState: string } | null;
+    hvCurrent?: {
+      publishedSohPct: number | null;
+      publicationState: string;
+      publicationMethod?: string | null;
+    } | null;
     providerHvSoh?: number | null;
   }) => {
     const snapshots = (opts.snapshots ?? []).map((s) => ({ vehicleId: 'veh-1', ...s }));
@@ -122,6 +126,20 @@ describe('BatteryCriticalDetector', () => {
 
   it('does not alert on an EV with no reliable HV SOH basis', async () => {
     const prisma = buildPrisma({ fuelType: 'ELECTRIC', providerHvSoh: null });
+    const result = await new BatteryCriticalDetector(prisma).detect(buildCtx());
+    expect(result).toHaveLength(0);
+  });
+
+  it('does not alert on legacy degradation_model HV publication rows', async () => {
+    const prisma = buildPrisma({
+      fuelType: 'ELECTRIC',
+      providerHvSoh: null,
+      hvCurrent: {
+        publishedSohPct: 55,
+        publicationState: 'STABLE',
+        publicationMethod: 'degradation_model',
+      },
+    });
     const result = await new BatteryCriticalDetector(prisma).detect(buildCtx());
     expect(result).toHaveLength(0);
   });

@@ -4,11 +4,10 @@ import { RENTAL_HEALTH_MODULE_LABELS } from '../rental-health-ui';
 
 export type OperatorStatusFilter =
   | 'all'
-  | 'blocked'
-  | 'critical'
-  | 'warning'
-  | 'limited'
-  | 'good';
+  | 'action'
+  | 'review'
+  | 'good'
+  | 'limited';
 
 export type OperatorModuleFilter =
   | 'all'
@@ -45,6 +44,36 @@ export interface FleetHealthKpis {
   limited: number;
   good: number;
   naModuleVehicles: number;
+  /** Distinct vehicles in the "Action required" band (rental_blocked or critical). */
+  actionRequired: number;
+  /** Distinct vehicles in the "Needs review" band (warning, not action). */
+  needsReview: number;
+  /** Distinct vehicles confirmed healthy (good and not blocked). */
+  healthy: number;
+}
+
+/**
+ * Operational severity band — the single canonical health bucket for a vehicle.
+ * Always derived from RentalHealthV1 (overall_state + rental_blocked), never from
+ * free-form reason text and never from data freshness ("stale" is not a band).
+ */
+export type HealthSeverityBand = 'blocked' | 'critical' | 'review' | 'good' | 'limited';
+
+export function healthSeverityBand(
+  health: VehicleHealthResponse | null | undefined,
+): HealthSeverityBand {
+  if (!health) return 'limited';
+  if (health.rental_blocked) return 'blocked';
+  switch (health.overall_state) {
+    case 'critical':
+      return 'critical';
+    case 'warning':
+      return 'review';
+    case 'good':
+      return 'good';
+    default:
+      return 'limited';
+  }
 }
 
 export interface ModuleChipModel {
@@ -99,6 +128,9 @@ export function computeFleetHealthKpis(
   let limited = 0;
   let good = 0;
   let naModuleVehicles = 0;
+  let actionRequired = 0;
+  let needsReview = 0;
+  let healthy = 0;
 
   for (const id of vehicleIds) {
     const health = healthMap.get(id);
@@ -112,6 +144,11 @@ export function computeFleetHealthKpis(
     else if (health.overall_state === 'good') good++;
     else limited++;
 
+    const band = healthSeverityBand(health);
+    if (band === 'blocked' || band === 'critical') actionRequired++;
+    else if (band === 'review') needsReview++;
+    else if (band === 'good') healthy++;
+
     const hasNa = Object.values(health.modules).some((m) => m.state === 'n_a');
     if (hasNa) naModuleVehicles++;
   }
@@ -124,6 +161,9 @@ export function computeFleetHealthKpis(
     limited,
     good,
     naModuleVehicles,
+    actionRequired,
+    needsReview,
+    healthy,
   };
 }
 
@@ -168,6 +208,180 @@ export function operatorGroupForVehicle(
   }
   if (health.overall_state === 'warning') return 'needs_review';
   return 'good';
+}
+
+// ---------------------------------------------------------------------------
+// Fleet Health display layer
+//
+// A pure transformation over the canonical VehicleHealthResponse (RentalHealthV1).
+// It does NOT compute health — it only decides how to *present* the existing
+// canonical fields so the overview stays a scannable management view instead of a
+// raw module dump. Core rule: Health severity ≠ data freshness.
+//   • Real issues  -> modules with state 'critical' | 'warning'
+//   • Data quality -> data_stale / unknown / n_a, summarised separately
+// ---------------------------------------------------------------------------
+
+/** Operational weight for ordering real module issues (lower = shown first). */
+const ISSUE_MODULE_WEIGHT: Record<RentalHealthModuleKey, number> = {
+  service_compliance: 0,
+  brakes: 1,
+  tires: 2,
+  error_codes: 3,
+  battery: 4,
+  complaints: 5,
+  vehicle_alerts: 6,
+};
+
+export interface HealthIssueChip {
+  key: RentalHealthModuleKey;
+  label: string;
+  /** Short operational state word (e.g. "Critical", "Watch"). */
+  detail: string;
+  /** Full canonical reason for tooltip / detail line. */
+  reason: string;
+  state: 'critical' | 'warning';
+  tone: StatusTone;
+}
+
+export interface FleetHealthDisplay {
+  band: HealthSeverityBand;
+  rentalBlocked: boolean;
+  group: OperatorGroupKey;
+  /** Primary status badge shown on the right of the row header. */
+  primaryBadge: { label: string; tone: StatusTone };
+  /** Most important actionable line, or null when nothing is open. */
+  primaryIssue: string | null;
+  primaryModuleKey: RentalHealthModuleKey | null;
+  /** Remaining real issues after the primary one (chips). */
+  secondaryIssues: HealthIssueChip[];
+  /** Count of modules in a healthy 'good' state. */
+  clearModuleCount: number;
+  /** Count of modules whose data is stale / unknown / n_a (data quality only). */
+  dataQualityCount: number;
+  /** Quiet, summarised data-quality note, or null. */
+  dataQualityNote: string | null;
+}
+
+function issueStateLabel(key: RentalHealthModuleKey, state: 'critical' | 'warning'): string {
+  if (state === 'critical') return 'Critical';
+  switch (key) {
+    case 'service_compliance':
+      return 'Due';
+    case 'error_codes':
+      return 'Active';
+    case 'complaints':
+      return 'Open';
+    case 'vehicle_alerts':
+      return 'Alert';
+    case 'tires':
+    case 'brakes':
+      return 'Observe';
+    case 'battery':
+    default:
+      return 'Watch';
+  }
+}
+
+/** Real module issues (critical/warning) ordered by severity then operational weight. */
+function collectIssueChips(
+  health: VehicleHealthResponse | null | undefined,
+): HealthIssueChip[] {
+  if (!health) return [];
+  const out: HealthIssueChip[] = [];
+  for (const key of MODULE_ORDER) {
+    const mod = health.modules[key];
+    if (mod.state !== 'critical' && mod.state !== 'warning') continue;
+    out.push({
+      key,
+      label: RENTAL_HEALTH_MODULE_LABELS[key] ?? key,
+      detail: issueStateLabel(key, mod.state),
+      reason: mod.reason,
+      state: mod.state,
+      tone: mod.state === 'critical' ? 'critical' : 'warning',
+    });
+  }
+  out.sort((a, b) => {
+    const sev = (a.state === 'critical' ? 0 : 1) - (b.state === 'critical' ? 0 : 1);
+    if (sev !== 0) return sev;
+    return ISSUE_MODULE_WEIGHT[a.key] - ISSUE_MODULE_WEIGHT[b.key];
+  });
+  return out;
+}
+
+/** True when a module only carries a data-quality limitation (not a real issue). */
+function isDataQualityModule(mod: RentalHealthModule): boolean {
+  if (mod.state === 'critical' || mod.state === 'warning') return false;
+  return mod.state === 'unknown' || mod.state === 'n_a' || mod.data_stale;
+}
+
+function buildBadge(
+  band: HealthSeverityBand,
+): { label: string; tone: StatusTone } {
+  switch (band) {
+    case 'blocked':
+    case 'critical':
+      return { label: 'Action required', tone: 'critical' };
+    case 'review':
+      return { label: 'Needs review', tone: 'warning' };
+    case 'good':
+      return { label: 'Healthy', tone: 'success' };
+    case 'limited':
+    default:
+      return { label: 'Limited data', tone: 'noData' };
+  }
+}
+
+/**
+ * Build the scannable display model for one vehicle from its canonical health.
+ * The UI renders this instead of dumping every module as an equal chip.
+ */
+export function buildFleetHealthDisplay(
+  health: VehicleHealthResponse | null | undefined,
+): FleetHealthDisplay {
+  const band = healthSeverityBand(health);
+  const group = operatorGroupForVehicle(health);
+  const issues = collectIssueChips(health);
+  const primaryModuleKey = issues.length > 0 ? issues[0].key : null;
+
+  let primaryIssue: string | null = null;
+  if (health?.rental_blocked && health.blocking_reasons.length > 0) {
+    primaryIssue = health.blocking_reasons[0];
+  } else if (issues.length > 0) {
+    primaryIssue = `${issues[0].label}: ${issues[0].reason}`;
+  } else if (band === 'limited') {
+    primaryIssue = 'Limited assessable health data';
+  }
+
+  const secondaryIssues = issues.filter((i) => i.key !== primaryModuleKey);
+
+  let clearModuleCount = 0;
+  let dataQualityCount = 0;
+  if (health) {
+    for (const mod of Object.values(health.modules)) {
+      if (mod.state === 'good') clearModuleCount++;
+      else if (isDataQualityModule(mod)) dataQualityCount++;
+    }
+  }
+
+  let dataQualityNote: string | null = null;
+  if (dataQualityCount >= 4) {
+    dataQualityNote = 'Limited data coverage';
+  } else if (dataQualityCount > 0) {
+    dataQualityNote = `${dataQualityCount} data note${dataQualityCount > 1 ? 's' : ''}`;
+  }
+
+  return {
+    band,
+    rentalBlocked: Boolean(health?.rental_blocked),
+    group,
+    primaryBadge: buildBadge(band),
+    primaryIssue,
+    primaryModuleKey,
+    secondaryIssues,
+    clearModuleCount,
+    dataQualityCount,
+    dataQualityNote,
+  };
 }
 
 function shortenReason(reason: string, max = 28): string {
@@ -262,18 +476,16 @@ export function matchesStatusFilter(
   health: VehicleHealthResponse | null | undefined,
 ): boolean {
   if (filter === 'all') return true;
-  if (!health) return filter === 'limited';
+  const band = healthSeverityBand(health);
   switch (filter) {
-    case 'blocked':
-      return health.rental_blocked;
-    case 'critical':
-      return health.overall_state === 'critical';
-    case 'warning':
-      return health.overall_state === 'warning';
-    case 'limited':
-      return health.overall_state === 'unknown';
+    case 'action':
+      return band === 'blocked' || band === 'critical';
+    case 'review':
+      return band === 'review';
     case 'good':
-      return health.overall_state === 'good' && !health.rental_blocked;
+      return band === 'good';
+    case 'limited':
+      return band === 'limited';
     default:
       return true;
   }

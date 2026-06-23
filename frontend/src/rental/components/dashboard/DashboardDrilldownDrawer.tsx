@@ -57,7 +57,7 @@ export function DashboardDrilldownDrawer({
       description={drilldown?.description}
       status={
         drilldown ? (
-          <StatusChip tone="info" className="shrink-0 text-[9px]">
+          <StatusChip tone="info" className="shrink-0">
             {drilldown.filterLabel}
           </StatusChip>
         ) : undefined
@@ -73,7 +73,7 @@ export function DashboardDrilldownDrawer({
             }
           >
             {drilldownCtaLabel(drilldown.footerAction, de)}
-            <Icon name="arrow-right" className="h-3.5 w-3.5" />
+            <Icon name="arrow-right" className="h-4 w-4" />
           </button>
         ) : undefined
       }
@@ -87,20 +87,20 @@ export function DashboardDrilldownDrawer({
           <div className="sq-tone-watch flex h-10 w-10 items-center justify-center rounded-xl">
             <Icon name="alert-triangle" className="h-5 w-5" />
           </div>
-          <p className="text-[13px] font-semibold text-foreground">
+          <p className="text-[14px] font-semibold text-foreground">
             {de ? 'Daten nicht verfügbar' : 'Data unavailable'}
           </p>
-          <p className="max-w-[260px] text-[11px] text-muted-foreground">{drilldown.error}</p>
+          <p className="max-w-[260px] text-[12px] text-muted-foreground text-pretty">{drilldown.error}</p>
         </div>
       ) : drilldown.rows.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/60 bg-muted/10 px-4 py-10 text-center">
           <div className="sq-tone-success flex h-10 w-10 items-center justify-center rounded-xl">
             <Icon name="check-circle" className="h-5 w-5" />
           </div>
-          <p className="text-[13px] font-semibold text-foreground">
+          <p className="text-[14px] font-semibold text-foreground">
             {de ? 'Keine Einträge' : 'No items'}
           </p>
-          <p className="max-w-[260px] text-[11px] text-muted-foreground">
+          <p className="max-w-[260px] text-[12px] text-muted-foreground text-pretty">
             {de
               ? 'Für diesen Filter sind aktuell keine Datensätze vorhanden.'
               : 'No records match this filter right now.'}
@@ -109,7 +109,7 @@ export function DashboardDrilldownDrawer({
       ) : (
         <div className="space-y-2">
           {drilldown.error ? (
-            <p className="rounded-lg border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.06] px-3 py-2 text-[11px] text-muted-foreground">
+            <p className="rounded-lg border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.06] px-3 py-2 text-[12px] text-muted-foreground">
               {drilldown.error}
             </p>
           ) : null}
@@ -117,33 +117,33 @@ export function DashboardDrilldownDrawer({
             {drilldown.rows.map((row) => (
               <li
                 key={row.id}
-                className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:gap-3"
+                className="flex flex-col gap-2 px-3 py-3.5 sm:flex-row sm:items-center sm:gap-3"
               >
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <p className="truncate text-[13px] font-semibold text-foreground">{row.title}</p>
+                    <p className="truncate text-[14px] font-semibold text-foreground">{row.title}</p>
                   </div>
                   {row.subtitle ? (
-                    <p className="truncate text-[11px] text-muted-foreground">{row.subtitle}</p>
+                    <p className="truncate text-[12px] text-muted-foreground">{row.subtitle}</p>
                   ) : null}
                   {row.meta ? (
-                    <p className="line-clamp-2 text-[10px] text-muted-foreground/90">{row.meta}</p>
+                    <p className="line-clamp-2 text-[12px] text-muted-foreground/90 text-pretty">{row.meta}</p>
                   ) : null}
                 </div>
                 <button
                   type="button"
                   onClick={() => runDrilldownCta(row, handlers)}
                   className={cn(
-                    'sq-btn sq-btn-secondary min-h-9 shrink-0 self-end text-[11px] sm:self-center',
+                    'sq-btn sq-btn-secondary min-h-10 shrink-0 self-end text-[12px] sm:self-center',
                   )}
                 >
                   {row.ctaLabel ?? drilldownCtaLabel(row.cta, de)}
-                  <Icon name="arrow-right" className="h-3.5 w-3.5 opacity-70" />
+                  <Icon name="arrow-right" className="h-4 w-4 opacity-70" />
                 </button>
               </li>
             ))}
           </ul>
-          <p className="text-center text-[10px] text-muted-foreground">
+          <p className="text-center text-[12px] text-muted-foreground">
             {de
               ? `${drilldown.rows.length} Einträge · Filter: ${drilldown.filterLabel}`
               : `${drilldown.rows.length} items · Filter: ${drilldown.filterLabel}`}

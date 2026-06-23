@@ -27,15 +27,22 @@ export const TASK_CHECKLIST_PREVIEW: Partial<Record<ApiTaskType, string[]>> = {
     'Schlussrechnung prüfen',
   ],
   TIRE_CHECK: ['Reifendruck prüfen', 'Profiltiefe prüfen', 'Sichtprüfung Beschädigungen', 'Ergebnis dokumentieren'],
-  BRAKE_CHECK: ['Bremsverhalten prüfen', 'Belag-/Scheibenzustand prüfen', 'Geräusche/Vibrationen prüfen', 'Ergebnis dokumentieren'],
+  BRAKE_CHECK: [
+    'Sichtprüfung',
+    'Probefahrt',
+    'Messwerte eintragen',
+    'Ergebnis dokumentieren',
+    'Rechnung/Dokument hochladen',
+  ],
   BATTERY_CHECK: ['Spannung/SOH prüfen', 'Startverhalten prüfen', 'Messwert dokumentieren'],
   VEHICLE_CLEANING: ['Innenraum reinigen', 'Außenreinigung prüfen', 'Müll entfernen', 'Fotos (optional)'],
   VEHICLE_SERVICE: ['Servicehistorie prüfen', 'Fälligkeit / Kilometerstand prüfen', 'Werkstatttermin planen', 'Ergebnis dokumentieren'],
   VEHICLE_INSPECTION: [
-    'Fahrzeug visuell prüfen',
-    'Relevante Fehlercodes prüfen',
-    'Sicherheitsrelevante Mängel dokumentieren',
-    'Maßnahmen festlegen',
+    'Termin buchen',
+    'Fahrzeug vorbereiten',
+    'Prüfung durchführen',
+    'Ergebnis dokumentieren',
+    'Dokument hochladen',
   ],
 };
 

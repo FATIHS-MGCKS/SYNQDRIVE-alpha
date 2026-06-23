@@ -3,6 +3,7 @@ import { ClickHouseService } from './clickhouse.service';
 import { ClickHouseTelemetryService } from './clickhouse-telemetry.service';
 import { ClickHouseAnalyticsService } from './clickhouse-analytics.service';
 import { ClickHouseSchemaService } from './clickhouse-schema.service';
+import { ClickHouseHfService } from './clickhouse-hf.service';
 
 /**
  * ClickHouseModule
@@ -20,11 +21,13 @@ import { ClickHouseSchemaService } from './clickhouse-schema.service';
     ClickHouseTelemetryService,
     ClickHouseAnalyticsService,
     ClickHouseSchemaService,
+    ClickHouseHfService,
   ],
   exports: [
     ClickHouseService,
     ClickHouseTelemetryService,
     ClickHouseAnalyticsService,
+    ClickHouseHfService,
     // ClickHouseSchemaService is not exported — it only needs to run on init
   ],
 })

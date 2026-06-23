@@ -39,6 +39,8 @@ export interface VehicleNextBookingContext {
 }
 
 export interface VehicleTaskOperatorRow extends VehicleTaskRow {
+  apiType: ApiTask['type'];
+  metadata: ApiTask['metadata'];
   sourceBadge: TaskSourceBadge;
   blockingBadge: TaskBlockingBadge;
   blocksVehicleAvailability: boolean;
@@ -234,6 +236,8 @@ export function enrichVehicleTaskRow(
   });
   return {
     ...base,
+    apiType: task.type,
+    metadata: task.metadata ?? null,
     sourceBadge: deriveTaskSourceBadge(task),
     blockingBadge: deriveTaskBlockingBadge(task),
     blocksVehicleAvailability: task.blocksVehicleAvailability === true,

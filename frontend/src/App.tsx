@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { isAuthenticated, getStoredUser } from './lib/auth';
 import MasterApp from './master/App';
 import RentalApp from './rental/App';
+import OperatorApp from './operator/OperatorApp';
 import LoginPage from './pages/LoginPage';
 
 function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string }) {
@@ -57,6 +58,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <RentalApp />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/operator/*"
+          element={
+            <ProtectedRoute>
+              <OperatorApp />
             </ProtectedRoute>
           }
         />

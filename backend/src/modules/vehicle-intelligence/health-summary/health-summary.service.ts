@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DtcService } from '../dtc/dtc.service';
 import { BrakeHealthService } from '../brakes/brake-health.service';
-import { TiresService } from '../tires/tires.service';
 import { TireHealthService } from '../tires/tire-health.service';
 import { ServiceEventsService } from '../service-events/service-events.service';
 import { TripsService } from '../trips/trips.service';
@@ -104,7 +103,6 @@ export class HealthSummaryService {
     private readonly dtcService: DtcService,
     private readonly canonicalBatteryHealthService: CanonicalBatteryHealthService,
     private readonly brakeHealthService: BrakeHealthService,
-    private readonly tiresService: TiresService,
     private readonly tireHealthService: TireHealthService,
     private readonly serviceEventsService: ServiceEventsService,
     private readonly tripsService: TripsService,
@@ -144,8 +142,8 @@ export class HealthSummaryService {
       dtcList,
       batterySummary,
       brakeSummary,
-      tireSetups,
       tireSummary,
+      tireDataQuality,
       serviceEventsPaginated,
       tripStats,
       recentTrips,
@@ -155,10 +153,13 @@ export class HealthSummaryService {
       this.dtcService.findByVehicle(vehicleId).then((r) => (Array.isArray(r) ? r.slice(0, 50) : [])).catch(() => []),
       this.canonicalBatteryHealthService.getSummary(vehicleId).catch(() => null),
       this.brakeHealthService.getSummary(vehicleId).catch(() => null),
-      this.tiresService.findSetupsByVehicle(vehicleId).catch(() => []),
-      // Canonical tire truth — single source for tread status/percent. No
-      // parallel tread-percent math in this service anymore.
+      // Canonical tire truth — single source for tread status/percent and data-quality flags.
       this.tireHealthService.getSummary(vehicleId).catch(() => null),
+      this.tireHealthService.getTireDataQuality(vehicleId).catch(() => ({
+        hasActiveSet: false,
+        hasSetups: false,
+        hasMeasurements: false,
+      })),
       this.serviceEventsService.findByVehicle(vehicleId, { page: 1, limit: 50 }).catch(() => ({ data: [] })),
       this.tripsService.getStats(vehicleId).catch(() => ({
         avgDrivingScore: null,
@@ -190,15 +191,13 @@ export class HealthSummaryService {
 
     // Tire tread truth comes ONLY from the canonical TireHealthService summary
     // (which centralises the season-aware thresholds in tire-health.config /
-    // tire-status). This service no longer re-derives tread percent — that
-    // removed the second, drifting source of truth.
-    type TireSetupShape = { status?: string; removedAt?: Date | null; measurements?: unknown[] };
+    // tire-status). Data-quality flags (hasSetups/hasMeasurements) also come
+    // from TireHealthService — never from a parallel TiresService query.
     const tireTreadPercent: number | null =
       tireSummary?.overallPercent != null ? Math.round(tireSummary.overallPercent) : null;
-    const activeSetup = (tireSetups as TireSetupShape[])?.find(
-      (s) => s.status === 'ACTIVE' && s.removedAt == null,
-    );
-    const firstSetup: TireSetupShape | undefined = activeSetup ?? (tireSetups?.[0] as TireSetupShape | undefined);
+    const tireHasSetups = tireSummary?.hasSetups ?? tireDataQuality.hasSetups;
+    const tireHasMeasurements =
+      tireSummary?.hasMeasurements ?? tireDataQuality.hasMeasurements;
 
     let cityPct: number | null = null;
     let highwayPct: number | null = null;
@@ -242,7 +241,7 @@ export class HealthSummaryService {
     else missing.push('battery');
     if (dtcStats != null) available.push('errorCodes'); else missing.push('errorCodes');
     if (brakeSummary != null) available.push('brakes'); else missing.push('brakes');
-    if (tireSetups?.length) available.push('tires'); else missing.push('tires');
+    if (tireHasSetups) available.push('tires'); else missing.push('tires');
     if (serviceEvents.length) available.push('serviceInfo'); else missing.push('serviceInfo');
     if (oilEvents.length) available.push('oilChange'); else missing.push('oilChange');
     if ((tripStats as any).totalTrips > 0) available.push('trips'); else missing.push('trips');
@@ -303,8 +302,8 @@ export class HealthSummaryService {
           displayMode: tireSummary?.displayMode ?? 'UNKNOWN',
           lowestTreadPosition: tireSummary?.lowestTreadPosition ?? null,
           confidence: tireSummary?.confidence ?? 'UNKNOWN',
-          hasSetups: Array.isArray(tireSetups) && tireSetups.length > 0,
-          hasMeasurements: firstSetup?.measurements != null && firstSetup.measurements.length > 0,
+          hasSetups: tireHasSetups,
+          hasMeasurements: tireHasMeasurements,
           hasData: tireSummary != null && tireSummary.overallStatus !== 'UNKNOWN',
         },
         serviceInfo: (() => {

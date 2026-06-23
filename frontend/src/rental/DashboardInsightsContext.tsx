@@ -81,6 +81,22 @@ export interface InsightsResponse {
 export type VehicleAlertSeverity = 'critical' | 'warning' | 'info';
 export type VehicleAlertKind = 'BATTERY_CRITICAL' | 'SERVICE_OVERDUE';
 
+/**
+ * Structured, per-module health finding derived from the canonical
+ * Rental-Health-V1 module map. This is what lets the dashboard render one
+ * child action per affected module (battery, tires, service, …) instead of
+ * collapsing everything into a single joined reason string.
+ */
+export interface VehicleHealthAlertModule {
+  /** Canonical Rental-Health-V1 module key (battery, tires, service_compliance, …). */
+  module: string;
+  label: string;
+  severity: Exclude<VehicleAlertSeverity, 'info'>;
+  reason: string;
+  dataStale: boolean;
+  lastUpdatedAt: string | null;
+}
+
 /** Per-vehicle health alert row derived from DashboardInsights. */
 export interface VehicleHealthAlert {
   vehicleId: string;
@@ -89,6 +105,14 @@ export interface VehicleHealthAlert {
   kinds: VehicleAlertKind[];
   primaryReason: string;
   secondaryReasons: string[];
+  /**
+   * Structured per-module findings (canonical Rental-Health-V1). Populated when
+   * the alert is derived from the rental-health map; consumers that need
+   * grouped child actions (e.g. the dashboard Attention queue) read this
+   * instead of parsing `primaryReason`/`secondaryReasons`. Optional for
+   * backward compatibility with insight-only derivation.
+   */
+  modules?: VehicleHealthAlertModule[];
   license?: string;
   model?: string;
   station?: string;
@@ -356,11 +380,20 @@ export function deriveVehicleHealthAlertsFromRentalHealth(
       for (const r of health.blocking_reasons) reasons.push(`Blocked: ${r}`);
     }
     let worst: VehicleAlertSeverity = overall ?? 'critical';
+    const moduleFindings: VehicleHealthAlertModule[] = [];
     for (const [name, mod] of Object.entries(health.modules)) {
       const sev = severityFromState(mod.state);
       if (!sev) continue;
       const label = RENTAL_HEALTH_MODULE_LABELS[name] ?? name;
       reasons.push(`${label}: ${mod.reason}`);
+      moduleFindings.push({
+        module: name,
+        label,
+        severity: sev as VehicleHealthAlertModule['severity'],
+        reason: mod.reason,
+        dataStale: mod.data_stale,
+        lastUpdatedAt: mod.last_updated_at,
+      });
       if (SEVERITY_RANK[sev] > SEVERITY_RANK[worst]) worst = sev;
     }
     if (reasons.length === 0) continue;
@@ -374,6 +407,7 @@ export function deriveVehicleHealthAlertsFromRentalHealth(
       kinds: [],
       primaryReason,
       secondaryReasons: rest,
+      modules: moduleFindings,
       license: vehicle?.license,
       model: vehicle?.model,
       station: vehicle?.station,

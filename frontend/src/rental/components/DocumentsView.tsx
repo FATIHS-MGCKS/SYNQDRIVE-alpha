@@ -1,6 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Icon } from './ui/Icon';
 import { VehicleData } from '../data/vehicles';
+import { api, type ApiTask } from '../../lib/api';
+import { useRentalOrg } from '../RentalContext';
+import { SupportContextButton } from '../../components/support/SupportContextButton';
 import {
   DataCard,
   EmptyState,
@@ -37,6 +40,7 @@ import {
 
 interface DocumentsViewProps {
   vehicle?: VehicleData | null;
+  onOpenLinkedTask?: (taskId: string) => void;
 }
 
 interface DrawerState {
@@ -95,9 +99,45 @@ function timelineTone(
   return 'neutral';
 }
 
-export function DocumentsView({ vehicle }: DocumentsViewProps) {
+function timelineKindLabel(kind?: string): string | null {
+  if (kind === 'service_event') return 'Service-Ereignis';
+  if (kind === 'compliance') return 'Compliance';
+  if (kind === 'document') return 'Dokument';
+  return null;
+}
+
+export function DocumentsView({ vehicle, onOpenLinkedTask }: DocumentsViewProps) {
+  const { orgId } = useRentalOrg();
   const { summary, loading, error, reload } = useVehicleFileSummary(vehicle?.id);
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
+  const [vehicleTasks, setVehicleTasks] = useState<ApiTask[]>([]);
+
+  useEffect(() => {
+    if (!orgId || !vehicle?.id) {
+      setVehicleTasks([]);
+      return;
+    }
+    let cancelled = false;
+    api.tasks
+      .forVehicle(orgId, vehicle.id)
+      .then((rows) => {
+        if (!cancelled) setVehicleTasks(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) setVehicleTasks([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, vehicle?.id]);
+
+  const taskByDocumentId = useMemo(() => {
+    const map = new Map<string, ApiTask>();
+    for (const task of vehicleTasks) {
+      if (task.documentId) map.set(task.documentId, task);
+    }
+    return map;
+  }, [vehicleTasks]);
 
   const vehicleName = vehicle
     ? [vehicle.make, vehicle.model].filter(Boolean).join(' ') || 'Fahrzeug'
@@ -125,19 +165,47 @@ export function DocumentsView({ vehicle }: DocumentsViewProps) {
 
   const timelineItems: TimelineItem[] = useMemo(() => {
     if (!summary) return [];
-    return summary.timeline.map((item) => ({
-      id: item.id,
-      title: item.title,
-      time: formatFileDate(item.occurredAt, true),
-      description: item.subtitle ?? undefined,
-      tone: timelineTone(item.uiStatus),
-      meta: (
-        <StatusChip tone="neutral" className="!text-[9px]">
-          Quelle: {formatStatusSource(item.source)}
-        </StatusChip>
-      ),
-    }));
-  }, [summary]);
+    return summary.timeline.map((item) => {
+      const kindLabel = timelineKindLabel(item.kind);
+      const linkedTask =
+        item.relatedExtractionId != null
+          ? vehicleTasks.find((t) => t.documentId === item.relatedExtractionId) ?? null
+          : null;
+      return {
+        id: item.id,
+        title: item.title,
+        time: formatFileDate(item.occurredAt, true),
+        description: [
+          item.subtitle,
+          item.relatedServiceEventId ? 'Verknüpftes Service-Ereignis' : null,
+        ]
+          .filter(Boolean)
+          .join(' · ') || undefined,
+        tone: timelineTone(item.uiStatus),
+        meta: (
+          <div className="flex flex-wrap items-center gap-1">
+            {kindLabel ? (
+              <StatusChip tone="neutral" className="!text-[9px]">
+                {kindLabel}
+              </StatusChip>
+            ) : null}
+            <StatusChip tone="neutral" className="!text-[9px]">
+              Quelle: {formatStatusSource(item.source)}
+            </StatusChip>
+            {linkedTask && onOpenLinkedTask ? (
+              <button
+                type="button"
+                onClick={() => onOpenLinkedTask(linkedTask.id)}
+                className="text-[9px] font-semibold text-[color:var(--brand-ink)] underline sq-press"
+              >
+                Aufgabe: {linkedTask.title}
+              </button>
+            ) : null}
+          </div>
+        ),
+      };
+    });
+  }, [summary, vehicleTasks, onOpenLinkedTask]);
 
   const openUpload = (categoryId: VehicleDocumentCategoryId) => {
     setDrawer({ categoryId, mode: 'upload' });
@@ -185,6 +253,16 @@ export function DocumentsView({ vehicle }: DocumentsViewProps) {
             </div>
           </div>
 
+          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+            <SupportContextButton
+              kind="document"
+              contextData={{
+                vehicleId: vehicle.id,
+                licensePlate,
+                vin,
+                selectedTab: 'documents',
+              }}
+            />
           {summary ? (
             <div className="flex flex-wrap gap-1.5 lg:max-w-md lg:justify-end">
               <StatusChip
@@ -219,6 +297,7 @@ export function DocumentsView({ vehicle }: DocumentsViewProps) {
               ) : null}
             </div>
           ) : null}
+          </div>
         </div>
 
         {summary ? (
@@ -288,6 +367,12 @@ export function DocumentsView({ vehicle }: DocumentsViewProps) {
                 <DocumentCategoryCard
                   key={cat.id}
                   category={cat}
+                  linkedTask={
+                    cat.latestExtractionId
+                      ? taskByDocumentId.get(cat.latestExtractionId) ?? null
+                      : null
+                  }
+                  onOpenLinkedTask={onOpenLinkedTask}
                   onUpload={() => openUpload(cat.id)}
                   onReview={() => openReview(cat)}
                   onView={() => openReview(cat)}
@@ -453,11 +538,15 @@ function categoryToneClass(tone: CategoryUiMeta['tone']): string {
 
 function DocumentCategoryCard({
   category,
+  linkedTask,
+  onOpenLinkedTask,
   onUpload,
   onReview,
   onView,
 }: {
   category: VehicleDocumentCategorySummary;
+  linkedTask?: ApiTask | null;
+  onOpenLinkedTask?: (taskId: string) => void;
   onUpload: () => void;
   onReview: () => void;
   onView: () => void;
@@ -517,6 +606,15 @@ function DocumentCategoryCard({
           </p>
         ) : category.documentCount === 0 ? (
           <p className="italic">{meta.emptyHint}</p>
+        ) : null}
+        {linkedTask && onOpenLinkedTask ? (
+          <button
+            type="button"
+            onClick={() => onOpenLinkedTask(linkedTask.id)}
+            className="text-left font-medium text-[color:var(--brand-ink)] underline sq-press"
+          >
+            Verknüpfte Aufgabe: {linkedTask.title}
+          </button>
         ) : null}
         {category.complianceDisplay?.validTill ? (
           <p>

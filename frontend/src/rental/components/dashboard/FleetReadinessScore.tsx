@@ -24,9 +24,9 @@ function BreakdownRow({
 }) {
   if (value <= 0) return null;
   return (
-    <div className="flex items-center justify-between gap-2 text-[10px]">
+    <div className="flex items-center justify-between gap-2 text-[12.5px]">
       <span className="text-muted-foreground">{label}</span>
-      <StatusChip tone={tone ?? 'neutral'} className="!min-w-[28px] justify-center text-[10px] tabular-nums">
+      <StatusChip tone={tone ?? 'neutral'} className="!min-w-[30px] justify-center tabular-nums">
         {value}
       </StatusChip>
     </div>
@@ -63,20 +63,21 @@ export function FleetReadinessScore({ vm }: FleetReadinessScoreProps) {
         title={de ? 'Einsatzbereitschaft' : 'Fleet readiness'}
         subtitle={de ? 'Nachvollziehbar aus Flottenzustand' : 'Derived from fleet state'}
         trailing={
-          <StatusChip tone={tone} className="text-[10px] uppercase">
+          <StatusChip tone={tone} className="uppercase">
             {statusLabel}
           </StatusChip>
         }
       />
 
       <div className={cn(PANEL_BODY_CLASS, 'flex flex-1 flex-col gap-3')}>
-        {scorePercent != null && hasReliableBasis ? (          <p className="text-[11px] text-muted-foreground">
+        {scorePercent != null && hasReliableBasis ? (
+          <p className="text-[12.5px] text-muted-foreground text-pretty">
             {de ? 'Orientierungswert' : 'Orientation'}:{' '}
-            <span className="font-semibold tabular-nums text-foreground">{scorePercent}%</span>{' '}
+            <span className="text-[15px] font-bold tabular-nums text-foreground">{scorePercent}%</span>{' '}
             {de ? 'bereit im Scope' : 'ready in scope'}
           </p>
         ) : (
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[12.5px] text-muted-foreground text-pretty">
             {status === 'not-enough-data'
               ? de
                 ? 'Nicht genug Daten für eine Bewertung.'
@@ -87,7 +88,8 @@ export function FleetReadinessScore({ vm }: FleetReadinessScoreProps) {
           </p>
         )}
 
-        <div className="space-y-1.5">{breakdownRows(breakdown, de)}</div>      </div>
+        <div className="space-y-2">{breakdownRows(breakdown, de)}</div>
+      </div>
     </section>
   );
 }

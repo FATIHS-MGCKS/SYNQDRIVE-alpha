@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   OrganizationStatus,
   BillingStatus,
-  TicketStatus,
+  SupportTicketStatus,
   DimoPollStatus,
   EnrichmentJobStatus,
 } from '@prisma/client';
@@ -67,7 +67,15 @@ export class PlatformAdminService {
       }),
       this.prisma.prospect.count(),
       this.prisma.supportTicket.count({
-        where: { status: { in: [TicketStatus.OPEN, TicketStatus.IN_PROGRESS] } },
+        where: {
+          status: {
+            in: [
+              SupportTicketStatus.OPEN,
+              SupportTicketStatus.IN_PROGRESS,
+              SupportTicketStatus.WAITING_FOR_CUSTOMER,
+            ],
+          },
+        },
       }),
       this.prisma.billingSubscription.findMany({
         where: { status: BillingStatus.ACTIVE },
@@ -159,6 +167,11 @@ export class PlatformAdminService {
     await this.prisma.station.deleteMany({});
     await this.prisma.organizationIntegration.deleteMany({});
     await this.prisma.organizationProduct.deleteMany({});
+    await this.prisma.billingInvoiceLine.deleteMany({});
+    await this.prisma.billingUsageSnapshot.deleteMany({});
+    await this.prisma.billingOrganizationPriceOverride.deleteMany({});
+    await this.prisma.billingPaymentMethod.deleteMany({});
+    await this.prisma.billingAuditLog.deleteMany({});
     await this.prisma.billingInvoice.deleteMany({});
     await this.prisma.billingSubscription.deleteMany({});
     await this.prisma.organizationMembership.deleteMany({});

@@ -1,97 +1,71 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { createHash } from 'node:crypto';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import type { ClickHouseClient } from '@clickhouse/client';
 import { ClickHouseService } from './clickhouse.service';
 
 /**
  * ClickHouseSchemaService
  *
- * Applies the initial DDL schema after all modules have initialised.
- * All statements are idempotent (CREATE IF NOT EXISTS) — safe to run on every
- * application start, including restarts and rolling deployments.
+ * Versioned migration runner for the ClickHouse analytics mirror.
  *
- * Uses OnApplicationBootstrap (not OnModuleInit) so that ClickHouseService
- * has already completed its async ping/connect before this runs.
+ * Behaviour:
+ *   - Ensures the configured database + a `schema_migrations` tracking table.
+ *   - Reads every `*.sql` file in ./migrations, sorted by filename.
+ *   - version  = prefix before the first `_` (e.g. `001`)
+ *   - name     = filename without `.sql`
+ *   - checksum = SHA256 of the raw file content
+ *   - Already-applied migrations (same version + matching checksum) are skipped.
+ *   - A version that exists with a DIFFERENT checksum is a drift error: it is
+ *     logged clearly and is NOT re-run.
+ *   - Pending migrations run in order; each is recorded in `schema_migrations`.
  *
- * SQL is inlined to avoid file-path issues between src/ and dist/ in watch mode.
+ * Runs in OnApplicationBootstrap so ClickHouseService has already completed its
+ * async ping/connect. ClickHouse stays an optional analytics mirror: any failure
+ * here is reported via ClickHouseService.reportSchemaStatus and never blocks the
+ * operational (PostgreSQL-backed) request path.
+ *
+ * The `schema_migrations` table lives in the configured ClickHouse database and
+ * never touches PostgreSQL.
  */
 
-const INITIAL_SCHEMA_DDL = `
-CREATE DATABASE IF NOT EXISTS synqdrive;
+interface MigrationFile {
+  version: string;
+  name: string;
+  checksum: string;
+  statements: string[];
+}
 
-CREATE TABLE IF NOT EXISTS synqdrive.telemetry_snapshots (
-    vehicle_id        String,
-    token_id          UInt32,
-    recorded_at       DateTime64(3, 'UTC'),
-    is_ignition_on    Nullable(UInt8),
-    speed_kmh         Nullable(Float32),
-    odometer_km       Nullable(Float64),
-    latitude          Nullable(Float64),
-    longitude         Nullable(Float64),
-    engine_load       Nullable(Float32),
-    fuel_absolute     Nullable(Float32),
-    ev_soc            Nullable(Float32),
-    traction_kw       Nullable(Float32)
-) ENGINE = MergeTree()
-PARTITION BY toYYYYMM(recorded_at)
-ORDER BY (vehicle_id, recorded_at)
-TTL recorded_at + INTERVAL 1 YEAR
-SETTINGS index_granularity = 8192;
+interface AppliedMigration {
+  version: string;
+  checksum: string;
+}
 
-CREATE TABLE IF NOT EXISTS synqdrive.telemetry_state_changes (
-    vehicle_id    String,
-    changed_at    DateTime64(3, 'UTC'),
-    signal_name   LowCardinality(String),
-    old_value     Nullable(Int8),
-    new_value     Nullable(Int8)
-) ENGINE = MergeTree()
-PARTITION BY toYYYYMM(changed_at)
-ORDER BY (vehicle_id, signal_name, changed_at)
-TTL changed_at + INTERVAL 1 YEAR
-SETTINGS index_granularity = 8192;
+const MIGRATIONS_DIR = join(__dirname, 'migrations');
 
-CREATE TABLE IF NOT EXISTS synqdrive.telemetry_waypoints (
-    vehicle_id    String,
-    recorded_at   DateTime64(3, 'UTC'),
-    latitude      Float64,
-    longitude     Float64,
-    speed_kmh     Nullable(Float32),
-    odometer_km   Nullable(Float64),
-    trip_id       Nullable(String)
-) ENGINE = MergeTree()
-PARTITION BY toYYYYMM(recorded_at)
-ORDER BY (vehicle_id, recorded_at)
-TTL recorded_at + INTERVAL 6 MONTH
-SETTINGS index_granularity = 8192;
+/**
+ * Splits a migration file into individual statements.
+ *
+ * Intentionally simple (no SQL parser dependency):
+ *   - strips simple `--` line comments
+ *   - splits on `;`
+ *   - trims and drops empty statements
+ */
+export function splitSqlStatements(sql: string): string[] {
+  const withoutLineComments = sql
+    .split('\n')
+    .map((line) => {
+      const commentIdx = line.indexOf('--');
+      return commentIdx >= 0 ? line.slice(0, commentIdx) : line;
+    })
+    .join('\n');
 
-CREATE TABLE IF NOT EXISTS synqdrive.trip_activity_windows (
-    vehicle_id          String,
-    window_start        DateTime64(3, 'UTC'),
-    window_end          DateTime64(3, 'UTC'),
-    point_count         UInt32,
-    max_speed_kmh       Nullable(Float32),
-    odometer_delta_km   Nullable(Float64),
-    has_activity        UInt8,
-    computed_at         DateTime64(3, 'UTC') DEFAULT now()
-) ENGINE = ReplacingMergeTree(computed_at)
-PARTITION BY toYYYYMM(window_start)
-ORDER BY (vehicle_id, window_start, window_end)
-TTL window_start + INTERVAL 90 DAY
-SETTINGS index_granularity = 8192;
-
-CREATE TABLE IF NOT EXISTS synqdrive.trip_segment_candidates (
-    vehicle_id      String,
-    segment_start   DateTime64(3, 'UTC'),
-    segment_end     DateTime64(3, 'UTC'),
-    duration_ms     UInt32,
-    confidence      LowCardinality(String),
-    repair_tier     LowCardinality(String),
-    trip_id         Nullable(String),
-    computed_at     DateTime64(3, 'UTC') DEFAULT now()
-) ENGINE = ReplacingMergeTree(computed_at)
-PARTITION BY toYYYYMM(segment_start)
-ORDER BY (vehicle_id, segment_start)
-TTL segment_start + INTERVAL 90 DAY
-SETTINGS index_granularity = 8192;
-`;
+  return withoutLineComments
+    .split(';')
+    .map((statement) => statement.trim())
+    .filter((statement) => statement.length > 0);
+}
 
 @Injectable()
 export class ClickHouseSchemaService implements OnApplicationBootstrap {
@@ -101,47 +75,170 @@ export class ClickHouseSchemaService implements OnApplicationBootstrap {
 
   async onApplicationBootstrap(): Promise<void> {
     if (!this.ch.isAvailable) {
-      this.logger.debug('ClickHouse not available — skipping schema init.');
+      // disabled / degraded — handled by ClickHouseService status. Nothing to do.
+      this.logger.debug('ClickHouse not available — skipping migrations.');
       return;
     }
 
     try {
-      await this.applyDdl();
+      await this.runMigrations();
     } catch (err: unknown) {
-      this.logger.warn(
-        `ClickHouse schema init failed: ${(err as Error).message}. Analytics layer may be degraded.`,
+      const message = (err as Error).message ?? String(err);
+      this.ch.reportSchemaStatus({ lastSchemaError: message });
+      this.logger.error(
+        `ClickHouse migration runner failed: ${message}. Analytics layer may be degraded.`,
       );
     }
   }
 
-  private async applyDdl(): Promise<void> {
-    const statements = INITIAL_SCHEMA_DDL
-      .split(';')
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0 && !s.startsWith('--'));
+  private async runMigrations(): Promise<void> {
+    const db = this.ch.databaseName;
 
-    // Use an admin client on the `default` database so that CREATE DATABASE
-    // and CREATE TABLE IF NOT EXISTS synqdrive.* succeed even before the
-    // `synqdrive` database exists on the server.
+    // Use an admin client on the `default` database so CREATE DATABASE and
+    // fully-qualified CREATE TABLE statements succeed even before the target
+    // database exists.
     const adminClient = this.ch.createAdminClient();
-    let applied = 0;
 
     try {
-      for (const statement of statements) {
-        try {
-          await adminClient.command({ query: statement });
-          applied++;
-        } catch (err: unknown) {
-          const msg = (err as Error).message ?? '';
-          if (!msg.toLowerCase().includes('already exists')) {
-            this.logger.warn(`DDL failed: ${msg.slice(0, 200)}`);
-          }
+      await this.ensureMigrationsInfrastructure(adminClient, db);
+
+      const files = this.loadMigrationFiles();
+      const applied = await this.fetchAppliedMigrations(adminClient, db);
+      const appliedByVersion = new Map(applied.map((m) => [m.version, m]));
+
+      const pending: MigrationFile[] = [];
+      let driftError: string | null = null;
+
+      for (const file of files) {
+        const existing = appliedByVersion.get(file.version);
+        if (!existing) {
+          pending.push(file);
+          continue;
+        }
+        if (existing.checksum !== file.checksum) {
+          const msg = `Checksum mismatch for migration ${file.name} (version ${file.version}): recorded=${existing.checksum.slice(0, 12)}… file=${file.checksum.slice(0, 12)}…. Migration will NOT be re-run.`;
+          this.logger.error(msg);
+          driftError = driftError ? `${driftError}; ${msg}` : msg;
         }
       }
+
+      this.ch.reportSchemaStatus({ pendingMigrationCount: pending.length });
+
+      let appliedNow = 0;
+      for (const migration of pending) {
+        await this.applyMigration(adminClient, db, migration);
+        appliedNow++;
+      }
+
+      const totalApplied = applied.length + appliedNow;
+      this.ch.reportSchemaStatus({
+        lastSchemaInitAt: new Date(),
+        lastSchemaError: driftError,
+        appliedMigrationCount: totalApplied,
+        pendingMigrationCount: 0,
+      });
+
+      this.logger.log(
+        `ClickHouse migrations complete — ${appliedNow} applied this run, ${totalApplied} total${driftError ? ' (with checksum drift, see error log)' : ''}.`,
+      );
     } finally {
       await adminClient.close();
     }
+  }
 
-    this.logger.log(`ClickHouse schema initialised (${applied} statements applied).`);
+  private async ensureMigrationsInfrastructure(
+    client: ClickHouseClient,
+    db: string,
+  ): Promise<void> {
+    await client.command({
+      query: `CREATE DATABASE IF NOT EXISTS ${db}`,
+    });
+    await client.command({
+      query: `
+        CREATE TABLE IF NOT EXISTS ${db}.schema_migrations (
+          version     String,
+          name        String,
+          applied_at  DateTime64(3, 'UTC'),
+          checksum    String
+        )
+        ENGINE = ReplacingMergeTree(applied_at)
+        ORDER BY (version)
+      `,
+    });
+  }
+
+  private loadMigrationFiles(): MigrationFile[] {
+    if (!existsSync(MIGRATIONS_DIR)) {
+      this.logger.warn(
+        `Migrations directory not found at ${MIGRATIONS_DIR} — no migrations to apply.`,
+      );
+      return [];
+    }
+
+    const fileNames = readdirSync(MIGRATIONS_DIR)
+      .filter((f) => f.toLowerCase().endsWith('.sql'))
+      .sort((a, b) => a.localeCompare(b));
+
+    return fileNames.map((fileName) => {
+      const raw = readFileSync(join(MIGRATIONS_DIR, fileName), 'utf8');
+      const version = fileName.split('_')[0];
+      const name = fileName.replace(/\.sql$/i, '');
+      const checksum = createHash('sha256').update(raw).digest('hex');
+      return {
+        version,
+        name,
+        checksum,
+        statements: splitSqlStatements(raw),
+      };
+    });
+  }
+
+  private async fetchAppliedMigrations(
+    client: ClickHouseClient,
+    db: string,
+  ): Promise<AppliedMigration[]> {
+    const result = await client.query({
+      query: `SELECT version, checksum FROM ${db}.schema_migrations FINAL`,
+      format: 'JSONEachRow',
+    });
+    return result.json<AppliedMigration>();
+  }
+
+  private async applyMigration(
+    client: ClickHouseClient,
+    db: string,
+    migration: MigrationFile,
+  ): Promise<void> {
+    for (const statement of migration.statements) {
+      try {
+        await client.command({ query: statement });
+      } catch (err: unknown) {
+        const message = (err as Error).message ?? String(err);
+        const excerpt = statement.replace(/\s+/g, ' ').slice(0, 200);
+        throw new Error(
+          `Migration ${migration.name} failed on statement: "${excerpt}" — ${message}`,
+        );
+      }
+    }
+
+    await client.insert({
+      table: `${db}.schema_migrations`,
+      values: [
+        {
+          version: migration.version,
+          name: migration.name,
+          applied_at: new Date()
+            .toISOString()
+            .replace('T', ' ')
+            .replace('Z', ''),
+          checksum: migration.checksum,
+        },
+      ],
+      format: 'JSONEachRow',
+    });
+
+    this.logger.log(
+      `Applied ClickHouse migration ${migration.name} (version ${migration.version}, ${migration.statements.length} statement(s)).`,
+    );
   }
 }

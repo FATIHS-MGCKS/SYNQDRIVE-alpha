@@ -16,13 +16,11 @@ import { AiTireSpecJobService } from './ai-tire-spec-job.service';
 import { DimoAgentsController } from './dimo-agents.controller';
 import { ChatService } from './chat.service';
 import { ChatController } from './chat.controller';
-import { WhatsAppService } from './whatsapp.service';
-import { WhatsAppController } from './whatsapp.controller';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 
 @Module({
   imports: [ConfigModule.forFeature(dimoConfig), forwardRef(() => VehicleIntelligenceModule)],
-  controllers: [DimoController, DimoWebhookController, DimoAgentsController, ChatController, WhatsAppController],
+  controllers: [DimoController, DimoWebhookController, DimoAgentsController, ChatController],
   providers: [
     DimoAuthService,
     DimoTelemetryService,
@@ -35,7 +33,6 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DimoDocumentAgentService,
     AiTireSpecJobService,
     ChatService,
-    WhatsAppService,
   ],
   exports: [
     DimoAuthService,
@@ -48,7 +45,6 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DimoDocumentAgentService,
     AiTireSpecJobService,
     ChatService,
-    WhatsAppService,
   ],
 })
 export class DimoModule {}

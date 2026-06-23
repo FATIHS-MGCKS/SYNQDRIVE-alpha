@@ -16,7 +16,7 @@ export function DataTrustHint({ hint, locale, className }: DataTrustHintProps) {
   return (
     <p
       className={cn(
-        'text-[9px] font-medium leading-snug text-muted-foreground/90',
+        'text-[11px] font-medium leading-snug text-muted-foreground/90',
         hint === 'financial-unavailable' || hint === 'booking-unavailable' || hint === 'insights-unavailable'
           ? 'text-[color:var(--status-critical)]/80'
           : '',

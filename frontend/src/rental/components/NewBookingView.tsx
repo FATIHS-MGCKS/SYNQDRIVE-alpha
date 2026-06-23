@@ -41,6 +41,8 @@ import {
 // instead of first getting a 409 from the booking create endpoint.
 import { useFleetHealthMap } from '../hooks/useVehicleHealth';
 import { RentalHealthBadge } from './rental-health/RentalHealthBadge';
+import { BookingRentalEligibilityCard } from './bookings/BookingRentalEligibilityCard';
+import type { BookingRentalEligibilityResult } from '../lib/booking-rental-eligibility.types';
 import {
   PageHeader,
   DataCard,
@@ -175,6 +177,10 @@ export function NewBookingView({ onBack, onCustomerCreated, onBookingCreated }: 
     warnings: string[];
     requiredActions: string[];
   } | null>(null);
+
+  const [rentalEligibility, setRentalEligibility] = useState<BookingRentalEligibilityResult | null>(null);
+  const [rentalEligibilityLoading, setRentalEligibilityLoading] = useState(false);
+  const [rentalEligibilityError, setRentalEligibilityError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!orgId) return;
@@ -529,6 +535,43 @@ export function NewBookingView({ onBack, onCustomerCreated, onBookingCreated }: 
   const returnAtIso = returnDate
     ? new Date(`${returnDate}T${returnTime || '10:00'}:00`).toISOString()
     : '';
+
+  useEffect(() => {
+    if (!orgId || !selectedVehicle?.id || !selectedCustomer?.id || !pickupAtIso) {
+      setRentalEligibility(null);
+      setRentalEligibilityError(null);
+      setRentalEligibilityLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setRentalEligibilityLoading(true);
+    setRentalEligibilityError(null);
+    api.bookings
+      .checkRentalEligibility(orgId, {
+        vehicleId: selectedVehicle.id,
+        customerId: selectedCustomer.id,
+        startDate: pickupAtIso,
+        endDate: returnAtIso || undefined,
+        paymentMethod,
+      })
+      .then((result) => {
+        if (!cancelled) setRentalEligibility(result);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setRentalEligibility(null);
+          setRentalEligibilityError(
+            err instanceof Error ? err.message : 'Fahrzeugvoraussetzungen konnten nicht geprüft werden',
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setRentalEligibilityLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, selectedVehicle?.id, selectedCustomer?.id, pickupAtIso, returnAtIso, paymentMethod]);
 
   const pricingInputBase = useMemo(
     () => ({
@@ -3021,6 +3064,20 @@ export function NewBookingView({ onBack, onCustomerCreated, onBookingCreated }: 
 
           {/* Sidebar Summary - 1 col */}
           <div className="space-y-5">
+
+            {selectedVehicle && selectedCustomer && pickupDate && (
+              <BookingRentalEligibilityCard
+                result={rentalEligibility}
+                loading={rentalEligibilityLoading}
+                error={rentalEligibilityError}
+                onCompleteCustomerData={() => {
+                  if (!selectedCustomer) return;
+                  setCustomerDetailTarget(selectedCustomer);
+                  setCustomerDetailOpen(true);
+                }}
+                onChooseAnotherVehicle={() => setCurrentStep(1)}
+              />
+            )}
 
             {/* Combined Buchungsübersicht & Preisübersicht – all steps */}
             {card(

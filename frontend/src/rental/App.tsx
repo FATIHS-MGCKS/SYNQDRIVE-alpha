@@ -1,6 +1,6 @@
 
 import { Icon } from './components/ui/Icon';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { Sidebar } from './components/Sidebar';
@@ -35,12 +35,14 @@ import { HandoverProvider } from './HandoverContext';
 import { Toaster } from 'sonner';
 import { useLiveVehicleTelemetry } from './hooks/useLiveVehicleTelemetry';
 import { useVehicleLiveMapStore } from './stores/useVehicleLiveMapStore';
+import { resolveTelemetryFreshness } from './lib/telemetryFreshness';
 import { useShallow } from 'zustand/react/shallow';
 import { LanguageProvider } from './i18n/LanguageContext';
 import { DocumentUploadView } from './components/DocumentUploadView';
 import { PageHeader, HealthStatusChip, StatusChip } from '../components/patterns';
 import { AIAssistantView } from './components/AIAssistantView';
 import { SupportView } from './components/SupportView';
+import { SupportContextButton } from '../components/support/SupportContextButton';
 import { HelpCenterView } from './components/HelpCenterView';
 import { DataAnalyseView } from './components/DataAnalyseView';
 import { WorkflowAutomationView } from './components/WorkflowAutomationView';
@@ -50,8 +52,13 @@ import { InsurancesView } from './components/InsurancesView';
 import { VoiceAssistantView } from './components/VoiceAssistantView';
 import { AppErrorBoundary } from '../components/AppErrorBoundary';
 import { AppShell } from '../components/shell';
-import { VehicleHealthBoxTelemetryBridge } from './components/vehicle-detail';
-import { OverviewLiveMapCard } from './components/vehicle-detail/OverviewLiveMapCard';
+import {
+  VehicleOverviewTab,
+  VehicleRequirementsTab,
+  createVehicleOverviewNavigator,
+  useVehicleOverviewSummary,
+} from './components/vehicle-detail';
+import type { ServiceCenterNavState } from './lib/service-center-navigation';
 
 // Views that render the vehicle detail header (incl. <VehicleConnectionBadge>).
 // The live-telemetry binder must cover the same set so the Online/Offline +
@@ -65,6 +72,7 @@ const VEHICLE_DETAIL_VIEWS = new Set<string>([
   'documents',
   'vehicle-bookings',
   'vehicle-tasks',
+  'vehicle-requirements',
 ]);
 
 function VehicleLiveTelemetryBinder({
@@ -86,44 +94,34 @@ function VehicleConnectionBadge() {
     })),
   );
 
-  const connState =
-    onlineStatus === 'ONLINE'
-      ? 'online'
-      : onlineStatus === 'STANDBY'
-      ? 'standby'
-      : 'offline';
+  // Central 5-state telemetry freshness — same logic as the fleet rows.
+  // STANDBY is a calm, neutral state (no warning colour); signal_delayed is a
+  // low (watch) hint; offline / no_signal are muted connectivity problems.
+  const freshness = resolveTelemetryFreshness({ lastSignal, onlineStatus });
   let timeAgo = '—';
-  if (lastSignal) {
-    const diff = Date.now() - new Date(lastSignal).getTime();
-    if (!isNaN(diff) && diff >= 0) {
-      const mins = Math.floor(diff / 60000);
-      if (mins < 1) timeAgo = 'just now';
-      else if (mins < 60) timeAgo = `${mins}m ago`;
-      else {
-        const hrs = Math.floor(mins / 60);
-        if (hrs < 24) timeAgo = `${hrs}h ago`;
-        else timeAgo = `${Math.floor(hrs / 24)}d ago`;
-      }
+  if (freshness.signalAgeMs != null) {
+    const mins = Math.floor(freshness.signalAgeMs / 60000);
+    if (mins < 1) timeAgo = 'just now';
+    else if (mins < 60) timeAgo = `${mins}m ago`;
+    else {
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) timeAgo = `${hrs}h ago`;
+      else timeAgo = `${Math.floor(hrs / 24)}d ago`;
     }
   }
-  const dotColor =
-    connState === 'online'
-      ? 'text-[color:var(--status-positive)] fill-[color:var(--status-positive)] animate-online-pulse'
-      : connState === 'standby'
+  const dotColor = freshness.isLive
+    ? 'text-[color:var(--status-positive)] fill-[color:var(--status-positive)] animate-online-pulse'
+    : freshness.isSignalDelayed
       ? 'text-[color:var(--status-watch)] fill-[color:var(--status-watch)]'
-      : 'text-muted-foreground fill-[color:var(--status-nodata)]';
-  const labelColor =
-    connState === 'online'
-      ? 'text-[color:var(--status-positive)]'
-      : connState === 'standby'
+      : freshness.isStandby
+        ? 'text-muted-foreground fill-[color:var(--muted-foreground)]'
+        : 'text-muted-foreground fill-[color:var(--status-nodata)]';
+  const labelColor = freshness.isLive
+    ? 'text-[color:var(--status-positive)]'
+    : freshness.isSignalDelayed
       ? 'text-[color:var(--status-watch)]'
       : 'text-muted-foreground';
-  const label =
-    connState === 'online'
-      ? 'Online'
-      : connState === 'standby'
-      ? 'Standby'
-      : 'Offline';
+  const label = freshness.shortLabel;
 
   return (
     <div className="flex items-center gap-2 px-2.5 py-1 rounded-md border border-border bg-card shadow-sm">
@@ -185,7 +183,8 @@ type RentalSettingsTab =
   | 'users'
   | 'billing'
   | 'data-authorization'
-  | 'legal-documents';
+  | 'legal-documents'
+  | 'rental-rules';
 
 const RENTAL_SETTINGS_TAB_KEY = 'synqdrive_rental_settings_tab';
 const RENTAL_SETTINGS_VIEW_KEY = 'synqdrive_rental_on_settings';
@@ -201,6 +200,7 @@ function readPersistedSettingsTab(): RentalSettingsTab {
       'billing',
       'data-authorization',
       'legal-documents',
+      'rental-rules',
     ];
     if (raw && valid.includes(raw as RentalSettingsTab)) return raw as RentalSettingsTab;
   } catch {
@@ -220,6 +220,21 @@ function readPersistedSettingsView(): boolean {
 function RentalAppContent() {
   const { orgId } = useRentalOrg();
   const { fleetVehicles, loading: fleetLoading, refresh: refreshFleet } = useFleetVehicles();
+
+  useEffect(() => {
+    if (!orgId) return;
+    const loadUnread = async () => {
+      try {
+        const res = await api.support.unreadCountByOrg(orgId);
+        setSupportUnreadCount(res.count ?? 0);
+      } catch {
+        /* optional endpoint */
+      }
+    };
+    void loadUnread();
+    const id = window.setInterval(() => void loadUnread(), 60_000);
+    return () => window.clearInterval(id);
+  }, [orgId]);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [cleaningStatus, setCleaningStatus] = useState<'Clean' | 'Needs Cleaning'>('Clean');
   const [vehicleStatus, setVehicleStatus] = useState<'Available' | 'Manual Block' | 'Maintenance'>('Available');
@@ -227,7 +242,7 @@ function RentalAppContent() {
   const [isCleaningDropdownOpen, setIsCleaningDropdownOpen] = useState(false);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [autoOpenNewTask, setAutoOpenNewTask] = useState(false);
-  const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'price-tariffs' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant'>(() =>
+  const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'price-tariffs' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'vehicle-requirements' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant'>(() =>
     readPersistedSettingsView() ? 'settings' : 'dashboard',
   );
   const [detailCustomer, setDetailCustomer] = useState<any>(null);
@@ -239,8 +254,22 @@ function RentalAppContent() {
   // konsumiert das Feld in einem useEffect und setzt anschliessend
   // `setPendingBookingDetailId(null)` über den Reset-Callback zurück.
   const [pendingBookingDetailId, setPendingBookingDetailId] = useState<string | null>(null);
+  const [supportUnreadCount, setSupportUnreadCount] = useState(0);
+  const [helpCenterAttempted, setHelpCenterAttempted] = useState(
+    () => typeof sessionStorage !== 'undefined' && sessionStorage.getItem('support_help_center_attempted') === '1',
+  );
+
+  useEffect(() => {
+    if (currentView !== 'support' || !helpCenterAttempted) return;
+    try {
+      sessionStorage.removeItem('support_help_center_attempted');
+    } catch {
+      /* ignore */
+    }
+  }, [currentView, helpCenterAttempted]);
   const [settingsTab, setSettingsTab] = useState<RentalSettingsTab>(readPersistedSettingsTab);
   const [fleetTab, setFleetTab] = useState<FleetTab>('status');
+  const [serviceCenterNav, setServiceCenterNav] = useState<ServiceCenterNavState | null>(null);
   const [financeTab, setFinanceTab] = useState<FinanceTab>('invoices');
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>(null);
   // Poll live telemetry on every vehicle-detail tab that shows the header badge
@@ -259,6 +288,24 @@ function RentalAppContent() {
   const [vehicleTasksRefreshToken, setVehicleTasksRefreshToken] = useState(0);
   const [cleaningStatusBusy, setCleaningStatusBusy] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  const overviewSummaryEnabled = currentView === 'overview' && Boolean(selectedVehicle?.id);
+  const { summary: vehicleOverviewSummary } = useVehicleOverviewSummary({
+    orgId,
+    vehicle: selectedVehicle,
+    tasksRefreshToken: vehicleTasksRefreshToken,
+    enabled: overviewSummaryEnabled,
+  });
+
+  const navigateVehicleOverview = useMemo(
+    () =>
+      createVehicleOverviewNavigator({
+        setCurrentView: (view) => setCurrentView(view),
+        setHighlightedVehicleTaskId,
+        setPendingBookingDetailId,
+      }),
+    [setCurrentView, setHighlightedVehicleTaskId, setPendingBookingDetailId],
+  );
   
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDarkMode);
@@ -453,6 +500,12 @@ function RentalAppContent() {
     setFleetTab('status');
   };
 
+  const openServiceCenter = useCallback((nav?: Partial<ServiceCenterNavState>) => {
+    setServiceCenterNav(nav ?? {});
+    setFleetTab('service');
+    setCurrentView('fleet');
+  }, []);
+
   /** Central view router — maps legacy views to the new IA. */
   const handleViewChange = (view: string) => {
     if (view === 'fleet-condition') {
@@ -530,6 +583,7 @@ function RentalAppContent() {
         onSettingsTabChange={setSettingsTab}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
+        supportUnreadCount={supportUnreadCount}
       />
       )}
     >
@@ -645,6 +699,20 @@ function RentalAppContent() {
                 )}
                 </div>
 
+                <SupportContextButton
+                  kind={currentView === 'health-errors' ? 'vehicle-health' : 'vehicle'}
+                  contextData={{
+                    vehicleId: selectedVehicle.id,
+                    vin: (selectedVehicle as { vin?: string }).vin,
+                    licensePlate: selectedVehicle.license,
+                    make: selectedVehicle.make,
+                    model: selectedVehicle.model,
+                    year: selectedVehicle.year,
+                    station: selectedVehicle.station,
+                    selectedTab: currentView,
+                  }}
+                  onOpenHelpCenter={() => handleViewChange('help-center')}
+                />
                 <VehicleHealthChip vehicleId={selectedVehicle.id ?? null} />
                 <VehicleConnectionBadge />
               </div>
@@ -666,6 +734,7 @@ function RentalAppContent() {
                 { key: 'documents', label: 'Documents' },
                 { key: 'vehicle-bookings', label: 'Bookings' },
                 { key: 'vehicle-tasks', label: 'Task List' },
+                { key: 'vehicle-requirements', label: 'Requirements' },
               ] as const).map((tab) => (
                 <button
                   key={tab.key}
@@ -803,6 +872,10 @@ function RentalAppContent() {
             selectedDate={selectedDate || undefined}
             selectedDriver={selectedDriver}
             fuelType={selectedVehicle?.fuelType}
+            onOpenBooking={(bookingId) => {
+              setPendingBookingDetailId(bookingId);
+              setCurrentView('bookings');
+            }}
             onTripsLoaded={(trips) => {
               setTripsCount(trips.length);
               const names = [...new Set((trips as { driverName?: string }[]).map((t) => t.driverName).filter(Boolean))] as string[];
@@ -852,7 +925,21 @@ function RentalAppContent() {
             bumpBookingsVersion();
           }} initialDetailBookingId={pendingBookingDetailId} onConsumeInitialDetailBookingId={() => setPendingBookingDetailId(null)} />
         ) : currentView === 'health-errors' ? (
-          <HealthErrorsView vehicleId={selectedVehicle?.id} fuelType={selectedVehicle?.fuelType} />
+          <HealthErrorsView
+            vehicleId={selectedVehicle?.id}
+            fuelType={selectedVehicle?.fuelType}
+            onOpenServiceCenter={() =>
+              openServiceCenter(
+                selectedVehicle?.id
+                  ? { vehicleId: selectedVehicle.id, tab: 'tasks' }
+                  : undefined,
+              )
+            }
+            onOpenExistingTask={(taskId) => {
+              setHighlightedVehicleTaskId(taskId);
+              setCurrentView('vehicle-tasks');
+            }}
+          />
         ) : currentView === 'financial-insights' ? (
           /* V4.6.93 — Standalone Financial Insights page (replacement for the
              retired Dashboard Finances tab). Aggregates real invoice data
@@ -865,6 +952,21 @@ function RentalAppContent() {
             onTabChange={setFleetTab}
             onVehicleSelect={handleVehicleSelect}
             onOpenVendorDetail={(vendor) => { setDetailVendorId(vendor.id); setCurrentView('vendor-detail'); }}
+            onOpenGlobalTasks={(taskId) => {
+              setHighlightedTaskId(taskId);
+              handleViewChange('tasks');
+            }}
+            onCreateTask={() => {
+              setAutoOpenNewTask(true);
+              handleViewChange('tasks');
+            }}
+            onOpenVehicle={(vehicleId) => {
+              const v = fleetVehicles.find((fv) => fv.id === vehicleId);
+              if (v) handleVehicleSelect(v);
+            }}
+            serviceCenterNavigation={serviceCenterNav}
+            onServiceCenterNavigationConsumed={() => setServiceCenterNav(null)}
+            onOpenServiceCenter={openServiceCenter}
           />
         ) : currentView === 'damages' ? (
           <DamagesView
@@ -876,7 +978,13 @@ function RentalAppContent() {
             }}
           />
         ) : currentView === 'documents' ? (
-          <DocumentsView vehicle={selectedVehicle} />
+          <DocumentsView
+            vehicle={selectedVehicle}
+            onOpenLinkedTask={(taskId) => {
+              setHighlightedVehicleTaskId(taskId);
+              setCurrentView('vehicle-tasks');
+            }}
+          />
         ) : currentView === 'vehicle-bookings' ? (
           <VehicleBookingsView
             isDarkMode={isDarkMode}
@@ -898,6 +1006,22 @@ function RentalAppContent() {
             onOpenInGlobalTasks={(taskId) => {
               setHighlightedTaskId(taskId);
               handleViewChange('tasks');
+            }}
+            onOpenServiceCenter={() =>
+              openServiceCenter(
+                selectedVehicle?.id
+                  ? { vehicleId: selectedVehicle.id, tab: 'tasks' }
+                  : undefined,
+              )
+            }
+          />
+        ) : currentView === 'vehicle-requirements' ? (
+          <VehicleRequirementsTab
+            selectedVehicle={selectedVehicle}
+            orgId={orgId}
+            onOpenRentalRulesCenter={() => {
+              setSettingsTab('rental-rules');
+              handleViewChange('settings');
             }}
           />
         ) : currentView === 'customers' ? (
@@ -932,7 +1056,14 @@ function RentalAppContent() {
         ) : currentView === 'ai-assistant' ? (
           <AIAssistantView isDarkMode={isDarkMode} />
         ) : currentView === 'support' ? (
-          <SupportView isDarkMode={isDarkMode} />
+          <SupportView
+            onOpenHelpCenter={() => {
+              setHelpCenterAttempted(false);
+              handleViewChange('help-center');
+            }}
+            helpCenterAttempted={helpCenterAttempted}
+            onUnreadCountChange={setSupportUnreadCount}
+          />
         ) : currentView === 'workflow-automation' ? (
           <WorkflowAutomationView isDarkMode={isDarkMode} />
         ) : currentView === 'whatsapp-business' ? (
@@ -947,7 +1078,18 @@ function RentalAppContent() {
         ) : currentView === 'ai-voice-assistant' ? (
           <VoiceAssistantView isDarkMode={isDarkMode} />
         ) : currentView === 'help-center' ? (
-          <HelpCenterView isDarkMode={isDarkMode} />
+          <HelpCenterView
+            isDarkMode={isDarkMode}
+            onOpenSupport={() => {
+              try {
+                sessionStorage.setItem('support_help_center_attempted', '1');
+              } catch {
+                /* ignore */
+              }
+              setHelpCenterAttempted(true);
+              handleViewChange('support');
+            }}
+          />
         ) : currentView === 'data-analyse' ? (
           <DataAnalyseView />
         ) : currentView === 'settings' ? (
@@ -958,34 +1100,24 @@ function RentalAppContent() {
           />
         ) : currentView === 'new-booking' ? (
           <NewBookingView onBack={() => setCurrentView('bookings')} onCustomerCreated={(c) => setNewlyCreatedCustomers(prev => [c, ...prev])} onBookingCreated={(b) => { setCreatedBookings(prev => [b, ...prev]); bumpBookingsVersion(); }} />
-        ) : (
-          <>
-        {/* Overview — map + canonical health (insights removed; see Health tab) */}
-        <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <OverviewLiveMapCard
-              selectedVehicle={selectedVehicle}
-              orgId={orgId}
-              isDarkMode={isDarkMode}
-            />
-          </div>
-
-          <div className="flex min-h-0 flex-col">
-            <VehicleHealthBoxTelemetryBridge
-              selectedVehicle={selectedVehicle}
-              isDarkMode={isDarkMode}
-              onViewDetails={() => {
-                if (selectedVehicle) {
-                  setCurrentView('health-errors');
-                }
-              }}
-            />
-          </div>
-        </div>
-
-        
-          </>
-        )}
+        ) : currentView === 'overview' ? (
+          <VehicleOverviewTab
+            selectedVehicle={selectedVehicle}
+            orgId={orgId}
+            isDarkMode={isDarkMode}
+            summary={vehicleOverviewSummary}
+            onNavigate={navigateVehicleOverview}
+            onOpenHealthDetails={() => {
+              if (selectedVehicle) setCurrentView('health-errors');
+            }}
+            onOpenServiceCenter={openServiceCenter}
+            onOpenVehicleTask={(taskId) => {
+              setHighlightedVehicleTaskId(taskId);
+              setCurrentView('vehicle-tasks');
+            }}
+            tasksRefreshToken={vehicleTasksRefreshToken}
+          />
+        ) : null}
 
       {/* New Task Modal */}
       <NewTaskModal 

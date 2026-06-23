@@ -1,26 +1,13 @@
 import type { MouseEvent } from 'react';
 import { Icon } from '../ui/Icon';
-import { StatusChip, HealthStatusChip } from '../../../components/patterns';
-import { VehicleData, VEHICLE_OFFLINE_LABEL } from '../../data/vehicles';
+import { StatusChip } from '../../../components/patterns';
+import { cn } from '../../../components/ui/utils';
+import { VehicleData } from '../../data/vehicles';
 import { getShortModel } from '../../data/vehicles';
-import {
-  formatFleetDateTime,
-  formatFuelPercentCeil,
-  formatMaintenanceReason,
-  formatOdometerKmFloor,
-} from '../../../lib/formatVehicleDisplay';
-import { useEffectiveHealth } from '../../FleetContext';
-import { RentalHealthBadge } from '../rental-health/RentalHealthBadge';
-import {
-  formatLastSignalAge,
-  hasCriticalOrWarningDtc,
-  type FleetVehicleContext,
-} from '../../lib/fleet-operator-panel';
-import {
-  fleetChipToneToStatusChip,
-  fleetRowClassName,
-  FleetVisualDot,
-} from './fleetOperatorUi';
+import { formatFleetDateTime } from '../../../lib/formatVehicleDisplay';
+import { FleetEnergyIndicator } from '../fleet/FleetEnergyIndicator';
+import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
+import type { FleetVehicleContext } from '../../lib/fleet-operator-panel';
 
 function fleetVehicleTitle(v: VehicleData): string {
   const model = typeof v.model === 'string' ? v.model : '';
@@ -28,161 +15,23 @@ function fleetVehicleTitle(v: VehicleData): string {
   return [v.make, shortModel].filter(Boolean).join(' ') || model || 'Unknown vehicle';
 }
 
-function HealthPill({ vehicleId }: { vehicleId: string }) {
-  const { status, health } = useEffectiveHealth(vehicleId);
-  const reasons: string[] = [];
-  if (health?.rental_blocked && health.blocking_reasons.length > 0) {
-    reasons.push(`Blocked: ${health.blocking_reasons.join(' · ')}`);
-  }
-  if (health) {
-    for (const [name, mod] of Object.entries(health.modules)) {
-      if (mod.state === 'critical' || mod.state === 'warning') {
-        reasons.push(`${name.replace(/_/g, ' ')}: ${mod.reason}`);
-      }
-    }
-  }
-  const title = reasons.join(' · ') || undefined;
-  if (status === 'Good Health') {
-    return <HealthStatusChip state="good" label="Healthy" dot={false} title={title} />;
-  }
-  if (status === 'Warning') {
-    return <HealthStatusChip state="warning" label="Warning" dot={false} title={title} />;
-  }
-  if (status === 'Critical') {
-    return <HealthStatusChip state="critical" label="Critical" dot={false} title={title} />;
-  }
-  return null;
-}
-
-function StatusChipForRow({
-  ctx,
-  isDarkMode,
-}: {
-  ctx: FleetVehicleContext;
-  isDarkMode?: boolean;
-}) {
-  const { vehicle: v, visual, health } = ctx;
-  if (visual.isBlocked && health) {
-    return (
-      <RentalHealthBadge
-        health={health}
-        isDarkMode={isDarkMode}
-        size="sm"
-        showBlockingLabel
-      />
-    );
-  }
-  if (!visual.hasLocation && v.status !== 'Maintenance') {
-    return (
-      <StatusChip tone="warning" className="text-[9px] font-bold uppercase tracking-wide">
-        No location
-      </StatusChip>
-    );
-  }
-  if (visual.isOffline) {
-    return (
-      <StatusChip tone="neutral" title={visual.reason ?? VEHICLE_OFFLINE_LABEL} className="text-[9px] font-bold uppercase tracking-wide">
-        {visual.shortLabel}
-      </StatusChip>
-    );
-  }
-  if (v.status === 'Active Rented' && v.activeIsOverdue) {
-    return (
-      <StatusChip tone="critical" className="text-[9px] font-bold uppercase tracking-wide">
-        Overdue
-      </StatusChip>
-    );
-  }
-  if (v.status === 'Reserved' && v.reservedIsOverdue) {
-    return (
-      <StatusChip tone="critical" className="text-[9px] font-bold uppercase tracking-wide">
-        Pickup overdue
-      </StatusChip>
-    );
-  }
-  if (visual.isReady && v.status === 'Available') {
-    return (
-      <StatusChip tone="success" className="text-[9px] font-bold uppercase tracking-wide">
-        Ready
-      </StatusChip>
-    );
-  }
-  return (
-    <StatusChip
-      tone={fleetChipToneToStatusChip(visual.chipTone)}
-      title={visual.reason}
-      className="text-[9px] font-bold uppercase tracking-wide"
-    >
-      {visual.shortLabel}
-    </StatusChip>
-  );
-}
-
 function vehicleStationLabel(v: VehicleData): string {
   const named = (v as { stationName?: string | null }).stationName;
   return named ?? v.station ?? '';
 }
 
-function buildSecondaryLine(ctx: FleetVehicleContext): string {
-  const { vehicle: v, visual } = ctx;
+/** Station + a single compact appointment fragment (no long mixed chains). */
+function buildLocationLine(v: VehicleData): string {
   const station = vehicleStationLabel(v);
-  if (v.status === 'Active Rented') {
-    const customer = v.activeCustomerName ?? 'Unassigned';
-    const ret = v.activeReturnAt ? formatFleetDateTime(v.activeReturnAt) : null;
-    return [customer, ret ? `Return ${ret}` : null].filter(Boolean).join(' · ');
+  if (v.status === 'Active Rented' && v.activeReturnAt) {
+    return [station, `Return ${formatFleetDateTime(v.activeReturnAt)}`].filter(Boolean).join(' · ');
   }
-  if (v.status === 'Reserved') {
-    const customer = v.reservedCustomerName ?? 'Unassigned';
-    const pickup = v.reservedPickupAt ? formatFleetDateTime(v.reservedPickupAt) : null;
-    const stationLabel = v.reservedPickupStationName || station;
-    return [pickup ? `Pickup ${pickup}` : null, customer, stationLabel]
+  if (v.status === 'Reserved' && v.reservedPickupAt) {
+    return [station, `Pickup ${formatFleetDateTime(v.reservedPickupAt)}`]
       .filter(Boolean)
       .join(' · ');
   }
-  if (v.status === 'Maintenance') {
-    return formatMaintenanceReason(
-      v.maintenanceReasonCode,
-      v.maintenanceReason ?? 'Maintenance',
-    );
-  }
-  if (!visual.hasLocation) {
-    return 'No valid GPS/location available';
-  }
   return station || '—';
-}
-
-function buildTertiaryLine(ctx: FleetVehicleContext): string {
-  const { vehicle: v, visual, health } = ctx;
-  const parts: string[] = [];
-
-  if (v.isLiveTracking) {
-    parts.push('Live');
-  } else if (visual.isOffline) {
-    parts.push(VEHICLE_OFFLINE_LABEL);
-  } else {
-    const age = formatLastSignalAge(v.lastSignal);
-    parts.push(visual.isStale ? `Last signal ${age} (stale)` : `Last signal ${age}`);
-  }
-
-  const fuel = v.isElectric
-    ? v.evSoc ?? v.fuelPercent
-    : v.fuelPercent ?? v.evSoc;
-  if (fuel != null && Number.isFinite(fuel)) {
-    parts.push(`${v.isElectric ? 'Battery' : 'Fuel'} ${formatFuelPercentCeil(fuel)}`);
-  }
-
-  const km = v.odometerKm;
-  if (km != null && Number.isFinite(km)) {
-    parts.push(formatOdometerKmFloor(km));
-  }
-
-  if (visual.reason && (visual.isAttention || visual.isBlocked)) {
-    parts.push(visual.reason);
-  } else if (hasCriticalOrWarningDtc(health)) {
-    parts.push('DTC warning');
-  }
-
-  return parts.join(' · ');
 }
 
 export interface FleetOperatorRowProps {
@@ -204,10 +53,26 @@ export function FleetOperatorRow({
   rowRef,
   onMouseEnter,
   onMouseLeave,
-  isDarkMode,
 }: FleetOperatorRowProps) {
-  const { vehicle: v, visual } = ctx;
-  const dimmed = visual.isOffline && v.status === 'Available';
+  const { vehicle: v, visual, health } = ctx;
+  const display = resolveFleetVehicleDisplayState(v, {
+    rentalHealth: health,
+    visual,
+  });
+
+  // Only genuine connectivity problems (offline / no_signal) dim an Available
+  // row. Standby + signal_delayed stay at full opacity (normal/secondary).
+  const dimmed = display.showTelemetryWarning && v.status === 'Available';
+
+  // Subtle full-row tint by operational status — no left accent bar.
+  const tint =
+    display.primaryStatus === 'critical' || display.primaryStatus === 'blocked'
+      ? 'bg-[color:color-mix(in_srgb,var(--status-critical)_5%,transparent)]'
+      : display.primaryStatus === 'warning'
+        ? 'bg-[color:color-mix(in_srgb,var(--status-watch)_4%,transparent)]'
+        : '';
+
+  const locationLine = buildLocationLine(v);
 
   return (
     <div
@@ -223,37 +88,76 @@ export function FleetOperatorRow({
       }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className={fleetRowClassName(selected, dimmed ? 'opacity-70' : undefined)}
+      className={cn(
+        'group flex cursor-pointer items-center gap-2 px-2.5 py-2 transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--brand)]',
+        tint,
+        selected && 'bg-[color:color-mix(in_srgb,var(--brand)_8%,transparent)]',
+      )}
     >
-      <div className="flex items-center justify-between gap-2 min-w-0">
-        <div className="flex items-baseline gap-1.5 min-w-0 flex-1">
-          <FleetVisualDot mapTone={visual.mapTone} />
-          <span className="text-[11px] font-bold leading-tight shrink-0 text-foreground">
-            {v.license}
-          </span>
-          <span className="text-[10px] text-muted-foreground truncate">
-            {fleetVehicleTitle(v)}
-          </span>
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <HealthPill vehicleId={v.id} />
-          <StatusChipForRow ctx={ctx} isDarkMode={isDarkMode} />
-          <button
-            type="button"
-            onClick={onDetailClick}
-            className="p-0.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            aria-label="Open vehicle details"
+      <div className={cn('min-w-0 flex-1 space-y-1', dimmed && 'opacity-75')}>
+        <div className="flex items-start gap-2">
+          <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
+            <span className="shrink-0 text-[12px] font-bold tabular-nums tracking-[-0.01em] text-foreground">
+              {v.license}
+            </span>
+            <span className="truncate text-[10.5px] leading-snug text-muted-foreground">
+              {fleetVehicleTitle(v)}
+            </span>
+          </div>
+          <StatusChip
+            tone={display.primaryTone}
+            className="shrink-0 px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
           >
-            <Icon name="chevron-right" className="w-3.5 h-3.5" />
-          </button>
+            {display.primaryLabel}
+          </StatusChip>
         </div>
+
+        <p className="truncate text-[10px] text-muted-foreground" title={locationLine}>
+          {locationLine}
+        </p>
+
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] tabular-nums text-muted-foreground">
+          {display.energy.percent != null && (
+            <FleetEnergyIndicator
+              percent={display.energy.percent}
+              isElectric={display.energy.kind === 'battery'}
+              tone={display.energy.tone}
+            />
+          )}
+          <>
+            {display.energy.percent != null && <span aria-hidden>·</span>}
+            <span
+              className={cn(
+                display.showTelemetryWarning && 'text-[color:var(--status-watch)]',
+              )}
+            >
+              {display.telemetryLabel}
+            </span>
+          </>
+          {display.odometerLabel && (
+            <>
+              <span aria-hidden>·</span>
+              <span>{display.odometerLabel}</span>
+            </>
+          )}
+        </div>
+
+        {display.criticalHint && (
+          <p className="line-clamp-1 text-[10px] font-medium leading-snug text-[color:var(--status-critical)] text-pretty">
+            {display.criticalHint}
+          </p>
+        )}
       </div>
-      <p className="mt-1 text-[10px] text-foreground/85 truncate" title={buildSecondaryLine(ctx)}>
-        {buildSecondaryLine(ctx)}
-      </p>
-      <p className="mt-0.5 text-[9.5px] text-muted-foreground truncate" title={buildTertiaryLine(ctx)}>
-        {buildTertiaryLine(ctx)}
-      </p>
+
+      <button
+        type="button"
+        onClick={onDetailClick}
+        aria-label="Open vehicle details"
+        className="sq-press inline-flex min-h-9 shrink-0 items-center gap-1 self-center rounded-md px-2 text-[10.5px] font-medium text-muted-foreground opacity-90 transition-colors hover:bg-muted/40 hover:text-foreground group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+      >
+        Open
+        <Icon name="arrow-right" className="h-3 w-3" />
+      </button>
     </div>
   );
 }

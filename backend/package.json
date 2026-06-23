@@ -22,7 +22,12 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "prisma:prune": "ts-node prisma/prune-master-data.ts"
+    "prisma:prune": "ts-node prisma/prune-master-data.ts",
+    "infra:up": "docker compose up -d postgres redis clickhouse",
+    "infra:down": "docker compose down",
+    "clickhouse:ping": "docker compose exec clickhouse clickhouse-client --user synqdrive --password synqdrive_clickhouse_dev --query \"SELECT 1\"",
+    "clickhouse:backup:local": "bash scripts/clickhouse-backup-local.sh",
+    "clickhouse:restore:local": "bash scripts/clickhouse-restore-local.sh"
   },
   "dependencies": {
     "@clickhouse/client": "^1.18.2",

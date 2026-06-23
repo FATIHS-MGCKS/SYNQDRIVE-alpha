@@ -13,6 +13,16 @@ import {
 } from 'class-validator';
 import { TaskPriority, TaskSource, TaskStatus, TaskType } from '@prisma/client';
 
+/** Query/body strings like `vehicleId=` normalize to undefined so filters do not match empty ids. */
+export function trimEmptyToUndefined({ value }: { value: unknown }): unknown {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed === '' ? undefined : trimmed;
+  }
+  return value;
+}
+
 /**
  * Validation DTOs for the Task Action Layer (V4.8.3). These replace the
  * previous inline `body: {...}` literal types so the global ValidationPipe
@@ -69,35 +79,48 @@ export class CreateTaskDto {
   dueDate?: string;
 
   @IsOptional()
+  @Transform(trimEmptyToUndefined)
   @IsString()
   assignedUserId?: string;
 
   @IsOptional()
+  @Transform(trimEmptyToUndefined)
   @IsString()
   vehicleId?: string;
 
   @IsOptional()
+  @Transform(trimEmptyToUndefined)
   @IsString()
   bookingId?: string;
 
   @IsOptional()
+  @Transform(trimEmptyToUndefined)
   @IsString()
   customerId?: string;
 
   @IsOptional()
+  @Transform(trimEmptyToUndefined)
   @IsString()
   vendorId?: string;
 
   @IsOptional()
+  @Transform(trimEmptyToUndefined)
   @IsString()
   alertId?: string;
 
   @IsOptional()
+  @Transform(trimEmptyToUndefined)
   @IsString()
   documentId?: string;
 
+  @IsOptional()
+  @Transform(trimEmptyToUndefined)
+  @IsString()
+  serviceCaseId?: string;
+
   /** Operational station reference — persisted in task metadata. */
   @IsOptional()
+  @Transform(trimEmptyToUndefined)
   @IsString()
   stationId?: string;
 
@@ -116,6 +139,15 @@ export class CreateTaskDto {
   @IsOptional()
   @IsBoolean()
   blocksVehicleAvailability?: boolean;
+
+  @IsOptional()
+  metadata?: Record<string, unknown>;
+
+  /** Free-form source label stored on OrgTask.source (e.g. HEALTH_UI). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  sourceKey?: string;
 }
 
 export class UpdateTaskDto {
@@ -142,9 +174,10 @@ export class UpdateTaskDto {
   @IsISO8601()
   dueDate?: string;
 
+  /** null clears the assignment. */
   @IsOptional()
   @IsString()
-  assignedUserId?: string;
+  assignedUserId?: string | null;
 
   @IsOptional()
   @IsInt()
@@ -160,7 +193,9 @@ export class UpdateTaskDto {
   @IsBoolean()
   blocksVehicleAvailability?: boolean;
 }
-  // null clears the assignment.
+
+export class AssignTaskDto {
+  /** Omit or null to clear the assignment. */
   @IsOptional()
   @IsString()
   assignedUserId?: string | null;
@@ -244,32 +279,44 @@ export class ListTasksQueryDto {
   source?: TaskSource;
 
   @IsOptional()
+  @Transform(trimEmptyToUndefined)
   @IsString()
   assignedUserId?: string;
 
   @IsOptional()
+  @Transform(trimEmptyToUndefined)
   @IsString()
   vehicleId?: string;
 
   @IsOptional()
+  @Transform(trimEmptyToUndefined)
   @IsString()
   bookingId?: string;
 
   @IsOptional()
+  @Transform(trimEmptyToUndefined)
   @IsString()
   customerId?: string;
 
   @IsOptional()
+  @Transform(trimEmptyToUndefined)
   @IsString()
   vendorId?: string;
 
   @IsOptional()
+  @Transform(trimEmptyToUndefined)
   @IsString()
   alertId?: string;
 
   @IsOptional()
+  @Transform(trimEmptyToUndefined)
   @IsString()
   documentId?: string;
+
+  @IsOptional()
+  @Transform(trimEmptyToUndefined)
+  @IsString()
+  serviceCaseId?: string;
 
   @IsOptional()
   @IsISO8601()
@@ -285,6 +332,7 @@ export class ListTasksQueryDto {
   overdue?: boolean;
 
   @IsOptional()
+  @Transform(trimEmptyToUndefined)
   @IsString()
   @MaxLength(200)
   search?: string;

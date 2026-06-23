@@ -420,6 +420,41 @@ export function streamChatMessage(
   return controller;
 }
 
+/** Normalize NestJS / validation error bodies into a user-visible string. */
+export function formatHttpErrorMessage(
+  body: { message?: unknown },
+  status: number,
+  path: string,
+): string {
+  const raw = body.message;
+  if (typeof raw === 'string') return raw;
+  if (Array.isArray(raw)) return raw.map(String).join(', ');
+  if (raw && typeof raw === 'object') {
+    const nested = raw as {
+      message?: unknown;
+      missing?: unknown;
+      error?: unknown;
+    };
+    const base =
+      typeof nested.message === 'string'
+        ? nested.message
+        : typeof nested.error === 'string'
+          ? nested.error
+          : 'Request failed';
+    if (Array.isArray(nested.missing) && nested.missing.length > 0) {
+      return `${base}: ${nested.missing.map(String).join(', ')}`;
+    }
+    return base;
+  }
+  return `API error ${status} (${path})`;
+}
+
+export function getErrorMessage(err: unknown, fallback = 'An unexpected error occurred'): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (typeof err === 'string') return err;
+  return fallback;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -440,7 +475,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.message || `API error ${res.status} (${path})`);
+    throw new Error(formatHttpErrorMessage(body, res.status, path));
   }
 
   if (res.status === 204) {
@@ -504,6 +539,308 @@ export type ApiTaskType =
   | 'CUSTOM';
 export type ApiTaskSource = 'MANUAL' | 'SYSTEM' | 'ALERT' | 'HEALTH' | 'BOOKING' | 'DOCUMENT' | 'VENDOR';
 
+export type ApiServiceCaseCategory =
+  | 'SERVICE'
+  | 'REPAIR'
+  | 'INSPECTION'
+  | 'TUV_HU'
+  | 'TIRES'
+  | 'BRAKES'
+  | 'BATTERY'
+  | 'DAMAGE'
+  | 'DIAGNOSTIC';
+
+export type ApiServiceCaseStatus =
+  | 'OPEN'
+  | 'SCHEDULED'
+  | 'IN_PROGRESS'
+  | 'WAITING_VENDOR'
+  | 'WAITING_PARTS'
+  | 'COMPLETED'
+  | 'CANCELLED';
+
+export type ApiServiceCaseSource =
+  | 'MANUAL'
+  | 'HEALTH'
+  | 'DTC'
+  | 'DAMAGE'
+  | 'BOOKING'
+  | 'DOCUMENT'
+  | 'SERVICE_COMPLIANCE';
+
+export interface ApiServiceCaseTaskRef {
+  id: string;
+  title: string;
+  status: ApiTaskStatus;
+  type: ApiTaskType;
+  dueDate: string | null;
+}
+
+export interface ApiServiceCaseComment {
+  id: string;
+  userId: string | null;
+  body: string;
+  createdAt: string;
+}
+
+export interface ApiServiceCaseAttachment {
+  id: string;
+  fileUrl: string;
+  fileName: string | null;
+  mimeType: string | null;
+  size: number | null;
+  uploadedByUserId: string | null;
+  createdAt: string;
+}
+
+export interface ApiServiceCase {
+  id: string;
+  organizationId: string;
+  vehicleId: string;
+  vendorId: string | null;
+  title: string;
+  description: string;
+  category: ApiServiceCaseCategory;
+  status: ApiServiceCaseStatus;
+  priority: ApiTaskPriority;
+  source: ApiServiceCaseSource;
+  openedAt: string;
+  scheduledAt: string | null;
+  expectedReadyAt: string | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  estimatedCostCents: number | null;
+  actualCostCents: number | null;
+  downtimeStart: string | null;
+  downtimeEnd: string | null;
+  blocksRental: boolean;
+  completionNotes: string | null;
+  documentId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdByUserId: string | null;
+  updatedByUserId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  taskCount: number;
+  tasks: ApiServiceCaseTaskRef[];
+  comments?: ApiServiceCaseComment[];
+  attachments?: ApiServiceCaseAttachment[];
+}
+
+export interface ServiceCaseListFilters {
+  status?: ApiServiceCaseStatus;
+  category?: ApiServiceCaseCategory;
+  priority?: ApiTaskPriority;
+  source?: ApiServiceCaseSource;
+  vehicleId?: string;
+  vendorId?: string;
+  search?: string;
+}
+
+export interface CreateServiceCasePayload {
+  title: string;
+  description?: string;
+  category: ApiServiceCaseCategory;
+  priority?: ApiTaskPriority;
+  source?: ApiServiceCaseSource;
+  vehicleId: string;
+  vendorId?: string;
+  scheduledAt?: string;
+  expectedReadyAt?: string;
+  downtimeStart?: string;
+  estimatedCostCents?: number;
+  blocksRental?: boolean;
+  documentId?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface UpdateServiceCasePayload {
+  title?: string;
+  description?: string;
+  category?: ApiServiceCaseCategory;
+  status?: ApiServiceCaseStatus;
+  priority?: ApiTaskPriority;
+  vendorId?: string | null;
+  scheduledAt?: string | null;
+  expectedReadyAt?: string | null;
+  downtimeStart?: string | null;
+  downtimeEnd?: string | null;
+  estimatedCostCents?: number | null;
+  actualCostCents?: number | null;
+  blocksRental?: boolean;
+  documentId?: string | null;
+}
+
+export interface CompleteServiceCasePayload {
+  completionNotes?: string;
+  actualCostCents?: number;
+  downtimeEnd?: string;
+}
+
+export type SupportTicketStatus =
+  | 'OPEN'
+  | 'IN_PROGRESS'
+  | 'WAITING_FOR_CUSTOMER'
+  | 'RESOLVED'
+  | 'CLOSED';
+
+export type SupportTicketPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
+
+export type SupportTicketCategory =
+  | 'APP'
+  | 'VEHICLE'
+  | 'BOOKING'
+  | 'BILLING'
+  | 'DIMO_TELEMETRY'
+  | 'ACCOUNT'
+  | 'DOCUMENTS'
+  | 'DATA_AUTHORIZATION'
+  | 'HEALTH'
+  | 'OTHER';
+
+export type SupportTicketRelatedEntityType =
+  | 'VEHICLE'
+  | 'BOOKING'
+  | 'INVOICE'
+  | 'CUSTOMER'
+  | 'USER'
+  | 'AUTHORIZATION'
+  | 'CONNECTIVITY'
+  | 'HEALTH'
+  | 'OTHER';
+
+export interface SupportTicketAttachmentRef {
+  url: string;
+  fileName?: string;
+  mimeType?: string;
+  sizeBytes?: number;
+}
+
+export interface SupportTicketMessage {
+  id: string;
+  senderId: string;
+  senderUserId?: string;
+  senderName: string;
+  senderRole: 'user' | 'admin' | 'system';
+  senderRoleKey?: 'USER' | 'MASTER_ADMIN' | 'SYSTEM';
+  body: string;
+  content: string;
+  isInternal?: boolean;
+  imageUrl: string | null;
+  attachments?: SupportTicketAttachmentRef[] | null;
+  createdAt: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  ticketNumber: number;
+  ticketCode?: string;
+  subject: string;
+  description: string;
+  category?: SupportTicketCategory;
+  status: string;
+  statusKey: SupportTicketStatus | string;
+  priority: string;
+  priorityKey: SupportTicketPriority | string;
+  reporterName: string;
+  reporterEmail: string;
+  organizationId: string;
+  createdByUserId?: string;
+  assignedTo?: string;
+  assignedToUserId?: string;
+  relatedEntityType?: SupportTicketRelatedEntityType | null;
+  relatedEntityId?: string | null;
+  sourcePage?: string | null;
+  lastMessageAt?: string;
+  lastActivityAt: string;
+  lastMessageByRole?: string | null;
+  firstResponseAt?: string | null;
+  resolvedAt?: string | null;
+  closedAt?: string | null;
+  reopenedAt?: string | null;
+  unreadForUser?: boolean;
+  unreadForAdmin?: boolean;
+  metadata?: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+  messages?: SupportTicketMessage[];
+  messageCount?: number;
+}
+
+export interface SupportTicketStats {
+  open: number;
+  inProgress: number;
+  waiting: number;
+  resolved: number;
+  closed: number;
+  total: number;
+  totalOpen?: number;
+  newTickets?: number;
+  criticalOpen?: number;
+  waitingForCustomer?: number;
+  unreadForAdmin?: number;
+  unresolved?: number;
+  avgFirstResponseTimeMs?: number | null;
+  avgResolutionTimeMs?: number | null;
+  ticketsByCategory?: Record<string, number>;
+  ticketsByPriority?: Record<string, number>;
+}
+
+export interface SupportTicketListParams {
+  page?: string;
+  limit?: string;
+  status?: SupportTicketStatus;
+  priority?: SupportTicketPriority;
+  category?: SupportTicketCategory;
+  organizationId?: string;
+  assignedToUserId?: string;
+  relatedEntityType?: SupportTicketRelatedEntityType;
+  relatedEntityId?: string;
+  search?: string;
+  hasUnread?: string;
+  openOnly?: string;
+  createdFrom?: string;
+  createdTo?: string;
+}
+
+export interface PaginatedSupportTickets {
+  data: SupportTicket[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
+export interface CreateSupportTicketPayload {
+  subject: string;
+  description: string;
+  category?: SupportTicketCategory;
+  priority?: SupportTicketPriority;
+  relatedEntityType?: SupportTicketRelatedEntityType;
+  relatedEntityId?: string;
+  sourcePage?: string;
+  metadata?: Record<string, unknown>;
+  imageUrl?: string;
+  attachments?: SupportTicketAttachmentRef[];
+}
+
+export interface CreateSupportTicketAdminPayload extends CreateSupportTicketPayload {
+  organizationId?: string;
+  reporterEmail: string;
+  reporterName?: string;
+}
+
+export interface UpdateSupportTicketPayload {
+  status?: SupportTicketStatus;
+  priority?: SupportTicketPriority;
+  category?: SupportTicketCategory;
+  assignedToUserId?: string | null;
+}
+
+export interface CreateSupportMessagePayload {
+  body?: string;
+  content?: string;
+  imageUrl?: string;
+  attachments?: SupportTicketAttachmentRef[];
+}
+
 export interface ApiTaskChecklistItem {
   id: string;
   title: string;
@@ -557,6 +894,7 @@ export interface ApiTask {
   documentId: string | null;
   fineId: string | null;
   invoiceId: string | null;
+  serviceCaseId: string | null;
   assignedUserId: string | null;
   estimatedCostCents: number | null;
   actualCostCents: number | null;
@@ -601,6 +939,7 @@ export interface TaskListFilters {
   vendorId?: string;
   alertId?: string;
   documentId?: string;
+  serviceCaseId?: string;
   dueFrom?: string;
   dueTo?: string;
   overdue?: boolean;
@@ -621,10 +960,13 @@ export interface CreateTaskPayload {
   vendorId?: string;
   alertId?: string;
   documentId?: string;
+  serviceCaseId?: string;
   stationId?: string;
   estimatedCostCents?: number;
   blocksVehicleAvailability?: boolean;
   metadata?: Record<string, unknown>;
+  /** String source field on OrgTask (e.g. HEALTH_UI, INSIGHT_HEALTH). */
+  sourceKey?: string;
   checklist?: Array<{ title: string; description?: string; sortOrder?: number }>;
 }
 
@@ -644,7 +986,7 @@ async function fetchBlob(path: string): Promise<Blob> {
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.message || `API error ${res.status} (${path})`);
+    throw new Error(formatHttpErrorMessage(body, res.status, path));
   }
   return res.blob();
 }
@@ -1895,7 +2237,7 @@ export const api = {
       get<WhatsAppConfig>(`/organizations/${orgId}/whatsapp/config`),
     updateConfig: (orgId: string, data: Partial<WhatsAppConfig>) =>
       put<WhatsAppConfig>(`/organizations/${orgId}/whatsapp/config`, data),
-    connect: (orgId: string, data: { phoneNumber: string; businessName?: string; connectedByName?: string }) =>
+    connect: (orgId: string, data: { phoneNumber: string; businessName?: string; connectedByName?: string; phoneNumberId?: string; wabaId?: string }) =>
       post<WhatsAppConfig>(`/organizations/${orgId}/whatsapp/connect`, data),
     disconnect: (orgId: string) =>
       post<WhatsAppConfig>(`/organizations/${orgId}/whatsapp/disconnect`, {}),
@@ -1906,13 +2248,34 @@ export const api = {
     sendMessage: (orgId: string, conversationId: string, content: string, senderName?: string) =>
       post<WhatsAppMsg>(`/organizations/${orgId}/whatsapp/conversations/${conversationId}/messages`, { content, senderName }),
     getAiSuggestion: (orgId: string, conversationId: string) =>
-      post<{ suggestion: string | null; reason: string | null }>(`/organizations/${orgId}/whatsapp/conversations/${conversationId}/ai-suggestion`, {}),
-    sendAiReply: (orgId: string, conversationId: string, content: string) =>
-      post<WhatsAppMsg>(`/organizations/${orgId}/whatsapp/conversations/${conversationId}/ai-reply`, { content }),
+      post<WhatsAppAiSuggestionResponse>(`/organizations/${orgId}/whatsapp/conversations/${conversationId}/ai-suggestion`, {}),
+    sendAiReply: (orgId: string, conversationId: string, content: string, suggestionId?: string) =>
+      post<WhatsAppMsg>(`/organizations/${orgId}/whatsapp/conversations/${conversationId}/ai-reply`, { content, suggestionId }),
+    requestHumanReview: (orgId: string, conversationId: string, reason?: string) =>
+      post<{ ok: boolean; conversationId: string; status: string }>(
+        `/organizations/${orgId}/whatsapp/conversations/${conversationId}/human-review`,
+        { reason },
+      ),
+    getConversationContext: (orgId: string, conversationId: string) =>
+      get<WhatsAppConversationContext>(`/organizations/${orgId}/whatsapp/conversations/${conversationId}/context`),
+    executeQuickAction: (
+      orgId: string,
+      conversationId: string,
+      actionId: WhatsAppQuickActionId,
+      body?: WhatsAppQuickActionPayload,
+    ) =>
+      post<unknown>(
+        `/organizations/${orgId}/whatsapp/conversations/${conversationId}/actions/${actionId}`,
+        body ?? {},
+      ),
     simulateIncoming: (orgId: string, data: { contactPhone: string; contactName?: string; content: string }) =>
-      post<{ conversationId: string; message: WhatsAppMsg }>(`/organizations/${orgId}/whatsapp/simulate-incoming`, data),
+      post<WhatsAppSimulateResult>(`/organizations/${orgId}/whatsapp/simulate-incoming`, data),
     getStats: (orgId: string) =>
       get<WhatsAppStats>(`/organizations/${orgId}/whatsapp/stats`),
+    listTemplates: (orgId: string) =>
+      get<WhatsAppTemplate[]>(`/organizations/${orgId}/whatsapp/templates`),
+    createTemplate: (orgId: string, data: WhatsAppTemplateCreatePayload) =>
+      post<WhatsAppTemplate>(`/organizations/${orgId}/whatsapp/templates`, data),
   },
   bookings: {
     list: (
@@ -1948,6 +2311,45 @@ export const api = {
     stats: (orgId: string) => get<any>(`/organizations/${orgId}/bookings/stats`),
     todayPickups: (orgId: string) => get<any[]>(`/organizations/${orgId}/bookings/today/pickups`),
     todayReturns: (orgId: string) => get<any[]>(`/organizations/${orgId}/bookings/today/returns`),
+    checkRentalEligibility: (
+      orgId: string,
+      data: {
+        vehicleId: string;
+        customerId: string;
+        startDate: string;
+        endDate?: string;
+        paymentMethod?: 'card' | 'cash' | 'invoice';
+        foreignTravelRequested?: boolean;
+        additionalDriverCount?: number;
+        depositReceived?: boolean;
+      },
+    ) =>
+      post<import('../rental/lib/booking-rental-eligibility.types').BookingRentalEligibilityResult>(
+        `/organizations/${orgId}/bookings/eligibility-check`,
+        data,
+      ),
+    getRentalEligibility: (
+      orgId: string,
+      bookingId: string,
+      params?: {
+        paymentMethod?: 'card' | 'cash' | 'invoice';
+        foreignTravelRequested?: boolean;
+        additionalDriverCount?: number;
+        depositReceived?: boolean;
+      },
+    ) => {
+      const q = new URLSearchParams();
+      if (params?.paymentMethod) q.set('paymentMethod', params.paymentMethod);
+      if (params?.foreignTravelRequested) q.set('foreignTravelRequested', 'true');
+      if (params?.additionalDriverCount != null) {
+        q.set('additionalDriverCount', String(params.additionalDriverCount));
+      }
+      if (params?.depositReceived) q.set('depositReceived', 'true');
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return get<import('../rental/lib/booking-rental-eligibility.types').BookingRentalEligibilityResult>(
+        `/organizations/${orgId}/bookings/${bookingId}/rental-eligibility${suffix}`,
+      );
+    },
     // V4.6.75 — Handover-Protokoll (Übergabe beim Pickup, Rückgabe beim Return).
     // V4.6.81 — Pickup handover now accepts an optional `performedAt`
     // ISO-8601 string so operators can record a handover that physically
@@ -2401,8 +2803,9 @@ export const api = {
       get<VendorAuditEntry[]>(`/organizations/${orgId}/vendors/${vendorId}/audit`),
     documents: (orgId: string, vendorId: string) =>
       get<any[]>(`/organizations/${orgId}/vendors/${vendorId}/documents`),
+    /** Completed canonical ServiceCases for this vendor (empty when none exist). */
     serviceHistory: (orgId: string, vendorId: string) =>
-      get<any[]>(`/organizations/${orgId}/vendors/${vendorId}/service-history`),
+      get<ApiServiceCase[]>(`/organizations/${orgId}/vendors/${vendorId}/service-history`),
   },
   dataAnalyse: {
     vehicles: (orgId: string) =>
@@ -2481,33 +2884,126 @@ export const api = {
   billing: {
     subscriptions: () => get<any[]>('/admin/billing/subscriptions'),
     revenueStats: () => get<any>('/admin/billing/revenue-stats'),
+    overview: () => get<any>('/admin/billing/overview'),
+    organizations: () => get<any[]>('/admin/billing/organizations'),
+    adminInvoices: (params?: Record<string, string>) => {
+      const q = params ? '?' + new URLSearchParams(params).toString() : '';
+      return get<any>(`/admin/billing/invoices${q}`);
+    },
+    auditLog: (params?: Record<string, string>) => {
+      const q = params ? '?' + new URLSearchParams(params).toString() : '';
+      return get<any>(`/admin/billing/audit-log${q}`);
+    },
+    adminPaymentMethods: () => get<any[]>('/admin/billing/payment-methods'),
+    adminStripeStatus: () => get<any>('/admin/billing/stripe-status'),
+    adminWebhookEvents: (params?: Record<string, string>) => {
+      const q = params ? '?' + new URLSearchParams(params).toString() : '';
+      return get<any>(`/admin/billing/webhook-events${q}`);
+    },
+    pricebooks: () => get<any[]>('/admin/billing/pricebooks'),
+    pricebookConfig: () => get<any>('/admin/billing/pricebooks/config'),
+    pricebook: (id: string) => get<any>(`/admin/billing/pricebooks/${id}`),
+    pricebookVersions: (id: string) => get<any[]>(`/admin/billing/pricebooks/${id}/versions`),
+    createPricebook: (body: {
+      name: string;
+      productKey: string;
+      currency?: string;
+      isDefault?: boolean;
+    }) => post<any>('/admin/billing/pricebooks', body),
+    createPriceVersion: (priceBookId: string, body?: { versionLabel?: string }) =>
+      post<any>(`/admin/billing/pricebooks/${priceBookId}/versions`, body ?? {}),
+    updatePriceVersion: (
+      versionId: string,
+      body: { versionLabel?: string; effectiveFrom?: string },
+    ) => patch<any>(`/admin/billing/price-versions/${versionId}`, body),
+    replacePriceTiers: (
+      versionId: string,
+      tiers: Array<{
+        minVehicles: number;
+        maxVehicles?: number | null;
+        unitPriceCents?: number | null;
+        sortOrder?: number;
+      }>,
+    ) => put<any>(`/admin/billing/price-versions/${versionId}/tiers`, { tiers }),
+    publishPriceVersion: (
+      versionId: string,
+      body?: { effectiveFrom?: string; allowUnpriced?: boolean },
+    ) => post<any>(`/admin/billing/price-versions/${versionId}/publish`, body ?? {}),
+    archivePriceVersion: (versionId: string) =>
+      post<any>(`/admin/billing/price-versions/${versionId}/archive`, {}),
+    orgSummary: (orgId?: string) =>
+      get<any>(`/billing/summary${orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''}`),
+    orgBillableVehicles: (orgId?: string) =>
+      get<any>(`/billing/billable-vehicles${orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''}`),
+    orgNextInvoicePreview: (orgId?: string) =>
+      get<any>(`/billing/next-invoice-preview${orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''}`),
     orgSubscriptions: () => get<any[]>('/billing/subscriptions'),
     orgInvoices: () => get<any[]>('/billing/invoices'),
+    orgUsagePreview: (orgId?: string) =>
+      get<any>(`/billing/usage/preview${orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''}`),
+    orgPaymentMethods: (orgId?: string) =>
+      get<any[]>(`/billing/payment-methods${orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''}`),
+    orgPaymentMethod: (orgId?: string) =>
+      get<any>(`/billing/payment-method${orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''}`),
+    orgStripeCustomerPortal: (orgId?: string) =>
+      post<any>(
+        `/billing/stripe/customer-portal${orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''}`,
+        {},
+      ),
+    orgStripeSetupIntent: (orgId?: string) =>
+      post<any>(
+        `/billing/stripe/setup-intent${orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''}`,
+        {},
+      ),
+    adminSyncStripe: (orgId: string) =>
+      post<any>(`/admin/billing/organizations/${encodeURIComponent(orgId)}/sync-stripe`, {}),
   },
   support: {
-    stats: () => get<any>('/admin/support/stats'),
-    newest: (limit?: number) => get<any[]>(`/admin/support/newest${limit ? `?limit=${limit}` : ''}`),
-    open: (limit?: number) => get<any[]>(`/admin/support/open${limit ? `?limit=${limit}` : ''}`),
-    tickets: (params?: Record<string, string>) => {
-      const q = params ? '?' + new URLSearchParams(params).toString() : '';
-      return get<any>(`/admin/support/tickets${q}`);
+    stats: () => get<SupportTicketStats>('/admin/support/stats'),
+    newest: (limit?: number) => get<SupportTicket[]>(`/admin/support/newest${limit ? `?limit=${limit}` : ''}`),
+    open: (limit?: number) => get<SupportTicket[]>(`/admin/support/open${limit ? `?limit=${limit}` : ''}`),
+    tickets: (params?: SupportTicketListParams) => {
+      const q = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : '';
+      return get<PaginatedSupportTickets>(`/admin/support/tickets${q}`);
     },
-    getTicket: (id: string) => get<any>(`/admin/support/tickets/${id}`),
-    createTicket: (data: any) => post<any>('/admin/support/tickets', data),
-    updateTicket: (id: string, data: any) => patch<any>(`/admin/support/tickets/${id}`, data),
-    updateStatus: (id: string, status: string) => patch<any>(`/admin/support/tickets/${id}/status`, { status }),
-    addMessage: (id: string, data: { content: string; imageUrl?: string }) =>
-      post<any>(`/admin/support/tickets/${id}/messages`, data),
-    byOrg: (orgId: string) => get<any[]>(`/organizations/${orgId}/support/tickets`),
-    getByOrg: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/support/tickets/${id}`),
-    createByOrg: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/support/tickets`, data),
-    addMessageByOrg: (orgId: string, id: string, data: { content: string; imageUrl?: string }) =>
-      post<any>(`/organizations/${orgId}/support/tickets/${id}/messages`, data),
-    uploadImage: async (file: File) => {
+    getTicket: (id: string) => get<SupportTicket>(`/admin/support/tickets/${id}`),
+    createTicket: (data: CreateSupportTicketAdminPayload) => post<SupportTicket>('/admin/support/tickets', data),
+    updateTicket: (id: string, data: UpdateSupportTicketPayload) =>
+      patch<SupportTicket>(`/admin/support/tickets/${id}`, data),
+    updateStatus: (id: string, status: SupportTicketStatus) =>
+      patch<SupportTicket>(`/admin/support/tickets/${id}/status`, { status }),
+    addMessage: (id: string, data: CreateSupportMessagePayload) =>
+      post<SupportTicketMessage>(`/admin/support/tickets/${id}/messages`, {
+        body: data.body ?? data.content,
+        imageUrl: data.imageUrl,
+        attachments: data.attachments,
+      }),
+    addInternalNote: (id: string, body: string) =>
+      post<SupportTicketMessage>(`/admin/support/tickets/${id}/internal-notes`, { body }),
+    byOrg: (orgId: string, params?: SupportTicketListParams) => {
+      const q = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : '';
+      return get<SupportTicket[]>(`/organizations/${orgId}/support/tickets${q}`);
+    },
+    getByOrg: (orgId: string, id: string) => get<SupportTicket>(`/organizations/${orgId}/support/tickets/${id}`),
+    createByOrg: (orgId: string, data: CreateSupportTicketPayload) =>
+      post<SupportTicket>(`/organizations/${orgId}/support/tickets`, data),
+    addMessageByOrg: (orgId: string, id: string, data: CreateSupportMessagePayload) =>
+      post<SupportTicketMessage>(`/organizations/${orgId}/support/tickets/${id}/messages`, {
+        body: data.body ?? data.content,
+        imageUrl: data.imageUrl,
+        attachments: data.attachments,
+      }),
+    reopenByOrg: (orgId: string, id: string) =>
+      post<SupportTicket>(`/organizations/${orgId}/support/tickets/${id}/reopen`, {}),
+    unreadCountByOrg: (orgId: string) =>
+      get<{ count: number }>(`/organizations/${orgId}/support/unread-count`),
+    uploadImage: async (file: File, orgId: string) => {
+      if (!orgId) throw new Error('orgId is required for support uploads');
       const form = new FormData();
       form.append('file', file);
       const token = localStorage.getItem('synqdrive_token');
-      const res = await fetch(`/api/v1/support/upload`, {
+      const path = `/api/v1/organizations/${orgId}/support/upload`;
+      const res = await fetch(path, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: form,
@@ -2546,7 +3042,8 @@ export const api = {
       const q = new URLSearchParams();
       if (filters) {
         for (const [k, v] of Object.entries(filters)) {
-          if (v !== undefined && v !== null && v !== '') q.set(k, String(v));
+          if (v === undefined || v === null || v === '') continue;
+          q.set(k, String(v));
         }
       }
       const qs = q.toString();
@@ -2583,6 +3080,61 @@ export const api = {
     forBooking: (orgId: string, bookingId: string) => get<ApiTask[]>(`/organizations/${orgId}/bookings/${bookingId}/tasks`),
     forVendor: (orgId: string, vendorId: string) => get<ApiTask[]>(`/organizations/${orgId}/vendors/${vendorId}/tasks`),
     forCustomer: (orgId: string, customerId: string) => get<ApiTask[]>(`/organizations/${orgId}/customers/${customerId}/tasks`),
+  },
+  serviceCases: {
+    list: (orgId: string, filters?: ServiceCaseListFilters) => {
+      const q = new URLSearchParams();
+      if (filters) {
+        for (const [k, v] of Object.entries(filters)) {
+          if (v === undefined || v === null || v === '') continue;
+          q.set(k, String(v));
+        }
+      }
+      const qs = q.toString();
+      return get<ApiServiceCase[]>(`/organizations/${orgId}/service-cases${qs ? `?${qs}` : ''}`);
+    },
+    get: (orgId: string, id: string) => get<ApiServiceCase>(`/organizations/${orgId}/service-cases/${id}`),
+    create: (orgId: string, data: CreateServiceCasePayload) =>
+      post<ApiServiceCase>(`/organizations/${orgId}/service-cases`, data),
+    update: (orgId: string, id: string, data: UpdateServiceCasePayload) =>
+      patch<ApiServiceCase>(`/organizations/${orgId}/service-cases/${id}`, data),
+    complete: (orgId: string, id: string, data?: CompleteServiceCasePayload) =>
+      patch<ApiServiceCase>(`/organizations/${orgId}/service-cases/${id}/complete`, data ?? {}),
+    cancel: (orgId: string, id: string) =>
+      patch<ApiServiceCase>(`/organizations/${orgId}/service-cases/${id}/cancel`, {}),
+    addComment: (orgId: string, id: string, body: string) =>
+      post<ApiServiceCase>(`/organizations/${orgId}/service-cases/${id}/comments`, { body }),
+    addAttachment: (
+      orgId: string,
+      id: string,
+      data: { fileUrl: string; fileName?: string; mimeType?: string; size?: number },
+    ) => post<ApiServiceCase>(`/organizations/${orgId}/service-cases/${id}/attachments`, data),
+    forVehicle: (orgId: string, vehicleId: string, filters?: ServiceCaseListFilters) => {
+      const q = new URLSearchParams();
+      if (filters) {
+        for (const [k, v] of Object.entries(filters)) {
+          if (v === undefined || v === null || v === '') continue;
+          q.set(k, String(v));
+        }
+      }
+      const qs = q.toString();
+      return get<ApiServiceCase[]>(
+        `/organizations/${orgId}/vehicles/${vehicleId}/service-cases${qs ? `?${qs}` : ''}`,
+      );
+    },
+    forVendor: (orgId: string, vendorId: string, filters?: ServiceCaseListFilters) => {
+      const q = new URLSearchParams();
+      if (filters) {
+        for (const [k, v] of Object.entries(filters)) {
+          if (v === undefined || v === null || v === '') continue;
+          q.set(k, String(v));
+        }
+      }
+      const qs = q.toString();
+      return get<ApiServiceCase[]>(
+        `/organizations/${orgId}/vendors/${vendorId}/service-cases${qs ? `?${qs}` : ''}`,
+      );
+    },
   },
   invoices: {
     list: (orgId: string, params?: { type?: string; status?: string; direction?: string }) => {
@@ -2675,6 +3227,69 @@ export const api = {
       patch<any>(`/organizations/${orgId}/price-tariffs/assignments/${assignmentId}/deactivate`, {}),
     unassignedVehicles: (orgId: string) =>
       get<any[]>(`/organizations/${orgId}/price-tariffs/unassigned-vehicles`),
+  },
+  rentalRules: {
+    overview: (orgId: string) =>
+      get<import('../rental/components/settings/rental-rules/rental-rules.types').RentalRulesOverviewDto>(
+        `/organizations/${orgId}/rental-rules/overview`,
+      ),
+    fleetVehicles: (orgId: string) =>
+      get<import('../rental/components/settings/rental-rules/rental-rules.types').RentalFleetVehicleDto[]>(
+        `/organizations/${orgId}/rental-rules/fleet-vehicles`,
+      ),
+    getDefaults: (orgId: string) =>
+      get<import('../rental/components/settings/rental-rules/rental-rules.types').OrganizationRentalRulesDto>(
+        `/organizations/${orgId}/rental-rules/defaults`,
+      ),
+    patchDefaults: (orgId: string, data: Record<string, unknown>) =>
+      patch<import('../rental/components/settings/rental-rules/rental-rules.types').OrganizationRentalRulesDto>(
+        `/organizations/${orgId}/rental-rules/defaults`,
+        data,
+      ),
+    listCategories: (orgId: string, includeInactive = false) =>
+      get<import('../rental/components/settings/rental-rules/rental-rules.types').RentalVehicleCategoryDto[]>(
+        `/organizations/${orgId}/rental-rules/categories${includeInactive ? '?includeInactive=true' : ''}`,
+      ),
+    createCategory: (orgId: string, data: Record<string, unknown>) =>
+      post<import('../rental/components/settings/rental-rules/rental-rules.types').RentalVehicleCategoryDto>(
+        `/organizations/${orgId}/rental-rules/categories`,
+        data,
+      ),
+    getCategory: (orgId: string, categoryId: string) =>
+      get<import('../rental/components/settings/rental-rules/rental-rules.types').RentalVehicleCategoryDto>(
+        `/organizations/${orgId}/rental-rules/categories/${categoryId}`,
+      ),
+    updateCategory: (orgId: string, categoryId: string, data: Record<string, unknown>) =>
+      patch<import('../rental/components/settings/rental-rules/rental-rules.types').RentalVehicleCategoryDto>(
+        `/organizations/${orgId}/rental-rules/categories/${categoryId}`,
+        data,
+      ),
+    disableCategory: (orgId: string, categoryId: string) =>
+      del<import('../rental/components/settings/rental-rules/rental-rules.types').RentalVehicleCategoryDto>(
+        `/organizations/${orgId}/rental-rules/categories/${categoryId}`,
+      ),
+    listCategoryVehicles: (orgId: string, categoryId: string) =>
+      get<import('../rental/components/settings/rental-rules/rental-rules.types').RentalCategoryVehicleDto[]>(
+        `/organizations/${orgId}/rental-rules/categories/${categoryId}/vehicles`,
+      ),
+    assignCategoryVehicles: (orgId: string, categoryId: string, vehicleIds: string[]) =>
+      patch<import('../rental/components/settings/rental-rules/rental-rules.types').RentalCategoryVehicleDto[]>(
+        `/organizations/${orgId}/rental-rules/categories/${categoryId}/vehicles`,
+        { vehicleIds },
+      ),
+    getVehicleEffective: (orgId: string, vehicleId: string) =>
+      get<import('../rental/components/settings/rental-rules/rental-rules.types').EffectiveRentalRulesDto>(
+        `/organizations/${orgId}/vehicles/${vehicleId}/rental-requirements/effective`,
+      ),
+    getVehicleRequirements: (orgId: string, vehicleId: string) =>
+      get<import('../rental/components/settings/rental-rules/rental-rules.types').VehicleRentalRequirementsDto>(
+        `/organizations/${orgId}/vehicles/${vehicleId}/rental-requirements`,
+      ),
+    patchVehicleOverrides: (orgId: string, vehicleId: string, data: Record<string, unknown>) =>
+      patch<import('../rental/components/settings/rental-rules/rental-rules.types').RentalRuleFields & { id: string; vehicleId: string }>(
+        `/organizations/${orgId}/vehicles/${vehicleId}/rental-requirements/overrides`,
+        data,
+      ),
   },
   activityLog: {
     listAll: () => get<any[]>('/admin/activity-log'),
@@ -2783,6 +3398,10 @@ export const api = {
     brakeHealthRecalculate: (vehicleId: string) => post<any>(`/vehicles/${vehicleId}/brake-health/recalculate`, {}),
     createBrakeSpec: (vehicleId: string, data: any) => post<any>(`/vehicles/${vehicleId}/brakes`, data),
     tripProfile: (vehicleId: string) => get<TripProfile>(`/vehicles/${vehicleId}/trip-profile`),
+    // ── Trips tab (Vehicle Detail) ─────────────────────────────────────────
+    // List/timeline: tripsTimeline (canonical merge) → fallback trips + energyEvents
+    // On select: tripRoute, tripDetail, tripBehaviorEvents; enrich via enrichTrip / enrichTripBehavior
+    // Reconcile missing segments: reconcileTrips
     serviceEvents: (vehicleId: string) =>
       get<{ data: VehicleServiceEventRecord[] }>(`/vehicles/${vehicleId}/service-events`),
     dtc: (vehicleId: string) => get<any[]>(`/vehicles/${vehicleId}/dtc`),
@@ -3063,7 +3682,7 @@ export const api = {
 
   voiceAssistant: {
     get: (orgId: string) => get<VoiceAssistantData>(`/organizations/${orgId}/voice-assistant`),
-    update: (orgId: string, data: Partial<VoiceAssistantData>) =>
+    update: (orgId: string, data: VoiceAssistantUpdatePayload) =>
       patch<VoiceAssistantData>(`/organizations/${orgId}/voice-assistant`, data),
     activate: (orgId: string) =>
       post<VoiceAssistantData>(`/organizations/${orgId}/voice-assistant/activate`, {}),
@@ -3071,23 +3690,60 @@ export const api = {
       post<VoiceAssistantData>(`/organizations/${orgId}/voice-assistant/deactivate`, {}),
     readiness: (orgId: string) =>
       get<VoiceAssistantReadiness>(`/organizations/${orgId}/voice-assistant/readiness`),
-    voices: (orgId: string) =>
-      get<VoiceOption[]>(`/organizations/${orgId}/voice-assistant/voices`),
+    voices: (_orgId: string) =>
+      get<VoiceOption[]>(`/organizations/${_orgId}/voice-assistant/voices`),
     testSession: (orgId: string) =>
-      post<{ signedUrl: string | null; agentId: string | null; message?: string }>(
-        `/organizations/${orgId}/voice-assistant/test-session`, {},
+      post<VoiceAssistantTestSession>(`/organizations/${orgId}/voice-assistant/test-session`, {}),
+    conversations: (orgId: string, params?: VoiceConversationListParams) =>
+      get<VoiceConversationListResult>(
+        `/organizations/${orgId}/voice-assistant/conversations${buildQuery({
+          limit: params?.limit,
+          offset: params?.offset,
+          page: params?.page,
+          outcome: params?.outcome,
+          direction: params?.direction,
+          status: params?.status,
+          dateFrom: params?.dateFrom,
+          dateTo: params?.dateTo,
+          search: params?.search,
+          escalatedOnly:
+            params?.escalatedOnly != null ? String(params.escalatedOnly) : undefined,
+          hasTranscript:
+            params?.hasTranscript != null ? String(params.hasTranscript) : undefined,
+        })}`,
       ),
-    conversations: (orgId: string, limit?: number) =>
-      get<VoiceConversationEntry[]>(
-        `/organizations/${orgId}/voice-assistant/conversations${limit ? `?limit=${limit}` : ''}`,
-      ),
+    analytics: (orgId: string) =>
+      get<VoiceAssistantAnalytics>(`/organizations/${orgId}/voice-assistant/analytics`),
     syncConversations: (orgId: string) =>
-      post<{ synced: number }>(`/organizations/${orgId}/voice-assistant/conversations/sync`, {}),
+      post<VoiceSyncConversationsResult>(
+        `/organizations/${orgId}/voice-assistant/conversations/sync`,
+        {},
+      ),
+    phoneNumbers: (orgId: string) =>
+      get<VoiceProviderPhoneNumber[]>(`/organizations/${orgId}/voice-assistant/phone-numbers`),
+    assignPhoneNumber: (orgId: string, phoneNumberId: string) =>
+      post<VoiceAssistantData>(`/organizations/${orgId}/voice-assistant/phone-number/assign`, {
+        phoneNumberId,
+      }),
+    unassignPhoneNumber: (orgId: string) =>
+      post<VoiceAssistantData>(`/organizations/${orgId}/voice-assistant/phone-number/unassign`, {}),
+    refreshTelephony: (orgId: string) =>
+      post<VoiceTelephonyRefreshResult>(
+        `/organizations/${orgId}/voice-assistant/telephony/refresh`,
+        {},
+      ),
+    updateTelephonySettings: (orgId: string, payload: VoiceTelephonySettingsPayload) =>
+      patch<VoiceAssistantData>(
+        `/organizations/${orgId}/voice-assistant/telephony-settings`,
+        payload,
+      ),
 
     admin: {
       overview: () => get<VoiceAssistantAdminOverview>('/admin/voice-assistant/overview'),
       orgDetail: (orgId: string) =>
         get<VoiceAssistantAdminOrgDetail>(`/admin/voice-assistant/organizations/${orgId}`),
+      syncOrganization: (orgId: string) =>
+        post<VoiceSyncConversationsResult>(`/admin/voice-assistant/organizations/${orgId}/sync`, {}),
     },
   },
 
@@ -4095,12 +4751,17 @@ export interface BrakeHealthSummary {
   legacy: BrakeHealthLegacy;
 }
 
-export interface BrakeHealthDetail {
-  summary: BrakeHealthSummary;
+/** Legacy wear-model detail estimates — not for UI display. */
+export interface BrakeHealthDetailLegacy {
   frontPads: BrakeAxleEstimate | null;
   rearPads: BrakeAxleEstimate | null;
   frontDiscs: BrakeAxleEstimate | null;
   rearDiscs: BrakeAxleEstimate | null;
+}
+
+export interface BrakeHealthDetail {
+  summary: BrakeHealthSummary;
+  legacy: BrakeHealthDetailLegacy;
   specs: any;
   history: Array<{
     id: string;
@@ -4279,6 +4940,7 @@ export interface FleetMapVehicleResponse {
   signalAgeMs: number;
   isFresh: boolean;
   onlineStatus: string;
+  telemetryFreshness?: string;
   displayState: string;
   displayIgnition: string;
   isLiveTracking: boolean;
@@ -5485,7 +6147,14 @@ export interface WhatsAppConfig {
   isConnected: boolean;
   isActive: boolean;
   phoneNumber: string | null;
+  phoneNumberId?: string | null;
+  wabaId?: string | null;
   businessName: string | null;
+  providerStatus?: 'NOT_CONFIGURED' | 'CONFIGURED' | 'CONNECTED' | 'ERROR';
+  providerConfigured?: boolean;
+  accessTokenConfigured?: boolean;
+  appSecretConfigured?: boolean;
+  serviceWindowOpen?: boolean;
   aiMode: 'OFF' | 'SUGGEST_ONLY' | 'AUTO_SIMPLE' | 'FULL';
   aiCanCreateTasks: boolean;
   aiCanCreateSupport: boolean;
@@ -5494,31 +6163,167 @@ export interface WhatsAppConfig {
   aiEscalationEnabled: boolean;
   connectedAt: string | null;
   connectedByName: string | null;
+  lastWebhookAt?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export type WhatsAppQuickActionId =
+  | 'link_booking'
+  | 'link_customer'
+  | 'link_vehicle'
+  | 'human_review'
+  | 'assign_user'
+  | 'create_task'
+  | 'request_missing_documents'
+  | 'send_pickup_instructions'
+  | 'send_return_instructions'
+  | 'send_handover_link'
+  | 'send_return_link'
+  | 'send_payment_deposit_reminder'
+  | 'create_damage_followup_task'
+  | 'close_conversation'
+  | 'reopen_conversation';
+
+export interface WhatsAppQuickActionDef {
+  id: WhatsAppQuickActionId;
+  label: string;
+  enabled: boolean;
+  reason?: string;
+  requiresConfirm?: boolean;
+}
+
+export interface WhatsAppQuickActionPayload {
+  bookingId?: string;
+  customerId?: string;
+  assignedUserId?: string;
+  taskCategory?: string;
+  taskTitle?: string;
+  reason?: string;
+}
+
+export interface WhatsAppConversationContext {
+  conversation: {
+    id: string;
+    status: string;
+    contactPhone: string;
+    contactName: string | null;
+    customerId: string | null;
+    bookingId: string | null;
+    vehicleId: string | null;
+    assignedTo: string | null;
+    lastDetectedIntent: string | null;
+    unreadCount: number;
+  };
+  customer: {
+    id: string;
+    displayName: string;
+    phone: string | null;
+    email: string | null;
+    status: string | null;
+  } | null;
+  booking: {
+    id: string;
+    bookingNumber: string;
+    status: string;
+    startDate: string;
+    endDate: string;
+    pickupStationName: string | null;
+    returnStationName: string | null;
+  } | null;
+  vehicle: {
+    id: string;
+    displayName: string;
+    licensePlate: string | null;
+    status: string | null;
+  } | null;
+  station: {
+    id: string;
+    name: string;
+    address: string | null;
+    handoverInstructions: string | null;
+    returnInstructions: string | null;
+  } | null;
+  documents: {
+    bundleStatus: string | null;
+    missingCount: number;
+    missingLabels: string[];
+    warnings: string[];
+  } | null;
+  payment: {
+    depositStatus: string | null;
+    paymentStatus: string | null;
+    depositAmountCents: number | null;
+    openAmountCents: number | null;
+    openInvoiceCount: number;
+  } | null;
+  damages: { openCount: number } | null;
+  tasks: {
+    openCount: number;
+    overdueCount: number;
+    items: { id: string; title: string; status: string; priority: string; dueAt: string | null }[];
+  } | null;
+  handover: {
+    pickupCompleted: boolean;
+    pickupCompletedAt: string | null;
+    returnCompleted: boolean;
+    returnCompletedAt: string | null;
+    operatorBookingUrl: string | null;
+  } | null;
+  whatsapp: {
+    isConnected: boolean;
+    isActive: boolean;
+    providerConfigured: boolean;
+    customerOptedOut: boolean;
+  };
+  quickActions: WhatsAppQuickActionDef[];
+}
+
+export interface WhatsAppAiSuggestionResponse {
+  suggestedReply: string | null;
+  intent: string;
+  confidence: number;
+  riskFlags: string[];
+  usedTools: string[];
+  decision: 'SUGGEST_ONLY' | 'AUTO_ALLOWED' | 'HUMAN_REQUIRED';
+  humanReason: string | null;
+  canSendAutomatically: boolean;
+  suggestionId?: string | null;
+  reason?: string | null;
+  sourceContextIds?: Record<string, string | null>;
+  /** @deprecated use suggestedReply */
+  suggestion?: string | null;
 }
 
 export interface WhatsAppConversation {
   id: string;
   contactPhone: string;
   contactName: string | null;
+  customerId?: string | null;
+  bookingId?: string | null;
+  vehicleId?: string | null;
   lastMessageAt: string | null;
   lastMessagePreview: string | null;
   unreadCount: number;
-  status: string;
-  assignedUserId: string | null;
+  status: 'OPEN' | 'PENDING_HUMAN' | 'CLOSED' | string;
+  assignedTo?: string | null;
+  intent?: string | null;
   createdAt: string;
 }
 
 export interface WhatsAppMsg {
   id: string;
-  direction: string;
+  direction: 'incoming' | 'outgoing' | string;
   senderType: string;
   senderName: string | null;
   content: string;
   aiGenerated: boolean;
   aiSuggested: boolean;
-  status: string;
+  status: 'QUEUED' | 'SENT' | 'DELIVERED' | 'READ' | 'FAILED' | string;
+  messageType?: string;
+  templateName?: string | null;
+  providerMessageId?: string | null;
+  failureReason?: string | null;
   createdAt: string;
 }
 
@@ -5530,7 +6335,57 @@ export interface WhatsAppStats {
   unreadTotal: number;
   isConnected: boolean;
   isActive: boolean;
+  providerStatus?: string;
   aiMode: string;
+  lastWebhookAt?: string | null;
+}
+
+export interface WhatsAppSimulateResult {
+  sandbox?: boolean;
+  conversationId: string;
+  message: WhatsAppMsg;
+}
+
+export type WhatsAppTemplateCategory =
+  | 'BOOKING_CONFIRMATION'
+  | 'PICKUP_REMINDER'
+  | 'RETURN_REMINDER'
+  | 'MISSING_DOCUMENTS'
+  | 'PAYMENT_REMINDER'
+  | 'DEPOSIT_REMINDER'
+  | 'DAMAGE_FOLLOWUP'
+  | 'HANDOVER_LINK'
+  | 'RETURN_LINK'
+  | 'SUPPORT_UPDATE'
+  | 'VEHICLE_READY';
+
+export type WhatsAppTemplateProviderStatus =
+  | 'DRAFT'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'DISABLED';
+
+export interface WhatsAppTemplate {
+  id: string;
+  organizationId: string;
+  name: string;
+  language: string;
+  category: WhatsAppTemplateCategory;
+  bodyTemplate: string;
+  variableSchema?: Record<string, unknown> | null;
+  providerStatus: WhatsAppTemplateProviderStatus;
+  providerTemplateId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WhatsAppTemplateCreatePayload {
+  name: string;
+  language?: string;
+  category: WhatsAppTemplateCategory;
+  bodyTemplate: string;
+  variableSchema?: Record<string, unknown>;
 }
 
 // ─── Parts & Accessories Types ───────────────────────────────
@@ -5926,6 +6781,115 @@ export interface InsuranceHealthOverview {
 
 // ─── Voice Assistant ─────────────────────────────────
 
+export type VoiceAssistantStatus = 'DRAFT' | 'ACTIVE' | 'INACTIVE';
+
+export type VoiceConnectionStatus =
+  | 'NOT_CONFIGURED'
+  | 'DEGRADED'
+  | 'CONNECTED'
+  | 'ERROR';
+
+export type VoiceConversationOutcome =
+  | 'RESOLVED'
+  | 'ESCALATED'
+  | 'FAILED'
+  | 'ABANDONED';
+
+export type VoiceConversationDirection = 'inbound' | 'outbound' | 'INBOUND' | 'OUTBOUND';
+
+export type VoiceConversationStatus =
+  | 'active'
+  | 'completed'
+  | 'failed'
+  | 'ACTIVE'
+  | 'COMPLETED'
+  | 'FAILED';
+
+export type VoicePermissionMode = 'DISABLED' | 'SUGGEST_ONLY' | 'AUTONOMOUS';
+
+export type VoiceToolCapabilityKey =
+  | 'answerGeneralQuestions'
+  | 'customerLookup'
+  | 'bookingSearch'
+  | 'createBookingDraft'
+  | 'modifyBooking'
+  | 'cancelBooking'
+  | 'quotePrices'
+  | 'createTask'
+  | 'createDamageCase'
+  | 'contactCustomer'
+  | 'contactVendor'
+  | 'modifyRecords'
+  | 'emergencyEscalation';
+
+export type VoiceToolPermissionsMap = Record<VoiceToolCapabilityKey, VoicePermissionMode>;
+
+export interface VoiceToolPolicyCapability {
+  key: VoiceToolCapabilityKey;
+  label: string;
+  mode: VoicePermissionMode;
+  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  allowed: boolean;
+  requiresHumanConfirmation: boolean;
+  notes?: string;
+}
+
+export interface VoiceToolPolicy {
+  version: 1;
+  generatedAt: string;
+  capabilities: VoiceToolPolicyCapability[];
+  summary: {
+    autonomous: VoiceToolCapabilityKey[];
+    suggestOnly: VoiceToolCapabilityKey[];
+    disabled: VoiceToolCapabilityKey[];
+  };
+}
+
+/** Writable assistant fields accepted by PATCH /voice-assistant (matches backend DTO). */
+export interface VoiceAssistantUpdatePayload {
+  name?: string;
+  role?: string;
+  personality?: string;
+  language?: string;
+  voiceId?: string;
+  voiceName?: string;
+  greetingMessage?: string;
+  systemPrompt?: string;
+  companyContext?: string;
+  businessRules?: string;
+  forbiddenActions?: string;
+  knowledgeSnippets?: string;
+  telephonyEnabled?: boolean;
+  inboundEnabled?: boolean;
+  outboundEnabled?: boolean;
+  permAnswerQuestions?: boolean;
+  permManageBookings?: boolean;
+  permCreateBookingDrafts?: boolean;
+  permCancelBookings?: boolean;
+  permCreateTasks?: boolean;
+  permWorkshopHandling?: boolean;
+  permBreakdownSupport?: boolean;
+  permContactCustomers?: boolean;
+  permContactVendors?: boolean;
+  permModifyRecords?: boolean;
+  permCreateActions?: boolean;
+  permEmergencyHandling?: boolean;
+  toolPermissions?: Partial<VoiceToolPermissionsMap>;
+  escalationPhone?: string;
+  escalationUserId?: string;
+  escalationDepartment?: string;
+  escalateOnLowConf?: boolean;
+  escalateOnSensitive?: boolean;
+  escalateOnRequest?: boolean;
+  fallbackMessage?: string;
+  escalationTriggers?: string[];
+  businessHoursStart?: string;
+  businessHoursEnd?: string;
+  businessHoursTimezone?: string;
+  afterHoursMessage?: string;
+  businessHours?: Record<string, unknown>;
+}
+
 export interface VoiceAssistantData {
   id: string;
   organizationId: string;
@@ -5941,19 +6905,31 @@ export interface VoiceAssistantData {
   businessRules: string | null;
   forbiddenActions: string | null;
   knowledgeSnippets: string | null;
+  provider: string;
   elevenLabsAgentId: string | null;
+  elevenLabsPhoneNumberId: string | null;
   phoneNumberId: string | null;
   phoneNumber: string | null;
+  connectionStatus: VoiceConnectionStatus;
+  lastProvisionedAt: string | null;
+  lastSyncedAt: string | null;
   telephonyEnabled: boolean;
   inboundEnabled: boolean;
   outboundEnabled: boolean;
   permAnswerQuestions: boolean;
   permManageBookings: boolean;
+  permCreateBookingDrafts: boolean;
+  permCancelBookings: boolean;
+  permCreateTasks: boolean;
   permWorkshopHandling: boolean;
   permBreakdownSupport: boolean;
   permContactCustomers: boolean;
   permContactVendors: boolean;
+  permModifyRecords: boolean;
   permCreateActions: boolean;
+  permEmergencyHandling: boolean;
+  toolPermissions: VoiceToolPermissionsMap;
+  toolPolicy?: VoiceToolPolicy;
   escalationPhone: string | null;
   escalationUserId: string | null;
   escalationDepartment: string | null;
@@ -5961,23 +6937,76 @@ export interface VoiceAssistantData {
   escalateOnSensitive: boolean;
   escalateOnRequest: boolean;
   fallbackMessage: string | null;
+  escalationTriggers: string[] | Record<string, unknown> | null;
   businessHoursStart: string | null;
   businessHoursEnd: string | null;
   businessHoursTimezone: string | null;
   afterHoursMessage: string | null;
-  status: 'DRAFT' | 'ACTIVE' | 'INACTIVE';
+  businessHours: Record<string, unknown> | null;
+  status: VoiceAssistantStatus;
   totalCalls: number;
   answeredCalls: number;
   missedCalls: number;
   escalatedCalls: number;
+  totalTalkTimeSeconds: number;
   totalTalkMinutes: number;
   createdAt: string;
   updatedAt: string;
+  activatedAt: string | null;
+  deactivatedAt: string | null;
+  telephonyStatus?: VoiceTelephonyStatusSnapshot;
+}
+
+export type VoiceTelephonyOperationalStatus =
+  | 'provider_not_connected'
+  | 'agent_not_provisioned'
+  | 'no_phone_number'
+  | 'assigned_inactive'
+  | 'ready_for_inbound'
+  | 'telephony_disabled';
+
+export interface VoiceTelephonyStatusSnapshot {
+  status: VoiceTelephonyOperationalStatus;
+  label: string;
+  detail: string;
+  providerConfigured: boolean;
+  agentProvisioned: boolean;
+  phoneAssigned: boolean;
+  inboundReady: boolean;
+  outboundEnabled: boolean;
+}
+
+export interface VoiceProviderPhoneNumber {
+  phoneNumberId: string;
+  phoneNumber: string | null;
+  assignedAgentId: string | null;
+  assignedToThisAssistant: boolean;
+  assignedToOther: boolean;
+}
+
+export interface VoiceTelephonyRefreshResult {
+  assistant: VoiceAssistantData;
+  phoneNumbers: VoiceProviderPhoneNumber[];
+  telephonyStatus: VoiceTelephonyStatusSnapshot;
+}
+
+export interface VoiceTelephonySettingsPayload {
+  telephonyEnabled?: boolean;
+  inboundEnabled?: boolean;
+  outboundEnabled?: boolean;
+}
+
+export interface VoiceReadinessItem {
+  key: string;
+  label: string;
+  ok: boolean;
+  required?: boolean;
 }
 
 export interface VoiceAssistantReadiness {
   ready: boolean;
-  checks: { key: string; label: string; ok: boolean }[];
+  checks: VoiceReadinessItem[];
+  missing?: string[];
 }
 
 export interface VoiceOption {
@@ -5988,53 +7017,180 @@ export interface VoiceOption {
   preview_url?: string;
 }
 
+export interface VoiceConversationListParams {
+  limit?: number;
+  offset?: number;
+  page?: number;
+  outcome?: VoiceConversationOutcome;
+  direction?: VoiceConversationDirection;
+  status?: VoiceConversationStatus;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+  escalatedOnly?: boolean;
+  hasTranscript?: boolean;
+}
+
+export interface VoiceConversationListResult {
+  items: VoiceConversationEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+  page: number;
+}
+
 export interface VoiceConversationEntry {
   id: string;
-  organizationId: string;
-  voiceAssistantId: string;
-  elevenLabsConvId: string | null;
-  callerNumber: string | null;
-  direction: string;
-  durationSeconds: number | null;
-  outcome: 'RESOLVED' | 'ESCALATED' | 'FAILED' | 'ABANDONED';
-  transcript: string | null;
-  summary: string | null;
-  escalationReason: string | null;
-  actionsPerformed: string[];
-  errorMessage: string | null;
   startedAt: string;
-  endedAt: string | null;
-  createdAt: string;
+  direction: VoiceConversationDirection;
+  callerNumber: string | null;
+  durationSeconds: number | null;
+  status?: string;
+  outcome: VoiceConversationOutcome;
+  summary: string | null;
+  transcript: string | null;
+  hasTranscript: boolean;
+  escalated: boolean;
+  escalationReason: string | null;
+  linkedBookingId: string | null;
+  linkedCustomerId: string | null;
+  linkedVehicleId: string | null;
+  taskId: string | null;
+  metadata: Record<string, unknown> | null;
+  organizationId?: string;
+  voiceAssistantId?: string | null;
+  providerConversationId?: string | null;
+  elevenLabsConvId?: string | null;
+  actionsPerformed?: string[];
+  errorMessage?: string | null;
+  endedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface VoiceAssistantTestSession {
+  agentId: string | null;
+  provider: string;
+  status: 'ready' | 'blocked';
+  instructions: string;
+  expiresAt: string | null;
+  warnings: string[];
+  readinessSummary: {
+    ready: boolean;
+    missing: string[];
+  };
+  developerDetails: {
+    signedUrl: string;
+  } | null;
+}
+
+export interface VoiceSyncConversationsResult {
+  synced: number;
+  message?: string;
+}
+
+export interface VoiceAssistantAnalytics {
+  totalCalls: number;
+  answeredCalls: number;
+  missedCalls: number;
+  escalatedCalls: number;
+  escalationRate: number;
+  avgDurationSeconds: number;
+  totalTalkMinutes: number;
+  totalTalkTimeSeconds: number;
+  callsByOutcome: Record<string, number>;
+  topEscalationReasons: Array<{ reason: string; count: number }>;
+  knowledgeGaps: {
+    available: boolean;
+    message: string;
+  };
+  insights: {
+    hasEnoughData: boolean;
+    topEscalationInsight: string | null;
+  };
+}
+
+export interface VoiceAssistantAdminOverviewRow {
+  organizationId: string;
+  organizationName: string;
+  assistantStatus: VoiceAssistantStatus | 'NOT_CONFIGURED' | string;
+  readinessPercent: number;
+  missingReadinessItemsCount: number;
+  elevenLabsConnected: boolean;
+  agentProvisioned: boolean;
+  telephonyEnabled: boolean;
+  phoneNumber: string | null;
+  inboundEnabled: boolean;
+  outboundEnabled: boolean;
+  totalCalls: number;
+  callsToday: number;
+  escalatedCalls: number;
+  missedCalls: number;
+  lastCallAt: string | null;
+  lastSyncedAt: string | null;
+  providerWarning: string | null;
+  lastError: string | null;
+  connectionStatus?: VoiceConnectionStatus | null;
+  telephonyLabel?: string;
 }
 
 export interface VoiceAssistantAdminOverview {
-  assistants: {
-    organizationId: string;
-    organizationName: string;
-    name: string;
-    status: string;
-    voiceName: string | null;
-    language: string;
-    telephonyEnabled: boolean;
-    phoneNumber: string | null;
-    totalCalls: number;
-    answeredCalls: number;
-    totalTalkMinutes: number;
-    elevenLabsAgentId: string | null;
-    updatedAt: string;
-  }[];
+  assistants: VoiceAssistantAdminOverviewRow[];
   summary: {
     totalOrgs: number;
+    configuredOrgs: number;
+    activeOrgs: number;
     totalCalls: number;
     totalMinutes: number;
+    totalTalkTimeSeconds: number;
+    costTrackingConnected: boolean;
+    costTrackingMessage: string;
   };
+  providerConfigured: boolean;
+}
+
+export interface VoiceConversationAdminSummary {
+  id: string;
+  startedAt: string;
+  direction: VoiceConversationDirection;
+  callerNumber: string | null;
+  durationSeconds: number | null;
+  status?: string;
+  outcome: VoiceConversationOutcome;
+  summary: string | null;
+  hasTranscript: boolean;
+  escalated: boolean;
+  escalationReason: string | null;
+  linkedBookingId?: string | null;
+  linkedCustomerId?: string | null;
+  linkedVehicleId?: string | null;
+  taskId?: string | null;
 }
 
 export interface VoiceAssistantAdminOrgDetail {
   exists: boolean;
-  assistant?: VoiceAssistantData;
+  organization?: { id: string; companyName: string };
+  assistant?: Partial<VoiceAssistantData> & {
+    hasAgent?: boolean;
+  };
   readiness?: VoiceAssistantReadiness;
-  recentConversations?: VoiceConversationEntry[];
+  telephonyStatus?: {
+    status: string;
+    label: string;
+    detail: string;
+    providerConfigured: boolean;
+    agentProvisioned: boolean;
+    phoneAssigned: boolean;
+    inboundReady: boolean;
+    outboundEnabled: boolean;
+  };
+  warnings?: string[];
+  providerConfigured?: boolean;
+  recentConversations?: VoiceConversationAdminSummary[];
+  costTracking?: {
+    connected: boolean;
+    message: string;
+  };
 }
 
 // ── High Mobility types ──────────────────────────────────────────────────────

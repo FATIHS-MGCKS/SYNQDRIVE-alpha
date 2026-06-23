@@ -172,9 +172,9 @@ export function FleetCommandPanel({
         </div>
       </div>
 
-      <div ref={listPanelRef} className="px-2.5 py-2 flex-1 lg:overflow-y-auto">
+      <div ref={listPanelRef} className="flex-1 py-1.5 lg:overflow-y-auto">
         {hiddenSelectedVehicle && (
-          <div className="mb-2 px-2.5 py-2 rounded-lg border border-border/50 bg-muted/40 flex items-center justify-between gap-2">
+          <div className="mx-2.5 mb-1.5 px-2.5 py-2 rounded-lg border border-border/50 bg-muted/40 flex items-center justify-between gap-2">
             <p className="text-[10px] text-muted-foreground min-w-0 truncate">
               <span className="font-semibold text-foreground">
                 {hiddenSelectedVehicle.vehicle.license}
@@ -202,7 +202,7 @@ export function FleetCommandPanel({
         )}
 
         {loading && contexts.length === 0 ? (
-          <div className="space-y-2">
+          <div className="space-y-2 px-2.5">
             <SkeletonCard />
             <SkeletonCard />
             <SkeletonCard />
@@ -212,7 +212,7 @@ export function FleetCommandPanel({
             {fleetCommandTabEmptyMessage(activeTab, hasSearch)}
           </p>
         ) : (
-          <div className="space-y-1">
+          <div className="divide-y divide-border/30">
             {visibleContexts.map((ctx) => (
               <FleetOperatorRow
                 key={ctx.vehicle.id}

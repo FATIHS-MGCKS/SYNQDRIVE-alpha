@@ -126,6 +126,17 @@ export interface HighFrequencySignalDto {
   notes: string[];
 }
 
+export interface HfRecentEventDto {
+  eventType: string;
+  severity: string;
+  eventStart: string;
+  eventEnd: string | null;
+  durationMs: number | null;
+  confidence: string;
+  primaryValue: number | null;
+  primaryUnit: string | null;
+}
+
 export interface HighFrequencyAnalysisDto {
   available: boolean;
   message: string | null;
@@ -133,6 +144,15 @@ export interface HighFrequencyAnalysisDto {
   clickHouseAvailable: boolean;
   signals: HighFrequencySignalDto[];
   waypointCount24h: number | null;
+  /**
+   * Optional HF-layer status (ClickHouse telemetry_hf_* mirror). Best-effort and
+   * analytics-only — absent/empty when the HF layer has no data or is degraded.
+   */
+  hfConfigured?: boolean;
+  hfPointCount24h?: number | null;
+  hfLatestPointAt?: string | null;
+  hfSignalGroupsSeen?: string[];
+  hfRecentEvents?: HfRecentEventDto[];
 }
 
 export interface LaunchFeasibilityDto {

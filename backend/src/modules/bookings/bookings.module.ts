@@ -15,6 +15,8 @@ import { CustomersModule } from '@modules/customers/customers.module';
 import { WorkflowsModule } from '@modules/workflows/workflows.module';
 import { PricingModule } from '@modules/pricing/pricing.module';
 import { StationsModule } from '@modules/stations/stations.module';
+import { RentalRulesModule } from '@modules/rental-rules/rental-rules.module';
+import { BookingRentalEligibilityService } from './booking-rental-eligibility.service';
 
 @Module({
   imports: [
@@ -27,9 +29,10 @@ import { StationsModule } from '@modules/stations/stations.module';
     WorkflowsModule,
     PricingModule,
     StationsModule,
+    RentalRulesModule,
   ],
   controllers: [BookingsController],
-  providers: [BookingsService, BookingsHandoverService],
-  exports: [BookingsService, BookingsHandoverService],
+  providers: [BookingsService, BookingsHandoverService, BookingRentalEligibilityService],
+  exports: [BookingsService, BookingsHandoverService, BookingRentalEligibilityService],
 })
 export class BookingsModule {}

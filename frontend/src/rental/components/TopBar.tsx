@@ -8,6 +8,7 @@ import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
 import { useLanguage, type Locale } from '../i18n/LanguageContext';
 import { api } from '../../lib/api';
+import { OperatorEntryButton } from '../../operator/components/OperatorEntryButton';
 
 // V4.6.86 — flags replaced with ISO-2 code pills (anti-emoji, per design direction).
 const languages = [
@@ -22,7 +23,7 @@ const languages = [
 ];
 
 type ViewType = 'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'fleet-condition-detail' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'price-tariffs' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'document-upload' | 'ai-assistant' | 'ai-voice-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances';
-type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents';
+type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents' | 'rental-rules';
 type FleetTab = 'status' | 'health' | 'service';
 
 interface TopBarProps {
@@ -118,6 +119,7 @@ const settingsTabKeys: Record<SettingsTab, TranslationKey> = {
   'billing': 'settingsTab.billing',
   'data-authorization': 'settingsTab.dataAuthorization',
   'legal-documents': 'settingsTab.legalDocuments',
+  'rental-rules': 'settingsTab.rentalRules',
 };
 
 const fleetTabKeys: Record<FleetTab, TranslationKey> = {
@@ -586,6 +588,8 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'overview', fl
 
       {/* Right Section - Actions */}
       <div className="flex items-center gap-1 lg:gap-1.5 shrink-0">
+        <OperatorEntryButton />
+
         {/* Dark Mode Toggle — V4.6.86: soft press + subtle rotation micro-motion */}
         <button
           onClick={() => setIsDarkMode(!isDarkMode)}

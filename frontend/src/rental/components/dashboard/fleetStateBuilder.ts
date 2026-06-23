@@ -1,12 +1,12 @@
 import type { VehicleHealthAlert } from '../../DashboardInsightsContext';
 import type { VehicleData } from '../../data/vehicles';
-import { isVehicleOffline } from '../../data/vehicles';
 import type { VehicleHealthResponse } from '../../../lib/api';
 import {
   formatFleetDateTime,
   formatFuelPercentCeil,
 } from '../../../lib/formatVehicleDisplay';
 import { deriveFleetVisualState } from '../../lib/fleetVisualState';
+import { resolveTelemetryFreshness } from '../../lib/telemetryFreshness';
 import { parseEventTime } from './dashboardUtils';
 import type {
   FleetBoardItem,
@@ -75,8 +75,6 @@ function assignLane(
   const blocked = rentalHealth?.rental_blocked === true;
   const healthCritical =
     healthAlert?.severity === 'critical' || rentalHealth?.overall_state === 'critical';
-  const healthWarning =
-    healthAlert?.severity === 'warning' || rentalHealth?.overall_state === 'warning';
 
   if (healthCritical || blocked) return 'critical';
   if (v.activeIsOverdue || v.reservedIsOverdue) return 'overdue';
@@ -94,7 +92,8 @@ function assignLane(
   if (v.status === 'Active Rented') return 'rented';
   if (v.status === 'Reserved') return 'reserved';
   if (v.status === 'Available') {
-    if (healthWarning || isVehicleOffline(v) || v.isFresh === false) return 'ready';
+    // Telemetry freshness (offline / signal_delayed / standby) never changes the
+    // operational lane — an Available vehicle stays in the Ready lane regardless.
     return 'ready';
   }
   return 'maintenance';
@@ -132,10 +131,21 @@ function nextAppointment(v: VehicleData, locale: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Operational ordering score (higher = further up). Tiers:
+ *   1. Critical vehicles first — and they stay on top even when stale/offline.
+ *   2. Active/problematic vehicles (overdue, due-soon, maintenance, cleaning,
+ *      warning) next.
+ *   3. Normal ready/rented/reserved vehicles with fresh data.
+ *   4. Offline (non-critical/non-warning) vehicles last; stale ready vehicles
+ *      are nudged down slightly but stay above offline.
+ */
 function sortPriority(
   lane: Exclude<FleetBoardLane, 'all'>,
   severity: FleetBoardSeverity,
   v: VehicleData,
+  isOffline: boolean,
+  isStale: boolean,
 ): number {
   const laneScore: Record<Exclude<FleetBoardLane, 'all'>, number> = {
     critical: 1000,
@@ -147,7 +157,16 @@ function sortPriority(
     reserved: 300,
     ready: 100,
   };
-  return laneScore[lane] + severityRank(severity) * 10 + (v.activeIsOverdue ? 5 : 0);
+
+  let score = laneScore[lane] + severityRank(severity) * 10 + (v.activeIsOverdue ? 5 : 0);
+
+  const isUrgent = severity === 'critical' || severity === 'warning';
+  // Push offline vehicles to the very bottom — but never demote a vehicle that
+  // is genuinely critical/warning just because telemetry is offline/stale.
+  if (isOffline && !isUrgent) score -= 5000;
+  else if (isStale && !isUrgent) score -= 250;
+
+  return score;
 }
 
 export interface BuildFleetBoardInput {
@@ -209,6 +228,8 @@ export function buildFleetBoard(input: BuildFleetBoardInput): FleetBoardModel {
       criticalHint = rentalHealth.blocking_reasons[0];
     }
 
+    const freshness = resolveTelemetryFreshness(v, { locale: input.locale });
+
     items.push({
       vehicleId: v.id,
       lane,
@@ -219,15 +240,22 @@ export function buildFleetBoard(input: BuildFleetBoardInput): FleetBoardModel {
       station: v.station || undefined,
       nextAppointment: nextAppointment(v, input.locale),
       fuelLabel,
+      fuelPercent: fuel,
+      isElectric: !!v.isElectric,
       lastSeenLabel: formatLastSeen(v.lastSignal, input.locale),
+      telemetryLabel: freshness.label,
+      showTelemetryWarning: freshness.shouldWarnUser,
       criticalHint: severity === 'critical' || severity === 'warning' ? criticalHint : undefined,
-      sortPriority: sortPriority(lane, severity, v),
+      sortPriority: sortPriority(lane, severity, v, visual.isOffline, visual.isStale),
       isOffline: visual.isOffline,
       isStale: visual.isStale,
     });
   }
 
-  items.sort((a, b) => b.sortPriority - a.sortPriority);
+  items.sort((a, b) => {
+    if (b.sortPriority !== a.sortPriority) return b.sortPriority - a.sortPriority;
+    return a.license.localeCompare(b.license);
+  });
 
   const laneCounts = new Map<Exclude<FleetBoardLane, 'all'>, number>();
   for (const item of items) {

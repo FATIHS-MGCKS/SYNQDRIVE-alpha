@@ -30,6 +30,7 @@ import {
   TaskBlockingBadgePill,
   TaskSourceBadgePill,
 } from './VehicleTaskActionCenter';
+import { HealthTaskContextPanel } from '../health/HealthTaskContextPanel';
 import { Icon } from '../ui/Icon';
 
 export interface VehicleTaskDetailDrawerProps {
@@ -469,6 +470,15 @@ export function VehicleTaskDetailDrawer({
                 {detail.source && <MetaRow label="Quelle" value={detail.source} />}
               </div>
             </MetaSection>
+
+            <HealthTaskContextPanel
+              task={detail}
+              onOpenVehicleHealth={
+                vehicle?.id
+                  ? () => onOpenChange(false)
+                  : undefined
+              }
+            />
 
             {detail.resolutionNote && (
               <MetaSection title="Abschluss-Notiz">

@@ -49,6 +49,11 @@ async function main() {
 
   await prisma.organizationIntegration.deleteMany({});
   await prisma.organizationProduct.deleteMany({});
+  await prisma.billingInvoiceLine.deleteMany({});
+  await prisma.billingUsageSnapshot.deleteMany({});
+  await prisma.billingOrganizationPriceOverride.deleteMany({});
+  await prisma.billingPaymentMethod.deleteMany({});
+  await prisma.billingAuditLog.deleteMany({});
   await prisma.billingInvoice.deleteMany({});
   await prisma.billingSubscription.deleteMany({});
   await prisma.organizationMembership.deleteMany({});

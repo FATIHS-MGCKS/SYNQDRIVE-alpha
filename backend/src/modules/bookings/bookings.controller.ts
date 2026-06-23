@@ -8,10 +8,16 @@ import {
   Param,
   Query,
   UseGuards,
+  BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
 import { BookingsService } from './bookings.service';
 import { BookingsHandoverService } from './bookings-handover.service';
+import { BookingRentalEligibilityService } from './booking-rental-eligibility.service';
+import type {
+  BookingRentalEligibilityBookingQueryDto,
+  BookingRentalEligibilityCheckDto,
+} from './dto/booking-rental-eligibility-check.dto';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
@@ -24,6 +30,7 @@ export class BookingsController {
   constructor(
     private readonly bookingsService: BookingsService,
     private readonly handoverService: BookingsHandoverService,
+    private readonly rentalEligibilityService: BookingRentalEligibilityService,
   ) {}
 
   @Get('today/pickups')
@@ -47,6 +54,50 @@ export class BookingsController {
     @Query() query: ListBookingsQueryDto,
   ) {
     return this.bookingsService.findAll(orgId, query);
+  }
+
+  @Post('eligibility-check')
+  async checkRentalEligibility(
+    @Param('orgId') orgId: string,
+    @Body() body: BookingRentalEligibilityCheckDto,
+  ) {
+    const startDate = new Date(body.startDate);
+    if (Number.isNaN(startDate.getTime())) {
+      throw new BadRequestException('Invalid startDate');
+    }
+    const endDate = body.endDate ? new Date(body.endDate) : undefined;
+    return this.rentalEligibilityService.check({
+      organizationId: orgId,
+      vehicleId: body.vehicleId,
+      customerId: body.customerId,
+      startDate,
+      endDate: endDate && !Number.isNaN(endDate.getTime()) ? endDate : undefined,
+      paymentMethod: body.paymentMethod,
+      foreignTravelRequested: body.foreignTravelRequested,
+      additionalDriverCount: body.additionalDriverCount,
+      depositReceived: body.depositReceived,
+    });
+  }
+
+  @Get(':id/rental-eligibility')
+  async getBookingRentalEligibility(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Query() query: BookingRentalEligibilityBookingQueryDto,
+  ) {
+    return this.rentalEligibilityService.checkForBooking(orgId, id, {
+      paymentMethod: query.paymentMethod,
+      foreignTravelRequested:
+        query.foreignTravelRequested === true ||
+        (query.foreignTravelRequested as unknown) === 'true',
+      additionalDriverCount:
+        query.additionalDriverCount != null
+          ? Number(query.additionalDriverCount)
+          : undefined,
+      depositReceived:
+        query.depositReceived === true ||
+        (query.depositReceived as unknown) === 'true',
+    });
   }
 
   @Get(':id/detail')

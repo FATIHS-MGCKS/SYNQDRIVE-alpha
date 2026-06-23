@@ -1,4 +1,5 @@
 import { Icon } from '../ui/Icon';
+import { SupportContextButton } from '../../../components/support/SupportContextButton';
 import type { BookingDetailDto } from '../../../lib/api';
 import {
   BookingStatusBadge,
@@ -93,6 +94,16 @@ export function BookingDetailHeader({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <SupportContextButton
+            kind="booking"
+            contextData={{
+              bookingId: detail.core.bookingId,
+              bookingRef: detail.core.bookingNumber,
+              customerName: detail.customer?.fullName,
+              vehicleId: detail.vehicle?.vehicleId,
+              status: detail.core.statusEnum ?? detail.core.status,
+            }}
+          />
           <button
             type="button"
             disabled={primaryDisabled}

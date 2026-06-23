@@ -1,12 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Icon } from '../ui/Icon';
-import { SkeletonRows, StatusChip } from '../../../components/patterns';
+import { SkeletonRows } from '../../../components/patterns';
+import { cn } from '../../../components/ui/utils';
 import { FleetBoardVehicleRow } from './FleetBoardVehicleRow';
-import {
-  DashboardPanelHeader,
-  INTERACTIVE_TAB_CLASS,
-  panelShellClass,
-} from './dashboardShell';
+import { panelShellClass } from './dashboardShell';
 import type { VehicleData } from '../../data/vehicles';
 import type { DashboardViewModel } from './dashboardTypes';
 
@@ -23,10 +20,10 @@ function FleetBoardEmpty({ locale, stationName }: { locale: string; stationName?
       <div className="sq-tone-neutral flex h-10 w-10 items-center justify-center rounded-xl bg-muted/40">
         <Icon name="car" className="h-5 w-5 text-muted-foreground" />
       </div>
-      <p className="text-[12px] font-semibold text-foreground">
+      <p className="text-[13px] font-semibold text-foreground">
         {de ? 'Keine Fahrzeuge im Scope' : 'No vehicles in scope'}
       </p>
-      <p className="max-w-[260px] text-[11px] text-muted-foreground">
+      <p className="max-w-[280px] text-[12px] text-muted-foreground text-pretty">
         {stationName
           ? de
             ? `${stationName} hat aktuell keine Fahrzeuge in der Flotte.`
@@ -35,6 +32,74 @@ function FleetBoardEmpty({ locale, stationName }: { locale: string; stationName?
             ? 'Es sind keine Fahrzeuge geladen oder der Filter ist leer.'
             : 'No vehicles are loaded or the current filter is empty.'}
       </p>
+    </div>
+  );
+}
+
+function MinimalFleetHeader({
+  title,
+  subtitle,
+  totalCount,
+  criticalCount,
+  de,
+  isExpanded,
+  onToggle,
+  controlsId,
+}: {
+  title: string;
+  subtitle: string;
+  totalCount: number;
+  criticalCount: number;
+  de: boolean;
+  isExpanded: boolean;
+  onToggle: () => void;
+  controlsId: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2 border-b border-border/35 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <span
+          className={[
+            'h-2 w-2 shrink-0 rounded-full',
+            criticalCount > 0 ? 'bg-[color:var(--status-critical)]' : 'bg-[color:var(--brand)]',
+          ].join(' ')}
+          aria-hidden
+        />
+        <div className="min-w-0">
+          <h2 className="text-[13px] font-semibold leading-tight tracking-[-0.01em] text-foreground text-balance">
+            {title}
+          </h2>
+          <p className="mt-0.5 truncate text-[11px] leading-snug text-muted-foreground">{subtitle}</p>
+        </div>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2 sm:justify-end">
+        {totalCount > 0 ? (
+          <>
+            {criticalCount > 0 ? (
+              <span className="text-[11px] font-medium tabular-nums text-[color:var(--status-critical)]">
+                {criticalCount} {de ? 'kritisch' : 'critical'}
+              </span>
+            ) : null}
+            <span className="text-[11px] font-medium tabular-nums text-muted-foreground">
+              {totalCount} {de ? 'Fahrzeuge' : 'vehicles'}
+            </span>
+          </>
+        ) : null}
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={isExpanded}
+          aria-controls={controlsId}
+          className="sq-press inline-flex min-h-9 items-center gap-1 rounded-md px-2 text-[10.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+        >
+          {isExpanded ? (de ? 'Zu' : 'Close') : (de ? 'Auf' : 'Open')}
+          <Icon
+            name="chevron-down"
+            className={cn('h-3 w-3 transition-transform duration-200', !isExpanded && '-rotate-90')}
+          />
+        </button>
+      </div>
     </div>
   );
 }
@@ -59,6 +124,9 @@ export function FleetStateBoard({ vm, onVehicleSelect, onOpenVehicleById }: Flee
 
   const loading = dataFreshness.fleetLoading;
   const de = locale === 'de';
+  const criticalCount = fleetBoard.items.filter((item) => item.severity === 'critical').length;
+  const [isExpanded, setIsExpanded] = useState(true);
+  const contentId = 'dashboard-fleet-state-content';
 
   const openVehicle = (vehicleId: string) => {
     if (onOpenVehicleById) {
@@ -81,94 +149,96 @@ export function FleetStateBoard({ vm, onVehicleSelect, onOpenVehicleById }: Flee
 
   return (
     <section
-      className={panelShellClass('secondary')}
+      className={panelShellClass('tertiary', 'border-solid border-border/55 bg-card/55 shadow-none')}
       aria-label={t('dashboard.fleetStatus')}
     >
-      <DashboardPanelHeader
-        icon={<Icon name="car" className="h-4 w-4" />}
-        iconToneClass="sq-tone-brand"
+      <MinimalFleetHeader
         title={de ? 'Flottensteuerung' : 'Fleet State Board'}
         subtitle={
           t('dashboard.vehiclesTotal', { count: filteredFleetVehicles.length }) +
           (selectedStationName ? ` · ${selectedStationName}` : '')
         }
-        trailing={
-          fleetBoard.items.length > 0 ? (
-            <StatusChip tone="info">{fleetBoard.items.length}</StatusChip>
-          ) : undefined
-        }
+        totalCount={fleetBoard.items.length}
+        criticalCount={criticalCount}
+        de={de}
+        isExpanded={isExpanded}
+        onToggle={() => setIsExpanded((current) => !current)}
+        controlsId={contentId}
       />
 
-      <div className="border-b border-border/40 px-3 py-2">
-        <div
-          className="flex gap-1 overflow-x-auto pb-0.5"
-          role="tablist"
-          aria-label={de ? 'Flottenfilter' : 'Fleet filter'}
-        >
-          {laneTabs.map((lane) => {
-            const isActive = fleetBoardFilter === lane.lane;
-            if (lane.lane !== 'all' && lane.count === 0) return null;
-            return (
-              <button
-                key={lane.lane}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => {
-                  setFleetBoardFilter(lane.lane);
-                  vm.openDrilldown({ type: 'fleet-lane', lane: lane.lane });
-                }}
-                className={[
-                  INTERACTIVE_TAB_CLASS,
-                  'flex items-center gap-1',
-                  isActive
-                    ? 'bg-foreground text-background'
-                    : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
-                ].join(' ')}
-              >
-                {lane.label}
-                {lane.count > 0 && (
-                  <span
+      <div id={contentId} hidden={!isExpanded} className={isExpanded ? 'animate-fade-up' : undefined}>
+          <div className="border-b border-border/35 px-3 py-1.5">
+            <div
+              className="flex gap-1 overflow-x-auto pb-0.5"
+              role="tablist"
+              aria-label={de ? 'Flottenfilter' : 'Fleet filter'}
+            >
+              {laneTabs.map((lane) => {
+                const isActive = fleetBoardFilter === lane.lane;
+                if (lane.lane !== 'all' && lane.count === 0) return null;
+                return (
+                  <button
+                    key={lane.lane}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => {
+                      setFleetBoardFilter(lane.lane);
+                      vm.openDrilldown({ type: 'fleet-lane', lane: lane.lane });
+                    }}
                     className={[
-                      'rounded-full px-1.5 py-0.5 text-[9px] tabular-nums',
-                      isActive ? 'bg-background/20' : 'bg-muted',
+                      'flex shrink-0 items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                      isActive
+                        ? 'bg-muted text-foreground'
+                        : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
                     ].join(' ')}
                   >
-                    {lane.count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="max-h-[min(480px,65vh)] flex-1 overflow-y-auto px-3 py-3">
-        {loading ? (
-          <SkeletonRows rows={5} />
-        ) : fleetBoard.filteredItems.length === 0 ? (
-          <FleetBoardEmpty locale={locale} stationName={selectedStationName} />
-        ) : (
-          <div className="space-y-2">
-            {fleetBoard.filteredItems.map((item) => (
-              <FleetBoardVehicleRow
-                key={item.vehicleId}
-                item={item}
-                locale={locale}
-                onOpen={() => openVehicle(item.vehicleId)}
-              />
-            ))}
+                    {lane.label}
+                    {lane.count > 0 && (
+                      <span
+                        className={[
+                          'rounded-md px-1.5 py-0.5 text-[9.5px] tabular-nums',
+                          isActive ? 'bg-background/40' : 'bg-muted/70',
+                        ].join(' ')}
+                      >
+                        {lane.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        )}
-      </div>
 
-      {!loading && fleetBoard.filteredItems.length > 0 && (
-        <div className="border-t border-border/40 px-4 py-2 text-[10px] text-muted-foreground">
-          {de
-            ? 'Kritisch und überfällig zuerst · Offline/Stale separat markiert'
-            : 'Critical and overdue first · offline/stale flagged separately'}
-        </div>
-      )}
+          <div className="max-h-[min(560px,72vh)] flex-1 overflow-y-auto">
+            {loading ? (
+              <div className="px-3 py-2.5">
+                <SkeletonRows rows={5} />
+              </div>
+            ) : fleetBoard.filteredItems.length === 0 ? (
+              <FleetBoardEmpty locale={locale} stationName={selectedStationName} />
+            ) : (
+              <div className="divide-y divide-border/30">
+                {fleetBoard.filteredItems.map((item) => (
+                  <FleetBoardVehicleRow
+                    key={item.vehicleId}
+                    item={item}
+                    locale={locale}
+                    onOpen={() => openVehicle(item.vehicleId)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {!loading && fleetBoard.filteredItems.length > 0 && (
+            <div className="border-t border-border/40 px-3.5 py-2 text-[11px] text-muted-foreground">
+              {de
+                ? 'Kritisch und überfällig zuerst · Offline zuletzt'
+                : 'Critical and overdue first · offline last'}
+            </div>
+          )}
+      </div>
     </section>
   );
 }

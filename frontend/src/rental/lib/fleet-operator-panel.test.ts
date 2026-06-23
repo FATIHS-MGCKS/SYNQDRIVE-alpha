@@ -9,6 +9,7 @@ import {
   filterFleetByStation,
   isFleetAttentionVehicle,
   resolveOperatorTabForVehicle,
+  sortFleetContexts,
   vehicleMatchesCommandTab,
 } from './fleet-operator-panel';
 import { deriveFleetVisualState } from './fleetVisualState';
@@ -89,6 +90,7 @@ describe('fleet-operator-panel', () => {
           status: 'Available',
           onlineStatus: 'OFFLINE',
           isFresh: false,
+          lastSignal: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString(),
         }),
       ],
       () => null,
@@ -100,7 +102,7 @@ describe('fleet-operator-panel', () => {
     expect(counts.All).toBe(3);
   });
 
-  it('Attention bucket includes blocked, offline, stale, and no-location vehicles', () => {
+  it('Attention bucket includes blocked, offline, soft-offline, and no-location vehicles', () => {
     const blocked = buildFleetVehicleContexts([vehicle()], () => ({
       rental_blocked: true,
       overall_state: 'critical',
@@ -110,7 +112,13 @@ describe('fleet-operator-panel', () => {
     expect(isFleetAttentionVehicle(blocked.visual, blocked.vehicle, blocked.health)).toBe(true);
 
     const offline = buildFleetVehicleContexts(
-      [vehicle({ onlineStatus: 'OFFLINE', isFresh: false })],
+      [
+        vehicle({
+          onlineStatus: 'OFFLINE',
+          isFresh: false,
+          lastSignal: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString(),
+        }),
+      ],
       () => null,
     )[0];
     expect(isFleetAttentionVehicle(offline.visual, offline.vehicle)).toBe(true);
@@ -131,7 +139,11 @@ describe('fleet-operator-panel', () => {
       },
     });
     const offline = deriveFleetVisualState(
-      vehicle({ onlineStatus: 'OFFLINE', isFresh: false }),
+      vehicle({
+        onlineStatus: 'OFFLINE',
+        isFresh: false,
+        lastSignal: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString(),
+      }),
     );
     expect(
       attentionSortRank(blocked, vehicle()) < attentionSortRank(offline, vehicle()),
@@ -168,10 +180,90 @@ describe('fleet-operator-panel', () => {
 
   it('resolveOperatorTabForVehicle maps attention vehicles to Attention tab', () => {
     const ctx = buildFleetVehicleContexts(
-      [vehicle({ onlineStatus: 'OFFLINE', isFresh: false })],
+      [
+        vehicle({
+          onlineStatus: 'OFFLINE',
+          isFresh: false,
+          lastSignal: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString(),
+        }),
+      ],
       () => null,
     )[0];
     expect(resolveOperatorTabForVehicle(ctx)).toBe('Attention');
     expect(vehicleMatchesCommandTab(ctx, 'Offline')).toBe(true);
+  });
+
+  it('Offline tab counts only genuine offline devices (>=48h), not standby/soft-offline', () => {
+    const hoursAgoIso = (h: number) =>
+      new Date(Date.now() - h * 60 * 60_000).toISOString();
+    // 2h-quiet device = standby, not stale, not offline.
+    const standby = buildFleetVehicleContexts(
+      [vehicle({ onlineStatus: 'STANDBY', isFresh: false, lastSignal: hoursAgoIso(2) })],
+      () => null,
+    )[0];
+    // 30h = soft offline (signal_delayed) — still not in the Offline tab.
+    const softOffline = buildFleetVehicleContexts(
+      [vehicle({ id: 'soft', onlineStatus: 'OFFLINE', isFresh: false, lastSignal: hoursAgoIso(30) })],
+      () => null,
+    )[0];
+    const offline = buildFleetVehicleContexts(
+      [vehicle({ id: 'v2', onlineStatus: 'OFFLINE', isFresh: false, lastSignal: hoursAgoIso(49) })],
+      () => null,
+    )[0];
+    expect(standby.visual.isStale).toBe(false);
+    expect(softOffline.visual.isStale).toBe(true);
+    expect(vehicleMatchesCommandTab(standby, 'Offline')).toBe(false);
+    expect(vehicleMatchesCommandTab(softOffline, 'Offline')).toBe(false);
+    expect(vehicleMatchesCommandTab(offline, 'Offline')).toBe(true);
+  });
+
+  it('Attention is not inflated by normal standby; soft-offline gets a low slot', () => {
+    const hoursAgoIso = (h: number) =>
+      new Date(Date.now() - h * 60 * 60_000).toISOString();
+    const standby1h = buildFleetVehicleContexts(
+      [vehicle({ onlineStatus: 'STANDBY', isFresh: false, lastSignal: hoursAgoIso(1) })],
+      () => null,
+    )[0];
+    const standby8h = buildFleetVehicleContexts(
+      [vehicle({ id: 'v2', onlineStatus: 'STANDBY', isFresh: false, lastSignal: hoursAgoIso(8) })],
+      () => null,
+    )[0];
+    const softOffline = buildFleetVehicleContexts(
+      [vehicle({ id: 'v3', onlineStatus: 'OFFLINE', isFresh: false, lastSignal: hoursAgoIso(30) })],
+      () => null,
+    )[0];
+    expect(isFleetAttentionVehicle(standby1h.visual, standby1h.vehicle)).toBe(false);
+    expect(isFleetAttentionVehicle(standby8h.visual, standby8h.vehicle)).toBe(false);
+    expect(isFleetAttentionVehicle(softOffline.visual, softOffline.vehicle)).toBe(true);
+  });
+
+  it('sortFleetContexts keeps critical first and pushes offline to the bottom (All)', () => {
+    const hoursAgoIso = (h: number) =>
+      new Date(Date.now() - h * 60 * 60_000).toISOString();
+    const contexts = buildFleetVehicleContexts(
+      [
+        vehicle({ id: 'ready', license: 'B-READY 1' }),
+        vehicle({
+          id: 'offline',
+          license: 'A-OFF 1',
+          onlineStatus: 'OFFLINE',
+          isFresh: false,
+          lastSignal: hoursAgoIso(49),
+        }),
+        vehicle({ id: 'crit', license: 'Z-CRIT 1' }),
+      ],
+      (id) =>
+        id === 'crit'
+          ? {
+              rental_blocked: true,
+              overall_state: 'critical',
+              blocking_reasons: ['Brake critical'],
+              modules: {},
+            }
+          : null,
+    );
+    const order = sortFleetContexts(contexts, 'All').map((c) => c.vehicle.id);
+    expect(order[0]).toBe('crit');
+    expect(order[order.length - 1]).toBe('offline');
   });
 });

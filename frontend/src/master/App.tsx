@@ -664,7 +664,16 @@ export default function App() {
 
             {/* SUPPORT */}
             {currentView === 'support' && (
-              <SupportView isDarkMode={isDarkMode} />
+              <SupportView
+                organizations={organizations.map((o) => ({ id: o.id, name: o.company_name }))}
+                onNavigateToOrg={(orgId) => {
+                  const org = organizations.find((o) => o.id === orgId);
+                  if (org) {
+                    setSelectedOrg(org);
+                    setCurrentView('organizations');
+                  }
+                }}
+              />
             )}
 
             {/* SETTINGS */}
@@ -702,7 +711,7 @@ export default function App() {
 
             {/* VOICE ASSISTANT */}
             {currentView === 'voice-assistant' && (
-              <VoiceAssistantAdminView isDarkMode={isDarkMode} />
+              <VoiceAssistantAdminView />
             )}
 
             {/* ARCHITEKTUR */}

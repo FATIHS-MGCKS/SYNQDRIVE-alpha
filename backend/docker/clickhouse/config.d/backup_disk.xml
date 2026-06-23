@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<!--
+  Local self-hosted backup disk for ClickHouse (Phase 1).
+
+  Defines a local on-disk backup target named `backups` mapped to the
+  container path /backups (bind-mounted to ./storage/clickhouse/backups on the
+  host). This disk is explicitly allowed as a BACKUP/RESTORE destination.
+
+  No cloud storage (S3 / object storage) is configured here on purpose.
+  Concurrent backups/restores are disabled so small VPS hosts do not run into
+  resource contention.
+-->
+<clickhouse>
+    <storage_configuration>
+        <disks>
+            <backups>
+                <type>local</type>
+                <path>/backups/</path>
+            </backups>
+        </disks>
+    </storage_configuration>
+
+    <!-- Allow BACKUP ... TO Disk('backups', ...) and RESTORE ... FROM Disk('backups', ...).
+         Phase 1: serialize backup/restore operations to protect small hosts.
+         allow_concurrent_backups/restores MUST live inside <backups> to take effect. -->
+    <backups>
+        <allowed_disk>backups</allowed_disk>
+        <allowed_path>/backups/</allowed_path>
+        <allow_concurrent_backups>false</allow_concurrent_backups>
+        <allow_concurrent_restores>false</allow_concurrent_restores>
+    </backups>
+</clickhouse>

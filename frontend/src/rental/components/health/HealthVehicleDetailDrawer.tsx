@@ -11,6 +11,8 @@ export interface HealthVehicleDetailDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialTab?: HealthDetailTab;
+  onOpenServiceCenter?: () => void;
+  onOpenExistingTask?: (taskId: string) => void;
 }
 
 /**
@@ -23,6 +25,8 @@ export function HealthVehicleDetailDrawer({
   open,
   onOpenChange,
   initialTab = 'overview',
+  onOpenServiceCenter,
+  onOpenExistingTask,
 }: HealthVehicleDetailDrawerProps) {
   if (!vehicle) return null;
 
@@ -38,6 +42,8 @@ export function HealthVehicleDetailDrawer({
           healthLoading={healthLoading}
           initialTab={initialTab}
           onClose={() => onOpenChange(false)}
+          onOpenServiceCenter={onOpenServiceCenter}
+          onOpenExistingTask={onOpenExistingTask}
           className="h-full min-h-[70vh]"
         />
       </SheetContent>

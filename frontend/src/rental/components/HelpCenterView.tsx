@@ -747,7 +747,13 @@ Wenn Sie Ihr Passwort vergessen haben, wenden Sie sich an Ihren Org-Admin – di
 // COMPONENT
 // ═══════════════════════════════════════════════════
 
-export function HelpCenterView({ isDarkMode }: { isDarkMode: boolean }) {
+export function HelpCenterView({
+  isDarkMode,
+  onOpenSupport,
+}: {
+  isDarkMode: boolean;
+  onOpenSupport?: () => void;
+}) {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedSection, setExpandedSection] = useState<string | null>('getting-started');
   const [expandedArticle, setExpandedArticle] = useState<string | null>('welcome');
@@ -806,6 +812,20 @@ export function HelpCenterView({ isDarkMode }: { isDarkMode: boolean }) {
           Willkommen im Help Center! Hier finden Sie Erklärungen zu allen Bereichen der Plattform, 
           Anleitungen für den Arbeitsalltag und wichtige Best Practices für die optimale Nutzung.
         </p>
+        {onOpenSupport && (
+          <button
+            type="button"
+            onClick={onOpenSupport}
+            className={`mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-colors ${
+              isDarkMode
+                ? 'border-neutral-700 text-gray-200 hover:bg-neutral-800'
+                : 'border-gray-200 text-gray-800 hover:bg-gray-50'
+            }`}
+          >
+            <Headphones className="w-4 h-4" />
+            Problem nicht gelöst? Support-Ticket erstellen
+          </button>
+        )}
       </div>
 
       {/* Search */}

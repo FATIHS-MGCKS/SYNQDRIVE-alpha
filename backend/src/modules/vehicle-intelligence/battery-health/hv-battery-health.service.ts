@@ -10,6 +10,7 @@ import {
   shouldPublish,
   determineHvMaturity,
   daysBetween,
+  isLegacyHvDegradationModel,
   type PublicationState,
 } from './soh-publication';
 import { BatteryEvidenceService } from './battery-evidence.service';
@@ -101,9 +102,18 @@ export class HvBatteryHealthService {
       where: { vehicleId },
     });
 
-    const publishedSoh = pubCurrent?.publishedSohPct ?? null;
-    const publicationState = pubCurrent?.publicationState ?? 'INITIAL_CALIBRATION';
-    const publicationMethod = pubCurrent?.publicationMethod ?? sohResult.method;
+    const legacyDegradationModel = isLegacyHvDegradationModel(
+      pubCurrent?.publicationMethod ?? sohResult.method,
+    );
+    const publishedSoh = legacyDegradationModel
+      ? null
+      : (pubCurrent?.publishedSohPct ?? null);
+    const publicationState = legacyDegradationModel
+      ? 'INITIAL_CALIBRATION'
+      : (pubCurrent?.publicationState ?? 'INITIAL_CALIBRATION');
+    const publicationMethod = legacyDegradationModel
+      ? 'insufficient_data'
+      : (pubCurrent?.publicationMethod ?? sohResult.method);
     const maturityConfidence = pubCurrent?.maturityConfidence ?? 'none';
 
     const latestProviderSohEvidence = await this.batteryEvidence.getLatest(
@@ -324,12 +334,26 @@ export class HvBatteryHealthService {
     const sohResult = this.calculateSoh(vehicle.hvBatteryCapacityKwh, snapshots);
 
     const rawSoh = sohResult.sohPercent;
-    if (rawSoh == null) return;
-
     const now = new Date();
     const current = await this.prisma.hvBatteryHealthCurrent.findUnique({
       where: { vehicleId },
     });
+
+    if (rawSoh == null) {
+      if (current && isLegacyHvDegradationModel(current.publicationMethod)) {
+        await this.prisma.hvBatteryHealthCurrent.update({
+          where: { vehicleId },
+          data: {
+            rawSohPct: null,
+            stabilizedSohPct: null,
+            publishedSohPct: null,
+            publicationState: 'INITIAL_CALIBRATION',
+            publicationMethod: 'insufficient_data',
+          },
+        });
+      }
+      return;
+    }
 
     // Count valid estimates for maturity
     const capacityEstimates = snapshots.filter(

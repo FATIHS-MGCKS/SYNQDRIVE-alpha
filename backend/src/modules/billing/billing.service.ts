@@ -11,8 +11,10 @@ import {
   parsePagination,
   buildPaginatedResult,
   PaginationParams,
-  PaginatedResult,
 } from '@shared/utils/pagination';
+import { BillingUsageService } from './billing-usage.service';
+import { PricebookService } from './pricebook.service';
+import { BillingAuditService } from './billing-audit.service';
 
 const PLAN_RANK: Record<string, number> = {
   STARTER: 0,
@@ -39,7 +41,12 @@ const BILLING_STATUS_DISPLAY: Record<string, string> = {
 
 @Injectable()
 export class BillingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly usageService: BillingUsageService,
+    private readonly pricebookService: PricebookService,
+    private readonly audit: BillingAuditService,
+  ) {}
 
   private mapInvoiceStatus(invoice: { status: InvoiceStatus; dueDate?: Date | null }): string {
     switch (invoice.status) {
@@ -92,6 +99,7 @@ export class BillingService {
       mrr,
       currentPeriodStart: sub.currentPeriodStart?.toISOString() || null,
       currentPeriodEnd: sub.currentPeriodEnd?.toISOString() || null,
+      billingModel: 'PER_CONNECTED_VEHICLE' as const,
       invoices: sub.invoices.map((inv) => ({
         id: inv.id,
         amount: inv.amountCents / 100,
@@ -115,7 +123,15 @@ export class BillingService {
     });
 
     if (!sub) return null;
-    return this.formatSubscription(sub);
+    const formatted = this.formatSubscription(sub);
+    const usagePreview = await this.usageService.previewUsage(orgId);
+    const pricingConfig = await this.pricebookService.getPricingConfiguration();
+    return {
+      ...formatted,
+      usagePreview,
+      pricingConfigured: pricingConfig.configured,
+      pricingNotConfiguredReason: pricingConfig.reason,
+    };
   }
 
   async findAllSubscriptions(params?: PaginationParams) {
@@ -169,28 +185,145 @@ export class BillingService {
     return { totalMrr, activeCount, trialCount, pastDueCount };
   }
 
-  async findInvoices(
-    orgId: string,
-    params?: PaginationParams,
-  ): Promise<PaginatedResult<BillingInvoice>> {
-    const sub = await this.prisma.billingSubscription.findFirst({
+  async findInvoices(orgId: string, params?: PaginationParams) {
+    const subs = await this.prisma.billingSubscription.findMany({
       where: { organizationId: orgId },
       select: { id: true },
     });
-    if (!sub) {
+    if (!subs.length) {
       return buildPaginatedResult([], 0, params || {});
     }
+    const subscriptionIds = subs.map((s) => s.id);
     const { skip, take } = parsePagination(params || {});
-    const [data, total] = await Promise.all([
+    const [rows, total] = await Promise.all([
       this.prisma.billingInvoice.findMany({
-        where: { subscriptionId: sub.id },
+        where: { subscriptionId: { in: subscriptionIds } },
         skip,
         take,
         orderBy: { invoiceDate: 'desc' },
+        include: {
+          lines: {
+            include: {
+              usageSnapshot: {
+                select: {
+                  id: true,
+                  billableVehicleCount: true,
+                  unitPriceCents: true,
+                  calculationStatus: true,
+                  periodStart: true,
+                  periodEnd: true,
+                },
+              },
+            },
+          },
+        },
       }),
-      this.prisma.billingInvoice.count({ where: { subscriptionId: sub.id } }),
+      this.prisma.billingInvoice.count({
+        where: { subscriptionId: { in: subscriptionIds } },
+      }),
     ]);
+
+    const data = rows.map((inv) => this.formatInvoice(inv));
     return buildPaginatedResult(data, total, params || {});
+  }
+
+  formatInvoiceForApi(
+    inv: BillingInvoice & {
+      lines?: Array<{
+        id: string;
+        description: string;
+        quantity: number;
+        unitAmountCents: number | null;
+        subtotalCents: number;
+        taxRateBps: number | null;
+        taxCents: number | null;
+        totalCents: number;
+        periodStart: Date | null;
+        periodEnd: Date | null;
+        usageSnapshot?: {
+          id: string;
+          billableVehicleCount: number;
+          unitPriceCents: number | null;
+          calculationStatus: string;
+          periodStart: Date;
+          periodEnd: Date;
+        } | null;
+      }>;
+    },
+  ) {
+    return this.formatInvoice(inv);
+  }
+
+  private formatInvoice(
+    inv: BillingInvoice & {
+      lines?: Array<{
+        id: string;
+        description: string;
+        quantity: number;
+        unitAmountCents: number | null;
+        subtotalCents: number;
+        taxRateBps: number | null;
+        taxCents: number | null;
+        totalCents: number;
+        periodStart: Date | null;
+        periodEnd: Date | null;
+        usageSnapshot?: {
+          id: string;
+          billableVehicleCount: number;
+          unitPriceCents: number | null;
+          calculationStatus: string;
+          periodStart: Date;
+          periodEnd: Date;
+        } | null;
+      }>;
+    },
+  ) {
+    const linePeriodStart = inv.lines?.find((l) => l.periodStart)?.periodStart ?? null;
+    const linePeriodEnd = inv.lines?.find((l) => l.periodEnd)?.periodEnd ?? null;
+    const netFromLines = inv.lines?.reduce((sum, l) => sum + l.subtotalCents, 0) ?? null;
+    const taxFromLines = inv.lines?.reduce((sum, l) => sum + (l.taxCents ?? 0), 0) ?? null;
+
+    return {
+      id: inv.id,
+      subscriptionId: inv.subscriptionId,
+      stripeInvoiceId: inv.stripeInvoiceId,
+      amountCents: inv.amountCents,
+      currency: inv.currency,
+      status: inv.status,
+      displayStatus: this.mapInvoiceStatus(inv),
+      invoiceDate: inv.invoiceDate.toISOString(),
+      dueDate: inv.dueDate?.toISOString() ?? null,
+      paidAt: inv.paidAt?.toISOString() ?? null,
+      invoicePdfUrl: inv.invoicePdfUrl ?? null,
+      periodStart: linePeriodStart?.toISOString() ?? null,
+      periodEnd: linePeriodEnd?.toISOString() ?? null,
+      netAmountCents: netFromLines ?? inv.amountCents,
+      taxCents: taxFromLines,
+      grossAmountCents: inv.amountCents,
+      invoiceLines: (inv.lines ?? []).map((line) => ({
+        id: line.id,
+        description: line.description,
+        quantity: line.quantity,
+        unitAmountCents: line.unitAmountCents,
+        subtotalCents: line.subtotalCents,
+        taxCents: line.taxCents,
+        totalCents: line.totalCents,
+        periodStart: line.periodStart?.toISOString() ?? null,
+        periodEnd: line.periodEnd?.toISOString() ?? null,
+        usageSnapshot: line.usageSnapshot
+          ? {
+              id: line.usageSnapshot.id,
+              billableVehicleCount: line.usageSnapshot.billableVehicleCount,
+              unitPriceCents: line.usageSnapshot.unitPriceCents,
+              calculationStatus: line.usageSnapshot.calculationStatus,
+              periodStart: line.usageSnapshot.periodStart.toISOString(),
+              periodEnd: line.usageSnapshot.periodEnd.toISOString(),
+            }
+          : null,
+      })),
+      createdAt: inv.createdAt.toISOString(),
+      updatedAt: inv.updatedAt.toISOString(),
+    };
   }
 
   async findSubscriptionById(id: string): Promise<BillingSubscription | null> {
@@ -204,8 +337,9 @@ export class BillingService {
     orgId: string,
     stripeCustomerId: string,
     stripeSubscriptionId: string,
+    actorUserId?: string,
   ): Promise<BillingSubscription> {
-    return this.prisma.billingSubscription.create({
+    const sub = await this.prisma.billingSubscription.create({
       data: {
         organizationId: orgId,
         stripeCustomerId,
@@ -213,16 +347,39 @@ export class BillingService {
         status: 'ACTIVE' as BillingStatus,
       },
     });
+    await this.audit.log({
+      organizationId: orgId,
+      actorUserId,
+      action: 'SUBSCRIPTION_CREATED',
+      entityType: 'BillingSubscription',
+      entityId: sub.id,
+      after: sub,
+    });
+    return sub;
   }
 
   async updateSubscriptionStatus(
     subscriptionId: string,
     status: BillingStatus,
+    actorUserId?: string,
   ): Promise<BillingSubscription> {
-    return this.prisma.billingSubscription.update({
+    const before = await this.prisma.billingSubscription.findUnique({
+      where: { id: subscriptionId },
+    });
+    const updated = await this.prisma.billingSubscription.update({
       where: { id: subscriptionId },
       data: { status },
     });
+    await this.audit.log({
+      organizationId: before?.organizationId,
+      actorUserId,
+      action: 'SUBSCRIPTION_STATUS_UPDATED',
+      entityType: 'BillingSubscription',
+      entityId: subscriptionId,
+      before,
+      after: updated,
+    });
+    return updated;
   }
 
   async recordInvoice(
@@ -236,20 +393,61 @@ export class BillingService {
       dueDate?: Date;
       paidAt?: Date;
       invoicePdfUrl?: string;
+      lines?: Array<{
+        usageSnapshotId?: string;
+        description: string;
+        quantity: number;
+        unitAmountCents?: number;
+        subtotalCents: number;
+        taxRateBps?: number;
+        taxCents?: number;
+        totalCents: number;
+        periodStart?: Date;
+        periodEnd?: Date;
+      }>;
     },
   ): Promise<BillingInvoice> {
-    return this.prisma.billingInvoice.create({
-      data: {
-        subscriptionId,
-        stripeInvoiceId: invoiceData.stripeInvoiceId,
-        amountCents: invoiceData.amountCents,
-        currency: invoiceData.currency ?? 'eur',
-        status: (invoiceData.status ?? 'DRAFT') as InvoiceStatus,
-        invoiceDate: invoiceData.invoiceDate,
-        dueDate: invoiceData.dueDate,
-        paidAt: invoiceData.paidAt,
-        invoicePdfUrl: invoiceData.invoicePdfUrl,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const invoice = await tx.billingInvoice.create({
+        data: {
+          subscriptionId,
+          stripeInvoiceId: invoiceData.stripeInvoiceId,
+          amountCents: invoiceData.amountCents,
+          currency: invoiceData.currency ?? 'eur',
+          status: (invoiceData.status ?? 'DRAFT') as InvoiceStatus,
+          invoiceDate: invoiceData.invoiceDate,
+          dueDate: invoiceData.dueDate,
+          paidAt: invoiceData.paidAt,
+          invoicePdfUrl: invoiceData.invoicePdfUrl,
+        },
+      });
+
+      if (invoiceData.lines?.length) {
+        await tx.billingInvoiceLine.createMany({
+          data: invoiceData.lines.map((line) => ({
+            invoiceId: invoice.id,
+            usageSnapshotId: line.usageSnapshotId,
+            description: line.description,
+            quantity: line.quantity,
+            unitAmountCents: line.unitAmountCents,
+            subtotalCents: line.subtotalCents,
+            taxRateBps: line.taxRateBps,
+            taxCents: line.taxCents,
+            totalCents: line.totalCents,
+            periodStart: line.periodStart,
+            periodEnd: line.periodEnd,
+          })),
+        });
+      }
+
+      return invoice;
+    });
+  }
+
+  async findPaymentMethods(orgId: string) {
+    return this.prisma.billingPaymentMethod.findMany({
+      where: { organizationId: orgId },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
     });
   }
 }
