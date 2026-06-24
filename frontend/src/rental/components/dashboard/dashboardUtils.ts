@@ -183,6 +183,9 @@ export function countActiveRentedOverKm(vehicles: VehicleData[]): number {
   }).length;
 }
 
+/**
+ * @deprecated Deprecated: use dashboard runtime/slices instead. Must not be used for active Dashboard KPI/Drawer/Board/Business state.
+ */
 export function buildFleetStateTabs(
   filteredFleetVehicles: VehicleData[],
   availableVehicles: VehicleData[],
@@ -251,6 +254,9 @@ export interface ReadyToRentOptions {
   healthRiskVehicleIds?: Set<string>;
 }
 
+/**
+ * @deprecated Deprecated: use dashboard runtime/slices instead. Must not be used for active Dashboard KPI/Drawer/Board/Business state.
+ */
 export function countReadyToRent(
   availableVehicles: VehicleData[],
   options?: ReadyToRentOptions,
@@ -263,6 +269,9 @@ export function countReadyToRent(
   }).length;
 }
 
+/**
+ * @deprecated Deprecated: use dashboard runtime/slices instead. Must not be used for active Dashboard KPI/Drawer/Board/Business state.
+ */
 export function isVehicleReadyToRent(
   v: VehicleData,
   options?: ReadyToRentOptions,
@@ -274,6 +283,9 @@ export function isVehicleReadyToRent(
   return true;
 }
 
+/**
+ * @deprecated Deprecated: use dashboard runtime/slices instead. Must not be used for active Dashboard KPI/Drawer/Board/Business state.
+ */
 export function countMaintenanceVehicles(vehicles: VehicleData[]): number {
   return vehicles.filter((v) => v.status === 'Maintenance').length;
 }
@@ -398,6 +410,9 @@ export function formatLastSyncLabel(
   return locale === 'de' ? `vor ${h} Std.` : `${h}h ago`;
 }
 
+/**
+ * @deprecated Deprecated: use dashboard runtime/slices instead. Must not be used for active Dashboard KPI/Drawer/Board/Business state.
+ */
 export function buildControlCenterKpis(input: {
   locale: string;
   timeframe: DashboardTimeframe;
@@ -581,7 +596,7 @@ export function syncStatusLabel(status: DataSyncStatus, locale: string): string 
   const map: Record<DataSyncStatus, { en: string; de: string }> = {
     live: { en: 'Live', de: 'Live' },
     partial: { en: 'Partial', de: 'Teilweise' },
-    stale: { en: 'Stale', de: 'Veraltet' },
+    stale: { en: 'Delayed', de: 'Verzögert' },
     offline: { en: 'Offline', de: 'Offline' },
   };
   return locale === 'de' ? map[status].de : map[status].en;

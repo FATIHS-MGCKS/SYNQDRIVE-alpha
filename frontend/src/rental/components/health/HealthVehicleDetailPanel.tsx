@@ -35,8 +35,10 @@ import {
 import { buildModuleChips, formatRelativeTime } from '../../lib/fleet-health-control-center';
 import { RENTAL_HEALTH_MODULE_LABELS } from '../../rental-health-ui';
 import { buildBokraftComplianceDisplay, buildNextServiceDisplay, buildTuvComplianceDisplay } from '../../lib/service-info-display';
+import { segmentFromHealthState } from '../../lib/health-segment-display';
 import { DetailSection, HealthModuleCard } from './HealthModuleCard';
 import { HealthServiceActions } from './HealthServiceActions';
+import { SegmentedHealthIndicator } from './SegmentedHealthIndicator';
 import type { HealthActionModule } from '../../lib/health-task-bridge.utils';
 
 export interface HealthVehicleDetailPanelProps {
@@ -241,6 +243,7 @@ export function HealthVehicleDetailPanel({
         pct != null &&
         Number.isFinite(pct) &&
         (s?.displayMode === 'MEASURED' || s?.displayMode === 'ESTIMATED');
+      const tireSegment = segmentFromHealthState(s?.overallStatus ?? health?.modules.tires?.state, showPct ? pct : null);
       return (
         <div className="space-y-3">
         <HealthModuleCard
@@ -266,7 +269,18 @@ export function HealthVehicleDetailPanel({
                 ? new Date(s.lastMeasurementAt).toLocaleDateString('de-DE')
                 : '—',
             },
+            ...(showPct
+              ? [{ label: s?.displayMode === 'ESTIMATED' ? 'Estimated tread life' : 'Tread life', value: `${Math.round(pct ?? 0)}%` }]
+              : []),
           ]}
+          indicator={(
+            <SegmentedHealthIndicator
+              level={tireSegment.level}
+              tone={tireSegment.tone}
+              label={tireSegment.label}
+              ariaLabel={`Tires: ${tireSegment.label}`}
+            />
+          )}
           percent={showPct ? pct : null}
           percentLabel={s?.displayMode === 'ESTIMATED' ? 'Estimated tread life' : 'Tread life'}
           showPercent={showPct}
@@ -292,6 +306,7 @@ export function HealthVehicleDetailPanel({
         b?.frontAxle?.estimatedRemainingKmMin ?? b?.estimatedFrontRemainingKmMin;
       const frontRange =
         frontMin != null ? `~${Math.round(frontMin / 1000)}k km` : '—';
+      const brakeSegment = segmentFromHealthState(cond);
       return (
         <div className="space-y-3">
         <HealthModuleCard
@@ -305,6 +320,14 @@ export function HealthVehicleDetailPanel({
             { label: 'Front remaining', value: frontRange },
             { label: 'Open alerts', value: String(b?.openAlerts?.length ?? 0) },
           ]}
+          indicator={(
+            <SegmentedHealthIndicator
+              level={brakeSegment.level}
+              tone={brakeSegment.tone}
+              label={brakeSegment.label}
+              ariaLabel={`Brakes: ${brakeSegment.label}`}
+            />
+          )}
         />
         <ModuleServiceFooter
           vehicleId={vehicle.id}
@@ -330,6 +353,21 @@ export function HealthVehicleDetailPanel({
       const est = bat?.lv?.estimatedHealthPercent ?? bat?.currentState?.estimatedSohPct ?? null;
       const isEstimated = est != null && soh == null;
       const displayPct = calibrating ? null : (soh ?? est);
+      const batteryCondition = bat?.lv?.condition ?? bat?.condition ?? null;
+      const lvEstimatedStatus =
+        bat?.lv?.estimatedHealth?.status ??
+        (batteryCondition === 'good'
+          ? 'GOOD'
+          : batteryCondition === 'watch'
+            ? 'WATCH'
+            : batteryCondition === 'attention'
+              ? 'WARNING'
+              : 'UNKNOWN');
+      const batterySegment = segmentFromHealthState(
+        lvEstimatedStatus,
+        displayPct,
+        bat?.lv?.estimatedHealth?.bars ?? null,
+      );
       return (
         <div className="space-y-3">
         <HealthModuleCard
@@ -363,8 +401,16 @@ export function HealthVehicleDetailPanel({
                     ? `~${Math.round(est)}% estimated`
                     : 'No tracking',
             },
-            { label: 'Condition', value: bat?.lv?.condition ?? bat?.condition ?? '—' },
+            { label: 'Condition', value: batteryCondition ?? '—' },
           ]}
+          indicator={(
+            <SegmentedHealthIndicator
+              level={batterySegment.level}
+              tone={batterySegment.tone}
+              label={batterySegment.label}
+              ariaLabel={`Battery: ${batterySegment.label}`}
+            />
+          )}
           percent={displayPct}
           percentLabel={isEstimated ? 'Estimated SOH' : 'SOH'}
           showPercent={displayPct != null && !calibrating}

@@ -1107,7 +1107,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
     <div className={cls('flex flex-col gap-4 p-4 sm:p-6 min-h-full', dk ? 'text-white' : 'text-gray-900')}>
       {/* Page header */}
       <div>
-        <h1 className={cls('text-2xl font-bold tracking-tight', dk ? 'text-white' : 'text-gray-900')}>
+        <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">
           Parts & Accessories
         </h1>
         <p className={cls('text-sm mt-1', dk ? 'text-white/50' : 'text-gray-500')}>

@@ -129,7 +129,7 @@ export function RentalHealthModuleRow({
         {moduleHealth.data_stale ? (
           <div className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-muted-foreground">
             <Icon name="clock" className="w-2.5 h-2.5" />
-            Daten veraltet
+            Datenbasis veraltet
           </div>
         ) : null}
       </div>

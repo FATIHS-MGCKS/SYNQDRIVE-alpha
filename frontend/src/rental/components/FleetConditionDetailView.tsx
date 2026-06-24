@@ -146,7 +146,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
           <CategoryIcon className={`w-5 h-5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
         </div>
         <div>
-          <h1 className={`text-lg font-bold tracking-tight ${textPrimary}`}>{meta.label}</h1>
+          <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">{meta.label}</h1>
           <p className={`text-xs mt-0.5 ${textSecondary}`}>{meta.tagline}</p>
         </div>
       </div>

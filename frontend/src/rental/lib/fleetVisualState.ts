@@ -127,7 +127,7 @@ export const FLEET_MAP_LEGEND_ITEMS: ReadonlyArray<{
   mapTone: FleetMapTone;
   label: string;
 }> = [
-  { mapTone: 'ready', label: 'Ready' },
+  { mapTone: 'ready', label: 'Available' },
   { mapTone: 'active', label: 'Active Rented' },
   { mapTone: 'reserved', label: 'Reserved' },
   { mapTone: 'maintenance', label: 'Maintenance' },
@@ -236,7 +236,7 @@ function labelForVisualStatus(
 ): { label: string; shortLabel: string } {
   switch (visualStatus) {
     case 'ready':
-      return { label: 'Ready', shortLabel: 'Ready' };
+      return { label: 'Available', shortLabel: 'Avail.' };
     case 'active':
       return { label: 'Active Rented', shortLabel: 'Active' };
     case 'reserved':
@@ -248,7 +248,7 @@ function labelForVisualStatus(
     case 'offline':
       return { label: 'Offline', shortLabel: 'Offline' };
     case 'stale':
-      return { label: 'Stale Signal', shortLabel: 'Stale' };
+      return { label: 'Soft Offline', shortLabel: 'Soft Off' };
     case 'no_location':
       return { label: 'No Location', shortLabel: 'No GPS' };
     case 'attention':
@@ -279,7 +279,7 @@ function deriveReason(
   if (vehicle.activeIsOverdue) return 'Return overdue';
   if (vehicle.reservedIsOverdue) return 'Pickup overdue';
   if (flags.isOffline) return 'Vehicle offline — no signal for 48h+';
-  if (flags.isStale) return 'Signal delayed — no data for 24h+';
+  if (flags.isStale) return 'Soft Offline — no signal for 24h+';
   if (flags.healthWarning) return 'Warning health status';
   if (vehicle.maintenanceUrgency === 'urgent') return 'Urgent maintenance';
   return undefined;
@@ -304,9 +304,8 @@ export function deriveFleetVisualState(
     isMaintenance && vehicle.maintenanceUrgency === 'urgent';
   const isOffline = isVehicleOffline(vehicle);
   // `isStale` now means soft-offline / signal_delayed (24–48h). STANDBY is never
-  // stale. Stale is never the *primary* visual status anymore — a delayed-signal
-  // Ready vehicle still reads as Ready, with the delay shown only as a secondary
-  // telemetry hint.
+  // problematic. Soft-offline is never the primary visual status anymore — an
+  // available vehicle keeps the Available display, with delay shown separately.
   const isStale = isSignalDelayed(vehicle, isOffline);
 
   let visualStatus: FleetVisualStatus;

@@ -15,6 +15,7 @@ import type {
 } from './dashboardTypes';
 import type { StatusTone } from '../../../components/patterns';
 import { parseEventTime } from './dashboardUtils';
+import type { RuntimeReason, VehicleRuntimeState } from './runtime';
 
 const MS_MIN = 60_000;
 const MS_HOUR = 60 * MS_MIN;
@@ -43,8 +44,17 @@ function healthSeverityByVehicle(
   return m;
 }
 
+function runtimeByVehicleId(states: VehicleRuntimeState[] | undefined): Map<string, VehicleRuntimeState> {
+  return new Map((states ?? []).map((state) => [state.vehicleId, state]));
+}
+
+function firstRuntimeReason(reasons: RuntimeReason[]): RuntimeReason | undefined {
+  return reasons[0];
+}
+
 function deriveRisks(
   vehicle: VehicleData | undefined,
+  runtimeState: VehicleRuntimeState | undefined,
   healthAlert: VehicleHealthAlert | undefined,
   ctx: {
     isPickup: boolean;
@@ -57,9 +67,21 @@ function deriveRisks(
 ): string[] {
   const de = locale === 'de';
   const risks: string[] = [];
-  if (!vehicle && !healthAlert) return risks;
+  if (!vehicle && !runtimeState && !healthAlert) return risks;
 
-  if (ctx.isPickup && vehicle?.status === 'Maintenance') {
+  if (ctx.isPickup && runtimeState) {
+    const reason = [
+      ...runtimeState.blockReasons,
+      ...runtimeState.notReadyReasons,
+      ...runtimeState.criticalReasons,
+      ...runtimeState.warningReasons,
+    ][0];
+    if (runtimeState.isMaintenance) {
+      risks.push(reason?.title ?? (de ? 'Fahrzeug in Wartung' : 'Vehicle in maintenance'));
+    } else if (!runtimeState.isReadyToRent) {
+      risks.push(reason?.title ?? (de ? 'Fahrzeug nicht bereit' : 'Vehicle not ready'));
+    }
+  } else if (ctx.isPickup && vehicle?.status === 'Maintenance') {
     risks.push(de ? 'Fahrzeug in Wartung' : 'Vehicle in maintenance');
   } else if (ctx.isPickup && vehicle && vehicle.status !== 'Available' && vehicle.status !== 'Reserved') {
     risks.push(de ? 'Fahrzeug nicht bereit' : 'Vehicle not ready');
@@ -172,7 +194,18 @@ function returnCta(r: ReturnTileItem): OperationCta {
   return 'start-return';
 }
 
-function vehicleBlockedForPickup(vehicle: VehicleData | undefined): boolean {
+function vehicleBlockedForPickup(
+  vehicle: VehicleData | undefined,
+  runtimeState: VehicleRuntimeState | undefined,
+): boolean {
+  if (runtimeState) {
+    return (
+      runtimeState.isBlocked ||
+      runtimeState.isMaintenance ||
+      runtimeState.operationalStatus === 'active_rented' ||
+      runtimeState.operationalStatus === 'unavailable'
+    );
+  }
   if (!vehicle) return false;
   return vehicle.status === 'Active Rented' || vehicle.status === 'Maintenance';
 }
@@ -184,6 +217,7 @@ export interface BuildOperationsInput {
   returnItems: ReturnTileItem[];
   fleetById: Map<string, VehicleData>;
   vehicleHealthAlerts: VehicleHealthAlert[];
+  vehicleStates?: VehicleRuntimeState[];
 }
 
 function buildPickupTimelineItem(
@@ -194,7 +228,8 @@ function buildPickupTimelineItem(
 ): OperationTimelineItem | null {
   const timeMs = parseEventTime(p.startDate) ?? now;
   const vehicle = p.vehicleId ? input.fleetById.get(p.vehicleId) : undefined;
-  const blocked = vehicleBlockedForPickup(vehicle);
+  const runtimeState = p.vehicleId ? runtimeByVehicleId(input.vehicleStates).get(p.vehicleId) : undefined;
+  const blocked = vehicleBlockedForPickup(vehicle, runtimeState);
   const status = blocked && !p.done ? 'blocked' : resolveStatus(!!p.done, !!p.isOverdue, timeMs, now);
   const lane = assignLane(timeMs, status, input.timeframe, now);
   if (!lane) return null;
@@ -202,6 +237,7 @@ function buildPickupTimelineItem(
   const health = p.vehicleId ? healthByVehicle.get(p.vehicleId) : undefined;
   const risks = deriveRisks(
     vehicle,
+    runtimeState,
     health,
     {
       isPickup: true,
@@ -246,6 +282,7 @@ function buildReturnTimelineItem(
 ): OperationTimelineItem | null {
   const timeMs = parseEventTime(r.endDate) ?? now;
   const vehicle = r.vehicleId ? input.fleetById.get(r.vehicleId) : undefined;
+  const runtimeState = r.vehicleId ? runtimeByVehicleId(input.vehicleStates).get(r.vehicleId) : undefined;
   const status = resolveStatus(!!r.done, !!r.isOverdue, timeMs, now);
   const lane = assignLane(timeMs, status, input.timeframe, now);
   if (!lane) return null;
@@ -253,6 +290,7 @@ function buildReturnTimelineItem(
   const health = r.vehicleId ? healthByVehicle.get(r.vehicleId) : undefined;
   const risks = deriveRisks(
     vehicle,
+    runtimeState,
     health,
     {
       isPickup: false,
@@ -298,6 +336,32 @@ function buildMaintenanceItems(
 ): OperationTimelineItem[] {
   const items: OperationTimelineItem[] = [];
   const de = input.locale === 'de';
+  const runtimeStates = input.vehicleStates ?? [];
+
+  if (runtimeStates.length > 0) {
+    for (const state of runtimeStates) {
+      if (!state.isMaintenance) continue;
+      const v = input.fleetById.get(state.vehicleId);
+      const reason = firstRuntimeReason([...state.blockReasons, ...state.notReadyReasons]);
+      items.push({
+        id: `maint-${state.vehicleId}`,
+        type: 'maintenance',
+        lane: 'now',
+        status: 'blocked',
+        timeMs: now,
+        timeLabel: de ? 'Jetzt' : 'Now',
+        vehicleLabel: state.license || state.displayName,
+        vehicleId: state.vehicleId,
+        station: state.stationLabel || v?.station || undefined,
+        risks: [reason?.title ?? (de ? 'Wartung blockiert Vermietung' : 'Maintenance blocks rental')],
+        tone: 'watch',
+        cta: 'open-vehicle',
+        completed: false,
+        sortPriority: 700,
+      });
+    }
+    return items;
+  }
 
   for (const v of input.fleetById.values()) {
     if (v.status !== 'Maintenance') continue;

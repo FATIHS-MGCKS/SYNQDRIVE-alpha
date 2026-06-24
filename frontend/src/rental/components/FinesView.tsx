@@ -152,7 +152,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
       {/* Header */}
       <div className="flex min-h-8 flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground">
+          <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">
             Bußgelder
           </h1>
         </div>

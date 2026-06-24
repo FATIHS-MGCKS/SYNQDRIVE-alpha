@@ -1,110 +1,186 @@
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
-import { FleetEnergyIndicator } from '../fleet/FleetEnergyIndicator';
-import { severityChipTone } from './fleetStateBuilder';
-import type { FleetBoardItem } from './dashboardTypes';
+import type {
+  DashboardSliceRow,
+  RuntimeReason,
+  VehicleRuntimeState,
+} from './runtime';
 
 interface FleetBoardVehicleRowProps {
-  item: FleetBoardItem;
+  row: DashboardSliceRow;
+  runtimeState?: VehicleRuntimeState;
   locale: string;
-  vehicleName?: string;
-  onOpen: () => void;
+  onOpen?: () => void;
 }
 
-export function FleetBoardVehicleRow({ item, locale, onOpen }: FleetBoardVehicleRowProps) {
-  const de = locale === 'de';
-  // Only genuine connectivity problems (offline / no_signal) dim the row.
-  // Standby + signal_delayed are normal/secondary states shown calmly.
-  const dimmed = item.showTelemetryWarning;
+function severityChipTone(severity: DashboardSliceRow['severity']) {
+  if (severity === 'critical') return 'critical';
+  if (severity === 'warning') return 'watch';
+  if (severity === 'success') return 'success';
+  if (severity === 'info') return 'info';
+  return 'neutral';
+}
 
-  // Subtle full-row tint by severity — no left accent bar anymore.
+function telemetryLabel(state: VehicleRuntimeState | undefined, de: boolean): string | null {
+  if (!state) return null;
+  const labels: Record<VehicleRuntimeState['telemetryState'], [string, string]> = {
+    live: ['Live', 'Live'],
+    standby: ['Standby', 'Standby'],
+    soft_offline: ['Soft Offline', 'Soft Offline'],
+    offline: ['Offline', 'Offline'],
+    unknown: ['Unknown', 'Unbekannt'],
+  };
+  return de ? labels[state.telemetryState][1] : labels[state.telemetryState][0];
+}
+
+function runtimeStateLabel(state: VehicleRuntimeState | undefined, de: boolean): string | null {
+  if (!state) return null;
+  const readiness: Record<VehicleRuntimeState['rentalReadiness'], [string, string]> = {
+    ready: ['Ready to rent', 'Mietbereit'],
+    not_ready: ['Not ready', 'Nicht bereit'],
+    blocked: ['Blocked', 'Blockiert'],
+  };
+  const operational: Record<VehicleRuntimeState['operationalStatus'], [string, string]> = {
+    available: ['Available', 'Verfügbar'],
+    reserved: ['Reserved', 'Reserviert'],
+    active_rented: ['Active rented', 'Aktiv vermietet'],
+    maintenance: ['Maintenance', 'Wartung'],
+    unavailable: ['Unavailable', 'Nicht verfügbar'],
+    unknown: ['Unknown', 'Unbekannt'],
+  };
+  const rental = de ? readiness[state.rentalReadiness][1] : readiness[state.rentalReadiness][0];
+  const ops = de ? operational[state.operationalStatus][1] : operational[state.operationalStatus][0];
+  return `${ops} · ${rental}`;
+}
+
+function reasonLabel(reason: RuntimeReason): string {
+  return reason.source ? `${reason.title} · ${reason.source}` : reason.title;
+}
+
+function moreReasonsLabel(count: number, de: boolean): string {
+  return de ? `+${count} Gründe` : `+${count} reasons`;
+}
+
+export function FleetBoardVehicleRow({ row, runtimeState, locale, onOpen }: FleetBoardVehicleRowProps) {
+  const de = locale === 'de';
+  const dimmed = runtimeState?.telemetryState === 'offline';
+  const telemetry = telemetryLabel(runtimeState, de);
+  const stateLabel = runtimeStateLabel(runtimeState, de);
+  const reasons = row.reasons?.length ? row.reasons : [
+    ...(runtimeState?.criticalReasons ?? []),
+    ...(runtimeState?.blockReasons ?? []),
+    ...(runtimeState?.warningReasons ?? []),
+  ];
+  const visibleReasons = reasons.slice(0, 2);
+  const remainingReasons = Math.max(0, reasons.length - visibleReasons.length);
+  const canOpen = Boolean(onOpen && row.vehicleId);
+
   const tint =
-    item.severity === 'critical'
+    row.severity === 'critical'
       ? 'bg-[color:color-mix(in_srgb,var(--status-critical)_5%,transparent)]'
-      : item.severity === 'warning'
+      : row.severity === 'warning'
         ? 'bg-[color:color-mix(in_srgb,var(--status-watch)_4%,transparent)]'
         : '';
-
-  // Central telemetry-freshness label — identical logic to the Fleet Page rows.
-  const telemetryLabel = item.telemetryLabel;
-  const telemetryWarn = item.showTelemetryWarning;
 
   return (
     <div
       className={cn(
-        'group flex items-center gap-2 px-2.5 py-2 transition-colors hover:bg-muted/20',
+        'group flex items-start gap-2 rounded-xl border border-border/45 px-3 py-2.5 transition-colors hover:border-border/70 hover:bg-muted/15',
         tint,
       )}
     >
       <button
         type="button"
         onClick={onOpen}
-        className={cn('min-w-0 flex-1 space-y-1 text-left', dimmed && 'opacity-75')}
+        disabled={!canOpen}
+        className={cn('min-w-0 flex-1 space-y-1.5 text-left', dimmed && 'opacity-75', !canOpen && 'cursor-default')}
       >
         <div className="flex items-start gap-2">
-          <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
-            <span className="shrink-0 text-[12px] font-bold tabular-nums tracking-[-0.01em] text-foreground">
-              {item.license}
+          <div className="min-w-0 flex-1">
+            <span className="block truncate text-[12.5px] font-bold tabular-nums tracking-[-0.01em] text-foreground">
+              {row.title}
             </span>
-            {item.makeModel && (
-              <span className="truncate text-[10.5px] leading-snug text-muted-foreground">
-                {item.makeModel}
-              </span>
-            )}
+            {row.subtitle ? (
+              <span className="mt-0.5 block truncate text-[10.5px] leading-snug text-muted-foreground">{row.subtitle}</span>
+            ) : null}
           </div>
           <StatusChip
-            tone={severityChipTone(item.severity)}
+            tone={severityChipTone(row.severity)}
             className="shrink-0 px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
           >
-            {item.statusLabel}
+            {row.severity}
           </StatusChip>
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
-          {item.station ? (
-            <span className="truncate">{item.station}</span>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] leading-snug text-muted-foreground">
+          {row.stationLabel ? (
+            <span className="truncate">{row.stationLabel}</span>
           ) : (
             <span className="italic">{de ? 'Keine Station' : 'No station'}</span>
           )}
-          {item.nextAppointment && (
+          {stateLabel ? (
             <>
               <span aria-hidden>·</span>
-              <span className="tabular-nums">{item.nextAppointment}</span>
+              <span>{stateLabel}</span>
             </>
-          )}
+          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] tabular-nums text-muted-foreground">
-          {item.fuelPercent != null && (
-            <FleetEnergyIndicator percent={item.fuelPercent} isElectric={item.isElectric} />
-          )}
-          {telemetryLabel && (
+          {telemetry ? (
             <>
-              {item.fuelPercent != null && <span aria-hidden>·</span>}
-              <span className={cn(telemetryWarn && 'text-[color:var(--status-watch)]')}>
-                {telemetryLabel}
+              <Icon name="radio" className="h-3 w-3 opacity-60" />
+              <span className={cn(runtimeState?.telemetryState === 'offline' && 'text-[color:var(--status-critical)]')}>
+                {telemetry}
               </span>
             </>
-          )}
+          ) : null}
+          {row.meta ? (
+            <>
+              {telemetry ? <span aria-hidden>·</span> : null}
+              <span className="line-clamp-1">{row.meta}</span>
+            </>
+          ) : null}
         </div>
 
-        {item.criticalHint && (
-          <p className="line-clamp-1 text-[10px] font-medium leading-snug text-[color:var(--status-critical)] text-pretty">
-            {item.criticalHint}
-          </p>
-        )}
+        {visibleReasons.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {visibleReasons.map((reason) => (
+              <span
+                key={reason.id}
+                className={cn(
+                  'rounded-full px-2 py-0.5 text-[10px] font-medium',
+                  reason.severity === 'critical'
+                    ? 'bg-[color:var(--status-critical)]/10 text-[color:var(--status-critical)]'
+                    : reason.severity === 'warning'
+                      ? 'bg-[color:var(--status-watch)]/10 text-[color:var(--status-watch)]'
+                      : 'bg-muted text-muted-foreground',
+                )}
+              >
+                {reasonLabel(reason)}
+              </span>
+            ))}
+            {remainingReasons > 0 ? (
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                {moreReasonsLabel(remainingReasons, de)}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </button>
 
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label={de ? `Fahrzeug ${item.license} öffnen` : `Open vehicle ${item.license}`}
-        className="sq-press inline-flex min-h-9 shrink-0 items-center gap-1 self-center rounded-md px-2 text-[10.5px] font-medium text-muted-foreground opacity-90 transition-colors hover:bg-muted/40 hover:text-foreground group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
-      >
-        {de ? 'Öffnen' : 'Open'}
-        <Icon name="arrow-right" className="h-3 w-3" />
-      </button>
+      {canOpen ? (
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={de ? `Fahrzeug ${row.title} öffnen` : `Open vehicle ${row.title}`}
+          className="sq-press inline-flex min-h-9 shrink-0 items-center gap-1 self-center rounded-md px-2 text-[10.5px] font-medium text-muted-foreground opacity-90 transition-colors hover:bg-muted/40 hover:text-foreground group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+        >
+          {row.primaryActionLabel ?? (de ? 'Öffnen' : 'Open')}
+          <Icon name="arrow-right" className="h-3 w-3" />
+        </button>
+      ) : null}
     </div>
   );
 }

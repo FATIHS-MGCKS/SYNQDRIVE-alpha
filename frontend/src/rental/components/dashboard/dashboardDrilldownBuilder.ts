@@ -129,10 +129,7 @@ function actionRows(items: ActionQueueItem[]): DashboardDrilldownRow[] {
   }));
 }
 
-function alertRowsFromHealth(
-  alerts: VehicleHealthAlert[],
-  locale: string,
-): DashboardDrilldownRow[] {
+function alertRowsFromHealth(alerts: VehicleHealthAlert[]): DashboardDrilldownRow[] {
   return alerts.map((a) => ({
     id: `health-${a.vehicleId}`,
     title: a.license || a.model || a.vehicleId,
@@ -198,6 +195,9 @@ function vehiclesAtStation(vehicles: VehicleData[], stationId: string): VehicleD
   );
 }
 
+/**
+ * @deprecated Deprecated: use dashboard runtime/slices instead. Must not be used for active Dashboard KPI/Drawer/Board/Business state.
+ */
 function buildKpiDrilldown(
   input: DashboardDrilldownBuildInput,
   target: OperationalKpiTarget,
@@ -271,7 +271,6 @@ function buildKpiDrilldown(
         ...actionRows(criticalQueue),
         ...alertRowsFromHealth(
           healthCritical.filter((a) => !criticalQueue.some((q) => q.vehicleId === a.vehicleId)),
-          input.locale,
         ),
       ];
       return {
@@ -298,6 +297,13 @@ function buildKpiDrilldown(
   }
 }
 
+function legacyKpiTargetFromSlice(target: DashboardDrilldownTarget & { type: 'kpi' }): OperationalKpiTarget {
+  return target.target === 'blocked-maintenance' ? 'maintenance' : target.target;
+}
+
+/**
+ * @deprecated Deprecated: use dashboard runtime/slices instead. Must not be used for active Dashboard KPI/Drawer/Board/Business state.
+ */
 function buildFleetLaneDrilldown(
   input: DashboardDrilldownBuildInput,
   lane: FleetBoardLane,
@@ -372,7 +378,6 @@ function buildStationMetricDrilldown(
     title = isDe ? `${stationName} · Kritisch` : `${stationName} · Critical`;
     rows = alertRowsFromHealth(
       input.vehicleHealthAlerts.filter((a) => a.severity === 'critical' && ids.has(a.vehicleId)),
-      input.locale,
     );
   } else if (metric === 'due-today') {
     listKind = 'bookings';
@@ -409,6 +414,9 @@ function buildStationMetricDrilldown(
   };
 }
 
+/**
+ * @deprecated Deprecated: use dashboard runtime/slices instead. Must not be used for active Dashboard KPI/Drawer/Board/Business state.
+ */
 function buildBusinessMetricDrilldown(
   input: DashboardDrilldownBuildInput,
   metricId: string,
@@ -522,13 +530,16 @@ function buildActionItemDrilldown(
   };
 }
 
+/**
+ * @deprecated Deprecated: use dashboard runtime/slices instead. Must not be used for active Dashboard KPI/Drawer/Board/Business state.
+ */
 export function buildDashboardDrilldown(
   input: DashboardDrilldownBuildInput,
   target: DashboardDrilldownTarget,
 ): DashboardDrilldownContent {
   switch (target.type) {
     case 'kpi':
-      return buildKpiDrilldown(input, target.target);
+      return buildKpiDrilldown(input, legacyKpiTargetFromSlice(target));
     case 'action-item':
       return buildActionItemDrilldown(input, target.itemId);
     case 'fleet-lane':

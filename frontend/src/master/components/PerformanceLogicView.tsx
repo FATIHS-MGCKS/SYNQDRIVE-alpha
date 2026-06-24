@@ -58,7 +58,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
               <Activity size={20} className="text-orange-500" />
             </div>
             <div>
-              <h1 className={`text-xl font-bold ${d ? 'text-neutral-100' : 'text-gray-900'}`}>Performance Logic</h1>
+              <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">Performance Logic</h1>
               <p className={sub}>SynqDrive V3 — HF Enrichment, Hardware-Aware Driving Behavior & Abuse Analysis</p>
             </div>
             <span className={`ml-auto ${BADGE('bg-orange-500/15 text-orange-400')}`}>V3 Post-Trip Pipeline</span>

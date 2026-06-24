@@ -257,7 +257,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
     <div className="max-w-[1200px] mx-auto">
       {/* Header */}
       <div className="mb-3">
-        <h1 className={`text-lg font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('docUpload.title')}</h1>
+        <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">{t('docUpload.title')}</h1>
         <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{t('docUpload.subtitle')}</p>
       </div>
 

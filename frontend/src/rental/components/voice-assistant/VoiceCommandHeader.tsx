@@ -121,7 +121,7 @@ export function VoiceCommandHeader({
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   AI Voice Command Center
                 </p>
-                <h1 className="truncate font-display text-xl font-bold tracking-[-0.03em] text-foreground sm:text-2xl">
+                <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">
                   {assistant.name}
                 </h1>
               </div>

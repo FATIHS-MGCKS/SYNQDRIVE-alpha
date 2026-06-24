@@ -51,7 +51,7 @@ export function PlatformSettingsView({ isDarkMode, activeTab = 'general', onTabC
   return (
     <div className="space-y-8 pb-8">
       <div>
-        <h1 className={`text-3xl font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Settings</h1>
+        <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">Settings</h1>
         <p className={`text-base mt-2 font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Configure your SynqDrive platform</p>
       </div>
 

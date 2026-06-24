@@ -150,6 +150,12 @@ function StationCommandCard({
           onClick={() => onMetric('ready')}
         />
         <MetricPill
+          label={de ? 'Nicht bereit' : 'Not ready'}
+          value={station.availableNotReadyCount ?? 0}
+          tone="watch"
+          onClick={() => onMetric('ready')}
+        />
+        <MetricPill
           label={de ? 'Vermietet' : 'Rented'}
           value={station.rentedCount}
           onClick={() => onMetric('rented')}
@@ -178,8 +184,11 @@ function StationCommandCard({
           tone="critical"
           onClick={() => onMetric('critical')}
         />
-        <MetricPill label="PU" value={station.pickupsToday} onClick={() => onMetric('pickups')} />
-        <MetricPill label="RET" value={station.returnsToday} onClick={() => onMetric('returns')} />
+        <MetricPill
+          label={de ? 'Soft/Off' : 'Soft/Off'}
+          value={(station.softOfflineCount ?? 0) + (station.offlineCount ?? 0)}
+          tone={(station.offlineCount ?? 0) > 0 ? 'critical' : 'watch'}
+        />
       </div>
     </button>
   );
@@ -322,12 +331,13 @@ function StationDetailView({
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
         <MetricPill label={de ? 'Bereit' : 'Ready'} value={s.readyCount} tone="success" onClick={() => onMetric('ready')} />
+        <MetricPill label={de ? 'Nicht bereit' : 'Not ready'} value={s.availableNotReadyCount ?? 0} tone="watch" onClick={() => onMetric('ready')} />
         <MetricPill label={de ? 'Vermietet' : 'Rented'} value={s.rentedCount} onClick={() => onMetric('rented')} />
-        <MetricPill label={de ? 'Pickups' : 'Pickups'} value={s.pickupsToday} onClick={() => onMetric('pickups')} />
-        <MetricPill label={de ? 'Returns' : 'Returns'} value={s.returnsToday} onClick={() => onMetric('returns')} />
         <MetricPill label={de ? 'Überfällig' : 'Overdue'} value={s.overdueCount} tone="critical" onClick={() => onMetric('overdue')} />
         <MetricPill label={de ? 'Blockiert' : 'Blocked'} value={s.blockedCount} tone="watch" onClick={() => onMetric('blocked')} />
         <MetricPill label={de ? 'Kritisch' : 'Critical'} value={s.criticalAlerts} tone="critical" onClick={() => onMetric('critical')} />
+        <MetricPill label="Soft Offline" value={s.softOfflineCount ?? 0} tone="watch" />
+        <MetricPill label="Offline" value={s.offlineCount ?? 0} tone="critical" />
         <MetricPill label={de ? 'Engpass' : 'Gap'} value={s.capacityGap} tone="watch" onClick={() => onMetric('due-today')} />
       </div>
 

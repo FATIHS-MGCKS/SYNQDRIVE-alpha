@@ -12,6 +12,7 @@ import type {
   UnassignedFleetSummary,
 } from './dashboardTypes';
 import { isVehicleReadyToRent, parseEventTime, type ReadyToRentOptions } from './dashboardUtils';
+import type { VehicleRuntimeState } from './runtime';
 
 const MS_HOUR = 60 * 60_000;
 const TIMELINE_WINDOW_MS = 24 * MS_HOUR;
@@ -35,6 +36,14 @@ function vehicleChip(v: VehicleData, hint?: string): StationVehicleChip {
   return {
     vehicleId: v.id,
     label: v.license || v.model,
+    hint,
+  };
+}
+
+function runtimeVehicleChip(state: VehicleRuntimeState, hint?: string): StationVehicleChip {
+  return {
+    vehicleId: state.vehicleId,
+    label: state.license || state.displayName,
     hint,
   };
 }
@@ -90,6 +99,7 @@ export function buildStationCommandDetail(input: {
   stationId: string;
   stationHealth: StationHealthSummary[];
   fleetVehicles: VehicleData[];
+  vehicleStates?: VehicleRuntimeState[];
   healthMap: Map<string, VehicleHealthResponse>;
   healthAlerts: VehicleHealthAlert[];
   readyOptions: ReadyToRentOptions;
@@ -103,33 +113,51 @@ export function buildStationCommandDetail(input: {
   if (!station) return null;
 
   const atStation = input.fleetVehicles.filter((v) => vehicleAtStation(v, input.stationId));
+  const stationStates = input.vehicleStates?.filter(
+    (state) => state.stationId === input.stationId || state.stationLabel === station.stationName,
+  ) ?? [];
   const criticalByVehicle = new Map(
     input.healthAlerts
       .filter((a) => a.severity === 'critical')
       .map((a) => [a.vehicleId, a] as const),
   );
 
-  const readyVehicles = atStation
-    .filter((v) => isVehicleReadyToRent(v, input.readyOptions))
-    .slice(0, 6)
-    .map((v) => vehicleChip(v));
+  const readyVehicles = stationStates.length > 0
+    ? stationStates
+        .filter((state) => state.isReadyToRent)
+        .slice(0, 6)
+        .map((state) => runtimeVehicleChip(state, state.readyReasons[0]?.title))
+    : atStation
+        .filter((v) => isVehicleReadyToRent(v, input.readyOptions))
+        .slice(0, 6)
+        .map((v) => vehicleChip(v));
 
-  const blockedVehicles = atStation
-    .filter((v) => isBlockedVehicle(v, input.healthMap))
-    .slice(0, 6)
-    .map((v) =>
-      vehicleChip(
-        v,
-        v.status === 'Maintenance'
-          ? 'Maintenance'
-          : 'Blocked',
-      ),
-    );
+  const blockedVehicles = stationStates.length > 0
+    ? stationStates
+        .filter((state) => state.isBlocked || state.isMaintenance || state.operationalStatus === 'unavailable')
+        .slice(0, 6)
+        .map((state) => runtimeVehicleChip(state, state.blockReasons[0]?.title ?? state.notReadyReasons[0]?.title))
+    : atStation
+        .filter((v) => isBlockedVehicle(v, input.healthMap))
+        .slice(0, 6)
+        .map((v) =>
+          vehicleChip(
+            v,
+            v.status === 'Maintenance'
+              ? 'Maintenance'
+              : 'Blocked',
+          ),
+        );
 
-  const criticalVehicles = atStation
-    .filter((v) => criticalByVehicle.has(v.id))
-    .slice(0, 6)
-    .map((v) => vehicleChip(v, criticalByVehicle.get(v.id)?.primaryReason));
+  const criticalVehicles = stationStates.length > 0
+    ? stationStates
+        .filter((state) => state.isCritical)
+        .slice(0, 6)
+        .map((state) => runtimeVehicleChip(state, state.criticalReasons[0]?.title))
+    : atStation
+        .filter((v) => criticalByVehicle.has(v.id))
+        .slice(0, 6)
+        .map((v) => vehicleChip(v, criticalByVehicle.get(v.id)?.primaryReason));
 
   const now = Date.now();
   const timelineItems = flattenTimeline(input.nowNextTimeline)
@@ -153,26 +181,35 @@ export function buildFallbackStationSummary(input: {
   stationId: string;
   stationName: string | null;
   fleetVehicles: VehicleData[];
+  vehicleStates?: VehicleRuntimeState[];
   locale: string;
 }): StationHealthSummary {
   const de = input.locale === 'de';
   const atStation = input.fleetVehicles.filter((v) => vehicleAtStation(v, input.stationId));
+  const stationStates = input.vehicleStates?.filter(
+    (state) => state.stationId === input.stationId || state.stationLabel === input.stationName,
+  ) ?? [];
+  const useRuntime = stationStates.length > 0;
   return {
     stationId: input.stationId,
     stationName: input.stationName ?? (de ? 'Unbekannte Station' : 'Unknown station'),
-    vehicleCount: atStation.length,
-    availableCount: atStation.filter((v) => v.status === 'Available').length,
-    rentedCount: atStation.filter((v) => v.status === 'Active Rented').length,
-    reservedCount: atStation.filter((v) => v.status === 'Reserved').length,
-    maintenanceCount: atStation.filter((v) => v.status === 'Maintenance').length,
-    needsCleaningCount: atStation.filter((v) => v.cleaningStatus !== 'Clean').length,
+    vehicleCount: useRuntime ? stationStates.length : atStation.length,
+    availableCount: useRuntime ? stationStates.filter((state) => state.operationalStatus === 'available').length : atStation.filter((v) => v.status === 'Available').length,
+    rentedCount: useRuntime ? stationStates.filter((state) => state.operationalStatus === 'active_rented').length : atStation.filter((v) => v.status === 'Active Rented').length,
+    reservedCount: useRuntime ? stationStates.filter((state) => state.operationalStatus === 'reserved').length : atStation.filter((v) => v.status === 'Reserved').length,
+    maintenanceCount: useRuntime ? stationStates.filter((state) => state.isMaintenance).length : atStation.filter((v) => v.status === 'Maintenance').length,
+    needsCleaningCount: useRuntime ? stationStates.filter((state) => state.warningReasons.some((reason) => reason.category === 'cleaning')).length : atStation.filter((v) => v.cleaningStatus !== 'Clean').length,
+    availableNotReadyCount: useRuntime ? stationStates.filter((state) => state.operationalStatus === 'available' && !state.isReadyToRent).length : undefined,
+    warningCount: useRuntime ? stationStates.filter((state) => state.isWarning && !state.isCritical).length : undefined,
+    softOfflineCount: useRuntime ? stationStates.filter((state) => state.telemetryState === 'soft_offline').length : undefined,
+    offlineCount: useRuntime ? stationStates.filter((state) => state.telemetryState === 'offline').length : undefined,
     alertCount: 0,
     pickupsToday: 0,
     returnsToday: 0,
     overdueCount: 0,
     criticalAlerts: 0,
-    blockedCount: 0,
-    readyCount: 0,
+    blockedCount: useRuntime ? stationStates.filter((state) => state.isBlocked || state.isMaintenance || state.operationalStatus === 'unavailable').length : 0,
+    readyCount: useRuntime ? stationStates.filter((state) => state.isReadyToRent).length : 0,
     dueTodayCount: 0,
     capacityGap: 0,
     dataFreshness: atStation.length === 0 ? 'no-vehicles' : 'partial',

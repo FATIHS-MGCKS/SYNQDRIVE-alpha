@@ -19,6 +19,7 @@ export interface HealthModuleCardProps {
   reason?: string;
   keyValues?: KeyValueRow[];
   children?: ReactNode;
+  indicator?: ReactNode;
   percent?: number | null;
   percentLabel?: string;
   showPercent?: boolean;
@@ -38,6 +39,7 @@ export function HealthModuleCard({
   reason,
   keyValues = [],
   children,
+  indicator,
   percent,
   percentLabel,
   showPercent = false,
@@ -83,7 +85,9 @@ export function HealthModuleCard({
         </dl>
       )}
 
-      {pct != null && (
+      {indicator ? (
+        <div>{indicator}</div>
+      ) : pct != null && (
         <div>
           {percentLabel && (
             <div className="mb-1 flex justify-between text-[10px] text-muted-foreground">

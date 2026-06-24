@@ -21,6 +21,7 @@ import type {
 import type { DerivedOperationalInsight } from './deriveOperationalInsights';
 import type { PredictiveOperationsInsight } from './derivePredictiveOperationsInsights';
 import type { StatusTone } from '../../../components/patterns';
+import type { DashboardRuntimeModel, RuntimeReason, RuntimeReasonCategory } from './runtime';
 
 const VEHICLE_HEALTH_INSIGHT_TYPES = new Set<InsightType>([
   'BATTERY_CRITICAL',
@@ -65,6 +66,33 @@ function severityToTone(s: ActionQueueSeverity): StatusTone {
   if (s === 'warning') return 'watch';
   if (s === 'attention') return 'info';
   return 'neutral';
+}
+
+function runtimeReasonToSeverity(reason: RuntimeReason): ActionQueueSeverity {
+  if (reason.severity === 'critical') return 'critical';
+  if (reason.severity === 'warning') return 'warning';
+  return 'attention';
+}
+
+function runtimeReasonCategoryToActionCategory(category: RuntimeReasonCategory): ActionQueueCategory {
+  if (
+    category === 'health' ||
+    category === 'tires' ||
+    category === 'brakes' ||
+    category === 'battery' ||
+    category === 'dtc' ||
+    category === 'service' ||
+    category === 'damage'
+  ) {
+    return 'health';
+  }
+  if (category === 'finance') return 'financial';
+  if (category === 'rental' || category === 'handover') return 'handover';
+  return 'operations';
+}
+
+function runtimeReasonDedupeKey(vehicleId: string, reason: RuntimeReason): string {
+  return `${vehicleId}:${reason.category}:${reason.source ?? ''}:${reason.title}`;
 }
 
 const HEALTH_MODULE_TARGETS = new Set<string>([
@@ -227,6 +255,7 @@ export interface BuildActionQueueInput {
   notifications: DashboardNotificationItem[];
   derivedInsights: DerivedOperationalInsight[];
   predictiveInsights: PredictiveOperationsInsight[];
+  dashboardRuntime?: DashboardRuntimeModel;
   readyToRentCount: number;
   syncStatusLabel: string;
 }
@@ -235,10 +264,49 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
   const items: ActionQueueItem[] = [];
   const seenBooking = new Set<string>();
   const seenVehicleHealth = new Set<string>();
+  const seenRuntimeReasons = new Set<string>();
   const seenDerived = new Set<string>();
   const seenPredictive = new Set<string>();
 
   const de = input.locale === 'de';
+
+  for (const state of input.dashboardRuntime?.vehicleStates ?? []) {
+    const runtimeReasons = [
+      ...state.criticalReasons,
+      ...state.blockReasons,
+      ...state.warningReasons.filter((reason) => reason.category === 'telemetry' || reason.blocking),
+    ];
+    for (const reason of runtimeReasons) {
+      if (state.telemetryState === 'standby' && reason.category === 'telemetry') continue;
+      const dedupeKey = runtimeReasonDedupeKey(state.vehicleId, reason);
+      if (seenRuntimeReasons.has(dedupeKey)) continue;
+      seenRuntimeReasons.add(dedupeKey);
+      if (runtimeReasonCategoryToActionCategory(reason.category) === 'health') {
+        seenVehicleHealth.add(state.vehicleId);
+      }
+      const severity = runtimeReasonToSeverity(reason);
+      const now = Date.now();
+      items.push({
+        id: `runtime-${dedupeKey}`,
+        source: 'derived-operations',
+        severity,
+        category: runtimeReasonCategoryToActionCategory(reason.category),
+        title: reason.title,
+        reason: reason.description ?? reason.source ?? '',
+        entityLabel: state.license || state.displayName,
+        timeSortMs: now,
+        priority: computePriority(severity, reason.blocking === true || severity === 'critical', now) + 30,
+        tone: severityToTone(severity),
+        cta: 'open-vehicle',
+        ctaLabel: reason.actionLabel,
+        vehicleId: state.vehicleId,
+        isOverdue: severity === 'critical',
+        groupKey: `vehicle-runtime:${state.vehicleId}`,
+        groupType: 'vehicle-ops',
+      });
+    }
+  }
+
   for (const alert of input.vehicleHealthAlerts) {
     if (seenVehicleHealth.has(alert.vehicleId)) continue;
     seenVehicleHealth.add(alert.vehicleId);
@@ -262,8 +330,8 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
           title: mod.reason || moduleLabel,
           reason: mod.dataStale
             ? de
-              ? 'Daten veraltet'
-              : 'Data stale'
+              ? 'Datenstand verzögert'
+              : 'Data delayed'
             : '',
           entityLabel,
           timeLabel: undefined,
@@ -279,7 +347,7 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
           module: toModuleTarget(mod.module),
           moduleLabel,
           childSeverity: healthChildSeverity(mod.module, severity),
-          detail: mod.dataStale ? (de ? 'Daten veraltet' : 'Data stale') : undefined,
+          detail: mod.dataStale ? (de ? 'Datenstand verzögert' : 'Data delayed') : undefined,
         });
       }
       continue;

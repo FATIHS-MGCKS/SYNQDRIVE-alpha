@@ -440,7 +440,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
       {/* ─── Header ─── */}
       <div className="flex flex-wrap items-end justify-between gap-2 sm:gap-3">
         <div className="animate-fade-up min-w-0">
-          <h1 className="text-[18px] leading-[1.12] font-bold tracking-[-0.02em] text-foreground truncate">
+          <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">
             {t('nav.financialInsights')}
           </h1>
         </div>

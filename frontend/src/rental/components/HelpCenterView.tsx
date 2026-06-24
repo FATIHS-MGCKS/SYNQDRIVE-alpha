@@ -804,7 +804,7 @@ export function HelpCenterView({
             <Icon name="book-open" className="w-5 h-5 text-blue-500" />
           </div>
           <div>
-            <h1 className={`text-xl font-bold tracking-tight ${textPrimary}`}>Help Center</h1>
+            <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">Help Center</h1>
             <p className={`text-xs ${textSecondary}`}>{SECTIONS.length} Themenbereiche · {totalArticles} Artikel</p>
           </div>
         </div>

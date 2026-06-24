@@ -16,6 +16,7 @@ import {
 import type { VehicleHealthBoxData } from './useVehicleHealthBoxData';
 import type { VehicleHealthResponse } from '../../../lib/api';
 import type { VehicleData } from '../../data/vehicles';
+import { SegmentedHealthIndicator } from '../health/SegmentedHealthIndicator';
 
 export interface VehicleHealthBoxProps {
   selectedVehicle: VehicleData | null;
@@ -54,115 +55,37 @@ function HealthModuleRows({
   isDarkMode: boolean;
 }) {
   return (
-    <div className="space-y-2">
-      {vm.healthItems.map((item, idx) => {
+    <div className="grid grid-cols-3 gap-2">
+      {vm.healthItems.map((item) => {
         const st = item.rowStyle;
         return (
           <div
             key={item.key}
-            className={`rounded-[13px] border border-border bg-muted/40 px-2 py-2 transition-colors ${item.isUntracked ? 'opacity-70' : ''}`}
+            className={`min-w-0 rounded-[13px] border border-border bg-muted/40 px-2 py-2 transition-colors ${item.isUntracked ? 'opacity-70' : ''}`}
           >
-            <div className="flex gap-2.5 items-center">
-              <div className="w-8 h-8 rounded-[10px] border border-border bg-card flex items-center justify-center flex-shrink-0">
+            <div className="flex min-w-0 flex-col items-center gap-1.5 text-center">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] border border-border bg-card">
                 {moduleIcon(item.key, isDarkMode)}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className="text-[10px] font-bold flex-1 tracking-[-0.01em] text-foreground">{item.label}</span>
-                  {item.isCalibrating && (
-                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold border sq-tone-info border-transparent">
-                      Calibrating
-                      <span className="inline-flex ml-0.5">
-                        {[0, 1, 2].map((i) => (
-                          <span
-                            key={i}
-                            className="inline-block w-1 h-1 rounded-full mx-px"
-                            style={{
-                              backgroundColor: 'currentColor',
-                              animation: `calibDots 1.4s infinite ${i * 0.2}s`,
-                            }}
-                          />
-                        ))}
-                      </span>
-                    </span>
-                  )}
-                  {item.isStabilizing && (
-                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold border sq-tone-watch border-transparent">
-                      Estimated
-                    </span>
-                  )}
-                  {item.isUntracked && (
-                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold border sq-tone-neutral border-transparent">
-                      No Data
-                    </span>
-                  )}
-                  {item.showBadge && (
-                    <span
-                      className={`px-1.5 py-0.5 rounded-full text-[9px] font-semibold border ${st.accentRing}`}
-                    >
-                      {st.label}
-                    </span>
-                  )}
-                  {item.isCalibrating ? (
-                    <span className="font-mono text-xs text-muted-foreground">—</span>
-                  ) : item.isUntracked ? (
-                    <span className="font-mono text-xs text-muted-foreground">—</span>
-                  ) : item.key === 'battery' ? (
-                    <span className={`text-[10px] font-bold tracking-[-0.01em] ${st.labelColor}`}>
-                      {item.isStabilizing ? `~${st.label}` : st.label}
-                    </span>
-                  ) : item.key === 'brakes' ? (
-                    <span className={`text-[10px] font-bold tracking-[-0.01em] ${st.labelColor}`}>{st.label}</span>
-                  ) : (
-                    <span
-                      className={`font-mono text-[10px] font-bold tabular-nums ${item.isStabilizing ? 'text-foreground/70' : 'text-foreground'}`}
-                    >
-                      {item.value > 0 ? `${item.isStabilizing ? '~' : ''}${Math.round(item.value)}%` : '—'}
-                    </span>
-                  )}
-                </div>
-                {item.isCalibrating ? (
-                  <div className="w-full rounded-full h-2 overflow-hidden bg-muted">
-                    <div
-                      className="h-full rounded-full bg-[color:var(--status-info-soft)]"
-                      style={{ width: '30%', animation: 'barFillUp 2s cubic-bezier(0.16,1,0.3,1) infinite alternate' }}
-                    />
-                  </div>
-                ) : item.isUntracked ? (
-                  <div className="w-full rounded-full h-2 bg-muted">
-                    <div className="h-full rounded-full bg-muted" style={{ width: '100%' }} />
-                  </div>
-                ) : (
-                  <div className="w-full rounded-full h-2 overflow-hidden bg-muted">
-                    <div
-                      className={`h-full rounded-full ${item.isStabilizing ? 'bg-[color:var(--status-watch)]' : st.bar}`}
-                      style={{
-                        width: `${Math.min(item.key === 'brakes' ? st.barPct : item.value, 100)}%`,
-                        animation: `barFillUp 0.8s cubic-bezier(0.16,1,0.3,1) ${idx * 0.15}s both`,
-                      }}
-                    />
-                  </div>
-                )}
-                <div className="flex items-baseline gap-1 mt-0.5">
-                  {item.isCalibrating ? (
-                    <span className="text-[10px] text-[color:var(--status-info)]">Initial calibration in progress</span>
-                  ) : item.isStabilizing ? (
-                    <>
-                      <span className="text-[10px] font-semibold text-[color:var(--status-watch)]">Estimated SOH</span>
-                      <span className="text-[10px] text-muted-foreground">· {item.detail}</span>
-                    </>
-                  ) : item.isUntracked ? (
-                    <span className="text-[10px] text-muted-foreground">Enable tracking for accurate health data</span>
-                  ) : (
-                    <>
-                      <span className={`text-[10px] font-semibold ${st.labelColor}`}>
-                        {item.key === 'brakes' || item.key === 'battery' || item.value > 0 ? st.label : ''}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">· {item.detail}</span>
-                    </>
-                  )}
-                </div>
-              </div>
+              <span className="max-w-full truncate text-[10px] font-bold tracking-[-0.01em] text-foreground">
+                {item.label}
+              </span>
+              <SegmentedHealthIndicator
+                level={item.segmentLevel}
+                tone={item.segmentTone}
+                compact
+                ariaLabel={`${item.label}: ${item.segmentLabel}`}
+              />
+              <span className={`max-w-full truncate text-[9.5px] font-semibold ${st.labelColor}`}>
+                {item.isCalibrating ? 'Calibrating' : item.isStabilizing ? 'Estimated' : item.isUntracked ? 'No Data' : item.segmentLabel}
+              </span>
+              <span className="line-clamp-1 max-w-full text-[9px] leading-snug text-muted-foreground" title={item.detail}>
+                {item.isCalibrating
+                  ? 'Initial calibration'
+                  : item.isUntracked
+                    ? 'No tracking'
+                    : item.detail}
+              </span>
             </div>
           </div>
         );
@@ -345,11 +268,6 @@ export function VehicleHealthBox({
 
   return (
     <div className="group relative flex h-full flex-col rounded-xl p-3 border transition-shadow duration-300 ease-[var(--ease-out-soft)] hover:shadow-md border-border bg-card text-foreground shadow-sm">
-      <style>{`
-        @keyframes barFillUp { from { width: 0%; } }
-        @keyframes calibDots { 0%,20%{opacity:.2} 50%{opacity:1} 100%{opacity:.2} }
-      `}</style>
-
       <div className="mb-2.5 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <h3 className="text-[11px] font-bold tracking-[-0.01em] text-foreground">Vehicle Health</h3>

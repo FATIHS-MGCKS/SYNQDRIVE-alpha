@@ -54,15 +54,20 @@ export function DataFreshnessIndicator({ vm }: DataFreshnessIndicatorProps) {
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               {de ? 'Telemetrie im Scope' : 'Telemetry in scope'}
             </p>
-            <div className="mt-2.5 grid grid-cols-4 gap-2">
-              <MiniStat label={de ? 'Frisch' : 'Fresh'} value={tlm.freshCount} tone="success" />
-              <MiniStat label="Stale" value={tlm.staleCount} tone={tlm.staleCount > 0 ? 'watch' : 'neutral'} />
+            <div className="mt-2.5 grid grid-cols-5 gap-2">
+              <MiniStat label={de ? 'Live' : 'Live'} value={tlm.liveCount} tone="success" />
+              <MiniStat label={de ? 'Standby' : 'Standby'} value={tlm.standbyCount} />
+              <MiniStat
+                label={de ? 'Soft Offline' : 'Soft offline'}
+                value={tlm.softOfflineCount}
+                tone={tlm.softOfflineCount > 0 ? 'watch' : 'neutral'}
+              />
               <MiniStat
                 label={de ? 'Offline' : 'Offline'}
                 value={tlm.offlineCount}
                 tone={tlm.offlineCount > 0 ? 'critical' : 'neutral'}
               />
-              <MiniStat label="?" value={tlm.unknownCount} />
+              <MiniStat label={de ? 'Unbekannt' : 'Unknown'} value={tlm.unknownCount} />
             </div>
           </div>
         ) : null}

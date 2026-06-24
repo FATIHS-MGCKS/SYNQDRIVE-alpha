@@ -2,6 +2,7 @@ import type { StatusTone } from '../../../components/patterns';
 import type { VehicleTelemetryFreshness } from './controlSignalsBuilder';
 import type { ControlCenterKpi, DataFreshnessSummary } from './dashboardTypes';
 import { formatLastSyncLabel } from './dashboardUtils';
+import type { DashboardSliceId } from './runtime';
 
 export type DataTrustStatus =
   | 'live'
@@ -77,7 +78,7 @@ export function dataTrustStatusLabel(status: DataTrustStatus, locale: string): s
     live: ['Live', 'Live'],
     fresh: ['Fresh', 'Frisch'],
     partial: ['Partial', 'Teilweise'],
-    stale: ['Stale', 'Veraltet'],
+    stale: ['Delayed', 'Verzögert'],
     error: ['Error', 'Fehler'],
     unavailable: ['Unavailable', 'Nicht verfügbar'],
   };
@@ -136,7 +137,7 @@ function classifyInsightsStatus(input: {
   if (input.insightsStale) {
     return {
       status: 'stale',
-      detail: isDe ? 'Letzter Lauf veraltet' : 'Last run is stale',
+      detail: isDe ? 'Letzter Lauf verzögert' : 'Last run is delayed',
       timestampLabel: input.insightsGeneratedAt
         ? formatLastSyncLabel(input.insightsGeneratedAt, null, input.locale)
         : isDe
@@ -379,6 +380,27 @@ function domainToTrustHint(domain: DataTrustDomainSummary): DashboardTrustHint |
   return 'partial-data';
 }
 
+export function dashboardSliceTrustHint(
+  sliceId: DashboardSliceId,
+  trust: DataTrustLayer,
+): DashboardTrustHint | undefined {
+  const byId = Object.fromEntries(trust.domains.map((d) => [d.id, d])) as Record<
+    DataTrustDomainId,
+    DataTrustDomainSummary
+  >;
+
+  let domain: DataTrustDomainSummary | undefined;
+  if (sliceId === 'ready-to-rent' || sliceId === 'active-rented' || sliceId === 'blocked-maintenance') {
+    domain = byId.fleet;
+  } else if (sliceId === 'due-soon' || sliceId === 'overdue-returns') {
+    domain = byId.booking;
+  } else if (sliceId === 'critical-alerts') {
+    domain = byId.insights;
+  }
+
+  return domain ? domainToTrustHint(domain) : undefined;
+}
+
 export function attachKpiTrustHints(
   kpis: ControlCenterKpi[],
   trust: DataTrustLayer,
@@ -389,15 +411,10 @@ export function attachKpiTrustHints(
   >;
 
   return kpis.map((kpi) => {
-    let domain: DataTrustDomainSummary | undefined;
-    if (kpi.id === 'ready-to-rent' || kpi.id === 'active-rented' || kpi.id === 'maintenance') {
-      domain = byId.fleet;
-    } else if (kpi.id === 'due-soon' || kpi.id === 'overdue-returns') {
-      domain = byId.booking;
-    } else if (kpi.id === 'critical-alerts') {
-      domain = byId.insights;
-    }
-    const trustHint = domain ? domainToTrustHint(domain) : undefined;
+    const trustHint =
+      kpi.id === 'maintenance'
+        ? domainToTrustHint(byId.fleet)
+        : dashboardSliceTrustHint(kpi.id, trust);
     return trustHint ? { ...kpi, trustHint } : kpi;
   });
 }

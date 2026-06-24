@@ -40,7 +40,8 @@ function breakdownRows(b: FleetReadinessBreakdown, de: boolean) {
       <BreakdownRow label={de ? 'Überfällige Returns' : 'Overdue returns'} value={b.overdueReturns} tone="critical" />
       <BreakdownRow label={de ? 'Kritische Alerts' : 'Critical alerts'} value={b.criticalAlerts} tone="critical" />
       <BreakdownRow label={de ? 'Reinigung offen' : 'Cleaning pending'} value={b.cleaningNeeded} tone="watch" />
-      <BreakdownRow label={de ? 'Stale/Offline Daten' : 'Stale/offline data'} value={b.staleData} tone="watch" />
+      <BreakdownRow label={de ? 'Soft Offline' : 'Soft offline'} value={b.softOfflineCount} tone="watch" />
+      <BreakdownRow label={de ? 'Offline' : 'Offline'} value={b.offlineCount} tone="critical" />
       <BreakdownRow label={de ? 'Konflikte' : 'Conflicts'} value={b.conflicts} tone="watch" />
     </>
   );

@@ -44,7 +44,7 @@ export function lightStateLabel(state: DashboardWarningLight['state']): string {
     case 'unsupported':
       return 'Nicht unterstützt';
     case 'stale':
-      return 'Veraltet';
+      return 'Datenbasis veraltet';
     case 'error':
       return 'Fehler beim Auslesen';
     default:
@@ -189,11 +189,11 @@ export function resolveTelltalePanelPresentation(
   if (telltales.freshness === 'stale') {
     const rel = formatRelativeObservedAt(telltales.lastObservedAt);
     return {
-      badgeLabel: 'Daten veraltet',
+      badgeLabel: 'Datenbasis veraltet',
       badgeTone: 'watch',
       summaryText: rel
-        ? `Die letzten Warnleuchten-Daten sind nicht mehr aktuell (zuletzt ${rel}).`
-        : 'Die letzten Warnleuchten-Daten sind nicht mehr aktuell.',
+        ? `Die Warnleuchten-Datenbasis ist nicht mehr aktuell (zuletzt ${rel}).`
+        : 'Die Warnleuchten-Datenbasis ist nicht mehr aktuell.',
       showConfirmedOff: false,
       showActiveSummary: false,
       activeCriticalCount: 0,
@@ -263,7 +263,7 @@ export function telltaleRowSecondaryText(light: DashboardWarningLight): string |
     return 'Noch keine Meldung vom Fahrzeug — nicht als „aus“ werten.';
   }
   if (light.state === 'stale') {
-    return 'Letzte Meldung ist zu alt für eine verlässliche Einschätzung.';
+    return 'Die letzte Modulmeldung ist zu alt für eine verlässliche Einschätzung.';
   }
   if (light.state === 'unsupported' || light.state === 'error' || light.state === 'off_confirmed') {
     return light.reason || null;
@@ -291,7 +291,7 @@ export function telltaleShortTextFromLight(light: DashboardWarningLight): string
     return light.severity === 'critical' ? 'Kritisch' : 'Aktiv';
   }
   if (light.state === 'off_confirmed') return 'Aus';
-  if (light.state === 'stale') return 'Veraltet';
+  if (light.state === 'stale') return 'Datenbasis';
   if (light.state === 'unsupported') return 'N/A';
   if (light.state === 'no_event_yet') return 'Unbekannt';
   if (light.state === 'error') return 'Fehler';

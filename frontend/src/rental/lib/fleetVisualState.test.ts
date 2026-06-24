@@ -22,9 +22,10 @@ function base(overrides: Partial<FleetVisualStateVehicle> = {}): FleetVisualStat
 }
 
 describe('deriveFleetVisualState', () => {
-  it('available + online + not blocked => ready', () => {
+  it('available + online + not blocked stays available in display', () => {
     const state = deriveFleetVisualState(base());
     expect(state.visualStatus).toBe('ready');
+    expect(state.label).toBe('Available');
     expect(state.rentalStatus).toBe('available');
     expect(state.readiness).toBe('ready');
     expect(state.isReady).toBe(true);
@@ -121,7 +122,7 @@ describe('deriveFleetVisualState', () => {
     expect(state.mapTone).toBe('unknown');
   });
 
-  it('STANDBY (a few hours) stays Ready — never stale / warning', () => {
+  it('STANDBY (a few hours) stays available — never stale / warning', () => {
     const state = deriveFleetVisualState(
       base({
         onlineStatus: 'STANDBY',
@@ -136,7 +137,7 @@ describe('deriveFleetVisualState', () => {
     expect(state.attentionLevel).toBe('none');
   });
 
-  it('signal delayed / soft offline (24–48h) => Ready with low (info) attention', () => {
+  it('signal delayed / soft offline (24–48h) keeps available display with low attention', () => {
     const state = deriveFleetVisualState(
       base({
         onlineStatus: 'STANDBY',
@@ -144,12 +145,12 @@ describe('deriveFleetVisualState', () => {
         lastSignal: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(),
       }),
     );
-    // Soft offline is a secondary telemetry hint — the primary stays Ready.
+    // Soft offline is a secondary telemetry hint — the primary stays available.
     expect(state.visualStatus).toBe('ready');
     expect(state.isOffline).toBe(false);
     expect(state.isStale).toBe(true);
     expect(state.attentionLevel).toBe('info');
-    expect(state.reason).toContain('Signal delayed');
+    expect(state.reason).toContain('Soft Offline');
   });
 
   it('ghost active without booking id demotes rental status to available', () => {

@@ -62,7 +62,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
               <MapPin size={20} className="text-violet-500" />
             </div>
             <div>
-              <h1 className={`text-xl font-bold ${d ? 'text-neutral-100' : 'text-gray-900'}`}>Trip Detection Logic</h1>
+              <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">Trip Detection Logic</h1>
             <p className={sub}>SynqDrive V3.0 — Full Architecture Reference</p>
           </div>
           <span className={`ml-auto ${BADGE('bg-violet-500/15 text-violet-400')}`}>V3.0 Architecture</span>

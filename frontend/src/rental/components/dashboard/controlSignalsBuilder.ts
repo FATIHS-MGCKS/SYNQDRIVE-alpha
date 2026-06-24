@@ -14,13 +14,19 @@ import type {
   TodayBookingApiRow,
   StationDataFreshness,
 } from './dashboardTypes';
-import { countReadyToRent, deriveDataSyncStatus, formatLastSyncLabel, isVehicleReadyToRent } from './dashboardUtils';
+import { countReadyToRent, formatLastSyncLabel, isVehicleReadyToRent } from './dashboardUtils';
+import type { DashboardRuntimeModel, VehicleRuntimeState } from './runtime/dashboardRuntimeTypes';
 
-export type VehicleTelemetryBucket = 'fresh' | 'stale' | 'offline' | 'unknown';
+export type VehicleTelemetryBucket = 'live' | 'standby' | 'soft_offline' | 'offline' | 'unknown';
 
 export interface VehicleTelemetryFreshness {
   totalInScope: number;
+  liveCount: number;
+  standbyCount: number;
+  softOfflineCount: number;
+  /** @deprecated Alias for live + standby compatibility. */
   freshCount: number;
+  /** @deprecated Alias for softOfflineCount compatibility. */
   staleCount: number;
   offlineCount: number;
   unknownCount: number;
@@ -31,54 +37,82 @@ export interface VehicleTelemetryFreshness {
 }
 
 function classifyTelemetry(v: VehicleData): VehicleTelemetryBucket {
-  // Central 5-state freshness. STANDBY counts as fresh (normal quiet state);
-  // only soft-offline (signal_delayed, 24–48h) is "stale", and real offline /
-  // never-reported map to offline / unknown.
   const f = resolveTelemetryFreshness(v);
   if (f.isOffline) return 'offline';
   if (f.isNoSignal) return 'unknown';
-  if (f.isSignalDelayed) return 'stale';
-  return 'fresh';
+  if (f.isSignalDelayed) return 'soft_offline';
+  return 'standby';
+}
+
+function classifyRuntimeTelemetry(state: VehicleRuntimeState): VehicleTelemetryBucket {
+  return state.telemetryState;
+}
+
+function syncStatusFromRuntime(input: {
+  dataFreshness: DataFreshnessSummary;
+  orgActive: boolean;
+  liveishCount: number;
+  softOfflineCount: number;
+  offlineLikeCount: number;
+  total: number;
+  hasReliableBasis: boolean;
+}): DataSyncStatus {
+  if (!input.orgActive || input.dataFreshness.insightsError || input.dataFreshness.todayBookingsError) return 'partial';
+  if (input.total === 0) return 'partial';
+  if (!input.hasReliableBasis) return 'partial';
+  if (input.offlineLikeCount >= input.total) return 'offline';
+  if (input.softOfflineCount + input.offlineLikeCount > input.liveishCount) return 'partial';
+  if (input.dataFreshness.insightsStale) return 'partial';
+  return 'live';
 }
 
 export function computeVehicleTelemetryFreshness(input: {
   vehicles: VehicleData[];
+  vehicleStates?: VehicleRuntimeState[];
   dataFreshness: DataFreshnessSummary;
   orgActive: boolean;
   locale: string;
   lastManualSyncAt: string | null;
 }): VehicleTelemetryFreshness {
   const buckets: Record<VehicleTelemetryBucket, number> = {
-    fresh: 0,
-    stale: 0,
+    live: 0,
+    standby: 0,
+    soft_offline: 0,
     offline: 0,
     unknown: 0,
   };
 
-  for (const v of input.vehicles) {
-    buckets[classifyTelemetry(v)] += 1;
+  if (input.vehicleStates) {
+    for (const state of input.vehicleStates) buckets[classifyRuntimeTelemetry(state)] += 1;
+  } else {
+    for (const v of input.vehicles) buckets[classifyTelemetry(v)] += 1;
   }
 
-  const hasReliableTimestamps = input.vehicles.some((v) => !!v.lastSignal);
-  const telemetryUnavailable = input.vehicles.length > 0 && !hasReliableTimestamps;
+  const totalInScope = input.vehicleStates?.length ?? input.vehicles.length;
+  const hasReliableTimestamps = input.vehicleStates
+    ? input.vehicleStates.some((state) => state.telemetryState !== 'unknown')
+    : input.vehicles.some((v) => !!v.lastSignal);
+  const telemetryUnavailable = totalInScope > 0 && !hasReliableTimestamps;
+  const liveishCount = buckets.live + buckets.standby;
+  const offlineLikeCount = buckets.offline + buckets.unknown;
 
-  let syncStatus = deriveDataSyncStatus(input.dataFreshness, input.orgActive);
-  if (telemetryUnavailable && syncStatus === 'live') syncStatus = 'partial';
-  if (
-    input.vehicles.length > 0 &&
-    hasReliableTimestamps &&
-    buckets.offline + buckets.unknown > buckets.fresh
-  ) {
-    if (syncStatus === 'live') syncStatus = 'partial';
-  }
-  if (buckets.stale > buckets.fresh && buckets.fresh === 0 && hasReliableTimestamps) {
-    if (syncStatus === 'live') syncStatus = 'stale';
-  }
+  const syncStatus = syncStatusFromRuntime({
+    dataFreshness: input.dataFreshness,
+    orgActive: input.orgActive,
+    liveishCount,
+    softOfflineCount: buckets.soft_offline,
+    offlineLikeCount,
+    total: totalInScope,
+    hasReliableBasis: hasReliableTimestamps,
+  });
 
   return {
-    totalInScope: input.vehicles.length,
-    freshCount: buckets.fresh,
-    staleCount: buckets.stale,
+    totalInScope,
+    liveCount: buckets.live,
+    standbyCount: buckets.standby,
+    softOfflineCount: buckets.soft_offline,
+    freshCount: liveishCount,
+    staleCount: buckets.soft_offline,
     offlineCount: buckets.offline,
     unknownCount: buckets.unknown,
     hasReliableTimestamps,
@@ -125,6 +159,13 @@ function countConflicts(
   return n;
 }
 
+function availableButNotReadyCount(runtime: DashboardRuntimeModel | undefined): number {
+  if (!runtime) return 0;
+  const slice = runtime.slices['ready-to-rent'];
+  const groupRows = slice.groups?.find((group) => group.id === 'available-but-not-ready')?.rows;
+  return groupRows?.length ?? slice.secondaryRows?.length ?? 0;
+}
+
 export function computeFleetReadiness(input: {
   vehicles: VehicleData[];
   availableVehicles: VehicleData[];
@@ -136,14 +177,16 @@ export function computeFleetReadiness(input: {
   locale: string;
   fleetLoading: boolean;
   readyOptions?: import('./dashboardUtils').ReadyToRentOptions;
+  runtime?: DashboardRuntimeModel;
 }): FleetReadinessSummary {
+  const runtime = input.runtime;
   const scopedAlertIds = new Set(input.vehicles.map((v) => v.id));
-  const criticalAlerts = input.healthAlerts.filter(
+  const criticalAlerts = runtime?.slices['critical-alerts'].count ?? input.healthAlerts.filter(
     (a) => a.severity === 'critical' && scopedAlertIds.has(a.vehicleId),
   ).length;
 
-  const ready = countReadyToRent(input.availableVehicles, input.readyOptions);
-  const blocked = input.vehicles.filter((v) => isBlockedVehicle(v, input.healthMap)).length;
+  const ready = runtime?.slices['ready-to-rent'].count ?? countReadyToRent(input.availableVehicles, input.readyOptions);
+  const blocked = runtime?.slices['blocked-maintenance'].count ?? input.vehicles.filter((v) => isBlockedVehicle(v, input.healthMap)).length;
   const overdueFromReturns = input.returnItems.filter((r) => r.isOverdue && !r.done).length;
   const returnBookingIds = new Set(
     input.returnItems.map((r) => r.bookingId).filter(Boolean),
@@ -154,12 +197,22 @@ export function computeFleetReadiness(input: {
       overdueFromFleet += 1;
     }
   }
-  const overdueReturns = overdueFromReturns + overdueFromFleet;
-  const cleaningNeeded = input.vehicles.filter(
+  const overdueReturns = runtime?.slices['overdue-returns'].count ?? overdueFromReturns + overdueFromFleet;
+  const cleaningNeeded = runtime?.vehicleStates.filter(
+    (state) =>
+      (state.operationalStatus === 'available' || state.operationalStatus === 'reserved') &&
+      state.warningReasons.some((reason) => reason.category === 'cleaning'),
+  ).length ?? input.vehicles.filter(
     (v) => v.cleaningStatus !== 'Clean' && (v.status === 'Available' || v.status === 'Reserved'),
   ).length;
-  const staleData = input.telemetry.staleCount + input.telemetry.offlineCount;
-  const conflicts = countConflicts(input.vehicles, input.healthMap);
+  const softOfflineCount = runtime?.vehicleStates.filter(
+    (state) => state.telemetryState === 'soft_offline',
+  ).length ?? input.telemetry.softOfflineCount ?? input.telemetry.staleCount;
+  const offlineCount = runtime?.vehicleStates.filter(
+    (state) => state.telemetryState === 'offline',
+  ).length ?? input.telemetry.offlineCount;
+  const staleData = softOfflineCount + offlineCount;
+  const conflicts = runtime ? availableButNotReadyCount(runtime) : countConflicts(input.vehicles, input.healthMap);
 
   const breakdown: FleetReadinessBreakdown = {
     ready,
@@ -167,6 +220,8 @@ export function computeFleetReadiness(input: {
     overdueReturns,
     criticalAlerts,
     cleaningNeeded,
+    softOfflineCount,
+    offlineCount,
     staleData,
     conflicts,
   };
@@ -197,7 +252,8 @@ export function computeFleetReadiness(input: {
     overdueReturns * 3 +
     cleaningNeeded +
     conflicts * 2 +
-    Math.floor(staleData / 2);
+    Math.floor(softOfflineCount / 2) +
+    offlineCount * 2;
 
   let status: FleetReadinessStatus = 'stable';
   if (criticalAlerts > 0 || overdueReturns > 0 || blocked > ready) {
@@ -238,8 +294,9 @@ function classifyStationDataFreshness(vehicles: VehicleData[]): StationDataFresh
   if (vehicles.length === 0) return 'no-vehicles';
 
   const buckets: Record<VehicleTelemetryBucket, number> = {
-    fresh: 0,
-    stale: 0,
+    live: 0,
+    standby: 0,
+    soft_offline: 0,
     offline: 0,
     unknown: 0,
   };
@@ -248,10 +305,22 @@ function classifyStationDataFreshness(vehicles: VehicleData[]): StationDataFresh
   }
 
   const total = vehicles.length;
+  const liveish = buckets.live + buckets.standby;
   if (buckets.offline === total) return 'offline';
   if (!vehicles.some((v) => v.lastSignal)) return 'offline';
-  if (buckets.stale + buckets.offline >= total) return 'stale';
-  if (buckets.stale + buckets.offline + buckets.unknown > buckets.fresh) return 'partial';
+  if (buckets.soft_offline + buckets.offline >= total) return 'stale';
+  if (buckets.soft_offline + buckets.offline + buckets.unknown > liveish) return 'partial';
+  return 'live';
+}
+
+function classifyStationRuntimeFreshness(states: VehicleRuntimeState[]): StationDataFreshness {
+  if (states.length === 0) return 'no-vehicles';
+  const offline = states.filter((state) => state.telemetryState === 'offline' || state.telemetryState === 'unknown').length;
+  const softOffline = states.filter((state) => state.telemetryState === 'soft_offline').length;
+  const liveish = states.length - offline - softOffline;
+  if (offline === states.length) return 'offline';
+  if (softOffline + offline >= states.length) return 'stale';
+  if (softOffline + offline > liveish) return 'partial';
   return 'live';
 }
 
@@ -314,6 +383,7 @@ export function buildEnhancedStationHealth(input: {
   healthMap: Map<string, VehicleHealthResponse>;
   todayPickups: TodayBookingApiRow[];
   todayReturns: TodayBookingApiRow[];
+  runtime?: DashboardRuntimeModel;
 }): StationHealthSummary[] {
   if (input.stations.length === 0) return [];
 
@@ -325,6 +395,9 @@ export function buildEnhancedStationHealth(input: {
         v.currentStationId === s.id,
     );
     const vehicleIds = stationVehicleIds(input.fleetVehicles, s.id);
+    const runtimeStates = input.runtime?.vehicleStates.filter(
+      (state) => state.stationId === s.id || state.stationLabel === s.name,
+    ) ?? [];
 
     const pickupsToday = input.todayPickups.filter(
       (p) => p.pickupStationId === s.id,
@@ -336,12 +409,16 @@ export function buildEnhancedStationHealth(input: {
       input.todayPickups.filter((p) => p.pickupStationId === s.id && p.isOverdue).length +
       input.todayReturns.filter((r) => r.returnStationId === s.id && r.isOverdue).length;
 
-    const criticalAlerts = input.healthAlerts.filter(
+    const criticalAlerts = runtimeStates.length > 0 ? runtimeStates.filter(
+      (state) => state.isCritical,
+    ).length : input.healthAlerts.filter(
       (a) => a.severity === 'critical' && vehicleIds.has(a.vehicleId),
     ).length;
 
-    const blockedCount = atStation.filter((v) => isBlockedVehicle(v, input.healthMap)).length;
-    const readyCount = atStation.filter((v) =>
+    const blockedCount = runtimeStates.length > 0 ? runtimeStates.filter(
+      (state) => state.isBlocked || state.isMaintenance || state.operationalStatus === 'unavailable',
+    ).length : atStation.filter((v) => isBlockedVehicle(v, input.healthMap)).length;
+    const readyCount = runtimeStates.length > 0 ? runtimeStates.filter((state) => state.isReadyToRent).length : atStation.filter((v) =>
       isVehicleReadyToRent(v, {
         blockedVehicleIds: new Set(
           atStation.filter((x) => isBlockedVehicle(x, input.healthMap)).map((x) => x.id),
@@ -353,22 +430,44 @@ export function buildEnhancedStationHealth(input: {
         ),
       }),
     ).length;
-    const needsCleaningCount = atStation.filter((v) => v.cleaningStatus !== 'Clean').length;
-    const maintenanceCount = atStation.filter((v) => v.status === 'Maintenance').length;
+    const needsCleaningCount = runtimeStates.length > 0 ? runtimeStates.filter(
+      (state) => state.warningReasons.some((reason) => reason.category === 'cleaning'),
+    ).length : atStation.filter((v) => v.cleaningStatus !== 'Clean').length;
+    const maintenanceCount = runtimeStates.length > 0 ? runtimeStates.filter(
+      (state) => state.isMaintenance,
+    ).length : atStation.filter((v) => v.status === 'Maintenance').length;
+    const availableNotReadyCount = runtimeStates.filter(
+      (state) => state.operationalStatus === 'available' && !state.isReadyToRent,
+    ).length;
+    const warningCount = runtimeStates.filter((state) => state.isWarning && !state.isCritical).length;
+    const softOfflineCount = runtimeStates.filter((state) => state.telemetryState === 'soft_offline').length;
+    const offlineCount = runtimeStates.filter((state) => state.telemetryState === 'offline').length;
 
     const dueTodayCount = pickupsToday + returnsToday;
     const capacityGap = Math.max(0, dueTodayCount - readyCount);
-    const dataFreshness = classifyStationDataFreshness(atStation);
+    const dataFreshness = runtimeStates.length > 0
+      ? classifyStationRuntimeFreshness(runtimeStates)
+      : classifyStationDataFreshness(atStation);
 
     return {
       stationId: s.id,
       stationName: s.name,
-      vehicleCount: atStation.length,
-      availableCount: atStation.filter((v) => v.status === 'Available').length,
-      rentedCount: atStation.filter((v) => v.status === 'Active Rented').length,
-      reservedCount: atStation.filter((v) => v.status === 'Reserved').length,
+      vehicleCount: runtimeStates.length || atStation.length,
+      availableCount: runtimeStates.length > 0
+        ? runtimeStates.filter((state) => state.operationalStatus === 'available').length
+        : atStation.filter((v) => v.status === 'Available').length,
+      rentedCount: runtimeStates.length > 0
+        ? runtimeStates.filter((state) => state.operationalStatus === 'active_rented').length
+        : atStation.filter((v) => v.status === 'Active Rented').length,
+      reservedCount: runtimeStates.length > 0
+        ? runtimeStates.filter((state) => state.operationalStatus === 'reserved').length
+        : atStation.filter((v) => v.status === 'Reserved').length,
       maintenanceCount,
       needsCleaningCount,
+      availableNotReadyCount,
+      warningCount,
+      softOfflineCount,
+      offlineCount,
       alertCount: criticalAlerts,
       pickupsToday,
       returnsToday,

@@ -35,6 +35,182 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-health-segmented-indicators-v4926-2026-06-24',
+    version: '4.9.26',
+    title: 'V4.9.26 — Vehicle Health nutzt kompakte 3-Balken-Indikatoren',
+    summary: [
+      'Neue gemeinsame UI-Komponente `SegmentedHealthIndicator` rendert drei kompakte Health-Balken: 3 = Good, 2 = Watch/Warning, 1 = Critical, 0 = No Data.',
+      '`VehicleHealthBox` im Vehicle Overview zeigt Brakes, Tires und Battery jetzt nebeneinander als kompakte 3-Spalten-Zeile statt als vertikale Progressbar-Liste.',
+      '`HealthModuleCard` akzeptiert optional `indicator`; bei Tires, Brakes und Battery im Health Detail Panel ersetzt der 3-Balken-Indikator die lange Progressbar, während Key-Values, Rest-km, Prozenttexte, Data Basis, Confidence und Service-Actions erhalten bleiben.',
+      '`health-segment-display.ts` mappt ausschließlich bestehende States/Conditions/Labels oder einen UI-only-Prozent-Fallback auf 3/2/1/0 Balken. Keine Health-Schwellen, Scores oder RentalHealth-Bewertungen wurden geändert.',
+    ],
+    reason:
+      'Die Overview-HealthBox war auf Mobile durch drei vertikale Module mit langen Progressbars zu hoch und unruhig. Tires, Brakes und Battery sollten denselben kompakten Health-Indikator verwenden.',
+    previousBehavior:
+      'Overview rendierte Brakes, Tires und Battery untereinander mit langen horizontalen Bars. Health Tab nutzte für Tires/Battery die generische Progressbar der `HealthModuleCard`, Brakes hatten keinen gemeinsamen Segment-Indikator.',
+    details:
+      'UI-only Refactor in `VehicleHealthBox.tsx`, `HealthModuleCard.tsx`, `HealthVehicleDetailPanel.tsx`, `SegmentedHealthIndicator.tsx` und `health-segment-display.ts`. Findings, Header, Overall Status, Tacho-Warnleuchten, Service/TÜV/BOKraft, Critical/Due Soon/Faults und alle Health-Daten bleiben unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Detail',
+    createdAt: '2026-06-24T01:42:00.000Z',
+  },
+  {
+    id: 'vehicle-overview-battery-resting-voltage-display-v4925-2026-06-24',
+    version: '4.9.25',
+    title: 'V4.9.25 — Vehicle Overview nutzt kanonische LV-Ruhespannung',
+    summary: [
+      'Die Vehicle Overview HealthBox priorisiert für die Battery-Zeile jetzt dieselbe kanonische LV-Ruhespannung wie der Health Tab: `battery.lv.restingVoltage.valueV` → `battery.lv.telemetry.restingVoltage` → `battery.currentState.restingVoltage`.',
+      'Current/Live Voltage wird nur noch als Fallback verwendet und dann explizit als „Aktuelle Spannung …" angezeigt. 0V, negative und unrealistische LV-Werte werden im Displaypfad ignoriert.',
+      '„Startschwierigkeiten möglich" erscheint nicht mehr wegen `condition === watch` oder Estimated-Health-Watch allein, sondern nur bei Low-Resting-/Cranking-/Startproblem-Evidenz aus Battery-Daten, Watchpoints oder Recommendations.',
+      'Neue reine Frontend-Helper `battery-display.utils.ts` kapseln Voltage-Normalisierung, Formatting, Resting-vs-Current-Priorität und Startproblem-Evidenz; gezielte Vitest-Cases sichern die Anzeigepriorität.',
+    ],
+    reason:
+      'Overview und Health Tab zeigten teils unterschiedliche LV-Spannungen (z. B. Live 12.4V statt Resting 12.84V), und Overview interpretierte Battery-Watch zu aggressiv als mögliches Startproblem.',
+    previousBehavior:
+      'Die Overview-HealthBox priorisierte `telemetry.voltageV`/`currentState.voltageV` vor Resting Voltage und löste Startproblem-Copy direkt über `condition/watch` aus.',
+    details:
+      'UI-/Mapper-only Fix in `vehicle-health-box.mapper.ts`, `VehicleHealthBox.tsx` und `battery-display.utils.ts`. Der Health Tab bleibt fachlich unverändert und nutzt weiterhin `battery.lv.restingVoltage.valueV`; LiveMapStore bleibt unverändert, 0V wird defensiv im Display normalisiert. Keine Backend-, API-, DB-, DTO-, Routing-, Booking-, Readiness- oder Health-Berechnungsänderung.',
+    affectsArchitecture: true,
+    module: 'Vehicle Detail',
+    createdAt: '2026-06-24T01:34:00.000Z',
+  },
+  {
+    id: 'ui-page-title-token-refactor-v4924-2026-06-24',
+    version: '4.9.24',
+    title: 'V4.9.24 — Page Titles nutzen gemeinsamen fluiden Token',
+    summary: [
+      '`--text-display-lg` ist jetzt ein fluider Page-Title-Token (`clamp(21px, 1vw + 17px, 24px)`) statt fixer 28px.',
+      '`PageHeader` rendert kompaktere Header-Abstände, kleinere optionale Icon-Tiles und ein explizites `h1` auf `font-display`, 700, `leading-[1.15]` und `tracking-display`.',
+      'Legacy-Top-of-Page-`h1` in ausgewählten Rental-/Master-/Detail-Surfaces wurden auf denselben Page-Title-Klassensatz angeglichen, ohne lokale Actions, Filter, Tabs, Statuschips oder Beschreibungen zu verändern.',
+      'Nicht migriert wurden bewusst Control-Center-/Dashboard-spezifische Header, Login/Auth-Headlines, Operator-App-Shell-Header, Handover-Flow-Header, HTML-Druckvorlagen sowie Card-/KPI-/Modal-/Drawer-Titel.',
+    ],
+    reason:
+      'SynqDrive-Seitentitel waren zwischen Pattern-basierten Views und Legacy-Views uneinheitlich groß. Der zentrale Token hält Page Titles auf Mobile, Tablet und Desktop konsistent und reduziert lokale Typografie-Drift.',
+    previousBehavior:
+      'Einige Seiten nutzten `PageHeader`, andere hatten lokale `text-lg`, `text-xl`, `text-2xl` oder `text-3xl`-Seitentitel mit eigenen Dark-Mode-Farbklassen.',
+    details:
+      'UI-only Änderung: `frontend/src/styles/theme.css`, `frontend/src/components/patterns/page-header.tsx` und Legacy-Header-Klassen in Rental/Master-Views. Keine Business-Logik, Stores, ViewModels, API-Aufrufe, Backend-Dateien, DTOs, Routing-Logik oder Berechnungen geändert.',
+    affectsArchitecture: true,
+    module: 'UI Design System',
+    createdAt: '2026-06-24T01:26:00.000Z',
+  },
+  {
+    id: 'runtime-drift-cleanup-v4923-2026-06-24',
+    version: '4.9.23',
+    title: 'V4.9.23 — Runtime-Drift-Suche außerhalb Dashboard-Core',
+    summary: [
+      'Repo-weite Drift-Suche nach alten Dashboard-Helpern, rohen Fleet-Statusfiltern, Ready-/Blocked-/Maintenance-Verwechslungen, Telemetry-Stale-Wording und Finance-/Overdue-Mix durchgeführt.',
+      'Operator Focus Mode nutzt für „not ready" jetzt `VehicleRuntimeState` statt `isVehicleReadyToRent`; der alte Helper bleibt deprecated als Legacy-Test-/Fallback-Pfad.',
+      '`operationsBuilder` kann `vehicleStates` konsumieren und verwendet im aktiven Dashboard-Pfad Runtime-Block-/Not-ready-/Maintenance-Reasons für Pickup-/Maintenance-Risiken; rohe Statuslogik bleibt nur Fallback ohne Runtime.',
+      '`DataFreshnessIndicator` zeigt Telemetrie jetzt explizit als Live, Standby, Soft Offline, Offline und Unknown. Standby bleibt neutral und wird nicht als stale/problematisch gezählt.',
+      'Fleet-Page-/Map-Display: rohe Fleet-Seiten zeigen `Available` sichtbar als „Available/Verfügbar" statt „Ready"; Ready-to-rent bleibt der Dashboard-Runtime/Slice-Schicht vorbehalten. Soft-Offline-Reason und Soft-Offline-Label ersetzen die letzten Fleet-„Stale Signal"-Oberflächen.',
+      'Health-/Warnleuchten-DataQuality-Wording wurde auf „Datenbasis veraltet" präzisiert, damit Modul-Datenqualität nicht mit operativer Vehicle-Telemetry verwechselt wird.',
+      'Alte Dashboard-Helper/Builder sind einheitlich mit dem Runtime-Deprecated-Hinweis markiert; keine Helper wurden blind gelöscht.',
+    ],
+    reason:
+      'Nach der Migration des Dashboard-Cores musste geprüft werden, ob angrenzende Fleet-/Health-/Finance-/Backend-Kontexte noch sichtbare operative Zahlen oder Listen aus alter Statuslogik ableiten.',
+    previousBehavior:
+      'Operator Focus Mode und Operations-Timeline hatten noch aktive Fallbacks über rohe Fahrzeugstatus/Ready-Helper; Fleet-Display nannte rohe `Available`-Fahrzeuge sichtbar „Ready"; Health-Datenqualität verwendete teils unspezifisch „Daten veraltet".',
+    details:
+      'Geändert wurden nur aktive Drift- oder Wording-Pfade. Raw-Status-Anzeigen in Fleet Operator, New Booking und StatInlineDetail bleiben bewusst bestehen, weil sie Available/Reserved/Active/Maintenance als fachliche Rohstatus anzeigen und nicht als Ready-to-rent-KPI auftreten. Backend-Stale-Treffer liegen in Vehicle-State-Interpreter-Tests, DataAnalyse, Monitoring/Observability oder WhatsApp-Provider-Daten und wurden nicht in operative Fleet-UI übernommen. Finance bleibt getrennt: BusinessPulseSlices für Receivables, Overdue Returns nur in Rental/Handover-Slices.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-24T01:22:00.000Z',
+  },
+  {
+    id: 'rental-dashboard-control-center-embedded-kpis-v4922-2026-06-24',
+    version: '4.9.22',
+    title: 'V4.9.22 — Control Center bettet operative KPI-Boxen ein',
+    summary: [
+      '`DashboardControlHeader` ist jetzt die Control-Center-Card: Titel, Live-/Sync-Badge, Station-Dropdown, Datum und optionaler Content-Slot liegen in einer gemeinsamen Surface.',
+      '`DashboardView` rendert die sechs KPI-Boxen im Standard-Dashboard als `<ControlKpiStrip vm={vm} embedded />` innerhalb des Headers; die alte separate KPI-Strip-Sektion darunter wurde entfernt. BusinessPulse folgt direkt nach dem Control Center.',
+      '`ControlKpiStrip` nutzt weiterhin `vm.controlCenterKpis`, `vm.activateKpiTarget`, bestehende KPI-Icons/-Tones und Data-Trust-Hinweise. Es wurden keine KPI-Werte, keine neue KPI-Datenlogik und keine zweite Control-Center-Wahrheit eingeführt.',
+      'Die redundante sichtbare Header-Meta-Zeile mit Fahrzeuganzahl, Ereignissen und Sync-Zeit wurde entfernt; das Dropdown-Menü behält Stationsauswahl und Fahrzeugzahlen im Menü.',
+    ],
+    reason:
+      'Die operativen KPI-Boxen sollten als Teil des Control Centers wahrgenommen werden, ohne Runtime-/ViewModel-Wahrheit, Drawer-Targets, BusinessPulse oder Operator-Focus-Mode zu verändern.',
+    previousBehavior:
+      'Im Standard-Dashboard standen `DashboardControlHeader`, `ControlKpiStrip` und `BusinessPulse` als drei getrennte, nacheinander animierte Bereiche. Der Header zeigte zusätzlich Fahrzeug-/Event-/Sync-Metadaten und ein separates Datum.',
+    details:
+      'Aktiver Pfad: `DashboardControlHeader` akzeptiert optional `children`, `ControlKpiStrip` akzeptiert `embedded?: boolean` und rendert ein mobile-first 2-Spalten-Grid, ab Tablet 3 Spalten und auf sehr breiten Desktops 6 Spalten. KPI-Klicks laufen unverändert über `activateKpiTarget`; die separate KPI-Sektion in `DashboardView` ist entfernt. Operator-Focus-Mode bleibt beim bestehenden Header ohne eingebettete KPIs.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-24T01:19:00.000Z',
+  },
+  {
+    id: 'rental-dashboard-runtime-consumers-v4921-2026-06-24',
+    version: '4.9.21',
+    title: 'V4.9.21 — Dashboard-nahe Konsumenten nutzen Runtime-Wahrheit',
+    summary: [
+      '`controlSignalsBuilder`, `FleetReadinessScore`, `stationCommandBuilder`, `StationHealthPanel`, `deriveOperationalInsights`, `derivePredictiveOperationsInsights`, `actionQueueBuilder` und `useDashboardViewModel` sind auf die zentrale Runtime verdrahtet.',
+      'Fleet Readiness liest Ready/Blocked/Critical/Overdue aus `dashboardRuntime.slices`; Soft Offline und Offline werden getrennt aus `vehicleStates.telemetryState` gezählt. Standby bleibt normal und erzeugt keine Action oder Readiness-Strafe.',
+      'Station Command und Station Health verwenden `VehicleRuntimeState` pro Station für Ready, Available-but-not-ready, Blocked/Maintenance, Warning, Critical, Active/Rented und Soft Offline/Offline. Legacy-Status-Fallbacks bleiben nur für Aufrufer ohne Runtime.',
+      'Predictive/Operational Insights und Action Queue nutzen Runtime-Reasons (`criticalReasons`, `blockReasons`, `warningReasons`, `notReadyReasons`) sowie Dashboard-Slices als aktive Quelle; Runtime-Actions deduplizieren über `vehicleId + category + source + title`.',
+      'User-facing Dashboard-Wording bleibt bei Standby/Soft Offline/Offline bzw. Signal delayed; normales Standby wird nicht mehr als stale/problematisch gezählt.',
+    ],
+    reason:
+      'Nach KPI-Boxen, Drawer, Fleet State Board und Business Pulse mussten die angrenzenden Dashboard-Builder dieselbe Runtime-Wahrheit verwenden, damit keine zweite Ready-/Blocked-/Critical-/Telemetry-Definition im Dashboard übrig bleibt.',
+    previousBehavior:
+      'Einige angrenzende Builder nutzten noch lokale Statuschecks (`status === Available/Maintenance`), Ready-Helper, Health-Alert-Filter oder stale/offline-Buckets als operative Wahrheit.',
+    details:
+      'Aktiver Pfad: `useDashboardViewModel` baut weiterhin genau einmal `DashboardRuntimeModel` und reicht `dashboardRuntime.vehicleStates`/`dashboardRuntime.slices` in die Konsumenten. Alte Helper bleiben nur als Legacy-Fallback in Buildern erhalten, falls sie ohne Runtime aufgerufen werden. Verifikation: Frontend-TypeScript, gezielter Dashboard-ESLint und fokussierte Vitest-Suites grün.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-24T01:06:00.000Z',
+  },
+  {
+    id: 'rental-dashboard-runtime-adoption-v4920-2026-06-24',
+    version: '4.9.20',
+    title: 'V4.9.20 — Rental Dashboard nutzt Runtime-Slices aktiv',
+    summary: [
+      '`useDashboardViewModel` baut jetzt einen zentralen `DashboardRuntimeModel` und `businessPulseSlices`; KPI-Counts, KPI-Hints, Fleet-State-Board-Lanes, KPI-/Fleet-/Business-Drilldowns und BusinessPulse-Kompaktwerte werden daraus abgeleitet.',
+      'Das ViewModel exponiert die Runtime jetzt direkt für die nächsten UI-Schritte: `dashboardRuntime`, `dashboardSlices`, `vehicleRuntimeStates`, `businessPulseSlices`, `activeDashboardSliceId` und `activeBusinessMetricId`. `dashboardNow` ist eine stabile ViewModel-Zeitreferenz und wird beim manuellen Refresh aktualisiert.',
+      '`ControlKpiStrip` rendert die sechs operativen KPI-Boxen jetzt direkt aus `dashboardRuntime.slices` in kanonischer `DashboardSliceId`-Reihenfolge (`ready-to-rent`, `active-rented`, `due-soon`, `overdue-returns`, `blocked-maintenance`, `critical-alerts`). Die Cards berechnen keine KPI-Zahlen mehr lokal und verwenden keine Legacy-KPI-IDs wie `maintenance` als primäre Targets.',
+      '`DashboardDrilldownDrawer` liest operative Drilldowns jetzt direkt aus denselben `dashboardRuntime.slices` wie die KPI-Boxen und Business-Drilldowns direkt aus `businessPulseSlices`. Das ViewModel baut keine Drawer-Listen mehr; `vm.drilldown` bleibt nur als Legacy-null-Contract.',
+      'Der Drawer rendert Runtime-Gruppen, `secondaryRows` und Business-Gruppen eigenständig, zeigt pro Row Severity/Reason-Pills/CTA und nutzt keine FleetBoard-Lanes, lokalen Booking-/Insight-Filter oder Invoice-Filter mehr für KPI-/Business-Listen.',
+      '`FleetStateBoard` rendert seine sichtbaren Bereiche jetzt direkt aus `dashboardRuntime.slices`: Ready, Available-but-not-ready (`ready-to-rent.secondaryRows`/Runtime-Gruppe), Active/Rented, Due Soon, Overdue Returns, Blocked & Maintenance und Critical Alerts. Fahrzeugdetails wie Readiness/Telemetry/Reasons kommen nur ergänzend aus `vehicleStates`; Counts und Listen werden nicht mehr lokal aus Status oder Lanes berechnet.',
+      '`FleetBoardVehicleRow` ist auf `DashboardSliceRow` + optional `VehicleRuntimeState` umgestellt und zeigt Runtime-Telemetrie sauber als Live/Standby/Soft Offline/Offline/Unbekannt, ohne Standby als stale/problematisch zu labeln.',
+      '`BusinessPulse` rendert seine Karten jetzt direkt aus `businessPulseSlices` (`revenue`, `profit`, `expenses`, `open-receivables`, `overdue-receivables`; optionale Paid/Draft/Failed-Metriken nur bei Einträgen). Revenue/Profit/Expenses/Receivables werden nicht mehr in der UI summiert oder gefiltert.',
+      'BusinessPulse-Klicks setzen kanonische `BusinessMetricId`-Targets; der Business-Drawer liest dieselben `businessPulseSlices[metricId].rows`, sodass Card und Drawer keine getrennten Invoice-Filter mehr verwenden.',
+      'Neuer Adapter `dashboardRuntimeViewModelAdapters.ts` hält die bestehenden Komponenten optisch unverändert, übersetzt Runtime-Slices aber in die vorhandenen ViewModel-Contracts (`ControlCenterKpi`, `FleetBoardModel`, `FleetStateTab`, `DashboardDrilldownContent`, `BusinessPulseSnapshot`).',
+      'QA-Fix: der Drilldown-Drawer rendert jetzt Runtime-Gruppen (`ready-now`, `available-but-not-ready`, Block-/Critical-Gruppen) statt SecondaryRows zu verlieren; das Fleet-State-Board hat getrennte Runtime-Lanes für `blocked` und `attention`, damit Critical-Blocker nicht als Maintenance und Warning-only-Fahrzeuge nicht als Blocked/Maintenance erscheinen.',
+      'Legacy-Builder (`buildControlCenterKpis`, Ready-/Maintenance-Counts, `buildFleetBoard`, `buildDashboardDrilldown`, `buildBusinessPulseSnapshot`) bleiben für Tests/Legacy-Flows erhalten, sind aber mit `@deprecated` und „Use dashboard runtime/slices instead" markiert.',
+      'Operative Dashboard-Wording-Bereinigung: sichtbare „Stale/Veraltet"-Labels in Dashboard-Freshness/Readiness-Hinweisen wurden auf „Delayed/Verzögert" bzw. „Soft Offline/Offline" geändert; technische Data-Quality-Keys bleiben stabil.',
+      'Verifikation: Runtime-/DataTrust-/FleetBoard-Tests grün, gezielter Dashboard-ESLint grün, Frontend-TypeScript-Build grün.',
+    ],
+    reason:
+      'Nach der additiven Runtime-Grundlage mussten die aktiven Dashboard-Flächen von alten lokalen Ableitungen getrennt werden, damit KPI-Zahlen, Drawer-Rows, Fleet-State-Lanes und Business-Pulse-Drilldowns nicht wieder auseinanderlaufen.',
+    previousBehavior:
+      '`useDashboardViewModel` importierte weiterhin lokale Drift-Builder und Counts (`buildControlCenterKpis`, `countReadyToRent`, `countMaintenanceVehicles`, `buildFleetStateTabs`, `buildFleetBoard`, `buildDashboardDrilldown`, `buildBusinessPulseSnapshot`).',
+    details:
+      'Aktive Verdrahtung: `buildDashboardRuntimeModel` wird aus station-gefilterten Fleet-/Booking-/Insight-/Health-Inputs gebaut; `buildBusinessPulseSlices` liest ausschließlich `DashboardInvoice`. Die Adapter in `runtime/dashboardRuntimeViewModelAdapters.ts` liefern kompatible ViewModel-Strukturen, ohne `ControlKpiStrip`, `FleetStateBoard`, `BusinessPulse` oder `DashboardDrilldownDrawer` neu zu designen. Der Drawer-Contract wurde additiv um `groups` erweitert, und `FleetBoardLane` um `blocked`/`attention`, damit Runtime-Zustände fachlich sichtbar bleiben. Legacy-Helper wurden nicht gelöscht, sondern klar deprecated. Nebenflächen wie Station Command und Operator Focus bleiben bewusst außerhalb dieser KPI/Fleet/Drawer/BusinessPulse-Umstellung; `FleetReadinessScore` liest seine Kernzahlen jetzt optional aus `DashboardRuntimeModel`.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-24T00:12:00.000Z',
+  },
+  {
+    id: 'rental-dashboard-runtime-layer-v4919-2026-06-23',
+    version: '4.9.19',
+    title: 'V4.9.19 — Rental Dashboard Runtime-State-Grundlage',
+    summary: [
+      'Neue additive Runtime-Schicht unter `frontend/src/rental/components/dashboard/runtime`: unabhängige Runtime-Typen, Reason-Helfer, `buildVehicleRuntimeStates` und `buildDashboardRuntimeModel`/`buildDashboardSlices`.',
+      '`VehicleRuntimeStateBuilder` entscheidet pro Fahrzeug einmalig Operational Status, Readiness, Block-Level, Health/Compliance-Severity, Telemetry-State, Data-Quality, Booking-State, Reasons und konsistente Bool-Flags. Standby bleibt normal; Soft-Offline erzeugt nur einen nicht-blockierenden Telemetrie-Warnhinweis; Offline ist standardmäßig ein Hard-Blocker.',
+      '`DashboardSliceBuilder` baut die sechs operativen Dashboard-Slices jetzt konsequent aus demselben Runtime-Snapshot: Ready-Rows enthalten nur ready Fahrzeuge, Due-Soon enthält nur offene Pickup/Return-Events im Zeitfenster, Overdue-Returns nur Rückgaben, Blocked/Maintenance zählt eindeutige Fahrzeuge, Critical-Alerts deduplizierte Problem-Items.',
+      '`businessPulseSliceBuilder.ts` ergänzt eine getrennte Finanz-Runtime für Business Pulse: BusinessDocumentState (`paid/open/overdue/draft/failed/refunded/disputed/unknown`) und Slices für Revenue, Profit, Expenses, Receivables, Paid/Draft/Failed — ohne VehicleRuntimeState oder Fleet-Readiness zu konsumieren.',
+      'Neue Runtime-Sanity-Tests sichern die Drift-Invarianten: Ready Count vs. Rows/SecondaryRows, Blocked/Maintenance, Critical ≠ Maintenance, Standby vs. Soft/Hard Offline, Active-Rented + Overdue Return, Due-Soon ohne Overdue-Mix und Critical-Alert-Dedupe.',
+      'Keine UI-Umstellung in diesem Schritt: `ControlKpiStrip`, `FleetStateBoard`, `BusinessPulse` und `DashboardDrilldownDrawer` bleiben optisch und funktional unverändert. Bestehende KPI-/Drawer-Funktionen und APIs bleiben bestehen.',
+    ],
+    reason:
+      'Die sechs Rental-Dashboard-KPI-Boxen, Fleet-State-Lanes, Business-Pulse-Drilldowns und der rechte Drilldown-Drawer leiteten Ready/Blocked/Critical bisher aus mehreren Stellen ab. Die neue Runtime-Schicht bereitet eine kanonische gemeinsame Grundlage vor, ohne die aktuelle UI bereits umzubauen.',
+    previousBehavior:
+      'Ready-to-Rent, Blocked/Maintenance und Critical-Listen konnten zwischen KPI, Drawer und Fleet-State-Board auseinanderlaufen, weil `countReadyToRent`, Fleet-Board-Lanes, Action-Queue-/Insight-Filter und Drilldown-Builder eigene Ableitungen verwendeten.',
+    details:
+      'Neu: `dashboardRuntimeTypes.ts` mit stabilen Runtime-Verträgen; `dashboardRuntimeReasons.ts` für Reason-Dedupe (`category + source + title`) und Kategorie-Mapping; `vehicleRuntimeStateBuilder.ts` mit purem additiven Builder über vorhandene Inputs (`VehicleData`, Rental-Health-Map, DashboardInsights, Pickup/Return-Items, blocked-/healthRisk-Sets); `dashboardSliceBuilder.ts` mit den sechs Slices `ready-to-rent`, `active-rented`, `due-soon`, `overdue-returns`, `blocked-maintenance`, `critical-alerts`; `businessPulseSliceBuilder.ts` mit rein finanziellem Slicing über `DashboardInvoice` (Outgoing Revenue, Incoming Expenses, Open/Overdue Receivables, Paid/Draft/Failed). Slice-Invarianten: `count === rows.length` (außer zukünftige null-Datenfälle), Ready-SecondaryRows erklären available-but-not-ready, Active-Rented behält überfällige Returns als aktive Vermietung, Critical-Alerts zählt deduplizierte Alert-/Problem-Items statt Fahrzeuge. Tests: `runtime/dashboardRuntime.test.ts` (9 Vitest-Szenarien) plus Frontend-Typecheck grün. `runtime/index.ts` plus Dashboard-Barrel-Export. Keine API-, Schema- oder UI-Komponentenänderung.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-23T21:05:00.000Z',
+  },
+  {
     id: 'health-data-quality-telemetry-split-v4918-2026-06-23',
     version: '4.9.18',
     title: 'V4.9.18 — Health Data Quality ≠ Telemetry Freshness + Abschlussaudit',
@@ -9584,7 +9760,7 @@ export function ChangesView({ isDarkMode }: ChangesViewProps) {
         </div>
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className={`text-2xl font-bold tracking-tight ${d ? 'text-white' : 'text-gray-900'}`}>Changes</h1>
+            <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">Changes</h1>
             <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${d ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500'}`}>
               <Code2 className="h-3 w-3" />
               SynqDrive Code

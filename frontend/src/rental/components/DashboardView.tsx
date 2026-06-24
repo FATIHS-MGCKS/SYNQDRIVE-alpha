@@ -40,6 +40,16 @@ export function DashboardView({
     onOpenBookingById,
     onOpenRentalView,
   };
+  const activeDrawerTargetId = vm.activeDashboardSliceId ?? vm.activeBusinessMetricId;
+  const drawerLoading = vm.activeBusinessMetricId
+    ? !vm.dataFreshness.invoicesLoaded
+    : vm.activeDashboardSliceId === 'due-soon' || vm.activeDashboardSliceId === 'overdue-returns'
+      ? !vm.dataFreshness.todayBookingsLoaded
+      : vm.activeDashboardSliceId === 'critical-alerts'
+        ? vm.dataFreshness.insightsLoading
+        : vm.activeDashboardSliceId != null
+          ? vm.dataFreshness.fleetLoading
+          : false;
 
   if (vm.operatorFocusMode) {
     return (
@@ -60,11 +70,16 @@ export function DashboardView({
           </div>
         </div>
         <DashboardDrilldownDrawer
-          vm={vm}
-          onOpenVehicleById={onOpenVehicleById}
-          onOpenBookingById={onOpenBookingById}
-          onOpenRentalView={onOpenRentalView}
-          onOpenFinanceView={onOpenFinanceView}
+          activeTargetId={activeDrawerTargetId}
+          dashboardRuntime={vm.dashboardRuntime}
+          businessPulseSlices={vm.businessPulseSlices}
+          loading={drawerLoading}
+          locale={vm.locale}
+          onClose={vm.closeDrilldown}
+          onOpenVehicle={onOpenVehicleById}
+          onOpenBooking={onOpenBookingById}
+          onOpenInvoice={() => onOpenFinanceView?.('invoices')}
+          onOpenBilling={() => onOpenFinanceView?.('invoices')}
         />
       </>
     );
@@ -74,17 +89,24 @@ export function DashboardView({
     <>
       <div className={DASHBOARD_LAYOUT.shell}>
         <div className="animate-fade-up" style={{ animationDelay: '0ms' }}>
-          <DashboardControlHeader vm={vm} />
+          <DashboardControlHeader vm={vm}>
+            <ControlKpiStrip vm={vm} embedded />
+          </DashboardControlHeader>
         </div>
+
         <div className="animate-fade-up" style={{ animationDelay: '70ms' }}>
-          <ControlKpiStrip vm={vm} />
+          <BusinessPulse
+            businessPulseSlices={vm.businessPulseSlices}
+            onSelectBusinessMetric={vm.openBusinessMetricDrilldown}
+            onOpenBilling={() => onOpenFinanceView?.('invoices')}
+            locale={vm.locale}
+            currency="EUR"
+            loading={!vm.dataFreshness.invoicesLoaded}
+            error={vm.dataFreshness.invoicesError}
+          />
         </div>
 
-        <div className="animate-fade-up" style={{ animationDelay: '120ms' }}>
-          <BusinessPulse vm={vm} onOpenFinanceView={onOpenFinanceView} />
-        </div>
-
-        <div className={`${DASHBOARD_LAYOUT.opsStack} animate-fade-up`} style={{ animationDelay: '180ms' }}>
+        <div className={`${DASHBOARD_LAYOUT.opsStack} animate-fade-up`} style={{ animationDelay: '120ms' }}>
           <DashboardSectionLabel>
             {vm.locale === 'de' ? 'Operative Steuerung' : 'Operational control'}
           </DashboardSectionLabel>
@@ -95,18 +117,27 @@ export function DashboardView({
           </div>
 
           <FleetStateBoard
-            vm={vm}
-            onVehicleSelect={onVehicleSelect}
-            onOpenVehicleById={onOpenVehicleById}
+            dashboardRuntime={vm.dashboardRuntime}
+            activeTargetId={vm.activeDashboardSliceId}
+            onSelectSlice={vm.openSliceDrilldown}
+            onOpenVehicle={onOpenVehicleById}
+            locale={vm.locale}
+            loading={vm.dataFreshness.fleetLoading}
+            stationName={vm.selectedStationName}
           />
         </div>
       </div>
       <DashboardDrilldownDrawer
-        vm={vm}
-        onOpenVehicleById={onOpenVehicleById}
-        onOpenBookingById={onOpenBookingById}
-        onOpenRentalView={onOpenRentalView}
-        onOpenFinanceView={onOpenFinanceView}
+        activeTargetId={activeDrawerTargetId}
+        dashboardRuntime={vm.dashboardRuntime}
+        businessPulseSlices={vm.businessPulseSlices}
+        loading={drawerLoading}
+        locale={vm.locale}
+        onClose={vm.closeDrilldown}
+        onOpenVehicle={onOpenVehicleById}
+        onOpenBooking={onOpenBookingById}
+        onOpenInvoice={() => onOpenFinanceView?.('invoices')}
+        onOpenBilling={() => onOpenFinanceView?.('invoices')}
       />
     </>
   );

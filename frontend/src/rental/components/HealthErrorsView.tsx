@@ -1694,7 +1694,7 @@ export function HealthErrorsView({
                     <div className={`w-10 h-10 rounded-2xl flex items-center justify-center mb-2 shadow-sm ${'sq-tone-watch ring-1 ring-border'}`}>
                       <Icon name="alert-triangle" className={`w-4 h-4 ${'text-[color:var(--status-watch)]'}`} />
                     </div>
-                    <p className={`text-[10px] font-semibold text-center ${'text-[color:var(--status-watch)]'}`}>Daten veraltet / Abruf fehlgeschlagen</p>
+                    <p className={`text-[10px] font-semibold text-center ${'text-[color:var(--status-watch)]'}`}>Datenbasis veraltet / Abruf fehlgeschlagen</p>
                   </>
                 )}
                 {(dtcStatus === 'clean' || dtcStatus === 'active_faults') && (

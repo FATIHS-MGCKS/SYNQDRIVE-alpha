@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DashboardWarningLight, DashboardWarningLightsResponse } from '../../lib/api';
 import {
-  lightStateLabel,
   resolveTelltalePanelPresentation,
   sortDashboardLights,
 } from './dashboard-warning-lights-display';
@@ -62,11 +61,11 @@ describe('dashboard-warning-lights-display', () => {
     expect(p.badgeLabel).toBe('Nicht unterstützt');
   });
 
-  it('stale → Daten veraltet', () => {
+  it('stale → Datenbasis veraltet', () => {
     const p = resolveTelltalePanelPresentation(
       envelope({ freshness: 'stale', lastObservedAt: '2026-01-01T10:00:00.000Z' }),
     );
-    expect(p.badgeLabel).toBe('Daten veraltet');
+    expect(p.badgeLabel).toBe('Datenbasis veraltet');
   });
 
   it('critical active → Kritische Warnung', () => {

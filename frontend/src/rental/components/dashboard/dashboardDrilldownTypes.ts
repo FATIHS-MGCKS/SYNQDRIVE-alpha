@@ -3,8 +3,8 @@ import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
 import type {
   ActionQueueItem,
   FleetBoardLane,
-  OperationalKpiTarget,
 } from './dashboardTypes';
+import type { DashboardSliceId } from './runtime';
 
 export type DashboardDrilldownListKind =
   | 'vehicles'
@@ -39,12 +39,20 @@ export interface DashboardDrilldownRow {
   actionItem?: ActionQueueItem;
 }
 
+export interface DashboardDrilldownGroup {
+  id: string;
+  title: string;
+  count: number;
+  rows: DashboardDrilldownRow[];
+}
+
 export interface DashboardDrilldownContent {
   listKind: DashboardDrilldownListKind;
   title: string;
   filterLabel: string;
   description?: string;
   rows: DashboardDrilldownRow[];
+  groups?: DashboardDrilldownGroup[];
   loading: boolean;
   error?: string;
   footerAction?: DashboardDrilldownCta;
@@ -62,7 +70,7 @@ export type StationDrilldownMetric =
   | 'vehicles';
 
 export type DashboardDrilldownTarget =
-  | { type: 'kpi'; target: OperationalKpiTarget }
+  | { type: 'kpi'; target: DashboardSliceId }
   | { type: 'action-item'; itemId: string }
   | { type: 'fleet-lane'; lane: FleetBoardLane }
   | { type: 'station-metric'; stationId: string; metric: StationDrilldownMetric }

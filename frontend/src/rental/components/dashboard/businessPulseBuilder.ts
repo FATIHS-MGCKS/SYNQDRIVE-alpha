@@ -121,6 +121,9 @@ export function computeMonthlyKpisFromInvoices(
   };
 }
 
+/**
+ * @deprecated Deprecated: use dashboard runtime/slices instead. Must not be used for active Dashboard KPI/Drawer/Board/Business state.
+ */
 export function buildBusinessPulseSnapshot(input: {
   locale: string;
   intlLocale: string;

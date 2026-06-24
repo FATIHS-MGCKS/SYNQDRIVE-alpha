@@ -693,7 +693,7 @@ export function HighMobilityCompatibilityView({ isDarkMode }: Props) {
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-lg font-bold">High Mobility Compatibility Check</h1>
+            <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">High Mobility Compatibility Check</h1>
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-indigo-900/40 text-indigo-400' : 'bg-indigo-100 text-indigo-700'}`}>
               Internal Master Admin
             </span>

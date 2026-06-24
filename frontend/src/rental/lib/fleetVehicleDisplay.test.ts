@@ -51,13 +51,13 @@ function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
 const hoursAgoIso = (h: number) => new Date(Date.now() - h * 60 * 60_000).toISOString();
 
 describe('resolveFleetVehicleDisplayState', () => {
-  it('STANDBY (a few hours) stays Ready and is shown calmly, no warning', () => {
+  it('STANDBY (a few hours) stays available and is shown calmly, no warning', () => {
     const d = resolveFleetVehicleDisplayState(
       vehicle({ onlineStatus: 'STANDBY', isFresh: false, lastSignal: hoursAgoIso(10) }),
       { locale: 'en' },
     );
     expect(d.primaryStatus).toBe('ready');
-    expect(d.primaryLabel).toBe('Ready');
+    expect(d.primaryLabel).toBe('Available');
     expect(d.primaryLabel.toLowerCase()).not.toContain('stale');
     expect(d.telemetryStatus).toBe('standby');
     expect(d.showTelemetryWarning).toBe(false);
@@ -73,7 +73,7 @@ describe('resolveFleetVehicleDisplayState', () => {
     expect(d.showTelemetryWarning).toBe(false);
   });
 
-  it('signal delayed / soft offline (24–48h) shown calmly, primary stays ready', () => {
+  it('signal delayed / soft offline (24–48h) shown calmly, primary stays available', () => {
     const d = resolveFleetVehicleDisplayState(
       vehicle({ onlineStatus: 'STANDBY', isFresh: false, lastSignal: hoursAgoIso(30) }),
       { locale: 'en' },
@@ -85,7 +85,7 @@ describe('resolveFleetVehicleDisplayState', () => {
     expect(d.telemetryLabel.toLowerCase()).toContain('delayed');
   });
 
-  it('maps offline telemetry (>=48h) to an offline label, primary stays ready', () => {
+  it('maps offline telemetry (>=48h) to an offline label, primary stays available', () => {
     const d = resolveFleetVehicleDisplayState(
       vehicle({ onlineStatus: 'OFFLINE', isFresh: false, lastSignal: hoursAgoIso(49) }),
       { locale: 'en' },

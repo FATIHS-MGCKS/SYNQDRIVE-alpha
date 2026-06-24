@@ -3,12 +3,14 @@ import type { VehicleData } from '../../data/vehicles';
 import {
   getDuePickups,
   getFocusNotReadyVehicles,
+  getFocusNotReadyVehiclesFromRuntime,
   getOverdueReturns,
   persistOperatorFocusModePreference,
   readOperatorFocusModePreference,
   shouldShowDataFreshnessWarning,
 } from './dashboardFocusMode';
 import { OPERATOR_FOCUS_MODE_STORAGE_KEY } from './dashboardTypes';
+import type { VehicleRuntimeState } from './runtime';
 
 function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
   return {
@@ -38,6 +40,36 @@ function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
     insuranceCost: '',
     taxCost: '',
     totalMonthlyCost: '',
+    ...overrides,
+  };
+}
+
+function runtimeState(overrides: Partial<VehicleRuntimeState> = {}): VehicleRuntimeState {
+  return {
+    vehicleId: overrides.vehicleId ?? 'v1',
+    license: overrides.license ?? 'KS-AB 1',
+    displayName: overrides.displayName ?? 'Car',
+    stationId: null,
+    stationLabel: null,
+    operationalStatus: 'available',
+    rentalReadiness: 'ready',
+    blockLevel: 'none',
+    healthSeverity: 'ok',
+    complianceSeverity: 'ok',
+    telemetryState: 'standby',
+    dataQualityState: 'fresh',
+    bookingState: 'none',
+    readyReasons: [],
+    notReadyReasons: [],
+    blockReasons: [],
+    warningReasons: [],
+    criticalReasons: [],
+    isAvailable: true,
+    isReadyToRent: true,
+    isBlocked: false,
+    isMaintenance: false,
+    isCritical: false,
+    isWarning: false,
     ...overrides,
   };
 }
@@ -77,6 +109,31 @@ describe('dashboardFocusMode', () => {
       'en',
     );
     expect(items.map((i) => i.vehicleId)).toEqual(['dirty']);
+  });
+
+  it('lists not-ready vehicles from runtime states for the active dashboard path', () => {
+    const items = getFocusNotReadyVehiclesFromRuntime(
+      [
+        runtimeState({ vehicleId: 'ready', isReadyToRent: true }),
+        runtimeState({
+          vehicleId: 'dirty',
+          isReadyToRent: false,
+          rentalReadiness: 'not_ready',
+          notReadyReasons: [
+            {
+              id: 'cleaning',
+              category: 'cleaning',
+              severity: 'warning',
+              title: 'Cleaning pending',
+            },
+          ],
+        }),
+        runtimeState({ vehicleId: 'rented', operationalStatus: 'active_rented', isReadyToRent: false }),
+      ],
+      'en',
+    );
+    expect(items.map((i) => i.vehicleId)).toEqual(['dirty']);
+    expect(items[0]?.reason).toBe('Cleaning pending');
   });
 
   it('filters overdue returns and due pickups', () => {
@@ -122,6 +179,9 @@ describe('dashboardFocusMode', () => {
         syncStatus: 'live',
         telemetry: {
           totalInScope: 5,
+          liveCount: 1,
+          standbyCount: 4,
+          softOfflineCount: 0,
           freshCount: 5,
           staleCount: 0,
           offlineCount: 0,
@@ -151,6 +211,9 @@ describe('dashboardFocusMode', () => {
         syncStatus: 'stale',
         telemetry: {
           totalInScope: 5,
+          liveCount: 1,
+          standbyCount: 0,
+          softOfflineCount: 4,
           freshCount: 1,
           staleCount: 4,
           offlineCount: 0,

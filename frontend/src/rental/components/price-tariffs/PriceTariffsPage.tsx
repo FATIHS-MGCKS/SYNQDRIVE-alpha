@@ -110,7 +110,7 @@ export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[18px] font-bold tracking-[-0.02em] text-foreground">Price Tariffs</h1>
+          <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">Price Tariffs</h1>
           <p className="mt-0.5 text-[12px] text-muted-foreground">
             Manage rental rates, mileage, insurance, extras and deposits.
           </p>

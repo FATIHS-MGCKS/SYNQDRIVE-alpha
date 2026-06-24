@@ -71,7 +71,7 @@ export function BookingDetailHeader({
               </span>
               <BookingStatusBadge status={uiStatus} />
             </div>
-            <h1 className="text-base font-bold text-foreground truncate">
+            <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">
               {detail.customer.fullName}
               <span className="text-muted-foreground font-normal">
                 {' '}

@@ -57,7 +57,8 @@ function severityToBoard(
   lane: Exclude<FleetBoardLane, 'all'>,
 ): FleetBoardSeverity {
   if (lane === 'critical') return 'critical';
-  if (lane === 'overdue' || lane === 'maintenance') return 'warning';
+  if (lane === 'blocked') return 'critical';
+  if (lane === 'overdue' || lane === 'maintenance' || lane === 'attention') return 'warning';
   if (lane === 'due-soon' || lane === 'cleaning') return 'attention';
   if (lane === 'ready') return 'healthy';
   if (visualAttention === 'critical') return 'critical';
@@ -66,6 +67,9 @@ function severityToBoard(
   return 'healthy';
 }
 
+/**
+ * @deprecated Deprecated: use dashboard runtime/slices instead. Must not be used for active Dashboard KPI/Drawer/Board/Business state.
+ */
 function assignLane(
   v: VehicleData,
   healthAlert: VehicleHealthAlert | undefined,
@@ -107,8 +111,10 @@ function statusLabelForLane(
   const de = locale === 'de';
   const map: Partial<Record<Exclude<FleetBoardLane, 'all'>, [string, string]>> = {
     critical: ['Critical', 'Kritisch'],
+    blocked: ['Blocked', 'Blockiert'],
     overdue: ['Overdue', 'Überfällig'],
     'due-soon': ['Due soon', 'Bald fällig'],
+    attention: ['Attention', 'Hinweise'],
     maintenance: ['Maintenance', 'Wartung'],
     cleaning: ['Cleaning', 'Reinigung'],
     ready: ['Ready', 'Bereit'],
@@ -149,8 +155,10 @@ function sortPriority(
 ): number {
   const laneScore: Record<Exclude<FleetBoardLane, 'all'>, number> = {
     critical: 1000,
+    blocked: 950,
     overdue: 900,
     'due-soon': 700,
+    attention: 600,
     maintenance: 600,
     cleaning: 500,
     rented: 400,
@@ -182,8 +190,10 @@ export function laneLabel(lane: FleetBoardLane, locale: string): string {
   const labels: Record<FleetBoardLane, [string, string]> = {
     all: ['All', 'Alle'],
     critical: ['Critical', 'Kritisch'],
+    blocked: ['Blocked', 'Blockiert'],
     overdue: ['Overdue', 'Überfällig'],
     'due-soon': ['Due soon', 'Bald fällig'],
+    attention: ['Attention', 'Hinweise'],
     maintenance: ['Maintenance', 'Wartung'],
     cleaning: ['Cleaning', 'Reinigung'],
     ready: ['Ready', 'Bereit'],
@@ -195,8 +205,10 @@ export function laneLabel(lane: FleetBoardLane, locale: string): string {
 
 export const FLEET_BOARD_LANE_ORDER: FleetBoardLane[] = [
   'critical',
+  'blocked',
   'overdue',
   'due-soon',
+  'attention',
   'maintenance',
   'cleaning',
   'ready',
@@ -205,6 +217,9 @@ export const FLEET_BOARD_LANE_ORDER: FleetBoardLane[] = [
   'all',
 ];
 
+/**
+ * @deprecated Deprecated: use dashboard runtime/slices instead. Must not be used for active Dashboard KPI/Drawer/Board/Business state.
+ */
 export function buildFleetBoard(input: BuildFleetBoardInput): FleetBoardModel {
   const now = Date.now();
   const alertByVehicle = new Map(input.healthAlerts.map((a) => [a.vehicleId, a]));
@@ -270,7 +285,9 @@ export function buildFleetBoard(input: BuildFleetBoardInput): FleetBoardModel {
       severity:
         lane === 'critical'
           ? 'critical'
-          : lane === 'overdue' || lane === 'maintenance'
+          : lane === 'blocked'
+            ? 'critical'
+            : lane === 'overdue' || lane === 'maintenance' || lane === 'attention'
             ? 'warning'
             : lane === 'due-soon' || lane === 'cleaning'
               ? 'attention'
@@ -293,6 +310,9 @@ export function buildFleetBoard(input: BuildFleetBoardInput): FleetBoardModel {
   return { items, lanes, filteredItems };
 }
 
+/**
+ * @deprecated Deprecated: use dashboard runtime/slices instead. Must not be used for active Dashboard KPI/Drawer/Board/Business state.
+ */
 export function severityChipTone(severity: FleetBoardSeverity) {
   if (severity === 'critical') return 'critical' as const;
   if (severity === 'warning') return 'watch' as const;

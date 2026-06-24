@@ -26,6 +26,22 @@ import {
   dataQualityShortLabel,
   sortSummaryFindings,
 } from '../../lib/health-tab-summary-ui';
+import {
+  estimatedBatteryHealthLabel,
+  hasBatteryStartProblemEvidence,
+  isCriticalRestingVoltageStatus,
+  isEstimatedBatteryHealthSevere,
+  isEstimatedBatteryHealthWatch,
+  isLowRestingVoltageStatus,
+  formatBatteryVoltage,
+  resolveOverviewBatteryVoltage,
+  restingVoltageStatusLabel,
+} from '../../lib/battery-display.utils';
+import {
+  segmentFromHealthState,
+  type SegmentLevel,
+  type SegmentTone,
+} from '../../lib/health-segment-display';
 
 export type VehicleHealthBoxOverallState =
   | 'loading'
@@ -76,6 +92,9 @@ export interface VehicleHealthBoxViewModel {
     isStabilizing: boolean;
     isUntracked: boolean;
     showPercent: boolean;
+    segmentLevel: SegmentLevel;
+    segmentTone: SegmentTone;
+    segmentLabel: string;
   }>;
   nsDisplay: ReturnType<typeof buildNextServiceDisplay>;
   tuvCompliance: ReturnType<typeof buildTuvComplianceDisplay>;
@@ -304,21 +323,36 @@ function getWearStatus(v: number, tracked: boolean): ModuleRowStyle {
 function getBatteryLocalStyle(
   v: number,
   tracked: boolean,
-  condition: string | null | undefined,
-  voltageV: number | null | undefined,
+  severity: 'good' | 'watch' | 'warning' | 'critical' | 'unknown',
 ): ModuleRowStyle {
   if (!tracked) return rentalModuleToRowStyle('unknown');
-  if (condition === 'good') return rentalModuleToRowStyle('good');
-  if (condition === 'watch') return rentalModuleToRowStyle('warning');
-  if (condition === 'attention') return rentalModuleToRowStyle('critical');
-  if (voltageV != null) {
-    if (voltageV < 12.0) return rentalModuleToRowStyle('critical');
-    if (voltageV < 12.4) return rentalModuleToRowStyle('warning');
-    return rentalModuleToRowStyle('good');
+  if (severity === 'critical') return rentalModuleToRowStyle('critical');
+  if (severity === 'warning' || severity === 'watch') {
+    return {
+      label: severity === 'watch' ? 'Monitor' : 'Warning',
+      labelColor: 'text-[color:var(--status-watch)]',
+      bar: 'bg-[color:var(--status-watch)]',
+      barPct: 45,
+      accentRing: 'sq-tone-watch ring-1 ring-border',
+    };
   }
+  if (severity === 'good') return rentalModuleToRowStyle('good');
   if (v < 50) return rentalModuleToRowStyle('critical');
   if (v < 75) return rentalModuleToRowStyle('warning');
   return rentalModuleToRowStyle('good');
+}
+
+function resolveBatteryRowStyle(
+  rentalMod: RentalHealthModule | undefined,
+  localStyle: ModuleRowStyle,
+  hasHardEvidence: boolean,
+): ModuleRowStyle {
+  if (!rentalMod) return localStyle;
+  if (rentalMod.state === 'critical') return rentalModuleToRowStyle('critical');
+  if (rentalMod.state === 'warning' && hasHardEvidence) {
+    return rentalModuleToRowStyle(rentalMod.state);
+  }
+  return localStyle;
 }
 
 function getBrakeLocalStyle(cond: string | undefined, tracked: boolean): ModuleRowStyle {
@@ -398,14 +432,37 @@ export function buildVehicleHealthBoxViewModel(params: {
       ? null
       : (battery?.currentState?.publishedSohPct ?? battery?.currentState?.sohPercent ?? null));
   const estimatedSoh = battery?.lv?.estimatedHealthPercent ?? battery?.currentState?.estimatedSohPct ?? null;
-  const voltage = battery?.lv?.telemetry?.voltageV ?? battery?.currentState?.voltageV ?? lvBatteryVoltage;
+  const batteryVoltage = resolveOverviewBatteryVoltage(battery, lvBatteryVoltage);
+  const hasStartProblemEvidence = hasBatteryStartProblemEvidence(battery);
+  const hasLowRestingVoltage = isLowRestingVoltageStatus(batteryVoltage.status);
+  const hasCriticalRestingVoltage = isCriticalRestingVoltageStatus(batteryVoltage.status);
+  const hasEstimatedWatch = isEstimatedBatteryHealthWatch(battery);
+  const hasEstimatedSevere = isEstimatedBatteryHealthSevere(battery);
+  const hasBackendCriticalBattery = rentalHealth?.modules.battery?.state === 'critical';
+  const hasHardBatteryWarning = hasStartProblemEvidence || hasLowRestingVoltage || hasBackendCriticalBattery;
   const batteryScore = soh ?? estimatedSoh ?? null;
-  const batteryVal = batteryScore ?? 0;
-  const batteryCondition = battery?.lv?.condition ?? battery?.condition ?? null;
+  const batterySeverity: 'good' | 'watch' | 'warning' | 'critical' | 'unknown' = (() => {
+    if (hasBackendCriticalBattery || hasCriticalRestingVoltage) return 'critical';
+    if (hasStartProblemEvidence || hasLowRestingVoltage) return 'warning';
+    if (
+      hasEstimatedWatch ||
+      hasEstimatedSevere ||
+      battery?.lv?.condition === 'watch' ||
+      battery?.condition === 'watch' ||
+      battery?.lv?.condition === 'attention' ||
+      battery?.condition === 'attention'
+    ) {
+      return 'watch';
+    }
+    if (batteryVoltage.kind === 'resting' && batteryVoltage.status === 'GOOD') return 'good';
+    if (battery?.lv?.condition === 'good' || battery?.condition === 'good') return 'good';
+    return batteryVoltage.kind === 'unavailable' && batteryScore == null ? 'unknown' : 'good';
+  })();
+  const batteryVal = batteryScore ?? (batterySeverity === 'critical' ? 15 : batterySeverity === 'warning' ? 45 : batterySeverity === 'watch' ? 65 : batteryVoltage.kind === 'unavailable' ? 0 : 85);
 
   const brakesTracked = brakes?.overallCondition != null && brakes.overallCondition !== 'UNKNOWN';
   const tiresTracked = tires?.overallPercent != null || vehicleTiresFallback > 0;
-  const batteryTracked = batteryScore != null;
+  const batteryTracked = batteryScore != null || batteryVoltage.kind !== 'unavailable';
   const trackedFlags = [brakesTracked, tiresTracked, batteryTracked];
   const untrackedCount = 3 - trackedFlags.filter(Boolean).length;
   const trackedCount = trackedFlags.filter(Boolean).length;
@@ -416,12 +473,12 @@ export function buildVehicleHealthBoxViewModel(params: {
   const localCriticalCount = [
     brakeCond === 'CRITICAL',
     tiresTracked && (tireCanon ? tireCanon === 'CRITICAL' : tiresVal < 30),
-    batteryTracked && batteryCondition === 'attention',
+    batteryTracked && batterySeverity === 'critical',
   ].filter(Boolean).length;
   const localDueSoonCount = [
     brakeCond === 'WARNING' || brakeCond === 'WATCH',
     tiresTracked && (tireCanon ? (tireCanon === 'WARNING' || tireCanon === 'WATCH') : (tiresVal >= 30 && tiresVal < 60)),
-    batteryTracked && batteryCondition === 'watch',
+    batteryTracked && (batterySeverity === 'warning' || batterySeverity === 'watch'),
   ].filter(Boolean).length;
 
   const statCriticalCount = rentalHealth ? rentalCriticalCount : localCriticalCount;
@@ -450,22 +507,32 @@ export function buildVehicleHealthBoxViewModel(params: {
 
   const batteryDetail = (() => {
     if (batteryPubState === 'INITIAL_CALIBRATION') return 'Calibrating (estimate unavailable)';
-    if (batteryPubState === 'STABILIZING') return voltage != null ? `~${voltage.toFixed(1)}V · Stabilizing` : 'Stabilizing';
-    const vStr = voltage != null ? `${voltage.toFixed(1)}V` : null;
-    if (batteryCondition === 'attention') {
-      return vStr
-        ? `${vStr} · Kritisch — Starthilfe/Austausch empfohlen`
-        : 'Kritisch — Starthilfe/Austausch empfohlen';
+    if (batteryPubState === 'STABILIZING') {
+      return batteryVoltage.valueV != null
+        ? `${formatBatteryVoltage(batteryVoltage.valueV, batteryVoltage.kind === 'resting' ? 2 : 1)} · Stabilizing`
+        : 'Stabilizing';
     }
-    if (batteryCondition === 'watch') {
-      return vStr
-        ? `${vStr} · Startschwierigkeiten möglich`
-        : 'Startschwierigkeiten möglich';
+
+    const parts: string[] = [];
+    if (batteryVoltage.kind === 'resting' && batteryVoltage.valueV != null) {
+      parts.push(formatBatteryVoltage(batteryVoltage.valueV, 2));
+      parts.push(restingVoltageStatusLabel(batteryVoltage.status));
+    } else if (batteryVoltage.kind === 'current' && batteryVoltage.valueV != null) {
+      parts.push(`Aktuelle Spannung ${formatBatteryVoltage(batteryVoltage.valueV, 1)}`);
+    } else {
+      parts.push('Ruhespannung nicht verfügbar');
     }
-    if (soh != null) return vStr ?? 'SOH tracked';
-    if (vStr) return vStr;
-    return 'Estimate unavailable';
+
+    const estimatedLabel = estimatedBatteryHealthLabel(battery);
+    if (estimatedLabel) parts.push(estimatedLabel);
+    if (hasStartProblemEvidence) parts.push('Startschwierigkeiten möglich');
+
+    return parts.join(' · ');
   })();
+
+  const brakeSegment = segmentFromHealthState(brakesTracked ? brakeCond : 'UNKNOWN');
+  const tireSegment = segmentFromHealthState(tireCanon ?? (tiresTracked ? undefined : 'UNKNOWN'), tiresTracked ? tiresVal : null);
+  const batterySegment = segmentFromHealthState(batteryTracked ? batterySeverity : 'UNKNOWN');
 
   const healthItems: VehicleHealthBoxViewModel['healthItems'] = [
     {
@@ -486,6 +553,9 @@ export function buildVehicleHealthBoxViewModel(params: {
       isStabilizing: false,
       isUntracked: !brakesTracked,
       showPercent: false,
+      segmentLevel: brakeSegment.level,
+      segmentTone: brakeSegment.tone,
+      segmentLabel: brakeSegment.label,
     },
     {
       key: 'tires',
@@ -505,6 +575,9 @@ export function buildVehicleHealthBoxViewModel(params: {
       isStabilizing: false,
       isUntracked: !tiresTracked,
       showPercent: true,
+      segmentLevel: tireSegment.level,
+      segmentTone: tireSegment.tone,
+      segmentLabel: tireSegment.label,
     },
     {
       key: 'battery',
@@ -512,18 +585,19 @@ export function buildVehicleHealthBoxViewModel(params: {
       value: batteryVal,
       detail: batteryDetail,
       tracked: batteryTracked,
-      rowStyle: resolveModuleRowStyle(
+      rowStyle: resolveBatteryRowStyle(
         rentalHealth?.modules.battery,
-        getBatteryLocalStyle(batteryVal, batteryTracked, batteryCondition, voltage),
+        getBatteryLocalStyle(batteryVal, batteryTracked, batterySeverity),
+        hasHardBatteryWarning,
       ),
-      showBadge: moduleShowBadge(
-        rentalHealth?.modules.battery,
-        batteryCondition === 'attention' || batteryCondition === 'watch',
-      ),
+      showBadge: batterySeverity === 'critical' || batterySeverity === 'warning' || batterySeverity === 'watch',
       isCalibrating: batteryPubState === 'INITIAL_CALIBRATION',
       isStabilizing: batteryPubState === 'STABILIZING',
       isUntracked: !batteryTracked && batteryPubState !== 'INITIAL_CALIBRATION' && batteryPubState !== 'STABILIZING',
       showPercent: false,
+      segmentLevel: batterySegment.level,
+      segmentTone: batterySegment.tone,
+      segmentLabel: batterySegment.label,
     },
   ];
 

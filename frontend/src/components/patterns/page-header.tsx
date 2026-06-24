@@ -36,7 +36,7 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-5 animate-fade-up',
+        'mb-4 flex flex-col gap-2.5 animate-fade-up sm:mb-5 sm:flex-row sm:items-start sm:justify-between sm:gap-4',
         className,
       )}
     >
@@ -44,13 +44,15 @@ export function PageHeader({
         {eyebrow && (
           <div className="sq-section-label mb-1 truncate">{eyebrow}</div>
         )}
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
           {icon && (
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg sq-tone-brand">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg sq-tone-brand">
               {icon}
             </span>
           )}
-          <h1 className="truncate text-foreground">{title}</h1>
+          <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">
+            {title}
+          </h1>
           {status}
         </div>
         {description && (
@@ -65,7 +67,7 @@ export function PageHeader({
         )}
       </div>
       {actions && (
-        <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">{actions}</div>
       )}
     </div>
   );

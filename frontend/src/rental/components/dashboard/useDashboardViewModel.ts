@@ -44,26 +44,19 @@ import {
   buildUnassignedFleetSummary,
   sortStationCommandSummaries,
 } from './stationCommandBuilder';
-import { buildFleetBoard } from './fleetStateBuilder';
-import { buildBusinessPulseSnapshot } from './businessPulseBuilder';
 import { deriveOperationalInsights } from './deriveOperationalInsights';
 import { derivePredictiveOperationsInsights } from './derivePredictiveOperationsInsights';
 import {
-  getFocusNotReadyVehicles,
+  getFocusNotReadyVehiclesFromRuntime,
   persistOperatorFocusModePreference,
 } from './dashboardFocusMode';
 import { buildNowNextTimeline, buildTodayOperations } from './operationsBuilder';
 import {
-  buildControlCenterKpis,
   buildControlCenterStatus,
   buildFinanceKpis,
-  buildFleetStateTabs,
   buildVehicleLookup,
   computeMonthlyKpis,
   countImportantEvents,
-  countMaintenanceVehicles,
-  countReadyToRent,
-  countScopedCriticalInsights,
   deriveDataSyncStatus,
   filterFleetByStation,
   formatLastSyncLabel,
@@ -75,9 +68,70 @@ import {
   syncStatusLabel,
   type ReadyToRentOptions,
 } from './dashboardUtils';
-import { buildDashboardDrilldown } from './dashboardDrilldownBuilder';
-import type { DashboardDrilldownTarget } from './dashboardDrilldownTypes';
+import type { DashboardDrilldownTarget, StationDrilldownMetric } from './dashboardDrilldownTypes';
 import { attachKpiTrustHints, buildDataTrustLayer } from './dataTrustBuilder';
+import {
+  buildBusinessPulseSlices,
+  buildDashboardRuntimeModel,
+  buildRuntimeBusinessPulseSnapshot,
+  buildRuntimeControlCenterKpis,
+  buildRuntimeFleetBoard,
+  buildRuntimeFleetStateTabs,
+  type BusinessMetricId,
+  type BusinessPulseSlice,
+  type DashboardRuntimeModel,
+  type DashboardSliceId,
+} from './runtime';
+
+const BUSINESS_METRIC_IDS: ReadonlySet<string> = new Set<BusinessMetricId>([
+  'revenue',
+  'profit',
+  'expenses',
+  'open-receivables',
+  'overdue-receivables',
+  'paid-invoices',
+  'draft-invoices',
+  'failed-payments',
+]);
+
+function sliceIdFromKpiTarget(target: OperationalKpiTarget): DashboardSliceId {
+  return target === 'maintenance' ? 'blocked-maintenance' : target;
+}
+
+function sliceIdFromFleetLane(lane: FleetBoardLane): DashboardSliceId | null {
+  if (lane === 'ready') return 'ready-to-rent';
+  if (lane === 'rented') return 'active-rented';
+  if (lane === 'due-soon') return 'due-soon';
+  if (lane === 'overdue') return 'overdue-returns';
+  if (lane === 'maintenance' || lane === 'blocked') return 'blocked-maintenance';
+  if (lane === 'critical') return 'critical-alerts';
+  return null;
+}
+
+function sliceIdFromStationMetric(metric: StationDrilldownMetric): DashboardSliceId | null {
+  if (metric === 'ready') return 'ready-to-rent';
+  if (metric === 'rented') return 'active-rented';
+  if (metric === 'overdue') return 'overdue-returns';
+  if (metric === 'blocked') return 'blocked-maintenance';
+  if (metric === 'critical') return 'critical-alerts';
+  if (metric === 'due-today' || metric === 'pickups' || metric === 'returns') return 'due-soon';
+  return null;
+}
+
+function activeDashboardSliceIdFromTarget(target: DashboardDrilldownTarget | null): DashboardSliceId | null {
+  if (!target) return null;
+  if (target.type === 'kpi') return target.target;
+  if (target.type === 'fleet-lane') return sliceIdFromFleetLane(target.lane);
+  if (target.type === 'station-metric') return sliceIdFromStationMetric(target.metric);
+  return null;
+}
+
+function activeBusinessMetricIdFromTarget(target: DashboardDrilldownTarget | null): BusinessMetricId | null {
+  if (!target || target.type !== 'business-metric') return null;
+  if (target.metricId === 'unpaid') return 'open-receivables';
+  if (target.metricId === 'lost-revenue-risk') return 'overdue-receivables';
+  return BUSINESS_METRIC_IDS.has(target.metricId) ? (target.metricId as BusinessMetricId) : null;
+}
 
 export function useDashboardViewModel(_props: DashboardViewProps): DashboardViewModel {
   void _props;
@@ -145,6 +199,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   const [timeframe, setTimeframe] = useState<DashboardTimeframe>('today');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastManualSyncAt, setLastManualSyncAt] = useState<string | null>(null);
+  const [dashboardNow, setDashboardNow] = useState(() => new Date());
 
   const loadInvoices = useCallback(async () => {
     if (!orgId) {
@@ -216,7 +271,9 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         loadTodayBookings(),
         loadInvoices(),
       ]);
-      setLastManualSyncAt(new Date().toISOString());
+      const syncedAt = new Date();
+      setDashboardNow(syncedAt);
+      setLastManualSyncAt(syncedAt.toISOString());
     } finally {
       setIsRefreshing(false);
     }
@@ -325,15 +382,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
 
   const { alerts: orgVehicleHealthAlerts } = useVehicleHealthAlerts(fleetVehicles);
 
-  const orgReadyOptions = useMemo<ReadyToRentOptions>(() => {
-    const blockedVehicleIds = new Set<string>();
-    for (const v of fleetVehicles) {
-      if (healthMap.get(v.id)?.rental_blocked) blockedVehicleIds.add(v.id);
-    }
-    const healthRiskVehicleIds = new Set(orgVehicleHealthAlerts.map((a) => a.vehicleId));
-    return { blockedVehicleIds, healthRiskVehicleIds };
-  }, [fleetVehicles, healthMap, orgVehicleHealthAlerts]);
-
   const healthRiskVehicleIds = useMemo(
     () => new Set(vehicleHealthAlerts.map((a) => a.vehicleId)),
     [vehicleHealthAlerts],
@@ -350,11 +398,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   const readyOptions = useMemo<ReadyToRentOptions>(
     () => ({ blockedVehicleIds, healthRiskVehicleIds }),
     [blockedVehicleIds, healthRiskVehicleIds],
-  );
-
-  const focusNotReadyVehicles = useMemo(
-    () => getFocusNotReadyVehicles(filteredFleetVehicles, readyOptions, locale),
-    [filteredFleetVehicles, readyOptions, locale],
   );
 
   const selectedStationName = useMemo(() => {
@@ -400,6 +443,49 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     [todayReturnsApi, vehicleLookup, locale, selectedStationId, healthRiskVehicleIds],
   );
 
+  const runtimeDueSoonMinutes = 60;
+
+  const dashboardRuntime = useMemo<DashboardRuntimeModel>(
+    () =>
+      buildDashboardRuntimeModel({
+        locale,
+        fleetVehicles: filteredFleetVehicles,
+        availableVehicles,
+        reservedVehicles,
+        activeRentedVehicles,
+        pickupItems,
+        returnItems,
+        insights,
+        blockedVehicleIds,
+        healthRiskVehicleIds,
+        healthMap,
+        now: dashboardNow,
+        dueSoonMinutes: runtimeDueSoonMinutes,
+        telemetrySoftOfflineHours: 24,
+        telemetryHardOfflineHours: 48,
+      }),
+    [
+      locale,
+      filteredFleetVehicles,
+      availableVehicles,
+      reservedVehicles,
+      activeRentedVehicles,
+      pickupItems,
+      returnItems,
+      insights,
+      blockedVehicleIds,
+      healthRiskVehicleIds,
+      healthMap,
+      dashboardNow,
+      runtimeDueSoonMinutes,
+    ],
+  );
+
+  const focusNotReadyVehicles = useMemo(
+    () => getFocusNotReadyVehiclesFromRuntime(dashboardRuntime.vehicleStates, locale),
+    [dashboardRuntime, locale],
+  );
+
   const pickupNeedsCleaning = pickupItems.filter((p) => p.needsCleaning).length;
   const pickupAlerts = pickupItems.filter((p) => p.hasAlert).length;
   const pickupOverdueCount = pickupItems.filter((p) => p.isOverdue && !p.done).length;
@@ -416,8 +502,9 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       returnItems,
       fleetById,
       vehicleHealthAlerts,
+      vehicleStates: dashboardRuntime.vehicleStates,
     }),
-    [locale, timeframe, pickupItems, returnItems, fleetById, vehicleHealthAlerts],
+    [locale, timeframe, pickupItems, returnItems, fleetById, vehicleHealthAlerts, dashboardRuntime],
   );
 
   const nowNextTimeline = useMemo(
@@ -495,9 +582,9 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     [invoicesApi, intlLocale, selectedStationId, filteredVehicleIds],
   );
 
-  const activateKpiTarget = useCallback(
-    (target: OperationalKpiTarget) => {
-      switch (target) {
+  const openSliceDrilldown = useCallback(
+    (sliceId: DashboardSliceId) => {
+      switch (sliceId) {
         case 'ready-to-rent':
           setFleetBoardFilter('ready');
           setFleetStatusTab('Available');
@@ -506,8 +593,12 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
           setFleetBoardFilter('rented');
           setFleetStatusTab('Active Rented');
           break;
-        case 'maintenance':
-          setFleetBoardFilter('maintenance');
+        case 'blocked-maintenance':
+          setFleetBoardFilter(
+            dashboardRuntime.vehicleStates.some((state) => state.isBlocked && !state.isMaintenance)
+              ? 'blocked'
+              : 'maintenance',
+          );
           setFleetStatusTab('Maintenance');
           break;
         case 'overdue-returns':
@@ -525,7 +616,21 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         default:
           break;
       }
-      openDrilldown({ type: 'kpi', target });
+      openDrilldown({ type: 'kpi', target: sliceId });
+    },
+    [dashboardRuntime, openDrilldown],
+  );
+
+  const activateKpiTarget = useCallback(
+    (target: OperationalKpiTarget) => {
+      openSliceDrilldown(sliceIdFromKpiTarget(target));
+    },
+    [openSliceDrilldown],
+  );
+
+  const openBusinessMetricDrilldown = useCallback(
+    (metricId: BusinessMetricId) => {
+      openDrilldown({ type: 'business-metric', metricId });
     },
     [openDrilldown],
   );
@@ -539,31 +644,34 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     });
   }, [intlLocale]);
 
+  // Legacy compatibility field: FleetStateBoard now reads dashboardRuntime.slices
+  // and vehicleStates directly. Keep this runtime-backed adapter for remaining
+  // ViewModel consumers until they are retired.
   const fleetBoard = useMemo(
     () =>
-      buildFleetBoard({
+      buildRuntimeFleetBoard({
+        runtime: dashboardRuntime,
         locale,
         vehicles: filteredFleetVehicles,
-        healthMap,
-        healthAlerts: vehicleHealthAlerts,
         filter: fleetBoardFilter,
       }),
-    [locale, filteredFleetVehicles, healthMap, vehicleHealthAlerts, fleetBoardFilter],
+    [dashboardRuntime, locale, filteredFleetVehicles, fleetBoardFilter],
   );
 
+  // Legacy compatibility field. Do not use for new Dashboard board surfaces.
   const fleetStateTabs = useMemo(
     () =>
-      buildFleetStateTabs(filteredFleetVehicles, availableVehicles, reservedVehicles, activeRentedVehicles, {
+      buildRuntimeFleetStateTabs({
+        runtime: dashboardRuntime,
+        labels: {
         available: t('dashboard.available'),
         reserved: t('dashboard.reserved'),
         rented: t('dashboard.rented'),
         maintenance: t('dashboard.maintenanceTab'),
+        },
       }),
     [
-      filteredFleetVehicles,
-      availableVehicles,
-      reservedVehicles,
-      activeRentedVehicles,
+      dashboardRuntime,
       t,
     ],
   );
@@ -579,7 +687,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     [monthlyKpis, fmtMonthlyEUR, t],
   );
 
-  const dashboardNotifications: DashboardNotificationItem[] = [];
+  const dashboardNotifications = useMemo<DashboardNotificationItem[]>(() => [], []);
 
   const dataFreshness = useMemo(
     () => ({
@@ -616,7 +724,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     () =>
       buildActionQueueEmptySummary({
         locale,
-        readyToRentCount: countReadyToRent(availableVehicles, readyOptions),
+        readyToRentCount: dashboardRuntime.slices['ready-to-rent'].count ?? 0,
         upcomingHandovers:
           pickupItems.filter((p) => !p.done).length + returnItems.filter((r) => !r.done).length,
         syncStatusLabel: syncStatusLabel(
@@ -626,8 +734,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       }),
     [
       locale,
-      availableVehicles,
-      readyOptions,
+      dashboardRuntime,
       pickupItems,
       returnItems,
       dataFreshness,
@@ -645,6 +752,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
           healthMap,
           todayPickups: todayPickupsApi,
           todayReturns: todayReturnsApi,
+        runtime: dashboardRuntime,
         }),
       ),
     [
@@ -654,6 +762,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       healthMap,
       todayPickupsApi,
       todayReturnsApi,
+      dashboardRuntime,
     ],
   );
 
@@ -666,12 +775,13 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     () =>
       computeVehicleTelemetryFreshness({
         vehicles: filteredFleetVehicles,
+        vehicleStates: dashboardRuntime.vehicleStates,
         dataFreshness,
         orgActive: !!orgId,
         locale,
         lastManualSyncAt,
       }),
-    [filteredFleetVehicles, dataFreshness, orgId, locale, lastManualSyncAt],
+    [filteredFleetVehicles, dashboardRuntime, dataFreshness, orgId, locale, lastManualSyncAt],
   );
 
   const dataTrust = useMemo(
@@ -715,6 +825,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         locale,
         fleetLoading,
         readyOptions,
+        runtime: dashboardRuntime,
       }),
     [
       filteredFleetVehicles,
@@ -727,22 +838,31 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       locale,
       fleetLoading,
       readyOptions,
+      dashboardRuntime,
     ],
   );
 
+  const businessPulseSlices = useMemo<Record<BusinessMetricId, BusinessPulseSlice>>(
+    () =>
+      buildBusinessPulseSlices({
+        invoices: invoicesApi,
+        locale,
+        now: dashboardNow,
+      }),
+    [invoicesApi, locale, dashboardNow],
+  );
+
+  // Legacy compatibility field: BusinessPulse now renders directly from
+  // businessPulseSlices. Keep this runtime-backed snapshot for remaining
+  // external ViewModel consumers until they are retired.
   const businessPulse = useMemo(
     () =>
-      buildBusinessPulseSnapshot({
+      buildRuntimeBusinessPulseSnapshot({
         locale,
         intlLocale,
-        invoices: invoicesApi,
+        slices: businessPulseSlices,
         invoicesLoaded,
         invoicesError,
-        fleetLoaded: !fleetLoading,
-        fleetTotal: filteredFleetVehicles.length,
-        activeRentedCount: activeRentedVehicles.length,
-        availableCount: availableVehicles.length,
-        readyCount: countReadyToRent(availableVehicles, readyOptions),
         stationScoped: !!selectedStationId,
         fmtEUR: fmtMonthlyEUR,
         labels: {
@@ -750,39 +870,24 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
           profit: t('dashboard.estimatedProfit'),
           expenses: t('dashboard.expenses'),
           unpaid: locale === 'de' ? 'Offene Forderungen' : 'Open receivables',
-          utilization: t('dashboard.utilization'),
-          revenuePerVehicle: locale === 'de' ? 'Umsatz / Fahrzeug' : 'Revenue / vehicle',
           lostRevenueRisk: locale === 'de' ? 'Überfällige Forderungen' : 'Overdue receivables',
           invoicesShort: (count) => t('dashboard.invoicesShort', { count }),
-          noData: locale === 'de' ? 'Keine Daten' : 'No data',
-          notEnoughBasis: locale === 'de' ? 'Keine belastbare Basis' : 'Not enough basis',
           emptyTitle: locale === 'de' ? 'Noch keine Finanzdaten' : 'No financial data yet',
           emptySubtitle:
             locale === 'de'
               ? 'Sobald Rechnungen vorliegen, erscheinen MTD-Kennzahlen hier.'
               : 'MTD metrics appear here once invoices are available.',
-          stationNote:
-            locale === 'de'
-              ? 'Nur fahrzeugbezogene Rechnungen im Stations-Scope'
-              : 'Vehicle-linked invoices in station scope only',
         },
-        vehicleIds: selectedStationId ? filteredVehicleIds : null,
       }),
     [
       locale,
       intlLocale,
-      invoicesApi,
+      businessPulseSlices,
       invoicesLoaded,
       invoicesError,
-      fleetLoading,
-      filteredFleetVehicles.length,
-      activeRentedVehicles.length,
-      availableVehicles,
       selectedStationId,
       fmtMonthlyEUR,
       t,
-      filteredVehicleIds,
-      readyOptions,
     ],
   );
 
@@ -797,6 +902,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         healthAlerts: vehicleHealthAlerts,
         healthMap,
         telemetry: vehicleTelemetryFreshness,
+        dashboardRuntime,
         fleetLoading,
         todayBookingsLoaded,
       }),
@@ -809,6 +915,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       vehicleHealthAlerts,
       healthMap,
       vehicleTelemetryFreshness,
+      dashboardRuntime,
       fleetLoading,
       todayBookingsLoaded,
     ],
@@ -829,6 +936,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         healthMap,
         telemetry: vehicleTelemetryFreshness,
         readyOptions,
+        dashboardRuntime,
         insights,
         fleetLoading,
         todayBookingsLoaded,
@@ -846,6 +954,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       healthMap,
       vehicleTelemetryFreshness,
       readyOptions,
+      dashboardRuntime,
       insights,
       fleetLoading,
       todayBookingsLoaded,
@@ -865,7 +974,8 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         notifications: dashboardNotifications,
         derivedInsights: derivedOperationalInsights,
         predictiveInsights: predictiveOperationsInsights,
-        readyToRentCount: countReadyToRent(availableVehicles, readyOptions),
+        dashboardRuntime,
+        readyToRentCount: dashboardRuntime.slices['ready-to-rent'].count ?? 0,
         syncStatusLabel: syncStatusLabel(deriveDataSyncStatus(dataFreshness, !!orgId), locale),
       }),
     [
@@ -878,8 +988,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       returnItems,
       derivedOperationalInsights,
       predictiveOperationsInsights,
-      availableVehicles,
-      readyOptions,
+      dashboardRuntime,
       dataFreshness,
       orgId,
       dashboardNotifications,
@@ -892,6 +1001,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     const baseInput = {
       stationId: selectedStationId,
       fleetVehicles: filteredFleetVehicles,
+      vehicleStates: dashboardRuntime.vehicleStates,
       healthMap,
       healthAlerts: vehicleHealthAlerts,
       readyOptions,
@@ -914,6 +1024,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
           stationId: selectedStationId,
           stationName: selectedStationName,
           fleetVehicles: filteredFleetVehicles,
+          vehicleStates: dashboardRuntime.vehicleStates,
           locale,
         }),
       ],
@@ -922,6 +1033,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     selectedStationId,
     stationHealth,
     filteredFleetVehicles,
+    dashboardRuntime,
     healthMap,
     vehicleHealthAlerts,
     readyOptions,
@@ -933,47 +1045,24 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     locale,
   ]);
 
+  // Legacy compatibility field: ControlKpiStrip now reads dashboardRuntime.slices directly.
+  // Keep this runtime-backed adapter until any remaining external ViewModel consumers are retired.
   const controlCenterKpis = useMemo(
     () =>
       attachKpiTrustHints(
-        buildControlCenterKpis({
+        buildRuntimeControlCenterKpis({
           locale,
-          timeframe,
-          todayBookingsLoaded,
-          todayBookingsError,
-          fleetLoaded: !fleetLoading,
-          availableVehicles,
-          activeRentedCount: activeRentedVehicles.length,
-          maintenanceCount: countMaintenanceVehicles(filteredFleetVehicles),
-          pickupItems,
-          returnItems,
-          overdueReturns: returnOverdue,
-          criticalAlerts: insightsLoading
-            ? null
-            : countScopedCriticalInsights(insights, filteredVehicleIds, !!selectedStationId),
-          insightsLoaded: !insightsLoading && !insightsError,
-          readyOptions,
+          runtime: dashboardRuntime,
+          insightsLoading,
+          insightsError,
         }),
         dataTrust,
       ),
     [
       locale,
-      timeframe,
-      todayBookingsLoaded,
-      todayBookingsError,
-      fleetLoading,
-      availableVehicles,
-      activeRentedVehicles.length,
-      filteredFleetVehicles,
-      pickupItems,
-      returnItems,
-      returnOverdue,
+      dashboardRuntime,
       insightsLoading,
       insightsError,
-      insights,
-      filteredVehicleIds,
-      selectedStationId,
-      readyOptions,
       dataTrust,
     ],
   );
@@ -1014,48 +1103,19 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     ],
   );
 
-  const drilldown = useMemo(() => {
-    if (!drilldownTarget) return null;
-    return buildDashboardDrilldown(
-      {
-        locale,
-        selectedStationName,
-        fleetBoard,
-        filteredFleetVehicles,
-        pickupItems,
-        returnItems,
-        actionQueue,
-        actionQueueLoading,
-        vehicleHealthAlerts,
-        invoices: invoicesApi,
-        invoicesLoaded,
-        invoicesError,
-        nowNextTimeline,
-        stationHealth,
-        dataFreshness,
-        filteredVehicleIds,
-      },
-      drilldownTarget,
-    );
-  }, [
-    drilldownTarget,
-    locale,
-    selectedStationName,
-    fleetBoard,
-    filteredFleetVehicles,
-    pickupItems,
-    returnItems,
-    actionQueue,
-    actionQueueLoading,
-    vehicleHealthAlerts,
-    invoicesApi,
-    invoicesLoaded,
-    invoicesError,
-    nowNextTimeline,
-    stationHealth,
-    dataFreshness,
-    filteredVehicleIds,
-  ]);
+  // Legacy contract field. The active DashboardDrilldownDrawer reads
+  // dashboardRuntime.slices/businessPulseSlices directly via active target IDs.
+  const drilldown = null;
+
+  const activeDashboardSliceId = useMemo(
+    () => activeDashboardSliceIdFromTarget(drilldownTarget),
+    [drilldownTarget],
+  );
+
+  const activeBusinessMetricId = useMemo(
+    () => activeBusinessMetricIdFromTarget(drilldownTarget),
+    [drilldownTarget],
+  );
 
   return {
     systemDark,
@@ -1065,10 +1125,18 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     controlCenterStatus,
     controlCenterKpis,
     activateKpiTarget,
+    openSliceDrilldown,
+    openBusinessMetricDrilldown,
     drilldownTarget,
     drilldown,
     openDrilldown,
     closeDrilldown,
+    dashboardRuntime,
+    dashboardSlices: dashboardRuntime.slices,
+    vehicleRuntimeStates: dashboardRuntime.vehicleStates,
+    businessPulseSlices,
+    activeDashboardSliceId,
+    activeBusinessMetricId,
     criticalOnly,
     setCriticalOnly,
     operatorFocusMode,

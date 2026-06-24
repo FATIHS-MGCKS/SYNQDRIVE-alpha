@@ -238,7 +238,7 @@ export function DocumentsView({ vehicle, onOpenLinkedTask }: DocumentsViewProps)
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 space-y-2">
             <p className="sq-section-label">Fahrzeugakte</p>
-            <h1 className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">
               {vehicleName}
             </h1>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">

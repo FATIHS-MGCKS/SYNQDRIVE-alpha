@@ -25,9 +25,9 @@
   --font-weight-bold: 700;
 
   /* ── Typography scale — px-exact to hit the V4.6.88 typography rules ──
-     Page titles 28 / 700, Section 16 / 600, Card 14 / 600,
+     Page titles fluid 21–24 / 700, Section 16 / 600, Card 14 / 600,
      Body 13–14 / 500, Captions 12 / 500, Labels 11 / 700. */
-  --text-display-lg: 28px;  /* page titles (h1) */
+  --text-display-lg: clamp(21px, 1vw + 17px, 24px);  /* page titles (h1) */
   --text-display-md: 22px;  /* view heroes (secondary) */
   --text-section:    16px;  /* section titles (h2) */
   --text-card:       14px;  /* card titles (h3, h4) */
@@ -390,7 +390,7 @@
   }
 
   /* ── Typography hierarchy — V4.6.88 rules
-     Page titles 28/700, Section 16/600, Card 14/600, Body 14/500,
+     Page titles fluid 21–24/700, Section 16/600, Card 14/600, Body 14/500,
      Buttons/Tabs/Nav 13/600, Labels 11/700 tracked. ── */
   h1 {
     font-family: var(--font-display);

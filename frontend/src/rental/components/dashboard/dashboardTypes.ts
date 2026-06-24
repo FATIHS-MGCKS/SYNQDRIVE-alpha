@@ -11,6 +11,14 @@ import type { FleetStatusTabKey } from '../../lib/vehicle-status';
 import type { StatusTone } from '../../../components/patterns';
 import type { DashboardDrilldownContent, DashboardDrilldownTarget } from './dashboardDrilldownTypes';
 import type { DataTrustLayer, DashboardTrustHint } from './dataTrustBuilder';
+import type {
+  BusinessMetricId,
+  BusinessPulseSlice,
+  DashboardRuntimeModel,
+  DashboardSlice,
+  DashboardSliceId,
+  VehicleRuntimeState,
+} from './runtime';
 
 export const STATION_FILTER_STORAGE_KEY = 'synqdrive.dashboard.selectedStationId';
 export const OPERATOR_FOCUS_MODE_STORAGE_KEY = 'synqdrive.dashboard.operatorFocusMode';
@@ -328,8 +336,10 @@ export type FleetBoardSeverity = 'critical' | 'warning' | 'attention' | 'info' |
 export type FleetBoardLane =
   | 'all'
   | 'critical'
+  | 'blocked'
   | 'overdue'
   | 'due-soon'
+  | 'attention'
   | 'maintenance'
   | 'cleaning'
   | 'ready'
@@ -490,6 +500,10 @@ export interface StationHealthSummary {
   reservedCount: number;
   maintenanceCount: number;
   needsCleaningCount: number;
+  availableNotReadyCount?: number;
+  warningCount?: number;
+  softOfflineCount?: number;
+  offlineCount?: number;
   alertCount: number;
   pickupsToday: number;
   returnsToday: number;
@@ -531,6 +545,9 @@ export interface FleetReadinessBreakdown {
   overdueReturns: number;
   criticalAlerts: number;
   cleaningNeeded: number;
+  softOfflineCount: number;
+  offlineCount: number;
+  /** @deprecated Use softOfflineCount + offlineCount. */
   staleData: number;
   conflicts: number;
 }
@@ -601,10 +618,18 @@ export interface DashboardViewModel {
   controlCenterStatus: ControlCenterStatus;
   controlCenterKpis: ControlCenterKpi[];
   activateKpiTarget: (target: OperationalKpiTarget) => void;
+  openSliceDrilldown: (sliceId: DashboardSliceId) => void;
+  openBusinessMetricDrilldown: (metricId: BusinessMetricId) => void;
   drilldownTarget: DashboardDrilldownTarget | null;
   drilldown: DashboardDrilldownContent | null;
   openDrilldown: (target: DashboardDrilldownTarget) => void;
   closeDrilldown: () => void;
+  dashboardRuntime: DashboardRuntimeModel;
+  dashboardSlices: Record<DashboardSliceId, DashboardSlice>;
+  vehicleRuntimeStates: VehicleRuntimeState[];
+  businessPulseSlices: Record<BusinessMetricId, BusinessPulseSlice>;
+  activeDashboardSliceId: DashboardSliceId | null;
+  activeBusinessMetricId: BusinessMetricId | null;
 
   criticalOnly: boolean;
   setCriticalOnly: (value: boolean) => void;

@@ -4,13 +4,21 @@ import { SkeletonRows } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import { FleetBoardVehicleRow } from './FleetBoardVehicleRow';
 import { panelShellClass } from './dashboardShell';
-import type { VehicleData } from '../../data/vehicles';
-import type { DashboardViewModel } from './dashboardTypes';
+import type {
+  DashboardRuntimeModel,
+  DashboardSliceId,
+  DashboardSliceRow,
+  VehicleRuntimeState,
+} from './runtime';
 
 interface FleetStateBoardProps {
-  vm: DashboardViewModel;
-  onVehicleSelect?: (vehicle: VehicleData) => void;
-  onOpenVehicleById?: (vehicleId: string) => void;
+  dashboardRuntime: DashboardRuntimeModel;
+  activeTargetId?: DashboardSliceId | null;
+  onSelectSlice?: (sliceId: DashboardSliceId) => void;
+  onOpenVehicle?: (vehicleId: string) => void;
+  locale?: string;
+  loading?: boolean;
+  stationName?: string | null;
 }
 
 function FleetBoardEmpty({ locale, stationName }: { locale: string; stationName?: string | null }) {
@@ -104,61 +112,184 @@ function MinimalFleetHeader({
   );
 }
 
-export function FleetStateBoard({ vm, onVehicleSelect, onOpenVehicleById }: FleetStateBoardProps) {
-  const {
-    t,
-    locale,
-    filteredFleetVehicles,
-    fleetBoard,
-    fleetBoardFilter,
-    setFleetBoardFilter,
-    selectedStationName,
-    dataFreshness,
-  } = vm;
+interface RuntimeBoardSection {
+  id: string;
+  sliceId: DashboardSliceId;
+  title: string;
+  subtitle: string;
+  count: number;
+  rows: DashboardSliceRow[];
+}
 
-  const vehicleById = useMemo(() => {
-    const m = new Map<string, VehicleData>();
-    for (const v of filteredFleetVehicles) m.set(v.id, v);
-    return m;
-  }, [filteredFleetVehicles]);
+function sectionLabel(sliceId: DashboardSliceId, de: boolean): string {
+  const labels: Record<DashboardSliceId, [string, string]> = {
+    'ready-to-rent': ['Ready to Rent', 'Mietbereit'],
+    'active-rented': ['Active / Rented', 'Aktiv / Vermietet'],
+    'due-soon': ['Due Soon', 'Bald fällig'],
+    'overdue-returns': ['Overdue Returns', 'Überfällige Rückgaben'],
+    'blocked-maintenance': ['Blocked & Maintenance', 'Blockiert & Wartung'],
+    'critical-alerts': ['Critical Alerts', 'Kritische Alerts'],
+  };
+  return de ? labels[sliceId][1] : labels[sliceId][0];
+}
 
-  const loading = dataFreshness.fleetLoading;
+function availableButNotReadyRows(runtime: DashboardRuntimeModel): DashboardSliceRow[] {
+  const readySlice = runtime.slices['ready-to-rent'];
+  const groupRows = readySlice.groups?.find((group) => group.id === 'available-but-not-ready')?.rows;
+  return groupRows?.length ? groupRows : readySlice.secondaryRows ?? [];
+}
+
+function buildSections(runtime: DashboardRuntimeModel, de: boolean): RuntimeBoardSection[] {
+  const readySlice = runtime.slices['ready-to-rent'];
+  const activeSlice = runtime.slices['active-rented'];
+  const dueSoonSlice = runtime.slices['due-soon'];
+  const overdueSlice = runtime.slices['overdue-returns'];
+  const blockedSlice = runtime.slices['blocked-maintenance'];
+  const criticalSlice = runtime.slices['critical-alerts'];
+  const notReadyRows = availableButNotReadyRows(runtime);
+
+  return [
+    {
+      id: 'ready-to-rent',
+      sliceId: 'ready-to-rent',
+      title: sectionLabel('ready-to-rent', de),
+      subtitle: readySlice.hint ?? (de ? 'Echte mietbereite Fahrzeuge' : 'Truly ready vehicles'),
+      count: readySlice.count ?? readySlice.rows.length,
+      rows: readySlice.rows,
+    },
+    {
+      id: 'available-but-not-ready',
+      sliceId: 'ready-to-rent',
+      title: de ? 'Verfügbar, aber nicht bereit' : 'Available but not ready',
+      subtitle: de ? 'Aus dem Ready-Slice erklärt' : 'Explained by the Ready slice',
+      count: notReadyRows.length,
+      rows: notReadyRows,
+    },
+    {
+      id: 'active-rented',
+      sliceId: 'active-rented',
+      title: sectionLabel('active-rented', de),
+      subtitle: activeSlice.hint ?? (de ? 'Aktive Mietvorgänge' : 'Active rental operations'),
+      count: activeSlice.count ?? activeSlice.rows.length,
+      rows: activeSlice.rows,
+    },
+    {
+      id: 'due-soon',
+      sliceId: 'due-soon',
+      title: sectionLabel('due-soon', de),
+      subtitle: dueSoonSlice.hint ?? (de ? 'Pickups und Returns im Zeitfenster' : 'Pickups and returns in the window'),
+      count: dueSoonSlice.count ?? dueSoonSlice.rows.length,
+      rows: dueSoonSlice.rows,
+    },
+    {
+      id: 'overdue-returns',
+      sliceId: 'overdue-returns',
+      title: sectionLabel('overdue-returns', de),
+      subtitle: overdueSlice.hint ?? (de ? 'Nur überfällige Rückgaben' : 'Only overdue returns'),
+      count: overdueSlice.count ?? overdueSlice.rows.length,
+      rows: overdueSlice.rows,
+    },
+    {
+      id: 'blocked-maintenance',
+      sliceId: 'blocked-maintenance',
+      title: sectionLabel('blocked-maintenance', de),
+      subtitle: blockedSlice.hint ?? (de ? 'Blockaden, Wartung und nicht verfügbare Fahrzeuge' : 'Blocks, maintenance, and unavailable vehicles'),
+      count: blockedSlice.count ?? blockedSlice.rows.length,
+      rows: blockedSlice.rows,
+    },
+    {
+      id: 'critical-alerts',
+      sliceId: 'critical-alerts',
+      title: sectionLabel('critical-alerts', de),
+      subtitle: criticalSlice.hint ?? (de ? 'Deduplizierte Problem-Items' : 'Deduplicated issue items'),
+      count: criticalSlice.count ?? criticalSlice.rows.length,
+      rows: criticalSlice.rows,
+    },
+  ];
+}
+
+function SectionHeader({
+  section,
+  active,
+  de,
+  onSelect,
+}: {
+  section: RuntimeBoardSection;
+  active: boolean;
+  de: boolean;
+  onSelect?: (sliceId: DashboardSliceId) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect?.(section.sliceId)}
+      className={cn(
+        'sq-press flex w-full items-start justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors',
+        active
+          ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)]'
+          : 'border-border/45 bg-card/35 hover:border-border/70 hover:bg-muted/20',
+      )}
+    >
+      <div className="min-w-0">
+        <p className="truncate text-[12.5px] font-semibold tracking-[-0.01em] text-foreground">
+          {section.title}
+        </p>
+        <p className="mt-0.5 line-clamp-1 text-[10.5px] leading-snug text-muted-foreground">
+          {section.subtitle}
+        </p>
+      </div>
+      <span className="rounded-lg bg-background/55 px-2 py-1 text-[11px] font-semibold tabular-nums text-foreground">
+        {section.count}
+      </span>
+      <span className="sr-only">{de ? 'Slice öffnen' : 'Open slice'}</span>
+    </button>
+  );
+}
+
+function SectionEmpty({ de }: { de: boolean }) {
+  return (
+    <div className="rounded-xl border border-dashed border-border/45 bg-muted/10 px-3 py-4 text-center">
+      <p className="text-[11.5px] font-medium text-muted-foreground">
+        {de ? 'Keine Einträge in diesem Bereich' : 'No items in this section'}
+      </p>
+    </div>
+  );
+}
+
+export function FleetStateBoard({
+  dashboardRuntime,
+  activeTargetId,
+  onSelectSlice,
+  onOpenVehicle,
+  locale = 'de',
+  loading = false,
+  stationName,
+}: FleetStateBoardProps) {
   const de = locale === 'de';
-  const criticalCount = fleetBoard.items.filter((item) => item.severity === 'critical').length;
   const [isExpanded, setIsExpanded] = useState(true);
   const contentId = 'dashboard-fleet-state-content';
-
-  const openVehicle = (vehicleId: string) => {
-    if (onOpenVehicleById) {
-      onOpenVehicleById(vehicleId);
-      return;
-    }
-    const v = vehicleById.get(vehicleId);
-    if (v) onVehicleSelect?.(v);
-  };
-
-  const laneTabs = useMemo(() => {
-    const withCounts = fleetBoard.lanes.filter((l) => l.lane === 'all' || l.count > 0);
-    return withCounts.sort((a, b) => {
-      if (a.lane === 'all') return 1;
-      if (b.lane === 'all') return -1;
-      const order = ['critical', 'overdue', 'due-soon', 'maintenance', 'cleaning', 'ready', 'rented', 'reserved', 'all'];
-      return order.indexOf(a.lane) - order.indexOf(b.lane);
-    });
-  }, [fleetBoard.lanes]);
+  const sections = useMemo(() => buildSections(dashboardRuntime, de), [dashboardRuntime, de]);
+  const runtimeStateByVehicleId = useMemo(() => {
+    const states = new Map<string, VehicleRuntimeState>();
+    for (const state of dashboardRuntime.vehicleStates) states.set(state.vehicleId, state);
+    return states;
+  }, [dashboardRuntime.vehicleStates]);
+  const totalCount = dashboardRuntime.vehicleStates.length;
+  const criticalCount = dashboardRuntime.slices['critical-alerts'].count ?? dashboardRuntime.slices['critical-alerts'].rows.length;
+  const hasVisibleRows = sections.some((section) => section.rows.length > 0);
 
   return (
     <section
       className={panelShellClass('tertiary', 'border-solid border-border/55 bg-card/55 shadow-none')}
-      aria-label={t('dashboard.fleetStatus')}
+      aria-label={de ? 'Flottenstatus' : 'Fleet status'}
     >
       <MinimalFleetHeader
         title={de ? 'Flottensteuerung' : 'Fleet State Board'}
         subtitle={
-          t('dashboard.vehiclesTotal', { count: filteredFleetVehicles.length }) +
-          (selectedStationName ? ` · ${selectedStationName}` : '')
+          `${totalCount} ${de ? 'Fahrzeuge' : 'vehicles'}` +
+          (stationName ? ` · ${stationName}` : '')
         }
-        totalCount={fleetBoard.items.length}
+        totalCount={totalCount}
         criticalCount={criticalCount}
         de={de}
         isExpanded={isExpanded}
@@ -167,75 +298,68 @@ export function FleetStateBoard({ vm, onVehicleSelect, onOpenVehicleById }: Flee
       />
 
       <div id={contentId} hidden={!isExpanded} className={isExpanded ? 'animate-fade-up' : undefined}>
-          <div className="border-b border-border/35 px-3 py-1.5">
-            <div
-              className="flex gap-1 overflow-x-auto pb-0.5"
-              role="tablist"
-              aria-label={de ? 'Flottenfilter' : 'Fleet filter'}
-            >
-              {laneTabs.map((lane) => {
-                const isActive = fleetBoardFilter === lane.lane;
-                if (lane.lane !== 'all' && lane.count === 0) return null;
-                return (
-                  <button
-                    key={lane.lane}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    onClick={() => {
-                      setFleetBoardFilter(lane.lane);
-                      vm.openDrilldown({ type: 'fleet-lane', lane: lane.lane });
-                    }}
-                    className={[
-                      'flex shrink-0 items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                      isActive
-                        ? 'bg-muted text-foreground'
-                        : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
-                    ].join(' ')}
-                  >
-                    {lane.label}
-                    {lane.count > 0 && (
-                      <span
-                        className={[
-                          'rounded-md px-1.5 py-0.5 text-[9.5px] tabular-nums',
-                          isActive ? 'bg-background/40' : 'bg-muted/70',
-                        ].join(' ')}
-                      >
-                        {lane.count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="grid grid-cols-1 gap-2 border-b border-border/35 p-3 sm:grid-cols-2 xl:grid-cols-3">
+            {sections.map((section) => (
+              <SectionHeader
+                key={section.id}
+                section={section}
+                active={activeTargetId === section.sliceId}
+                de={de}
+                onSelect={onSelectSlice}
+              />
+            ))}
           </div>
 
-          <div className="max-h-[min(560px,72vh)] flex-1 overflow-y-auto">
+          <div className="max-h-[min(620px,76vh)] flex-1 overflow-y-auto p-3">
             {loading ? (
-              <div className="px-3 py-2.5">
+              <div className="py-2.5">
                 <SkeletonRows rows={5} />
               </div>
-            ) : fleetBoard.filteredItems.length === 0 ? (
-              <FleetBoardEmpty locale={locale} stationName={selectedStationName} />
+            ) : totalCount === 0 ? (
+              <FleetBoardEmpty locale={locale} stationName={stationName} />
+            ) : !hasVisibleRows ? (
+              <FleetBoardEmpty locale={locale} stationName={stationName} />
             ) : (
-              <div className="divide-y divide-border/30">
-                {fleetBoard.filteredItems.map((item) => (
-                  <FleetBoardVehicleRow
-                    key={item.vehicleId}
-                    item={item}
-                    locale={locale}
-                    onOpen={() => openVehicle(item.vehicleId)}
-                  />
+              <div className="space-y-4">
+                {sections.map((section) => (
+                  <section key={section.id} className="space-y-2">
+                    <div className="flex items-center justify-between gap-3 px-1">
+                      <div className="min-w-0">
+                        <h3 className="truncate text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {section.title}
+                        </h3>
+                        <p className="truncate text-[10.5px] text-muted-foreground/85">{section.subtitle}</p>
+                      </div>
+                      <span className="rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+                        {section.count}
+                      </span>
+                    </div>
+                    {section.rows.length === 0 ? (
+                      <SectionEmpty de={de} />
+                    ) : (
+                      <div className="space-y-2">
+                        {section.rows.map((row) => (
+                          <FleetBoardVehicleRow
+                            key={row.id}
+                            row={row}
+                            runtimeState={row.vehicleId ? runtimeStateByVehicleId.get(row.vehicleId) : undefined}
+                            locale={locale}
+                            onOpen={row.vehicleId && onOpenVehicle ? () => onOpenVehicle(row.vehicleId as string) : undefined}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </section>
                 ))}
               </div>
             )}
           </div>
 
-          {!loading && fleetBoard.filteredItems.length > 0 && (
+          {!loading && hasVisibleRows && (
             <div className="border-t border-border/40 px-3.5 py-2 text-[11px] text-muted-foreground">
               {de
-                ? 'Kritisch und überfällig zuerst · Offline zuletzt'
-                : 'Critical and overdue first · offline last'}
+                ? 'Quelle: Dashboard Runtime Slices · Fahrzeugdetails aus VehicleRuntimeState'
+                : 'Source: Dashboard runtime slices · vehicle details from VehicleRuntimeState'}
             </div>
           )}
       </div>

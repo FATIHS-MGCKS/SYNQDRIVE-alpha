@@ -101,7 +101,7 @@ export default function VehicleLogbookView({ isDarkMode: d }: Props) {
           <div className="flex items-center gap-3">
             <BookOpen className={`w-6 h-6 ${d ? 'text-indigo-400' : 'text-indigo-600'}`} />
             <div>
-              <h1 className={`text-xl font-bold ${text1}`}>Vehicle Logbook</h1>
+              <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">Vehicle Logbook</h1>
               <p className={`text-xs ${text3}`}>Per-vehicle telemetry debug &amp; signal trace console</p>
             </div>
           </div>
@@ -175,7 +175,7 @@ export default function VehicleLogbookView({ isDarkMode: d }: Props) {
         </button>
         <BookOpen className={`w-5 h-5 ${d ? 'text-indigo-400' : 'text-indigo-600'}`} />
         <div className="flex-1">
-          <h1 className={`text-lg font-bold ${text1}`}>{ov?.licensePlate || 'Loading…'}</h1>
+          <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">{ov?.licensePlate || 'Loading…'}</h1>
           <p className={`text-xs ${text3}`}>{[ov?.make, ov?.model, ov?.year].filter(Boolean).join(' ')}{ov?.vin ? ` · ${ov.vin}` : ''}</p>
         </div>
         <button onClick={() => fetchDetail(selectedId)} className={`p-2 rounded-lg ${d ? 'hover:bg-neutral-800' : 'hover:bg-gray-100'}`}><RefreshCw className={`w-4 h-4 ${text2} ${detailLoading ? 'animate-spin' : ''}`} /></button>

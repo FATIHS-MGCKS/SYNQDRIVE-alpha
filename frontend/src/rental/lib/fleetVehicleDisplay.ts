@@ -15,10 +15,10 @@ import {
  * previously mixed in the UI:
  *
  *   1. Operational Status — the primary rental/health state of the vehicle
- *      (ready / critical / warning / active / reserved / maintenance / blocked).
+ *      (available / critical / warning / active / reserved / maintenance / blocked).
  *      Telemetry freshness never changes this.
- *   2. Telemetry Freshness — a secondary signal indicator (fresh / stale /
- *      offline). Stale is never shown as a primary status badge anymore.
+ *   2. Telemetry Freshness — a secondary signal indicator (live / standby /
+ *      soft offline / offline). Soft offline is never shown as a primary status badge.
  */
 
 export type FleetOperationalStatus =
@@ -117,8 +117,8 @@ function isHealthWarning(v: VehicleData, rentalHealth: VehicleHealthResponse | n
 
 /**
  * Operational status is derived independently of telemetry freshness so that an
- * offline/stale Ready vehicle still reads as "Ready" (with a separate signal
- * note), never as "Stale".
+ * offline / soft-offline available vehicle still reads as "Available" (with a
+ * separate signal note), never as a stale primary status.
  */
 function resolveOperationalStatus(
   v: VehicleData,
@@ -146,7 +146,7 @@ function primaryLabelFor(
 ): string {
   switch (status) {
     case 'ready':
-      return de ? 'Bereit' : 'Ready';
+      return de ? 'Verfügbar' : 'Available';
     case 'critical':
       return de ? 'Kritisch' : 'Critical';
     case 'blocked':

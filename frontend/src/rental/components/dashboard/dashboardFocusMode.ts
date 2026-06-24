@@ -9,8 +9,7 @@ import { OPERATOR_FOCUS_MODE_STORAGE_KEY } from './dashboardTypes';
 import type { DataTrustLayer } from './dataTrustBuilder';
 import type { VehicleTelemetryFreshness } from './controlSignalsBuilder';
 import { isVehicleReadyToRent, parseEventTime, type ReadyToRentOptions } from './dashboardUtils';
-
-const MS_HOUR = 60 * 60_000;
+import type { RuntimeReason, VehicleRuntimeState } from './runtime';
 
 export function readOperatorFocusModePreference(): boolean {
   try {
@@ -40,6 +39,45 @@ function notReadyReason(v: VehicleData, locale: string, readyOptions: ReadyToRen
   return de ? 'Nicht vermietbereit' : 'Not rent-ready';
 }
 
+function runtimeReasonLabel(reasons: RuntimeReason[], fallback: string): string {
+  return reasons.length > 0 ? reasons[0].title : fallback;
+}
+
+export function getFocusNotReadyVehiclesFromRuntime(
+  vehicleStates: VehicleRuntimeState[],
+  locale: string,
+): FocusNotReadyVehicle[] {
+  const de = locale === 'de';
+  return vehicleStates
+    .filter((state) => state.operationalStatus !== 'active_rented' && !state.isReadyToRent)
+    .map((state) => {
+      const fallback = state.isMaintenance
+        ? de ? 'Wartung' : 'Maintenance'
+        : state.isBlocked
+          ? de ? 'Vermietblockiert' : 'Rental blocked'
+          : de ? 'Nicht vermietbereit' : 'Not rent-ready';
+      return {
+        vehicleId: state.vehicleId,
+        label: state.license || state.displayName,
+        status: state.operationalStatus,
+        reason: runtimeReasonLabel(
+          [
+            ...state.blockReasons,
+            ...state.notReadyReasons,
+            ...state.criticalReasons,
+            ...state.warningReasons,
+          ],
+          fallback,
+        ),
+      };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/**
+ * @deprecated Use getFocusNotReadyVehiclesFromRuntime/dashboard runtime instead.
+ * Deprecated: use dashboard runtime/slices instead. Must not be used for active Dashboard KPI/Drawer/Board/Business state.
+ */
 export function getFocusNotReadyVehicles(
   vehicles: VehicleData[],
   readyOptions: ReadyToRentOptions,
@@ -109,7 +147,7 @@ export function shouldShowDataFreshnessWarning(input: {
   }
   if (input.syncStatus !== 'live') return true;
   if (input.dataFreshness.insightsStale || input.dataFreshness.insightsError) return true;
-  if (input.telemetry.staleCount > 0 || input.telemetry.offlineCount > 0) return true;
+  if ((input.telemetry.softOfflineCount ?? input.telemetry.staleCount) > 0 || input.telemetry.offlineCount > 0) return true;
   if (input.telemetry.telemetryUnavailable) return true;
   return false;
 }
@@ -146,17 +184,18 @@ export function dataFreshnessWarningMessage(
     return de ? 'Sync offline — vor kritischen Aktionen Daten prüfen.' : 'Sync offline — verify data before critical actions.';
   }
   if (input.syncStatus === 'stale' || input.dataFreshness.insightsStale) {
-    return de ? 'Daten veraltet — Refresh empfohlen.' : 'Data is stale — refresh recommended.';
+    return de ? 'Daten verzögert — Refresh empfohlen.' : 'Data is delayed — refresh recommended.';
   }
   if (input.telemetry.offlineCount > 0) {
     return de
       ? `${input.telemetry.offlineCount} Fahrzeug(e) offline · Telemetrie prüfen.`
       : `${input.telemetry.offlineCount} vehicle(s) offline · check telemetry.`;
   }
-  if (input.telemetry.staleCount > 0) {
+  const softOfflineCount = input.telemetry.softOfflineCount ?? input.telemetry.staleCount;
+  if (softOfflineCount > 0) {
     return de
-      ? `${input.telemetry.staleCount} Fahrzeug(e) mit veralteter Telemetrie.`
-      : `${input.telemetry.staleCount} vehicle(s) with stale telemetry.`;
+      ? `${softOfflineCount} Fahrzeug(e) Soft Offline · seit 24h kein Signal.`
+      : `${softOfflineCount} vehicle(s) soft offline · no signal for 24h.`;
   }
   return de ? 'Datenaktualität eingeschränkt.' : 'Data freshness limited.';
 }

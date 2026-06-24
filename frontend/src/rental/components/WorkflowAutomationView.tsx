@@ -464,7 +464,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className={`text-xl font-bold ${textPrimary}`}>Workflow Automation</h1>
+            <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">Workflow Automation</h1>
             <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide ${isDarkMode ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-50 text-blue-700'}`}>
               Beta Runtime
             </span>
