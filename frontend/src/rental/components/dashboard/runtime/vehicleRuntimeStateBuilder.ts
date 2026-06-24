@@ -251,23 +251,43 @@ function isHealthCategory(category: RuntimeReasonCategory): boolean {
   );
 }
 
+/**
+ * A reason counts as a true blocker (Blocked & Maintenance candidate) only when
+ * it is explicitly marked `blocking`. Warnings, cleaning, soft-offline and a
+ * reason's category must never imply blocking on their own.
+ */
 function reasonBlocksRenting(reason: RuntimeReason): boolean {
   return reason.blocking === true;
 }
 
+/**
+ * A reason prevents Ready-to-Rent when it is explicitly marked `preventsReady`
+ * or when it is a hard `blocking` reason. The decision is no longer derived
+ * automatically from the reason category — the reason producer sets the flag.
+ */
 function reasonPreventsReady(reason: RuntimeReason): boolean {
+  if (reason.preventsReady === true) return true;
   if (reason.blocking === true) return true;
-  if (reason.severity !== 'warning') return false;
+  return false;
+}
+
+/**
+ * Warning-severity categories that should keep a vehicle out of Ready-to-Rent
+ * (health/compliance concerns) without turning it into a hard blocker. The
+ * flag is set explicitly at reason creation so `reasonPreventsReady` stays
+ * category-agnostic.
+ */
+function warningPreventsReady(category: RuntimeReasonCategory): boolean {
   return (
-    reason.category === 'health' ||
-    reason.category === 'battery' ||
-    reason.category === 'tires' ||
-    reason.category === 'brakes' ||
-    reason.category === 'dtc' ||
-    reason.category === 'service' ||
-    reason.category === 'compliance' ||
-    reason.category === 'damage' ||
-    reason.category === 'rental'
+    category === 'health' ||
+    category === 'battery' ||
+    category === 'tires' ||
+    category === 'brakes' ||
+    category === 'dtc' ||
+    category === 'service' ||
+    category === 'compliance' ||
+    category === 'damage' ||
+    category === 'rental'
   );
 }
 
@@ -297,6 +317,7 @@ function addInsightReasons(input: {
         description: insight.message,
         source: `dashboard-insight:${insight.type}`,
         blocking: criticalHardBlock,
+        preventsReady: severity === 'warning' && warningPreventsReady(category) ? true : undefined,
         actionLabel: insight.actionLabel ?? undefined,
         actionTarget: insight.actionType ?? undefined,
       }),
@@ -350,6 +371,7 @@ function addHealthReasons(input: {
           title: moduleState.reason || `${module.replace(/_/g, ' ')} ${moduleState.state}`,
           source: `rental-health:${module}`,
           blocking: severity === 'critical' && isHardBlockingCategory(category),
+          preventsReady: severity === 'warning' && warningPreventsReady(category) ? true : undefined,
         }),
       );
     }
@@ -364,6 +386,7 @@ function addHealthReasons(input: {
         title: 'Health review required',
         source: 'dashboard-health-risk',
         blocking: false,
+        preventsReady: true,
       }),
     );
   }
@@ -388,6 +411,7 @@ function addTelemetryReason(input: {
           : 'The latest telemetry snapshot is older than 24 hours.',
         source: 'telemetry',
         blocking: false,
+        preventsReady: false,
       }),
     );
   }
@@ -405,6 +429,7 @@ function addTelemetryReason(input: {
           : 'The latest telemetry snapshot is at least 48 hours old.',
         source: 'telemetry',
         blocking: blocks,
+        preventsReady: true,
       }),
     );
   }
@@ -625,6 +650,8 @@ export function buildVehicleRuntimeStates(input: BuildVehicleRuntimeStatesInput)
     }
 
     if (vehicle.cleaningStatus !== 'Clean') {
+      // Cleaning keeps a vehicle out of Ready-to-Rent but is not a hard blocker:
+      // it must not move an otherwise available vehicle into Blocked & Maintenance.
       addReason(
         reasons,
         createRuntimeReason({
@@ -632,7 +659,8 @@ export function buildVehicleRuntimeStates(input: BuildVehicleRuntimeStatesInput)
           severity: 'warning',
           title: locale === 'de' ? 'Reinigung erforderlich' : 'Cleaning required',
           source: 'vehicle-cleaning-status',
-          blocking: true,
+          blocking: false,
+          preventsReady: true,
         }),
       );
     }

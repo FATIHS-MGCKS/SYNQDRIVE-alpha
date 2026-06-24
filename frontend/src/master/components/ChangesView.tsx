@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-second-truth-cleanup-v4927-2026-06-24',
+    version: '4.9.27',
+    title: 'V4.9.27 — Dashboard: letzte zweite Wahrheiten nach Runtime-Migration entfernt',
+    summary: [
+      '`ControlKpiStrip` rendert die sechs KPI-Boxen jetzt vollständig direkt aus `dashboardRuntime.slices` in kanonischer `DashboardSliceId`-Reihenfolge und erhält `dashboardRuntime`, `activeSliceId`, `onSelectSlice`, `embedded`, `locale`, `dataFreshness` als Props. Kein `vm.controlCenterKpis`, kein `activateKpiTarget`, keine `OperationalKpiTarget` und keine `maintenance`-KPI-ID mehr.',
+      '`useDashboardViewModel` entfernt die toten Legacy-Adapter-Felder `controlCenterKpis`, `activateKpiTarget`, `fleetBoard`, `fleetStateTabs`, `businessPulse` und `drilldown`; `openSliceDrilldown(sliceId: DashboardSliceId)` ist der einzige primäre KPI-/Slice-Pfad.',
+      '`runtime/dashboardRuntimeViewModelAdapters.ts` (`buildRuntimeControlCenterKpis`, `buildRuntimeFleetBoard`, `buildRuntimeFleetStateTabs`, `buildRuntimeDashboardDrilldown`, `buildRuntimeBusinessPulseSnapshot`) sind jetzt `@deprecated` und nicht mehr im aktiven Dashboard-Flow; `buildRuntimeControlCenterKpis` (mappte `blocked-maintenance` zurück auf Legacy-`maintenance`) ist kein aktiver Pfad mehr.',
+      'RuntimeReason trennt jetzt `blocking` (echter Blocker → Blocked & Maintenance) von `preventsReady` (verhindert Ready ohne Blocker). Cleaning ist `blocking:false, preventsReady:true`; Health-/Compliance-Warnungen setzen `preventsReady` explizit; Soft Offline ist Warning ohne Block/PreventsReady, Offline bleibt Hard-Blocker, Standby bleibt neutral.',
+      '`reasonPreventsReady`/`reasonBlocksRenting` sind kategorie-agnostisch; Blocked & Maintenance zählt nur `isMaintenance`, `operationalStatus === unavailable` und echte blocking-Reasons — keine Cleaning-/Warning-/Soft-Offline-/Standby-/Available-but-not-ready-Fahrzeuge mehr.',
+      'Predictive-Telemetrie-Insight `STALE_TELEMETRY_CHECK` wurde zu `SOFT_OFFLINE_TELEMETRY_CHECK` umbenannt (Soft Offline ab 24h, Standby nie ein Problem).',
+    ],
+    reason:
+      'Nach der Runtime-Migration blieben mehrere Legacy-Adapter und kategorie-basierte Readiness-Regeln als zweite Wahrheit aktiv, wodurch KPI-Zahlen, Blocked/Maintenance-Listen und Cleaning-/Warning-Fahrzeuge auseinanderlaufen konnten.',
+    previousBehavior:
+      '`ControlKpiStrip` las `vm.controlCenterKpis` über `buildRuntimeControlCenterKpis` (Legacy-`maintenance`-ID); Cleaning war `blocking:true` und schob saubere-aber-ungereinigte Fahrzeuge in Blocked & Maintenance; `reasonPreventsReady` leitete Readiness automatisch aus der Reason-Kategorie ab.',
+    details:
+      'UI-/Logik-only Refactor in `ControlKpiStrip.tsx`, `DashboardView.tsx`, `useDashboardViewModel.ts`, `dashboardTypes.ts`, `runtime/dashboardRuntimeTypes.ts`, `runtime/dashboardRuntimeReasons.ts`, `runtime/vehicleRuntimeStateBuilder.ts`, `runtime/dashboardSliceBuilder.ts`, `runtime/dashboardRuntimeViewModelAdapters.ts` und `derivePredictiveOperationsInsights.ts`. Slices, Drawer, FleetStateBoard und BusinessPulse lesen weiterhin direkt aus `dashboardRuntime`/`businessPulseSlices`. Neue Vitest-Cases sichern Cleaning-, Warning-, Telemetry- und Blocked-&-Maintenance-Invarianten. Keine Backend-, API-, DB-, DTO-, Routing- oder Health-Berechnungsänderung.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-24T11:30:00.000Z',
+  },
+  {
     id: 'vehicle-health-segmented-indicators-v4926-2026-06-24',
     version: '4.9.26',
     title: 'V4.9.26 — Vehicle Health nutzt kompakte 3-Balken-Indikatoren',

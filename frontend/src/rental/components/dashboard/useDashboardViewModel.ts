@@ -23,7 +23,6 @@ import {
   type DashboardInvoice,
   type DashboardViewModel,
   type DashboardViewProps,
-  type OperationalKpiTarget,
   type TodayBookingApiRow,
   type TodayTabKey,
   type DashboardTimeframe,
@@ -69,14 +68,10 @@ import {
   type ReadyToRentOptions,
 } from './dashboardUtils';
 import type { DashboardDrilldownTarget, StationDrilldownMetric } from './dashboardDrilldownTypes';
-import { attachKpiTrustHints, buildDataTrustLayer } from './dataTrustBuilder';
+import { buildDataTrustLayer } from './dataTrustBuilder';
 import {
   buildBusinessPulseSlices,
   buildDashboardRuntimeModel,
-  buildRuntimeBusinessPulseSnapshot,
-  buildRuntimeControlCenterKpis,
-  buildRuntimeFleetBoard,
-  buildRuntimeFleetStateTabs,
   type BusinessMetricId,
   type BusinessPulseSlice,
   type DashboardRuntimeModel,
@@ -93,10 +88,6 @@ const BUSINESS_METRIC_IDS: ReadonlySet<string> = new Set<BusinessMetricId>([
   'draft-invoices',
   'failed-payments',
 ]);
-
-function sliceIdFromKpiTarget(target: OperationalKpiTarget): DashboardSliceId {
-  return target === 'maintenance' ? 'blocked-maintenance' : target;
-}
 
 function sliceIdFromFleetLane(lane: FleetBoardLane): DashboardSliceId | null {
   if (lane === 'ready') return 'ready-to-rent';
@@ -621,13 +612,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     [dashboardRuntime, openDrilldown],
   );
 
-  const activateKpiTarget = useCallback(
-    (target: OperationalKpiTarget) => {
-      openSliceDrilldown(sliceIdFromKpiTarget(target));
-    },
-    [openSliceDrilldown],
-  );
-
   const openBusinessMetricDrilldown = useCallback(
     (metricId: BusinessMetricId) => {
       openDrilldown({ type: 'business-metric', metricId });
@@ -643,38 +627,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       year: 'numeric',
     });
   }, [intlLocale]);
-
-  // Legacy compatibility field: FleetStateBoard now reads dashboardRuntime.slices
-  // and vehicleStates directly. Keep this runtime-backed adapter for remaining
-  // ViewModel consumers until they are retired.
-  const fleetBoard = useMemo(
-    () =>
-      buildRuntimeFleetBoard({
-        runtime: dashboardRuntime,
-        locale,
-        vehicles: filteredFleetVehicles,
-        filter: fleetBoardFilter,
-      }),
-    [dashboardRuntime, locale, filteredFleetVehicles, fleetBoardFilter],
-  );
-
-  // Legacy compatibility field. Do not use for new Dashboard board surfaces.
-  const fleetStateTabs = useMemo(
-    () =>
-      buildRuntimeFleetStateTabs({
-        runtime: dashboardRuntime,
-        labels: {
-        available: t('dashboard.available'),
-        reserved: t('dashboard.reserved'),
-        rented: t('dashboard.rented'),
-        maintenance: t('dashboard.maintenanceTab'),
-        },
-      }),
-    [
-      dashboardRuntime,
-      t,
-    ],
-  );
 
   const financeKpis = useMemo(
     () =>
@@ -852,45 +804,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     [invoicesApi, locale, dashboardNow],
   );
 
-  // Legacy compatibility field: BusinessPulse now renders directly from
-  // businessPulseSlices. Keep this runtime-backed snapshot for remaining
-  // external ViewModel consumers until they are retired.
-  const businessPulse = useMemo(
-    () =>
-      buildRuntimeBusinessPulseSnapshot({
-        locale,
-        intlLocale,
-        slices: businessPulseSlices,
-        invoicesLoaded,
-        invoicesError,
-        stationScoped: !!selectedStationId,
-        fmtEUR: fmtMonthlyEUR,
-        labels: {
-          revenue: t('dashboard.revenue'),
-          profit: t('dashboard.estimatedProfit'),
-          expenses: t('dashboard.expenses'),
-          unpaid: locale === 'de' ? 'Offene Forderungen' : 'Open receivables',
-          lostRevenueRisk: locale === 'de' ? 'Überfällige Forderungen' : 'Overdue receivables',
-          invoicesShort: (count) => t('dashboard.invoicesShort', { count }),
-          emptyTitle: locale === 'de' ? 'Noch keine Finanzdaten' : 'No financial data yet',
-          emptySubtitle:
-            locale === 'de'
-              ? 'Sobald Rechnungen vorliegen, erscheinen MTD-Kennzahlen hier.'
-              : 'MTD metrics appear here once invoices are available.',
-        },
-      }),
-    [
-      locale,
-      intlLocale,
-      businessPulseSlices,
-      invoicesLoaded,
-      invoicesError,
-      selectedStationId,
-      fmtMonthlyEUR,
-      t,
-    ],
-  );
-
   const derivedOperationalInsights = useMemo(
     () =>
       deriveOperationalInsights({
@@ -1045,28 +958,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     locale,
   ]);
 
-  // Legacy compatibility field: ControlKpiStrip now reads dashboardRuntime.slices directly.
-  // Keep this runtime-backed adapter until any remaining external ViewModel consumers are retired.
-  const controlCenterKpis = useMemo(
-    () =>
-      attachKpiTrustHints(
-        buildRuntimeControlCenterKpis({
-          locale,
-          runtime: dashboardRuntime,
-          insightsLoading,
-          insightsError,
-        }),
-        dataTrust,
-      ),
-    [
-      locale,
-      dashboardRuntime,
-      insightsLoading,
-      insightsError,
-      dataTrust,
-    ],
-  );
-
   const controlCenterStatus = useMemo(
     () =>
       buildControlCenterStatus({
@@ -1103,10 +994,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     ],
   );
 
-  // Legacy contract field. The active DashboardDrilldownDrawer reads
-  // dashboardRuntime.slices/businessPulseSlices directly via active target IDs.
-  const drilldown = null;
-
   const activeDashboardSliceId = useMemo(
     () => activeDashboardSliceIdFromTarget(drilldownTarget),
     [drilldownTarget],
@@ -1123,12 +1010,9 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     t,
     dateLabel,
     controlCenterStatus,
-    controlCenterKpis,
-    activateKpiTarget,
     openSliceDrilldown,
     openBusinessMetricDrilldown,
     drilldownTarget,
-    drilldown,
     openDrilldown,
     closeDrilldown,
     dashboardRuntime,
@@ -1165,10 +1049,8 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     financeKpis,
     fleetStatusTab,
     setFleetStatusTab,
-    fleetStateTabs,
     fleetBoardFilter,
     setFleetBoardFilter,
-    fleetBoard,
     todayTab,
     setTodayTab,
     pickupItems,
@@ -1197,7 +1079,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     dataFreshness,
     dataTrust,
     vehicleTelemetryFreshness,
-    businessPulse,
     fleetReadiness,
   };
 }

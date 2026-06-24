@@ -64,7 +64,19 @@ export interface RuntimeReason {
   title: string;
   description?: string;
   source?: string;
+  /**
+   * True only for genuine blockers: the vehicle must not be rented and is a
+   * real Blocked & Maintenance candidate (maintenance, hard compliance/legal
+   * block, rental_blocked, hard offline). Drives `reasonBlocksRenting`.
+   */
   blocking?: boolean;
+  /**
+   * True when the reason prevents Ready-to-Rent without being a hard blocker
+   * (e.g. cleaning not clean, health/compliance warnings). A reason can set
+   * `preventsReady` without `blocking`; every `blocking` reason also prevents
+   * ready. Drives `reasonPreventsReady`.
+   */
+  preventsReady?: boolean;
   actionLabel?: string;
   actionTarget?: string;
 }

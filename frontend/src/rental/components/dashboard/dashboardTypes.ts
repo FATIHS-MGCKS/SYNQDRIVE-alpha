@@ -9,7 +9,7 @@ import type { PredictiveOperationsInsight } from './derivePredictiveOperationsIn
 import type { DashboardNotificationItem } from '../BusinessInsightsBox';
 import type { FleetStatusTabKey } from '../../lib/vehicle-status';
 import type { StatusTone } from '../../../components/patterns';
-import type { DashboardDrilldownContent, DashboardDrilldownTarget } from './dashboardDrilldownTypes';
+import type { DashboardDrilldownTarget } from './dashboardDrilldownTypes';
 import type { DataTrustLayer, DashboardTrustHint } from './dataTrustBuilder';
 import type {
   BusinessMetricId,
@@ -27,10 +27,21 @@ export type TodayTabKey = 'Pick Up Today' | 'Return Today';
 
 export type KpiTone = 'success' | 'critical' | 'brand' | 'info' | 'watch';
 
+/**
+ * Data-sync state. NOTE: `stale` here refers only to backend data-sync
+ * freshness, never to per-vehicle telemetry connectivity (use the runtime
+ * `TelemetryConnectionState` soft_offline/offline for that).
+ */
 export type DataSyncStatus = 'live' | 'partial' | 'stale' | 'offline';
 
 export type DashboardTimeframe = 'today' | 'next24h';
 
+/**
+ * @deprecated Legacy KPI target ids. The active Dashboard uses
+ * `DashboardSliceId` directly (`blocked-maintenance` instead of `maintenance`).
+ * Only the deprecated `runtime/dashboardRuntimeViewModelAdapters` still
+ * reference this for backwards-compatible adapters.
+ */
 export type OperationalKpiTarget =
   | 'ready-to-rent'
   | 'active-rented'
@@ -47,6 +58,11 @@ export interface ControlCenterStatus {
   syncStatus: DataSyncStatus;
 }
 
+/**
+ * @deprecated Legacy KPI view model. `ControlKpiStrip` now renders directly
+ * from `dashboardRuntime.slices`. Only deprecated runtime adapters still emit
+ * this shape.
+ */
 export interface ControlCenterKpi {
   id: OperationalKpiTarget;
   label: string;
@@ -323,6 +339,11 @@ export interface ActionQueueGroupItem {
 /** A render-level entry: either a single leaf or a multi-child group. */
 export type ActionQueueEntry = ActionQueueLeafItem | ActionQueueGroupItem;
 
+/**
+ * @deprecated Legacy fleet-state tab model. The active FleetStateBoard reads
+ * `dashboardRuntime.slices`/`vehicleStates` directly. Kept only for deprecated
+ * runtime adapters.
+ */
 export interface FleetStateTab {
   key: FleetStatusTabKey;
   label: string;
@@ -381,6 +402,12 @@ export interface FleetBoardItem {
   isStale: boolean;
 }
 
+/**
+ * @deprecated Legacy fleet-board model. The active FleetStateBoard renders from
+ * `dashboardRuntime` directly; this shape is produced only by deprecated
+ * runtime adapters. Lanes `ready`/`maintenance`/`critical` must not be treated
+ * as active Dashboard truth — use the canonical slices instead.
+ */
 export interface FleetBoardModel {
   items: FleetBoardItem[];
   lanes: FleetBoardLaneSummary[];
@@ -616,12 +643,9 @@ export interface DashboardViewModel {
   dateLabel: string;
 
   controlCenterStatus: ControlCenterStatus;
-  controlCenterKpis: ControlCenterKpi[];
-  activateKpiTarget: (target: OperationalKpiTarget) => void;
   openSliceDrilldown: (sliceId: DashboardSliceId) => void;
   openBusinessMetricDrilldown: (metricId: BusinessMetricId) => void;
   drilldownTarget: DashboardDrilldownTarget | null;
-  drilldown: DashboardDrilldownContent | null;
   openDrilldown: (target: DashboardDrilldownTarget) => void;
   closeDrilldown: () => void;
   dashboardRuntime: DashboardRuntimeModel;
@@ -663,10 +687,8 @@ export interface DashboardViewModel {
 
   fleetStatusTab: FleetStatusTabKey;
   setFleetStatusTab: (tab: FleetStatusTabKey) => void;
-  fleetStateTabs: FleetStateTab[];
   fleetBoardFilter: FleetBoardLane;
   setFleetBoardFilter: (lane: FleetBoardLane) => void;
-  fleetBoard: FleetBoardModel;
 
   todayTab: TodayTabKey;
   setTodayTab: (tab: TodayTabKey) => void;
@@ -699,7 +721,6 @@ export interface DashboardViewModel {
   dataFreshness: DataFreshnessSummary;
   dataTrust: DataTrustLayer;
   vehicleTelemetryFreshness: import('./controlSignalsBuilder').VehicleTelemetryFreshness;
-  businessPulse: import('./businessPulseBuilder').BusinessPulseSnapshot;
   fleetReadiness: FleetReadinessSummary;
 }
 

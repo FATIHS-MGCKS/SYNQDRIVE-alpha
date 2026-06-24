@@ -18,7 +18,7 @@ export type PredictiveRiskType =
   | 'RETURN_OVERDUE_THREATENS_FOLLOWUP'
   | 'VEHICLE_NOT_READY_BEFORE_PICKUP'
   | 'CRITICAL_ALERT_RENTAL_RISK'
-  | 'STALE_TELEMETRY_CHECK'
+  | 'SOFT_OFFLINE_TELEMETRY_CHECK'
   | 'LOW_ENERGY_BEFORE_PICKUP'
   | 'CLEANING_PENDING_BEFORE_BOOKING'
   | 'BLOCKED_VEHICLE_FUTURE_BOOKING'
@@ -377,7 +377,7 @@ export function derivePredictiveOperationsInsights(input: {
         if (tel === 'offline' || tel === 'stale' || tel === 'soft_offline') {
           push({
             id: `predictive-telemetry-${p.vehicleId}-${p.bookingId}`,
-            type: 'STALE_TELEMETRY_CHECK',
+            type: 'SOFT_OFFLINE_TELEMETRY_CHECK',
             severity: tel === 'offline' ? 'warning' : 'attention',
             title: de
               ? 'Operatives Risiko · Telemetrie prüfen'

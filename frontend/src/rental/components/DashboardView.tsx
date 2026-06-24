@@ -90,7 +90,14 @@ export function DashboardView({
       <div className={DASHBOARD_LAYOUT.shell}>
         <div className="animate-fade-up" style={{ animationDelay: '0ms' }}>
           <DashboardControlHeader vm={vm}>
-            <ControlKpiStrip vm={vm} embedded />
+            <ControlKpiStrip
+              dashboardRuntime={vm.dashboardRuntime}
+              activeSliceId={vm.activeDashboardSliceId}
+              onSelectSlice={vm.openSliceDrilldown}
+              embedded
+              locale={vm.locale}
+              dataFreshness={vm.dataFreshness}
+            />
           </DashboardControlHeader>
         </div>
 

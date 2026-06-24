@@ -60,6 +60,11 @@ function compactMetric(input: {
   };
 }
 
+/**
+ * @deprecated Active Dashboard UI must consume `dashboardRuntime.slices`,
+ * `dashboardRuntime.vehicleStates` and `businessPulseSlices` directly. Do not
+ * use this adapter for KPI, Drawer, Fleet Board or Business Pulse truth.
+ */
 export function buildRuntimeBusinessPulseSnapshot(input: {
   slices: Record<BusinessMetricId, BusinessPulseSlice>;
   locale: string;
@@ -196,6 +201,12 @@ function kpiFromSlice(input: {
   };
 }
 
+/**
+ * @deprecated Active Dashboard UI must consume `dashboardRuntime.slices`
+ * directly. Do not use this adapter for KPI truth — it maps the canonical
+ * `blocked-maintenance` slice back onto the legacy `maintenance` KPI id and is
+ * a known second-truth source.
+ */
 export function buildRuntimeControlCenterKpis(input: {
   runtime: DashboardRuntimeModel;
   locale: string;
@@ -325,6 +336,11 @@ const FLEET_BOARD_LANE_ORDER: FleetBoardLane[] = [
   'all',
 ];
 
+/**
+ * @deprecated Active Dashboard UI must consume `dashboardRuntime.slices` and
+ * `dashboardRuntime.vehicleStates` directly. Do not use this adapter for Fleet
+ * Board truth.
+ */
 export function buildRuntimeFleetBoard(input: {
   runtime: DashboardRuntimeModel;
   vehicles: VehicleData[];
@@ -406,6 +422,11 @@ export function buildRuntimeFleetBoard(input: {
   };
 }
 
+/**
+ * @deprecated Active Dashboard UI must consume `dashboardRuntime.slices` and
+ * `dashboardRuntime.vehicleStates` directly. Do not use this adapter for Fleet
+ * State tab truth.
+ */
 export function buildRuntimeFleetStateTabs(input: {
   runtime: DashboardRuntimeModel;
   labels: {
@@ -507,6 +528,11 @@ function kpiSliceId(target: string): DashboardSliceId {
   return target === 'maintenance' ? 'blocked-maintenance' : (target as DashboardSliceId);
 }
 
+/**
+ * @deprecated Active Dashboard UI (DashboardDrilldownDrawer) must consume
+ * `dashboardRuntime.slices` and `businessPulseSlices` directly via active
+ * target ids. Do not use this adapter for Drawer truth.
+ */
 export function buildRuntimeDashboardDrilldown(input: {
   runtime: DashboardRuntimeModel;
   businessSlices: Partial<Record<string, { title: string; rows: Array<{ id: string; title: string; subtitle?: string; severity: DashboardSliceRow['severity']; invoiceId?: string; vehicleId?: string; bookingId?: string }> }>>;

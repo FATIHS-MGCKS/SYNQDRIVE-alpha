@@ -1,26 +1,45 @@
 import { Icon } from '../ui/Icon';
 import { SkeletonMetricGrid } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
-import { DataTrustHint } from './DataTrustHint';
-import type { ControlCenterKpi, DashboardViewModel, OperationalKpiTarget } from './dashboardTypes';
+import type { DashboardRuntimeModel, DashboardSlice, DashboardSliceId } from './runtime';
+import type { DataFreshnessSummary } from './dashboardTypes';
 
 interface ControlKpiStripProps {
-  vm: DashboardViewModel;
+  dashboardRuntime: DashboardRuntimeModel;
+  activeSliceId?: DashboardSliceId | null;
+  onSelectSlice: (sliceId: DashboardSliceId) => void;
   embedded?: boolean;
+  locale?: string;
+  dataFreshness?: DataFreshnessSummary;
 }
 
-const KPI_ICONS: Record<OperationalKpiTarget, string> = {
+/**
+ * Canonical render order of the six operational KPI boxes. The strip renders
+ * strictly from `dashboardRuntime.slices` — no legacy `controlCenterKpis`
+ * adapter, no `OperationalKpiTarget`, no `maintenance` KPI id.
+ */
+const KPI_ORDER: DashboardSliceId[] = [
+  'ready-to-rent',
+  'active-rented',
+  'due-soon',
+  'overdue-returns',
+  'blocked-maintenance',
+  'critical-alerts',
+];
+
+const KPI_ICONS: Record<DashboardSliceId, string> = {
   'ready-to-rent': 'check-circle',
   'active-rented': 'car',
   'due-soon': 'clock',
   'overdue-returns': 'alert-triangle',
-  maintenance: 'wrench',
+  'blocked-maintenance': 'wrench',
   'critical-alerts': 'shield-alert',
 };
 
-const ZERO_IS_POSITIVE = new Set<OperationalKpiTarget>([
+/** Slices where a zero count is the calm, positive state. */
+const ZERO_IS_POSITIVE = new Set<DashboardSliceId>([
   'overdue-returns',
-  'maintenance',
+  'blocked-maintenance',
   'critical-alerts',
 ]);
 
@@ -30,12 +49,26 @@ function kpiGridClass(embedded: boolean): string {
     : 'grid grid-cols-2 items-stretch gap-1.5 md:grid-cols-3 xl:grid-cols-6';
 }
 
-function kpiCardClass(kpi: ControlCenterKpi, embedded: boolean): string {
-  const count = kpi.numericValue ?? 0;
-  const isCalmZero = (kpi.zeroIsPositive || ZERO_IS_POSITIVE.has(kpi.id)) && kpi.numericValue === 0;
-  const isCritical = kpi.tone === 'critical' && count > 0;
-  const isWatch = (kpi.tone === 'watch' || kpi.tone === 'warning') && count > 0;
-  const isSuccess = kpi.tone === 'success';
+interface KpiVisualState {
+  isCritical: boolean;
+  isWatch: boolean;
+  isSuccess: boolean;
+  isCalmZero: boolean;
+}
+
+function kpiVisualState(slice: DashboardSlice): KpiVisualState {
+  const count = slice.count ?? 0;
+  const isCalmZero = ZERO_IS_POSITIVE.has(slice.id) && slice.count === 0;
+  return {
+    isCritical: slice.tone === 'critical' && count > 0,
+    isWatch: slice.tone === 'watch' && count > 0,
+    isSuccess: slice.tone === 'success',
+    isCalmZero,
+  };
+}
+
+function kpiCardClass(slice: DashboardSlice, embedded: boolean, isActive: boolean): string {
+  const { isCritical, isWatch, isSuccess, isCalmZero } = kpiVisualState(slice);
 
   return cn(
     'sq-press group relative overflow-hidden border text-left transition-colors duration-200',
@@ -47,21 +80,29 @@ function kpiCardClass(kpi: ControlCenterKpi, embedded: boolean): string {
     isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
     (isSuccess || isCalmZero) && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
     !isCritical && !isWatch && !isSuccess && !isCalmZero && 'border-border/45',
+    isActive && 'ring-2 ring-[color:var(--brand)]/55',
   );
 }
 
-function kpiIconToneClass(kpi: ControlCenterKpi): string {
-  const count = kpi.numericValue ?? 0;
-  if (kpi.tone === 'critical' && count > 0) return 'sq-tone-critical';
-  if (kpi.tone === 'success') return 'sq-tone-success';
-  if ((kpi.tone === 'watch' || kpi.tone === 'warning') && count > 0) return 'sq-tone-watch';
-  if (kpi.tone === 'info') return 'sq-tone-info';
+function kpiIconToneClass(slice: DashboardSlice): string {
+  const count = slice.count ?? 0;
+  if (slice.tone === 'critical' && count > 0) return 'sq-tone-critical';
+  if (slice.tone === 'success') return 'sq-tone-success';
+  if (slice.tone === 'watch' && count > 0) return 'sq-tone-watch';
+  if (slice.tone === 'info') return 'sq-tone-info';
   return 'bg-muted text-muted-foreground';
 }
 
-export function ControlKpiStrip({ vm, embedded = false }: ControlKpiStripProps) {
-  const { activateKpiTarget, controlCenterKpis, dataFreshness, locale } = vm;
-  const loading = !dataFreshness.todayBookingsLoaded || dataFreshness.fleetLoading;
+export function ControlKpiStrip({
+  dashboardRuntime,
+  activeSliceId,
+  onSelectSlice,
+  embedded = false,
+  dataFreshness,
+}: ControlKpiStripProps) {
+  const loading = dataFreshness
+    ? !dataFreshness.todayBookingsLoaded || dataFreshness.fleetLoading
+    : false;
 
   if (loading) {
     return (
@@ -78,26 +119,28 @@ export function ControlKpiStrip({ vm, embedded = false }: ControlKpiStripProps) 
 
   return (
     <div className={kpiGridClass(embedded)}>
-      {controlCenterKpis.map((kpi) => {
-        const disabled = kpi.numericValue === null;
-        const displayValue = disabled ? '—' : kpi.displayValue;
-        const isCritical = kpi.tone === 'critical' && (kpi.numericValue ?? 0) > 0;
-        const isSuccess = kpi.tone === 'success';
+      {KPI_ORDER.map((id) => {
+        const slice = dashboardRuntime.slices[id];
+        const disabled = slice.count === null;
+        const displayValue = disabled ? '—' : String(slice.count);
+        const { isCritical, isSuccess } = kpiVisualState(slice);
+        const isActive = activeSliceId === id;
         return (
           <button
-            key={kpi.id}
+            key={id}
             type="button"
             onClick={() => {
-              if (!disabled) activateKpiTarget(kpi.id);
+              if (!disabled) onSelectSlice(id);
             }}
             disabled={disabled}
-            className={cn(kpiCardClass(kpi, embedded), disabled && 'cursor-not-allowed opacity-60')}
-            aria-label={`${kpi.label}: ${displayValue}`}
+            className={cn(kpiCardClass(slice, embedded, isActive), disabled && 'cursor-not-allowed opacity-60')}
+            aria-label={`${slice.title}: ${displayValue}`}
+            aria-pressed={isActive}
           >
             <div className="flex h-full items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="truncate text-[10.5px] font-medium tracking-[-0.01em] text-muted-foreground">
-                  {kpi.label}
+                  {slice.title}
                 </p>
                 <p
                   className={cn(
@@ -109,18 +152,17 @@ export function ControlKpiStrip({ vm, embedded = false }: ControlKpiStripProps) 
                 >
                   {displayValue}
                 </p>
-                {kpi.hint && (
-                  <p className="mt-1 truncate text-[10px] leading-snug text-muted-foreground">{kpi.hint}</p>
+                {slice.hint && (
+                  <p className="mt-1 truncate text-[10px] leading-snug text-muted-foreground">{slice.hint}</p>
                 )}
-                <DataTrustHint hint={kpi.trustHint} locale={locale} className="mt-0.5 text-[10px]" />
               </div>
               <div
                 className={cn(
                   'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors',
-                  kpiIconToneClass(kpi),
+                  kpiIconToneClass(slice),
                 )}
               >
-                <Icon name={KPI_ICONS[kpi.id] as 'car'} className="h-3 w-3" />
+                <Icon name={KPI_ICONS[id] as 'car'} className="h-3 w-3" />
               </div>
             </div>
             {isCritical && (

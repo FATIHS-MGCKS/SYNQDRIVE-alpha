@@ -398,9 +398,21 @@ function reasonHasCategory(state: VehicleRuntimeState, categories: RuntimeReason
   return state.blockReasons.some((reason) => categories.includes(reason.category));
 }
 
+function hasBlockingReason(state: VehicleRuntimeState): boolean {
+  return state.blockReasons.some((reason) => reason.blocking === true);
+}
+
 function buildBlockedMaintenanceSlice(states: VehicleRuntimeState[], locale: string): DashboardSlice {
+  // Blocked & Maintenance counts only genuine blockers: maintenance, unavailable
+  // and vehicles with a hard blocking reason. Cleaning-not-clean, warnings,
+  // soft-offline, standby and available-but-not-ready are explicitly excluded.
   const blocked = states
-    .filter((state) => state.isMaintenance || state.isBlocked || state.operationalStatus === 'unavailable')
+    .filter(
+      (state) =>
+        state.isMaintenance ||
+        state.operationalStatus === 'unavailable' ||
+        hasBlockingReason(state),
+    )
     .sort(byVehicleLabel);
   const rows = blocked.map((state) =>
     vehicleRow({ state, slice: 'blocked-maintenance', locale, severity: vehicleSeverity(state), reasons: state.blockReasons }),

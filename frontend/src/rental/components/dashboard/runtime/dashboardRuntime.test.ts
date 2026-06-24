@@ -326,6 +326,107 @@ describe('dashboard runtime model', () => {
     expect(model.slices['critical-alerts'].rows).toHaveLength(1);
   });
 
+  it('keeps the canonical six slice ids and uses blocked-maintenance (not maintenance)', () => {
+    const model = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles: [vehicle({ id: 'v1' })],
+      now: NOW,
+    });
+
+    expect(Object.keys(model.slices).sort()).toEqual(
+      [
+        'active-rented',
+        'blocked-maintenance',
+        'critical-alerts',
+        'due-soon',
+        'overdue-returns',
+        'ready-to-rent',
+      ].sort(),
+    );
+    expect(model.slices).not.toHaveProperty('maintenance');
+    expect(model.slices['blocked-maintenance'].id).toBe('blocked-maintenance');
+  });
+
+  it('treats an available but not-clean vehicle as not-ready without blocking it', () => {
+    const model = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles: [
+        vehicle({ id: 'ready', license: 'READY' }),
+        vehicle({ id: 'dirty', license: 'DIRTY', cleaningStatus: 'Needs Cleaning' }),
+      ],
+      now: NOW,
+    });
+
+    const dirty = model.vehicleStates.find((state) => state.vehicleId === 'dirty');
+    const ready = model.slices['ready-to-rent'];
+    const blocked = model.slices['blocked-maintenance'];
+    const notReadyGroup = ready.groups?.find((group) => group.id === 'available-but-not-ready');
+
+    // Not ready, but not a blocker → stays out of Blocked & Maintenance.
+    expect(dirty?.isReadyToRent).toBe(false);
+    expect(dirty?.isBlocked).toBe(false);
+    expect(dirty?.blockReasons.some((reason) => reason.blocking === true)).toBe(false);
+    expect(dirty?.warningReasons.some((reason) => reason.category === 'cleaning')).toBe(true);
+    expect(ready.rows.map((row) => row.vehicleId)).not.toContain('dirty');
+    expect(notReadyGroup?.rows.map((row) => row.vehicleId)).toContain('dirty');
+    expect(blocked.rows.map((row) => row.vehicleId)).not.toContain('dirty');
+  });
+
+  it('does not count warnings, cleaning, soft-offline or standby into blocked-maintenance', () => {
+    const model = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles: [
+        vehicle({ id: 'maintenance', status: 'Maintenance' }),
+        vehicle({ id: 'dirty', cleaningStatus: 'Needs Cleaning' }),
+        vehicle({ id: 'soft', lastSignal: hoursAgoIso(25), onlineStatus: 'OFFLINE', isFresh: false }),
+        vehicle({ id: 'standby', lastSignal: hoursAgoIso(3), onlineStatus: 'STANDBY', isFresh: false }),
+        vehicle({ id: 'warning-only' }),
+      ],
+      insights: [
+        insight({
+          id: 'svc',
+          type: 'SERVICE_WINDOW',
+          severity: 'WARNING',
+          title: 'Service soon',
+          entityIds: ['warning-only'],
+        }),
+      ],
+      now: NOW,
+    });
+
+    const blockedIds = model.slices['blocked-maintenance'].rows.map((row) => row.vehicleId);
+    expect(blockedIds).toEqual(['maintenance']);
+    expect(blockedIds).not.toContain('dirty');
+    expect(blockedIds).not.toContain('soft');
+    expect(blockedIds).not.toContain('standby');
+    expect(blockedIds).not.toContain('warning-only');
+  });
+
+  it('separates blocking from preventsReady for warnings', () => {
+    const model = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles: [vehicle({ id: 'svc-warn', license: 'SVC' })],
+      insights: [
+        insight({
+          id: 'svc',
+          type: 'SERVICE_WINDOW',
+          severity: 'WARNING',
+          title: 'Service window',
+          entityIds: ['svc-warn'],
+        }),
+      ],
+      now: NOW,
+    });
+
+    const state = model.vehicleStates[0];
+    // Health/compliance warning prevents ready but never blocks renting.
+    expect(state?.isReadyToRent).toBe(false);
+    expect(state?.isBlocked).toBe(false);
+    expect(state?.isWarning).toBe(true);
+    expect(state?.warningReasons.some((reason) => reason.preventsReady === true)).toBe(true);
+    expect(state?.warningReasons.some((reason) => reason.blocking === true)).toBe(false);
+  });
+
   it('does not crash on missing optional inputs or unusable telemetry timestamps', () => {
     const state = buildVehicleRuntimeStates({
       fleetVehicles: [vehicle({ id: 'missing-telemetry', lastSignal: '', signalAgeMs: undefined })],

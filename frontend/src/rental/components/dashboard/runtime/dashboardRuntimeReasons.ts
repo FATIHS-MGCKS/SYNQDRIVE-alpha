@@ -11,6 +11,7 @@ export interface RuntimeReasonInput {
   description?: string;
   source?: string;
   blocking?: boolean;
+  preventsReady?: boolean;
   actionLabel?: string;
   actionTarget?: string;
 }
@@ -49,6 +50,7 @@ export function createRuntimeReason(input: RuntimeReasonInput): RuntimeReason {
     description: input.description?.trim() || undefined,
     source,
     blocking: input.blocking,
+    preventsReady: input.preventsReady,
     actionLabel: input.actionLabel?.trim() || undefined,
     actionTarget: input.actionTarget?.trim() || undefined,
   };
