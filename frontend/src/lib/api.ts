@@ -2257,6 +2257,87 @@ export const api = {
       get<VehicleComplaint[]>(`/organizations/${orgId}/vehicles/${vehicleId}/complaints`),
     createComplaint: (orgId: string, vehicleId: string, body: { description: string; urgency?: string; region?: string | null }) =>
       post<VehicleComplaint>(`/organizations/${orgId}/vehicles/${vehicleId}/complaints`, body),
+    technicalObservations: {
+      list: (
+        orgId: string,
+        vehicleId: string,
+        params?: {
+          status?: TechnicalObservationStatus;
+          category?: TechnicalObservationCategory;
+          severity?: TechnicalObservationSeverity;
+          source?: TechnicalObservationSource;
+          bookingId?: string;
+          scope?: 'active' | 'history' | 'all';
+        },
+      ) => {
+        const search = new URLSearchParams();
+        if (params?.status) search.set('status', params.status);
+        if (params?.category) search.set('category', params.category);
+        if (params?.severity) search.set('severity', params.severity);
+        if (params?.source) search.set('source', params.source);
+        if (params?.bookingId) search.set('bookingId', params.bookingId);
+        if (params?.scope) search.set('scope', params.scope);
+        const qs = search.toString();
+        return get<TechnicalObservationListResponse>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/technical-observations${qs ? `?${qs}` : ''}`,
+        );
+      },
+      create: (orgId: string, vehicleId: string, body: CreateTechnicalObservationBody) =>
+        post<TechnicalObservation>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/technical-observations`,
+          body,
+        ),
+      update: (
+        orgId: string,
+        vehicleId: string,
+        observationId: string,
+        body: UpdateTechnicalObservationBody,
+      ) =>
+        patch<TechnicalObservation>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/technical-observations/${observationId}`,
+          body,
+        ),
+      resolve: (orgId: string, vehicleId: string, observationId: string) =>
+        post<TechnicalObservation>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/technical-observations/${observationId}/resolve`,
+          {},
+        ),
+      dismiss: (orgId: string, vehicleId: string, observationId: string) =>
+        post<TechnicalObservation>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/technical-observations/${observationId}/dismiss`,
+          {},
+        ),
+      convertToTask: (
+        orgId: string,
+        vehicleId: string,
+        observationId: string,
+        body?: ConvertTechnicalObservationToTaskBody,
+      ) =>
+        post<{ observation: TechnicalObservation; taskId: string }>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/technical-observations/${observationId}/convert-to-task`,
+          body ?? {},
+        ),
+      linkDamage: (
+        orgId: string,
+        vehicleId: string,
+        observationId: string,
+        body: LinkTechnicalObservationDamageBody,
+      ) =>
+        post<TechnicalObservation>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/technical-observations/${observationId}/link-damage`,
+          body,
+        ),
+      linkService: (
+        orgId: string,
+        vehicleId: string,
+        observationId: string,
+        body: LinkTechnicalObservationServiceBody,
+      ) =>
+        post<TechnicalObservation>(
+          `/organizations/${orgId}/vehicles/${vehicleId}/technical-observations/${observationId}/link-service`,
+          body,
+        ),
+    },
     registerFromDimo: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/vehicles/register-from-dimo`, data),
     deregister: (vehicleId: string) => post<{ success: boolean; deregisteredVehicle: any }>(`/admin/vehicles/${vehicleId}/deregister`, {}),
     updateOperationalStatus: (
@@ -5009,6 +5090,16 @@ export interface TripBehaviorEvent {
   detectionMethod?: string;
   confidence?: 'low' | 'medium' | 'high' | string;
   requiredSignals?: string[];
+  /** Original DIMO event name/source — only present for native events. */
+  originalEventName?: string | null;
+  originalEventSource?: string | null;
+  /**
+   * Abuse-relevance — true when the event contributes to the trip abuse KPI.
+   * Makes "why is this trip abuse-relevant?" explainable in the detail list.
+   */
+  abuseRelevant?: boolean;
+  abuseCategory?: string | null;
+  abuseReason?: string | null;
   metadataJson: any;
 }
 
@@ -5364,10 +5455,19 @@ export interface DataAnalyseSignalRow {
 export type DataAnalyseHfReliability = 'GOOD' | 'WATCH' | 'POOR' | 'MISSING';
 export type DataAnalyseLaunchUsefulness = 'POSSIBLE' | 'LIMITED' | 'NOT_POSSIBLE' | 'UNKNOWN';
 
+export type DataAnalyseHfAvailabilityStatus =
+  | 'hf_available'
+  | 'sparse'
+  | 'snapshot_only'
+  | 'missing'
+  | 'unknown';
+
 export interface DataAnalyseHighFrequency {
   available: boolean;
   message: string | null;
   snapshotLevelOnly: boolean;
+  /** Aggregated, operator-facing HF-availability label (single source of truth). */
+  hfAvailabilityStatus?: DataAnalyseHfAvailabilityStatus;
   clickHouseAvailable: boolean;
   signals: Array<{
     signalKey: string;
@@ -5398,7 +5498,31 @@ export interface DataAnalyseHighFrequency {
     detectionQuality: DataAnalyseHfQuality;
     notes: string[];
   }>;
+  /** telemetry_waypoints (route/waypoint stream). */
   waypointCount24h: number | null;
+  waypointCount7d?: number | null;
+  /** telemetry_snapshots (~30s snapshot mirror) sample counts. */
+  snapshotSampleCount24h?: number | null;
+  snapshotSampleCount7d?: number | null;
+  /** telemetry_hf_points (real 1s/post-trip HF signal points). */
+  hfConfigured?: boolean;
+  hfPointCount24h?: number | null;
+  hfPointCount7d?: number | null;
+  hfLatestPointAt?: string | null;
+  hfSignalGroupsSeen?: string[];
+  /** telemetry_hf_events (HF-reconstructed events). */
+  hfRecentEvents?: Array<{
+    eventType: string;
+    severity: string;
+    eventStart: string;
+    eventEnd: string | null;
+    durationMs: number | null;
+    confidence: string;
+    primaryValue: number | null;
+    primaryUnit: string | null;
+  }>;
+  /** HF mirror feature-flag status (read-only diagnostic). */
+  hfMirrorStatus?: 'enabled' | 'disabled' | 'unknown';
 }
 
 export interface DataAnalyseLaunchFeasibilityResult {
@@ -5517,11 +5641,170 @@ export interface VehicleComplaint {
   description: string;
   urgency: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   region: string | null;
-  status: 'ACTIVE' | 'RESOLVED';
-  source: 'FIELD_AGENT' | 'MANUAL';
+  status:
+    | 'ACTIVE'
+    | 'RESOLVED'
+    | 'OPEN'
+    | 'IN_REVIEW'
+    | 'CONFIRMED'
+    | 'REJECTED'
+    | 'NEW'
+    | 'CONVERTED'
+    | 'DISMISSED';
+  source:
+    | 'FIELD_AGENT'
+    | 'MANUAL'
+    | 'OPERATOR_RETURN'
+    | 'OPERATOR_HANDOVER'
+    | 'CUSTOMER_REPORT'
+    | 'STAFF_INSPECTION'
+    | 'AI_UPLOAD'
+    | 'SYSTEM_IMPORT';
+  impact?: 'SAFETY' | 'DRIVABILITY' | 'ENVIRONMENT' | 'COMFORT' | null;
+  blocksRental?: boolean;
+  title?: string | null;
+  category?: TechnicalObservationCategory | null;
+  affectedArea?: TechnicalObservationAffectedArea | null;
   resolvedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export type TechnicalObservationSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+export type TechnicalObservationStatus =
+  | 'new'
+  | 'active'
+  | 'in_review'
+  | 'converted'
+  | 'resolved'
+  | 'dismissed';
+
+export type TechnicalObservationSource =
+  | 'manual'
+  | 'operator_return'
+  | 'operator_handover'
+  | 'customer_report'
+  | 'staff_inspection'
+  | 'ai_upload'
+  | 'system_import'
+  | 'field_agent';
+
+export type TechnicalObservationCategory =
+  | 'exterior'
+  | 'interior'
+  | 'lights'
+  | 'wipers_windows'
+  | 'wheels_tires'
+  | 'electronics_controls'
+  | 'noise_vibration'
+  | 'driving_behavior'
+  | 'comfort'
+  | 'other';
+
+export type TechnicalObservationAffectedArea =
+  | 'front'
+  | 'rear'
+  | 'left'
+  | 'right'
+  | 'interior'
+  | 'dashboard'
+  | 'lights'
+  | 'wheels'
+  | 'tires'
+  | 'engine_bay'
+  | 'trunk'
+  | 'unknown';
+
+export interface TechnicalObservation {
+  id: string;
+  orgId: string;
+  vehicleId: string;
+  createdAt: string;
+  updatedAt: string;
+  createdByUserId: string | null;
+  createdByWorkerId: string | null;
+  source: TechnicalObservationSource;
+  title: string | null;
+  shortLabel: string | null;
+  description: string;
+  category: TechnicalObservationCategory | null;
+  affectedArea: TechnicalObservationAffectedArea | null;
+  severity: TechnicalObservationSeverity;
+  status: TechnicalObservationStatus;
+  blocksRental: boolean;
+  bookingId: string | null;
+  customerId: string | null;
+  driverId: string | null;
+  handoverProtocolId: string | null;
+  stationId: string | null;
+  locationContext: string | null;
+  resolvedAt: string | null;
+  resolvedByUserId: string | null;
+  dismissedAt: string | null;
+  convertedToTaskId: string | null;
+  linkedDamageId: string | null;
+  linkedServiceEventId: string | null;
+  linkedServiceCaseId: string | null;
+  linkedServiceTaskId: string | null;
+  notes: string | null;
+  region: string | null;
+  impact: string | null;
+}
+
+export interface TechnicalObservationListResponse {
+  active: TechnicalObservation[];
+  history: TechnicalObservation[];
+}
+
+export interface CreateTechnicalObservationBody {
+  description: string;
+  title?: string;
+  severity?: TechnicalObservationSeverity;
+  source?: TechnicalObservationSource;
+  category?: TechnicalObservationCategory;
+  affectedArea?: TechnicalObservationAffectedArea;
+  region?: string;
+  blocksRental?: boolean;
+  bookingId?: string;
+  customerId?: string;
+  driverId?: string;
+  handoverProtocolId?: string;
+  stationId?: string;
+  locationContext?: string;
+  notes?: string;
+  createdByWorkerId?: string;
+}
+
+export interface UpdateTechnicalObservationBody {
+  description?: string;
+  title?: string;
+  category?: TechnicalObservationCategory;
+  affectedArea?: TechnicalObservationAffectedArea;
+  severity?: TechnicalObservationSeverity;
+  status?: TechnicalObservationStatus;
+  blocksRental?: boolean;
+  notes?: string;
+  region?: string;
+}
+
+export interface ConvertTechnicalObservationToTaskBody {
+  title?: string;
+  description?: string;
+  blocksVehicleAvailability?: boolean;
+}
+
+export interface LinkTechnicalObservationDamageBody {
+  damageId?: string;
+  createDamage?: boolean;
+  damageDescription?: string;
+}
+
+export interface LinkTechnicalObservationServiceBody {
+  serviceEventId?: string;
+  serviceTaskId?: string;
+  createServiceCase?: boolean;
+  serviceCaseTitle?: string;
 }
 
 // V4.7.50 — Exterior images (Damage Map): five canonical views per vehicle.
@@ -5874,6 +6157,13 @@ export interface DashboardWarningLight {
   reason: string;
   action: string;
   rentalImpact: DashboardRentalImpact;
+  /** Optional read-model enrichments */
+  lastSeenAt?: string | null;
+  lastConfirmedActiveAt?: string | null;
+  lastConfirmedOffAt?: string | null;
+  freshness?: DashboardWarningLightsResponse['freshness'];
+  isCurrentActive?: boolean;
+  isHistorical?: boolean;
 }
 
 export interface DashboardWarningLightsResponse {

@@ -21,6 +21,36 @@ export type HfDetectionQuality =
 
 export type HfReliabilityStatus = 'GOOD' | 'WATCH' | 'POOR' | 'MISSING';
 
+/** HF mirror (ClickHouse telemetry_hf_*) feature-flag status, read-only. */
+export type HfMirrorStatus = 'enabled' | 'disabled' | 'unknown';
+
+/**
+ * Aggregated HF-availability label for the Data Analyse page (single source of
+ * truth so the UI legend never contradicts itself):
+ *   - hf_available : real, usable HF evidence (sub-2s cadence or healthy volume).
+ *   - sparse       : some HF/waypoints exist but too thin to be reliable.
+ *   - snapshot_only: only ~30s snapshot/latest-state telemetry — no HF.
+ *   - missing      : no telemetry of any kind observed.
+ *   - unknown      : nothing queried yet / counts indeterminate.
+ */
+export type HfAvailabilityStatus =
+  | 'hf_available'
+  | 'sparse'
+  | 'snapshot_only'
+  | 'missing'
+  | 'unknown';
+
+/**
+ * The concrete persistence source a Data Analyse signal value/interval was
+ * read from. Kept explicit so the page never conflates the layers.
+ */
+export type DataSourceTable =
+  | 'vehicle_latest_states'
+  | 'telemetry_snapshots'
+  | 'telemetry_hf_points'
+  | 'telemetry_waypoints'
+  | 'telemetry_hf_events';
+
 export type LaunchDetectionUsefulness =
   | 'POSSIBLE'
   | 'LIMITED'
@@ -141,18 +171,38 @@ export interface HighFrequencyAnalysisDto {
   available: boolean;
   message: string | null;
   snapshotLevelOnly: boolean;
+  /**
+   * Aggregated, operator-facing HF-availability label. Single source of truth
+   * that collapses available/snapshotLevelOnly/counts into one value so the UI
+   * legend cannot contradict itself.
+   */
+  hfAvailabilityStatus?: HfAvailabilityStatus;
   clickHouseAvailable: boolean;
   signals: HighFrequencySignalDto[];
+  /** telemetry_waypoints (route/waypoint stream). */
   waypointCount24h: number | null;
+  waypointCount7d: number | null;
+  /** telemetry_snapshots (~30s snapshot mirror) total sample counts. */
+  snapshotSampleCount24h: number | null;
+  snapshotSampleCount7d: number | null;
   /**
    * Optional HF-layer status (ClickHouse telemetry_hf_* mirror). Best-effort and
    * analytics-only — absent/empty when the HF layer has no data or is degraded.
    */
   hfConfigured?: boolean;
+  /** telemetry_hf_points (real 1s/post-trip HF signal points). */
   hfPointCount24h?: number | null;
+  hfPointCount7d?: number | null;
   hfLatestPointAt?: string | null;
   hfSignalGroupsSeen?: string[];
+  /** telemetry_hf_events (HF-reconstructed events). */
   hfRecentEvents?: HfRecentEventDto[];
+  /**
+   * HF mirror feature-flag status as derivable from the read model. Diagnostic
+   * only — tells the operator whether post-trip HF mirroring into ClickHouse is
+   * currently enabled, disabled, or indeterminable.
+   */
+  hfMirrorStatus?: HfMirrorStatus;
 }
 
 export interface LaunchFeasibilityDto {

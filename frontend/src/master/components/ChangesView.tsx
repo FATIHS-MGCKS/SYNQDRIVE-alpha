@@ -35,6 +35,394 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-return-technical-observations-v4970-2026-06-26',
+    version: '4.9.70',
+    title: 'V4.9.70 — Operator Return: Technische Beobachtungen im Handover-Protokoll',
+    summary: [
+      'Operator Handover Condition-Step: Abschnitt „Technische Beobachtungen“ mit Schnellchips, Kategorie/Bereich/Schweregrad, blocksRental und Review-Zusammenfassung.',
+      'Handover-Payload `technicalObservations` — backendseitig transaktional als kanonische `VehicleComplaint`-Rows mit `operator_return`/`operator_handover`, Booking-, Kunden- und `handoverProtocolId`-Kontext.',
+      'Warnleuchten-Notizen werden optional als Licht-Beobachtung übernommen (Dedupe); allgemeine Protokoll-Notizen bleiben unverändert.',
+    ],
+    reason: 'Technische Beobachtungen sollen im operativen Rückgabeprozess entstehen und im Health Tab sichtbar sein.',
+    previousBehavior: 'Warnleuchten-Notizen und allgemeine Notes nur im Handover-Protokoll, keine strukturierten Technical Observations aus Operator Flow.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Operator',
+    createdAt: '2026-06-26T14:00:00.000Z',
+  },
+  {
+    id: 'technical-observations-health-ui-v4969-2026-06-26',
+    version: '4.9.69',
+    title: 'V4.9.69 — Health Tab: Technische Beobachtungen UI fertiggestellt',
+    summary: [
+      'Neues Modul `TechnicalObservationsHealthModule`: Quick Box + Modal mit deutscher Copy, Kategorie/Bereich/Schweregrad-Formular und blocksRental-Toggle.',
+      'Aktiv/Verlauf aus `api.vehicles.technicalObservations` — Actions verdrahtet: Aufgabe erstellen, Schaden erfassen, Service-Aufgabe, Erledigen, Verwerfen, Bearbeiten.',
+      'RentalHealth `complaints`-Status in Quick Box und Modal-Header; `reloadHealth` nach Mutationen. Legacy Complaint-Modal in `HealthErrorsView` entfernt.',
+    ],
+    reason: 'Complaint Box zu einem nutzbaren Operator-Modul für technische Beobachtungen ausbauen.',
+    previousBehavior: 'Englische Complaint List mit list/create legacy API, nur ACTIVE/RESOLVED, keine Konvertierungs-Actions.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T16:00:00.000Z',
+  },
+  {
+    id: 'technical-observations-canonical-v4968-2026-06-26',
+    version: '4.9.68',
+    title: 'V4.9.68 — Technische Beobachtungen: kanonisches Backend/API-Fundament',
+    summary: [
+      '`vehicle_complaints` erweitert um kanonische Technical-Observation-Felder (category, affectedArea, blocksRental, Booking/Handover-Context, Task/Damage/Service-Links).',
+      'Neues Modul `technical-observations`: org-sichere CRUD + resolve/dismiss/convert-to-task/link-damage/link-service APIs unter `/organizations/:orgId/vehicles/:vehicleId/technical-observations`.',
+      'RentalHealth `complaints` aggregiert aus aktiven Beobachtungen: critical bei severity critical oder blocksRental; rental_blocked nur bei explizitem blocksRental.',
+      'Frontend `api.ts`: TechnicalObservation-Typen + Client-Methoden (rückwärtskompatibel zu legacy `/complaints`).',
+    ],
+    reason:
+      'Complaint Box soll kein UI-Prototyp bleiben, sondern tenant-sicheres Intake/Evidence-Modul für technische Beobachtungen.',
+    previousBehavior:
+      'Nur list/create Complaints; impact-basierte Rental-Blocks; keine kanonischen Kategorien/Links/Status-APIs.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T14:00:00.000Z',
+  },
+  {
+    id: 'tire-health-detail-ui-v4967-2026-06-26',
+    version: '4.9.67',
+    title: 'V4.9.67 — Tire Health Quick/Detail Box: Mobile UI, Copy & Layout',
+    summary: [
+      'Tire Health Quick Box + Modal (`HealthErrorsView`): ML-Badge → „Measured · Forecast“ / „ML forecast“; Lowest tread Copy unterscheidet gemessen vs. geschätzt (ohne „ca.“ bei Messung).',
+      'Forecast Quality Card: Label + Subtext vereinfacht; Active Set mit Check-Icon statt leerem Kreis; Tread Depth als 2×2-Grid (FL/FR/RL/RR) mit Rotate/Change darunter.',
+      'Estimated remaining tread life Label + Score-Hinweis; Usage Distribution Kontext „Based on active set mileage“; Manual Measurement Copy ohne Bayesian-Jargon.',
+      'Neue UI-Helfer: `frontend/src/rental/lib/tire-health-detail-ui.ts` (+ Tests). Nur Frontend — keine Tire-Health-Berechnung geändert.',
+    ],
+    reason: 'Tire Health Box auf Mobile klarer, verständlicher und professioneller darstellen — reiner UI-/Copy-/Layout-Refactor.',
+    previousBehavior:
+      'ML-Badge, „ca.“ immer vor mm, Estimate Quality, absolutes Rad-Layout mit Actions in der Mitte, Active Set mit Radio-ähnlichem Kreis.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T12:00:00.000Z',
+  },
+  {
+    id: 'battery-health-detail-ui-clarity-v4966-2026-06-26',
+    version: '4.9.66',
+    title: 'V4.9.66 — Battery Health Detail: Ruhespannung, Außentemperatur, Messarten',
+    summary: [
+      'Battery Modal/Quick Box (`HealthErrorsView`): „Resting Voltage“ → „12V-Ruhespannung“ mit Erklärungstext; Aktuelle Spannung und Ruhespannung getrennt.',
+      'Außentemperatur als Messkontext aus `outsideTemperatureStartC` der letzten Fahrten (Trips-API) statt Batterie-`temperatureC`.',
+      'Spannungsverlauf nur aus `RESTING_VOLTAGE_V`-Evidence; Messungen-Liste nutzt `batteryHealthDetail.detail.lv.evidence` mit sprechenden Labels.',
+    ],
+    reason:
+      'Battery Health Detail war missverständlich: gemischte Spannungsarten im Trend, generische History und falsche Temperatur-Kachel.',
+    previousBehavior:
+      'Voltage Trend aus gemischten Snapshots (6–18 V Bänder), Temperature = battery temperatureC, History nur „Measurement X V“.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T23:00:00.000Z',
+  },
+  {
+    id: 'audit-followup-skip-reasons-hf-legend-snapshot-tristate-v4965-2026-06-26',
+    version: '4.9.65',
+    title: 'V4.9.65 — Audit-Follow-Up: granulare Skip-Reasons, HF-Status-Legende, snapshotOnly-Härtung',
+    summary: [
+      'Trip-Enrichment-Orchestrator: granulare Skip-Reasons (`capability` / `insufficient_points` / `no_hf_data`). `enrichTrip()` liefert jetzt ein diskriminiertes Outcome statt `null`; persistierter `behaviorEnrichmentStatus` bleibt stabil `SKIPPED_NO_HF_DATA`, der Grund landet in `behaviorEnrichmentError` und in der Data-Analyse-„Trip processing“-Trace.',
+      'Data Analyse: neues aggregiertes Feld `hfAvailabilityStatus` (`hf_available`/`sparse`/`snapshot_only`/`missing`/`unknown`) als Single Source of Truth + kanonische Operator-Legende im High-Frequency-Tab.',
+      'Capability-Layer: `deriveVehicleCapabilityProfile.snapshotOnly` ist jetzt ein Tri-State (`true`/`false`/`unknown`) — ein fehlendes `hasHfWaypoints` wird nicht mehr still als „definitiv nicht snapshot-only“ gemeldet.',
+      'Security: `.cursor/mcp.json` (DIMO Private Key + Hostinger Token) aus Git-Tracking entfernt, `.gitignore` ergänzt, redigiertes `.cursor/mcp.json.example` hinzugefügt. Key-Rotation + History-Purge bleiben manuelle Aktionen.',
+    ],
+    reason:
+      'Folgeaktionen aus dem End-to-End-Audit: Diagnose „warum wurde ein Trip nicht enriched?“ erklärbar machen, widerspruchsfreie HF-Statusanzeige, defensivere Capability-Defaults und Secret-Leak schließen — additive Änderungen, keine Detektor-/Threshold-Änderungen.',
+    previousBehavior:
+      'Skips waren nur opak als `SKIPPED_NO_HF_DATA` sichtbar; HF-Status musste aus mehreren Booleans rekonstruiert werden; `snapshotOnly` defaultete implizit auf `false`; `.cursor/mcp.json` war getrackt.',
+    details:
+      'Backend: trip-behavior-enrichment.service.ts (Outcome-Typ), trip-enrichment-orchestrator.service.ts (Reason-Mapping), data-analyse.{service,utils,types}.ts (hfAvailabilityStatus + describeEnrichmentSkip), vehicle-capabilities.ts (Tri-State), vehicle-intelligence.controller.ts (Skip-Message). Frontend: api.ts (Typen), DataAnalyseView.tsx (Legende). Tests: data-analyse.utils.spec.ts, vehicle-capabilities.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T22:30:00.000Z',
+  },
+  {
+    id: 'error-codes-dtc-modal-ui-cleanup-v4964-2026-06-26',
+    version: '4.9.64',
+    title: 'V4.9.64 — Error Codes Quick Box: kompakter, ohne Redundanz',
+    summary: [
+      'DTC-Modal in `HealthErrorsView`: Fleet-Health-Banner und doppelte Header-Summary entfernt; A/B/C-Abschnittsnummerierung entfernt.',
+      '„No active fault codes“ nur noch einmal in der grünen Current-Statusbox; „Letzte Prüfung“ einmalig im Header.',
+      'Großer „DTC Monitoring“-Block entfernt — kompakte Footer-Meta mit Kontrollintervall + Status; Stale threshold, Signal source und Last poll attempt nicht mehr sichtbar.',
+    ],
+    reason:
+      'Die Error-Codes-Quick-Box war redundant und zu technisch; Operatoren brauchen klaren Status ohne dreifache Wiederholungen.',
+    previousBehavior:
+      'Betriebsstatus-Kasten, mehrfaches No-active/Last-check, nummerierte A/B/C-Sektionen und großer DTC-Monitoring-Grid.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T14:00:00.000Z',
+  },
+  {
+    id: 'vehicle-detail-tacho-warnleuchten-detail-drawer-v4963-2026-06-26',
+    version: '4.9.63',
+    title: 'V4.9.63 — Tacho Warnleuchten: Detail-Drawer + Active/Historical-Semantik',
+    summary: [
+      'Health Tab: `DashboardWarningLightsPanel` ist anklickbar (Hover/Focus/Chevron) und öffnet `DashboardWarningLightsDetailDrawer` (SynqDrive `DetailDrawer` / Sheet).',
+      'Quick Box zeigt pro Warnleuchte Status (Aktiv/Historisch/Veraltet/Bestätigt aus), Timestamps, Datenquelle/-frische, Buchungs- und Fahrtkontext (read-only via bestehende Bookings/Trips APIs) sowie Actions „Buchung öffnen“ / „Fahrt prüfen“ wenn Kontext vorhanden.',
+      'Frontend `dashboard-warning-lights-display.ts`: `deriveTelltaleDisplayCategory`, `countHistoricalTelltales`, Badge „Historisch“/„Veraltet“ — `activeAlerts` nur bei frisch bestätigter Aktivität (`isTelltaleCurrentlyActive`).',
+      'Backend `enrichDashboardLightMetadata`: optionale Felder `isHistorical`, `isCurrentActive`, `lastSeenAt`, `lastConfirmedActiveAt/OffAt`, per-light `freshness` — keine DB-Schemaänderung.',
+    ],
+    reason:
+      'Historische Batterie-Warnleuchten dürfen nicht als aktuell aktiv zählen; Operatoren brauchen erklärende Detailansicht mit Buchungs-/Trip-Kontext ohne zweite Warnleuchten-Wahrheit.',
+    previousBehavior:
+      'Tacho-Warnleuchten-Card war nicht anklickbar; stale/historische „on“-Snapshots konnten fälschlich als aktiv wirken; keine Detailbox mit Kontext.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T12:00:00.000Z',
+  },
+  {
+    id: 'vehicle-detail-health-tab-header-removal-v4962-2026-06-26',
+    version: '4.9.62',
+    title: 'V4.9.62 — Vehicle Detail Health Tab: redundanter Tab-Header entfernt',
+    summary: [
+      '`HealthErrorsView`: `PageHeader` (Eyebrow, Titel, Beschreibung, globaler Refresh-Button) entfernt — erste Health Card (Tacho Warnleuchten) beginnt direkt unter den Vehicle Detail Tabs.',
+      'Ungenutzte UI-Hooks bereinigt: `refreshHealth`, `reloadRentalHealth`/`useFleetVehicles`-Import. Initiale Datenladung und Card-interne Last-updated/Freshness bleiben unverändert.',
+    ],
+    reason:
+      'Der obere Health-Tab-Header war redundant, weil jede Fach-Box eigene Status-/Freshness-Informationen zeigt; auf Mobile verbrauchte er unnötig vertikalen Platz.',
+    previousBehavior:
+      'Health Tab zeigte `PageHeader` mit „Tacho Warnleuchten & Fahrzeugzustand", Beschreibung und globalem Refresh-Icon oberhalb des Card-Grids.',
+    details:
+      'Geändert: `HealthErrorsView.tsx` nur. Keine Health-Berechnungen, APIs oder Card-Inhalte geändert.',
+    affectsArchitecture: false,
+    module: 'Vehicle Detail',
+    createdAt: '2026-06-26T16:00:00.000Z',
+  },
+  {
+    id: 'vehicle-detail-support-removal-trips-overview-v4961-2026-06-26',
+    version: '4.9.61',
+    title: 'V4.9.61 — Vehicle Detail: Support-Buttons entfernt + Trips Overview Card',
+    summary: [
+      'Vehicle Detail: verbleibende tab-interne Support-CTAs in Documents (`SupportContextButton`) und Task List entfernt — globaler Header-Button war bereits in V4.9.56 entfernt.',
+      'Trips Tab: `TripsHeader` + `TripsSummaryBar` zu einer kompakten `TripsOverviewCard` zusammengeführt (Eyebrow, Titel, Meta, Prüfen/Aktualisieren, KPI-Grid, Warnhinweis in einer Card). Filterbar in App.tsx unverändert.',
+    ],
+    reason:
+      'Support-CTAs gehören nicht mehr in die Vehicle Detail Page; der Trips Tab wirkte auf Mobile durch redundante Header-/Summary-Ebenen unruhig.',
+    previousBehavior:
+      'Documents und Task List hatten eigene Support-Buttons; Trips zeigte freien Header, separate Summary-Bar und Warnhinweis als drei Ebenen.',
+    details:
+      'Geändert: `DocumentsView.tsx`, `VehicleTasksView.tsx`, `TripsOverviewCard.tsx` (neu), `VehicleTripsTab.tsx`; entfernt: `TripsHeader.tsx`, `TripsSummaryBar.tsx`. Keine Business-/API-/Filterlogik geändert.',
+    affectsArchitecture: false,
+    module: 'Vehicle Detail',
+    createdAt: '2026-06-26T14:00:00.000Z',
+  },
+  {
+    id: 'vehicle-health-box-telltale-freshness-v4960-2026-06-26',
+    version: '4.9.60',
+    title: 'V4.9.60 — Vehicle Health Box Klarheit + Tacho-Warnleuchten Freshness-Fix',
+    summary: [
+      'Vehicle Health Box: Stat-Kacheln umbenannt zu Critical / Warning / Error Codes (Counts unverändert); „Findings“ → „Reports“; Untracked-Hinweis direkt unter Brakes/Tires/Battery verschoben.',
+      'Dashboard-Warnleuchten Read Model: `buildBatteryLight` und `buildCheckEngineLight` wenden jetzt Freshness-Gate auf `dashboard_lights`-Snapshots an — veraltete „on“-Meldungen werden als `stale` statt `active` geliefert.',
+      'Frontend-Defensive: `isTelltaleCurrentlyActive` zählt keine stale/error/no_data-Envelope- oder stale-Light-States als aktiv; QuickView-Footer nutzt `presentation.activeCount`.',
+    ],
+    reason:
+      'Die Overview-Box war semantisch unklar und zeigte fälschlich historische Batterie-Warnleuchten als aktiv, wenn alte HM dashboard_lights-Snapshots noch „on“ enthielten.',
+    previousBehavior:
+      'Batterie/MIL aus `dashboard_lights` ignorierten Freshness; alte „on“-Snapshots konnten dauerhaft als aktiv erscheinen. Untracked-Info stand oberhalb von Reports.',
+    details:
+      'Geändert: `VehicleHealthBox.tsx`, `vehicle-health-box.mapper.ts`, `dashboard-warning-lights-display.ts`, `DashboardWarningLightsQuickView.tsx`, `dashboard-warning-lights.parsing.ts`, `dashboard-warning-lights.service.ts` + Tests. Keine Tire-/Brake-/Battery-Health-Berechnung, keine Schwellenwerte, keine RentalHealth-Logik geändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T12:00:00.000Z',
+  },
+  {
+    id: 'runtime-critical-not-auto-blocking-v4959-2026-06-26',
+    version: '4.9.59',
+    title: 'V4.9.59 — Runtime: Critical ist kein automatischer Rental Block (Service overdue bleibt sichtbar)',
+    summary: [
+      '`vehicleRuntimeStateBuilder` trennt Severity jetzt strikt von Sperrwirkung: Health-/Service-/Compliance-Module koennen `critical` bleiben, setzen aber nicht mehr automatisch `blocking` oder `preventsReady`.',
+      'HM/OEM Next Service overdue (`service_compliance critical`) bleibt als Critical/Attention-/Service-Signal sichtbar, blockt aber nicht mehr Ready-to-Rent und landet ohne `rental_blocked`/`blocking_reasons` nicht mehr in Blocked & Maintenance.',
+      '`isReadyToRent` nutzt nicht mehr pauschal `criticalReasons.length === 0`; Ready basiert auf Operational Status, Cleaning, expliziten Blocking-/PreventsReady-Reasons und kanonischen Blockern.',
+      '`isHardBlockingCategory` ist auf explizit blockende Runtime-Kategorien beschraenkt; Service/Compliance/Health/Battery/Tires/Brakes/DTC/Damage blocken nur noch mit expliziter canonical Blocking Source.',
+      'Tests ergaenzt/angepasst: Service overdue critical ohne Blocker bleibt ready/non-blocked, TÜV-Blocking-Reason sperrt weiter, generic critical health bleibt sichtbar ohne Block, Critical Alerts bleiben erhalten.',
+    ],
+    reason:
+      'Ein ueberfaelliger HM/OEM Next Service wurde im Frontend durch `service_compliance critical -> blocking:true -> Blocked & Maintenance -> not ready` eskaliert. Backend-seitig ist `rental_blocked` aber die eigene Sperrwahrheit.',
+    previousBehavior:
+      'Critical-Severity in hard-blocking Kategorien und `criticalReasons.length === 0` in der Ready-Bedingung machten Critical faktisch zu einem automatischen Miet-Sperrgrund.',
+    details:
+      'Geaendert: `vehicleRuntimeStateBuilder.ts`, `dashboardRuntime.test.ts`, `docs/operational-issue-normalization.md`, Architektur/Changes. Keine Backend-Aenderung. `VehicleHealthResponse.rental_blocked` und `blocking_reasons` bleiben die expliziten Blocker-Quellen.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-26T00:01:00.000Z',
+  },
+  {
+    id: 'operational-issue-final-cleanup-v4958-2026-06-25',
+    version: '4.9.58',
+    title: 'V4.9.58 — OperationalIssue Final Cleanup: Source-Leaks, Stale-Wording, Prüffälle-Reste',
+    summary: [
+      'Repo-weite Abschluss-Suche nach technischen Sources, rohen Insight-/Misuse-Enums, `Prüffälle`, `Service Window Available`, `UNKNOWN · UNKNOWN`, stale/DataQuality-Wording und Legacy-Readiness-Helpern durchgeführt und klassifiziert.',
+      'Normale UI-Copy bereinigt: Booking/Customer Misuse-Aggregate nutzen jetzt Missbrauchs-/Schadensverdacht bzw. Verdachtshinweise statt `Prüffälle`/`Abuse-Flags`.',
+      'User-facing DataQuality-Wording vereinheitlicht: `Stale` / `Datenbasis veraltet` in Fleet/Health/Warnleuchten-Oberflächen zu `Delayed data`, `Datenstand verzögert` oder neutralem Detailtext geändert; technische `stale`-Types bleiben intern erhalten.',
+      'Legacy-Status festgehalten: alte Dashboard-Readiness/KPI-Helper und Overview-Readiness/QuickView bleiben deprecated/Legacy, nicht aktive Wahrheit. Runtime/OperationalIssues bleiben die aktive Quelle fuer Dashboard/Attention/Drawer/Fleet-nahe Issues.',
+      '`docs/operational-issue-normalization.md` finalisiert: aktive Quellen, erlaubte Debug-Source-Orte, Legacy-/Deprecated-Liste und Zukunftsregeln gegen zweite Wahrheiten dokumentiert.',
+    ],
+    reason:
+      'Prompt 7 ist der finale Konsistenz- und Cleanup-Pass nach der OperationalIssue-Normalisierung. Ziel war, normale UI-Leaks und verbliebene Copy-Drift zu entfernen, ohne neue Architektur oder Fachlogik zu bauen.',
+    previousBehavior:
+      'Einige normale UI-Flächen verwendeten noch „Prüffälle"/„Abuse-Flags" oder sichtbares `Stale`/„Datenbasis veraltet"; technische Source-Strings blieben zwar überwiegend in Tests/Internals, waren aber noch nicht final klassifiziert.',
+    details:
+      'Geändert: Booking-/Customer-Misuse-Copy, Fleet/Health DataQuality-Wording (`rental-health-status.ts`, `fleet-health-control-center.ts`, `health-detail-utils.ts`, `DashboardWarningLightsQuickView.tsx`, `RentalHealthBadge.tsx`, `FleetConditionView.tsx`, `dashboard-warning-lights-display.ts`) und finale Doku. Keine Backend-/API-Änderung, keine neuen Status-/Readiness-Regeln.',
+    affectsArchitecture: true,
+    module: 'Rental Platform',
+    createdAt: '2026-06-25T23:45:00.000Z',
+  },
+  {
+    id: 'trips-misuse-damage-normalization-v4957-2026-06-25',
+    version: '4.9.57',
+    title: 'V4.9.57 — Trips: Missbrauchs-/Schadensverdacht sauber eingeordnet',
+    summary: [
+      'OperationalIssue-Normalizer erweitert: vorhandene MisuseCases werden auf `misuse`/`damage` Domains mit Semantic Keys gemappt (`cold_engine_abuse`, `harsh_acceleration`, `harsh_braking`, `suspicious_trip`, `damage_suspicion`, `impact_suspicion`).',
+      '`MisuseCasesPanel` ist jetzt eine Verdachts-/Evidence-Box statt technische Fallliste: Titel `Missbrauchs-/Schadensverdacht`, Empty State `Unauffällige Fahrt`, normalisierte Case-Titel, Severity/Confidence ruhig und Evidence-Zeilen ohne raw Case IDs/Categories/Sources.',
+      'Trip Detail rendert die Misuse-/Damage-Sektion fuer abgeschlossene Fahrten immer; ohne Org/API-Kontext erscheint der ruhige Empty State. BehaviorPanel bleibt Ereignisliste, MisuseCasesPanel bleibt Aggregat/Bewertung.',
+      'Private Trips sind legitimer Kontext: `PRIVATE_UNASSIGNED` zeigt `Privat` und erzeugt nicht automatisch `Nicht zugewiesen` / `Zuordnung prüfen`. Collapsed Trip Cards zeigen kein unklares `+x` mehr.',
+      'Prominentes `HF verfügbar` wurde in normalen Trip-Labels zu `Telemetrie verfügbar`; Evidence darf weiterhin `HF-Daten` nennen, wenn es fachlich die Datenquelle beschreibt.',
+    ],
+    reason:
+      'Missbrauchs- und Schadensverdacht mussten app-weit aus Health herausgehalten und im Trip-Kontext als klare, evidenzbasierte Bewertung dargestellt werden — ohne Prüffall-/Debug-Sprache.',
+    previousBehavior:
+      'MisuseCasesPanel war noch falllistenartig (`Verdachtsfälle`, Kategorien/Attribution/Eventcount), Trip Detail zeigte die Sektion nur bei Org/API-Kontext, private Fahrten konnten als unklarer Zuordnungsfall wirken und collapsed cards konnten `+x`-Chips anzeigen.',
+    details:
+      'Geändert: `MisuseCasesPanel.tsx`, `TripTimelineExpanded.tsx`, `TripTimelineCard.tsx`, `TripAssignmentBadge.tsx`, `tripRentalContext.ts`, `trips-view-ui.ts`, `behavior-ui.utils.ts`, `TripMapDataQualityOverlay.tsx`, `operationalIssueTypes.ts`, `normalizeOperationalIssues.ts`, `operationalIssueLabels.ts`, Tests. Keine Backend-/Detektor-Änderung.',
+    affectsArchitecture: true,
+    module: 'Trips',
+    createdAt: '2026-06-25T23:36:00.000Z',
+  },
+  {
+    id: 'vehicle-detail-overview-health-service-cleanup-v4956-2026-06-25',
+    version: '4.9.56',
+    title: 'V4.9.56 — Vehicle Detail: Overview/Health/Service ohne zweite Readiness-/Issue-Wahrheit',
+    summary: [
+      'Overview bleibt canonical-only: keine Quick-Navigation-Statuslayer und keine lokal abgeleitete Blocked/Not-ready-Box. Fahrzeuglabel nutzt `formatVehicleIssueEntityLabel`; fehlende Dokumente blocken weiterhin nicht ohne kanonische Rental-Blocker.',
+      'Overview-HealthBox im kompakten Modus (`showDataBasis={false}`) blendet DataBasis/Tracking-Hinweise, Findings und ComplianceGrid aus; sichtbar bleiben konkrete technische Module plus Tacho-Warnleuchten-QuickView.',
+      'Health Tab Header von „Vehicle Health / Health Center" auf „Tacho Warnleuchten & Fahrzeugzustand" umgestellt; DTC-delayed/stale Copy auf „Datenstand verzögert" normalisiert. Missbrauchs-/Prüffälle bleiben aus dem Health Tab raus.',
+      'Service & Wartung Box ist task-only: rendert nur bei offenen Service-/Wartungsaufgaben, redundanter Service-Center-Button entfernt, `Service-Aufgabe erstellen` bleibt. Pure Tests fuer Task-Summary/Visibility-Basis ergänzt.',
+      'Vehicle Detail Header: SupportContextButton entfernt; Health-Chip-Tooltip nutzt `formatUserFacingReasonLabel` statt rohem `Blocked:`/Modul-Key-Text.',
+    ],
+    reason:
+      'Prompt 5 soll verhindern, dass Vehicle Detail Overview/Health/Service eine zweite lokale Readiness-, Blocked- oder Service-Wahrheit neben Runtime/RentalHealth/OperationalIssues aufbaut.',
+    previousBehavior:
+      'Overview war bereits teilweise bereinigt, aber HealthBox zeigte im kompakten Kontext noch Data-/Finding-/Compliance-Signale, DTC nutzte `DTC stale`, der Health-Tab hatte noch Health-Center-Copy und der Vehicle Header enthielt Support-Button sowie rohe Tooltip-Gründe.',
+    details:
+      'Geändert: `VehicleOverviewTab.tsx`, `VehicleHealthBox.tsx`, `vehicle-health-box.mapper.ts`, `VehicleServiceContextPanel.tsx`, `HealthErrorsView.tsx`, `App.tsx`, `vehicle-service-tasks.utils.test.ts`, `vehicle-health-box.mapper.test.ts`, Doku. Keine Backend-/API-Änderung, keine neue UI-Architektur, keine neue Readiness-Logik.',
+    affectsArchitecture: true,
+    module: 'Vehicle Detail',
+    createdAt: '2026-06-25T23:29:00.000Z',
+  },
+  {
+    id: 'unified-behavior-readmodel-abuse-relevance-v4955-2026-06-25',
+    version: '4.9.55',
+    title: 'V4.9.55 — Unified Read-Model: native + HF-derived Events vereint, Abuse-Relevanz erklärbar',
+    summary: [
+      'Native `DrivingEvent` (DIMO Telemetry) und HF-derived `TripBehaviorEvent` werden in einem testbaren Modul (`unified-behavior-read-model.ts`) zu EINER Trip-Detail-Liste zusammengeführt — keine zweite Wahrheit mehr. Der Controller (`getTripBehaviorEvents`) liest nur noch DB-Rows und delegiert Mapping/Dedup/Abuse-Relevanz.',
+      'Abuse-Relevanz ist jetzt erklärbar: jedes Event trägt `abuseRelevant` / `abuseCategory` / `abuseReason`. Natives `EXTREME_BRAKING` (das via `dimoAbuseContribution` in die Abuse-KPI fließt) ist im Detail sichtbar abuse-relevant markiert. Normales harshBraking/harshAcceleration bleibt bewusst nicht abuse-markiert, extreme acceleration bleibt als EXTREME sichtbar, aber nicht abuse-KPI-relevant (mirror der Counter-Logik).',
+      'Provenance (NATIVE/RECONSTRUCTED), Detection Method, Confidence, Required Signals und — bei nativen Events — der Original-DIMO-Eventname/-Quelle (`originalEventName`/`originalEventSource`) bleiben im Read-Model erhalten und sichtbar.',
+      'Native-preferred Dedup dokumentiert + getestet: gleiche Kategorie innerhalb 5s → native gewinnt, der rekonstruierte Duplikat-Eintrag entfällt; unterschiedliche Eventtypen werden NIE fälschlich zusammengeworfen (ABUSE-Events haben kein natives Pendant und bleiben immer erhalten).',
+      'UI: `TripBehaviorEventList` zeigt ein „Abuse-relevant"-Badge (mit Reason-Tooltip) neben Typ/Severity/Provenance; der Nutzer kann nachvollziehen, warum ein Trip als abuse-relevant gilt. KPI-Count == Detail-Abuse-Count ist per Test abgesichert.',
+    ],
+    reason:
+      'Native Events lagen in `DrivingEvent`, HF-derived in `TripBehaviorEvent`. Native extremeBraking zählte in die Abuse-KPI, war im Detail aber nicht als abuse-relevant erkennbar — der Trip wirkte „Missbrauchsverdacht" ohne sichtbares Auslöser-Event.',
+    previousBehavior:
+      'Das Read-Model im Controller mappte native + HF-Events bereits zusammen (Provenance/Confidence), markierte aber keine Abuse-Relevanz und zeigte den nativen Original-Eventnamen nicht. Mapping/Dedup waren inline und untestbar.',
+    details:
+      'Neu: `backend/.../trips/unified-behavior-read-model.ts` (+ `.spec.ts`, 12 Tests). Geändert: `vehicle-intelligence.controller.ts` (nutzt `buildUnifiedBehaviorEvents`), `frontend/src/lib/api.ts` (`TripBehaviorEvent`: abuse* + originalEvent*), `TripBehaviorEventList.tsx` (Abuse-Badge, nativer Name im Tooltip). Keine Detektor-Schwellenwerte, keine Counter-/KPI-Logik, keine LTE_R1-native-Verarbeitung, keine Migration geändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-25T23:55:00.000Z',
+  },
+  {
+    id: 'dashboard-fleet-issue-label-normalization-v4954-2026-06-25',
+    version: '4.9.54',
+    title: 'V4.9.54 — Dashboard/Fleet Labels: OperationalIssue-Formatter fuer Reasons, Badges und Drawer',
+    summary: [
+      '`operationalIssueLabels.ts` erweitert um `formatUserFacingReasonLabel`: technische Sources, rohe Insight-Typen und generische Health-Texte fallen jetzt auf kanonische, kurze User-Labels zurueck (`Service überfällig`, `Fehlercodes prüfen`, `Reifen beobachten`, `Batterie prüfen`, `Servicefenster verfügbar`, `Health prüfen`).',
+      '`reasonDisplay.ts` nutzt den zentralen Formatter; Dashboard Drawer und deprecated FleetBoard sanitizen Row-Titel/Subtitles/Meta und rendern Reason-Pills weiter dedupliziert/max. 2 sichtbar ohne Source-ID.',
+      'Fleet Command (`fleetVehicleDisplay.ts`/`FleetOperatorRow.tsx`) nutzt zentrale Sanitization fuer ReasonBadges, unterdrueckt `Critical vehicle health`/`Warning health status` als konkrete Reasons und zeigt Make/Model/Year neben dem Kennzeichen.',
+      'Runtime-Fallback `dashboard-health-risk` heisst jetzt user-facing `Health prüfen` statt `Health review required`; die technische Source bleibt intern/debug.',
+      'Tests erweitert: zentraler Reason-Formatter, Drawer-Reason-Sanitization-ServiceWindow, Fleet generic health fallback, Source-Leak-Schutz.',
+    ],
+    reason:
+      'Nach der ActionQueue-Normalisierung mussten die dashboard- und fleet-nahen Oberflaechen dieselbe Label-Normalisierung verwenden, damit Source-IDs und generische Debug-Texte nicht in Drawer/Fleet Rows auftauchen.',
+    previousBehavior:
+      'Drawer-Pills waren zwar vor `${title} · ${source}` geschuetzt, aber Title/Subline/Meta und Fleet-Fallbacks konnten weiterhin rohe/generische Texte wie `Health review required`, `Critical vehicle health`, `Warning health status` oder `Service Window Available` anzeigen.',
+    details:
+      'Geaendert: `operationalIssueLabels.ts`, `reasonDisplay.ts`, `DashboardDrilldownDrawer.tsx`, `FleetBoardVehicleRow.tsx`, `fleetVehicleDisplay.ts`, `FleetOperatorRow.tsx`, `vehicleRuntimeStateBuilder.ts` plus Tests. Keine Runtime-/Readiness-/Count-Logik und keine Backend-Aenderung.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-25T23:23:00.000Z',
+  },
+  {
+    id: 'data-analyse-hf-consistency-v4953-2026-06-25',
+    version: '4.9.53',
+    title: 'V4.9.53 — Data Analyse: HF-Konsistenz (snapshots / waypoints / hf_points / hf_events sauber getrennt)',
+    summary: [
+      'Data Analyse High-Frequency-Status ist jetzt widerspruchsfrei: `available` und `snapshotLevelOnly` werden aus einer einzigen Quelle (`deriveHfAvailability`) abgeleitet. „Waypoints fehlen" ist nicht mehr gleichbedeutend mit „HF fehlt" — vorhandene `telemetry_hf_points` machen ein Fahrzeug HF-faehig, auch ohne `telemetry_waypoints`.',
+      'HF-Tab trennt die Persistenz-Layer explizit mit eigenen 24h/7d-Counts: HF points (`telemetry_hf_points`), Waypoints (`telemetry_waypoints`), Snapshot samples (`telemetry_snapshots`) und HF events (`telemetry_hf_events`). Pro Signal wird die tatsaechlich genutzte Quelle (`vehicle_latest_states` / `telemetry_snapshots` / `telemetry_waypoints`) angezeigt statt eines statischen Katalogwerts.',
+      'Pipeline-Step „High-frequency persistence" bezieht jetzt `telemetry_hf_points` ein (vorher nur Waypoints) und nennt beide Tabellen plus HF-Mirror-Status.',
+      'HF-Mirror-Flag (`HF_MIRROR_ENABLED`) wird im Read-Model als enabled/disabled/unknown sichtbar gemacht (read-only, aus Env abgeleitet). Verdrahtung bleibt sicher: disabled = No-op, enabled = fire-and-forget/best-effort, ClickHouse-Fehler blockieren das Trip-Enrichment nicht.',
+      'ClickHouse DateTime64(3,UTC) Insert/Read verifiziert: Insert nutzt Unix-ms (`Date.getTime()`), Read nutzt `parseDateTime64BestEffort` mit `YYYY-MM-DD HH:MM:SS.mmm` — identisch zum bewaehrten Snapshot-Pfad. Helper exportiert + per Round-Trip-Test abgesichert (kein leeres Fenster, korrekte Reihenfolge). Intervall-Bug (Cadence vs Offline-Gap, „40505646.6s") bleibt durch `computeIntervalStats` gekappt und getestet.',
+    ],
+    reason:
+      'Mit den neuen HF-Strukturen (`telemetry_hf_points`/`telemetry_hf_events`) sprach die Data Analyse Page teilweise noch von `telemetry_waypoints`. Dadurch konnte die UI widerspruechlich wirken (keine waypoints, aber HF-Punkte vorhanden) und gleichzeitig „HF active" und „snapshot-only" anzeigen.',
+    previousBehavior:
+      '`snapshotLevelOnly` und die Warnmeldung wurden ausschliesslich aus `waypointCount` berechnet, waehrend `available` bereits hf_points beruecksichtigte → widerspruechliche Anzeige. `hfPointCount24h` war im DTO vorhanden, wurde aber im Frontend nicht angezeigt; der Frontend-Type hatte die `hf*`-Felder gar nicht. Der Pipeline-HF-Step kannte nur Waypoints.',
+    details:
+      'Backend: `data-analyse.utils.ts` (`deriveHfAvailability`, `resolveHfMirrorStatus`), `data-analyse.types.ts` (`HfMirrorStatus`, `DataSourceTable`, neue DTO-Felder), `data-analyse.service.ts` (getrennte Counts via `countWaypoints`/`countSnapshots`, korrekte Status-/Message-Logik, akkurate Per-Signal-Quelle, Pipeline-HF-Step inkl. hf_points, hfPointCount7d + Mirror-Status), `clickhouse-hf.service.ts` (Timestamp-Helper exportiert). Frontend: `lib/api.ts` (DTO-Felder), `DataAnalyseView.tsx` (Layer-Counts, Mirror-Status-Chip, Signalgruppen). Tests: `data-analyse.utils.spec.ts` (+deriveHfAvailability/resolveHfMirrorStatus), neu `clickhouse-hf.timestamp.spec.ts`. Keine Detektor-Schwellenwerte, keine LTE_R1-native-Logik, keine Migration geaendert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-25T23:30:00.000Z',
+  },
+  {
+    id: 'actionqueue-operational-issues-v4952-2026-06-25',
+    version: '4.9.52',
+    title: 'V4.9.52 — Dashboard Attention / ActionQueue nutzt OperationalIssues',
+    summary: [
+      '`buildUnifiedActionQueue` konsumiert jetzt zuerst `normalizeOperationalIssues`: RuntimeReasons/VehicleRuntimeState, VehicleHealthAlerts, unterstuetzte DashboardInsights und unterstuetzte PredictiveInsights werden zu semantisch deduplizierten OperationalIssues normalisiert und erst danach zu ActionQueueItems gemappt.',
+      'Service-Dedupe aktiv: `service_overdue` gewinnt fuer dasselbe Fahrzeug gegen `SERVICE_OVERDUE`, `SERVICE_WINDOW` und predictive Service-Window-Kontext. Die Attention Box zeigt damit nur eine Service-Overdue-Aktion; Service Window bleibt Supporting Source/Kontext oder erscheint nur ohne Overdue.',
+      'Technische Sources werden in normalen Attention-Rows nicht mehr angezeigt: `reason.source`, `debugLabel`, rohe Insight-Typen und predictive `sourceData` laufen nicht in Titel/Subline/Meta. `ActionQueue.tsx` rendert `sourceData` nicht mehr als Meta-Zeile.',
+      'VehicleHealthAlert-Module werden in der Normalisierung verarbeitet; generisches `health_review_required` wird unterdrueckt, sobald konkrete Modul-Issues (z. B. Reifen/Batterie/DTC) fuer dasselbe Fahrzeug existieren. Standby erzeugt keine Action; Soft Offline erzeugt maximal eine Action ohne stale-Wording.',
+      'Additiv am Contract: `ActionQueueItem.semanticKey` fuer normalisierte Items. Legacy-Fallbacks bleiben nur fuer noch nicht normalisierte Quellen (Pickup/Return mit Confirm-Callbacks, Notifications, Derived/unsupported Predictive, Tasks, Documents, Misuse/Damage).',
+    ],
+    reason:
+      'Die Attention Box erzeugte dieselben operativen Probleme mehrfach, z. B. Service ueberfaellig aus Rental Health, SERVICE_OVERDUE und Service Window. Prompt 3 sollte diese Surface auf die zentrale OperationalIssue-Normalisierung stellen.',
+    previousBehavior:
+      '`buildUnifiedActionQueue` pushte direkt aus RuntimeReasons, VehicleHealthAlerts, DashboardInsights, Pickups/Returns, Notifications, Derived und Predictive. Dedupe war lokal/source-basiert; `reason.description ?? reason.source` und predictive `sourceData` konnten technische Details in normale UI-Zeilen tragen.',
+    details:
+      'Geaendert: `actionQueueBuilder.ts` (OperationalIssue-first, Mapper `mapOperationalIssueToActionQueueItem`, begrenzte Legacy-Fallbacks), `ActionQueue.tsx` (keine predictive sourceData-Meta), `dashboardTypes.ts` (`semanticKey`), `DashboardInsightsContext.tsx` (`RETURN_OVERDUE` Typ), `normalizeOperationalIssues.ts` (VehicleHealthAlert-Module, Health-Fallback-Suppression, Telemetry-State), `actionQueueGrouping.test.ts` (+ Prompt-3-Sanity). Doku: `docs/operational-issue-normalization.md` aktualisiert.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-25T23:15:00.000Z',
+  },
+  {
+    id: 'operational-issue-normalizer-foundation-v4951-2026-06-25',
+    version: '4.9.51',
+    title: 'V4.9.51 — OperationalIssue-Normalisierung: zentrale Basis (Types, Semantic Keys, Source-Priority)',
+    summary: [
+      '`frontend/src/rental/lib/operational-issues/*` als isolierte Normalizer-Basis angelegt: Types, Semantic-Key-Builder, Source-Priority, Label-/Entity-Formatter, Visibility-Defaults, `normalizeOperationalIssues` und Exports.',
+      'Prompt-2-Umfang bewusst ohne UI-Migration: ActionQueue, Drawer, Fleet, Vehicle Detail, Trips und Finance bleiben aktiv unverändert; `actionQueueBuilder.ts` hat nur einen TODO-Marker fuer Prompt 3.',
+      'Normalizer integriert bereits RuntimeReasons/VehicleRuntimeState, wichtige DashboardInsights und erste Predictive-Kontexte. Dedupe laeuft ueber `semanticKey`, nicht ueber Titel oder technische Source.',
+      'Service-Regel umgesetzt: `service_overdue` fuer ein Fahrzeug gewinnt gegen `SERVICE_WINDOW`; das Servicefenster wird Supporting Source/Kontext und nicht als zweite Hauptaktion ausgegeben.',
+      'Tests decken Vehicle-Entity-Label, Source-Sanitizing, Misuse/DataQuality-Visibility, Source-Priority und Service-Overdue-vs-Service-Window-Dedupe ab.',
+    ],
+    reason:
+      'Prompt 1 hat gezeigt, dass dieselben operativen Probleme mehrfach aus Runtime, Rental Health, DashboardInsights, Predictive Insights und Tasks entstehen. Die naechsten Prompts brauchen eine gemeinsame, semantische Normalisierungsbasis.',
+    previousBehavior:
+      'Dedupe war je UI-Fläche lokal und oft source-/title-basiert; technische Source-IDs blieben zwar in einigen Reason-Pills gefiltert, aber ActionQueue und Meta-Pfade hatten noch keinen zentralen OperationalIssue-Vertrag.',
+    details:
+      'Neu: `operationalIssueTypes.ts`, `operationalIssueKeys.ts`, `operationalIssueLabels.ts`, `operationalIssueSources.ts`, `operationalIssueVisibility.ts`, `normalizeOperationalIssues.ts`, `index.ts`, `operationalIssues.test.ts`. Doku aktualisiert: `docs/operational-issue-normalization.md`. Keine Backend-/API-Aenderung, keine KPI-/Slice-Count-Aenderung. Prompt 3 soll `buildUnifiedActionQueue` auf `OperationalIssue[]` konsumierend umstellen.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-25T23:10:00.000Z',
+  },
+  {
     id: 'tesla-hf-abuse-foundation-v4950-2026-06-26',
     version: '4.9.50',
     title: 'V4.9.50 — Tesla/Cloud HF-Missbrauch: Fundament (Capabilities, HF-Mirror, Derived-Events, Unified Read-Model)',

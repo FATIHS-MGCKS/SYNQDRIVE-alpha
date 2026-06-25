@@ -20,6 +20,13 @@
  *   - behavior.harshAcceleration
  *   - behavior.harshCornering
  *
+ * Additionally requested (DIMO emits these on some vehicles/firmwares; the
+ * server-side `name { in: [...] }` filter simply returns nothing for names a
+ * given vehicle never produces, so listing them is safe and never 422s):
+ *   - behavior.extremeAcceleration       → mapped to HARSH_ACCELERATION (classification EXTREME)
+ *   - behavior.extremeEmergency          → mapped to EXTREME_BRAKING
+ *   - behavior.extremeEmergencyBraking   → mapped to EXTREME_BRAKING
+ *
  * `metadata` is a JSON string, typically `{"counterValue": 1}`. `source` is
  * the DIMO connection (LTE R1 device) wallet address.
  *
@@ -61,7 +68,10 @@ export function buildDrivingEventsQuery(
     'behavior.harshBraking',
     'behavior.extremeBraking',
     'behavior.harshAcceleration',
+    'behavior.extremeAcceleration',
     'behavior.harshCornering',
+    'behavior.extremeEmergency',
+    'behavior.extremeEmergencyBraking',
   ]);
 }
 

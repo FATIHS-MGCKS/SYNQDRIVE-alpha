@@ -67,5 +67,14 @@ describe('vehicle-capabilities', () => {
       });
       expect(profile.engineSignalsAvailable).toBe(true);
     });
+
+    it('reports snapshotOnly as "unknown" (not false) when HF density is not supplied', () => {
+      const profile = deriveVehicleCapabilityProfile({
+        hardwareType: 'UNKNOWN',
+        fuelType: 'GASOLINE',
+        // hasHfWaypoints intentionally omitted
+      });
+      expect(profile.snapshotOnly).toBe('unknown');
+    });
   });
 });

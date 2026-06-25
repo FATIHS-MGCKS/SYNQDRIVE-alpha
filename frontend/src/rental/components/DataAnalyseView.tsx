@@ -14,6 +14,7 @@ import {
 import {
   api,
   type DataAnalyseHealthTrace,
+  type DataAnalyseHfAvailabilityStatus,
   type DataAnalyseHighFrequency,
   type DataAnalyseLaunchFeasibilityResult,
   type DataAnalysePipeline,
@@ -23,6 +24,42 @@ import {
   type DataAnalyseVehicle,
 } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
+
+/**
+ * Canonical operator legend for the aggregated HF-availability status. Single
+ * source of truth shared by the status chip and the legend block so the UI can
+ * never describe the same state two different ways.
+ */
+const HF_AVAILABILITY_META: Record<
+  DataAnalyseHfAvailabilityStatus,
+  { label: string; tone: 'success' | 'warning' | 'critical' | 'neutral'; description: string }
+> = {
+  hf_available: {
+    label: 'HF available',
+    tone: 'success',
+    description: 'Real, usable high-frequency telemetry (sub-2s cadence or healthy waypoint/HF-point volume).',
+  },
+  sparse: {
+    label: 'HF sparse',
+    tone: 'warning',
+    description: 'Some HF/waypoint data exists but is too thin to be reliable for detection.',
+  },
+  snapshot_only: {
+    label: 'Snapshot only (~30s)',
+    tone: 'warning',
+    description: 'Only ~30s snapshot/latest-state telemetry — no high-frequency stream.',
+  },
+  missing: {
+    label: 'No telemetry',
+    tone: 'critical',
+    description: 'No telemetry of any kind observed for this vehicle.',
+  },
+  unknown: {
+    label: 'Unknown',
+    tone: 'neutral',
+    description: 'Nothing queried yet / counts indeterminate.',
+  },
+};
 
 type TabKey =
   | 'overview'
@@ -371,19 +408,87 @@ export function DataAnalyseView() {
           {tab === 'hf' && hf && (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
+                {(() => {
+                  const meta = HF_AVAILABILITY_META[hf.hfAvailabilityStatus ?? 'unknown'];
+                  return (
+                    <StatusChip tone={meta.tone} title={meta.description}>
+                      {meta.label}
+                    </StatusChip>
+                  );
+                })()}
                 <StatusChip tone={hf.available ? 'success' : 'critical'}>
                   {hf.available ? 'High-frequency detection active' : 'No active high-frequency detection'}
                 </StatusChip>
                 {hf.snapshotLevelOnly && (
                   <StatusChip tone="warning">Snapshot-level only (~30s)</StatusChip>
                 )}
+                <StatusChip tone={hf.clickHouseAvailable ? 'success' : 'neutral'}>
+                  ClickHouse: {hf.clickHouseAvailable ? 'available' : 'unavailable'}
+                </StatusChip>
+                <StatusChip
+                  tone={
+                    hf.hfMirrorStatus === 'enabled'
+                      ? 'success'
+                      : hf.hfMirrorStatus === 'disabled'
+                        ? 'neutral'
+                        : 'warning'
+                  }
+                >
+                  HF mirror: {hf.hfMirrorStatus ?? 'unknown'}
+                </StatusChip>
               </div>
               {hf.message && (
                 <p className="text-sm text-amber-600 dark:text-amber-400">{hf.message}</p>
               )}
-              <p className="text-xs text-muted-foreground">
-                ClickHouse: {hf.clickHouseAvailable ? 'available' : 'unavailable'} · Waypoints (24h): {hf.waypointCount24h ?? '—'}
-              </p>
+              <details className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs">
+                <summary className="cursor-pointer select-none font-medium text-muted-foreground">
+                  HF availability legend
+                </summary>
+                <dl className="mt-2 space-y-1">
+                  {(Object.keys(HF_AVAILABILITY_META) as DataAnalyseHfAvailabilityStatus[]).map(
+                    (key) => (
+                      <div key={key} className="flex items-start gap-2">
+                        <dt className="min-w-[140px] font-medium text-foreground">
+                          {HF_AVAILABILITY_META[key].label}
+                        </dt>
+                        <dd className="text-muted-foreground">
+                          {HF_AVAILABILITY_META[key].description}
+                        </dd>
+                      </div>
+                    ),
+                  )}
+                </dl>
+              </details>
+              {/* Clearly-separated persistence layers — "waypoints missing" is NOT
+                  the same as "HF missing". Each layer is counted on its own. */}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <MetricCard
+                  label="HF points (telemetry_hf_points)"
+                  value={`${hf.hfPointCount24h ?? '—'} / ${hf.hfPointCount7d ?? '—'}`}
+                  hint="24h / 7d"
+                />
+                <MetricCard
+                  label="Waypoints (telemetry_waypoints)"
+                  value={`${hf.waypointCount24h ?? '—'} / ${hf.waypointCount7d ?? '—'}`}
+                  hint="24h / 7d"
+                />
+                <MetricCard
+                  label="Snapshot samples (telemetry_snapshots)"
+                  value={`${hf.snapshotSampleCount24h ?? '—'} / ${hf.snapshotSampleCount7d ?? '—'}`}
+                  hint="24h / 7d"
+                />
+                <MetricCard
+                  label="HF events (telemetry_hf_events)"
+                  value={String(hf.hfRecentEvents?.length ?? 0)}
+                  hint="recent (24h)"
+                />
+              </div>
+              {hf.hfSignalGroupsSeen && hf.hfSignalGroupsSeen.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  HF signal groups seen: {hf.hfSignalGroupsSeen.join(', ')}
+                  {hf.hfLatestPointAt ? ` · latest HF point: ${formatTs(hf.hfLatestPointAt)}` : ''}
+                </p>
+              )}
               <div className="overflow-x-auto rounded-lg border border-border/60">
                 <table className="w-full text-xs">
                   <thead className="bg-muted/40 text-left">

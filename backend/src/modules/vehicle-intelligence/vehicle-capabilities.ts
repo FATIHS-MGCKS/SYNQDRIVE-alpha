@@ -81,11 +81,15 @@ export interface VehicleCapabilityProfile {
   /** HF (1s) reconstruction applicable for this class. */
   hfCapable: boolean;
   /**
-   * Only snapshot-level (~30s) telemetry is realistically available. True when
-   * no dense HF stream is observed for the vehicle. Aggressive misuse detection
-   * (e.g. launch-like start) must not be claimed in this state.
+   * Only snapshot-level (~30s) telemetry is realistically available. Aggressive
+   * misuse detection (e.g. launch-like start) must not be claimed in this state.
+   *   - true     : confirmed snapshot-only (no dense HF stream observed).
+   *   - false    : confirmed HF stream observed.
+   *   - 'unknown': HF density was not supplied — do NOT assume either way.
+   * Hardened to a tri-state so an omitted `hasHfWaypoints` can never be silently
+   * reported as "definitely not snapshot-only".
    */
-  snapshotOnly: boolean;
+  snapshotOnly: boolean | 'unknown';
   /**
    * Whether combustion-engine signals (RPM, coolant ECT, throttle, engine load)
    * are plausibly available. False for battery-electric vehicles, where all
@@ -131,7 +135,12 @@ export function deriveVehicleCapabilityProfile(
   // Engine signals require a combustion engine. For UNKNOWN fuel we assume they
   // *may* be available (conservative — do not pre-emptively disable detectors).
   const engineSignalsAvailable = !bev;
-  const snapshotOnly = input.hasHfWaypoints === true ? false : input.hasHfWaypoints === false ? true : false;
+  const snapshotOnly: boolean | 'unknown' =
+    input.hasHfWaypoints === true
+      ? false
+      : input.hasHfWaypoints === false
+        ? true
+        : 'unknown';
 
   const profileLabel = caps.nativeEventCapable
     ? 'LTE R1 (native events)'

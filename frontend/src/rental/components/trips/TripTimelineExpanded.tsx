@@ -215,7 +215,7 @@ export function TripTimelineExpanded({
         </TimelineSection>
 
         {/* 5. Missbrauchs-/Schadensverdacht — immer sichtbar (eigener Titel im Panel) */}
-        {orgId && trip.tripStatus === 'COMPLETED' && (
+        {trip.tripStatus === 'COMPLETED' && (
           <MisuseCasesPanel
             orgId={orgId}
             tripId={trip.id}

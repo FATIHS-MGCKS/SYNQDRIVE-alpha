@@ -87,6 +87,10 @@ import {
   UpdateVehicleServiceEventDto,
 } from './service-events/dto';
 import { ServiceEventOrigin } from '@prisma/client';
+import {
+  buildUnifiedBehaviorEvents,
+  DRIVING_EVENT_CATEGORY_MAP,
+} from './trips/unified-behavior-read-model';
 
 @Controller('vehicles/:vehicleId')
 @UseGuards(RolesGuard, VehicleOwnershipGuard)
@@ -1175,107 +1179,36 @@ export class VehicleIntelligenceController {
       orderBy: { startedAt: 'asc' },
     });
 
-    const DRIVING_EVENT_CATEGORY_MAP: Record<string, string> = {
-      HARSH_BRAKING: 'BRAKING',
-      EXTREME_BRAKING: 'BRAKING',
-      HARSH_ACCELERATION: 'ACCELERATION',
-      HARSH_CORNERING: 'ACCELERATION',
-      SPEEDING: 'ABUSE',
-      IDLE_EXCESSIVE: 'ABUSE',
-    };
-
-    const DRIVING_EVENT_CLASSIFICATION_MAP: Record<string, string> = {
-      HARSH_BRAKING: 'HARD',
-      EXTREME_BRAKING: 'EXTREME',
-      HARSH_ACCELERATION: 'HARD',
-      HARSH_CORNERING: 'MODERATE',
-      SPEEDING: 'WARNING',
-      IDLE_EXCESSIVE: 'LIGHT',
-    };
-
     const drivingWhere: any = { tripId, vehicleId };
+    let skipDrivingEvents = false;
     if (category) {
+      // Native DrivingEvents are restricted to the types that map to the
+      // requested behaviour category. If no native type maps to it, native
+      // events are skipped entirely (the list then shows HF events only).
       const allowedTypes = Object.entries(DRIVING_EVENT_CATEGORY_MAP)
         .filter(([, cat]) => cat === category)
         .map(([type]) => type);
       if (allowedTypes.length > 0) drivingWhere.eventType = { in: allowedTypes };
-      else return behaviorEvents;
+      else skipDrivingEvents = true;
     }
 
-    const drivingEvents = await this.prisma.drivingEvent.findMany({
-      where: drivingWhere,
-      orderBy: { recordedAt: 'asc' },
+    const drivingEvents = skipDrivingEvents
+      ? []
+      : await this.prisma.drivingEvent.findMany({
+          where: drivingWhere,
+          orderBy: { recordedAt: 'asc' },
+        });
+
+    // ── Unified read-model (Phase 4) ─────────────────────────────────────────
+    // Native DrivingEvents and HF-derived TripBehaviorEvents are merged into one
+    // explainable list: provenance, confidence, native original name, and
+    // abuse-relevance (so a native extreme-braking that feeds the abuse KPI is
+    // visibly abuse-relevant). Native-preferred dedup runs inside the builder.
+    const merged = buildUnifiedBehaviorEvents({
+      behaviorEvents,
+      drivingEvents,
+      tripId,
     });
-
-    const mappedDriving = drivingEvents.map((de) => {
-      const meta = (de.metadataJson as any) ?? {};
-      return {
-        id: de.id,
-        organizationId: de.organizationId,
-        vehicleId: de.vehicleId,
-        tripId: de.tripId ?? tripId,
-        eventCategory: DRIVING_EVENT_CATEGORY_MAP[de.eventType] ?? 'ACCELERATION',
-        eventType: de.eventType,
-        classification: DRIVING_EVENT_CLASSIFICATION_MAP[de.eventType] ?? 'MODERATE',
-        startedAt: de.recordedAt,
-        endedAt: null,
-        durationMs: de.durationMs,
-        startSpeedKmh: de.speedKmh,
-        endSpeedKmh: null,
-        peakValue: de.deltaKmh ?? de.severity,
-        peakValueUnit: de.deltaKmh != null ? 'km/h delta' : 'severity',
-        peakG: de.deltaKmh != null ? Math.abs(de.deltaKmh / 3.6 / Math.max(0.5, (de.durationMs ?? 1000) / 1000)) / 9.81 : null,
-        maxThrottlePos: meta.throttlePct ?? null,
-        maxEngineRpm: meta.rpm ?? null,
-        maxCoolantTemp: meta.coolantC ?? null,
-        latitude: de.latitude,
-        longitude: de.longitude,
-        metadataJson: de.metadataJson,
-        createdAt: de.createdAt,
-        // ── Unified provenance (Phase 4) ──
-        // Native DIMO Telemetry API events are authoritative ("nativ").
-        source: 'DRIVING_EVENT',
-        provenance: 'NATIVE' as const,
-        detectionMethod: 'DIMO_TELEMETRY_EVENT',
-        confidence: 'high' as const,
-        requiredSignals: [] as string[],
-      };
-    });
-
-    // ── Native-preferred dedup (Phase 4) ─────────────────────────────────────
-    // When a native driving event and an HF-derived behaviour event describe the
-    // same thing (same category within a short window), the NATIVE event wins and
-    // the reconstructed duplicate is dropped. Abuse-category behaviour events have
-    // no native equivalent and are never deduped.
-    const DEDUP_WINDOW_MS = 5_000;
-    const nativeKeys = mappedDriving.map((de) => ({
-      category: de.eventCategory,
-      t: new Date(de.startedAt).getTime(),
-    }));
-    const collidesWithNative = (category: string, startedAt: Date): boolean =>
-      nativeKeys.some(
-        (n) => n.category === category && Math.abs(n.t - startedAt.getTime()) <= DEDUP_WINDOW_MS,
-      );
-
-    const mappedBehavior = behaviorEvents
-      .filter((e) => !collidesWithNative(e.eventCategory, e.startedAt))
-      .map((e) => {
-        const meta = (e.metadataJson as any) ?? {};
-        return {
-          ...e,
-          latitude: null,
-          longitude: null,
-          source: 'BEHAVIOR_EVENT',
-          // ── Unified provenance (Phase 4) ──
-          provenance: 'RECONSTRUCTED' as const,
-          detectionMethod: meta.detectionMethod ?? 'HF_RECONSTRUCTION',
-          confidence: (meta.confidence as string) ?? 'medium',
-          requiredSignals: Array.isArray(meta.requiredSignals) ? meta.requiredSignals : [],
-        };
-      });
-
-    const merged = [...mappedBehavior, ...mappedDriving];
-    merged.sort((a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime());
 
     return {
       status: 'ready',
@@ -1291,18 +1224,23 @@ export class VehicleIntelligenceController {
   ) {
     // Canonical flow: V2 FSM auto-finalize, reconciliation repairs, and manual enrichment.
     // Status tracking, DimoPollLog, and DrivingImpact chaining all happen here.
-    const { status, result } = await this.enrichmentOrchestrator.runEnrichmentSync(
+    const { status, result, skipReason } = await this.enrichmentOrchestrator.runEnrichmentSync(
       tripId,
       vehicleId,
     );
     return {
       status,
       enrichmentStatus: status,
+      ...(skipReason ? { skipReason } : {}),
       ...(result ?? {}),
       message: status === 'COMPLETED'
         ? `Enrichment completed: ${result?.totalEventsStored ?? 0} events`
         : status === 'SKIPPED_NO_HF_DATA'
-          ? 'No high-frequency data available for this trip'
+          ? skipReason === 'CAPABILITY'
+            ? 'Trip not enrichable: missing DIMO token / vehicle'
+            : skipReason === 'INSUFFICIENT_POINTS'
+              ? 'High-frequency data too sparse for this trip'
+              : 'No high-frequency data available for this trip'
           : 'Enrichment processed',
     };
   }

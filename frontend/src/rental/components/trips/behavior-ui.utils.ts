@@ -138,7 +138,7 @@ export function hfQualityLabel(trip: TripTimelineTrip): string {
   const status = trip.behaviorEnrichmentStatus;
   if (status === 'SKIPPED_NO_HF_DATA') return 'Nicht verfügbar';
   if (trip.detailsLimited) return 'Eingeschränkt';
-  if (trip.behaviorReady) return 'HF verfügbar';
+  if (trip.behaviorReady) return 'Telemetrie verfügbar';
   if (status === 'PENDING' || status === 'IN_PROGRESS') return 'Analyse läuft';
   return 'Unbekannt';
 }

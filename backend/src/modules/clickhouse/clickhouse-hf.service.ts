@@ -14,11 +14,27 @@ import type {
 const HF_POINTS_TABLE = 'telemetry_hf_points';
 const HF_EVENTS_TABLE = 'telemetry_hf_events';
 
-function toChDateTimeParam(value: Date): string {
+/**
+ * Serializes a JS Date into the string ClickHouse's `parseDateTime64BestEffort`
+ * expects for a `DateTime64(3,'UTC')` column: `YYYY-MM-DD HH:MM:SS.mmm` (UTC,
+ * no `T`, no `Z`). Milliseconds are preserved so a 24h/7d window is never
+ * silently widened/narrowed. Inserts use the numeric Unix-ms form
+ * (`Date.getTime()`), which DateTime64(3) stores as raw ms ticks — the exact
+ * same pattern as the proven telemetry_snapshots mirror, so insert and read
+ * stay aligned end-to-end.
+ *
+ * Exported for unit tests (timestamp round-trip / non-empty window guard).
+ */
+export function toChDateTimeParam(value: Date): string {
   return value.toISOString().replace('T', ' ').replace('Z', '');
 }
 
-function parseChUtc(value: string | null | undefined): string | null {
+/**
+ * Parses a ClickHouse `DateTime64(3,'UTC')` JSONEachRow value
+ * (`YYYY-MM-DD HH:MM:SS.mmm`) back into an ISO-8601 UTC string. Returns null on
+ * empty/invalid input. Exported for unit tests.
+ */
+export function parseChUtc(value: string | null | undefined): string | null {
   if (!value) return null;
   const d = new Date(value.replace(' ', 'T') + 'Z');
   return Number.isNaN(d.getTime()) ? null : d.toISOString();

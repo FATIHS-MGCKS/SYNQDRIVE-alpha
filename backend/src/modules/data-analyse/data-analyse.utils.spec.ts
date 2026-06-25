@@ -1,7 +1,10 @@
 import {
   classifyIntervalStatus,
   computeIntervalStats,
+  deriveHfAvailability,
+  describeEnrichmentSkip,
   filterConnectedVehicles,
+  resolveHfMirrorStatus,
   assessLaunchFeasibility,
 } from './data-analyse.utils';
 
@@ -73,6 +76,140 @@ describe('data-analyse.utils', () => {
         { connectionStatus: 'not_connected' },
       ]);
       expect(result).toHaveLength(2);
+    });
+  });
+
+  describe('deriveHfAvailability', () => {
+    it('HF points present but no waypoints => HF available, snapshot-only false', () => {
+      const d = deriveHfAvailability({
+        waypointCount: 0,
+        hfPointCount24h: 1200,
+        hasSubSecondCadence: false,
+      });
+      expect(d.available).toBe(true);
+      expect(d.snapshotOnly).toBe(false);
+      expect(d.hasHfPoints).toBe(true);
+      expect(d.hasWaypoints).toBe(false);
+    });
+
+    it('waypoints present but no HF points => available, waypoints flagged separately', () => {
+      const d = deriveHfAvailability({
+        waypointCount: 50,
+        hfPointCount24h: 0,
+        hasSubSecondCadence: false,
+      });
+      expect(d.available).toBe(true);
+      expect(d.snapshotOnly).toBe(false);
+      expect(d.hasWaypoints).toBe(true);
+      expect(d.hasHfPoints).toBe(false);
+    });
+
+    it('only ~30s snapshots (no HF/waypoints, no sub-2s cadence) => snapshot_only', () => {
+      const d = deriveHfAvailability({
+        waypointCount: 0,
+        hfPointCount24h: 0,
+        hasSubSecondCadence: false,
+      });
+      expect(d.available).toBe(false);
+      expect(d.snapshotOnly).toBe(true);
+    });
+
+    it('sub-2s cadence alone makes the vehicle HF-capable (not snapshot-only)', () => {
+      const d = deriveHfAvailability({
+        waypointCount: null,
+        hfPointCount24h: null,
+        hasSubSecondCadence: true,
+      });
+      expect(d.available).toBe(true);
+      expect(d.snapshotOnly).toBe(false);
+    });
+
+    describe('aggregated hfAvailabilityStatus', () => {
+      it('sub-2s cadence => hf_available', () => {
+        expect(
+          deriveHfAvailability({
+            waypointCount: null,
+            hfPointCount24h: null,
+            hasSubSecondCadence: true,
+          }).status,
+        ).toBe('hf_available');
+      });
+
+      it('healthy HF-point volume => hf_available', () => {
+        expect(
+          deriveHfAvailability({
+            waypointCount: 0,
+            hfPointCount24h: 1200,
+            hasSubSecondCadence: false,
+          }).status,
+        ).toBe('hf_available');
+      });
+
+      it('thin HF/waypoint volume below threshold => sparse', () => {
+        expect(
+          deriveHfAvailability({
+            waypointCount: 3,
+            hfPointCount24h: 2,
+            hasSubSecondCadence: false,
+          }).status,
+        ).toBe('sparse');
+      });
+
+      it('no HF but snapshot samples present => snapshot_only', () => {
+        expect(
+          deriveHfAvailability({
+            waypointCount: 0,
+            hfPointCount24h: 0,
+            hasSubSecondCadence: false,
+            snapshotSampleCount24h: 480,
+          }).status,
+        ).toBe('snapshot_only');
+      });
+
+      it('counts known and all zero, no snapshots => missing', () => {
+        expect(
+          deriveHfAvailability({
+            waypointCount: 0,
+            hfPointCount24h: 0,
+            hasSubSecondCadence: false,
+            snapshotSampleCount24h: 0,
+          }).status,
+        ).toBe('missing');
+      });
+
+      it('nothing queried (all null) => unknown', () => {
+        expect(
+          deriveHfAvailability({
+            waypointCount: null,
+            hfPointCount24h: null,
+            hasSubSecondCadence: false,
+          }).status,
+        ).toBe('unknown');
+      });
+    });
+  });
+
+  describe('describeEnrichmentSkip', () => {
+    it('maps granular enrichment skip reasons to explanations', () => {
+      expect(describeEnrichmentSkip('capability')).toContain('missing DIMO token');
+      expect(describeEnrichmentSkip('insufficient_points')).toContain('too sparse');
+      expect(describeEnrichmentSkip('no_hf_data')).toContain('not eligible');
+    });
+
+    it('falls back to a generic explanation for unknown/legacy values', () => {
+      expect(describeEnrichmentSkip(null)).toContain('cloud/snapshot-only');
+      expect(describeEnrichmentSkip(undefined)).toContain('cloud/snapshot-only');
+      expect(describeEnrichmentSkip('legacy_reason')).toContain('cloud/snapshot-only');
+    });
+  });
+
+  describe('resolveHfMirrorStatus', () => {
+    it('maps env flag to a status', () => {
+      expect(resolveHfMirrorStatus('true')).toBe('enabled');
+      expect(resolveHfMirrorStatus('false')).toBe('disabled');
+      expect(resolveHfMirrorStatus(undefined)).toBe('disabled');
+      expect(resolveHfMirrorStatus('')).toBe('disabled');
+      expect(resolveHfMirrorStatus('weird')).toBe('unknown');
     });
   });
 

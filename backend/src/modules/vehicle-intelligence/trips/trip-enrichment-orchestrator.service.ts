@@ -12,6 +12,10 @@
  *                              └→ SKIPPED_NO_HF_DATA
  *                              └→ FAILED_TRANSIENT  (BullMQ will retry)
  *                              └→ FAILED_PERMANENT  (no retry)
+ *
+ * Skips persist the stable `SKIPPED_NO_HF_DATA` status (so all existing readers
+ * keep working) and record the granular reason in `behaviorEnrichmentError`
+ * (`capability` | `insufficient_points` | `no_hf_data`) for diagnostics.
  */
 
 import { Injectable, Logger, Optional } from '@nestjs/common';
@@ -21,7 +25,10 @@ import { DimoPollJobType, DimoPollStatus, TripStatus } from '@prisma/client';
 
 import { PrismaService } from '@shared/database/prisma.service';
 import { QUEUE_NAMES } from '../../../workers/queues/queue-names';
-import { TripBehaviorEnrichmentService } from './trip-behavior-enrichment.service';
+import {
+  TripBehaviorEnrichmentService,
+  type EnrichmentSkipReason,
+} from './trip-behavior-enrichment.service';
 import type { TripBehaviorEnrichmentJobData } from '../../../workers/processors/trip-behavior-enrichment.processor';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import type { DrivingImpactJobData } from '../../../workers/processors/driving-impact.processor';
@@ -60,6 +67,26 @@ const IN_FLIGHT_STATUSES: BehaviorEnrichmentStatus[] = [
   STATUS.PENDING,
   STATUS.IN_PROGRESS,
 ];
+
+/**
+ * Granular skip reason → persisted `behaviorEnrichmentError` code + human label.
+ * The persisted `behaviorEnrichmentStatus` stays `SKIPPED_NO_HF_DATA` for all of
+ * these (stable contract for every reader); only the diagnostic detail differs.
+ */
+const SKIP_REASON_META: Record<EnrichmentSkipReason, { code: string; label: string }> = {
+  CAPABILITY: {
+    code: 'capability',
+    label: 'vehicle not enrichable (missing DIMO token / vehicle)',
+  },
+  INSUFFICIENT_POINTS: {
+    code: 'insufficient_points',
+    label: 'high-frequency stream too sparse (<10 raw / <5 clean points)',
+  },
+  NO_HF_DATA: {
+    code: 'no_hf_data',
+    label: 'no data / trip not eligible (no endTime / too short)',
+  },
+};
 
 /** Minimum delay before HF data is expected to be available (ms) */
 const HF_ENRICH_DELAY_MS = 5_000;
@@ -210,7 +237,7 @@ export class TripEnrichmentOrchestratorService {
     tripId: string,
     vehicleId: string,
     organizationId?: string | null,
-  ): Promise<{ status: BehaviorEnrichmentStatus; result: any }> {
+  ): Promise<{ status: BehaviorEnrichmentStatus; result: any; skipReason?: EnrichmentSkipReason }> {
     const startedAt = new Date();
 
     // Resolve organizationId if not provided
@@ -226,10 +253,11 @@ export class TripEnrichmentOrchestratorService {
     await this.markEnrichmentStarted(tripId);
 
     try {
-      const result = await this.enrichmentService.enrichTrip(tripId);
+      const outcome = await this.enrichmentService.enrichTrip(tripId);
       const finishedAt = new Date();
 
-      if (result) {
+      if (outcome.status === 'COMPLETED') {
+        const result = outcome.result;
         await this.markEnrichmentCompleted(tripId, finishedAt);
         await this.runRouteSafetyEnrichment(vehicleId, tripId);
         await this.writePollLog(vehicleId, startedAt, finishedAt, DimoPollStatus.SUCCESS,
@@ -238,11 +266,12 @@ export class TripEnrichmentOrchestratorService {
         this.logger.log(`Trip ${tripId} enrichment COMPLETED (${result.totalEventsStored} events)`);
         return { status: STATUS.COMPLETED, result };
       } else {
-        await this.markEnrichmentSkipped(tripId, 'no_hf_data', finishedAt);
+        const meta = SKIP_REASON_META[outcome.reason];
+        await this.markEnrichmentSkipped(tripId, meta.code, finishedAt);
         await this.writePollLog(vehicleId, startedAt, finishedAt, DimoPollStatus.SUCCESS,
-          'HF enrichment skipped — no data / trip not eligible');
-        this.logger.log(`Trip ${tripId} enrichment SKIPPED (no HF data or trip not eligible)`);
-        return { status: STATUS.SKIPPED_NO_HF_DATA, result: null };
+          `HF enrichment skipped — ${meta.label}`);
+        this.logger.log(`Trip ${tripId} enrichment SKIPPED (${outcome.reason}: ${meta.label})`);
+        return { status: STATUS.SKIPPED_NO_HF_DATA, skipReason: outcome.reason, result: null };
       }
     } catch (err) {
       const finishedAt = new Date();

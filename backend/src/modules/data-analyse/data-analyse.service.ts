@@ -22,8 +22,11 @@ import {
   classifyIntervalStatus,
   classifyReliabilityStatus,
   computeIntervalStats,
+  deriveHfAvailability,
+  describeEnrichmentSkip,
   filterConnectedVehicles,
   formatSignalValue,
+  resolveHfMirrorStatus,
   tenantVehicleWhere,
 } from './data-analyse.utils';
 import type {
@@ -164,7 +167,22 @@ export class DataAnalyseService {
   ): Promise<HighFrequencyAnalysisDto> {
     const ctx = await this.loadVehicleContext(orgId, vehicleId);
     const chAvailable = this.clickHouse.isAvailable;
-    const waypointCount = await this.countWaypoints24h(vehicleId);
+
+    // Separate, clearly-named persistence-layer counts. "waypoints missing" is
+    // intentionally NOT the same as "HF missing": telemetry_hf_points stands on
+    // its own. Each window is queried independently so 24h/7d never bleed into
+    // each other.
+    const [
+      waypointCount,
+      waypointCount7d,
+      snapshotSampleCount24h,
+      snapshotSampleCount7d,
+    ] = await Promise.all([
+      this.countWaypoints(vehicleId, 24),
+      this.countWaypoints(vehicleId, 24 * 7),
+      this.countSnapshots(vehicleId, 24),
+      this.countSnapshots(vehicleId, 24 * 7),
+    ]);
 
     const hfCatalog = VEHICLE_LATEST_STATE_CATALOG.filter((c) => c.highFrequencyCandidate);
     const columnAggregates = await this.querySignalColumnAggregates(vehicleId, hfCatalog);
@@ -220,6 +238,17 @@ export class DataAnalyseService {
             ? (waypointCount ?? 0) > 0 || (sampleCount24h ?? 0) > 0
             : (sampleCount24h ?? 0) > 0;
 
+        // Report the ACTUAL persistence source this row's stats came from, so the
+        // page never mislabels a snapshot-derived interval as a waypoint/HF one.
+        const actualSource: string =
+          entry.signalName === 'speed' && (waypointCount ?? 0) > 0
+            ? 'telemetry_waypoints'
+            : entry.clickhouseColumn && (sampleCount24h ?? 0) > 0
+              ? entry.clickhouseTable ?? 'telemetry_snapshots'
+              : hasValue
+                ? 'vehicle_latest_states'
+                : entry.storageTable ?? 'vehicle_latest_states';
+
         const quality = classifyHfDetectionQuality(
           medianIntervalMs ?? intervalStats?.averageMs ?? null,
           hasPersistedHf,
@@ -269,7 +298,7 @@ export class DataAnalyseService {
           displayName: entry.displayName ?? entry.signalName,
           sourceProvider: state?.providerSource ?? state?.source ?? null,
           pollGroup: entry.pollGroup ?? 'DIMO_SNAPSHOT',
-          storageTable: entry.storageTable ?? 'vehicle_latest_states',
+          storageTable: actualSource,
           sampleCount24h,
           sampleCount7d: aggregate?.sampleCount7d ?? null,
           firstSeenAt: aggregate?.firstSeenAt ?? state?.lastSeenAt?.toISOString() ?? null,
@@ -295,8 +324,6 @@ export class DataAnalyseService {
       }),
     );
 
-    const snapshotOnly = (waypointCount ?? 0) === 0;
-
     // Best-effort HF-layer status from the ClickHouse telemetry_hf_* mirror.
     // Analytics-only and must never break this endpoint — failures are swallowed.
     const hfStatus = await this.loadHfLayerStatus(vehicleId, ctx.nowMs);
@@ -311,22 +338,55 @@ export class DataAnalyseService {
         s.medianIntervalMs != null &&
         s.medianIntervalMs <= HIGH_FREQUENCY_THRESHOLD_MS,
     );
-    const realHfPresent =
-      (waypointCount ?? 0) > 0 ||
-      (hfStatus.hfPointCount24h ?? 0) > 0 ||
-      hasSubSecondCadence;
+
+    // Single source of truth for the HF decision so the UI cannot contradict
+    // itself ("HF active" + "snapshot-only"). waypoints and hf_points are
+    // independent: either one means the vehicle is NOT snapshot-only.
+    const hfDecision = deriveHfAvailability({
+      waypointCount,
+      hfPointCount24h: hfStatus.hfPointCount24h ?? 0,
+      hasSubSecondCadence,
+      snapshotSampleCount24h,
+    });
 
     return {
-      available: realHfPresent,
-      message: snapshotOnly
-        ? 'No high-frequency waypoint stream in ClickHouse (24h). Snapshot-level telemetry (~30s) may still be available per signal, but high-frequency abuse detection is NOT active for this vehicle.'
-        : null,
-      snapshotLevelOnly: snapshotOnly,
+      available: hfDecision.available,
+      message: this.buildHfMessage(hfDecision, hfStatus.hfMirrorStatus),
+      snapshotLevelOnly: hfDecision.snapshotOnly,
+      hfAvailabilityStatus: hfDecision.status,
       clickHouseAvailable: chAvailable,
       signals,
       waypointCount24h: waypointCount,
+      waypointCount7d,
+      snapshotSampleCount24h,
+      snapshotSampleCount7d,
       ...hfStatus,
     };
+  }
+
+  /**
+   * Builds an honest top-level HF status message that distinguishes the layers:
+   *   - true snapshot-only           → HF abuse detection NOT active
+   *   - hf_points present, no route  → clarify the two are separate concerns
+   *   - waypoints present            → no warning needed
+   */
+  private buildHfMessage(
+    decision: ReturnType<typeof deriveHfAvailability>,
+    mirrorStatus: HighFrequencyAnalysisDto['hfMirrorStatus'],
+  ): string | null {
+    if (decision.snapshotOnly) {
+      return 'Snapshot-level telemetry only (~30s). No high-frequency points (telemetry_hf_points) or route waypoints (telemetry_waypoints) in 24h — high-frequency abuse detection is NOT active for this vehicle.';
+    }
+    if (decision.hasHfPoints && !decision.hasWaypoints) {
+      const mirror =
+        mirrorStatus === 'enabled'
+          ? ' HF mirror is enabled.'
+          : mirrorStatus === 'disabled'
+            ? ' HF mirror is disabled.'
+            : '';
+      return `High-frequency signal points present (telemetry_hf_points); no route waypoint stream (telemetry_waypoints) — these are separate layers, not a contradiction.${mirror}`;
+    }
+    return null;
   }
 
   /**
@@ -337,24 +397,31 @@ export class DataAnalyseService {
     vehicleId: string,
     nowMs: number,
   ): Promise<Partial<HighFrequencyAnalysisDto>> {
+    // The mirror flag is derivable regardless of ClickHouse reachability.
+    const hfMirrorStatus = resolveHfMirrorStatus();
+
     if (!this.clickHouse.isAvailable) {
-      return { hfConfigured: this.clickHouse.isConfigured };
+      return { hfConfigured: this.clickHouse.isConfigured, hfMirrorStatus };
     }
 
-    const from = new Date(nowMs - 24 * 60 * 60 * 1000);
     const to = new Date(nowMs);
+    const from24h = new Date(nowMs - 24 * 60 * 60 * 1000);
+    const from7d = new Date(nowMs - 7 * 24 * 60 * 60 * 1000);
 
     try {
-      const [availability, recent] = await Promise.all([
-        this.clickHouseHf.getHfAvailability(vehicleId, from, to),
-        this.clickHouseHf.getRecentHfEvents(vehicleId, from, to, 50),
+      const [availability24h, availability7d, recent] = await Promise.all([
+        this.clickHouseHf.getHfAvailability(vehicleId, from24h, to),
+        this.clickHouseHf.getHfAvailability(vehicleId, from7d, to),
+        this.clickHouseHf.getRecentHfEvents(vehicleId, from24h, to, 50),
       ]);
 
       return {
         hfConfigured: this.clickHouse.isConfigured,
-        hfPointCount24h: availability.available ? availability.pointCount : null,
-        hfLatestPointAt: availability.latestPointAt,
-        hfSignalGroupsSeen: availability.signalGroups,
+        hfMirrorStatus,
+        hfPointCount24h: availability24h.available ? availability24h.pointCount : null,
+        hfPointCount7d: availability7d.available ? availability7d.pointCount : null,
+        hfLatestPointAt: availability24h.latestPointAt ?? availability7d.latestPointAt,
+        hfSignalGroupsSeen: availability7d.signalGroups,
         hfRecentEvents: recent.available
           ? recent.events.map((e) => ({
               eventType: e.eventType,
@@ -369,7 +436,7 @@ export class DataAnalyseService {
           : [],
       };
     } catch {
-      return { hfConfigured: this.clickHouse.isConfigured };
+      return { hfConfigured: this.clickHouse.isConfigured, hfMirrorStatus };
     }
   }
 
@@ -590,24 +657,42 @@ export class DataAnalyseService {
 
   async getPipeline(orgId: string, vehicleId: string): Promise<PipelineDto> {
     const vehicle = await this.assertVehicle(orgId, vehicleId);
-    const [latestState, lastPoll, lastTrip, hmTelemetry, waypointCount] = await Promise.all([
-      this.prisma.vehicleLatestState.findUnique({ where: { vehicleId } }),
-      this.prisma.dimoPollLog.findFirst({
-        where: { vehicleId },
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.vehicleTrip.findFirst({
-        where: { vehicleId },
-        orderBy: { startTime: 'desc' },
-        select: { startTime: true, behaviorEnrichmentStatus: true },
-      }),
-      vehicle.vin
-        ? this.prisma.hmLatestTelemetryState.findFirst({
-            where: { vin: vehicle.vin },
-          })
-        : Promise.resolve(null),
-      this.countWaypoints24h(vehicleId),
-    ]);
+    const nowMs = Date.now();
+    const [latestState, lastPoll, lastTrip, hmTelemetry, waypointCount, hfAvailability] =
+      await Promise.all([
+        this.prisma.vehicleLatestState.findUnique({ where: { vehicleId } }),
+        this.prisma.dimoPollLog.findFirst({
+          where: { vehicleId },
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.vehicleTrip.findFirst({
+          where: { vehicleId },
+          orderBy: { startTime: 'desc' },
+          select: {
+            startTime: true,
+            behaviorEnrichmentStatus: true,
+            behaviorEnrichmentError: true,
+          },
+        }),
+        vehicle.vin
+          ? this.prisma.hmLatestTelemetryState.findFirst({
+              where: { vin: vehicle.vin },
+            })
+          : Promise.resolve(null),
+        this.countWaypoints24h(vehicleId),
+        this.clickHouse.isAvailable
+          ? this.clickHouseHf
+              .getHfAvailability(
+                vehicleId,
+                new Date(nowMs - 24 * 60 * 60 * 1000),
+                new Date(nowMs),
+              )
+              .catch(() => null)
+          : Promise.resolve(null),
+      ]);
+
+    const hfPointCount = hfAvailability?.available ? hfAvailability.pointCount : 0;
+    const hfMirrorStatus = resolveHfMirrorStatus();
 
     const provider =
       latestState?.providerSource ??
@@ -648,15 +733,15 @@ export class DataAnalyseService {
         step: 'High-frequency persistence',
         status: !this.clickHouse.isAvailable
           ? ('unavailable' as const)
-          : (waypointCount ?? 0) > 0
+          : (waypointCount ?? 0) > 0 || hfPointCount > 0
             ? ('available' as const)
             : ('not_persisted' as const),
-        lastSeenAt: null,
-        sourceName: 'ClickHouse telemetry_waypoints',
+        lastSeenAt: hfAvailability?.latestPointAt ?? null,
+        sourceName: 'ClickHouse telemetry_hf_points + telemetry_waypoints',
         notes:
-          (waypointCount ?? 0) > 0
-            ? `${waypointCount} HF waypoint(s) in last 24h.`
-            : 'No HF waypoint stream persisted (24h). High-frequency abuse detection is NOT active from persisted HF for this vehicle.',
+          (waypointCount ?? 0) > 0 || hfPointCount > 0
+            ? `${hfPointCount} HF point(s) (telemetry_hf_points) and ${waypointCount ?? 0} waypoint(s) (telemetry_waypoints) in last 24h. HF mirror: ${hfMirrorStatus}.`
+            : `No HF points or waypoints persisted (24h). High-frequency abuse detection is NOT active from persisted HF for this vehicle. HF mirror: ${hfMirrorStatus}.`,
       },
       {
         step: 'Trip processing',
@@ -665,7 +750,7 @@ export class DataAnalyseService {
         sourceName: 'TripEnrichmentOrchestrator / vehicle_trips',
         notes:
           lastTrip?.behaviorEnrichmentStatus === 'SKIPPED_NO_HF_DATA'
-            ? 'Last trip behaviour enrichment skipped — insufficient high-frequency data (cloud/snapshot-only vehicle).'
+            ? `Last trip behaviour enrichment skipped — ${describeEnrichmentSkip(lastTrip.behaviorEnrichmentError)}`
             : lastTrip?.behaviorEnrichmentStatus ?? null,
       },
       {
@@ -1082,18 +1167,42 @@ export class DataAnalyseService {
     }
   }
 
-  private async countWaypoints24h(vehicleId: string): Promise<number | null> {
+  private countWaypoints24h(vehicleId: string): Promise<number | null> {
+    return this.countWaypoints(vehicleId, CLICKHOUSE_ANALYSIS_WINDOW_HOURS);
+  }
+
+  /** Count telemetry_waypoints (route stream) rows in a trailing window. */
+  private async countWaypoints(
+    vehicleId: string,
+    hours: number,
+  ): Promise<number | null> {
+    return this.countTableRows('telemetry_waypoints', vehicleId, hours);
+  }
+
+  /** Count telemetry_snapshots (~30s snapshot mirror) rows in a window. */
+  private async countSnapshots(
+    vehicleId: string,
+    hours: number,
+  ): Promise<number | null> {
+    return this.countTableRows('telemetry_snapshots', vehicleId, hours);
+  }
+
+  private async countTableRows(
+    table: 'telemetry_waypoints' | 'telemetry_snapshots',
+    vehicleId: string,
+    hours: number,
+  ): Promise<number | null> {
     if (!this.clickHouse.isAvailable) return null;
     try {
       const client = this.clickHouse.getClient();
       const result = await client.query({
         query: `
           SELECT count() AS cnt
-          FROM telemetry_waypoints
+          FROM ${table}
           WHERE vehicle_id = {vehicleId:String}
             AND recorded_at >= now() - INTERVAL {hours:UInt16} HOUR
         `,
-        query_params: { vehicleId, hours: CLICKHOUSE_ANALYSIS_WINDOW_HOURS },
+        query_params: { vehicleId, hours },
         format: 'JSONEachRow',
       });
       const rows = await result.json<{ cnt: string }>();

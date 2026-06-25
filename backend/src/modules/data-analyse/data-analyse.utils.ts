@@ -8,7 +8,9 @@ import {
 import type {
   DataFreshnessStatus,
   HealthCalcFreshness,
+  HfAvailabilityStatus,
   HfDetectionQuality,
+  HfMirrorStatus,
   HfReliabilityStatus,
   IntervalStatus,
   LaunchDetectionUsefulness,
@@ -253,4 +255,123 @@ export function filterConnectedVehicles<T extends { connectionStatus: string }>(
 
 export function tenantVehicleWhere(orgId: string, vehicleId: string) {
   return { id: vehicleId, organizationId: orgId };
+}
+
+/**
+ * Pure HF-availability decision used by the Data Analyse page. Keeps the
+ * "is there REAL high-frequency telemetry?" logic in one testable place so the
+ * UI can never contradict itself (e.g. "HF active" + "snapshot-only").
+ *
+ * Concepts are kept strictly separate:
+ *   - telemetry_waypoints   → route/waypoint stream (lat/lng/speed)
+ *   - telemetry_hf_points   → real 1s/post-trip HF signal points
+ *   - sub-2s cadence        → a per-signal interval at the HF threshold (<=2s)
+ *
+ * `snapshotOnly` means there is NO HF evidence of any kind — only
+ * snapshot/latest-state telemetry (~30s). Crucially, "waypoints missing" is
+ * NOT the same as "HF missing": HF points alone make the vehicle HF-capable.
+ */
+export interface HfAvailabilityInput {
+  waypointCount: number | null;
+  hfPointCount24h: number | null;
+  hasSubSecondCadence: boolean;
+  /**
+   * ~30s snapshot/latest-state samples (24h). Optional — only used to tell
+   * `snapshot_only` (vehicle reports, but no HF) apart from `missing` (no
+   * telemetry at all). Older callers omit it; the aggregated status then
+   * collapses both into `missing`/`unknown` conservatively.
+   */
+  snapshotSampleCount24h?: number | null;
+}
+
+/** Combined HF/waypoint volume (24h) below which HF is treated as `sparse`. */
+const HF_SPARSE_SAMPLE_THRESHOLD = 20;
+
+export interface HfAvailabilityDecision {
+  /** Real high-frequency evidence exists (waypoints OR hf_points OR sub-2s). */
+  available: boolean;
+  /** No HF evidence of any kind — snapshot/latest-state telemetry only. */
+  snapshotOnly: boolean;
+  hasWaypoints: boolean;
+  hasHfPoints: boolean;
+  /** Aggregated, operator-facing label (single source of truth for the UI). */
+  status: HfAvailabilityStatus;
+}
+
+export function deriveHfAvailability(
+  input: HfAvailabilityInput,
+): HfAvailabilityDecision {
+  const hasWaypoints = (input.waypointCount ?? 0) > 0;
+  const hasHfPoints = (input.hfPointCount24h ?? 0) > 0;
+  const available = hasWaypoints || hasHfPoints || input.hasSubSecondCadence;
+
+  const status = deriveHfAvailabilityStatus(input, {
+    hasWaypoints,
+    hasHfPoints,
+    available,
+  });
+
+  return {
+    available,
+    snapshotOnly: !available,
+    hasWaypoints,
+    hasHfPoints,
+    status,
+  };
+}
+
+function deriveHfAvailabilityStatus(
+  input: HfAvailabilityInput,
+  derived: { hasWaypoints: boolean; hasHfPoints: boolean; available: boolean },
+): HfAvailabilityStatus {
+  // Sub-2s cadence is the strongest possible signal — definitely HF-capable.
+  if (input.hasSubSecondCadence) return 'hf_available';
+
+  if (derived.hasWaypoints || derived.hasHfPoints) {
+    const combined = (input.waypointCount ?? 0) + (input.hfPointCount24h ?? 0);
+    return combined >= HF_SPARSE_SAMPLE_THRESHOLD ? 'hf_available' : 'sparse';
+  }
+
+  // No HF evidence. Decide between snapshot-only, missing, and unknown using
+  // whatever telemetry-presence info the caller supplied.
+  const waypointKnown = input.waypointCount != null;
+  const hfKnown = input.hfPointCount24h != null;
+  const snapshotKnown = input.snapshotSampleCount24h != null;
+
+  if ((input.snapshotSampleCount24h ?? 0) > 0) return 'snapshot_only';
+  if (waypointKnown || hfKnown || snapshotKnown) return 'missing';
+  return 'unknown';
+}
+
+/**
+ * Derives the HF mirror status from the environment flag the way HfMirrorService
+ * reads it. Read-only diagnostic — does not toggle anything. Returns 'unknown'
+ * only when the flag is absent AND we cannot otherwise infer it.
+ */
+export function resolveHfMirrorStatus(
+  raw: string | undefined = process.env.HF_MIRROR_ENABLED,
+): HfMirrorStatus {
+  if (raw === 'true') return 'enabled';
+  if (raw === 'false' || raw === undefined || raw === '') return 'disabled';
+  return 'unknown';
+}
+
+/**
+ * Human-readable explanation for a skipped trip enrichment, derived from the
+ * granular reason persisted in `vehicle_trips.behavior_enrichment_error` by the
+ * TripEnrichmentOrchestrator. Keeps the Data Analyse "Trip processing" trace
+ * explainable ("why was this trip not enriched?") instead of just showing the
+ * opaque `SKIPPED_NO_HF_DATA` status.
+ */
+export function describeEnrichmentSkip(error: string | null | undefined): string {
+  switch (error) {
+    case 'capability':
+      return 'vehicle not enrichable (missing DIMO token / vehicle).';
+    case 'insufficient_points':
+      return 'high-frequency stream too sparse (<10 raw / <5 clean points).';
+    case 'no_hf_data':
+      return 'no data / trip not eligible (no endTime / too short).';
+    default:
+      return 'insufficient high-frequency data (cloud/snapshot-only vehicle).';
+  }
 }

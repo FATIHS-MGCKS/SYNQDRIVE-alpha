@@ -42,6 +42,25 @@ export interface BehaviorEnrichmentResult {
 }
 
 /**
+ * Why a trip was not enriched. Surfaced by the orchestrator (persisted into
+ * `behaviorEnrichmentError`, logged, and shown on the Data Analyse page) so the
+ * skip is explainable, without introducing a new persisted enrichment status:
+ *   - CAPABILITY        : vehicle cannot be enriched (missing DIMO token / vehicle).
+ *   - INSUFFICIENT_POINTS: HF stream too sparse to derive events (<10 raw / <5 clean).
+ *   - NO_HF_DATA        : trip not eligible yet (no endTime / too short) — default.
+ */
+export type EnrichmentSkipReason = 'CAPABILITY' | 'INSUFFICIENT_POINTS' | 'NO_HF_DATA';
+
+/**
+ * Discriminated outcome of an enrichment run. Replaces the prior
+ * `BehaviorEnrichmentResult | null` contract so a granular, diagnostic skip
+ * reason can travel back to the orchestrator instead of an opaque `null`.
+ */
+export type BehaviorEnrichmentOutcome =
+  | { status: 'COMPLETED'; result: BehaviorEnrichmentResult }
+  | { status: 'SKIPPED'; reason: EnrichmentSkipReason };
+
+/**
  * Compute fuel-consumption enrichment from a DIMO fuel summary for the trip.
  *
  * Writes three canonical fields onto VehicleTrip:
@@ -194,7 +213,7 @@ export class TripBehaviorEnrichmentService {
     });
   }
 
-  async enrichTrip(tripId: string): Promise<BehaviorEnrichmentResult | null> {
+  async enrichTrip(tripId: string): Promise<BehaviorEnrichmentOutcome> {
     const trip = await this.prisma.vehicleTrip.findUnique({
       where: { id: tripId },
       include: {
@@ -215,7 +234,7 @@ export class TripBehaviorEnrichmentService {
 
     if (!trip || !trip.vehicle?.dimoVehicle?.tokenId) {
       this.logger.warn(`Cannot enrich trip ${tripId}: missing vehicle or DIMO token`);
-      return null;
+      return { status: 'SKIPPED', reason: 'CAPABILITY' };
     }
 
     // ── V3: Hardware-aware source routing ─────────────────────────────────────
@@ -232,13 +251,13 @@ export class TripBehaviorEnrichmentService {
 
     if (!trip.endTime) {
       this.logger.warn(`Cannot enrich trip ${tripId}: no endTime (still ongoing?)`);
-      return null;
+      return { status: 'SKIPPED', reason: 'NO_HF_DATA' };
     }
 
     const durationMs = trip.endTime.getTime() - trip.startTime.getTime();
     if (durationMs < MIN_TRIP_DURATION_MS) {
       this.logger.debug(`Trip ${tripId} too short (${durationMs}ms) for HF enrichment`);
-      return null;
+      return { status: 'SKIPPED', reason: 'NO_HF_DATA' };
     }
 
     const tokenId = trip.vehicle.dimoVehicle.tokenId;
@@ -259,13 +278,13 @@ export class TripBehaviorEnrichmentService {
 
     if (rawReadings.length < 10) {
       this.logger.warn(`Trip ${tripId}: only ${rawReadings.length} HF points, skipping`);
-      return null;
+      return { status: 'SKIPPED', reason: 'INSUFFICIENT_POINTS' };
     }
 
     const cleaned = preprocessHighFrequency(rawReadings);
     if (cleaned.length < 5) {
       this.logger.warn(`Trip ${tripId}: only ${cleaned.length} clean points after preprocessing`);
-      return null;
+      return { status: 'SKIPPED', reason: 'INSUFFICIENT_POINTS' };
     }
 
     const segs = splitByGaps(cleaned);
@@ -288,7 +307,9 @@ export class TripBehaviorEnrichmentService {
     });
     const detectorFeasibility = assessDetectorFeasibility({
       engineSignalsAvailable: capabilityProfile.engineSignalsAvailable,
-      snapshotOnly: capabilityProfile.snapshotOnly,
+      // 'unknown' density → treat as not-snapshot-only (do not pre-emptively
+      // disable detectors). This path only ever sees a confirmed HF stream.
+      snapshotOnly: capabilityProfile.snapshotOnly === true,
       signal: signalAvail,
     });
 
@@ -589,16 +610,19 @@ export class TripBehaviorEnrichmentService {
     );
 
     return {
-      accelerationEvents: allAccel.length,
-      brakingEvents: allBrake.length,
-      abuseEvents: allAbuse.length,
-      hardAccelerationCount: hardAccel,
-      hardBrakingCount: hardBrake,
-      abuseScore,
-      totalEventsStored: allRows.length,
-      fuelUsedLiters: fuelUpdate.fuelUsedLiters,
-      avgConsumptionLPer100Km: fuelUpdate.avgConsumptionLPer100Km,
-      fuelConfidence: (fuelUpdate.fuelConfidence as 'high' | 'medium' | 'low' | null) ?? null,
+      status: 'COMPLETED',
+      result: {
+        accelerationEvents: allAccel.length,
+        brakingEvents: allBrake.length,
+        abuseEvents: allAbuse.length,
+        hardAccelerationCount: hardAccel,
+        hardBrakingCount: hardBrake,
+        abuseScore,
+        totalEventsStored: allRows.length,
+        fuelUsedLiters: fuelUpdate.fuelUsedLiters,
+        avgConsumptionLPer100Km: fuelUpdate.avgConsumptionLPer100Km,
+        fuelConfidence: (fuelUpdate.fuelConfidence as 'high' | 'medium' | 'low' | null) ?? null,
+      },
     };
   }
 
@@ -624,11 +648,11 @@ export class TripBehaviorEnrichmentService {
         dimoVehicle: { tokenId: number | null } | null;
       };
     },
-  ): Promise<BehaviorEnrichmentResult | null> {
-    if (!trip.endTime) return null;
+  ): Promise<BehaviorEnrichmentOutcome> {
+    if (!trip.endTime) return { status: 'SKIPPED', reason: 'NO_HF_DATA' };
 
     const tokenId = trip.vehicle.dimoVehicle?.tokenId;
-    if (!tokenId) return null;
+    if (!tokenId) return { status: 'SKIPPED', reason: 'CAPABILITY' };
     const vehicleId = trip.vehicleId;
     const organizationId = trip.vehicle.organizationId;
 
@@ -675,7 +699,9 @@ export class TripBehaviorEnrichmentService {
         signalAvail = assessSignalAvailability(segs);
         detectorFeasibilityLte = assessDetectorFeasibility({
           engineSignalsAvailable: capabilityProfileLte.engineSignalsAvailable,
-          snapshotOnly: capabilityProfileLte.snapshotOnly,
+          // 'unknown' density → treat as not-snapshot-only (conservative; this
+          // branch only runs when an HF stream with >=10 points was observed).
+          snapshotOnly: capabilityProfileLte.snapshotOnly === true,
           signal: signalAvail,
         });
         hfInsufficientForAbuse = false;
@@ -875,16 +901,19 @@ export class TripBehaviorEnrichmentService {
     );
 
     return {
-      accelerationEvents: 0,
-      brakingEvents: 0,
-      abuseEvents: combinedAbuseTotal,
-      hardAccelerationCount: drivingResult?.harshAccelerationCount ?? 0,
-      hardBrakingCount: (drivingResult?.harshBrakingCount ?? 0) + (drivingResult?.extremeBrakingCount ?? 0),
-      abuseScore,
-      totalEventsStored: abuseRows.length + (drivingResult?.drivingEventsIngested ?? 0),
-      fuelUsedLiters: fuelUpdate.fuelUsedLiters,
-      avgConsumptionLPer100Km: fuelUpdate.avgConsumptionLPer100Km,
-      fuelConfidence: (fuelUpdate.fuelConfidence as 'high' | 'medium' | 'low' | null) ?? null,
+      status: 'COMPLETED',
+      result: {
+        accelerationEvents: 0,
+        brakingEvents: 0,
+        abuseEvents: combinedAbuseTotal,
+        hardAccelerationCount: drivingResult?.harshAccelerationCount ?? 0,
+        hardBrakingCount: (drivingResult?.harshBrakingCount ?? 0) + (drivingResult?.extremeBrakingCount ?? 0),
+        abuseScore,
+        totalEventsStored: abuseRows.length + (drivingResult?.drivingEventsIngested ?? 0),
+        fuelUsedLiters: fuelUpdate.fuelUsedLiters,
+        avgConsumptionLPer100Km: fuelUpdate.avgConsumptionLPer100Km,
+        fuelConfidence: (fuelUpdate.fuelConfidence as 'high' | 'medium' | 'low' | null) ?? null,
+      },
     };
   }
 

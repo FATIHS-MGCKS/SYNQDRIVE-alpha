@@ -29,11 +29,14 @@ function ProvenanceBadge({ event }: { event: TripBehaviorEvent }) {
   if (!event.provenance) return null;
   const isNative = event.provenance === 'NATIVE';
   const confidence = event.confidence ? CONFIDENCE_LABEL[event.confidence] ?? event.confidence : null;
+  const nativeTitle = event.originalEventName
+    ? `Natives DIMO-Ereignis (Telemetry API) · ${event.originalEventName}`
+    : 'Natives DIMO-Ereignis (Telemetry API)';
   return (
     <span
       title={
         isNative
-          ? 'Natives DIMO-Ereignis (Telemetry API)'
+          ? nativeTitle
           : `Aus 1s-Hochfrequenzdaten rekonstruiert${confidence ? ` · Konfidenz ${confidence}` : ''}`
       }
       className={`rounded-full border px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${
@@ -44,6 +47,23 @@ function ProvenanceBadge({ event }: { event: TripBehaviorEvent }) {
     >
       {isNative ? 'Nativ' : 'Rekonstruiert'}
       {!isNative && confidence ? ` · ${confidence}` : ''}
+    </span>
+  );
+}
+
+/**
+ * Marks an event that contributes to the trip's abuse KPI. This is what makes a
+ * trip "abuse-relevant" explainable at the event level — e.g. a native extreme
+ * braking that feeds the abuse counter is now visibly flagged.
+ */
+function AbuseRelevanceBadge({ event }: { event: TripBehaviorEvent }) {
+  if (!event.abuseRelevant) return null;
+  return (
+    <span
+      title={event.abuseReason ?? 'Zählt in die Abuse-KPI dieses Trips.'}
+      className="rounded-full border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-rose-600 dark:text-rose-400"
+    >
+      Abuse-relevant
     </span>
   );
 }
@@ -135,6 +155,7 @@ export function TripBehaviorEventList({
                         </span>
                         <TripEventSeverityBadge level={severity} />
                         <ProvenanceBadge event={ev} />
+                        <AbuseRelevanceBadge event={ev} />
                       </div>
                       <p className="text-[10px] text-muted-foreground tabular-nums">
                         {formatBehaviorTime(ev.startedAt)}

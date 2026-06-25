@@ -158,7 +158,7 @@ function buildEventsQuery(tokenId: number, from: Date, to: Date): string {
         tokenId: ${tokenId}
         from: "${from.toISOString()}"
         to: "${to.toISOString()}"
-        filter: { name: { in: ["behavior.harshBraking", "behavior.extremeBraking", "behavior.harshAcceleration", "behavior.harshCornering"] } }
+        filter: { name: { in: ["behavior.harshBraking", "behavior.extremeBraking", "behavior.harshAcceleration", "behavior.extremeAcceleration", "behavior.harshCornering", "behavior.extremeEmergency", "behavior.extremeEmergencyBraking"] } }
       ) { timestamp name source durationNs metadata }
     }
   `.trim();
@@ -196,6 +196,11 @@ function normalizeEventName(raw: string): DrivingEventType | null {
     case 'extremeemergencybraking':
       return 'EXTREME_BRAKING';
     case 'harshacceleration':
+    // No EXTREME_ACCELERATION enum exists — extreme acceleration is persisted as
+    // HARSH_ACCELERATION (the runtime LteR1 path additionally tags it
+    // classification: EXTREME in metadata; this one-off backfill keeps the type
+    // mapping in sync so re-runs no longer drop the event).
+    case 'extremeacceleration':
       return 'HARSH_ACCELERATION';
     case 'harshcornering':
       return 'HARSH_CORNERING';
