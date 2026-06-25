@@ -6,6 +6,15 @@
 
 export type HandoverKind = 'PICKUP' | 'RETURN';
 
+/** Draft technical observation submitted with handover — created transactionally with protocol. */
+export interface HandoverTechnicalObservationDraft {
+  description: string;
+  category?: string;
+  affectedArea?: string;
+  severity?: string;
+  blocksRental?: boolean;
+}
+
 export interface HandoverProtocolDto {
   id: string;
   bookingId: string;
@@ -60,4 +69,6 @@ export interface CreateHandoverProtocolPayload {
   damageIds?: string[];
   /** Actual station where handover occurred (defaults to planned station). */
   actualStationId?: string | null;
+  /** Technical observations to persist with the handover protocol (canonical VehicleComplaint rows). */
+  technicalObservations?: HandoverTechnicalObservationDraft[];
 }

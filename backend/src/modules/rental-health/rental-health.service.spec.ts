@@ -194,7 +194,7 @@ describe('RentalHealthService (unit)', () => {
     expect(reasons).toHaveLength(0);
   });
 
-  it('safety complaint adds blocking reason', () => {
+  it('blocksRental observation adds blocking reason', () => {
     const modules = {
       service_compliance: { state: 'good', reason: 'ok' },
       brakes: { state: 'good', reason: 'ok' },
@@ -203,13 +203,31 @@ describe('RentalHealthService (unit)', () => {
     };
     const reasons = collectBlockingReasons(
       modules,
-      [{ impact: 'SAFETY' }],
+      [{ blocksRental: true }],
       null,
       { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
       null,
       null,
     );
-    expect(reasons).toContain('Offene Sicherheits-Reklamation');
+    expect(reasons).toContain('Technische Beobachtung blockiert Vermietung');
+  });
+
+  it('critical severity without blocksRental does not block rental', () => {
+    const modules = {
+      service_compliance: { state: 'good', reason: 'ok' },
+      brakes: { state: 'good', reason: 'ok' },
+      tires: { state: 'good', reason: 'ok' },
+      error_codes: { state: 'good', reason: 'ok' },
+    };
+    const reasons = collectBlockingReasons(
+      modules,
+      [{ urgency: 'CRITICAL', blocksRental: false, impact: 'SAFETY' }],
+      null,
+      { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
+      null,
+      null,
+    );
+    expect(reasons).toHaveLength(0);
   });
 
   it('rental_blocked derives from blocking reasons length', () => {

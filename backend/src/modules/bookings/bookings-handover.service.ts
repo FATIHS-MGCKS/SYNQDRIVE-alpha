@@ -20,6 +20,12 @@ import {
 } from './handover.types';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
 import { WorkflowEventService } from '@modules/workflows/workflow-event.service';
+import {
+  parseAffectedArea,
+  parseCategory,
+  parseSeverity,
+} from '@modules/technical-observations/technical-observations.mapper';
+import type { HandoverTechnicalObservationDraft } from './handover.types';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // V4.8.47 — Vehicle.status is updated explicitly on handover (Option A):
@@ -263,6 +269,34 @@ export class BookingsHandoverService {
           });
         }
 
+        const observationDrafts = this.normalizeTechnicalObservationDrafts(
+          payload.technicalObservations,
+        );
+        if (observationDrafts.length > 0) {
+          const complaintSource =
+            kind === 'PICKUP' ? 'OPERATOR_HANDOVER' : 'OPERATOR_RETURN';
+          for (const draft of observationDrafts) {
+            await tx.vehicleComplaint.create({
+              data: {
+                organizationId: orgId,
+                vehicleId: booking.vehicleId,
+                createdByUserId: payload.performedByUserId ?? null,
+                description: draft.description,
+                urgency: parseSeverity(draft.severity),
+                category: parseCategory(draft.category),
+                affectedArea: parseAffectedArea(draft.affectedArea),
+                status: 'ACTIVE',
+                source: complaintSource,
+                blocksRental: draft.blocksRental ?? false,
+                bookingId,
+                customerId: booking.customerId,
+                handoverProtocolId: created.id,
+                stationId: actualStationId ?? null,
+              },
+            });
+          }
+        }
+
         return [created, booking2] as const;
       },
     );
@@ -392,6 +426,31 @@ export class BookingsHandoverService {
     }
 
     return parsed;
+  }
+
+  private normalizeTechnicalObservationDrafts(
+    drafts: HandoverTechnicalObservationDraft[] | undefined,
+  ): HandoverTechnicalObservationDraft[] {
+    if (!Array.isArray(drafts)) return [];
+    const seen = new Set<string>();
+    const normalized: HandoverTechnicalObservationDraft[] = [];
+    for (const raw of drafts) {
+      if (!raw || typeof raw !== 'object') continue;
+      const description =
+        typeof raw.description === 'string' ? raw.description.trim() : '';
+      if (description.length < 3) continue;
+      const dedupeKey = description.toLowerCase();
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      normalized.push({
+        description,
+        category: raw.category,
+        affectedArea: raw.affectedArea,
+        severity: raw.severity,
+        blocksRental: raw.blocksRental === true,
+      });
+    }
+    return normalized;
   }
 
   private validatePayload(p: CreateHandoverProtocolPayload) {

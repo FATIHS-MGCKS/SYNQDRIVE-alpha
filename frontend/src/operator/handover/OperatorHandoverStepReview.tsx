@@ -1,7 +1,13 @@
 import { AlertTriangle } from 'lucide-react';
 import type { HandoverDialogBookingInfo, HandoverDialogKind } from '../../rental/components/handover/HandoverProtocolDialog';
+import {
+  observationCategoryLabel,
+  observationSeverityLabel,
+  severityChipClass,
+} from '../../rental/lib/technical-observations-ui';
 import type { OperatorHandoverFormApi } from './useOperatorHandoverForm';
 import type { OperatorHandoverValidationIssue } from './operatorHandoverPayload';
+import { collectTechnicalObservationsForPayload } from './operatorHandoverTechnicalObservations';
 
 interface Props {
   kind: HandoverDialogKind;
@@ -14,6 +20,10 @@ export function OperatorHandoverStepReview({ kind, booking, form, issues }: Prop
   const primaryLabel =
     kind === 'PICKUP' ? 'Pickup bestätigen & Buchung aktivieren' : 'Rückgabe bestätigen & abschließen';
 
+  const observationPayload = collectTechnicalObservationsForPayload(kind, form.state);
+  const manualDrafts = form.state.technicalObservationDrafts;
+  const autoWarningCount = Math.max(0, observationPayload.length - manualDrafts.length);
+
   const rows = [
     { label: 'Fahrzeug', value: `${booking.vehicleName} · ${booking.plate}` },
     { label: 'Kunde', value: booking.customerName },
@@ -23,6 +33,13 @@ export function OperatorHandoverStepReview({ kind, booking, form, issues }: Prop
       value: form.state.fuelFull ? 'Voll' : `${form.state.fuelPercent}%`,
     },
     { label: 'Schäden markiert', value: String(form.state.selectedDamageIds.size) },
+    {
+      label: 'Technische Beobachtungen',
+      value:
+        observationPayload.length === 0
+          ? 'Keine'
+          : `${observationPayload.length}${autoWarningCount > 0 ? ` (inkl. Warnleuchten)` : ''}`,
+    },
     {
       label: 'Dokumente bestätigt',
       value: form.state.checks.documentsAcknowledged ? 'Ja' : 'Nein',
@@ -47,6 +64,41 @@ export function OperatorHandoverStepReview({ kind, booking, form, issues }: Prop
           </div>
         ))}
       </div>
+
+      {observationPayload.length > 0 && (
+        <div className="rounded-2xl border border-border/60 bg-card/80 p-4 space-y-2">
+          <p className="text-sm font-semibold">Technische Beobachtungen</p>
+          <ul className="space-y-2">
+            {observationPayload.map((obs, idx) => (
+              <li
+                key={`${obs.description}-${idx}`}
+                className="rounded-xl border border-border/50 bg-background/50 px-3 py-2"
+              >
+                <p className="text-sm font-medium leading-snug">{obs.description}</p>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
+                  {obs.category && (
+                    <span className="rounded-md bg-muted px-2 py-0.5 font-semibold uppercase tracking-wide text-muted-foreground">
+                      {observationCategoryLabel(obs.category)}
+                    </span>
+                  )}
+                  {obs.severity && (
+                    <span
+                      className={`rounded-md px-2 py-0.5 font-semibold ${severityChipClass(obs.severity)}`}
+                    >
+                      {observationSeverityLabel(obs.severity)}
+                    </span>
+                  )}
+                  {obs.blocksRental && (
+                    <span className="font-semibold text-[color:var(--status-critical)]">
+                      Blockiert Vermietung
+                    </span>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {issues.length > 0 && (
         <div className="rounded-2xl border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06] p-4">

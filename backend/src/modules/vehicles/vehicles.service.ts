@@ -2032,7 +2032,7 @@ export class VehiclesService {
     });
     if (!v) throw new NotFoundException('Vehicle not found');
     return this.prisma.vehicleComplaint.findMany({
-      where: { vehicleId },
+      where: { vehicleId, organizationId },
       orderBy: { createdAt: 'desc' },
     });
   }

@@ -11,6 +11,7 @@ import {
   type OperatorHandoverDamageRow,
   type OperatorHandoverFormState,
 } from './operatorHandoverPayload';
+import type { OperatorHandoverObservationDraft } from './operatorHandoverTechnicalObservations';
 
 export function useOperatorHandoverForm(
   isOpen: boolean,
@@ -173,6 +174,20 @@ export function useOperatorHandoverForm(
     setState((prev) => ({ ...prev, tireMeasurementCaptured: true }));
   }, []);
 
+  const addTechnicalObservationDraft = useCallback((draft: OperatorHandoverObservationDraft) => {
+    setState((prev) => ({
+      ...prev,
+      technicalObservationDrafts: [...prev.technicalObservationDrafts, draft],
+    }));
+  }, []);
+
+  const removeTechnicalObservationDraft = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      technicalObservationDrafts: prev.technicalObservationDrafts.filter((d) => d.id !== id),
+    }));
+  }, []);
+
   return {
     booking,
     kind,
@@ -191,6 +206,8 @@ export function useOperatorHandoverForm(
     reloadDamages,
     reloadDocuments,
     markTireMeasurementCaptured,
+    addTechnicalObservationDraft,
+    removeTechnicalObservationDraft,
   };
 }
 

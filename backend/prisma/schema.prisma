@@ -1375,11 +1375,21 @@ enum ComplaintLifecycleStatus {
   IN_REVIEW
   CONFIRMED
   REJECTED
+  // V4.9.68 — canonical technical observation lifecycle
+  NEW
+  CONVERTED
+  DISMISSED
 }
 
 enum ComplaintSource {
   FIELD_AGENT
   MANUAL
+  OPERATOR_RETURN
+  OPERATOR_HANDOVER
+  CUSTOMER_REPORT
+  STAFF_INSPECTION
+  AI_UPLOAD
+  SYSTEM_IMPORT
 }
 
 // V4.6.76 Rental Health V1 — impact classification drives the
@@ -1394,14 +1404,46 @@ enum ComplaintImpact {
   COMFORT
 }
 
+enum TechnicalObservationCategory {
+  EXTERIOR
+  INTERIOR
+  LIGHTS
+  WIPERS_WINDOWS
+  WHEELS_TIRES
+  ELECTRONICS_CONTROLS
+  NOISE_VIBRATION
+  DRIVING_BEHAVIOR
+  COMFORT
+  OTHER
+}
+
+enum TechnicalObservationAffectedArea {
+  FRONT
+  REAR
+  LEFT
+  RIGHT
+  INTERIOR
+  DASHBOARD
+  LIGHTS
+  WHEELS
+  TIRES
+  ENGINE_BAY
+  TRUNK
+  UNKNOWN
+}
+
 model VehicleComplaint {
   id              String                   @id @default(uuid())
   organizationId  String                   @map("organization_id")
   vehicleId       String                   @map("vehicle_id")
   createdByUserId String?                  @map("created_by_user_id")
+  createdByWorkerId String?                @map("created_by_worker_id")
+  title           String?
   description     String
   urgency         ComplaintUrgency         @default(MEDIUM)
   region          String?
+  category        TechnicalObservationCategory?
+  affectedArea    TechnicalObservationAffectedArea? @map("affected_area")
   status          ComplaintLifecycleStatus @default(ACTIVE)
   source          ComplaintSource          @default(MANUAL)
   // V4.6.76 Rental Health V1 — nullable so existing rows migrate
@@ -1409,7 +1451,23 @@ model VehicleComplaint {
   // classification", which keeps the legacy complaint severity (urgency)
   // out of the rental_blocked gate.
   impact          ComplaintImpact?
+  blocksRental    Boolean                  @default(false) @map("blocks_rental")
+  bookingId       String?                  @map("booking_id")
+  customerId      String?                  @map("customer_id")
+  driverId        String?                  @map("driver_id")
+  handoverProtocolId String?               @map("handover_protocol_id")
+  stationId       String?                  @map("station_id")
+  locationContext String?                  @map("location_context")
   resolvedAt      DateTime?                @map("resolved_at")
+  resolvedByUserId String?                 @map("resolved_by_user_id")
+  dismissedAt     DateTime?                @map("dismissed_at")
+  dismissedByUserId String?                @map("dismissed_by_user_id")
+  convertedToTaskId String?                @map("converted_to_task_id")
+  linkedDamageId  String?                  @map("linked_damage_id")
+  linkedServiceEventId String?              @map("linked_service_event_id")
+  linkedServiceCaseId String?               @map("linked_service_case_id")
+  linkedServiceTaskId String?               @map("linked_service_task_id")
+  notes           String?
   createdAt       DateTime                 @default(now()) @map("created_at")
   updatedAt       DateTime                 @updatedAt @map("updated_at")
 
@@ -1418,6 +1476,8 @@ model VehicleComplaint {
 
   @@index([vehicleId])
   @@index([organizationId])
+  @@index([organizationId, vehicleId, status])
+  @@index([bookingId])
   @@map("vehicle_complaints")
 }
 

@@ -38,7 +38,7 @@ export interface RentalHealthGateResult {
  * ACTIVE is the legacy status (≈ OPEN) kept for backwards-compat. IN_REVIEW
  * and CONFIRMED are the new V1 statuses. RESOLVED and REJECTED are ignored.
  */
-const OPEN_COMPLAINT_STATUSES = ['ACTIVE', 'OPEN', 'IN_REVIEW', 'CONFIRMED'] as const;
+const OPEN_COMPLAINT_STATUSES = ['ACTIVE', 'OPEN', 'IN_REVIEW', 'CONFIRMED', 'NEW'] as const;
 
 /**
  * Rental Health V1 — consumption-only aggregation layer.
@@ -584,14 +584,15 @@ export class RentalHealthService {
   }
 
   /**
-   * Complaints — reads the `vehicle_complaints` table for open statuses.
-   * Only complaints with impact=SAFETY set rental_blocked (handled in the
-   * blocking-reasons collector, not here). DRIVABILITY/ENVIRONMENT at
-   * open status → critical severity. COMFORT → warning.
+   * Technical observations (vehicle_complaints) — canonical intake/evidence layer.
    *
-   * The health module itself already returns critical for SAFETY so that
-   * the overall state reflects the open safety complaint even before the
-   * rental_blocked flag is considered.
+   * Module state:
+   *   - good: no active observations
+   *   - warning: active low/medium/high without blocksRental
+   *   - critical: active critical severity OR blocksRental true
+   *
+   * Rental blocking is handled separately in collectBlockingReasons and only
+   * when blocksRental is explicitly true — severity alone never blocks rental.
    */
   private evaluateComplaints(
     complaints: Array<{
@@ -600,6 +601,7 @@ export class RentalHealthService {
       urgency: string;
       status: string;
       impact: string | null;
+      blocksRental?: boolean;
       createdAt: Date;
       updatedAt: Date;
     }>,
@@ -608,7 +610,7 @@ export class RentalHealthService {
     if (!loaded) {
       return {
         state: 'unknown',
-        reason: 'Reklamationen konnten nicht geladen werden',
+        reason: 'Technische Beobachtungen konnten nicht geladen werden',
         last_updated_at: null,
         data_stale: true,
         source: 'complaints',
@@ -619,7 +621,7 @@ export class RentalHealthService {
     if (complaints.length === 0) {
       return {
         state: 'good',
-        reason: 'Keine offenen Reklamationen',
+        reason: 'Keine aktiven technischen Beobachtungen',
         last_updated_at: null,
         data_stale: false,
         source: 'complaints',
@@ -627,45 +629,31 @@ export class RentalHealthService {
       };
     }
 
-    const newest = complaints[0]; // ordered by createdAt desc in the query
+    const newest = complaints[0];
     const newestIso = newest.updatedAt.toISOString();
 
-    const safety = complaints.find((c) => c.impact === 'SAFETY');
-    if (safety) {
-      return {
-        state: 'critical',
-        reason: `Offene Sicherheits-Reklamation vom ${formatDate(safety.createdAt)}`,
-        last_updated_at: safety.updatedAt.toISOString(),
-        data_stale: false,
-        source: 'complaints',
-        evidence_type: 'complaint',
-      };
-    }
-
-    const drivability = complaints.find(
-      (c) => c.impact === 'DRIVABILITY' || c.impact === 'ENVIRONMENT',
+    const critical = complaints.find(
+      (c) => c.urgency === 'CRITICAL' || c.blocksRental === true,
     );
-    if (drivability) {
+    if (critical) {
       return {
         state: 'critical',
-        reason:
-          drivability.impact === 'DRIVABILITY'
-            ? `Offene Reklamation zur Fahrfunktion vom ${formatDate(drivability.createdAt)}`
-            : `Offene Umwelt-Reklamation vom ${formatDate(drivability.createdAt)}`,
-        last_updated_at: drivability.updatedAt.toISOString(),
+        reason: critical.blocksRental
+          ? `Vermietungsblockierende Beobachtung vom ${formatDate(critical.createdAt)}`
+          : `Kritische technische Beobachtung vom ${formatDate(critical.createdAt)}`,
+        last_updated_at: critical.updatedAt.toISOString(),
         data_stale: false,
         source: 'complaints',
         evidence_type: 'complaint',
       };
     }
 
-    // All remaining opens are COMFORT or unclassified — warning only.
     return {
       state: 'warning',
       reason:
         complaints.length === 1
-          ? `Offene Reklamation vom ${formatDate(newest.createdAt)}`
-          : `${complaints.length} offene Reklamationen`,
+          ? `Aktive technische Beobachtung vom ${formatDate(newest.createdAt)}`
+          : `${complaints.length} aktive technische Beobachtungen`,
       last_updated_at: newestIso,
       data_stale: false,
       source: 'complaints',
@@ -787,7 +775,7 @@ export class RentalHealthService {
    */
   private collectBlockingReasons(
     modules: VehicleHealth['modules'],
-    openComplaints: Array<{ impact: string | null; description?: string }>,
+    openComplaints: Array<{ impact: string | null; description?: string; blocksRental?: boolean }>,
     hmAi: { limpModeActive: boolean | null; oilLevel: { status: string | null } | null } | null,
     complianceEval: ServiceComplianceEvaluation | null,
     dtcSummary: Awaited<ReturnType<DtcService['getSummary']>> | null,
@@ -812,14 +800,9 @@ export class RentalHealthService {
       );
     }
 
-    const safety = openComplaints.find((c) => c.impact === 'SAFETY');
-    if (safety) {
-      reasons.push('Offene Sicherheits-Reklamation');
-    }
-
-    const drivability = openComplaints.find((c) => c.impact === 'DRIVABILITY');
-    if (drivability) {
-      reasons.push('Offene Fahrbarkeits-Reklamation');
+    const rentalBlockingObservation = openComplaints.find((c) => c.blocksRental === true);
+    if (rentalBlockingObservation) {
+      reasons.push('Technische Beobachtung blockiert Vermietung');
     }
 
     if (hmAi?.limpModeActive === true) {

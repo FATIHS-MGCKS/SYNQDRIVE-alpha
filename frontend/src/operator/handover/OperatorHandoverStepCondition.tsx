@@ -7,6 +7,7 @@ import {
   OperatorHandoverField,
   OperatorToggleRow,
 } from './operatorHandoverUi';
+import { OperatorHandoverTechnicalObservationsSection } from './OperatorHandoverTechnicalObservationsSection';
 
 interface Props {
   kind: HandoverDialogKind;
@@ -145,6 +146,8 @@ export function OperatorHandoverStepCondition({
           {tireMeasureHint ?? 'Reifenprofilmessung erfasst — wird im Protokoll vermerkt.'}
         </p>
       )}
+
+      <OperatorHandoverTechnicalObservationsSection form={form} />
 
       <OperatorHandoverField label="Notizen">
         <textarea

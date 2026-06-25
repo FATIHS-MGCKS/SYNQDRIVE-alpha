@@ -1,4 +1,9 @@
 import type { HandoverDialogKind } from '../../rental/components/handover/HandoverProtocolDialog';
+import {
+  collectTechnicalObservationsForPayload,
+  type HandoverTechnicalObservationPayloadItem,
+  type OperatorHandoverObservationDraft,
+} from './operatorHandoverTechnicalObservations';
 
 export type OperatorHandoverStepId =
   | 'vehicle'
@@ -57,7 +62,10 @@ export interface OperatorHandoverFormState {
   actualStationId: string;
   selectedDamageIds: Set<string>;
   tireMeasurementCaptured: boolean;
+  technicalObservationDrafts: OperatorHandoverObservationDraft[];
 }
+
+export type { HandoverTechnicalObservationPayloadItem, OperatorHandoverObservationDraft };
 
 export interface OperatorHandoverBookingRef {
   id: string;
@@ -121,6 +129,7 @@ export function createInitialHandoverState(
     actualStationId: plannedId ?? '',
     selectedDamageIds: new Set<string>(),
     tireMeasurementCaptured: false,
+    technicalObservationDrafts: [],
   };
 }
 
@@ -157,6 +166,7 @@ export function buildOperatorHandoverPayload(input: OperatorHandoverPayloadInput
     documentsAcknowledged: state.checks.documentsAcknowledged,
     damageIds: Array.from(state.selectedDamageIds),
     actualStationId: state.actualStationId || null,
+    technicalObservations: collectTechnicalObservationsForPayload(kind, state),
   };
 }
 

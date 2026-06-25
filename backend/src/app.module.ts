@@ -52,6 +52,7 @@ import { WhatsAppModule } from '@modules/whatsapp/whatsapp.module';
 import { BusinessInsightsModule } from '@modules/business-insights/business-insights.module';
 import { HighMobilityModule } from '@modules/high-mobility/high-mobility.module';
 import { RentalHealthModule } from '@modules/rental-health/rental-health.module';
+import { TechnicalObservationsModule } from '@modules/technical-observations/technical-observations.module';
 import { DocumentExtractionModule } from '@modules/document-extraction/document-extraction.module';
 import { DocumentsModule } from '@modules/documents/documents.module';
 import { PricingModule } from '@modules/pricing/pricing.module';
@@ -212,6 +213,7 @@ export class AppModule {
         BusinessInsightsModule,
         HighMobilityModule,
         RentalHealthModule,
+        TechnicalObservationsModule,
         DocumentExtractionModule,
         DocumentsModule,
         PricingModule,
