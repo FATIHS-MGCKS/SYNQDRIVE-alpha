@@ -7,10 +7,10 @@ interface TripAssignmentBadgeProps {
 }
 
 export function TripAssignmentBadge({ trip }: TripAssignmentBadgeProps) {
-  if (trip.isPrivateTrip) {
+  if (trip.isPrivateTrip || trip.assignmentStatus === 'PRIVATE_UNASSIGNED') {
     return <TripStatusBadge label="Privat" tone="private" />;
   }
-  if (trip.assignmentStatus === 'PRIVATE_UNASSIGNED' || trip.assignmentStatus === 'UNKNOWN_ASSIGNMENT') {
+  if (trip.assignmentStatus === 'UNKNOWN_ASSIGNMENT') {
     return <TripStatusBadge label="Nicht zugewiesen" tone="neutral" />;
   }
   if (trip.assignmentStatus === 'ASSIGNED_BOOKING_CUSTOMER') {

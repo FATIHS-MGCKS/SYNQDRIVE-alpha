@@ -151,7 +151,7 @@ export const RENTAL_COPY = {
   evidenceSummaryTitle: 'Beweisübersicht',
   evidenceSummaryHint: 'Kompakte Zusammenfassung dieser Fahrt für die operative Bewertung.',
   hfLimited: 'Daten eingeschränkt',
-  hfAvailable: 'HF verfügbar',
+  hfAvailable: 'Telemetrie verfügbar',
   hfPending: 'Datenbasis fehlt',
   routeMatch: 'Routen-Match',
   damageNeutralHint:

@@ -68,7 +68,7 @@ export function TripMapDataQualityOverlay({ quality, routeLoading }: TripMapData
   } else if (quality.hfLimited) {
     chips.push({ key: 'hf-limited', tone: 'watch', label: 'Telemetrie eingeschränkt', icon: 'activity' });
   } else if (quality.hfAvailable) {
-    chips.push({ key: 'hf-ok', tone: 'ok', label: 'HF verfügbar', icon: 'activity' });
+    chips.push({ key: 'hf-ok', tone: 'ok', label: 'Telemetrie verfügbar', icon: 'activity' });
   }
 
   return (

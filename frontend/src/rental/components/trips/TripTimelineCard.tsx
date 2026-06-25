@@ -29,14 +29,12 @@ const MAX_VISIBLE_CHIPS = 3;
 export function TripTimelineCard({
   trip,
   isSelected,
-  isDark,
   chips,
   onSelect,
   children,
 }: TripTimelineCardProps) {
   const flagged = hasAbuseSuspicion(trip);
   const visibleChips = chips.slice(0, MAX_VISIBLE_CHIPS);
-  const overflow = chips.length - visibleChips.length;
 
   return (
     <article
@@ -83,7 +81,6 @@ export function TripTimelineCard({
             {visibleChips.map((chip) => (
               <TripStatusBadge key={chip.key} label={chip.label} tone={CHIP_TONE[chip.tone]} />
             ))}
-            {overflow > 0 && <TripStatusBadge label={`+${overflow}`} tone="neutral" />}
           </div>
         )}
       </div>

@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { TripsMapCard } from './TripsMapCard';
 import { TripTimeline } from './TripTimeline';
-import { TripsHeader } from './TripsHeader';
-import { TripsSummaryBar } from './TripsSummaryBar';
+import { TripsOverviewCard } from './TripsOverviewCard';
 import { tv } from './trips-view-ui';
 import { useTripsTab } from './hooks/useTripsTab';
 import { computeTripsPeriodSummary } from './utils/tripSummary';
@@ -21,18 +20,16 @@ export function TripsView(props: TripsViewProps) {
 
   return (
     <div className={tv.page}>
-      <TripsHeader
+      <TripsOverviewCard
         selectedDate={selectedDate}
         tripCount={tab.trips.length}
-        notableEvents={periodSummary.notableEvents}
+        summary={periodSummary}
         loading={tab.loading}
         syncing={tab.syncing}
         onRefresh={vehicleId ? tab.loadTrips : undefined}
         onCheckMissing={vehicleId ? tab.handleSync : undefined}
         disabled={!vehicleId}
       />
-
-      <TripsSummaryBar summary={periodSummary} loading={tab.loading} />
 
       <div className={tv.grid}>
         <div className="order-2 xl:order-1 min-w-0">

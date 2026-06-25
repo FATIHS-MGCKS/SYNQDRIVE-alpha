@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { deriveOperationalChips } from './timeline.utils';
 import { eventTypeLabel, eventExplanation, formatEventEvidence } from './behavior-ui.utils';
+import { needsAssignmentReview } from './utils/tripRentalContext';
 import type { TripTimelineTrip, TripBehaviorEvent } from './timeline.types';
 
 function makeTrip(overrides: Partial<TripTimelineTrip> = {}): TripTimelineTrip {
@@ -54,6 +55,7 @@ describe('collapsed trip card chips', () => {
     expect(labels).not.toContain('Nicht zugewiesen');
     expect(labels).not.toContain('Zuordnung prüfen');
     expect(labels).toContain('Unauffällig');
+    expect(needsAssignmentReview(makeTrip({ isPrivateTrip: true, assignmentStatus: 'PRIVATE_UNASSIGNED' }), null).needsReview).toBe(false);
   });
 
   it('shows rating + suspicion + Privat (max 3) for a private misuse trip, no HF/route/debug chips', () => {

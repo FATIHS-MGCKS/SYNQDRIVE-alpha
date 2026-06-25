@@ -299,9 +299,10 @@ export function needsAssignmentReview(
   trip: TripTimelineTrip,
   booking: TripBookingRef | null,
 ): { needsReview: boolean; reason: string | null } {
+  if (trip.isPrivateTrip || trip.assignmentStatus === 'PRIVATE_UNASSIGNED') {
+    return { needsReview: false, reason: null };
+  }
   const unassigned =
-    trip.isPrivateTrip ||
-    trip.assignmentStatus === 'PRIVATE_UNASSIGNED' ||
     trip.assignmentStatus === 'UNKNOWN_ASSIGNMENT';
   const noBooking =
     !booking &&
