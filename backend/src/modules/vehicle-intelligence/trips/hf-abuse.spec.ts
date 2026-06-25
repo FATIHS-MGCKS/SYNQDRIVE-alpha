@@ -26,9 +26,14 @@ import {
   detectAbuseEvents,
   computeAbuseScore,
   assessSignalAvailability,
+  assessDetectorFeasibility,
+  deriveAbuseConfidence,
+  ABUSE_DETECTOR_REQUIREMENTS,
   DEFAULT_RPM_CONFIG,
   ABUSE_SCORE_WEIGHTS,
   type AbuseEvent,
+  type AbuseEventType,
+  type SignalAvailability,
   type VehicleRpmConfig,
 } from './hf-abuse';
 import { detectAccelerationEvents } from './hf-acceleration';
@@ -1012,5 +1017,81 @@ describe('Noise protection regression tests', () => {
     ];
     const events = detectAbuseEvents(seg, ICE_CONFIG);
     expect(events.find((e) => e.eventType === 'FULL_BRAKING')).toBeUndefined();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  Phase 3 — Detector feasibility (EV / snapshot-only)
+// ═══════════════════════════════════════════════════════════════
+
+describe('assessDetectorFeasibility', () => {
+  const allSignals: SignalAvailability = {
+    coolantAvailable: true,
+    rpmAvailable: true,
+    throttleAvailable: true,
+    loadAvailable: true,
+    tractionBatteryPowerAvailable: true,
+  };
+  const noEngineSignals: SignalAvailability = {
+    coolantAvailable: false,
+    rpmAvailable: false,
+    throttleAvailable: false,
+    loadAvailable: false,
+    tractionBatteryPowerAvailable: true,
+  };
+
+  const speedOnly = (Object.keys(ABUSE_DETECTOR_REQUIREMENTS) as AbuseEventType[]).filter(
+    (k) => ABUSE_DETECTOR_REQUIREMENTS[k].speedOnly,
+  );
+  const engineDetectors = (Object.keys(ABUSE_DETECTOR_REQUIREMENTS) as AbuseEventType[]).filter(
+    (k) => !ABUSE_DETECTOR_REQUIREMENTS[k].speedOnly,
+  );
+
+  it('classifies engine detectors as impossible on a battery-electric vehicle', () => {
+    const result = assessDetectorFeasibility({
+      engineSignalsAvailable: false,
+      snapshotOnly: false,
+      signal: noEngineSignals,
+    });
+    for (const det of engineDetectors) {
+      expect(result[det].status).toBe('impossible_no_engine');
+    }
+    // Speed-only detectors stay active — EVs can still trip impact/full-braking.
+    for (const det of speedOnly) {
+      expect(result[det].status).toBe('active');
+    }
+  });
+
+  it('marks every detector snapshot_only when there is no dense HF stream', () => {
+    const result = assessDetectorFeasibility({
+      engineSignalsAvailable: true,
+      snapshotOnly: true,
+      signal: allSignals,
+    });
+    for (const det of Object.keys(result) as AbuseEventType[]) {
+      expect(result[det].status).toBe('snapshot_only');
+    }
+  });
+
+  it('marks engine detectors active when an ICE vehicle has all signals', () => {
+    const result = assessDetectorFeasibility({
+      engineSignalsAvailable: true,
+      snapshotOnly: false,
+      signal: allSignals,
+    });
+    expect(result.HIGH_RPM_CONSTANT.status).toBe('active');
+    expect(result.FULL_BRAKING.status).toBe('active');
+  });
+
+  it('downgrades derived confidence when the detector could not run cleanly', () => {
+    const event = { severity: 'CRITICAL' } as AbuseEvent;
+    expect(deriveAbuseConfidence(event)).toBe('high');
+    expect(
+      deriveAbuseConfidence(event, {
+        status: 'insufficient_signal',
+        requiredSignals: ['rpm'],
+        speedOnly: false,
+      }),
+    ).toBe('low');
   });
 });

@@ -5,7 +5,10 @@ import { ClickHouseService } from '@modules/clickhouse/clickhouse.service';
 import { ClickHouseHfService } from '@modules/clickhouse/clickhouse-hf.service';
 import { VehiclesService } from '@modules/vehicles/vehicles.service';
 import { ONLINE_MAX_MS, STANDBY_MAX_MS } from '@modules/vehicles/fleet-connectivity.util';
-import { CLICKHOUSE_ANALYSIS_WINDOW_HOURS } from './data-analyse.constants';
+import {
+  CLICKHOUSE_ANALYSIS_WINDOW_HOURS,
+  HIGH_FREQUENCY_THRESHOLD_MS,
+} from './data-analyse.constants';
 import {
   SIGNAL_GROUP_DEFINITIONS,
   VEHICLE_LATEST_STATE_CATALOG,
@@ -293,18 +296,30 @@ export class DataAnalyseService {
     );
 
     const snapshotOnly = (waypointCount ?? 0) === 0;
-    const anyHf = signals.some(
-      (s) => s.reliabilityStatus === 'GOOD' || s.detectionQuality === 'Good for detection',
-    );
 
     // Best-effort HF-layer status from the ClickHouse telemetry_hf_* mirror.
     // Analytics-only and must never break this endpoint — failures are swallowed.
     const hfStatus = await this.loadHfLayerStatus(vehicleId, ctx.nowMs);
 
+    // `available` must reflect REAL high-frequency evidence, not ~30s snapshots.
+    // A snapshot stream at its expected ~30s cadence used to flip this true via
+    // reliabilityStatus=GOOD, which misleadingly implied active HF abuse
+    // detection. Require a persisted HF stream (waypoints / hf_points) OR an
+    // observed per-signal interval at the high-frequency threshold (<=2s).
+    const hasSubSecondCadence = signals.some(
+      (s) =>
+        s.medianIntervalMs != null &&
+        s.medianIntervalMs <= HIGH_FREQUENCY_THRESHOLD_MS,
+    );
+    const realHfPresent =
+      (waypointCount ?? 0) > 0 ||
+      (hfStatus.hfPointCount24h ?? 0) > 0 ||
+      hasSubSecondCadence;
+
     return {
-      available: anyHf || signals.some((s) => s.observedIntervalMs != null),
+      available: realHfPresent,
       message: snapshotOnly
-        ? 'No high-frequency waypoint stream in ClickHouse (24h). Snapshot-level telemetry (~30s) may still be available per signal.'
+        ? 'No high-frequency waypoint stream in ClickHouse (24h). Snapshot-level telemetry (~30s) may still be available per signal, but high-frequency abuse detection is NOT active for this vehicle.'
         : null,
       snapshotLevelOnly: snapshotOnly,
       clickHouseAvailable: chAvailable,
@@ -467,6 +482,16 @@ export class DataAnalyseService {
     const tireMissing: string[] = ['tread_pressure_telemetry_trace'];
     if (tireSetup) tireInputs.push('vehicle_tire_setup');
 
+    const tirePressureArriving = [
+      'tire_pressure_fl',
+      'tire_pressure_fr',
+      'tire_pressure_rl',
+      'tire_pressure_rr',
+    ].some((k) => signalRows.find((r) => r.signalName === k)?.persisted);
+    const brakeHasEventInputs = eventCounts.some(
+      (e) => e.eventType === 'HARSH_BRAKING' || e.eventType === 'EXTREME_BRAKING',
+    );
+
     const batteryFreshness = classifyHealthFreshness(
       hvBattery?.lastPublishedAt ?? lvSnapshot?.recordedAt,
       nowMs,
@@ -486,6 +511,7 @@ export class DataAnalyseService {
         lastCalculationAt: brake?.lastRecalculatedAt?.toISOString() ?? null,
         calculationSource: brake ? 'BrakeHealthService / brake_health_current' : null,
         freshness: brake ? brakeFreshness : 'not_available',
+        inputBasis: brake ? (brakeHasEventInputs ? 'mixed' : 'modeled') : 'unknown',
         inputsAvailable: brakeInputs,
         inputsMissing: brakeMissing,
         evidence: {
@@ -513,6 +539,7 @@ export class DataAnalyseService {
           null,
         calculationSource: tireSetup ? 'TireHealthService / vehicle_tire_setup' : null,
         freshness: tireFreshness as HealthTraceDto['tire']['freshness'],
+        inputBasis: tireSetup ? (tirePressureArriving ? 'mixed' : 'modeled') : 'unknown',
         inputsAvailable: tireInputs,
         inputsMissing: tireMissing,
         evidence: {
@@ -535,6 +562,14 @@ export class DataAnalyseService {
           null,
         calculationSource: 'CanonicalBatteryHealthService / battery_health_snapshots + hv_battery_health_current',
         freshness: batteryFreshness,
+        inputBasis:
+          lvSnapshot && hvBattery
+            ? 'mixed'
+            : lvSnapshot
+              ? 'signal-based'
+              : hvBattery
+                ? 'modeled'
+                : 'unknown',
         inputsAvailable: batteryInputs,
         inputsMissing: batteryMissing,
         evidence: {
@@ -555,7 +590,7 @@ export class DataAnalyseService {
 
   async getPipeline(orgId: string, vehicleId: string): Promise<PipelineDto> {
     const vehicle = await this.assertVehicle(orgId, vehicleId);
-    const [latestState, lastPoll, lastTrip, hmTelemetry] = await Promise.all([
+    const [latestState, lastPoll, lastTrip, hmTelemetry, waypointCount] = await Promise.all([
       this.prisma.vehicleLatestState.findUnique({ where: { vehicleId } }),
       this.prisma.dimoPollLog.findFirst({
         where: { vehicleId },
@@ -571,6 +606,7 @@ export class DataAnalyseService {
             where: { vin: vehicle.vin },
           })
         : Promise.resolve(null),
+      this.countWaypoints24h(vehicleId),
     ]);
 
     const provider =
@@ -610,17 +646,27 @@ export class DataAnalyseService {
       },
       {
         step: 'High-frequency persistence',
-        status: this.clickHouse.isAvailable ? ('unknown' as const) : ('unavailable' as const),
+        status: !this.clickHouse.isAvailable
+          ? ('unavailable' as const)
+          : (waypointCount ?? 0) > 0
+            ? ('available' as const)
+            : ('not_persisted' as const),
         lastSeenAt: null,
         sourceName: 'ClickHouse telemetry_waypoints',
-        notes: 'HF availability per vehicle — see High Frequency tab.',
+        notes:
+          (waypointCount ?? 0) > 0
+            ? `${waypointCount} HF waypoint(s) in last 24h.`
+            : 'No HF waypoint stream persisted (24h). High-frequency abuse detection is NOT active from persisted HF for this vehicle.',
       },
       {
         step: 'Trip processing',
         status: lastTrip ? ('available' as const) : ('unknown' as const),
         lastSeenAt: lastTrip?.startTime?.toISOString() ?? null,
         sourceName: 'TripEnrichmentOrchestrator / vehicle_trips',
-        notes: lastTrip?.behaviorEnrichmentStatus ?? null,
+        notes:
+          lastTrip?.behaviorEnrichmentStatus === 'SKIPPED_NO_HF_DATA'
+            ? 'Last trip behaviour enrichment skipped — insufficient high-frequency data (cloud/snapshot-only vehicle).'
+            : lastTrip?.behaviorEnrichmentStatus ?? null,
       },
       {
         step: 'Health calculation',

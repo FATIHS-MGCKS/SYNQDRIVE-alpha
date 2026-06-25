@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'tesla-hf-abuse-foundation-v4950-2026-06-26',
+    version: '4.9.50',
+    title: 'V4.9.50 — Tesla/Cloud HF-Missbrauch: Fundament (Capabilities, HF-Mirror, Derived-Events, Unified Read-Model)',
+    summary: [
+      'Phase 1 (read-only): `getVehicleCapabilities` um `nativeEventCapable`/`hfCapable` erweitert + neue Profil-Ableitung `deriveVehicleCapabilityProfile` (nativeEventCapable/hfCapable/snapshotOnly/engineSignalsAvailable). LTE-R1-Routing bleibt unverändert.',
+      'Data Analyse korrigiert: Interval-Ausreißer (der „40.505.646 s"-Bug) werden für Kadenz-KPIs gekappt, der echte längste Gap bleibt separat sichtbar; „High Frequency available" ist jetzt an reale 1s-Daten (Waypoints/Sub-2s) gekoppelt statt an ~30s-Snapshots; Health Trace zeigt `inputBasis` (modelliert vs. signalbasiert); Pipeline-Schritt „High-frequency persistence" spiegelt echte Waypoint-Zahl und „warum kein Enrichment".',
+      'Phase 2 (backfill-safe): `HfMirrorService` spiegelt Post-Trip-HF best-effort/fire-and-forget nach ClickHouse (`telemetry_hf_points` + `telemetry_hf_events`), idempotent (Points werden pro Trip nicht doppelt geschrieben, Events via ReplacingMergeTree), per Feature-Flag `HF_MIRROR_ENABLED` standardmäßig AUS. Migration 004 erweitert `telemetry_waypoints` um org_id/token_id/source/provider (additiv).',
+      'Phase 3 (Capability-Gate): Detektor-Feasibility (`assessDetectorFeasibility`) trennt speed-only- von motorsignal-Detektoren; Motor-Detektoren sind für EV/Cloud „impossible_no_engine", bei fehlenden Signalen „insufficient_signal", ohne HF „snapshot_only". HF-abgeleitete Events tragen jetzt `source=HF_DERIVED` + `detectionMethod` + `confidence` + `requiredSignals` in den Metadaten. Detektor-Logik selbst unverändert.',
+      'Phase 4 (Unified Read-Model): gemergte Trip-Events tragen einheitlich `provenance` (NATIVE vs. RECONSTRUCTED), `confidence`, `detectionMethod`, `requiredSignals`; Dedup ist jetzt native-bevorzugt (rekonstruierte Duplikate weichen nativen DIMO-Events). UI: Badge „Nativ"/„Rekonstruiert" + Konfidenz in `TripBehaviorEventList`.',
+      'Phase 5: Tests (Capability-Regression LTE-R1, EV/snapshot-only FP, Idempotenz, Interval-Cap) — Backend 86 hf-abuse + neue Suites grün, tsc backend/frontend sauber.',
+    ],
+    reason:
+      'Tesla/Cloud-only Fahrzeuge liefern keine nativen DIMO-LTE-R1-Behavior-Events; Missbrauch muss post-trip aus 1s-Signalen rekonstruiert werden. Der bestehende LTE-R1-Native-Pfad durfte dabei nicht beschädigt werden. Vorher koppelte „HF available" fälschlich an 30s-Snapshots und ein Interval-Ausreißer zeigte absurde „Slowest interval"-Werte.',
+    previousBehavior:
+      'Capabilities kannten nur drivingEventsSource/useHfDrivingEvents; HF-Mirror-Inserts existierten, waren aber nicht verdrahtet; HF-abgeleitete Events trugen keine Provenance/Confidence; gemergte Events bevorzugten implizit derived vor native; Data Analyse zeigte ~30s-Snapshots als „HF available" und ungekappte Interval-Maxima.',
+    details:
+      'Backend: `vehicle-capabilities.ts` (Felder + `deriveVehicleCapabilityProfile`), `data-analyse.{constants,utils,types,service}.ts` (Interval-Cap, ehrliches `available`, `inputBasis`, Pipeline-HF-Step), `clickhouse-hf.service.ts` (`hasTripHfPoints`-Idempotenzguard), `hf-mirror.service.ts` (neu, Flag-gated), `trips/trip-behavior-enrichment.service.ts` (Feasibility + Derived-Tags + Mirror-Aufruf in beiden Pfaden), `hf-abuse.ts` (`ABUSE_DETECTOR_REQUIREMENTS`, `assessDetectorFeasibility`, `deriveAbuseConfidence`), `vehicle-intelligence.controller.ts` (Unified Read-Model + native-preferred Dedup), ClickHouse-Migration `004_waypoints_provenance.sql`. Frontend: `lib/api.ts` (Typen), `DataAnalyseView.tsx` (HF-Status/Detection/inputBasis-Badges), `TripBehaviorEventList.tsx` (Provenance-Badge). Tests: `vehicle-capabilities.spec.ts`, `hf-mirror.service.spec.ts`, erweiterte `hf-abuse.spec.ts` + `data-analyse.utils.spec.ts`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T12:00:00.000Z',
+  },
+  {
     id: 'health-tab-tacho-warnleuchten-polish-v4949-2026-06-26',
     version: '4.9.49',
     title: 'V4.9.49 — Health Tab: Tacho Warnleuchten Box UI/UX Feinschliff',

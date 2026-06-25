@@ -894,3 +894,106 @@ export function assessSignalAvailability(
     tractionBatteryPowerAvailable: all.some((p) => p.tractionBatteryPowerKw != null),
   };
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  DETECTOR CAPABILITY / FEASIBILITY (Phase 3 — read-only metadata)
+// ═══════════════════════════════════════════════════════════════
+//
+// This block does NOT change detection. It declares, per abuse detector, which
+// HF signals it needs and whether it can run on a battery-electric vehicle
+// (i.e. it is "speed-only"). It is used to:
+//   - honestly report which detectors were active vs impossible (EV) vs
+//     blocked by missing signals, and
+//   - tag derived events with confidence/required-signals
+// without ever asserting engine-based abuse on a vehicle that physically has no
+// combustion engine.
+
+export type HfAbuseSignal = 'speed' | 'rpm' | 'coolant' | 'throttle';
+
+export interface AbuseDetectorRequirement {
+  requiredSignals: HfAbuseSignal[];
+  /** True when the detector relies only on speed (works on EV/cloud). */
+  speedOnly: boolean;
+}
+
+/** Per-detector signal requirements. Single source of truth for feasibility. */
+export const ABUSE_DETECTOR_REQUIREMENTS: Record<AbuseEventType, AbuseDetectorRequirement> = {
+  COLD_ENGINE_HIGH_RPM: { requiredSignals: ['coolant', 'rpm'], speedOnly: false },
+  COLD_ENGINE_FULL_THROTTLE: { requiredSignals: ['coolant', 'throttle'], speedOnly: false },
+  ENGINE_SHUTDOWN_WHILE_DRIVING: { requiredSignals: ['rpm', 'speed'], speedOnly: false },
+  ENGINE_REV_IN_IDLE: { requiredSignals: ['rpm', 'speed'], speedOnly: false },
+  HIGH_RPM_CONSTANT: { requiredSignals: ['rpm'], speedOnly: false },
+  KICKDOWN: { requiredSignals: ['throttle', 'speed'], speedOnly: false },
+  LAUNCH_LIKE_START: { requiredSignals: ['rpm', 'throttle', 'speed'], speedOnly: false },
+  OVERHEATING_ENGINE: { requiredSignals: ['coolant'], speedOnly: false },
+  LONG_IDLE: { requiredSignals: ['rpm', 'speed'], speedOnly: false },
+  POSSIBLE_IMPACT: { requiredSignals: ['speed'], speedOnly: true },
+  FULL_BRAKING: { requiredSignals: ['speed'], speedOnly: true },
+};
+
+export type DetectorFeasibilityStatus =
+  | 'active' // signals present, detector evaluated
+  | 'impossible_no_engine' // EV/cloud has no combustion-engine signals
+  | 'insufficient_signal' // engine vehicle but required HF signal absent
+  | 'snapshot_only'; // no dense HF stream — cannot run reliably
+
+export interface DetectorFeasibility {
+  status: DetectorFeasibilityStatus;
+  requiredSignals: HfAbuseSignal[];
+  speedOnly: boolean;
+}
+
+/**
+ * Assess, per detector, whether it could run for this vehicle/trip given the
+ * vehicle capability profile and the observed HF signal availability. Pure,
+ * read-only — drives diagnostics + derived-event metadata, never detection.
+ */
+export function assessDetectorFeasibility(input: {
+  engineSignalsAvailable: boolean;
+  snapshotOnly: boolean;
+  signal: SignalAvailability;
+}): Record<AbuseEventType, DetectorFeasibility> {
+  const haveSignal: Record<HfAbuseSignal, boolean> = {
+    speed: true, // speed is always part of the HF stream
+    rpm: input.signal.rpmAvailable,
+    coolant: input.signal.coolantAvailable,
+    throttle: input.signal.throttleAvailable,
+  };
+
+  const out = {} as Record<AbuseEventType, DetectorFeasibility>;
+  for (const key of Object.keys(ABUSE_DETECTOR_REQUIREMENTS) as AbuseEventType[]) {
+    const req = ABUSE_DETECTOR_REQUIREMENTS[key];
+    let status: DetectorFeasibilityStatus;
+    if (input.snapshotOnly) {
+      status = 'snapshot_only';
+    } else if (!req.speedOnly && !input.engineSignalsAvailable) {
+      // Engine-dependent detector on a vehicle without a combustion engine.
+      status = 'impossible_no_engine';
+    } else if (!req.requiredSignals.every((s) => haveSignal[s])) {
+      status = 'insufficient_signal';
+    } else {
+      status = 'active';
+    }
+    out[key] = {
+      status,
+      requiredSignals: req.requiredSignals,
+      speedOnly: req.speedOnly,
+    };
+  }
+  return out;
+}
+
+/**
+ * Derived-event confidence for an HF-reconstructed abuse event. Reconstructed
+ * (non-native) events are kept conservative so they are never confused with
+ * native DIMO behavior events. Speed-only EV events cap at 'medium'.
+ */
+export function deriveAbuseConfidence(
+  event: AbuseEvent,
+  feasibility?: DetectorFeasibility,
+): 'low' | 'medium' | 'high' {
+  // If the detector could only run on partial signals, downgrade.
+  if (feasibility && feasibility.status !== 'active') return 'low';
+  if (event.severity === 'CRITICAL') return 'high';
+  return 'medium';
+}

@@ -182,11 +182,24 @@ export interface SignalGroupDefinitionDto {
   availabilityNotes: string | null;
 }
 
+export type HealthInputBasis =
+  | 'signal-based'
+  | 'modeled'
+  | 'mixed'
+  | 'unknown';
+
 export interface HealthTraceSectionDto {
   status: string | null;
   lastCalculationAt: string | null;
   calculationSource: string | null;
   freshness: HealthCalcFreshness;
+  /**
+   * Whether the health result is driven by live telemetry signals
+   * ('signal-based'), by a model/estimate without direct per-signal inputs
+   * ('modeled'), or a combination ('mixed'). Diagnostic clarity so the page
+   * never implies a modeled value is signal-backed.
+   */
+  inputBasis: HealthInputBasis;
   inputsAvailable: string[];
   inputsMissing: string[];
   evidence: Record<string, unknown>;

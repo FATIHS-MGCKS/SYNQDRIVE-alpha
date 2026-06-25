@@ -25,6 +25,29 @@ describe('data-analyse.utils', () => {
       expect(stats.fastestMs).toBe(30_000);
       expect(stats.slowestMs).toBe(60_000);
     });
+
+    it('caps implausible offline gaps out of cadence KPIs but keeps the true longest gap', () => {
+      // One ~40,000,000s outlier (the historical "40505646.6s" bug) must not
+      // pollute the cadence stats, yet must still be reported as the longest gap.
+      const offlineGapMs = 40_505_646_600;
+      const stats = computeIntervalStats([30_000, 31_000, 29_000, offlineGapMs]);
+
+      // Cadence KPIs ignore the offline outlier.
+      expect(stats.slowestMs).toBe(31_000);
+      expect(stats.averageMs).toBe(30_000);
+      expect(stats.medianMs).toBeLessThanOrEqual(31_000);
+
+      // Gap metrics still surface the real outlier.
+      expect(stats.longestGapMs).toBe(offlineGapMs);
+      expect(stats.dropoutCount).toBe(1);
+    });
+
+    it('falls back to the full set when every interval exceeds the cadence cap', () => {
+      const big = 10 * 60 * 60 * 1000; // 10h — above the 6h cap
+      const stats = computeIntervalStats([big, big]);
+      expect(stats.slowestMs).toBe(big);
+      expect(stats.averageMs).toBe(big);
+    });
   });
 
   describe('classifyIntervalStatus', () => {

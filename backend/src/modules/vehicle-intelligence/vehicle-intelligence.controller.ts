@@ -1232,17 +1232,49 @@ export class VehicleIntelligenceController {
         longitude: de.longitude,
         metadataJson: de.metadataJson,
         createdAt: de.createdAt,
+        // ── Unified provenance (Phase 4) ──
+        // Native DIMO Telemetry API events are authoritative ("nativ").
         source: 'DRIVING_EVENT',
+        provenance: 'NATIVE' as const,
+        detectionMethod: 'DIMO_TELEMETRY_EVENT',
+        confidence: 'high' as const,
+        requiredSignals: [] as string[],
       };
     });
 
-    const existingIds = new Set(behaviorEvents.map((e) => e.tripId + e.startedAt.toISOString()));
-    const deduped = mappedDriving.filter((de) => {
-      const key = de.tripId + new Date(de.startedAt).toISOString();
-      return !existingIds.has(key);
-    });
+    // ── Native-preferred dedup (Phase 4) ─────────────────────────────────────
+    // When a native driving event and an HF-derived behaviour event describe the
+    // same thing (same category within a short window), the NATIVE event wins and
+    // the reconstructed duplicate is dropped. Abuse-category behaviour events have
+    // no native equivalent and are never deduped.
+    const DEDUP_WINDOW_MS = 5_000;
+    const nativeKeys = mappedDriving.map((de) => ({
+      category: de.eventCategory,
+      t: new Date(de.startedAt).getTime(),
+    }));
+    const collidesWithNative = (category: string, startedAt: Date): boolean =>
+      nativeKeys.some(
+        (n) => n.category === category && Math.abs(n.t - startedAt.getTime()) <= DEDUP_WINDOW_MS,
+      );
 
-    const merged = [...behaviorEvents.map((e) => ({ ...e, latitude: null, longitude: null, source: 'BEHAVIOR_EVENT' })), ...deduped];
+    const mappedBehavior = behaviorEvents
+      .filter((e) => !collidesWithNative(e.eventCategory, e.startedAt))
+      .map((e) => {
+        const meta = (e.metadataJson as any) ?? {};
+        return {
+          ...e,
+          latitude: null,
+          longitude: null,
+          source: 'BEHAVIOR_EVENT',
+          // ── Unified provenance (Phase 4) ──
+          provenance: 'RECONSTRUCTED' as const,
+          detectionMethod: meta.detectionMethod ?? 'HF_RECONSTRUCTION',
+          confidence: (meta.confidence as string) ?? 'medium',
+          requiredSignals: Array.isArray(meta.requiredSignals) ? meta.requiredSignals : [],
+        };
+      });
+
+    const merged = [...mappedBehavior, ...mappedDriving];
     merged.sort((a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime());
 
     return {

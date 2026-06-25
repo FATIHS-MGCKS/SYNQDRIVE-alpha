@@ -13,11 +13,16 @@ import {
   detectAbuseEvents,
   computeAbuseScore,
   assessSignalAvailability,
+  assessDetectorFeasibility,
+  deriveAbuseConfidence,
   type AbuseEvent,
+  type DetectorFeasibility,
+  type AbuseEventType,
   type VehicleRpmConfig,
 } from './hf-abuse';
-import { getVehicleCapabilities } from '../vehicle-capabilities';
+import { getVehicleCapabilities, deriveVehicleCapabilityProfile } from '../vehicle-capabilities';
 import { LteR1BehaviorEnrichmentService } from './lte-r1-behavior-enrichment.service';
+import { HfMirrorService } from './hf-mirror.service';
 import { summarizeEvTractionPowerFromHf, type EvTractionPowerTripSummary } from './hf-recuperation';
 import { TripAssignmentService } from './trip-assignment.service';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
@@ -138,8 +143,41 @@ export class TripBehaviorEnrichmentService {
     private readonly lteR1: LteR1BehaviorEnrichmentService,
     private readonly tripAssignmentService: TripAssignmentService,
     private readonly misuseCaseAggregator: MisuseCaseAggregatorService,
+    private readonly hfMirror: HfMirrorService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {}
+
+  /**
+   * Best-effort, fire-and-forget mirror of HF readings + abuse events into the
+   * ClickHouse analytics layer. Disabled by default (HF_MIRROR_ENABLED). Must
+   * never block or fail enrichment — errors are swallowed inside the service.
+   */
+  private scheduleHfMirror(params: {
+    orgId: string | null | undefined;
+    vehicleId: string;
+    tokenId: number;
+    tripId: string;
+    readings: import('../../dimo/dimo-segments.service').HighFrequencyReading[];
+    abuseEvents: AbuseEvent[];
+  }): void {
+    if (!this.hfMirror.isEnabled) return;
+    void this.hfMirror
+      .mirrorTripHf(params)
+      .then((res) => {
+        if (res.mirrored) {
+          this.logger.debug(
+            `HF mirror trip ${params.tripId}: ${res.pointsInserted} point(s), ${res.eventsInserted} event(s).`,
+          );
+        }
+      })
+      .catch((err: unknown) => {
+        this.logger.warn(
+          `HF mirror scheduling failed for trip ${params.tripId}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      });
+  }
 
   /**
    * Misuse cases are informational/read-only hints. Aggregation must not block trip
@@ -238,6 +276,22 @@ export class TripBehaviorEnrichmentService {
     // detectors were evaluable vs silently inactive due to missing signals.
     const signalAvail = assessSignalAvailability(segs);
 
+    // ── Detector feasibility (Phase 3 — read-only) ───────────────────────────
+    // Distinguishes detectors that physically cannot run (EV/cloud has no
+    // combustion-engine signals) from those merely missing a signal this trip.
+    // Drives derived-event confidence + behaviorSummaryJson; never changes
+    // detection itself.
+    const capabilityProfile = deriveVehicleCapabilityProfile({
+      hardwareType: trip.vehicle.hardwareType,
+      fuelType: trip.vehicle.fuelType,
+      hasHfWaypoints: true, // we only reach here with a usable HF stream
+    });
+    const detectorFeasibility = assessDetectorFeasibility({
+      engineSignalsAvailable: capabilityProfile.engineSignalsAvailable,
+      snapshotOnly: capabilityProfile.snapshotOnly,
+      signal: signalAvail,
+    });
+
     // ── EV Recuperation summary (uses raw readings for trapezoidal integration) ──
     let evTractionSummary: EvTractionPowerTripSummary | null = null;
     if (signalAvail.tractionBatteryPowerAvailable) {
@@ -333,7 +387,15 @@ export class TripBehaviorEnrichmentService {
       maxThrottlePos: e.maxThrottlePos,
       maxEngineRpm: e.maxRpm ?? null,
       maxCoolantTemp: e.maxCoolantTemp,
-      metadataJson: e.metadata as any,
+      // Phase 3: HF-derived events are explicitly tagged so the UI can label
+      // them "reconstructed" (vs native DIMO events) and show confidence.
+      metadataJson: {
+        ...e.metadata,
+        source: 'HF_DERIVED',
+        detectionMethod: 'HF_RECONSTRUCTION',
+        confidence: deriveAbuseConfidence(e, detectorFeasibility[e.eventType]),
+        requiredSignals: detectorFeasibility[e.eventType]?.requiredSignals ?? [],
+      } as any,
     }));
 
     const allRows = [...accelRows, ...brakeRows, ...abuseRows];
@@ -491,6 +553,14 @@ export class TripBehaviorEnrichmentService {
               fullBrakingAndImpact: true,
             },
             evTractionPower: evTractionSummary ?? null,
+            // Phase 3: capability/feasibility transparency (read-only).
+            capabilityProfile: {
+              hardwareType: capabilityProfile.hardwareType,
+              engineSignalsAvailable: capabilityProfile.engineSignalsAvailable,
+              snapshotOnly: capabilityProfile.snapshotOnly,
+              profileLabel: capabilityProfile.profileLabel,
+            },
+            detectorFeasibility: summarizeDetectorFeasibility(detectorFeasibility),
             rpmConfig: {
               idleRpm: rpmConfig.idleRpm ?? 800,
               maxRpm: rpmConfig.maxRpm ?? 6500,
@@ -501,6 +571,16 @@ export class TripBehaviorEnrichmentService {
     });
     await this.tripAssignmentService.applyAssignmentToTrip(tripId);
     this.scheduleMisuseCaseAggregation(tripId);
+
+    // Phase 2: best-effort HF analytics mirror (disabled by default).
+    this.scheduleHfMirror({
+      orgId: organizationId,
+      vehicleId,
+      tokenId,
+      tripId,
+      readings: rawReadings,
+      abuseEvents: allAbuse,
+    });
 
     this.logger.log(
       `HF enrichment complete for trip ${tripId}: ` +
@@ -579,6 +659,12 @@ export class TripBehaviorEnrichmentService {
     };
     let signalAvail = defaultSignalAvail;
     let evTractionSummaryLte: EvTractionPowerTripSummary | null = null;
+    const capabilityProfileLte = deriveVehicleCapabilityProfile({
+      hardwareType: trip.vehicle.hardwareType,
+      fuelType: trip.vehicle.fuelType,
+      hasHfWaypoints: rawReadings.length >= 10,
+    });
+    let detectorFeasibilityLte: Record<AbuseEventType, DetectorFeasibility> | null = null;
 
     if (rawReadings.length >= 10) {
       const cleaned = preprocessHighFrequency(rawReadings);
@@ -587,6 +673,11 @@ export class TripBehaviorEnrichmentService {
         const segs = splitByGaps(cleaned);
         segmentCount = segs.length;
         signalAvail = assessSignalAvailability(segs);
+        detectorFeasibilityLte = assessDetectorFeasibility({
+          engineSignalsAvailable: capabilityProfileLte.engineSignalsAvailable,
+          snapshotOnly: capabilityProfileLte.snapshotOnly,
+          signal: signalAvail,
+        });
         hfInsufficientForAbuse = false;
 
         if (signalAvail.tractionBatteryPowerAvailable) {
@@ -617,7 +708,16 @@ export class TripBehaviorEnrichmentService {
             maxThrottlePos: e.maxThrottlePos,
             maxEngineRpm: e.maxRpm ?? null,
             maxCoolantTemp: e.maxCoolantTemp,
-            metadataJson: { ...e.metadata, hardwareSource: 'LTE_R1' } as any,
+            // Native driving events (driving_events) stay TELEMETRY_EVENTS; the
+            // abuse slice is always HF-derived even on LTE_R1 — tag it as such.
+            metadataJson: {
+              ...e.metadata,
+              hardwareSource: 'LTE_R1',
+              source: 'HF_DERIVED',
+              detectionMethod: 'HF_RECONSTRUCTION',
+              confidence: deriveAbuseConfidence(e, detectorFeasibilityLte?.[e.eventType]),
+              requiredSignals: detectorFeasibilityLte?.[e.eventType]?.requiredSignals ?? [],
+            } as any,
           });
         }
       } else {
@@ -739,6 +839,15 @@ export class TripBehaviorEnrichmentService {
             loadAvailable: signalAvail.loadAvailable,
             tractionBatteryPowerAvailable: signalAvail.tractionBatteryPowerAvailable,
             evTractionPower: evTractionSummaryLte ?? null,
+            capabilityProfile: {
+              hardwareType: capabilityProfileLte.hardwareType,
+              engineSignalsAvailable: capabilityProfileLte.engineSignalsAvailable,
+              snapshotOnly: capabilityProfileLte.snapshotOnly,
+              profileLabel: capabilityProfileLte.profileLabel,
+            },
+            detectorFeasibility: detectorFeasibilityLte
+              ? summarizeDetectorFeasibility(detectorFeasibilityLte)
+              : null,
             rpmConfig: { idleRpm: rpmConfig.idleRpm ?? 800, maxRpm: rpmConfig.maxRpm ?? 6500 },
           } as any,
         },
@@ -746,6 +855,18 @@ export class TripBehaviorEnrichmentService {
     });
     await this.tripAssignmentService.applyAssignmentToTrip(tripId);
     this.scheduleMisuseCaseAggregation(tripId);
+
+    // Phase 2: best-effort HF analytics mirror (disabled by default). LTE_R1
+    // native driving events stay canonical in PostgreSQL; this mirrors only the
+    // HF readings + HF-derived abuse events for diagnostics.
+    this.scheduleHfMirror({
+      orgId: organizationId,
+      vehicleId,
+      tokenId,
+      tripId,
+      readings: rawReadings,
+      abuseEvents: allAbuse,
+    });
 
     this.logger.log(
       `LTE_R1 enrichment complete for trip ${tripId}: ` +
@@ -781,6 +902,23 @@ export class TripBehaviorEnrichmentService {
 // ═══════════════════════════════════════════════════════════════
 //  HELPERS
 // ═══════════════════════════════════════════════════════════════
+
+/**
+ * Compact, JSON-friendly summary of per-detector feasibility for
+ * behaviorSummaryJson. Groups detectors by status so the Data Analyse page and
+ * future read models can show "active / impossible (EV) / insufficient signal"
+ * without storing a verbose per-detector blob.
+ */
+function summarizeDetectorFeasibility(
+  feasibility: Record<AbuseEventType, DetectorFeasibility>,
+): Record<string, string[]> {
+  const grouped: Record<string, string[]> = {};
+  for (const key of Object.keys(feasibility) as AbuseEventType[]) {
+    const status = feasibility[key].status;
+    (grouped[status] ??= []).push(key);
+  }
+  return grouped;
+}
 
 function mapClassification(c: 'LIGHT' | 'MODERATE' | 'HARD' | 'EXTREME'): BehaviorEventClassification {
   switch (c) {

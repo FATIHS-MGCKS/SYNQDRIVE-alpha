@@ -62,6 +62,13 @@ function formatMs(ms: number | null | undefined): string {
   return `${(ms / 1000).toFixed(1)} s`;
 }
 
+function inputBasisTone(basis: string): 'success' | 'warning' | 'info' | 'neutral' {
+  if (basis === 'signal-based') return 'success';
+  if (basis === 'mixed') return 'info';
+  if (basis === 'modeled') return 'warning';
+  return 'neutral';
+}
+
 function formatTs(iso: string | null | undefined): string {
   if (!iso) return '—';
   try {
@@ -363,6 +370,14 @@ export function DataAnalyseView() {
 
           {tab === 'hf' && hf && (
             <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusChip tone={hf.available ? 'success' : 'critical'}>
+                  {hf.available ? 'High-frequency detection active' : 'No active high-frequency detection'}
+                </StatusChip>
+                {hf.snapshotLevelOnly && (
+                  <StatusChip tone="warning">Snapshot-level only (~30s)</StatusChip>
+                )}
+              </div>
               {hf.message && (
                 <p className="text-sm text-amber-600 dark:text-amber-400">{hf.message}</p>
               )}
@@ -375,6 +390,7 @@ export function DataAnalyseView() {
                     <tr>
                       <th className="p-2 font-medium">Signal</th>
                       <th className="p-2 font-medium">Reliability</th>
+                      <th className="p-2 font-medium">Detection</th>
                       <th className="p-2 font-medium">24h / 7d</th>
                       <th className="p-2 font-medium">Median / P95</th>
                       <th className="p-2 font-medium">Launch</th>
@@ -396,6 +412,9 @@ export function DataAnalyseView() {
                         </td>
                         <td className="p-2">
                           <StatusChip tone={statusChipTone(s.reliabilityStatus)}>{s.reliabilityStatus}</StatusChip>
+                        </td>
+                        <td className="p-2">
+                          <StatusChip tone={statusChipTone(s.detectionQuality)}>{s.detectionQuality}</StatusChip>
                         </td>
                         <td className="p-2 text-muted-foreground">
                           {s.sampleCount24h ?? '—'} / {s.sampleCount7d ?? '—'}
@@ -447,7 +466,10 @@ export function DataAnalyseView() {
                 return (
                   <div key={key} className="rounded-xl border border-border/60 p-4 space-y-2">
                     <h3 className="text-sm font-semibold capitalize">{key} Health Trace</h3>
-                    <StatusChip tone={statusChipTone(section.freshness)}>{section.freshness}</StatusChip>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusChip tone={statusChipTone(section.freshness)}>{section.freshness}</StatusChip>
+                      <StatusChip tone={inputBasisTone(section.inputBasis)}>{section.inputBasis}</StatusChip>
+                    </div>
                     <div className="text-xs space-y-1 text-muted-foreground">
                       <div>Status: {section.status ?? '—'}</div>
                       <div>Last calc: {formatTs(section.lastCalculationAt)}</div>

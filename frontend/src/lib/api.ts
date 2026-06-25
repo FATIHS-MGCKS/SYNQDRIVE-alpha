@@ -5004,6 +5004,11 @@ export interface TripBehaviorEvent {
   latitude: number | null;
   longitude: number | null;
   source?: 'BEHAVIOR_EVENT' | 'DRIVING_EVENT';
+  /** Phase 4 unified provenance: native DIMO event vs HF reconstruction. */
+  provenance?: 'NATIVE' | 'RECONSTRUCTED';
+  detectionMethod?: string;
+  confidence?: 'low' | 'medium' | 'high' | string;
+  requiredSignals?: string[];
   metadataJson: any;
 }
 
@@ -5407,11 +5412,18 @@ export interface DataAnalyseLaunchFeasibilityResult {
   reasons: string[];
 }
 
+export type DataAnalyseHealthInputBasis =
+  | 'signal-based'
+  | 'modeled'
+  | 'mixed'
+  | 'unknown';
+
 export interface DataAnalyseHealthTraceSection {
   status: string | null;
   lastCalculationAt: string | null;
   calculationSource: string | null;
   freshness: string;
+  inputBasis: DataAnalyseHealthInputBasis;
   inputsAvailable: string[];
   inputsMissing: string[];
   evidence: Record<string, unknown>;

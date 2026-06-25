@@ -14,6 +14,40 @@ import { TripEventSeverityBadge } from './TripEventSeverityBadge';
 
 type CategoryFilter = 'all' | 'ACCELERATION' | 'BRAKING' | 'ABUSE';
 
+const CONFIDENCE_LABEL: Record<string, string> = {
+  low: 'niedrig',
+  medium: 'mittel',
+  high: 'hoch',
+};
+
+/**
+ * Phase 4 — shows whether an event is a native DIMO event ("Nativ") or an
+ * HF-reconstructed event ("Rekonstruiert"), with reconstruction confidence.
+ * Native events render no extra noise unless provenance is known.
+ */
+function ProvenanceBadge({ event }: { event: TripBehaviorEvent }) {
+  if (!event.provenance) return null;
+  const isNative = event.provenance === 'NATIVE';
+  const confidence = event.confidence ? CONFIDENCE_LABEL[event.confidence] ?? event.confidence : null;
+  return (
+    <span
+      title={
+        isNative
+          ? 'Natives DIMO-Ereignis (Telemetry API)'
+          : `Aus 1s-Hochfrequenzdaten rekonstruiert${confidence ? ` · Konfidenz ${confidence}` : ''}`
+      }
+      className={`rounded-full border px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${
+        isNative
+          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+          : 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+      }`}
+    >
+      {isNative ? 'Nativ' : 'Rekonstruiert'}
+      {!isNative && confidence ? ` · ${confidence}` : ''}
+    </span>
+  );
+}
+
 interface TripBehaviorEventListProps {
   events: TripBehaviorEvent[];
   selectedEventId: string | null;
@@ -100,6 +134,7 @@ export function TripBehaviorEventList({
                           {eventTypeLabel(ev)}
                         </span>
                         <TripEventSeverityBadge level={severity} />
+                        <ProvenanceBadge event={ev} />
                       </div>
                       <p className="text-[10px] text-muted-foreground tabular-nums">
                         {formatBehaviorTime(ev.startedAt)}

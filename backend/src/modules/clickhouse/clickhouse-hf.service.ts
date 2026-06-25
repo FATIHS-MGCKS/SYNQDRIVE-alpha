@@ -48,6 +48,35 @@ export class ClickHouseHfService {
     @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
+  /**
+   * Idempotency guard: returns true if any HF points are already mirrored for a
+   * given trip. Used by the post-trip mirror so re-running enrichment does not
+   * duplicate rows in the append-only telemetry_hf_points table. Degrades to
+   * false on any failure (best-effort — never blocks enrichment).
+   */
+  async hasTripHfPoints(vehicleId: string, tripId: string): Promise<boolean> {
+    if (!this.ch.isAvailable) return false;
+    try {
+      const result = await this.ch.getClient().query({
+        query: `
+          SELECT count() AS cnt
+          FROM ${HF_POINTS_TABLE}
+          WHERE vehicle_id = {vehicleId: String}
+            AND trip_id = {tripId: String}
+          LIMIT 1
+        `,
+        query_params: { vehicleId, tripId },
+        format: 'JSONEachRow',
+        clickhouse_settings: { max_execution_time: 10 },
+      });
+      const [row] = await result.json<{ cnt: string | number }>();
+      return Number(row?.cnt ?? 0) > 0;
+    } catch (err: unknown) {
+      this.logger.warn(`hasTripHfPoints failed: ${(err as Error).message}`);
+      return false;
+    }
+  }
+
   /** Best-effort bulk insert of normalized HF signal points. */
   async insertHfPoints(points: HfSignalPoint[]): Promise<void> {
     if (!points || points.length === 0) return;

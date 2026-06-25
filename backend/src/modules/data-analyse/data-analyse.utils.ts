@@ -3,6 +3,7 @@ import {
   HEALTH_STALE_THRESHOLD_MS,
   HIGH_FREQUENCY_THRESHOLD_MS,
   LAUNCH_DETECTION_MIN_INTERVAL_MS,
+  MAX_PLAUSIBLE_CADENCE_INTERVAL_MS,
 } from './data-analyse.constants';
 import type {
   DataFreshnessStatus,
@@ -15,7 +16,10 @@ import type {
 } from './data-analyse.types';
 import { LAUNCH_REQUIRED_SIGNALS } from './data-analyse-signal-catalog';
 
-export function computeIntervalStats(intervalsMs: number[]): {
+export function computeIntervalStats(
+  intervalsMs: number[],
+  maxPlausibleCadenceMs: number = MAX_PLAUSIBLE_CADENCE_INTERVAL_MS,
+): {
   averageMs: number | null;
   medianMs: number | null;
   p95Ms: number | null;
@@ -36,15 +40,24 @@ export function computeIntervalStats(intervalsMs: number[]): {
       longestGapMs: null,
     };
   }
-  const sorted = [...valid].sort((a, b) => a - b);
-  const sum = valid.reduce((a, b) => a + b, 0);
-  const averageMs = Math.round(sum / valid.length);
+
+  const expected = DEFAULT_SNAPSHOT_EXPECTED_INTERVAL_MS;
+  // Gap metrics use the FULL set (offline gaps are legitimate gap evidence).
+  const dropoutCount = valid.filter((v) => v > expected * 3).length;
+  const longestGapMs = Math.max(...valid);
+
+  // Cadence metrics (avg/median/p95/fastest/slowest) exclude implausible offline
+  // gaps so a single multi-day outlier cannot distort the reported cadence.
+  const cadence = valid.filter((v) => v <= maxPlausibleCadenceMs);
+  const basis = cadence.length > 0 ? cadence : valid;
+  const sorted = [...basis].sort((a, b) => a - b);
+  const sum = basis.reduce((a, b) => a + b, 0);
+  const averageMs = Math.round(sum / basis.length);
   const medianMs = Math.round(percentile(sorted, 0.5));
   const p95Ms = Math.round(percentile(sorted, 0.95));
   const fastestMs = sorted[0];
   const slowestMs = sorted[sorted.length - 1];
-  const expected = DEFAULT_SNAPSHOT_EXPECTED_INTERVAL_MS;
-  const dropoutCount = valid.filter((v) => v > expected * 3).length;
+
   return {
     averageMs,
     medianMs,
@@ -52,7 +65,7 @@ export function computeIntervalStats(intervalsMs: number[]): {
     fastestMs,
     slowestMs,
     dropoutCount,
-    longestGapMs: slowestMs,
+    longestGapMs,
   };
 }
 
