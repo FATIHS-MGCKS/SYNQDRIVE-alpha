@@ -79,7 +79,7 @@ function fixedCostStatusTone(status: string): 'success' | 'watch' | 'neutral' {
   return 'neutral';
 }
 
-function fixedCostStatusTone(status: string): 'success' | 'watch' | 'neutral' {
+function timelineTone(
   status: string,
 ): 'success' | 'watch' | 'critical' | 'info' | 'neutral' {
   if (status === 'applied' || status === 'verified') return 'success';
@@ -228,7 +228,7 @@ export function DocumentsView({ vehicle, onOpenLinkedTask }: DocumentsViewProps)
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 space-y-2">
             <p className="sq-section-label">Fahrzeugakte</p>
-            <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">
+            <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.2] tracking-[var(--tracking-display)] text-foreground">
               {vehicleName}
             </h1>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
@@ -282,7 +282,7 @@ export function DocumentsView({ vehicle, onOpenLinkedTask }: DocumentsViewProps)
         </div>
 
         {summary ? (
-          <p className="mt-3 border-t border-border/60 pt-3 text-[10px] leading-relaxed text-muted-foreground">
+          <p className="mt-3 border-t border-border/60 pt-3 text-[10px] leading-relaxed text-muted-foreground/90">
             {summary.canonicalStatus.note}
             <span className="mx-1">·</span>
             Quelle Rental Health: {formatStatusSource(summary.canonicalStatus.rentalHealthSource)}
@@ -304,10 +304,11 @@ export function DocumentsView({ vehicle, onOpenLinkedTask }: DocumentsViewProps)
       {loading && !summary ? (
         <SkeletonMetricGrid count={5} />
       ) : summary ? (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 items-stretch gap-2 sm:grid-cols-3 lg:grid-cols-5">
           <MetricCard
             label="Pflichtdokumente"
             value={`${summary.mandatoryDocumentCoverage.configured}/${summary.mandatoryDocumentCoverage.total}`}
+            valueSize="compact"
             status={
               summary.mandatoryDocumentCoverage.configured >= summary.mandatoryDocumentCoverage.total
                 ? 'success'
@@ -317,17 +318,20 @@ export function DocumentsView({ vehicle, onOpenLinkedTask }: DocumentsViewProps)
           <MetricCard
             label="Offene Reviews"
             value={String(summary.pendingReviews.count)}
+            valueSize="compact"
             status={summary.pendingReviews.count > 0 ? 'warning' : 'neutral'}
           />
           <MetricCard
             label="Fehlende Pflicht"
             value={missingMandatory != null ? String(missingMandatory) : '—'}
+            valueSize="compact"
             status={missingMandatory && missingMandatory > 0 ? 'warning' : 'success'}
           />
-          <MetricCard label="Compliance" value={complianceSummaryLabel(summary)} status="neutral" />
+          <DocumentComplianceSummaryCard summary={summary} />
           <MetricCard
             label="Fixkosten / Monat"
             value={formatEuroAmount(summary.fixedCosts.monthlyTotal)}
+            valueSize="compact"
             status={summary.fixedCosts.monthlyTotal != null ? 'success' : 'neutral'}
           />
         </div>

@@ -95,6 +95,10 @@ export interface MetricCardProps {
   loading?: boolean;
   onClick?: () => void;
   className?: string;
+  /** `numeric` = KPI numbers (default). `summary` = compact text lines, not hero-sized. */
+  variant?: 'numeric' | 'summary';
+  /** Numeric value scale — `compact` caps display size for dense summary grids. */
+  valueSize?: 'default' | 'compact';
 }
 
 function trendToneClass(t: MetricTrend): string {
@@ -116,6 +120,8 @@ export function MetricCard({
   loading,
   onClick,
   className,
+  variant = 'numeric',
+  valueSize = 'default',
 }: MetricCardProps) {
   if (loading) {
     return (
@@ -134,7 +140,7 @@ export function MetricCard({
     <div
       className={cn(
         onClick ? 'sq-card-elevated cursor-pointer' : 'sq-card',
-        'p-4',
+        'flex h-full flex-col p-3.5 sm:p-4',
         className,
       )}
       onClick={onClick}
@@ -146,11 +152,26 @@ export function MetricCard({
         </div>
         {icon && <span className="shrink-0 text-muted-foreground/80">{icon}</span>}
       </div>
-      <div className="mt-2 flex items-baseline gap-1">
-        <span className="font-mono text-[22px] font-bold leading-none tabular-nums tracking-tight text-foreground">
-          {value}
-        </span>
-        {unit && <span className="text-[12px] font-medium text-muted-foreground">{unit}</span>}
+      <div className="mt-2 flex flex-1 flex-col justify-center">
+        {variant === 'numeric' ? (
+          <div className="flex items-baseline gap-1">
+            <span
+              className={cn(
+                'font-mono font-bold tabular-nums tracking-tight text-foreground',
+                valueSize === 'compact'
+                  ? 'text-[24px] leading-none lg:text-[28px]'
+                  : 'text-[22px] leading-none',
+              )}
+            >
+              {value}
+            </span>
+            {unit && (
+              <span className="text-[12px] font-medium text-muted-foreground">{unit}</span>
+            )}
+          </div>
+        ) : (
+          <span className="text-[13px] font-semibold leading-[1.3] text-foreground">{value}</span>
+        )}
       </div>
       {(trend || hint) && (
         <div className="mt-1.5 flex items-center gap-1.5 text-[12px]">
