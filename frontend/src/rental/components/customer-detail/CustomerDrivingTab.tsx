@@ -10,15 +10,13 @@ import { RentalStressAnalysisCard } from '../RentalStressAnalysisCard';
 
 import { VehicleStressPanel } from '../VehicleStressPanel';
 
-import { EM_DASH, formatDate } from './customerDetailUtils';
+import { formatDate } from './customerDetailUtils';
 
 import {
 
   formatStressScore,
 
   getDataConfidenceLabel,
-
-  resolveDrivingStressScore,
 
   type DataConfidence,
 
@@ -96,7 +94,7 @@ export function CustomerDrivingTab({
 
         title="Noch keine Fahrdaten"
 
-        description="Nach abgeschlossenen Mieten mit Telemetrie erscheinen hier Fahrbelastung und Prüffälle."
+        description="Nach abgeschlossenen Mieten mit Telemetrie erscheinen hier Fahrbelastung und Verdachtshinweise."
 
       />
 
@@ -228,7 +226,7 @@ export function CustomerDrivingTab({
 
           customerId={customerId}
 
-          title="Nutzungsauffälligkeiten / Prüffälle"
+          title="Nutzungsauffälligkeiten / Missbrauchs-/Schadensverdacht"
 
           limit={15}
 

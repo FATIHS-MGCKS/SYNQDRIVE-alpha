@@ -71,7 +71,7 @@ const TABS: { key: CustomerDetailTab; label: string }[] = [
   { key: 'bookings', label: 'Buchungen' },
   { key: 'documents', label: 'Dokumente & Verifikation' },
   { key: 'finances', label: 'Finanzen' },
-  { key: 'driving', label: 'Fahrbelastung & Prüffälle' },
+  { key: 'driving', label: 'Fahrbelastung & Verdacht' },
   { key: 'timeline', label: 'Timeline & Notizen' },
 ];
 

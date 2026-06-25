@@ -42,7 +42,6 @@ import { DocumentUploadView } from './components/DocumentUploadView';
 import { PageHeader, HealthStatusChip, StatusChip } from '../components/patterns';
 import { AIAssistantView } from './components/AIAssistantView';
 import { SupportView } from './components/SupportView';
-import { SupportContextButton } from '../components/support/SupportContextButton';
 import { HelpCenterView } from './components/HelpCenterView';
 import { DataAnalyseView } from './components/DataAnalyseView';
 import { WorkflowAutomationView } from './components/WorkflowAutomationView';
@@ -59,6 +58,7 @@ import {
   useVehicleOverviewSummary,
 } from './components/vehicle-detail';
 import type { ServiceCenterNavState } from './lib/service-center-navigation';
+import { formatUserFacingReasonLabel } from './lib/operational-issues';
 
 // Views that render the vehicle detail header (incl. <VehicleConnectionBadge>).
 // The live-telemetry binder must cover the same set so the Online/Offline +
@@ -151,12 +151,18 @@ function VehicleHealthChip({ vehicleId }: { vehicleId: string | null }) {
   const { status, health, loading } = useEffectiveHealth(vehicleId);
   const reasons: string[] = [];
   if (health?.rental_blocked && health.blocking_reasons.length > 0) {
-    reasons.push(`Blocked: ${health.blocking_reasons.join(' · ')}`);
+    reasons.push(...health.blocking_reasons.map((reason) =>
+      formatUserFacingReasonLabel({ title: reason, category: 'rental', issueType: 'rental_blocked' }, 'de'),
+    ));
   }
   if (health) {
     for (const [name, mod] of Object.entries(health.modules)) {
       if (mod.state === 'critical' || mod.state === 'warning') {
-        reasons.push(`${name.replace(/_/g, ' ')}: ${mod.reason}`);
+        reasons.push(formatUserFacingReasonLabel({
+          title: mod.reason,
+          source: `rental-health:${name}`,
+          category: name === 'error_codes' ? 'dtc' : name,
+        }, 'de'));
       }
     }
   }
@@ -699,20 +705,6 @@ function RentalAppContent() {
                 )}
                 </div>
 
-                <SupportContextButton
-                  kind={currentView === 'health-errors' ? 'vehicle-health' : 'vehicle'}
-                  contextData={{
-                    vehicleId: selectedVehicle.id,
-                    vin: (selectedVehicle as { vin?: string }).vin,
-                    licensePlate: selectedVehicle.license,
-                    make: selectedVehicle.make,
-                    model: selectedVehicle.model,
-                    year: selectedVehicle.year,
-                    station: selectedVehicle.station,
-                    selectedTab: currentView,
-                  }}
-                  onOpenHelpCenter={() => handleViewChange('help-center')}
-                />
                 <VehicleHealthChip vehicleId={selectedVehicle.id ?? null} />
                 <VehicleConnectionBadge />
               </div>
@@ -938,6 +930,16 @@ function RentalAppContent() {
             onOpenExistingTask={(taskId) => {
               setHighlightedVehicleTaskId(taskId);
               setCurrentView('vehicle-tasks');
+            }}
+            onOpenBooking={(bookingId) => {
+              setPendingBookingDetailId(bookingId);
+              setCurrentView('bookings');
+            }}
+            onOpenTrips={(dateIso) => {
+              if (dateIso) {
+                setSelectedDate(dateIso.slice(0, 10));
+              }
+              setCurrentView('trips');
             }}
           />
         ) : currentView === 'financial-insights' ? (

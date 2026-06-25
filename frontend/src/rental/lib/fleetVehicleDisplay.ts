@@ -4,6 +4,10 @@ import type { VehicleData } from '../data/vehicles';
 import type { VehicleHealthAlert } from '../DashboardInsightsContext';
 import { deriveFleetVisualState, type FleetVisualState } from './fleetVisualState';
 import {
+  formatUserFacingReasonLabel,
+  sanitizeUserFacingIssueText,
+} from './operational-issues';
+import {
   resolveTelemetryFreshness,
   type TelemetryFreshness,
 } from './telemetryFreshness';
@@ -310,10 +314,11 @@ const GENERIC_REASONS = new Set([
 /** Reject generic health phrases and technical source IDs from user-facing chips. */
 function isConcreteReason(text: string | null | undefined): boolean {
   if (!text) return false;
-  const t = String(text).trim();
+  const raw = String(text).trim();
+  if (GENERIC_REASONS.has(raw.toLowerCase())) return false;
+  const t = sanitizeUserFacingIssueText(raw);
   if (!t) return false;
   if (GENERIC_REASONS.has(t.toLowerCase())) return false;
-  if (/rental-health:|dashboard-health-risk|vehicle-runtime/i.test(t)) return false;
   return true;
 }
 
@@ -409,7 +414,12 @@ function buildReasonBadge(
         : 'neutral';
 
   const blockingReason = rentalHealth?.blocking_reasons?.find((r) => isConcreteReason(r));
-  if (blockingReason) return { text: blockingReason, tone };
+  if (blockingReason) {
+    return {
+      text: formatUserFacingReasonLabel({ title: blockingReason }, de ? 'de' : 'en'),
+      tone,
+    };
+  }
 
   const moduleReason = pickModuleReason(rentalHealth, de);
   if (moduleReason) return { text: moduleReason, tone };
@@ -422,7 +432,10 @@ function buildReasonBadge(
   }
 
   if (isConcreteReason(visual.reason) && !isTelemetryReason(visual.reason)) {
-    return { text: visual.reason as string, tone };
+    return {
+      text: formatUserFacingReasonLabel({ title: visual.reason }, de ? 'de' : 'en'),
+      tone,
+    };
   }
 
   if (health === 'warning' || health === 'critical') {
@@ -475,18 +488,17 @@ export function resolveFleetVehicleDisplayState(
     buildReasonBadge(vehicle, rentalHealth, visual, healthDisplay.status, de) ??
     (options.healthAlert?.primaryReason && isConcreteReason(options.healthAlert.primaryReason)
       ? {
-          text: options.healthAlert.primaryReason,
+          text: formatUserFacingReasonLabel({ title: options.healthAlert.primaryReason }, de ? 'de' : 'en'),
           tone: healthDisplay.status === 'critical' ? 'critical' : 'watch',
         }
       : null);
 
   let criticalHint: string | undefined;
   if (primaryStatus === 'critical' || primaryStatus === 'warning' || primaryStatus === 'blocked') {
-    criticalHint =
-      options.healthAlert?.primaryReason ||
-      visual.reason ||
-      rentalHealth?.blocking_reasons?.[0] ||
-      undefined;
+    const candidate =
+      [options.healthAlert?.primaryReason, visual.reason, rentalHealth?.blocking_reasons?.[0]]
+        .find((reason) => isConcreteReason(reason) && !isTelemetryReason(reason));
+    criticalHint = candidate ? sanitizeUserFacingIssueText(candidate) || undefined : undefined;
   }
 
   return {

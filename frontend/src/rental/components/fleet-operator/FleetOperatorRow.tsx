@@ -24,7 +24,7 @@ function reasonChipClass(tone: StatusTone): string {
 function fleetVehicleTitle(v: VehicleData): string {
   const model = typeof v.model === 'string' ? v.model : '';
   const shortModel = model ? getShortModel(model) : '';
-  return [v.make, shortModel].filter(Boolean).join(' ') || model || 'Unknown vehicle';
+  return [v.make, shortModel, v.year].filter(Boolean).join(' ') || model || 'Unknown vehicle';
 }
 
 function vehicleStationLabel(v: VehicleData): string {

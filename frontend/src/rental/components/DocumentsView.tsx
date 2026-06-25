@@ -3,7 +3,6 @@ import { Icon } from './ui/Icon';
 import { VehicleData } from '../data/vehicles';
 import { api, type ApiTask } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
-import { SupportContextButton } from '../../components/support/SupportContextButton';
 import {
   DataCard,
   EmptyState,
@@ -37,6 +36,7 @@ import {
   VehicleDocumentUploadDrawer,
   type DocumentDrawerMode,
 } from './documents/VehicleDocumentUploadDrawer';
+import { DocumentComplianceSummaryCard } from './documents/DocumentComplianceSummaryCard';
 
 interface DocumentsViewProps {
   vehicle?: VehicleData | null;
@@ -79,17 +79,7 @@ function fixedCostStatusTone(status: string): 'success' | 'watch' | 'neutral' {
   return 'neutral';
 }
 
-function complianceSummaryLabel(summary: VehicleFileSummary): string {
-  const parts: string[] = [];
-  const tuv = summary.canonicalStatus.serviceCompliance.tuv;
-  const bok = summary.canonicalStatus.serviceCompliance.bokraft;
-  if (tuv) parts.push(`TÜV: ${uiStatusLabel(tuv.uiStatus, true)}`);
-  if (bok) parts.push(`BOKraft: ${uiStatusLabel(bok.uiStatus, true)}`);
-  if (parts.length === 0) return 'Keine Daten';
-  return parts.join(' · ');
-}
-
-function timelineTone(
+function fixedCostStatusTone(status: string): 'success' | 'watch' | 'neutral' {
   status: string,
 ): 'success' | 'watch' | 'critical' | 'info' | 'neutral' {
   if (status === 'applied' || status === 'verified') return 'success';
@@ -254,15 +244,6 @@ export function DocumentsView({ vehicle, onOpenLinkedTask }: DocumentsViewProps)
           </div>
 
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-            <SupportContextButton
-              kind="document"
-              contextData={{
-                vehicleId: vehicle.id,
-                licensePlate,
-                vin,
-                selectedTab: 'documents',
-              }}
-            />
           {summary ? (
             <div className="flex flex-wrap gap-1.5 lg:max-w-md lg:justify-end">
               <StatusChip

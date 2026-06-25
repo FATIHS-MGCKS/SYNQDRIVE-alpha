@@ -29,24 +29,31 @@ export function BookingUsageMisuseTab({
   const [analysisLoading, setAnalysisLoading] = useState(analysisLoadingProp ?? false);
 
   useEffect(() => {
-    if (rentalAnalysisProp !== undefined) {
-      setRentalAnalysis(rentalAnalysisProp);
-      return;
-    }
     let cancelled = false;
-    setAnalysisLoading(true);
-    api.rentalDrivingAnalyses
-      .list(orgId, { bookingId: detail.core.bookingId, limit: 1 })
-      .then((res) => {
-        if (cancelled) return;
-        const rows = Array.isArray(res?.data) ? res.data : [];
-        setRentalAnalysis(rows[0] ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) setRentalAnalysis(null);
-      })
-      .finally(() => {
-        if (!cancelled) setAnalysisLoading(false);
+    if (rentalAnalysisProp !== undefined) {
+      void Promise.resolve().then(() => {
+        if (!cancelled) setRentalAnalysis(rentalAnalysisProp);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
+      setAnalysisLoading(true);
+      api.rentalDrivingAnalyses
+        .list(orgId, { bookingId: detail.core.bookingId, limit: 1 })
+        .then((res) => {
+          if (cancelled) return;
+          const rows = Array.isArray(res?.data) ? res.data : [];
+          setRentalAnalysis(rows[0] ?? null);
+        })
+        .catch(() => {
+          if (!cancelled) setRentalAnalysis(null);
+        })
+        .finally(() => {
+          if (!cancelled) setAnalysisLoading(false);
+        });
       });
     return () => {
       cancelled = true;
@@ -70,8 +77,8 @@ export function BookingUsageMisuseTab({
       <div className={`${card} grid grid-cols-2 sm:grid-cols-4 gap-4`}>
         <Stat label="Fahrbelastung" value={stressDisplay.isMissing ? EM_DASH : stressDisplay.label} />
         <Stat label="Fahrereignisse" value={u.drivingEventsCount ?? EM_DASH} />
-        <Stat label="Abuse-Flags" value={u.abuseDetectionCount ?? EM_DASH} />
-        <Stat label="Prüffälle" value={u.misuseCaseCount} />
+        <Stat label="Missbrauchsereignisse" value={u.abuseDetectionCount ?? EM_DASH} />
+        <Stat label="Verdachtshinweise" value={u.misuseCaseCount} />
         <Stat
           label="Km gefahren"
           value={detail.core.kmDriven != null ? `${detail.core.kmDriven} km` : EM_DASH}
@@ -94,7 +101,7 @@ export function BookingUsageMisuseTab({
       <MisuseCasesPanel
         orgId={orgId}
         bookingId={detail.core.bookingId}
-        title="Prüffälle während dieser Buchung"
+        title="Missbrauchs-/Schadensverdacht während dieser Buchung"
         limit={15}
       />
     </div>

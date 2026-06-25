@@ -252,6 +252,26 @@ describe('health vs rental display separation', () => {
     expect(d.reasonBadge?.text).toBe('Service overdue');
   });
 
+  it('shows a concrete tire monitor reason instead of generic warning health status', () => {
+    const d = resolveFleetVehicleDisplayState(vehicle({ healthStatus: 'Warning' }), {
+      locale: 'de',
+      rentalHealth: health({
+        overall_state: 'warning',
+        modules: {
+          battery: mod('good'),
+          tires: mod('warning', 'Warning health status'),
+          brakes: mod('good'),
+          error_codes: mod('good'),
+          service_compliance: mod('good'),
+          complaints: mod('good'),
+          vehicle_alerts: mod('good'),
+        },
+      }),
+    });
+    expect(d.reasonBadge?.text).toBe('Reifen beobachten');
+    expect(d.reasonBadge?.text).not.toBe('Warning health status');
+  });
+
   it('Active Rented → rental Active; Reserved → rental Reserved', () => {
     const active = resolveFleetVehicleDisplayState(
       vehicle({ status: 'Active Rented', activeBookingId: 'b1' }),

@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import { StatusChip } from '../../components/patterns';
 import type { StatusTone } from '../../components/patterns';
+import {
+  formatOperationalIssueEvidence,
+  normalizeOperationalIssues,
+  sanitizeUserFacingIssueText,
+  type OperationalIssue,
+} from '../lib/operational-issues';
 
 export type MisuseCaseRecord = {
   id: string;
@@ -19,8 +25,10 @@ export type MisuseCaseRecord = {
   recommendedAction?: string | null;
   attributionLabel?: string;
   isPrivateTripSnapshot?: boolean;
+  vehicleId?: string | null;
   bookingId?: string | null;
   tripId?: string | null;
+  customerId?: string | null;
   evidenceSummary?: Record<string, unknown> | null;
 };
 
@@ -87,13 +95,89 @@ function confidenceLabel(confidence: string): string {
   }
 }
 
+function EmptyMisuseState({
+  title,
+  emptyTitle,
+  emptyDescription,
+}: {
+  title: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+        {title}
+      </h3>
+      <p className="text-xs font-medium text-foreground">{emptyTitle ?? 'Unauffällige Fahrt'}</p>
+      <p className="text-xs text-muted-foreground mt-0.5">
+        {emptyDescription ?? 'Keine Hinweise auf Missbrauch oder Schaden für diese Fahrt.'}
+      </p>
+    </div>
+  );
+}
+
+function normalizedCases(
+  cases: MisuseCaseRecord[],
+  context: Pick<MisuseCasesPanelProps, 'vehicleId' | 'tripId' | 'bookingId' | 'customerId'>,
+): OperationalIssue[] {
+  return normalizeOperationalIssues({
+    misuseCases: cases.map((c) => ({
+      ...c,
+      vehicleId: c.vehicleId ?? context.vehicleId,
+      tripId: c.tripId ?? context.tripId,
+      bookingId: c.bookingId ?? context.bookingId,
+      customerId: c.customerId ?? context.customerId,
+    })),
+  }).filter((issue) => issue.domain === 'misuse' || issue.domain === 'damage');
+}
+
+function issueForCase(
+  issue: OperationalIssue,
+  raw: MisuseCaseRecord | undefined,
+  compact: boolean,
+) {
+  const severity = raw?.severity ?? (issue.severity === 'critical' ? 'CRITICAL' : issue.severity === 'warning' ? 'WARNING' : 'INFO');
+  const confidence = raw?.confidence ?? 'MEDIUM';
+  return (
+    <div key={issue.id} className={compact ? 'px-3 py-2' : 'px-4 py-3'}>
+      <div className="flex flex-wrap items-center gap-2 mb-1">
+        <span className="text-xs font-semibold text-foreground">{issue.title}</span>
+        <StatusChip tone={severityTone(severity)} dot>
+          {severityLabel(severity)}
+        </StatusChip>
+        <StatusChip tone={confidenceTone(confidence)}>
+          {confidenceLabel(confidence)}
+        </StatusChip>
+      </div>
+      {issue.subtitle && (
+        <p className="text-xs text-muted-foreground">{issue.subtitle}</p>
+      )}
+      {issue.evidence?.length ? (
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+          {issue.evidence.map((evidence) => (
+            <span key={`${evidence.label}:${evidence.value}:${evidence.unit ?? ''}`} className="text-[10px] text-muted-foreground tabular-nums">
+              {formatOperationalIssueEvidence(evidence)}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      {issue.recommendedAction && !compact && (
+        <p className="text-[10px] text-muted-foreground mt-1">
+          Empfohlen: {sanitizeUserFacingIssueText(issue.recommendedAction)}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function MisuseCasesPanel({
   orgId,
   vehicleId,
   tripId,
   bookingId,
   customerId,
-  title = 'Verdachtsfälle',
+  title = 'Missbrauchs-/Schadensverdacht',
   emptyTitle,
   emptyDescription,
   compact = false,
@@ -106,35 +190,40 @@ export function MisuseCasesPanel({
   useEffect(() => {
     if (!orgId) return;
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    api.misuseCases
-      .list(orgId, {
-        vehicleId,
-        tripId,
-        bookingId,
-        customerId,
-        limit,
-        page: 1,
-      })
-      .then((res) => {
-        if (cancelled) return;
-        setCases((res.data ?? []) as MisuseCaseRecord[]);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setCases([]);
-        setError(err instanceof Error ? err.message : 'Hinweise konnten nicht geladen werden');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
+      setLoading(true);
+      setError(null);
+      api.misuseCases
+        .list(orgId, {
+          vehicleId,
+          tripId,
+          bookingId,
+          customerId,
+          limit,
+          page: 1,
+        })
+        .then((res) => {
+          if (cancelled) return;
+          setCases((res.data ?? []) as MisuseCaseRecord[]);
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          setCases([]);
+          setError(err instanceof Error ? err.message : 'Hinweise konnten nicht geladen werden');
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    });
     return () => {
       cancelled = true;
     };
   }, [orgId, vehicleId, tripId, bookingId, customerId, limit]);
 
-  if (!orgId) return null;
+  if (!orgId) {
+    return <EmptyMisuseState title={title} emptyTitle={emptyTitle} emptyDescription={emptyDescription} />;
+  }
 
   if (loading) {
     return (
@@ -153,62 +242,29 @@ export function MisuseCasesPanel({
   }
 
   if (cases.length === 0) {
-    return (
-      <div className="rounded-lg border border-border bg-card p-4">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-          {title}
-        </h3>
-        <p className="text-xs font-medium text-foreground">{emptyTitle ?? 'Keine Auffälligkeiten'}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {emptyDescription ?? 'Keine Hinweise für diesen Kontext.'}
-        </p>
-      </div>
-    );
+    return <EmptyMisuseState title={title} emptyTitle={emptyTitle} emptyDescription={emptyDescription} />;
   }
+
+  const issues = normalizedCases(cases, { vehicleId, tripId, bookingId, customerId });
+  if (issues.length === 0) {
+    return <EmptyMisuseState title={title} emptyTitle={emptyTitle} emptyDescription={emptyDescription} />;
+  }
+  const rawById = new Map(cases.map((c) => [c.id, c]));
+  const criticalCount = issues.filter((issue) => issue.severity === 'critical' || issue.domain === 'damage').length;
 
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="px-4 py-3 border-b border-border">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {title} ({cases.length})
+          {title}
         </h3>
         <p className="text-[10px] text-muted-foreground mt-1">
-          {cases.length === 1 ? '1 Verdacht erkannt' : `${cases.length} Hinweise erkannt`}
+          {issues.length === 1 ? '1 Verdacht erkannt' : `${issues.length} Hinweise erkannt`}
+          {criticalCount > 0 ? ` · ${criticalCount} mit Schadensbezug` : ''}
         </p>
       </div>
       <div className="divide-y divide-border">
-        {cases.map((c) => {
-          const showAttribution = c.attributionLabel && !c.isPrivateTripSnapshot;
-          const metaParts = [
-            c.categoryLabel ?? c.category,
-            showAttribution ? c.attributionLabel : null,
-            c.eventCount >= 1 ? `${c.eventCount} ${c.eventCount === 1 ? 'Ereignis' : 'Ereignisse'}` : null,
-          ].filter(Boolean);
-          return (
-          <div key={c.id} className={compact ? 'px-3 py-2' : 'px-4 py-3'}>
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className="text-xs font-semibold text-foreground">{c.typeLabel ?? c.title}</span>
-              <StatusChip tone={severityTone(c.severity)} dot>
-                {severityLabel(c.severity)}
-              </StatusChip>
-              <StatusChip tone={confidenceTone(c.confidence)}>
-                {confidenceLabel(c.confidence)}
-              </StatusChip>
-            </div>
-            <div className="text-[10px] text-muted-foreground mb-1">
-              {metaParts.join(' · ')}
-            </div>
-            {c.description && (
-              <p className="text-xs text-muted-foreground">{c.description}</p>
-            )}
-            {c.recommendedAction && !compact && (
-              <p className="text-[10px] text-muted-foreground mt-1">
-                Empfohlen: {c.recommendedAction}
-              </p>
-            )}
-          </div>
-          );
-        })}
+        {issues.map((issue) => issueForCase(issue, rawById.get(issue.primarySource.sourceId ?? ''), compact))}
       </div>
     </div>
   );
