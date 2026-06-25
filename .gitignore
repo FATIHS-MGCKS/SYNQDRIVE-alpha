@@ -16,6 +16,10 @@ out/
 # fully replaces it. Never commit these artifacts.
 backend/public/
 
+# Cursor MCP config — contains provider secrets (DIMO private key, Hostinger token).
+# NEVER commit. Use .cursor/mcp.json.example for a redacted template.
+.cursor/mcp.json
+
 # Environment files (NEVER commit secrets)
 .env
 .env.local

@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "dimo": {
+      "command": "mcp-dimo",
+      "env": {
+        "DIMO_CLIENT_ID": "<your-dimo-client-id>",
+        "DIMO_DOMAIN": "http://localhost:5173/auth/dimo/callback",
+        "DIMO_PRIVATE_KEY": "<your-dimo-private-key>"
+      }
+    },
+    "hostinger-api": {
+      "command": "hostinger-api-mcp",
+      "env": {
+        "DEBUG": "false",
+        "API_TOKEN": "<your-hostinger-api-token>"
+      }
+    }
+  }
+}
