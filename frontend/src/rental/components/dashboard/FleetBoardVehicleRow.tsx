@@ -1,9 +1,14 @@
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import {
+  dedupeDisplayReasons,
+  formatRuntimeReasonLabel,
+  rowSeverityLabel,
+  runtimeReasonTooltip,
+} from './reasonDisplay';
 import type {
   DashboardSliceRow,
-  RuntimeReason,
   VehicleRuntimeState,
 } from './runtime';
 
@@ -54,24 +59,27 @@ function runtimeStateLabel(state: VehicleRuntimeState | undefined, de: boolean):
   return `${ops} · ${rental}`;
 }
 
-function reasonLabel(reason: RuntimeReason): string {
-  return reason.source ? `${reason.title} · ${reason.source}` : reason.title;
-}
-
 function moreReasonsLabel(count: number, de: boolean): string {
   return de ? `+${count} Gründe` : `+${count} reasons`;
 }
 
+/**
+ * @deprecated Only consumed by the deprecated FleetStateBoard. The Dashboard
+ * Fahrzeugliste is now rendered by FleetCommandPanel/FleetOperatorRow (shared
+ * with the Fleet Page). Kept for reference/backward-compat only.
+ */
 export function FleetBoardVehicleRow({ row, runtimeState, locale, onOpen }: FleetBoardVehicleRowProps) {
   const de = locale === 'de';
   const dimmed = runtimeState?.telemetryState === 'offline';
   const telemetry = telemetryLabel(runtimeState, de);
   const stateLabel = runtimeStateLabel(runtimeState, de);
-  const reasons = row.reasons?.length ? row.reasons : [
+  const severityText = rowSeverityLabel(row.severity, locale);
+  const rawReasons = row.reasons?.length ? row.reasons : [
     ...(runtimeState?.criticalReasons ?? []),
     ...(runtimeState?.blockReasons ?? []),
     ...(runtimeState?.warningReasons ?? []),
   ];
+  const reasons = dedupeDisplayReasons(rawReasons);
   const visibleReasons = reasons.slice(0, 2);
   const remainingReasons = Math.max(0, reasons.length - visibleReasons.length);
   const canOpen = Boolean(onOpen && row.vehicleId);
@@ -105,12 +113,14 @@ export function FleetBoardVehicleRow({ row, runtimeState, locale, onOpen }: Flee
               <span className="mt-0.5 block truncate text-[10.5px] leading-snug text-muted-foreground">{row.subtitle}</span>
             ) : null}
           </div>
-          <StatusChip
-            tone={severityChipTone(row.severity)}
-            className="shrink-0 px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
-          >
-            {row.severity}
-          </StatusChip>
+          {severityText ? (
+            <StatusChip
+              tone={severityChipTone(row.severity)}
+              className="shrink-0 px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
+            >
+              {severityText}
+            </StatusChip>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] leading-snug text-muted-foreground">
@@ -149,6 +159,7 @@ export function FleetBoardVehicleRow({ row, runtimeState, locale, onOpen }: Flee
             {visibleReasons.map((reason) => (
               <span
                 key={reason.id}
+                title={runtimeReasonTooltip(reason, locale)}
                 className={cn(
                   'rounded-full px-2 py-0.5 text-[10px] font-medium',
                   reason.severity === 'critical'
@@ -158,7 +169,7 @@ export function FleetBoardVehicleRow({ row, runtimeState, locale, onOpen }: Flee
                       : 'bg-muted text-muted-foreground',
                 )}
               >
-                {reasonLabel(reason)}
+                {formatRuntimeReasonLabel(reason, locale)}
               </span>
             ))}
             {remainingReasons > 0 ? (

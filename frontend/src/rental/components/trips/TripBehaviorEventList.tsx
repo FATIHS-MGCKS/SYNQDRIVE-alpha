@@ -6,6 +6,7 @@ import {
   eventExplanation,
   eventTypeLabel,
   formatBehaviorTime,
+  formatEventEvidence,
   sortBehaviorEvents,
 } from './behavior-ui.utils';
 import { BEHAVIOR_COPY, tv } from './trips-view-ui';
@@ -76,6 +77,7 @@ export function TripBehaviorEventList({
           const isSelected = selectedEventId === ev.id;
           const hasMapPosition = ev.latitude != null && ev.longitude != null;
           const severity = classificationToSeverity(ev.classification, ev.eventCategory);
+          const evidence = formatEventEvidence(ev);
 
           return (
             <li key={ev.id} data-event-id={ev.id}>
@@ -112,6 +114,19 @@ export function TripBehaviorEventList({
                       <p className="mt-1 text-[10px] text-muted-foreground leading-snug line-clamp-2">
                         {eventExplanation(ev)}
                       </p>
+                      {evidence.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
+                          {evidence.map((item) => (
+                            <span
+                              key={item.label}
+                              className="text-[10px] text-muted-foreground tabular-nums"
+                            >
+                              {item.label}:{' '}
+                              <span className="font-medium text-foreground">{item.value}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </button>

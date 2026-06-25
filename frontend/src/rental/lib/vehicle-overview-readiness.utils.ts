@@ -26,10 +26,6 @@ function uniqueNonEmpty(values: string[]): string[] {
   return result;
 }
 
-function healthIsCritical(status: EffectiveHealthStatus): boolean {
-  return status === 'Critical';
-}
-
 function healthNeedsAttention(status: EffectiveHealthStatus): boolean {
   return status === 'Warning';
 }
@@ -52,54 +48,26 @@ function resolveReadinessLoadState(
   return 'ready';
 }
 
+/**
+ * Canonical-only blockers.
+ *
+ * The Vehicle Overview must NOT invent a rental-blocked verdict from local
+ * overview aggregates. The only source of a "blocked" status here is the
+ * canonical rental-health signal (`health.rentalBlocked` + `blockingReasons`,
+ * which the backend rental-health system already sets for booking-relevant
+ * compliance/document/safety blockers). Missing documents, incomplete rental
+ * requirements, critical health, open/blocking tasks/damages or overdue
+ * returns are deliberately NOT treated as a blocker on this surface — they are
+ * surfaced as findings/attention or in their own tabs.
+ */
 function collectBlockedReasons(input: {
   health: VehicleOverviewHealthSnapshot;
-  bookings: VehicleOverviewBookingsCardSummary;
-  tasks: VehicleOverviewTasksCardSummary;
-  damages: VehicleOverviewDamagesCardSummary;
-  documents: VehicleOverviewDocumentsCardSummary;
 }): string[] {
   const reasons: string[] = [];
 
   if (input.health.rentalBlocked) {
     reasons.push(...input.health.blockingReasons);
     if (reasons.length === 0) reasons.push('Vehicle blocked for rental');
-  }
-
-  if (healthIsCritical(input.health.effectiveStatus)) {
-    reasons.push('Critical vehicle health');
-  }
-
-  if (input.damages.blockingCount > 0) {
-    reasons.push(
-      `${input.damages.blockingCount} blocking damage${input.damages.blockingCount === 1 ? '' : 's'}`,
-    );
-  } else if (input.damages.safetyCriticalCount > 0) {
-    reasons.push(
-      `${input.damages.safetyCriticalCount} safety-critical damage${input.damages.safetyCriticalCount === 1 ? '' : 's'}`,
-    );
-  }
-
-  if (input.tasks.blockingCount > 0) {
-    reasons.push(
-      `${input.tasks.blockingCount} blocking task${input.tasks.blockingCount === 1 ? '' : 's'}`,
-    );
-  }
-
-  if (input.documents.missingCount > 0) {
-    reasons.push(
-      `${input.documents.missingCount} required document${input.documents.missingCount === 1 ? '' : 's'} missing`,
-    );
-  }
-
-  if (input.documents.expiredCount > 0) {
-    reasons.push(
-      `${input.documents.expiredCount} expired document${input.documents.expiredCount === 1 ? '' : 's'}`,
-    );
-  }
-
-  if (input.bookings.isOverdue) {
-    reasons.push('Return overdue');
   }
 
   return uniqueNonEmpty(reasons);
@@ -181,8 +149,12 @@ function mapTone(status: VehicleOverviewReadinessStatus): VehicleOverviewReadine
 }
 
 /**
- * Readiness is derived only from existing overview card + rental-health indicators.
- * No new business rules beyond summarizing what is already tracked.
+ * @deprecated Vehicle Overview must not derive canonical rental readiness
+ * locally. Use canonical rental/runtime/blocking sources only. This helper now
+ * only summarizes overview "findings" (attention) and reflects the canonical
+ * `health.rentalBlocked` flag for the blocked status — it never invents a
+ * blocked/not-ready verdict from documents, requirements, health or tasks. It
+ * is no longer rendered in the Overview tab (the ReadinessStrip was removed).
  */
 export function deriveVehicleOverviewReadiness(input: {
   health: VehicleOverviewHealthSnapshot;
@@ -214,13 +186,7 @@ export function deriveVehicleOverviewReadiness(input: {
     };
   }
 
-  const blockers = collectBlockedReasons({
-    health: input.health,
-    bookings: input.cards.bookings,
-    tasks: input.cards.tasks,
-    damages: input.cards.damages,
-    documents: input.cards.documents,
-  });
+  const blockers = collectBlockedReasons({ health: input.health });
 
   if (blockers.length > 0) {
     const visible = blockers.slice(0, MAX_BLOCKERS);

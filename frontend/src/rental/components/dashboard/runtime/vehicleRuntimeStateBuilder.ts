@@ -262,33 +262,15 @@ function reasonBlocksRenting(reason: RuntimeReason): boolean {
 
 /**
  * A reason prevents Ready-to-Rent when it is explicitly marked `preventsReady`
- * or when it is a hard `blocking` reason. The decision is no longer derived
- * automatically from the reason category — the reason producer sets the flag.
+ * or when it is a hard `blocking` reason. The decision is never derived from the
+ * reason category — warnings alone (health, tires, brakes, battery, dtc,
+ * service due-soon, …) stay visible but must not prevent readiness on their own.
+ * Only the reason producer sets `preventsReady` (e.g. cleaning, hard offline).
  */
 function reasonPreventsReady(reason: RuntimeReason): boolean {
   if (reason.preventsReady === true) return true;
   if (reason.blocking === true) return true;
   return false;
-}
-
-/**
- * Warning-severity categories that should keep a vehicle out of Ready-to-Rent
- * (health/compliance concerns) without turning it into a hard blocker. The
- * flag is set explicitly at reason creation so `reasonPreventsReady` stays
- * category-agnostic.
- */
-function warningPreventsReady(category: RuntimeReasonCategory): boolean {
-  return (
-    category === 'health' ||
-    category === 'battery' ||
-    category === 'tires' ||
-    category === 'brakes' ||
-    category === 'dtc' ||
-    category === 'service' ||
-    category === 'compliance' ||
-    category === 'damage' ||
-    category === 'rental'
-  );
 }
 
 function addReason(target: RuntimeReason[], reason: RuntimeReason): void {
@@ -308,6 +290,8 @@ function addInsightReasons(input: {
 
     const category = categoryFromInsightType(insight.type);
     const criticalHardBlock = severity === 'critical' && isHardBlockingCategory(category);
+    // Warning-severity insights (e.g. service window, due soon) stay visible but
+    // never prevent readiness on their own. Only critical hard blocks do.
     addReason(
       input.target,
       createRuntimeReason({
@@ -317,7 +301,6 @@ function addInsightReasons(input: {
         description: insight.message,
         source: `dashboard-insight:${insight.type}`,
         blocking: criticalHardBlock,
-        preventsReady: severity === 'warning' && warningPreventsReady(category) ? true : undefined,
         actionLabel: insight.actionLabel ?? undefined,
         actionTarget: insight.actionType ?? undefined,
       }),
@@ -330,6 +313,11 @@ function addHealthReasons(input: {
   health: VehicleHealthResponse | null;
   healthRisk: boolean;
 }): void {
+  // Tracks whether any concrete rental-health:* reason was produced for this
+  // vehicle. The generic dashboard-health-risk reason is only a fallback and
+  // must never be emitted alongside concrete module/rental reasons.
+  let concreteHealthReasonAdded = false;
+
   if (input.health?.rental_blocked === true) {
     for (const reason of input.health.blocking_reasons) {
       addReason(
@@ -342,6 +330,7 @@ function addHealthReasons(input: {
           blocking: true,
         }),
       );
+      concreteHealthReasonAdded = true;
     }
 
     if (input.health.blocking_reasons.length === 0) {
@@ -355,6 +344,7 @@ function addHealthReasons(input: {
           blocking: true,
         }),
       );
+      concreteHealthReasonAdded = true;
     }
   }
 
@@ -363,6 +353,8 @@ function addHealthReasons(input: {
       if (moduleState.state !== 'critical' && moduleState.state !== 'warning') continue;
       const category = categoryFromHealthModule(module);
       const severity: RuntimeReasonSeverity = moduleState.state === 'critical' ? 'critical' : 'warning';
+      // Critical health/compliance modules are genuine blockers. Warnings stay
+      // visible but never prevent readiness on their own (no category default).
       addReason(
         input.target,
         createRuntimeReason({
@@ -371,13 +363,16 @@ function addHealthReasons(input: {
           title: moduleState.reason || `${module.replace(/_/g, ' ')} ${moduleState.state}`,
           source: `rental-health:${module}`,
           blocking: severity === 'critical' && isHardBlockingCategory(category),
-          preventsReady: severity === 'warning' && warningPreventsReady(category) ? true : undefined,
         }),
       );
+      concreteHealthReasonAdded = true;
     }
   }
 
-  if (input.healthRisk) {
+  // Fallback only: when the vehicle is flagged as a health risk but no concrete
+  // rental-health:* reason explains it, surface a soft, non-blocking hint that
+  // does not prevent readiness and is never stronger than a module reason.
+  if (input.healthRisk && !concreteHealthReasonAdded) {
     addReason(
       input.target,
       createRuntimeReason({
@@ -386,7 +381,7 @@ function addHealthReasons(input: {
         title: 'Health review required',
         source: 'dashboard-health-risk',
         blocking: false,
-        preventsReady: true,
+        preventsReady: false,
       }),
     );
   }

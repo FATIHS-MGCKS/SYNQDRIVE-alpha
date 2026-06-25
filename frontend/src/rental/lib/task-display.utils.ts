@@ -136,6 +136,21 @@ export function formatTaskDueDate(iso: string | null): string {
   return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
+/**
+ * Due-date label for a maintenance/service task card.
+ * - not overdue → "Fällig bis DD.MM.YY"
+ * - overdue     → "Fällig seit DD.MM.YY"
+ * Returns `null` when there is no usable due date (no row line rendered).
+ */
+export function formatVehicleMaintenanceDueLabel(
+  task: Pick<ApiTask, 'dueDate' | 'isOverdue' | 'status'>,
+): string | null {
+  if (!task.dueDate) return null;
+  const formatted = formatTaskDueDate(task.dueDate);
+  if (formatted === 'Kein Fälligkeitsdatum') return null;
+  return deriveTaskIsOverdue(task) ? `Fällig seit ${formatted}` : `Fällig bis ${formatted}`;
+}
+
 export function vehicleTaskStatusLabel(
   status: VehicleTaskDisplayStatus,
   isOverdue: boolean,

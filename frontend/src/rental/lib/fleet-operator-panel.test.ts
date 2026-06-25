@@ -60,24 +60,28 @@ function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
 }
 
 describe('fleet-operator-panel', () => {
-  it('filterFleetBySearch matches plate, customer, and station', () => {
+  it('filterFleetBySearch matches plate, make, and model only', () => {
     const contexts = buildFleetVehicleContexts(
       [
-        vehicle({ license: 'KS-AB 1', stationName: 'Berlin' }),
+        vehicle({ license: 'KS-AB 1', make: 'BMW', model: 'X5 2024', stationName: 'Berlin' }),
         vehicle({
           id: 'v2',
           license: 'M-XY 9',
+          make: 'VW',
+          model: 'Golf 2023',
           status: 'Active Rented',
           activeCustomerName: 'Ali Yilmaz',
         }),
       ],
       () => null,
     );
-    expect(filterFleetBySearch(contexts, 'ali').map((c) => c.vehicle.license)).toEqual([
-      'M-XY 9',
+    expect(filterFleetBySearch(contexts, 'bmw').map((c) => c.vehicle.license)).toEqual([
+      'KS-AB 1',
     ]);
-    expect(filterFleetBySearch(contexts, 'berlin')).toHaveLength(1);
+    expect(filterFleetBySearch(contexts, 'golf')).toHaveLength(1);
     expect(filterFleetBySearch(contexts, 'KS-AB')).toHaveLength(1);
+    expect(filterFleetBySearch(contexts, 'ali')).toHaveLength(0);
+    expect(filterFleetBySearch(contexts, 'berlin')).toHaveLength(0);
   });
 
   it('computeCommandTabCounts uses the same filtered base', () => {
@@ -98,8 +102,7 @@ describe('fleet-operator-panel', () => {
     const counts = computeCommandTabCounts(contexts);
     expect(counts.Available).toBe(2);
     expect(counts.Active).toBe(1);
-    expect(counts.Attention).toBeGreaterThanOrEqual(1);
-    expect(counts.All).toBe(3);
+    expect(counts.Reserved).toBe(0);
   });
 
   it('Attention bucket includes blocked, offline, soft-offline, and no-location vehicles', () => {
@@ -178,8 +181,8 @@ describe('fleet-operator-panel', () => {
     expect(options.some((o) => o.id === NO_STATION_FILTER)).toBe(true);
   });
 
-  it('resolveOperatorTabForVehicle maps attention vehicles to Attention tab', () => {
-    const ctx = buildFleetVehicleContexts(
+  it('resolveOperatorTabForVehicle maps by operational status, not health attention', () => {
+    const offlineAvailable = buildFleetVehicleContexts(
       [
         vehicle({
           onlineStatus: 'OFFLINE',
@@ -189,11 +192,20 @@ describe('fleet-operator-panel', () => {
       ],
       () => null,
     )[0];
-    expect(resolveOperatorTabForVehicle(ctx)).toBe('Attention');
-    expect(vehicleMatchesCommandTab(ctx, 'Offline')).toBe(true);
+    expect(resolveOperatorTabForVehicle(offlineAvailable)).toBe('Available');
+    expect(vehicleMatchesCommandTab(offlineAvailable, 'Available')).toBe(true);
+
+    const blocked = buildFleetVehicleContexts([vehicle()], () => ({
+      rental_blocked: true,
+      overall_state: 'critical',
+      blocking_reasons: ['Brake warning'],
+      modules: {},
+    }))[0];
+    expect(resolveOperatorTabForVehicle(blocked)).toBe('Available');
+    expect(vehicleMatchesCommandTab(blocked, 'Available')).toBe(true);
   });
 
-  it('Offline tab counts only genuine offline devices (>=48h), not standby/soft-offline', () => {
+  it('offline available vehicles stay in Available tab, not a separate Offline tab', () => {
     const hoursAgoIso = (h: number) =>
       new Date(Date.now() - h * 60 * 60_000).toISOString();
     // 2h-quiet device = standby, not stale, not offline.
@@ -212,9 +224,9 @@ describe('fleet-operator-panel', () => {
     )[0];
     expect(standby.visual.isStale).toBe(false);
     expect(softOffline.visual.isStale).toBe(true);
-    expect(vehicleMatchesCommandTab(standby, 'Offline')).toBe(false);
-    expect(vehicleMatchesCommandTab(softOffline, 'Offline')).toBe(false);
-    expect(vehicleMatchesCommandTab(offline, 'Offline')).toBe(true);
+    expect(vehicleMatchesCommandTab(standby, 'Available')).toBe(true);
+    expect(vehicleMatchesCommandTab(softOffline, 'Available')).toBe(true);
+    expect(vehicleMatchesCommandTab(offline, 'Available')).toBe(true);
   });
 
   it('Attention is not inflated by normal standby; soft-offline gets a low slot', () => {
@@ -237,7 +249,7 @@ describe('fleet-operator-panel', () => {
     expect(isFleetAttentionVehicle(softOffline.visual, softOffline.vehicle)).toBe(true);
   });
 
-  it('sortFleetContexts keeps critical first and pushes offline to the bottom (All)', () => {
+  it('sortFleetContexts keeps critical first and pushes offline to the bottom', () => {
     const hoursAgoIso = (h: number) =>
       new Date(Date.now() - h * 60 * 60_000).toISOString();
     const contexts = buildFleetVehicleContexts(
@@ -262,7 +274,7 @@ describe('fleet-operator-panel', () => {
             }
           : null,
     );
-    const order = sortFleetContexts(contexts, 'All').map((c) => c.vehicle.id);
+    const order = sortFleetContexts(contexts).map((c) => c.vehicle.id);
     expect(order[0]).toBe('crit');
     expect(order[order.length - 1]).toBe('offline');
   });

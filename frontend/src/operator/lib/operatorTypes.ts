@@ -47,6 +47,49 @@ export type OperatorSheetAction =
       task?: import('../../lib/api').ApiTask;
       focusComment?: boolean;
       onUpdated?: () => void;
+    }
+  | {
+      type: 'booking-create';
+      bookingId?: string;
+      prefillVehicleId?: string;
+      prefillCustomerId?: string;
+      prefillStartDate?: string;
+      prefillEndDate?: string;
+      onSuccess?: () => void;
+    }
+  | {
+      type: 'booking-edit';
+      bookingId?: string;
+      prefillVehicleId?: string;
+      prefillCustomerId?: string;
+      prefillStartDate?: string;
+      prefillEndDate?: string;
+      onSuccess?: () => void;
+    }
+  | {
+      type: 'booking-cancel';
+      bookingId?: string;
+      prefillVehicleId?: string;
+      prefillCustomerId?: string;
+      prefillStartDate?: string;
+      prefillEndDate?: string;
+      onSuccess?: () => void;
+    }
+  | {
+      type: 'booking-no-show';
+      bookingId?: string;
+      prefillVehicleId?: string;
+      prefillCustomerId?: string;
+      prefillStartDate?: string;
+      prefillEndDate?: string;
+      onSuccess?: () => void;
+    }
+  | {
+      type: 'pickup-verification';
+      customerId: string;
+      bookingId: string;
+      customerName: string;
+      onSuccess?: () => void;
     };
 
 export interface OperatorSyncState {

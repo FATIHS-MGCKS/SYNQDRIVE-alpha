@@ -105,8 +105,7 @@ export function TripTimeline({
     <div className={tv.panel}>
       <div className="mb-3 flex items-end justify-between gap-2">
         <div>
-          <p className={tv.sectionEyebrow}>{TIMELINE_COPY.listEyebrow}</p>
-          <h2 className={`${tv.sectionTitle} mt-0.5`}>
+          <h2 className={tv.sectionTitle}>
             {TIMELINE_COPY.tripHistory}
             <span className="ml-1.5 font-medium text-muted-foreground tabular-nums">
               ({trips.length}
@@ -173,12 +172,7 @@ export function TripTimeline({
                   const displayTrip = resolve(trip);
                   const isSelected = selectedTripId === trip.id;
                   const rentalContext = rentalContextByTripId?.get(trip.id);
-                  const chips = deriveOperationalChips(displayTrip, enrichments[trip.id], {
-                    isSelected,
-                    routePointsCount: isSelected ? routePointsCount : 0,
-                    routeError: isSelected ? routeError : null,
-                    behaviorLoading: behaviorLoadingId === trip.id,
-                  }, rentalContext);
+                  const chips = deriveOperationalChips(displayTrip, rentalContext);
 
                   return (
                     <TripTimelineCard

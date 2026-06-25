@@ -1,7 +1,6 @@
 import { getStressLevel, resolveDrivingStressScore } from '../../../lib/scoreFormat';
 import type { TripTimelineTrip } from '../trips.types';
 import { countTripEvents } from '../trips-map.utils';
-import { formatSpeedKmh } from './tripFormatters';
 
 export function getOperatorStressLabel(trip: TripTimelineTrip): string {
   const score = resolveDrivingStressScore(trip);
@@ -19,12 +18,6 @@ export function getOperatorStressLabel(trip: TripTimelineTrip): string {
     default:
       return 'Normal';
   }
-}
-
-export function getSpeedSummary(trip: TripTimelineTrip): string | null {
-  if (trip.maxSpeedKmh != null) return formatSpeedKmh(trip.maxSpeedKmh, 'Max ') ?? null;
-  if (trip.avgSpeedKmh != null) return formatSpeedKmh(trip.avgSpeedKmh, 'Ø ') ?? null;
-  return null;
 }
 
 export function getEventsSummary(trip: TripTimelineTrip): string {

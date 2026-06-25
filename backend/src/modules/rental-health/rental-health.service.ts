@@ -278,24 +278,48 @@ export class RentalHealthService {
     let state: HealthState;
     let reason: string;
 
-    const voltageNote =
-      restingVoltage != null ? ` (Ruhespannung ${restingVoltage.toFixed(2)} V)` : '';
+    // The resting-voltage value carried here is guaranteed to be a genuine
+    // open-circuit reading (resting snapshot or engine-off) by the canonical
+    // service — a live/charging voltage lives in `lv.telemetry.voltageV` and is
+    // never relabeled as "Ruhespannung". `measurementContext === 'RESTING'`
+    // re-asserts that contract defensively.
+    const restingStatus = lv?.restingVoltage?.status ?? null;
+    const restingIsGenuine =
+      restingVoltage != null && lv?.restingVoltage?.measurementContext === 'RESTING';
+    // A genuine resting note is only attached when the resting voltage is itself
+    // the concern (WARNING/CRITICAL) or to confirm a healthy battery. It must
+    // never be glued onto an alert that came from the behaviour score / warning
+    // light — otherwise a good 12.84 V reading would read as the reason to watch.
+    const restingNote = restingIsGenuine
+      ? ` (Ruhespannung ${restingVoltage.toFixed(2)} V)`
+      : '';
+    const restingIsConcern = restingStatus === 'WARNING' || restingStatus === 'CRITICAL';
+
     switch (lv?.healthStatus) {
       case 'GOOD':
         state = 'good';
-        reason = `Batteriezustand gut${voltageNote}`;
+        reason = `Batteriezustand gut${restingNote}`;
         break;
       case 'WATCH':
-        state = 'warning';
-        reason = `Batterie beobachten${voltageNote}`;
+        // WATCH is a soft, non-alertable signal (battery-status#isAlertableStatus
+        // is false for WATCH). It must not surface as an operational battery
+        // warning: a mid-band behaviour score or a 12.84 V resting voltage stays
+        // "good" with a neutral note — no "Batterie beobachten" alert, no
+        // preventsReady, no dashboard health risk downstream.
+        state = 'good';
+        reason = `Batteriezustand unauffällig${restingNote}`;
         break;
       case 'WARNING':
         state = 'warning';
-        reason = `Batterie auffällig — Nachladen/Prüfen empfohlen${voltageNote}`;
+        reason = restingIsConcern
+          ? `Batterie auffällig — Nachladen/Prüfen empfohlen${restingNote}`
+          : 'Geschätzte Batteriegesundheit niedrig — Prüfen empfohlen';
         break;
       case 'CRITICAL':
         state = 'critical';
-        reason = `Batterie kritisch${voltageNote}`;
+        reason = restingIsConcern
+          ? `Batterie kritisch${restingNote}`
+          : 'Geschätzte Batteriegesundheit kritisch — Austausch prüfen';
         break;
       default:
         state = 'unknown';

@@ -76,6 +76,7 @@ export type CustomerDocumentApiType =
   | 'ID_BACK'
   | 'LICENSE_FRONT'
   | 'LICENSE_BACK'
+  | 'PROOF_OF_ADDRESS'
   | 'OTHER';
 
 export type CustomerDocumentApiStatus =

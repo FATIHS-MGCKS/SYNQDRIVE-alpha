@@ -12,6 +12,11 @@ export interface VehicleOverviewQuickViewProps {
 }
 
 /**
+ * @deprecated No longer rendered in the Vehicle Overview tab. The overview
+ * dropped the readiness strip + quick-navigation cards (the tab bar is the
+ * single navigation and rental readiness/blocked stays canonical). Kept for
+ * potential reuse in another context; do not re-add to the Overview.
+ *
  * Operator quick-view layer — visually subordinate to the map + health main grid.
  */
 export function VehicleOverviewQuickView({

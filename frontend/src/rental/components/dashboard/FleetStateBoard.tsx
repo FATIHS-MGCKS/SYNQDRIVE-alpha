@@ -127,7 +127,7 @@ function sectionLabel(sliceId: DashboardSliceId, de: boolean): string {
     'active-rented': ['Active / Rented', 'Aktiv / Vermietet'],
     'due-soon': ['Due Soon', 'Bald fällig'],
     'overdue-returns': ['Overdue Returns', 'Überfällige Rückgaben'],
-    'blocked-maintenance': ['Blocked & Maintenance', 'Blockiert & Wartung'],
+    'blocked-maintenance': ['Blocked / Maintenance', 'Blockiert / Wartung'],
     'critical-alerts': ['Critical Alerts', 'Kritische Alerts'],
   };
   return de ? labels[sliceId][1] : labels[sliceId][0];
@@ -256,6 +256,13 @@ function SectionEmpty({ de }: { de: boolean }) {
   );
 }
 
+/**
+ * @deprecated Dashboard now uses FleetCommandPanel / FleetCommandView instead of
+ * FleetStateBoard. The operative Fahrzeugliste im Dashboard ist jetzt die
+ * gleiche Fleet Command View wie auf der Fleet Page (Status Tab). KPI/Drawer
+ * bleiben Runtime-Slice-basiert. Diese Komponente ist nicht mehr aktiv
+ * verdrahtet und wird nur für Referenz/Backward-Compat behalten.
+ */
 export function FleetStateBoard({
   dashboardRuntime,
   activeTargetId,

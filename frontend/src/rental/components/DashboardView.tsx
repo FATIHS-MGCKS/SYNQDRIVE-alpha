@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import {
   ActionQueue,
   BusinessPulse,
@@ -6,7 +7,6 @@ import {
   DashboardDrilldownDrawer,
   DASHBOARD_LAYOUT,
   DashboardSectionLabel,
-  FleetStateBoard,
   FocusDataFreshnessBanner,
   FocusHandoverPanels,
   FocusNotReadyVehicles,
@@ -15,6 +15,7 @@ import {
   useDashboardViewModel,
   type DashboardViewProps,
 } from './dashboard';
+import { FleetCommandView } from './fleet-operator/FleetCommandView';
 
 export type { DashboardViewProps } from './dashboard';
 
@@ -40,6 +41,10 @@ export function DashboardView({
     onOpenBookingById,
     onOpenRentalView,
   };
+  const getFleetHealth = useCallback(
+    (id: string) => vm.healthMap.get(id) ?? null,
+    [vm.healthMap],
+  );
   const activeDrawerTargetId = vm.activeDashboardSliceId ?? vm.activeBusinessMetricId;
   const drawerLoading = vm.activeBusinessMetricId
     ? !vm.dataFreshness.invoicesLoaded
@@ -123,14 +128,14 @@ export function DashboardView({
             <OperationsSchedulePanel vm={vm} {...handlers} />
           </div>
 
-          <FleetStateBoard
-            dashboardRuntime={vm.dashboardRuntime}
-            activeTargetId={vm.activeDashboardSliceId}
-            onSelectSlice={vm.openSliceDrilldown}
+          <FleetCommandView
+            vehicles={vm.filteredFleetVehicles}
+            getHealth={getFleetHealth}
+            loading={vm.dataFreshness.fleetLoading}
+            refreshing={vm.isRefreshing}
+            onRefresh={vm.refreshAll}
             onOpenVehicle={onOpenVehicleById}
             locale={vm.locale}
-            loading={vm.dataFreshness.fleetLoading}
-            stationName={vm.selectedStationName}
           />
         </div>
       </div>

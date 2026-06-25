@@ -142,12 +142,17 @@ describe('dashboard runtime view-model adapters', () => {
       dataFreshness,
     });
 
-    expect(kpis.find((kpi) => kpi.id === 'ready-to-rent')?.numericValue).toBe(1);
-    expect(kpis.find((kpi) => kpi.id === 'ready-to-rent')?.hint).toBe('4 available · 3 not ready');
-    expect(drilldown.rows).toHaveLength(1);
-    expect(drilldown.groups?.find((group) => group.id === 'ready-now')?.count).toBe(1);
-    expect(drilldown.groups?.find((group) => group.id === 'available-but-not-ready')?.count).toBe(3);
+    // A generic health-risk hint no longer prevents readiness, so the health-risk
+    // vehicle joins the readiness count and drawer ready-now group (KPI + drawer
+    // on the same runtime source). On the board it still surfaces in `attention`
+    // (rentable but flagged) instead of `blocked` or `available but not ready`.
+    expect(kpis.find((kpi) => kpi.id === 'ready-to-rent')?.numericValue).toBe(2);
+    expect(kpis.find((kpi) => kpi.id === 'ready-to-rent')?.hint).toBe('4 available · 2 not ready');
+    expect(drilldown.rows).toHaveLength(2);
+    expect(drilldown.groups?.find((group) => group.id === 'ready-now')?.count).toBe(2);
+    expect(drilldown.groups?.find((group) => group.id === 'available-but-not-ready')?.count).toBe(2);
     expect(fleetBoard.lanes.find((lane) => lane.lane === 'ready')?.count).toBe(1);
+    expect(fleetBoard.items.find((item) => item.vehicleId === 'health-risk')?.lane).toBe('attention');
   });
 
   it('shows a hard-blocked available vehicle as blocked, not maintenance', () => {

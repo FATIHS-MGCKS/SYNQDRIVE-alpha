@@ -256,13 +256,13 @@ export type DrivingAggregateMeta = {
 
 export type KycDocSlot = {
 
-  slot: 'id-front' | 'id-back' | 'license-front' | 'license-back';
+  slot: 'id-front' | 'id-back' | 'license-front' | 'license-back' | 'proof-of-address';
 
   label: string;
 
   type: string;
 
-  documentType: 'ID_FRONT' | 'ID_BACK' | 'LICENSE_FRONT' | 'LICENSE_BACK';
+  documentType: 'ID_FRONT' | 'ID_BACK' | 'LICENSE_FRONT' | 'LICENSE_BACK' | 'PROOF_OF_ADDRESS';
 
   document: CustomerDocumentRecord | null;
 

@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScanLine, Search } from 'lucide-react';
 import { EmptyState, SkeletonRows } from '../../components/patterns';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { useOperatorData } from '../context/OperatorDataContext';
 import { useOperatorScanSearch } from '../hooks/useOperatorScanSearch';
+import { OperatorBookingDetailSheet } from '../components/OperatorBookingDetailSheet';
 import { OperatorScanBookingCard } from '../components/OperatorScanBookingCard';
 import { OperatorScanVehicleCard } from '../components/OperatorScanVehicleCard';
 import { OperatorTabletFrame } from '../components/OperatorTabletFrame';
@@ -11,6 +12,8 @@ import { OperatorVehicleQuickView } from '../components/OperatorVehicleQuickView
 import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
 import type { OperatorScanBookingHit } from '../hooks/useOperatorScanSearch';
+import { mapScanBookingToDetailItem, toHandoverBookingSeed } from '../lib/operatorData';
+import type { OperatorTodayBookingItem } from '../lib/operatorData';
 
 export function OperatorScanView() {
   const {
@@ -20,10 +23,13 @@ export function OperatorScanView() {
     setSelectedVehicleId,
     focusedBookingId,
     setFocusedBookingId,
+    refreshToken,
   } = useOperatorShell();
   const { tasksByVehicleId } = useOperatorData();
   const { openHandover } = useOperatorHandover();
   const isTablet = useOperatorTabletLayout();
+  const [detailItem, setDetailItem] = useState<OperatorTodayBookingItem | null>(null);
+  const autoOpenedBookingRef = useRef<string | null>(null);
 
   const {
     vehicles,
@@ -33,13 +39,26 @@ export function OperatorScanView() {
     loading,
     bookingsError,
     hasQuery,
-  } = useOperatorScanSearch(scanQuery, focusedBookingId);
+  } = useOperatorScanSearch(scanQuery, focusedBookingId, refreshToken);
 
   useEffect(() => {
     if (focusedBooking?.vehicleId && !selectedVehicleId) {
       setScanQuery(focusedBooking.plate || focusedBooking.vehicleName || focusedBooking.bookingId);
     }
   }, [focusedBooking, selectedVehicleId, setScanQuery]);
+
+  useEffect(() => {
+    if (!focusedBookingId || !focusedBooking) return;
+    if (autoOpenedBookingRef.current === focusedBookingId) return;
+    autoOpenedBookingRef.current = focusedBookingId;
+    setDetailItem(mapScanBookingToDetailItem(focusedBooking));
+  }, [focusedBookingId, focusedBooking]);
+
+  useEffect(() => {
+    if (!focusedBookingId) {
+      autoOpenedBookingRef.current = null;
+    }
+  }, [focusedBookingId]);
 
   useEffect(() => {
     if (vehicles.length === 1 && scanQuery.trim().length >= 3 && !focusedBookingId) {
@@ -54,22 +73,16 @@ export function OperatorScanView() {
     }
   };
 
-  const openBookingHandover = (booking: OperatorScanBookingHit, kind: 'PICKUP' | 'RETURN') => {
+  const openBookingDetails = (booking: OperatorScanBookingHit) => {
+    setDetailItem(mapScanBookingToDetailItem(booking));
+  };
+
+  const startBookingHandover = (booking: OperatorScanBookingHit, kind: 'PICKUP' | 'RETURN') => {
+    const item = mapScanBookingToDetailItem(booking);
     openHandover({
       bookingId: booking.bookingId,
       kind,
-      booking: {
-        id: booking.bookingId,
-        vehicleId: booking.vehicleId,
-        vehicleName: booking.vehicleName,
-        plate: booking.plate,
-        customerName: booking.customerName,
-        startDate: booking.startDate ?? '',
-        endDate: booking.endDate ?? '',
-        pickupLocation: '',
-        returnLocation: '',
-        status: booking.status,
-      },
+      booking: toHandoverBookingSeed(item),
     });
   };
 
@@ -136,9 +149,10 @@ export function OperatorScanView() {
                 key={b.bookingId}
                 booking={b}
                 highlighted={focusedBookingId === b.bookingId}
+                onDetails={() => openBookingDetails(b)}
                 onOpenVehicle={() => openBookingVehicle(b)}
-                onPickup={() => openBookingHandover(b, 'PICKUP')}
-                onReturn={() => openBookingHandover(b, 'RETURN')}
+                onPickup={() => startBookingHandover(b, 'PICKUP')}
+                onReturn={() => startBookingHandover(b, 'RETURN')}
               />
             ))}
           </div>
@@ -176,24 +190,57 @@ export function OperatorScanView() {
     </div>
   );
 
-  if (isTablet) {
-    return <OperatorTabletFrame list={listContent} detail={detail} showDetail={Boolean(selectedVehicleId)} />;
-  }
-
-  if (selectedVehicleId) {
-    return (
-      <div className="space-y-4">
-        <button
-          type="button"
-          className="min-h-[44px] text-sm font-semibold text-[color:var(--brand-ink)]"
-          onClick={() => setSelectedVehicleId(null)}
-        >
-          ← Zurück zur Suche
-        </button>
-        <OperatorVehicleQuickView vehicleId={selectedVehicleId} />
-      </div>
-    );
-  }
-
-  return listContent;
+  return (
+    <>
+      {isTablet ? (
+        <OperatorTabletFrame list={listContent} detail={detail} showDetail={Boolean(selectedVehicleId)} />
+      ) : selectedVehicleId ? (
+        <div className="space-y-4">
+          <button
+            type="button"
+            className="min-h-[44px] text-sm font-semibold text-[color:var(--brand-ink)]"
+            onClick={() => setSelectedVehicleId(null)}
+          >
+            ← Zurück zur Suche
+          </button>
+          <OperatorVehicleQuickView vehicleId={selectedVehicleId} />
+        </div>
+      ) : (
+        listContent
+      )}
+      <OperatorBookingDetailSheet
+        item={detailItem}
+        onClose={() => {
+          setDetailItem(null);
+          if (focusedBookingId) setFocusedBookingId(null);
+        }}
+        onPickupStart={(item) => startBookingHandover(
+          {
+            bookingId: item.bookingId,
+            vehicleId: item.vehicleId,
+            vehicleName: item.vehicleName,
+            plate: item.plate,
+            customerName: item.customerName,
+            status: item.status,
+            startDate: item.raw.startDate,
+            endDate: item.raw.endDate,
+          },
+          'PICKUP',
+        )}
+        onReturnStart={(item) => startBookingHandover(
+          {
+            bookingId: item.bookingId,
+            vehicleId: item.vehicleId,
+            vehicleName: item.vehicleName,
+            plate: item.plate,
+            customerName: item.customerName,
+            status: item.status,
+            startDate: item.raw.startDate,
+            endDate: item.raw.endDate,
+          },
+          'RETURN',
+        )}
+      />
+    </>
+  );
 }

@@ -142,16 +142,7 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
   );
 
   const [activeTab, setActiveTab] = useState<FleetCommandTab>('Available');
-  const initialTabSetRef = useRef(false);
   const userPickedTabRef = useRef(false);
-
-  useEffect(() => {
-    if (initialTabSetRef.current || loading) return;
-    if (searchContexts.some((ctx) => resolveOperatorTabForVehicle(ctx) === 'Attention')) {
-      setActiveTab('Attention');
-    }
-    initialTabSetRef.current = true;
-  }, [searchContexts, loading]);
 
   const [isStationOpen, setIsStationOpen] = useState(false);
   const [focusNonce, setFocusNonce] = useState(0);
@@ -294,10 +285,10 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
     stationOptions.find((option) => option.id === selectedStation)?.label ?? 'All Stations';
 
   const stationFilterControl = (
-    <div className="relative">
+    <div className="relative shrink-0">
       <button
         onClick={() => setIsStationOpen(!isStationOpen)}
-        className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-medium text-foreground transition-all hover:bg-muted hover:border-border max-w-[min(100vw-2rem,320px)]"
+        className="sq-press flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border/60 bg-card text-[10px] font-medium text-foreground transition-all hover:bg-muted hover:border-border max-w-[min(100vw-2rem,240px)]"
         aria-haspopup="listbox"
         aria-expanded={isStationOpen}
       >
@@ -343,11 +334,7 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
 
   return (
     <div className="space-y-5">
-      {embedded ? (
-        <div className="flex justify-end">{stationFilterControl}</div>
-      ) : (
-        <PageHeader title="Fleet Overview" actions={stationFilterControl} />
-      )}
+      {!embedded && <PageHeader title="Fleet Overview" />}
 
       {error && (
         <div className="sq-tone-critical rounded-xl px-3 py-2 text-[12px] font-medium animate-fade-up">
@@ -426,6 +413,7 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
             lastFetchedAt={lastFetchedAt}
             onRefresh={handleRefreshNow}
             refreshing={loading}
+            headerAction={stationFilterControl}
             onRowClick={handleRowClick}
             onDetailClick={handleDetailClick}
             registerRowRef={registerRowRef}

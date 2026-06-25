@@ -1,5 +1,5 @@
 
-import { Activity, AlertTriangle, Battery, Calendar, Gauge, ShieldAlert, Snowflake, Sun, Thermometer, Wind, Wrench, Zap } from 'lucide-react';
+import { Activity, AlertTriangle, Gauge, Snowflake, Sun, Thermometer, Wind, Wrench, Zap } from 'lucide-react';
 import { Icon } from './ui/Icon';
 import tellTaleBatteryIcon from '../../assets/icons/telltale/battery.svg';
 import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react';
@@ -21,22 +21,10 @@ import { isBatteryTelltaleActive } from '../lib/dashboard-warning-lights-display
 import { useRentalOrg } from '../RentalContext';
 import { useEffectiveHealth, useFleetVehicles } from '../FleetContext';
 import {
-  dataQualityChipTone,
-  dataQualityShortLabel,
-  dimoSourceStatusLabel,
-  findingSeverityLabel,
-  findingSeverityTone,
-  hmSourceStatusLabel,
   complianceDateStateLabel,
   formatComplianceDueDate,
   nextServiceSummaryTone,
-  oemFreshnessLabel,
-  overallStateChipLabel,
-  overallStateChipState,
-  overallStateVisual,
-  sortSummaryFindings,
   type HealthTabSummaryLoadState,
-  type SummaryFindingSeverity,
 } from '../lib/health-tab-summary-ui';
 import {
   dtcFaultCardTone,
@@ -53,12 +41,9 @@ import {
   MetricCard,
   EmptyState,
   SkeletonCard,
-  HealthStatusChip,
-  StatusChip,
   PriorityBadge,
   StatusDot,
 } from '../../components/patterns';
-import { MisuseCasesPanel } from './MisuseCasesPanel';
 import { HealthServiceActions } from './health/HealthServiceActions';
 
 interface HealthErrorsViewProps {
@@ -1249,104 +1234,10 @@ export function HealthErrorsView({
       }))
     : [];
 
-  // Canonical Health-tab summary — sole source for the upper summary card.
-  type SummaryFinding = {
-    id: string;
-    severity: SummaryFindingSeverity;
-    icon: 'wrench' | 'calendar' | 'shield' | 'battery' | 'alert-circle' | 'disc' | 'circle' | 'bell' | 'message-square';
-    title: string;
-    detail: string;
-    evidence?: string[];
-    onClick?: () => void;
-  };
-
-  const moduleFindingIcon = (module: string): SummaryFinding['icon'] => {
-    switch (module) {
-      case 'service_compliance':
-        return 'wrench';
-      case 'battery':
-        return 'battery';
-      case 'error_codes':
-      case 'oem_hm':
-        return 'alert-circle';
-      case 'brakes':
-        return 'disc';
-      case 'tires':
-        return 'circle';
-      case 'complaints':
-        return 'message-square';
-      case 'vehicle_alerts':
-        return 'bell';
-      default:
-        return 'alert-circle';
-    }
-  };
-
-  const modalKeyClick = (key: string | null | undefined): (() => void) | undefined => {
-    switch (key) {
-      case 'service':
-        return () => setShowService(true);
-      case 'battery':
-        return () => setShowBattery(true);
-      case 'dtc':
-        return () => openModal(setShowErrorCodes);
-      case 'brakes':
-        return () => {
-          openModal(setShowBrakes);
-          if (vehicleId) {
-            api.vehicleIntelligence.brakeHealthDetail(vehicleId).then(setBrakeHealthDetail).catch(() => null);
-          }
-        };
-      case 'tires':
-        return () => {
-          setTireActionError(null);
-          openModal(setShowTires);
-          loadTireDetail();
-        };
-      case 'complaints':
-        return () => openModal(setShowComplaintsModal);
-      case 'warnings':
-        return () => telltalesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      default:
-        return undefined;
-    }
-  };
-
-  const summaryFindings = useMemo<SummaryFinding[]>(() => {
-    if (!healthTabSummary?.findings?.length) return [];
-    return sortSummaryFindings(healthTabSummary.findings).map((f) => ({
-      id: f.id,
-      severity: f.severity,
-      icon: moduleFindingIcon(f.module),
-      title: f.title,
-      detail: f.description,
-      evidence: f.evidence,
-      onClick: modalKeyClick(f.targetModalKey),
-    }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [healthTabSummary, vehicleId]);
-
-  const summaryVisualState =
-    healthTabSummaryLoadState === 'loading'
-      ? 'loading'
-      : healthTabSummaryLoadState === 'endpoint_error'
-        ? 'error'
-        : (healthTabSummary?.overall.state ?? 'unknown');
-
-  const summaryCfg = overallStateVisual(summaryVisualState);
-  const hasCriticalFinding = summaryFindings.some((f) => f.severity === 'critical');
-  const hasActionableFinding = summaryFindings.some((f) => f.severity === 'critical' || f.severity === 'warning');
-  const summaryHeadline =
-    healthTabSummaryLoadState === 'endpoint_error'
-      ? 'Health Summary unavailable'
-      : healthTabSummary?.overall.headline ?? summaryCfg.label;
-  const summaryDescription =
-    healthTabSummaryLoadState === 'endpoint_error'
-      ? 'The canonical health summary could not be loaded.'
-      : healthTabSummary?.overall.description ?? '';
-  const dataQuality = healthTabSummary?.dataQuality;
-  const degradedDependencies = healthTabSummary?.degradedDependencies ?? [];
-  const sourceStatus = healthTabSummary?.sourceStatus;
+  // Canonical Health-tab summary — only the service/compliance module is consumed
+  // by the Next-Service quick card. The former aggregated meta-summary, findings
+  // list and data-basis box were removed (V4.9.48): each fach-box owns its truth,
+  // and warning lights now live in the dedicated "Tacho Warnleuchten" box.
   const serviceComplianceModule = healthTabSummary?.moduleStates?.service_compliance;
 
   const cardClass = 'bg-card border border-border/60 rounded-xl shadow-sm p-2.5';
@@ -1374,13 +1265,8 @@ export function HealthErrorsView({
           </button>
         }
       />
-      {vehicleId && orgId && (
-        <div className="mb-3">
-          <MisuseCasesPanel orgId={orgId} vehicleId={vehicleId} title="Prüffälle" limit={10} />
-        </div>
-      )}
       <div
-        className="grid grid-cols-[1.4fr_2.55fr] gap-3 transition-all duration-500 ease-out origin-center items-start"
+        className="grid grid-cols-1 lg:grid-cols-[1.4fr_2.55fr] gap-3 transition-all duration-500 ease-out origin-center items-start"
         style={{
           transform: isModalAnimating ? 'scale(0.92)' : 'scale(1)',
           filter: isModalAnimating ? 'blur(12px)' : 'blur(0px)',
@@ -1388,279 +1274,24 @@ export function HealthErrorsView({
           pointerEvents: (anyModalOpen || isModalClosing) ? 'none' : 'auto',
         }}
       >
-        {/* ─── Vehicle Health Center – col 1, spans 2 rows ─── */}
-        <DataCard className="flex flex-col relative overflow-hidden p-0" bodyClassName="p-5 flex flex-col flex-1">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="sq-tone-brand p-2 rounded-xl">
-              <Icon name="sparkles" className="w-4 h-4" />
-            </div>
-            <h3 className="text-[10px] font-semibold tracking-tight text-foreground">Vehicle Health Center</h3>
-            <span className="ml-auto sq-tone-brand px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest">Powered by AI</span>
-          </div>
-          <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar relative z-10">
-
-            {/* ── Canonical Health Summary ─────────────────────────── */}
-            <div className={`sq-glass rounded-2xl p-5 ${summaryCfg.bg}`}>
-              <div className="flex items-center gap-3 mb-2.5">
-                <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
-                  <span
-                    className={`absolute inline-flex h-full w-full rounded-full ${summaryCfg.ping} opacity-25 ${
-                      summaryCfg.animatePing ? 'animate-ping' : ''
-                    }`}
-                  />
-                  <div className={`relative w-3 h-3 rounded-full ${summaryCfg.dot}`} />
-                </div>
-                <span className={`font-bold text-[10px] tracking-tight ${summaryCfg.text}`}>
-                  {healthTabSummary?.overall.label ?? summaryCfg.label}
-                </span>
-                <HealthStatusChip
-                  className="ml-auto text-[10px] uppercase tracking-widest"
-                  state={overallStateChipState(summaryVisualState)}
-                  label={overallStateChipLabel(summaryVisualState, healthTabSummary?.overall.label)}
-                />
-              </div>
-
-              <p className={`text-[11px] ml-8 font-semibold leading-snug ${summaryCfg.text}`}>{summaryHeadline}</p>
-              {summaryDescription && (
-                <p className={`text-[10px] ml-8 mt-1.5 leading-relaxed font-medium ${summaryCfg.sub}`}>
-                  {summaryDescription}
-                </p>
-              )}
-
-              {healthTabSummary?.overall.rentalBlocked && (
-                <div className="mt-3 ml-8 rounded-xl px-3 py-2 sq-tone-critical border border-border">
-                  <div className="flex items-center gap-2 text-[10px] font-bold text-[color:var(--status-critical)]">
-                    <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
-                    Vermietung blockiert
-                  </div>
-                  {healthTabSummary.overall.blockingReasons.length > 0 && (
-                    <ul className="mt-1.5 space-y-1">
-                      {healthTabSummary.overall.blockingReasons.map((reason) => (
-                        <li key={reason} className="text-[10px] text-[color:var(--status-critical)] font-medium">
-                          • {reason}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-
-              {dataQuality && healthTabSummaryLoadState === 'loaded' && (
-                <div className="mt-3 ml-8 rounded-xl px-3 py-2.5 border border-border bg-muted/20">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] font-semibold text-foreground">
-                      {dataQualityShortLabel(dataQuality.level)}
-                    </span>
-                    <StatusChip tone={dataQualityChipTone(dataQuality.level)} className="text-[9px] uppercase tracking-widest">
-                      {dataQuality.label}
-                    </StatusChip>
-                  </div>
-                  {dataQuality.reasons.length > 0 && (
-                    <ul className="mt-2 space-y-1">
-                      {dataQuality.reasons.slice(0, 4).map((reason) => (
-                        <li key={reason} className="text-[10px] text-muted-foreground font-medium flex items-start gap-2">
-                          <span className="shrink-0 mt-1.5 w-1 h-1 rounded-full bg-muted-foreground/60" />
-                          {reason}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-
-              {sourceStatus && healthTabSummaryLoadState === 'loaded' && (
-                <div className="mt-2 ml-8 flex flex-wrap gap-1.5">
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-muted font-medium text-muted-foreground">
-                    {hmSourceStatusLabel(sourceStatus.highMobility)}
-                  </span>
-                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-muted font-medium text-muted-foreground">
-                    {dimoSourceStatusLabel(sourceStatus.dimo)}
-                  </span>
-                  {healthTabSummary?.oemIndicators && (
-                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-muted font-medium text-muted-foreground">
-                      {oemFreshnessLabel(healthTabSummary.oemIndicators.freshness)}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {serviceComplianceModule && healthTabSummaryLoadState === 'loaded' && (
-                <div className="mt-3 ml-8 rounded-xl px-3 py-2.5 border border-border bg-muted/10">
-                  <p
-                    className={`text-[10px] font-semibold ${
-                      serviceComplianceModule.state === 'no_tracking'
-                        ? 'text-muted-foreground'
-                        : 'text-foreground'
-                    }`}
-                  >
-                    {serviceComplianceModule.label}
-                  </p>
-                  {(serviceComplianceModule.tuev?.dueDate || serviceComplianceModule.bokraft?.dueDate) && (
-                    <div className="mt-2 flex flex-col gap-1 text-[10px] text-muted-foreground font-medium">
-                      {serviceComplianceModule.tuev?.dueDate && (
-                        <span>
-                          TÜV: {formatComplianceDueDate(serviceComplianceModule.tuev.dueDate)} ·{' '}
-                          {complianceDateStateLabel(serviceComplianceModule.tuev.state)}
-                        </span>
-                      )}
-                      {serviceComplianceModule.bokraft?.dueDate && (
-                        <span>
-                          BOKraft: {formatComplianceDueDate(serviceComplianceModule.bokraft.dueDate)} ·{' '}
-                          {complianceDateStateLabel(serviceComplianceModule.bokraft.state)}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {degradedDependencies.length > 0 && (
-                <div className="mt-3 ml-8 rounded-xl px-3 py-2.5 border border-border sq-tone-nodata">
-                  <div className="text-[10px] font-semibold text-muted-foreground mb-1.5">Eingeschränkte Datenbasis</div>
-                  <ul className="space-y-1">
-                    {degradedDependencies.map((dep) => (
-                      <li key={`${dep.source}-${dep.message}`} className="text-[10px] text-muted-foreground font-medium">
-                        • {dep.message}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            {/* ── Findings (canonical summary) ─ */}
-            {summaryFindings.length > 0 && (
-              <div className={`sq-glass rounded-2xl p-5 ${
-                hasCriticalFinding
-                  ? 'sq-tone-critical border border-border'
-                  : hasActionableFinding
-                    ? 'sq-tone-watch border border-border'
-                    : 'sq-tone-nodata border border-border'
-              }`}>
-                <div className="flex items-center gap-2 mb-4">
-                  <div className={`p-1.5 rounded-lg ${
-                    hasCriticalFinding
-                      ? 'bg-red-500/20 text-red-500'
-                      : hasActionableFinding
-                        ? 'bg-amber-500/20 text-amber-500'
-                        : 'bg-muted text-muted-foreground'
-                  }`}>
-                    <Icon name="alert-triangle" className="w-4 h-4" />
-                  </div>
-                  <span className={`font-bold text-[10px] tracking-tight ${
-                    hasCriticalFinding
-                      ? 'text-[color:var(--status-critical)]'
-                      : hasActionableFinding
-                        ? 'text-[color:var(--status-watch)]'
-                        : 'text-muted-foreground'
-                  }`}>
-                    {hasCriticalFinding ? 'Sofortige Aufmerksamkeit' : hasActionableFinding ? 'Warnungen' : 'Hinweise'}
-                  </span>
-                  <span className={`ml-auto text-[9px] font-bold px-2.5 py-1 rounded-full ${
-                    hasCriticalFinding
-                      ? 'sq-chip-critical'
-                      : hasActionableFinding
-                        ? 'sq-chip-watch'
-                        : 'sq-chip-neutral'
-                  }`}>{summaryFindings.length}</span>
-                </div>
-                <ul className="space-y-2.5">
-                  {summaryFindings.map((f) => {
-                    const tone = findingSeverityTone(f.severity);
-                    const IconComp =
-                      f.icon === 'wrench' ? Wrench
-                      : f.icon === 'calendar' ? Calendar
-                      : f.icon === 'shield' ? ShieldAlert
-                      : f.icon === 'battery' ? Battery
-                      : f.icon === 'disc' ? Gauge
-                      : f.icon === 'circle' ? Activity
-                      : f.icon === 'bell' ? AlertTriangle
-                      : AlertTriangle;
-                    const tint =
-                      tone === 'critical'
-                        ? 'sq-tone-critical ring-1 ring-border'
-                        : tone === 'watch'
-                          ? 'sq-tone-watch ring-1 ring-border'
-                          : tone === 'info'
-                            ? 'sq-tone-info ring-1 ring-border'
-                            : 'bg-muted/30 ring-1 ring-border';
-                    const titleColor =
-                      tone === 'critical'
-                        ? 'text-[color:var(--status-critical)]'
-                        : tone === 'watch'
-                          ? 'text-[color:var(--status-watch)]'
-                          : 'text-muted-foreground';
-                    return (
-                      <li
-                        key={f.id}
-                        onClick={(e) => { if (f.onClick) { e.stopPropagation(); f.onClick(); } }}
-                        className={`flex items-start gap-3 rounded-xl p-2.5 -mx-1.5 transition-colors ${
-                          f.onClick ? 'cursor-pointer hover:bg-black/[0.04] dark:hover:bg-white/[0.04]' : ''
-                        }`}
-                      >
-                        <div className={`shrink-0 p-2 rounded-xl shadow-sm ${tint}`}>
-                          <IconComp className="w-4 h-4" />
-                        </div>
-                        <div className="flex-1 min-w-0 pt-0.5">
-                          <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <span className={`text-[10px] font-semibold tracking-tight ${titleColor}`}>{f.title}</span>
-                            <StatusChip tone={tone} className="text-[9px] uppercase tracking-widest">
-                              {findingSeverityLabel(f.severity)}
-                            </StatusChip>
-                          </div>
-                          <p className={`text-[10px] leading-relaxed font-medium ${titleColor}`}>{f.detail}</p>
-                          {f.evidence && f.evidence.length > 0 && (
-                            <p className="text-[9px] mt-1 text-muted-foreground">{f.evidence.join(' · ')}</p>
-                          )}
-                        </div>
-                        {f.onClick && (
-                          <Icon name="chevron-right" className={`w-4 h-4 shrink-0 mt-1 ${
-                            tone === 'critical' ? 'text-red-400' : tone === 'watch' ? 'text-amber-400' : 'text-muted-foreground'
-                          }`} />
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
-
-            <div ref={telltalesSectionRef}>
-              <DashboardWarningLightsPanel
-                telltales={canonicalDashboardLights}
-                loading={dashboardLightsLoading && !canonicalDashboardLights}
-                oilLevelDisplay={aiHealthCare?.oilLevelDisplay}
-                syncErrorMessage={
-                  healthTabSummary?.sourceStatus.highMobility === 'sync_error'
-                    ? 'High Mobility synchronization failed'
-                    : aiHealthCare?.hmLastErrorAt && aiHealthCare?.hmLastErrorMessage
-                      ? aiHealthCare.hmLastErrorMessage
-                      : null
-                }
-              />
-              {healthTabSummary?.oemIndicators?.indicators?.some((i) => i.status === 'active') && (
-                <div className="mt-2 rounded-xl border border-border bg-muted/15 px-3 py-2">
-                  <p className="text-[9px] font-semibold text-muted-foreground mb-1">Aktive OEM-Indikatoren (Summary)</p>
-                  <ul className="space-y-1">
-                    {healthTabSummary.oemIndicators.indicators
-                      .filter((i) => i.status === 'active')
-                      .slice(0, 4)
-                      .map((ind) => (
-                        <li key={ind.key} className="text-[10px] text-foreground font-medium">
-                          {ind.label}
-                          {ind.description ? ` — ${ind.description}` : ''}
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-          </div>
-        </DataCard>
+        {/* ─── Tacho Warnleuchten – col 1 ─── */}
+        <div ref={telltalesSectionRef} className="min-w-0 self-start">
+          <DashboardWarningLightsPanel
+            telltales={canonicalDashboardLights}
+            loading={dashboardLightsLoading && !canonicalDashboardLights}
+            oilLevelDisplay={aiHealthCare?.oilLevelDisplay}
+            syncErrorMessage={
+              healthTabSummary?.sourceStatus.highMobility === 'sync_error'
+                ? 'High Mobility synchronization failed'
+                : aiHealthCare?.hmLastErrorAt && aiHealthCare?.hmLastErrorMessage
+                  ? aiHealthCare.hmLastErrorMessage
+                  : null
+            }
+          />
+        </div>
 
         {/* ─── Right Column: Quick Cards ─── */}
-        <div className="grid grid-cols-3 gap-3 h-fit auto-rows-fr">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 h-fit auto-rows-fr">
         {/* ─── Error Codes card ─── */}
         {(() => {
           const s = dtcSummary;

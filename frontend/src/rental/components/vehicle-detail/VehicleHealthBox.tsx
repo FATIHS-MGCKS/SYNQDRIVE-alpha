@@ -27,6 +27,12 @@ export interface VehicleHealthBoxProps {
   healthError: string | null;
   boxData: VehicleHealthBoxData;
   onViewDetails?: () => void;
+  /**
+   * Show the technical "Data Basis" / data-quality section. Defaults to `true`.
+   * The Vehicle Overview passes `false` to keep the box compact — data-quality
+   * / degraded-dependency detail belongs in the Health tab / data analysis.
+   */
+  showDataBasis?: boolean;
 }
 
 function moduleIcon(key: 'brakes' | 'tires' | 'battery', isDarkMode: boolean): ReactNode {
@@ -247,6 +253,7 @@ export function VehicleHealthBox({
   healthError,
   boxData,
   onViewDetails,
+  showDataBasis = true,
 }: VehicleHealthBoxProps) {
   const vm = buildVehicleHealthBoxViewModel({
     rentalHealth,
@@ -351,7 +358,7 @@ export function VehicleHealthBox({
 
       <ComplianceGrid vm={vm} />
 
-      {vm.dataBasis && (
+      {showDataBasis && vm.dataBasis && (
         <>
           {divider}
           <DataBasisSection vm={vm} />

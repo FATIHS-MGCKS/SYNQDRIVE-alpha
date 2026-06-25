@@ -97,7 +97,6 @@ export const TIMELINE_COPY = {
   reloadRoute: 'Route neu laden',
   showDetails: 'Details anzeigen',
   centerRoute: 'Route zentrieren',
-  listEyebrow: 'Chronologische Ansicht',
   emptyNoVehicle: 'Bitte zuerst ein Fahrzeug auswählen.',
   emptyNoTripsRange: 'Keine Fahrten im gewählten Zeitraum',
   emptyNoTripsYet: 'Noch keine Fahrten für dieses Fahrzeug',
@@ -109,14 +108,10 @@ export const TIMELINE_COPY = {
   dayNotable: (n: number) => `${n} auffällige Ereignisse`,
   dayPrivate: (n: number) => `${n} privat / nicht zugewiesen`,
   energyEvents: (n: number) => `${n} Energieereignisse`,
-  sectionOverview: 'Übersicht',
   sectionBehavior: 'Fahrverhalten',
   sectionEvents: 'Ereignisse',
-  sectionRouteQuality: 'Route & Datenqualität',
   sectionAssignment: 'Zuordnung & Kontext',
-  sectionRental: 'Miet- & Buchungskontext',
   sectionEvidence: 'Beweisübersicht',
-  sectionTechnical: 'Technische Daten',
 } as const;
 
 export const RENTAL_COPY = {
@@ -144,19 +139,26 @@ export const RENTAL_COPY = {
   evidenceReviewHint: 'Zur Prüfung markiert — Kontext für operative Bewertung.',
   evidenceTime: 'Zeit',
   evidenceDistance: 'Strecke',
+  evidenceStart: 'Start',
+  evidenceDestination: 'Ziel',
   evidenceStress: 'Belastung',
   evidenceEvents: 'Ereignisse',
   evidenceAssignment: 'Zuordnung',
   evidenceBooking: 'Buchung',
   evidenceRoute: 'Route',
   evidenceDataQuality: 'Datenqualität',
-  hfLimited: 'HF eingeschränkt',
+  evidenceUnavailable: 'Nicht verfügbar',
+  evidenceSummaryTitle: 'Beweisübersicht',
+  evidenceSummaryHint: 'Kompakte Zusammenfassung dieser Fahrt für die operative Bewertung.',
+  hfLimited: 'Daten eingeschränkt',
   hfAvailable: 'HF verfügbar',
-  hfPending: 'HF ausstehend',
+  hfPending: 'Datenbasis fehlt',
   routeMatch: 'Routen-Match',
   damageNeutralHint:
     'Kann für Schaden- oder Beschwerdefall relevant sein — keine automatische Schadenszuordnung.',
-  misuseSectionTitle: 'Prüffälle für diese Fahrt',
+  misuseSectionTitle: 'Missbrauchs-/Schadensverdacht',
+  misuseEmptyTitle: 'Unauffällige Fahrt',
+  misuseEmptySubline: 'Keine Hinweise auf Missbrauch oder Schaden für diese Fahrt.',
 } as const;
 
 export const BEHAVIOR_COPY = {

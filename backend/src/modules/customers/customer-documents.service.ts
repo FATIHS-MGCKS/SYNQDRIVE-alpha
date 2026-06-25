@@ -5,18 +5,14 @@ import {
 } from '@nestjs/common';
 import {
   CustomerDocument,
-  CustomerDocumentStatus,
   CustomerDocumentType,
-  CustomerVerificationStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { StorageService } from '@shared/storage/storage.service';
+import { CustomerVerificationService } from '@modules/customer-verification/customer-verification.service';
 import { ReviewCustomerDocumentDto } from './dto/review-customer-document.dto';
 import { UploadCustomerDocumentDto } from './dto/upload-customer-document.dto';
 import { CustomerTimelineService } from './customer-timeline.service';
-
-const ID_TYPES: CustomerDocumentType[] = ['ID_FRONT', 'ID_BACK'];
-const LICENSE_TYPES: CustomerDocumentType[] = ['LICENSE_FRONT', 'LICENSE_BACK'];
 
 @Injectable()
 export class CustomerDocumentsService {
@@ -24,6 +20,7 @@ export class CustomerDocumentsService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly timeline: CustomerTimelineService,
+    private readonly verificationService: CustomerVerificationService,
   ) {}
 
   async uploadDocument(
@@ -55,12 +52,12 @@ export class CustomerDocumentsService {
       },
     });
 
-    await this.recomputeVerificationStatus(orgId, customerId);
+    await this.syncVerificationReadModel(orgId, customerId);
     await this.timeline.addEvent(
       orgId,
       customerId,
       'DOCUMENT_UPLOADED',
-      `Document uploaded: ${dto.type}`,
+      `Dokument hochgeladen: ${dto.type}`,
       { documentId: doc.id, type: dto.type },
       userId,
     );
@@ -115,14 +112,14 @@ export class CustomerDocumentsService {
       },
     });
 
-    await this.recomputeVerificationStatus(orgId, customerId);
+    await this.syncVerificationReadModel(orgId, customerId);
     await this.timeline.addEvent(
       orgId,
       customerId,
       dto.status === 'VERIFIED' ? 'DOCUMENT_VERIFIED' : 'DOCUMENT_REJECTED',
       dto.status === 'VERIFIED'
-        ? `Document verified: ${updated.type}`
-        : `Document rejected: ${updated.type}`,
+        ? `Manuelle Prüfung bestätigt: ${updated.type}`
+        : `Manuelle Prüfung abgelehnt: ${updated.type}`,
       { documentId, type: updated.type, rejectedReason: dto.rejectedReason },
       userId,
     );
@@ -150,69 +147,24 @@ export class CustomerDocumentsService {
       distinct: ['customerId'],
     });
     for (const row of affected) {
-      await this.recomputeVerificationStatus(row.organizationId, row.customerId);
+      await this.syncVerificationReadModel(row.organizationId, row.customerId);
     }
     return expired.count;
   }
 
+  /** @deprecated use CustomerVerificationService.syncCustomerReadModel */
   async recomputeVerificationStatus(
     orgId: string,
     customerId: string,
   ): Promise<void> {
-    const customer = await this.assertCustomer(orgId, customerId);
-    const docs = await this.prisma.customerDocument.findMany({
-      where: { organizationId: orgId, customerId },
-    });
-
-    const idStatus = this.computeCategoryStatus(
-      docs.filter((d) => ID_TYPES.includes(d.type)),
-      customer.idExpiry,
-    );
-    const licenseStatus = this.computeCategoryStatus(
-      docs.filter((d) => LICENSE_TYPES.includes(d.type)),
-      customer.licenseExpiry,
-    );
-
-    await this.prisma.customer.update({
-      where: { id: customerId },
-      data: {
-        idVerificationStatus: idStatus,
-        licenseVerificationStatus: licenseStatus,
-        // Keep legacy booleans in sync for backward-compatible reads.
-        idVerified: idStatus === 'VERIFIED',
-        licenseVerified: licenseStatus === 'VERIFIED',
-      },
-    });
+    await this.syncVerificationReadModel(orgId, customerId);
   }
 
-  private computeCategoryStatus(
-    docs: CustomerDocument[],
-    expiryDate: Date | null,
-  ): CustomerVerificationStatus {
-    const now = new Date();
-    if (expiryDate && expiryDate < now) return 'EXPIRED';
-
-    const latestByType = new Map<CustomerDocumentType, CustomerDocument>();
-    for (const d of docs) {
-      const prev = latestByType.get(d.type);
-      if (!prev || d.createdAt > prev.createdAt) latestByType.set(d.type, d);
-    }
-    const relevant = Array.from(latestByType.values());
-    if (relevant.length === 0) return 'NOT_SUBMITTED';
-
-    if (relevant.some((d) => d.status === 'REJECTED')) return 'REJECTED';
-    if (relevant.some((d) => d.status === 'EXPIRED')) return 'EXPIRED';
-    if (relevant.every((d) => d.status === 'VERIFIED')) return 'VERIFIED';
-    if (
-      relevant.some((d) =>
-        (['UPLOADED', 'PENDING_REVIEW'] as CustomerDocumentStatus[]).includes(
-          d.status,
-        ),
-      )
-    ) {
-      return 'PENDING_REVIEW';
-    }
-    return 'NOT_SUBMITTED';
+  private async syncVerificationReadModel(
+    orgId: string,
+    customerId: string,
+  ): Promise<void> {
+    await this.verificationService.syncCustomerReadModel(orgId, customerId);
   }
 
   private async assertCustomer(orgId: string, customerId: string) {

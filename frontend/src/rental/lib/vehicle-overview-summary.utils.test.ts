@@ -137,6 +137,72 @@ describe('vehicle-overview-readiness.utils', () => {
     expect(summary.readiness.title).toBe('Ready for rental');
   });
 
+  it('does NOT block on missing documents without a canonical rental blocker', () => {
+    const summary = buildVehicleOverviewSummary({
+      vehicle: null,
+      effectiveStatus: 'Good Health',
+      rentalBlocked: false,
+      blockingReasons: [],
+      bookings: [],
+      tasks: [],
+      damageStats: { open: 0, blockingRental: 0, safetyCritical: 0 } as never,
+      fileSummary: {
+        documentCategories: Array.from({ length: 13 }, () => ({ uiStatus: 'missing' })),
+        mandatoryDocumentCoverage: { configured: 0, total: 13 },
+        pendingReviews: { count: 0, items: [] },
+      } as unknown as VehicleFileSummary,
+      todayTrips: [],
+      tripStats: null,
+    });
+
+    expect(summary.cards.documents.missingCount).toBe(13);
+    expect(summary.readiness.readinessStatus).not.toBe('blocked');
+    expect(summary.readiness.blockers).toHaveLength(0);
+  });
+
+  it('blocks only from the canonical rental-health flag, not local aggregates', () => {
+    const summary = buildVehicleOverviewSummary({
+      vehicle: null,
+      effectiveStatus: 'Critical',
+      rentalBlocked: true,
+      blockingReasons: ['TÜV expired'],
+      bookings: [],
+      tasks: [],
+      damageStats: { open: 3, blockingRental: 2, safetyCritical: 1 } as never,
+      fileSummary: {
+        documentCategories: [{ uiStatus: 'missing' }, { uiStatus: 'expired' }],
+        mandatoryDocumentCoverage: { configured: 0, total: 2 },
+        pendingReviews: { count: 0, items: [] },
+      } as unknown as VehicleFileSummary,
+      todayTrips: [],
+      tripStats: null,
+    });
+
+    expect(summary.readiness.readinessStatus).toBe('blocked');
+    expect(summary.readiness.blockers).toEqual(['TÜV expired']);
+  });
+
+  it('does NOT block on incomplete rental-document coverage without a canonical blocker', () => {
+    const summary = buildVehicleOverviewSummary({
+      vehicle: null,
+      effectiveStatus: 'Warning',
+      rentalBlocked: false,
+      blockingReasons: [],
+      bookings: [],
+      tasks: [],
+      damageStats: { open: 0, blockingRental: 0, safetyCritical: 0 } as never,
+      fileSummary: {
+        documentCategories: [{ uiStatus: 'missing' }, { uiStatus: 'missing' }],
+        mandatoryDocumentCoverage: { configured: 1, total: 5 },
+        pendingReviews: { count: 0, items: [] },
+      } as unknown as VehicleFileSummary,
+      todayTrips: [],
+      tripStats: null,
+    });
+
+    expect(summary.readiness.readinessStatus).not.toBe('blocked');
+  });
+
   it('returns attention for open non-blocking damages', () => {
     const cards = {
       trips: buildTripsOverviewCard({ todayTrips: [], tripStats: null }),

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, Pencil, X, Ban, UserX, ClipboardCheck } from 'lucide-react';
 import { StatusChip } from '../../components/patterns';
 import { api, type BookingDetailDto } from '../../lib/api';
 import { useRentalOrg } from '../../rental/RentalContext';
@@ -9,6 +9,7 @@ import {
   normalizeBookingStatus,
 } from '../../rental/components/bookings/bookingStatus';
 import { useOperatorShell } from '../context/OperatorShellContext';
+import { canOperatorMarkNoShow } from '../bookings/operatorBooking.utils';
 import { OperatorBookingDocumentsPanel } from '../documents/OperatorBookingDocumentsPanel';
 import type { OperatorTodayBookingItem } from '../lib/operatorData';
 import { OperatorGlassCard } from './OperatorGlassCard';
@@ -27,7 +28,7 @@ export function OperatorBookingDetailSheet({
   onReturnStart,
 }: OperatorBookingDetailSheetProps) {
   const { orgId } = useRentalOrg();
-  const { openSheet } = useOperatorShell();
+  const { openSheet, triggerRefresh } = useOperatorShell();
   const [detail, setDetail] = useState<BookingDetailDto | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +66,17 @@ export function OperatorBookingDetailSheet({
   const status = detail
     ? normalizeBookingStatus(detail.core.statusEnum, detail.core.status)
     : item.status;
+  const noShowGate = detail ? canOperatorMarkNoShow(detail) : { allowed: false };
+
+  const openBookingAction = (
+    type: 'booking-edit' | 'booking-cancel' | 'booking-no-show',
+  ) => {
+    onClose();
+    openSheet({
+      type,
+      bookingId: item.bookingId,
+    });
+  };
 
   return (
     <div
@@ -96,7 +108,9 @@ export function OperatorBookingDetailSheet({
             <StatusChip tone="info" dot>
               {bookingStatusLabel(status)}
             </StatusChip>
-            <StatusChip tone="neutral">{item.kind === 'PICKUP' ? 'Abholung' : 'Rückgabe'}</StatusChip>
+            <StatusChip tone="neutral">
+              {!item.station ? 'Buchung' : item.kind === 'PICKUP' ? 'Abholung' : 'Rückgabe'}
+            </StatusChip>
           </div>
           <dl className="grid gap-2 text-sm">
             <div>
@@ -105,7 +119,12 @@ export function OperatorBookingDetailSheet({
             </div>
             <div>
               <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Station</dt>
-              <dd>{item.station || '—'}</dd>
+              <dd>
+                {(detail?.core.pickupStationName ??
+                  detail?.core.returnStationName ??
+                  item.station) ||
+                  '—'}
+              </dd>
             </div>
             <div>
               <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Zeit</dt>
@@ -151,6 +170,72 @@ export function OperatorBookingDetailSheet({
             }}
           />
         </OperatorGlassCard>
+
+        {detail && item.kind === 'PICKUP' && (
+          <OperatorGlassCard className="p-4 space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Dokumentenprüfung
+            </p>
+            <button
+              type="button"
+              onClick={() =>
+                openSheet({
+                  type: 'pickup-verification',
+                  customerId: detail.customer.customerId,
+                  bookingId: detail.core.bookingId,
+                  customerName: detail.customer.fullName ?? item.customerName,
+                  onSuccess: () => triggerRefresh(),
+                })
+              }
+              className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-border/60 px-4 text-left"
+            >
+              <ClipboardCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="text-sm font-semibold">Prüfung beim Pickup erfassen</span>
+            </button>
+          </OperatorGlassCard>
+        )}
+
+        {detail && matrix && (
+          <OperatorGlassCard className="space-y-2 p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Buchung verwalten
+            </p>
+            <button
+              type="button"
+              disabled={!matrix.edit.allowed}
+              title={matrix.edit.reason}
+              onClick={() => openBookingAction('booking-edit')}
+              className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-border/60 px-4 text-left disabled:opacity-45"
+            >
+              <Pencil className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="text-sm font-semibold">Bearbeiten</span>
+            </button>
+            <button
+              type="button"
+              disabled={!matrix.cancel.allowed}
+              title={matrix.cancel.reason}
+              onClick={() => openBookingAction('booking-cancel')}
+              className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-[color:var(--status-critical)]/30 px-4 text-left disabled:opacity-45"
+            >
+              <Ban className="h-4 w-4 shrink-0 text-[color:var(--status-critical)]" />
+              <span className="text-sm font-semibold text-[color:var(--status-critical)]">
+                Buchung stornieren
+              </span>
+            </button>
+            <button
+              type="button"
+              disabled={!noShowGate.allowed}
+              title={noShowGate.reason}
+              onClick={() => openBookingAction('booking-no-show')}
+              className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-[color:var(--status-critical)]/30 px-4 text-left disabled:opacity-45"
+            >
+              <UserX className="h-4 w-4 shrink-0 text-[color:var(--status-critical)]" />
+              <span className="text-sm font-semibold text-[color:var(--status-critical)]">
+                No-Show markieren
+              </span>
+            </button>
+          </OperatorGlassCard>
+        )}
 
         <div className="grid gap-2">
           <button

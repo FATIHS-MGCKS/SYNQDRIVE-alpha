@@ -14,6 +14,7 @@ export type CustomerEligibilityEvaluateOptions = {
   requestedStatus?: BookingStatus;
   startDate?: Date | null;
   endDate?: Date | null;
+  bookingId?: string | null;
 };
 
 export class CustomerBookingBlockedException extends Error {

@@ -5,6 +5,7 @@ import {
   ArrowUpRight,
   Car,
   ListTodo,
+  Plus,
 } from 'lucide-react';
 import { EmptyState, ErrorState, SkeletonRows } from '../../components/patterns';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
@@ -23,7 +24,7 @@ import { toHandoverBookingSeed } from '../lib/operatorData';
 export function OperatorTodayView() {
   const { orgId, orgLoading, snapshot, loading, error, reload } = useOperatorToday('de');
   const { openHandover } = useOperatorHandover();
-  const { selectedVehicleId, setSelectedVehicleId } = useOperatorShell();
+  const { selectedVehicleId, setSelectedVehicleId, openSheet } = useOperatorShell();
   const isTablet = useOperatorTabletLayout();
   const [detailItem, setDetailItem] = useState<OperatorTodayBookingItem | null>(null);
 
@@ -55,6 +56,15 @@ export function OperatorTodayView() {
 
   const mainContent = (
     <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain pb-4">
+      <button
+        type="button"
+        onClick={() => openSheet({ type: 'booking-create' })}
+        className="sq-press flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-[color:var(--brand)] font-semibold text-white"
+      >
+        <Plus className="h-5 w-5" />
+        Buchung aufnehmen
+      </button>
+
       {loading && <SkeletonRows rows={6} />}
       {!loading && error && (
         <ErrorState compact title="Heute-Daten nicht verfügbar" error={error} onRetry={() => void reload()} />

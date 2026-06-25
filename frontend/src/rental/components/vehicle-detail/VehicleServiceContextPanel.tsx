@@ -1,10 +1,10 @@
-import { AlertTriangle, ChevronRight, ClipboardList, Wrench } from 'lucide-react';
+import { ChevronRight, ClipboardList, Wrench } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { EmptyState, PriorityBadge, StatusChip } from '../../../components/patterns';
+import { PriorityBadge, StatusChip } from '../../../components/patterns';
 import { api, type ApiTask, type Vendor } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
 import {
-  formatTaskDueDate,
+  formatVehicleMaintenanceDueLabel,
   mapApiPriority,
   mapApiTaskToDisplayStatus,
   vehicleTaskPriorityLabel,
@@ -44,6 +44,11 @@ function MaintenanceTaskRow({
 }) {
   const displayStatus = mapApiTaskToDisplayStatus(task.status);
   const tone = vehicleTaskStatusTone(displayStatus, task.isOverdue);
+  const priority = mapApiPriority(task.priority);
+  // Status chip already renders "Überfällig" for overdue active tasks, so no
+  // second overdue badge here. Priority is only shown when it adds signal.
+  const showPriority = priority === 'critical' || priority === 'high';
+  const dueLabel = formatVehicleMaintenanceDueLabel(task);
 
   return (
     <button
@@ -57,21 +62,18 @@ function MaintenanceTaskRow({
             <StatusChip tone={statusChipTone(tone)} className="text-[9px] py-0">
               {vehicleTaskStatusLabel(displayStatus, task.isOverdue)}
             </StatusChip>
-            <PriorityBadge
-              priority={mapApiPriority(task.priority)}
-              label={vehicleTaskPriorityLabel(mapApiPriority(task.priority))}
-              className="text-[9px] py-0"
-            />
-            {task.isOverdue && (
-              <StatusChip tone="critical" className="text-[9px] py-0">
-                Überfällig
-              </StatusChip>
+            {showPriority && (
+              <PriorityBadge
+                priority={priority}
+                label={vehicleTaskPriorityLabel(priority)}
+                className="text-[9px] py-0"
+              />
             )}
           </div>
           <p className="text-[12px] font-semibold text-foreground truncate">{task.title}</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">
             {taskTypeLabel(task)}
-            {task.dueDate ? ` · Fällig bis ${formatTaskDueDate(task.dueDate)}` : ''}
+            {dueLabel ? ` · ${dueLabel}` : ''}
           </p>
         </div>
         <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-0.5" />
@@ -116,7 +118,17 @@ export function VehicleServiceContextPanel({
 
   const summary = useMemo(() => summarizeVehicleMaintenanceTasks(tasks), [tasks]);
   const topTasks = useMemo(() => selectOpenVehicleMaintenanceTasks(tasks, 3), [tasks]);
-  const showAlert = summary.overdueCount > 0 || summary.blockingCount > 0 || summary.criticalCount > 0;
+
+  // Compact, single header status — no separate alert banner / summary line.
+  // Only escalated states earn a badge; plain open tasks let the rows speak.
+  const headerBadge: { tone: 'critical' | 'warning'; label: string } | null =
+    summary.blockingCount > 0
+      ? { tone: 'critical', label: 'Vermietung blockiert' }
+      : summary.overdueCount > 0
+        ? { tone: 'critical', label: 'Überfällig' }
+        : summary.criticalCount > 0
+          ? { tone: 'critical', label: 'Kritisch' }
+          : null;
 
   const openTask = (taskId: string) => {
     if (onOpenTask) {
@@ -126,85 +138,54 @@ export function VehicleServiceContextPanel({
     onOpenServiceCenter({ tab: 'tasks', vehicleId, focusTaskId: taskId });
   };
 
+  const hasModalState = createOpen;
+
+  // Overview rule: only render when there is a real operative service/maintenance
+  // context (open / overdue / critical / blocking). Never an empty box, never a
+  // skeleton shell while loading. The create modal stays mounted if it was opened.
+  if (!hasModalState && (loading || summary.openCount === 0)) {
+    return null;
+  }
+
   return (
-    <section className="sq-card rounded-xl border border-border/70 bg-card/50 p-4 space-y-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <section className="rounded-xl border border-border bg-card p-3 shadow-sm space-y-3 text-foreground">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="sq-section-label">Service & Wartung</p>
-          <h3 className="text-[13px] font-semibold text-foreground tracking-[-0.01em]">
-            Wartungskontext
-          </h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-[11px] font-bold tracking-[-0.01em] text-foreground">
+              Service & Wartung
+            </h3>
+            {headerBadge && (
+              <StatusChip tone={headerBadge.tone} className="text-[9px] py-0">
+                {headerBadge.label}
+              </StatusChip>
+            )}
+          </div>
           <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{vehicleLabel}</p>
-        </div>
-        <div className="flex flex-wrap gap-1.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => onOpenServiceCenter({ tab: 'tasks', vehicleId })}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-card px-2.5 py-1.5 text-[10px] font-semibold hover:bg-muted/40 sq-press"
-          >
-            <Wrench className="w-3 h-3" />
-            Service Center
-          </button>
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)] px-2.5 py-1.5 text-[10px] font-semibold text-[color:var(--brand-ink)] sq-press"
-          >
-            <ClipboardList className="w-3 h-3" />
-            Service-Aufgabe
-          </button>
         </div>
       </div>
 
-      {showAlert && summary.openCount > 0 && (
-        <div className="rounded-lg border border-[color:var(--status-critical)]/25 bg-[color:var(--status-critical-soft)] px-3 py-2 flex items-start gap-2">
-          <AlertTriangle className="w-4 h-4 shrink-0 text-[color:var(--status-critical)] mt-0.5" />
-          <div className="min-w-0 text-[11px] text-foreground">
-            {summary.overdueCount > 0 && (
-              <p>
-                <span className="font-semibold">{summary.overdueCount}</span> überfällige Wartungsaufgabe
-                {summary.overdueCount === 1 ? '' : 'n'}
-              </p>
-            )}
-            {summary.blockingCount > 0 && (
-              <p className="text-muted-foreground">
-                {summary.blockingCount} blockiert die Vermietung
-              </p>
-            )}
-            <button
-              type="button"
-              onClick={() =>
-                onOpenServiceCenter({
-                  tab: 'tasks',
-                  vehicleId,
-                  taskFilter: summary.overdueCount > 0 ? 'overdue' : 'urgent',
-                })
-              }
-              className="mt-1 font-semibold text-[color:var(--brand-ink)] underline sq-press"
-            >
-              Im Service Center anzeigen
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="flex flex-wrap gap-1.5">
+        <button
+          type="button"
+          onClick={() => onOpenServiceCenter({ tab: 'tasks', vehicleId })}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-card px-2.5 py-1.5 text-[10px] font-semibold hover:bg-muted/40 sq-press"
+        >
+          <Wrench className="w-3 h-3" />
+          Service Center
+        </button>
+        <button
+          type="button"
+          onClick={() => setCreateOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)] px-2.5 py-1.5 text-[10px] font-semibold text-[color:var(--brand-ink)] sq-press"
+        >
+          <ClipboardList className="w-3 h-3" />
+          Service-Aufgabe erstellen
+        </button>
+      </div>
 
-      {loading ? (
+      {topTasks.length > 0 && (
         <div className="space-y-2">
-          <div className="h-14 rounded-lg bg-muted/40 animate-pulse" />
-          <div className="h-14 rounded-lg bg-muted/40 animate-pulse" />
-        </div>
-      ) : summary.openCount === 0 ? (
-        <EmptyState
-          compact
-          title="Keine offenen Wartungsaufgaben"
-          description="Service-, Reparatur- und Inspektionsaufgaben erscheinen hier und im Service Center."
-        />
-      ) : (
-        <div className="space-y-2">
-          <p className="text-[10px] text-muted-foreground">
-            {summary.openCount} offen
-            {summary.overdueCount > 0 ? ` · ${summary.overdueCount} überfällig` : ''}
-          </p>
           {topTasks.map((task) => (
             <MaintenanceTaskRow key={task.id} task={task} onOpen={() => openTask(task.id)} />
           ))}

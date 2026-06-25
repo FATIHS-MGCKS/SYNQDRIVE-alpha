@@ -16,14 +16,7 @@ import {
   resolveFleetVehicleDisplayState,
 } from './fleetVehicleDisplay';
 
-export type FleetCommandTab =
-  | 'Attention'
-  | 'Available'
-  | 'Active'
-  | 'Reserved'
-  | 'Maintenance'
-  | 'Offline'
-  | 'All';
+export type FleetCommandTab = 'Available' | 'Active' | 'Reserved';
 
 export interface FleetVehicleContext {
   vehicle: VehicleData;
@@ -40,13 +33,9 @@ export interface StationFilterOption {
 }
 
 const TAB_EMPTY_MESSAGES: Record<FleetCommandTab, string> = {
-  Attention: 'No vehicles need attention',
   Available: 'No available vehicles in this filter',
   Active: 'No active rentals',
   Reserved: 'No upcoming reservations',
-  Maintenance: 'No vehicles in maintenance',
-  Offline: 'No offline vehicles',
-  All: 'No vehicles in this filter',
 };
 
 export function fleetCommandTabEmptyMessage(
@@ -142,21 +131,8 @@ export function filterFleetByStation(
 }
 
 function searchableHaystack(ctx: FleetVehicleContext): string {
-  const { vehicle: v, visual } = ctx;
-  return [
-    v.license,
-    v.make,
-    v.model,
-    fleetVehicleTitle(v),
-    v.station,
-    (v as { stationName?: string | null }).stationName,
-    v.activeCustomerName,
-    v.reservedCustomerName,
-    v.status,
-    visual.label,
-    visual.shortLabel,
-    visual.reason,
-  ]
+  const { vehicle: v } = ctx;
+  return [v.license, v.make, v.model, fleetVehicleTitle(v)]
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
@@ -181,26 +157,16 @@ export function vehicleMatchesCommandTab(
   ctx: FleetVehicleContext,
   tab: FleetCommandTab,
 ): boolean {
-  const { vehicle, visual } = ctx;
+  const { vehicle } = ctx;
   switch (tab) {
-    case 'Attention':
-      return isFleetAttentionVehicle(visual, vehicle, ctx.health);
     case 'Available':
       return vehicle.status === 'Available';
     case 'Active':
       return vehicle.status === 'Active Rented';
     case 'Reserved':
       return vehicle.status === 'Reserved';
-    case 'Maintenance':
-      return vehicle.status === 'Maintenance';
-    case 'Offline':
-      // Offline = genuinely offline device only. Stale is a secondary signal
-      // state, not offline, and must not be counted here.
-      return visual.isOffline;
-    case 'All':
-      return true;
     default:
-      return true;
+      return false;
   }
 }
 
@@ -232,7 +198,6 @@ function appointmentTime(vehicle: VehicleData): number {
  */
 export function sortFleetContexts(
   contexts: FleetVehicleContext[],
-  tab: FleetCommandTab,
 ): FleetVehicleContext[] {
   const scored = contexts.map((ctx) => ({
     ctx,
@@ -245,12 +210,7 @@ export function sortFleetContexts(
   }));
 
   scored.sort((a, b) => {
-    if (tab === 'Attention') {
-      const rank =
-        attentionSortRank(a.ctx.visual, a.ctx.vehicle) -
-        attentionSortRank(b.ctx.visual, b.ctx.vehicle);
-      if (rank !== 0) return rank;
-    } else if (b.score !== a.score) {
+    if (b.score !== a.score) {
       return b.score - a.score;
     }
 
@@ -276,21 +236,14 @@ export function computeCommandTabCounts(
   contexts: FleetVehicleContext[],
 ): Record<FleetCommandTab, number> {
   const counts: Record<FleetCommandTab, number> = {
-    Attention: 0,
     Available: 0,
     Active: 0,
     Reserved: 0,
-    Maintenance: 0,
-    Offline: 0,
-    All: contexts.length,
   };
   for (const ctx of contexts) {
-    if (vehicleMatchesCommandTab(ctx, 'Attention')) counts.Attention += 1;
     if (vehicleMatchesCommandTab(ctx, 'Available')) counts.Available += 1;
     if (vehicleMatchesCommandTab(ctx, 'Active')) counts.Active += 1;
     if (vehicleMatchesCommandTab(ctx, 'Reserved')) counts.Reserved += 1;
-    if (vehicleMatchesCommandTab(ctx, 'Maintenance')) counts.Maintenance += 1;
-    if (vehicleMatchesCommandTab(ctx, 'Offline')) counts.Offline += 1;
   }
   return counts;
 }
@@ -298,13 +251,8 @@ export function computeCommandTabCounts(
 export function resolveOperatorTabForVehicle(
   ctx: FleetVehicleContext,
 ): FleetCommandTab {
-  if (isFleetAttentionVehicle(ctx.visual, ctx.vehicle, ctx.health)) {
-    return 'Attention';
-  }
-  if (ctx.visual.isOffline) return 'Offline';
   if (ctx.vehicle.status === 'Active Rented') return 'Active';
   if (ctx.vehicle.status === 'Reserved') return 'Reserved';
-  if (ctx.vehicle.status === 'Maintenance') return 'Maintenance';
   return 'Available';
 }
 

@@ -28,8 +28,29 @@ describe('RentalHealthService (unit)', () => {
     serviceCompliance as any,
   );
 
+  const evaluateBattery = (summary: any, hmAi: any = null) =>
+    (svc as any).evaluateBattery(summary, hmAi);
   const evaluateErrorCodes = (summary: any) =>
     (svc as any).evaluateErrorCodes(summary);
+
+  const batterySummary = (overrides: {
+    healthStatus?: string;
+    restingValueV?: number | null;
+    restingStatus?: string;
+    measurementContext?: string;
+  }) => ({
+    generatedAt: '2026-06-24T12:00:00.000Z',
+    lv: {
+      healthStatus: overrides.healthStatus ?? 'GOOD',
+      freshness: { observedAt: '2026-06-24T11:00:00.000Z' },
+      estimatedHealth: { displayMode: 'BARS', status: 'GOOD' },
+      restingVoltage: {
+        valueV: overrides.restingValueV === undefined ? 12.84 : overrides.restingValueV,
+        status: overrides.restingStatus ?? 'GOOD',
+        measurementContext: overrides.measurementContext ?? 'RESTING',
+      },
+    },
+  });
   const evaluateComplaints = (complaints: any[], loaded: boolean) =>
     (svc as any).evaluateComplaints(complaints, loaded);
   const collectBlockingReasons = (
@@ -58,6 +79,53 @@ describe('RentalHealthService (unit)', () => {
         { state: 'unknown' },
       ]),
     ).toBe('unknown');
+  });
+
+  it('A: 12.84V resting with WATCH aggregate stays good — no battery alert', () => {
+    const res = evaluateBattery(
+      batterySummary({ healthStatus: 'WATCH', restingValueV: 12.84, restingStatus: 'GOOD' }),
+    );
+    expect(res.state).toBe('good');
+    expect(res.reason).not.toMatch(/beobachten/i);
+    expect(res.reason).not.toMatch(/Nachladen|kritisch/i);
+  });
+
+  it('B: low resting voltage with WARNING aggregate => warning with resting note', () => {
+    const res = evaluateBattery(
+      batterySummary({ healthStatus: 'WARNING', restingValueV: 12.05, restingStatus: 'WARNING' }),
+    );
+    expect(res.state).toBe('warning');
+    expect(res.reason).toMatch(/Ruhespannung 12\.05 V/);
+    expect(res.reason).toMatch(/Nachladen|auffällig/i);
+  });
+
+  it('C: only live voltage (no genuine resting) never labels reason as Ruhespannung', () => {
+    const liveOnly = evaluateBattery(
+      batterySummary({ healthStatus: 'GOOD', restingValueV: 13.9, measurementContext: 'UNKNOWN' }),
+    );
+    expect(liveOnly.reason).not.toMatch(/Ruhespannung/i);
+    const noResting = evaluateBattery(
+      batterySummary({ healthStatus: 'GOOD', restingValueV: null }),
+    );
+    expect(noResting.reason).not.toMatch(/Ruhespannung/i);
+  });
+
+  it('D: HM battery warning light escalates to warning regardless of voltage', () => {
+    const res = evaluateBattery(
+      batterySummary({ healthStatus: 'GOOD', restingValueV: 12.84, restingStatus: 'GOOD' }),
+      { dashboardLights: { battery_low_warning: 'on' } },
+    );
+    expect(res.state).toBe('warning');
+    expect(res.reason).toMatch(/Warnleuchte/i);
+  });
+
+  it('estimated-health WARNING with good resting does not blame the resting voltage', () => {
+    const res = evaluateBattery(
+      batterySummary({ healthStatus: 'WARNING', restingValueV: 12.84, restingStatus: 'GOOD' }),
+    );
+    expect(res.state).toBe('warning');
+    expect(res.reason).toMatch(/Geschätzte Batteriegesundheit/i);
+    expect(res.reason).not.toMatch(/Ruhespannung 12\.84/);
   });
 
   it('critical DTC with severity critical (not only high display) => critical module', () => {

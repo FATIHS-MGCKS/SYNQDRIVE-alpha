@@ -16,6 +16,7 @@ import { WorkflowsModule } from '@modules/workflows/workflows.module';
 import { PricingModule } from '@modules/pricing/pricing.module';
 import { StationsModule } from '@modules/stations/stations.module';
 import { RentalRulesModule } from '@modules/rental-rules/rental-rules.module';
+import { CustomerVerificationModule } from '@modules/customer-verification/customer-verification.module';
 import { BookingRentalEligibilityService } from './booking-rental-eligibility.service';
 
 @Module({
@@ -26,6 +27,7 @@ import { BookingRentalEligibilityService } from './booking-rental-eligibility.se
     forwardRef(() => DocumentsModule),
     TasksModule,
     CustomersModule,
+    CustomerVerificationModule,
     WorkflowsModule,
     PricingModule,
     StationsModule,

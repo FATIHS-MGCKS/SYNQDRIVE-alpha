@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { DashboardWarningLight, DashboardWarningLightsResponse } from '../../lib/api';
 import {
+  countActiveTelltales,
+  isBatteryTelltaleActive,
+  isTelltaleProviderConnected,
+  resolveSourceFooter,
   resolveTelltalePanelPresentation,
   sortDashboardLights,
+  telltaleShortLabel,
+  telltaleTileStatusLabel,
 } from './dashboard-warning-lights-display';
 
 function light(partial: Partial<DashboardWarningLight> & Pick<DashboardWarningLight, 'key' | 'label'>): DashboardWarningLight {
@@ -39,74 +45,82 @@ function envelope(
 }
 
 describe('dashboard-warning-lights-display', () => {
-  it('not connected → Nicht verbunden badge', () => {
+  it('not connected → Nicht verbunden badge + subline', () => {
     const p = resolveTelltalePanelPresentation(
       envelope({ connectionStatus: 'not_connected', supportStatus: 'not_connected' }),
     );
     expect(p.badgeLabel).toBe('Nicht verbunden');
-    expect(p.showConfirmedOff).toBe(false);
-    expect(p.summaryText).toContain('keine OEM/HM-Warnleuchtenquelle');
-  });
-
-  it('no data → Wartet auf Daten', () => {
-    const p = resolveTelltalePanelPresentation(
-      envelope({ supportStatus: 'no_data', freshness: 'no_data' }),
+    expect(p.summaryText).toBe('Fahrzeug nicht mit HM/OEM Health verbunden.');
+    expect(p.isConnected).toBe(false);
+    expect(resolveSourceFooter(envelope({ connectionStatus: 'not_connected' }))).toBe(
+      'Keine HM/OEM-Verbindung',
     );
-    expect(p.badgeLabel).toBe('Wartet auf Daten');
-    expect(p.showConfirmedOff).toBe(false);
   });
 
-  it('not supported → Nicht unterstützt', () => {
-    const p = resolveTelltalePanelPresentation(envelope({ supportStatus: 'not_supported' }));
-    expect(p.badgeLabel).toBe('Nicht unterstützt');
+  it('connected + all inactive → Alles klar', () => {
+    const p = resolveTelltalePanelPresentation(envelope({ overallStatus: 'good' }));
+    expect(p.badgeLabel).toBe('Alles klar');
+    expect(p.summaryText).toBe('Keine aktiven Warnleuchten erkannt.');
+    expect(p.showConfirmedOff).toBe(true);
   });
 
-  it('stale → Datenbasis veraltet', () => {
-    const p = resolveTelltalePanelPresentation(
-      envelope({ freshness: 'stale', lastObservedAt: '2026-01-01T10:00:00.000Z' }),
-    );
-    expect(p.badgeLabel).toBe('Datenbasis veraltet');
+  it('one active battery warning → Warnung aktiv', () => {
+    const data = envelope({
+      overallStatus: 'warning',
+      lights: [
+        light({
+          key: 'battery_warning_light',
+          label: 'Batterie',
+          state: 'active',
+          severity: 'warning',
+        }),
+      ],
+    });
+    const p = resolveTelltalePanelPresentation(data);
+    expect(p.badgeLabel).toBe('Warnung aktiv');
+    expect(p.activeCount).toBe(1);
+    expect(telltaleTileStatusLabel(data.lights[0], true)).toBe('Aktiv');
   });
 
-  it('critical active → Kritische Warnung', () => {
+  it('critical active also maps to Warnung aktiv (not separate critical badge)', () => {
     const p = resolveTelltalePanelPresentation(
       envelope({
         overallStatus: 'critical',
         lights: [
           light({
             key: 'engine_limp_mode',
-            label: 'Motorwarnung / Notlauf',
+            label: 'Notlauf',
             state: 'active',
             severity: 'critical',
           }),
         ],
       }),
     );
-    expect(p.badgeLabel).toBe('Kritische Warnung');
-    expect(p.activeCriticalCount).toBe(1);
-  });
-
-  it('warning active', () => {
-    const p = resolveTelltalePanelPresentation(
-      envelope({
-        overallStatus: 'warning',
-        lights: [
-          light({
-            key: 'brake_lining_wear_pre_warning',
-            label: 'Bremsbelag',
-            state: 'active',
-            severity: 'warning',
-          }),
-        ],
-      }),
-    );
     expect(p.badgeLabel).toBe('Warnung aktiv');
+    expect(telltaleTileStatusLabel(
+      light({ key: 'engine_limp_mode', label: 'Notlauf', state: 'active', severity: 'critical' }),
+      true,
+    )).toBe('Kritisch');
   });
 
-  it('good → confirmed off only when backend says good', () => {
-    const p = resolveTelltalePanelPresentation(envelope({ overallStatus: 'good' }));
-    expect(p.showConfirmedOff).toBe(true);
-    expect(p.badgeLabel).toContain('Keine aktiven');
+  it('stale / no_data → Unbekannt (not Datenbasis badge)', () => {
+    const stale = resolveTelltalePanelPresentation(
+      envelope({ freshness: 'stale', lastObservedAt: '2026-01-01T10:00:00.000Z' }),
+    );
+    expect(stale.badgeLabel).toBe('Unbekannt');
+    expect(stale.summaryText).toBe('Warnleuchtenstatus aktuell nicht verfügbar.');
+
+    const noData = resolveTelltalePanelPresentation(
+      envelope({ supportStatus: 'no_data', freshness: 'no_data' }),
+    );
+    expect(noData.badgeLabel).toBe('Unbekannt');
+  });
+
+  it('provider error → Unbekannt', () => {
+    const p = resolveTelltalePanelPresentation(
+      envelope({ connectionStatus: 'provider_error', freshness: 'error' }),
+    );
+    expect(p.badgeLabel).toBe('Unbekannt');
   });
 
   it('sorts critical active lights first', () => {
@@ -119,48 +133,40 @@ describe('dashboard-warning-lights-display', () => {
     expect(sorted[1].severity).toBe('warning');
   });
 
-  it('inactive HM uses backend message', () => {
-    const p = resolveTelltalePanelPresentation(
-      envelope({
-        connectionStatus: 'not_connected',
-        supportStatus: 'not_connected',
-        message: 'HM Health-Verknüpfung ist nicht aktiv. Warnleuchten können erst nach Aktivierung angezeigt werden.',
-      }),
-    );
-    expect(p.badgeLabel).toBe('Telematik inaktiv');
-    expect(p.summaryText).toContain('nicht aktiv');
-    expect(p.showConfirmedOff).toBe(false);
+  it('short labels for canonical telltales', () => {
+    expect(telltaleShortLabel('engine_oil_level')).toBe('Motoröl');
+    expect(telltaleShortLabel('engine_limp_mode')).toBe('Notlauf');
+    expect(telltaleShortLabel('brake_lining_wear_pre_warning')).toBe('Bremsbelag');
+    expect(telltaleShortLabel('tire_pressure_warning')).toBe('Reifendruck');
+    expect(telltaleShortLabel('battery_warning_light')).toBe('Batterie');
   });
 
-  it('off_confirmed overall shows confirmed off banner', () => {
-    const p = resolveTelltalePanelPresentation(
-      envelope({
-        overallStatus: 'good',
-        supportStatus: 'supported',
-        freshness: 'fresh',
-        connectionStatus: 'connected',
-      }),
-    );
-    expect(p.showConfirmedOff).toBe(true);
+  it('tile status is em-dash when not connected', () => {
+    const l = light({ key: 'battery_warning_light', label: 'Batterie', state: 'active', severity: 'warning' });
+    expect(telltaleTileStatusLabel(l, false)).toBe('—');
   });
 
-  it('active critical presentation', () => {
-    const p = resolveTelltalePanelPresentation(
-      envelope({
-        overallStatus: 'critical',
-        connectionStatus: 'connected',
-        supportStatus: 'supported',
-        lights: [
-          light({
-            key: 'engine_limp_mode',
-            label: 'Motorwarnung / Notlauf',
-            state: 'active',
-            severity: 'critical',
-          }),
-        ],
-      }),
-    );
-    expect(p.badgeLabel).toContain('Kritisch');
-    expect(p.showConfirmedOff).toBe(false);
+  it('battery telltale active only from read model, not legacy indicator alone when read model exists', () => {
+    const telltales = envelope({
+      lights: [
+        light({ key: 'battery_warning_light', label: 'Batterie', state: 'off_confirmed', severity: 'info' }),
+      ],
+    });
+    expect(isBatteryTelltaleActive(telltales, true)).toBe(false);
+    expect(isBatteryTelltaleActive(telltales, false)).toBe(false);
+  });
+
+  it('countActiveTelltales counts only active state', () => {
+    expect(
+      countActiveTelltales([
+        light({ key: 'a', label: 'A', state: 'active', severity: 'warning' }),
+        light({ key: 'b', label: 'B', state: 'off_confirmed', severity: 'info' }),
+      ]),
+    ).toBe(1);
+  });
+
+  it('isTelltaleProviderConnected requires connected status', () => {
+    expect(isTelltaleProviderConnected(envelope({ connectionStatus: 'connected' }))).toBe(true);
+    expect(isTelltaleProviderConnected(envelope({ connectionStatus: 'not_connected' }))).toBe(false);
   });
 });

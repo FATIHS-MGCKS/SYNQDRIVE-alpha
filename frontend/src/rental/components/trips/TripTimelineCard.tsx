@@ -24,7 +24,7 @@ const CHIP_TONE: Record<OperationalChip['tone'], Parameters<typeof TripStatusBad
   success: 'success',
 };
 
-const MAX_VISIBLE_CHIPS = 4;
+const MAX_VISIBLE_CHIPS = 3;
 
 export function TripTimelineCard({
   trip,

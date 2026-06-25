@@ -1,11 +1,41 @@
 import { describe, expect, it } from 'vitest';
 import type { VehicleData } from '../data/vehicles';
+import type {
+  RentalHealthModule,
+  RentalHealthState,
+  VehicleHealthResponse,
+} from '../../lib/api';
 import {
   fleetEnergyTone,
   fleetOperationalSortScore,
   isFleetSignalOutdated,
   resolveFleetVehicleDisplayState,
 } from './fleetVehicleDisplay';
+
+function mod(state: RentalHealthState, reason = ''): RentalHealthModule {
+  return { state, reason, last_updated_at: null, data_stale: false };
+}
+
+function health(overrides: Partial<VehicleHealthResponse> = {}): VehicleHealthResponse {
+  return {
+    vehicle_id: 'v1',
+    organization_id: 'org-1',
+    overall_state: 'good',
+    rental_blocked: false,
+    blocking_reasons: [],
+    modules: {
+      battery: mod('good'),
+      tires: mod('good'),
+      brakes: mod('good'),
+      error_codes: mod('good'),
+      service_compliance: mod('good'),
+      complaints: mod('good'),
+      vehicle_alerts: mod('good'),
+    },
+    generated_at: new Date().toISOString(),
+    ...overrides,
+  };
+}
 
 function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
   return {
@@ -132,6 +162,157 @@ describe('resolveFleetVehicleDisplayState', () => {
     });
     expect(d.primaryStatus).toBe('critical');
     expect(d.criticalHint).toBeTruthy();
+  });
+});
+
+describe('health vs rental display separation', () => {
+  it('never shows Available as a health value — a healthy available vehicle reads Good + Ready', () => {
+    const d = resolveFleetVehicleDisplayState(vehicle(), { locale: 'en' });
+    expect(d.healthDisplay.status).toBe('good');
+    expect(d.healthDisplay.label).toBe('Good');
+    expect(d.healthDisplay.label).not.toBe('Available');
+    expect(d.rentalDisplay.status).toBe('ready');
+    expect(d.rentalDisplay.label).toBe('Ready');
+    expect(d.reasonBadge).toBeNull();
+  });
+
+  it('critical health + rental blocked → Critical health, Blocked rental, concrete reason (not generic)', () => {
+    const d = resolveFleetVehicleDisplayState(vehicle(), {
+      locale: 'en',
+      rentalHealth: health({
+        overall_state: 'critical',
+        rental_blocked: true,
+        blocking_reasons: ['Battery critical — recharge/check'],
+      }),
+    });
+    expect(d.healthDisplay.status).toBe('critical');
+    expect(d.rentalDisplay.status).toBe('blocked');
+    expect(d.reasonBadge?.text).toBe('Battery critical — recharge/check');
+    expect(d.reasonBadge?.text.toLowerCase()).not.toContain('critical vehicle health');
+  });
+
+  it('warning tires alone → Warning health but rental stays Ready (not Not Ready)', () => {
+    const d = resolveFleetVehicleDisplayState(vehicle(), {
+      locale: 'en',
+      rentalHealth: health({
+        overall_state: 'warning',
+        modules: {
+          battery: mod('good'),
+          tires: mod('warning', 'Tread low'),
+          brakes: mod('good'),
+          error_codes: mod('good'),
+          service_compliance: mod('good'),
+          complaints: mod('good'),
+          vehicle_alerts: mod('good'),
+        },
+      }),
+    });
+    expect(d.healthDisplay.status).toBe('warning');
+    expect(d.rentalDisplay.status).toBe('ready');
+    expect(d.reasonBadge?.text).toBe('Monitor tires');
+  });
+
+  it('error_codes reason counts active fault codes', () => {
+    const d = resolveFleetVehicleDisplayState(vehicle(), {
+      locale: 'en',
+      rentalHealth: health({
+        overall_state: 'warning',
+        modules: {
+          battery: mod('good'),
+          tires: mod('good'),
+          brakes: mod('good'),
+          error_codes: mod('warning', '2 active DTCs detected'),
+          service_compliance: mod('good'),
+          complaints: mod('good'),
+          vehicle_alerts: mod('good'),
+        },
+      }),
+    });
+    expect(d.reasonBadge?.text).toBe('2 active fault codes');
+  });
+
+  it('skips generic blocking reasons and falls back to a concrete module reason', () => {
+    const d = resolveFleetVehicleDisplayState(vehicle(), {
+      locale: 'en',
+      rentalHealth: health({
+        overall_state: 'critical',
+        rental_blocked: true,
+        blocking_reasons: ['Critical vehicle health'],
+        modules: {
+          battery: mod('good'),
+          tires: mod('good'),
+          brakes: mod('good'),
+          error_codes: mod('good'),
+          service_compliance: mod('critical', 'TÜV overdue'),
+          complaints: mod('good'),
+          vehicle_alerts: mod('good'),
+        },
+      }),
+    });
+    expect(d.reasonBadge?.text).toBe('Service overdue');
+  });
+
+  it('Active Rented → rental Active; Reserved → rental Reserved', () => {
+    const active = resolveFleetVehicleDisplayState(
+      vehicle({ status: 'Active Rented', activeBookingId: 'b1' }),
+      { locale: 'en' },
+    );
+    expect(active.rentalDisplay.status).toBe('active');
+    expect(active.rentalDisplay.label).toBe('Active');
+
+    const reserved = resolveFleetVehicleDisplayState(
+      vehicle({ status: 'Reserved', reservedBookingId: 'r1' }),
+      { locale: 'en' },
+    );
+    expect(reserved.rentalDisplay.status).toBe('reserved');
+    expect(reserved.rentalDisplay.label).toBe('Reserved');
+  });
+
+  it('hard offline available → Not Ready rental, but health stays Good (separate concerns)', () => {
+    const d = resolveFleetVehicleDisplayState(
+      vehicle({ onlineStatus: 'OFFLINE', isFresh: false, lastSignal: hoursAgoIso(49) }),
+      { locale: 'en' },
+    );
+    expect(d.healthDisplay.status).toBe('good');
+    expect(d.rentalDisplay.status).toBe('not_ready');
+  });
+
+  it('soft offline / standby available stays Ready (not Not Ready) and shows no stale text', () => {
+    const soft = resolveFleetVehicleDisplayState(
+      vehicle({ onlineStatus: 'STANDBY', isFresh: false, lastSignal: hoursAgoIso(30) }),
+      { locale: 'en' },
+    );
+    expect(soft.rentalDisplay.status).toBe('ready');
+    expect(soft.reasonBadge).toBeNull();
+
+    const standby = resolveFleetVehicleDisplayState(
+      vehicle({ onlineStatus: 'STANDBY', isFresh: false, lastSignal: hoursAgoIso(8) }),
+      { locale: 'en' },
+    );
+    expect(standby.rentalDisplay.status).toBe('ready');
+    expect(standby.telemetryLabel.toLowerCase()).not.toContain('stale');
+    expect(standby.reasonBadge).toBeNull();
+  });
+
+  it('German locale uses localized health, rental, and reason labels', () => {
+    const d = resolveFleetVehicleDisplayState(vehicle(), {
+      locale: 'de',
+      rentalHealth: health({
+        overall_state: 'warning',
+        modules: {
+          battery: mod('good'),
+          tires: mod('warning', 'Profil niedrig'),
+          brakes: mod('good'),
+          error_codes: mod('good'),
+          service_compliance: mod('good'),
+          complaints: mod('good'),
+          vehicle_alerts: mod('good'),
+        },
+      }),
+    });
+    expect(d.healthDisplay.label).toBe('Warnung');
+    expect(d.rentalDisplay.label).toBe('Bereit');
+    expect(d.reasonBadge?.text).toBe('Reifen beobachten');
   });
 });
 

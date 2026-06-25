@@ -5,7 +5,6 @@ import type { ServiceCenterNavState } from '../../lib/service-center-navigation'
 import { OverviewLiveMapCard } from './OverviewLiveMapCard';
 import { VehicleHealthBoxTelemetryBridge } from './VehicleHealthBoxWired';
 import { VehicleOverviewFreshnessHint } from './VehicleOverviewFreshnessHint';
-import { VehicleOverviewQuickView } from './VehicleOverviewQuickView';
 import { VehicleServiceContextPanel } from './VehicleServiceContextPanel';
 import { vo } from './vehicle-overview-ui';
 
@@ -14,7 +13,12 @@ export interface VehicleOverviewTabProps {
   orgId: string;
   isDarkMode: boolean;
   summary: VehicleOverviewSummary;
-  onNavigate: NavigateVehicleOverviewTarget;
+  /**
+   * @deprecated Overview no longer renders a quick-navigation layer. The tab bar
+   * above is the single navigation. Kept in the prop contract for the App.tsx
+   * call site / potential future inline hints — currently unused here.
+   */
+  onNavigate?: NavigateVehicleOverviewTarget;
   onOpenHealthDetails: () => void;
   onOpenServiceCenter?: (nav?: Partial<ServiceCenterNavState>) => void;
   onOpenVehicleTask?: (taskId: string) => void;
@@ -23,16 +27,18 @@ export interface VehicleOverviewTabProps {
 
 /**
  * Vehicle Detail — Overview tab layout:
- * 1. Readiness strip + snapshot quick cards (navigation layer)
+ * 1. Service & maintenance context
  * 2. Main grid: live map (≈60%) + vehicle health box (≈40%)
  * 3. Optional data freshness hint
+ *
+ * No local readiness/blocked verdict and no quick-navigation cards: the tab bar
+ * is the only navigation, and rental readiness/blocked stays a canonical truth.
  */
 export function VehicleOverviewTab({
   selectedVehicle,
   orgId,
   isDarkMode,
   summary,
-  onNavigate,
   onOpenHealthDetails,
   onOpenServiceCenter,
   onOpenVehicleTask,
@@ -44,13 +50,6 @@ export function VehicleOverviewTab({
 
   return (
     <div className={vo.page} key={selectedVehicle?.id ?? 'no-vehicle'}>
-      <VehicleOverviewQuickView
-        summary={summary}
-        onNavigate={onNavigate}
-        orgId={orgId}
-        vehicleId={selectedVehicle?.id ?? null}
-      />
-
       {selectedVehicle?.id && onOpenServiceCenter && (
         <VehicleServiceContextPanel
           vehicleId={selectedVehicle.id}
@@ -76,6 +75,7 @@ export function VehicleOverviewTab({
               selectedVehicle={selectedVehicle}
               isDarkMode={isDarkMode}
               onViewDetails={onOpenHealthDetails}
+              showDataBasis={false}
             />
           </div>
         </div>

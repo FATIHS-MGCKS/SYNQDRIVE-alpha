@@ -1,4 +1,4 @@
-import { ExternalLink, Sparkles, Disc3, Info, Car } from 'lucide-react';
+import { CalendarPlus, ExternalLink, Sparkles, Disc3, Info, Car } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { OperatorGlassCard } from '../components/OperatorGlassCard';
 import { useOperatorShell } from '../context/OperatorShellContext';
@@ -30,6 +30,19 @@ export function OperatorMoreView() {
       <section>
         <h2 className="sq-section-label mb-2 px-0.5">Aktionen</h2>
         <div className="grid gap-2">
+          <OperatorGlassCard
+            as="button"
+            onClick={() => openSheet({ type: 'booking-create' })}
+            className="flex min-h-[56px] items-center gap-3 p-4"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]">
+              <CalendarPlus className="h-5 w-5" />
+            </span>
+            <span className="text-left">
+              <span className="block text-sm font-semibold">Buchung aufnehmen</span>
+              <span className="text-xs text-muted-foreground">Neue Mietbuchung anlegen</span>
+            </span>
+          </OperatorGlassCard>
           <OperatorGlassCard
             as="button"
             onClick={() => pickVehicle('ai')}

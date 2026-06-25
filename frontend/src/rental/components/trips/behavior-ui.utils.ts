@@ -63,15 +63,20 @@ export function severityRank(level: BehaviorSeverityLevel): number {
 
 export function eventTypeLabel(event: TripBehaviorEvent): string {
   const type = event.eventType.toLowerCase();
+  // Concrete abuse suspicion types first (operator-facing, specific).
+  if (type.includes('cold_engine')) return 'Kaltmotor-Missbrauch';
+  if (type.includes('overheat')) return 'Überhitzung';
+  if (type.includes('impact')) return 'Möglicher Aufprall';
+  if (type.includes('kickdown')) return 'Kickdown';
+  if (type.includes('high_rpm')) return 'Hohe Drehzahl';
+  if (type.includes('launch')) return 'Launch-Start';
+  if (type.includes('idle')) return 'Langer Leerlauf';
   if (type.includes('harsh_brak') || type.includes('hard_brak') || type.includes('full_brak')) {
     return 'Harte Bremsung';
   }
   if (type.includes('brak')) return 'Bremsereignis';
   if (type.includes('harsh_accel') || type.includes('hard_accel')) return 'Starke Beschleunigung';
   if (type.includes('accel')) return 'Beschleunigungsereignis';
-  if (type.includes('impact')) return 'Missbrauchsverdacht — möglicher Aufprall';
-  if (type.includes('kickdown')) return 'Auffällige Belastung — Kickdown';
-  if (type.includes('idle')) return 'Auffällige Belastung — langes Leerlauf';
   if (event.eventCategory === 'ABUSE') return 'Missbrauchsverdacht';
   if (event.eventCategory === 'BRAKING') return 'Harte Bremsung';
   if (event.eventCategory === 'ACCELERATION') return 'Starke Beschleunigung';
@@ -79,14 +84,54 @@ export function eventTypeLabel(event: TripBehaviorEvent): string {
 }
 
 export function eventExplanation(event: TripBehaviorEvent): string {
-  const label = eventTypeLabel(event);
-  if (event.eventCategory === 'ABUSE') {
-    return `${label} während der Fahrt erkannt.`;
+  const type = event.eventType.toLowerCase();
+  if (type.includes('cold_engine')) {
+    if (type.includes('rpm')) return 'Hohe Drehzahl bei kaltem Motor erkannt.';
+    if (type.includes('throttle')) return 'Volllast bei kaltem Motor erkannt.';
+    return 'Hohe Last bei kaltem Motor erkannt.';
   }
+  if (type.includes('overheat')) return 'Motorüberhitzung erkannt.';
+  if (type.includes('impact')) return 'Möglicher Aufprall erkannt.';
+  if (type.includes('kickdown')) return 'Starkes Kickdown-Manöver erkannt.';
+  if (type.includes('high_rpm')) return 'Dauerhaft hohe Drehzahl erkannt.';
+  if (type.includes('idle')) return 'Langer Leerlauf erkannt.';
+  const label = eventTypeLabel(event);
+  if (event.eventCategory === 'ABUSE') return `${label} während der Fahrt erkannt.`;
   if (event.classification === 'HARD' || event.classification === 'EXTREME') {
     return `${label} mit erhöhter Intensität.`;
   }
   return `${label} im Fahrtverlauf registriert.`;
+}
+
+export interface EventEvidenceItem {
+  label: string;
+  value: string;
+}
+
+/**
+ * Concrete, non-fabricated evidence metrics for a behavior event.
+ * Only fields that are actually present on the event are returned — never
+ * placeholder or invented values. Speed is intentionally omitted here because
+ * the event card already renders the start/end speed in its time row.
+ */
+export function formatEventEvidence(event: TripBehaviorEvent): EventEvidenceItem[] {
+  const items: EventEvidenceItem[] = [];
+  if (event.maxEngineRpm != null) {
+    items.push({ label: 'Drehzahl', value: `${Math.round(event.maxEngineRpm)} rpm` });
+  }
+  if (event.maxThrottlePos != null) {
+    items.push({ label: 'Gaspedal', value: `${Math.round(event.maxThrottlePos)} %` });
+  }
+  const coolant =
+    event.maxCoolantTemp ??
+    (typeof event.metadataJson?.coolantC === 'number' ? event.metadataJson.coolantC : null);
+  if (coolant != null) {
+    items.push({ label: 'Kühlmittel', value: `${Math.round(coolant)} °C` });
+  }
+  if (event.durationMs != null && event.durationMs > 0) {
+    items.push({ label: 'Dauer', value: `${Math.max(1, Math.round(event.durationMs / 1000))} s` });
+  }
+  return items;
 }
 
 export function hfQualityLabel(trip: TripTimelineTrip): string {

@@ -1080,6 +1080,41 @@ export type BookingStationContext = {
   longitude: number | null;
 };
 
+/** Lean create body for operator/rental booking forms → `api.bookings.create`. */
+export type OperatorBookingCreatePayload = {
+  customer: { connect: { id: string } };
+  vehicle: { connect: { id: string } };
+  pickupStation?: { connect: { id: string } };
+  returnStation?: { connect: { id: string } };
+  startDate: string;
+  endDate: string;
+  dailyRateCents?: number;
+  totalPriceCents?: number;
+  kmIncluded?: number;
+  insuranceOptions?: string[];
+  extrasJson?: unknown;
+  pricingInput?: unknown;
+  currency?: string;
+  status?: string;
+  notes?: string;
+};
+
+/** Lean patch body for operator/rental booking edits → `api.bookings.update`. */
+export type OperatorBookingUpdatePayload = {
+  startDate?: string;
+  endDate?: string;
+  notes?: string;
+  kmIncluded?: number;
+  status?: string;
+  vehicleId?: string;
+  vehicle?: { connect: { id: string } };
+  customer?: { connect: { id: string } };
+  pickupStationId?: string;
+  returnStationId?: string;
+  pickupStation?: { connect: { id: string } };
+  returnStation?: { connect: { id: string } };
+};
+
 /** Query params for `GET /organizations/:orgId/bookings` (all optional, backward-compatible). */
 export interface BookingsListParams {
   page?: number;
@@ -1872,12 +1907,114 @@ export interface UserSecurityActivityDto {
   }>;
 }
 
+export type CustomerVerificationCheckKindApi =
+  | 'ID_DOCUMENT'
+  | 'DRIVING_LICENSE'
+  | 'PROOF_OF_ADDRESS';
+
+export type DocumentEligibilityStatusApi =
+  | 'verified'
+  | 'missing'
+  | 'pending'
+  | 'pickup_required'
+  | 'requires_review'
+  | 'rejected'
+  | 'expired';
+
+export type ProofOfAddressEligibilityStatusApi =
+  | 'not_required'
+  | 'required'
+  | 'verified'
+  | 'pending'
+  | 'requires_review'
+  | 'rejected';
+
+export interface CustomerVerificationEligibilityDto {
+  customerId: string;
+  bookingId?: string | null;
+  idDocument: DocumentEligibilityStatusApi;
+  drivingLicense: DocumentEligibilityStatusApi;
+  proofOfAddress: ProofOfAddressEligibilityStatusApi;
+  canConfirmBooking: boolean;
+  canStartPickup: boolean;
+  blockingReasons: string[];
+  warnings: string[];
+}
+
+export interface CustomerVerificationCheckDto {
+  id: string;
+  customerId: string;
+  bookingId?: string | null;
+  provider: string;
+  kind: CustomerVerificationCheckKindApi;
+  status: string;
+  providerSessionId?: string | null;
+  providerStatus?: string | null;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DiditVerificationSessionDto {
+  url: string;
+  sessionId: string;
+  checkId: string;
+  status: string;
+}
+
+export interface ManualPickupCheckDto {
+  customerId: string;
+  bookingId: string;
+  idDocumentSeen: boolean;
+  idNameMatchesBooking: boolean;
+  idDateOfBirthChecked: boolean;
+  minimumAgePassed: boolean;
+  drivingLicenseSeen: boolean;
+  licenseNameMatchesBooking: boolean;
+  licenseClassValid: boolean;
+  licenseNotExpired: boolean;
+  minimumLicenseDurationPassed?: boolean;
+  notes?: string;
+}
+
 export const api = {
   auth: {
     login: (email: string, password: string) =>
       post<{ token: string; user: any }>('/auth/login', { email, password }),
     me: () => get<any>('/auth/me'),
     seedAdmin: () => post<any>('/auth/seed-admin', {}),
+  },
+  customerVerification: {
+    getEligibility: (customerId: string, bookingId?: string) => {
+      const q = new URLSearchParams({ customerId });
+      if (bookingId) q.set('bookingId', bookingId);
+      return get<CustomerVerificationEligibilityDto>(
+        `/customer-verification/eligibility?${q.toString()}`,
+      );
+    },
+    getChecks: (customerId: string, bookingId?: string) => {
+      const q = new URLSearchParams({ customerId });
+      if (bookingId) q.set('bookingId', bookingId);
+      return get<CustomerVerificationCheckDto[]>(
+        `/customer-verification/checks?${q.toString()}`,
+      );
+    },
+    startDiditSession: (
+      customerId: string,
+      bookingId: string | undefined,
+      kind: CustomerVerificationCheckKindApi,
+    ) =>
+      post<DiditVerificationSessionDto>('/customer-verification/didit/session', {
+        customerId,
+        ...(bookingId ? { bookingId } : {}),
+        kind,
+      }),
+    submitManualPickupCheck: (payload: ManualPickupCheckDto) =>
+      post<{ checks: CustomerVerificationCheckDto[] }>(
+        '/customer-verification/manual-pickup-check',
+        payload,
+      ),
   },
   account: {
     me: () => get<AccountMeDto>('/account/me'),
@@ -2299,8 +2436,10 @@ export const api = {
     },
     get: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/bookings/${id}`),
     detail: (orgId: string, id: string) => get<BookingDetailDto>(`/organizations/${orgId}/bookings/${id}/detail`),
-    create: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/bookings`, data),
-    update: (orgId: string, id: string, data: any) => patch<any>(`/organizations/${orgId}/bookings/${id}`, data),
+    create: (orgId: string, data: OperatorBookingCreatePayload) =>
+      post<unknown>(`/organizations/${orgId}/bookings`, data),
+    update: (orgId: string, id: string, data: OperatorBookingUpdatePayload) =>
+      patch<unknown>(`/organizations/${orgId}/bookings/${id}`, data),
     cancel: (orgId: string, id: string) => del<void>(`/organizations/${orgId}/bookings/${id}`),
     // V4.6.81 — Mark a CONFIRMED booking whose scheduled pickup has
     // passed without a handover as NO_SHOW. Distinct from cancel so

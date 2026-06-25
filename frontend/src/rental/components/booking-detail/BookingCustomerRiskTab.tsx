@@ -1,5 +1,6 @@
 import { StatusChip } from '../../../components/patterns';
 import type { BookingDetailDto } from '../../../lib/api';
+import { CustomerVerificationPanel } from '../customer-verification/CustomerVerificationPanel';
 import {
   customerVerificationApiToUi,
   customerVerificationUiLabelDe,
@@ -10,10 +11,11 @@ const card = 'rounded-lg border border-border bg-card p-4';
 
 interface BookingCustomerRiskTabProps {
   detail: BookingDetailDto;
+  orgId?: string;
   onOpenCustomer?: (customerId: string) => void;
 }
 
-export function BookingCustomerRiskTab({ detail, onOpenCustomer }: BookingCustomerRiskTabProps) {
+export function BookingCustomerRiskTab({ detail, orgId, onOpenCustomer }: BookingCustomerRiskTabProps) {
   const c = detail.customer;
   const idUi = customerVerificationApiToUi(c.identityStatus ?? undefined);
   const licenseUi = customerVerificationApiToUi(c.licenseStatus ?? undefined);
@@ -43,6 +45,13 @@ export function BookingCustomerRiskTab({ detail, onOpenCustomer }: BookingCustom
           <Row label="Risikostufe" value={c.riskLevel ?? EM_DASH} />
         </dl>
       </div>
+
+      <CustomerVerificationPanel
+        customerId={c.customerId}
+        bookingId={detail.core.bookingId}
+        orgId={orgId}
+        compact
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Metric label="Offene Rechnungen" value={c.openInvoiceCount} tone={c.openInvoiceCount > 0 ? 'warning' : 'neutral'} />

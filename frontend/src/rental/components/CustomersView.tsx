@@ -243,7 +243,6 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
   });
   const [pendingDocFiles, setPendingDocFiles] = useState<PendingCustomerDocumentFiles>({});
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [idVerificationStatus, setIdVerificationStatus] = useState<'idle' | 'verifying' | 'verified' | 'failed'>('idle');
 
   const resetAddCustomerForm = () => {
     setNewCustomer({
@@ -256,7 +255,6 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
     setPendingDocFiles({});
     setFormErrors({});
     setAddStep(0);
-    setIdVerificationStatus('idle');
   };
 
   const openCustomerDetail = (customer: Customer) => {
@@ -1008,138 +1006,14 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                         onPendingFileChange={(file) => setPendingDocFiles((prev) => ({ ...prev, ID_BACK: file ?? undefined }))}
                       />
                     </div>
-                    {/* Veriff ID Verification */}
-                    <div className={`rounded-lg border p-4 transition-all ${
-                      idVerificationStatus === 'verified'
-                        ? 'sq-tone-success border-current/30'
-                        : idVerificationStatus === 'failed'
-                          ? 'sq-tone-critical border-current/30'
-                          : 'bg-muted/30 border-border'
-                    }`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className={`w-5 h-5 rounded-lg flex items-center justify-center ${
-                            idVerificationStatus === 'verified'
-                              ? 'sq-tone-success'
-                              : idVerificationStatus === 'failed'
-                                ? 'sq-tone-critical'
-                                : 'sq-tone-info'
-                          }`}>
-                            {idVerificationStatus === 'verifying' ? (
-                              <Icon name="loader-2" className="w-5 h-5 animate-spin" />
-                            ) : idVerificationStatus === 'verified' ? (
-                              <Icon name="shield-check" className="w-5 h-5" />
-                            ) : idVerificationStatus === 'failed' ? (
-                              <Icon name="shield" className="w-5 h-5" />
-                            ) : (
-                              <Icon name="shield" className="w-5 h-5" />
-                            )}
-                          </div>
-                          <div>
-                            <h4 className="text-xs font-semibold text-foreground">ID-Echtheitsprüfung</h4>
-                            <p className="text-[11px] text-muted-foreground">Powered by Veriff</p>
-                          </div>
-                        </div>
-                        {idVerificationStatus === 'verified' && (
-                          <StatusChip tone="success" icon={<Icon name="shield-check" className="w-3 h-3" />}>
-                            Verifiziert
-                          </StatusChip>
-                        )}
-                        {idVerificationStatus === 'failed' && (
-                          <StatusChip tone="critical" icon={<Icon name="x" className="w-3 h-3" />}>
-                            Fehlgeschlagen
-                          </StatusChip>
-                        )}
+                    <div className="rounded-lg border border-border bg-muted/30 p-4">
+                      <div className="flex items-start gap-2.5">
+                        <Icon name="info" className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          Automatische Ausweis- und Führerscheinprüfung (Didit) steht nach Anlage des Kunden im
+                          Kundenprofil unter „Dokumente & Verifikation“ zur Verfügung.
+                        </p>
                       </div>
-
-                      {idVerificationStatus === 'idle' && (
-                        <>
-                          <p className="text-xs mb-3 text-muted-foreground">
-                            Lassen Sie das hochgeladene Ausweisdokument automatisch auf Echtheit prüfen. Veriff überprüft Sicherheitsmerkmale, MRZ-Daten und Dokumentenintegrität.
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (!pendingDocFiles.ID_FRONT) {
-                                setFormErrors({ ...formErrors, veriff: 'Bitte laden Sie zuerst die Vorderseite des Ausweises hoch.' });
-                                return;
-                              }
-                              setFormErrors({});
-                              setIdVerificationStatus('verifying');
-                              setTimeout(() => {
-                                setIdVerificationStatus('verified');
-                              }, 3000);
-                            }}
-                            disabled={!pendingDocFiles.ID_FRONT}
-                            className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-                              pendingDocFiles.ID_FRONT
-                                ? 'bg-[color:var(--brand)] text-white shadow-md hover:opacity-90'
-                                : 'border border-border bg-muted text-muted-foreground cursor-not-allowed'
-                            }`}>
-                            <Icon name="shield" className="w-5 h-5" />
-                            ID auf Echtheit verifizieren
-                            <Icon name="external-link" className="w-3 h-3 opacity-60" />
-                          </button>
-                          {formErrors.veriff && <p className="text-[11px] text-[color:var(--status-critical)] mt-1.5">{formErrors.veriff}</p>}
-                          {!pendingDocFiles.ID_FRONT && (
-                            <p className="text-[11px] mt-1.5 text-muted-foreground">
-                              Bitte laden Sie zuerst die Vorderseite des Ausweises hoch.
-                            </p>
-                          )}
-                        </>
-                      )}
-
-                      {idVerificationStatus === 'verifying' && (
-                        <div className="flex flex-col items-center py-3 gap-3">
-                          <div className="w-9 h-9 rounded-full flex items-center justify-center sq-tone-info">
-                            <Icon name="loader-2" className="w-5 h-5 animate-spin" />
-                          </div>
-                          <div className="text-center">
-                            <p className="text-xs font-semibold text-foreground">Dokument wird geprüft...</p>
-                            <p className="text-xs mt-0.5 text-muted-foreground">Veriff analysiert Sicherheitsmerkmale & MRZ-Daten</p>
-                          </div>
-                          <div className="w-full rounded-full h-1.5 overflow-hidden bg-muted">
-                            <div className="h-full bg-[color:var(--brand)] rounded-full animate-pulse" style={{ width: '60%' }} />
-                          </div>
-                        </div>
-                      )}
-
-                      {idVerificationStatus === 'verified' && (
-                        <div className="space-y-2.5 mt-1">
-                          <div className="grid grid-cols-2 gap-2.5">
-                            {[
-                              { label: 'Dokumententyp', value: newCustomer.idType, icon: IdCard },
-                              { label: 'MRZ-Prüfung', value: 'Bestanden', icon: CheckCircle },
-                              { label: 'Sicherheitsmerkmale', value: 'Gültig', icon: ShieldCheck },
-                              { label: 'Manipulationsprüfung', value: 'Keine erkannt', icon: Eye },
-                            ].map(item => (
-                              <div key={item.label} className="flex items-center gap-2 px-3 py-2 rounded-lg sq-tone-success">
-                                <item.icon className="w-3.5 h-3.5 shrink-0" />
-                                <div>
-                                  <p className="text-xs text-muted-foreground">{item.label}</p>
-                                  <p className="text-xs font-semibold">{item.value}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {idVerificationStatus === 'failed' && (
-                        <div className="mt-1">
-                          <p className="text-xs mb-3 text-[color:var(--status-critical)]">
-                            Die Echtheitsprüfung konnte nicht bestätigt werden. Bitte überprüfen Sie die Qualität des Uploads oder verwenden Sie ein anderes Dokument.
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => setIdVerificationStatus('idle')}
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card text-xs font-medium text-foreground transition-all hover:bg-muted"
-                          >
-                            <Icon name="shield" className="w-3.5 h-3.5" />
-                            Erneut versuchen
-                          </button>
-                        </div>
-                      )}
                     </div>
 
                     <div className="h-px my-1 bg-border" />
@@ -1182,18 +1056,11 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                       <SummaryRow label="Ausweisnr." value={newCustomer.idNumber} />
                       <SummaryRow label="Ausweis gültig bis" value={newCustomer.idExpiry} />
                       <div className="flex items-center justify-between py-2">
-                        <span className="text-xs text-muted-foreground">ID-Verifizierung</span>
-                        {idVerificationStatus === 'verified' ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--status-positive)]">
-                            <Icon name="shield-check" className="w-3.5 h-3.5" />
-                            Verifiziert (Veriff)
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
-                            <Icon name="shield" className="w-3.5 h-3.5" />
-                            Nicht verifiziert
-                          </span>
-                        )}
+                        <span className="text-xs text-muted-foreground">Ausweisprüfung</span>
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                          <Icon name="shield" className="w-3.5 h-3.5" />
+                          Nach Kundenanlage im Profil
+                        </span>
                       </div>
                     </div>
                     <div className="rounded-lg border border-border bg-muted/30 p-4">

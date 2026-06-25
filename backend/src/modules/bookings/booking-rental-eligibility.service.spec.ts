@@ -49,7 +49,15 @@ describe('BookingRentalEligibilityService', () => {
     formatEffectiveRules: jest.fn(),
   } as unknown as RentalEffectiveRulesService;
 
-  const service = new BookingRentalEligibilityService(prisma, rentalEffectiveRules);
+  const verificationService = {
+    getEligibilityStatus: jest.fn(),
+  } as unknown as import('@modules/customer-verification/customer-verification.service').CustomerVerificationService;
+
+  const service = new BookingRentalEligibilityService(
+    prisma,
+    rentalEffectiveRules,
+    verificationService,
+  );
 
   const startDate = new Date('2026-07-01T10:00:00.000Z');
 
@@ -73,6 +81,16 @@ describe('BookingRentalEligibilityService', () => {
         },
       }),
     );
+    (verificationService.getEligibilityStatus as jest.Mock).mockResolvedValue({
+      customerId: 'cust1',
+      idDocument: 'verified',
+      drivingLicense: 'verified',
+      proofOfAddress: 'not_required',
+      canConfirmBooking: true,
+      canStartPickup: true,
+      blockingReasons: [],
+      warnings: [],
+    });
   });
 
   function mockCustomer(overrides: {
@@ -252,5 +270,56 @@ describe('BookingRentalEligibilityService', () => {
         startDate,
       }),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('adds warning for pickup_required ID without blocking ELIGIBLE rental rules', async () => {
+    mockCustomer({ licenseIssuedAt: '2018-01-01' });
+    (verificationService.getEligibilityStatus as jest.Mock).mockResolvedValue({
+      customerId: 'cust1',
+      idDocument: 'pickup_required',
+      drivingLicense: 'verified',
+      proofOfAddress: 'not_required',
+      canConfirmBooking: true,
+      canStartPickup: false,
+      blockingReasons: [],
+      warnings: [],
+    });
+
+    const result = await service.check({
+      organizationId: 'org1',
+      vehicleId: 'veh1',
+      customerId: 'cust1',
+      startDate,
+    });
+
+    expect(result.status).toBe('ELIGIBLE');
+    expect(result.warningReasons).toContain('Ausweisprüfung beim Pickup vorgesehen');
+  });
+
+  it('proofOfAddress pending is warning only, not blocking', async () => {
+    mockCustomer({ licenseIssuedAt: '2018-01-01' });
+    (verificationService.getEligibilityStatus as jest.Mock).mockResolvedValue({
+      customerId: 'cust1',
+      idDocument: 'verified',
+      drivingLicense: 'verified',
+      proofOfAddress: 'pending',
+      canConfirmBooking: true,
+      canStartPickup: true,
+      blockingReasons: [],
+      warnings: [],
+    });
+
+    const result = await service.check({
+      organizationId: 'org1',
+      vehicleId: 'veh1',
+      customerId: 'cust1',
+      startDate,
+    });
+
+    expect(result.status).toBe('ELIGIBLE');
+    expect(result.warningReasons).toContain(
+      'Adressnachweis optional — noch nicht bestätigt',
+    );
+    expect(result.blockingReasons).toHaveLength(0);
   });
 });

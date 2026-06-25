@@ -11,6 +11,7 @@ import { OperatorGlassCard } from './OperatorGlassCard';
 interface Props {
   booking: OperatorScanBookingHit;
   highlighted?: boolean;
+  onDetails?: () => void;
   onOpenVehicle?: () => void;
   onPickup?: () => void;
   onReturn?: () => void;
@@ -19,6 +20,7 @@ interface Props {
 export function OperatorScanBookingCard({
   booking,
   highlighted,
+  onDetails,
   onOpenVehicle,
   onPickup,
   onReturn,
@@ -53,7 +55,16 @@ export function OperatorScanBookingCard({
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-px border-t border-border/50 bg-border/50">
+      <div className="grid grid-cols-2 gap-px border-t border-border/50 bg-border/50">
+        {onDetails && (
+          <button
+            type="button"
+            onClick={onDetails}
+            className="sq-press min-h-[48px] bg-card text-[11px] font-semibold"
+          >
+            Details
+          </button>
+        )}
         {onOpenVehicle && (
           <button
             type="button"

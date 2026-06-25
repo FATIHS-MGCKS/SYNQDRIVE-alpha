@@ -1,4 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import type {
+  RentalHealthModule,
+  RentalHealthState,
+  VehicleHealthResponse,
+} from '../../../../lib/api';
 import type { DashboardInsight } from '../../../DashboardInsightsContext';
 import type { VehicleData } from '../../../data/vehicles';
 import type { PickupTileItem, ReturnTileItem } from '../../StatInlineDetail';
@@ -117,6 +122,50 @@ function insight(overrides: Partial<DashboardInsight> = {}): DashboardInsight {
   };
 }
 
+type HealthModuleKey = keyof VehicleHealthResponse['modules'];
+
+function healthModule(overrides: Partial<RentalHealthModule> = {}): RentalHealthModule {
+  return {
+    state: overrides.state ?? 'good',
+    reason: overrides.reason ?? '',
+    last_updated_at: overrides.last_updated_at ?? NOW.toISOString(),
+    data_stale: overrides.data_stale ?? false,
+    ...overrides,
+  };
+}
+
+function health(overrides: {
+  vehicleId?: string;
+  overall_state?: RentalHealthState;
+  rental_blocked?: boolean;
+  blocking_reasons?: string[];
+  modules?: Partial<Record<HealthModuleKey, Partial<RentalHealthModule>>>;
+} = {}): VehicleHealthResponse {
+  const keys: HealthModuleKey[] = [
+    'battery',
+    'tires',
+    'brakes',
+    'error_codes',
+    'service_compliance',
+    'complaints',
+    'vehicle_alerts',
+  ];
+  const modules = keys.reduce((acc, key) => {
+    acc[key] = healthModule(overrides.modules?.[key]);
+    return acc;
+  }, {} as VehicleHealthResponse['modules']);
+
+  return {
+    vehicle_id: overrides.vehicleId ?? 'v1',
+    organization_id: 'org-1',
+    overall_state: overrides.overall_state ?? 'good',
+    rental_blocked: overrides.rental_blocked ?? false,
+    blocking_reasons: overrides.blocking_reasons ?? [],
+    modules,
+    generated_at: NOW.toISOString(),
+  };
+}
+
 describe('dashboard runtime model', () => {
   it('prevents ready-to-rent count drift between count, rows and secondaryRows', () => {
     const fleetVehicles = [
@@ -136,15 +185,18 @@ describe('dashboard runtime model', () => {
 
     const slice = model.slices['ready-to-rent'];
     const healthRiskState = model.vehicleStates.find((state) => state.vehicleId === 'health-risk');
-    expect(slice.count).toBe(1);
-    expect(slice.rows).toHaveLength(1);
-    expect(slice.rows[0]?.vehicleId).toBe('ready');
-    expect(slice.secondaryRows).toHaveLength(3);
-    expect(healthRiskState?.rentalReadiness).toBe('not_ready');
+    // A generic health-risk hint (no concrete rental-health reason) is a soft,
+    // non-blocking fallback and must not push the vehicle out of Ready-to-rent.
+    expect(slice.count).toBe(2);
+    expect(slice.rows).toHaveLength(2);
+    expect(slice.count).toBe(slice.rows.length);
+    expect(slice.rows.map((row) => row.vehicleId).sort()).toEqual(['health-risk', 'ready']);
+    expect(slice.secondaryRows).toHaveLength(2);
+    expect(healthRiskState?.rentalReadiness).toBe('ready');
+    expect(healthRiskState?.isReadyToRent).toBe(true);
     expect(healthRiskState?.isBlocked).toBe(false);
     expect(slice.secondaryRows?.every((row) => (row.reasons?.length ?? 0) > 0)).toBe(true);
     expect(slice.rows.map((row) => row.vehicleId)).not.toContain('dirty');
-    expect(slice.rows.map((row) => row.vehicleId)).not.toContain('health-risk');
     expect(slice.rows.map((row) => row.vehicleId)).not.toContain('blocked');
   });
 
@@ -402,7 +454,7 @@ describe('dashboard runtime model', () => {
     expect(blockedIds).not.toContain('warning-only');
   });
 
-  it('separates blocking from preventsReady for warnings', () => {
+  it('keeps a warning-only available vehicle ready (warning never prevents ready)', () => {
     const model = buildDashboardRuntimeModel({
       locale: 'en',
       fleetVehicles: [vehicle({ id: 'svc-warn', license: 'SVC' })],
@@ -419,12 +471,151 @@ describe('dashboard runtime model', () => {
     });
 
     const state = model.vehicleStates[0];
-    // Health/compliance warning prevents ready but never blocks renting.
-    expect(state?.isReadyToRent).toBe(false);
-    expect(state?.isBlocked).toBe(false);
+    // A due-soon / service-window warning stays visible but no longer prevents
+    // readiness or blocks renting on its own.
     expect(state?.isWarning).toBe(true);
-    expect(state?.warningReasons.some((reason) => reason.preventsReady === true)).toBe(true);
+    expect(state?.isReadyToRent).toBe(true);
+    expect(state?.isBlocked).toBe(false);
+    expect(state?.warningReasons.some((reason) => reason.preventsReady === true)).toBe(false);
     expect(state?.warningReasons.some((reason) => reason.blocking === true)).toBe(false);
+    expect(model.slices['ready-to-rent'].rows.map((row) => row.vehicleId)).toContain('svc-warn');
+    expect(model.slices['blocked-maintenance'].rows.map((row) => row.vehicleId)).not.toContain('svc-warn');
+  });
+
+  it('keeps an available vehicle with a tire warning ready (Task A: warning alone)', () => {
+    const healthMap = new Map<string, VehicleHealthResponse>([
+      [
+        'tire-warn',
+        health({
+          vehicleId: 'tire-warn',
+          overall_state: 'warning',
+          modules: { tires: { state: 'warning', reason: 'Reifen beobachten' } },
+        }),
+      ],
+    ]);
+    const model = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles: [vehicle({ id: 'tire-warn', license: 'TIRE' })],
+      healthMap,
+      now: NOW,
+    });
+
+    const state = model.vehicleStates[0];
+    expect(state?.isWarning).toBe(true);
+    expect(state?.isReadyToRent).toBe(true);
+    expect(state?.warningReasons.some((reason) => reason.category === 'tires')).toBe(true);
+    expect(state?.warningReasons.some((reason) => reason.preventsReady === true)).toBe(false);
+    expect(model.slices['ready-to-rent'].rows.map((row) => row.vehicleId)).toContain('tire-warn');
+    expect(model.slices['blocked-maintenance'].rows.map((row) => row.vehicleId)).not.toContain('tire-warn');
+  });
+
+  it('keeps an available vehicle with a non-blocking DTC warning ready (Task F)', () => {
+    const healthMap = new Map<string, VehicleHealthResponse>([
+      [
+        'dtc-warn',
+        health({
+          vehicleId: 'dtc-warn',
+          overall_state: 'warning',
+          modules: { error_codes: { state: 'warning', reason: '1 aktive Fehlercodes' } },
+        }),
+      ],
+    ]);
+    const model = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles: [vehicle({ id: 'dtc-warn', license: 'DTC' })],
+      healthMap,
+      now: NOW,
+    });
+
+    const state = model.vehicleStates[0];
+    expect(state?.isWarning).toBe(true);
+    expect(state?.isReadyToRent).toBe(true);
+    expect(state?.warningReasons.some((reason) => reason.category === 'dtc')).toBe(true);
+    expect(state?.warningReasons.some((reason) => reason.preventsReady === true)).toBe(false);
+    expect(model.slices['ready-to-rent'].rows.map((row) => row.vehicleId)).toContain('dtc-warn');
+    expect(model.slices['blocked-maintenance'].rows.map((row) => row.vehicleId)).not.toContain('dtc-warn');
+  });
+
+  it('does not emit dashboard-health-risk when a concrete rental-health reason exists (Task C)', () => {
+    const healthMap = new Map<string, VehicleHealthResponse>([
+      [
+        'both',
+        health({
+          vehicleId: 'both',
+          overall_state: 'warning',
+          modules: { tires: { state: 'warning', reason: 'Reifen beobachten' } },
+        }),
+      ],
+    ]);
+    const model = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles: [vehicle({ id: 'both', license: 'BOTH' })],
+      healthMap,
+      healthRiskVehicleIds: new Set(['both']),
+      now: NOW,
+    });
+
+    const state = model.vehicleStates[0];
+    const allReasons = [
+      ...(state?.warningReasons ?? []),
+      ...(state?.criticalReasons ?? []),
+      ...(state?.notReadyReasons ?? []),
+    ];
+    expect(state?.warningReasons.some((reason) => reason.source === 'rental-health:tires')).toBe(true);
+    expect(allReasons.some((reason) => reason.source === 'dashboard-health-risk')).toBe(false);
+    // No duplicate generic pill, and the concrete warning alone keeps it ready.
+    expect(state?.isReadyToRent).toBe(true);
+  });
+
+  it('emits dashboard-health-risk only as a non-blocking fallback (Task C fallback)', () => {
+    const model = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles: [vehicle({ id: 'risk-only', license: 'RISK' })],
+      healthRiskVehicleIds: new Set(['risk-only']),
+      now: NOW,
+    });
+
+    const state = model.vehicleStates[0];
+    const fallback = state?.warningReasons.find((reason) => reason.source === 'dashboard-health-risk');
+    expect(fallback).toBeDefined();
+    expect(fallback?.preventsReady ?? false).toBe(false);
+    expect(fallback?.blocking ?? false).toBe(false);
+    expect(state?.isReadyToRent).toBe(true);
+    expect(state?.isBlocked).toBe(false);
+  });
+
+  it('treats overdue compliance as blocking under blocked-by-compliance (Task D)', () => {
+    const healthMap = new Map<string, VehicleHealthResponse>([
+      [
+        'svc-overdue',
+        health({
+          vehicleId: 'svc-overdue',
+          overall_state: 'critical',
+          modules: { service_compliance: { state: 'critical', reason: 'Service overdue 117 days' } },
+        }),
+      ],
+    ]);
+    const model = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles: [vehicle({ id: 'svc-overdue', license: 'SVC-OD' })],
+      healthMap,
+      now: NOW,
+    });
+
+    const state = model.vehicleStates[0];
+    expect(state?.isReadyToRent).toBe(false);
+    expect(state?.isBlocked).toBe(true);
+    expect(
+      state?.blockReasons.some(
+        (reason) =>
+          reason.blocking === true && (reason.category === 'service' || reason.category === 'compliance'),
+      ),
+    ).toBe(true);
+
+    const blocked = model.slices['blocked-maintenance'];
+    expect(blocked.rows.map((row) => row.vehicleId)).toContain('svc-overdue');
+    const complianceGroup = blocked.groups?.find((groupItem) => groupItem.id === 'blocked-by-compliance');
+    expect(complianceGroup?.rows.map((row) => row.vehicleId)).toContain('svc-overdue');
   });
 
   it('does not crash on missing optional inputs or unusable telemetry timestamps', () => {

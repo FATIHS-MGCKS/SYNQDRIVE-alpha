@@ -9,7 +9,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { join } from 'path';
 import Redis from 'ioredis';
 
-import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig } from '@config/index';
+import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig } from '@config/index';
 
 import { PrismaModule } from '@shared/database/prisma.module';
 import { RedisModule } from '@shared/redis/redis.module';
@@ -31,6 +31,7 @@ import { IntegrationsModule } from '@modules/integrations/integrations.module';
 import { BillingModule } from '@modules/billing/billing.module';
 import { ProspectsModule } from '@modules/prospects/prospects.module';
 import { CustomersModule } from '@modules/customers/customers.module';
+import { CustomerVerificationModule } from '@modules/customer-verification/customer-verification.module';
 import { MisuseCasesModule } from '@modules/vehicle-intelligence/misuse-cases/misuse-cases.module';
 import { BookingsModule } from '@modules/bookings/bookings.module';
 import { RentalDrivingAnalysisModule } from '@modules/rental-driving-analysis/rental-driving-analysis.module';
@@ -124,7 +125,7 @@ export class AppModule {
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
-          load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig],
+          load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig],
         }),
 
         // Global throttler: 200 requests per minute per IP (normal API usage)
@@ -190,6 +191,7 @@ export class AppModule {
         BillingModule,
         ProspectsModule,
         CustomersModule,
+        CustomerVerificationModule,
         MisuseCasesModule,
         BookingsModule,
         RentalDrivingAnalysisModule,

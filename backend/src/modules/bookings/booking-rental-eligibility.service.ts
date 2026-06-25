@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RentalEffectiveRulesService } from '@modules/rental-rules/rental-effective-rules.service';
+import { CustomerVerificationService } from '@modules/customer-verification/customer-verification.service';
 import { CustomerDocumentType } from '@prisma/client';
 import type { BookingRentalEligibilityInput, BookingRentalEligibilityResult } from './booking-rental-eligibility.types';
 import { BOOKING_RENTAL_ELIGIBILITY_DECISION_SOURCE } from './booking-rental-eligibility.types';
@@ -16,6 +17,7 @@ export class BookingRentalEligibilityService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly rentalEffectiveRules: RentalEffectiveRulesService,
+    private readonly verificationService: CustomerVerificationService,
   ) {}
 
   async check(
@@ -83,6 +85,48 @@ export class BookingRentalEligibilityService {
       additionalDriverCount: Math.max(0, input.additionalDriverCount ?? 0),
       depositReceived,
     });
+
+    const verification = await this.verificationService.getEligibilityStatus(
+      input.organizationId,
+      input.customerId,
+      {
+        bookingId: input.bookingId,
+        startDate: input.startDate,
+      },
+    );
+
+    if (verification.idDocument !== 'verified') {
+      if (verification.idDocument === 'pickup_required') {
+        evaluation.warningReasons.push(
+          'Ausweisprüfung beim Pickup vorgesehen',
+        );
+      } else if (verification.idDocument !== 'missing') {
+        evaluation.warningReasons.push(
+          'Ausweisprüfung noch nicht abgeschlossen',
+        );
+      }
+    }
+
+    if (verification.drivingLicense !== 'verified') {
+      if (verification.drivingLicense === 'pickup_required') {
+        evaluation.warningReasons.push(
+          'Führerscheinprüfung beim Pickup vorgesehen',
+        );
+      } else if (verification.drivingLicense !== 'missing') {
+        evaluation.warningReasons.push(
+          'Führerscheinprüfung noch nicht abgeschlossen',
+        );
+      }
+    }
+
+    if (
+      verification.proofOfAddress === 'required' ||
+      verification.proofOfAddress === 'pending'
+    ) {
+      evaluation.warningReasons.push(
+        'Adressnachweis optional — noch nicht bestätigt',
+      );
+    }
 
     return {
       ...evaluation,

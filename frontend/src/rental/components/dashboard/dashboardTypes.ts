@@ -3,6 +3,7 @@ import type { TranslationKey } from '../../i18n/translations/en';
 import type { Locale } from '../../i18n/LanguageContext';
 import type { Station } from '../../../lib/api';
 import type { VehicleData } from '../../data/vehicles';
+import type { VehicleHealthResponse } from '../../../lib/api';
 import type { DashboardInsight } from '../../DashboardInsightsContext';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
 import type { PredictiveOperationsInsight } from './derivePredictiveOperationsInsights';
@@ -675,6 +676,8 @@ export interface DashboardViewModel {
 
   fleetVehicles: VehicleData[];
   filteredFleetVehicles: VehicleData[];
+  /** Rental-health summaries by vehicle id (shared Fleet Command data source). */
+  healthMap: Map<string, VehicleHealthResponse>;
   availableVehicles: VehicleData[];
   reservedVehicles: VehicleData[];
   activeRentedVehicles: VehicleData[];

@@ -15,6 +15,9 @@ export interface TelltalePanelPresentation {
   showActiveSummary: boolean;
   activeCriticalCount: number;
   activeWarningCount: number;
+  activeCount: number;
+  isConnected: boolean;
+  sourceFooter: string;
 }
 
 const STATE_SORT_WEIGHT: Record<DashboardWarningLight['state'], number> = {
@@ -108,6 +111,68 @@ export function formatObservedAtAbsolute(iso: string | null | undefined): string
   });
 }
 
+export function telltaleShortLabel(key: string): string {
+  switch (key) {
+    case 'engine_oil_level':
+      return 'Motoröl';
+    case 'engine_limp_mode':
+    case 'check_engine_light':
+      return 'Notlauf';
+    case 'brake_lining_wear_pre_warning':
+      return 'Bremsbelag';
+    case 'tire_pressure_warning':
+      return 'Reifendruck';
+    case 'battery_warning_light':
+      return 'Batterie';
+    default:
+      return key.replace(/_/g, ' ');
+  }
+}
+
+export function isTelltaleProviderConnected(
+  telltales: DashboardWarningLightsResponse | null | undefined,
+): boolean {
+  if (!telltales) return false;
+  return (
+    telltales.connectionStatus === 'connected' &&
+    telltales.supportStatus !== 'not_connected'
+  );
+}
+
+export function resolveSourceFooter(
+  telltales: DashboardWarningLightsResponse | null | undefined,
+): string {
+  if (!telltales) return 'Quelle: HM/OEM Health';
+  if (
+    telltales.connectionStatus === 'not_connected' ||
+    telltales.supportStatus === 'not_connected'
+  ) {
+    return 'Keine HM/OEM-Verbindung';
+  }
+  if (telltales.provider === 'HIGH_MOBILITY' || telltales.provider === 'DIMO') {
+    return 'Quelle: HM/OEM Health';
+  }
+  return 'Quelle: HM/OEM Health';
+}
+
+export function countActiveTelltales(lights: DashboardWarningLight[]): number {
+  return lights.filter((l) => l.state === 'active').length;
+}
+
+/** User-facing tile status — never raw enums or "UNKNOWN". */
+export function telltaleTileStatusLabel(
+  light: DashboardWarningLight | undefined,
+  connected: boolean,
+): string {
+  if (!connected) return '—';
+  if (!light) return '—';
+  if (light.state === 'active') {
+    return light.severity === 'critical' ? 'Kritisch' : 'Aktiv';
+  }
+  if (light.state === 'off_confirmed') return 'Aus';
+  return '—';
+}
+
 export function resolveTelltalePanelPresentation(
   telltales: DashboardWarningLightsResponse | null | undefined,
 ): TelltalePanelPresentation {
@@ -115,16 +180,26 @@ export function resolveTelltalePanelPresentation(
     telltales?.lights.filter((l) => l.state === 'active' && l.severity === 'critical').length ?? 0;
   const activeWarning =
     telltales?.lights.filter((l) => l.state === 'active' && l.severity === 'warning').length ?? 0;
+  const activeCount = countActiveTelltales(telltales?.lights ?? []);
+  const sourceFooter = resolveSourceFooter(telltales);
+  const isConnected = isTelltaleProviderConnected(telltales);
+
+  const base = {
+    activeCriticalCount: activeCritical,
+    activeWarningCount: activeWarning,
+    activeCount,
+    isConnected,
+    sourceFooter,
+    showConfirmedOff: false,
+    showActiveSummary: false,
+  };
 
   if (!telltales) {
     return {
-      badgeLabel: 'Wird geladen',
+      ...base,
+      badgeLabel: 'Unbekannt',
       badgeTone: 'neutral',
-      summaryText: 'Warnleuchten-Status wird geladen …',
-      showConfirmedOff: false,
-      showActiveSummary: false,
-      activeCriticalCount: 0,
-      activeWarningCount: 0,
+      summaryText: 'Warnleuchtenstatus wird geladen …',
     };
   }
 
@@ -132,123 +207,64 @@ export function resolveTelltalePanelPresentation(
     telltales.connectionStatus === 'not_connected' ||
     telltales.supportStatus === 'not_connected'
   ) {
-    const inactiveHm = /nicht aktiv/i.test(telltales.message);
     return {
-      badgeLabel: inactiveHm ? 'Telematik inaktiv' : 'Nicht verbunden',
+      ...base,
+      badgeLabel: 'Nicht verbunden',
       badgeTone: 'neutral',
-      summaryText:
-        telltales.message ||
-        (inactiveHm
-          ? 'HM Health-Verknüpfung ist nicht aktiv. Warnleuchten können erst nach Aktivierung angezeigt werden.'
-          : 'Für dieses Fahrzeug ist keine OEM/HM-Warnleuchtenquelle verbunden. SynqDrive kann daher keine Cockpit-Warnleuchten auslesen.'),
-      showConfirmedOff: false,
-      showActiveSummary: false,
-      activeCriticalCount: activeCritical,
-      activeWarningCount: activeWarning,
+      summaryText: 'Fahrzeug nicht mit HM/OEM Health verbunden.',
     };
   }
 
   if (telltales.connectionStatus === 'provider_error' || telltales.freshness === 'error') {
     return {
-      badgeLabel: 'Abruf fehlgeschlagen',
-      badgeTone: 'critical',
-      summaryText:
-        telltales.message ||
-        'Die Warnleuchten konnten nicht zuverlässig ausgelesen werden. Bitte später erneut prüfen.',
-      showConfirmedOff: false,
-      showActiveSummary: false,
-      activeCriticalCount: activeCritical,
-      activeWarningCount: activeWarning,
-    };
-  }
-
-  if (activeCritical > 0) {
-    return {
-      badgeLabel: activeCritical === 1 ? 'Kritische Warnung' : `${activeCritical} kritisch`,
-      badgeTone: 'critical',
-      summaryText: 'Mindestens eine kritische Warnleuchte ist aktiv. Prüfung erforderlich.',
-      showConfirmedOff: false,
-      showActiveSummary: true,
-      activeCriticalCount: activeCritical,
-      activeWarningCount: activeWarning,
-    };
-  }
-
-  if (activeWarning > 0 || telltales.overallStatus === 'warning') {
-    return {
-      badgeLabel: activeWarning === 1 ? 'Warnung aktiv' : `${activeWarning} Warnungen`,
-      badgeTone: 'watch',
-      summaryText: 'Mindestens eine Warnleuchte erfordert Aufmerksamkeit.',
-      showConfirmedOff: false,
-      showActiveSummary: true,
-      activeCriticalCount: activeCritical,
-      activeWarningCount: activeWarning,
-    };
-  }
-
-  if (telltales.freshness === 'stale') {
-    const rel = formatRelativeObservedAt(telltales.lastObservedAt);
-    return {
-      badgeLabel: 'Datenbasis veraltet',
-      badgeTone: 'watch',
-      summaryText: rel
-        ? `Die Warnleuchten-Datenbasis ist nicht mehr aktuell (zuletzt ${rel}).`
-        : 'Die Warnleuchten-Datenbasis ist nicht mehr aktuell.',
-      showConfirmedOff: false,
-      showActiveSummary: false,
-      activeCriticalCount: 0,
-      activeWarningCount: 0,
-    };
-  }
-
-  if (telltales.supportStatus === 'not_supported') {
-    return {
-      badgeLabel: 'Nicht unterstützt',
+      ...base,
+      badgeLabel: 'Unbekannt',
       badgeTone: 'neutral',
-      summaryText:
-        'Dieses Fahrzeug oder der aktuelle Datenanbieter stellt keine Tacho-Warnleuchten bereit.',
-      showConfirmedOff: false,
-      showActiveSummary: false,
-      activeCriticalCount: 0,
-      activeWarningCount: 0,
+      summaryText: 'Warnleuchtenstatus aktuell nicht verfügbar.',
     };
   }
 
-  if (telltales.supportStatus === 'no_data' || telltales.freshness === 'no_data') {
+  if (activeCount > 0) {
     return {
-      badgeLabel: 'Wartet auf Daten',
-      badgeTone: 'info',
-      summaryText:
-        'Die Warnleuchtenüberwachung ist vorbereitet, aber SynqDrive hat noch keinen verwertbaren Fahrzeugzustand empfangen.',
-      showConfirmedOff: false,
-      showActiveSummary: false,
-      activeCriticalCount: 0,
-      activeWarningCount: 0,
+      ...base,
+      badgeLabel: 'Warnung aktiv',
+      badgeTone: activeCritical > 0 ? 'critical' : 'watch',
+      summaryText: 'Mindestens eine Warnleuchte erfordert Aufmerksamkeit.',
+      showActiveSummary: true,
     };
   }
 
   if (telltales.overallStatus === 'good') {
     return {
-      badgeLabel: 'Keine aktiven Warnleuchten',
+      ...base,
+      badgeLabel: 'Alles klar',
       badgeTone: 'success',
-      summaryText: 'Keine aktiven Warnleuchten bestätigt.',
+      summaryText: 'Keine aktiven Warnleuchten erkannt.',
       showConfirmedOff: true,
-      showActiveSummary: false,
-      activeCriticalCount: 0,
-      activeWarningCount: 0,
+    };
+  }
+
+  if (
+    telltales.freshness === 'stale' ||
+    telltales.supportStatus === 'not_supported' ||
+    telltales.supportStatus === 'no_data' ||
+    telltales.freshness === 'no_data' ||
+    telltales.overallStatus === 'unknown'
+  ) {
+    return {
+      ...base,
+      badgeLabel: 'Unbekannt',
+      badgeTone: 'neutral',
+      summaryText: 'Warnleuchtenstatus aktuell nicht verfügbar.',
     };
   }
 
   return {
-    badgeLabel: 'Status unbekannt',
-    badgeTone: 'neutral',
-    summaryText:
-      telltales.message ||
-      'Der Warnleuchten-Status ist teilweise unbekannt. Einzelne Signale bitte prüfen.',
-    showConfirmedOff: false,
-    showActiveSummary: false,
-    activeCriticalCount: activeCritical,
-    activeWarningCount: activeWarning,
+    ...base,
+    badgeLabel: 'Alles klar',
+    badgeTone: 'success',
+    summaryText: 'Keine aktiven Warnleuchten erkannt.',
+    showConfirmedOff: true,
   };
 }
 
@@ -291,11 +307,7 @@ export function telltaleShortTextFromLight(light: DashboardWarningLight): string
     return light.severity === 'critical' ? 'Kritisch' : 'Aktiv';
   }
   if (light.state === 'off_confirmed') return 'Aus';
-  if (light.state === 'stale') return 'Datenbasis';
-  if (light.state === 'unsupported') return 'N/A';
-  if (light.state === 'no_event_yet') return 'Unbekannt';
-  if (light.state === 'error') return 'Fehler';
-  return 'Unbekannt';
+  return '—';
 }
 
 /** Prefer canonical telltale read model; legacy indicators only as fallback. */

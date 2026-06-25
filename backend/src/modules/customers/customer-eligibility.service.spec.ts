@@ -1,5 +1,6 @@
 import { CustomerEligibilityService } from './customer-eligibility.service';
 import { PrismaService } from '@shared/database/prisma.service';
+import { CustomerVerificationService } from '@modules/customer-verification/customer-verification.service';
 
 describe('CustomerEligibilityService', () => {
   const prisma = {
@@ -13,7 +14,11 @@ describe('CustomerEligibilityService', () => {
     orgTask: { count: jest.fn() },
   } as unknown as PrismaService;
 
-  const service = new CustomerEligibilityService(prisma);
+  const verificationService = {
+    getEligibilityStatus: jest.fn(),
+  } as unknown as CustomerVerificationService;
+
+  const service = new CustomerEligibilityService(prisma, verificationService);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -31,6 +36,16 @@ describe('CustomerEligibilityService', () => {
       blockHighRiskCustomer: false,
       blockOpenOverdueInvoices: false,
       blockOpenFines: false,
+    });
+    (verificationService.getEligibilityStatus as jest.Mock).mockResolvedValue({
+      customerId: 'c1',
+      idDocument: 'verified',
+      drivingLicense: 'verified',
+      proofOfAddress: 'not_required',
+      canConfirmBooking: true,
+      canStartPickup: true,
+      blockingReasons: [],
+      warnings: [],
     });
     (prisma.orgInvoice.count as jest.Mock).mockResolvedValue(0);
     (prisma.fine.count as jest.Mock).mockResolvedValue(0);
@@ -108,5 +123,70 @@ describe('CustomerEligibilityService', () => {
     expect(result.blockingReasons.some((r) => r.includes('license expired'))).toBe(
       true,
     );
+  });
+
+  it('blocks pickup when verification reports rejected ID', async () => {
+    (verificationService.getEligibilityStatus as jest.Mock).mockResolvedValue({
+      customerId: 'c1',
+      idDocument: 'rejected',
+      drivingLicense: 'verified',
+      proofOfAddress: 'not_required',
+      canConfirmBooking: false,
+      canStartPickup: false,
+      blockingReasons: ['Ausweisprüfung abgelehnt'],
+      warnings: [],
+    });
+    (prisma.customer.findFirst as jest.Mock).mockResolvedValue({
+      id: 'c1',
+      organizationId: 'org1',
+      status: 'ACTIVE',
+      archivedAt: null,
+      riskLevel: 'LOW',
+      idVerificationStatus: 'REJECTED',
+      licenseVerificationStatus: 'VERIFIED',
+      licenseExpiry: new Date('2027-01-01'),
+      idExpiry: null,
+    });
+
+    const result = await service.evaluateForBooking('org1', 'c1', {
+      requestedStatus: 'ACTIVE',
+      startDate: new Date('2026-07-01'),
+    });
+
+    expect(result.canStartRental).toBe(false);
+    expect(result.blockingReasons).toContain('Ausweisprüfung abgelehnt');
+  });
+
+  it('pickup_required adds required action without blocking pending booking', async () => {
+    (verificationService.getEligibilityStatus as jest.Mock).mockResolvedValue({
+      customerId: 'c1',
+      idDocument: 'pickup_required',
+      drivingLicense: 'verified',
+      proofOfAddress: 'not_required',
+      canConfirmBooking: true,
+      canStartPickup: false,
+      blockingReasons: ['Ausweisprüfung für Pickup erforderlich'],
+      warnings: [],
+    });
+    (prisma.customer.findFirst as jest.Mock).mockResolvedValue({
+      id: 'c1',
+      organizationId: 'org1',
+      status: 'ACTIVE',
+      archivedAt: null,
+      riskLevel: 'LOW',
+      idVerificationStatus: 'PENDING_REVIEW',
+      licenseVerificationStatus: 'VERIFIED',
+      licenseExpiry: new Date('2027-01-01'),
+      idExpiry: null,
+    });
+
+    const result = await service.evaluateForBooking('org1', 'c1', {
+      requestedStatus: 'CONFIRMED',
+      startDate: new Date('2026-07-01'),
+    });
+
+    expect(result.canStartRental).toBe(false);
+    expect(result.requiredActions.some((a) => a.includes('beim Pickup'))).toBe(true);
+    expect(result.blockingReasons).toContain('Ausweisprüfung für Pickup erforderlich');
   });
 });

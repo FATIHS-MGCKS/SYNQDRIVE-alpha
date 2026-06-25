@@ -1039,6 +1039,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     applyStationFilter,
     fleetVehicles,
     filteredFleetVehicles,
+    healthMap,
     availableVehicles,
     reservedVehicles,
     activeRentedVehicles,

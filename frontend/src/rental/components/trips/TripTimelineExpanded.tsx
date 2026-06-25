@@ -6,11 +6,10 @@ import { getStressLevel, resolveDrivingStressScore } from '../../lib/scoreFormat
 import { TripBehaviorPanel } from './TripBehaviorPanel';
 import { TripEvidencePanel } from './TripEvidencePanel';
 import { TripRentalContextPanel } from './TripRentalContextPanel';
-import { TripAddresses, TripTechnicalData } from './trip-timeline-shared';
 import { TripAssignmentBadge } from './TripAssignmentBadge';
 import { TIMELINE_COPY, RENTAL_COPY, TRIPS_COPY, tv } from './trips-view-ui';
-import { assignmentLabel, assignmentSubjectTypeLabel, routeStatusLabel } from './utils/tripLabels';
-import { isEvidenceWorthyTrip, type TripRentalContextView } from './utils/tripRentalContext';
+import { assignmentLabel } from './utils/tripLabels';
+import type { TripRentalContextView } from './utils/tripRentalContext';
 import type { TripBehaviorEvent, TripEnrichment, TripTimelineTrip } from './timeline.types';
 
 export interface TripTimelineExpandedProps {
@@ -88,7 +87,6 @@ export function TripTimelineExpanded({
 }: TripTimelineExpandedProps) {
   const stressScore = resolveDrivingStressScore(trip);
   const stressLevel = trip.stressLevel ?? getStressLevel(stressScore);
-  const mapMatchConfidence = enrichment?.mapMatchConfidence ?? 0;
 
   const behaviorIsReady = trip.behaviorReady ?? !!trip.behaviorEnrichedAt;
   const enrichStatus = trip.behaviorEnrichmentStatus;
@@ -102,7 +100,6 @@ export function TripTimelineExpanded({
 
   const canReloadRoute = !!onReloadRoute && !routeLoading;
   const canCenterRoute = !!onCenterRoute && routePointsCount > 0 && !routeError;
-  const showEvidence = rentalContext && isEvidenceWorthyTrip(trip);
 
   const actionBtnClass = isDark
     ? 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all bg-white/[0.04] text-foreground hover:bg-white/[0.08]'
@@ -159,20 +156,24 @@ export function TripTimelineExpanded({
           </div>
         )}
 
-        {showEvidence && (
-          <TripEvidencePanel
-            trip={trip}
-            rentalContext={rentalContext}
-            behaviorEvents={behaviorEvents}
-            enrichment={enrichment}
-            routePointsCount={routePointsCount}
-            routeLoading={routeLoading}
-            routeError={routeError}
-          />
-        )}
+        {/* 1. Beweisübersicht — zentrale Zusammenfassung der Fahrt */}
+        <TripEvidencePanel
+          trip={trip}
+          rentalContext={rentalContext}
+          behaviorEvents={behaviorEvents}
+          enrichment={enrichment}
+          routePointsCount={routePointsCount}
+          routeLoading={routeLoading}
+          routeError={routeError}
+        />
 
-        {rentalContext && (
-          <TimelineSection title={TIMELINE_COPY.sectionRental}>
+        {/* 2. Zuordnung & Kontext — Privatfahrt / Buchung / Fahrer / Kunde */}
+        <TimelineSection title={TIMELINE_COPY.sectionAssignment}>
+          <div className="rounded-xl border p-3 bg-card border-border flex items-center gap-2 flex-wrap">
+            <TripAssignmentBadge trip={trip} />
+            <span className="text-[11px] font-medium text-foreground">{assignmentLabel(trip)}</span>
+          </div>
+          {rentalContext && (
             <TripRentalContextPanel
               trip={trip}
               context={rentalContext}
@@ -188,26 +189,24 @@ export function TripTimelineExpanded({
                   : undefined
               }
             />
-          </TimelineSection>
-        )}
-
-        <TimelineSection title={TIMELINE_COPY.sectionOverview}>
-          <TripAddresses trip={trip} isDark={isDark} />
-          <VehicleStressPanel
-            stressScore={stressScore}
-            stressLevel={stressLevel}
-            hasEnoughData={stressScore != null}
-            compact={false}
-          />
+          )}
         </TimelineSection>
 
+        {/* 3. Fahrbelastung — eigener Titel in der Komponente */}
+        <VehicleStressPanel
+          stressScore={stressScore}
+          stressLevel={stressLevel}
+          hasEnoughData={stressScore != null}
+          compact={false}
+        />
+
+        {/* 4. Fahrverhalten — operativ, ohne technische Debug-Details */}
         <TimelineSection title={TIMELINE_COPY.sectionBehavior}>
           <TripBehaviorPanel
             trip={trip}
             isDark={isDark}
             events={behaviorEvents}
             loading={behaviorLoading}
-            enrichment={enrichment}
             selectedEventId={selectedBehaviorEventId}
             onSelectEvent={onSelectBehaviorEvent}
             onShowEventOnMap={onShowBehaviorEventOnMap}
@@ -215,104 +214,20 @@ export function TripTimelineExpanded({
           />
         </TimelineSection>
 
+        {/* 5. Missbrauchs-/Schadensverdacht — immer sichtbar (eigener Titel im Panel) */}
         {orgId && trip.tripStatus === 'COMPLETED' && (
-          <TimelineSection title={TIMELINE_COPY.sectionEvents}>
-            <MisuseCasesPanel
-              orgId={orgId}
-              tripId={trip.id}
-              vehicleId={vehicleId}
-              bookingId={rentalContext?.booking?.id}
-              title={RENTAL_COPY.misuseSectionTitle}
-              compact
-              limit={5}
-            />
-          </TimelineSection>
+          <MisuseCasesPanel
+            orgId={orgId}
+            tripId={trip.id}
+            vehicleId={vehicleId}
+            bookingId={rentalContext?.booking?.id}
+            title={RENTAL_COPY.misuseSectionTitle}
+            emptyTitle={RENTAL_COPY.misuseEmptyTitle}
+            emptyDescription={RENTAL_COPY.misuseEmptySubline}
+            compact
+            limit={5}
+          />
         )}
-
-        <TimelineSection title={TIMELINE_COPY.sectionRouteQuality}>
-          <div className="rounded-xl border p-3 bg-card border-border space-y-2">
-            <div className="flex items-center justify-between gap-2 text-[11px]">
-              <span className="text-muted-foreground">Routenstatus</span>
-              <span className="font-semibold text-foreground tabular-nums">
-                {routeStatusLabel(routeLoading, routeError, routePointsCount)}
-              </span>
-            </div>
-            {routePointsCount > 0 && (
-              <div className="flex items-center justify-between gap-2 text-[11px]">
-                <span className="text-muted-foreground">Routenpunkte</span>
-                <span className="font-semibold text-foreground tabular-nums">{routePointsCount}</span>
-              </div>
-            )}
-            {mapMatchConfidence > 0 && (
-              <div className="flex items-center justify-between gap-2 text-[11px]">
-                <span className="text-muted-foreground">{TRIPS_COPY.mapMatchConfidence}</span>
-                <span className="font-semibold text-foreground tabular-nums">
-                  {Math.round(mapMatchConfidence * 100)}%
-                </span>
-              </div>
-            )}
-            {trip.detailsLimited && (
-              <p className="text-[10px] text-muted-foreground">
-                Einige Trip-Details sind aufgrund der Datenqualität eingeschränkt.
-              </p>
-            )}
-            {trip.gapEnded && (
-              <p className="text-[10px] text-muted-foreground">Die Fahrt endete mit einer Datenlücke.</p>
-            )}
-          </div>
-        </TimelineSection>
-
-        <TimelineSection title={TIMELINE_COPY.sectionAssignment}>
-          <div className="rounded-xl border p-3 bg-card border-border space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <TripAssignmentBadge trip={trip} />
-              <span className="text-[11px] font-medium text-foreground">{assignmentLabel(trip)}</span>
-            </div>
-            {trip.assignmentSubjectType && (
-              <p className="text-[10px] text-muted-foreground">
-                Subjekttyp: {assignmentSubjectTypeLabel(trip.assignmentSubjectType)}
-              </p>
-            )}
-          </div>
-        </TimelineSection>
-
-        <TimelineSection title={TIMELINE_COPY.sectionTechnical}>
-          <div
-            className={`rounded-xl border p-3 ${isDark ? 'bg-white/[0.02] border-white/[0.05]' : 'bg-slate-50/50 border-slate-100'}`}
-          >
-            <div className="flex items-center gap-1.5 mb-2.5">
-              <Icon name="activity" className={`w-3.5 h-3.5 ${isDark ? 'text-cyan-400' : 'text-cyan-500'}`} />
-              <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
-                {TRIPS_COPY.engine}
-              </span>
-            </div>
-
-            {trip.avgEngineLoad != null || trip.avgThrottlePosition != null ? (
-              <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px]">
-                {trip.avgEngineLoad != null && (
-                  <span className="text-muted-foreground">
-                    Motorlast{' '}
-                    <span className="text-foreground font-bold tabular-nums">
-                      {trip.avgEngineLoad.toFixed(0)}%
-                    </span>
-                  </span>
-                )}
-                {trip.avgThrottlePosition != null && (
-                  <span className="text-muted-foreground">
-                    Gasstellung{' '}
-                    <span className="text-foreground font-bold tabular-nums">
-                      {trip.avgThrottlePosition.toFixed(0)}%
-                    </span>
-                  </span>
-                )}
-              </div>
-            ) : (
-              <p className="text-[11px] text-muted-foreground">{TRIPS_COPY.noEngineTelemetry}</p>
-            )}
-          </div>
-
-          <TripTechnicalData trip={trip} />
-        </TimelineSection>
       </div>
     </div>
   );

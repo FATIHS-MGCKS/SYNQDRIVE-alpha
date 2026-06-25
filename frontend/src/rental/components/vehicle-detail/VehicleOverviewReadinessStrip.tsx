@@ -15,6 +15,12 @@ export interface VehicleOverviewReadinessStripProps {
   isLoading?: boolean;
 }
 
+/**
+ * @deprecated Removed from the Vehicle Overview. It rendered a local
+ * "Not ready / Blocked" verdict that conflicted with canonical rental status.
+ * Vehicle Overview must not show a locally-derived blocked/not-ready box. Kept
+ * for potential reuse only; do not re-add to the Overview.
+ */
 export function VehicleOverviewReadinessStrip({
   readiness,
   isLoading,

@@ -31,6 +31,10 @@ type MisuseCasesPanelProps = {
   bookingId?: string;
   customerId?: string;
   title?: string;
+  /** Calm, positive heading shown when there are no cases (e.g. trip detail). */
+  emptyTitle?: string;
+  /** Calm subline shown when there are no cases. */
+  emptyDescription?: string;
   compact?: boolean;
   limit?: number;
 };
@@ -59,13 +63,39 @@ function confidenceTone(confidence: string): StatusTone {
   }
 }
 
+function severityLabel(severity: string): string {
+  switch (severity) {
+    case 'CRITICAL':
+      return 'Kritisch';
+    case 'SEVERE':
+      return 'Schwer';
+    case 'WARNING':
+      return 'Auffällig';
+    default:
+      return 'Hinweis';
+  }
+}
+
+function confidenceLabel(confidence: string): string {
+  switch (confidence) {
+    case 'HIGH':
+      return 'Hohe Sicherheit';
+    case 'MEDIUM':
+      return 'Mittlere Sicherheit';
+    default:
+      return 'Geringe Sicherheit';
+  }
+}
+
 export function MisuseCasesPanel({
   orgId,
   vehicleId,
   tripId,
   bookingId,
   customerId,
-  title = 'Prüffälle',
+  title = 'Verdachtsfälle',
+  emptyTitle,
+  emptyDescription,
   compact = false,
   limit = 20,
 }: MisuseCasesPanelProps) {
@@ -94,7 +124,7 @@ export function MisuseCasesPanel({
       .catch((err: unknown) => {
         if (cancelled) return;
         setCases([]);
-        setError(err instanceof Error ? err.message : 'Prüffälle konnten nicht geladen werden');
+        setError(err instanceof Error ? err.message : 'Hinweise konnten nicht geladen werden');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -109,7 +139,7 @@ export function MisuseCasesPanel({
   if (loading) {
     return (
       <div className="rounded-lg border border-border bg-card p-4 text-xs text-muted-foreground">
-        Prüffälle werden geladen…
+        Hinweise werden geladen…
       </div>
     );
   }
@@ -128,7 +158,10 @@ export function MisuseCasesPanel({
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
           {title}
         </h3>
-        <p className="text-xs text-muted-foreground">Keine Prüffälle für diesen Kontext.</p>
+        <p className="text-xs font-medium text-foreground">{emptyTitle ?? 'Keine Auffälligkeiten'}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {emptyDescription ?? 'Keine Hinweise für diesen Kontext.'}
+        </p>
       </div>
     );
   }
@@ -140,25 +173,30 @@ export function MisuseCasesPanel({
           {title} ({cases.length})
         </h3>
         <p className="text-[10px] text-muted-foreground mt-1">
-          Informative Hinweise — keine automatische Sperre oder Workflow-Aktion.
+          {cases.length === 1 ? '1 Verdacht erkannt' : `${cases.length} Hinweise erkannt`}
         </p>
       </div>
       <div className="divide-y divide-border">
-        {cases.map((c) => (
+        {cases.map((c) => {
+          const showAttribution = c.attributionLabel && !c.isPrivateTripSnapshot;
+          const metaParts = [
+            c.categoryLabel ?? c.category,
+            showAttribution ? c.attributionLabel : null,
+            c.eventCount >= 1 ? `${c.eventCount} ${c.eventCount === 1 ? 'Ereignis' : 'Ereignisse'}` : null,
+          ].filter(Boolean);
+          return (
           <div key={c.id} className={compact ? 'px-3 py-2' : 'px-4 py-3'}>
             <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className="text-xs font-semibold text-foreground">{c.title}</span>
+              <span className="text-xs font-semibold text-foreground">{c.typeLabel ?? c.title}</span>
               <StatusChip tone={severityTone(c.severity)} dot>
-                {c.severity}
+                {severityLabel(c.severity)}
               </StatusChip>
               <StatusChip tone={confidenceTone(c.confidence)}>
-                {c.confidence}
+                {confidenceLabel(c.confidence)}
               </StatusChip>
             </div>
             <div className="text-[10px] text-muted-foreground mb-1">
-              {c.categoryLabel ?? c.category}
-              {c.attributionLabel ? ` · ${c.attributionLabel}` : ''}
-              {c.eventCount > 1 ? ` · ${c.eventCount} Ereignisse` : ''}
+              {metaParts.join(' · ')}
             </div>
             {c.description && (
               <p className="text-xs text-muted-foreground">{c.description}</p>
@@ -169,7 +207,8 @@ export function MisuseCasesPanel({
               </p>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

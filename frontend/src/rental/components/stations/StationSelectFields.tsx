@@ -18,6 +18,8 @@ interface StationSelectFieldsProps {
   onReturnChange: (id: string) => void;
   onSameReturnChange: (same: boolean) => void;
   compact?: boolean;
+  /** Operator/mobile — 48px touch targets */
+  touchFriendly?: boolean;
 }
 
 export function StationSelectFields({
@@ -29,6 +31,7 @@ export function StationSelectFields({
   onReturnChange,
   onSameReturnChange,
   compact,
+  touchFriendly,
 }: StationSelectFieldsProps) {
   const pickupOptions = useMemo(() => stationsForPickup(stations), [stations]);
   const returnOptions = useMemo(() => stationsForReturn(stations), [stations]);
@@ -38,8 +41,9 @@ export function StationSelectFields({
   const pickupWarnings = getStationWarnings(pickupStation, 'pickup');
   const returnWarnings = getStationWarnings(returnStation, 'return');
   const labelClass = compact ? 'text-[10px] mb-1 block text-muted-foreground' : 'text-xs mb-1 block text-muted-foreground';
-  const inputClass =
-    'w-full px-3 py-2 rounded-lg text-xs border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none';
+  const inputClass = touchFriendly
+    ? 'w-full h-12 px-3 rounded-xl text-base border border-border bg-card text-foreground focus:border-[color:var(--brand)] outline-none'
+    : 'w-full px-3 py-2 rounded-lg text-xs border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none';
 
   return (
     <div className="space-y-3">

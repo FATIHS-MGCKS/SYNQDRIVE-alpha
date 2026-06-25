@@ -9,3 +9,5 @@ export { default as storageConfig } from './storage.config';
 export { default as documentExtractionConfig } from './document-extraction.config';
 export { default as documentsConfig } from './documents.config';
 export { default as whatsappConfig } from './whatsapp.config';
+export { default as diditConfig, DIDIT_WORKFLOWS } from './didit.config';
+export type { DiditWorkflowKind } from './didit.config';

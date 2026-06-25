@@ -35,6 +35,438 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'health-tab-tacho-warnleuchten-polish-v4949-2026-06-26',
+    version: '4.9.49',
+    title: 'V4.9.49 — Health Tab: Tacho Warnleuchten Box UI/UX Feinschliff',
+    summary: [
+      '`DashboardWarningLightsPanel` komplett auf Kachel-Grid umgebaut (2 Spalten mobil, 3–5 Desktop): Motoröl, Notlauf, Bremsbelag, Reifendruck, Batterie — Icon, Label, kompakter Status, keine Listenzeilen mehr.',
+      'Vier kanonische Box-Status: „Alles klar", „Warnung aktiv", „Nicht verbunden", „Unbekannt" — abgeleitet nur aus Tacho-Warnleuchten (`resolveTelltalePanelPresentation`), nicht aus Battery/Tires/Service-Health.',
+      'Subline/Footer vereinheitlicht: z. B. „Keine aktiven Warnleuchten erkannt.", „Mindestens eine Warnleuchte erfordert Aufmerksamkeit.", dezenter Footer „Quelle: HM/OEM Health" / „Keine HM/OEM-Verbindung", aktive Count „N aktive Warnleuchte(n)".',
+      'Entfernt aus der Box: doppelter Header in `HealthErrorsView`, Listen-Layout mit technischen Zeilen, „Datenbasis veraltet"-Badge, „Powered by AI", Sync-Fehler-Block, grüner Bestätigungs-Banner, OEM-Indikatoren-Zweitblock, Ölstand-Balken in Kacheln.',
+      'Battery-Warnleuchte bleibt strikt getrennt von Battery Health (`isBatteryTelltaleActive` nur aus Read Model). Tests: `dashboard-warning-lights-display.test.ts` (+12 Szenarien).',
+    ],
+    reason:
+      'Die Tacho-Warnleuchten-Box war nach dem Health-Center-Umbau funktional, aber noch listenbasiert, redundant im Header und mit zu technischen Status-Texten — mobil unruhig.',
+    previousBehavior:
+      'Doppelter Titel (DataCard + Panel), Listenzeilen mit reason/action/observedAt, Badge „Datenbasis veraltet"/„Kritische Warnung", grüner „Keine aktiven Warnleuchten bestätigt"-Banner, sq-glass-Nesting.',
+    details:
+      'UI-only: `dashboard-warning-lights-display.ts` (neue Helper `telltaleShortLabel`, `telltaleTileStatusLabel`, `countActiveTelltales`, `resolveSourceFooter`, `isTelltaleProviderConnected`; Presentation auf 4 Status reduziert), `DashboardWarningLightsPanel.tsx` (Kachel-Grid, Header/Subline/Footer), `HealthErrorsView.tsx` (eine Box ohne DataCard-Doppelheader), `DashboardWarningLightsQuickView.tsx` (shared `telltaleShortLabel`). Keine Backend-Änderung. vitest 286 grün.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T09:30:00.000Z',
+  },
+  {
+    id: 'health-tab-tacho-warnleuchten-v4948-2026-06-25',
+    version: '4.9.48',
+    title: 'V4.9.48 — Health Tab: Missbrauch raus, „Vehicle Health Center" → „Tacho Warnleuchten", Mobile-Fix',
+    summary: [
+      'Missbrauchs-/Prüffälle erscheinen nicht mehr im Health Tab: das `MisuseCasesPanel` (vorher „Verdachtsfälle" oberhalb des Grids) wurde vollständig entfernt. Missbrauchsfälle sind jetzt ausschließlich im Trips Tab / Trip Detail sichtbar — keine zweite Wahrheit mehr im Health Tab.',
+      'Die überladene „Vehicle Health Center"-Box wurde zur fokussierten Box „Tacho Warnleuchten" (Subtext „Aktive Fahrzeugwarnleuchten") umgebaut. Sie zeigt nur noch das `DashboardWarningLightsPanel` (kanonische Tell-Tales aus `api.vehicleIntelligence.dashboardWarningLights`). „Powered by AI"-Badge entfernt.',
+      'Aus dieser Box entfernt: aggregierte Canonical-Health-Summary (Label/Headline/„Vermietung blockiert"), Findings-Liste („Sofortige Aufmerksamkeit/Warnungen/Hinweise"), Datenbasis/„Eingeschränkte Datenbasis"/Datenqualität, HM/DIMO/OEM-Source-Badges, Service-/TÜV-/BOKraft-Zusammenfassung und der doppelte „Aktive OEM-Indikatoren (Summary)"-Block. Diese Aussagen stehen bereits in den Fach-Boxen (Error Codes, Compliance, Battery, Tires, Brake Health, Service) — Redundanz/Meta-Lärm beseitigt.',
+      'Keine doppelte Warnleuchten-Darstellung: die Tell-Tales werden nur noch in der Tacho-Warnleuchten-Box gezeigt; der frühere OEM-Indikatoren-Zweitblock ist weg.',
+      'Mobile-Layout repariert: Das äußere Grid `grid-cols-[1.4fr_2.55fr]` ist jetzt `grid-cols-1 lg:grid-cols-[1.4fr_2.55fr]`, das rechte Quick-Card-Grid `grid-cols-3` → `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`. Keine gequetschten Mini-Spalten / kein ungewollter Horizontal-Scroll mehr; Desktop unverändert.',
+    ],
+    reason:
+      'Missbrauchs-/Prüffälle waren im Health Tab fachlich fehl am Platz und erzeugten eine zweite Wahrheit. Das „Vehicle Health Center" war eine überladene Meta-Box mit Aussagen, die in den Fach-Boxen ohnehin stehen. Zusätzlich war die mobile Darstellung durch feste 2-/3-Spalten-Grids gebrochen.',
+    previousBehavior:
+      'Health Tab zeigte oben ein „Verdachtsfälle"-Panel (MisuseCases) und eine „Vehicle Health Center"-Box mit Summary, Findings, Datenbasis, Source-Badges, Service-Zusammenfassung, OEM-Doppelblock und Warnleuchten. Grids waren fix (1.4fr/2.55fr bzw. 3 Spalten) → mobil gequetscht.',
+    details:
+      'UI-/Display-only in `HealthErrorsView.tsx`: MisuseCasesPanel-Einbindung + Import entfernt; Health-Center-`DataCard` auf Header „Tacho Warnleuchten" + `DashboardWarningLightsPanel` reduziert; zugehörige Deklarationen entfernt (`SummaryFinding`-Typ, `moduleFindingIcon`, `modalKeyClick`, `summaryFindings`, `summaryVisualState`, `summaryCfg`, `hasCriticalFinding`, `hasActionableFinding`, `summaryHeadline`, `summaryDescription`, `dataQuality`, `degradedDependencies`, `sourceStatus`) — `serviceComplianceModule` bleibt für die Next-Service-Quickcard. Ungenutzte Imports entfernt (HealthStatusChip, StatusChip, overallState*/dataQuality*/source*/finding*-Helper, Lucide Battery/Calendar/ShieldAlert). Responsive Grids angepasst. Keine Backend-/API-/Fachlogik-Änderung; Warnleuchten-Datenquelle unverändert. Verifiziert: HealthErrorsView typecheckt sauber, ESLint-Baseline unverändert (57 vorbestehende, 0 neue), vitest 277 grün.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T02:30:00.000Z',
+  },
+  {
+    id: 'didit-verification-frontend-v4947-2026-06-26',
+    version: '4.9.47',
+    title: 'V4.9.47 — Didit Dokumentenprüfung Frontend (SDK, Panel, Operator Pickup)',
+    summary: [
+      '`@didit-protocol/sdk-web` installiert. `api.customerVerification`: `startDiditSession`, `getEligibility`, `getChecks`, `submitManualPickupCheck` — keine API Keys im Frontend.',
+      'Shared `CustomerVerificationPanel` + `DiditConsentNotice` + `useCustomerVerification`: Didit-Start nur nach Disclosure; `onComplete` refresht Backend-Status (Webhook = Source of Truth).',
+      'Veriff-Mock entfernt aus `CustomersView`/`NewBookingView`. Integration in Customer Detail (`CustomerDocumentsTab`), New Booking (ausgewählter Kunde), Booking Dossier (`BookingCustomerRiskTab`).',
+      'Operator: `OperatorPickupCheckSheet` → `POST /manual-pickup-check` mit Pickup-Checkliste. `PROOF_OF_ADDRESS` in Document-Slots.',
+    ],
+    reason:
+      'Operative UI für Didit-Dokumentenprüfung (Ausweis, Führerschein, Adressnachweis) ohne Biometrie-Begriffe und ohne zweite Wahrheit im Client.',
+    previousBehavior:
+      'Fake-Veriff setTimeout in Kunden-Wizards; keine Didit-SDK-Nutzung; keine kanonische Verification-UI außer Read-Model-Chips.',
+    details:
+      'Dateien: `frontend/src/rental/lib/customer-verification.ts`, `components/customer-verification/*`, `operator/verification/OperatorPickupCheckSheet.tsx`, `lib/api.ts`, `entityMappers` (`PROOF_OF_ADDRESS`).',
+    affectsArchitecture: true,
+    module: 'Customers',
+    createdAt: '2026-06-26T02:00:00.000Z',
+  },
+  {
+    id: 'customer-verification-wiring-v4946-2026-06-26',
+    version: '4.9.46',
+    title: 'V4.9.46 — CustomerVerificationCheck kanonisch verdrahtet (Eligibility, Docs, Pickup)',
+    summary: [
+      '`CustomerVerificationService` zentral: `getEligibilityStatus`, `syncCustomerReadModel`, `applyDiditDecision`, `createManualPickupCheck`, `listCustomerVerificationChecks`.',
+      '`CustomerDocumentsService` ruft nach Upload/Review `syncCustomerReadModel` auf; `CustomerEligibilityService` + `BookingRentalEligibilityService` lesen kanonische Verification statt Roh-`idVerified`-Felder.',
+      'Neue Endpoints: `GET /customer-verification/eligibility`, `GET /checks`, `POST /manual-pickup-check`. Pickup-Prüfung als `MANUAL` Provider-Checks.',
+      'Deutsche Fachbegriffe in Timeline/Audit. Proof of Address optional, blockiert Buchungen nicht global.',
+    ],
+    reason:
+      'Eine kanonische Verification-Schicht ohne zweite Wahrheit — Customer Read Model synchronisiert, CustomerDocument bleibt lokale Akte.',
+    previousBehavior:
+      'Eligibility las `idVerificationStatus` direkt; Document-Review schrieb Read Model ohne Checks; kein Pickup-Check-Endpoint.',
+    details:
+      'Module: `customer-verification/*`, `customer-documents.service.ts`, `customer-eligibility.service.ts`, `booking-rental-eligibility.service.ts`, Didit Webhook → `applyDiditDecision`.',
+    affectsArchitecture: true,
+    module: 'Customers',
+    createdAt: '2026-06-26T01:00:00.000Z',
+  },
+  {
+    id: 'trips-tab-badges-misuse-evidence-v4945-2026-06-25',
+    version: '4.9.45',
+    title: 'V4.9.45 — Trips Tab: Badges entschlackt, Missbrauch entdoppelt, Kaltmotor-Evidence',
+    summary: [
+      'Collapsed Trip Card zeigt jetzt höchstens drei sinnvolle Chips: Bewertung (Aktiv / Auffällige Fahrt / Unauffällig), Verdacht (Missbrauchsverdacht nur bei echten Abuse-Events) und genau einen Zuordnungs-Chip (Privat / Buchung unklar / Buchung verknüpft / Fahrer / Ohne Buchung).',
+      'Privatfahrt-Regel: bei `isPrivateTrip`/`PRIVATE_UNASSIGNED` wird nur „Privat" gezeigt — „Nicht zugewiesen" und „Zuordnung prüfen" entfallen. Route-/HF-/Map-Match-/Datenqualitäts-/Debug-Chips sind aus der Liste verschwunden, dadurch kein irreführendes „+1" mehr.',
+      '`TripBehaviorSummary` entdoppelt: „Missbrauchsverdacht" steht nur noch einmal (als Titel). Der redundante Severity-Badge und die Zeile „Schwerstes Ereignis: Missbrauchsverdacht · Missbrauchsverdacht" entfallen; die Schwerstes-Ereignis-Subline erscheint nur, wenn sie konkreter ist (z. B. „Kaltmotor-Missbrauch"). HF-Qualität und Analysezeitpunkt aus der Summary entfernt.',
+      'Behavior-Event-Karten sind jetzt konkret: Kaltmotor-Abuse heißt „Kaltmotor-Missbrauch" mit Beschreibung „Hohe Drehzahl/Volllast bei kaltem Motor erkannt." und zeigt vorhandene Evidence-Werte (Drehzahl `maxEngineRpm`, Gaspedal `maxThrottlePos`, Kühlmittel `maxCoolantTemp`, Dauer `durationMs`) — ausschließlich real vorhandene Felder, keine erfundenen Werte.',
+      '`MisuseCasesPanel`: generische Zeile „Informative Hinweise — keine automatische Sperre…" ersetzt durch kompakte operative Einordnung („1 Verdacht erkannt" / „N Hinweise erkannt"). Case-Titel nutzt `typeLabel`, Severity/Confidence mit deutschen Labels (Kritisch/Schwer/Auffällig, Hohe/Mittlere/Geringe Sicherheit), `eventCount` als „N Ereignis(se)"; Privatfahrt wird nicht mehr als Problem-Attribution gezeigt.',
+    ],
+    reason:
+      'Nach dem ersten Trips-Cleanup blieben in der Fahrtenliste zu viele/teils technische Chips, „Missbrauchsverdacht" wurde mehrfach in derselben Karte wiederholt, und Kaltmotor-Abuse blieb abstrakt ohne die bereits vorhandenen Messwerte.',
+    previousBehavior:
+      'Bis zu 4+ Chips inkl. „Nicht zugewiesen"+„Privat", „Zuordnung prüfen", „HF verfügbar", Route-Chips und „+1"; Behavior Summary mit doppeltem „Missbrauchsverdacht" (Titel + Badge + schwerstes Ereignis); Event-Karten ohne rpm/throttle/coolant; MisuseCasesPanel mit generischer Hinweis-Zeile und rohen Severity-/Confidence-Strings.',
+    details:
+      'UI-/Display-only: `timeline.utils.ts` (`deriveOperationalChips` auf max. 3 priorisierte Chips reduziert, Signatur vereinfacht), `TripTimeline.tsx` (Aufruf angepasst), `TripTimelineCard.tsx` (MAX_VISIBLE_CHIPS 4→3), `TripBehaviorSummary.tsx` (entdoppelt, HF/Analysezeit raus), `behavior-ui.utils.ts` (`eventTypeLabel`/`eventExplanation` für Kaltmotor/Überhitzung/Impact/Kickdown + neuer `formatEventEvidence`), `TripBehaviorEventList.tsx` (Evidence-Zeile), `MisuseCasesPanel.tsx` (operative Einordnung, deutsche Severity-/Confidence-Labels, typeLabel-Titel). Evidence-Befund: Behavior-Events liefern rpm/throttle/coolant/speed/duration; misuse `case.evidenceSummary` enthält backend-seitig nur `{eventTypes, sources}` (keine Telemetrie) — konkrete Messwerte daher in den Event-Karten (BehaviorPanel), Aggregat im MisuseCasesPanel. Tests: `trips-badges-cleanup.test.ts` (+6). Keine Backend-/API-/Fachlogik-Änderung. Verifiziert: tsc 0, eslint geänderter Dateien sauber (vorbestehende `setState`-/`isDark`-Lints unangetastet), vitest 277 grün.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T01:00:00.000Z',
+  },
+  {
+    id: 'trips-tab-expanded-trip-cleanup-v4944-2026-06-25',
+    version: '4.9.44',
+    title: 'V4.9.44 — Trips Tab: aufgeklappte Fahrt bereinigt (ruhiger, redundanzfrei, operativ)',
+    summary: [
+      'Typografie/Struktur beruhigt: das überflüssige Eyebrow „Chronologische Ansicht" entfällt; die aufgeklappte Fahrt folgt einer klaren Reihenfolge: Beweisübersicht → Zuordnung & Kontext → Fahrbelastung → Fahrverhalten → Missbrauchs-/Schadensverdacht.',
+      'Die Beweisübersicht ist jetzt die zentrale Trip-Zusammenfassung und enthält zusätzlich Start und Ziel (über den bestehenden `useAddress`-Resolver, Fallback Koordinaten/„Nicht verfügbar"). Sie ist neutral gestaltet und nur bei auffälliger Fahrt amber-betont. Die separate Start-/Ziel-Box („Übersicht") wurde entfernt.',
+      '„Miet- & Buchungskontext" und „Zuordnung & Kontext" sind zu einer Sektion „Zuordnung & Kontext" konsolidiert (Privatfahrt/Buchung/Fahrer/Kunde + Mietzeit-Abgleich + Prüfen-CTA). Die separate Kilometer-Box (Fahrt/Tagessumme/Buchung/Inklusiv/Mehrkilometer) und die separate Sektion „Route & Datenqualität" wurden entfernt (Route/Datenqualität stehen kompakt in der Beweisübersicht).',
+      'Fahrverhalten ist rein operativ: die ausklappbaren „Technischen Details" (HF-Datenpunkte, GPS, Map-Match, Analyseversuche, interner Status) wurden entfernt. Die Sektion „Technische Daten" (Motorlast/Gasstellung/Ø Tempo/Max./Stadt-Land-Autobahn) wurde komplett entfernt.',
+      '„Prüffälle" → „Missbrauchs-/Schadensverdacht": `MisuseCasesPanel` bekommt `emptyTitle`/`emptyDescription`; im Trip Detail ist die Sektion immer sichtbar und zeigt ohne Fälle „Unauffällige Fahrt" + „Keine Hinweise auf Missbrauch oder Schaden für diese Fahrt." Generische Strings entschärft (kein „Prüffälle" mehr user-facing, auch in Vehicle Health → „Verdachtsfälle").',
+      'Max-Speed-Bug: der implausible „Max. 3 km/h" stammte aus `trip.maxSpeedKmh` (Low-Frequency-DIMO-Segment-/Aggregat-Pipeline), während Fahrereignisse (z. B. 46 km/h) aus der HF-Behavior-Pipeline kommen. Die aggregierte Max-Speed wird nicht mehr im normalen UI gezeigt — `getSpeedSummary` entfernt, Karten-Instant-Line zeigt nur Strecke · Dauer. Keine Fake-Korrektur.',
+    ],
+    reason:
+      'Die aufgeklappte Fahrt war unruhig und kommunizierte dieselben Fakten mehrfach (Start/Ziel + Beweisübersicht, Miet-Kontext doppelt, Route & Datenqualität doppelt) und zeigte zu technische/teils unplausible Werte (Max. 3 km/h, Debug-Details). „Prüffälle" war als Begriff unklar.',
+    previousBehavior:
+      'Eyebrow „Chronologische Ansicht"; separate Boxen für Start/Ziel, Miet- & Buchungskontext, Kilometer, Route & Datenqualität, Technische Daten und ausklappbare Technische Details; doppelte Max-Speed-Anzeige inkl. implausibler „Max. 3 km/h"; Empty-State „Keine Prüffälle für diesen Kontext."',
+    details:
+      'UI-/Display-only: `trips-view-ui.ts` (Copy: Eyebrow + Section-Keys entfernt, Misuse-Titel/Empty, Start/Ziel), `TripTimeline.tsx` (Eyebrow raus), `TripEvidencePanel.tsx` (zentrale Übersicht + Start/Ziel via `useAddress`, neutral, rentalContext optional), `TripRentalContextPanel.tsx` (Kilometer-Box entfernt), `TripTimelineExpanded.tsx` (Struktur konsolidiert, Route&Qualität/Technik/Overview/Rental-Sektionen entfernt), `TripBehaviorPanel.tsx` (Technische Details entfernt), `trip-timeline-shared.tsx` (toter `TripTechnicalData`/`TripAddresses`/`EventDetail` entfernt), `timeline.utils.ts` + `utils/tripStatus.ts` (Max-Speed aus Instant-Line, `getSpeedSummary` entfernt), `MisuseCasesPanel.tsx` (`emptyTitle`/`emptyDescription`, neutrale Strings), `HealthErrorsView.tsx` (Titel „Verdachtsfälle"). Tests: `trips-ui-cleanup.test.ts` (+6). Keine Backend-/API-/Fachlogik-Änderung. Verifiziert: tsc 0, eslint geänderter Trips-Dateien sauber, vitest 271 grün.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T00:30:00.000Z',
+  },
+  {
+    id: 'didit-webhook-v4943-2026-06-25',
+    version: '4.9.43',
+    title: 'V4.9.43 — Didit Webhook: X-Signature-V2, Idempotenz, Read-Model-Sync',
+    summary: [
+      '`POST /api/v1/webhooks/didit` (öffentlich https://app.synqdrive.eu/api/v1/webhooks/didit) mit Didit X-Signature-V2: canonicalize (shortenFloats + sortKeys), HMAC-SHA256, timingSafeEqual, Timestamp-Freshness ≤300s.',
+      'Idempotenz via `DiditWebhookEvent` (`event_id`, `payloadHash`, Fallback `session_id|webhook_type|timestamp`). Duplikate → sofort 200, keine doppelten Timeline-Events.',
+      'Async-Verarbeitung (`setImmediate`) — 2xx innerhalb 5s. `status.updated` / `data.updated` aktualisieren `CustomerVerificationCheck`, parsen V3 `decision.id_verifications[]` / `poa_verifications[]` (ohne MRZ/Dokumentnummer), synchronisieren Customer Read Model.',
+      'Biometrie-Felder (`liveness_checks`, `face_matches`) nur Warning-Log, nie produktiv.',
+    ],
+    reason:
+      'Didit Webhook als kanonische Source of Truth für Dokumentenprüfung — getrennt vom User-Return-Callback.',
+    previousBehavior:
+      'Kein Didit-Webhook-Endpoint; Session-Start ohne verifizierte Entscheidungs-Rückführung.',
+    details:
+      '`didit-signature.service.ts`, `didit-webhook.controller.ts`, `didit-webhook.service.ts`, `didit-decision.parser.ts`, `customer-verification-read-model.service.ts`. AuthGuard public path. Tests: signature + decision parser specs.',
+    affectsArchitecture: true,
+    module: 'Customers',
+    createdAt: '2026-06-26T00:00:00.000Z',
+  },
+  {
+    id: 'didit-verification-module-v4942-2026-06-25',
+    version: '4.9.42',
+    title: 'V4.9.42 — Customer Verification Module: Didit Session-Erstellung (NestJS)',
+    summary: [
+      'Neues Backend-Modul `customer-verification`: `POST /api/v1/customer-verification/didit/session` startet Didit-Dokumentenprüfung (ID, Führerschein, PoA).',
+      'Org-Scope aus JWT (nicht aus Body); `customerId`/`bookingId` tenant-validiert. Didit API Key und `session_token` werden nie ans Frontend zurückgegeben.',
+      'Didit `POST /v3/session/` serverseitig via `DiditClient`; `CustomerVerificationCheck` persistiert Session-Metadaten; User-Return-Callback nur UI-Hinweis, Webhook bleibt Source of Truth.',
+      'Case-sensitive `didit-status.mapper` + Warnung bei unerwarteten biometric Modulen in Didit-Payloads.',
+    ],
+    reason:
+      'Didit Document Verification als NestJS-Modul — keine Next.js route.ts, saubere Trennung von Session-Start und späterem Webhook-Handler.',
+    previousBehavior:
+      'Kein API-Endpoint für Didit-Sessions; nur Prisma-Schema und Config aus V4.9.41.',
+    details:
+      '`CustomerVerificationModule` in AppModule. Dateien unter `backend/src/modules/customer-verification/`. Tests: `didit-status.mapper.spec.ts`.',
+    affectsArchitecture: true,
+    module: 'Customers',
+    createdAt: '2026-06-25T23:45:00.000Z',
+  },
+  {
+    id: 'didit-verification-db-config-v4941-2026-06-25',
+    version: '4.9.41',
+    title: 'V4.9.41 — Didit Document Verification: DB-Schema & Server-Config',
+    summary: [
+      'Prisma: `CustomerVerificationCheck` (kanonische Prüfentscheidung), `DiditWebhookEvent` (Webhook-Idempotenz/Audit), Enums `CustomerVerificationProvider|CheckKind|CheckStatus`.',
+      '`CustomerDocumentType` um `PROOF_OF_ADDRESS` erweitert. Bestehende Customer-/CustomerDocument-Felder unverändert.',
+      'Migration `20260625200000_didit_customer_verification`. `prisma generate` ausgeführt.',
+      'Server-Config `backend/src/config/didit.config.ts` mit `DIDIT_WORKFLOWS` (ID_DOCUMENT, DRIVING_LICENSE, PROOF_OF_ADDRESS) — nur serverseitig, keine Workflow-IDs in env.',
+      '`.env.example`: `DIDIT_ENABLED`, `DIDIT_API_KEY`, `DIDIT_WEBHOOK_SECRET`, `DIDIT_BASE_URL`, `DIDIT_WEBHOOK_PUBLIC_URL`, `DIDIT_DEFAULT_RETENTION_DAYS` — nur Platzhalter, keine Secrets.',
+    ],
+    reason:
+      'Grundlage für Didit als Dokumentenprüfungs-Provider ohne Selfie/Liveness/Biometrie — kanonische Verification-Schicht in der DB und sichere Server-Konfiguration.',
+    previousBehavior:
+      'Keine `CustomerVerificationCheck`/`DiditWebhookEvent` Modelle. Workflow-IDs nur als Env-Platzhalter in .env.example.',
+    details:
+      '`didit.config.ts` in `ConfigModule` global geladen. Workflow-Kommentar: Free-KYC-Workflow nur nutzen wenn kein LIVENESS/FACE_MATCH/SELFIE. Nächste Phase: Service + Webhook-Handler.',
+    affectsArchitecture: true,
+    module: 'Customers',
+    createdAt: '2026-06-25T23:30:00.000Z',
+  },
+  {
+    id: 'didit-verification-audit-prep-v4940-2026-06-25',
+    version: '4.9.40',
+    title: 'V4.9.40 — Didit Document Verification: Repo-Audit & Architektur-Vorbereitung',
+    summary: [
+      'Vollständige Repo-Suche nach Veriff/KYC/Verification-Hardcodings; interne Trefferliste für Migration zu Didit (nur Dokumentenprüfung: Ausweis, Führerschein, optional PoA — kein Selfie/Liveness/Biometrie).',
+      'Zielarchitektur dokumentiert: `CustomerDocument` = lokale Akte; `CustomerVerificationCheck` + `DiditWebhookEvent` (geplant); `Customer.idVerified`/`licenseVerified` = synchronisiertes Read Model; Eligibility künftig über `CustomerVerificationService`; Operator-Pickup = Provider MANUAL.',
+      'Webhook-Ziel: `POST /api/v1/webhooks/didit` (öffentlich: https://app.synqdrive.eu/api/v1/webhooks/didit). Didit API Key + Webhook Secret nur serverseitig.',
+      'Minimal prep: `docs/customer-verification-didit.md`, Didit-Env-Platzhalter in `backend/.env.example`, TODO-Marker in `CustomerDocumentsService.recomputeVerificationStatus` und `CustomerEligibilityService.applyVerificationRules`.',
+      'Keine Implementierung: keine Prisma-Migration, kein Didit-Client, kein Webhook-Handler, kein Veriff-UI-Entfernen in diesem Schritt.',
+    ],
+    reason:
+      'SynqDrive soll Veriff/KYC-Hardcodings entkoppeln und Didit als Dokumentenprüfungs-Provider vorbereiten — ohne bestehende CustomerDocument-/Eligibility-Pfade zu brechen.',
+    previousBehavior:
+      'Fake-Veriff-UI in CustomersView/NewBookingView (setTimeout, lokaler State, nicht backend-verbunden). Keine Didit-Integration. Verification-Read-Model nur aus manuellem Document-Review via `recomputeVerificationStatus`.',
+    details:
+      'Audit-Treffer u.a.: `CustomersView.tsx`/`NewBookingView.tsx` (Veriff mock), `customer-documents.service.ts`, `customer-eligibility.service.ts`, Prisma `CustomerDocument`/`CustomerVerificationStatus`, legacy URL-Felder read-only. Nächste Phase: Prisma-Modelle, `CustomerVerificationService`, Didit-Webhook, Veriff-UI ersetzen.',
+    affectsArchitecture: true,
+    module: 'Customers',
+    createdAt: '2026-06-25T23:00:00.000Z',
+  },
+  {
+    id: 'vehicle-overview-service-box-cleanup-v4939-2026-06-25',
+    version: '4.9.39',
+    title: 'V4.9.39 — Service-&-Wartung-Box im Overview bereinigt (ruhiger, redundanzfrei, fokussiert)',
+    summary: [
+      'Die Service-&-Wartung-Box wurde typografisch/strukturell an die Vehicle Health Box angelehnt: ruhige Card-Hierarchie (`rounded-xl border bg-card p-3 shadow-sm`), Header „Service & Wartung" + optionales kompaktes Status-Badge (Überfällig / Kritisch / Vermietung blockiert), Subline (Fahrzeug), darunter Actions, darunter Task-Rows.',
+      'Redundanzen entfernt: der separate Alert-Banner und der Text-Link „Im Service Center anzeigen" entfallen (eine klare CTA „Service Center" bleibt); die Summary-Zeile „x offen · y überfällig" entfällt, da die Tasks direkt darunter sichtbar sind.',
+      'Doppelte „Überfällig"-Anzeige behoben: in `MaintenanceTaskRow` lieferte `vehicleTaskStatusLabel` bereits „Überfällig" und zusätzlich wurde ein separates Überfällig-Badge gerendert. Das zweite Badge ist entfernt; „Kritisch" (Priority) bleibt nur bei high/critical sichtbar.',
+      'Due-Date fachlich korrigiert: neuer Helper `formatVehicleMaintenanceDueLabel(task)` → „Fällig bis DD.MM.YY" für nicht überfällige, „Fällig seit DD.MM.YY" für überfällige Tasks.',
+      'Button-Label „Service-Aufgabe" → „Service-Aufgabe erstellen". Sichtbarkeit: die Box rendert im Overview nur noch, wenn wirklich offene/überfällige/kritische/blockierende Wartungs-Tasks vorliegen — sonst `null` (kein Empty-State, kein Skeleton-Shell). Selbst-Kapselung im Panel, Callsite unverändert.',
+    ],
+    reason:
+      'Die Box wirkte unruhig und kommunizierte dieselbe Wartungsfälligkeit mehrfach (Alert-Banner, Summary-Zeile, Task-Card, Link) und zeigte „Überfällig" doppelt sowie „Fällig bis" auch bei bereits überfälligen Tasks. Im Overview erschien sie zudem immer, selbst ohne offene Aufgaben.',
+    previousBehavior:
+      'Eigener Typografie-/Spacing-Stil; Alert-Banner + „Im Service Center anzeigen"-Link + „x offen · y überfällig"-Zeile + Task-Cards parallel; doppeltes Überfällig-Badge; „Fällig bis" auch bei überfälligen Tasks; EmptyState bei 0 Tasks; Button „Service-Aufgabe".',
+    details:
+      'UI-/Display-only: `VehicleServiceContextPanel.tsx` (Header/Actions/Rows-Struktur, Header-Status-Badge statt Alert-Banner, self-null bei keiner relevanten Task, Button-Label, kein Summary-Line/Link, kein EmptyState/Skeleton), `task-display.utils.ts` (`formatVehicleMaintenanceDueLabel`). Tests: `task-display.utils.test.ts` +3 (Fällig bis / Fällig seit / null ohne dueDate). Keine Backend-, API- oder Fachlogik geändert. Verifiziert: tsc/eslint/vitest.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-25T22:30:00.000Z',
+  },
+  {
+    id: 'operator-booking-audit-wiring-v4938-2026-06-25',
+    version: '4.9.38',
+    title: 'V4.9.38 — Operator Booking Audit: Deep-Link- & Refresh-Verdrahtung',
+    summary: [
+      'Booking-Deep-Links (`/operator/bookings/:id`, `?bookingId=`) öffnen automatisch `OperatorBookingDetailSheet` in Scan; Karten haben „Details“.',
+      '`useOperatorScanSearch` re-fetched bei `refreshToken` — keine stale Daten nach Mutationen.',
+      '`useOperatorBookingMutations` triggert `refreshFleet()` nach Erfolg.',
+      'Edit-Guard bei fehlender bookingId; `isSameLocalInstant` für Patch-Diffs; `mapScanBookingToDetailItem` für Scan→Detail/Handover.',
+    ],
+    reason: 'Finaler Audit nach Booking-CRUD — Deep Links, Refresh-Kette und Scan-Verdrahtung geschlossen.',
+    previousBehavior:
+      'Deep-Links nur Highlight in Scan; keine Detail-Ansicht. Scan stale nach Mutation. Edit ohne ID hing im Loader.',
+    details:
+      '`OperatorScanView`, `OperatorScanBookingCard`, `useOperatorScanSearch`, `useOperatorBookingMutations`, `OperatorBookingFormSheet`, `OperatorBookingDetailSheet`, `operatorData.ts`, `operatorBooking.utils.ts`.',
+    affectsArchitecture: true,
+    module: 'Operator',
+    createdAt: '2026-06-25T20:00:00.000Z',
+  },
+  {
+    id: 'vehicle-overview-cleanup-no-local-readiness-v4937-2026-06-25',
+    version: '4.9.37',
+    title: 'V4.9.37 — Vehicle Overview bereinigt: keine lokale Readiness-/Blocked-Wahrheit, keine Quick-Navigation',
+    summary: [
+      'Die große „Not ready / BLOCKED / 13 required documents missing"-Box wurde aus dem Vehicle Detail Overview entfernt. Der `VehicleOverviewReadinessStrip` wird nicht mehr gerendert; fehlende Dokumente oder unvollständige Rental-Requirements erzeugen im Overview keinen Blocked-Zustand mehr.',
+      'Die redundante Quick-Navigation (Rental Requirements / Trips / Bookings / Tasks / Damages / Documents Cards, `VehicleOverviewSnapshotRow`) wurde aus dem Overview entfernt. Die obere Tab-Navigation bleibt unverändert die einzige Navigation; Daten/Pages der Tabs sind unangetastet.',
+      '`deriveVehicleOverviewReadiness` ist @deprecated und kanonisch-only entschärft: ein Blocked-Status entsteht ausschließlich aus dem kanonischen `health.rentalBlocked` + `blocking_reasons` (Backend rental-health). documents.missingCount, expired docs, Critical-Health, blocking tasks/damages und overdue erzeugen lokal keinen Blocker mehr (nur noch Findings/Attention).',
+      '`VehicleHealthBox` bekommt eine `showDataBasis`-Prop (Default true); im Overview wird sie mit `showDataBasis={false}` kompakt gehalten — die technische „Data Basis"/Datenqualitäts-Sektion (z. B. „Next service not tracked by HM/OEM", „High Mobility stream not connected") erscheint dort nicht mehr. Overall-Status, tracked count, Critical/Due soon/Faults, Findings, Brakes/Tires/Battery (3-Balken), Tacho-Warnleuchten und Service/TÜV/BOKraft bleiben im Overview erhalten.',
+      '`VehicleOverviewQuickView`, `VehicleOverviewReadinessStrip`, `VehicleOverviewSnapshotRow` sind @deprecated (nicht gelöscht), da nur noch potenziell für anderen Kontext relevant. Keine Backend-, API-, Runtime- oder Buchungslogik geändert.',
+    ],
+    reason:
+      'Der Overview zeigte eine lokal abgeleitete „Not ready / BLOCKED"-Box (u. a. aus documents.missingCount), die anderen Stellen widersprach, an denen das Fahrzeug weiterhin Available/Ready/buchbar war — eine zweite Rental-/Blocked-Wahrheit. Zusätzlich dupliziert eine Quick-Navigation die ohnehin vorhandene Tab-Leiste und überfrachtet die mobile Ansicht; die Data-Basis-Sektion irritierte im Overview.',
+    previousBehavior:
+      '`VehicleOverviewTab` rendererte `VehicleOverviewQuickView` (Readiness-Strip + Quick-Navigation-Cards). `deriveVehicleOverviewReadiness` aggregierte documents/tasks/damages/health lokal zu einem globalen Blocked/Not-ready-Verdikt. Die `VehicleHealthBox` zeigte im Overview immer die Data-Basis-Sektion.',
+    details:
+      'UI-/Display-only: `VehicleOverviewTab.tsx` (QuickView entfernt, `showDataBasis={false}`, `onNavigate` @deprecated/ungenutzt), `vehicle-overview-readiness.utils.ts` (kanonisch-only `collectBlockedReasons`, @deprecated), `VehicleHealthBox.tsx` + `VehicleHealthBoxWired.tsx` (`showDataBasis`-Prop, Default true). `VehicleOverviewQuickView/ReadinessStrip/SnapshotRow` @deprecated. Tests: `vehicle-overview-summary.utils.test.ts` +3 (missing docs → nicht blocked; canonical flag → blocked; incomplete coverage → nicht blocked). Verifiziert: tsc 0 Fehler, eslint geänderter Dateien sauber, vitest 262 grün.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-25T13:00:00.000Z',
+  },
+  {
+    id: 'operator-booking-ui-v4936-2026-06-25',
+    version: '4.9.36',
+    title: 'V4.9.36 — Operator App: volle Booking-UI (Create/Edit/Cancel/No-Show)',
+    summary: [
+      '`OperatorBookingFormSheet`: mobiles Fullscreen-Formular für Anlegen und Bearbeiten — Kunde (Suche via `api.customers.list`), Fahrzeug (`useOperatorVehiclesData`/FleetContext), Zeitraum, Stationen (`api.stations.list` + `StationSelectFields`), Status PENDING/CONFIRMED beim Create, Notizen, optionales kmIncluded. Preise/Eligibility/Overlap ausschließlich Backend via `api.bookings.create/update`.',
+      '`OperatorBookingCancelSheet` + `OperatorBookingNoShowSheet`: getrennte Bestätigungsflows mit Detail-Laden, Status-Gates (`getBookingActionMatrix`, `canOperatorMarkNoShow`), Danger-Zone-UI, `api.bookings.cancel` / `markNoShow`.',
+      '`OperatorBookingDetailSheet`: Aktionsbereich Bearbeiten / Stornieren / No-Show neben Pickup/Return/AI Upload — regelbasiert nach Status.',
+      'Entry Points: „Buchung aufnehmen“ in `OperatorTodayView` + `OperatorMoreView`; „Buchung für dieses Fahrzeug“ in `OperatorVehicleQuickView` mit `prefillVehicleId`.',
+      '`useOperatorBookingMutations`: Toast + `formatOperatorBookingError` für verständliche Backend-Fehler (Overlap, Rental Block, Kunde nicht berechtigt, Zeitraum).',
+    ],
+    reason:
+      'Operator soll mobil Buchungen aufnehmen und verwalten können — als dünner Client über die kanonischen Booking-APIs, ohne zweite Preis-/Eligibility-/Availability-Logik.',
+    previousBehavior:
+      'Foundation (V4.9.35) hatte typisierte Sheet-Actions und Mutations-Hook, aber nur Platzhalter-Sheets ohne echtes Formular und ohne Entry Points in Today/More/Detail.',
+    details:
+      'Neu/geändert: `operator/bookings/*`, `OperatorBookingDetailSheet`, `OperatorTodayView`, `OperatorMoreView`, `OperatorVehicleQuickView`, `useOperatorBookingMutations`, `operatorBooking.utils.ts`. `StationSelectFields` erhält optionales `touchFriendly` für 48px Targets. OperatorBookingsView (Suche unter Mehr) bewusst zurückgestellt.',
+    affectsArchitecture: true,
+    module: 'Operator',
+    createdAt: '2026-06-25T16:00:00.000Z',
+  },
+  {
+    id: 'operator-booking-foundation-v4935-2026-06-25',
+    version: '4.9.35',
+    title: 'V4.9.35 — Operator App: Booking-Mutations-Foundation (kanonische APIs)',
+    summary: [
+      'Neue Sheet-Actions `booking-create`, `booking-edit`, `booking-cancel`, `booking-no-show` in `operatorTypes.ts` — typisiert mit optionalen Prefill-Feldern (`prefillVehicleId`, `prefillCustomerId`, `prefillStartDate`, `prefillEndDate`) und `onSuccess`.',
+      'Hook `useOperatorBookingMutations` kapselt `api.bookings.create/update/cancel/markNoShow` über `useRentalOrg()` + `triggerRefresh()` aus `useOperatorShell()` — keine zweite Booking-Logik, keine harte Org-ID.',
+      '`OperatorDataContext` exponiert additiv `reloadAll` (Today/Tasks-Reload unverändert über `todayPickups`/`todayReturns`).',
+      '`api.ts`: schlanke Typen `OperatorBookingCreatePayload` / `OperatorBookingUpdatePayload` für create/update — bestehende Backend-Routen unter `organizations/:orgId/bookings` unverändert.',
+      'Platzhalter-Sheets (`OperatorBookingFormSheet`, `OperatorBookingCancelSheet`, `OperatorBookingNoShowSheet`) + `OperatorActionSheets`-Verdrahtung — mobile Fullscreen-Shell, OperatorGlassCard-Pattern. Formular-/Confirm-UI folgt im nächsten Schritt.',
+    ],
+    reason:
+      'Die Operator Webapp soll Buchungen aufnehmen, bearbeiten, stornieren und als No-Show markieren können — ausschließlich über die bestehenden kanonischen Booking APIs, ohne parallele Rental-Logik.',
+    previousBehavior:
+      'Operator hatte Handover, AI Upload, Tasks und Today-Ansicht, aber keine typisierten Booking-Sheet-Actions und keinen zentralen Mutations-Hook für create/update/cancel/markNoShow.',
+    details:
+      'Neu: `frontend/src/operator/hooks/useOperatorBookingMutations.ts`, `frontend/src/operator/bookings/*`, Erweiterungen in `operatorTypes.ts`, `OperatorActionSheets.tsx`, `OperatorDataContext.tsx`, `api.ts`. Unverändert: Today/Scan/Vehicles/Tasks/More/Handover/AI Upload/Tire Measure.',
+    affectsArchitecture: true,
+    module: 'Operator',
+    createdAt: '2026-06-25T12:00:00.000Z',
+  },
+  {
+    id: 'dashboard-fleet-command-shared-v4934-2026-06-25',
+    version: '4.9.34',
+    title: 'V4.9.34 — Dashboard nutzt geteilte Fleet Command View statt Fleet State Board',
+    summary: [
+      'Im Dashboard ersetzt an der bisherigen Fleet-State-Board-Position jetzt die gleiche Fleet Command Card wie auf der Fleet Page (Status Tab): nur die Tabs Available / Active / Reserved, getrennte Health- + Rental-Badges, konkrete Reason-Chips, Suche nach Kennzeichen/Marke/Modell.',
+      'Neuer schlanker Wrapper `FleetCommandView` kapselt nur UI-State (Suche, Tab, Auswahl) und rendert das bestehende `FleetCommandPanel`. Filter-/Sort-/Display-Logik kommt unverändert aus `fleet-operator-panel.ts` + `fleetVehicleDisplay.ts` — keine zweite Fahrzeuglisten-, Ready-/Health-Wahrheit im Dashboard.',
+      'Datenquelle ist `vm.filteredFleetVehicles` + `vm.healthMap` (additiv im ViewModel-Return exposed). KPI/Drawer/Business bleiben unverändert Runtime-Slice-basiert; `dashboardRuntime`, `vehicleRuntimeStates`, Drawer-/BusinessPulse-Slices bleiben die zentrale Wahrheit.',
+      'Fahrzeugzeile (`FleetOperatorRow`, shared) zeigt jetzt ein Station-Icon vor dem Stationsnamen und dahinter den letzten bekannten Standort: `[icon] Zentrale · Schwabstraße 7a, Kassel`. Adresse kommt aus dem vorhandenen gecachten `useAddress(lat,lng)`-Reverse-Geocode (Fleet Map / Vehicle Detail) — keine neue Geocoding-Integration, keine erfundene Adresse. Fehlt der Standort, bleibt nur die Station.',
+      '`FleetStateBoard` und `FleetBoardVehicleRow` sind als @deprecated markiert (nicht gelöscht) — sie sind nicht mehr aktiv im Dashboard verdrahtet.',
+    ],
+    reason:
+      'Dashboard und Fleet Page zeigten zwei unterschiedliche Fahrzeuglisten-Oberflächen (altes slice-basiertes Fleet State Board vs. korrigierte Fleet Command View). Die bereits korrigierte, klarere Fleet Command View soll überall die gleiche sein.',
+    previousBehavior:
+      'Das Dashboard rendererte `FleetStateBoard` (slice-basierte Sektionen + `FleetBoardVehicleRow`) mit eigener Darstellung; die Fahrzeugzeile zeigte Station ohne Icon und ohne letzten bekannten Standort.',
+    details:
+      'Geändert: `DashboardView.tsx` (FleetStateBoard → FleetCommandView, `getFleetHealth` aus `vm.healthMap`), neuer `fleet-operator/FleetCommandView.tsx` (reuse FleetCommandPanel + Builder), `useDashboardViewModel.ts` (healthMap im Return), `FleetOperatorRow.tsx` (Station-Icon + `useAddress`-Standortzeile, `appointmentFragment` statt `buildLocationLine`), `FleetStateBoard.tsx` + `FleetBoardVehicleRow.tsx` (@deprecated). Keine Backend-/Runtime-/Slice-Logik geändert.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-25T08:00:00.000Z',
+  },
+  {
+    id: 'fleet-operator-row-health-rental-split-v4933-2026-06-24',
+    version: '4.9.33',
+    title: 'V4.9.33 — Fleet-Row: Health & Rental-Verfügbarkeit getrennt',
+    summary: [
+      'Jede Fahrzeugzeile zeigt rechts oben zwei getrennte Badges: ein Health-Badge mit Herz-Icon (Good/Warning/Critical/Unknown) und daneben ein Rental-Availability-Badge (Ready/Not Ready/Active/Reserved/Maintenance/Blocked). „Available" erscheint nicht mehr als Health-Wert — ein gesundes Fahrzeug liest „Good".',
+      'Die redundante rote Satzzeile „Critical vehicle health" / „Warning health status" wurde entfernt und durch einen kompakten, konkreten Reason-Chip ersetzt (z. B. „1 aktiver Fehlercode", „Reifen beobachten", „Service überfällig", „Batterie prüfen", „Rückgabe überfällig").',
+      'Reason-Priorität (Display-Schicht): konkrete `blocking_reasons[0]` → konkreter Modulgrund (error_codes/service/brakes/tires/battery, critical vor warning) → Overdue → konkreter `visual.reason`. Generische Phrasen und technische Source-IDs (`rental-health:`, `dashboard-health-risk`, `vehicle-runtime`) werden gefiltert; Telemetrie-Gründe (Offline/Soft Offline/No Signal) bleiben nur in der Meta-Zeile, nie im Reason-Chip; kein user-facing „stale".',
+      'Rental-Readiness ist sauber von Health getrennt: Warning-Health allein macht ein Available-Fahrzeug nicht „Not Ready"; Soft Offline/Standby ebenfalls nicht. Nur echte Blocker (`rental_blocked`/`visual.isBlocked`) → Blocked, Hard Offline → Not Ready.',
+    ],
+    reason:
+      'Der gemischte Primärstatus ließ „Available" wie ein Health-Badge wirken und zeigte darunter redundant denselben Zustand als roten Satz — Health und Mietverfügbarkeit waren visuell vermischt.',
+    previousBehavior:
+      'Eine StatusChip mischte Health + Verfügbarkeit (inkl. „Available"), darunter stand `display.criticalHint` als roter Satz „Critical vehicle health" / „Warning health status".',
+    details:
+      'Reine Display-/Mapping-Schicht: `fleetVehicleDisplay.ts` erhält additiv `healthDisplay`, `rentalDisplay`, `reasonBadge` (bestehende Felder inkl. `primaryStatus`/Sort-Score unverändert, `criticalHint` als @deprecated behalten — Dashboard-Runtime/Fleet-State-Board unberührt). `FleetOperatorRow.tsx` rendert rechts Health+Rental-Badge und darunter „Open", Reason-Chip unter der Meta-Zeile, Locale via `useLanguage`. DE/EN-Labels. Keine Backend-, API- oder Runtime-Änderung. Tests: `fleetVehicleDisplay.test.ts` +10.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-06-24T22:00:00.000Z',
+  },
+  {
+    id: 'dashboard-drawer-reason-ui-cleanup-v4932-2026-06-24',
+    version: '4.9.32',
+    title: 'V4.9.32 — Operative Drawer-/Reason-UI bereinigt (keine Source-IDs, keine Doppel-Pills)',
+    summary: [
+      'Neue reine UI-Hilfsfunktion `reasonDisplay.ts` (`formatRuntimeReasonLabel`, `runtimeReasonTooltip`, `dedupeDisplayReasons`, `rowSeverityLabel`). Reason-Pills im Ready-to-rent Drawer und Fleet State Board zeigen jetzt nur noch den lesbaren Titel; technische Source-IDs (`rental-health:tires`, `dashboard-health-risk`, `vehicle-runtime`, `dashboard-insight:*`) sind aus dem sichtbaren Text entfernt.',
+      'Source bleibt für Debugging erhalten: sie steht jetzt im `title`-Attribut (Hover-Tooltip „… · Quelle: <source>") statt im Pill-Text. Vorher wurde `${reason.title} · ${reason.source}` direkt gerendert.',
+      'Doppelte Reason-Pills werden in der UI zusätzlich abgesichert: generischer `dashboard-health-risk`-Fallback wird unterdrückt, wenn ein konkreter `rental-health:*` Reason existiert; reine `vehicle-runtime` Ready-Marker erscheinen nicht als Pill; Dedupe nach `category + normalisiertem Titel`. Counts/Runtime-Logik bleiben unberührt.',
+      'Severity-Badges zeigen lesbare Labels (Ready/Warnung/Kritisch/Info) statt roher `severity`-Strings; `neutral` blendet das Badge aus. Telemetry-Wording (Live/Standby/Soft Offline/Offline/Unbekannt) unverändert ohne „stale", Standby bleibt neutral.',
+      'UI-Labeling: Drawer-Titel und Fleet-Board-Section für `blocked-maintenance` heißen jetzt „Blocked / maintenance" bzw. „Blockiert / Wartung" — die Slice-ID `blocked-maintenance` bleibt unverändert. Geteilter `DetailDrawer` bekommt Safe-Area-Bottom-Padding für die mobile Safari-Leiste.',
+    ],
+    reason:
+      'Der Ready-to-rent Drawer zeigte technische Source-IDs (z. B. „Reifen beobachten · rental-health:tires", „Health review required · dashboard-health-risk") und wirkte dadurch wie eine Debug-Ansicht statt einer operativen Rental-UI; teils erschienen zwei Health-Pills für dieselbe Sache.',
+    previousBehavior:
+      'Sowohl `DashboardDrilldownDrawer` als auch `FleetBoardVehicleRow` bauten den Pill-Text als `${reason.title} · ${reason.source}` und rendering den rohen `row.severity`-String („warning"/„critical") als Badge. Fallback- und Modul-Reasons konnten als doppelte Pills nebeneinander stehen.',
+    details:
+      'UI-/Labeling-only: neue `frontend/src/rental/components/dashboard/reasonDisplay.ts` plus Verdrahtung in `DashboardDrilldownDrawer.tsx`, `FleetBoardVehicleRow.tsx`, `FleetStateBoard.tsx` und Safe-Area-Padding in `components/patterns/detail-drawer.tsx`. Keine Runtime-/Slice-/Count-Logik geändert, keine neue Architektur. Tests in `reasonDisplay.test.ts` (Source-IDs nie im Label, Tooltip behält Source, Dedupe von health-risk + rental-health, vehicle-runtime ausgeblendet, Severity-Label-Mapping). Verifiziert: vitest reasonDisplay (10) + runtime (22) grün, `tsc -b` fehlerfrei, eslint der geänderten Dateien fehlerfrei.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-24T23:55:00.000Z',
+  },
+  {
+    id: 'battery-watch-not-an-alert-v4931-2026-06-24',
+    version: '4.9.31',
+    title: 'V4.9.31 — Battery WATCH ist kein Operativ-Alert mehr (12.84 V Ruhespannung bleibt gut)',
+    summary: [
+      '`RentalHealthService.evaluateBattery` mappt den kanonischen LV-Aggregat-Status jetzt vertragstreu: `WATCH → state \'good\'` (neutraler Hinweis „Batteriezustand unauffällig"), nur `WARNING/CRITICAL → warning/critical`. WATCH ist laut `battery-status#isAlertableStatus` ausdrücklich nicht alertbar — eine 12.84 V Ruhespannung oder ein Mid-Band-Verhaltensscore erzeugt keine „Batterie beobachten"-Meldung mehr.',
+      'Der Ruhespannungs-Hinweis `(Ruhespannung X V)` wird nur noch angehängt, wenn die Ruhespannung selbst der Auslöser ist (`restingVoltage.status` WARNING/CRITICAL) oder bestätigend bei gutem Zustand. Ein gutes 12.84 V wird nicht mehr an einen Alert geklebt, der aus dem Verhaltensscore/der Warnleuchte stammt.',
+      'Live-/Ladespannung wird weiterhin nie als „Ruhespannung" gelabelt: nur `restingVoltage.measurementContext === \'RESTING\'` (echte Ruhe-/Engine-Off-Messung aus dem CanonicalBatteryHealthService) erzeugt den Hinweis; Live-Spannung lebt getrennt in `lv.telemetry.voltageV`.',
+      'Wirkung als Single Source of Truth: Da `useVehicleHealthAlerts`/`healthRiskVehicleIds` und der Runtime-`addHealthReasons` denselben rental-health Modul-State lesen, verschwindet die falsche Battery-Warnung in Vehicle-Alerts, Runtime-Reasons und im Ready-to-rent Drawer gleichzeitig. „Startschwierigkeiten möglich" bleibt unverändert nur an echte WARNING/CRITICAL-Evidenz (niedrige Ruhe-/Crank-Spannung, Recommendation) gebunden.',
+    ],
+    reason:
+      'Im Ready-to-rent Drawer erschien „Batterie beobachten (Ruhespannung 12.84 V)", obwohl 12.84 V eine normale/gute 12V-Ruhespannung ist. Die Meldung entstand, weil der LV-Aggregat-WATCH (aus dem Estimated-Health-Verhaltensscore, nicht aus der Spannung) als voller `warning`-State gemappt und der gute Spannungswert als Begründung angehängt wurde — fachlich falsch und unnötig dramatisch.',
+    previousBehavior:
+      '`evaluateBattery` mappte `WATCH → warning` mit „Batterie beobachten" und hängte `(Ruhespannung X V)` unabhängig davon an, ob die Ruhespannung oder ein anderes Signal (Verhaltensscore/Warnleuchte) den Status trieb. Die WATCH-Warnung kaskadierte über overall_state in Vehicle-Alerts, healthRiskVehicleIds und Runtime-Reasons.',
+    details:
+      'Chirurgischer Fix nur in `backend/src/modules/rental-health/rental-health.service.ts#evaluateBattery` — keine neue Battery-Architektur, keine zweite Battery-Wahrheit, keine UI-Umbauten. Schwellen in `battery-status.ts` (good ≥ 12.5 / AGM 12.6) und der kanonische Aggregat (`aggregateLvStatus`) blieben unverändert. Tests in `rental-health.service.spec.ts` (A: 12.84 V WATCH → good; B: niedrige Ruhespannung → warning mit Note; C: Live-only → keine „Ruhespannung"; D: Warnleuchte → warning; Estimated-WARNING bei guter Ruhespannung beschuldigt die Spannung nicht) und ein DTC-Warning-Runtime-Test in `dashboardRuntime.test.ts`. Verifiziert: backend jest rental-health (13) + battery (94) grün, frontend vitest (240) grün, backend `tsc --noEmit` fehlerfrei.',
+    affectsArchitecture: true,
+    module: 'Rental Health',
+    createdAt: '2026-06-24T23:30:00.000Z',
+  },
+  {
+    id: 'runtime-reason-ready-blocked-separation-v4930-2026-06-24',
+    version: '4.9.30',
+    title: 'V4.9.30 — Runtime-Reason-Semantik: Ready / Available-not-ready / Blocked sauber getrennt',
+    summary: [
+      '`reasonPreventsReady` entscheidet jetzt ausschließlich anhand der Flags am Reason (`reason.preventsReady === true` oder `reason.blocking === true`). Die alte kategoriebasierte Hilfsfunktion `warningPreventsReady` (health/battery/tires/brakes/dtc/service/compliance/damage/rental) wurde entfernt — eine Warnung allein verhindert Ready-to-Rent nicht mehr.',
+      'Health-Modul-Warnungen (`rental-health:*`) und Warning-Insights bleiben sichtbar, setzen aber kein `preventsReady` mehr automatisch. Kritische Health-/Compliance-Reasons bleiben über `blocking` echte Blocker; `operationalStatus` wird durch Reasons weiterhin nie auf `maintenance` gezwungen.',
+      '`dashboard-health-risk` wird nur noch als Fallback erzeugt, wenn für dasselbe Fahrzeug keine konkreten `rental-health:*` Reasons existieren, und ist jetzt `severity: warning`, `blocking: false`, `preventsReady: false`. Keine doppelten Reason-Pills („Reifen beobachten" + „Health review required") mehr.',
+      'Cleaning bleibt `preventsReady: true` / `blocking: false` (Available but not ready, nicht Blocked & Maintenance). Telemetry: Standby neutral, Soft Offline Warnung ohne Block, Offline kritisch + blocking je nach `telemetryOfflineBlockLevel`.',
+    ],
+    reason:
+      'Im Ready-to-rent Drawer erschienen Fahrzeuge als „Available but not ready", obwohl sie nur Health-Warnings oder einen generischen Health-Risk-Hinweis hatten; zusätzlich wurden doppelte Gründe (Modul-Reason + generischer dashboard-health-risk) angezeigt. Das wirkte wie zwei Wahrheiten und unnötig dramatisch.',
+    previousBehavior:
+      'Warnungen ganzer Kategorien (health/tires/brakes/battery/dtc/service/compliance/damage/rental) setzten pauschal `preventsReady`; der generische `dashboard-health-risk` Reason wurde immer zusätzlich erzeugt und stand mit `preventsReady: true` über konkreten Modul-Reasons.',
+    details:
+      'Runtime-only Fix in `vehicleRuntimeStateBuilder.ts` (Entfernen von `warningPreventsReady`, kein Auto-`preventsReady` in `addInsightReasons`/`addHealthReasons`, Fallback-Gate `concreteHealthReasonAdded` für `dashboard-health-risk`). `dashboardSliceBuilder` (Blocked & Maintenance via `isMaintenance`/`unavailable`/`hasBlockingReason`, Ready-to-rent rows/secondaryRows) und die Reason-Typen blieben unverändert; `dashboardRuntime`/slices bleiben die zentrale Wahrheit. Tests in `dashboardRuntime.test.ts` (Tasks A/C/D + Fallback) und `dashboardRuntimeViewModelAdapters.test.ts` angepasst. Verifiziert: vitest (239 grün), `tsc -b` und eslint der geänderten Dateien fehlerfrei.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-24T22:30:00.000Z',
+  },
+  {
+    id: 'fleet-command-status-tab-ui-v4928-2026-06-24',
+    version: '4.9.28',
+    title: 'V4.9.28 — Fleet Command Status Tab UI bereinigt',
+    summary: [
+      'Station-Auswahl sitzt jetzt kompakt im Fleet-Command-Header rechts neben dem Refresh-Button (`headerAction`-Prop in `FleetCommandPanel`); die separate Leerfläche oberhalb der Fleet-Command-Box in `FleetView` entfällt. Bestehende Store-/API-Quelle (`stationId`, `setStationFilter`, `stationOptions`, `ALL_STATIONS_FILTER`) bleibt unverändert.',
+      'Status-Tabs im Fleet Command reduziert auf drei operative Tabs: Available, Active, Reserved. Der redundante Attention-Tab entfiel; Critical/Warning bleiben als Header-Chips sichtbar, die Liste im Available-Tab sortiert weiterhin Critical → Warning → Good.',
+      'Auto-Switch auf Attention beim ersten Laden entfernt; Default-Tab bleibt Available. `resolveOperatorTabForVehicle` mappt nur noch nach operativem Status (Active Rented → Active, Reserved → Reserved, sonst Available).',
+      'Suche in Fleet Command auf Kennzeichen, Marke und Modell beschränkt (`searchableHaystack`); Placeholder „Plate, make, model…". Tab-Counts zählen nur noch Available/Active/Reserved.',
+    ],
+    reason:
+      'Die Station-Auswahl erzeugte unnötigen vertikalen Abstand; der Attention-Tab duplizierte die bereits sortierte Fahrzeugliste; die Suche matchte zu viele Felder und verwischte operative mit Health-/Kontext-Signalen.',
+    previousBehavior:
+      'Station-Dropdown stand separat über der Fleet-Command-Box; sieben Tabs inkl. Attention/Maintenance/Offline/All; initiales Auto-Switching auf Attention; Suche über Plate, Customer, Station, Status und Visual-Labels.',
+    details:
+      'UI-/Props-only Refactor in `FleetView.tsx`, `FleetCommandPanel.tsx` und `fleet-operator-panel.ts`. Keine Backend-, Runtime- oder neue Station-Filter-Logik. Maintenance-Fahrzeuge (`status === Maintenance`) erscheinen nicht mehr im Status-Tab — weiterhin im Fleet-Hub-Tab Health (`FleetConditionView`). Offline Available-Fahrzeuge bleiben im Available-Tab sichtbar und sortiert. Health/Service-Tabs haben keine station-filterbare Datenquelle wie der Status-Tab; Station-Filter bleibt dort unangetastet.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-06-24T12:00:00.000Z',
+  },
+  {
     id: 'dashboard-second-truth-cleanup-v4927-2026-06-24',
     version: '4.9.27',
     title: 'V4.9.27 — Dashboard: letzte zweite Wahrheiten nach Runtime-Migration entfernt',

@@ -27,6 +27,7 @@ interface OperatorDataContextValue {
   tasksError: string | null;
   reloadToday: () => Promise<boolean>;
   reloadTasks: () => Promise<boolean>;
+  reloadAll: () => Promise<void>;
 }
 
 const OperatorDataCtx = createContext<OperatorDataContextValue | null>(null);
@@ -130,6 +131,7 @@ export function OperatorDataProvider({ children }: { children: ReactNode }) {
       tasksError,
       reloadToday,
       reloadTasks,
+      reloadAll,
     }),
     [
       pickups,
@@ -143,6 +145,7 @@ export function OperatorDataProvider({ children }: { children: ReactNode }) {
       tasksError,
       reloadToday,
       reloadTasks,
+      reloadAll,
     ],
   );
 

@@ -40,7 +40,11 @@ function mapBookingRow(row: Record<string, unknown>): OperatorScanBookingHit | n
   };
 }
 
-export function useOperatorScanSearch(query: string, focusedBookingId: string | null) {
+export function useOperatorScanSearch(
+  query: string,
+  focusedBookingId: string | null,
+  refreshToken = 0,
+) {
   const { orgId } = useRentalOrg();
   const trimmed = query.trim();
   const { vehicles, vehicleById, healthMap, loading: fleetLoading } = useOperatorVehiclesData(trimmed);
@@ -98,7 +102,7 @@ export function useOperatorScanSearch(query: string, focusedBookingId: string | 
     return () => {
       cancelled = true;
     };
-  }, [orgId, trimmed]);
+  }, [orgId, trimmed, refreshToken]);
 
   useEffect(() => {
     if (!orgId || !focusedBookingId) {
@@ -124,7 +128,7 @@ export function useOperatorScanSearch(query: string, focusedBookingId: string | 
     return () => {
       cancelled = true;
     };
-  }, [orgId, focusedBookingId]);
+  }, [orgId, focusedBookingId, refreshToken]);
 
   const bookingHits = useMemo(() => {
     const merged = [...bookings];

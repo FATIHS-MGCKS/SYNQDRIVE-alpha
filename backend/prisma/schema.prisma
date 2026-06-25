@@ -424,6 +424,7 @@ enum CustomerDocumentType {
   ID_BACK
   LICENSE_FRONT
   LICENSE_BACK
+  PROOF_OF_ADDRESS
   OTHER
 }
 
@@ -441,6 +442,32 @@ enum CustomerVerificationStatus {
   VERIFIED
   REJECTED
   EXPIRED
+}
+
+enum CustomerVerificationProvider {
+  MANUAL
+  DIDIT
+  SYNQDRIVE_AI_UPLOAD
+}
+
+enum CustomerVerificationCheckKind {
+  ID_DOCUMENT
+  DRIVING_LICENSE
+  PROOF_OF_ADDRESS
+}
+
+enum CustomerVerificationCheckStatus {
+  NOT_STARTED
+  PENDING
+  IN_PROGRESS
+  AWAITING_USER
+  VERIFIED
+  REQUIRES_REVIEW
+  REJECTED
+  EXPIRED
+  KYC_EXPIRED
+  ABANDONED
+  FAILED
 }
 
 enum CustomerTimelineEventType {
@@ -837,6 +864,7 @@ model Organization {
   billingAuditLogs          BillingAuditLog[]
   customers                 Customer[]
   customerDocuments         CustomerDocument[]
+  customerVerificationChecks CustomerVerificationCheck[]
   customerTimelineEvents    CustomerTimelineEvent[]
   customerEligibilityPolicy CustomerEligibilityPolicy?
   organizationRentalRules   OrganizationRentalRules?
@@ -2450,6 +2478,7 @@ model Customer {
   bookings              Booking[]
   rentalDrivingAnalyses RentalDrivingAnalysis[]
   documents             CustomerDocument[]
+  verificationChecks    CustomerVerificationCheck[]
   timelineEvents        CustomerTimelineEvent[]
   misuseCases           MisuseCase[]
 
@@ -2497,6 +2526,63 @@ model CustomerDocument {
   @@index([type])
   @@index([status])
   @@map("customer_documents")
+}
+
+model CustomerVerificationCheck {
+  id                 String                        @id @default(uuid())
+  organizationId     String                        @map("organization_id")
+  customerId         String                        @map("customer_id")
+  bookingId          String?                       @map("booking_id")
+
+  provider           CustomerVerificationProvider
+  kind               CustomerVerificationCheckKind
+  status             CustomerVerificationCheckStatus @default(NOT_STARTED)
+
+  providerSessionId  String?                       @map("provider_session_id")
+  providerWorkflowId String?                       @map("provider_workflow_id")
+  providerStatus     String?                       @map("provider_status")
+  providerUrl        String?                       @map("provider_url")
+  vendorData         String?                       @map("vendor_data")
+
+  extractedJson      Json?                         @map("extracted_json")
+  decisionJson       Json?                         @map("decision_json")
+  warnings           Json?
+
+  checkedByUserId    String?                       @map("checked_by_user_id")
+  startedAt          DateTime?                     @map("started_at")
+  completedAt        DateTime?                     @map("completed_at")
+  expiresAt          DateTime?                     @map("expires_at")
+  retentionUntil     DateTime?                     @map("retention_until")
+
+  createdAt          DateTime                      @default(now()) @map("created_at")
+  updatedAt          DateTime                      @updatedAt @map("updated_at")
+
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking?     @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, providerSessionId])
+  @@index([organizationId, customerId, kind, status])
+  @@index([bookingId])
+  @@map("customer_verification_checks")
+}
+
+model DiditWebhookEvent {
+  id             String    @id @default(uuid())
+  eventId        String?   @map("event_id")
+  sessionId      String?   @map("session_id")
+  eventType      String?   @map("event_type")
+  providerStatus String?   @map("provider_status")
+  payloadHash    String    @map("payload_hash")
+  signatureValid Boolean   @default(false) @map("signature_valid")
+  processedAt    DateTime? @map("processed_at")
+  rawPayload     Json      @map("raw_payload")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@unique([payloadHash])
+  @@unique([eventId])
+  @@index([sessionId])
+  @@map("didit_webhook_events")
 }
 
 model CustomerTimelineEvent {
@@ -2695,6 +2781,7 @@ model Booking {
   actualReturnStation   Station?                  @relation("BookingActualReturnStation", fields: [actualReturnStationId], references: [id], onDelete: SetNull)
   rentalDrivingAnalysis RentalDrivingAnalysis?
   handoverProtocols     BookingHandoverProtocol[]
+  verificationChecks    CustomerVerificationCheck[]
   misuseCases           MisuseCase[]
   priceSnapshots        BookingPriceSnapshot[]
   vehicleDamages        VehicleDamage[]

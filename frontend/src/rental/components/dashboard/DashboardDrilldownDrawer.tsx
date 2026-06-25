@@ -2,6 +2,12 @@ import { Icon } from '../ui/Icon';
 import { DetailDrawer } from '../../../components/patterns/detail-drawer';
 import { SkeletonRows, StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import {
+  dedupeDisplayReasons,
+  formatRuntimeReasonLabel,
+  rowSeverityLabel,
+  runtimeReasonTooltip,
+} from './reasonDisplay';
 import type { DashboardViewModel, DashboardViewProps } from './dashboardTypes';
 import type {
   BusinessMetricId,
@@ -11,7 +17,6 @@ import type {
   DashboardSlice,
   DashboardSliceId,
   DashboardSliceRow,
-  RuntimeReason,
 } from './runtime';
 
 interface DashboardDrilldownDrawerProps {
@@ -82,12 +87,15 @@ function formatDate(value: string | null | undefined, locale: string): string | 
   }).format(date);
 }
 
-function reasonLabel(reason: RuntimeReason): string {
-  return reason.source ? `${reason.title} · ${reason.source}` : reason.title;
-}
-
 function reasonsLabel(count: number, de: boolean): string {
   return de ? `+${count} Gründe` : `+${count} reasons`;
+}
+
+function sliceDisplayTitle(slice: DashboardSlice, de: boolean): string {
+  if (slice.id === 'blocked-maintenance') {
+    return de ? 'Blockiert / Wartung' : 'Blocked / maintenance';
+  }
+  return slice.title;
 }
 
 function defaultVehicleCta(de: boolean): string {
@@ -167,9 +175,11 @@ function DashboardRowCard({
   onOpenBooking?: DashboardViewProps['onOpenBookingById'];
   onClose: () => void;
 }) {
-  const reasons = row.reasons ?? [];
+  const locale = de ? 'de' : 'en';
+  const reasons = dedupeDisplayReasons(row.reasons ?? []);
   const visibleReasons = reasons.slice(0, 2);
   const remainingReasons = Math.max(0, reasons.length - visibleReasons.length);
+  const severityText = rowSeverityLabel(row.severity, locale);
   const canOpenVehicle = Boolean(row.vehicleId && onOpenVehicle);
   const canOpenBooking = Boolean(row.bookingId && onOpenBooking);
   const ctaLabel = row.primaryActionLabel ?? (row.bookingId ? defaultBookingCta(de) : defaultVehicleCta(de));
@@ -183,9 +193,11 @@ function DashboardRowCard({
             <h3 className="truncate text-[14px] font-semibold tracking-[-0.01em] text-foreground">
               {row.title}
             </h3>
-            <StatusChip tone={severityTone(row.severity)} className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide">
-              {row.severity}
-            </StatusChip>
+            {severityText ? (
+              <StatusChip tone={severityTone(row.severity)} className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide">
+                {severityText}
+              </StatusChip>
+            ) : null}
           </div>
           {row.subtitle ? (
             <p className="truncate text-[12px] text-muted-foreground">{row.subtitle}</p>
@@ -220,6 +232,7 @@ function DashboardRowCard({
           {visibleReasons.map((reason) => (
             <span
               key={reason.id}
+              title={runtimeReasonTooltip(reason, locale)}
               className={cn(
                 'rounded-full px-2 py-0.5 text-[10px] font-medium',
                 reason.severity === 'critical'
@@ -229,7 +242,7 @@ function DashboardRowCard({
                     : 'bg-muted text-muted-foreground',
               )}
             >
-              {reasonLabel(reason)}
+              {formatRuntimeReasonLabel(reason, locale)}
             </span>
           ))}
           {remainingReasons > 0 ? (
@@ -446,7 +459,9 @@ export function DashboardDrilldownDrawer({
     ? businessPulseSlices?.[activeTargetId] ?? null
     : null;
   const open = Boolean(activeTargetId);
-  const title = dashboardSlice?.title ?? businessSlice?.title ?? (de ? 'Details' : 'Details');
+  const title = dashboardSlice
+    ? sliceDisplayTitle(dashboardSlice, de)
+    : businessSlice?.title ?? (de ? 'Details' : 'Details');
   const count = dashboardSlice?.count ?? businessSlice?.count ?? null;
   const value =
     businessSlice?.valueCents != null

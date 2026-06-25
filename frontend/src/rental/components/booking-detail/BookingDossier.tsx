@@ -200,7 +200,7 @@ export function BookingDossier({
         />
       )}
       {activeTab === 'customer_risk' && (
-        <BookingCustomerRiskTab detail={detail} onOpenCustomer={onOpenCustomer} />
+        <BookingCustomerRiskTab detail={detail} orgId={orgId} onOpenCustomer={onOpenCustomer} />
       )}
       {activeTab === 'vehicle_health' && orgId && (
         <BookingVehicleHealthTab orgId={orgId} detail={detail} onOpenVehicle={onOpenVehicle} />

@@ -1,6 +1,7 @@
 import { Icon } from '../ui/Icon';
-import { StatusChip } from '../../../components/patterns';
+import { StatusChip, type StatusTone } from '../../../components/patterns';
 import { CustomerDocumentUploadBox } from '../CustomerDocumentUploadBox';
+import { CustomerVerificationPanel } from '../customer-verification/CustomerVerificationPanel';
 import {
   customerVerificationApiToUi,
   customerVerificationUiLabelDe,
@@ -21,6 +22,7 @@ interface CustomerDocumentsTabProps {
   onDocumentUploaded: () => void;
   onVerify: (documentId: string) => void;
   onReject: (documentId: string) => void;
+  onVerificationUpdated?: () => void;
 }
 
 export function CustomerDocumentsTab({
@@ -34,15 +36,33 @@ export function CustomerDocumentsTab({
   onDocumentUploaded,
   onVerify,
   onReject,
+  onVerificationUpdated,
 }: CustomerDocumentsTabProps) {
   const idUi = customerVerificationApiToUi(detail?.idVerificationStatus ?? undefined);
   const licenseUi = customerVerificationApiToUi(detail?.licenseVerificationStatus ?? undefined);
   const showLegacy = hasLegacyDocumentsOnly(detail) && kycDocSlots.every((s) => !s.document);
+  const pendingReviewDocumentIds = kycDocSlots
+    .map((s) => s.document)
+    .filter(
+      (doc): doc is NonNullable<typeof doc> =>
+        Boolean(doc && ['UPLOADED', 'PENDING_REVIEW'].includes(doc.status)),
+    )
+    .map((doc) => doc.id);
 
   return (
     <div className="space-y-4">
+      <CustomerVerificationPanel
+        customerId={customerId}
+        orgId={orgId}
+        allowManualDocumentReview
+        pendingReviewDocumentIds={pendingReviewDocumentIds}
+        onManualVerifyDocument={onVerify}
+        onDocumentUploaded={onDocumentUploaded}
+        onVerificationUpdated={onVerificationUpdated}
+      />
+
       <div className={`${cardBg} p-4`}>
-        <h4 className="text-xs font-bold mb-3">Verifikationsstatus</h4>
+        <h4 className="text-xs font-bold mb-3">Dokumentenstatus (Read-Model)</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="p-3 rounded-lg border border-border">
             <div className="flex justify-between items-center">

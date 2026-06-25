@@ -33,7 +33,7 @@ export function TripRentalContextPanel({
   onOpenBooking,
   onReview,
 }: TripRentalContextPanelProps) {
-  const { booking, bookingDetail, alignment, km, needsReview, reviewReason } = context;
+  const { booking, bookingDetail, alignment, needsReview, reviewReason } = context;
   const vehicleStatus = bookingDetail?.vehicle.vehicleStatus;
   const pickupAt = bookingDetail?.handover.pickup?.completedAt;
 
@@ -147,24 +147,6 @@ export function TripRentalContextPanel({
           </div>
         </div>
       )}
-
-      <div className="rounded-xl border border-border/50 bg-card/50 p-3 space-y-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-          {RENTAL_COPY.kmContext}
-        </p>
-        <div className="grid gap-1.5 sm:grid-cols-2">
-          <MetaRow label={RENTAL_COPY.tripKm} value={km.tripKm} />
-          <MetaRow label={RENTAL_COPY.dayKm} value={km.dayKm} />
-          {km.bookingKm && <MetaRow label={RENTAL_COPY.bookingKm} value={km.bookingKm} />}
-          {booking?.kmIncluded != null && (
-            <MetaRow label={RENTAL_COPY.kmIncluded} value={`${booking.kmIncluded} km`} />
-          )}
-          {km.potentialExcessKm && (
-            <MetaRow label={RENTAL_COPY.potentialExcessKm} value={km.potentialExcessKm} />
-          )}
-          {km.kmDeviation && <MetaRow label={RENTAL_COPY.kmDeviation} value={km.kmDeviation} />}
-        </div>
-      </div>
     </div>
   );
 }

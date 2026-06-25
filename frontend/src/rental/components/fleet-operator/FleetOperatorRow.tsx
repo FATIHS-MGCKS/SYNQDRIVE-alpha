@@ -1,13 +1,25 @@
 import type { MouseEvent } from 'react';
 import { Icon } from '../ui/Icon';
-import { StatusChip } from '../../../components/patterns';
+import { StatusChip, type StatusTone } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import { VehicleData } from '../../data/vehicles';
 import { getShortModel } from '../../data/vehicles';
 import { formatFleetDateTime } from '../../../lib/formatVehicleDisplay';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { useAddress } from '../../../lib/useAddress';
 import { FleetEnergyIndicator } from '../fleet/FleetEnergyIndicator';
 import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
 import type { FleetVehicleContext } from '../../lib/fleet-operator-panel';
+
+function reasonChipClass(tone: StatusTone): string {
+  if (tone === 'critical') {
+    return 'bg-[color:color-mix(in_srgb,var(--status-critical)_10%,transparent)] text-[color:var(--status-critical)]';
+  }
+  if (tone === 'watch' || tone === 'warning') {
+    return 'bg-[color:color-mix(in_srgb,var(--status-watch)_12%,transparent)] text-[color:var(--status-watch)]';
+  }
+  return 'bg-muted text-muted-foreground';
+}
 
 function fleetVehicleTitle(v: VehicleData): string {
   const model = typeof v.model === 'string' ? v.model : '';
@@ -20,18 +32,18 @@ function vehicleStationLabel(v: VehicleData): string {
   return named ?? v.station ?? '';
 }
 
-/** Station + a single compact appointment fragment (no long mixed chains). */
-function buildLocationLine(v: VehicleData): string {
-  const station = vehicleStationLabel(v);
+/**
+ * A single compact appointment fragment (Return/Pickup) — never the station,
+ * so the station + last-known-location line stays clean and unambiguous.
+ */
+function appointmentFragment(v: VehicleData): string | null {
   if (v.status === 'Active Rented' && v.activeReturnAt) {
-    return [station, `Return ${formatFleetDateTime(v.activeReturnAt)}`].filter(Boolean).join(' · ');
+    return `Return ${formatFleetDateTime(v.activeReturnAt)}`;
   }
   if (v.status === 'Reserved' && v.reservedPickupAt) {
-    return [station, `Pickup ${formatFleetDateTime(v.reservedPickupAt)}`]
-      .filter(Boolean)
-      .join(' · ');
+    return `Pickup ${formatFleetDateTime(v.reservedPickupAt)}`;
   }
-  return station || '—';
+  return null;
 }
 
 export interface FleetOperatorRowProps {
@@ -55,10 +67,13 @@ export function FleetOperatorRow({
   onMouseLeave,
 }: FleetOperatorRowProps) {
   const { vehicle: v, visual, health } = ctx;
+  const { locale } = useLanguage();
   const display = resolveFleetVehicleDisplayState(v, {
     rentalHealth: health,
     visual,
+    locale,
   });
+  const { healthDisplay, rentalDisplay, reasonBadge } = display;
 
   // Only genuine connectivity problems (offline / no_signal) dim an Available
   // row. Standby + signal_delayed stay at full opacity (normal/secondary).
@@ -72,7 +87,17 @@ export function FleetOperatorRow({
         ? 'bg-[color:color-mix(in_srgb,var(--status-watch)_4%,transparent)]'
         : '';
 
-  const locationLine = buildLocationLine(v);
+  // Station = organisational home. Last known location = current/last GPS
+  // position resolved via the shared (cached) reverse-geocode helper used on
+  // the Fleet Map / Vehicle Detail. No address is fabricated: when no
+  // coordinates resolve, the line falls back to the station alone.
+  const station = vehicleStationLabel(v);
+  const { address } = useAddress(v.lat, v.lng);
+  const lastKnownLocation =
+    address && address.formatted && address.formatted !== '—' ? address.formatted : null;
+  const appointment = appointmentFragment(v);
+  const locationParts = [station, lastKnownLocation, appointment].filter(Boolean) as string[];
+  const locationLine = locationParts.length > 0 ? locationParts.join(' · ') : '—';
 
   return (
     <div
@@ -89,32 +114,28 @@ export function FleetOperatorRow({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       className={cn(
-        'group flex cursor-pointer items-center gap-2 px-2.5 py-2 transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--brand)]',
+        'group flex cursor-pointer items-start gap-2 px-2.5 py-2 transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--brand)]',
         tint,
         selected && 'bg-[color:color-mix(in_srgb,var(--brand)_8%,transparent)]',
       )}
     >
       <div className={cn('min-w-0 flex-1 space-y-1', dimmed && 'opacity-75')}>
-        <div className="flex items-start gap-2">
-          <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
-            <span className="shrink-0 text-[12px] font-bold tabular-nums tracking-[-0.01em] text-foreground">
-              {v.license}
-            </span>
-            <span className="truncate text-[10.5px] leading-snug text-muted-foreground">
-              {fleetVehicleTitle(v)}
-            </span>
-          </div>
-          <StatusChip
-            tone={display.primaryTone}
-            className="shrink-0 px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
-          >
-            {display.primaryLabel}
-          </StatusChip>
+        <div className="flex min-w-0 items-baseline gap-1.5">
+          <span className="shrink-0 text-[12px] font-bold tabular-nums tracking-[-0.01em] text-foreground">
+            {v.license}
+          </span>
+          <span className="truncate text-[10.5px] leading-snug text-muted-foreground">
+            {fleetVehicleTitle(v)}
+          </span>
         </div>
 
-        <p className="truncate text-[10px] text-muted-foreground" title={locationLine}>
-          {locationLine}
-        </p>
+        <div
+          className="flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground"
+          title={locationLine}
+        >
+          <Icon name="map-pin" className="h-3 w-3 shrink-0 text-muted-foreground/80" />
+          <span className="truncate">{locationLine}</span>
+        </div>
 
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] tabular-nums text-muted-foreground">
           {display.energy.percent != null && (
@@ -142,22 +163,45 @@ export function FleetOperatorRow({
           )}
         </div>
 
-        {display.criticalHint && (
-          <p className="line-clamp-1 text-[10px] font-medium leading-snug text-[color:var(--status-critical)] text-pretty">
-            {display.criticalHint}
-          </p>
+        {reasonBadge && (
+          <span
+            className={cn(
+              'inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[10px] font-medium',
+              reasonChipClass(reasonBadge.tone),
+            )}
+          >
+            <span className="truncate">{reasonBadge.text}</span>
+          </span>
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={onDetailClick}
-        aria-label="Open vehicle details"
-        className="sq-press inline-flex min-h-9 shrink-0 items-center gap-1 self-center rounded-md px-2 text-[10.5px] font-medium text-muted-foreground opacity-90 transition-colors hover:bg-muted/40 hover:text-foreground group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
-      >
-        Open
-        <Icon name="arrow-right" className="h-3 w-3" />
-      </button>
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          <StatusChip
+            tone={healthDisplay.tone}
+            icon={<Icon name="heart" className="h-3 w-3" />}
+            className="px-1.5 py-0.5 text-[9.5px] font-semibold"
+          >
+            {healthDisplay.label}
+          </StatusChip>
+          <StatusChip
+            tone={rentalDisplay.tone}
+            className="px-1.5 py-0.5 text-[9.5px] font-semibold"
+          >
+            {rentalDisplay.label}
+          </StatusChip>
+        </div>
+
+        <button
+          type="button"
+          onClick={onDetailClick}
+          aria-label="Open vehicle details"
+          className="sq-press inline-flex min-h-8 items-center gap-1 rounded-md px-2 text-[10.5px] font-medium text-muted-foreground opacity-90 transition-colors hover:bg-muted/40 hover:text-foreground group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+        >
+          Open
+          <Icon name="arrow-right" className="h-3 w-3" />
+        </button>
+      </div>
     </div>
   );
 }

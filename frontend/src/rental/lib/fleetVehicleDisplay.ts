@@ -1,5 +1,5 @@
 import type { StatusTone } from '../../components/patterns';
-import type { VehicleHealthResponse } from '../../lib/api';
+import type { RentalHealthModule, VehicleHealthResponse } from '../../lib/api';
 import type { VehicleData } from '../data/vehicles';
 import type { VehicleHealthAlert } from '../DashboardInsightsContext';
 import { deriveFleetVisualState, type FleetVisualState } from './fleetVisualState';
@@ -46,6 +46,39 @@ export interface FleetEnergyDisplay {
   tone: FleetEnergyTone;
 }
 
+/**
+ * Vehicle Health condition — strictly separate from rental availability.
+ * `Available` is never a health value here; a healthy vehicle reads "Good".
+ */
+export type FleetHealthStatus = 'good' | 'warning' | 'critical' | 'unknown';
+
+export interface FleetHealthDisplay {
+  status: FleetHealthStatus;
+  label: string;
+  tone: StatusTone;
+}
+
+/** Rental availability — strictly separate from health condition. */
+export type FleetRentalAvailability =
+  | 'ready'
+  | 'not_ready'
+  | 'active'
+  | 'reserved'
+  | 'maintenance'
+  | 'blocked';
+
+export interface FleetRentalDisplay {
+  status: FleetRentalAvailability;
+  label: string;
+  tone: StatusTone;
+}
+
+/** A short, concrete reason chip (never a long red sentence). */
+export interface FleetReasonBadge {
+  text: string;
+  tone: StatusTone;
+}
+
 export interface FleetVehicleDisplayState {
   primaryStatus: FleetOperationalStatus;
   primaryLabel: string;
@@ -57,7 +90,16 @@ export interface FleetVehicleDisplayState {
   signalAgeMs: number | null;
   energy: FleetEnergyDisplay;
   odometerLabel: string | null;
-  /** Short reason, only for critical / warning / blocked vehicles. */
+  /** Health condition badge (Good / Warning / Critical / Unknown). */
+  healthDisplay: FleetHealthDisplay;
+  /** Rental availability badge (Ready / Not Ready / Active / Reserved / …). */
+  rentalDisplay: FleetRentalDisplay;
+  /** Concrete reason chip, or null when there is nothing meaningful to show. */
+  reasonBadge: FleetReasonBadge | null;
+  /**
+   * @deprecated Legacy short reason. Superseded by {@link reasonBadge}. Kept for
+   * backward compatibility with non-Fleet-Page consumers.
+   */
   criticalHint?: string;
 }
 
@@ -185,6 +227,210 @@ function primaryToneFor(status: FleetOperationalStatus): StatusTone {
   }
 }
 
+function resolveHealthDisplay(
+  v: VehicleData,
+  rentalHealth: VehicleHealthResponse | null,
+  de: boolean,
+): FleetHealthDisplay {
+  let status: FleetHealthStatus;
+  if (isHealthCritical(v, rentalHealth)) status = 'critical';
+  else if (isHealthWarning(v, rentalHealth)) status = 'warning';
+  else {
+    const hasData = rentalHealth != null || Boolean(v.healthStatus);
+    status = hasData ? 'good' : 'unknown';
+  }
+
+  const labels: Record<FleetHealthStatus, [string, string]> = {
+    good: ['Good', 'Gut'],
+    warning: ['Warning', 'Warnung'],
+    critical: ['Critical', 'Kritisch'],
+    unknown: ['Unknown', 'Unbekannt'],
+  };
+  const tones: Record<FleetHealthStatus, StatusTone> = {
+    good: 'success',
+    warning: 'warning',
+    critical: 'critical',
+    unknown: 'neutral',
+  };
+  return { status, label: de ? labels[status][1] : labels[status][0], tone: tones[status] };
+}
+
+/**
+ * Rental availability is intentionally independent of health warnings. Only a
+ * genuine rental blocker (rental_blocked / visual.isBlocked) or a hard offline
+ * device makes an Available vehicle "Not Ready" — a warning health state alone
+ * never does, and soft-offline / standby never do.
+ */
+function resolveRentalDisplay(
+  v: VehicleData,
+  rentalHealth: VehicleHealthResponse | null,
+  visual: FleetVisualState,
+  de: boolean,
+): FleetRentalDisplay {
+  let status: FleetRentalAvailability;
+  if (v.status === 'Active Rented') status = 'active';
+  else if (v.status === 'Reserved') status = 'reserved';
+  else if (v.status === 'Maintenance') status = 'maintenance';
+  else if (v.status === 'Available') {
+    const blocked = rentalHealth?.rental_blocked === true || visual.isBlocked;
+    if (blocked) status = 'blocked';
+    else if (visual.isOffline) status = 'not_ready';
+    else status = 'ready';
+  } else {
+    status = 'not_ready';
+  }
+
+  const labels: Record<FleetRentalAvailability, [string, string]> = {
+    ready: ['Ready', 'Bereit'],
+    not_ready: ['Not Ready', 'Nicht bereit'],
+    active: ['Active', 'Aktiv'],
+    reserved: ['Reserved', 'Reserviert'],
+    maintenance: ['Maintenance', 'Wartung'],
+    blocked: ['Blocked', 'Blockiert'],
+  };
+  const tones: Record<FleetRentalAvailability, StatusTone> = {
+    ready: 'success',
+    not_ready: 'warning',
+    active: 'info',
+    reserved: 'info',
+    maintenance: 'warning',
+    blocked: 'critical',
+  };
+  return { status, label: de ? labels[status][1] : labels[status][0], tone: tones[status] };
+}
+
+const GENERIC_REASONS = new Set([
+  'critical vehicle health',
+  'warning health status',
+  'critical health',
+  'warning health',
+  'vehicle health',
+]);
+
+/** Reject generic health phrases and technical source IDs from user-facing chips. */
+function isConcreteReason(text: string | null | undefined): boolean {
+  if (!text) return false;
+  const t = String(text).trim();
+  if (!t) return false;
+  if (GENERIC_REASONS.has(t.toLowerCase())) return false;
+  if (/rental-health:|dashboard-health-risk|vehicle-runtime/i.test(t)) return false;
+  return true;
+}
+
+/**
+ * Telemetry-freshness phrases (offline / soft offline / no signal) are already
+ * surfaced calmly in the meta line — they must not be duplicated as a health
+ * reason chip, and "stale" must never reach the user.
+ */
+function isTelemetryReason(text: string | null | undefined): boolean {
+  if (!text) return false;
+  return /offline|no signal|signal delayed|standby|stale/i.test(String(text));
+}
+
+type ReasonModuleKey = 'error_codes' | 'service_compliance' | 'brakes' | 'tires' | 'battery';
+
+const REASON_MODULE_ORDER: ReasonModuleKey[] = [
+  'error_codes',
+  'service_compliance',
+  'brakes',
+  'tires',
+  'battery',
+];
+
+function extractCount(text: string | null | undefined): number | null {
+  if (!text) return null;
+  const m = String(text).match(/\d+/);
+  return m ? Number(m[0]) : null;
+}
+
+function moduleReasonText(
+  key: ReasonModuleKey,
+  module: RentalHealthModule,
+  de: boolean,
+): string {
+  const critical = module.state === 'critical';
+  switch (key) {
+    case 'error_codes': {
+      const n = extractCount(module.reason);
+      if (n != null && n > 0) {
+        if (de) return n === 1 ? '1 aktiver Fehlercode' : `${n} aktive Fehlercodes`;
+        return n === 1 ? '1 active fault code' : `${n} active fault codes`;
+      }
+      return de ? 'Aktiver Fehlercode' : 'Active fault code';
+    }
+    case 'service_compliance':
+      return critical
+        ? de ? 'Service überfällig' : 'Service overdue'
+        : de ? 'Service fällig' : 'Service due';
+    case 'brakes':
+      return de ? 'Bremsen prüfen' : 'Check brakes';
+    case 'tires':
+      return critical
+        ? de ? 'Reifen prüfen' : 'Check tires'
+        : de ? 'Reifen beobachten' : 'Monitor tires';
+    case 'battery':
+      return de ? 'Batterie prüfen' : 'Check battery';
+    default:
+      return de ? 'Health prüfen' : 'Check health';
+  }
+}
+
+/** Pick the most important concrete module reason (critical before warning). */
+function pickModuleReason(
+  rentalHealth: VehicleHealthResponse | null,
+  de: boolean,
+): string | null {
+  const modules = rentalHealth?.modules;
+  if (!modules) return null;
+  for (const severity of ['critical', 'warning'] as const) {
+    for (const key of REASON_MODULE_ORDER) {
+      const module = modules[key];
+      if (module && module.state === severity) {
+        return moduleReasonText(key, module, de);
+      }
+    }
+  }
+  return null;
+}
+
+function buildReasonBadge(
+  v: VehicleData,
+  rentalHealth: VehicleHealthResponse | null,
+  visual: FleetVisualState,
+  health: FleetHealthStatus,
+  de: boolean,
+): FleetReasonBadge | null {
+  const blocked = rentalHealth?.rental_blocked === true || visual.isBlocked;
+  const tone: StatusTone =
+    health === 'critical' || blocked || v.activeIsOverdue
+      ? 'critical'
+      : health === 'warning' || v.reservedIsOverdue
+        ? 'watch'
+        : 'neutral';
+
+  const blockingReason = rentalHealth?.blocking_reasons?.find((r) => isConcreteReason(r));
+  if (blockingReason) return { text: blockingReason, tone };
+
+  const moduleReason = pickModuleReason(rentalHealth, de);
+  if (moduleReason) return { text: moduleReason, tone };
+
+  if (v.activeIsOverdue) {
+    return { text: de ? 'Rückgabe überfällig' : 'Return overdue', tone: 'critical' };
+  }
+  if (v.reservedIsOverdue) {
+    return { text: de ? 'Abholung überfällig' : 'Pickup overdue', tone: 'watch' };
+  }
+
+  if (isConcreteReason(visual.reason) && !isTelemetryReason(visual.reason)) {
+    return { text: visual.reason as string, tone };
+  }
+
+  if (health === 'warning' || health === 'critical') {
+    return { text: de ? 'Health prüfen' : 'Check health', tone };
+  }
+  return null;
+}
+
 export interface ResolveFleetVehicleDisplayOptions {
   rentalHealth?: VehicleHealthResponse | null;
   healthAlert?: VehicleHealthAlert | null;
@@ -223,6 +469,17 @@ export function resolveFleetVehicleDisplayState(
     tone: fleetEnergyTone(percent),
   };
 
+  const healthDisplay = resolveHealthDisplay(vehicle, rentalHealth, de);
+  const rentalDisplay = resolveRentalDisplay(vehicle, rentalHealth, visual, de);
+  const reasonBadge =
+    buildReasonBadge(vehicle, rentalHealth, visual, healthDisplay.status, de) ??
+    (options.healthAlert?.primaryReason && isConcreteReason(options.healthAlert.primaryReason)
+      ? {
+          text: options.healthAlert.primaryReason,
+          tone: healthDisplay.status === 'critical' ? 'critical' : 'watch',
+        }
+      : null);
+
   let criticalHint: string | undefined;
   if (primaryStatus === 'critical' || primaryStatus === 'warning' || primaryStatus === 'blocked') {
     criticalHint =
@@ -242,6 +499,9 @@ export function resolveFleetVehicleDisplayState(
     signalAgeMs: ageMs,
     energy,
     odometerLabel: formatOdometer(vehicle.odometerKm, de),
+    healthDisplay,
+    rentalDisplay,
+    reasonBadge,
     criticalHint,
   };
 }

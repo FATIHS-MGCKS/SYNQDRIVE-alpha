@@ -89,6 +89,7 @@ export function buildKycDocSlots(
     { slot: 'id-back', label: 'Personalausweis – Rückseite', type: detail?.idType || 'Personalausweis', documentType: 'ID_BACK', document: byType.get('ID_BACK') ?? null, legacyPreviewUrl: legacyUrls['id-back'] ?? null, statusLabel: '' },
     { slot: 'license-front', label: 'Führerschein – Vorderseite', type: 'Führerschein', documentType: 'LICENSE_FRONT', document: byType.get('LICENSE_FRONT') ?? null, legacyPreviewUrl: legacyUrls['license-front'] ?? null, statusLabel: '' },
     { slot: 'license-back', label: 'Führerschein – Rückseite', type: 'Führerschein', documentType: 'LICENSE_BACK', document: byType.get('LICENSE_BACK') ?? null, legacyPreviewUrl: legacyUrls['license-back'] ?? null, statusLabel: '' },
+    { slot: 'proof-of-address', label: 'Adressnachweis', type: 'Adressnachweis', documentType: 'PROOF_OF_ADDRESS', document: byType.get('PROOF_OF_ADDRESS') ?? null, legacyPreviewUrl: null, statusLabel: '' },
   ];
   return rows.map((row) => ({
     ...row,

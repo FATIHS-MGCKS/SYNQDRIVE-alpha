@@ -438,6 +438,7 @@ export function CustomerDetailView({
             onDocumentUploaded={reloadAll}
             onVerify={(id) => reviewDocument(id, 'VERIFIED')}
             onReject={(id) => setRejectDocId(id)}
+            onVerificationUpdated={reloadAll}
           />
         )}
         {activeTab === 'finances' && (

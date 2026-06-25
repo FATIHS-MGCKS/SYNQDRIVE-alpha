@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   countVehicleTasks,
   deriveTaskIsOverdue,
+  formatVehicleMaintenanceDueLabel,
   mapApiTaskToDisplayStatus,
   mapApiTaskToVehicleRow,
   matchesVehicleTaskFilter,
@@ -87,6 +88,26 @@ describe('task-display.utils', () => {
     expect(counts.active).toBe(3);
     expect(counts.done).toBe(1);
     expect(counts.cancelled).toBe(1);
+  });
+
+  it('formats the maintenance due label as "Fällig bis" when not overdue', () => {
+    const label = formatVehicleMaintenanceDueLabel(
+      makeTask({ status: 'OPEN', isOverdue: false, dueDate: '2026-02-27T00:00:00.000Z' }),
+    );
+    expect(label).toBe('Fällig bis 27.02.26');
+  });
+
+  it('formats the maintenance due label as "Fällig seit" when overdue', () => {
+    const label = formatVehicleMaintenanceDueLabel(
+      makeTask({ status: 'OPEN', isOverdue: true, dueDate: '2026-02-27T00:00:00.000Z' }),
+    );
+    expect(label).toBe('Fällig seit 27.02.26');
+  });
+
+  it('returns null for the maintenance due label without a due date', () => {
+    expect(
+      formatVehicleMaintenanceDueLabel(makeTask({ status: 'OPEN', dueDate: null })),
+    ).toBeNull();
   });
 
   it('overdue filter only matches active overdue tasks', () => {

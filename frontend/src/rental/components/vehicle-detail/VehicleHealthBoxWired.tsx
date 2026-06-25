@@ -8,12 +8,15 @@ export interface VehicleHealthBoxWiredProps {
   selectedVehicle: VehicleData | null;
   isDarkMode: boolean;
   onViewDetails?: () => void;
+  /** Forwarded to VehicleHealthBox. Overview passes `false` to stay compact. */
+  showDataBasis?: boolean;
 }
 
 export function VehicleHealthBoxWired({
   selectedVehicle,
   isDarkMode,
   onViewDetails,
+  showDataBasis = true,
 }: VehicleHealthBoxWiredProps) {
   const vehicleId = selectedVehicle?.id ?? null;
   const { health: rentalHealth, loading: rentalHealthLoading } = useEffectiveHealth(vehicleId);
@@ -33,6 +36,7 @@ export function VehicleHealthBoxWired({
       healthError={healthError}
       boxData={boxData}
       onViewDetails={onViewDetails}
+      showDataBasis={showDataBasis}
     />
   );
 }

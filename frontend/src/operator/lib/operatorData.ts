@@ -13,6 +13,7 @@ import {
   todayRowToPickupGateInput,
   todayRowToReturnGateInput,
 } from '../../rental/lib/bookingHandoverGates';
+import type { OperatorScanBookingHit } from '../hooks/useOperatorScanSearch';
 
 export type OperatorHandoverKind = 'PICKUP' | 'RETURN';
 
@@ -247,5 +248,50 @@ export function toHandoverBookingSeed(item: OperatorTodayBookingItem) {
     pickupStationId: item.raw.pickupStationId,
     returnStationId: item.raw.returnStationId,
     status: item.raw.status,
+  };
+}
+
+/** Map scan/search booking hit → detail sheet item (gates filled after `api.bookings.detail`). */
+export function mapScanBookingToDetailItem(
+  hit: OperatorScanBookingHit,
+  locale = 'de',
+): OperatorTodayBookingItem {
+  const status = normalizeBookingStatus(hit.statusEnum, hit.status);
+  const startIso = hit.startDate ?? '';
+  const endIso = hit.endDate ?? '';
+  const nowMs = Date.now();
+  const endMs = endIso ? new Date(endIso).getTime() : NaN;
+  const kind: OperatorHandoverKind =
+    Number.isFinite(endMs) && endMs <= nowMs + 2 * 60 * 60 * 1000 ? 'RETURN' : 'PICKUP';
+  const scheduledAt = kind === 'RETURN' && endIso ? endIso : startIso;
+  const raw: TodayBookingApiRow = {
+    id: hit.bookingId,
+    vehicleId: hit.vehicleId,
+    vehicleName: hit.vehicleName,
+    vehicleLicense: hit.plate,
+    customerName: hit.customerName,
+    startDate: startIso,
+    endDate: endIso,
+    status: hit.status,
+    statusEnum: hit.statusEnum,
+  };
+  return {
+    bookingId: hit.bookingId,
+    kind,
+    vehicleId: hit.vehicleId,
+    vehicleName: hit.vehicleName,
+    plate: hit.plate,
+    customerName: hit.customerName,
+    station: '',
+    scheduledAt,
+    timeLabel: formatApiTime(scheduledAt, locale) || '—',
+    status,
+    statusLabel: bookingStatusLabel(status),
+    isOverdue: false,
+    isDueNow: false,
+    isDone: false,
+    pickupGate: { allowed: false },
+    returnGate: { allowed: false },
+    raw,
   };
 }

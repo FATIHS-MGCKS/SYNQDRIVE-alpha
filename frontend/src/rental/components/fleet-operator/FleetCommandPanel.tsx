@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { AlertTriangle, RefreshCw, Search } from 'lucide-react';
+import { useMemo, type ReactNode } from 'react';
+import { RefreshCw, Search } from 'lucide-react';
 import { SkeletonCard } from '../../../components/patterns';
 import {
   type FleetCommandTab,
@@ -19,13 +19,9 @@ const COMMAND_TABS: Array<{
   label: string;
   tone?: 'success' | 'brand' | 'warning' | 'critical' | 'neutral';
 }> = [
-  { key: 'Attention', label: 'Attention', tone: 'critical' },
   { key: 'Available', label: 'Available', tone: 'success' },
   { key: 'Active', label: 'Active', tone: 'brand' },
   { key: 'Reserved', label: 'Reserved', tone: 'warning' },
-  { key: 'Maintenance', label: 'Maintenance', tone: 'critical' },
-  { key: 'Offline', label: 'Offline', tone: 'neutral' },
-  { key: 'All', label: 'All', tone: 'neutral' },
 ];
 
 export interface FleetCommandPanelProps {
@@ -43,6 +39,7 @@ export interface FleetCommandPanelProps {
   lastFetchedAt: number | null;
   onRefresh: () => void;
   refreshing: boolean;
+  headerAction?: ReactNode;
   onRowClick: (ctx: FleetVehicleContext) => void;
   onDetailClick: (ctx: FleetVehicleContext, e: React.MouseEvent) => void;
   registerRowRef: (vehicleId: string, el: HTMLDivElement | null) => void;
@@ -66,6 +63,7 @@ export function FleetCommandPanel({
   lastFetchedAt,
   onRefresh,
   refreshing,
+  headerAction,
   onRowClick,
   onDetailClick,
   registerRowRef,
@@ -95,7 +93,7 @@ export function FleetCommandPanel({
   }, [contexts]);
 
   const visibleContexts = useMemo(
-    () => sortFleetContexts(filterFleetByTab(contexts, activeTab), activeTab),
+    () => sortFleetContexts(filterFleetByTab(contexts, activeTab)),
     [contexts, activeTab],
   );
 
@@ -104,8 +102,8 @@ export function FleetCommandPanel({
   return (
     <div className="sq-card overflow-hidden flex flex-col lg:h-[640px] animate-fade-up">
       <div className="p-3 pb-0 border-b border-border/40">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div className="min-w-0">
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 mb-2">
+          <div className="min-w-0 flex-1">
             <h3 className="text-[12px] font-semibold tracking-[-0.005em] text-foreground">
               Fleet Command
             </h3>
@@ -119,20 +117,23 @@ export function FleetCommandPanel({
               {attentionStats.warning > 0 && (
                 <PanelStatusChip label={`${attentionStats.warning} warning`} tone="warning" />
               )}
-              {tabCounts.Attention === 0 && (
+              {attentionStats.critical === 0 && attentionStats.warning === 0 && (
                 <PanelStatusChip label="No attention" tone="neutral" />
               )}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onRefresh}
-            disabled={refreshing}
-            className="sq-press shrink-0 p-2 rounded-lg border border-border/60 bg-card hover:bg-muted transition-colors disabled:opacity-50"
-            title="Refresh fleet data"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
+            {headerAction}
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={refreshing}
+              className="sq-press shrink-0 p-2 rounded-lg border border-border/60 bg-card hover:bg-muted transition-colors disabled:opacity-50"
+              title="Refresh fleet data"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         </div>
 
         <div className="relative mb-2">
@@ -141,7 +142,7 @@ export function FleetCommandPanel({
             type="search"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Plate, model, customer, station, status…"
+            placeholder="Plate, make, model…"
             className="w-full pl-8 pr-3 py-2 rounded-xl border border-border/60 bg-muted/30 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[color:var(--brand)]"
           />
         </div>
@@ -161,9 +162,6 @@ export function FleetCommandPanel({
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {tab.key === 'Attention' && count > 0 && (
-                  <AlertTriangle className="w-3 h-3 text-[color:var(--status-critical)]" />
-                )}
                 <span>{tab.label}</span>
                 <CommandCountBadge count={count} tone={tab.tone} active={isActive} />
               </button>

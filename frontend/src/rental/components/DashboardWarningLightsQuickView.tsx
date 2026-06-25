@@ -10,6 +10,7 @@ import {
   DASHBOARD_TELLTALE_KEYS,
   formatRelativeObservedAt,
   resolveTelltalePanelPresentation,
+  telltaleShortLabel,
   telltaleShortTextFromLight,
   telltaleToneFromLight,
   type TelltaleTone,
@@ -49,16 +50,7 @@ export function DashboardWarningLightsQuickView({
   const items = DASHBOARD_TELLTALE_KEYS.map((key) => {
     const light = telltales?.lights.find((l) => l.key === key);
     const tone: TelltaleTone = light ? telltaleToneFromLight(light) : 'neutral';
-    const label =
-      key === 'engine_oil_level'
-        ? 'Motoröl'
-        : key === 'engine_limp_mode'
-          ? 'Notlauf'
-          : key === 'brake_lining_wear_pre_warning'
-            ? 'Bremsbelag'
-            : key === 'tire_pressure_warning'
-              ? 'Reifendruck'
-              : 'Batterie';
+    const label = telltaleShortLabel(key);
     return {
       key,
       label,

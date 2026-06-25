@@ -17,6 +17,11 @@ export interface VehicleOverviewSnapshotRowProps {
 
 const CARD_ORDER = ['trips', 'bookings', 'tasks', 'damages', 'documents'] as const;
 
+/**
+ * @deprecated Removed from the Vehicle Overview — it was a redundant second
+ * navigation layer (Quick navigation cards) duplicating the tab bar. Kept for
+ * potential reuse only; do not re-add to the Overview.
+ */
 export function VehicleOverviewSnapshotRow({
   cards,
   onNavigate,
