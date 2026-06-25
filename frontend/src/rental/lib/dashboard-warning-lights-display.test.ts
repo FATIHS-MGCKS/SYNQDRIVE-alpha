@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest';
 import type { DashboardWarningLight, DashboardWarningLightsResponse } from '../../lib/api';
 import {
   countActiveTelltales,
+  countHistoricalTelltales,
+  deriveTelltaleDisplayCategory,
   isBatteryTelltaleActive,
+  isTelltaleCurrentlyActive,
   isTelltaleProviderConnected,
   resolveSourceFooter,
   resolveTelltalePanelPresentation,
   sortDashboardLights,
   telltaleShortLabel,
+  telltaleShortTextFromLight,
   telltaleTileStatusLabel,
 } from './dashboard-warning-lights-display';
 
@@ -103,12 +107,12 @@ describe('dashboard-warning-lights-display', () => {
     )).toBe('Kritisch');
   });
 
-  it('stale / no_data → Unbekannt (not Datenbasis badge)', () => {
+  it('stale / no_data → Veraltet or Unbekannt (not Datenbasis badge)', () => {
     const stale = resolveTelltalePanelPresentation(
       envelope({ freshness: 'stale', lastObservedAt: '2026-01-01T10:00:00.000Z' }),
     );
-    expect(stale.badgeLabel).toBe('Unbekannt');
-    expect(stale.summaryText).toBe('Warnleuchtenstatus aktuell nicht verfügbar.');
+    expect(stale.badgeLabel).toBe('Veraltet');
+    expect(stale.summaryText).toContain('zu alt');
 
     const noData = resolveTelltalePanelPresentation(
       envelope({ supportStatus: 'no_data', freshness: 'no_data' }),
@@ -165,8 +169,72 @@ describe('dashboard-warning-lights-display', () => {
     ).toBe(1);
   });
 
+  it('stale envelope does not count legacy active lights as current', () => {
+    const data = envelope({
+      freshness: 'stale',
+      lights: [
+        light({
+          key: 'battery_warning_light',
+          label: 'Batterie',
+          state: 'active',
+          severity: 'warning',
+        }),
+      ],
+    });
+    expect(countActiveTelltales(data.lights, data.freshness)).toBe(0);
+    expect(resolveTelltalePanelPresentation(data).badgeLabel).toBe('Veraltet');
+    expect(isBatteryTelltaleActive(data, true)).toBe(false);
+  });
+
+  it('stale light state is not counted as active', () => {
+    const staleLight = light({
+      key: 'battery_warning_light',
+      label: 'Batterie',
+      state: 'stale',
+      severity: 'unknown',
+    });
+    expect(isTelltaleCurrentlyActive(staleLight, 'fresh')).toBe(false);
+    expect(telltaleShortTextFromLight(staleLight)).toBe('Veraltet');
+  });
+
   it('isTelltaleProviderConnected requires connected status', () => {
     expect(isTelltaleProviderConnected(envelope({ connectionStatus: 'connected' }))).toBe(true);
     expect(isTelltaleProviderConnected(envelope({ connectionStatus: 'not_connected' }))).toBe(false);
+  });
+
+  it('historical battery (stale + isHistorical) is not active and shows Historisch', () => {
+    const battery = light({
+      key: 'battery_warning_light',
+      label: 'Batterie',
+      state: 'stale',
+      severity: 'warning',
+      isHistorical: true,
+      isCurrentActive: false,
+      observedAt: '2026-01-01T10:00:00.000Z',
+    });
+    const data = envelope({ lights: [battery] });
+    expect(deriveTelltaleDisplayCategory(battery, data.freshness)).toBe('historical');
+    expect(countActiveTelltales(data.lights, data.freshness)).toBe(0);
+    expect(countHistoricalTelltales(data.lights, data.freshness)).toBe(1);
+    const p = resolveTelltalePanelPresentation(data);
+    expect(p.badgeLabel).toBe('Historisch');
+    expect(p.activeCount).toBe(0);
+    expect(telltaleTileStatusLabel(battery, true, data.freshness)).toBe('Historisch');
+    expect(telltaleShortTextFromLight(battery, data.freshness)).toBe('Historisch');
+  });
+
+  it('fresh off_confirmed battery is not counted as active or historical', () => {
+    const battery = light({
+      key: 'battery_warning_light',
+      label: 'Batterie',
+      state: 'off_confirmed',
+      severity: 'info',
+      isHistorical: false,
+      isCurrentActive: false,
+    });
+    const data = envelope({ overallStatus: 'good', lights: [battery] });
+    expect(deriveTelltaleDisplayCategory(battery, data.freshness)).toBe('off_confirmed');
+    expect(countHistoricalTelltales(data.lights, data.freshness)).toBe(0);
+    expect(resolveTelltalePanelPresentation(data).badgeLabel).toBe('Alles klar');
   });
 });

@@ -7,6 +7,15 @@ import type { StatusTone } from '../../components/patterns/status-utils';
 
 export type TelltaleTone = 'alert' | 'critical' | 'ok' | 'neutral' | 'muted' | 'stale' | 'error';
 
+export type TelltaleDisplayCategory =
+  | 'active'
+  | 'off_confirmed'
+  | 'historical'
+  | 'stale'
+  | 'no_event_yet'
+  | 'unsupported'
+  | 'error';
+
 export interface TelltalePanelPresentation {
   badgeLabel: string;
   badgeTone: StatusTone;
@@ -16,6 +25,7 @@ export interface TelltalePanelPresentation {
   activeCriticalCount: number;
   activeWarningCount: number;
   activeCount: number;
+  historicalCount: number;
   isConnected: boolean;
   sourceFooter: string;
 }
@@ -47,7 +57,7 @@ export function lightStateLabel(state: DashboardWarningLight['state']): string {
     case 'unsupported':
       return 'Nicht unterstützt';
     case 'stale':
-      return 'Datenbasis veraltet';
+      return 'Datenstand verzögert';
     case 'error':
       return 'Fehler beim Auslesen';
     default:
@@ -55,7 +65,74 @@ export function lightStateLabel(state: DashboardWarningLight['state']): string {
   }
 }
 
+export function deriveTelltaleDisplayCategory(
+  light: DashboardWarningLight,
+  envelopeFreshness?: DashboardWarningLightsResponse['freshness'],
+): TelltaleDisplayCategory {
+  if (light.isCurrentActive === true || isTelltaleCurrentlyActive(light, envelopeFreshness)) {
+    return 'active';
+  }
+  if (light.isHistorical) return 'historical';
+  if (light.state === 'stale') return 'stale';
+  if (light.state === 'off_confirmed') return 'off_confirmed';
+  if (light.state === 'unsupported') return 'unsupported';
+  if (light.state === 'error') return 'error';
+  return 'no_event_yet';
+}
+
+export function countHistoricalTelltales(
+  lights: DashboardWarningLight[],
+  envelopeFreshness?: DashboardWarningLightsResponse['freshness'],
+): number {
+  return lights.filter((l) => deriveTelltaleDisplayCategory(l, envelopeFreshness) === 'historical').length;
+}
+
+export function telltaleDisplayCategoryLabel(category: TelltaleDisplayCategory): string {
+  switch (category) {
+    case 'active':
+      return 'Aktiv';
+    case 'off_confirmed':
+      return 'Bestätigt aus';
+    case 'historical':
+      return 'Historisch';
+    case 'stale':
+      return 'Veraltet';
+    case 'unsupported':
+      return 'Nicht unterstützt';
+    case 'error':
+      return 'Fehler';
+    case 'no_event_yet':
+    default:
+      return 'Keine Daten';
+  }
+}
+
+export function telltaleDetailExplanation(
+  light: DashboardWarningLight,
+  category: TelltaleDisplayCategory,
+): string {
+  switch (category) {
+    case 'active':
+      return light.reason || 'Aktuell aktiv bestätigt';
+    case 'historical':
+      return 'Zuletzt gesehen, aktuell nicht als aktiv bestätigt';
+    case 'stale':
+      return 'Status veraltet, nicht als aktiv gezählt';
+    case 'off_confirmed':
+      return light.reason || 'Zuletzt bestätigt aus';
+    case 'unsupported':
+      return 'Nicht von diesem Fahrzeug unterstützt';
+    case 'error':
+      return light.reason || 'Fehler beim Auslesen';
+    case 'no_event_yet':
+      return 'Noch keine Meldung vom Fahrzeug empfangen';
+    default:
+      return light.reason || '';
+  }
+}
+
 export function telltaleToneFromLight(light: DashboardWarningLight): TelltaleTone {
+  if (light.isHistorical) return 'stale';
   if (light.state === 'active') {
     return light.severity === 'critical' ? 'critical' : 'alert';
   }
@@ -155,32 +232,56 @@ export function resolveSourceFooter(
   return 'Quelle: HM/OEM Health';
 }
 
-export function countActiveTelltales(lights: DashboardWarningLight[]): number {
-  return lights.filter((l) => l.state === 'active').length;
+export function isTelltaleCurrentlyActive(
+  light: DashboardWarningLight,
+  envelopeFreshness?: DashboardWarningLightsResponse['freshness'],
+): boolean {
+  if (light.state !== 'active') return false;
+  if (
+    envelopeFreshness === 'stale' ||
+    envelopeFreshness === 'error' ||
+    envelopeFreshness === 'no_data'
+  ) {
+    return false;
+  }
+  return true;
+}
+
+export function countActiveTelltales(
+  lights: DashboardWarningLight[],
+  envelopeFreshness?: DashboardWarningLightsResponse['freshness'],
+): number {
+  return lights.filter((l) => isTelltaleCurrentlyActive(l, envelopeFreshness)).length;
 }
 
 /** User-facing tile status — never raw enums or "UNKNOWN". */
 export function telltaleTileStatusLabel(
   light: DashboardWarningLight | undefined,
   connected: boolean,
+  envelopeFreshness?: DashboardWarningLightsResponse['freshness'],
 ): string {
   if (!connected) return '—';
   if (!light) return '—';
-  if (light.state === 'active') {
+  const category = deriveTelltaleDisplayCategory(light, envelopeFreshness);
+  if (category === 'active') {
     return light.severity === 'critical' ? 'Kritisch' : 'Aktiv';
   }
-  if (light.state === 'off_confirmed') return 'Aus';
+  if (category === 'historical') return 'Historisch';
+  if (category === 'off_confirmed') return 'Aus';
+  if (category === 'stale') return 'Veraltet';
   return '—';
 }
 
 export function resolveTelltalePanelPresentation(
   telltales: DashboardWarningLightsResponse | null | undefined,
 ): TelltalePanelPresentation {
-  const activeCritical =
-    telltales?.lights.filter((l) => l.state === 'active' && l.severity === 'critical').length ?? 0;
-  const activeWarning =
-    telltales?.lights.filter((l) => l.state === 'active' && l.severity === 'warning').length ?? 0;
-  const activeCount = countActiveTelltales(telltales?.lights ?? []);
+  const envelopeFreshness = telltales?.freshness;
+  const activeLights =
+    telltales?.lights.filter((l) => isTelltaleCurrentlyActive(l, envelopeFreshness)) ?? [];
+  const activeCritical = activeLights.filter((l) => l.severity === 'critical').length;
+  const activeWarning = activeLights.filter((l) => l.severity === 'warning').length;
+  const activeCount = activeLights.length;
+  const historicalCount = countHistoricalTelltales(telltales?.lights ?? [], envelopeFreshness);
   const sourceFooter = resolveSourceFooter(telltales);
   const isConnected = isTelltaleProviderConnected(telltales);
 
@@ -188,6 +289,7 @@ export function resolveTelltalePanelPresentation(
     activeCriticalCount: activeCritical,
     activeWarningCount: activeWarning,
     activeCount,
+    historicalCount,
     isConnected,
     sourceFooter,
     showConfirmedOff: false,
@@ -231,6 +333,24 @@ export function resolveTelltalePanelPresentation(
       badgeTone: activeCritical > 0 ? 'critical' : 'watch',
       summaryText: 'Mindestens eine Warnleuchte erfordert Aufmerksamkeit.',
       showActiveSummary: true,
+    };
+  }
+
+  if (historicalCount > 0) {
+    return {
+      ...base,
+      badgeLabel: 'Historisch',
+      badgeTone: 'watch',
+      summaryText: 'Frühere Warnleuchten ohne aktuelle Aktiv-Bestätigung.',
+    };
+  }
+
+  if (telltales.freshness === 'stale' && isConnected) {
+    return {
+      ...base,
+      badgeLabel: 'Veraltet',
+      badgeTone: 'neutral',
+      summaryText: 'Letzter Datenpunkt ist zu alt für eine verlässliche Aktiv-Einschätzung.',
     };
   }
 
@@ -302,12 +422,11 @@ export function shouldShowOilLevelBar(
   return light.key === 'engine_oil_level' && !!oilLevelDisplay && oilLevelDisplay.mode !== 'no_data';
 }
 
-export function telltaleShortTextFromLight(light: DashboardWarningLight): string {
-  if (light.state === 'active') {
-    return light.severity === 'critical' ? 'Kritisch' : 'Aktiv';
-  }
-  if (light.state === 'off_confirmed') return 'Aus';
-  return '—';
+export function telltaleShortTextFromLight(
+  light: DashboardWarningLight,
+  envelopeFreshness?: DashboardWarningLightsResponse['freshness'],
+): string {
+  return telltaleDisplayCategoryLabel(deriveTelltaleDisplayCategory(light, envelopeFreshness));
 }
 
 /** Prefer canonical telltale read model; legacy indicators only as fallback. */
@@ -316,6 +435,8 @@ export function isBatteryTelltaleActive(
   legacyIndicator: boolean | null | undefined,
 ): boolean {
   const fromReadModel = telltales?.lights.find((l) => l.key === 'battery_warning_light');
-  if (fromReadModel) return fromReadModel.state === 'active';
+  if (fromReadModel) {
+    return isTelltaleCurrentlyActive(fromReadModel, telltales?.freshness);
+  }
   return legacyIndicator === true;
 }

@@ -179,6 +179,80 @@ describe('DashboardWarningLightsService', () => {
     expect(brake.state).toBe('off_confirmed');
   });
 
+  it('stale dashboard_lights battery on → stale not active', async () => {
+    const staleAt = new Date(now.getTime() - 20 * 60 * 60 * 1000).toISOString();
+    const dashboardValue = [{ name: 'battery_low_warning', state: 'on' }];
+    hm.isHmHealthActive.mockResolvedValue(true);
+    hm.getAiHealthCareRawState.mockResolvedValue(
+      activeHmRaw({
+        lastSuccessAt: staleAt,
+        freshnessStatus: 'stale',
+        signals: {
+          'dashboard_lights.get.dashboard_lights': { value: dashboardValue, timestamp: staleAt },
+        },
+      }),
+    );
+
+    const res = await svc.getDashboardWarningLights(vehicleId);
+    const battery = light(res, 'battery_warning_light');
+    expect(battery.state).toBe('stale');
+    expect(battery.state).not.toBe('active');
+    expect(res.overallStatus).not.toBe('warning');
+  });
+
+  it('stale dashboard_lights timestamp with fresh group → battery stale not active', async () => {
+    const staleAt = new Date(now.getTime() - 20 * 60 * 60 * 1000).toISOString();
+    const dashboardValue = [{ name: 'battery_low_warning', state: 'on' }];
+    hm.isHmHealthActive.mockResolvedValue(true);
+    hm.getAiHealthCareRawState.mockResolvedValue(
+      activeHmRaw({
+        signals: {
+          'dashboard_lights.get.dashboard_lights': { value: dashboardValue, timestamp: staleAt },
+        },
+      }),
+    );
+
+    const battery = light(await svc.getDashboardWarningLights(vehicleId), 'battery_warning_light');
+    expect(battery.state).toBe('stale');
+    expect(battery.state).not.toBe('active');
+  });
+
+  it('stale battery on snapshot → stale with isHistorical not current active', async () => {
+    const staleAt = new Date(now.getTime() - 20 * 60 * 60 * 1000).toISOString();
+    const dashboardValue = [{ name: 'battery_low_warning', state: 'on' }];
+    hm.isHmHealthActive.mockResolvedValue(true);
+    hm.getAiHealthCareRawState.mockResolvedValue(
+      activeHmRaw({
+        lastSuccessAt: staleAt,
+        freshnessStatus: 'stale',
+        signals: {
+          'dashboard_lights.get.dashboard_lights': { value: dashboardValue, timestamp: staleAt },
+        },
+      }),
+    );
+
+    const battery = light(await svc.getDashboardWarningLights(vehicleId), 'battery_warning_light');
+    expect(battery.state).toBe('stale');
+    expect(battery.isHistorical).toBe(true);
+    expect(battery.isCurrentActive).toBe(false);
+    expect(battery.lastSeenAt).toBe(staleAt);
+  });
+
+  it('fresh dashboard_lights battery on → active', async () => {
+    const dashboardValue = [{ name: 'battery_low_warning', state: 'on' }];
+    hm.isHmHealthActive.mockResolvedValue(true);
+    hm.getAiHealthCareRawState.mockResolvedValue(
+      activeHmRaw({
+        signals: {
+          'dashboard_lights.get.dashboard_lights': { value: dashboardValue, timestamp: now.toISOString() },
+        },
+      }),
+    );
+
+    const battery = light(await svc.getDashboardWarningLights(vehicleId), 'battery_warning_light');
+    expect(battery.state).toBe('active');
+  });
+
   it('EV battery warning text vs ICE battery warning text', async () => {
     const dashboardValue = [{ name: 'battery_low_warning', state: 'on' }];
     hm.isHmHealthActive.mockResolvedValue(true);

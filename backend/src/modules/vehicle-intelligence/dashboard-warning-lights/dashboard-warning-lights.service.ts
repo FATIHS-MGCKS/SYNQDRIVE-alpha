@@ -9,8 +9,10 @@ import {
   buildBooleanWarnLight,
   buildOilLevelLight,
   buildTirePressureLight,
+  enrichDashboardLightMetadata,
   isEvPowertrain,
   parseDashboardLightEntries,
+  staleDashboardSnapshotLightIfExpired,
 } from './dashboard-warning-lights.parsing';
 import type {
   DashboardFreshness,
@@ -81,7 +83,9 @@ export class DashboardWarningLightsService {
     const groupFreshness = this.mapGroupFreshness(state);
     const freshness = state.lastErrorMessage && !state.lastSuccessAt ? 'error' : groupFreshness;
     const supportStatus = this.resolveSupportStatus(state);
-    const lights = this.buildLights(state, groupFreshness, fuelType);
+    const lights = this.buildLights(state, groupFreshness, fuelType).map((l) =>
+      enrichDashboardLightMetadata(l, freshness),
+    );
     const overallStatus = this.computeOverallStatus(lights, freshness);
     const lastObservedAt = this.latestObservedAt(lights, state.lastSuccessAt);
 
@@ -338,6 +342,17 @@ export class DashboardWarningLightsService {
       };
     }
 
+    const staleBattery = staleDashboardSnapshotLightIfExpired({
+      key: 'battery_warning_light',
+      label: 'Batterie-Warnleuchte',
+      sourceSignal,
+      entry,
+      groupFreshness,
+      groupObservedAt,
+      rawValue: entry.value,
+    });
+    if (staleBattery) return staleBattery;
+
     const active = batteryEntries.some((e) => {
       const s = e.state.toLowerCase();
       return s !== 'off' && s !== 'inactive' && s !== 'none' && s !== '';
@@ -450,6 +465,17 @@ export class DashboardWarningLightsService {
         rentalImpact: 'none',
       };
     }
+
+    const staleMil = staleDashboardSnapshotLightIfExpired({
+      key: 'check_engine_light',
+      label: 'Motorkontrollleuchte (MIL)',
+      sourceSignal,
+      entry,
+      groupFreshness,
+      groupObservedAt,
+      rawValue: entry.value,
+    });
+    if (staleMil) return staleMil;
 
     const active = milEntries.some((e) => {
       const s = e.state.toLowerCase();

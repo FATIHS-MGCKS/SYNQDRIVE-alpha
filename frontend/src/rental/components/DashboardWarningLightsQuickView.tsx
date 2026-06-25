@@ -34,6 +34,7 @@ function iconForKey(key: string): string {
 function iconBgFor(tone: TelltaleTone): string {
   if (tone === 'critical') return 'bg-[color:var(--status-critical-soft)]';
   if (tone === 'alert') return 'bg-[color:var(--status-watch-soft)]';
+  if (tone === 'stale') return 'bg-[color:var(--status-watch-soft)]/40';
   if (tone === 'ok') return 'bg-[color:var(--status-positive-soft)]';
   return 'bg-muted';
 }
@@ -55,12 +56,10 @@ export function DashboardWarningLightsQuickView({
       key,
       label,
       tone,
-      text: light ? telltaleShortTextFromLight(light) : loading ? '…' : 'Unbekannt',
+      text: light ? telltaleShortTextFromLight(light, telltales?.freshness) : loading ? '…' : 'Unbekannt',
       icon: iconForKey(key),
     };
   });
-
-  const activeAlerts = items.filter((it) => it.tone === 'alert' || it.tone === 'critical').length;
 
   return (
     <div className="mb-2">
@@ -78,7 +77,7 @@ export function DashboardWarningLightsQuickView({
         {freshness === 'stale' && (
           <span className="inline-flex items-center gap-0.5 text-[9px] font-medium text-[color:var(--status-watch)]">
             <Icon name="alert-triangle" className="w-2.5 h-2.5" />
-            Veraltet
+            Datenstand verzögert
           </span>
         )}
         {lastUpdateLabel && freshness !== 'stale' && (
@@ -100,7 +99,9 @@ export function DashboardWarningLightsQuickView({
             className={`group flex flex-col items-center gap-1 px-1 py-1.5 rounded-lg border transition-colors ${
               it.tone === 'alert' || it.tone === 'critical'
                 ? 'border-[color:var(--status-watch-soft)] hover:bg-[color:var(--status-watch-soft)]'
-                : 'border-border hover:bg-muted'
+                : it.tone === 'stale'
+                  ? 'border-[color:var(--status-watch-soft)]/40 hover:bg-muted'
+                  : 'border-border hover:bg-muted'
             }`}
           >
             <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${iconBgFor(it.tone)}`}>
@@ -129,9 +130,9 @@ export function DashboardWarningLightsQuickView({
           </button>
         ))}
       </div>
-      {!loading && activeAlerts > 0 && (
+      {!loading && presentation.activeCount > 0 && (
         <p className="mt-1.5 text-[9px] text-[color:var(--status-watch)] font-medium">
-          {activeAlerts} aktive Warnleuchte{activeAlerts === 1 ? '' : 'n'}
+          {presentation.activeCount} aktive Warnleuchte{presentation.activeCount === 1 ? '' : 'n'}
         </p>
       )}
     </div>

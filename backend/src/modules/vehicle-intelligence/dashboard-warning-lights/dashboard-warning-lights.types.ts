@@ -51,6 +51,13 @@ export interface DashboardWarningLight {
   reason: string;
   action: string;
   rentalImpact: DashboardRentalImpact;
+  /** Optional read-model enrichments (no DB) */
+  lastSeenAt?: string | null;
+  lastConfirmedActiveAt?: string | null;
+  lastConfirmedOffAt?: string | null;
+  freshness?: DashboardFreshness;
+  isCurrentActive?: boolean;
+  isHistorical?: boolean;
 }
 
 export interface DashboardWarningLightsResponse {

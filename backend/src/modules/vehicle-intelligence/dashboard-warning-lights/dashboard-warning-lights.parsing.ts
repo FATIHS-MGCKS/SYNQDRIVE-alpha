@@ -62,6 +62,37 @@ function baseLight(
   return partial;
 }
 
+/** dashboard_lights snapshots must not surface historical "on" as current active. */
+export function staleDashboardSnapshotLightIfExpired(opts: {
+  key: string;
+  label: string;
+  sourceSignal: string;
+  entry: HmSignalEntry;
+  groupFreshness: DashboardFreshness;
+  groupObservedAt: string | null;
+  rawValue?: unknown;
+}): DashboardWarningLight | null {
+  const observedAt = opts.entry.timestamp ?? opts.groupObservedAt;
+  const perFreshness = freshnessFromTimestamp(observedAt, opts.groupFreshness);
+  if (perFreshness === 'stale' || opts.groupFreshness === 'stale') {
+    return baseLight({
+      key: opts.key,
+      label: opts.label,
+      state: 'stale',
+      severity: 'unknown',
+      supported: true,
+      observedAt,
+      sourceSignal: opts.sourceSignal,
+      sourceTimestamp: opts.entry.timestamp ?? null,
+      rawValue: opts.rawValue ?? opts.entry.value,
+      reason: 'Letzte HM/OEM-Meldung ist veraltet.',
+      action: 'Verbindung prüfen oder Daten aktualisieren.',
+      rentalImpact: 'none',
+    });
+  }
+  return null;
+}
+
 export function buildBooleanWarnLight(opts: {
   key: string;
   label: string;
@@ -384,6 +415,91 @@ export function buildTirePressureLight(opts: {
     action: 'Keine Maßnahme.',
     rentalImpact: 'none',
   });
+}
+
+export function isDashboardEntryStateActive(state: string): boolean {
+  const s = state.toLowerCase();
+  return s !== 'off' && s !== 'inactive' && s !== 'none' && s !== '';
+}
+
+/** True when the last snapshot payload indicated this telltale was on (even if now stale/off). */
+export function wasTelltaleActiveInSnapshot(light: DashboardWarningLight): boolean {
+  if (light.state === 'active') return true;
+  const raw = light.rawValue;
+
+  if (light.key === 'battery_warning_light') {
+    return parseDashboardLightEntries(raw)
+      .filter((e) => e.name.toLowerCase().includes('battery'))
+      .some((e) => isDashboardEntryStateActive(e.state));
+  }
+
+  if (light.key === 'check_engine_light') {
+    return parseDashboardLightEntries(raw)
+      .filter((e) => {
+        const n = e.name.toLowerCase();
+        return (
+          (n.includes('check_engine') ||
+            n.includes('mil') ||
+            n.includes('malfunction') ||
+            n.includes('cel')) &&
+          !n.includes('battery') &&
+          !n.includes('limp')
+        );
+      })
+      .some((e) => isDashboardEntryStateActive(e.state));
+  }
+
+  if (
+    light.key === 'engine_limp_mode' ||
+    light.key === 'brake_lining_wear_pre_warning'
+  ) {
+    return isExplicitOn(raw);
+  }
+
+  if (light.key === 'engine_oil_level') {
+    const status = normalizeOilStatus(raw);
+    return status === 'LOW' || status === 'HIGH';
+  }
+
+  if (light.key === 'tire_pressure_warning' && raw && typeof raw === 'object') {
+    const statuses = Object.values(raw as Record<string, unknown>);
+    return statuses.some((s) => {
+      const v = String(s ?? '').toUpperCase();
+      return v === 'ALERT' || v === 'WARNING' || v === 'LOW';
+    });
+  }
+
+  return false;
+}
+
+export function enrichDashboardLightMetadata(
+  light: DashboardWarningLight,
+  envelopeFreshness: DashboardFreshness,
+): DashboardWarningLight {
+  const lastSeenAt = light.observedAt;
+  const perFreshness = lastSeenAt
+    ? freshnessFromTimestamp(lastSeenAt, envelopeFreshness)
+    : envelopeFreshness;
+  const snapshotWasActive = wasTelltaleActiveInSnapshot(light);
+  const isCurrentActive =
+    light.state === 'active' &&
+    envelopeFreshness !== 'stale' &&
+    envelopeFreshness !== 'error' &&
+    envelopeFreshness !== 'no_data';
+  const isHistorical =
+    !isCurrentActive &&
+    snapshotWasActive &&
+    (light.state === 'stale' || light.state === 'off_confirmed');
+
+  return {
+    ...light,
+    lastSeenAt,
+    lastConfirmedActiveAt: light.state === 'active' ? light.observedAt : isHistorical && snapshotWasActive ? light.observedAt : null,
+    lastConfirmedOffAt: light.state === 'off_confirmed' ? light.observedAt : null,
+    freshness: perFreshness,
+    isCurrentActive,
+    isHistorical,
+  };
 }
 
 export function parseDashboardLightEntries(raw: unknown): Array<{ name: string; state: string }> {
