@@ -5,6 +5,15 @@ import type {
   VehicleHealthAlert,
 } from '../../DashboardInsightsContext';
 import type { VehicleData } from '../../data/vehicles';
+import {
+  createBookingIssueKey,
+  formatVehicleIssueEntityLabel,
+  normalizeOperationalIssues,
+  sanitizeUserFacingIssueText,
+  type OperationalIssue,
+  type OperationalIssueDomain,
+  type OperationalIssueSeverity,
+} from '../../lib/operational-issues';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
 import type { DashboardNotificationItem } from '../BusinessInsightsBox';
 import type {
@@ -21,7 +30,7 @@ import type {
 import type { DerivedOperationalInsight } from './deriveOperationalInsights';
 import type { PredictiveOperationsInsight } from './derivePredictiveOperationsInsights';
 import type { StatusTone } from '../../../components/patterns';
-import type { DashboardRuntimeModel, RuntimeReason, RuntimeReasonCategory } from './runtime';
+import type { DashboardRuntimeModel } from './runtime';
 
 const VEHICLE_HEALTH_INSIGHT_TYPES = new Set<InsightType>([
   'BATTERY_CRITICAL',
@@ -41,6 +50,24 @@ const OPERATIONS_TYPES = new Set<InsightType>([
   'SERVICE_BEFORE_BOOKING',
 ]);
 
+const NORMALIZED_INSIGHT_TYPES = new Set<string>([
+  'SERVICE_OVERDUE',
+  'SERVICE_WINDOW',
+  'BATTERY_CRITICAL',
+  'TIRE_CRITICAL',
+  'BRAKE_CRITICAL',
+  'PICKUP_OVERDUE',
+  'RETURN_OVERDUE',
+  'RETURN_NEEDS_INSPECTION',
+]);
+
+const NORMALIZED_PREDICTIVE_TYPES = new Set<string>([
+  'SERVICE_WINDOW',
+  'SOFT_OFFLINE_TELEMETRY_CHECK',
+  'RETURN_OVERDUE_THREATENS_FOLLOWUP',
+  'STATION_SHORTAGE_24H',
+]);
+
 function severityRank(s: ActionQueueSeverity): number {
   if (s === 'critical') return 4;
   if (s === 'warning') return 3;
@@ -55,80 +82,11 @@ function insightToSeverity(s: InsightSeverity): ActionQueueSeverity {
   return 'info';
 }
 
-function healthToSeverity(s: VehicleHealthAlert['severity']): ActionQueueSeverity {
-  if (s === 'critical') return 'critical';
-  if (s === 'warning') return 'warning';
-  return 'info';
-}
-
 function severityToTone(s: ActionQueueSeverity): StatusTone {
   if (s === 'critical') return 'critical';
   if (s === 'warning') return 'watch';
   if (s === 'attention') return 'info';
   return 'neutral';
-}
-
-function runtimeReasonToSeverity(reason: RuntimeReason): ActionQueueSeverity {
-  if (reason.severity === 'critical') return 'critical';
-  if (reason.severity === 'warning') return 'warning';
-  return 'attention';
-}
-
-function runtimeReasonCategoryToActionCategory(category: RuntimeReasonCategory): ActionQueueCategory {
-  if (
-    category === 'health' ||
-    category === 'tires' ||
-    category === 'brakes' ||
-    category === 'battery' ||
-    category === 'dtc' ||
-    category === 'service' ||
-    category === 'damage'
-  ) {
-    return 'health';
-  }
-  if (category === 'finance') return 'financial';
-  if (category === 'rental' || category === 'handover') return 'handover';
-  return 'operations';
-}
-
-function runtimeReasonDedupeKey(vehicleId: string, reason: RuntimeReason): string {
-  return `${vehicleId}:${reason.category}:${reason.source ?? ''}:${reason.title}`;
-}
-
-const HEALTH_MODULE_TARGETS = new Set<string>([
-  'battery',
-  'brakes',
-  'tires',
-  'service_compliance',
-  'error_codes',
-  'complaints',
-  'vehicle_alerts',
-]);
-
-function toModuleTarget(moduleKey: string): ActionQueueModuleTarget {
-  return HEALTH_MODULE_TARGETS.has(moduleKey)
-    ? (moduleKey as ActionQueueModuleTarget)
-    : 'overview';
-}
-
-/** Localized "Open <module>" CTA labels (data structure prepared for deep links). */
-function healthModuleCtaLabel(moduleKey: string, de: boolean): string {
-  switch (moduleKey) {
-    case 'battery':
-      return de ? 'Batterie öffnen' : 'Open battery';
-    case 'tires':
-      return de ? 'Reifen öffnen' : 'Open tires';
-    case 'brakes':
-      return de ? 'Bremsen öffnen' : 'Open brakes';
-    case 'service_compliance':
-      return de ? 'Service öffnen' : 'Open service';
-    case 'error_codes':
-      return de ? 'Fehlercodes öffnen' : 'Open error codes';
-    case 'complaints':
-      return de ? 'Beschwerden öffnen' : 'Open complaints';
-    default:
-      return de ? 'Fahrzeug öffnen' : 'Open vehicle';
-  }
 }
 
 function healthModuleLabel(moduleKey: string, fallback: string, de: boolean): string {
@@ -151,16 +109,6 @@ function healthModuleLabel(moduleKey: string, fallback: string, de: boolean): st
     default:
       return fallback;
   }
-}
-
-/** Effective display severity for a health module child action. */
-function healthChildSeverity(
-  moduleKey: string,
-  severity: ActionQueueSeverity,
-): ActionQueueChildSeverity {
-  // An overdue service inspection ranks between critical and warning.
-  if (moduleKey === 'service_compliance' && severity === 'critical') return 'overdue';
-  return severity;
 }
 
 function insightCategory(type: InsightType): ActionQueueCategory {
@@ -239,8 +187,7 @@ function entityLabelFromInsight(
   const id = insight.entityIds?.[0];
   if (!id) return undefined;
   const v = fleetById.get(id);
-  if (v?.license) return v.license;
-  if (v?.model) return v.model;
+  if (v) return formatVehicleIssueEntityLabel(v);
   return undefined;
 }
 
@@ -260,132 +207,162 @@ export interface BuildActionQueueInput {
   syncStatusLabel: string;
 }
 
+function issueSeverityToActionSeverity(severity: OperationalIssueSeverity): ActionQueueSeverity {
+  return severity;
+}
+
+function issueCategory(domain: OperationalIssueDomain, issueType: string): ActionQueueCategory {
+  if (domain === 'finance') return 'financial';
+  if (domain === 'notification') return 'notification';
+  if (domain === 'booking' || domain === 'return' || domain === 'handover') return 'handover';
+  if (domain === 'station_operations') return 'operations';
+  if (domain === 'task') return 'task';
+  if (domain === 'vehicle_health' || domain === 'service_compliance' || domain === 'rental_readiness') return 'health';
+  if (domain === 'telemetry') return issueType === 'telemetry_offline' ? 'operations' : 'vehicle';
+  return 'operations';
+}
+
+function issueSource(sourceType: OperationalIssue['primarySource']['sourceType']): InsightDataSource {
+  if (sourceType === 'dashboard_insight') return 'dashboard-insights';
+  if (sourceType === 'predictive_insight') return 'predictive-operations';
+  if (sourceType === 'finance') return 'financial';
+  if (sourceType === 'booking') return 'booking';
+  return 'derived-operations';
+}
+
+function issueCta(issue: OperationalIssue): ActionQueueCta {
+  if (issue.cta?.target === 'open-stations' || issue.domain === 'station_operations') return 'open-stations';
+  if (issue.bookingId || issue.domain === 'booking' || issue.domain === 'return' || issue.domain === 'handover') return 'open-booking';
+  if (issue.vehicleId || issue.domain === 'vehicle_health' || issue.domain === 'service_compliance' || issue.domain === 'telemetry') {
+    return 'open-vehicle';
+  }
+  return 'open-rental';
+}
+
+function issueGroupType(issue: OperationalIssue): ActionQueueItem['groupType'] {
+  if (issue.domain === 'vehicle_health' || issue.domain === 'service_compliance') return 'vehicle-health';
+  if (issue.domain === 'rental_readiness' || issue.domain === 'telemetry') return 'vehicle-ops';
+  if (issue.domain === 'booking' || issue.domain === 'return' || issue.domain === 'handover') return 'booking';
+  if (issue.domain === 'finance') return 'finance';
+  if (issue.domain === 'station_operations') return 'station-ops';
+  if (issue.domain === 'notification') return 'notification-thread';
+  return undefined;
+}
+
+function issueGroupKey(issue: OperationalIssue): string | undefined {
+  if (issue.domain === 'vehicle_health' && issue.vehicleId) return `vehicle-health:${issue.vehicleId}`;
+  if (issue.domain === 'service_compliance' && issue.vehicleId) return issue.semanticKey;
+  if ((issue.domain === 'rental_readiness' || issue.domain === 'telemetry') && issue.vehicleId) return issue.semanticKey;
+  if ((issue.domain === 'booking' || issue.domain === 'return' || issue.domain === 'handover') && issue.bookingId) {
+    return issue.semanticKey;
+  }
+  if (issue.domain === 'finance' && issue.invoiceId) return issue.semanticKey;
+  if (issue.domain === 'station_operations' && issue.stationId) return issue.semanticKey;
+  return issue.semanticKey;
+}
+
+function issueModule(issue: OperationalIssue): ActionQueueModuleTarget | undefined {
+  switch (issue.issueType) {
+    case 'battery_warning':
+    case 'battery_critical':
+      return 'battery';
+    case 'tire_monitor':
+    case 'tire_critical':
+      return 'tires';
+    case 'brake_warning':
+    case 'brake_critical':
+    case 'brake_no_data':
+      return 'brakes';
+    case 'service_overdue':
+    case 'service_due_soon':
+    case 'service_window_available':
+      return 'service_compliance';
+    case 'error_codes_active':
+      return 'error_codes';
+    case 'warning_light_active':
+      return 'vehicle_alerts';
+    default:
+      return issue.domain === 'vehicle_health' ? 'overview' : undefined;
+  }
+}
+
+function issueModuleLabel(issue: OperationalIssue, de: boolean): string | undefined {
+  const module = issueModule(issue);
+  if (!module) return undefined;
+  return healthModuleLabel(module, module, de);
+}
+
+function issueChildSeverity(issue: OperationalIssue, severity: ActionQueueSeverity): ActionQueueChildSeverity | undefined {
+  if (issue.issueType === 'service_overdue') return 'overdue';
+  return severity;
+}
+
+function issueReason(issue: OperationalIssue): string {
+  if (issue.subtitle) return sanitizeUserFacingIssueText(issue.subtitle);
+  const evidence = issue.evidence?.find((item) => item.value && item.label !== 'Quelle' && item.source !== 'debug');
+  if (!evidence) return '';
+  return sanitizeUserFacingIssueText([evidence.label, evidence.value].filter(Boolean).join(': '));
+}
+
+export function mapOperationalIssueToActionQueueItem(
+  issue: OperationalIssue,
+  input: Pick<BuildActionQueueInput, 'locale'>,
+): ActionQueueItem {
+  const severity = issueSeverityToActionSeverity(issue.severity);
+  const now = Date.now();
+  const isOverdue =
+    issue.issueType.includes('overdue') ||
+    issue.severity === 'critical';
+  return {
+    id: `issue-${issue.semanticKey}`,
+    semanticKey: issue.semanticKey,
+    source: issueSource(issue.primarySource.sourceType),
+    severity,
+    category: issueCategory(issue.domain, issue.issueType),
+    title: sanitizeUserFacingIssueText(issue.title),
+    reason: issueReason(issue),
+    entityLabel: issue.entityLabel,
+    timeSortMs: now,
+    priority: computePriority(severity, isOverdue, now) + 80,
+    tone: severityToTone(severity),
+    cta: issueCta(issue),
+    ctaLabel: issue.cta?.label,
+    vehicleId: issue.vehicleId,
+    bookingId: issue.bookingId,
+    isOverdue,
+    groupKey: issueGroupKey(issue),
+    groupType: issueGroupType(issue),
+    module: issueModule(issue),
+    moduleLabel: issueModuleLabel(issue, input.locale === 'de'),
+    childSeverity: issueChildSeverity(issue, severity),
+    detail: issueReason(issue) || undefined,
+    stationId: issue.stationId,
+    customerId: issue.customerId,
+  };
+}
+
 export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQueueItem[] {
-  const items: ActionQueueItem[] = [];
+  const normalizedIssues = normalizeOperationalIssues({
+    vehicleRuntimeStates: input.dashboardRuntime?.vehicleStates,
+    vehicleHealthAlerts: input.vehicleHealthAlerts,
+    dashboardInsights: input.insights,
+    predictiveInsights: input.predictiveInsights,
+    vehiclesById: input.fleetById,
+  }).filter((issue) => issue.visibility.dashboardAttention);
+
+  const items: ActionQueueItem[] = normalizedIssues.map((issue) =>
+    mapOperationalIssueToActionQueueItem(issue, input),
+  );
+  const normalizedIssueKeys = new Set(normalizedIssues.map((issue) => issue.semanticKey));
   const seenBooking = new Set<string>();
-  const seenVehicleHealth = new Set<string>();
-  const seenRuntimeReasons = new Set<string>();
   const seenDerived = new Set<string>();
   const seenPredictive = new Set<string>();
 
   const de = input.locale === 'de';
 
-  for (const state of input.dashboardRuntime?.vehicleStates ?? []) {
-    const runtimeReasons = [
-      ...state.criticalReasons,
-      ...state.blockReasons,
-      ...state.warningReasons.filter((reason) => reason.category === 'telemetry' || reason.blocking),
-    ];
-    for (const reason of runtimeReasons) {
-      if (state.telemetryState === 'standby' && reason.category === 'telemetry') continue;
-      const dedupeKey = runtimeReasonDedupeKey(state.vehicleId, reason);
-      if (seenRuntimeReasons.has(dedupeKey)) continue;
-      seenRuntimeReasons.add(dedupeKey);
-      if (runtimeReasonCategoryToActionCategory(reason.category) === 'health') {
-        seenVehicleHealth.add(state.vehicleId);
-      }
-      const severity = runtimeReasonToSeverity(reason);
-      const now = Date.now();
-      items.push({
-        id: `runtime-${dedupeKey}`,
-        source: 'derived-operations',
-        severity,
-        category: runtimeReasonCategoryToActionCategory(reason.category),
-        title: reason.title,
-        reason: reason.description ?? reason.source ?? '',
-        entityLabel: state.license || state.displayName,
-        timeSortMs: now,
-        priority: computePriority(severity, reason.blocking === true || severity === 'critical', now) + 30,
-        tone: severityToTone(severity),
-        cta: 'open-vehicle',
-        ctaLabel: reason.actionLabel,
-        vehicleId: state.vehicleId,
-        isOverdue: severity === 'critical',
-        groupKey: `vehicle-runtime:${state.vehicleId}`,
-        groupType: 'vehicle-ops',
-      });
-    }
-  }
-
-  for (const alert of input.vehicleHealthAlerts) {
-    if (seenVehicleHealth.has(alert.vehicleId)) continue;
-    seenVehicleHealth.add(alert.vehicleId);
-    const entityLabel = alert.license || alert.model || undefined;
-    const groupKey = `vehicle-health:${alert.vehicleId}`;
-    const now = Date.now();
-
-    // Preferred path: structured per-module findings from canonical
-    // Rental-Health-V1. Each affected module becomes its own atomic action so
-    // the renderer can group them with one child per module — no string parsing.
-    if (alert.modules && alert.modules.length > 0) {
-      for (const mod of alert.modules) {
-        const severity = healthToSeverity(mod.severity);
-        const isOverdue = mod.module === 'service_compliance' && severity === 'critical';
-        const moduleLabel = healthModuleLabel(mod.module, mod.label, de);
-        items.push({
-          id: `health-${alert.vehicleId}-${mod.module}`,
-          source: 'dashboard-insights',
-          severity,
-          category: 'health',
-          title: mod.reason || moduleLabel,
-          reason: mod.dataStale
-            ? de
-              ? 'Datenstand verzögert'
-              : 'Data delayed'
-            : '',
-          entityLabel,
-          timeLabel: undefined,
-          timeSortMs: now,
-          priority: computePriority(severity, isOverdue, now),
-          tone: severityToTone(severity),
-          cta: 'open-vehicle',
-          ctaLabel: healthModuleCtaLabel(mod.module, de),
-          vehicleId: alert.vehicleId,
-          isOverdue,
-          groupKey,
-          groupType: 'vehicle-health',
-          module: toModuleTarget(mod.module),
-          moduleLabel,
-          childSeverity: healthChildSeverity(mod.module, severity),
-          detail: mod.dataStale ? (de ? 'Datenstand verzögert' : 'Data delayed') : undefined,
-        });
-      }
-      continue;
-    }
-
-    // Fallback (legacy / insight-only derivation without module breakdown):
-    // keep the single combined item so nothing regresses.
-    const severity = healthToSeverity(alert.severity);
-    items.push({
-      id: `health-${alert.vehicleId}`,
-      source: 'dashboard-insights',
-      severity,
-      category: 'health',
-      title: alert.primaryReason,
-      reason:
-        alert.secondaryReasons.length > 0
-          ? alert.secondaryReasons.slice(0, 2).join(' · ')
-          : 'Rental health module reported an issue',
-      entityLabel,
-      timeLabel: undefined,
-      timeSortMs: now,
-      priority: computePriority(severity, severity === 'critical', now),
-      tone: severityToTone(severity),
-      cta: 'open-vehicle',
-      vehicleId: alert.vehicleId,
-      isOverdue: severity === 'critical',
-      groupKey,
-      groupType: 'vehicle-health',
-      module: 'overview',
-    });
-  }
-
   for (const insight of input.insights) {
+    if (NORMALIZED_INSIGHT_TYPES.has(insight.type)) continue;
     if (!matchesStation(input.stationFilter, input.fleetById, insight.entityIds)) continue;
-    if (VEHICLE_HEALTH_INSIGHT_TYPES.has(insight.type)) {
-      const vid = insight.entityIds?.[0];
-      if (vid && seenVehicleHealth.has(vid)) continue;
-    }
 
     const severity = insightToSeverity(insight.severity);
     const vehicleId = insight.entityIds?.[0];
@@ -421,8 +398,8 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
       source,
       severity,
       category: insightCat,
-      title: insight.title,
-      reason: insight.message || insight.reasons?.[0] || '',
+      title: sanitizeUserFacingIssueText(insight.title),
+      reason: sanitizeUserFacingIssueText(insight.message || insight.reasons?.[0] || ''),
       entityLabel: entityLabelFromInsight(insight, input.fleetById),
       timeLabel: formatActionTimeLabel(createdMs, input.locale, insight.createdAt ? '' : ''),
       timeSortMs: createdMs,
@@ -442,6 +419,7 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
 
   for (const p of input.pickupItems) {
     if (!p.bookingId || p.done) continue;
+    if (p.isOverdue && normalizedIssueKeys.has(createBookingIssueKey(p.bookingId, 'booking', 'pickup_overdue'))) continue;
     if (seenBooking.has(p.bookingId)) continue;
     const startMs = parseTimeMs(p.startDate);
     const isOverdue = !!p.isOverdue;
@@ -456,7 +434,13 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
       source: 'booking',
       severity,
       category: 'handover',
-      title: isOverdue ? `Overdue pickup · ${p.plate || p.vehicle}` : `Pickup · ${p.plate || p.vehicle}`,
+      title: isOverdue
+        ? de
+          ? `Abholung überfällig · ${p.plate || p.vehicle}`
+          : `Overdue pickup · ${p.plate || p.vehicle}`
+        : de
+          ? `Abholung · ${p.plate || p.vehicle}`
+          : `Pickup · ${p.plate || p.vehicle}`,
       reason: p.customer
         ? `${p.customer}${p.station ? ` · ${p.station}` : ''}`
         : p.station || 'Scheduled pickup today',
@@ -481,6 +465,7 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
 
   for (const r of input.returnItems) {
     if (!r.bookingId || r.done) continue;
+    if (r.isOverdue && normalizedIssueKeys.has(createBookingIssueKey(r.bookingId, 'return', 'overdue'))) continue;
     if (seenBooking.has(`return-${r.bookingId}`)) continue;
     const endMs = parseTimeMs(r.endDate);
     const isOverdue = !!r.isOverdue;
@@ -501,10 +486,16 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
       severity,
       category: 'handover',
       title: isOverdue
-        ? `Overdue return · ${r.plate || r.vehicle}`
+        ? de
+          ? `Rückgabe überfällig · ${r.plate || r.vehicle}`
+          : `Overdue return · ${r.plate || r.vehicle}`
         : hasError
-          ? `Return issue · ${r.plate || r.vehicle}`
-          : `Return · ${r.plate || r.vehicle}`,
+          ? de
+            ? `Rückgabe prüfen · ${r.plate || r.vehicle}`
+            : `Return issue · ${r.plate || r.vehicle}`
+          : de
+            ? `Rückgabe · ${r.plate || r.vehicle}`
+            : `Return · ${r.plate || r.vehicle}`,
       reason: r.customer
         ? `${r.customer}${r.station ? ` · ${r.station}` : ''}`
         : r.station || 'Scheduled return today',
@@ -531,8 +522,8 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
       source: 'booking',
       severity,
       category: 'notification',
-      title: n.title,
-      reason: n.desc,
+      title: sanitizeUserFacingIssueText(n.title),
+      reason: sanitizeUserFacingIssueText(n.desc),
       timeLabel: n.time,
       timeSortMs: Date.now(),
       priority: computePriority(severity, false, Date.now()) - 100,
@@ -553,8 +544,8 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
       source: d.source,
       severity: d.severity,
       category: d.category,
-      title: d.title,
-      reason: d.reason,
+      title: sanitizeUserFacingIssueText(d.title),
+      reason: sanitizeUserFacingIssueText(d.reason),
       entityLabel: d.entityLabel,
       timeLabel: d.timeLabel,
       timeSortMs: d.timeSortMs,
@@ -568,6 +559,7 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
   }
 
   for (const p of input.predictiveInsights) {
+    if (NORMALIZED_PREDICTIVE_TYPES.has(p.type)) continue;
     if (seenPredictive.has(p.id) || existingIds.has(p.id)) continue;
     seenPredictive.add(p.id);
     const category: ActionQueueCategory =
@@ -580,14 +572,14 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
             ? 'handover'
             : 'operations';
 
-    const reasonParts = [p.explanation, p.sourceData, p.recommendedAction].filter(Boolean);
+    const reasonParts = [p.explanation, p.recommendedAction].filter(Boolean);
     items.push({
       id: p.id,
       source: 'predictive-operations',
       severity: p.severity,
       category,
-      title: p.title,
-      reason: reasonParts.join(' · '),
+      title: sanitizeUserFacingIssueText(p.title),
+      reason: sanitizeUserFacingIssueText(reasonParts.join(' · ')),
       entityLabel:
         p.affectedEntity.kind === 'station'
           ? p.affectedEntity.label

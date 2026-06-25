@@ -204,7 +204,6 @@ const ActionQueueLeafRow = memo(function ActionQueueLeafRow({
   const metaParts = [
     item.entityLabel,
     item.predictiveInsight ? confidenceLabel(item.predictiveInsight.confidence, de) : null,
-    item.predictiveInsight?.sourceData,
   ].filter(Boolean);
 
   return (

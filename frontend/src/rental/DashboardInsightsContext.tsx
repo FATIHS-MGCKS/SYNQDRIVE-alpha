@@ -37,7 +37,8 @@ export type InsightType =
   | 'SERVICE_OVERDUE'
   | 'TUV_OVERDUE'
   | 'BOKRAFT_OVERDUE'
-  | 'PICKUP_OVERDUE';
+  | 'PICKUP_OVERDUE'
+  | 'RETURN_OVERDUE';
 
 export interface InsightEntityBreakdown {
   id: string;

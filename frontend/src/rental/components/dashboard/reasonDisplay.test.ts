@@ -45,8 +45,8 @@ describe('formatRuntimeReasonLabel', () => {
   });
 
   it('falls back to a category label when the title is empty', () => {
-    expect(formatRuntimeReasonLabel(reason({ title: '', category: 'battery' }), 'de')).toBe('Batterie prüfen');
-    expect(formatRuntimeReasonLabel(reason({ title: '', category: 'battery' }), 'en')).toBe('Check battery');
+    expect(formatRuntimeReasonLabel(reason({ title: '', category: 'battery', source: '' }), 'de')).toBe('Batterie prüfen');
+    expect(formatRuntimeReasonLabel(reason({ title: '', category: 'battery', source: '' }), 'en')).toBe('Check battery');
   });
 });
 
@@ -87,6 +87,22 @@ describe('dedupeDisplayReasons', () => {
     const result = dedupeDisplayReasons(reasons);
     expect(result).toHaveLength(1);
     expect(result[0]?.source).toBe('dashboard-health-risk');
+    expect(formatRuntimeReasonLabel(result[0]!, 'de')).toBe('Health prüfen');
+  });
+
+  it('formats service window and raw source-only reasons as user-facing labels', () => {
+    expect(
+      formatRuntimeReasonLabel(
+        reason({ category: 'service', title: 'Service Window Available', source: 'dashboard-insight:SERVICE_WINDOW' }),
+        'de',
+      ),
+    ).toBe('Servicefenster verfügbar');
+    expect(
+      formatRuntimeReasonLabel(
+        reason({ category: 'dtc', title: 'rental-health:error_codes', source: 'rental-health:error_codes' }),
+        'de',
+      ),
+    ).toBe('Fehlercodes prüfen');
   });
 
   it('hides pure vehicle-runtime ready markers from the visible pills', () => {

@@ -7,6 +7,7 @@ import {
   rowSeverityLabel,
   runtimeReasonTooltip,
 } from './reasonDisplay';
+import { sanitizeUserFacingIssueText } from '../../lib/operational-issues';
 import type {
   DashboardSliceRow,
   VehicleRuntimeState,
@@ -74,6 +75,9 @@ export function FleetBoardVehicleRow({ row, runtimeState, locale, onOpen }: Flee
   const telemetry = telemetryLabel(runtimeState, de);
   const stateLabel = runtimeStateLabel(runtimeState, de);
   const severityText = rowSeverityLabel(row.severity, locale);
+  const title = sanitizeUserFacingIssueText(row.title) || row.title;
+  const subtitle = sanitizeUserFacingIssueText(row.subtitle);
+  const meta = sanitizeUserFacingIssueText(row.meta);
   const rawReasons = row.reasons?.length ? row.reasons : [
     ...(runtimeState?.criticalReasons ?? []),
     ...(runtimeState?.blockReasons ?? []),
@@ -107,10 +111,10 @@ export function FleetBoardVehicleRow({ row, runtimeState, locale, onOpen }: Flee
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <span className="block truncate text-[12.5px] font-bold tabular-nums tracking-[-0.01em] text-foreground">
-              {row.title}
+              {title}
             </span>
-            {row.subtitle ? (
-              <span className="mt-0.5 block truncate text-[10.5px] leading-snug text-muted-foreground">{row.subtitle}</span>
+            {subtitle ? (
+              <span className="mt-0.5 block truncate text-[10.5px] leading-snug text-muted-foreground">{subtitle}</span>
             ) : null}
           </div>
           {severityText ? (
@@ -146,10 +150,10 @@ export function FleetBoardVehicleRow({ row, runtimeState, locale, onOpen }: Flee
               </span>
             </>
           ) : null}
-          {row.meta ? (
+          {meta ? (
             <>
               {telemetry ? <span aria-hidden>·</span> : null}
-              <span className="line-clamp-1">{row.meta}</span>
+              <span className="line-clamp-1">{meta}</span>
             </>
           ) : null}
         </div>

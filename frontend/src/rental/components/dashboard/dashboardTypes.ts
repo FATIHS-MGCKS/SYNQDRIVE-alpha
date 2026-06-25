@@ -242,6 +242,8 @@ export type InsightDataSource =
 
 export interface ActionQueueItem {
   id: string;
+  /** Canonical OperationalIssue key when the item was normalized. */
+  semanticKey?: string;
   source: InsightDataSource;
   severity: ActionQueueSeverity;
   category: ActionQueueCategory;

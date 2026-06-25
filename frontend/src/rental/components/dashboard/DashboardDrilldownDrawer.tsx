@@ -8,6 +8,7 @@ import {
   rowSeverityLabel,
   runtimeReasonTooltip,
 } from './reasonDisplay';
+import { sanitizeUserFacingIssueText } from '../../lib/operational-issues';
 import type { DashboardViewModel, DashboardViewProps } from './dashboardTypes';
 import type {
   BusinessMetricId,
@@ -180,6 +181,9 @@ function DashboardRowCard({
   const visibleReasons = reasons.slice(0, 2);
   const remainingReasons = Math.max(0, reasons.length - visibleReasons.length);
   const severityText = rowSeverityLabel(row.severity, locale);
+  const title = sanitizeUserFacingIssueText(row.title) || row.title;
+  const subtitle = sanitizeUserFacingIssueText(row.subtitle);
+  const meta = sanitizeUserFacingIssueText(row.meta);
   const canOpenVehicle = Boolean(row.vehicleId && onOpenVehicle);
   const canOpenBooking = Boolean(row.bookingId && onOpenBooking);
   const ctaLabel = row.primaryActionLabel ?? (row.bookingId ? defaultBookingCta(de) : defaultVehicleCta(de));
@@ -191,7 +195,7 @@ function DashboardRowCard({
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <h3 className="truncate text-[14px] font-semibold tracking-[-0.01em] text-foreground">
-              {row.title}
+              {title}
             </h3>
             {severityText ? (
               <StatusChip tone={severityTone(row.severity)} className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide">
@@ -199,11 +203,11 @@ function DashboardRowCard({
               </StatusChip>
             ) : null}
           </div>
-          {row.subtitle ? (
-            <p className="truncate text-[12px] text-muted-foreground">{row.subtitle}</p>
+          {subtitle ? (
+            <p className="truncate text-[12px] text-muted-foreground">{subtitle}</p>
           ) : null}
-          {row.meta ? (
-            <p className="line-clamp-2 text-[12px] leading-snug text-muted-foreground/90 text-pretty">{row.meta}</p>
+          {meta ? (
+            <p className="line-clamp-2 text-[12px] leading-snug text-muted-foreground/90 text-pretty">{meta}</p>
           ) : null}
           {row.stationLabel ? (
             <p className="inline-flex items-center gap-1 rounded-md bg-muted/45 px-1.5 py-0.5 text-[10.5px] text-muted-foreground">

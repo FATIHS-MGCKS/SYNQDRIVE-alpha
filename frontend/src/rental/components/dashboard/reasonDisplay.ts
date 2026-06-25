@@ -13,6 +13,7 @@ import type {
   RuntimeReason,
   RuntimeReasonCategory,
 } from './runtime';
+import { formatUserFacingReasonLabel } from '../../lib/operational-issues';
 
 const HEALTH_CATEGORIES = new Set<RuntimeReasonCategory>([
   'health',
@@ -59,8 +60,8 @@ function normalizeTitle(title: string | undefined): string {
  * when the reason carries no title at all.
  */
 export function formatRuntimeReasonLabel(reason: RuntimeReason, locale: string): string {
-  const title = reason.title?.trim();
-  if (title) return title;
+  const formatted = formatUserFacingReasonLabel(reason, locale === 'de' ? 'de' : 'en');
+  if (formatted) return formatted;
   const [en, de] = CATEGORY_FALLBACK_LABEL[reason.category] ?? CATEGORY_FALLBACK_LABEL.unknown;
   return locale === 'de' ? de : en;
 }
@@ -97,7 +98,7 @@ export function dedupeDisplayReasons(reasons: RuntimeReason[]): RuntimeReason[] 
       if (reason.source === 'vehicle-runtime') continue;
       if (reason.source === 'dashboard-health-risk' && hasConcreteHealth) continue;
     }
-    const key = `${reason.category}:${normalizeTitle(reason.title)}`;
+    const key = `${reason.category}:${normalizeTitle(formatRuntimeReasonLabel(reason, 'de'))}`;
     if (seen.has(key)) continue;
     seen.add(key);
     result.push(reason);

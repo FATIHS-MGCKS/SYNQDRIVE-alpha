@@ -230,14 +230,7 @@ function isHardBlockingCategory(category: RuntimeReasonCategory): boolean {
   return (
     category === 'operational' ||
     category === 'rental' ||
-    category === 'health' ||
-    category === 'tires' ||
-    category === 'brakes' ||
-    category === 'battery' ||
-    category === 'dtc' ||
-    category === 'service' ||
-    category === 'compliance' ||
-    category === 'damage'
+    category === 'telemetry'
   );
 }
 
@@ -249,6 +242,34 @@ function isHealthCategory(category: RuntimeReasonCategory): boolean {
     category === 'battery' ||
     category === 'dtc'
   );
+}
+
+function categoryFromBlockingReason(reason: string): RuntimeReasonCategory {
+  const normalized = reason.toLowerCase();
+  if (
+    normalized.includes('tüv') ||
+    normalized.includes('tuv') ||
+    normalized.includes('bokraft') ||
+    normalized.includes('compliance') ||
+    normalized.includes('service')
+  ) {
+    return 'compliance';
+  }
+  if (
+    normalized.includes('dtc') ||
+    normalized.includes('fehlercode') ||
+    normalized.includes('battery') ||
+    normalized.includes('batterie') ||
+    normalized.includes('reifen') ||
+    normalized.includes('tires') ||
+    normalized.includes('brake') ||
+    normalized.includes('bremse') ||
+    normalized.includes('health')
+  ) {
+    return 'health';
+  }
+  if (normalized.includes('damage') || normalized.includes('schaden')) return 'damage';
+  return 'rental';
 }
 
 /**
@@ -289,9 +310,9 @@ function addInsightReasons(input: {
     if (!severity || severity === 'info') continue;
 
     const category = categoryFromInsightType(insight.type);
-    const criticalHardBlock = severity === 'critical' && isHardBlockingCategory(category);
-    // Warning-severity insights (e.g. service window, due soon) stay visible but
-    // never prevent readiness on their own. Only critical hard blocks do.
+    // Insights stay visible as operational signals, but their severity/category
+    // never implies a rental block. Blocking must come from explicit canonical
+    // sources (rental_blocked/blocking_reasons, operational status, offline policy).
     addReason(
       input.target,
       createRuntimeReason({
@@ -300,7 +321,8 @@ function addInsightReasons(input: {
         title: insight.title,
         description: insight.message,
         source: `dashboard-insight:${insight.type}`,
-        blocking: criticalHardBlock,
+        blocking: false,
+        preventsReady: false,
         actionLabel: insight.actionLabel ?? undefined,
         actionTarget: insight.actionType ?? undefined,
       }),
@@ -323,7 +345,7 @@ function addHealthReasons(input: {
       addReason(
         input.target,
         createRuntimeReason({
-          category: 'rental',
+          category: categoryFromBlockingReason(reason),
           severity: 'critical',
           title: reason || 'Rental blocked',
           source: 'rental-health:blocking-reason',
@@ -353,8 +375,8 @@ function addHealthReasons(input: {
       if (moduleState.state !== 'critical' && moduleState.state !== 'warning') continue;
       const category = categoryFromHealthModule(module);
       const severity: RuntimeReasonSeverity = moduleState.state === 'critical' ? 'critical' : 'warning';
-      // Critical health/compliance modules are genuine blockers. Warnings stay
-      // visible but never prevent readiness on their own (no category default).
+      // Module severity is user-facing signal strength only. It never implies a
+      // rental block by itself; only explicit canonical blocking reasons do.
       addReason(
         input.target,
         createRuntimeReason({
@@ -362,7 +384,8 @@ function addHealthReasons(input: {
           severity,
           title: moduleState.reason || `${module.replace(/_/g, ' ')} ${moduleState.state}`,
           source: `rental-health:${module}`,
-          blocking: severity === 'critical' && isHardBlockingCategory(category),
+          blocking: false,
+          preventsReady: false,
         }),
       );
       concreteHealthReasonAdded = true;
@@ -378,7 +401,7 @@ function addHealthReasons(input: {
       createRuntimeReason({
         category: 'health',
         severity: 'warning',
-        title: 'Health review required',
+          title: 'Health prüfen',
         source: 'dashboard-health-risk',
         blocking: false,
         preventsReady: false,
@@ -537,9 +560,7 @@ function buildRuntimeState(input: {
     input.operationalStatus === 'available' &&
     input.vehicle.cleaningStatus === 'Clean' &&
     blockLevel === 'none' &&
-    readinessBlockingReasons.length === 0 &&
-    criticalReasons.length === 0 &&
-    input.telemetryState !== 'offline';
+    readinessBlockingReasons.length === 0;
 
   const rentalReadiness = isReadyToRent ? 'ready' : blockLevel !== 'none' ? 'blocked' : 'not_ready';
 

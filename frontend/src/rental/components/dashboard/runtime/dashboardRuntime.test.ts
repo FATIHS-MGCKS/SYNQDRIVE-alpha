@@ -251,11 +251,51 @@ describe('dashboard runtime model', () => {
 
     const state = model.vehicleStates[0];
     expect(state?.isCritical).toBe(true);
-    expect(state?.isBlocked).toBe(true);
+    expect(state?.isBlocked).toBe(false);
+    expect(state?.isReadyToRent).toBe(true);
     expect(state?.isMaintenance).toBe(false);
     expect(state?.operationalStatus).toBe('available');
-    expect(model.slices['blocked-maintenance'].rows.map((row) => row.vehicleId)).toContain('critical-available');
+    expect(model.slices['blocked-maintenance'].rows.map((row) => row.vehicleId)).not.toContain('critical-available');
+    expect(model.slices['critical-alerts'].rows.map((row) => row.vehicleId)).toContain('critical-available');
     expect(model.slices['blocked-maintenance'].groups?.find((group) => group.id === 'in-maintenance')?.rows).toHaveLength(0);
+  });
+
+  it('keeps HM/OEM service overdue critical visible without blocking rental when no canonical blocker exists', () => {
+    const healthMap = new Map<string, VehicleHealthResponse>([
+      [
+        'svc-overdue-open',
+        health({
+          vehicleId: 'svc-overdue-open',
+          overall_state: 'critical',
+          rental_blocked: false,
+          blocking_reasons: [],
+          modules: {
+            service_compliance: {
+              state: 'critical',
+              reason: 'Service überfällig seit 117 Tagen (HM/OEM)',
+            },
+          },
+        }),
+      ],
+    ]);
+    const model = buildDashboardRuntimeModel({
+      locale: 'de',
+      fleetVehicles: [vehicle({ id: 'svc-overdue-open', license: 'SVC-OPEN' })],
+      healthMap,
+      now: NOW,
+    });
+
+    const state = model.vehicleStates[0];
+    expect(state?.complianceSeverity).toBe('critical');
+    expect(state?.criticalReasons.some((reason) => reason.title.includes('Service überfällig'))).toBe(true);
+    expect(state?.blockReasons.some((reason) => reason.title.includes('Service überfällig'))).toBe(false);
+    expect(state?.notReadyReasons.some((reason) => reason.title.includes('Service überfällig'))).toBe(false);
+    expect(state?.blockLevel).toBe('none');
+    expect(state?.isBlocked).toBe(false);
+    expect(state?.isMaintenance).toBe(false);
+    expect(state?.isReadyToRent).toBe(true);
+    expect(model.slices['blocked-maintenance'].rows.map((row) => row.vehicleId)).not.toContain('svc-overdue-open');
+    expect(model.slices['critical-alerts'].rows.map((row) => row.vehicleId)).toContain('svc-overdue-open');
   });
 
   it('treats 3h without heartbeat as standby, not a warning or block', () => {
@@ -536,6 +576,36 @@ describe('dashboard runtime model', () => {
     expect(model.slices['blocked-maintenance'].rows.map((row) => row.vehicleId)).not.toContain('dtc-warn');
   });
 
+  it('keeps generic critical health visible without blocking when no explicit rental blocker exists', () => {
+    const healthMap = new Map<string, VehicleHealthResponse>([
+      [
+        'battery-critical-open',
+        health({
+          vehicleId: 'battery-critical-open',
+          overall_state: 'critical',
+          rental_blocked: false,
+          blocking_reasons: [],
+          modules: { battery: { state: 'critical', reason: 'Batterie kritisch' } },
+        }),
+      ],
+    ]);
+    const model = buildDashboardRuntimeModel({
+      locale: 'de',
+      fleetVehicles: [vehicle({ id: 'battery-critical-open', license: 'BAT-OPEN' })],
+      healthMap,
+      now: NOW,
+    });
+
+    const state = model.vehicleStates[0];
+    expect(state?.isCritical).toBe(true);
+    expect(state?.criticalReasons.some((reason) => reason.category === 'battery')).toBe(true);
+    expect(state?.blockReasons.some((reason) => reason.category === 'battery')).toBe(false);
+    expect(state?.isBlocked).toBe(false);
+    expect(state?.isReadyToRent).toBe(true);
+    expect(model.slices['blocked-maintenance'].rows.map((row) => row.vehicleId)).not.toContain('battery-critical-open');
+    expect(model.slices['critical-alerts'].rows.map((row) => row.vehicleId)).toContain('battery-critical-open');
+  });
+
   it('does not emit dashboard-health-risk when a concrete rental-health reason exists (Task C)', () => {
     const healthMap = new Map<string, VehicleHealthResponse>([
       [
@@ -591,6 +661,8 @@ describe('dashboard runtime model', () => {
         health({
           vehicleId: 'svc-overdue',
           overall_state: 'critical',
+          rental_blocked: true,
+          blocking_reasons: ['TÜV abgelaufen'],
           modules: { service_compliance: { state: 'critical', reason: 'Service overdue 117 days' } },
         }),
       ],
@@ -608,7 +680,7 @@ describe('dashboard runtime model', () => {
     expect(
       state?.blockReasons.some(
         (reason) =>
-          reason.blocking === true && (reason.category === 'service' || reason.category === 'compliance'),
+          reason.blocking === true && reason.category === 'compliance' && reason.title.includes('TÜV'),
       ),
     ).toBe(true);
 

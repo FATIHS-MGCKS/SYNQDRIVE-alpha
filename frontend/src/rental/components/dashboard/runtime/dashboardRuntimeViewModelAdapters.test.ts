@@ -159,15 +159,7 @@ describe('dashboard runtime view-model adapters', () => {
     const runtime = buildDashboardRuntimeModel({
       locale: 'en',
       fleetVehicles: [vehicle({ id: 'critical-available', license: 'CRIT', status: 'Available' })],
-      insights: [
-        insight({
-          id: 'critical-insight',
-          type: 'BATTERY_CRITICAL',
-          severity: 'CRITICAL',
-          title: 'Battery critical',
-          entityIds: ['critical-available'],
-        }),
-      ],
+      blockedVehicleIds: new Set(['critical-available']),
       now: NOW,
     });
     const board = buildRuntimeFleetBoard({

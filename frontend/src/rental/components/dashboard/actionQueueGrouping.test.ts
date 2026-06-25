@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { buildUnifiedActionQueue } from './actionQueueBuilder';
+import { buildUnifiedActionQueue, type BuildActionQueueInput } from './actionQueueBuilder';
 import {
   countAtomicActions,
   filterActionQueueEntries,
   groupActionQueueEntries,
 } from './actionQueueGrouping';
 import type { ActionQueueGroupItem, ActionQueueItem } from './dashboardTypes';
-import type { VehicleHealthAlert } from '../../DashboardInsightsContext';
+import type { DashboardInsight, VehicleHealthAlert } from '../../DashboardInsightsContext';
 import type { VehicleData } from '../../data/vehicles';
+import type { PredictiveOperationsInsight } from './derivePredictiveOperationsInsights';
+import type { DashboardRuntimeModel, RuntimeReason, VehicleRuntimeState } from './runtime';
 
 function leaf(overrides: Partial<ActionQueueItem>): ActionQueueItem {
   return {
@@ -66,21 +68,152 @@ function healthAlert(): VehicleHealthAlert {
   };
 }
 
-function buildHealthOnly(): ActionQueueItem[] {
+function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
+  return {
+    id: overrides.id ?? 'v1',
+    license: overrides.license ?? 'KS MX 2024',
+    make: overrides.make ?? 'Mercedes-Benz',
+    model: overrides.model ?? 'C 63 AMG',
+    year: overrides.year ?? 2016,
+    station: overrides.station ?? 'Kassel',
+    stationId: overrides.stationId ?? 'st-1',
+    fuelType: overrides.fuelType ?? 'Petrol',
+    status: overrides.status ?? 'Available',
+    cleaningStatus: overrides.cleaningStatus ?? 'Clean',
+    healthStatus: overrides.healthStatus ?? 'Good Health',
+    online: overrides.online ?? true,
+    lastSignal: overrides.lastSignal ?? '2026-06-25T10:00:00.000Z',
+    badge: overrides.badge ?? 0,
+    odometer: overrides.odometer ?? 10_000,
+    fuel: overrides.fuel ?? 80,
+    battery: overrides.battery ?? 80,
+    speed: overrides.speed ?? 0,
+    coolant: overrides.coolant ?? 80,
+    brakes: overrides.brakes ?? 80,
+    tires: overrides.tires ?? 80,
+    engineOil: overrides.engineOil ?? 80,
+    isElectric: overrides.isElectric ?? false,
+    hvBatteryCapacityKwh: overrides.hvBatteryCapacityKwh ?? null,
+    leasingRate: overrides.leasingRate ?? '0',
+    insuranceCost: overrides.insuranceCost ?? '0',
+    taxCost: overrides.taxCost ?? '0',
+    totalMonthlyCost: overrides.totalMonthlyCost ?? '0',
+  };
+}
+
+function runtimeReason(overrides: Partial<RuntimeReason> = {}): RuntimeReason {
+  return {
+    id: overrides.id ?? 'r1',
+    category: overrides.category ?? 'service',
+    severity: overrides.severity ?? 'critical',
+    title: overrides.title ?? 'Service überfällig seit 117 Tagen (HM/OEM)',
+    description: overrides.description,
+    source: overrides.source ?? 'rental-health:service_compliance',
+    blocking: overrides.blocking ?? true,
+    preventsReady: overrides.preventsReady,
+  };
+}
+
+function runtimeState(overrides: Partial<VehicleRuntimeState> = {}): VehicleRuntimeState {
+  return {
+    vehicleId: overrides.vehicleId ?? 'v1',
+    license: overrides.license ?? 'KS MX 2024',
+    displayName: overrides.displayName ?? 'KS MX 2024',
+    stationId: overrides.stationId ?? 'st-1',
+    stationLabel: overrides.stationLabel ?? 'Kassel',
+    operationalStatus: overrides.operationalStatus ?? 'available',
+    rentalReadiness: overrides.rentalReadiness ?? 'ready',
+    blockLevel: overrides.blockLevel ?? 'none',
+    healthSeverity: overrides.healthSeverity ?? 'ok',
+    complianceSeverity: overrides.complianceSeverity ?? 'ok',
+    telemetryState: overrides.telemetryState ?? 'live',
+    dataQualityState: overrides.dataQualityState ?? 'fresh',
+    bookingState: overrides.bookingState ?? 'none',
+    readyReasons: overrides.readyReasons ?? [],
+    notReadyReasons: overrides.notReadyReasons ?? [],
+    blockReasons: overrides.blockReasons ?? [],
+    warningReasons: overrides.warningReasons ?? [],
+    criticalReasons: overrides.criticalReasons ?? [],
+    isAvailable: overrides.isAvailable ?? true,
+    isReadyToRent: overrides.isReadyToRent ?? true,
+    isBlocked: overrides.isBlocked ?? false,
+    isMaintenance: overrides.isMaintenance ?? false,
+    isCritical: overrides.isCritical ?? false,
+    isWarning: overrides.isWarning ?? false,
+  };
+}
+
+function runtimeModel(states: VehicleRuntimeState[]): DashboardRuntimeModel {
+  return {
+    generatedAt: '2026-06-25T12:00:00.000Z',
+    vehicleStates: states,
+    slices: {} as DashboardRuntimeModel['slices'],
+  };
+}
+
+function insight(overrides: Partial<DashboardInsight> = {}): DashboardInsight {
+  return {
+    id: overrides.id ?? 'i1',
+    type: overrides.type ?? 'SERVICE_OVERDUE',
+    severity: overrides.severity ?? 'CRITICAL',
+    priority: overrides.priority ?? 10,
+    title: overrides.title ?? 'Service überfällig',
+    message: overrides.message ?? 'dashboard-insight:SERVICE_OVERDUE service overdue',
+    actionLabel: overrides.actionLabel ?? null,
+    actionType: overrides.actionType ?? null,
+    entityScope: overrides.entityScope,
+    entityIds: overrides.entityIds ?? ['v1'],
+    timeContext: overrides.timeContext ?? null,
+    metrics: overrides.metrics ?? null,
+    reasons: overrides.reasons ?? null,
+    isGrouped: overrides.isGrouped ?? false,
+    groupCount: overrides.groupCount ?? 1,
+    createdAt: overrides.createdAt ?? '2026-06-25T12:00:00.000Z',
+  };
+}
+
+function predictive(overrides: Partial<PredictiveOperationsInsight> = {}): PredictiveOperationsInsight {
+  return {
+    id: overrides.id ?? 'p1',
+    type: overrides.type ?? 'SERVICE_WINDOW',
+    severity: overrides.severity ?? 'attention',
+    title: overrides.title ?? 'Service Window Available',
+    explanation: overrides.explanation ?? 'Fahrzeug kann jetzt für Service eingeplant werden',
+    affectedEntity: overrides.affectedEntity ?? { kind: 'vehicle', vehicleId: 'v1', label: 'KS MX 2024' },
+    sourceData: overrides.sourceData ?? 'predictive-operations vehicle=v1',
+    recommendedAction: overrides.recommendedAction ?? 'Service prüfen',
+    confidence: overrides.confidence ?? 'high',
+    timeSortMs: overrides.timeSortMs ?? 0,
+    timeLabel: overrides.timeLabel,
+    cta: overrides.cta ?? 'open-vehicle',
+    vehicleId: overrides.vehicleId ?? 'v1',
+    bookingId: overrides.bookingId,
+    stationId: overrides.stationId,
+    isOverdue: overrides.isOverdue ?? false,
+  };
+}
+
+function buildQueue(overrides: Partial<BuildActionQueueInput> = {}): ActionQueueItem[] {
+  const v = vehicle();
   return buildUnifiedActionQueue({
-    locale: 'en',
+    locale: overrides.locale ?? 'en',
     stationFilter: null,
-    fleetById: new Map<string, VehicleData>(),
-    insights: [],
-    vehicleHealthAlerts: [healthAlert()],
-    pickupItems: [],
-    returnItems: [],
-    notifications: [],
-    derivedInsights: [],
-    predictiveInsights: [],
+    fleetById: new Map<string, VehicleData>([['v1', v]]),
+    insights: overrides.insights ?? [],
+    vehicleHealthAlerts: overrides.vehicleHealthAlerts ?? [],
+    pickupItems: overrides.pickupItems ?? [],
+    returnItems: overrides.returnItems ?? [],
+    notifications: overrides.notifications ?? [],
+    derivedInsights: overrides.derivedInsights ?? [],
+    predictiveInsights: overrides.predictiveInsights ?? [],
+    dashboardRuntime: overrides.dashboardRuntime,
     readyToRentCount: 0,
     syncStatusLabel: '',
   });
+}
+
+function buildHealthOnly(): ActionQueueItem[] {
+  return buildQueue({ vehicleHealthAlerts: [healthAlert()] });
 }
 
 describe('actionQueueBuilder — structured vehicle health', () => {
@@ -90,14 +223,13 @@ describe('actionQueueBuilder — structured vehicle health', () => {
     expect(health).toHaveLength(3);
     const ids = health.map((i) => i.id).sort();
     expect(ids).toEqual([
-      'health-v1-battery',
-      'health-v1-service_compliance',
-      'health-v1-tires',
+      'issue-vehicle:v1:health:battery_critical',
+      'issue-vehicle:v1:health:tires_monitor',
+      'issue-vehicle:v1:service_compliance:overdue',
     ]);
     // Title carries the module reason; no ' · ' joined secondary block as title.
     for (const i of health) {
       expect(i.title.includes(' · ')).toBe(false);
-      expect(i.groupKey).toBe('vehicle-health:v1');
       expect(i.groupType).toBe('vehicle-health');
     }
     // Service compliance critical maps to the "overdue" child severity tier.
@@ -107,32 +239,34 @@ describe('actionQueueBuilder — structured vehicle health', () => {
 });
 
 describe('groupActionQueueEntries', () => {
-  it('groups a vehicle with battery/tires/service into one group of 3 children', () => {
+  it('groups vehicle-health modules but keeps service overdue as its own semantic action', () => {
     const entries = groupActionQueueEntries(buildHealthOnly(), 'en');
-    expect(entries).toHaveLength(1);
-    const group = entries[0] as ActionQueueGroupItem;
-    expect(group.kind).toBe('group');
-    expect(group.children).toHaveLength(3);
-    expect(group.title).toBe('KS MX 2024');
-    expect(group.subtitle).toBe('3 active health issues');
+    expect(entries).toHaveLength(2);
+    const vehicleGroup = entries.find(
+      (entry): entry is ActionQueueGroupItem => entry.kind === 'group' && entry.groupKey === 'vehicle-health:v1',
+    );
+    expect(vehicleGroup?.children).toHaveLength(2);
+    expect(vehicleGroup?.title).toBe('KS MX 2024 · Mercedes-Benz C 63 AMG 2016');
   });
 
   it('sets group severity to the highest child severity (critical)', () => {
-    const group = groupActionQueueEntries(buildHealthOnly(), 'en')[0] as ActionQueueGroupItem;
+    const group = groupActionQueueEntries(buildHealthOnly(), 'en').find(
+      (entry): entry is ActionQueueGroupItem => entry.kind === 'group' && entry.groupKey === 'vehicle-health:v1',
+    )!;
     expect(group.severity).toBe('critical');
   });
 
-  it('orders children by severity then health module order (battery, service/overdue, tires)', () => {
-    const group = groupActionQueueEntries(buildHealthOnly(), 'en')[0] as ActionQueueGroupItem;
+  it('orders health children by severity then health module order', () => {
+    const group = groupActionQueueEntries(buildHealthOnly(), 'en').find(
+      (entry): entry is ActionQueueGroupItem => entry.kind === 'group' && entry.groupKey === 'vehicle-health:v1',
+    )!;
     expect(group.children.map((c) => c.module)).toEqual([
       'battery',
-      'service_compliance',
       'tires',
     ]);
     expect(group.children.map((c) => c.severity)).toEqual([
       'critical',
-      'overdue',
-      'warning',
+      'attention',
     ]);
   });
 
@@ -150,13 +284,13 @@ describe('filterActionQueueEntries', () => {
   it('keeps a group in the critical filter when a child is critical or overdue', () => {
     const entries = groupActionQueueEntries(buildHealthOnly(), 'en');
     const critical = filterActionQueueEntries(entries, 'critical');
-    expect(critical).toHaveLength(1);
+    expect(critical).toHaveLength(2);
     expect(critical[0].kind).toBe('group');
   });
 
   it('keeps health groups under the vehicle filter', () => {
     const entries = groupActionQueueEntries(buildHealthOnly(), 'en');
-    expect(filterActionQueueEntries(entries, 'vehicle')).toHaveLength(1);
+    expect(filterActionQueueEntries(entries, 'vehicle')).toHaveLength(2);
     expect(filterActionQueueEntries(entries, 'financial')).toHaveLength(0);
   });
 });
@@ -164,7 +298,7 @@ describe('filterActionQueueEntries', () => {
 describe('countAtomicActions', () => {
   it('counts children/atomic actions, not visible groups', () => {
     const entries = groupActionQueueEntries(buildHealthOnly(), 'en');
-    expect(entries).toHaveLength(1);
+    expect(entries).toHaveLength(2);
     expect(countAtomicActions(entries)).toBe(3);
   });
 
@@ -176,5 +310,155 @@ describe('countAtomicActions', () => {
     ];
     const entries = groupActionQueueEntries(items, 'en');
     expect(countAtomicActions(entries)).toBe(5);
+  });
+});
+
+describe('actionQueueBuilder — OperationalIssue normalization', () => {
+  it('dedupes service overdue with SERVICE_OVERDUE insight and SERVICE_WINDOW context', () => {
+    const items = buildQueue({
+      dashboardRuntime: runtimeModel([
+        runtimeState({
+          criticalReasons: [
+            runtimeReason({
+              id: 'service-runtime',
+              title: 'Service überfällig seit 117 Tagen (HM/OEM)',
+              source: 'rental-health:service_compliance',
+            }),
+          ],
+        }),
+      ]),
+      insights: [
+        insight({ id: 'service-insight', type: 'SERVICE_OVERDUE', title: 'Service überfällig' }),
+        insight({ id: 'service-window', type: 'SERVICE_WINDOW', severity: 'OPPORTUNITY', title: 'Service Window Available' }),
+      ],
+      predictiveInsights: [predictive({ id: 'service-window-predictive', type: 'SERVICE_WINDOW' })],
+    });
+
+    const serviceItems = items.filter((item) => item.semanticKey?.includes('service_compliance') || item.title.includes('Service'));
+    expect(serviceItems).toHaveLength(1);
+    expect(serviceItems[0].title).toContain('Service überfällig');
+    expect(serviceItems[0].title).not.toContain('Service Window Available');
+    expect(serviceItems[0].reason).not.toContain('rental-health');
+    expect(serviceItems[0].reason).not.toContain('dashboard-insight');
+  });
+
+  it('sanitizes source ids and uses full vehicle entity labels', () => {
+    const [item] = buildQueue({
+      dashboardRuntime: runtimeModel([
+        runtimeState({
+          warningReasons: [
+            runtimeReason({
+              id: 'battery',
+              category: 'battery',
+              severity: 'warning',
+              title: 'Batterie prüfen rental-health:battery',
+              description: 'dashboard-insight:BATTERY_CRITICAL',
+              source: 'rental-health:battery',
+              blocking: false,
+            }),
+          ],
+        }),
+      ]),
+    });
+
+    expect(item.entityLabel).toBe('KS MX 2024 · Mercedes-Benz C 63 AMG 2016');
+    expect(item.title).not.toContain('rental-health');
+    expect(item.reason).not.toContain('dashboard-insight');
+  });
+
+  it('suppresses dashboard-health-risk when a concrete tire monitor exists', () => {
+    const items = buildQueue({
+      dashboardRuntime: runtimeModel([
+        runtimeState({
+          warningReasons: [
+            runtimeReason({
+              id: 'tires',
+              category: 'tires',
+              severity: 'warning',
+              title: 'Reifen beobachten',
+              source: 'rental-health:tires',
+              blocking: false,
+            }),
+            runtimeReason({
+              id: 'health-risk',
+              category: 'health',
+              severity: 'warning',
+              title: 'Health review required',
+              source: 'dashboard-health-risk',
+              blocking: false,
+            }),
+          ],
+        }),
+      ]),
+    });
+
+    expect(items.some((item) => item.title === 'Reifen beobachten')).toBe(true);
+    expect(items.some((item) => /Health review required|Health pruefen/.test(item.title))).toBe(false);
+  });
+
+  it('does not create an attention action for standby telemetry', () => {
+    const items = buildQueue({
+      dashboardRuntime: runtimeModel([runtimeState({ telemetryState: 'standby' })]),
+    });
+    expect(items).toHaveLength(0);
+  });
+
+  it('creates one soft-offline action without stale wording', () => {
+    const items = buildQueue({
+      dashboardRuntime: runtimeModel([runtimeState({ telemetryState: 'soft_offline' })]),
+      predictiveInsights: [
+        predictive({
+          id: 'soft-offline-predictive',
+          type: 'SOFT_OFFLINE_TELEMETRY_CHECK',
+          title: 'Telemetry stale',
+          explanation: 'stale signal',
+        }),
+      ],
+    });
+    expect(items).toHaveLength(1);
+    expect(items[0].title).toBe('Soft Offline');
+    expect(`${items[0].title} ${items[0].reason}`.toLowerCase()).not.toContain('stale');
+  });
+
+  it('keeps overdue invoice and overdue return as separate domains/items', () => {
+    const items = buildQueue({
+      insights: [
+        insight({
+          id: 'return-overdue',
+          type: 'RETURN_OVERDUE',
+          severity: 'CRITICAL',
+          title: 'Rückgabe überfällig',
+          message: 'Rückgabe überfällig',
+          entityIds: ['b1'],
+        }),
+        insight({
+          id: 'finance-low-util',
+          type: 'LOW_UTILIZATION',
+          severity: 'WARNING',
+          title: 'Zahlung überfällig',
+          message: 'Offene Forderung prüfen',
+          entityIds: ['inv1'],
+        }),
+      ],
+    });
+    expect(items).toHaveLength(2);
+    expect(items.some((item) => item.category === 'handover' && item.bookingId === 'b1')).toBe(true);
+    expect(items.some((item) => item.category === 'financial')).toBe(true);
+  });
+
+  it('tab filtering reuses the same item instead of duplicating it', () => {
+    const items = buildQueue({
+      dashboardRuntime: runtimeModel([
+        runtimeState({
+          criticalReasons: [runtimeReason()],
+        }),
+      ]),
+    });
+    const entries = groupActionQueueEntries(items, 'de');
+    const all = filterActionQueueEntries(entries, 'all');
+    const critical = filterActionQueueEntries(entries, 'critical');
+    expect(countAtomicActions(all)).toBe(1);
+    expect(countAtomicActions(critical)).toBe(1);
+    expect(all[0].id).toBe(critical[0].id);
   });
 });
