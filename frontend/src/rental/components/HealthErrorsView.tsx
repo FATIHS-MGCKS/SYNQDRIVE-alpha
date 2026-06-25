@@ -5,7 +5,7 @@ import tellTaleBatteryIcon from '../../assets/icons/telltale/battery.svg';
 import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { XAxis, YAxis, ResponsiveContainer, Tooltip, Line, LineChart, ReferenceArea } from 'recharts';
-import { api, streamAiTireSpecs, type AgentStep, type AiTireSpecsStreamEvent, type DashboardWarningLightsResponse, type VehicleHealthTabSummaryDto, type TireWearAnalysis, type ServiceInfoStatus, type BatteryHealthSummary, type BatteryHealthDetail, type HvBatteryStatus, type BrakeHealthSummary as BrakeHealthSummaryType, type BrakeHealthDetail, type BrakeAlert, type TripProfile, type TireHealthSummaryResponse, type TireHealthDetailResponse, type TireAlert, type VehicleComplaint, type DtcKnowledgeDto, type BatteryHealthStatus, type BatteryRestingVoltageStatus } from '../../lib/api';
+import { api, streamAiTireSpecs, type AgentStep, type AiTireSpecsStreamEvent, type DashboardWarningLightsResponse, type VehicleHealthTabSummaryDto, type TireWearAnalysis, type ServiceInfoStatus, type BatteryHealthSummary, type BatteryHealthDetail, type HvBatteryStatus, type BrakeHealthSummary as BrakeHealthSummaryType, type BrakeHealthDetail, type BrakeAlert, type TripProfile, type TireHealthSummaryResponse, type TireHealthDetailResponse, type TireAlert, type DtcKnowledgeDto, type BatteryHealthStatus, type BatteryRestingVoltageStatus, type VehicleTripAnalytics } from '../../lib/api';
 import {
   buildBokraftComplianceDisplay,
   buildNextServiceDisplay,
@@ -18,8 +18,32 @@ import {
 import { ComplianceTaskActions } from './ComplianceTaskActions';
 import { DashboardWarningLightsPanel } from './DashboardWarningLightsPanel';
 import { isBatteryTelltaleActive } from '../lib/dashboard-warning-lights-display';
+import {
+  RESTING_VOLTAGE_EXPLANATION,
+  buildBatteryMeasurementRows,
+  buildRestingVoltageTrendPoints,
+  formatExteriorAmbientDisplay,
+  resolveCanonicalRestingVoltage,
+  resolveCurrentLiveVoltage,
+  resolveExteriorAmbientTemperature,
+  restingVoltageChartDomain,
+  restingVoltageStatusLabelDe,
+} from '../lib/battery-health-detail-ui';
+import {
+  TIRE_FORECAST_QUALITY_SUBTEXT,
+  TIRE_MANUAL_MEASUREMENT_HINT,
+  TIRE_TREAD_LIFE_SCORE_HINT,
+  WHEEL_POSITIONS,
+  formatLowestTreadLine,
+  formatWheelLastMeasured,
+  resolveWheelByPosition,
+  tireForecastBadgeLabel,
+  treadMmColorClass,
+  wheelMeasurementBadge,
+} from '../lib/tire-health-detail-ui';
+import { normalizeLvBatteryVoltage } from '../lib/battery-display.utils';
 import { useRentalOrg } from '../RentalContext';
-import { useEffectiveHealth, useFleetVehicles } from '../FleetContext';
+import { useEffectiveHealth } from '../FleetContext';
 import {
   complianceDateStateLabel,
   formatComplianceDueDate,
@@ -35,7 +59,6 @@ import {
 } from '../rental-health-ui';
 import { BatteryConditionBars, RestingVoltageBadge } from './BatteryConditionBars';
 import {
-  PageHeader,
   SectionHeader,
   DataCard,
   MetricCard,
@@ -45,12 +68,16 @@ import {
   StatusDot,
 } from '../../components/patterns';
 import { HealthServiceActions } from './health/HealthServiceActions';
+import { TechnicalObservationsHealthModule } from './health/TechnicalObservationsHealthModule';
+import { useFleetVehicles } from '../FleetContext';
 
 interface HealthErrorsViewProps {
   vehicleId?: string;
   fuelType?: string;
   onOpenServiceCenter?: () => void;
   onOpenExistingTask?: (taskId: string) => void;
+  onOpenBooking?: (bookingId: string) => void;
+  onOpenTrips?: (dateIso?: string) => void;
 }
 
 function formatEnumLabel(value: unknown, fallback = '—'): string {
@@ -136,26 +163,22 @@ export function HealthErrorsView({
   fuelType,
   onOpenServiceCenter,
   onOpenExistingTask,
+  onOpenBooking,
+  onOpenTrips,
 }: HealthErrorsViewProps) {
   const isEv = fuelType === 'Electric' || fuelType === 'PHEV';
   const { orgId, userRole } = useRentalOrg();
   const { health: rentalHealth, loading: rentalHealthLoading } = useEffectiveHealth(vehicleId ?? null);
-  const { reloadHealth: reloadRentalHealth } = useFleetVehicles();
+  const { reloadHealth } = useFleetVehicles();
   const [showErrorCodes, setShowErrorCodes] = useState(false);
   const [showBattery, setShowBattery] = useState(false);
   const [showService, setShowService] = useState(false);
   const [showBrakes, setShowBrakes] = useState(false);
   const [showTires, setShowTires] = useState(false);
   const [showHvBattery, setShowHvBattery] = useState(false);
-  const [showComplaintsModal, setShowComplaintsModal] = useState(false);
   // V4.7.59 — active auto-tasks (source INSIGHT_*) for this vehicle, shown as
   // a hint in the Service Info modal so operators see the materialized task.
   const [serviceAutoTasks, setServiceAutoTasks] = useState<Array<{ id: string; title: string; priority: string; category?: string | null }>>([]);
-  const [complaints, setComplaints] = useState<VehicleComplaint[] | null>(null);
-  const [complaintsLoading, setComplaintsLoading] = useState(false);
-  const [complaintsLoadError, setComplaintsLoadError] = useState(false);
-  const [complaintForm, setComplaintForm] = useState({ description: '', urgency: 'MEDIUM', region: '' });
-  const [submittingComplaint, setSubmittingComplaint] = useState(false);
   const [batteryChartTab, setBatteryChartTab] = useState<'woche' | 'monat'>('woche');
   const [isModalAnimating, setIsModalAnimating] = useState(false);
   const [isModalClosing, setIsModalClosing] = useState(false);
@@ -209,7 +232,6 @@ export function HealthErrorsView({
   const [dtcDetail, setDtcDetail] = useState<any>(null);
   const [dtcDetailLoading, setDtcDetailLoading] = useState(false);
   const [batteryLatest, setBatteryLatest] = useState<any>(null);
-  const [batteryTrend, setBatteryTrend] = useState<any[]>([]);
   const [batterySummary, setBatterySummary] = useState<BatteryHealthSummary | null>(null);
   const [batteryDetail, setBatteryDetail] = useState<BatteryHealthDetail | null>(null);
   const [brakesData, setBrakesData] = useState<any>(null);
@@ -220,6 +242,7 @@ export function HealthErrorsView({
   const [brakeForm, setBrakeForm] = useState({ date: '', odometerKm: '', workshopName: '', notes: '', frontPadMm: '', rearPadMm: '', frontRotorWidthMm: '', rearRotorWidthMm: '' });
   const [submittingBrake, setSubmittingBrake] = useState(false);
   const [tripProfile, setTripProfile] = useState<TripProfile | null>(null);
+  const [batteryRecentTrips, setBatteryRecentTrips] = useState<VehicleTripAnalytics[]>([]);
   const [tiresData, setTiresData] = useState<any>(null);
   const [tireWear, setTireWear] = useState<TireWearAnalysis | null>(null);
   const [tireHealth, setTireHealth] = useState<TireHealthSummaryResponse | null>(null);
@@ -288,7 +311,6 @@ export function HealthErrorsView({
         setBatteryDetail(null);
         setBatterySummary(null);
         setBatteryLatest(null);
-        setBatteryTrend([]);
         setHvBatteryStatus(null);
         return;
       }
@@ -296,16 +318,6 @@ export function HealthErrorsView({
       setBatteryDetail(detail);
       setBatterySummary(detail);
       setBatteryLatest(detail.currentState ?? null);
-      const trendSeed = batteryChartTab === 'monat' ? detail.trend30 : detail.trend7;
-      setBatteryTrend(
-        Array.isArray(trendSeed)
-          ? trendSeed.map((t) => ({
-              recordedAt: t.date,
-              voltageV: t.voltage,
-              sohPercent: t.soh,
-            }))
-          : [],
-      );
 
       if (detail.support?.hv && isEv) {
         setHvBatteryStatus({
@@ -375,42 +387,16 @@ export function HealthErrorsView({
   }, [vehicleId, isEv, loadHealthTabSummary, loadDashboardLights]);
 
   useEffect(() => {
-    if (!batteryDetail) {
-      setBatteryTrend([]);
+    if (!showBattery || !vehicleId) {
+      setBatteryRecentTrips([]);
       return;
     }
-    const source = batteryChartTab === 'monat' ? batteryDetail.trend30 : batteryDetail.trend7;
-    setBatteryTrend(
-      Array.isArray(source)
-        ? source.map((t) => ({
-            recordedAt: t.date,
-            voltageV: t.voltage,
-            sohPercent: t.soh,
-          }))
-        : [],
-    );
-  }, [batteryDetail, batteryChartTab]);
-
-  useEffect(() => {
-    if (!vehicleId || !orgId) {
-      setComplaints(null);
-      setComplaintsLoadError(false);
-      return;
-    }
-    setComplaintsLoading(true);
-    setComplaintsLoadError(false);
-    api.vehicles
-      .listComplaints(orgId, vehicleId)
-      .then((rows) => {
-        setComplaints(rows);
-        setComplaintsLoadError(false);
-      })
-      .catch(() => {
-        setComplaints(null);
-        setComplaintsLoadError(true);
-      })
-      .finally(() => setComplaintsLoading(false));
-  }, [vehicleId, orgId]);
+    const from = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    api.vehicleIntelligence
+      .trips(vehicleId, { from })
+      .then((rows) => setBatteryRecentTrips(Array.isArray(rows) ? rows : []))
+      .catch(() => setBatteryRecentTrips([]));
+  }, [showBattery, vehicleId]);
 
   // Load active auto-tasks for this vehicle when the Service modal opens.
   // Filters to system-generated tasks (source INSIGHT_*) that are still open.
@@ -686,15 +672,6 @@ export function HealthErrorsView({
     );
   };
 
-  const refreshHealth = () => {
-    if (!vehicleId) return;
-    reloadRentalHealth();
-    void loadHealthTabSummary();
-    void loadDashboardLights();
-    setAiHealthCareLoading(true);
-    api.vehicleIntelligence.aiHealthCare(vehicleId).then(setAiHealthCare).catch(() => null).finally(() => setAiHealthCareLoading(false));
-  };
-
   const refreshTireWear = useCallback(() => {
     if (!vehicleId) return;
     api.vehicleIntelligence.tireWearAnalysis(vehicleId).then(setTireWear).catch(() => null);
@@ -811,24 +788,6 @@ export function HealthErrorsView({
     refreshTireWear,
     loadTireDetail,
   ]);
-
-  const submitComplaint = useCallback(async () => {
-    if (!vehicleId || !orgId || !complaintForm.description.trim()) return;
-    setSubmittingComplaint(true);
-    try {
-      await api.vehicles.createComplaint(orgId, vehicleId, {
-        description: complaintForm.description.trim(),
-        urgency: complaintForm.urgency,
-        region: complaintForm.region.trim() || null,
-      });
-      const list = await api.vehicles.listComplaints(orgId, vehicleId);
-      setComplaints(list);
-      setComplaintForm({ description: '', urgency: 'MEDIUM', region: '' });
-    } catch {
-      /* keep form */
-    }
-    setSubmittingComplaint(false);
-  }, [vehicleId, orgId, complaintForm]);
 
   const [tireActionError, setTireActionError] = useState<string | null>(null);
 
@@ -1071,7 +1030,7 @@ export function HealthErrorsView({
     }, 400);
   };
 
-  const anyModalOpen = showErrorCodes || showBattery || showService || showBrakes || showTires || showHvBattery || showComplaintsModal;
+  const anyModalOpen = showErrorCodes || showBattery || showService || showBrakes || showTires || showHvBattery;
 
   const formatRelativeTime = (iso: string | null | undefined): string => {
     if (!iso) return '—';
@@ -1126,8 +1085,11 @@ export function HealthErrorsView({
     && (batteryLatest?.voltageV ?? null) == null;
   const lvIsCalibrating = !lvNoBatteryDetected && (lvStatus === 'calibrating' || lvPubState === 'INITIAL_CALIBRATION');
   const lvIsStabilizing = !lvNoBatteryDetected && (lvStatus === 'stabilizing' || lvPubState === 'STABILIZING');
-  const voltageDisplay = bSummary?.lv?.telemetry?.voltageV?.toFixed(2) ?? bSummary?.currentState?.voltageV?.toFixed(2) ?? batteryLatest?.voltageV?.toFixed(2) ?? '—';
-  // During calibration: show V2 estimated health with soft "estimate" indicator
+  const voltageDisplay = (() => {
+    const live = resolveCurrentLiveVoltage(bSummary, batteryLatest?.voltageV ?? null);
+    return live != null ? live.toFixed(2) : null;
+  })();
+  const lvRestingValue: number | null = resolveCanonicalRestingVoltage(bSummary);
   const calibrationEstimate: number | null = lvIsCalibrating
     ? (bSummary?.lv?.estimatedHealthPercent ?? bSummary?.currentState?.estimatedSohPct ?? null)
     : null;
@@ -1158,8 +1120,6 @@ export function HealthErrorsView({
   // LV resting voltage with battery-spec aware status (lead-acid / AGM / EFB;
   // lithium is UNSUPPORTED so no false lead-acid alert is shown).
   const lvResting = bSummary?.lv?.restingVoltage ?? null;
-  const lvRestingValue: number | null =
-    lvResting?.valueV ?? bSummary?.lv?.telemetry?.restingVoltage ?? null;
   const lvRestingStatus: BatteryRestingVoltageStatus = lvResting?.status ?? 'UNKNOWN';
   const lvBatteryTypeLabel = lvResting?.batteryType && lvResting.batteryType !== 'UNKNOWN'
     ? lvResting.batteryType.replace(/_/g, ' ')
@@ -1214,25 +1174,21 @@ export function HealthErrorsView({
     if ((lvCalibration?.lastMeasurementAgeMs ?? null) != null && (lvCalibration?.lastMeasurementAgeMs ?? 0) >= 86400000 && batteryLastCheckedAgo) {
       return `Letzter frischer Messwert: ${batteryLastCheckedAgo}. Aktuell fehlen neue Messwerte.`;
     }
-    if (voltageDisplay !== '—') {
-      return `Spannung: ${voltageDisplay} V`;
+    if (voltageDisplay) {
+      return `Aktuelle Spannung: ${voltageDisplay} V`;
     }
     return null;
   })();
-  const batteryChartData = batteryTrend.length > 0
-    ? batteryTrend.map((d: any, i: number) => ({
-        day: d.recordedAt
-          ? new Date(d.recordedAt).toLocaleDateString(
-              'de-DE',
-              batteryChartTab === 'monat'
-                ? { day: '2-digit', month: '2-digit' }
-                : { weekday: 'short' },
-            )
-          : (batteryChartTab === 'monat' ? `${i + 1}` : ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][i % 7]),
-        volt: d.voltageV ?? 0,
-        time: d.recordedAt ? new Date(d.recordedAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '',
-      }))
-    : [];
+  const exteriorAmbient = resolveExteriorAmbientTemperature(batteryRecentTrips, tripProfile);
+  const exteriorAmbientDisplay = formatExteriorAmbientDisplay(exteriorAmbient);
+  const batteryMeasurementRows = buildBatteryMeasurementRows(batteryDetail, bSummary);
+  const batteryRestingChartPoints = buildRestingVoltageTrendPoints(
+    batteryDetail?.detail?.lv?.evidence ?? [],
+    batteryChartTab === 'monat' ? 30 : 7,
+    lvResting?.batteryType ?? bSummary?.specs?.batteryType,
+  );
+  const batteryChartDomain = restingVoltageChartDomain(lvResting?.batteryType ?? bSummary?.specs?.batteryType);
+  const batteryChartData = batteryRestingChartPoints;
 
   // Canonical Health-tab summary — only the service/compliance module is consumed
   // by the Next-Service quick card. The former aggregated meta-summary, findings
@@ -1249,22 +1205,6 @@ export function HealthErrorsView({
 
   return (
     <div className="relative">
-      <PageHeader
-        title="Vehicle Health"
-        eyebrow="Health Center"
-        description="AI-assisted diagnostics, live tell-tales, and module health for this vehicle."
-        icon={<Icon name="activity" className="w-4 h-4" />}
-        actions={
-          <button
-            type="button"
-            onClick={refreshHealth}
-            className="p-1.5 rounded-full transition-colors hover:bg-muted text-muted-foreground"
-            title="Refresh health data"
-          >
-            {healthTabSummaryLoadState === 'loading' ? <Icon name="loader-2" className="w-4 h-4 animate-spin" /> : <Icon name="refresh-cw" className="w-4 h-4" />}
-          </button>
-        }
-      />
       <div
         className="grid grid-cols-1 lg:grid-cols-[1.4fr_2.55fr] gap-3 transition-all duration-500 ease-out origin-center items-start"
         style={{
@@ -1280,6 +1220,9 @@ export function HealthErrorsView({
             telltales={canonicalDashboardLights}
             loading={dashboardLightsLoading && !canonicalDashboardLights}
             oilLevelDisplay={aiHealthCare?.oilLevelDisplay}
+            vehicleId={vehicleId}
+            onOpenBooking={onOpenBooking}
+            onOpenTrips={onOpenTrips}
             syncErrorMessage={
               healthTabSummary?.sourceStatus.highMobility === 'sync_error'
                 ? 'High Mobility synchronization failed'
@@ -1325,7 +1268,7 @@ export function HealthErrorsView({
                     <div className={`w-10 h-10 rounded-2xl flex items-center justify-center mb-2 shadow-sm ${'sq-tone-watch ring-1 ring-border'}`}>
                       <Icon name="alert-triangle" className={`w-4 h-4 ${'text-[color:var(--status-watch)]'}`} />
                     </div>
-                    <p className={`text-[10px] font-semibold text-center ${'text-[color:var(--status-watch)]'}`}>Datenbasis veraltet / Abruf fehlgeschlagen</p>
+                    <p className={`text-[10px] font-semibold text-center ${'text-[color:var(--status-watch)]'}`}>Datenstand verzögert / Abruf fehlgeschlagen</p>
                   </>
                 )}
                 {(dtcStatus === 'clean' || dtcStatus === 'active_faults') && (
@@ -1445,14 +1388,17 @@ export function HealthErrorsView({
                 {/* Resting voltage — current rest/charge state, separate from health. */}
                 <div className="mb-2">
                   <p className={`text-[10px] uppercase tracking-wider font-semibold mb-0.5 text-muted-foreground`}>
-                    Resting Voltage{lvBatteryTypeLabel ? ` · ${lvBatteryTypeLabel}` : ''}
+                    12V-Ruhespannung{lvBatteryTypeLabel ? ` · ${lvBatteryTypeLabel}` : ''}
                   </p>
                   {lvRestingValue != null ? (
                     <RestingVoltageBadge valueV={lvRestingValue} status={lvRestingStatus} />
                   ) : (
                     <p className={`text-[10px] font-medium text-muted-foreground`}>
-                      Live voltage: <span className={`font-bold text-foreground tabular-nums`}>{voltageDisplay}</span>
-                      {voltageDisplay !== '—' ? ' V' : ''}
+                      {voltageDisplay ? (
+                        <>Aktuelle Spannung: <span className={`font-bold text-foreground tabular-nums`}>{voltageDisplay} V</span></>
+                      ) : (
+                        '12V-Ruhespannung nicht verfügbar'
+                      )}
                     </p>
                   )}
                 </div>
@@ -1721,7 +1667,11 @@ export function HealthErrorsView({
                     <Icon name="circle" className="w-3.5 h-3.5" />
                   </div>
                   <h3 className={quickCardTitleClass}>Tires</h3>
-                  {hasTireData && <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest sq-tone-ai shadow-sm">ML</span>}
+                  {hasTireData && displayMode && (
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest sq-tone-ai shadow-sm">
+                      {tireForecastBadgeLabel(displayMode)}
+                    </span>
+                  )}
                   {hasAlerts && <span className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)] animate-pulse" />}
                 </div>
                 <Icon name="chevron-right" className={`w-4 h-4 text-muted-foreground transition-transform group-hover:translate-x-0.5`} />
@@ -1768,12 +1718,16 @@ export function HealthErrorsView({
                     </div>
                   )}
                   {/* Lowest tread (mm) + position + measured/estimated honesty */}
-                  {displayMm != null && (
-                    <p className={`text-[10px] mt-2 font-medium text-muted-foreground`}>
-                      Lowest tread: <span className="font-bold text-foreground tabular-nums">ca. {displayMm.toFixed(1)} mm</span>
-                      {lowestPos ? <span className="text-muted-foreground"> · {lowestPos}</span> : null}
-                    </p>
-                  )}
+                  {displayMm != null && (() => {
+                    const treadLine = formatLowestTreadLine(displayMm, lowestPos, displayMode);
+                    return (
+                      <p className={`text-[10px] mt-2 font-medium text-muted-foreground`}>
+                        {treadLine.prefix}{' '}
+                        <span className="font-bold text-foreground tabular-nums">{treadLine.value}</span>
+                        {treadLine.suffix ? <span className="text-muted-foreground">{treadLine.suffix}</span> : null}
+                      </p>
+                    );
+                  })()}
                   {displayMode && (
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider ${
@@ -1914,56 +1868,21 @@ export function HealthErrorsView({
               </div>
             </div>
           );
-        })() : (() => {
-          const complaintRows = complaints ?? [];
-          const activeComplaints = complaintRows.filter((c) => c.status === 'ACTIVE').length;
-          const complaintsAccent = complaintsLoadError
-            ? 'sq-tone-nodata'
-            : activeComplaints > 0
-              ? 'sq-tone-watch'
-              : complaintsLoading
-                ? 'sq-tone-nodata'
-                : 'sq-tone-success';
-          return (
-            <div onClick={() => openModal(setShowComplaintsModal)} className={`${quickCardClass} order-2`}>
-              {/* Subtle gradient backdrop */}
-              <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-3xl pointer-events-none ${complaintsLoadError ? 'bg-muted' : activeComplaints > 0 ? 'bg-amber-500/10' : 'bg-emerald-500/8'}`} />
-              <div className={quickCardHeaderClass}>
-                <div className="flex items-center gap-2">
-                  <div className={`p-1.5 rounded-lg ${complaintsAccent}`}>
-                    <Icon name="clipboard-list" className="w-3.5 h-3.5" />
-                  </div>
-                  <h3 className={quickCardTitleClass}>Complaints</h3>
-                </div>
-                <Icon name="chevron-right" className={`w-4 h-4 text-muted-foreground transition-transform group-hover:translate-x-0.5`} />
-              </div>
-              <div className={`${quickCardBodyClass} items-center`}>
-                {complaintsLoading ? (
-                  <SkeletonCard className="w-full" />
-                ) : complaintsLoadError ? (
-                  <>
-                    <div className="text-[11px] font-semibold text-muted-foreground">Nicht geladen</div>
-                    <p className="text-[10px] mt-1 text-muted-foreground/80 text-center">Feedback-Daten konnten nicht geladen werden</p>
-                  </>
-                ) : (
-                  <>
-                    <div className={`text-[40px] font-black tracking-tighter leading-none ${activeComplaints > 0 ? 'text-amber-500 drop-shadow-[0_0_12px_rgba(245,158,11,0.3)]' : 'text-foreground'}`}>{activeComplaints}</div>
-                    <div className={`mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${
-                      activeComplaints === 0 ? ('sq-chip-success') :
-                      ('sq-chip-watch')
-                    }`}>
-                      {activeComplaints === 0 ? <><Icon name="check-circle" className="w-2.5 h-2.5" /> Alles klar</> : <><Icon name="alert-circle" className="w-2.5 h-2.5" /> Active</>}
-                    </div>
-                  </>
-                )}
-              </div>
-              <div className={`${quickCardFooterClass} flex items-center gap-1.5`}>
-                <Icon name="clipboard-list" className={`w-3 h-3 text-muted-foreground/70`} />
-                <p className={`text-[10px] font-medium text-muted-foreground`}>Technical issues & observations</p>
-              </div>
-            </div>
-          );
-        })()}
+        })() : (
+          <TechnicalObservationsHealthModule
+            vehicleId={vehicleId}
+            orgId={orgId}
+            complaintsModule={rentalHealth?.modules.complaints}
+            rentalHealthLoading={rentalHealthLoading}
+            onOpenExistingTask={onOpenExistingTask}
+            onHealthRefetch={reloadHealth}
+            quickCardClass={quickCardClass}
+            quickCardHeaderClass={quickCardHeaderClass}
+            quickCardTitleClass={quickCardTitleClass}
+            quickCardBodyClass={quickCardBodyClass}
+            quickCardFooterClass={quickCardFooterClass}
+          />
+        )}
         </div>
       </div>
 
@@ -1975,62 +1894,25 @@ export function HealthErrorsView({
       {showErrorCodes && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => closeModal(setShowErrorCodes)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
-          <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl rounded-xl p-5 shadow-lg transition-all duration-500 ease-out max-h-[85vh] overflow-y-auto bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
+          <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl rounded-xl p-5 shadow-lg transition-all duration-500 ease-out max-h-[85vh] overflow-y-auto pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))] bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
             <button onClick={() => closeModal(setShowErrorCodes)} className={`absolute top-6 right-6 p-1.5 rounded-full transition-colors ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
 
-            {/* Modal header */}
-            <div className="mb-4">
-              <h2 className="text-base font-semibold mb-1 text-foreground">Error Codes</h2>
-              {rentalHealth?.modules.error_codes && (
-                <div className={`mb-3 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 ${'bg-muted/40 border-border'}`}>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Betriebsstatus (Fleet Health)
-                  </span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide ${rentalStatePillClasses(rentalHealth.modules.error_codes.state)}`}>
-                    {rentalStateLabelDe(rentalHealth.modules.error_codes.state)}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">{rentalHealth.modules.error_codes.reason}</span>
-                </div>
-              )}
-              {(() => {
-                const d = dtcDetail;
-                const s = dtcSummary;
-                const cs = d?.currentFaults?.status ?? s?.status;
-                const errorAccent = quickCardAccentFromRentalState(rentalHealth?.modules.error_codes.state);
-                if (!cs || cs === 'unavailable') return (
-                  <p className={`text-sm text-muted-foreground`}>No DTC check has been performed yet</p>
-                );
-                if (cs === 'stale') return (
-                  <div className="flex items-center gap-2">
-                    <Icon name="alert-triangle" className={`w-4 h-4 ${'text-[color:var(--status-watch)]'}`} />
-                    <p className={`text-sm ${'text-[color:var(--status-watch)]'}`}>DTC status outdated — last successful check {formatRelativeTime(d?.monitoring?.lastSuccessfulCheckAt ?? s?.lastSuccessfulCheckAt)}</p>
-                  </div>
-                );
-                const count = d?.currentFaults?.activeFaults?.length ?? s?.activeFaultCount ?? 0;
-                const moduleState = rentalHealth?.modules.error_codes.state;
-                const statusDot =
-                  moduleState === 'critical'
-                    ? 'bg-red-500'
-                    : moduleState === 'warning'
-                      ? 'bg-amber-500'
-                      : moduleState === 'good'
-                        ? 'bg-emerald-500'
-                        : 'bg-muted-foreground';
-                if (count > 0) return (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className={`w-2 h-2 rounded-full shrink-0 ${statusDot} animate-pulse`} />
-                    <p className={`text-sm font-semibold ${errorAccent.countText}`}>{count} active fault code{count > 1 ? 's' : ''} detected</p>
-                    {d?.monitoring?.lastSuccessfulCheckAt && <span className={`ml-auto text-xs text-muted-foreground/70`}>Last check {formatRelativeTime(d.monitoring.lastSuccessfulCheckAt)}</span>}
-                  </div>
-                );
-                return (
-                  <div className="flex items-center gap-2">
-                    <Icon name="check-circle" className={`w-4 h-4 ${'text-[color:var(--status-positive)]'}`} />
-                    <p className={`text-sm ${'text-[color:var(--status-positive)]'}`}>No active fault codes</p>
-                    {d?.monitoring?.lastSuccessfulCheckAt && <span className={`ml-auto text-xs text-muted-foreground/70`}>Last check {formatRelativeTime(d.monitoring.lastSuccessfulCheckAt)}</span>}
-                  </div>
-                );
-              })()}
+            {/* Modal header — title + single last-check meta only */}
+            <div className="mb-4 pr-10">
+              <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+                <h2 className="text-base font-semibold text-foreground">Error Codes</h2>
+                {(() => {
+                  const lastCheck =
+                    dtcDetail?.monitoring?.lastSuccessfulCheckAt ??
+                    dtcSummary?.lastSuccessfulCheckAt;
+                  if (!lastCheck) return null;
+                  return (
+                    <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
+                      Letzte Prüfung: {formatRelativeTime(lastCheck)}
+                    </span>
+                  );
+                })()}
+              </div>
             </div>
 
             {dtcDetailLoading && <SkeletonCard className="mb-4" />}
@@ -2042,12 +1924,30 @@ export function HealthErrorsView({
                 medium: 'sq-chip-watch',
                 low: 'sq-chip-info',
               }[sev] ?? ('sq-chip-neutral'));
+              const activeCount =
+                d?.currentFaults?.activeFaults?.length ?? dtcSummary?.activeFaultCount ?? 0;
+              const pollStatusLabel = (() => {
+                if (d?.monitoring?.isStale || d?.currentFaults?.status === 'stale') return 'stale';
+                const raw = String(d?.monitoring?.pollStatus ?? '').toLowerCase();
+                if (!raw) return '—';
+                if (raw === 'success' || raw === 'ok') return 'success';
+                if (raw === 'active' || raw === 'running') return 'active';
+                return d?.monitoring?.pollStatus ?? '—';
+              })();
+              const pollStatusClass =
+                pollStatusLabel === 'stale'
+                  ? 'text-[color:var(--status-watch)]'
+                  : pollStatusLabel === 'success' || pollStatusLabel === 'active'
+                    ? 'text-[color:var(--status-positive)]'
+                    : 'text-muted-foreground';
 
               return (
                 <>
-                  {/* ── Section A: Current Fault Status ───────────────── */}
-                  <div className="mb-5">
-                    <h3 className={`text-xs font-bold uppercase tracking-widest mb-4 text-muted-foreground`}>A — Current Fault Status</h3>
+                  {/* Current Fault Status */}
+                  <div className="mb-4">
+                    <h3 className="text-xs font-bold uppercase tracking-widest mb-3 text-muted-foreground">
+                      Current Fault Status
+                    </h3>
 
                     {(!d || d.currentFaults.status === 'unavailable') && (
                       <EmptyState
@@ -2060,27 +1960,39 @@ export function HealthErrorsView({
                     )}
 
                     {d?.currentFaults.status === 'stale' && (
-                      <div className={`flex items-center gap-3 p-4 rounded-lg border ${'sq-tone-watch border border-border'}`}>
-                        <Icon name="alert-triangle" className={`w-5 h-5 shrink-0 ${'text-[color:var(--status-watch)]'}`} />
+                      <div className="flex items-center gap-3 p-4 rounded-lg border sq-tone-watch border-border">
+                        <Icon name="alert-triangle" className="w-5 h-5 shrink-0 text-[color:var(--status-watch)]" />
                         <div>
-                          <p className={`text-sm font-semibold ${'text-[color:var(--status-watch)]'}`}>Current DTC status is outdated</p>
-                          <p className={`text-xs ${'text-[color:var(--status-watch)]'}`}>The displayed DTC state may not reflect the actual vehicle condition. Wait for the next successful check.</p>
+                          <p className="text-sm font-semibold text-[color:var(--status-watch)]">
+                            Current DTC status is outdated
+                          </p>
+                          <p className="text-xs text-[color:var(--status-watch)]">
+                            The displayed DTC state may not reflect the actual vehicle condition. Wait for the next successful check.
+                          </p>
                         </div>
                       </div>
                     )}
 
                     {d?.currentFaults.status === 'clean' && (
-                      <div className={`flex items-center gap-3 p-4 rounded-lg border ${'sq-tone-success border border-border'}`}>
-                        <Icon name="check-circle" className={`w-5 h-5 shrink-0 ${'text-[color:var(--status-positive)]'}`} />
+                      <div className="flex items-center gap-3 p-4 rounded-lg border sq-tone-success border-border">
+                        <Icon name="check-circle" className="w-5 h-5 shrink-0 text-[color:var(--status-positive)]" />
                         <div>
-                          <p className={`text-sm font-semibold ${'text-[color:var(--status-positive)]'}`}>No Active Fault Codes</p>
-                          <p className={`text-xs ${'text-[color:var(--status-positive)]'}`}>Vehicle diagnostics are clear as of the last successful check</p>
+                          <p className="text-sm font-semibold text-[color:var(--status-positive)]">
+                            No active fault codes
+                          </p>
+                          <p className="text-xs text-[color:var(--status-positive)]">
+                            Vehicle diagnostics are clear as of the last successful check
+                          </p>
                         </div>
                       </div>
                     )}
 
                     {d?.currentFaults.status === 'active_faults' && d.currentFaults.activeFaults.length > 0 && (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
+                        <p className="text-sm font-semibold text-foreground">
+                          {activeCount} active fault code{activeCount !== 1 ? 's' : ''} detected
+                        </p>
+                        <div className="space-y-2">
                         {d.currentFaults.activeFaults.map((dtc: any, i: number) => {
                           const faultTone = dtcFaultCardTone(dtc.severity);
                           return (
@@ -2098,38 +2010,41 @@ export function HealthErrorsView({
                                 DTC: {dtc.severity}
                               </span>
                             </div>
-                            <div className="grid grid-cols-3 gap-3 ml-5">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 ml-0 sm:ml-5">
                               <div>
-                                <p className={`text-[10px] uppercase tracking-wider mb-0.5 text-muted-foreground/70`}>Category</p>
-                                <p className={`text-xs text-foreground/80`}>{dtc.category}</p>
+                                <p className="text-[10px] uppercase tracking-wider mb-0.5 text-muted-foreground/70">Category</p>
+                                <p className="text-xs text-foreground/80">{dtc.category}</p>
                               </div>
                               <div>
-                                <p className={`text-[10px] uppercase tracking-wider mb-0.5 text-muted-foreground/70`}>First Seen</p>
-                                <p className={`text-xs text-foreground/80`}>{dtc.firstSeenAt ? new Date(dtc.firstSeenAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</p>
+                                <p className="text-[10px] uppercase tracking-wider mb-0.5 text-muted-foreground/70">First Seen</p>
+                                <p className="text-xs text-foreground/80">{dtc.firstSeenAt ? new Date(dtc.firstSeenAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</p>
                               </div>
                               <div>
-                                <p className={`text-[10px] uppercase tracking-wider mb-0.5 text-muted-foreground/70`}>Last Seen</p>
-                                <p className={`text-xs text-foreground/80`}>{dtc.lastSeenAt ? new Date(dtc.lastSeenAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</p>
+                                <p className="text-[10px] uppercase tracking-wider mb-0.5 text-muted-foreground/70">Last Seen</p>
+                                <p className="text-xs text-foreground/80">{dtc.lastSeenAt ? new Date(dtc.lastSeenAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</p>
                               </div>
                             </div>
                             {renderDtcKnowledge(dtc, i)}
                           </div>
                           );
                         })}
+                        </div>
                       </div>
                     )}
                   </div>
 
-                  {/* ── Section B: Historical Fault Codes ─────────────── */}
-                  <div className="mb-5">
-                    <h3 className={`text-xs font-bold uppercase tracking-widest mb-4 text-muted-foreground`}>B — Historical Fault Codes</h3>
+                  {/* Historical Fault Codes */}
+                  <div className="mb-4">
+                    <h3 className="text-xs font-bold uppercase tracking-widest mb-3 text-muted-foreground">
+                      Historical Fault Codes
+                    </h3>
 
                     {(!d || d.history.length === 0) ? (
-                      <p className={`text-sm text-muted-foreground/70`}>No historical DTC records yet</p>
+                      <p className="text-sm text-muted-foreground/70">No historical DTC records yet</p>
                     ) : (
-                      <div className={`rounded-lg border overflow-hidden border-border`}>
+                      <div className="rounded-lg border overflow-x-auto border-border">
                         {/* Table header */}
-                        <div className={`grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-3 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider bg-muted text-muted-foreground`}>
+                        <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-3 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider bg-muted text-muted-foreground min-w-[520px]">
                           <span>Code</span>
                           <span>Label</span>
                           <span>Category</span>
@@ -2139,12 +2054,12 @@ export function HealthErrorsView({
                         </div>
                         {/* Table rows */}
                         {d.history.map((item: any, idx: number) => (
-                          <div key={item.id ?? idx} className={`grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-3 px-4 py-3 items-center text-xs border-t border-border hover:bg-muted/50 transition-colors`}>
-                            <span className={`font-bold font-mono text-[11px] ${'text-[color:var(--brand)]'}`}>{item.code}</span>
-                            <span className={`truncate text-foreground/80`}>{item.label}</span>
-                            <span className={`text-[10px] text-muted-foreground`}>{item.category}</span>
-                            <span className={`text-[10px] tabular-nums text-muted-foreground`}>{item.firstSeenAt ? new Date(item.firstSeenAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}</span>
-                            <span className={`text-[10px] tabular-nums text-muted-foreground`}>{item.lastSeenAt ? new Date(item.lastSeenAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}</span>
+                          <div key={item.id ?? idx} className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-3 px-4 py-3 items-center text-xs border-t border-border hover:bg-muted/50 transition-colors min-w-[520px]">
+                            <span className="font-bold font-mono text-[11px] text-[color:var(--brand)]">{item.code}</span>
+                            <span className="truncate text-foreground/80">{item.label}</span>
+                            <span className="text-[10px] text-muted-foreground">{item.category}</span>
+                            <span className="text-[10px] tabular-nums text-muted-foreground">{item.firstSeenAt ? new Date(item.firstSeenAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}</span>
+                            <span className="text-[10px] tabular-nums text-muted-foreground">{item.lastSeenAt ? new Date(item.lastSeenAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—'}</span>
                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${item.isActive ? ('sq-chip-critical') : item.clearedAt ? ('sq-chip-success') : ('sq-chip-neutral')}`}>
                               {item.isActive ? 'Active' : item.clearedAt ? 'Cleared' : 'Historical'}
                             </span>
@@ -2154,44 +2069,19 @@ export function HealthErrorsView({
                     )}
                   </div>
 
-                  {/* ── Section C: DTC Monitoring Information ─────────── */}
-                  <div>
-                    <h3 className={`text-xs font-bold uppercase tracking-widest mb-4 text-muted-foreground`}>C — DTC Monitoring</h3>
-                    <div className={`rounded-lg border p-5 bg-muted border-border`}>
-                      <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                        {[
-                          { label: 'Poll Interval', value: `Every ${d?.monitoring?.pollIntervalHours ?? 3} hours` },
-                          { label: 'Stale Threshold', value: `${d?.monitoring?.staleThresholdHours ?? 6} hours` },
-                          { label: 'Signal Source', value: d?.monitoring?.signalSource ?? 'obdDTCList' },
-                          { label: 'Last Poll Attempt', value: d?.monitoring?.lastCheckedAt ? formatRelativeTime(d.monitoring.lastCheckedAt) : '—' },
-                          { label: 'Last Successful Check', value: d?.monitoring?.lastSuccessfulCheckAt ? formatRelativeTime(d.monitoring.lastSuccessfulCheckAt) : '—' },
-                          { label: 'Poll Status', value: d?.monitoring?.pollStatus ?? '—' },
-                        ].map(({ label, value }) => (
-                          <div key={label}>
-                            <p className={`text-[10px] uppercase tracking-wider mb-1 text-muted-foreground/70`}>{label}</p>
-                            <p className={`text-xs font-medium text-foreground/80`}>{value}</p>
-                          </div>
-                        ))}
-                      </div>
-                      {d?.monitoring?.pollError && (
-                        <div className={`mt-4 pt-4 border-t border-border`}>
-                          <p className={`text-[10px] uppercase tracking-wider mb-1 text-muted-foreground/70`}>Last Error</p>
-                          <p className={`text-xs font-mono ${'text-[color:var(--status-critical)]'}`}>{d.monitoring.pollError}</p>
-                        </div>
-                      )}
-                      <div className={`mt-4 pt-4 border-t border-border`}>
-                        <div className="flex items-center gap-2">
-                          {d?.monitoring?.isStale
-                            ? <Icon name="alert-triangle" className={`w-3.5 h-3.5 ${'text-[color:var(--status-watch)]'}`} />
-                            : <Icon name="check-circle" className={`w-3.5 h-3.5 ${'text-[color:var(--status-positive)]'}`} />}
-                          <p className={`text-xs ${d?.monitoring?.isStale ? ('text-[color:var(--status-watch)]') : ('text-[color:var(--status-positive)]')}`}>
-                            {d?.monitoring?.isStale
-                              ? 'Monitoring data is stale — no fresh DTC check available'
-                              : 'Monitoring is active — data is within the freshness window'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                  {/* Compact monitoring meta (replaces DTC Monitoring section) */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground border-t border-border pt-3">
+                    <span>
+                      Kontrollintervall: alle {d?.monitoring?.pollIntervalHours ?? 3} Stunden
+                    </span>
+                    <span className={pollStatusClass}>
+                      Status: {pollStatusLabel}
+                    </span>
+                    {d?.monitoring?.pollError && (
+                      <span className="text-[color:var(--status-critical)]" title={d.monitoring.pollError}>
+                        Letzter Abruf fehlgeschlagen
+                      </span>
+                    )}
                   </div>
                 </>
               );
@@ -2214,112 +2104,11 @@ export function HealthErrorsView({
         document.body
       )}
 
-      {/* ─── Complaint List Modal ─── */}
-      {showComplaintsModal && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => closeModal(setShowComplaintsModal)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className={`relative w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out bg-card border border-border`}
-            style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}
-          >
-            <button type="button" onClick={() => closeModal(setShowComplaintsModal)} className={`absolute top-5 right-5 p-1.5 rounded-full transition-colors z-10 ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
-            <div className="mb-4">
-              <h2 className="text-base font-semibold mb-1 text-foreground">Complaint List</h2>
-              <p className={`text-xs text-muted-foreground`}>Driver / staff technical observations (return protocol, inspections)</p>
-            </div>
-
-            <div className={`rounded-lg p-4 mb-4 bg-muted`}>
-              <p className={`text-[10px] uppercase tracking-wider font-semibold mb-2 text-muted-foreground`}>Manual entry</p>
-              <textarea
-                value={complaintForm.description}
-                onChange={(e) => setComplaintForm((f) => ({ ...f, description: e.target.value }))}
-                placeholder="Describe the issue…"
-                rows={3}
-                className={`w-full rounded-xl px-3 py-2 text-sm border outline-none mb-2 ${'bg-background border border-border text-foreground placeholder:text-muted-foreground'}`}
-              />
-              <div className="grid grid-cols-2 gap-2 mb-2">
-                <input
-                  value={complaintForm.region}
-                  onChange={(e) => setComplaintForm((f) => ({ ...f, region: e.target.value }))}
-                  placeholder="Affected region (e.g. front axle)"
-                  className={`rounded-xl px-3 py-2 text-xs border outline-none ${'bg-background border border-border text-foreground placeholder:text-muted-foreground'}`}
-                />
-                <select
-                  value={complaintForm.urgency}
-                  onChange={(e) => setComplaintForm((f) => ({ ...f, urgency: e.target.value }))}
-                  className={`rounded-xl px-3 py-2 text-xs border outline-none ${'bg-background border border-border text-foreground'}`}
-                >
-                  {(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const).map((u) => (
-                    <option key={u} value={u}>{u}</option>
-                  ))}
-                </select>
-              </div>
-              <button
-                type="button"
-                disabled={submittingComplaint || !complaintForm.description.trim() || !orgId}
-                onClick={() => void submitComplaint()}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold ${'sq-tone-brand text-white hover:opacity-90'} disabled:opacity-50`}
-              >
-                {submittingComplaint ? <Icon name="loader-2" className="w-4 h-4 animate-spin inline" /> : 'Save complaint'}
-              </button>
-            </div>
-
-            <h3 className={`text-sm font-semibold mb-3 text-foreground`}>Active</h3>
-            <div className="space-y-2 mb-4">
-              {complaintsLoadError ? (
-                <p className="text-[11px] text-muted-foreground">Complaints konnten nicht geladen werden.</p>
-              ) : (complaints ?? []).filter((c) => c.status === 'ACTIVE').length === 0 ? (
-                <p className={`text-sm text-muted-foreground`}>No active Feedbacks</p>
-              ) : (
-                (complaints ?? []).filter((c) => c.status === 'ACTIVE').map((c) => (
-                  <div key={c.id} className={`rounded-xl p-3 border bg-muted border-border`}>
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className={`text-[10px] font-bold uppercase ${'text-[color:var(--status-watch)]'}`}>{c.urgency}</span>
-                      <span className={`text-[10px] text-muted-foreground`}>{new Date(c.createdAt).toLocaleString('de-DE')}</span>
-                    </div>
-                    <p className={`text-sm text-foreground`}>{c.description}</p>
-                    {c.region && <p className={`text-xs mt-1 text-muted-foreground`}>Region: {c.region}</p>}
-                    <div className="flex items-center gap-2 mt-1">
-                      {c.createdByUserId && <span className={`text-[10px] text-muted-foreground/70`}>By: {c.createdByUserId}</span>}
-                      <span className={`text-[10px] text-muted-foreground/70`}>Source: {c.source}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <h3 className={`text-sm font-semibold mb-3 text-foreground`}>History</h3>
-            <div className="space-y-2">
-              {(complaints ?? []).filter((c) => c.status === 'RESOLVED').length === 0 ? (
-                <p className={`text-sm text-muted-foreground`}>No resolved entries yet</p>
-              ) : (
-                (complaints ?? []).filter((c) => c.status === 'RESOLVED').map((c) => (
-                  <div key={c.id} className={`rounded-xl p-3 border opacity-80 bg-muted border-border`}>
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className={`text-[10px] font-bold uppercase text-muted-foreground`}>{c.urgency}</span>
-                      <span className={`text-[10px] text-muted-foreground`}>{new Date(c.createdAt).toLocaleString('de-DE')}</span>
-                    </div>
-                    <p className={`text-sm text-foreground/80`}>{c.description}</p>
-                    {c.region && <p className={`text-xs mt-1 text-muted-foreground`}>Region: {c.region}</p>}
-                    <div className="flex items-center gap-2 mt-1">
-                      {c.createdByUserId && <span className={`text-[10px] text-muted-foreground/70`}>By: {c.createdByUserId}</span>}
-                      {c.resolvedAt && <span className={`text-[10px] ${'text-[color:var(--status-positive)]'}`}>Resolved: {new Date(c.resolvedAt).toLocaleDateString('de-DE')}</span>}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
       {/* ─── Battery Modal ─── */}
       {showBattery && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => closeModal(setShowBattery)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
-          <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
+          <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))] bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
             <button onClick={() => closeModal(setShowBattery)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
 
             {/* Header + condition badge */}
@@ -2351,18 +2140,23 @@ export function HealthErrorsView({
             </div>
 
             {/* Current state cards */}
-            <div className="flex gap-3 mb-5">
-              <div className={`flex-1 rounded-lg px-4 py-3 ${'sq-tone-brand'}`}>
-                <div className="flex items-center gap-1.5 mb-1"><Icon name="battery-charging" className={`w-3 h-3 ${'text-[color:var(--brand)]'}`} /><span className={`text-[10px] uppercase tracking-wider font-semibold ${'text-[color:var(--brand)]'}`}>Voltage</span></div>
-                <div className="flex items-baseline gap-1"><span className={`text-sm font-bold text-foreground`}>{voltageDisplay}</span><span className={`text-xs text-muted-foreground`}>V</span></div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+              <div className={`rounded-lg px-4 py-3 ${'sq-tone-brand'}`}>
+                <div className="flex items-center gap-1.5 mb-1"><Icon name="battery-charging" className={`w-3 h-3 ${'text-[color:var(--brand)]'}`} /><span className={`text-[10px] uppercase tracking-wider font-semibold ${'text-[color:var(--brand)]'}`}>Aktuelle Spannung</span></div>
+                <div className="flex items-baseline gap-1"><span className={`text-sm font-bold text-foreground tabular-nums`}>{voltageDisplay ?? 'Nicht verfügbar'}</span>{voltageDisplay && <span className={`text-xs text-muted-foreground`}>V</span>}</div>
               </div>
-              <div className={`flex-1 rounded-lg px-4 py-3 bg-muted`}>
-                <div className="flex items-center gap-1.5 mb-1"><Icon name="clock" className={`w-3 h-3 text-muted-foreground`} /><span className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Last Check</span></div>
+              <div className={`rounded-lg px-4 py-3 bg-muted`}>
+                <div className="flex items-center gap-1.5 mb-1"><Icon name="clock" className={`w-3 h-3 text-muted-foreground`} /><span className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Letzte Prüfung</span></div>
                 <div className="flex items-baseline gap-1"><span className={`text-sm font-bold text-foreground`}>{batteryLastCheckedAgo || '—'}</span></div>
               </div>
-              <div className={`flex-1 rounded-lg px-4 py-3 ${bSummary?.currentState.temperatureC != null && bSummary.currentState.temperatureC < 5 ? ('sq-tone-info') : 'bg-muted'}`}>
-                <div className="flex items-center gap-1.5 mb-1"><Icon name="thermometer" className={`w-3 h-3 ${bSummary?.currentState.temperatureC != null && bSummary.currentState.temperatureC < 5 ? ('text-[color:var(--status-info)]') : ('text-muted-foreground')}`} /><span className={`text-[10px] uppercase tracking-wider font-semibold ${bSummary?.currentState.temperatureC != null && bSummary.currentState.temperatureC < 5 ? ('text-[color:var(--status-info)]') : ('text-muted-foreground')}`}>Temperature</span></div>
-                <div className="flex items-baseline gap-1"><span className={`text-sm font-bold text-foreground`}>{bSummary?.currentState.temperatureC != null ? `${bSummary.currentState.temperatureC}°C` : '—'}</span></div>
+              <div className={`rounded-lg px-4 py-3 bg-muted`}>
+                <div className="flex items-center gap-1.5 mb-1"><Icon name="thermometer" className={`w-3 h-3 text-muted-foreground`} /><span className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Außentemperatur</span></div>
+                <div>
+                  <span className={`text-sm font-bold text-foreground tabular-nums`}>{exteriorAmbientDisplay.value}</span>
+                  {exteriorAmbientDisplay.hint && (
+                    <p className={`text-[9px] mt-0.5 text-muted-foreground leading-snug`}>{exteriorAmbientDisplay.hint}</p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -2481,16 +2275,21 @@ export function HealthErrorsView({
                     <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>Estimated Battery Health</p>
                     <BatteryConditionBars status={lvEstimatedStatus} bars={lvEstimatedBars} size="md" />
                   </div>
-                  {/* Resting Voltage — current rest/charge state, separate from health. */}
-                  <div className="flex items-center justify-between pt-2 border-t border-border/40">
-                    <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>
-                      Resting Voltage{lvBatteryTypeLabel ? ` · ${lvBatteryTypeLabel}` : ''}
+                  {/* 12V-Ruhespannung — separate from live voltage and estimated health */}
+                  <div className="pt-2 border-t border-border/40">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>
+                        12V-Ruhespannung{lvBatteryTypeLabel ? ` · ${lvBatteryTypeLabel}` : ''}
+                      </p>
+                      {lvRestingValue != null ? (
+                        <RestingVoltageBadge valueV={lvRestingValue} status={lvRestingStatus} />
+                      ) : (
+                        <span className="text-xs font-bold text-muted-foreground">Nicht verfügbar</span>
+                      )}
+                    </div>
+                    <p className={`text-[9px] mt-1.5 leading-snug text-muted-foreground/80`}>
+                      {RESTING_VOLTAGE_EXPLANATION}
                     </p>
-                    {lvRestingValue != null ? (
-                      <RestingVoltageBadge valueV={lvRestingValue} status={lvRestingStatus} />
-                    ) : (
-                      <span className="text-xs font-bold text-muted-foreground">Not available</span>
-                    )}
                   </div>
                   <p className={`text-[9px] mt-2 leading-snug ${'text-muted-foreground/70'}`}>
                     {lvEstimatedTooltip}
@@ -2500,45 +2299,52 @@ export function HealthErrorsView({
               );
             })()}
 
-            {/* Voltage Trend Chart */}
-            <div className={`rounded-lg p-5 mb-5 bg-muted`}>
-              <div className="flex justify-center mb-4">
+            {/* 12V-Ruhespannung Verlauf */}
+            <div className={`rounded-lg p-4 mb-4 bg-muted`}>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>
+                  12V-Ruhespannung Verlauf
+                </p>
                 <div className={`inline-flex rounded-full p-0.5 ${'bg-muted'}`}>
-                  <button onClick={() => setBatteryChartTab('woche')} className={`px-5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${batteryChartTab === 'woche' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>Week</button>
-                  <button onClick={() => setBatteryChartTab('monat')} className={`px-5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${batteryChartTab === 'monat' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>Month</button>
+                  <button type="button" onClick={() => setBatteryChartTab('woche')} className={`px-4 py-1 rounded-full text-[10px] font-semibold transition-all ${batteryChartTab === 'woche' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>Woche</button>
+                  <button type="button" onClick={() => setBatteryChartTab('monat')} className={`px-4 py-1 rounded-full text-[10px] font-medium transition-all ${batteryChartTab === 'monat' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>Monat</button>
                 </div>
               </div>
-              <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-center text-muted-foreground`}>Voltage Trend</p>
-              <div className="mt-1">
-                <ResponsiveContainer width="100%" height={280}>
-                  <LineChart data={batteryChartData} margin={{ top: 10, right: 15, left: -10, bottom: 0 }}>
-                    <ReferenceArea y1={14} y2={18} fill="#ef4444" fillOpacity={0.15} />
-                    <ReferenceArea y1={13} y2={14} fill="#f59e0b" fillOpacity={0.15} />
-                    <ReferenceArea y1={11} y2={13} fill="#22c55e" fillOpacity={0.2} />
-                    <ReferenceArea y1={9} y2={11} fill="#f59e0b" fillOpacity={0.15} />
-                    <ReferenceArea y1={6} y2={9} fill="#ef4444" fillOpacity={0.15} />
-                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
-                    <YAxis domain={[6, 18]} axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: 'var(--muted-foreground)' }} label={{ value: 'Volt', angle: -90, position: 'insideLeft', offset: 15, style: { fontSize: 9, fill: 'var(--muted-foreground)' } }} />
-                    <Tooltip cursor={{ stroke: 'var(--border)', strokeWidth: 1, strokeDasharray: '4 4' }} content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const d = payload[0].payload;
-                        const v = d.volt;
-                        const st = v >= 11 && v <= 13 ? 'Good' : v >= 9 && v <= 14 ? 'Warning' : 'Critical';
-                        const sc = st === 'Good' ? 'text-green-500' : st === 'Warning' ? 'text-amber-500' : 'text-red-500';
-                        const sb = st === 'Good' ? 'sq-tone-success' : st === 'Warning' ? 'sq-tone-watch' : 'sq-tone-critical';
-                        return (<div className="rounded-lg px-3 py-2.5 shadow-lg border border-border bg-popover text-popover-foreground"><div className="flex items-center gap-2 mb-1.5"><span className={`text-xs font-semibold text-foreground`}>{d.day}</span><span className={`text-[10px] text-muted-foreground`}>{d.time}</span></div><div className="flex items-baseline gap-1.5"><span className={`text-sm font-bold text-foreground`}>{v.toFixed(1)}</span><span className={`text-[10px] text-muted-foreground`}>V</span></div><div className={`mt-1.5 inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${sb} ${sc}`}>{st}</div></div>);
-                      }
-                      return null;
-                    }} />
-                    <Line type="monotone" dataKey="volt" stroke='var(--foreground)' strokeWidth={2.5} dot={{ r: 4, fill: 'var(--foreground)', stroke: 'var(--muted-foreground)', strokeWidth: 2 }} activeDot={{ r: 6, fill: 'var(--brand)', stroke: 'var(--card)', strokeWidth: 2.5 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex items-center justify-center gap-3 mt-2">
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-500" /><span className={`text-[10px] ${'text-muted-foreground'}`}>Good (11–13V)</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-400" /><span className={`text-[10px] ${'text-muted-foreground'}`}>Warning</span></div>
-                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500" /><span className={`text-[10px] ${'text-muted-foreground'}`}>Critical</span></div>
-              </div>
+              {batteryChartData.length >= 2 ? (
+                <>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart data={batteryChartData} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+                      <ReferenceArea y1={batteryChartDomain[0]} y2={batteryChartDomain[1]} fill="#22c55e" fillOpacity={0.08} />
+                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }} />
+                      <YAxis domain={batteryChartDomain} axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: 'var(--muted-foreground)' }} />
+                      <Tooltip
+                        cursor={{ stroke: 'var(--border)', strokeWidth: 1, strokeDasharray: '4 4' }}
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          const d = payload[0].payload as (typeof batteryChartData)[number];
+                          const statusLabel = restingVoltageStatusLabelDe(d.status);
+                          return (
+                            <div className="rounded-lg px-3 py-2 shadow-lg border border-border bg-popover text-popover-foreground text-[11px]">
+                              <div className="font-semibold text-foreground">12V-Ruhespannung</div>
+                              <div className="text-muted-foreground">{d.day} · {d.time}</div>
+                              <div className="font-bold tabular-nums mt-1">{d.voltageV.toFixed(2)} V</div>
+                              <div className="text-muted-foreground mt-0.5">Status: {statusLabel}</div>
+                            </div>
+                          );
+                        }}
+                      />
+                      <Line type="monotone" dataKey="voltageV" stroke="var(--foreground)" strokeWidth={2} dot={{ r: 3, fill: 'var(--foreground)' }} activeDot={{ r: 5, fill: 'var(--brand)' }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                  <p className="text-[9px] text-center text-muted-foreground mt-2">
+                    Nur qualifizierte Ruhespannungs-Messungen — keine Lade- oder Live-Spannung.
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-8 px-2">
+                  Noch nicht genug Ruhespannungs-Messungen für einen Verlauf.
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3 mb-5">
@@ -2592,49 +2398,57 @@ export function HealthErrorsView({
             </div>
 
             {/* Detailed Readings */}
-            {(bSummary?.currentState.restingVoltage != null || bSummary?.currentState.crankingVoltage != null || bSummary?.currentState.chargingVoltage != null) && (
-              <div className={`rounded-lg p-5 mb-5 bg-muted`}>
-                <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-muted-foreground`}>Detailed Readings</p>
-                <div className={`divide-y divide-border`}>
-                  {[
-                    bSummary?.currentState.restingVoltage != null ? { l: 'Resting Voltage', v: `${bSummary.currentState.restingVoltage} V` } : null,
-                    bSummary?.currentState.crankingVoltage != null ? { l: 'Cranking Voltage', v: `${bSummary.currentState.crankingVoltage} V` } : null,
-                    bSummary?.currentState.chargingVoltage != null ? { l: 'Charging Voltage', v: `${bSummary.currentState.chargingVoltage} V` } : null,
-                  ].filter(Boolean).map((r: any) => (
-                    <div key={r.l} className="flex items-center justify-between py-2">
-                      <span className={`text-xs ${'text-muted-foreground'}`}>{r.l}</span>
-                      <span className={`text-xs font-semibold text-foreground`}>{r.v}</span>
-                    </div>
-                  ))}
-                </div>
+            <div className={`rounded-lg p-4 mb-4 bg-muted`}>
+              <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-muted-foreground`}>Detailed Readings</p>
+              <div className={`divide-y divide-border`}>
+                {[
+                  {
+                    l: '12V-Ruhespannung',
+                    v: lvRestingValue != null ? `${lvRestingValue.toFixed(2)} V` : 'Nicht verfügbar',
+                  },
+                  {
+                    l: 'Aktuelle Spannung',
+                    v: voltageDisplay != null ? `${voltageDisplay} V` : 'Nicht verfügbar',
+                  },
+                  normalizeLvBatteryVoltage(bSummary?.currentState?.crankingVoltage) != null
+                    ? { l: 'Startspannung / Crank Drop', v: `${normalizeLvBatteryVoltage(bSummary?.currentState?.crankingVoltage)!.toFixed(2)} V` }
+                    : null,
+                  normalizeLvBatteryVoltage(bSummary?.currentState?.chargingVoltage) != null
+                    ? { l: 'Ladespannung', v: `${normalizeLvBatteryVoltage(bSummary?.currentState?.chargingVoltage)!.toFixed(2)} V` }
+                    : null,
+                  exteriorAmbient.valueC != null
+                    ? { l: 'Außentemperatur', v: `${Math.round(exteriorAmbient.valueC * 10) / 10} °C` }
+                    : { l: 'Außentemperatur', v: 'Nicht verfügbar' },
+                ].filter((r): r is { l: string; v: string } => r != null).map((r) => (
+                  <div key={r.l} className="flex items-center justify-between gap-3 py-2">
+                    <span className={`text-xs text-muted-foreground`}>{r.l}</span>
+                    <span className={`text-xs font-semibold text-foreground tabular-nums text-right`}>{r.v}</span>
+                  </div>
+                ))}
               </div>
-            )}
+            </div>
 
-            {/* Battery History */}
+            {/* Battery History / Measurements */}
             <div>
-              <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-muted-foreground`}>History</p>
-              {bSummary && bSummary.history.length > 0 ? (
+              <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-muted-foreground`}>Messungen</p>
+              {batteryMeasurementRows.length > 0 ? (
                 <div className="space-y-2">
-                  {bSummary.history.slice(0, 15).map((h) => (
-                    <div key={h.id} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl bg-muted`}>
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${h.type === 'service' ? 'bg-blue-100' : 'bg-indigo-100'}`}>
-                        {h.type === 'service' ? <Icon name="wrench" className="w-3 h-3 text-blue-600" /> : <Icon name="activity" className="w-3 h-3 text-indigo-600" />}
+                  {batteryMeasurementRows.map((row) => (
+                    <div key={row.id} className="flex items-start gap-3 px-3 py-2.5 rounded-xl bg-muted">
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-indigo-100">
+                        <Icon name={row.kind === 'service' ? 'wrench' : 'activity'} className={`w-3 h-3 ${row.kind === 'service' ? 'text-blue-600' : 'text-indigo-600'}`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-semibold text-foreground`}>
-                          {h.type === 'service' ? 'Battery Service' : 'Measurement'}
-                          {h.voltage != null && <span className={`ml-2 font-normal text-muted-foreground`}>{h.voltage.toFixed(1)} V</span>}
-                          {h.soh != null && <span className={`ml-2 font-normal text-muted-foreground`}>SOH {Math.round(h.soh)}%</span>}
-                        </p>
-                        {h.workshopName && <p className={`text-[10px] text-muted-foreground`}>{h.workshopName}</p>}
-                        {h.notes && <p className={`text-[10px] text-muted-foreground`}>{h.notes}</p>}
+                        <p className="text-xs font-semibold text-foreground">{row.label}</p>
+                        <p className="text-[11px] text-foreground/90 tabular-nums mt-0.5">{row.valueText}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{row.metaText}</p>
                       </div>
-                      <span className={`text-[10px] shrink-0 text-muted-foreground/70`}>{new Date(h.date).toLocaleDateString('de-DE')}</span>
+                      <span className="text-[10px] shrink-0 text-muted-foreground/70 tabular-nums text-right">{row.dateText}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className={`text-xs text-muted-foreground/70`}>No battery history available yet</p>
+                <p className={`text-xs text-muted-foreground/70`}>Noch keine Messungen verfügbar</p>
               )}
             </div>
 
@@ -3131,13 +2945,15 @@ export function HealthErrorsView({
       {showTires && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { if (!showMeasurement && !showRotation && !showTireChange && !showEditSetup) closeModal(setShowTires); }}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
-          <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
+          <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))] bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
             <button onClick={() => closeModal(setShowTires)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
 
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
               <h2 className={`text-sm font-semibold tracking-tight text-foreground`}>Tire Health</h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-violet-500 to-purple-600 text-white">ML</span>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider sq-tone-ai">
+                {tireForecastBadgeLabel(tireDetail?.summary?.displayMode ?? tireHealth?.displayMode)}
+              </span>
               {tireDetail?.factors.regressionActive && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${'sq-chip-info'}`}>Regression</span>}
               {tireDetail?.factors.isStaggered && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${'sq-chip-watch'}`}>Staggered</span>}
               {tireDetail && tireDetail.factors.regenBrakingFactorFront < 1 && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${'sq-chip-success'}`}><Icon name="zap" className="w-3 h-3 inline -mt-0.5 mr-0.5" />Regen{tireDetail.factors.driveType ? ` (${tireDetail.factors.driveType})` : ''}</span>}
@@ -3155,12 +2971,16 @@ export function HealthErrorsView({
                 <div className={`rounded-xl p-3 mb-3 border ${'bg-muted/50 border border-border'}`}>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                     <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${style.pill}`}>{style.label}</span>
-                    {mm != null && (
-                      <span className="text-xs text-foreground">
-                        Lowest tread: <span className="font-bold">ca. {mm.toFixed(1)} mm</span>
-                        {cs.lowestTreadPosition ? <span className="text-muted-foreground"> · {cs.lowestTreadPosition}</span> : null}
-                      </span>
-                    )}
+                    {mm != null && (() => {
+                      const treadLine = formatLowestTreadLine(mm, cs.lowestTreadPosition, mode);
+                      return (
+                        <span className="text-xs text-foreground">
+                          {treadLine.prefix}{' '}
+                          <span className="font-bold tabular-nums">{treadLine.value}</span>
+                          {treadLine.suffix ? <span className="text-muted-foreground">{treadLine.suffix}</span> : null}
+                        </span>
+                      );
+                    })()}
                     {mode && (
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
                         mode === 'MEASURED'
@@ -3205,15 +3025,12 @@ export function HealthErrorsView({
               const bg = label === 'High' ? ('sq-tone-success border border-border') : label === 'Medium' ? ('sq-tone-watch border border-border') : ('sq-tone-critical border border-border');
               const tc = label === 'High' ? ('text-[color:var(--status-positive)]') : label === 'Medium' ? ('text-[color:var(--status-watch)]') : ('text-[color:var(--status-critical)]');
               return (
-                <div className={`rounded-xl p-3 mb-5 border ${bg}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Icon name="shield-alert" className={`w-4 h-4 ${tc}`} />
-                      <span className={`text-xs font-semibold ${tc}`}>Estimate Quality: {label} ({score}%)</span>
-                    </div>
-                    {label !== 'High' && <span className={`text-[10px] text-muted-foreground`}>Manual measurement improves accuracy</span>}
+                <div className={`rounded-lg p-2.5 mb-4 border ${bg}`}>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <Icon name="shield-alert" className={`w-3.5 h-3.5 shrink-0 ${tc}`} />
+                    <span className={`text-[11px] font-semibold ${tc}`}>Forecast Quality: {label} ({score}%)</span>
                   </div>
-                  <p className={`text-[10px] mt-1 text-muted-foreground`}>This is a modeled estimate based on tread baseline, mileage, trip profile, and driving behavior.</p>
+                  <p className={`text-[10px] mt-1 text-muted-foreground`}>{TIRE_FORECAST_QUALITY_SUBTEXT}</p>
                 </div>
               );
             })()}
@@ -3327,11 +3144,13 @@ export function HealthErrorsView({
                     </div>
                   );
                   return (
-                    <div className={`rounded-lg p-4 mb-5 bg-muted`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <Icon name="circle" className={`w-4 h-4 text-muted-foreground`} />
-                          <h3 className={`text-xs font-bold uppercase tracking-wider text-muted-foreground`}>Active Set</h3>
+                    <div className={`rounded-lg p-4 mb-5 border border-emerald-500/20 bg-muted`}>
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <div className="flex flex-wrap items-center gap-2 min-w-0">
+                          <div className="w-5 h-5 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
+                            <Icon name="check-circle" className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          </div>
+                          <h3 className={`text-xs font-bold uppercase tracking-wider text-foreground`}>Active Set</h3>
                           {active.tireSeason && <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${'sq-chip-info'}`}>{active.tireSeason.replace('_', ' ')}</span>}
                           {tireHealth?.totalKmOnSet ? <span className={`text-[10px] text-muted-foreground`}>{Math.round(tireHealth.totalKmOnSet).toLocaleString('de-DE')} km on set</span> : null}
                           {hasIncomplete && <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${'sq-chip-watch'}`}>Incomplete</span>}
@@ -3578,7 +3397,7 @@ export function HealthErrorsView({
                 })()}
 
                 {/* Overall + Wheel Grid */}
-                <div className="grid grid-cols-2 gap-3 mb-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
                   {/* Overall */}
                   {(() => {
                     const pct = tireDetail?.summary.overallPercent ?? tireWear?.overallPercent ?? null;
@@ -3588,59 +3407,97 @@ export function HealthErrorsView({
                     return (
                       <div className={`rounded-lg p-4 ${barBg}`}>
                         {pct != null ? (<>
-                          <p className={`text-2xl font-bold mb-1 text-foreground`}>{pct}%</p>
+                          <p className={`text-2xl font-bold mb-1 text-foreground tabular-nums`}>{pct}%</p>
                           <div className={`w-full h-2 rounded-full overflow-hidden mb-2 bg-muted`}><div className={`h-full ${barFg} rounded-full transition-all`} style={{ width: `${pct}%` }} /></div>
-                          <p className={`text-xs font-semibold ${'text-muted-foreground'}`}>Estimated Tread Life</p>
-                          {remKm != null && <p className={`text-[11px] text-muted-foreground`}>ca. {remKm.toLocaleString('de-DE')} km remaining</p>}
+                          <p className={`text-xs font-semibold ${'text-muted-foreground'}`}>Estimated remaining tread life</p>
+                          <p className={`text-[10px] mt-0.5 text-muted-foreground/70`}>{TIRE_TREAD_LIFE_SCORE_HINT}</p>
+                          {remKm != null && <p className={`text-[11px] mt-1 text-muted-foreground tabular-nums`}>ca. {remKm.toLocaleString('de-DE')} km remaining</p>}
                           {tireDetail?.summary.wearRateMmPer1000km != null && <p className={`text-[10px] mt-1 text-muted-foreground/60`}>Wear: {tireDetail.summary.wearRateMmPer1000km.toFixed(2)} mm / 1000 km</p>}
                           {tireWear && <div className="mt-3 flex gap-3">
-                            <div className="text-center flex-1"><p className={`text-lg font-bold text-foreground`}>{tireWear.frontPercent}%</p><p className={`text-[10px] uppercase tracking-wider text-muted-foreground`}>Front</p></div>
+                            <div className="text-center flex-1"><p className={`text-lg font-bold text-foreground tabular-nums`}>{tireWear.frontPercent}%</p><p className={`text-[10px] uppercase tracking-wider text-muted-foreground`}>Front</p></div>
                             <div className={`w-px bg-muted`} />
-                            <div className="text-center flex-1"><p className={`text-lg font-bold text-foreground`}>{tireWear.rearPercent}%</p><p className={`text-[10px] uppercase tracking-wider text-muted-foreground`}>Rear</p></div>
+                            <div className="text-center flex-1"><p className={`text-lg font-bold text-foreground tabular-nums`}>{tireWear.rearPercent}%</p><p className={`text-[10px] uppercase tracking-wider text-muted-foreground`}>Rear</p></div>
                           </div>}
                         </>) : (<div className="text-center py-3"><p className={`text-xs font-semibold text-muted-foreground`}>No wear analysis yet</p></div>)}
                       </div>
                     );
                   })()}
 
-                  {/* Wheel position grid */}
-                  <div className={`rounded-lg p-4 bg-muted`}>
-                    <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-muted-foreground`}>Tread Depth per Wheel</p>
-                    <div className="relative mx-auto" style={{ width: '240px', height: '150px' }}>
-                      {(tireDetail?.wheels ?? [
-                        { position: 'FL', treadMm: tireWear?.frontLeftMm ?? 0, wearPercent: 0, healthStatus: 'EXCELLENT' },
-                        { position: 'FR', treadMm: tireWear?.frontRightMm ?? 0, wearPercent: 0, healthStatus: 'EXCELLENT' },
-                        { position: 'RL', treadMm: tireWear?.rearLeftMm ?? 0, wearPercent: 0, healthStatus: 'EXCELLENT' },
-                        { position: 'RR', treadMm: tireWear?.rearRightMm ?? 0, wearPercent: 0, healthStatus: 'EXCELLENT' },
-                      ]).map((w: any) => {
-                        const top = w.position.startsWith('F');
-                        const left = w.position.endsWith('L');
-                        const mm = w.treadMm;
-                        const treadColor = mm >= 4 ? ('text-[color:var(--status-positive)]') : mm >= 2.5 ? ('text-[color:var(--status-watch)]') : ('text-[color:var(--status-critical)]');
-                        return (
-                          <div key={w.position} className={`absolute flex flex-col items-center ${top ? 'top-0' : 'bottom-0'} ${left ? 'left-0' : 'right-0'}`}>
-                            {top && <svg width="22" height="32" viewBox="0 0 24 36" fill="none"><rect x="2" y="2" width="20" height="32" rx="4" className={'stroke-muted-foreground'} strokeWidth="1.5" /><line x1="6" y1="10" x2="18" y2="10" className={'stroke-border'} strokeWidth="1" /><line x1="6" y1="18" x2="18" y2="18" className={'stroke-border'} strokeWidth="1" /><line x1="6" y1="26" x2="18" y2="26" className={'stroke-border'} strokeWidth="1" /></svg>}
-                            <p className={`text-sm font-bold ${treadColor}`}>{mm > 0 ? `${mm.toFixed(1)} mm` : '—'}</p>
-                            <p className={`text-[9px] font-medium text-muted-foreground`}>{w.position}</p>
-                            {w.wearPercent != null && <p className={`text-[8px] text-muted-foreground/60`}>{w.wearPercent}%</p>}
-                            {!top && <svg width="22" height="32" viewBox="0 0 24 36" fill="none"><rect x="2" y="2" width="20" height="32" rx="4" className={'stroke-muted-foreground'} strokeWidth="1.5" /><line x1="6" y1="10" x2="18" y2="10" className={'stroke-border'} strokeWidth="1" /><line x1="6" y1="18" x2="18" y2="18" className={'stroke-border'} strokeWidth="1" /><line x1="6" y1="26" x2="18" y2="26" className={'stroke-border'} strokeWidth="1" /></svg>}
-                          </div>
-                        );
-                      })}
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5">
-                        <div className="flex gap-2">
-                          <button onClick={() => setShowRotation(true)} className="px-3 py-1.5 rounded-full bg-blue-500 hover:bg-blue-600 text-white text-[11px] font-semibold transition-colors">Rotate</button>
-                          <button onClick={() => setShowTireChange(true)} className="px-3 py-1.5 rounded-full bg-red-500 hover:bg-red-600 text-white text-[11px] font-semibold transition-colors">Change</button>
+                  {/* Wheel position grid — 2×2 layout */}
+                  {(() => {
+                    const wearFallback = tireWear
+                      ? { FL: tireWear.frontLeftMm, FR: tireWear.frontRightMm, RL: tireWear.rearLeftMm, RR: tireWear.rearRightMm }
+                      : undefined;
+                    return (
+                      <div className={`rounded-lg p-4 bg-muted`}>
+                        <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-muted-foreground`}>Tread Depth per Wheel</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {WHEEL_POSITIONS.map((pos) => {
+                            const wheel = resolveWheelByPosition(tireDetail?.wheels, pos, wearFallback);
+                            const mm = wheel?.treadMm ?? 0;
+                            const hasData = wheel != null && mm > 0;
+                            const measBadge = wheel ? wheelMeasurementBadge(wheel) : null;
+                            const lastMeas = wheel ? formatWheelLastMeasured(wheel.lastMeasuredAt) : null;
+                            return (
+                              <div key={pos} className="rounded-lg p-2.5 border border-border bg-background/60 min-w-0">
+                                <div className="flex items-center justify-between gap-1 mb-1">
+                                  <span className="text-[10px] font-bold text-muted-foreground">{pos}</span>
+                                  {measBadge && (
+                                    <span className={`text-[8px] px-1 py-0.5 rounded font-semibold uppercase tracking-wide shrink-0 ${
+                                      measBadge === 'Measured' ? 'sq-chip-info' : 'sq-tone-ai'
+                                    }`}>
+                                      {measBadge}
+                                    </span>
+                                  )}
+                                </div>
+                                {hasData ? (
+                                  <>
+                                    <p className={`text-sm font-bold tabular-nums ${treadMmColorClass(mm)}`}>{mm.toFixed(1)} mm</p>
+                                    {wheel!.wearPercent > 0 && (
+                                      <p className="text-[9px] text-muted-foreground tabular-nums">{wheel!.wearPercent}% worn</p>
+                                    )}
+                                    {wheel!.healthStatus && wheel!.healthStatus !== 'UNKNOWN' && wheel!.wearPercent <= 0 && (
+                                      <p className="text-[9px] text-muted-foreground capitalize">{formatEnumLabel(wheel!.healthStatus)}</p>
+                                    )}
+                                    {lastMeas && (
+                                      <p className="text-[8px] text-muted-foreground/60 mt-0.5">Measured {lastMeas}</p>
+                                    )}
+                                  </>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground">No data</p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-2 mt-3 pt-3 border-t border-border">
+                          <button
+                            onClick={() => setShowRotation(true)}
+                            className="flex-1 sm:flex-none px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold transition-colors text-center"
+                          >
+                            Rotate
+                          </button>
+                          <button
+                            onClick={() => setShowTireChange(true)}
+                            className="flex-1 sm:flex-none px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-colors text-center"
+                          >
+                            Change
+                          </button>
                         </div>
                       </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Usage Split */}
                 {tireDetail && tireDetail.usageSplit && (tireDetail.usageSplit.city > 0 || tireDetail.usageSplit.highway > 0 || tireDetail.usageSplit.rural > 0) && (
                   <div className={`rounded-lg p-4 mb-5 bg-muted`}>
-                    <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-muted-foreground`}>Usage Distribution</p>
+                    <p className={`text-[10px] uppercase tracking-wider font-semibold mb-1 text-muted-foreground`}>Usage Distribution</p>
+                    {(tireHealth?.totalKmOnSet ?? tireDetail?.summary?.totalKmOnSet) ? (
+                      <p className="text-[10px] text-muted-foreground/70 mb-3">Based on active set mileage</p>
+                    ) : (
+                      <div className="mb-3" />
+                    )}
                     <div className="flex gap-1 mb-3 h-2 rounded-full overflow-hidden">
                       {tireDetail.usageSplit.city > 0 && <div className={`${'bg-[color:var(--status-watch)]'} rounded-full`} style={{ width: `${tireDetail.usageSplit.city}%` }} />}
                       {tireDetail.usageSplit.highway > 0 && <div className={`${'bg-[color:var(--status-info)]'} rounded-full`} style={{ width: `${tireDetail.usageSplit.highway}%` }} />}
@@ -3707,7 +3564,7 @@ export function HealthErrorsView({
                       </div>
                     </div>
                   )}
-                  {!showMeasurement && <p className={`text-[10px] text-muted-foreground/60`}>Manual measurement improves prediction accuracy through Bayesian calibration.</p>}
+                  {!showMeasurement && <p className={`text-[10px] text-muted-foreground/60`}>{TIRE_MANUAL_MEASUREMENT_HINT}</p>}
                 </div>
 
                 {/* Rotation Dialog */}

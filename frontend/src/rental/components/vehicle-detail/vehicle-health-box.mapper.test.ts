@@ -112,7 +112,7 @@ describe('vehicle-health-box.mapper', () => {
       expect(r.sublabel).toBeUndefined();
     });
 
-    it('stale module → — / DTC stale', () => {
+    it('stale module → — / Datenstand verzögert', () => {
       const health = rentalHealth('good');
       health.modules.error_codes = {
         state: 'warning',
@@ -122,7 +122,7 @@ describe('vehicle-health-box.mapper', () => {
       };
       const r = mapFaultsStat(health, 'loaded', 2);
       expect(r.displayValue).toBe('—');
-      expect(r.sublabel).toBe('DTC stale');
+      expect(r.sublabel).toBe('Datenstand verzögert');
     });
 
     it('never shows 0 on load error', () => {

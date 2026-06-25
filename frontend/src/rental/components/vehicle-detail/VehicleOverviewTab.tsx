@@ -2,6 +2,7 @@ import type { VehicleData } from '../../data/vehicles';
 import type { VehicleOverviewSummary } from '../../lib/vehicle-overview.types';
 import type { NavigateVehicleOverviewTarget } from '../../lib/vehicle-overview-navigation';
 import type { ServiceCenterNavState } from '../../lib/service-center-navigation';
+import { formatVehicleIssueEntityLabel } from '../../lib/operational-issues';
 import { OverviewLiveMapCard } from './OverviewLiveMapCard';
 import { VehicleHealthBoxTelemetryBridge } from './VehicleHealthBoxWired';
 import { VehicleOverviewFreshnessHint } from './VehicleOverviewFreshnessHint';
@@ -45,7 +46,7 @@ export function VehicleOverviewTab({
   tasksRefreshToken,
 }: VehicleOverviewTabProps) {
   const vehicleLabel = selectedVehicle
-    ? [selectedVehicle.license, selectedVehicle.make, selectedVehicle.model].filter(Boolean).join(' · ')
+    ? formatVehicleIssueEntityLabel(selectedVehicle)
     : '';
 
   return (

@@ -106,7 +106,13 @@ export function HealthVehicleDetailPanel({
   );
 
   useEffect(() => {
-    setActiveTab(initialTab);
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) setActiveTab(initialTab);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [vehicle.id, initialTab]);
 
   const gate = rentalGate(health);
@@ -215,7 +221,7 @@ export function HealthVehicleDetailPanel({
                 <div className="text-lg font-semibold tabular-nums">{trust.fresh}</div>
               </div>
               <div className="sq-card rounded-lg px-3 py-2">
-                <div className="text-[10px] text-muted-foreground">Stale</div>
+                <div className="text-[10px] text-muted-foreground">Delayed data</div>
                 <div className="text-lg font-semibold tabular-nums">{trust.stale}</div>
               </div>
               <div className="sq-card rounded-lg px-3 py-2">
@@ -504,7 +510,7 @@ export function HealthVehicleDetailPanel({
       const mod = health?.modules.complaints;
       return (
         <HealthModuleCard
-          title="Complaints"
+          title="Technische Beobachtungen"
           icon={MessageSquare}
           rentalModule={mod}
           keyValues={[{ label: 'Status', value: mod?.reason ?? '—' }]}
@@ -552,7 +558,7 @@ export function HealthVehicleDetailPanel({
                   <span>{mod.evidence_type ?? '—'}</span>
                   <span className="text-muted-foreground">Updated</span>
                   <span>{mod.last_updated_at ? fresh : '—'}</span>
-                  <span className="text-muted-foreground">Stale</span>
+                  <span className="text-muted-foreground">Delayed data</span>
                   <span>{mod.data_stale ? 'Yes' : 'No'}</span>
                 </div>
               </div>
@@ -570,7 +576,10 @@ export function HealthVehicleDetailPanel({
     health,
     loading,
     moduleChips,
+    onOpenExistingTask,
+    onOpenServiceCenter,
     trust,
+    vehicle.id,
   ]);
 
   return (

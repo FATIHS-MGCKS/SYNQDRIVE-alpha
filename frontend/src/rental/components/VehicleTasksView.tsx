@@ -1,6 +1,5 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { SupportContextButton } from '../../components/support/SupportContextButton';
 import {
   EmptyState,
   ErrorState,
@@ -275,14 +274,6 @@ export function VehicleTasksView({
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <SupportContextButton
-            kind="task"
-            contextData={{
-              vehicleId: vehicle?.id,
-              licensePlate: plateLabel,
-              selectedTab: 'vehicle-tasks',
-            }}
-          />
           {onOpenServiceCenter && maintenanceOpenCount > 0 && (
             <button
               type="button"

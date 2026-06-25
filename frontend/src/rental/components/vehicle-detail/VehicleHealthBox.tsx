@@ -100,7 +100,7 @@ function HealthModuleRows({
   );
 }
 
-function FindingsSection({ vm }: { vm: VehicleHealthBoxViewModel }) {
+function ReportsSection({ vm }: { vm: VehicleHealthBoxViewModel }) {
   if (vm.findings.length === 0) return null;
   const toneClass = (severity: string) => {
     if (severity === 'critical') return 'sq-tone-critical';
@@ -109,7 +109,7 @@ function FindingsSection({ vm }: { vm: VehicleHealthBoxViewModel }) {
   };
   return (
     <div className="mb-2 space-y-1">
-      <span className="text-[10px] font-semibold text-foreground">Findings</span>
+      <span className="text-[10px] font-semibold text-foreground">Reports</span>
       <ul className="space-y-1">
         {vm.findings.map((f) => (
           <li
@@ -120,6 +120,32 @@ function FindingsSection({ vm }: { vm: VehicleHealthBoxViewModel }) {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+function UntrackedDimensionsInfo({ untrackedCount }: { untrackedCount: number }) {
+  if (untrackedCount <= 0) return null;
+  return (
+    <div className="mt-2 mb-2 flex items-start gap-1.5 rounded-[10px] border border-transparent px-2 py-1.5 sq-tone-info">
+      <svg
+        width="11"
+        height="11"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="mt-px shrink-0"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="16" x2="12" y2="12" />
+        <line x1="12" y1="8" x2="12.01" y2="8" />
+      </svg>
+      <span className="text-[9.5px] leading-snug">
+        {untrackedCount} of 3 health dimensions untracked — enable tracking for accurate results.
+      </span>
     </div>
   );
 }
@@ -272,6 +298,7 @@ export function VehicleHealthBox({
 
   const divider = <div className="border-t my-3 border-border" />;
   const telltales: DashboardWarningLightsResponse | null = boxData.dashboardLights;
+  const compactOverview = !showDataBasis;
 
   return (
     <div className="group relative flex h-full flex-col rounded-xl p-3 border transition-shadow duration-300 ease-[var(--ease-out-soft)] hover:shadow-md border-border bg-card text-foreground shadow-sm">
@@ -286,67 +313,54 @@ export function VehicleHealthBox({
             {vm.overallStatusLabel}
           </span>
         </div>
-        <span className="shrink-0 text-[10px] font-semibold text-muted-foreground">
-          {vm.trackedCount}/3 tracked
-        </span>
+        {!compactOverview && (
+          <span className="shrink-0 text-[10px] font-semibold text-muted-foreground">
+            {vm.trackedCount}/3 tracked
+          </span>
+        )}
       </div>
 
       <div className="mb-2.5 grid grid-cols-3 gap-1.5">
         {(
           [
-            { label: 'Critical' as const, value: vm.statCriticalCount },
-            { label: 'Due soon' as const, value: vm.statWarningCount },
-            { label: 'Faults' as const, value: vm.faultsStat.displayValue, tone: vm.faultsStat.toneClass },
+            { label: 'Critical' as const, tileKey: 'critical' as const, value: vm.statCriticalCount },
+            { label: 'Warning' as const, tileKey: 'warning' as const, value: vm.statWarningCount },
+            {
+              label: 'Error Codes' as const,
+              tileKey: 'errorCodes' as const,
+              value: vm.faultsStat.displayValue,
+              tone: vm.faultsStat.toneClass,
+            },
           ] as const
         ).map((stat) => (
           <div
-            key={stat.label}
+            key={stat.tileKey}
             className={`rounded-[10px] border px-1.5 py-1.5 text-center ${
-              stat.label === 'Faults' ? stat.tone : statTileTone(stat.label, stat.value as number)
+              stat.tileKey === 'errorCodes'
+                ? stat.tone
+                : statTileTone(stat.label, stat.value as number)
             }`}
           >
             <div className="font-mono text-[15px] font-bold leading-none tabular-nums">{stat.value}</div>
             <div className="mt-0.5 truncate text-[9px] font-semibold leading-none tracking-[-0.01em]">
               {stat.label}
             </div>
-            {stat.label === 'Faults' && vm.faultsStat.sublabel && (
+            {stat.tileKey === 'errorCodes' && vm.faultsStat.sublabel && (
               <div className="mt-0.5 truncate text-[8px] leading-none text-muted-foreground">{vm.faultsStat.sublabel}</div>
             )}
           </div>
         ))}
       </div>
 
-      {vm.untrackedCount > 0 && (
-        <div className="mb-2 flex items-start gap-1.5 rounded-[10px] border border-transparent px-2 py-1.5 sq-tone-info">
-          <svg
-            width="11"
-            height="11"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="mt-px shrink-0"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="16" x2="12" y2="12" />
-            <line x1="12" y1="8" x2="12.01" y2="8" />
-          </svg>
-          <span className="text-[9.5px] leading-snug">
-            {vm.untrackedCount} of 3 health dimensions untracked — enable tracking for accurate results.
-          </span>
-        </div>
-      )}
-
-      {vm.findings.length > 0 && (
+      {!compactOverview && vm.findings.length > 0 && (
         <>
-          <FindingsSection vm={vm} />
+          <ReportsSection vm={vm} />
           {divider}
         </>
       )}
 
       <HealthModuleRows vm={vm} isDarkMode={isDarkMode} />
+      <UntrackedDimensionsInfo untrackedCount={vm.untrackedCount} />
       {divider}
 
       <DashboardWarningLightsQuickView
@@ -354,9 +368,12 @@ export function VehicleHealthBox({
         loading={boxData.dashboardLightsLoading && !telltales}
         onViewDetails={onViewDetails}
       />
-      {divider}
-
-      <ComplianceGrid vm={vm} />
+      {!compactOverview && (
+        <>
+          {divider}
+          <ComplianceGrid vm={vm} />
+        </>
+      )}
 
       {showDataBasis && vm.dataBasis && (
         <>

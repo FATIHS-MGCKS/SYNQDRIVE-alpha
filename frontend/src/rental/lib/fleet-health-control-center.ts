@@ -393,7 +393,7 @@ function shortenReason(reason: string, max = 28): string {
 function moduleDetail(key: string, mod: RentalHealthModule): string {
   if (mod.state === 'n_a') return 'N/A';
   if (mod.state === 'unknown') {
-    return mod.data_stale ? 'Stale' : 'No data';
+    return mod.data_stale ? 'Delayed' : 'No data';
   }
   if (key === 'error_codes') {
     const match = mod.reason.match(/(\d+)\s+aktive/i);

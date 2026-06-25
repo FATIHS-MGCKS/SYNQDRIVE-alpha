@@ -221,7 +221,7 @@ export function mapFaultsStat(
     return { displayValue: '—', toneClass: noDataTone, sublabel: 'DTC unavailable' };
   }
   if (mod?.data_stale) {
-    return { displayValue: '—', toneClass: watchTone, sublabel: 'DTC stale' };
+    return { displayValue: '—', toneClass: watchTone, sublabel: 'Datenstand verzögert' };
   }
   if (mod?.state === 'unknown' && !mod.last_updated_at) {
     return { displayValue: '—', toneClass: noDataTone, sublabel: 'No DTC data' };
@@ -659,7 +659,7 @@ export function buildVehicleHealthBoxViewModel(params: {
 }
 
 export function statTileTone(
-  label: 'Critical' | 'Due soon',
+  label: 'Critical' | 'Warning',
   count: number,
 ): string {
   if (label === 'Critical') {

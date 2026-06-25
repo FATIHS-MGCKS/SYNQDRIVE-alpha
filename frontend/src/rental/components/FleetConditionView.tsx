@@ -92,7 +92,7 @@ const GROUP_CONFIG: Record<
   },
   limited_data: {
     title: 'Limited Data',
-    subtitle: 'Health cannot be fully assessed — data is missing, stale or unsupported.',
+    subtitle: 'Health cannot be fully assessed — data is missing, delayed or unsupported.',
     emptyTitle: 'All vehicles have assessable health data.',
     tone: 'neutral',
     icon: CircleDot,
@@ -120,7 +120,7 @@ const MODULE_FILTER_OPTIONS: Array<{ value: OperatorModuleFilter; label: string 
 const DATA_QUALITY_OPTIONS: Array<{ value: OperatorDataQualityFilter; label: string }> = [
   { value: 'all', label: 'All data quality' },
   { value: 'fresh', label: 'Fresh' },
-  { value: 'stale', label: 'Stale' },
+  { value: 'stale', label: 'Delayed data' },
   { value: 'no_tracking', label: 'No tracking' },
   { value: 'estimated', label: 'Estimated' },
 ];
@@ -143,7 +143,6 @@ function toneClass(tone: Tone): string {
 }
 
 export function FleetConditionView({
-  onDrillDown: _onDrillDown,
   embedded = false,
   onOpenServiceCenter,
   onOpenExistingTask,
@@ -185,6 +184,7 @@ export function FleetConditionView({
 
   useEffect(() => {
     if (didInitGroups.current || healthLoading) return;
+    let cancelled = false;
     didInitGroups.current = true;
     const next = new Set<OperatorGroupKey>();
     if (kpis.actionRequired > 0) {
@@ -193,7 +193,12 @@ export function FleetConditionView({
       next.add('needs_review');
     }
     if (kpis.healthy > 0 && kpis.healthy <= 8) next.add('good');
-    setExpandedGroups(next);
+    void Promise.resolve().then(() => {
+      if (!cancelled) setExpandedGroups(next);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [healthLoading, kpis]);
 
   const filtered = useMemo(() => {

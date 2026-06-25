@@ -144,7 +144,7 @@ export function dataFreshnessForModule(
     return { label: 'No tracking', tone: 'noData', semantic: 'no_tracking' };
   }
   if (mod.data_stale) {
-    return { label: 'Stale', tone: 'watch', semantic: 'stale' };
+    return { label: 'Delayed data', tone: 'watch', semantic: 'stale' };
   }
   if (mod.evidence_type === 'estimated') {
     return { label: 'Estimated', tone: 'info', semantic: 'estimated' };

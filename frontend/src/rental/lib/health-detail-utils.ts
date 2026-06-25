@@ -83,7 +83,7 @@ export function freshnessLabel(mod: RentalHealthModule): { label: string; tone: 
   if (mod.state === 'unknown' && !mod.last_updated_at) {
     return { label: 'No tracking', tone: 'noData' };
   }
-  if (mod.data_stale) return { label: 'Stale', tone: 'warning' };
+  if (mod.data_stale) return { label: 'Delayed data', tone: 'warning' };
   if (!mod.last_updated_at) return { label: 'No tracking', tone: 'noData' };
   const rel = formatRelativeTime(mod.last_updated_at);
   if (rel === 'just now' || rel.endsWith('m ago') && parseInt(rel, 10) < 30) {
@@ -127,7 +127,7 @@ export function buildStatusExplanation(health: VehicleHealthResponse | null | un
     if (limited.length > 0) {
       return `Limited data because ${limited.slice(0, 3).join(', ')} ${limited.length > 3 ? 'and others ' : ''}are not fully tracked.`;
     }
-    return 'Limited data because health signals are incomplete or stale.';
+    return 'Limited data because health signals are incomplete or delayed.';
   }
   if (health.overall_state === 'good') {
     return 'No open health issues — vehicle is assessable and not blocked.';

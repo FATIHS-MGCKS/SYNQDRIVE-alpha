@@ -1,4 +1,4 @@
-import { ChevronRight, ClipboardList, Wrench } from 'lucide-react';
+import { ChevronRight, ClipboardList } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { PriorityBadge, StatusChip } from '../../../components/patterns';
 import { api, type ApiTask, type Vendor } from '../../../lib/api';
@@ -166,14 +166,6 @@ export function VehicleServiceContextPanel({
       </div>
 
       <div className="flex flex-wrap gap-1.5">
-        <button
-          type="button"
-          onClick={() => onOpenServiceCenter({ tab: 'tasks', vehicleId })}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-card px-2.5 py-1.5 text-[10px] font-semibold hover:bg-muted/40 sq-press"
-        >
-          <Wrench className="w-3 h-3" />
-          Service Center
-        </button>
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
