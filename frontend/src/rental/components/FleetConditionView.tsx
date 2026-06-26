@@ -385,6 +385,7 @@ export function FleetConditionView({
         <div className="min-w-0 flex-1 space-y-4">
       {!embedded && (
         <PageHeader
+          variant="full"
           title="Health Control Center"
           description="Operative vehicle readiness, safety signals and compliance blockers."
           actions={headerActions}

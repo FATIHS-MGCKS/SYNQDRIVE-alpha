@@ -82,8 +82,6 @@ export function PartsAccessoriesAdminView() {
     <div className="space-y-6 pb-8">
       <PageHeader
         title="Parts & Accessories — Admin"
-        eyebrow="Master Admin"
-        description="Provider management, disclosures, authorization audit, and diagnostics"
         icon={<Truck className="w-4 h-4" />}
       />
 
@@ -414,10 +412,10 @@ function ProvidersTab() {
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <button onClick={() => setEditId(null)} className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors text-muted-foreground hover:text-foreground`}>
+            <button onClick={() => setEditId(null)} className="sq-3d-btn sq-3d-btn--neutral px-4 py-2 text-sm font-semibold">
               Cancel
             </button>
-            <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl text-sm font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50">
+            <button onClick={handleSave} disabled={saving} className="sq-3d-btn sq-3d-btn--primary flex items-center gap-2 px-5 py-2 text-sm font-semibold disabled:opacity-50">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Save Changes
             </button>
@@ -498,7 +496,7 @@ function DisclosuresTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl text-sm font-semibold shadow-lg hover:shadow-xl transition-all">
+        <button onClick={openCreate} className="sq-3d-btn sq-3d-btn--primary flex items-center gap-2 px-4 py-2 text-sm font-semibold">
           <Plus className="w-4 h-4" /> New Disclosure
         </button>
       </div>
@@ -543,8 +541,8 @@ function DisclosuresTab() {
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button onClick={resetForm} className={`px-4 py-2 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground`}>Cancel</button>
-            <button onClick={handleSave} disabled={saving || !form.title || !form.body} className="flex items-center gap-2 px-5 py-2 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl text-sm font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50">
+            <button onClick={resetForm} className="sq-3d-btn sq-3d-btn--neutral px-4 py-2 text-sm font-semibold">Cancel</button>
+            <button onClick={handleSave} disabled={saving || !form.title || !form.body} className="sq-3d-btn sq-3d-btn--primary flex items-center gap-2 px-5 py-2 text-sm font-semibold disabled:opacity-50">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {editId ? 'Update' : 'Create'}
             </button>
@@ -905,7 +903,7 @@ function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void 
     <div className={`${CARD} p-8 text-center space-y-3`}>
       <AlertTriangle className={`w-8 h-8 mx-auto text-[color:var(--status-watch)]`} />
       <p className={`text-sm font-medium text-muted-foreground`}>{message}</p>
-      <button onClick={onRetry} className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl text-sm font-semibold shadow-lg hover:shadow-xl transition-all">
+      <button onClick={onRetry} className="sq-3d-btn sq-3d-btn--primary inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold">
         <RefreshCw className="w-4 h-4" /> Retry
       </button>
     </div>

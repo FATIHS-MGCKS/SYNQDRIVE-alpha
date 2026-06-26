@@ -25,9 +25,9 @@ interface InsurancesViewProps {
 }
 
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-[var(--brand-foreground)] shadow-[var(--shadow-1)] transition-all hover:bg-[var(--brand-hover)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50';
+  'sq-3d-btn sq-3d-btn--primary inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50';
 const BTN_SECONDARY =
-  'inline-flex items-center justify-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-2 text-sm font-semibold text-foreground transition-all hover:bg-muted active:scale-[0.98]';
+  'sq-3d-btn sq-3d-btn--neutral inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold';
 const INPUT_CLASS =
   'w-full rounded-lg border border-border/70 bg-card text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]';
 
@@ -1196,7 +1196,6 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
     <div className="min-h-full bg-background p-6">
       <PageHeader
         title="Fleet Insurance"
-        description="Manage fleet insurance coverage, inquiries, and data sharing."
         icon={<Icon name="shield" className="w-4 h-4 text-[color:var(--brand)]" />}
         actions={
           mainView === 'overview' ? (

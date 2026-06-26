@@ -595,11 +595,19 @@ function RentalAppContent() {
     >
       <VehicleLiveTelemetryBinder vehicleId={liveTelemetryVehicleId} orgId={orgId} />
       <Toaster position="top-right" richColors closeButton theme={isDarkMode ? 'dark' : 'light'} />
-            <TopBar isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} currentView={currentView} fleetTab={fleetTab} settingsTab={settingsTab} selectedVehicle={selectedVehicle} activeBookingRef={activeBookingRef} detailCustomerId={detailCustomerId} detailStationName={detailStation?.name ?? null} onViewChange={handleViewChange} onVehicleSelect={setSelectedVehicle} onSettingsTabChange={setSettingsTab} onFinanceTabChange={setFinanceTab} onFleetTabChange={setFleetTab} />
+            <TopBar
+              isDarkMode={isDarkMode}
+              setIsDarkMode={setIsDarkMode}
+              onViewChange={handleViewChange}
+              onVehicleSelect={setSelectedVehicle}
+              onSettingsTabChange={setSettingsTab}
+              onFinanceTabChange={setFinanceTab}
+            />
         {/* Header Section - Only show for vehicle detail views */}
         {showVehicleDetailChrome && selectedVehicle && (
         <div className="mb-3 animate-fade-up">
           <PageHeader
+            variant="full"
             eyebrow={[selectedVehicle.license, selectedVehicle.station].filter(Boolean).join(' · ') || 'Vehicle'}
             title={`${selectedVehicle.make ?? ''} ${selectedVehicle.model} ${selectedVehicle.year}`.trim()}
             icon={(

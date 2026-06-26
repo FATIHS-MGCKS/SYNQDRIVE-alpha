@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { cn } from '../ui/utils';
 import { Skeleton } from '../ui/skeleton';
+import { Button } from '../ui/button';
 
 /* ════════════════════════════════════════════════════════════════════
    EmptyState — calm, composed "nothing here yet" surface.
@@ -99,13 +100,15 @@ export function ErrorState({
         <p className="mt-1 max-w-sm text-[12.5px] leading-relaxed text-muted-foreground">{detail}</p>
       )}
       {onRetry && (
-        <button
+        <Button
           type="button"
           onClick={onRetry}
-          className="mt-4 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+          variant="neutral"
+          size="sm"
+          className="mt-4"
         >
           {retryLabel}
-        </button>
+        </Button>
       )}
     </div>
   );

@@ -266,7 +266,6 @@ export function DataAnalyseView() {
     <div className="flex flex-col gap-4 p-4 md:p-6 max-w-[1400px] mx-auto w-full">
       <PageHeader
         title="Data Analyse"
-        description="Analyze real telemetry arrival, signal intervals, high-frequency availability, storage paths, and health calculation inputs for connected vehicles."
         actions={
           <div className="flex flex-wrap gap-2">
             <StatusChip tone="info">Temporary internal diagnostic page</StatusChip>

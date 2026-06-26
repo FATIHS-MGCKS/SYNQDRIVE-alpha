@@ -486,7 +486,7 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
               type="button"
               disabled={mutating || detailLoading}
               onClick={() => void handleSubmit()}
-              className="sq-press min-h-[48px] w-full rounded-xl bg-[color:var(--brand)] font-semibold text-white disabled:opacity-50"
+              className="sq-3d-btn sq-3d-btn--primary min-h-[48px] w-full font-semibold disabled:opacity-50"
             >
               {mutating ? 'Speichern…' : isEdit ? 'Änderungen speichern' : 'Buchung anlegen'}
             </button>

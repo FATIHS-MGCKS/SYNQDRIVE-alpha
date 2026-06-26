@@ -739,8 +739,8 @@ function CreateInvoiceForm({ isDarkMode, orgId, customers, vehicles, vendors, on
         )}
 
         <div className="flex justify-end gap-3 mt-6 pt-4 border-t" style={{ borderColor: isDarkMode ? 'rgb(64 64 64 / 0.5)' : 'rgb(229 231 235 / 0.5)' }}>
-          <button onClick={onClose} className={`px-4 py-2.5 rounded-xl text-xs font-semibold border ${isDarkMode ? 'border-neutral-700 text-gray-400' : 'border-gray-200 text-gray-600'}`}>Abbrechen</button>
-          <button onClick={handleSubmit} disabled={saving || !form.title || (!isOut && !form.totalCents)} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+          <button onClick={onClose} className="sq-3d-btn sq-3d-btn--neutral px-4 py-2.5 text-xs font-semibold">Abbrechen</button>
+          <button onClick={handleSubmit} disabled={saving || !form.title || (!isOut && !form.totalCents)} className="sq-3d-btn sq-3d-btn--primary flex items-center gap-2 px-5 py-2.5 text-xs font-semibold disabled:opacity-50">
             {saving ? <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : <Icon name="receipt" className="w-3.5 h-3.5" />} Rechnung erstellen
           </button>
         </div>
@@ -882,8 +882,8 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
   const showMarkSent = canMarkSent(invoice.status, invoice.type);
   const showPayments = canRecordPayment(invoice.status) && outstanding > 0 && invoice.status !== 'PAID';
 
-  const disabledBtn = `flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border opacity-50 cursor-not-allowed ${isDarkMode ? 'border-neutral-700 text-gray-500' : 'border-gray-200 text-gray-400'}`;
-  const actionBtn = `flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-colors ${isDarkMode ? 'border-neutral-700 text-gray-300 hover:bg-neutral-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`;
+  const disabledBtn = 'sq-3d-btn sq-3d-btn--neutral flex items-center gap-1.5 px-3 py-2 text-xs font-semibold opacity-50 cursor-not-allowed';
+  const actionBtn = 'sq-3d-btn sq-3d-btn--neutral flex items-center gap-1.5 px-3 py-2 text-xs font-semibold';
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
@@ -950,7 +950,7 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
                 <button type="button" onClick={() => { setShowPaymentForm(!showPaymentForm); setPaymentAmount((outstanding / 100).toFixed(2)); }} className={actionBtn}>
                   <Icon name="dollar-sign" className="w-3 h-3" /> Zahlung erfassen
                 </button>
-                <button type="button" onClick={handleMarkPaid} disabled={markingPaid} className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-xl text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50">
+                <button type="button" onClick={handleMarkPaid} disabled={markingPaid} className="sq-3d-btn sq-3d-btn--success flex items-center gap-1.5 px-3 py-2 text-xs font-semibold disabled:opacity-50">
                   {markingPaid ? <Icon name="loader-2" className="w-3 h-3 animate-spin" /> : <Icon name="check-circle" className="w-3 h-3" />}
                   Rest bezahlen
                 </button>
@@ -983,8 +983,8 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
               <input value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} className={inputCls} placeholder="optional" />
             </div>
             <div className="sm:col-span-3 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowPaymentForm(false)} className={`px-3 py-2 text-xs ${ts}`}>Abbrechen</button>
-              <button type="button" onClick={handleRecordPayment} disabled={recordingPayment} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-semibold disabled:opacity-50">
+              <button type="button" onClick={() => setShowPaymentForm(false)} className="sq-3d-btn sq-3d-btn--neutral px-3 py-2 text-xs font-semibold">Abbrechen</button>
+              <button type="button" onClick={handleRecordPayment} disabled={recordingPayment} className="sq-3d-btn sq-3d-btn--primary px-4 py-2 text-xs font-semibold disabled:opacity-50">
                 {recordingPayment ? 'Speichern…' : 'Zahlung buchen'}
               </button>
             </div>
@@ -1151,8 +1151,8 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
           <div className="space-y-3">
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={`${inputCls} resize-none`} placeholder="Interne Notizen..." />
             <div className="flex gap-2 justify-end">
-              <button type="button" onClick={() => { setEditingNotes(false); setNotes(invoice.notes || ''); }} className={`px-3 py-1.5 rounded-lg text-xs ${ts}`}>Abbrechen</button>
-              <button type="button" onClick={saveNotes} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold">Speichern</button>
+              <button type="button" onClick={() => { setEditingNotes(false); setNotes(invoice.notes || ''); }} className="sq-3d-btn sq-3d-btn--neutral px-3 py-1.5 text-xs font-semibold">Abbrechen</button>
+              <button type="button" onClick={saveNotes} className="sq-3d-btn sq-3d-btn--primary px-3 py-1.5 text-xs font-semibold">Speichern</button>
             </div>
           </div>
         ) : (

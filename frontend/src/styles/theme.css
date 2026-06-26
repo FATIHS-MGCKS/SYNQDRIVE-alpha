@@ -1077,7 +1077,12 @@
   position: relative;
   overflow: hidden;
   border-radius: 10px;
-  transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+  transition:
+    transform 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+    box-shadow 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+    background 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+    border-color 0.25s cubic-bezier(0.25, 1, 0.5, 1),
+    color 0.2s var(--ease-out-soft);
   box-shadow: 
     0 2px 4px color-mix(in srgb, var(--foreground) 4%, transparent),
     0 1px 2px color-mix(in srgb, var(--foreground) 2%, transparent),
@@ -1086,9 +1091,10 @@
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   background: linear-gradient(180deg, var(--card) 0%, color-mix(in srgb, var(--card) 96%, var(--muted)) 100%);
   color: var(--foreground);
+  will-change: transform;
 }
 
-.sq-3d-btn:hover {
+.sq-3d-btn:hover:not(:disabled) {
   transform: translateY(-1.5px);
   box-shadow: 
     0 4px 8px color-mix(in srgb, var(--foreground) 6%, transparent),
@@ -1097,11 +1103,29 @@
     inset 0 -1px 1px color-mix(in srgb, black 5%, transparent);
 }
 
-.sq-3d-btn:active {
+.sq-3d-btn:active:not(:disabled) {
   transform: translateY(1px);
   box-shadow: 
     0 1px 1px color-mix(in srgb, var(--foreground) 2%, transparent),
     inset 0 2px 4px color-mix(in srgb, black 8%, transparent);
+}
+
+.sq-3d-btn:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px var(--brand-soft),
+    0 0 0 1px color-mix(in srgb, var(--brand) 38%, transparent),
+    0 4px 10px color-mix(in srgb, var(--brand) 18%, transparent),
+    inset 0 1px 1px color-mix(in srgb, white 25%, transparent);
+}
+
+.sq-3d-btn:disabled,
+.sq-3d-btn[aria-disabled='true'] {
+  cursor: not-allowed;
+  transform: none;
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--foreground) 3%, transparent),
+    inset 0 1px 1px color-mix(in srgb, white 10%, transparent);
 }
 
 .sq-3d-btn .icon-wrapper {
@@ -1152,6 +1176,50 @@
   color: white;
 }
 
+.sq-3d-btn--destructive {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--status-critical) 90%, white) 0%, var(--status-critical) 100%);
+  color: white;
+  border-color: color-mix(in srgb, var(--status-critical) 80%, black);
+  box-shadow:
+    0 2px 6px color-mix(in srgb, var(--status-critical) 30%, transparent),
+    inset 0 1px 1px color-mix(in srgb, white 30%, transparent),
+    inset 0 -1px 2px color-mix(in srgb, black 20%, transparent);
+}
+.sq-3d-btn--destructive:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--status-critical) 95%, white) 0%, color-mix(in srgb, var(--status-critical) 95%, black) 100%);
+  box-shadow:
+    0 4px 10px color-mix(in srgb, var(--status-critical) 40%, transparent),
+    inset 0 1px 1px color-mix(in srgb, white 40%, transparent),
+    inset 0 -1px 2px color-mix(in srgb, black 20%, transparent);
+}
+.sq-3d-btn--destructive .icon-wrapper {
+  background: color-mix(in srgb, white 20%, transparent);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, black 15%, transparent);
+  color: white;
+}
+
+.sq-3d-btn--warning {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--status-warning) 88%, white) 0%, var(--status-warning) 100%);
+  color: white;
+  border-color: color-mix(in srgb, var(--status-warning) 78%, black);
+  box-shadow:
+    0 2px 6px color-mix(in srgb, var(--status-warning) 28%, transparent),
+    inset 0 1px 1px color-mix(in srgb, white 30%, transparent),
+    inset 0 -1px 2px color-mix(in srgb, black 18%, transparent);
+}
+.sq-3d-btn--warning:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--status-warning) 94%, white) 0%, color-mix(in srgb, var(--status-warning) 94%, black) 100%);
+  box-shadow:
+    0 4px 10px color-mix(in srgb, var(--status-warning) 38%, transparent),
+    inset 0 1px 1px color-mix(in srgb, white 38%, transparent),
+    inset 0 -1px 2px color-mix(in srgb, black 18%, transparent);
+}
+.sq-3d-btn--warning .icon-wrapper {
+  background: color-mix(in srgb, white 20%, transparent);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, black 15%, transparent);
+  color: white;
+}
+
 .sq-3d-btn--neutral {
   color: var(--muted-foreground);
 }
@@ -1166,6 +1234,20 @@
 .sq-3d-btn--neutral .icon-wrapper {
   background: var(--muted);
   box-shadow: inset 0 1px 2px color-mix(in srgb, black 5%, transparent), 0 1px 0 color-mix(in srgb, white 10%, transparent);
+  color: inherit;
+}
+
+.sq-3d-btn--secondary {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--secondary) 82%, var(--card)) 0%, var(--secondary) 100%);
+  color: var(--secondary-foreground);
+  border-color: color-mix(in srgb, var(--border) 85%, transparent);
+}
+.sq-3d-btn--secondary:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--secondary) 72%, var(--card)) 0%, color-mix(in srgb, var(--secondary) 92%, var(--foreground)) 100%);
+}
+.sq-3d-btn--secondary .icon-wrapper {
+  background: color-mix(in srgb, var(--secondary) 90%, transparent);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, black 6%, transparent);
   color: inherit;
 }
 
@@ -1216,25 +1298,29 @@
 
 /* ── Primary brand CTA ── */
 .sq-cta {
-  background: var(--brand);
-  color: var(--brand-foreground);
-  border: 1px solid var(--brand);
-  border-radius: var(--radius);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand) 90%, white) 0%, var(--brand) 100%);
+  color: white;
+  border: 1px solid color-mix(in srgb, var(--brand) 80%, black);
+  border-radius: 10px;
   padding: 0.5rem 0.9rem;
   font-size: var(--text-body);
   font-weight: var(--font-weight-semibold);
   letter-spacing: -0.005em;
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--brand) 85%, white 15%),
-    0 1px 2px rgba(16, 24, 40, 0.10),
-    0 2px 6px var(--brand-glow);
+    0 2px 6px color-mix(in srgb, var(--brand) 30%, transparent),
+    inset 0 1px 1px color-mix(in srgb, white 30%, transparent),
+    inset 0 -1px 2px color-mix(in srgb, black 20%, transparent);
   transition:
     transform var(--dur-fast) var(--ease-out-soft),
     box-shadow var(--dur-fast) var(--ease-out-soft),
     background var(--dur-fast) var(--ease-out-soft);
 }
 .sq-cta:hover {
-  background: var(--brand-hover);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand) 95%, white) 0%, color-mix(in srgb, var(--brand) 95%, black) 100%);
+  box-shadow:
+    0 4px 10px color-mix(in srgb, var(--brand) 40%, transparent),
+    inset 0 1px 1px color-mix(in srgb, white 40%, transparent),
+    inset 0 -1px 2px color-mix(in srgb, black 20%, transparent);
 }
 .sq-cta:active {
   transform: translateY(1px);

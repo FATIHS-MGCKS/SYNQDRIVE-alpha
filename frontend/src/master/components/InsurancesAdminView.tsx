@@ -96,8 +96,6 @@ export function InsurancesAdminView() {
     <div className="space-y-6 pb-8">
       <PageHeader
         title="Insurance — Admin"
-        eyebrow="Master Admin"
-        description="Partner registry, templates, inquiry monitoring, and diagnostics"
         icon={<Shield className="w-4 h-4" />}
       />
 
@@ -276,7 +274,7 @@ function PartnersTab() {
           <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search partners..." className={`${INPUT} pl-10`} />
         </div>
-        <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
+        <button onClick={openCreate} className="sq-3d-btn sq-3d-btn--primary flex items-center gap-2 px-4 py-2.5 text-sm font-bold">
           <Plus className="w-4 h-4" /> Add Partner
         </button>
         <button onClick={load} className={`p-2.5 rounded-xl border transition-colors border-border text-muted-foreground hover:text-foreground`}>
@@ -363,8 +361,8 @@ function PartnersTab() {
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button onClick={() => { setEditId(null); setShowCreate(false); }} className={`px-4 py-2 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground`}>Cancel</button>
-            <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50">
+            <button onClick={() => { setEditId(null); setShowCreate(false); }} className="sq-3d-btn sq-3d-btn--neutral px-4 py-2 text-sm font-semibold">Cancel</button>
+            <button onClick={handleSave} disabled={saving} className="sq-3d-btn sq-3d-btn--primary flex items-center gap-2 px-5 py-2 text-sm font-bold disabled:opacity-50">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {editId ? 'Update' : 'Create'}
             </button>
           </div>
@@ -476,7 +474,7 @@ function ContactsTab() {
           </select>
         </div>
         {selectedPartnerId && (
-          <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
+          <button onClick={openCreate} className="sq-3d-btn sq-3d-btn--primary flex items-center gap-2 px-4 py-2.5 text-sm font-bold">
             <Plus className="w-4 h-4" /> Add Contact
           </button>
         )}
@@ -514,8 +512,8 @@ function ContactsTab() {
           </div>
           <div><label className={LABEL}>Notes</label><textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} className={INPUT} /></div>
           <div className="flex justify-end gap-3 pt-2">
-            <button onClick={() => { setEditId(null); setShowCreate(false); }} className={`px-4 py-2 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground`}>Cancel</button>
-            <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50">
+            <button onClick={() => { setEditId(null); setShowCreate(false); }} className="sq-3d-btn sq-3d-btn--neutral px-4 py-2 text-sm font-semibold">Cancel</button>
+            <button onClick={handleSave} disabled={saving} className="sq-3d-btn sq-3d-btn--primary flex items-center gap-2 px-5 py-2 text-sm font-bold disabled:opacity-50">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save
             </button>
           </div>
@@ -603,7 +601,7 @@ function DisclosureTemplatesTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
+        <button onClick={openCreate} className="sq-3d-btn sq-3d-btn--primary flex items-center gap-2 px-4 py-2.5 text-sm font-bold">
           <Plus className="w-4 h-4" /> New Disclosure Template
         </button>
         <button onClick={load} className={`p-2.5 rounded-xl border transition-colors border-border text-muted-foreground hover:text-foreground`}>
@@ -630,8 +628,8 @@ function DisclosureTemplatesTab() {
             </button>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button onClick={() => { setEditId(null); setShowCreate(false); }} className={`px-4 py-2 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground`}>Cancel</button>
-            <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50">
+            <button onClick={() => { setEditId(null); setShowCreate(false); }} className="sq-3d-btn sq-3d-btn--neutral px-4 py-2 text-sm font-semibold">Cancel</button>
+            <button onClick={handleSave} disabled={saving} className="sq-3d-btn sq-3d-btn--primary flex items-center gap-2 px-5 py-2 text-sm font-bold disabled:opacity-50">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save
             </button>
           </div>
@@ -717,7 +715,7 @@ function InquiryTemplatesTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
+        <button onClick={openCreate} className="sq-3d-btn sq-3d-btn--primary flex items-center gap-2 px-4 py-2.5 text-sm font-bold">
           <Plus className="w-4 h-4" /> New Inquiry Template
         </button>
         <button onClick={load} className={`p-2.5 rounded-xl border transition-colors border-border text-muted-foreground hover:text-foreground`}>
@@ -758,8 +756,8 @@ function InquiryTemplatesTab() {
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button onClick={() => { setEditId(null); setShowCreate(false); }} className={`px-4 py-2 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground`}>Cancel</button>
-            <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50">
+            <button onClick={() => { setEditId(null); setShowCreate(false); }} className="sq-3d-btn sq-3d-btn--neutral px-4 py-2 text-sm font-semibold">Cancel</button>
+            <button onClick={handleSave} disabled={saving} className="sq-3d-btn sq-3d-btn--primary flex items-center gap-2 px-5 py-2 text-sm font-bold disabled:opacity-50">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save
             </button>
           </div>

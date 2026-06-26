@@ -198,8 +198,6 @@ export function ActivityLogView(_props: ActivityLogViewProps) {
     <div className="space-y-5 pb-8">
       <PageHeader
         title="Activity Log"
-        eyebrow="Master Admin"
-        description="Platform-wide audit trail and administrative events"
         icon={<Activity className="w-4 h-4" />}
         actions={
           <Button

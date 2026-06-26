@@ -92,7 +92,7 @@ describe('deriveFleetVisualState', () => {
     expect(state.mapTone).toBe('reserved');
   });
 
-  it('maintenance / critical health => maintenance or blocked', () => {
+  it('maintenance stays maintenance; critical health without blocker is attention, not blocked', () => {
     const maintenance = deriveFleetVisualState(
       base({ status: 'Maintenance', maintenanceUrgency: 'urgent' }),
     );
@@ -109,7 +109,10 @@ describe('deriveFleetVisualState', () => {
         },
       },
     );
-    expect(critical.visualStatus).toBe('blocked');
+    expect(critical.visualStatus).toBe('attention');
+    expect(critical.readiness).toBe('ready');
+    expect(critical.isBlocked).toBe(false);
+    expect(critical.attentionLevel).toBe('critical');
   });
 
   it('missing location => no_location when required', () => {

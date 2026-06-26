@@ -324,7 +324,7 @@ export function VendorManagementView({
     <button
       type="button"
       onClick={openCreate}
-      className="sq-press flex items-center gap-2 rounded-xl bg-[color:var(--brand)] px-3 py-2 text-[10px] font-semibold text-white shadow-[var(--shadow-1)] transition-all hover:opacity-90"
+      className="sq-3d-btn sq-3d-btn--primary flex items-center gap-2 px-3 py-2 text-[10px] font-semibold"
     >
       <Icon name="plus" className="h-4 w-4" />
       Add Partner
@@ -688,7 +688,7 @@ export function VendorManagementView({
               <button
                 type="button"
                 onClick={openCreate}
-                className="sq-press inline-flex items-center gap-2 rounded-xl bg-[color:var(--brand)] px-3 py-2 text-[10px] font-semibold text-white shadow-[var(--shadow-1)] transition-all hover:opacity-90"
+                className="sq-3d-btn sq-3d-btn--primary inline-flex items-center gap-2 px-3 py-2 text-[10px] font-semibold"
               >
                 <Icon name="plus" className="h-4 w-4" />
                 Add Vendor
@@ -724,7 +724,7 @@ export function VendorManagementView({
                 <button
                   type="button"
                   onClick={() => { handleDelete(editVendor.id); closeModal(); }}
-                  className="text-[11px] text-[color:var(--status-critical)] transition hover:opacity-80"
+                  className="sq-3d-btn sq-3d-btn--destructive px-3 py-2 text-[11px] font-semibold"
                 >
                   Delete Vendor
                 </button>
@@ -734,7 +734,7 @@ export function VendorManagementView({
               <button
                 type="button"
                 onClick={closeModal}
-                className="rounded-lg px-4 py-2 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                className="sq-3d-btn sq-3d-btn--neutral px-4 py-2 text-xs font-medium"
               >
                 Cancel
               </button>
@@ -742,7 +742,7 @@ export function VendorManagementView({
                 type="button"
                 onClick={handleSave}
                 disabled={saving || !form.name.trim() || !canManage}
-                className="sq-cta rounded-lg px-4 py-2 text-xs font-medium disabled:opacity-50"
+                className="sq-3d-btn sq-3d-btn--primary px-4 py-2 text-xs font-medium disabled:opacity-50"
               >
                 {saving ? <Icon name="loader-2" className="h-3.5 w-3.5 animate-spin" /> : editVendor ? 'Save Changes' : 'Create Vendor'}
               </button>

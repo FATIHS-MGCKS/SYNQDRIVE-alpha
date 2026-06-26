@@ -239,7 +239,6 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
     <div className="space-y-5 max-w-[1600px] mx-auto">
       <PageHeader
         title="Data Authorization & Consent Center"
-        description="Verwalte, prüfe und widerrufe Datenfreigaben für Telemetrie, Fahrzeuge, Kunden, Buchungen und Partnerzugriffe."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {canManage && (

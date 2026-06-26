@@ -137,13 +137,6 @@ export function MasterDashboardView({ onViewChange }: MasterDashboardViewProps) 
     return () => { cancelled = true; };
   }, [reloadKey]);
 
-  const dateLabel = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
-
   const hasCritical = alerts.some((a) => a.severity === 'critical');
 
   if (loading) {
@@ -210,7 +203,6 @@ export function MasterDashboardView({ onViewChange }: MasterDashboardViewProps) 
     <div className="max-w-[1600px] mx-auto space-y-5 pb-4">
       <PageHeader
         title="Platform Overview"
-        description={dateLabel}
         status={
           <StatusChip
             tone={hasCritical ? 'critical' : 'success'}

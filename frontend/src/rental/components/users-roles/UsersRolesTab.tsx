@@ -43,7 +43,6 @@ export function UsersRolesTab({ orgId }: UsersRolesTabProps) {
     <div className="max-w-[1600px] mx-auto space-y-5 animate-fade-up">
       <PageHeader
         title="Benutzer & Rollen"
-        description="Verwalten Sie Benutzer, Einladungen, Rollenvorlagen und Zugriffsbereiche Ihrer Organisation."
       />
 
       <div className="flex gap-1 overflow-x-auto pb-1 border-b border-border/60">

@@ -152,7 +152,7 @@ export function OperatorPickupCheckSheet({
           type="button"
           disabled={saving}
           onClick={() => void submit()}
-          className="sq-press min-h-[48px] w-full rounded-xl bg-[color:var(--brand)] font-semibold text-white disabled:opacity-50"
+          className="sq-3d-btn sq-3d-btn--primary min-h-[48px] w-full font-semibold disabled:opacity-50"
         >
           {saving ? (
             <span className="inline-flex items-center gap-2">

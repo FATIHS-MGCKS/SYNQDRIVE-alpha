@@ -41,7 +41,7 @@ export function OperatorLinkCard({ className = '' }: OperatorLinkCardProps) {
       <button
         type="button"
         onClick={() => void copy()}
-        className="sq-press inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--brand)] px-4 py-2.5 text-xs font-semibold text-white"
+        className="sq-3d-btn sq-3d-btn--primary inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold"
       >
         {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
         {copied ? 'Kopiert' : 'Link kopieren'}

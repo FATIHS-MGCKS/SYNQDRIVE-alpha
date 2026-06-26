@@ -73,7 +73,6 @@ export function BillingControlCenter(_props: BillingControlCenterProps) {
     <div className="space-y-5 max-w-[1600px] mx-auto">
       <PageHeader
         title="Billing Control Center"
-        description="Verwalte Subscriptions, Preisstaffeln, Rechnungen und Zahlungsstatus aller Organisationen."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <button

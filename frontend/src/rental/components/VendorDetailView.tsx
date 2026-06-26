@@ -371,11 +371,11 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => { setEditing(false); setForm(null); }}
-              className={`px-3 py-2 rounded-lg text-xs font-medium transition ${'text-muted-foreground hover:text-foreground'}`}>
+              className="sq-3d-btn sq-3d-btn--neutral px-3 py-2 text-xs font-medium">
               Cancel
             </button>
             <button onClick={handleSave} disabled={saving || !form.name.trim()}
-              className="px-4 py-2 rounded-lg text-xs font-medium bg-brand text-brand-foreground hover:bg-[color:var(--brand-hover)] transition disabled:opacity-50 shadow-sm">
+              className="sq-3d-btn sq-3d-btn--primary px-4 py-2 text-xs font-medium disabled:opacity-50">
               {saving ? <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : 'Save Changes'}
             </button>
           </div>
@@ -479,6 +479,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
   return (
     <div className="space-y-5">
       <PageHeader
+        variant="full"
         eyebrow={(
           <button
             type="button"
@@ -909,11 +910,11 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
             </div>
             <div className={`flex items-center justify-end gap-2 p-4 border-t ${'border-border'}`}>
               <button onClick={() => setLinkModal(null)}
-                className={`px-3 py-2 rounded-lg text-xs font-medium transition ${'text-muted-foreground hover:text-foreground'}`}>
+                className="sq-3d-btn sq-3d-btn--neutral px-3 py-2 text-xs font-medium">
                 Cancel
               </button>
               <button onClick={submitLink} disabled={linkSaving || (linkModal.mode === 'create' && !linkForm.vehicleId)}
-                className="px-4 py-2 rounded-lg text-xs font-medium bg-brand text-brand-foreground hover:bg-[color:var(--brand-hover)] transition disabled:opacity-50 shadow-sm">
+                className="sq-3d-btn sq-3d-btn--primary px-4 py-2 text-xs font-medium disabled:opacity-50">
                 {linkSaving ? <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> : linkModal.mode === 'create' ? 'Link Vehicle' : 'Save'}
               </button>
             </div>

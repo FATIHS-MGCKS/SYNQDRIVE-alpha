@@ -59,7 +59,7 @@ export function OperatorTodayView() {
       <button
         type="button"
         onClick={() => openSheet({ type: 'booking-create' })}
-        className="sq-press flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-[color:var(--brand)] font-semibold text-white"
+        className="sq-3d-btn sq-3d-btn--primary flex min-h-[48px] w-full items-center justify-center gap-2 font-semibold"
       >
         <Plus className="h-5 w-5" />
         Buchung aufnehmen

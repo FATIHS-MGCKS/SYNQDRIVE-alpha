@@ -254,4 +254,22 @@ export function effectiveSourceSummary(effective: EffectiveRentalRulesDto): stri
   return 'Organization default rules';
 }
 
+/** German UI copy for Requirements tab — display only, no logic change. */
+export function effectiveSourceSummaryDe(effective: EffectiveRentalRulesDto): string {
+  const sources = new Set(
+    [
+      effective.minimumAgeYears.source,
+      effective.depositAmount.source,
+      effective.creditCardRequired.source,
+    ].filter(Boolean),
+  );
+  if (sources.has('VEHICLE_OVERRIDE')) {
+    return 'Enthält fahrzeugspezifische Overrides';
+  }
+  if (sources.has('CATEGORY') && effective.rentalCategoryName) {
+    return `Primär aus Kategorie „${effective.rentalCategoryName}"`;
+  }
+  return 'Organisationsstandard-Regeln';
+}
+
 export { labelRuleField };

@@ -453,7 +453,7 @@ function AddVehicleModal({ onClose,
           <button
             onClick={handle}
             disabled={loading || !vin.trim() || !brand.trim()}
-            className="flex-1 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            className="sq-3d-btn sq-3d-btn--primary flex flex-1 items-center justify-center gap-2 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             Add Vehicle
@@ -591,7 +591,7 @@ function EligibilityTab({ onAddToList,
             <button
               onClick={check}
               disabled={loading || !vin.trim() || !brand.trim()}
-              className="w-full sm:w-auto px-5 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+              className="sq-3d-btn sq-3d-btn--primary flex w-full items-center gap-2 px-5 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
               Check
@@ -663,7 +663,7 @@ function EligibilityTab({ onAddToList,
             {result.eligibilityStatus === 'ELIGIBLE' && (
               <button
                 onClick={() => onAddToList(result.vin, result.brand)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                className="sq-3d-btn sq-3d-btn--primary flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Add to Vehicle List
@@ -822,7 +822,7 @@ function VehicleListTab({ }: {
         </div>
         <button
           onClick={() => { setAddVin(''); setAddBrand(''); setShowAdd(true); }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          className="sq-3d-btn sq-3d-btn--primary flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium"
         >
           <Plus className="w-3.5 h-3.5" />
           Add Vehicle
@@ -1152,7 +1152,7 @@ function StreamingTab() {
               <button
                 onClick={handleTestConnection}
                 disabled={testingConn}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="sq-3d-btn sq-3d-btn--primary flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium disabled:opacity-50"
               >
                 {testingConn ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Signal className="w-3.5 h-3.5" />}
                 Test Connection
@@ -1269,10 +1269,8 @@ export function HighMobilityDataView() {
     <div className="flex flex-col h-full min-h-0 px-4 sm:px-6 py-5 space-y-5">
       <PageHeader
         title="High Mobility"
-        eyebrow="Master Admin"
-        description="Dual-app MQTT V2 architecture — separate credentials, topics, consumers, and routing per app container"
         icon={<Radio className="w-4 h-4" />}
-        meta={
+        status={
           <>
             <StatusChip tone="success">HM Health-APP</StatusChip>
             <StatusChip tone="info">HM Telemetry-APP</StatusChip>

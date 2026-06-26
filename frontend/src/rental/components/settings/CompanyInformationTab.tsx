@@ -190,7 +190,6 @@ export function CompanyInformationTab({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <PageHeader
           title="Unternehmensinformationen"
-          description="Zentrale Firmen-, Rechnungs- und Brandingdaten für Dokumente, Rechnungen und Kommunikation."
         />
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <StatusChip tone={READINESS_TONE[readiness]}>{READINESS_LABEL[readiness]}</StatusChip>

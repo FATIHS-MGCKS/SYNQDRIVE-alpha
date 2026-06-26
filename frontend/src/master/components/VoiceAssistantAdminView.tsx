@@ -241,7 +241,6 @@ export function VoiceAssistantAdminView() {
     <div className="mx-auto max-w-[1400px] space-y-4 p-1">
       <PageHeader
         title="Voice Assistant Overview"
-        description="Monitor readiness, telephony, and call activity across all organizations."
         actions={
           <button
             type="button"

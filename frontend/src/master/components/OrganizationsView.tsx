@@ -187,9 +187,6 @@ export function OrganizationsView({
     return matchesSearch && matchesPlan && matchesStatus;
   });
 
-  const totalMRR = filteredOrgs.reduce((s, o) => s + o.mrr, 0);
-  const totalVehicles = filteredOrgs.reduce((s, o) => s + o.fleet_size, 0);
-
   const inputClass = 'w-full px-3 py-2 rounded-lg border text-sm outline-none transition-colors bg-muted border-border text-foreground focus:border-ring';
   const labelClass = `block text-sm font-semibold mb-1 text-foreground`;
 
@@ -267,7 +264,6 @@ export function OrganizationsView({
     <div className="space-y-4 pb-6 animate-fade-up">
       <PageHeader
         title="Organizations"
-        description={`${filteredOrgs.length} organizations · ${totalVehicles} vehicles · €${totalMRR.toLocaleString()} MRR`}
         actions={(
           <button
             type="button"
@@ -548,7 +544,7 @@ export function OrganizationsView({
                       </div>
                       <p className={`text-sm font-medium text-muted-foreground`}>Logo hochladen</p>
                       <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>PNG, JPG bis 2MB</p>
-                      <button className="mt-3 px-4 py-1.5 bg-indigo-500 text-white text-xs font-semibold rounded-lg hover:bg-indigo-600 transition-colors">
+                      <button className="sq-3d-btn sq-3d-btn--neutral mt-3 px-4 py-1.5 text-xs font-semibold">
                         Datei auswählen
                       </button>
                     </div>
@@ -556,7 +552,7 @@ export function OrganizationsView({
 
                   {/* Buttons */}
                   <div className="flex gap-3 pt-2">
-                    <button onClick={closeModal} className={`flex-1 px-4 py-2.5 rounded-lg font-semibold transition-all border bg-muted text-foreground hover:bg-muted/80 border-border`}>
+                    <button onClick={closeModal} className="sq-3d-btn sq-3d-btn--neutral flex-1 px-4 py-2.5 font-semibold">
                       Abbrechen
                     </button>
                     {isEdit ? (
@@ -610,7 +606,7 @@ export function OrganizationsView({
                   </label>
 
                   <div className="flex gap-3 pt-2">
-                    <button onClick={closeModal} className={`flex-1 px-4 py-2.5 rounded-lg font-semibold transition-all border bg-muted text-foreground hover:bg-muted/80 border-border`}>
+                    <button onClick={closeModal} className="sq-3d-btn sq-3d-btn--neutral flex-1 px-4 py-2.5 font-semibold">
                       Abbrechen
                     </button>
                     <button onClick={handleFinalCreate} disabled={saving || !step2Valid} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 sq-cta rounded-xl font-semibold transition-all ${(saving || !step2Valid) ? 'opacity-50' : ''}`}>

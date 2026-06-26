@@ -92,7 +92,7 @@ export function BookingsPage({
 
   return (
     <div className="max-w-[1800px] mx-auto space-y-4">
-      <PageHeader title="Buchungen" description="Reservation Planner · Belegung & Verwaltung" />
+      <PageHeader title="Buchungen" />
 
       <BookingsToolbar
         filters={filters}

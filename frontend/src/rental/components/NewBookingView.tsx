@@ -1044,7 +1044,6 @@ export function NewBookingView({ onBack, onCustomerCreated, onBookingCreated }: 
     <div className="space-y-5">
       <PageHeader
         title="New Booking"
-        description="Create a rental booking in 5 steps"
         icon={<Icon name="calendar" className="w-4 h-4" />}
         actions={
           <div className="flex items-center gap-2">
@@ -1158,7 +1157,7 @@ export function NewBookingView({ onBack, onCustomerCreated, onBookingCreated }: 
                     setGeneratingContract(false);
                     setQuickViewDoc(null);
                   }}
-                  className="flex-1 px-3 py-2 rounded-lg bg-blue-600 text-white text-xs hover:bg-blue-700 transition-all"
+                  className="sq-3d-btn sq-3d-btn--primary flex-1 px-3 py-2 text-xs"
                 >
                   Neue Buchung
                 </button>
@@ -3147,7 +3146,7 @@ export function NewBookingView({ onBack, onCustomerCreated, onBookingCreated }: 
               {currentStep > 1 && (
                 <button
                   onClick={() => setCurrentStep(s => s - 1)}
-                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-xs transition-all ${ 'bg-card border border-border text-foreground hover:bg-muted' }`}
+                  className="sq-3d-btn sq-3d-btn--neutral flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs"
                 >
                   <Icon name="arrow-left" className="w-5 h-5" />
                   Zurück
@@ -3157,7 +3156,7 @@ export function NewBookingView({ onBack, onCustomerCreated, onBookingCreated }: 
                 <button
                   onClick={() => setCurrentStep(s => s + 1)}
                   disabled={!canProceed()}
-                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs transition-all ${ canProceed() ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-[0_4px_16px_rgba(59,130,246,0.3)]' : 'bg-muted text-muted-foreground cursor-not-allowed' }`}
+                  className="sq-3d-btn sq-3d-btn--primary flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Weiter
                   <Icon name="arrow-right" className="w-5 h-5" />
@@ -3166,7 +3165,7 @@ export function NewBookingView({ onBack, onCustomerCreated, onBookingCreated }: 
                 <button
                   onClick={handleConfirm}
                   disabled={!canProceed() || isSavingBooking}
-                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs transition-all ${ canProceed() && !isSavingBooking ? 'bg-green-600 text-white hover:bg-green-700 shadow-[0_4px_16px_rgba(34,197,94,0.3)]' : 'bg-muted text-muted-foreground cursor-not-allowed' }`}
+                  className="sq-3d-btn sq-3d-btn--success flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Icon name="check" className="w-5 h-5" />
                   {isSavingBooking ? 'Speichert…' : 'Buchung bestätigen'}

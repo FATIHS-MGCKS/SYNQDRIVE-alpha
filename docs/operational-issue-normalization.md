@@ -347,6 +347,13 @@ Runtime implementation notes:
 - `criticalReasons.length === 0` must not be used as a Ready-to-Rent condition.
 - `Blocked & Maintenance` counts maintenance, unavailable and explicit blocking reasons only.
 
+Fleet implementation notes:
+
+- `fleetVisualState.isBlocked` must be derived from explicit rental blockers (`rental_blocked` / `blocking_reasons`) only, never from `healthCritical`.
+- `fleetVehicleDisplay.resolveRentalDisplay` may show `Blocked` only when the visual state or rental health contains an explicit blocker.
+- A service-overdue-only vehicle in Fleet Command should read: Health `Critical`, Rental `Ready`, Reason `Service overdue` / `Service überfällig`.
+- Health critical remains usable for attention ordering, critical health badge and reason chip selection.
+
 Tests added/updated:
 
 - Service overdue critical without `rental_blocked` / `blocking_reasons` stays ready, non-blocked and absent from Blocked & Maintenance, while still visible in Critical Alerts.

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { AlertTriangle, X } from 'lucide-react';
 import { cn } from '../ui/utils';
+import { Button } from '../ui/button';
 
 /* ════════════════════════════════════════════════════════════════════
    AppDialog / FormDialog / ConfirmDialog — token-based overlays for
@@ -51,11 +52,16 @@ export function AppDialog({
         >
           {children}
           {!hideClose && (
-            <DialogPrimitive.Close
-              className="absolute top-3.5 right-3.5 z-10 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
+            <DialogPrimitive.Close asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute top-3.5 right-3.5 z-10 size-8"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </DialogPrimitive.Close>
           )}
         </DialogPrimitive.Content>
@@ -167,27 +173,24 @@ export function ConfirmDialog({
         {children}
 
         <div className="mt-5 flex justify-end gap-2">
-          <button
+          <Button
             type="button"
             disabled={loading}
             onClick={() => onOpenChange(false)}
-            className="sq-press rounded-lg px-4 py-2 text-xs font-semibold text-muted-foreground disabled:opacity-50"
+            variant="neutral"
+            size="sm"
           >
             {cancelLabel}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             disabled={loading}
             onClick={() => void onConfirm()}
-            className={cn(
-              'rounded-xl px-4 py-2 text-xs font-semibold text-white transition-opacity disabled:opacity-50',
-              isCritical
-                ? 'bg-[color:var(--status-critical)] hover:opacity-90'
-                : 'sq-cta',
-            )}
+            variant={isCritical ? 'destructive' : 'default'}
+            size="sm"
           >
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </AppDialog>

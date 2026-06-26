@@ -13,6 +13,7 @@ import {
   defaultWeeklyHours,
   parseOpeningHours,
 } from '../../lib/stationUtils';
+import { Button } from '../../../components/ui/button';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
 
@@ -569,18 +570,17 @@ export function StationFormModal({ open, station, saving, orgId, onClose, onSubm
         </div>
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border/60 bg-muted/20">
-          <button type="button" onClick={onClose} className="sq-3d-btn sq-3d-btn--neutral px-4 py-2 text-sm rounded-lg">
+          <Button type="button" onClick={onClose} variant="neutral">
             {t('common.cancel')}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             disabled={saving}
             onClick={() => void handleSave()}
-            className="sq-3d-btn sq-3d-btn--primary px-4 py-2 text-sm rounded-lg inline-flex items-center gap-2"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             {t('common.save')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -225,6 +225,7 @@ export function StationDetailView({
   return (
     <div className="space-y-4 max-w-[1400px] mx-auto">
       <PageHeader
+        variant="full"
         eyebrow={(
           <button type="button" onClick={onBack} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
             <ArrowLeft className="w-3.5 h-3.5" />

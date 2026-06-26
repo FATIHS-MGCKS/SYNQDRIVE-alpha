@@ -218,8 +218,6 @@ export function SupportView({ organizations = [], onNavigateToOrg }: SupportView
     <div className={sop.shell}>
       <PageHeader
         title="Support Operations"
-        eyebrow="Master Admin"
-        description="Zentrale Inbox für alle Organisationen — priorisieren, antworten und intern koordinieren."
         icon={<Headphones className="h-4 w-4 text-[color:var(--brand)]" />}
       />
 

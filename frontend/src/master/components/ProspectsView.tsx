@@ -194,7 +194,6 @@ export function ProspectsView() {
     <div className="space-y-4 pb-6">
       <PageHeader
         title="Prospects"
-        description="Manage potential partner companies, leads, and outreach opportunities"
         icon={<Building2 className="w-4 h-4" />}
         actions={
           <div className="flex items-center gap-3 flex-wrap">

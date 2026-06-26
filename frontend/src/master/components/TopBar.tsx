@@ -1,8 +1,7 @@
-import { Moon, Sun, Bell, Home, Search, Settings, LogOut } from 'lucide-react';
-import { useState } from 'react';
+import { Moon, Sun, Bell, Search, Settings, LogOut } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { clearAuth, getStoredUser } from '../../lib/auth';
 import { OperatorEntryButton } from '../../operator/components/OperatorEntryButton';
-import type { MasterView } from './Sidebar';
 
 // ISO-2 code pills instead of emoji flags (anti-emoji design policy,
 // consistent with the rental TopBar).
@@ -17,67 +16,37 @@ const languages = [
 interface TopBarProps {
   isDarkMode: boolean;
   setIsDarkMode: (value: boolean) => void;
-  currentView?: MasterView;
-  settingsTab?: string;
 }
 
-const viewLabels: Partial<Record<MasterView, string>> = {
-  'dashboard': 'Dashboard',
-  'organizations': 'Organizations',
-  'users': 'Users',
-  'vehicles': 'Vehicles',
-  'prospects': 'Prospects',
-  'subscriptions': 'Subscriptions & Billing',
-  'activity-log': 'Activity Log',
-  'support': 'Support',
-  'settings': 'Settings',
-  'fleet-connection': 'Fleet Connection',
-};
+function formatLoggedInLabel(user: ReturnType<typeof getStoredUser>): string {
+  if (!user) return 'Eingeloggt';
+  const name = user.name?.trim();
+  if (name) return `Eingeloggt als ${name}`;
+  const email = user.email?.trim();
+  if (email) {
+    const localPart = email.split('@')[0]?.trim();
+    if (localPart) return `Eingeloggt als ${localPart}`;
+  }
+  return 'Eingeloggt als Nutzer';
+}
 
-const viewCategories: Partial<Record<MasterView, string>> = {
-  'dashboard': 'Overview',
-  'organizations': 'Management',
-  'users': 'Management',
-  'vehicles': 'Management',
-  'prospects': 'Management',
-  'subscriptions': 'Platform',
-  'activity-log': 'Platform',
-  'support': 'Support',
-  'settings': 'Configuration',
-  'fleet-connection': 'Configuration',
-};
-
-const settingsTabLabels: Record<string, string> = {
-  'general': 'General',
-  'security': 'Security',
-  'api': 'API & Webhooks',
-  'notifications': 'Notifications',
-  'integrations': 'Integrations',
-  'monitoring': 'API & Worker Monitoring',
-};
-
-export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'dashboard', settingsTab }: TopBarProps) {
+export function TopBar({ isDarkMode, setIsDarkMode }: TopBarProps) {
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(languages[1]);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const currentUser = getStoredUser();
+  const loggedInLabel = useMemo(() => formatLoggedInLabel(currentUser), [currentUser]);
+
   return (
     <div className="flex items-center justify-between mb-4 z-10 relative">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs min-w-0 overflow-hidden font-medium">
-        <Home className="w-4 h-4 shrink-0 text-muted-foreground" />
-        <span className="hidden sm:inline text-muted-foreground/40">/</span>
-        <span className="hidden sm:inline text-muted-foreground">{viewCategories[currentView] ?? 'SynqDrive'}</span>
-        <span className="hidden sm:inline text-muted-foreground/40">/</span>
-        {currentView === 'settings' && settingsTab ? (
-          <>
-            <span className="hidden md:inline text-muted-foreground">Settings</span>
-            <span className="hidden md:inline text-muted-foreground/40">/</span>
-            <span className="text-sm font-semibold truncate text-foreground">{settingsTabLabels[settingsTab] || 'General'}</span>
-          </>
-        ) : (
-          <span className="text-sm font-semibold truncate text-foreground">{viewLabels[currentView] ?? currentView}</span>
-        )}
+      <div className="min-w-0 shrink">
+        <p
+          className="hidden sm:block truncate text-[12px] leading-none text-muted-foreground sm:text-[13px]"
+          title={loggedInLabel}
+        >
+          {loggedInLabel}
+        </p>
       </div>
 
       {/* Search */}
@@ -148,7 +117,7 @@ export function TopBar({ isDarkMode, setIsDarkMode, currentView = 'dashboard', s
         </button>
 
         <button className="w-8 h-8 ml-1 sq-tone-critical ring-1 ring-[color:var(--status-critical-soft)] rounded-lg flex items-center justify-center text-xs font-bold transition-all hover:-translate-y-px hover:shadow-[0_4px_12px_-4px_var(--status-critical-soft)]">
-          {(getStoredUser()?.name || 'SA').slice(0, 2).toUpperCase()}
+          {(currentUser?.name || 'SA').slice(0, 2).toUpperCase()}
         </button>
       </div>
     </div>

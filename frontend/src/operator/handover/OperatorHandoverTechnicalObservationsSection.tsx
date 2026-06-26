@@ -285,7 +285,7 @@ export function OperatorHandoverTechnicalObservationsSection({ form }: Props) {
         <button
           type="button"
           onClick={addDraft}
-          className="sq-press flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--brand)] text-sm font-semibold text-white"
+          className="sq-3d-btn sq-3d-btn--primary flex min-h-[48px] w-full items-center justify-center gap-2 text-sm font-semibold"
         >
           <Plus className="h-4 w-4" />
           Beobachtung hinzufügen

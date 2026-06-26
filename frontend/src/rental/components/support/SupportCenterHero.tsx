@@ -33,7 +33,6 @@ export function SupportCenterHero({
     <div className="space-y-5 animate-fade-up">
       <PageHeader
         title="Support"
-        description="Erstelle Tickets, verfolge Antworten und kommuniziere direkt mit dem SynqDrive Support."
         icon={<Headphones className="h-4 w-4 text-[color:var(--brand)]" />}
         actions={
           <div className="flex flex-wrap items-center gap-2">

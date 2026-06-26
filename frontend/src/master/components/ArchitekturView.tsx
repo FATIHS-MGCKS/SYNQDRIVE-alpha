@@ -232,6 +232,14 @@ const FRONTEND_FLOWS: FrontendFlowEntry[] = [
     endpoint: '(n/a)',
     service: '`frontend/src/styles/theme.css` definiert `--text-display-lg` als fluiden Page-Title-Token (`clamp(21px, 1vw + 17px, 24px)`). `frontend/src/components/patterns/page-header.tsx` ist die primäre Page-Title-Surface: kompakter Wrapper, optionales 7x7-Icon-Tile, `h1` mit `font-display`, 700, `leading-[1.15]` und `tracking-display`, Actions rechts ab Desktop.',
     dataSource: 'Alle bestehenden `PageHeader`-Views profitieren automatisch. Legacy-Top-of-Page-`h1` in ausgewählten Rental-/Master-/Detail-Surfaces nutzen denselben Klassensatz, ohne Actions, Filter, Tabs, Statuschips, Descriptions oder Datenflüsse umzubauen. Ausgenommen bleiben Control-Center-/Dashboard-spezifische Header, Login/Auth-Headlines, Operator-App-Shell/Handover-Header, HTML-Druckvorlagen sowie KPI-/Card-/Modal-/Drawer-Titel.' },
+  { name: 'Page Header + TopBar Login Context (V4.9.71)', icon: Palette,
+    endpoint: '(n/a)',
+    service: '`frontend/src/components/patterns/page-header.tsx`: `variant="page"` (Default) rendert nur Titel + optionales Icon/Status + Actions; `variant="full"` behält Eyebrow/Description/Meta für Detail- und Control-Header. Rental/Master `TopBar.tsx`: Breadcrumb entfernt; links dezenter Login-Kontext aus `getStoredUser()` (`name` → „Eingeloggt als …“, sonst E-Mail-Local-Part).',
+    dataSource: 'Normale Listen-/Admin-Seiten nutzen implizit `variant="page"` — übergebene Eyebrow/Description-Props werden nicht gerendert (API bleibt kompatibel). Explizit `variant="full"`: Vehicle Detail (`App.tsx`), Customer/Station/Vendor Detail, Organization Detail, Health Control Center. Unverändert: Dashboard-Control-Header, Drawer/Modal-Header, Vehicle-Tab-interne Section-Header, Sidebar-Navigation.' },
+  { name: 'Button Design System (V4.9.72)', icon: Palette,
+    endpoint: '(n/a)',
+    service: '`frontend/src/components/ui/button.tsx` ist die zentrale Button-API (`default/primary`, `outline/neutral`, `secondary`, `ghost`, `link`, `destructive`, `warning`, `success`, `ai`, Größen default/sm/lg/icon) und nutzt die Stations-Formensprache über `sq-3d-btn`. `frontend/src/styles/theme.css` hält die visuellen Tokens: Elevation, Focus, Disabled, Hover/Pressed und semantische 3D-Modifier.',
+    dataSource: 'UI-only Design-System-Refactor. Semantische Farben bleiben an Status-/Brand-Tokens gebunden: Primary Brand-Blau, destructive `--status-critical`, warning `--status-warning`, success `--status-positive`, neutral Card/Muted. `sq-cta` ist rückwärtskompatibel auf denselben Primary-3D-Stil gehoben. Migriert wurden echte Action-Buttons in Stations, Shared Dialog/Retry, ausgewählten Rental-/Master-Hotspots und Operator-Touch-Footern. Nicht migriert: Tabs, Chips, Badges, Sidebar, Dropdown-Zeilen, Kalender-/Timeline-Zellen, Filter-Pills und Card-Hit-Targets.' },
   { name: 'Operational Issue Normalization Layer (V4.9.51 foundation)', icon: Layers,
     endpoint: 'Keine neue API. Frontend-interne Normalisierungsschicht unter `frontend/src/rental/lib/operational-issues/*`, gebaut auf `docs/operational-issue-normalization.md` als verbindlicher Taxonomy.',
     service: '`operationalIssueTypes.ts` definiert Domains/Severity/Sources/Visibility; `operationalIssueKeys.ts` erzeugt semantische Keys (`vehicle:{id}:service_compliance:overdue`, `booking:{id}:return:overdue`, ...); `operationalIssueSources.ts` waehlt Primary/Supporting Sources nach Prioritaet (canonical > runtime > rental_health > konkrete Tasks/Faelle > dashboard_insight > predictive > derived > legacy); `operationalIssueLabels.ts` formatiert Entity Labels und entfernt technische Source-IDs aus normalen User-Texten; `operationalIssueVisibility.ts` setzt Default-Sichtbarkeit je Domain; `normalizeOperationalIssues.ts` merged RuntimeReasons/VehicleRuntimeState, wichtige DashboardInsights und erste Predictive-Kontexte per Semantic Key.',
@@ -1184,7 +1192,6 @@ export function ArchitekturView(_props: ArchitekturViewProps) {
       <div className="min-w-0 flex-1">
         <PageHeader
           title={activeCat.label}
-          description={activeCat.description}
           className="mb-5"
         />
         {renderContent()}

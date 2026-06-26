@@ -140,9 +140,7 @@ export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Administration"
         title="Rental Rules"
-        description="Define who can rent which vehicles — minimum age, license duration, deposits, and approval rules."
         icon={<ShieldCheck className="h-4 w-4" />}
         actions={
           <div className="flex flex-wrap items-center gap-2">

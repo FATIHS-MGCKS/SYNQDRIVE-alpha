@@ -352,28 +352,25 @@ export function VehicleHealthBox({
         ))}
       </div>
 
-      {!compactOverview && vm.findings.length > 0 && (
+      <HealthModuleRows vm={vm} isDarkMode={isDarkMode} />
+      <UntrackedDimensionsInfo untrackedCount={vm.untrackedCount} />
+
+      {vm.findings.length > 0 && (
         <>
-          <ReportsSection vm={vm} />
           {divider}
+          <ReportsSection vm={vm} />
         </>
       )}
 
-      <HealthModuleRows vm={vm} isDarkMode={isDarkMode} />
-      <UntrackedDimensionsInfo untrackedCount={vm.untrackedCount} />
       {divider}
-
       <DashboardWarningLightsQuickView
         telltales={telltales}
         loading={boxData.dashboardLightsLoading && !telltales}
         onViewDetails={onViewDetails}
       />
-      {!compactOverview && (
-        <>
-          {divider}
-          <ComplianceGrid vm={vm} />
-        </>
-      )}
+
+      {divider}
+      <ComplianceGrid vm={vm} />
 
       {showDataBasis && vm.dataBasis && (
         <>

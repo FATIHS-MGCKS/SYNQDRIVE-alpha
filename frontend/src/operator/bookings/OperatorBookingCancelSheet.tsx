@@ -149,14 +149,14 @@ export function OperatorBookingCancelSheet({ action }: OperatorBookingCancelShee
               type="button"
               disabled={!cancelAllowed || mutating}
               onClick={() => void handleCancel()}
-              className="sq-press min-h-[48px] rounded-xl bg-[color:var(--status-critical)] font-semibold text-white disabled:opacity-45"
+              className="sq-3d-btn sq-3d-btn--destructive min-h-[48px] font-semibold disabled:opacity-45"
             >
               {mutating ? 'Storniere…' : 'Buchung stornieren'}
             </button>
             <button
               type="button"
               onClick={closeSheet}
-              className="sq-press min-h-[48px] rounded-xl border border-border/60 font-semibold"
+              className="sq-3d-btn sq-3d-btn--neutral min-h-[48px] font-semibold"
             >
               Abbrechen
             </button>

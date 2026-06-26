@@ -307,7 +307,7 @@ export function OperatorHandoverFlow({
               type="button"
               onClick={goBack}
               disabled={submitting}
-              className="sq-press min-h-[52px] flex-1 rounded-xl border border-border font-semibold"
+              className="sq-3d-btn sq-3d-btn--neutral min-h-[52px] flex-1 font-semibold"
             >
               Zurück
             </button>
@@ -317,7 +317,7 @@ export function OperatorHandoverFlow({
               type="button"
               onClick={goNext}
               disabled={!booking}
-              className="sq-press min-h-[52px] flex-[2] rounded-xl bg-[color:var(--brand)] font-semibold text-white disabled:opacity-50"
+              className="sq-3d-btn sq-3d-btn--primary min-h-[52px] flex-[2] font-semibold disabled:opacity-50"
             >
               Weiter
             </button>
@@ -326,7 +326,7 @@ export function OperatorHandoverFlow({
               type="button"
               onClick={() => void handleSubmit()}
               disabled={submitting || allIssues.length > 0}
-              className="sq-press flex min-h-[52px] flex-[2] items-center justify-center gap-2 rounded-xl bg-[color:var(--brand)] font-semibold text-white disabled:opacity-50"
+              className="sq-3d-btn sq-3d-btn--primary flex min-h-[52px] flex-[2] items-center justify-center gap-2 font-semibold disabled:opacity-50"
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
               {kind === 'PICKUP'

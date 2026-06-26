@@ -191,6 +191,40 @@ describe('health vs rental display separation', () => {
     expect(d.reasonBadge?.text.toLowerCase()).not.toContain('critical vehicle health');
   });
 
+  it('service overdue critical without explicit blocker stays rental Ready', () => {
+    const d = resolveFleetVehicleDisplayState(
+      vehicle({
+        license: 'KS MX 2024',
+        make: 'Mercedes-Benz',
+        model: 'C 63 AMG',
+        year: 2018,
+        status: 'Available',
+      }),
+      {
+        locale: 'en',
+        rentalHealth: health({
+          overall_state: 'critical',
+          rental_blocked: false,
+          blocking_reasons: [],
+          modules: {
+            battery: mod('good'),
+            tires: mod('good'),
+            brakes: mod('good'),
+            error_codes: mod('good'),
+            service_compliance: mod('critical', 'Service overdue'),
+            complaints: mod('good'),
+            vehicle_alerts: mod('good'),
+          },
+        }),
+      },
+    );
+    expect(d.primaryStatus).toBe('critical');
+    expect(d.healthDisplay.status).toBe('critical');
+    expect(d.rentalDisplay.status).toBe('ready');
+    expect(d.rentalDisplay.label).toBe('Ready');
+    expect(d.reasonBadge?.text).toBe('Service overdue');
+  });
+
   it('warning tires alone → Warning health but rental stays Ready (not Not Ready)', () => {
     const d = resolveFleetVehicleDisplayState(vehicle(), {
       locale: 'en',

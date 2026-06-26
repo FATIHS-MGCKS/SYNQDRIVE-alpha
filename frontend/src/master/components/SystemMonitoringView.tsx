@@ -580,8 +580,6 @@ export function SystemMonitoringView() {
     <div className="space-y-4 pb-6">
       <PageHeader
         title="System Monitoring"
-        eyebrow="Master Admin"
-        description="Visibility and control over polling, workers, and request health"
         icon={<Activity className="w-4 h-4" />}
         status={<StatusChip tone={healthTone}>{health}</StatusChip>}
         actions={

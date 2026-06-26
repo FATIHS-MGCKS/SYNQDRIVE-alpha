@@ -28,6 +28,7 @@ import {
   SkeletonMetricGrid,
   SkeletonCard,
 } from '../../../components/patterns';
+import { Button } from '../../../components/ui/button';
 import {
   formatStationAddress,
   getStationWarnings,
@@ -248,37 +249,38 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
     <div className="space-y-4 pb-8 animate-fade-up">
       <PageHeader
         title={t('stations.pageTitle')}
-        description={t('stations.pageSubtitle')}
         icon={<MapPin className="w-5 h-5" />}
         actions={(
           <div className="flex flex-wrap items-center gap-2">
             {missingCoords > 0 && (
-              <button
+              <Button
                 type="button"
                 onClick={() => void runBackfill()}
                 disabled={backfillRunning}
-                className="sq-3d-btn sq-3d-btn--neutral px-3 py-2 text-xs rounded-lg inline-flex items-center gap-1.5"
+                variant="neutral"
+                size="sm"
               >
                 {backfillRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                 {t('stations.backfillCoords')} ({missingCoords})
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               type="button"
               onClick={() => setViewMode((m) => (m === 'cards' ? 'list' : 'cards'))}
-              className="sq-3d-btn sq-3d-btn--neutral px-3 py-2 text-xs rounded-lg inline-flex items-center gap-1.5"
+              variant="neutral"
+              size="sm"
             >
               {viewMode === 'cards' ? <List className="w-3.5 h-3.5" /> : <LayoutGrid className="w-3.5 h-3.5" />}
               {viewMode === 'cards' ? t('stations.viewList') : t('stations.viewCards')}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={handleCreate}
-              className="sq-3d-btn sq-3d-btn--primary px-3 py-2 text-xs rounded-lg inline-flex items-center gap-1.5"
+              size="sm"
             >
               <Plus className="w-3.5 h-3.5" />
               {t('stations.newStation')}
-            </button>
+            </Button>
           </div>
         )}
       />
@@ -328,17 +330,19 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
                 placeholder={t('stations.searchPlaceholder')}
                 className="flex-1 px-3 py-2 rounded-lg border border-border/70 bg-card text-sm outline-none focus:border-[color:var(--brand)]"
               />
-              <button
+              <Button
                 type="button"
                 onClick={() => setFiltersOpen((o) => !o)}
-                className="sq-3d-btn sq-3d-btn--neutral px-3 py-2 text-xs rounded-lg inline-flex items-center gap-1.5 justify-center"
+                variant="neutral"
+                size="sm"
+                className="justify-center"
               >
                 {t('stations.filters')}
                 {activeFilterCount > 0 ? (
                   <span className="sq-chip sq-chip-info !text-[10px]">{activeFilterCount}</span>
                 ) : null}
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} />
-              </button>
+              </Button>
             </div>
 
             {filtersOpen && (
@@ -402,9 +406,9 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
               title={t('stations.empty.title')}
               description={t('stations.empty.description')}
               action={(
-                <button type="button" onClick={handleCreate} className="sq-3d-btn sq-3d-btn--primary px-4 py-2 rounded-xl text-xs font-semibold">
+                <Button type="button" onClick={handleCreate} size="sm">
                   {t('stations.empty.action')}
-                </button>
+                </Button>
               )}
             />
           ) : filtered.length === 0 ? (
@@ -575,12 +579,12 @@ function StationCard({
       {warningBadges}
 
       <div className="mt-3 flex gap-2">
-        <button type="button" onClick={onOpen} className="sq-3d-btn sq-3d-btn--neutral flex-1 py-2 text-xs rounded-lg">
+        <Button type="button" onClick={onOpen} variant="neutral" size="sm" className="flex-1">
           {t('stations.action.open')}
-        </button>
-        <button type="button" onClick={onEdit} className="sq-3d-btn sq-3d-btn--primary flex-1 py-2 text-xs rounded-lg">
+        </Button>
+        <Button type="button" onClick={onEdit} size="sm" className="flex-1">
           {t('stations.action.edit')}
-        </button>
+        </Button>
       </div>
     </div>
   );

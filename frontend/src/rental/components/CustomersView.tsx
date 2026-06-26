@@ -558,7 +558,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
         actions={(
           <button
             type="button"
-            className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
+            className="sq-3d-btn sq-3d-btn--neutral flex items-center gap-2 px-3 py-2 text-[10px] font-semibold"
             onClick={openAddCustomer}
           >
             <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" />
@@ -755,12 +755,12 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
         bodyClassName="p-0 flex flex-col"
         footer={(
           <div className="flex w-full items-center justify-between">
-            <button type="button" onClick={closeAddCustomer} className="rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground">
+            <button type="button" onClick={closeAddCustomer} className="sq-3d-btn sq-3d-btn--neutral px-3 py-2 text-xs font-medium">
               Abbrechen
             </button>
             <div className="flex items-center gap-2.5">
               {addStep > 0 && (
-                <button type="button" onClick={() => setAddStep(addStep - 1)} className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-all hover:bg-muted">
+                <button type="button" onClick={() => setAddStep(addStep - 1)} className="sq-3d-btn sq-3d-btn--neutral flex items-center gap-1.5 px-3 py-2 text-xs font-medium">
                   <Icon name="chevron-left" className="w-3.5 h-3.5" />
                   Zurück
                 </button>

@@ -222,8 +222,6 @@ export function FleetConnectionView() {
     <div className="space-y-6">
       <PageHeader
         title="Fleet Connection & Diagnostics"
-        eyebrow="Master Admin"
-        description="Vehicle connectivity, data sources, signal coverage, and poll health"
         icon={<Radio className="w-4 h-4" />}
       />
 

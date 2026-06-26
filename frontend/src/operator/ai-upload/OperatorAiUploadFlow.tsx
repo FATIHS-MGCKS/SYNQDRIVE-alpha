@@ -316,7 +316,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
               <button
                 type="button"
                 onClick={handleClose}
-                className="sq-press min-h-[52px] flex-1 rounded-2xl border border-border text-sm font-semibold"
+                className="sq-3d-btn sq-3d-btn--neutral min-h-[52px] flex-1 text-sm font-semibold"
               >
                 Zurück
               </button>
@@ -327,7 +327,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
                     flow.handleReset();
                     clearPending();
                   }}
-                  className="sq-press min-h-[52px] flex-1 rounded-2xl bg-[color:var(--brand)] text-sm font-bold text-white"
+                  className="sq-3d-btn sq-3d-btn--primary min-h-[52px] flex-1 text-sm font-bold"
                 >
                   Neu versuchen
                 </button>
@@ -336,7 +336,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
                   type="button"
                   disabled={!pendingFile}
                   onClick={startAnalysis}
-                  className="sq-press min-h-[52px] flex-[2] rounded-2xl bg-[color:var(--brand)] text-sm font-bold text-white disabled:opacity-50"
+                  className="sq-3d-btn sq-3d-btn--primary min-h-[52px] flex-[2] text-sm font-bold disabled:opacity-50"
                 >
                   Analyse starten
                 </button>
@@ -351,7 +351,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
                   type="button"
                   disabled={flow.flow === 'applying'}
                   onClick={openTireMeasureFromReview}
-                  className="sq-press min-h-[48px] w-full rounded-2xl border border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)]/50 text-sm font-semibold text-[color:var(--brand-ink)] disabled:opacity-50"
+                  className="sq-3d-btn sq-3d-btn--neutral min-h-[48px] w-full text-sm font-semibold disabled:opacity-50"
                 >
                   Als Reifenmessung übernehmen
                 </button>
@@ -367,7 +367,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
                     flow.handleReset();
                     clearPending();
                   }}
-                  className="sq-press min-h-[52px] flex-1 rounded-2xl border border-border text-sm font-semibold disabled:opacity-50"
+                  className="sq-3d-btn sq-3d-btn--neutral min-h-[52px] flex-1 text-sm font-semibold disabled:opacity-50"
                 >
                   Verwerfen
                 </button>
@@ -375,7 +375,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
                   type="button"
                   disabled={flow.flow === 'applying' || flow.blockerPresent}
                   onClick={() => void flow.handleConfirm()}
-                  className="sq-press min-h-[52px] flex-[2] rounded-2xl bg-[color:var(--status-success)] text-sm font-bold text-white disabled:opacity-50"
+                  className="sq-3d-btn sq-3d-btn--success min-h-[52px] flex-[2] text-sm font-bold disabled:opacity-50"
                 >
                   {flow.flow === 'applying' ? (
                     <Loader2 className="mx-auto h-5 w-5 animate-spin" />
@@ -391,7 +391,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
             <button
               type="button"
               onClick={handleClose}
-              className="sq-press min-h-[52px] w-full rounded-2xl bg-[color:var(--brand)] text-sm font-bold text-white"
+              className="sq-3d-btn sq-3d-btn--primary min-h-[52px] w-full text-sm font-bold"
             >
               Fertig
             </button>
@@ -401,7 +401,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
             <button
               type="button"
               disabled
-              className="sq-press min-h-[52px] w-full rounded-2xl border border-border text-sm font-semibold opacity-50"
+              className="sq-3d-btn sq-3d-btn--neutral min-h-[52px] w-full text-sm font-semibold opacity-50"
             >
               Bitte warten…
             </button>

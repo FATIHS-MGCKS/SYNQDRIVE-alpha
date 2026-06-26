@@ -186,6 +186,12 @@ function isHealthWarning(
   );
 }
 
+function hasExplicitRentalBlocker(
+  rentalHealth?: DeriveFleetVisualStateOptions['rentalHealth'],
+): boolean {
+  return rentalHealth?.rental_blocked === true || (rentalHealth?.blocking_reasons?.length ?? 0) > 0;
+}
+
 // Soft-offline ("signal delayed") detection: 24–48h since last signal. This is
 // NOT the same as STANDBY (15min–24h, perfectly normal) — STANDBY never sets
 // this flag, so a quiet-but-healthy device is never downgraded or warned.
@@ -293,10 +299,10 @@ export function deriveFleetVisualState(
   const requireLocation = options.requireLocation === true;
   const hasLocation = vehicleHasFleetLocation(vehicle);
   const rentalStatus = deriveRentalStatus(vehicle);
-  const rentalBlocked = rentalHealth?.rental_blocked === true;
+  const rentalBlocked = hasExplicitRentalBlocker(rentalHealth);
   const healthCritical = isHealthCritical(vehicle, rentalHealth);
   const healthWarning = isHealthWarning(vehicle, rentalHealth);
-  const isBlocked = rentalBlocked || healthCritical;
+  const isBlocked = rentalBlocked;
   const isMaintenance =
     rentalStatus === 'maintenance' ||
     vehicle.status === 'Maintenance';
@@ -323,7 +329,7 @@ export function deriveFleetVisualState(
     visualStatus = 'no_location';
   } else if (
     rentalStatus === 'available' &&
-    (healthWarning || vehicle.reservedIsOverdue)
+    (healthCritical || healthWarning || vehicle.reservedIsOverdue)
   ) {
     visualStatus = 'attention';
   } else if (rentalStatus === 'available') {
@@ -359,8 +365,6 @@ export function deriveFleetVisualState(
     readiness = 'offline';
   } else if (
     rentalStatus === 'available' &&
-    !healthWarning &&
-    !healthCritical &&
     (!requireLocation || hasLocation)
   ) {
     readiness = 'ready';

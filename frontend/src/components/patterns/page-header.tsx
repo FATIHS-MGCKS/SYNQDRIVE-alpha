@@ -7,10 +7,13 @@ import { cn } from '../ui/utils';
    Quiet by default; colour only enters via an optional `status` chip.
    ════════════════════════════════════════════════════════════════════ */
 
+export type PageHeaderVariant = 'page' | 'full';
+
 export interface PageHeaderProps {
   title: ReactNode;
-  /** Small overline above the title (breadcrumb / category). */
+  /** Small overline above the title (breadcrumb / category). Shown only when `variant="full"`. */
   eyebrow?: ReactNode;
+  /** Shown only when `variant="full"`. */
   description?: ReactNode;
   /** Right-aligned action cluster (buttons, menus). */
   actions?: ReactNode;
@@ -18,8 +21,10 @@ export interface PageHeaderProps {
   icon?: ReactNode;
   /** Inline status chip rendered next to the title. */
   status?: ReactNode;
-  /** Compact meta row beneath the title (counts, last-updated, etc.). */
+  /** Compact meta row beneath the title. Shown only when `variant="full"`. */
   meta?: ReactNode;
+  /** `page` (default) = title + actions only; `full` = legacy with eyebrow/description/meta. */
+  variant?: PageHeaderVariant;
   className?: string;
 }
 
@@ -31,8 +36,13 @@ export function PageHeader({
   icon,
   status,
   meta,
+  variant = 'page',
   className,
 }: PageHeaderProps) {
+  const showEyebrow = variant === 'full' && eyebrow;
+  const showDescription = variant === 'full' && description;
+  const showMeta = variant === 'full' && meta;
+
   return (
     <div
       className={cn(
@@ -41,7 +51,7 @@ export function PageHeader({
       )}
     >
       <div className="min-w-0">
-        {eyebrow && (
+        {showEyebrow && (
           <div className="sq-section-label mb-1 truncate">{eyebrow}</div>
         )}
         <div className="flex min-w-0 items-center gap-2">
@@ -55,12 +65,12 @@ export function PageHeader({
           </h1>
           {status}
         </div>
-        {description && (
+        {showDescription && (
           <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">
             {description}
           </p>
         )}
-        {meta && (
+        {showMeta && (
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted-foreground">
             {meta}
           </div>

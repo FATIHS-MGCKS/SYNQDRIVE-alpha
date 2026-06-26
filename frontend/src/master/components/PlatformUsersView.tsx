@@ -213,7 +213,6 @@ export function PlatformUsersView({ users, organizations, onAddUser, onUpdateUse
     <div className="space-y-5 pb-6">
       <PageHeader
         title="Users"
-        description={`${filtered.length} platform users across all organizations`}
         icon={<Users className="h-4 w-4" />}
         actions={
           <button type="button" onClick={openCreate} className="sq-cta flex items-center gap-2 px-4 py-2 text-sm font-semibold">

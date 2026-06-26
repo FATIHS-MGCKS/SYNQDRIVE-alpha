@@ -197,7 +197,6 @@ export function AccountInformationTab({ onNavigateToUsers }: AccountInformationT
     <div className="max-w-[1600px] mx-auto space-y-5 animate-fade-up">
       <PageHeader
         title="Kontoinformationen"
-        description="Profil, Arbeitspräferenzen, Benachrichtigungen und Sicherheit — alles an einem Ort."
       />
 
       <AccountHeaderCard

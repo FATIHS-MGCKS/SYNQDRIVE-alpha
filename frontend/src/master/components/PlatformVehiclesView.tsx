@@ -249,7 +249,6 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
       )}
       <PageHeader
         title="Vehicles"
-        description={`${registeredVehicles.length} registered · ${dimoVehicles.length} from DIMO`}
         icon={<Car className="h-4 w-4" />}
       />
 

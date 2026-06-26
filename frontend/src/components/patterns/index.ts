@@ -44,7 +44,7 @@ export {
 export type { StatusTone, HealthState, TaskPriority } from './status-utils';
 
 export { PageHeader, SectionHeader } from './page-header';
-export type { PageHeaderProps, SectionHeaderProps } from './page-header';
+export type { PageHeaderProps, PageHeaderVariant, SectionHeaderProps } from './page-header';
 
 export { DataCard, MetricCard } from './data-card';
 export type { DataCardProps, MetricCardProps, MetricTrend } from './data-card';

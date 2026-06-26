@@ -246,7 +246,7 @@ export function OperatorBookingDetailSheet({
               onClose();
               onPickupStart(item);
             }}
-            className="sq-press min-h-[48px] rounded-xl bg-[color:var(--brand)] font-semibold text-white disabled:opacity-45"
+            className="sq-3d-btn sq-3d-btn--primary min-h-[48px] font-semibold disabled:opacity-45"
           >
             Pickup starten
           </button>
@@ -258,7 +258,7 @@ export function OperatorBookingDetailSheet({
               onClose();
               onReturnStart(item);
             }}
-            className="sq-press min-h-[48px] rounded-xl border border-border bg-card font-semibold disabled:opacity-45"
+            className="sq-3d-btn sq-3d-btn--neutral min-h-[48px] font-semibold disabled:opacity-45"
           >
             Return starten
           </button>

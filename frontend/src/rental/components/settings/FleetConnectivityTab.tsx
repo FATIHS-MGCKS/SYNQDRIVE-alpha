@@ -308,7 +308,6 @@ export function FleetConnectivityTab() {
     <div className="max-w-[1600px] mx-auto space-y-5">
       <PageHeader
         title="Fleet Connectivity"
-        description="Read-only overview of provider links, signal freshness, device state and telemetry reliability."
         status={
           <StatusChip tone="info" className="text-[11px]">
             Read-only technical overview

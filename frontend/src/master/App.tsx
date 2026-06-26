@@ -593,8 +593,6 @@ export default function App() {
             <TopBar
               isDarkMode={isDarkMode}
               setIsDarkMode={setIsDarkMode}
-              currentView={currentView}
-              settingsTab={settingsTab}
             />
 
             {/* DASHBOARD */}

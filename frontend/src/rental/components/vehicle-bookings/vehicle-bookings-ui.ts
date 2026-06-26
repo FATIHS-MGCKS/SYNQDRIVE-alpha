@@ -11,8 +11,8 @@ export const vb = {
   meta: 'text-[11px] text-muted-foreground tabular-nums',
   inset: 'rounded-xl border border-border/50 bg-background/35',
   divider: 'border-t border-border/50',
-  gridMetrics: 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3',
-  gridAvailability: 'grid grid-cols-1 sm:grid-cols-3 gap-3',
+  gridMetrics: 'grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-4',
+  gridAvailability: 'grid grid-cols-1 items-stretch gap-3 sm:grid-cols-3',
   focusRing:
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
   action:

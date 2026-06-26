@@ -280,6 +280,7 @@ export function CustomerDetailView({
   return (
     <div className="space-y-4 max-w-[1400px] mx-auto">
       <PageHeader
+        variant="full"
         eyebrow={(
           <button
             type="button"

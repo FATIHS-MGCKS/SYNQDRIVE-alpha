@@ -35,6 +35,54 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-health-box-compliance-tiles-v4973-2026-06-26',
+    version: '4.9.73',
+    title: 'V4.9.73 — Vehicle Health Box: Service/TÜV/BOKraft-Kacheln wieder sichtbar',
+    summary: [
+      'Vehicle Detail → Overview: Service-, TÜV- und BOKraft-Kacheln werden wieder unter den Tacho-Warnleuchten und oberhalb von „View Health Details“ angezeigt.',
+      'Regression behoben: `ComplianceGrid` war an den kompakten Overview-Modus gekoppelt (`showDataBasis=false`) und wurde dadurch vollständig ausgeblendet.',
+      'Datenhook und Mapper bleiben unverändert — `serviceInfoStatus`, `buildNextServiceDisplay`, `buildTuvComplianceDisplay` und `buildBokraftComplianceDisplay` werden weiter als bestehende Quellen genutzt.',
+    ],
+    reason: 'Die UI-Refactors hatten Overview-Compliance-Kacheln versehentlich mit dem DataBasis-Kompaktmodus ausgeblendet.',
+    previousBehavior: 'Overview Health Box zeigte nur Health Header, Brakes/Tires/Battery, Tacho-Warnleuchten und Details-Button; Service/TÜV/BOKraft fehlten.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T22:00:00.000Z',
+  },
+  {
+    id: 'button-design-refactor-v4972-2026-06-26',
+    version: '4.9.72',
+    title: 'V4.9.72 — Button Design Refactor: Stations-Formensprache zentralisiert',
+    summary: [
+      '`components/ui/button.tsx` nutzt jetzt die SynqDrive/Stations-Button-DNA: 3D-Elevation, weiche Ecken, ruhiger Hover/Pressed/Focus, konsistenter Icon-Gap und semantische Varianten.',
+      '`theme.css` ergänzt zentrale 3D-Varianten für destructive, warning, secondary und eine 3D-kompatible Legacy-`sq-cta`; vorhandene Farben bleiben fachlich erhalten (Primary blau, Critical rot, Warning orange, Success grün).',
+      'Stations, Shared Dialog/Retry, Finance-/Vendor-/Customer-Actions, Master Admin Legacy-CTAs und touch-spezifische Operator-Flow-Actions wurden gezielt migriert; Tabs, Chips, Sidebar, Dropdowns, Kalender- und Timeline-Zellen bleiben unverändert.',
+    ],
+    reason: 'Alle echten Action-Buttons sollen wie aus einem SynqDrive-Designsystem wirken, ohne semantische Button-Farben oder Funktionalität zu verlieren.',
+    previousBehavior: 'Gemischte Button-Sprachen: shadcn-Default, Stations `sq-3d-btn`, `sq-cta`, Legacy-Indigo/Blue/Green/Red und manuelle Neutral-Buttons nebeneinander.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Design System',
+    createdAt: '2026-06-26T20:00:00.000Z',
+  },
+  {
+    id: 'page-header-topbar-login-context-v4971-2026-06-26',
+    version: '4.9.71',
+    title: 'V4.9.71 — Page Header Konvention + TopBar Login-Kontext',
+    summary: [
+      '`PageHeader` erhält `variant="page"` (Default): normale Seiten zeigen nur Titel + Actions; `variant="full"` behält Eyebrow/Description/Meta für Detail- und Control-Header.',
+      'Rental- und Master-TopBar: Breadcrumb/View-Kontext entfernt; stattdessen dezenter Login-Kontext „Eingeloggt als …“ aus `getStoredUser()` (name, sonst E-Mail-Local-Part).',
+      'Detail-Header (Vehicle, Customer, Station, Vendor, Organization, Health Control Center) explizit auf `variant="full"` — keine Business-Logik-, Routing- oder API-Änderung.',
+    ],
+    reason: 'Einheitliche, ruhige Page-Header ohne redundante Eyebrows/Subtexte; TopBar ohne verwirrende Breadcrumbs.',
+    previousBehavior: 'PageHeader renderte Eyebrow/Description standardmäßig; TopBar zeigte view-basierte Breadcrumbs inkl. Vehicle-Detail-Pfad.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Rental Shell',
+    createdAt: '2026-06-26T18:00:00.000Z',
+  },
+  {
     id: 'operator-return-technical-observations-v4970-2026-06-26',
     version: '4.9.70',
     title: 'V4.9.70 — Operator Return: Technische Beobachtungen im Handover-Protokoll',
@@ -242,14 +290,15 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'HM/OEM Next Service overdue (`service_compliance critical`) bleibt als Critical/Attention-/Service-Signal sichtbar, blockt aber nicht mehr Ready-to-Rent und landet ohne `rental_blocked`/`blocking_reasons` nicht mehr in Blocked & Maintenance.',
       '`isReadyToRent` nutzt nicht mehr pauschal `criticalReasons.length === 0`; Ready basiert auf Operational Status, Cleaning, expliziten Blocking-/PreventsReady-Reasons und kanonischen Blockern.',
       '`isHardBlockingCategory` ist auf explizit blockende Runtime-Kategorien beschraenkt; Service/Compliance/Health/Battery/Tires/Brakes/DTC/Damage blocken nur noch mit expliziter canonical Blocking Source.',
-      'Tests ergaenzt/angepasst: Service overdue critical ohne Blocker bleibt ready/non-blocked, TÜV-Blocking-Reason sperrt weiter, generic critical health bleibt sichtbar ohne Block, Critical Alerts bleiben erhalten.',
+      'Fleet Command folgt derselben Semantik: `fleetVisualState.isBlocked` kommt nicht mehr von `healthCritical`; service-overdue-only Fahrzeuge bleiben im Rental-Badge `Ready`, behalten aber Health `Critical` und den Service-Reason.',
+      'Tests ergaenzt/angepasst: Service overdue critical ohne Blocker bleibt ready/non-blocked, TÜV-Blocking-Reason sperrt weiter, generic critical health bleibt sichtbar ohne Block, Critical Alerts und Fleet Health Critical bleiben erhalten.',
     ],
     reason:
       'Ein ueberfaelliger HM/OEM Next Service wurde im Frontend durch `service_compliance critical -> blocking:true -> Blocked & Maintenance -> not ready` eskaliert. Backend-seitig ist `rental_blocked` aber die eigene Sperrwahrheit.',
     previousBehavior:
       'Critical-Severity in hard-blocking Kategorien und `criticalReasons.length === 0` in der Ready-Bedingung machten Critical faktisch zu einem automatischen Miet-Sperrgrund.',
     details:
-      'Geaendert: `vehicleRuntimeStateBuilder.ts`, `dashboardRuntime.test.ts`, `docs/operational-issue-normalization.md`, Architektur/Changes. Keine Backend-Aenderung. `VehicleHealthResponse.rental_blocked` und `blocking_reasons` bleiben die expliziten Blocker-Quellen.',
+      'Geaendert: `vehicleRuntimeStateBuilder.ts`, `fleetVisualState.ts`, `fleetVehicleDisplay.test.ts`, `fleetVisualState.test.ts`, `dashboardRuntime.test.ts`, `dashboardRuntimeViewModelAdapters.test.ts`, `docs/operational-issue-normalization.md`, Architektur/Changes. Keine Backend-Aenderung. `VehicleHealthResponse.rental_blocked` und `blocking_reasons` bleiben die expliziten Blocker-Quellen.',
     affectsArchitecture: true,
     module: 'Rental Dashboard',
     createdAt: '2026-06-26T00:01:00.000Z',

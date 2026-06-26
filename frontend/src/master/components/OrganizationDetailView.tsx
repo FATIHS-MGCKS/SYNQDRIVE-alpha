@@ -47,6 +47,7 @@ export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onU
   return (
     <div className="space-y-4 pb-6">
       <PageHeader
+        variant="full"
         title={org.company_name}
         eyebrow="Organization"
         description={`${org.business_type} · ${org.city}, ${org.country} · Since ${org.created_at}`}
