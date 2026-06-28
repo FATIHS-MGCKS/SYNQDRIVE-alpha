@@ -85,8 +85,8 @@ backend/uploads/
 
 # AI Document Upload — local object storage (private, never served publicly).
 # Default dir: backend/storage/documents (document-extraction.config.ts).
-storage/
-backend/storage/
+# NOTE: do NOT use bare `storage/` — it ignores source packages under backend/src/**/storage/.
+/backend/storage/
 uploads/
 .local-storage/
 

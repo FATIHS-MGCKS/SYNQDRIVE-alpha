@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+RELEASE_ID="$(date -u +%Y%m%d%H%M%S)_v4994"
+RELEASE_DIR="/opt/synqdrive/releases/${RELEASE_ID}"
+BACKUP_DIR="/opt/synqdrive/shared/backups"
+TS="$(date -u +%Y%m%d%H%M%S)"
+
+echo "==> Pre-deploy DB backup"
+mkdir -p "$BACKUP_DIR"
+sudo -u postgres pg_dump synqdrive | gzip > "${BACKUP_DIR}/db-pre-deploy-${TS}.sql.gz"
+
+echo "==> Clone release ${RELEASE_ID}"
+git clone --depth 1 --branch main https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git "$RELEASE_DIR"
+
+echo "==> Link shared env/uploads"
+ln -sfn /opt/synqdrive/shared/backend.env "$RELEASE_DIR/backend/.env"
+ln -sfn /opt/synqdrive/shared/uploads "$RELEASE_DIR/backend/uploads"
+
+echo "==> Backend install/build/migrate"
+cd "$RELEASE_DIR/backend"
+npm ci
+npx prisma generate
+npm run prisma:migrate:deploy
+npm run build
+
+echo "==> Frontend install/build"
+cd "$RELEASE_DIR/frontend"
+npm ci
+npm run build
+
+echo "==> Switch current + restart pm2"
+ln -sfn "$RELEASE_DIR" /opt/synqdrive/current
+cd /opt/synqdrive/current/backend
+pm2 restart synqdrive --update-env
+pm2 save
+
+echo "==> Health check"
+sleep 3
+curl -sf http://127.0.0.1:3001/api/v1/health
+echo
+pm2 list
+echo "Deployed release: ${RELEASE_ID} ($(git -C "$RELEASE_DIR" rev-parse --short HEAD))"
