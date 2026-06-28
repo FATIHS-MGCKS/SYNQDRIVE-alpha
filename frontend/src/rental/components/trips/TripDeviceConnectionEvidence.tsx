@@ -59,13 +59,18 @@ export function TripDeviceConnectionEvidence({
   return (
     <section className="rounded-xl border border-border/60 bg-card p-3 space-y-3">
       <div className="flex items-center gap-2">
-        <Icon name="alert-triangle" className="w-4 h-4 text-[color:var(--status-critical)]" />
+        <Icon
+          name="alert-triangle"
+          className="w-4 h-4 text-[color:var(--status-critical)]"
+        />
         <h4 className="text-[12px] font-semibold text-foreground">
-          Telematik / Manipulationshinweis
+          Telematik / OBD-Verbindung
         </h4>
       </div>
       <ul className="space-y-3">
-        {events.map((item) => (
+        {events.map((item) => {
+          const isUnplug = item.eventType === 'OBD_DEVICE_UNPLUGGED';
+          return (
           <li
             key={item.id}
             className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5 space-y-1.5"
@@ -81,25 +86,30 @@ export function TripDeviceConnectionEvidence({
             <p className="text-[11px] text-muted-foreground">
               Zeitpunkt: {formatDeviceConnectionTimestamp(item.observedAt)}
             </p>
-            <p className="text-[11px] text-muted-foreground">
-              Dauer bis Wiederverbindung:{' '}
-              {item.recoveryDurationMs != null
-                ? formatDurationMs(item.recoveryDurationMs)
-                : '—'}
-            </p>
+            {isUnplug && (
+              <p className="text-[11px] text-muted-foreground">
+                Dauer bis Wiederverbindung:{' '}
+                {item.recoveryDurationMs != null
+                  ? formatDurationMs(item.recoveryDurationMs)
+                  : '—'}
+              </p>
+            )}
             <div className="flex flex-wrap gap-2 pt-1">
               <StatusChip tone="info" className="text-[10px]">
                 Quelle: {item.source}
               </StatusChip>
-              <StatusChip
-                tone={item.evidenceStatus === 'recovered' ? 'success' : 'warning'}
-                className="text-[10px]"
-              >
-                Beweisstatus: {tripEvidenceStatusLabel(item.evidenceStatus)}
-              </StatusChip>
+              {isUnplug && item.evidenceStatus != null && (
+                <StatusChip
+                  tone={item.evidenceStatus === 'recovered' ? 'success' : 'warning'}
+                  className="text-[10px]"
+                >
+                  Beweisstatus: {tripEvidenceStatusLabel(item.evidenceStatus)}
+                </StatusChip>
+              )}
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </section>
   );

@@ -2,6 +2,7 @@ import { DimoDeviceConnectionEventType } from '@prisma/client';
 import {
   buildDeviceConnectionSummary,
   buildFleetDeviceConnectionFields,
+  buildTripDeviceConnectionFlags,
   severityForUnplugEvent,
 } from './device-connection-read-model';
 
@@ -90,5 +91,44 @@ describe('device-connection-read-model', () => {
     expect(fleet.eventSource).toBe('dimo_webhook');
     expect(fleet.currentDeviceConnectionStatus).toBe('plugged');
     expect(fleet.severity).toBe('info');
+  });
+
+  it('builds per-trip flags for unplug and plug during trip window', () => {
+    const trip = {
+      id: 'trip-1',
+      startTime: new Date('2026-06-28T10:00:00.000Z'),
+      endTime: new Date('2026-06-28T11:00:00.000Z'),
+      assignedBookingId: 'b-1',
+    };
+    const events = [
+      {
+        id: 'e1',
+        vehicleId: 'v-1',
+        eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+        observedAt: new Date('2026-06-28T10:15:00.000Z'),
+      },
+      {
+        id: 'e2',
+        vehicleId: 'v-1',
+        eventType: DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN,
+        observedAt: new Date('2026-06-28T10:20:00.000Z'),
+      },
+    ];
+    const bookings = [
+      {
+        id: 'b-1',
+        startDate: new Date('2026-06-28T09:00:00.000Z'),
+        endDate: new Date('2026-06-28T12:00:00.000Z'),
+        status: 'ACTIVE',
+      },
+    ];
+
+    const flags = buildTripDeviceConnectionFlags(trip, events, bookings, nowMs);
+    expect(flags.hasDeviceConnectionEvent).toBe(true);
+    expect(flags.deviceUnpluggedCount).toBe(1);
+    expect(flags.devicePluggedInCount).toBe(1);
+    expect(flags.hasOpenDeviceUnplug).toBe(false);
+    expect(flags.deviceConnectionRentalRelevant).toBe(true);
+    expect(flags.deviceConnectionSeverity).toBe('critical');
   });
 });

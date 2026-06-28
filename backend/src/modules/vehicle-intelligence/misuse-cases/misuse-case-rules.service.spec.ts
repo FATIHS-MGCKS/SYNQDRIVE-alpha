@@ -43,10 +43,9 @@ function ctx(overrides: Partial<TripEvaluationContext>): TripEvaluationContext {
 }
 
 function mkAnchor(
-  source: 'DRIVING_EVENT' | 'RPM_CANDIDATE',
   id: string,
   opts: {
-    anchorType?: 'DIMO_NATIVE_BEHAVIOR_EVENT' | 'RPM_WEBHOOK_CANDIDATE';
+    anchorType?: 'DIMO_NATIVE_BEHAVIOR_EVENT';
     classifications: string[];
     reasonCodes: string[];
     sampleCount?: number;
@@ -75,7 +74,7 @@ function mkAnchor(
     ...extra,
   });
   return {
-    source,
+    source: 'DRIVING_EVENT',
     anchorId: id,
     occurredAt: new Date('2026-06-01T10:10:00Z'),
     assessment: {
@@ -295,15 +294,14 @@ describe('MisuseCaseRulesService', () => {
     expect(result.find((c) => c.type === MisuseCaseType.LAUNCH_ABUSE_PATTERN)).toBeUndefined();
   });
 
-  it('native harsh acceleration context + RPM candidate overlap => one combined case', () => {
-    const aggStart = mkAnchor('DRIVING_EVENT', 'de-1', {
+  it('multiple native context anchors overlap => one combined aggressive case', () => {
+    const aggStart = mkAnchor('de-1', {
       classifications: ['AGGRESSIVE_START'],
       reasonCodes: ['NATIVE_EVENT_ANCHOR', 'HIGH_RPM', 'HIGH_THROTTLE'],
     });
-    const highRpmConst = mkAnchor('RPM_CANDIDATE', 'rpm-1', {
-      anchorType: 'RPM_WEBHOOK_CANDIDATE',
+    const highRpmConst = mkAnchor('de-2', {
       classifications: ['HIGH_RPM_CONSTANT'],
-      reasonCodes: ['RPM_WEBHOOK_ANCHOR', 'HIGH_RPM'],
+      reasonCodes: ['NATIVE_EVENT_ANCHOR', 'HIGH_RPM'],
       sampleCount: 9,
     });
 
@@ -314,7 +312,7 @@ describe('MisuseCaseRulesService', () => {
     expect(aggressive).toHaveLength(1);
     const summary = aggressive[0].evidenceSummary?.contextEvidence as any;
     expect(summary.sourceAnchors.drivingEventIds).toContain('de-1');
-    expect(summary.sourceAnchors.rpmCandidateIds).toContain('rpm-1');
+    expect(summary.sourceAnchors.drivingEventIds).toContain('de-2');
     expect(aggressive[0].evidence).toHaveLength(2);
   });
 });

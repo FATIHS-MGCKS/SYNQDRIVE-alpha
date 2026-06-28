@@ -452,6 +452,25 @@ function buildBlockedMaintenanceSlice(states: VehicleRuntimeState[], locale: str
   };
 }
 
+function insightDuplicatesRuntimeCritical(
+  state: VehicleRuntimeState | undefined,
+  insightType: DashboardInsight['type'],
+): boolean {
+  if (!state) return false;
+  const category = insightCategory(insightType);
+  return state.criticalReasons.some((reason) => {
+    if (reason.category === category) return true;
+    if (category === 'service' && reason.source.includes('service_compliance')) return true;
+    if (category === 'compliance' && reason.source.includes('compliance')) return true;
+    return false;
+  });
+}
+
+function insightBlockingInDrawer(category: RuntimeReasonCategory): boolean {
+  // Drawer metadata: only TÜV/BOKraft-style compliance blockers are hard blockers.
+  return category === 'compliance';
+}
+
 function buildCriticalAlertsSlice(input: BuildDashboardSlicesInput): DashboardSlice {
   const byVehicle = new Map(input.vehicleStates.map((state) => [state.vehicleId, state]));
   const seen = new Set<string>();
@@ -529,6 +548,8 @@ function buildCriticalAlertsSlice(input: BuildDashboardSlicesInput): DashboardSl
     const category = insightCategory(insight.type);
     const vehicleIds = insightVehicleIds(insight);
     for (const vehicleId of vehicleIds) {
+      const state = byVehicle.get(vehicleId);
+      if (insightDuplicatesRuntimeCritical(state, insight.type)) continue;
       addCriticalRow(
         vehicleId,
         {
@@ -538,7 +559,7 @@ function buildCriticalAlertsSlice(input: BuildDashboardSlicesInput): DashboardSl
           title: insight.title,
           description: insight.message,
           source: `dashboard-insight:${insight.type}`,
-          blocking: category !== 'unknown',
+          blocking: insightBlockingInDrawer(category),
           actionLabel: insight.actionLabel ?? undefined,
           actionTarget: insight.actionType ?? undefined,
         },

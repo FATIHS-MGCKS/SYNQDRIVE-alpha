@@ -2,7 +2,7 @@
  * Pure helpers for DIMO Vehicle Triggers webhook payloads.
  *
  * Supports:
- *   - URL verification handshake: { "verification": "test" }
+ *   - URL verification handshake: { "verification": "test" } → echo token as plain text
  *   - CloudEvent trigger payloads: type=dimo.trigger with nested data.signal
  *   - Legacy flat payloads: { tokenId, signal, value, timestamp }
  */
@@ -26,10 +26,9 @@ export function isDimoVerificationRequest(body: unknown): boolean {
   return (body as Record<string, unknown>).verification === 'test';
 }
 
-export function buildDimoVerificationResponse(
-  verificationToken: string,
-): { verificationToken: string } {
-  return { verificationToken };
+/** DIMO expects the verification token echoed as a plain/text body (not JSON). */
+export function buildDimoVerificationResponse(verificationToken: string): string {
+  return verificationToken;
 }
 
 /** Parse tokenId from a vehicle asset DID (did:erc721:137:0x…:12345). */

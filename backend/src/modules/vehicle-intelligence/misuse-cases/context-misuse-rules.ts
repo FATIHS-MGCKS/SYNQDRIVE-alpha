@@ -126,15 +126,11 @@ function bestContextConfidence(
 }
 
 function anchorEvidence(a: ContextAnchor): EvidenceCandidate {
-  const sourceType =
-    a.source === 'RPM_CANDIDATE'
-      ? MisuseEvidenceSourceType.RPM_WEBHOOK_CANDIDATE
-      : MisuseEvidenceSourceType.EVENT_CONTEXT_ASSESSMENT;
   const cls = a.assessment.preliminaryClassifications.filter(
     (c) => c !== 'INSUFFICIENT_CONTEXT',
   );
   return {
-    sourceType,
+    sourceType: MisuseEvidenceSourceType.EVENT_CONTEXT_ASSESSMENT,
     sourceId: a.anchorId,
     eventType: cls[0] ?? a.assessment.anchorType,
     occurredAt: a.occurredAt,
@@ -169,9 +165,6 @@ function buildEvidenceSummary(
   const drivingEventIds = anchors
     .filter((a) => a.source === 'DRIVING_EVENT')
     .map((a) => a.anchorId);
-  const rpmCandidateIds = anchors
-    .filter((a) => a.source === 'RPM_CANDIDATE')
-    .map((a) => a.anchorId);
 
   const usedSignals = new Set<string>();
   const missingSignals = new Set<string>();
@@ -197,7 +190,7 @@ function buildEvidenceSummary(
 
   return {
     contextEvidence: {
-      sourceAnchors: { drivingEventIds, rpmCandidateIds },
+      sourceAnchors: { drivingEventIds },
       contextClassifications: [...new Set(classifications)],
       evidenceGrade: grade,
       confidence,

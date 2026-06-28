@@ -93,10 +93,20 @@ const ROAD_CLASS_TO_TYPE: Record<string, 'city' | 'highway' | 'country'> = {
   road: 'country',
 };
 
+function resolveMapboxAccessToken(): string {
+  return (
+    process.env.MAPBOX_ACCESS_TOKEN?.trim() ||
+    process.env.MAPBOX_TOKEN?.trim() ||
+    process.env.VITE_MAPBOX_ACCESS_TOKEN?.trim() ||
+    process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?.trim() ||
+    ''
+  );
+}
+
 @Injectable()
 export class MapboxService {
   private readonly logger = new Logger(MapboxService.name);
-  private readonly token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? '';
+  private readonly token = resolveMapboxAccessToken();
 
   async mapMatchRoute(
     coordinates: { longitude: number; latitude: number; timestamp?: string }[],

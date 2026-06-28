@@ -5148,7 +5148,7 @@ export interface TripBehaviorEvent {
 export interface TripEventContextAssessment {
   version: number;
   status: 'COMPLETED' | 'INSUFFICIENT_CONTEXT' | 'FAILED' | 'SKIPPED_NOT_APPLICABLE';
-  anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT' | 'RPM_WEBHOOK_CANDIDATE';
+  anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT';
   anchorEvent?: {
     category: 'ACCELERATION' | 'BRAKING' | 'CORNERING' | 'OTHER';
     extreme: boolean;
@@ -5363,7 +5363,7 @@ export interface TripDeviceConnectionEvidenceItem extends DeviceConnectionEventV
   recoveryAt: string | null;
   recoveryDurationMs: number | null;
   source: 'DIMO Vehicle Trigger';
-  evidenceStatus: 'open' | 'recovered';
+  evidenceStatus: 'open' | 'recovered' | null;
 }
 
 export interface TripDeviceConnectionEvidenceResponse {

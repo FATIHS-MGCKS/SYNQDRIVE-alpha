@@ -5,6 +5,7 @@ import { DeviceConnectionWebhookService } from './device-connection-webhook.serv
 function makeController(overrides?: {
   prisma?: Partial<PrismaServiceMock>;
   deviceConnection?: Partial<DeviceConnectionMock>;
+  verificationToken?: string;
 }) {
   const prisma: PrismaServiceMock = {
     vehicle: { findFirst: jest.fn().mockResolvedValue(null) },
@@ -16,7 +17,11 @@ function makeController(overrides?: {
     ...overrides?.deviceConnection,
   };
   const dtcService = { upsertDtc: jest.fn() };
+  const dimoConf = {
+    webhookVerificationToken: overrides?.verificationToken ?? process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN ?? '',
+  };
   const controller = new DimoWebhookController(
+    dimoConf as never,
     prisma as never,
     dtcService as never,
     deviceConnection as never,
@@ -32,6 +37,8 @@ type PrismaServiceMock = {
 type DeviceConnectionMock = {
   ingestObdPlugStateChange: jest.Mock;
 };
+
+const mockRes = { type: jest.fn().mockReturnThis() } as never;
 
 describe('DimoWebhookController — verification handshake', () => {
   const originalVerificationToken = process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN;
@@ -54,9 +61,10 @@ describe('DimoWebhookController — verification handshake', () => {
       { rawBody: Buffer.from('{"verification":"test"}') } as never,
       { verification: 'test' },
       undefined,
+      mockRes,
     );
 
-    expect(result).toEqual({ verificationToken: 'synqdrive-prod-token' });
+    expect(result).toBe('synqdrive-prod-token');
   });
 
   it('fails closed when verification token env is missing', async () => {
@@ -69,6 +77,7 @@ describe('DimoWebhookController — verification handshake', () => {
         { rawBody: Buffer.from('{"verification":"test"}') } as never,
         { verification: 'test' },
         undefined,
+        mockRes,
       ),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
@@ -107,7 +116,7 @@ describe('DimoWebhookController — device connection CloudEvent', () => {
       },
     };
 
-    const result = await controller.handleWebhook({ rawBody: Buffer.from(JSON.stringify(body)) } as never, body);
+    const result = await controller.handleWebhook({ rawBody: Buffer.from(JSON.stringify(body)) } as never, body, undefined, mockRes);
 
     expect(prisma.vehicle.findFirst).toHaveBeenCalledWith({
       where: { dimoVehicle: { tokenId: 777 } },
@@ -142,7 +151,7 @@ describe('DimoWebhookController — device connection CloudEvent', () => {
       },
     };
 
-    const result = await controller.handleWebhook({ rawBody: Buffer.from(JSON.stringify(body)) } as never, body);
+    const result = await controller.handleWebhook({ rawBody: Buffer.from(JSON.stringify(body)) } as never, body, undefined, mockRes);
     expect(result).toEqual({ status: 'ignored', reason: 'blocked_engine_signal' });
     expect(deviceConnection.ingestObdPlugStateChange).not.toHaveBeenCalled();
   });

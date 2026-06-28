@@ -85,23 +85,6 @@ describe('EventContextEnrichmentService', () => {
     expect(assessment.anchorType).toBe('DIMO_NATIVE_BEHAVIOR_EVENT');
   });
 
-  it('fetches a T-30s..T+90s window for RPM webhook candidates', async () => {
-    const { service, segments } = makeService({ hf: denseReadings() });
-    await service.enrichAnchorContext({
-      anchorType: 'RPM_WEBHOOK_CANDIDATE',
-      anchorTimestamp: ANCHOR,
-      tokenId: 4242,
-      engineSignalsApplicable: true,
-    });
-    const [, start, end] = segments.fetchHighFrequency.mock.calls[0] as unknown as [
-      number,
-      Date,
-      Date,
-    ];
-    expect(start.toISOString()).toBe('2026-06-26T11:59:30.000Z');
-    expect(end.toISOString()).toBe('2026-06-26T12:01:30.000Z');
-  });
-
   it('returns INSUFFICIENT_CONTEXT when no readings are returned', async () => {
     const { service } = makeService({ hf: [] });
     const assessment = await service.enrichAnchorContext({

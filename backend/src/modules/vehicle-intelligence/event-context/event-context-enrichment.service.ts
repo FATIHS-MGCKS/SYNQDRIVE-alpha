@@ -55,8 +55,6 @@ export interface EnrichAnchorContextInput {
   engineSignalsApplicable: boolean;
   /** Native event semantics for behaviour-aware classification (optional). */
   anchorEvent?: AnchorEventInfo | null;
-  /** Post-anchor tail (s) for RPM webhook candidates. Default 90. */
-  rpmCandidatePostSeconds?: number;
 }
 
 export interface BuildContextAssessmentInput {
@@ -176,13 +174,10 @@ export class EventContextEnrichmentService {
   }
 
   /**
-   * Build a context assessment for any anchor (used by native events now, and by
-   * RPM webhook candidates later). Does not persist.
+   * Build a context assessment for a native behavior anchor. Does not persist.
    */
   async enrichAnchorContext(input: EnrichAnchorContextInput): Promise<EventContextAssessment> {
-    const window = this.buildContextWindow(input.anchorType, input.anchorTimestamp, {
-      rpmCandidatePostSeconds: input.rpmCandidatePostSeconds,
-    });
+    const window = this.buildContextWindow(input.anchorType, input.anchorTimestamp);
 
     let readings: HighFrequencyReading[] = [];
     let fetchError: string | null = null;
@@ -209,12 +204,8 @@ export class EventContextEnrichmentService {
 
   // ── Building blocks ──────────────────────────────────────────────────────────
 
-  buildContextWindow(
-    anchorType: AnchorType,
-    anchorTimestamp: Date,
-    options?: { rpmCandidatePostSeconds?: number },
-  ): ContextWindow {
-    return buildContextWindow(anchorType, anchorTimestamp, options);
+  buildContextWindow(anchorType: AnchorType, anchorTimestamp: Date): ContextWindow {
+    return buildContextWindow(anchorType, anchorTimestamp);
   }
 
   async fetchContextSignals(

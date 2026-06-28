@@ -71,6 +71,25 @@ export interface BuildDeviceConnectionSummaryInput {
   recentLimit?: number;
 }
 
+/** Per-trip flags for list/timeline surfaces (OBD plug/unplug during trip window). */
+export interface TripDeviceConnectionFlags {
+  hasDeviceConnectionEvent: boolean;
+  deviceUnpluggedCount: number;
+  devicePluggedInCount: number;
+  hasOpenDeviceUnplug: boolean;
+  deviceConnectionRentalRelevant: boolean;
+  deviceConnectionSeverity: DeviceConnectionSeverity | null;
+}
+
+export const EMPTY_TRIP_DEVICE_CONNECTION_FLAGS: TripDeviceConnectionFlags = {
+  hasDeviceConnectionEvent: false,
+  deviceUnpluggedCount: 0,
+  devicePluggedInCount: 0,
+  hasOpenDeviceUnplug: false,
+  deviceConnectionRentalRelevant: false,
+  deviceConnectionSeverity: null,
+};
+
 const ACTIVE_BOOKING_STATUSES = new Set(['ACTIVE', 'CONFIRMED']);
 
 export function isLteR1Hardware(hardwareType: string | null | undefined): boolean {
@@ -245,6 +264,63 @@ export function buildDeviceConnectionSummary(
     pluggedCount24h,
     pluggedCount7d,
     recentEvents,
+  };
+}
+
+export function buildTripDeviceConnectionFlags(
+  trip: DeviceConnectionTripWindow,
+  events: DeviceConnectionEventRow[],
+  bookings: DeviceConnectionBookingWindow[],
+  nowMs: number,
+): TripDeviceConnectionFlags {
+  const startMs = trip.startTime.getTime();
+  const endMs = trip.endTime?.getTime() ?? nowMs;
+
+  const inWindow = events.filter((e) => {
+    const t = e.observedAt.getTime();
+    return t >= startMs && t <= endMs;
+  });
+
+  if (inWindow.length === 0) {
+    return { ...EMPTY_TRIP_DEVICE_CONNECTION_FLAGS };
+  }
+
+  const unplugged = inWindow.filter(
+    (e) => e.eventType === DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+  );
+  const plugged = inWindow.filter(
+    (e) => e.eventType === DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN,
+  );
+
+  const lastUnplug = unplugged.sort(
+    (a, b) => b.observedAt.getTime() - a.observedAt.getTime(),
+  )[0];
+  const lastPlug = plugged.sort(
+    (a, b) => b.observedAt.getTime() - a.observedAt.getTime(),
+  )[0];
+  const hasOpenDeviceUnplug =
+    !!lastUnplug &&
+    (!lastPlug || lastUnplug.observedAt.getTime() > lastPlug.observedAt.getTime());
+
+  const mapped = inWindow.map((e) => mapDeviceConnectionEventView(e, bookings, [trip]));
+  const deviceConnectionRentalRelevant = mapped.some((e) => e.rentalRelevant);
+  const severities = mapped.map((e) => e.severity);
+  const deviceConnectionSeverity: DeviceConnectionSeverity | null =
+    severities.includes('critical')
+      ? 'critical'
+      : severities.includes('warning')
+        ? 'warning'
+        : severities.includes('info')
+          ? 'info'
+          : null;
+
+  return {
+    hasDeviceConnectionEvent: true,
+    deviceUnpluggedCount: unplugged.length,
+    devicePluggedInCount: plugged.length,
+    hasOpenDeviceUnplug,
+    deviceConnectionRentalRelevant,
+    deviceConnectionSeverity,
   };
 }
 

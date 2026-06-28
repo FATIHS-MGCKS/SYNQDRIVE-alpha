@@ -89,9 +89,7 @@ describe('isBlockedEngineWebhookSignal', () => {
 });
 
 describe('buildDimoVerificationResponse', () => {
-  it('returns verificationToken field', () => {
-    expect(buildDimoVerificationResponse('secret-token')).toEqual({
-      verificationToken: 'secret-token',
-    });
+  it('returns the token as plain text', () => {
+    expect(buildDimoVerificationResponse('secret-token')).toBe('secret-token');
   });
 });

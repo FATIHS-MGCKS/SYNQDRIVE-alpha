@@ -80,6 +80,23 @@ describe('collapsed trip card chips', () => {
     expect(labels).toContain('Buchung verknüpft');
     expect(chips.length).toBeLessThanOrEqual(3);
   });
+
+  it('shows Telematik abgezogen chip when OBD unplugged during rental trip', () => {
+    const chips = deriveOperationalChips(
+      makeTrip({
+        deviceUnpluggedCount: 1,
+        hasDeviceConnectionEvent: true,
+        deviceConnectionRentalRelevant: true,
+        hasOpenDeviceUnplug: true,
+        assignmentStatus: 'ASSIGNED_BOOKING_CUSTOMER',
+        assignedBookingId: 'bk-1',
+      }),
+    );
+    const labels = chips.map((c) => c.label);
+    expect(labels).toContain('Telematik abgezogen');
+    expect(chips.find((c) => c.key === 'device-unplug')?.tone).toBe('critical');
+    expect(chips.length).toBeLessThanOrEqual(3);
+  });
 });
 
 describe('behavior event labels & evidence', () => {

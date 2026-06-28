@@ -4,7 +4,7 @@ import { cn } from '../../../components/ui/utils';
 import { TripMetricRow } from './TripMetricRow';
 import { TripStatusBadge } from './TripStatusBadge';
 import type { OperationalChip, TripTimelineTrip } from './timeline.types';
-import { hasAbuseSuspicion } from './timeline.utils';
+import { hasAbuseSuspicion, hasTripDeviceConnectionAlert } from './timeline.utils';
 
 interface TripTimelineCardProps {
   trip: TripTimelineTrip;
@@ -33,7 +33,7 @@ export function TripTimelineCard({
   onSelect,
   children,
 }: TripTimelineCardProps) {
-  const flagged = hasAbuseSuspicion(trip);
+  const flagged = hasAbuseSuspicion(trip) || hasTripDeviceConnectionAlert(trip);
   const visibleChips = chips.slice(0, MAX_VISIBLE_CHIPS);
 
   return (

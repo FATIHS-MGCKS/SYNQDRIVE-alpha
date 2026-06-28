@@ -115,6 +115,9 @@ export function summarizeFleetDeviceConnection(
 export function tripEvidenceHeadline(
   item: TripDeviceConnectionEvidenceItem,
 ): string {
+  if (item.eventType === 'OBD_DEVICE_PLUGGED_IN') {
+    return DEVICE_CONNECTION_LABELS.devicePluggedIn;
+  }
   if (item.rentalRelevant) {
     return DEVICE_CONNECTION_LABELS.tripEvidenceTitle;
   }
@@ -124,6 +127,7 @@ export function tripEvidenceHeadline(
 export function tripEvidenceStatusLabel(
   status: TripDeviceConnectionEvidenceItem['evidenceStatus'],
 ): string {
+  if (status == null) return '—';
   return status === 'recovered'
     ? DEVICE_CONNECTION_LABELS.evidenceStatusRecovered
     : DEVICE_CONNECTION_LABELS.evidenceStatusOpen;

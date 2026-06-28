@@ -71,13 +71,11 @@ export const TRIP_SIGNAL_SUMMARY_ENRICHMENT = {
  * The trustworthy trigger a context window is anchored on. Context is enriched
  * AROUND an anchor; anchors are never invented from sparse whole-trip HF.
  *   - DIMO_NATIVE_BEHAVIOR_EVENT : a native DIMO `behavior.*` event (LTE_R1).
- *   - RPM_WEBHOOK_CANDIDATE      : an RPM-threshold webhook candidate (future intake).
  */
-export type AnchorType = 'DIMO_NATIVE_BEHAVIOR_EVENT' | 'RPM_WEBHOOK_CANDIDATE';
+export type AnchorType = 'DIMO_NATIVE_BEHAVIOR_EVENT';
 
 export const ANCHOR_TYPES: readonly AnchorType[] = [
   'DIMO_NATIVE_BEHAVIOR_EVENT',
-  'RPM_WEBHOOK_CANDIDATE',
 ] as const;
 
 // ──────────────────────────────────────────────────────────────────────────────

@@ -1953,20 +1953,6 @@ export class VehiclesService {
       }),
     ]);
 
-    const tokenId = dimoVehicle.tokenId;
-    if (tokenId != null) {
-      try {
-        const base = (this.dimoConf as any).webhookBaseUrl || 'http://localhost:3001';
-        const callbackUrl = base.replace(/\/$/, '') + '/api/v1/webhooks/dimo';
-        const webhookId = await this.dimoTriggers.ensureWebhookRegistered(callbackUrl);
-        if (webhookId) {
-          await this.dimoTriggers.registerAllTriggersForVehicle(webhookId, tokenId);
-        }
-      } catch (err: any) {
-        this.logger.warn(`DIMO trigger subscription failed for new vehicle: ${err.message}`);
-      }
-    }
-
     void this.dataAuthorizations.ensureDimoTelemetryAuthorization(orgId);
 
     return vehicle;

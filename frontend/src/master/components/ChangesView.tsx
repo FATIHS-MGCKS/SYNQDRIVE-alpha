@@ -35,6 +35,48 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-device-connection-v4996-2026-06-28',
+    version: '4.9.96',
+    title: 'V4.9.96 — OBD Plug/Unplug in Fahrtenliste & Trip-Evidenz',
+    summary: [
+      'Trips API: `GET /trips`, `GET /trips-timeline`, `GET /trips/:id` liefern pro Fahrt Device-Connection-Flags (`hasDeviceConnectionEvent`, unplug/plug counts, `hasOpenDeviceUnplug`, `deviceConnectionRentalRelevant`, severity).',
+      'Batch-Read-Model: `buildTripDeviceConnectionFlags` + `DeviceConnectionQueryService.getDeviceConnectionFlagsForTrips` — Events im Trip-Fenster gegen Buchungskontext.',
+      'Trip-Evidenz: `device-connection-evidence` liefert chronologisch alle Plug- und Unplug-Events (nicht nur Unplug).',
+      'Fahrtenliste: Chip „Telematik abgezogen“ / „OBD getrennt“ auf collapsed Trip-Cards; visuelles Flagging analog Missbrauchsverdacht.',
+    ],
+    reason:
+      'Nach manueller DIMO-Webhook-Registrierung (obdIsPluggedIn 0/1) sollen Operatoren in der Fahrtenliste sofort sehen, ob während einer Fahrt das OBD-Gerät abgezogen oder wieder eingesteckt wurde.',
+    previousBehavior:
+      'Webhook-Events wurden persistiert und in Fleet Connectivity / Vehicle Detail / expanded Trip-Evidenz angezeigt, aber nicht in der collapsed Fahrtenliste oder Trip-List-API.',
+    details:
+      '**Backend**: `device-connection-read-model.ts` (+ Spec), `device-connection-query.service.ts`, `vehicle-intelligence.controller.ts` (`attachTripDeviceConnectionFlags`). **Frontend**: `trips.types.ts`, `timeline.utils.ts` (+ Test), `TripTimelineCard.tsx`, `TripDeviceConnectionEvidence.tsx`, `device-connection-ui.ts`, `api.ts`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-28T18:00:00.000Z',
+  },
+  {
+    id: 'audit-cleanup-v4995-2026-06-28',
+    version: '4.9.95',
+    title: 'V4.9.95 — Post-Audit Cleanup: DIMO Manual Webhooks, Critical Dedupe, RPM Legacy, Mapbox',
+    summary: [
+      'DIMO: `DimoTriggersBootstrapService` und Auto-Registration in `vehicles.service` entfernt — Webhooks nur manuell in DIMO Developer Console; SynqDrive empfängt/verifiziert/normalisiert.',
+      'Webhook-Health: `GET /webhooks/dimo/health` zeigt `verificationConfigured` + `hmacConfigured`; Verification liest Token zur Request-Zeit aus `dimo.config`.',
+      'Critical Drawer: `SERVICE_OVERDUE`-Insights werden nicht mehr doppelt gezählt wenn `rental-health:service_compliance` bereits critical; Service-Insights nie `blocking: true`.',
+      'Fleet Command: Service-only-overdue zählt nicht mehr als `attentionLevel: critical` (nur echte Blocker / non-service critical modules).',
+      'RPM Legacy: `RPM_WEBHOOK_CANDIDATE` aus AnchorType/Window/Misuse-Pfaden entfernt; Prisma-Tabelle bleibt audit-only.',
+      'Mapbox: Backend `mapbox.service` nutzt dieselbe Token-Chain wie Station/Vendor (`MAPBOX_*` → `VITE_*` → `NEXT_PUBLIC_*`).',
+    ],
+    reason:
+      'Read-only Audit V4.9.95: Vermischung RPM-Webhook vs native Context vs Auto-Bootstrap vs Count-Drift bereinigen.',
+    previousBehavior:
+      'App bootstrappte DIMO Webhooks beim Start und bei Vehicle-Create; Critical-Drawer duplizierte Service Overdue; Fleet critical zählte service-only overall_state; 503 bei DIMO Verification wenn ENV nicht im laufenden Prozess.',
+    details:
+      '**Entfernt**: `dimo-triggers-bootstrap.service.ts`, vehicles.service DIMO trigger auto-subscribe. **Geändert**: `dimo-webhook.controller.ts`, `dashboardSliceBuilder.ts`, `fleetVisualState.ts`, event-context window/types, `context-misuse-rules.ts`, `mapbox.service.ts`, `.env.example`.',
+    affectsArchitecture: true,
+    module: 'Platform / DIMO / Dashboard',
+    createdAt: '2026-06-28T22:30:00.000Z',
+  },
+  {
     id: 'device-connection-ui-v4994-2026-06-28',
     version: '4.9.94',
     title: 'V4.9.94 — OBD Tamper UI: Fleet Connectivity, Vehicle Detail, Data Analyse & Trip Evidence',

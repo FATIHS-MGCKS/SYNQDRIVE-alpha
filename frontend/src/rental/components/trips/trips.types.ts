@@ -50,6 +50,13 @@ export interface TripTimelineTrip {
   brakingEventCount?: number;
   abuseEvents?: number;
   abuseEventCount?: number;
+  /** OBD device plug/unplug during this trip (DIMO Vehicle Trigger). */
+  hasDeviceConnectionEvent?: boolean;
+  deviceUnpluggedCount?: number;
+  devicePluggedInCount?: number;
+  hasOpenDeviceUnplug?: boolean;
+  deviceConnectionRentalRelevant?: boolean;
+  deviceConnectionSeverity?: 'info' | 'warning' | 'critical' | null;
   harshBrakeCount?: number;
   harshAccelCount?: number;
   harshCornerCount?: number;

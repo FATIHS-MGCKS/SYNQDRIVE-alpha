@@ -298,6 +298,48 @@ describe('dashboard runtime model', () => {
     expect(model.slices['critical-alerts'].rows.map((row) => row.vehicleId)).toContain('svc-overdue-open');
   });
 
+  it('dedupes SERVICE_OVERDUE insight when runtime already has service_compliance critical', () => {
+    const healthMap = new Map<string, VehicleHealthResponse>([
+      [
+        'svc-overdue-open',
+        health({
+          vehicleId: 'svc-overdue-open',
+          overall_state: 'critical',
+          rental_blocked: false,
+          blocking_reasons: [],
+          modules: {
+            service_compliance: {
+              state: 'critical',
+              reason: 'Service überfällig seit 117 Tagen (HM/OEM)',
+            },
+          },
+        }),
+      ],
+    ]);
+    const model = buildDashboardRuntimeModel({
+      locale: 'de',
+      fleetVehicles: [vehicle({ id: 'svc-overdue-open', license: 'SVC-OPEN' })],
+      healthMap,
+      insights: [
+        insight({
+          id: 'service-insight',
+          type: 'SERVICE_OVERDUE',
+          severity: 'CRITICAL',
+          title: 'Service überfällig',
+          entityIds: ['svc-overdue-open'],
+        }),
+      ],
+      now: NOW,
+    });
+
+    const serviceRows = model.slices['critical-alerts'].rows.filter(
+      (row) => row.vehicleId === 'svc-overdue-open',
+    );
+    expect(serviceRows).toHaveLength(1);
+    expect(model.slices['critical-alerts'].count).toBe(1);
+    expect(serviceRows[0]?.reasons?.[0]?.blocking).toBe(false);
+  });
+
   it('treats 3h without heartbeat as standby, not a warning or block', () => {
     const states = buildVehicleRuntimeStates({
       fleetVehicles: [vehicle({ id: 'standby', lastSignal: hoursAgoIso(3), onlineStatus: 'STANDBY', isFresh: false })],

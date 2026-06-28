@@ -2,10 +2,13 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   buildDeviceConnectionSummary,
+  buildTripDeviceConnectionFlags,
+  mapDeviceConnectionEventView,
   type DeviceConnectionBookingWindow,
   type DeviceConnectionEventRow,
   type DeviceConnectionSummary,
   type DeviceConnectionTripWindow,
+  type TripDeviceConnectionFlags,
 } from './device-connection-read-model';
 
 const BOOKING_STATUSES = ['ACTIVE', 'CONFIRMED', 'COMPLETED'] as const;
@@ -153,6 +156,54 @@ export class DeviceConnectionQueryService {
     return out;
   }
 
+  async getDeviceConnectionFlagsForTrips(
+    organizationId: string,
+    vehicleId: string,
+    trips: DeviceConnectionTripWindow[],
+  ): Promise<Map<string, TripDeviceConnectionFlags>> {
+    const out = new Map<string, TripDeviceConnectionFlags>();
+    if (trips.length === 0) return out;
+
+    const nowMs = Date.now();
+    const minStart = trips.reduce(
+      (min, t) => Math.min(min, t.startTime.getTime()),
+      Number.POSITIVE_INFINITY,
+    );
+    const maxEnd = trips.reduce((max, t) => {
+      const end = t.endTime?.getTime() ?? nowMs;
+      return Math.max(max, end);
+    }, 0);
+
+    const [events, bookings] = await Promise.all([
+      this.prisma.dimoDeviceConnectionEvent.findMany({
+        where: {
+          organizationId,
+          vehicleId,
+          observedAt: {
+            gte: new Date(minStart),
+            lte: new Date(maxEnd),
+          },
+        },
+        select: {
+          id: true,
+          vehicleId: true,
+          eventType: true,
+          observedAt: true,
+        },
+        orderBy: { observedAt: 'asc' },
+      }),
+      this.loadBookings(vehicleId, new Date(minStart)),
+    ]);
+
+    for (const trip of trips) {
+      out.set(
+        trip.id,
+        buildTripDeviceConnectionFlags(trip, events, bookings, nowMs),
+      );
+    }
+    return out;
+  }
+
   async getTripEvidence(
     organizationId: string,
     vehicleId: string,
@@ -179,7 +230,6 @@ export class DeviceConnectionQueryService {
         organizationId,
         vehicleId,
         observedAt: { gte: trip.startTime, lte: end },
-        eventType: 'OBD_DEVICE_UNPLUGGED',
       },
       orderBy: { observedAt: 'asc' },
       select: { id: true, vehicleId: true, eventType: true, observedAt: true },
@@ -191,37 +241,29 @@ export class DeviceConnectionQueryService {
 
     const bookings = await this.loadBookings(vehicleId, trip.startTime);
     const trips = [trip];
-    const plugEvents = await this.prisma.dimoDeviceConnectionEvent.findMany({
-      where: {
-        organizationId,
-        vehicleId,
-        observedAt: { gte: trip.startTime, lte: end },
-        eventType: 'OBD_DEVICE_PLUGGED_IN',
-      },
-      orderBy: { observedAt: 'asc' },
-      select: { id: true, vehicleId: true, eventType: true, observedAt: true },
-    });
 
-    const mapped = events.map((unplug) => {
-      const recovery = plugEvents.find(
-        (p) => p.observedAt.getTime() > unplug.observedAt.getTime(),
-      );
-      const view = buildDeviceConnectionSummary({
-        vehicleId,
-        hardwareType: null,
-        dimoLinked: true,
-        nowMs: Date.now(),
-        events: [unplug, ...(recovery ? [recovery] : [])],
-        bookings,
-        trips,
-        recentLimit: 2,
-      }).recentEvents[0];
+    const mapped = events.map((event, index) => {
+      const view = mapDeviceConnectionEventView(event, bookings, trips);
+
+      if (event.eventType !== 'OBD_DEVICE_UNPLUGGED') {
+        return {
+          ...view,
+          recoveryAt: null,
+          recoveryDurationMs: null,
+          source: 'DIMO Vehicle Trigger' as const,
+          evidenceStatus: null,
+        };
+      }
+
+      const recovery = events
+        .slice(index + 1)
+        .find((e) => e.eventType === 'OBD_DEVICE_PLUGGED_IN');
 
       return {
         ...view,
         recoveryAt: recovery?.observedAt.toISOString() ?? null,
         recoveryDurationMs: recovery
-          ? recovery.observedAt.getTime() - unplug.observedAt.getTime()
+          ? recovery.observedAt.getTime() - event.observedAt.getTime()
           : null,
         source: 'DIMO Vehicle Trigger' as const,
         evidenceStatus: recovery ? ('recovered' as const) : ('open' as const),

@@ -168,13 +168,24 @@ function deriveRentalStatus(vehicle: FleetVisualStateVehicle): FleetRentalStatus
   }
 }
 
+function hasNonServiceCriticalModule(
+  rentalHealth?: DeriveFleetVisualStateOptions['rentalHealth'],
+): boolean {
+  if (!rentalHealth?.modules) return false;
+  for (const [name, mod] of Object.entries(rentalHealth.modules)) {
+    if (name === 'service_compliance') continue;
+    if (mod.state === 'critical') return true;
+  }
+  return false;
+}
+
 function isHealthCritical(
   vehicle: FleetVisualStateVehicle,
   rentalHealth?: DeriveFleetVisualStateOptions['rentalHealth'],
 ): boolean {
-  return (
-    rentalHealth?.overall_state === 'critical' || vehicle.healthStatus === 'Critical'
-  );
+  if (rentalHealth?.rental_blocked) return true;
+  if (hasNonServiceCriticalModule(rentalHealth)) return true;
+  return vehicle.healthStatus === 'Critical';
 }
 
 function isHealthWarning(

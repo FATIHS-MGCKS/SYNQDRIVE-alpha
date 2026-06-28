@@ -887,7 +887,7 @@ export class VehicleIntelligenceController {
     // ── Compute simple UI-facing readiness flags ─────────────────────────
     // Frontend only needs behaviorReady/detailsLimited — it should NOT need
     // to interpret behaviorEnrichmentStatus internally.
-    return hydratedTrips.map((trip) => {
+    const mapped = hydratedTrips.map((trip) => {
       const { behaviorEnrichmentStatus, behaviorEnrichmentError, behaviorEnrichmentAttempts, ...rest } = trip as any;
       return {
         ...rest,
@@ -924,6 +924,7 @@ export class VehicleIntelligenceController {
           (trip as any).qualityStatus === 'ANOMALY',
       };
     });
+    return this.attachTripDeviceConnectionFlags(vehicleId, mapped);
   }
 
   @Get('trips/stats')
@@ -980,9 +981,14 @@ export class VehicleIntelligenceController {
       trips as any,
     );
 
-    return this.energyEventsService.buildTripsTimeline(
+    const withFlags = await this.attachTripDeviceConnectionFlags(
       vehicleId,
       hydratedTrips as any,
+    );
+
+    return this.energyEventsService.buildTripsTimeline(
+      vehicleId,
+      withFlags as any,
       { from: fromDate, to: toDate },
     );
   }
@@ -1028,7 +1034,7 @@ export class VehicleIntelligenceController {
     // ── Same readiness semantics as GET /trips list ──────────────────────
     // Strip internal enrichment status fields; surface simple flags only.
     const { behaviorEnrichmentStatus, behaviorEnrichmentError, behaviorEnrichmentAttempts, ...rest } = hydratedTrip as any;
-    return {
+    const mapped = {
       ...rest,
       drivingScore:
         hydratedTrip.canonicalTripSummary?.scores?.drivingStressScore ??
@@ -1058,6 +1064,8 @@ export class VehicleIntelligenceController {
         (hydratedTrip as any).qualityStatus === 'LOW_DATA' ||
         (hydratedTrip as any).qualityStatus === 'ANOMALY',
     };
+    const [withFlags] = await this.attachTripDeviceConnectionFlags(vehicleId, [mapped]);
+    return withFlags;
   }
 
   @Get('trips/:tripId/route')
@@ -1761,5 +1769,53 @@ export class VehicleIntelligenceController {
       select: { id: true, hardwareType: true },
     });
     return { vehicleId: updated.id, hardwareType: updated.hardwareType };
+  }
+
+  /** Attach OBD plug/unplug flags for trip list, timeline, and detail surfaces. */
+  private async attachTripDeviceConnectionFlags<
+    T extends {
+      id: string;
+      startTime: Date | string;
+      endTime?: Date | string | null;
+      assignedBookingId?: string | null;
+    },
+  >(vehicleId: string, trips: T[]): Promise<T[]> {
+    if (trips.length === 0) return trips;
+
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    if (!vehicle) return trips;
+
+    const windows = trips.map((t) => ({
+      id: t.id,
+      startTime:
+        t.startTime instanceof Date ? t.startTime : new Date(t.startTime),
+      endTime: t.endTime
+        ? t.endTime instanceof Date
+          ? t.endTime
+          : new Date(t.endTime)
+        : null,
+      assignedBookingId: t.assignedBookingId ?? null,
+    }));
+
+    const flagsMap = await this.deviceConnectionQuery.getDeviceConnectionFlagsForTrips(
+      vehicle.organizationId,
+      vehicleId,
+      windows,
+    );
+
+    return trips.map((t) => ({
+      ...t,
+      ...(flagsMap.get(t.id) ?? {
+        hasDeviceConnectionEvent: false,
+        deviceUnpluggedCount: 0,
+        devicePluggedInCount: 0,
+        hasOpenDeviceUnplug: false,
+        deviceConnectionRentalRelevant: false,
+        deviceConnectionSeverity: null,
+      }),
+    }));
   }
 }

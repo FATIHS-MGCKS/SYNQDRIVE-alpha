@@ -92,6 +92,22 @@ describe('deriveFleetVisualState', () => {
     expect(state.mapTone).toBe('reserved');
   });
 
+  it('service overdue only does not count as fleet critical attention', () => {
+    const state = deriveFleetVisualState(base({ healthStatus: 'Good Health' }), {
+      rentalHealth: {
+        rental_blocked: false,
+        overall_state: 'critical',
+        blocking_reasons: [],
+        modules: {
+          service_compliance: { state: 'critical', reason: 'Service überfällig' },
+        },
+      },
+    });
+    expect(state.attentionLevel).not.toBe('critical');
+    expect(state.isBlocked).toBe(false);
+    expect(state.visualStatus).toBe('ready');
+  });
+
   it('maintenance stays maintenance; critical health without blocker is attention, not blocked', () => {
     const maintenance = deriveFleetVisualState(
       base({ status: 'Maintenance', maintenanceUrgency: 'urgent' }),

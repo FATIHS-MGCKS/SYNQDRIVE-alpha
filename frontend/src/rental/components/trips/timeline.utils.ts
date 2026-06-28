@@ -31,6 +31,13 @@ export function buildStatusLine(trip: TripTimelineTrip): string {
 
 export { getOperatorStressLabel, getEventsSummary, hasAbuseSuspicion };
 
+export function hasTripDeviceConnectionAlert(trip: TripTimelineTrip): boolean {
+  return (
+    trip.hasDeviceConnectionEvent === true &&
+    (trip.deviceUnpluggedCount ?? 0) > 0
+  );
+}
+
 /**
  * Compact, operator-facing chips for a collapsed trip card.
  * Strictly limited to at most three meaningful signals:
@@ -57,12 +64,32 @@ export function deriveOperationalChips(
     chips.push({ key: 'unremarkable', label: 'Unauffällig', tone: 'neutral' });
   }
 
-  // 2) Suspicion — only when concrete abuse events exist
+  // 2) OBD plug/unplug during trip — high-priority operational signal
+  if (hasTripDeviceConnectionAlert(trip)) {
+    const rental = trip.deviceConnectionRentalRelevant === true;
+    chips.push({
+      key: 'device-unplug',
+      label: rental ? 'Telematik abgezogen' : 'OBD getrennt',
+      tone: rental || trip.hasOpenDeviceUnplug ? 'critical' : 'watch',
+    });
+  } else if (
+    trip.hasDeviceConnectionEvent &&
+    (trip.devicePluggedInCount ?? 0) > 0 &&
+    (trip.deviceUnpluggedCount ?? 0) === 0
+  ) {
+    chips.push({
+      key: 'device-plug',
+      label: 'OBD verbunden',
+      tone: 'info',
+    });
+  }
+
+  // 3) Suspicion — only when concrete abuse events exist
   if (hasAbuse) {
     chips.push({ key: 'abuse', label: 'Missbrauchsverdacht', tone: 'critical' });
   }
 
-  // 3) Assignment context — exactly one, private wins and suppresses the rest
+  // 4) Assignment context — exactly one, private wins and suppresses the rest
   if (isPrivate) {
     chips.push({ key: 'private', label: 'Privat', tone: 'private' });
   } else if (rentalContext?.needsReview || trip.assignmentStatus === 'UNKNOWN_ASSIGNMENT') {
@@ -75,7 +102,7 @@ export function deriveOperationalChips(
     chips.push({ key: 'no-booking', label: 'Ohne Buchung', tone: 'watch' });
   }
 
-  return chips;
+  return chips.slice(0, 3);
 }
 
 export type { TripDaySummary };

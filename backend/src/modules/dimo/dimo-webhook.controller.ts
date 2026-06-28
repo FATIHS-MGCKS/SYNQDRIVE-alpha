@@ -1,5 +1,19 @@
-import { Controller, Post, Body, Req, RawBodyRequest, Headers, Logger, Get, HttpCode, ServiceUnavailableException } from '@nestjs/common';
-import type { Request } from 'express';
+import {
+  Controller,
+  Post,
+  Body,
+  Req,
+  Res,
+  RawBodyRequest,
+  Headers,
+  Logger,
+  Get,
+  HttpCode,
+  ServiceUnavailableException,
+  Inject,
+} from '@nestjs/common';
+import type { Request, Response } from 'express';
+import { ConfigType } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
@@ -11,17 +25,18 @@ import {
   normalizeDimoWebhookPayload,
 } from './dimo-webhook-payload.util';
 import { createHmac, timingSafeEqual } from 'crypto';
+import dimoConfig from '@config/dimo.config';
 
 @Controller('webhooks/dimo')
 export class DimoWebhookController {
   private readonly logger = new Logger(DimoWebhookController.name);
   private readonly nodeEnv = process.env.NODE_ENV ?? 'development';
-  private readonly isProduction = this.nodeEnv === 'production';
   // Only strict local dev may accept unsigned webhooks. Staging / test / preview
   // environments MUST provide DIMO_WEBHOOK_SECRET — otherwise we fail closed.
   private readonly allowUnsignedInDev = this.nodeEnv === 'development';
 
   constructor(
+    @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
     private readonly prisma: PrismaService,
     private readonly dtcService: DtcService,
     private readonly deviceConnection: DeviceConnectionWebhookService,
@@ -32,12 +47,18 @@ export class DimoWebhookController {
         `DIMO_WEBHOOK_SECRET is not set (NODE_ENV=${this.nodeEnv}). All inbound DIMO webhooks will be rejected until this is fixed.`,
       );
     }
-    const verificationToken = process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN;
-    if (!verificationToken && !this.allowUnsignedInDev) {
+    if (!this.resolveVerificationToken() && !this.allowUnsignedInDev) {
       this.logger.warn(
-        'DIMO_WEBHOOK_VERIFICATION_TOKEN is not set — DIMO Developer Console webhook URL verification will fail.',
+        'DIMO_WEBHOOK_VERIFICATION_TOKEN is not set — DIMO Developer Console webhook URL verification will return 503.',
       );
     }
+  }
+
+  /** Read at request time so PM2 --update-env picks up changes without stale ctor cache. */
+  private resolveVerificationToken(): string {
+    const fromConfig = this.dimoConf.webhookVerificationToken?.trim() ?? '';
+    if (fromConfig) return fromConfig;
+    return (process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN ?? '').trim();
   }
 
   @Post()
@@ -45,11 +66,12 @@ export class DimoWebhookController {
   async handleWebhook(
     @Req() req: RawBodyRequest<Request>,
     @Body() body: any,
-    @Headers('x-dimo-signature') signature?: string,
+    @Headers('x-dimo-signature') signature: string | undefined,
+    @Res({ passthrough: true }) res: Response,
   ) {
     // ── 1) DIMO Vehicle Triggers URL verification (no HMAC on probe) ─────────
     if (isDimoVerificationRequest(body)) {
-      const verificationToken = process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN;
+      const verificationToken = this.resolveVerificationToken();
       if (!verificationToken) {
         this.logger.error('DIMO webhook verification rejected: DIMO_WEBHOOK_VERIFICATION_TOKEN not configured');
         throw new ServiceUnavailableException({
@@ -58,6 +80,7 @@ export class DimoWebhookController {
         });
       }
       this.logger.log('DIMO webhook URL verification handshake succeeded');
+      res.type('text/plain; charset=utf-8');
       return buildDimoVerificationResponse(verificationToken);
     }
 
@@ -169,7 +192,12 @@ export class DimoWebhookController {
 
   @Get('health')
   healthCheck() {
-    return { status: 'ok', service: 'dimo-webhook' };
+    return {
+      status: 'ok',
+      service: 'dimo-webhook',
+      verificationConfigured: Boolean(this.resolveVerificationToken()),
+      hmacConfigured: Boolean(process.env.DIMO_WEBHOOK_SECRET?.trim()),
+    };
   }
 
   private async handleDtcEvent(vehicleId: string, dtcValue: any) {

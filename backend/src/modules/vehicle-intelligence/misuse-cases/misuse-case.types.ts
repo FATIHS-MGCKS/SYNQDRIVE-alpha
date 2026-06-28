@@ -46,10 +46,9 @@ export type CaseCandidate = {
  * A trustworthy anchor enriched with an Event Context Assessment, normalised for
  * the misuse aggregator. `source` records where the anchor came from:
  *   - DRIVING_EVENT : native DIMO behavior event (DrivingEvent.metadataJson.contextAssessment)
- *   - RPM_CANDIDATE : RPM webhook candidate (RpmWebhookCandidate.contextAssessmentJson)
  */
 export type ContextAnchor = {
-  source: 'DRIVING_EVENT' | 'RPM_CANDIDATE';
+  source: 'DRIVING_EVENT';
   anchorId: string;
   occurredAt: Date;
   assessment: EventContextAssessment;

@@ -4,6 +4,11 @@ import axios from 'axios';
 import { DimoAuthService } from './dimo-auth.service';
 import dimoConfig from '@config/dimo.config';
 
+/**
+ * DIMO Vehicle Triggers API client (ops/helpers only).
+ * Webhook registration and vehicle subscriptions are configured manually in the
+ * DIMO Developer Console — SynqDrive does not auto-bootstrap webhooks on startup.
+ */
 interface WebhookDefinition {
   id?: string;
   name: string;

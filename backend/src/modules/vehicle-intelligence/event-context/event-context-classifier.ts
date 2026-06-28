@@ -196,8 +196,7 @@ function classifyGeneric(
 }
 
 export function classifyEventContext(input: ClassifyContextInput): ClassifyContextResult {
-  const anchorReason: ContextReasonCode =
-    input.anchorType === 'RPM_WEBHOOK_CANDIDATE' ? 'RPM_WEBHOOK_ANCHOR' : 'NATIVE_EVENT_ANCHOR';
+  const anchorReason: ContextReasonCode = 'NATIVE_EVENT_ANCHOR';
   const reasonCodes = [...new Set<ContextReasonCode>([anchorReason, ...input.reasonCodes])];
 
   const grade = deriveEvidenceGrade(input);
