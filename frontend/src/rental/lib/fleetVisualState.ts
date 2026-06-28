@@ -1,6 +1,6 @@
 import type { Feature, FeatureCollection, Point } from 'geojson';
 import type { VehicleData } from '../data/vehicles';
-import type { VehicleHealthResponse } from '../../lib/api';
+import type { VehicleHealthResponse, RentalHealthModule } from '../../lib/api';
 import { isVehicleOffline } from '../data/vehicles';
 import { resolveTelemetryFreshness } from './telemetryFreshness';
 
@@ -91,10 +91,13 @@ export type FleetVisualStateVehicle = Pick<
 };
 
 export interface DeriveFleetVisualStateOptions {
-  rentalHealth?: Pick<
-    VehicleHealthResponse,
-    'rental_blocked' | 'overall_state' | 'blocking_reasons'
-  > | null;
+  rentalHealth?:
+    | (Pick<
+        VehicleHealthResponse,
+        'rental_blocked' | 'overall_state' | 'blocking_reasons'
+      > &
+        Partial<Pick<VehicleHealthResponse, 'modules'>>)
+    | null;
   /** When true, missing coordinates yield `no_location` instead of `ready`. */
   requireLocation?: boolean;
 }
@@ -172,7 +175,9 @@ function hasNonServiceCriticalModule(
   rentalHealth?: DeriveFleetVisualStateOptions['rentalHealth'],
 ): boolean {
   if (!rentalHealth?.modules) return false;
-  for (const [name, mod] of Object.entries(rentalHealth.modules)) {
+  for (const [name, mod] of Object.entries(rentalHealth.modules) as Array<
+    [keyof VehicleHealthResponse['modules'], RentalHealthModule]
+  >) {
     if (name === 'service_compliance') continue;
     if (mod.state === 'critical') return true;
   }

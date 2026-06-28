@@ -460,8 +460,8 @@ function insightDuplicatesRuntimeCritical(
   const category = insightCategory(insightType);
   return state.criticalReasons.some((reason) => {
     if (reason.category === category) return true;
-    if (category === 'service' && reason.source.includes('service_compliance')) return true;
-    if (category === 'compliance' && reason.source.includes('compliance')) return true;
+    if (category === 'service' && reason.source?.includes('service_compliance')) return true;
+    if (category === 'compliance' && reason.source?.includes('compliance')) return true;
     return false;
   });
 }
