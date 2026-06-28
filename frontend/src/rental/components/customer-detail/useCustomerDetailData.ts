@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../../../lib/api';
+import { api, getErrorMessage } from '../../../lib/api';
 import type { CustomerDocumentRecord } from '../CustomerDocumentUploadBox';
 import type {
   CustomerDetail,
@@ -68,15 +68,20 @@ export function useCustomerEligibility(orgId: string | null | undefined, custome
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
-    if (!orgId || !customerId) return;
+    if (!orgId || !customerId) {
+      setEligibility(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     api.customers
       .eligibility(orgId, customerId)
       .then(setEligibility)
-      .catch(() => {
+      .catch((err: unknown) => {
         setEligibility(null);
-        setError('Mietfreigabe konnte nicht geladen werden');
+        setError(getErrorMessage(err, 'Mietfreigabe konnte nicht geladen werden'));
       })
       .finally(() => setLoading(false));
   }, [orgId, customerId]);

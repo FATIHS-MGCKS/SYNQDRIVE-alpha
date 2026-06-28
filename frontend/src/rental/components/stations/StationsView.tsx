@@ -249,7 +249,6 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
     <div className="space-y-4 pb-8 animate-fade-up">
       <PageHeader
         title={t('stations.pageTitle')}
-        icon={<MapPin className="w-5 h-5" />}
         actions={(
           <div className="flex flex-wrap items-center gap-2">
             {missingCoords > 0 && (

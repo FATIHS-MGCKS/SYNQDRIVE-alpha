@@ -6,6 +6,7 @@ import type {
   FleetConnectivitySummary,
   FleetConnectivityThresholds,
   FleetConnectivityVehicleDto,
+  FleetDeviceConnectionDto,
   FleetReadinessLevel,
   FleetSignalAvailability,
 } from './fleet-connectivity.types';
@@ -376,6 +377,7 @@ export interface FleetConnectivityVehicleInput {
 export function mapFleetConnectivityVehicle(
   v: FleetConnectivityVehicleInput,
   nowMs: number,
+  deviceConnection: FleetDeviceConnectionDto | null = null,
 ): FleetConnectivityVehicleDto {
   const dv = v.dimoVehicle;
   const ls = v.latestState;
@@ -502,6 +504,7 @@ export function mapFleetConnectivityVehicle(
     dimoTokenId: null,
     syntheticTokenId: null,
     online: connectionStatus === 'online',
+    deviceConnection,
   };
 }
 
@@ -533,6 +536,12 @@ export function buildFleetConnectivitySummary(
     obdNoData: vehicles.filter((v) => v.obdIsPluggedIn == null).length,
     jammingSnapshotDetected: vehicles.filter(
       (v) => v.jammingDetectedCount > 0,
+    ).length,
+    deviceUnpluggedOpenEpisodes: vehicles.filter(
+      (v) => v.deviceConnection?.openUnpluggedEpisode === true,
+    ).length,
+    deviceUnpluggedDuringBooking: vehicles.filter(
+      (v) => v.deviceConnection?.duringActiveBooking === true,
     ).length,
     avgSignalCoverage:
       coverageValues.length > 0

@@ -668,6 +668,25 @@ enum DrivingEventSource {
   HF_DERIVED
 }
 
+// ── DEPRECATED: RPM webhook candidate intake (removed — DIMO does not expose RPM triggers) ──
+enum TelemetryTriggerType {
+  RPM_THRESHOLD
+}
+
+enum RpmWebhookCandidateStatus {
+  RECEIVED
+  CONTEXT_ENRICHED
+  INSUFFICIENT_CONTEXT
+  CLASSIFIED
+  FAILED
+}
+
+// ── DIMO Device Connection webhook events (OBD plug/unplug) ───────────────────
+enum DimoDeviceConnectionEventType {
+  OBD_DEVICE_UNPLUGGED
+  OBD_DEVICE_PLUGGED_IN
+}
+
 enum DamageType {
   SCRATCH
   DENT
@@ -1328,7 +1347,9 @@ model Vehicle {
   exteriorImages         VehicleExteriorImage[]
   rentalDrivingAnalyses  RentalDrivingAnalysis[]
   trips                  VehicleTrip[]
-  tripDetectionState     VehicleTripDetectionState?
+  rpmWebhookCandidates        RpmWebhookCandidate[]
+  dimoDeviceConnectionEvents  DimoDeviceConnectionEvent[]
+  tripDetectionState          VehicleTripDetectionState?
   tripTrackingRuns       VehicleTripTrackingRun[]
   tripBehaviorEvents     TripBehaviorEvent[]
   misuseCases            MisuseCase[]
@@ -4000,6 +4021,70 @@ model DrivingEvent {
 }
 
 // ------------------------------------------------
+// DEPRECATED — RPM WEBHOOK CANDIDATE (table retained, intake removed)
+// ------------------------------------------------
+// DIMO Developer Console does not expose RPM/throttle/engine-load webhooks.
+// Table kept for audit/history; new writes disabled. Use DimoDeviceConnectionEvent.
+model RpmWebhookCandidate {
+  id             String                    @id @default(uuid())
+  organizationId String                    @map("organization_id")
+  vehicleId      String                    @map("vehicle_id")
+  tripId         String?                   @map("trip_id")
+  tokenId        Int                       @map("token_id")
+  provider       String                    @default("DIMO")
+  triggerType    TelemetryTriggerType      @default(RPM_THRESHOLD) @map("trigger_type")
+  threshold      Int                       @default(4000)
+  observedValue  Float                     @map("observed_value")
+  observedAt     DateTime                  @map("observed_at")
+  // Idempotency bucket = floor(observedAt_ms / dedupWindowMs). Repeated firings
+  // inside the same window share a bucket and collapse via the unique index.
+  dedupBucket    BigInt                    @map("dedup_bucket")
+  rawPayloadJson Json                      @map("raw_payload_json")
+  status         RpmWebhookCandidateStatus @default(RECEIVED)
+  contextAssessmentJson Json?              @map("context_assessment_json")
+  error          String?
+  createdAt      DateTime                  @default(now()) @map("created_at")
+  updatedAt      DateTime                  @updatedAt @map("updated_at")
+
+  vehicle Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip    VehicleTrip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, vehicleId, triggerType, dedupBucket])
+  @@index([vehicleId])
+  @@index([organizationId])
+  @@index([observedAt])
+  @@index([status])
+  @@index([tripId])
+  @@map("rpm_webhook_candidates")
+}
+
+// ------------------------------------------------
+// DIMO DEVICE CONNECTION EVENT (OBD plug / unplug webhook)
+// ------------------------------------------------
+model DimoDeviceConnectionEvent {
+  id             String                        @id @default(uuid())
+  organizationId String                        @map("organization_id")
+  vehicleId      String                        @map("vehicle_id")
+  tokenId        Int                           @map("token_id")
+  provider       String                        @default("DIMO")
+  eventType      DimoDeviceConnectionEventType @map("event_type")
+  observedAt     DateTime                      @map("observed_at")
+  dedupBucket    BigInt                        @map("dedup_bucket")
+  rawPayloadJson Json                          @map("raw_payload_json")
+  createdAt      DateTime                      @default(now()) @map("created_at")
+  updatedAt      DateTime                      @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, vehicleId, eventType, dedupBucket])
+  @@index([vehicleId])
+  @@index([organizationId])
+  @@index([observedAt])
+  @@index([eventType])
+  @@map("dimo_device_connection_events")
+}
+
+// ------------------------------------------------
 // BATTERY HEALTH SNAPSHOTS
 // ------------------------------------------------
 
@@ -4762,12 +4847,13 @@ model VehicleTrip {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  vehicle        Vehicle               @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  waypoints      VehicleTripWaypoint[]
-  events         DrivingEvent[]
-  behaviorEvents TripBehaviorEvent[]
-  misuseCases    MisuseCase[]
-  repairs        TripRepair[]
+  vehicle              Vehicle               @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  waypoints            VehicleTripWaypoint[]
+  events               DrivingEvent[]
+  behaviorEvents       TripBehaviorEvent[]
+  misuseCases          MisuseCase[]
+  repairs              TripRepair[]
+  rpmWebhookCandidates RpmWebhookCandidate[]
 
   @@index([vehicleId])
   @@index([startTime])
@@ -4960,6 +5046,8 @@ enum MisuseEvidenceSourceType {
   VEHICLE_TRIP_COUNTER
   VEHICLE_LATEST_STATE
   DERIVED_PATTERN
+  EVENT_CONTEXT_ASSESSMENT
+  RPM_WEBHOOK_CANDIDATE
 }
 
 model MisuseCase {

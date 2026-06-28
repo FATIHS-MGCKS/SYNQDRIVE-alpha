@@ -1,11 +1,8 @@
-import { BillingControlCenter } from './billing/BillingControlCenter';
-
-export interface SubscriptionsViewProps {
-  /** @deprecated Theme is token-driven via CSS variables — prop kept for App.tsx compat. */
-  isDarkMode?: boolean;
-}
-
-/** Master Admin billing hub — pricebook-driven control center. */
-export function SubscriptionsView(props: SubscriptionsViewProps) {
-  return <BillingControlCenter {...props} />;
-}
+/**
+ * @deprecated Master Admin billing lives in `BillingControlCenter`.
+ * This module re-exports it for backward-compatible imports only.
+ */
+export {
+  BillingControlCenter as SubscriptionsView,
+  type BillingControlCenterProps as SubscriptionsViewProps,
+} from './billing/BillingControlCenter';

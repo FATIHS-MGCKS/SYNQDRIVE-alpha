@@ -32,6 +32,23 @@ export interface FleetConnectivityJammingSnapshot {
   isSnapshotIndication: true;
 }
 
+export type DeviceConnectionStatus = 'plugged' | 'unplugged' | 'unknown';
+export type DeviceConnectionSeverity = 'info' | 'warning' | 'critical';
+
+/** Explicit DIMO webhook device connection evidence (distinct from snapshot obdIsPluggedIn / offline). */
+export interface FleetDeviceConnectionDto {
+  lastDeviceUnpluggedAt: string | null;
+  lastDevicePluggedInAt: string | null;
+  currentDeviceConnectionStatus: DeviceConnectionStatus;
+  openUnpluggedEpisode: boolean;
+  openUnpluggedSince: string | null;
+  openUnpluggedDurationMs: number | null;
+  severity: DeviceConnectionSeverity | null;
+  rentalRelevant: boolean;
+  duringActiveBooking: boolean;
+  eventSource: 'dimo_webhook' | 'none';
+}
+
 export interface FleetConnectivityVehicleDto {
   vehicleId: string;
   vin: string;
@@ -72,6 +89,8 @@ export interface FleetConnectivityVehicleDto {
   syntheticTokenId: null;
   /** @deprecated Derive from connectionStatus === 'online'. */
   online: boolean;
+  /** Explicit DIMO Vehicle Trigger OBD plug/unplug events — not snapshot/offline. */
+  deviceConnection: FleetDeviceConnectionDto | null;
 }
 
 export interface FleetConnectivitySummary {
@@ -87,6 +106,8 @@ export interface FleetConnectivitySummary {
   obdUnplugged: number;
   obdNoData: number;
   jammingSnapshotDetected: number;
+  deviceUnpluggedOpenEpisodes: number;
+  deviceUnpluggedDuringBooking: number;
   avgSignalCoverage: number | null;
   avgReadinessScore: number | null;
 }

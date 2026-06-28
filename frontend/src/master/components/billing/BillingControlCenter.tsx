@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '../../../components/patterns/page-header';
+import { Button } from '../../../components/ui/button';
 import { EmptyState, ErrorState, SkeletonCard } from '../../../components/patterns/states';
 import { getStoredUser, isMasterAdmin } from '../../../lib/auth';
 import type { AdminBillingTab, AdminOrgBillingRowDto } from '../../types/admin-billing.types';
@@ -25,11 +26,20 @@ const TABS: Array<{ id: AdminBillingTab; label: string }> = [
   { id: 'audit', label: 'Audit Log' },
 ];
 
+const CORE_DATA_TABS = new Set<AdminBillingTab>(['overview', 'organizations', 'payment-methods']);
+
 export interface BillingControlCenterProps {
+  /** @deprecated Theme is token-driven via CSS variables. */
   isDarkMode?: boolean;
+  /** Opens the org detail drawer once organizations are loaded. */
+  initialOrgId?: string | null;
+  onInitialOrgConsumed?: () => void;
 }
 
-export function BillingControlCenter(_props: BillingControlCenterProps) {
+export function BillingControlCenter({
+  initialOrgId,
+  onInitialOrgConsumed,
+}: BillingControlCenterProps) {
   const user = getStoredUser();
   const canAccess = isMasterAdmin() || user?.platformRole === 'MASTER_ADMIN';
 
@@ -58,6 +68,17 @@ export function BillingControlCenter(_props: BillingControlCenterProps) {
     setOrgDrawerOpen(true);
   };
 
+  useEffect(() => {
+    if (!initialOrgId || loading || organizations.length === 0) return;
+    const row = organizations.find((o) => o.organization.id === initialOrgId);
+    if (row) {
+      setSelectedOrg(row);
+      setOrgDrawerOpen(true);
+      setActiveTab('organizations');
+    }
+    onInitialOrgConsumed?.();
+  }, [initialOrgId, loading, organizations, onInitialOrgConsumed]);
+
   if (!canAccess) {
     return (
       <div className="p-6">
@@ -69,38 +90,38 @@ export function BillingControlCenter(_props: BillingControlCenterProps) {
     );
   }
 
+  const needsCoreData = CORE_DATA_TABS.has(activeTab);
+  const showCoreLoading = loading && needsCoreData;
+  const showCoreError = Boolean(error) && needsCoreData && !loading;
+
   return (
     <div className="space-y-5 max-w-[1600px] mx-auto">
       <PageHeader
         title="Billing Control Center"
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <button
+            <Button
               type="button"
+              size="sm"
               onClick={() => {
                 setActiveTab('pricing');
                 setPricingRefresh((v) => v + 1);
               }}
-              className="px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--brand)] text-white hover:opacity-90 transition-opacity"
             >
               Preisstaffel erstellen
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              size="sm"
+              variant="outline"
               disabled
               title="Invoice Export — Backend noch nicht angebunden"
-              className="px-3 py-2 rounded-xl text-xs font-semibold border border-border/70 text-muted-foreground cursor-not-allowed"
             >
               Invoice Export
-            </button>
-            <button
-              type="button"
-              disabled
-              title="Stripe wird vorbereitet"
-              className="px-3 py-2 rounded-xl text-xs font-semibold border border-border/70 text-muted-foreground cursor-not-allowed"
-            >
-              Stripe wird vorbereitet
-            </button>
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => void reload()}>
+              Aktualisieren
+            </Button>
           </div>
         }
       />
@@ -122,7 +143,7 @@ export function BillingControlCenter(_props: BillingControlCenterProps) {
         ))}
       </div>
 
-      {loading && activeTab === 'overview' ? (
+      {showCoreLoading ? (
         <div className="space-y-4">
           <div className="grid grid-cols-2 xl:grid-cols-5 gap-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -131,10 +152,10 @@ export function BillingControlCenter(_props: BillingControlCenterProps) {
           </div>
           <SkeletonCard className="h-48" />
         </div>
-      ) : error && activeTab === 'overview' ? (
+      ) : showCoreError ? (
         <ErrorState
           title="Billing Control Center nicht verfügbar"
-          description={error}
+          description={error ?? 'Billing-Daten konnten nicht geladen werden'}
           onRetry={() => void reload()}
         />
       ) : (

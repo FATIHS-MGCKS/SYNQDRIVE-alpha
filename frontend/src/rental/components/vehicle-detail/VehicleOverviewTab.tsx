@@ -5,6 +5,7 @@ import type { ServiceCenterNavState } from '../../lib/service-center-navigation'
 import { formatVehicleIssueEntityLabel } from '../../lib/operational-issues';
 import { OverviewLiveMapCard } from './OverviewLiveMapCard';
 import { VehicleHealthBoxTelemetryBridge } from './VehicleHealthBoxWired';
+import { VehicleDeviceConnectionCard } from './VehicleDeviceConnectionCard';
 import { VehicleOverviewFreshnessHint } from './VehicleOverviewFreshnessHint';
 import { VehicleServiceContextPanel } from './VehicleServiceContextPanel';
 import { vo } from './vehicle-overview-ui';
@@ -78,6 +79,9 @@ export function VehicleOverviewTab({
               onViewDetails={onOpenHealthDetails}
               showDataBasis={false}
             />
+            {selectedVehicle?.id && (
+              <VehicleDeviceConnectionCard orgId={orgId} vehicleId={selectedVehicle.id} />
+            )}
           </div>
         </div>
       </section>

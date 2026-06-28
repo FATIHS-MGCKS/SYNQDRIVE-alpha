@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
-import { AlertTriangle, Car, CheckCircle, Eye, IdCard, ShieldCheck, Upload, User, UserCheck, UserX, Users } from 'lucide-react';
+import { Car, CheckCircle, IdCard, Upload, User } from 'lucide-react';
 import { Icon } from './ui/Icon';
 import { toast } from 'sonner';
 import { CustomerDetailModal } from './CustomerDetailModal';
@@ -15,9 +15,20 @@ import {
   customerStatusUiToApi,
   customerRiskUiToApi,
   customerTypeUiToApi,
+  customerStatusUiLabelDe,
+  customerRiskUiLabelDe,
   uploadPendingCustomerDocuments,
   type PendingCustomerDocumentFiles,
 } from '../lib/entityMappers';
+import { mergeAdditionalCustomers } from '../lib/customer-list.utils';
+import {
+  customerRiskTone,
+  customerStatusTone,
+  cdv,
+} from './customer-detail/customer-detail-ui';
+import { CustomerListMobileCards } from './customer-list/CustomerListMobileCards';
+import { VehicleBookingSummaryCard } from './vehicle-bookings/VehicleBookingSummaryCard';
+import { Button } from '../../components/ui/button';
 import {
   PageHeader,
   DataTable,
@@ -27,7 +38,7 @@ import {
 } from '../../components/patterns';
 import type { DataTableColumn } from '../../components/patterns';
 import type { StatusTone } from '../../components/patterns';
-import { formatStressScore, resolveDrivingStressScore, stressToneToStatusTone } from '../lib/scoreFormat';
+import { formatStressScore, resolveDrivingStressScore } from '../lib/scoreFormat';
 
 interface CustomersViewProps {
   onOpenCustomerDetail?: (customer: any) => void;
@@ -137,20 +148,6 @@ function mapApiCustomer(c: any): Customer {
   };
 }
 
-function customerStatusTone(status: Customer['status']): StatusTone {
-  if (status === 'Active') return 'success';
-  if (status === 'Under Review') return 'warning';
-  if (status === 'Suspended') return 'critical';
-  return 'neutral';
-}
-
-function customerRiskTone(level: Customer['riskLevel']): StatusTone {
-  if (level === 'Not Assessed') return 'noData';
-  if (level === 'Low Risk') return 'success';
-  if (level === 'Medium Risk') return 'warning';
-  return 'critical';
-}
-
 function scoreToneFromDisplay(
   tone: ReturnType<typeof formatStressScore>['tone'],
 ): StatusTone {
@@ -223,7 +220,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
   }, [loadStats]);
 
   // Merge additional customers from NewBookingView
-  const allCustomers = [...customers, ...additionalCustomers.filter(ac => !customers.some(c => c.id === ac.id))] as Customer[];
+  const allCustomers = mergeAdditionalCustomers(customers, additionalCustomers as Customer[]);
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isRiskOpen, setIsRiskOpen] = useState(false);
   const [isTypeOpen, setIsTypeOpen] = useState(false);
@@ -413,14 +410,14 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       },
       {
         key: 'company',
-        header: 'Company',
+        header: 'Firma',
         cell: (customer) => (
           <span className="text-xs text-muted-foreground">{customer.company || '—'}</span>
         ),
       },
       {
         key: 'contact',
-        header: 'Contact',
+        header: 'Kontakt',
         cell: (customer) => (
           <div>
             <p className="text-xs text-foreground">{customer.email}</p>
@@ -430,7 +427,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       },
       {
         key: 'lastTrip',
-        header: 'Last Trip',
+        header: 'Letzte Buchung',
         cell: (customer) => (
           <span className="text-xs text-muted-foreground">{customer.lastTrip}</span>
         ),
@@ -439,28 +436,32 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
         key: 'status',
         header: 'Status',
         cell: (customer) => (
-          <StatusChip tone={customerStatusTone(customer.status)}>{customer.status}</StatusChip>
+          <StatusChip tone={customerStatusTone(customer.status)}>
+            {customerStatusUiLabelDe(customer.status)}
+          </StatusChip>
         ),
       },
       {
         key: 'verification',
-        header: 'Verification',
+        header: 'Verifikation',
         cell: (customer) =>
           customer.idVerified ? (
             <StatusChip tone="success" dot>
-              Verified
+              Verifiziert
             </StatusChip>
           ) : (
             <StatusChip tone="warning" dot>
-              Unverified
+              Offen
             </StatusChip>
           ),
       },
       {
         key: 'risk',
-        header: 'Risk Level',
+        header: 'Risiko',
         cell: (customer) => (
-          <StatusChip tone={customerRiskTone(customer.riskLevel)}>{customer.riskLevel}</StatusChip>
+          <StatusChip tone={customerRiskTone(customer.riskLevel)}>
+            {customerRiskUiLabelDe(customer.riskLevel)}
+          </StatusChip>
         ),
       },
       {
@@ -484,7 +485,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       },
       {
         key: 'bookings',
-        header: 'Bookings',
+        header: 'Buchungen',
         numeric: true,
         cell: (customer) => (
           <span className="text-xs font-semibold text-foreground">{customer.totalBookings}</span>
@@ -492,7 +493,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       },
       {
         key: 'revenue',
-        header: 'Revenue',
+        header: 'Umsatz',
         cell: (customer) => (
           <span className="text-xs font-semibold text-[color:var(--status-positive)]">
             {customer.totalRevenue}
@@ -554,123 +555,96 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       >
       {/* Header */}
       <PageHeader
-        title="Customers & Drivers"
+        title="Kunden & Fahrer"
         actions={(
-          <button
-            type="button"
-            className="sq-3d-btn sq-3d-btn--neutral flex items-center gap-2 px-3 py-2 text-[10px] font-semibold"
-            onClick={openAddCustomer}
-          >
-            <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" />
-            Add Customer
-          </button>
+          <Button type="button" size="sm" variant="primary" onClick={openAddCustomer}>
+            <Icon name="plus" className="size-3.5" />
+            Kunde anlegen
+          </Button>
         )}
       />
 
-      {/* Segment metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className={cdv.summaryGrid}>
         {[
+          { label: 'Gesamt', value: totalDrivers, filterKey: 'all' as const, subdued: false },
+          { label: 'Aktiv', value: activeDrivers, filterKey: 'active' as const, subdued: activeDrivers === 0 },
           {
-            label: 'Total',
-            value: totalDrivers,
-            icon: Users,
-            tone: 'neutral' as const,
-            filterKey: 'all' as const,
-          },
-          {
-            label: 'Active',
-            value: activeDrivers,
-            icon: UserCheck,
-            tone: 'success' as const,
-            filterKey: 'active' as const,
-          },
-          {
-            label: 'Blocked',
+            label: 'Gesperrt',
             value: suspendedDrivers,
-            icon: UserX,
-            tone: suspendedDrivers > 0 ? 'critical' as const : 'neutral' as const,
             filterKey: 'suspended' as const,
+            subdued: suspendedDrivers === 0,
+            status: suspendedDrivers > 0 ? ('critical' as const) : undefined,
           },
           {
-            label: 'Attention',
+            label: 'Aufmerksamkeit',
             value: attentionNeeded,
-            icon: AlertTriangle,
-            tone: attentionNeeded > 0 ? 'warning' as const : 'neutral' as const,
             filterKey: 'attention' as const,
+            subdued: attentionNeeded === 0,
+            status: attentionNeeded > 0 ? ('warning' as const) : undefined,
           },
-        ].map(card => {
+        ].map((card) => {
           const isActive = cardFilter === card.filterKey;
-          const MetricIcon = card.icon;
-          const toneClass = customerToneClass(card.tone);
           return (
             <button
               key={card.label}
               type="button"
               onClick={() => setCardFilter(isActive ? 'all' : card.filterKey)}
-              className={`group sq-card sq-press rounded-2xl p-4 text-left shadow-[var(--shadow-1)] transition-all ${
-                isActive ? 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_22%,transparent)]' : 'hover:bg-muted/35'
-              }`}
+              className={`text-left ${isActive ? 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_22%,transparent)] rounded-[0.625rem]' : ''}`}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold text-muted-foreground">{card.label}</p>
-                  <p className="mt-1 truncate text-[20px] font-bold leading-none tracking-[-0.03em] text-foreground tabular-nums">
-                    {card.value}
-                  </p>
-                </div>
-                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${toneClass}`}>
-                  <MetricIcon className="h-4 w-4" />
-                </span>
-              </div>
+              <VehicleBookingSummaryCard
+                label={card.label}
+                value={String(card.value)}
+                valueVariant="numeric"
+                subdued={card.subdued}
+                status={card.status}
+              />
             </button>
           );
         })}
       </div>
 
-      {/* Search & Filters */}
-      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
-        <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <Icon name="filter" className="w-4 h-4 text-muted-foreground" />
-            <div className="min-w-0">
-              <h2 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">Filters</h2>
-              <p className="mt-0.5 text-[10px] text-muted-foreground">
-                Showing {filtered.length} of {allCustomers.length} customers
-              </p>
-            </div>
+      <div className="sq-card rounded-2xl p-3 sm:p-4 shadow-[var(--shadow-1)]">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="text-[12px] font-semibold text-foreground">Filter</h2>
+            <p className="text-[11px] text-muted-foreground">
+              {filtered.length} von {allCustomers.length} Kunden
+            </p>
           </div>
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex flex-wrap items-center gap-1.5">
             {cardFilter !== 'all' && (
-              <button
-                type="button"
-                onClick={() => setCardFilter('all')}
-                className="px-2 py-1 rounded-full text-[10px] font-semibold sq-tone-brand"
-              >
-                Segment active ×
-              </button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setCardFilter('all')}>
+                Segment ×
+              </Button>
             )}
             {(statusFilter !== 'all' || riskFilter !== 'all' || typeFilter !== 'all' || searchQuery) && (
-              <button
+              <Button
                 type="button"
-                onClick={() => { setStatusFilter('all'); setRiskFilter('all'); setTypeFilter('all'); setSearchQuery(''); }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-transparent text-[10px] font-semibold transition-all sq-tone-critical hover:opacity-90"
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setStatusFilter('all');
+                  setRiskFilter('all');
+                  setTypeFilter('all');
+                  setSearchQuery('');
+                }}
               >
-                <Icon name="x" className="w-3.5 h-3.5" />
-                Clear filters
-              </button>
+                <Icon name="x" className="size-3.5" />
+                Zurücksetzen
+              </Button>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex-1 min-w-[240px] relative">
-            <Icon name="search" className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 ${textTertiary}`} />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[200px] flex-1">
+            <Icon name="search" className={`absolute left-3 top-1/2 size-4 -translate-y-1/2 ${textTertiary}`} />
             <input
               type="text"
-              placeholder="Search by name, email, phone or company..."
+              placeholder="Name, E-Mail, Telefon oder Firma…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground outline-none transition-all text-xs focus:border-[color:var(--brand)]"
+              className="w-full rounded-lg border border-border bg-card py-2 pl-9 pr-3 text-xs text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-[color:var(--brand)]"
             />
           </div>
           <DropdownFilter
@@ -678,48 +652,62 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
             onToggle={() => { setIsStatusOpen(!isStatusOpen); setIsRiskOpen(false); setIsTypeOpen(false); }}
             onSelect={setStatusFilter}
             options={[
-              { value: 'all', label: 'All Status' },
-              { value: 'Active', label: 'Active' },
-              { value: 'Under Review', label: 'Under Review' },
-              { value: 'Suspended', label: 'Suspended' },
-              { value: 'Blocked', label: 'Blocked' },
+              { value: 'all', label: 'Alle Status' },
+              { value: 'Active', label: 'Aktiv' },
+              { value: 'Under Review', label: 'In Prüfung' },
+              { value: 'Suspended', label: 'Suspendiert' },
+              { value: 'Blocked', label: 'Gesperrt' },
             ]}
           />
           <DropdownFilter
-            label="Risk Level" value={riskFilter} isOpen={isRiskOpen}
+            label="Risiko" value={riskFilter} isOpen={isRiskOpen}
             onToggle={() => { setIsRiskOpen(!isRiskOpen); setIsStatusOpen(false); setIsTypeOpen(false); }}
             onSelect={setRiskFilter}
             options={[
-              { value: 'all', label: 'All Risk Levels' },
-              { value: 'Not Assessed', label: 'Not Assessed' },
-              { value: 'Low Risk', label: 'Low Risk' },
-              { value: 'Medium Risk', label: 'Medium Risk' },
-              { value: 'High Risk', label: 'High Risk' },
+              { value: 'all', label: 'Alle Risikostufen' },
+              { value: 'Not Assessed', label: 'Nicht bewertet' },
+              { value: 'Low Risk', label: 'Niedrig' },
+              { value: 'Medium Risk', label: 'Mittel' },
+              { value: 'High Risk', label: 'Hoch' },
             ]}
           />
           <DropdownFilter
-            label="Type" value={typeFilter} isOpen={isTypeOpen}
+            label="Typ" value={typeFilter} isOpen={isTypeOpen}
             onToggle={() => { setIsTypeOpen(!isTypeOpen); setIsStatusOpen(false); setIsRiskOpen(false); }}
             onSelect={setTypeFilter}
             options={[
-              { value: 'all', label: 'All Types' },
-              { value: 'Individual', label: 'Individual' },
-              { value: 'Corporate', label: 'Corporate' },
+              { value: 'all', label: 'Alle Typen' },
+              { value: 'Individual', label: 'Privat' },
+              { value: 'Corporate', label: 'Firma' },
             ]}
           />
         </div>
       </div>
 
-      {/* Customer Table */}
+      {filtered.length === 0 ? (
+        <EmptyState
+          icon={<Icon name="users" className="w-5 h-5" />}
+          title="Keine Kunden für diese Filter"
+          compact
+        />
+      ) : (
+        <>
+      <CustomerListMobileCards
+        customers={filtered}
+        onSelect={(row) => openCustomerDetail(row as Customer)}
+      />
+
+      <div className="hidden lg:block">
       <DataTable
         columns={customerColumns}
         rows={filtered}
         getRowKey={(customer) => customer.id}
         onRowClick={openCustomerDetail}
+        dense
         empty={(
           <EmptyState
             icon={<Icon name="users" className="w-5 h-5" />}
-            title="No customers match your filters"
+            title="Keine Kunden für diese Filter"
             compact
           />
         )}
@@ -727,6 +715,9 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
           <Icon name="chevron-right" className="w-5 h-5 text-muted-foreground/50" />
         )}
       />
+      </div>
+        </>
+      )}
 
       </div>{/* End of main content wrapper */}
 
@@ -1099,13 +1090,4 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       </FormDialog>
     </div>
   );
-}
-
-function customerToneClass(tone: 'brand' | 'info' | 'success' | 'warning' | 'critical' | 'neutral') {
-  if (tone === 'brand') return 'sq-tone-brand';
-  if (tone === 'info') return 'sq-tone-info';
-  if (tone === 'success') return 'sq-tone-success';
-  if (tone === 'warning') return 'sq-tone-warning';
-  if (tone === 'critical') return 'sq-tone-critical';
-  return 'sq-tone-neutral';
 }

@@ -141,6 +141,8 @@ export class TasksService {
       invoiceId: t.invoiceId || null,
       serviceCaseId: t.serviceCaseId || null,
       assignedUserId: t.assignedUserId || null,
+      createdByUserId: t.createdByUserId || null,
+      updatedByUserId: t.updatedByUserId || null,
       estimatedCostCents: t.estimatedCostCents ?? null,
       actualCostCents: t.actualCostCents ?? null,
       resolutionNote: t.resolutionNote || null,

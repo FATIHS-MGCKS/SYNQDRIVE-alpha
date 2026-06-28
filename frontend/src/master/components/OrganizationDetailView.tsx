@@ -1,6 +1,7 @@
 import { ArrowLeft, Building2, Users, Car, Link2, CreditCard, Package, CheckCircle, XCircle, AlertTriangle, Clock, Edit2, Trash2, Plus, MoreHorizontal, Wifi, WifiOff, RefreshCw, Zap, Download } from 'lucide-react';
 import { useState } from 'react';
 import { PageHeader, DataTable, MetricCard, DataCard, EmptyState, StatusChip, SectionHeader, HealthStatusChip, StatusDot, fleetVehicleStatusTone, platformRoleTone, userAccountStatusTone, onlineSignalTone } from '../../components/patterns';
+import { Button } from '../../components/ui/button';
 import type { Organization, OrgProduct, OrgIntegration, PlatformUser, RegisteredVehicle, ProductId, SubscriptionPlan } from '../data/platform-data';
 
 /* ── Design-system token helpers ── */
@@ -20,11 +21,12 @@ interface OrganizationDetailViewProps {
   orgVehicles: RegisteredVehicle[];
   onBack: () => void;
   onUpdateOrg: (org: Organization) => void;
+  onOpenBillingCenter?: (orgId: string) => void;
 }
 
 type OrgTab = 'overview' | 'users' | 'vehicles' | 'integrations' | 'billing' | 'products';
 
-export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onUpdateOrg }: OrganizationDetailViewProps) {
+export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onUpdateOrg, onOpenBillingCenter }: OrganizationDetailViewProps) {
   const [activeTab, setActiveTab] = useState<OrgTab>('overview');
 
   const toggleProduct = (productId: ProductId) => {
@@ -216,44 +218,30 @@ export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onU
 
       {/* === BILLING === */}
       {activeTab === 'billing' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className={`${CARD} p-5`}>
-              <p className={`text-sm text-muted-foreground`}>Current Plan</p>
-              <p className={`text-2xl font-bold mt-1 text-foreground`}>{org.plan}</p>
+        <div className={`${CARD} p-6 space-y-4`}>
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl sq-tone-info shrink-0">
+              <CreditCard className="w-5 h-5" />
             </div>
-            <div className={`${CARD} p-5`}>
-              <p className={`text-sm text-muted-foreground`}>Monthly Revenue</p>
-              <p className={`text-2xl font-bold mt-1 text-foreground`}>€{org.mrr.toLocaleString()}</p>
-            </div>
-            <div className={`${CARD} p-5`}>
-              <p className={`text-sm text-muted-foreground`}>Payment Status</p>
-              <p className={`text-2xl font-bold mt-1 ${org.invoices.some(i => i.status === 'Overdue') ? 'text-[color:var(--status-critical)]' : 'text-[color:var(--status-positive)]'}`}>{org.invoices.some(i => i.status === 'Overdue') ? 'Overdue' : 'Current'}</p>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-foreground">Billing Control Center</h3>
+              <p className="text-xs text-muted-foreground mt-1 max-w-[52ch]">
+                Abrechnung, Subscriptions, Rechnungen und Zahlungsmethoden werden zentral im
+                Billing Control Center verwaltet — nicht über lokale Demo-Daten in dieser Ansicht.
+              </p>
             </div>
           </div>
-          <div className={`${CARD} overflow-hidden`}>
-            <div className="px-5 py-3 border-b border-gray-100"><h3 className={`text-sm font-semibold text-foreground`}>Invoices</h3></div>
-            <table className="w-full">
-              <thead><tr className={`border-b border-border`}>
-                <th className={`text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>Invoice</th>
-                <th className={`text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>Amount</th>
-                <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>Status</th>
-                <th className={`text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>Date</th>
-                <th className="px-4 py-3"></th>
-              </tr></thead>
-              <tbody>
-                {org.invoices.map(inv => (
-                  <tr key={inv.id} className={`border-b last:border-b-0 border-border`}>
-                    <td className={`px-6 py-3 text-sm font-mono font-semibold text-foreground`}>{inv.id}</td>
-                    <td className={`px-4 py-3 text-right text-sm font-semibold text-foreground`}>€{inv.amount.toLocaleString()}</td>
-                    <td className="px-4 py-3"><StatusChip tone={inv.status === 'Paid' ? 'success' : inv.status === 'Overdue' ? 'critical' : 'watch'} className="!text-xs">{inv.status}</StatusChip></td>
-                    <td className={`px-4 py-3 text-sm text-muted-foreground`}>{inv.date}</td>
-                    <td className="px-4 py-3"><button className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}><Download className="w-4 h-4" /></button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {onOpenBillingCenter ? (
+            <Button type="button" size="sm" onClick={() => onOpenBillingCenter(org.id)}>
+              Billing für diese Organisation öffnen
+            </Button>
+          ) : (
+            <EmptyState
+              compact
+              title="Billing Control Center"
+              description="Öffne Billing in der Sidebar für die kanonische Master-Admin-Abrechnungsansicht."
+            />
+          )}
         </div>
       )}
 

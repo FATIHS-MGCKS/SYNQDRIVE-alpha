@@ -7,25 +7,17 @@ import {
   Pencil,
   Plus,
   RefreshCw,
-  ShieldCheck,
-  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '../../../../lib/api';
-import {
-  DataCard,
-  EmptyState,
-  ErrorState,
-  MetricCard,
-  PageHeader,
-  SectionHeader,
-  SkeletonMetricGrid,
-} from '../../../../components/patterns';
+import { Button } from '../../../../components/ui/button';
+import { EmptyState, ErrorState, PageHeader } from '../../../../components/patterns';
 import { useRentalOrg } from '../../../RentalContext';
 import { CategoryDetailDrawer } from './CategoryDetailDrawer';
 import { DefaultRulesDrawer } from './DefaultRulesDrawer';
 import { EffectiveRulesPreviewDrawer } from './EffectiveRulesPreviewDrawer';
 import { VehicleAssignmentDrawer } from './VehicleAssignmentDrawer';
+import { RentalRulesSummaryTile } from './RentalRulesSummaryTile';
 import type { RentalCategoryVehicleDto, RentalVehicleCategoryDto } from './rental-rules.types';
 import {
   countConfiguredRuleFields,
@@ -38,10 +30,47 @@ import {
   summarizeRules,
 } from './rental-rules.utils';
 import { useRentalRulesCenter } from './useRentalRulesCenter';
-import { RentalRequirementsStatusBadge } from '../../shared/rental-requirements-ui';
+import {
+  RentalRequirementsStatusBadge,
+  RentalRulesSectionIntro,
+  RuleInheritanceSteps,
+  RuleValueTile,
+} from '../../shared/rental-requirements-ui';
 
 interface RentalRulesTabProps {
   canWrite?: boolean;
+}
+
+const RULE_HIERARCHY_STEPS = [
+  { key: 'org', label: 'Organization defaults', labelDe: 'Organisationsstandard' },
+  { key: 'category', label: 'Vehicle category', labelDe: 'Fahrzeugkategorie' },
+  { key: 'override', label: 'Vehicle override', labelDe: 'Fahrzeug-Override' },
+  { key: 'effective', label: 'Effective requirements', labelDe: 'Effektive Anforderungen' },
+] as const;
+
+const DEFAULT_RULE_FIELD_KEYS: Record<string, string> = {
+  'Minimum age': 'minimumAgeYears',
+  'License holding period': 'minimumLicenseHoldingYears',
+  'Deposit required': 'depositAmount',
+  'Credit card required': 'creditCardRequired',
+  'Foreign travel': 'foreignTravelPolicy',
+  'Additional driver': 'additionalDriverPolicy',
+  'Young driver': 'youngDriverPolicy',
+  Insurance: 'insuranceRequirement',
+};
+
+function SummarySkeleton() {
+  return (
+    <div className="grid grid-cols-2 items-start gap-1 sm:gap-1.5 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="booking-kpi-tile booking-kpi-tile--dense animate-pulse motion-reduce:animate-none">
+          <div className="h-2.5 w-20 rounded bg-muted/70" />
+          <div className="mt-1.5 h-4 w-10 rounded bg-muted/60" />
+          <div className="mt-1 h-2 w-24 rounded bg-muted/40" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
@@ -72,6 +101,11 @@ export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
     [categories],
   );
 
+  const unassignedVehicles = useMemo(
+    () => fleetVehicles.filter((v) => !v.rentalCategoryId),
+    [fleetVehicles],
+  );
+
   const openCategoryEdit = useCallback(
     async (category: RentalVehicleCategoryDto) => {
       setCategoryDrawer({ mode: 'edit', category });
@@ -100,6 +134,11 @@ export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
     [orgId],
   );
 
+  const openCreateCategory = useCallback(() => {
+    setAssignedVehicles([]);
+    setCategoryDrawer({ mode: 'create', category: null });
+  }, []);
+
   const previewFromCategory = useCallback(
     async (category: RentalVehicleCategoryDto) => {
       if (!orgId) return;
@@ -125,103 +164,133 @@ export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
   if (loading && !overview && !defaults) {
     return (
       <div className="space-y-4">
-        <SkeletonMetricGrid count={4} />
+        <SummarySkeleton />
       </div>
     );
   }
 
   if (error && !overview) {
-    return <ErrorState title="Rental rules could not be loaded" description={error} onRetry={() => void load()} />;
+    return (
+      <ErrorState
+        title="Rental rules could not be loaded"
+        description={error}
+        onRetry={() => void load()}
+      />
+    );
   }
 
   const defaultSummary = defaults ? summarizeRules(defaults) : [];
   const configuredFields = countConfiguredRuleFields(defaults);
+  const overrideCount = overview?.vehiclesWithOverrides ?? 0;
+  const unassignedCount = overview?.vehiclesMissingCategory ?? 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-5">
       <PageHeader
         title="Rental Rules"
-        icon={<ShieldCheck className="h-4 w-4" />}
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <button
+          <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
+            <Button
               type="button"
-              className="sq-btn sq-btn-ghost min-h-9 gap-1.5"
+              variant="ghost"
+              size="icon"
               onClick={() => void load()}
               disabled={loading}
+              title="Refresh"
+              aria-label="Refresh"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
+              <RefreshCw className={loading ? 'animate-spin' : ''} />
+            </Button>
             {canWrite && (
               <>
-                <button
+                <Button
                   type="button"
-                  className="sq-btn sq-btn-secondary min-h-9 gap-1.5"
+                  variant="neutral"
+                  size="sm"
                   onClick={() => setDefaultsOpen(true)}
                 >
-                  <Pencil className="h-3.5 w-3.5" />
+                  <Pencil />
                   Edit default rules
-                </button>
-                <button
-                  type="button"
-                  className="sq-btn sq-btn-primary min-h-9 gap-1.5"
-                  onClick={() => {
-                    setAssignedVehicles([]);
-                    setCategoryDrawer({ mode: 'create', category: null });
-                  }}
-                >
-                  <Plus className="h-3.5 w-3.5" />
+                </Button>
+                <Button type="button" variant="primary" size="sm" onClick={openCreateCategory}>
+                  <Plus />
                   Create category
-                </button>
+                </Button>
               </>
             )}
           </div>
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          label="Default rules"
-          value={overview?.defaultsConfigured ? `${configuredFields} fields` : 'Not configured'}
-          hint={overview?.defaultsActive ? 'Active baseline for the org' : 'Defaults inactive'}
-          icon={<ClipboardCheck className="h-5 w-5" />}
+      <RuleInheritanceSteps
+        steps={RULE_HIERARCHY_STEPS}
+        activeStep="effective"
+        rulesActive={overview?.defaultsConfigured ?? false}
+        locale="en"
+      />
+      <p className="-mt-2 text-[11px] leading-snug text-muted-foreground sm:text-[12px]">
+        Organization defaults are the baseline. Categories override defaults for grouped vehicles.
+        Vehicle overrides apply to one vehicle. Effective requirements drive booking validation.
+      </p>
+
+      <div className="grid grid-cols-2 items-start gap-1 sm:gap-1.5 lg:grid-cols-4">
+        <RentalRulesSummaryTile
+          label="Organization defaults"
+          value={
+            overview?.defaultsConfigured ? `${configuredFields} fields` : 'Not configured'
+          }
+          valueVariant={overview?.defaultsConfigured ? 'text' : 'status'}
+          subdued={!overview?.defaultsConfigured}
           status={overview?.defaultsConfigured ? 'success' : 'watch'}
+          hint="Baseline rules when no category or override applies."
+          icon={<ClipboardCheck aria-hidden />}
         />
-        <MetricCard
+        <RentalRulesSummaryTile
           label="Vehicle categories"
           value={overview?.activeCategoryCount ?? 0}
-          hint={`${activeCategories.length} active · ${categories.length} total`}
-          icon={<Layers className="h-5 w-5" />}
+          valueVariant="numeric"
+          subdued={(overview?.activeCategoryCount ?? 0) === 0}
+          hint={`${activeCategories.length} active · ${categories.length} total · rule groups for vehicle classes`}
+          icon={<Layers aria-hidden />}
+        />
+        <RentalRulesSummaryTile
+          label="Vehicle overrides"
+          value={overrideCount}
+          valueVariant="numeric"
+          subdued={overrideCount === 0}
+          status={overrideCount > 0 ? 'watch' : 'neutral'}
+          hint="Vehicles with individual requirement exceptions."
+          icon={<Car aria-hidden />}
+        />
+        <RentalRulesSummaryTile
+          label="Unassigned vehicles"
+          value={unassignedCount}
+          valueVariant="numeric"
+          subdued={unassignedCount === 0}
           status="neutral"
-        />
-        <MetricCard
-          label="Vehicles with overrides"
-          value={overview?.vehiclesWithOverrides ?? 0}
-          hint="Individual requirement exceptions"
-          icon={<Car className="h-5 w-5" />}
-          status={(overview?.vehiclesWithOverrides ?? 0) > 0 ? 'watch' : 'neutral'}
-        />
-        <MetricCard
-          label="Vehicles without category"
-          value={overview?.vehiclesMissingCategory ?? 0}
-          hint={`${overview?.categoriesRequiringManualApproval ?? 0} categories require manual approval`}
-          icon={<Users className="h-5 w-5" />}
-          status={(overview?.vehiclesMissingCategory ?? 0) > 0 ? 'warning' : 'success'}
+          hint="Vehicles currently using organization defaults."
+          icon={<Car aria-hidden />}
         />
       </div>
 
-      <DataCard
-        title="Organization default rules"
-        description="Baseline requirements when categories and vehicle overrides do not specify a value."
-        actions={
-          canWrite ? (
-            <button type="button" className="sq-btn sq-btn-ghost min-h-8 text-[12px]" onClick={() => setDefaultsOpen(true)}>
-              Edit
-            </button>
-          ) : undefined
-        }
-      >
+      <section className="sq-card rounded-2xl border border-border/70 bg-card/60 p-3 sm:p-4">
+        <RentalRulesSectionIntro
+          title="Organization default rules"
+          description="Baseline requirements when categories and vehicle overrides do not specify a value."
+          action={
+            canWrite ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setDefaultsOpen(true)}
+              >
+                Edit
+              </Button>
+            ) : undefined
+          }
+        />
+
         {!overview?.defaultsConfigured ? (
           <EmptyState
             compact
@@ -230,97 +299,116 @@ export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
             description="Set organization-wide minimum age, deposit, license duration and travel policies."
             action={
               canWrite ? (
-                <button type="button" className="sq-btn sq-btn-primary min-h-9" onClick={() => setDefaultsOpen(true)}>
+                <Button type="button" variant="primary" size="sm" onClick={() => setDefaultsOpen(true)}>
                   Configure defaults
-                </button>
+                </Button>
               ) : undefined
             }
           />
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-3">
             {defaultSummary.map((row) => (
-              <div
+              <RuleValueTile
                 key={row.label}
-                className="rounded-xl border border-border/60 bg-card/60 px-3.5 py-3 transition-colors hover:bg-muted/15"
-              >
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{row.label}</p>
-                <p className="mt-1.5 text-[15px] font-semibold tabular-nums text-foreground">{row.value}</p>
-              </div>
+                label={row.label}
+                value={row.value}
+                fieldKey={DEFAULT_RULE_FIELD_KEYS[row.label]}
+                density="mini"
+                locale="en"
+              />
             ))}
-            <div className="rounded-xl border border-border/60 bg-card/60 px-3.5 py-3 sm:col-span-2 lg:col-span-4">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Manual approval</p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                <p className="text-[15px] font-semibold text-foreground">
-                  {formatBool(defaults?.manualApprovalRequired)}
-                </p>
-                {defaults?.manualApprovalRequired && (
-                  <RentalRequirementsStatusBadge kind="manual-approval" />
-                )}
-              </div>
-            </div>
+            <RuleValueTile
+              label="Manual approval"
+              value={formatBool(defaults?.manualApprovalRequired)}
+              fieldKey="manualApprovalRequired"
+              density="mini"
+              locale="en"
+              highlighted={Boolean(defaults?.manualApprovalRequired)}
+            />
+            {defaults?.notes?.trim() ? (
+              <RuleValueTile
+                label="Notes"
+                value={defaults.notes.trim()}
+                fieldKey="notes"
+                density="mini"
+                locale="en"
+                className="col-span-2 lg:col-span-3"
+              />
+            ) : null}
           </div>
         )}
-      </DataCard>
+      </section>
 
-      <div>
-        <SectionHeader
+      {unassignedCount > 0 && (
+        <section className="rounded-xl border border-border/60 bg-muted/10 px-3 py-2.5 sm:px-3.5">
+          <p className="text-[12px] font-semibold text-foreground">Unassigned vehicles</p>
+          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+            These vehicles currently use organization defaults. Assign a category to apply shared rules.
+          </p>
+          <ul className="mt-2 space-y-1">
+            {unassignedVehicles.slice(0, 6).map((v) => (
+              <li
+                key={v.id}
+                className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground"
+              >
+                <span className="min-w-0 truncate text-foreground">
+                  {v.licensePlate || '—'} · {v.displayName}
+                </span>
+                <span className="shrink-0">Org defaults</span>
+              </li>
+            ))}
+          </ul>
+          {unassignedVehicles.length > 6 ? (
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              +{unassignedVehicles.length - 6} more vehicles
+            </p>
+          ) : null}
+        </section>
+      )}
+
+      <section>
+        <RentalRulesSectionIntro
           title="Vehicle categories"
           description="Group vehicles with shared eligibility requirements."
-          actions={
+          action={
             canWrite ? (
-              <button
-                type="button"
-                className="sq-btn sq-btn-secondary min-h-8 gap-1 text-[12px]"
-                onClick={() => {
-                  setAssignedVehicles([]);
-                  setCategoryDrawer({ mode: 'create', category: null });
-                }}
-              >
-                <Plus className="h-3.5 w-3.5" />
+              <Button type="button" variant="neutral" size="sm" onClick={openCreateCategory}>
+                <Plus />
                 Create category
-              </button>
+              </Button>
             ) : undefined
           }
         />
 
         {activeCategories.length === 0 ? (
-          <DataCard className="mt-3">
+          <div className="sq-card rounded-xl border border-border/60 bg-card/50 p-4">
             <EmptyState
+              compact
               icon={<Layers className="h-5 w-5" />}
-              title="Create your first vehicle category"
-              description="Create your first vehicle category to manage requirements like minimum age, license duration and deposit rules."
+              title="No vehicle categories yet"
+              description="Create categories for Compact, Premium, Van, SUV, and other vehicle classes."
               action={
                 canWrite ? (
-                  <button
-                    type="button"
-                    className="sq-btn sq-btn-primary min-h-9"
-                    onClick={() => {
-                      setAssignedVehicles([]);
-                      setCategoryDrawer({ mode: 'create', category: null });
-                    }}
-                  >
+                  <Button type="button" variant="primary" size="sm" onClick={openCreateCategory}>
                     Create category
-                  </button>
+                  </Button>
                 ) : undefined
               }
             />
-          </DataCard>
+          </div>
         ) : (
-          <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {activeCategories.map((cat) => (
-              <div
+              <article
                 key={cat.id}
-                className="sq-card-elevated group overflow-hidden rounded-xl border border-border/70 bg-card transition-all hover:border-brand/25"
+                className="sq-card overflow-hidden rounded-xl border border-border/60 bg-card/80"
               >
-                <div
-                  className="h-1 w-full"
-                  style={{ backgroundColor: cat.color ?? 'var(--brand)' }}
-                />
-                <div className="p-4">
-                  <div className="mb-3 flex items-start justify-between gap-2">
+                <div className="h-0.5 w-full" style={{ backgroundColor: cat.color ?? 'var(--brand)' }} />
+                <div className="p-3">
+                  <div className="mb-2 flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <h3 className="truncate text-[15px] font-semibold text-foreground">{cat.name}</h3>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      <h3 className="truncate text-[13px] font-semibold text-foreground">{cat.name}</h3>
+                      <p className="mt-0.5 text-[10.5px] text-muted-foreground">
                         {cat.vehicleCount ?? 0} vehicles
                         {cat.type ? ` · ${cat.type.replace(/_/g, ' ')}` : ''}
                       </p>
@@ -333,7 +421,7 @@ export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
                     </div>
                   </div>
 
-                  <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5 text-[12px]">
+                  <dl className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px]">
                     <div>
                       <dt className="text-muted-foreground">Minimum age</dt>
                       <dd className="font-medium tabular-nums">{cat.minimumAgeYears ?? '—'}</dd>
@@ -347,7 +435,7 @@ export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-muted-foreground">Deposit required</dt>
+                      <dt className="text-muted-foreground">Deposit</dt>
                       <dd className="font-medium tabular-nums">
                         {formatDeposit(cat.depositAmountCents ?? cat.depositAmount, cat.depositCurrency ?? 'EUR')}
                       </dd>
@@ -362,67 +450,73 @@ export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
                     </div>
                   </dl>
 
-                  <div className="mt-4 flex flex-wrap gap-1.5 border-t border-border/60 pt-3">
-                    <button
+                  <div className="mt-2.5 flex flex-wrap gap-1 border-t border-border/50 pt-2">
+                    <Button
                       type="button"
-                      className="sq-btn sq-btn-ghost h-8 px-2.5 text-[11px]"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-[11px]"
                       onClick={() => void openCategoryEdit(cat)}
                     >
                       Edit
-                    </button>
+                    </Button>
                     {canWrite && (
-                      <button
+                      <Button
                         type="button"
-                        className="sq-btn sq-btn-ghost h-8 px-2.5 text-[11px]"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-[11px]"
                         onClick={() => void openAssign(cat)}
                       >
                         Assign vehicles
-                      </button>
+                      </Button>
                     )}
-                    <button
+                    <Button
                       type="button"
-                      className="sq-btn sq-btn-ghost h-8 px-2.5 text-[11px] gap-1"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1 px-2 text-[11px]"
                       onClick={() => void previewFromCategory(cat)}
                     >
                       <Eye className="h-3 w-3" />
                       Preview
-                    </button>
+                    </Button>
                   </div>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         )}
-      </div>
+      </section>
 
-      <div>
-        <SectionHeader
-          title="Vehicle-specific overrides"
-          description="Vehicles with individual requirement exceptions on top of category defaults."
+      <section>
+        <RentalRulesSectionIntro
+          title="Vehicle overrides"
+          description="Individual requirement exceptions on top of category defaults."
         />
-        <DataCard className="mt-3" flush>
-          {(overview?.overrideVehicles.length ?? 0) === 0 ? (
+        <div className="sq-card rounded-xl border border-border/60 bg-card/50 p-3 sm:p-4">
+          {overrideCount === 0 ? (
             <EmptyState
               compact
               icon={<Car className="h-5 w-5" />}
               title="No vehicle overrides"
-              description="Overrides let you tailor requirements for specific vehicles without changing the whole category."
+              description="Vehicle overrides are individual exceptions for specific vehicles."
             />
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <ul className="space-y-2">
               {overview!.overrideVehicles.map((row) => (
-                <div
+                <li
                   key={row.vehicleId}
-                  className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card px-4 py-3 transition-colors hover:bg-muted/10"
+                  className="flex flex-col gap-2 rounded-lg border border-border/50 bg-background/40 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-[13px] font-semibold text-foreground">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="text-[12px] font-semibold text-foreground">
                         {row.licensePlate || '—'} · {row.displayName}
                       </p>
                       <RentalRequirementsStatusBadge kind="vehicle-override" />
                     </div>
-                    <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                    <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
                       {row.categoryName ? `Category: ${row.categoryName}` : 'Missing category'}
                       {' · '}
                       {row.overrideCount} override{row.overrideCount === 1 ? '' : 's'}
@@ -431,21 +525,21 @@ export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
                         : ''}
                     </p>
                   </div>
-                  <button
+                  <Button
                     type="button"
-                    className="sq-btn sq-btn-secondary min-h-8 w-full shrink-0 text-[12px] sm:w-auto sm:self-start"
-                    onClick={() =>
-                      setPreviewVehicle({ id: row.vehicleId, label: row.displayName })
-                    }
+                    variant="neutral"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => setPreviewVehicle({ id: row.vehicleId, label: row.displayName })}
                   >
                     View effective requirements
-                  </button>
-                </div>
+                  </Button>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
-        </DataCard>
-      </div>
+        </div>
+      </section>
 
       <DefaultRulesDrawer
         open={defaultsOpen}

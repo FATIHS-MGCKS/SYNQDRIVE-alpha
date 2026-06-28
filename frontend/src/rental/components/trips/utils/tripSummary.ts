@@ -64,3 +64,16 @@ export function formatSelectedPeriodLabel(selectedDate?: string): string {
     year: 'numeric',
   });
 }
+
+/** Compact date for the Trips overview card header (title row). */
+export function formatSelectedPeriodHeaderDate(selectedDate?: string): string {
+  if (!selectedDate) return 'Gesamter Verlauf';
+  const [y, m, d] = selectedDate.split('-').map(Number);
+  const date = new Date(y, (m || 1) - 1, d || 1);
+  return date.toLocaleDateString('de-DE', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}

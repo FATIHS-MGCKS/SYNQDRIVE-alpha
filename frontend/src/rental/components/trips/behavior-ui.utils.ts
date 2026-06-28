@@ -7,6 +7,7 @@ import { formatTripTimeWithSeconds } from './utils/tripFormatters';
 export type BehaviorSeverityLevel = 'neutral' | 'watch' | 'notable' | 'critical' | 'abuse';
 export type BehaviorOverallStatus =
   | 'unremarkable'
+  | 'not_assessable'
   | 'watch'
   | 'notable'
   | 'critical'
@@ -14,6 +15,7 @@ export type BehaviorOverallStatus =
 
 export const BEHAVIOR_STATUS_LABEL: Record<BehaviorOverallStatus, string> = {
   unremarkable: 'Unauffällig',
+  not_assessable: 'Nicht belastbar bewertet',
   watch: 'Beobachten',
   notable: 'Auffällige Fahrweise',
   critical: 'Kritisch',
@@ -143,9 +145,19 @@ export function hfQualityLabel(trip: TripTimelineTrip): string {
   return 'Unbekannt';
 }
 
+/**
+ * Optional data-quality gate. When provided and `assessable === false`, an
+ * otherwise-clean trip is reported as "Nicht belastbar bewertet" instead of
+ * "Unauffällig" — we never claim a trip is clean without a reliable source.
+ */
+export interface BehaviorOverallStatusOptions {
+  assessable?: boolean;
+}
+
 export function deriveBehaviorOverallStatus(
   trip: TripTimelineTrip,
   events: TripBehaviorEvent[],
+  options?: BehaviorOverallStatusOptions,
 ): BehaviorOverallStatus {
   const abuseInTrip = (trip.abuseEvents ?? trip.abuseEventCount ?? 0) > 0;
   const abuseInList = events.some((e) => e.eventCategory === 'ABUSE');
@@ -163,8 +175,9 @@ export function deriveBehaviorOverallStatus(
   if (stress === 'critical' || stress === 'high') return 'notable';
   if (stress === 'moderate' || worst === 'watch') return 'watch';
 
-  const count = countTripEvents(trip) ?? events.length;
-  if (count === 0) return 'unremarkable';
+  // No notable events. Only call it "Unauffällig" when the trip is reliably
+  // assessable; otherwise be honest that the data is not conclusive.
+  if (options && options.assessable === false) return 'not_assessable';
   return 'unremarkable';
 }
 

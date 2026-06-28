@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../../../lib/api';
+import { Button } from '../../../components/ui/button';
 import type { AdminStripeStatusDto, AdminWebhookEventDto } from '../../types/admin-billing.types';
 import { EmptyState, ErrorState, SkeletonCard } from '../../../components/patterns/states';
 import { formatDateDe, parsePaginated } from './admin-billing.utils';
@@ -77,14 +78,15 @@ export function BillingStripeTab() {
           Secret: {status?.stripeSecretConfigured ? 'konfiguriert' : 'fehlt'} · Webhook:{' '}
           {status?.stripeWebhookConfigured ? 'konfiguriert' : 'fehlt'}
         </p>
-        <button
+        <Button
           type="button"
+          size="sm"
+          variant="outline"
           disabled
-          title="Stripe Sync wird vorbereitet"
-          className="px-3 py-1.5 rounded-lg text-[11px] font-semibold border border-border/70 text-muted-foreground cursor-not-allowed"
+          title="Stripe Sync wird vorbereitet (Prompt 2)"
         >
           Stripe Sync prüfen
-        </button>
+        </Button>
       </div>
 
       <div className="sq-card rounded-2xl p-5 shadow-[var(--shadow-1)]">

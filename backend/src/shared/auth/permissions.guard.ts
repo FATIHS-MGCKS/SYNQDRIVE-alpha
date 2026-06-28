@@ -14,6 +14,7 @@ import {
 import {
   evaluateModulePermission,
   normalizeMembershipPermissions,
+  resolvePermissionOrgId,
 } from './permission.util';
 
 /**
@@ -54,7 +55,7 @@ export class PermissionsGuard implements CanActivate {
 
     if (user.platformRole === 'MASTER_ADMIN') return true;
 
-    const orgId: string | undefined = request.params?.orgId;
+    const orgId = resolvePermissionOrgId(request, user);
     if (!orgId) {
       throw new ForbiddenException('Organization context required');
     }

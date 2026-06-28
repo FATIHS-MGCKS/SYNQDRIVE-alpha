@@ -5,6 +5,7 @@ import { VehicleStressPanel } from '../VehicleStressPanel';
 import { getStressLevel, resolveDrivingStressScore } from '../../lib/scoreFormat';
 import { TripBehaviorPanel } from './TripBehaviorPanel';
 import { TripEvidencePanel } from './TripEvidencePanel';
+import { TripDeviceConnectionEvidence } from './TripDeviceConnectionEvidence';
 import { TripRentalContextPanel } from './TripRentalContextPanel';
 import { TripAssignmentBadge } from './TripAssignmentBadge';
 import { TIMELINE_COPY, RENTAL_COPY, TRIPS_COPY, tv } from './trips-view-ui';
@@ -166,6 +167,8 @@ export function TripTimelineExpanded({
           routeLoading={routeLoading}
           routeError={routeError}
         />
+
+        <TripDeviceConnectionEvidence vehicleId={vehicleId} tripId={trip.id} />
 
         {/* 2. Zuordnung & Kontext — Privatfahrt / Buchung / Fahrer / Kunde */}
         <TimelineSection title={TIMELINE_COPY.sectionAssignment}>

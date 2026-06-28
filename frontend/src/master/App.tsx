@@ -8,7 +8,7 @@ import { OrganizationsView } from './components/OrganizationsView';
 import { OrganizationDetailView } from './components/OrganizationDetailView';
 import { PlatformUsersView } from './components/PlatformUsersView';
 import { PlatformVehiclesView } from './components/PlatformVehiclesView';
-import { SubscriptionsView } from './components/SubscriptionsView';
+import { BillingControlCenter } from './components/billing/BillingControlCenter';
 import { ActivityLogView } from './components/ActivityLogView';
 import { SupportView } from './components/SupportView';
 import { PlatformSettingsView } from './components/PlatformSettingsView';
@@ -175,6 +175,7 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentView, setCurrentView] = useState<MasterView>('dashboard');
   const [settingsTab, setSettingsTab] = useState<string>('general');
+  const [billingFocusOrgId, setBillingFocusOrgId] = useState<string | null>(null);
 
   // Centralized data state - empty by default, loaded from API
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -618,6 +619,10 @@ export default function App() {
                 orgVehicles={getOrgVehicles(selectedOrg.id)}
                 onBack={() => setSelectedOrg(null)}
                 onUpdateOrg={handleUpdateOrg}
+                onOpenBillingCenter={(orgId) => {
+                  setBillingFocusOrgId(orgId);
+                  setCurrentView('billing');
+                }}
               />
             )}
 
@@ -650,9 +655,13 @@ export default function App() {
               />
             )}
 
-            {/* SUBSCRIPTIONS */}
-            {currentView === 'subscriptions' && (
-              <SubscriptionsView isDarkMode={isDarkMode} />
+            {/* BILLING */}
+            {currentView === 'billing' && (
+              <BillingControlCenter
+                isDarkMode={isDarkMode}
+                initialOrgId={billingFocusOrgId}
+                onInitialOrgConsumed={() => setBillingFocusOrgId(null)}
+              />
             )}
 
             {/* ACTIVITY LOG */}

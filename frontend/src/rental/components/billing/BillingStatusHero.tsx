@@ -3,16 +3,23 @@ import {
   formatDateDe,
   formatMoneyCents,
   paymentMethodLabel,
+  planLabelFromSummary,
   subscriptionStatusLabel,
+  subscriptionStatusTone,
 } from './billing.utils';
-import { Icon } from '../ui/Icon';
+import {
+  stripeStateHint,
+  stripeStateLabel,
+  stripeStateTone,
+  type BillingStripeUiState,
+} from './billing-stripe-ui';
 
 interface BillingStatusHeroProps {
   summary: BillingSummaryDto;
-  stripePortalPrepared?: boolean;
+  stripeState: BillingStripeUiState;
 }
 
-export function BillingStatusHero({ summary, stripePortalPrepared = true }: BillingStatusHeroProps) {
+export function BillingStatusHero({ summary, stripeState }: BillingStatusHeroProps) {
   const currency = summary.priceBook?.currency ?? summary.nextInvoicePreview.currency ?? 'EUR';
   const pm = summary.paymentMethod;
   const pmLabel = pm.exists
@@ -21,22 +28,20 @@ export function BillingStatusHero({ summary, stripePortalPrepared = true }: Bill
       : paymentMethodLabel(pm.type)
     : 'Nicht hinterlegt';
 
-  const facts = [
+  const subStatus = summary.subscriptionStatus ?? 'NONE';
+  const planLabel = planLabelFromSummary(summary);
+
+  const metrics: Array<{
+    label: string;
+    value: string;
+    hint?: string;
+    badgeTone?: string;
+  }> = [
+    { label: 'Plan / Produkt', value: planLabel },
     {
-      label: 'Status',
-      value: subscriptionStatusLabel(summary.subscriptionStatus),
-    },
-    {
-      label: 'Abrechnungszeitraum',
-      value: `${formatDateDe(summary.currentPeriodStart)} – ${formatDateDe(summary.currentPeriodEnd)}`,
-    },
-    {
-      label: 'Nächste Rechnung',
-      value:
-        summary.calculationStatus === 'OK' && summary.nextInvoicePreview.totalCents != null
-          ? formatMoneyCents(summary.nextInvoicePreview.totalCents, currency)
-          : 'Nicht berechenbar',
-      hint: summary.nextInvoicePreview.explanation,
+      label: 'Abo-Status',
+      value: subscriptionStatusLabel(subStatus),
+      badgeTone: subscriptionStatusTone(subStatus),
     },
     {
       label: 'Abrechenbare Fahrzeuge',
@@ -44,8 +49,24 @@ export function BillingStatusHero({ summary, stripePortalPrepared = true }: Bill
       hint: `${summary.connectedVehicleCount} verbunden`,
     },
     {
-      label: 'Zahlungsmethode',
+      label: 'Nächster Zeitraum',
+      value: `${formatDateDe(summary.currentPeriodStart)} – ${formatDateDe(summary.currentPeriodEnd)}`,
+    },
+    {
+      label: 'Geschätzte nächste Rechnung',
+      value:
+        summary.calculationStatus === 'OK' && summary.nextInvoicePreview.totalCents != null
+          ? formatMoneyCents(summary.nextInvoicePreview.totalCents, currency)
+          : '—',
+      hint:
+        summary.calculationStatus !== 'OK'
+          ? summary.nextInvoicePreview.explanation
+          : undefined,
+    },
+    {
+      label: 'Zahlungsstatus',
       value: pmLabel,
+      hint: stripeStateLabel(stripeState),
     },
   ];
 
@@ -55,65 +76,68 @@ export function BillingStatusHero({ summary, stripePortalPrepared = true }: Bill
     summary.warnings.includes('NO_ACTIVE_PRICE_VERSION');
 
   return (
-    <div className="sq-card rounded-2xl p-5 shadow-[var(--shadow-1)] space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-        {facts.map((fact) => (
-          <div key={fact.label} className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.08em] font-semibold text-muted-foreground">
-              {fact.label}
-            </p>
-            <p className="mt-1.5 text-[15px] font-semibold tracking-[-0.02em] text-foreground tabular-nums truncate">
-              {fact.value}
-            </p>
-            {fact.hint && (
-              <p className="mt-0.5 text-[11px] text-muted-foreground line-clamp-2">{fact.hint}</p>
+    <div className="sq-card rounded-2xl p-4 sm:p-5 shadow-[var(--shadow-1)] space-y-4">
+      <p className="text-[12px] leading-relaxed text-muted-foreground max-w-[70ch]">
+        Verwalte Subscription, Zahlungsmethode und Rechnungen für diese Organisation.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+        {metrics.map((metric) => (
+          <div
+            key={metric.label}
+            className="rounded-xl border border-border/60 bg-muted/15 px-3.5 py-3 min-w-0"
+          >
+            <p className="text-[12px] font-medium text-muted-foreground">{metric.label}</p>
+            <div className="mt-1">
+              {metric.badgeTone ? (
+                <span
+                  className={`inline-flex px-2.5 py-1 rounded-md text-[13px] font-semibold ${metric.badgeTone}`}
+                >
+                  {metric.value}
+                </span>
+              ) : (
+                <p className="text-[20px] sm:text-[22px] font-semibold tracking-[-0.02em] text-foreground tabular-nums truncate leading-tight">
+                  {metric.value}
+                </p>
+              )}
+            </div>
+            {metric.hint && (
+              <p className="mt-1 text-[11px] text-muted-foreground line-clamp-2">{metric.hint}</p>
             )}
           </div>
         ))}
       </div>
 
+      <div
+        className={`rounded-xl border border-border/60 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-[12px] ${stripeStateTone(stripeState)}`}
+      >
+        <span className="font-semibold">{stripeStateLabel(stripeState)}</span>
+        <span className="text-muted-foreground">{stripeStateHint(stripeState)}</span>
+      </div>
+
       {(showPaymentWarning || showPriceWarning) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pt-1">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {showPaymentWarning && (
-            <div className="rounded-xl border border-border/70 bg-muted/30 px-4 py-3 flex items-start gap-3">
-              <div className="sq-tone-warning w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-                <Icon name="credit-card" className="w-4 h-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-foreground">
-                  Es ist noch keine Zahlungsmethode hinterlegt.
-                </p>
-                <p className="text-[11px] mt-1 text-muted-foreground">
-                  Stripe-Zahlungsportal wird vorbereitet.
-                </p>
-                <button
-                  type="button"
-                  disabled={stripePortalPrepared}
-                  title={stripePortalPrepared ? 'Stripe-Zahlungsportal wird vorbereitet.' : undefined}
-                  className={`mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold border border-border/70 ${
-                    stripePortalPrepared
-                      ? 'text-muted-foreground cursor-not-allowed'
-                      : 'text-[var(--brand)] hover:bg-[var(--brand-soft)]'
-                  }`}
-                >
-                  Zahlungsmethode hinzufügen
-                </button>
-              </div>
+            <div className="rounded-xl border border-border/70 bg-muted/25 px-3.5 py-3">
+              <p className="text-[13px] font-semibold text-foreground">
+                Keine Zahlungsmethode hinterlegt
+              </p>
+              <p className="text-[12px] mt-1 text-muted-foreground">
+                {stripeState === 'configured'
+                  ? 'Bitte Zahlungsmethode im Bereich rechts hinzufügen.'
+                  : 'Zahlungsmethode kann ergänzt werden, sobald Stripe aktiv ist.'}
+              </p>
             </div>
           )}
           {showPriceWarning && (
-            <div className="rounded-xl border border-border/70 bg-muted/30 px-4 py-3 flex items-start gap-3">
-              <div className="sq-tone-warning w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-                <Icon name="alert-circle" className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-foreground">
-                  Preisstaffel noch nicht final konfiguriert.
-                </p>
-                <p className="text-[11px] mt-1 text-muted-foreground">
-                  Die Subscription ist vorbereitet, aber es wird keine finale Abrechnungsvorschau berechnet.
-                </p>
-              </div>
+            <div className="rounded-xl border border-border/70 bg-muted/25 px-3.5 py-3">
+              <p className="text-[13px] font-semibold text-foreground">
+                Preisstaffel noch nicht final
+              </p>
+              <p className="text-[12px] mt-1 text-muted-foreground">
+                Die Abrechnungsvorschau kann erst berechnet werden, wenn eine aktive Preisversion
+                veröffentlicht ist.
+              </p>
             </div>
           )}
         </div>

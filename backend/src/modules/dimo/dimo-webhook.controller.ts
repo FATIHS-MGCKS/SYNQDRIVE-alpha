@@ -1,7 +1,15 @@
-import { Controller, Post, Body, Req, RawBodyRequest, Headers, Logger, Get, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, Req, RawBodyRequest, Headers, Logger, Get, HttpCode, ServiceUnavailableException } from '@nestjs/common';
 import type { Request } from 'express';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
+import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
+import {
+  buildDimoVerificationResponse,
+  inferObdPlugStateFromWebhookContext,
+  isBlockedEngineWebhookSignal,
+  isDimoVerificationRequest,
+  normalizeDimoWebhookPayload,
+} from './dimo-webhook-payload.util';
 import { createHmac, timingSafeEqual } from 'crypto';
 
 @Controller('webhooks/dimo')
@@ -16,11 +24,18 @@ export class DimoWebhookController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dtcService: DtcService,
+    private readonly deviceConnection: DeviceConnectionWebhookService,
   ) {
     const secret = process.env.DIMO_WEBHOOK_SECRET;
     if (!this.allowUnsignedInDev && !secret) {
       this.logger.error(
         `DIMO_WEBHOOK_SECRET is not set (NODE_ENV=${this.nodeEnv}). All inbound DIMO webhooks will be rejected until this is fixed.`,
+      );
+    }
+    const verificationToken = process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN;
+    if (!verificationToken && !this.allowUnsignedInDev) {
+      this.logger.warn(
+        'DIMO_WEBHOOK_VERIFICATION_TOKEN is not set — DIMO Developer Console webhook URL verification will fail.',
       );
     }
   }
@@ -32,6 +47,21 @@ export class DimoWebhookController {
     @Body() body: any,
     @Headers('x-dimo-signature') signature?: string,
   ) {
+    // ── 1) DIMO Vehicle Triggers URL verification (no HMAC on probe) ─────────
+    if (isDimoVerificationRequest(body)) {
+      const verificationToken = process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN;
+      if (!verificationToken) {
+        this.logger.error('DIMO webhook verification rejected: DIMO_WEBHOOK_VERIFICATION_TOKEN not configured');
+        throw new ServiceUnavailableException({
+          status: 'rejected',
+          reason: 'verification_not_configured',
+        });
+      }
+      this.logger.log('DIMO webhook URL verification handshake succeeded');
+      return buildDimoVerificationResponse(verificationToken);
+    }
+
+    // ── 2) HMAC verification for real trigger payloads ───────────────────────
     const secret = process.env.DIMO_WEBHOOK_SECRET;
 
     if (!secret) {
@@ -49,7 +79,6 @@ export class DimoWebhookController {
         this.logger.warn('DIMO webhook rejected: missing x-dimo-signature header');
         return { status: 'rejected', reason: 'missing_signature' };
       }
-      // Prefer raw body for accurate HMAC; fall back to serialised parsed body.
       const toSign: Buffer | string = req.rawBody ?? JSON.stringify(body);
       const expected = createHmac('sha256', secret).update(toSign).digest('hex');
       const expectedPrefixed = `sha256=${expected}`;
@@ -64,12 +93,22 @@ export class DimoWebhookController {
       }
     }
 
-    this.logger.log(`Received DIMO webhook: type=${body?.type}, tokenId=${body?.tokenId}`);
+    const payload = normalizeDimoWebhookPayload(body);
+    this.logger.log(
+      `Received DIMO webhook: type=${payload.cloudEventType ?? body?.type ?? 'legacy'}, tokenId=${payload.tokenId}`,
+    );
 
-    const tokenId = body?.tokenId || body?.data?.tokenId;
-    if (!tokenId) {
-      this.logger.warn('Webhook missing tokenId');
-      return { status: 'ignored' };
+    if (isBlockedEngineWebhookSignal(payload.signalName)) {
+      this.logger.debug(
+        `Ignored blocked engine webhook signal for tokenId=${payload.tokenId}: ${payload.signalName}`,
+      );
+      return { status: 'ignored', reason: 'blocked_engine_signal' };
+    }
+
+    const tokenId = payload.tokenId;
+    if (tokenId == null) {
+      this.logger.warn('Webhook missing resolvable tokenId (tokenId/subject/assetDID)');
+      return { status: 'ignored', reason: 'missing_token_id' };
     }
 
     const vehicle = await this.prisma.vehicle.findFirst({
@@ -78,16 +117,41 @@ export class DimoWebhookController {
 
     if (!vehicle) {
       this.logger.warn(`No vehicle found for tokenId=${tokenId}`);
-      return { status: 'ignored' };
+      return { status: 'ignored', reason: 'unknown_vehicle' };
     }
 
-    const signalName = body?.signal || body?.data?.signal;
-    const value = body?.value ?? body?.data?.value;
-    const timestamp = body?.timestamp || body?.data?.timestamp;
+    const signalName = payload.signalName;
+    const value = payload.value;
+    const timestamp = payload.timestamp;
 
     if (signalName === 'obdDTCList' && value) {
       await this.handleDtcEvent(vehicle.id, value);
       return { status: 'processed', type: 'dtc' };
+    }
+
+    // ── OBD device plug/unplug (connectivity / tamper evidence) ───────────────
+    if (
+      DeviceConnectionWebhookService.isObdPluggedSignal(signalName, payload.metricName) ||
+      inferObdPlugStateFromWebhookContext(payload) != null
+    ) {
+      const pluggedIn =
+        DeviceConnectionWebhookService.parsePluggedValue(value) ??
+        inferObdPlugStateFromWebhookContext(payload);
+
+      if (pluggedIn == null) {
+        this.logger.warn(`OBD plug webhook for vehicle ${vehicle.id} had no parseable plug state`);
+        return { status: 'ignored', reason: 'non_boolean_plug_state' };
+      }
+
+      const observedAt = timestamp ? new Date(timestamp) : new Date();
+      const { outcome, eventId, eventType } = await this.deviceConnection.ingestObdPlugStateChange({
+        vehicle: { id: vehicle.id, organizationId: vehicle.organizationId },
+        tokenId,
+        pluggedIn,
+        observedAt: Number.isNaN(observedAt.getTime()) ? new Date() : observedAt,
+        rawPayload: body,
+      });
+      return { status: 'processed', type: 'device_connection', outcome, eventId, eventType };
     }
 
     if (signalName === 'speed' && value != null) {

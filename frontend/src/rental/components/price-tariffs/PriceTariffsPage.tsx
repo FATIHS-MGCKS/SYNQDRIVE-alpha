@@ -4,7 +4,10 @@ import { toast } from 'sonner';
 import { api } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
 import { usePriceTariffs } from '../../hooks/usePriceTariffs';
+import { PageHeader } from '../../../components/patterns';
 import { EmptyState, ErrorState, SkeletonMetricGrid } from '../../../components/patterns/states';
+import { Button } from '../../../components/ui/button';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { TariffGroupsTab } from './TariffGroupsTab';
 import { VehicleAssignmentsTab } from './VehicleAssignmentsTab';
 import { ExtrasInsuranceTab } from './ExtrasInsuranceTab';
@@ -28,6 +31,7 @@ interface PriceTariffsPageProps {
 }
 
 export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
+  const { t } = useLanguage();
   const { orgId } = useRentalOrg();
   const { catalog, loading, error, reload } = usePriceTariffs(orgId);
   const [tab, setTab] = useState<TabId>('groups');
@@ -108,41 +112,31 @@ export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">Price Tariffs</h1>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">
-            Manage rental rates, mileage, insurance, extras and deposits.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void reload()}
-            className="sq-press flex items-center gap-1.5 rounded-xl border border-border/60 bg-card px-3 py-2 text-[10px] font-semibold text-foreground hover:bg-muted"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Refresh
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('simulator')}
-            className="sq-press flex items-center gap-1.5 rounded-xl border border-border/60 bg-card px-3 py-2 text-[10px] font-semibold text-foreground hover:bg-muted"
-          >
-            <Calculator className="h-3.5 w-3.5" />
-            Simulate
-          </button>
-          <button
-            type="button"
-            disabled={creatingGroup}
-            onClick={() => void handleCreateGroup()}
-            className="sq-press flex items-center gap-1.5 rounded-xl bg-[color:var(--brand)] px-3 py-2 text-[10px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Create tariff group
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title={t('priceTariffs.title')}
+        actions={(
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="neutral" size="sm" onClick={() => void reload()}>
+              <RefreshCw className="h-3.5 w-3.5" />
+              Refresh
+            </Button>
+            <Button type="button" variant="neutral" size="sm" onClick={() => setTab('simulator')}>
+              <Calculator className="h-3.5 w-3.5" />
+              Simulate
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              disabled={creatingGroup}
+              onClick={() => void handleCreateGroup()}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Create tariff group
+            </Button>
+          </div>
+        )}
+      />
 
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
         {[

@@ -1,3 +1,15 @@
+/**
+ * SynqDrive — HF whole-trip detectors (Trip Signal Summary Enrichment).
+ *
+ * REFRAMING NOTE (see `event-context/event-context.types.ts`): these detectors
+ * operate on a whole-trip HF segment which, for LTE_R1, is frequently SPARSE
+ * (median ~3–6 s, P95 ~21 s). They contribute to the descriptive Trip Signal
+ * Summary and remain valid for SMART5/HF-derived vehicles, but for LTE_R1 they
+ * are NOT the primary short-event misuse authority — that role belongs to the
+ * native-event-anchored context architecture. The signal-availability and
+ * detector-feasibility helpers below already exist precisely so sparse/EV cases
+ * are reported honestly instead of overstated. Thresholds are unchanged.
+ */
 import type { CleanHfPoint } from './hf-preprocessing';
 
 // ═══════════════════════════════════════════════════════════════

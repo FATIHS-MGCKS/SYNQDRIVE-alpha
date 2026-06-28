@@ -10,10 +10,18 @@ import {
 } from './fleet-connectivity.badges';
 import {
   SIGNAL_MATRIX_LABELS,
+  deviceConnectionRowLabel,
+  deviceConnectionSeverityTone,
   jammingSnapshotSummary,
   maskedIdentity,
   obdPlugDisplay,
 } from './fleet-connectivity.utils';
+import {
+  DEVICE_CONNECTION_LABELS,
+  formatDeviceConnectionTimestamp,
+  formatDurationMs,
+} from '../../../lib/device-connection-ui';
+import { DeviceConnectionWebhookChip } from './fleet-connectivity.badges';
 
 function DetailSection({
   title,
@@ -178,10 +186,57 @@ export function FleetConnectivityDetailDrawer({
               <div>
                 <p className="text-[12px] font-medium">{obd.text}</p>
                 <StatusChip tone={obd.tone} className="mt-1.5">
-                  OBD snapshot
+                  {DEVICE_CONNECTION_LABELS.snapshotObd}
                 </StatusChip>
               </div>
             </div>
+
+            {vehicle.deviceConnection?.eventSource === 'dimo_webhook' && (
+              <div className="flex items-start gap-2 border-t border-border/50 pt-3">
+                <Shield className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground" />
+                <div className="space-y-2 w-full">
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                    DIMO Device Connection (Webhook)
+                  </p>
+                  <DeviceConnectionWebhookChip device={vehicle.deviceConnection} />
+                  <DetailRow
+                    label="Status"
+                    value={deviceConnectionRowLabel(vehicle.deviceConnection)}
+                  />
+                  <DetailRow
+                    label="Last unplugged"
+                    value={formatDeviceConnectionTimestamp(
+                      vehicle.deviceConnection.lastDeviceUnpluggedAt,
+                    )}
+                  />
+                  <DetailRow
+                    label="Last plugged"
+                    value={formatDeviceConnectionTimestamp(
+                      vehicle.deviceConnection.lastDevicePluggedInAt,
+                    )}
+                  />
+                  <DetailRow
+                    label="Open episode"
+                    value={
+                      vehicle.deviceConnection.openUnpluggedEpisode
+                        ? `${formatDeviceConnectionTimestamp(vehicle.deviceConnection.openUnpluggedSince)} · ${formatDurationMs(vehicle.deviceConnection.openUnpluggedDurationMs)}`
+                        : DEVICE_CONNECTION_LABELS.noOpenInterruption
+                    }
+                  />
+                  {vehicle.deviceConnection.duringActiveBooking && (
+                    <StatusChip tone="critical">
+                      {DEVICE_CONNECTION_LABELS.duringActiveBooking}
+                    </StatusChip>
+                  )}
+                  {vehicle.deviceConnection.severity && (
+                    <StatusChip tone={deviceConnectionSeverityTone(vehicle.deviceConnection)}>
+                      Severity: {vehicle.deviceConnection.severity}
+                    </StatusChip>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="flex items-start gap-2 border-t border-border/50 pt-3">
               <Shield className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground" />
               <div className="space-y-1">

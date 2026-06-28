@@ -1,5 +1,14 @@
+import type { ReactNode } from 'react';
 import type { BillingSummaryDto } from '../../types/billing.types';
-import { formatDateDe, formatMoneyCents, formatTierRange, subscriptionStatusLabel } from './billing.utils';
+import { Button } from '../../../components/ui/button';
+import {
+  formatDateDe,
+  formatMoneyCents,
+  formatTierRange,
+  planLabelFromSummary,
+  subscriptionStatusLabel,
+  subscriptionStatusTone,
+} from './billing.utils';
 import { Icon } from '../ui/Icon';
 
 interface BillingSubscriptionCardProps {
@@ -10,9 +19,7 @@ interface BillingSubscriptionCardProps {
 export function BillingSubscriptionCard({ summary, onShowVehicles }: BillingSubscriptionCardProps) {
   const currency = summary.priceBook?.currency ?? 'EUR';
   const subStatus = summary.subscriptionStatus ?? 'NONE';
-  const productLabels = summary.products.length
-    ? summary.products.map((p) => p.name).join(' · ')
-    : '—';
+  const planLabel = planLabelFromSummary(summary);
 
   const tierLabel = summary.currentTier
     ? formatTierRange(summary.currentTier.minVehicles, summary.currentTier.maxVehicles)
@@ -23,21 +30,27 @@ export function BillingSubscriptionCard({ summary, onShowVehicles }: BillingSubs
       ? formatMoneyCents(summary.currentTier.unitPriceCents, currency)
       : 'Noch nicht konfiguriert';
 
-  const nextInvoiceLabel =
-    summary.calculationStatus === 'OK' && summary.nextInvoicePreview.totalCents != null
-      ? formatMoneyCents(summary.nextInvoicePreview.totalCents, currency)
-      : 'Nicht berechenbar';
-
-  const rows = [
-    { label: 'Abo-Status', value: subscriptionStatusLabel(subStatus) },
-    { label: 'Produkt / Lizenz', value: productLabels },
-    { label: 'Abrechnungsmodell', value: 'Pro angeschlossenem Fahrzeug' },
-    { label: 'Verbundene Fahrzeuge', value: String(summary.connectedVehicleCount) },
+  const rows: Array<{ label: string; value: ReactNode }> = [
+    { label: 'Plan / Produkt', value: planLabel },
+    { label: 'Abrechnungsmodell', value: 'Pro verbundenem Fahrzeug' },
+    { label: 'Aktive Fahrzeuge (verbunden)', value: String(summary.connectedVehicleCount) },
     { label: 'Abrechenbare Fahrzeuge', value: String(summary.billableVehicleCount) },
-    { label: 'Aktuelle Staffel', value: tierLabel },
+    { label: 'Aktuelle Preisstaffel', value: tierLabel },
     { label: 'Preis pro Fahrzeug', value: unitPriceLabel },
-    { label: 'Erwartete nächste Rechnung', value: nextInvoiceLabel },
-    { label: 'Aktueller Zeitraum', value: `${formatDateDe(summary.currentPeriodStart)} – ${formatDateDe(summary.currentPeriodEnd)}` },
+    {
+      label: 'Aktueller Zeitraum',
+      value: `${formatDateDe(summary.currentPeriodStart)} – ${formatDateDe(summary.currentPeriodEnd)}`,
+    },
+    {
+      label: 'Status',
+      value: (
+        <span
+          className={`inline-flex px-2 py-0.5 rounded-md text-[11px] font-semibold ${subscriptionStatusTone(subStatus)}`}
+        >
+          {subscriptionStatusLabel(subStatus)}
+        </span>
+      ),
+    },
   ];
 
   if (summary.cancelAtPeriodEnd) {
@@ -45,16 +58,14 @@ export function BillingSubscriptionCard({ summary, onShowVehicles }: BillingSubs
   }
 
   return (
-    <div className="sq-card rounded-2xl p-5 shadow-[var(--shadow-1)]">
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div>
-          <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">
-            Aktuelle Subscription
-          </h3>
-          <p className="text-[11px] mt-0.5 text-muted-foreground">
-            Abrechnung basiert auf verbundenen, abrechenbaren Fahrzeugen.
-          </p>
-        </div>
+    <div className="sq-card rounded-2xl p-4 sm:p-5 shadow-[var(--shadow-1)]">
+      <div className="mb-4">
+        <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">
+          Subscription
+        </h3>
+        <p className="text-[12px] mt-0.5 text-muted-foreground">
+          Abrechnung basiert auf verbundenen, abrechenbaren Fahrzeugen.
+        </p>
       </div>
 
       <div className="space-y-0">
@@ -63,20 +74,22 @@ export function BillingSubscriptionCard({ summary, onShowVehicles }: BillingSubs
             key={row.label}
             className="flex items-center justify-between gap-4 py-2.5 border-b border-border/40 last:border-b-0"
           >
-            <span className="text-xs text-muted-foreground">{row.label}</span>
-            <span className="text-xs font-semibold text-foreground text-right">{row.value}</span>
+            <span className="text-[12px] text-muted-foreground shrink-0">{row.label}</span>
+            <span className="text-[12px] font-semibold text-foreground text-right">{row.value}</span>
           </div>
         ))}
       </div>
 
-      <button
+      <Button
         type="button"
+        variant="outline"
+        size="sm"
+        className="mt-4 w-full sm:w-auto"
         onClick={onShowVehicles}
-        className="mt-4 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold border border-border/70 bg-card hover:bg-muted/40 transition-colors duration-200 active:scale-[0.98]"
       >
-        <Icon name="car" className="w-4 h-4" />
-        Abgerechnete Fahrzeuge anzeigen
-      </button>
+        <Icon name="car" className="w-3.5 h-3.5" />
+        Abrechenbare Fahrzeuge ansehen
+      </Button>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BillingController } from './billing.controller';
+import { StripeWebhookController } from './stripe-webhook.controller';
 import { BillingService } from './billing.service';
 import { PricebookService } from './pricebook.service';
 import { BillingUsageService } from './billing-usage.service';
@@ -9,9 +10,12 @@ import { BillingPriceResolutionService } from './billing-price-resolution.servic
 import { BillingSummaryService } from './billing-summary.service';
 import { BillingAdminService } from './billing-admin.service';
 import { StripePreparedService } from './stripe-prepared.service';
+import { StripeBillingService } from './stripe-billing.service';
+import { StripeInvoiceMirrorService } from './stripe-invoice-mirror.service';
+import { StripeWebhookService } from './stripe-webhook.service';
 
 @Module({
-  controllers: [BillingController],
+  controllers: [BillingController, StripeWebhookController],
   providers: [
     BillingService,
     PricebookService,
@@ -21,6 +25,9 @@ import { StripePreparedService } from './stripe-prepared.service';
     BillingPriceResolutionService,
     BillingSummaryService,
     BillingAdminService,
+    StripeBillingService,
+    StripeInvoiceMirrorService,
+    StripeWebhookService,
     StripePreparedService,
   ],
   exports: [
@@ -32,6 +39,9 @@ import { StripePreparedService } from './stripe-prepared.service';
     BillingPriceResolutionService,
     BillingSummaryService,
     BillingAdminService,
+    StripeBillingService,
+    StripeInvoiceMirrorService,
+    StripeWebhookService,
     StripePreparedService,
   ],
 })

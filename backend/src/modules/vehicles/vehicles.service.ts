@@ -40,6 +40,8 @@ import type { FleetConnectivityResponseDto } from './fleet-connectivity.types';
 import { TireLifecycleService } from '@modules/vehicle-intelligence/tires/tire-lifecycle.service';
 import { DataAuthorizationsService } from '@modules/data-authorizations/data-authorizations.service';
 import { DataAuthorizationEnforcementService } from '@modules/data-authorizations/data-authorization-enforcement.service';
+import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
+import { buildFleetDeviceConnectionFields } from '@modules/dimo/device-connection-read-model';
 
 const DIMO_FUEL_TYPE_MAP: Record<string, FuelType> = {
   GASOLINE: FuelType.GASOLINE,
@@ -232,6 +234,7 @@ export class VehiclesService {
     private readonly tireLifecycleService: TireLifecycleService,
     private readonly dataAuthorizations: DataAuthorizationsService,
     private readonly dataAuthEnforcement: DataAuthorizationEnforcementService,
+    private readonly deviceConnectionQuery: DeviceConnectionQueryService,
     @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
   ) {}
 
@@ -1993,7 +1996,28 @@ export class VehiclesService {
       },
     });
 
-    let mapped = vehicles.map((v) => mapFleetConnectivityVehicle(v, nowMs));
+    const vehicleIds = vehicles.map((v) => v.id);
+    const hardwareById = new Map(
+      vehicles.map((v) => [v.id, v.hardwareType as string | null]),
+    );
+    const dimoLinkedById = new Map(
+      vehicles.map((v) => [v.id, v.dimoVehicleId != null]),
+    );
+    const deviceSummaries = await this.deviceConnectionQuery.getFleetSummariesForVehicles(
+      organizationId,
+      vehicleIds,
+      hardwareById,
+      dimoLinkedById,
+    );
+
+    let mapped = vehicles.map((v) => {
+      const summary = deviceSummaries.get(v.id);
+      const deviceConnection =
+        summary && (summary.lteR1Capable || summary.lastWebhookReceivedAt)
+          ? buildFleetDeviceConnectionFields(summary)
+          : null;
+      return mapFleetConnectivityVehicle(v, nowMs, deviceConnection);
+    });
 
     if (query.status) {
       mapped = mapped.filter((v) => v.connectionStatus === query.status);
@@ -2023,6 +2047,12 @@ export class VehiclesService {
       },
       vehicles: paginationResult.pageItems,
     };
+  }
+
+  async getDeviceConnection(organizationId: string, vehicleId: string) {
+    return this.deviceConnectionQuery.getVehicleSummary(organizationId, vehicleId, {
+      eventLimit: 20,
+    });
   }
 
   async listVehicleComplaints(organizationId: string, vehicleId: string) {

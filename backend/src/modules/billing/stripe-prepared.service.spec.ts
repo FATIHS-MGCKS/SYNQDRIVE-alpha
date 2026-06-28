@@ -1,5 +1,6 @@
 import { HttpException } from '@nestjs/common';
 import { StripePreparedService } from './stripe-prepared.service';
+import { StripeBillingService } from './stripe-billing.service';
 
 describe('StripePreparedService', () => {
   const prisma = {
@@ -11,21 +12,19 @@ describe('StripePreparedService', () => {
     },
   } as any;
 
+  const stripeBilling = {
+    isStripeConfigured: jest.fn(),
+    createCustomerPortalSession: jest.fn(),
+    createSetupIntent: jest.fn(),
+    syncOrganizationStripe: jest.fn(),
+  } as unknown as StripeBillingService;
+
   let service: StripePreparedService;
-  const originalSecret = process.env.STRIPE_SECRET_KEY;
 
   beforeEach(() => {
-    service = new StripePreparedService(prisma);
-    delete process.env.STRIPE_SECRET_KEY;
+    service = new StripePreparedService(prisma, stripeBilling);
     jest.clearAllMocks();
-  });
-
-  afterAll(() => {
-    if (originalSecret !== undefined) {
-      process.env.STRIPE_SECRET_KEY = originalSecret;
-    } else {
-      delete process.env.STRIPE_SECRET_KEY;
-    }
+    (stripeBilling.isStripeConfigured as jest.Mock).mockReturnValue(false);
   });
 
   it('reports portalPrepared when Stripe secret is missing', () => {
@@ -53,6 +52,15 @@ describe('StripePreparedService', () => {
       expect(err.getStatus()).toBe(501);
       expect((err.getResponse() as any).prepared).toBe(true);
     }
+  });
+
+  it('delegates portal session when Stripe configured', async () => {
+    (stripeBilling.isStripeConfigured as jest.Mock).mockReturnValue(true);
+    (stripeBilling.createCustomerPortalSession as jest.Mock).mockResolvedValue({
+      url: 'https://billing.stripe.com/p/session',
+    });
+    const result = await service.createCustomerPortalSession('org-1');
+    expect(result.url).toContain('stripe.com');
   });
 
   it('returns prepared sync payload for master admin when Stripe missing', async () => {

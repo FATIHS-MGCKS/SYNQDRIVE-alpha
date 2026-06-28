@@ -26,20 +26,15 @@ import { VendorDetailView } from './components/VendorDetailView';
 import { CustomerDetailView } from './components/CustomerDetailView';
 import { VehicleBookingsView } from './components/VehicleBookingsView';
 import { VehicleTasksView } from './components/VehicleTasksView';
-import { BrandLogo, getBrandFromModel } from './components/BrandLogo';
 import { VehicleData } from './data/vehicles';
 import { RentalProvider, useRentalOrg } from './RentalContext';
-import { FleetProvider, useFleetVehicles, useEffectiveHealth } from './FleetContext';
+import { FleetProvider, useFleetVehicles } from './FleetContext';
 import { DashboardInsightsProvider } from './DashboardInsightsContext';
 import { HandoverProvider } from './HandoverContext';
 import { Toaster } from 'sonner';
 import { useLiveVehicleTelemetry } from './hooks/useLiveVehicleTelemetry';
-import { useVehicleLiveMapStore } from './stores/useVehicleLiveMapStore';
-import { resolveTelemetryFreshness } from './lib/telemetryFreshness';
-import { useShallow } from 'zustand/react/shallow';
 import { LanguageProvider } from './i18n/LanguageContext';
 import { DocumentUploadView } from './components/DocumentUploadView';
-import { PageHeader, HealthStatusChip, StatusChip } from '../components/patterns';
 import { AIAssistantView } from './components/AIAssistantView';
 import { SupportView } from './components/SupportView';
 import { HelpCenterView } from './components/HelpCenterView';
@@ -52,13 +47,13 @@ import { VoiceAssistantView } from './components/VoiceAssistantView';
 import { AppErrorBoundary } from '../components/AppErrorBoundary';
 import { AppShell } from '../components/shell';
 import {
+  VehicleDetailHeader,
   VehicleOverviewTab,
   VehicleRequirementsTab,
   createVehicleOverviewNavigator,
   useVehicleOverviewSummary,
 } from './components/vehicle-detail';
 import type { ServiceCenterNavState } from './lib/service-center-navigation';
-import { formatUserFacingReasonLabel } from './lib/operational-issues';
 
 // Views that render the vehicle detail header (incl. <VehicleConnectionBadge>).
 // The live-telemetry binder must cover the same set so the Online/Offline +
@@ -84,102 +79,6 @@ function VehicleLiveTelemetryBinder({
 }) {
   useLiveVehicleTelemetry(vehicleId, orgId);
   return null;
-}
-
-function VehicleConnectionBadge() {
-  const { onlineStatus, lastSignal } = useVehicleLiveMapStore(
-    useShallow((state) => ({
-      onlineStatus: state.onlineStatus,
-      lastSignal: state.lastSignal,
-    })),
-  );
-
-  // Central 5-state telemetry freshness — same logic as the fleet rows.
-  // STANDBY is a calm, neutral state (no warning colour); signal_delayed is a
-  // low (watch) hint; offline / no_signal are muted connectivity problems.
-  const freshness = resolveTelemetryFreshness({ lastSignal, onlineStatus });
-  let timeAgo = '—';
-  if (freshness.signalAgeMs != null) {
-    const mins = Math.floor(freshness.signalAgeMs / 60000);
-    if (mins < 1) timeAgo = 'just now';
-    else if (mins < 60) timeAgo = `${mins}m ago`;
-    else {
-      const hrs = Math.floor(mins / 60);
-      if (hrs < 24) timeAgo = `${hrs}h ago`;
-      else timeAgo = `${Math.floor(hrs / 24)}d ago`;
-    }
-  }
-  const dotColor = freshness.isLive
-    ? 'text-[color:var(--status-positive)] fill-[color:var(--status-positive)] animate-online-pulse'
-    : freshness.isSignalDelayed
-      ? 'text-[color:var(--status-watch)] fill-[color:var(--status-watch)]'
-      : freshness.isStandby
-        ? 'text-muted-foreground fill-[color:var(--muted-foreground)]'
-        : 'text-muted-foreground fill-[color:var(--status-nodata)]';
-  const labelColor = freshness.isLive
-    ? 'text-[color:var(--status-positive)]'
-    : freshness.isSignalDelayed
-      ? 'text-[color:var(--status-watch)]'
-      : 'text-muted-foreground';
-  const label = freshness.shortLabel;
-
-  return (
-    <div className="flex items-center gap-2 px-2.5 py-1 rounded-md border border-border bg-card shadow-sm">
-      <div className="flex items-center gap-1.5">
-        <Icon name="circle" className={`w-2 h-2 ${dotColor}`} />
-        <span className={`text-[10px] font-semibold tracking-[-0.003em] ${labelColor}`}>{label}</span>
-      </div>
-      <div className="w-px h-4 bg-border"></div>
-      <div className="flex items-center gap-1">
-        <span className="text-[10.5px] font-semibold text-muted-foreground">
-          Last Signal
-        </span>
-        <span className="text-[10.5px] font-bold tabular-nums text-foreground">
-          {timeAgo}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// V4.7.23 — Vehicle-Detail header health chip. Reads the canonical
-// Rental-Health-V1 status from the shared FleetProvider map so the
-// header pill never disagrees with FleetView, FleetCondition or the
-// Dashboard popups. Falls back to a neutral "Loading…" pill while the
-// batched health request is in flight.
-function VehicleHealthChip({ vehicleId }: { vehicleId: string | null }) {
-  const { status, health, loading } = useEffectiveHealth(vehicleId);
-  const reasons: string[] = [];
-  if (health?.rental_blocked && health.blocking_reasons.length > 0) {
-    reasons.push(...health.blocking_reasons.map((reason) =>
-      formatUserFacingReasonLabel({ title: reason, category: 'rental', issueType: 'rental_blocked' }, 'de'),
-    ));
-  }
-  if (health) {
-    for (const [name, mod] of Object.entries(health.modules)) {
-      if (mod.state === 'critical' || mod.state === 'warning') {
-        reasons.push(formatUserFacingReasonLabel({
-          title: mod.reason,
-          source: `rental-health:${name}`,
-          category: name === 'error_codes' ? 'dtc' : name,
-        }, 'de'));
-      }
-    }
-  }
-  const title = reasons.join(' · ') || undefined;
-  if (loading && !health) {
-    return <HealthStatusChip state="unknown" label="Loading…" icon={<Icon name="heart" className="w-3 h-3" />} title="Loading rental health…" />;
-  }
-  if (status === 'Critical') {
-    return <HealthStatusChip state="critical" label="Critical" icon={<Icon name="heart" className="w-3 h-3" />} title={title} />;
-  }
-  if (status === 'Warning') {
-    return <HealthStatusChip state="warning" label="Warning" icon={<Icon name="heart" className="w-3 h-3" />} title={title} />;
-  }
-  if (status === 'Good Health') {
-    return <HealthStatusChip state="good" label="Good Health" icon={<Icon name="heart" className="w-3 h-3" />} title={title} />;
-  }
-  return <HealthStatusChip state="no_data" label="Limited Data" icon={<Icon name="heart" className="w-3 h-3" />} title={title ?? 'Insufficient rental health data'} />;
 }
 
 type RentalSettingsTab =
@@ -325,6 +224,10 @@ function RentalAppContent() {
 
   // Shared new customers (created in NewBookingView, shown in CustomersView)
   const [newlyCreatedCustomers, setNewlyCreatedCustomers] = useState<any[]>([]);
+  const [newBookingPrefill, setNewBookingPrefill] = useState<{
+    customerId: string;
+    returnView: 'customer-detail' | 'bookings';
+  } | null>(null);
 
   // Shared new bookings (created in NewBookingView, shown in BookingsView)
   const [createdBookings, setCreatedBookings] = useState<any[]>([]);
@@ -605,120 +508,18 @@ function RentalAppContent() {
             />
         {/* Header Section - Only show for vehicle detail views */}
         {showVehicleDetailChrome && selectedVehicle && (
-        <div className="mb-3 animate-fade-up">
-          <PageHeader
-            variant="full"
-            eyebrow={[selectedVehicle.license, selectedVehicle.station].filter(Boolean).join(' · ') || 'Vehicle'}
-            title={`${selectedVehicle.make ?? ''} ${selectedVehicle.model} ${selectedVehicle.year}`.trim()}
-            icon={(
-              <BrandLogo
-                brand={getBrandFromModel(selectedVehicle.make || selectedVehicle.model || '')}
-                size={24}
-              />
-            )}
-            actions={(
-              <div className="flex flex-wrap items-center gap-1.5">
-                <button
-                  onClick={handleBackToFleet}
-                  className="sq-press p-1.5 rounded-xl border border-border/60 bg-card text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
-                  title="Back to Fleet"
-                  aria-label="Back to Fleet"
-                >
-                  <Icon name="arrow-left" className="w-4 h-4" />
-                </button>
-                <div className="relative">
-                <button
-                  onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-                  className={`sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] ${
-                    vehicleStatus === 'Available'
-                      ? ''
-                      : vehicleStatus === 'Manual Block'
-                        ? ''
-                        : ''
-                  }`}
-                >
-                  <StatusChip
-                    tone={vehicleStatus === 'Available' ? 'success' : vehicleStatus === 'Manual Block' ? 'critical' : 'warning'}
-                    icon={
-                      vehicleStatus === 'Available' ? (
-                        <Icon name="check-circle" className="w-3 h-3" />
-                      ) : vehicleStatus === 'Manual Block' ? (
-                        <Icon name="x-circle" className="w-3 h-3" />
-                      ) : (
-                        <Icon name="wrench" className="w-3 h-3" />
-                      )
-                    }
-                  >
-                    {vehicleStatus}
-                  </StatusChip>
-                </button>
-                
-                {isStatusDropdownOpen && (
-                  <div className="sq-overlay animate-fade-up absolute top-full mt-1.5 left-0 z-50 min-w-[170px] p-1 rounded-xl">
-                    <button
-                      onClick={() => handleVehicleStatusChange('Available')}
-                      className="w-full px-2.5 py-2 flex items-center gap-2 rounded-lg hover:bg-muted transition-colors text-left"
-                    >
-                      <Icon name="check-circle" className="w-3.5 h-3.5 text-[color:var(--status-positive)]" />
-                      <span className="text-[12px] font-medium text-foreground">Available</span>
-                    </button>
-                    <button
-                      onClick={() => handleVehicleStatusChange('Manual Block')}
-                      className="w-full px-2.5 py-2 flex items-center gap-2 rounded-lg hover:bg-muted transition-colors text-left"
-                    >
-                      <Icon name="x-circle" className="w-3.5 h-3.5 text-[color:var(--status-critical)]" />
-                      <span className="text-[12px] font-medium text-foreground">Manual Block</span>
-                    </button>
-                    <button
-                      onClick={() => handleVehicleStatusChange('Maintenance')}
-                      className="w-full px-2.5 py-2 flex items-center gap-2 rounded-lg hover:bg-muted transition-colors text-left"
-                    >
-                      <Icon name="wrench" className="w-3.5 h-3.5 text-[color:var(--status-attention)]" />
-                      <span className="text-[12px] font-medium text-foreground">Maintenance</span>
-                    </button>
-                  </div>
-                )}
-                </div>
-
-                <div className="relative">
-                <button
-                  onClick={() => setIsCleaningDropdownOpen(!isCleaningDropdownOpen)}
-                  className="sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
-                >
-                  <StatusChip
-                    tone={cleaningStatus === 'Clean' ? 'info' : 'critical'}
-                    icon={<Icon name="sparkles" className="w-3 h-3" />}
-                  >
-                    {cleaningStatus}
-                  </StatusChip>
-                </button>
-
-                {isCleaningDropdownOpen && (
-                  <div className="sq-overlay animate-fade-up absolute top-full mt-1.5 left-0 z-50 min-w-[170px] p-1 rounded-xl">
-                    <button
-                      onClick={() => handleCleaningStatusChange('Clean')}
-                      className="w-full px-2.5 py-2 flex items-center gap-2 rounded-lg hover:bg-muted transition-colors text-left"
-                    >
-                      <Icon name="sparkles" className="w-3.5 h-3.5 text-[color:var(--status-info)]" />
-                      <span className="text-[12px] font-medium text-foreground">Clean</span>
-                    </button>
-                    <button
-                      onClick={() => handleCleaningStatusChange('Needs Cleaning')}
-                      className="w-full px-2.5 py-2 flex items-center gap-2 rounded-lg hover:bg-muted transition-colors text-left"
-                    >
-                      <Icon name="alert-triangle" className="w-3.5 h-3.5 text-[color:var(--status-critical)]" />
-                      <span className="text-[12px] font-medium text-foreground">Needs Cleaning</span>
-                    </button>
-                  </div>
-                )}
-                </div>
-
-                <VehicleHealthChip vehicleId={selectedVehicle.id ?? null} />
-                <VehicleConnectionBadge />
-              </div>
-            )}
+          <VehicleDetailHeader
+            vehicle={selectedVehicle}
+            vehicleStatus={vehicleStatus}
+            cleaningStatus={cleaningStatus}
+            isStatusDropdownOpen={isStatusDropdownOpen}
+            isCleaningDropdownOpen={isCleaningDropdownOpen}
+            onToggleStatusDropdown={() => setIsStatusDropdownOpen((open) => !open)}
+            onToggleCleaningDropdown={() => setIsCleaningDropdownOpen((open) => !open)}
+            onVehicleStatusChange={handleVehicleStatusChange}
+            onCleaningStatusChange={handleCleaningStatusChange}
+            onBack={handleBackToFleet}
           />
-        </div>
         )}
 
         {/* Tab Navigation - Only show for vehicle detail views */}
@@ -1041,7 +842,12 @@ function RentalAppContent() {
             customer={detailCustomer}
             onBack={() => setCurrentView('customers')}
             onUpdateCustomer={(updated) => setDetailCustomer(updated)}
-            onCreateBooking={() => setCurrentView('new-booking')}
+            onCreateBooking={() => {
+              if (detailCustomer?.id) {
+                setNewBookingPrefill({ customerId: detailCustomer.id, returnView: 'customer-detail' });
+              }
+              setCurrentView('new-booking');
+            }}
           />
         ) : currentView === 'invoices' || currentView === 'price-tariffs' ? (
           <FinanceView
@@ -1109,7 +915,16 @@ function RentalAppContent() {
             onNavigateToStations={() => handleViewChange('stations')}
           />
         ) : currentView === 'new-booking' ? (
-          <NewBookingView onBack={() => setCurrentView('bookings')} onCustomerCreated={(c) => setNewlyCreatedCustomers(prev => [c, ...prev])} onBookingCreated={(b) => { setCreatedBookings(prev => [b, ...prev]); bumpBookingsVersion(); }} />
+          <NewBookingView
+            initialCustomerId={newBookingPrefill?.customerId ?? null}
+            onBack={() => {
+              const returnView = newBookingPrefill?.returnView ?? 'bookings';
+              setNewBookingPrefill(null);
+              setCurrentView(returnView);
+            }}
+            onCustomerCreated={(c) => setNewlyCreatedCustomers(prev => [c, ...prev])}
+            onBookingCreated={(b) => { setCreatedBookings(prev => [b, ...prev]); bumpBookingsVersion(); }}
+          />
         ) : currentView === 'overview' ? (
           <VehicleOverviewTab
             selectedVehicle={selectedVehicle}

@@ -35,6 +35,8 @@ export default registerAs('dimo', () => {
       process.env.DIMO_WEBHOOK_BASE_URL ||
       process.env.BASE_URL ||
       'http://localhost:3001',
+    /** Token echoed during DIMO Vehicle Triggers URL verification ({ verification: "test" }). */
+    webhookVerificationToken: process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN ?? '',
     /** DIMO Agents API (create-agent uses body credentials, NOT Developer JWT). */
     agentsBaseUrl:
       process.env.DIMO_AGENTS_BASE_URL ||

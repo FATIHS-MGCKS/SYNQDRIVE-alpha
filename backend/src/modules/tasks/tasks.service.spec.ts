@@ -24,6 +24,8 @@ function baseTask(over: Record<string, unknown> = {}) {
     fineId: null,
     invoiceId: null,
     assignedUserId: null,
+    createdByUserId: null,
+    updatedByUserId: null,
     estimatedCostCents: null,
     actualCostCents: null,
     resolutionNote: null,
@@ -92,6 +94,52 @@ describe('TasksService', () => {
     expect(prisma.taskEvent.create).toHaveBeenCalled();
     expect(res.id).toBe('t1');
     expect(res.isOverdue).toBe(false);
+    expect(prisma.orgTask.create.mock.calls[0][0].data.createdByUserId).toBe('u1');
+  });
+
+  it('serializes createdByUserId on list and get responses', async () => {
+    prisma.orgTask.findMany.mockResolvedValue([
+      baseTask({ id: 't-list', createdByUserId: 'creator-1', assignedUserId: 'assignee-1' }),
+    ]);
+    prisma.orgTask.findFirst.mockResolvedValue(
+      baseTask({ id: 't-detail', createdByUserId: 'creator-1', updatedByUserId: 'editor-1' }),
+    );
+
+    const list = await svc.listTasks('org1', {});
+    expect(list[0].createdByUserId).toBe('creator-1');
+    expect(list[0].assignedUserId).toBe('assignee-1');
+
+    const detail = await svc.getTaskById('t-detail', 'org1');
+    expect(detail.createdByUserId).toBe('creator-1');
+    expect(detail.updatedByUserId).toBe('editor-1');
+  });
+
+  it('sets updatedByUserId on update while preserving createdByUserId', async () => {
+    prisma.orgTask.findFirst
+      .mockResolvedValueOnce(baseTask({ createdByUserId: 'creator-1' }))
+      .mockResolvedValueOnce(baseTask({ createdByUserId: 'creator-1', updatedByUserId: 'editor-1', title: 'Updated' }));
+    prisma.orgTask.update.mockResolvedValue(baseTask({ title: 'Updated' }));
+
+    const res = await svc.updateTask('org1', 't1', { title: 'Updated' }, 'editor-1');
+
+    expect(prisma.orgTask.update.mock.calls[0][0].data.updatedByUserId).toBe('editor-1');
+    expect(res.createdByUserId).toBe('creator-1');
+    expect(res.updatedByUserId).toBe('editor-1');
+  });
+
+  it('serializes system tasks without createdByUserId', async () => {
+    prisma.orgTask.findMany.mockResolvedValue([
+      baseTask({
+        id: 'sys-1',
+        sourceType: 'SYSTEM',
+        source: 'INSIGHT_HEALTH',
+        createdByUserId: null,
+      }),
+    ]);
+
+    const list = await svc.listTasks('org1', {});
+    expect(list[0].createdByUserId).toBeNull();
+    expect(list[0].sourceType).toBe('SYSTEM');
   });
 
   it('rejects a manual task whose vehicle belongs to another org (tenant scoping)', async () => {
@@ -146,6 +194,69 @@ describe('TasksService', () => {
     expect(prisma.orgTask.update).toHaveBeenCalled();
     expect(prisma.taskEvent.create).toHaveBeenCalled();
     expect(res.assignedUserId).toBe('u2');
+  });
+
+  it('addComment creates a comment with userId and returns updated task detail', async () => {
+    prisma.orgTask.findFirst
+      .mockResolvedValueOnce(baseTask())
+      .mockResolvedValueOnce(
+        baseTask({
+          comments: [{ id: 'c1', taskId: 't1', body: 'Notiz', userId: 'u1', createdAt: new Date() }],
+        }),
+      );
+    prisma.taskComment.create.mockResolvedValue({ id: 'c1' });
+
+    const res = await svc.addComment('org1', 't1', 'Notiz', 'u1');
+
+    expect(prisma.taskComment.create).toHaveBeenCalledWith({
+      data: { taskId: 't1', body: 'Notiz', userId: 'u1' },
+    });
+    expect(prisma.taskEvent.create).toHaveBeenCalled();
+    expect(res.comments?.[0]?.body).toBe('Notiz');
+    expect(res.comments?.[0]?.userId).toBe('u1');
+  });
+
+  it('rejects assignTask for users outside the org', async () => {
+    prisma.orgTask.findFirst.mockResolvedValue(baseTask());
+    prisma.organizationMembership.findFirst.mockResolvedValue(null);
+
+    await expect(svc.assignTask('org1', 't1', 'u-outside', 'actor')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(prisma.orgTask.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects assignTask on completed or cancelled tasks', async () => {
+    prisma.orgTask.findFirst.mockResolvedValue(baseTask({ status: 'DONE' }));
+
+    await expect(svc.assignTask('org1', 't1', 'u2', 'actor')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(prisma.orgTask.update).not.toHaveBeenCalled();
+  });
+
+  it('getTaskById returns comments and timeline when included', async () => {
+    prisma.orgTask.findFirst.mockResolvedValue(
+      baseTask({
+        comments: [{ id: 'c1', taskId: 't1', body: 'Hi', userId: 'u1', createdAt: new Date() }],
+        events: [
+          {
+            id: 'e1',
+            taskId: 't1',
+            type: 'CREATED',
+            actorUserId: null,
+            oldValue: null,
+            newValue: 'OPEN',
+            createdAt: new Date(),
+          },
+        ],
+      }),
+    );
+
+    const detail = await svc.getTaskById('t1', 'org1');
+    expect(detail.comments?.[0]?.body).toBe('Hi');
+    expect(detail.timeline?.[0]?.type).toBe('CREATED');
+    expect(detail.createdByUserId).toBeNull();
   });
 
   it('allows a valid status transition OPEN → IN_PROGRESS and stamps startedAt', async () => {

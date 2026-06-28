@@ -1,0 +1,42 @@
+import { describe, expect, it } from 'vitest';
+import { deriveBehaviorOverallStatus } from './behavior-ui.utils';
+import type { TripTimelineTrip } from './timeline.types';
+import type { TripBehaviorEvent } from '../../../lib/api';
+
+function trip(overrides: Partial<TripTimelineTrip> = {}): TripTimelineTrip {
+  return {
+    id: 't1',
+    vehicleId: 'v1',
+    tripStatus: 'COMPLETED',
+    startTime: '2026-06-01T10:00:00Z',
+    ...overrides,
+  } as TripTimelineTrip;
+}
+
+const noEvents: TripBehaviorEvent[] = [];
+
+describe('deriveBehaviorOverallStatus — assessability gate', () => {
+  it('returns "unremarkable" for a clean, assessable trip', () => {
+    expect(
+      deriveBehaviorOverallStatus(trip(), noEvents, { assessable: true }),
+    ).toBe('unremarkable');
+  });
+
+  it('returns "not_assessable" for a clean trip with insufficient data', () => {
+    expect(
+      deriveBehaviorOverallStatus(trip(), noEvents, { assessable: false }),
+    ).toBe('not_assessable');
+  });
+
+  it('never downgrades an abuse trip to not_assessable', () => {
+    expect(
+      deriveBehaviorOverallStatus(trip({ abuseEvents: 2 }), noEvents, {
+        assessable: false,
+      }),
+    ).toBe('abuse_suspect');
+  });
+
+  it('defaults to unremarkable when no assessability gate is supplied', () => {
+    expect(deriveBehaviorOverallStatus(trip(), noEvents)).toBe('unremarkable');
+  });
+});

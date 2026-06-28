@@ -64,40 +64,36 @@ export function VehicleBookingsOperatorHeader({
   return (
     <section className={vb.section} aria-labelledby="vb-operator-title">
       <header className={vb.sectionHeader}>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0 space-y-1.5">
-            <p className="sq-section-label">Fahrzeugbetrieb</p>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
             <h2 id="vb-operator-title" className={vb.title}>
               Buchungen &amp; Verfügbarkeit
             </h2>
-            <p className={`${vb.subtitle} max-w-xl`}>{vehicleLabel}</p>
+            <p className={`${vb.subtitle} mt-0.5 truncate`}>{vehicleLabel}</p>
           </div>
-
-          <div className="flex shrink-0 flex-col items-start gap-1.5 sm:items-end">
-            <StatusChip
-              tone={snapshot.operatorTone}
-              dot={snapshot.operatorState === 'active'}
-              className="px-3 py-1 text-[11px] font-semibold"
-            >
-              {snapshot.operatorLabel}
-            </StatusChip>
-            <p className={`${vb.meta} max-w-[300px] text-left leading-relaxed sm:text-right`}>
-              {snapshot.operatorDetail}
-            </p>
-          </div>
+          <StatusChip
+            tone={snapshot.operatorTone}
+            dot={snapshot.operatorState === 'active'}
+            className="shrink-0 px-1.5 py-0.5 text-[9.5px] font-semibold"
+          >
+            {loading ? '…' : snapshot.operatorLabel}
+          </StatusChip>
         </div>
+        {!loading ? (
+          <p className={`${vb.meta} mt-1 line-clamp-2 opacity-90`}>{snapshot.operatorDetail}</p>
+        ) : null}
       </header>
 
-      <div className={`${vb.sectionBody} space-y-4`}>
-        <div className={vb.gridMetrics}>
+      <div className={vb.sectionBody}>
+        <div className={vb.gridSummary}>
           <VehicleBookingSummaryCard
             label="Aktueller Status"
             value={loading ? '—' : snapshot.operatorNowLabel}
-            valueVariant="text"
+            valueVariant="status"
             status={snapshot.operatorTone}
-            hint="Live-Zustand des Fahrzeugs im Horizont"
+            hint="Live-Zustand im gewählten Horizont"
             loading={loading}
-            icon={<Icon name="activity" className="h-4 w-4 text-muted-foreground" aria-hidden />}
+            icon={<Icon name="activity" className="text-muted-foreground" aria-hidden />}
           />
           <HandoverSummaryCard
             label="Nächster Pickup"
@@ -120,14 +116,12 @@ export function VehicleBookingsOperatorHeader({
             emptyHint="Keine anstehende Rückgabe im gewählten Zeitraum."
           />
           <RevenueSummaryCard snapshot={snapshot} loading={loading} />
-        </div>
-
-        <div className={vb.gridAvailability}>
           <VehicleBookingSummaryCard
             label={`Auslastung · ${horizonDays} Tage`}
             value={loading ? '—' : `${snapshot.utilizationPct}`}
             unit="%"
             valueVariant="numeric"
+            subdued={!loading && snapshot.utilizationPct === 0}
             status={
               snapshot.utilizationPct >= 75
                 ? 'info'
@@ -137,7 +131,7 @@ export function VehicleBookingsOperatorHeader({
             }
             hint={buildUtilizationHint(snapshot)}
             loading={loading}
-            icon={<Icon name="gauge" className="h-4 w-4 text-muted-foreground" aria-hidden />}
+            icon={<Icon name="gauge" className="text-muted-foreground" aria-hidden />}
           />
           <VehicleBookingSummaryCard
             label="Frei im Zeitraum"
@@ -145,25 +139,29 @@ export function VehicleBookingsOperatorHeader({
               loading ? '—' : formatFreeDurationLabel(snapshot.freeDays, snapshot.freeHours)
             }
             valueVariant="text"
+            subdued={!loading && snapshot.freeDays === 0 && snapshot.freeHours === 0}
             status="neutral"
             hint="Ungebuchte Zeit im sichtbaren Horizont"
             loading={loading}
-            icon={<Icon name="calendar-range" className="h-4 w-4 text-muted-foreground" aria-hidden />}
+            icon={<Icon name="calendar-range" className="text-muted-foreground" aria-hidden />}
           />
           <VehicleBookingSummaryCard
             label="Nächster freier Slot"
             value={loading ? '—' : snapshot.nextFreeSlotLabel ?? 'Kein Slot'}
             valueVariant="text"
+            subdued={!loading && !snapshot.nextFreeSlotLabel}
             status={snapshot.nextFreeSlotLabel ? 'success' : 'neutral'}
             hint="Ab jetzt im gewählten Zeitraum"
             loading={loading}
-            icon={<Icon name="calendar-clock" className="h-4 w-4 text-muted-foreground" aria-hidden />}
+            icon={<Icon name="calendar-clock" className="text-muted-foreground" aria-hidden />}
           />
         </div>
 
         {!loading && systemRisks.length > 0 && (
-          <div className={`${vb.inset} px-3 py-2.5`} role="note" aria-label="Planungshinweise">
-            <p className="sq-section-label mb-1.5">Planungshinweise</p>
+          <div className={`${vb.inset} px-2.5 py-2`} role="note" aria-label="Planungshinweise">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+              Planungshinweise
+            </p>
             <VehicleBookingRiskChips items={systemRisks} />
           </div>
         )}
@@ -192,6 +190,7 @@ function RevenueSummaryCard({
 }) {
   const hasBreakdown =
     snapshot.realizedRevenueCents > 0 || snapshot.pipelineRevenueCents > 0;
+  const isZero = snapshot.bookedRevenueCents === 0;
 
   const hintParts: string[] = [];
   if (snapshot.realizedRevenueCents > 0) {
@@ -206,6 +205,7 @@ function RevenueSummaryCard({
       label="Gebuchter Umsatz"
       value={loading ? '—' : formatCents(snapshot.bookedRevenueCents)}
       valueVariant="numeric"
+      subdued={!loading && isZero}
       status="neutral"
       hint={
         hasBreakdown
@@ -213,7 +213,7 @@ function RevenueSummaryCard({
           : 'Summe der Buchungspreise im Horizont'
       }
       loading={loading}
-      icon={<Icon name="receipt" className="h-4 w-4 text-muted-foreground" aria-hidden />}
+      icon={<Icon name="receipt" className="text-muted-foreground" aria-hidden />}
     />
   );
 }
@@ -242,8 +242,9 @@ function HandoverSummaryCard({
       <VehicleBookingSummaryCard
         label={label}
         value="—"
+        subdued
         loading
-        icon={<Icon name="calendar-clock" className="h-4 w-4 text-muted-foreground" aria-hidden />}
+        icon={<Icon name="calendar-clock" className="text-muted-foreground" aria-hidden />}
       />
     );
   }
@@ -254,9 +255,10 @@ function HandoverSummaryCard({
         label={label}
         value={emptyLabel}
         valueVariant="text"
+        subdued
         status="neutral"
         hint={emptyHint}
-        icon={<Icon name="calendar-clock" className="h-4 w-4 text-muted-foreground" aria-hidden />}
+        icon={<Icon name="calendar-clock" className="text-muted-foreground" aria-hidden />}
       />
     );
   }
@@ -270,7 +272,7 @@ function HandoverSummaryCard({
       valueVariant="text"
       status={booking?.status === 'active' ? 'info' : 'watch'}
       hint={detail}
-      icon={<Icon name="calendar-clock" className="h-4 w-4 text-muted-foreground" aria-hidden />}
+      icon={<Icon name="calendar-clock" className="text-muted-foreground" aria-hidden />}
     />
   );
 }

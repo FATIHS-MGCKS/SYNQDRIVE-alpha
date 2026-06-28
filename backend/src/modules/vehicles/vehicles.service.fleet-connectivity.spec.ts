@@ -5,6 +5,9 @@ function makeFleetConnectivityService(prisma: {
   vehicle: { findMany: jest.Mock };
 }): VehiclesService {
   const stub = (): unknown => ({});
+  const deviceConnectionQuery = {
+    getFleetSummariesForVehicles: jest.fn().mockResolvedValue(new Map()),
+  };
   return new (VehiclesService as unknown as {
     new (...args: unknown[]): VehiclesService;
   })(
@@ -15,6 +18,9 @@ function makeFleetConnectivityService(prisma: {
     stub(),
     stub(),
     stub(),
+    stub(),
+    stub(),
+    deviceConnectionQuery,
     stub(),
   );
 }
@@ -94,6 +100,7 @@ describe('VehiclesService.getFleetConnectivity', () => {
     expect(res.vehicles[0].vehicleId).toBe('v-1');
     expect(res.vehicles[0].maskedDimoTokenId).toBe('123…678');
     expect(res.vehicles[0].dimoTokenId).toBeNull();
+    expect(res.vehicles[0].deviceConnection).toBeNull();
     expect(res.pagination.totalInOrganization).toBe(1);
   });
 

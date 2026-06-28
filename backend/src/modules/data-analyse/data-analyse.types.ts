@@ -276,3 +276,57 @@ export interface PipelineDto {
   lastSuccessfulProcessing: string | null;
   lastError: string | null;
 }
+
+// ── LTE_R1 Event Context Architecture (Phase 6, read-only diagnostic) ────────
+
+export type EventLayerStatus =
+  | 'active'
+  | 'no_events'
+  | 'unavailable'
+  | 'configured'
+  | 'not_configured'
+  | 'failed'
+  | 'insufficient'
+  | 'skipped'
+  | 'sparse'
+  | 'snapshot_only'
+  | 'unknown';
+
+export interface EventLayerDto {
+  status: EventLayerStatus;
+  label: string;
+  detail: string;
+  /** Optional small counters surfaced as chips. */
+  counters?: Array<{ label: string; value: string }>;
+}
+
+export interface DetectorFeasibilityDto {
+  nativeBehaviorEvents: boolean;
+  deviceConnectionWebhooks: boolean;
+  contextClassification: boolean;
+  /** Whole-trip HF-derived SHORT-event detection is intentionally not relied on. */
+  shortEventHfDerivedDetection: 'disabled' | 'not_reliable';
+  notes: string[];
+}
+
+export interface EventArchitectureMetricsDto {
+  effectiveCadenceMs: number | null;
+  medianIntervalMs: number | null;
+  p95IntervalMs: number | null;
+  missingSignals: string[];
+  contextWindowsProcessed: number;
+  deviceConnectionEvents7d: number;
+  openUnpluggedEpisode: boolean;
+}
+
+export interface EventArchitectureDto {
+  /** ICE engine context only applies to LTE_R1/ICE; EV/Tesla are excluded. */
+  powertrainApplicable: boolean;
+  powertrainNote: string;
+  nativeEventIntake: EventLayerDto;
+  deviceConnectionWebhookIntake: EventLayerDto;
+  eventContextEnrichment: EventLayerDto;
+  tripSignalSummaryEnrichment: EventLayerDto;
+  detectorFeasibility: DetectorFeasibilityDto;
+  metrics: EventArchitectureMetricsDto;
+}

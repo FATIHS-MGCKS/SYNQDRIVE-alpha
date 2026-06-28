@@ -1,3 +1,20 @@
+/**
+ * SynqDrive — Trip Behavior Enrichment Service
+ *
+ * REFRAMING NOTE (V4.10 groundwork — see `event-context/event-context.types.ts`):
+ * The whole-trip high-frequency pass below is **Trip Signal Summary Enrichment**,
+ * NOT a primary short-event "Post-Trip HF Abuse Detection". For LTE_R1 vehicles
+ * DIMO `signals(interval:"1s")` typically returns sparse whole-trip telemetry
+ * (median ~3–6 s, P95 ~21 s), which is fine for a descriptive trip summary
+ * (speed summary, signal cadence, data quality, signal coverage, detector
+ * feasibility, trip assessment status) but must NOT be used to assert aggressive,
+ * short-lived misuse moments. The trustworthy LTE_R1 misuse path is anchored on
+ * native DIMO behavior events (+ future RPM webhook candidates) and only enriches
+ * those anchors with engine context — see the `event-context` foundation module.
+ *
+ * Detection thresholds and method/class names are intentionally unchanged here;
+ * this is a naming/semantic clarification only.
+ */
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoSegmentsService, type DimoFuelSummary } from '../../dimo/dimo-segments.service';

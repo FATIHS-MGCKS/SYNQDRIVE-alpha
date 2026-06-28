@@ -123,3 +123,67 @@ describe('LteR1BehaviorEnrichmentService.mapToNormalizedEvents', () => {
     ]);
   });
 });
+
+describe('LteR1BehaviorEnrichmentService.enrichNativeEventContexts (Phase 3 wiring)', () => {
+  function makeService(eventContext?: { enrichDrivingEventContext: jest.Mock }) {
+    const prisma = {
+      drivingEvent: {
+        findMany: jest.fn(async () => [{ id: 'de-1' }, { id: 'de-2' }]),
+      },
+    };
+    const service = new LteR1BehaviorEnrichmentService(
+      prisma as any,
+      {} as any,
+      eventContext as any,
+    );
+    return { service, prisma };
+  }
+
+  const ice = { hardwareType: 'LTE_R1' as const, fuelType: 'GASOLINE' };
+  const ev = { hardwareType: 'LTE_R1' as const, fuelType: 'ELECTRIC' };
+
+  it('runs context enrichment per native event for LTE_R1/ICE', async () => {
+    const eventContext = { enrichDrivingEventContext: jest.fn(async () => ({})) };
+    const { service, prisma } = makeService(eventContext);
+    await (service as any).enrichNativeEventContexts('trip-1', ice, 2);
+    expect(prisma.drivingEvent.findMany).toHaveBeenCalledTimes(1);
+    expect(eventContext.enrichDrivingEventContext).toHaveBeenCalledTimes(2);
+    expect(eventContext.enrichDrivingEventContext).toHaveBeenCalledWith('de-1');
+    expect(eventContext.enrichDrivingEventContext).toHaveBeenCalledWith('de-2');
+  });
+
+  it('skips Tesla/EV (NOT_APPLICABLE_POWERTRAIN) without loading or enriching', async () => {
+    const eventContext = { enrichDrivingEventContext: jest.fn(async () => ({})) };
+    const { service, prisma } = makeService(eventContext);
+    await (service as any).enrichNativeEventContexts('trip-1', ev, 2);
+    expect(prisma.drivingEvent.findMany).not.toHaveBeenCalled();
+    expect(eventContext.enrichDrivingEventContext).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when no native events were persisted', async () => {
+    const eventContext = { enrichDrivingEventContext: jest.fn(async () => ({})) };
+    const { service, prisma } = makeService(eventContext);
+    await (service as any).enrichNativeEventContexts('trip-1', ice, 0);
+    expect(prisma.drivingEvent.findMany).not.toHaveBeenCalled();
+    expect(eventContext.enrichDrivingEventContext).not.toHaveBeenCalled();
+  });
+
+  it('is best-effort: a context enrichment error never throws', async () => {
+    const eventContext = {
+      enrichDrivingEventContext: jest.fn(async () => {
+        throw new Error('context boom');
+      }),
+    };
+    const { service } = makeService(eventContext);
+    await expect(
+      (service as any).enrichNativeEventContexts('trip-1', ice, 2),
+    ).resolves.toBeUndefined();
+    expect(eventContext.enrichDrivingEventContext).toHaveBeenCalledTimes(2);
+  });
+
+  it('no-ops when the optional EventContextEnrichmentService is not wired', async () => {
+    const { service, prisma } = makeService(undefined);
+    await (service as any).enrichNativeEventContexts('trip-1', ice, 2);
+    expect(prisma.drivingEvent.findMany).not.toHaveBeenCalled();
+  });
+});

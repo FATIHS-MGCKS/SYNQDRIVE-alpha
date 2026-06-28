@@ -1,5 +1,6 @@
 import { DataCard, StatusChip } from '../../../components/patterns';
 import type { StatusTone } from '../../../components/patterns';
+import { Button } from '../../../components/ui/button';
 import type { CustomerEligibility } from './customerDetailTypes';
 import {
   eligibilityStageForConfirm,
@@ -19,6 +20,12 @@ import {
   formatStressScore,
   stressToneToStatusTone,
 } from '../../lib/scoreFormat';
+import { CustomerQuickViewDetailRow } from './CustomerQuickViewDetailRow';
+import {
+  cdv,
+  customerVerificationTone,
+  ELIGIBILITY_LOAD_ERROR_USER,
+} from './customer-detail-ui';
 
 function stageLabel(stage: 'allowed' | 'warning' | 'blocked'): string {
   if (stage === 'allowed') return 'Erlaubt';
@@ -36,6 +43,7 @@ interface CustomerDecisionCardsProps {
   eligibility: CustomerEligibility | null;
   eligibilityLoading?: boolean;
   eligibilityError?: string | null;
+  onRetryEligibility?: () => void;
   idVerificationStatus?: string | null;
   licenseVerificationStatus?: string | null;
   idExpiry?: string | null;
@@ -58,6 +66,7 @@ export function CustomerDecisionCards({
   eligibility,
   eligibilityLoading,
   eligibilityError,
+  onRetryEligibility,
   idVerificationStatus,
   licenseVerificationStatus,
   idExpiry,
@@ -82,144 +91,160 @@ export function CustomerDecisionCards({
   const confirmStage = eligibilityStageForConfirm(eligibility);
   const pickupStage = eligibilityStageForPickup(eligibility);
 
+  const stressDisplay = formatStressScore(drivingStressScore, {
+    hasEnoughData: hasEnoughData !== false,
+    level: stressLevel ?? undefined,
+  });
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-      <DataCard title="Mietfreigabe" className="p-4">
+    <div className={cdv.sectionGrid}>
+      <DataCard title="Mietfreigabe" bodyClassName="py-2">
         {eligibilityLoading ? (
-          <p className="text-xs text-muted-foreground">Wird geladen…</p>
+          <p className="text-[12px] text-muted-foreground">Wird geladen…</p>
         ) : eligibilityError ? (
-          <p className="text-xs text-[color:var(--status-critical)]">{eligibilityError}</p>
+          <div
+            className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5"
+            title={eligibilityError}
+          >
+            <p className="text-[12px] font-medium text-foreground">{ELIGIBILITY_LOAD_ERROR_USER}</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Bitte erneut laden oder später prüfen.
+            </p>
+            {onRetryEligibility ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="neutral"
+                className="mt-2 h-7"
+                onClick={onRetryEligibility}
+              >
+                Erneut laden
+              </Button>
+            ) : null}
+          </div>
         ) : eligibility ? (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <StatusChip tone={overallRentalClearanceTone(eligibility)} dot>
               {overallRentalClearanceLabel(eligibility)}
             </StatusChip>
-            <div className="space-y-1.5">
+            <div className="space-y-0">
               {[
                 { label: 'Buchung erstellen', stage: createStage },
                 { label: 'Buchung bestätigen', stage: confirmStage },
                 { label: 'Fahrzeugübergabe', stage: pickupStage },
               ].map((row) => (
-                <div key={row.label} className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-muted-foreground">{row.label}</span>
+                <div
+                  key={row.label}
+                  className="flex items-center justify-between gap-2 border-b border-border/40 py-2 last:border-b-0"
+                >
+                  <span className="text-[12px] text-muted-foreground">{row.label}</span>
                   <StatusChip tone={stageTone(row.stage)} className="text-[10px]">
                     {stageLabel(row.stage)}
                   </StatusChip>
                 </div>
               ))}
             </div>
-            {eligibility.blockingReasons.length > 0 && (
-              <div className="space-y-0.5">
+            {eligibility.blockingReasons.length > 0 ? (
+              <div className="space-y-1 rounded-md bg-muted/25 px-2 py-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Blocker
+                </p>
                 {eligibility.blockingReasons.slice(0, 3).map((r) => (
-                  <p key={r} className="text-[10px] text-[color:var(--status-critical)]">• {r}</p>
+                  <p key={r} className="text-[11px] leading-snug text-[color:var(--status-critical)]">
+                    {r}
+                  </p>
                 ))}
               </div>
-            )}
-            {eligibility.warnings.length > 0 && (
-              <div className="space-y-0.5">
+            ) : null}
+            {eligibility.warnings.length > 0 ? (
+              <div className="space-y-1 rounded-md bg-muted/25 px-2 py-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Hinweise
+                </p>
                 {eligibility.warnings.slice(0, 2).map((w) => (
-                  <p key={w} className="text-[10px] text-[color:var(--status-attention)]">⚠ {w}</p>
+                  <p key={w} className="text-[11px] leading-snug text-[color:var(--status-attention)]">
+                    {w}
+                  </p>
                 ))}
               </div>
-            )}
+            ) : null}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">Keine Freigabedaten</p>
+          <p className="text-[12px] text-muted-foreground">Keine Freigabedaten</p>
         )}
       </DataCard>
 
-      <DataCard title="Verifikation" className="p-4">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] text-muted-foreground">Ausweis</span>
-            <StatusChip tone={verificationTone(idUi)}>{customerVerificationUiLabelDe(idUi)}</StatusChip>
-          </div>
-          <p className="text-[10px] text-muted-foreground">Gültig bis {formatDate(idExpiry)}</p>
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] text-muted-foreground">Führerschein</span>
-            <StatusChip tone={verificationTone(licenseUi)}>
+      <DataCard
+        title="Verifikation"
+        actions={
+          onOpenDocuments ? (
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto px-0 text-xs"
+              onClick={onOpenDocuments}
+            >
+              Dokumente prüfen
+            </Button>
+          ) : undefined
+        }
+        bodyClassName="py-2"
+      >
+        <CustomerQuickViewDetailRow
+          label="Ausweis"
+          value={
+            <StatusChip tone={customerVerificationTone(idUi)} className="text-[10px]">
+              {customerVerificationUiLabelDe(idUi)}
+            </StatusChip>
+          }
+        />
+        <CustomerQuickViewDetailRow label="Gültig bis" value={formatDate(idExpiry)} />
+        <CustomerQuickViewDetailRow
+          label="Führerschein"
+          value={
+            <StatusChip tone={customerVerificationTone(licenseUi)} className="text-[10px]">
               {customerVerificationUiLabelDe(licenseUi)}
             </StatusChip>
-          </div>
-          <p className="text-[10px] text-muted-foreground">Gültig bis {formatDate(licenseExpiry)}</p>
-          {onOpenDocuments && (
-            <button
-              type="button"
-              onClick={onOpenDocuments}
-              className="text-[10px] font-semibold text-[color:var(--brand)] hover:underline mt-1"
-            >
-              Dokumente prüfen →
-            </button>
-          )}
-        </div>
+          }
+        />
+        <CustomerQuickViewDetailRow label="FS gültig bis" value={formatDate(licenseExpiry)} />
       </DataCard>
 
-      <DataCard title="Finanzielle Belastung" className="p-4">
-        <div className="space-y-2">
-          <div className="flex justify-between text-[11px]">
-            <span className="text-muted-foreground">Offene Rechnungen</span>
-            <span className="font-semibold">{openInvoices}</span>
-          </div>
-          <div className="flex justify-between text-[11px]">
-            <span className="text-muted-foreground">Überfällig</span>
-            <span className={`font-semibold ${overdueInvoices > 0 ? 'text-[color:var(--status-critical)]' : ''}`}>
-              {overdueInvoices}
-            </span>
-          </div>
-          <div className="flex justify-between text-[11px]">
-            <span className="text-muted-foreground">Offene Bußgelder</span>
-            <span className="font-semibold">{openFines}</span>
-          </div>
-          <div className="flex justify-between text-[11px] pt-1 border-t border-border">
-            <span className="text-muted-foreground">Gesamtumsatz</span>
-            <span className="font-semibold">
-              {totalRevenueCents > 0 ? formatCurrencyCents(totalRevenueCents) : EM_DASH}
-            </span>
-          </div>
-        </div>
+      <DataCard title="Finanzielle Belastung" bodyClassName="py-2">
+        <CustomerQuickViewDetailRow label="Offene Rechnungen" value={String(openInvoices)} />
+        <CustomerQuickViewDetailRow
+          label="Überfällig"
+          value={String(overdueInvoices)}
+        />
+        <CustomerQuickViewDetailRow label="Offene Bußgelder" value={String(openFines)} />
+        <CustomerQuickViewDetailRow
+          label="Gesamtumsatz"
+          value={totalRevenueCents > 0 ? formatCurrencyCents(totalRevenueCents) : EM_DASH}
+        />
       </DataCard>
 
-      <DataCard title="Mietverhalten" className="p-4">
-        <div className="space-y-2">
-          <div className="flex justify-between text-[11px]">
-            <span className="text-muted-foreground">Buchungen</span>
-            <span className="font-semibold">{totalBookings}</span>
-          </div>
-          <div className="flex justify-between text-[11px]">
-            <span className="text-muted-foreground">Letzte Buchung</span>
-            <span className="font-semibold">{formatDate(lastBookingDate)}</span>
-          </div>
-          <div className="flex justify-between items-center text-[11px] gap-2">
-            <span className="text-muted-foreground">Fahrbelastung</span>
-            {(() => {
-              const display = formatStressScore(drivingStressScore, {
-                hasEnoughData: hasEnoughData !== false,
-                level: stressLevel ?? undefined,
-              });
-              if (display.isMissing) {
-                return <span className="font-semibold">{EM_DASH}</span>;
-              }
-              return (
-                <StatusChip tone={stressToneToStatusTone(display.tone)} className="text-[9px]">
-                  {display.label}
-                </StatusChip>
-              );
-            })()}
-          </div>
-          {(drivingEvents > 0 || abuseEvents > 0) && (
-            <p className="text-[10px] text-muted-foreground pt-1">
-              {drivingEvents} Fahrereignisse · {abuseEvents} Missbrauchsereignisse
-            </p>
-          )}
-        </div>
+      <DataCard title="Mietverhalten & Fahrbelastung" bodyClassName="py-2">
+        <CustomerQuickViewDetailRow label="Buchungen" value={String(totalBookings)} />
+        <CustomerQuickViewDetailRow label="Letzte Buchung" value={formatDate(lastBookingDate)} />
+        <CustomerQuickViewDetailRow
+          label="Fahrbelastung"
+          value={
+            stressDisplay.isMissing ? (
+              EM_DASH
+            ) : (
+              <StatusChip tone={stressToneToStatusTone(stressDisplay.tone)} className="text-[10px]">
+                {stressDisplay.label}
+              </StatusChip>
+            )
+          }
+        />
+        {drivingEvents > 0 || abuseEvents > 0 ? (
+          <p className="pt-1 text-[11px] text-muted-foreground">
+            {drivingEvents} Fahrereignisse · {abuseEvents} Missbrauchsereignisse
+          </p>
+        ) : null}
       </DataCard>
     </div>
   );
-}
-
-function verificationTone(ui: ReturnType<typeof customerVerificationApiToUi>): StatusTone {
-  if (ui === 'Verified') return 'success';
-  if (ui === 'Pending Review') return 'warning';
-  if (ui === 'Rejected' || ui === 'Expired') return 'critical';
-  return 'neutral';
 }

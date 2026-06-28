@@ -1,7 +1,7 @@
 import { Icon } from '../ui/Icon';
 import { SUMMARY_COPY, TIMELINE_COPY, tv } from './trips-view-ui';
 import type { TripsPeriodSummary } from './utils/tripSummary';
-import { formatSelectedPeriodLabel } from './utils/tripSummary';
+import { formatSelectedPeriodHeaderDate } from './utils/tripSummary';
 import { formatTripDistance, formatTripDuration } from './utils/tripFormatters';
 
 export interface TripsOverviewCardProps {
@@ -54,43 +54,28 @@ export function TripsOverviewCard({
   onCheckMissing,
   disabled,
 }: TripsOverviewCardProps) {
-  const period = formatSelectedPeriodLabel(selectedDate);
+  const periodDate = formatSelectedPeriodHeaderDate(selectedDate);
   const busy = loading || syncing;
-  const notableEvents = summary.notableEvents;
   const showKpis = summary.tripCount > 0 || (loading && tripCount === 0);
-
-  const dataQualityLabel =
-    summary.limitedDataCount > 0 ? `${summary.limitedDataCount} eingeschränkt` : 'Gut';
 
   return (
     <section
       className={`${tv.panel} mb-3 sm:mb-4`}
       aria-label={SUMMARY_COPY.ariaLabel}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0 space-y-1">
-          <p className={tv.sectionEyebrow}>{SUMMARY_COPY.eyebrow}</p>
-          <h2 className={`${tv.sectionTitle} text-[length:var(--text-display-md)] sm:text-[length:var(--text-display-lg)]`}>
-            {SUMMARY_COPY.title}
-          </h2>
-          <p className={tv.meta}>
-            <span className="font-medium text-foreground/90">{period}</span>
-            <span className="mx-1.5 opacity-30">·</span>
-            <span className="tabular-nums">
-              {tripCount} {tripCount === 1 ? 'Fahrt' : 'Fahrten'}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <h2 className="font-display text-[22px] font-semibold leading-[1.2] tracking-[-0.02em] text-foreground sm:text-[24px] lg:text-[26px]">
+              {SUMMARY_COPY.title}
+            </h2>
+            <span className="shrink-0 text-[12px] font-medium leading-snug text-muted-foreground sm:text-[13px]">
+              {periodDate}
             </span>
-            {notableEvents > 0 && (
-              <>
-                <span className="mx-1.5 opacity-30">·</span>
-                <span className="font-medium text-amber-600 dark:text-amber-400 tabular-nums">
-                  {notableEvents} auffällig
-                </span>
-              </>
-            )}
-          </p>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           {onCheckMissing && (
             <button
               type="button"
@@ -98,7 +83,7 @@ export function TripsOverviewCard({
               disabled={disabled || busy}
               className={`${tv.actionBtn} ${tv.focusRing}`}
             >
-              <Icon name="search" className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+              <Icon name="search" className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">{TIMELINE_COPY.checkMissingTrips}</span>
               <span className="sm:hidden">{TIMELINE_COPY.checkMissingShort}</span>
             </button>
@@ -110,7 +95,7 @@ export function TripsOverviewCard({
               disabled={disabled || busy}
               className={`${tv.actionBtnPrimary} ${tv.focusRing}`}
             >
-              <Icon name="refresh-cw" className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <Icon name="refresh-cw" className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
               {TIMELINE_COPY.refreshTimeline}
             </button>
           )}
@@ -119,14 +104,14 @@ export function TripsOverviewCard({
 
       {showKpis && (
         <div
-          className={`mt-3 pt-3 border-t border-border/50 ${
+          className={`mt-3 border-t border-border/50 pt-3 ${
             loading && summary.tripCount === 0 ? 'animate-pulse' : ''
           }`}
         >
           {loading && summary.tripCount === 0 ? (
             <div className="h-[52px] rounded-xl bg-muted/40" />
           ) : (
-            <div className="flex flex-wrap items-stretch gap-y-2 gap-x-0">
+            <div className="flex flex-wrap items-stretch gap-x-0 gap-y-2">
               <KpiTile
                 label={SUMMARY_COPY.trips}
                 value={String(summary.tripCount)}
@@ -151,11 +136,6 @@ export function TripsOverviewCard({
                   accent="watch"
                 />
               )}
-              <KpiTile
-                label={SUMMARY_COPY.dataQuality}
-                value={dataQualityLabel}
-                accent={summary.limitedDataCount > 0 ? 'watch' : 'default'}
-              />
             </div>
           )}
         </div>
@@ -163,7 +143,7 @@ export function TripsOverviewCard({
 
       {summary.notableEvents > 0 && !loading && (
         <p className="mt-2.5 flex items-start gap-1.5 text-[10px] leading-snug text-amber-700/90 dark:text-amber-400/90">
-          <Icon name="alert-triangle" className="w-3 h-3 shrink-0 mt-px" />
+          <Icon name="alert-triangle" className="mt-px h-3 w-3 shrink-0" />
           {SUMMARY_COPY.notableHint(summary.notableEvents)}
         </p>
       )}

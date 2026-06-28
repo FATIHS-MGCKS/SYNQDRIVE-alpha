@@ -12,6 +12,8 @@ import type {
   EvidenceCandidate,
   TripEvaluationContext,
 } from './misuse-case.types';
+import { maxConfidence, maxSeverity } from './misuse-case.types';
+import { evaluateContextAnchors } from './context-misuse-rules';
 
 const MS_15_MIN = 15 * 60 * 1000;
 const MS_30_MIN = 30 * 60 * 1000;
@@ -50,7 +52,60 @@ export class MisuseCaseRulesService {
     const dtcAfter = this.ruleDtcAfterAbuseOrImpact(context, abuse);
     if (dtcAfter) candidates.push(dtcAfter);
 
-    return this.mergeCollisionConfidence(candidates);
+    // Context-derived candidates (LTE_R1/ICE event context assessments + RPM
+    // webhook candidates). These are merged by type with the behavior-event
+    // candidates above, so native events + RPM candidates in the same window
+    // collapse into one combined case.
+    candidates.push(...evaluateContextAnchors(context.contextAnchors ?? []));
+
+    return this.mergeCollisionConfidence(this.mergeSameType(candidates));
+  }
+
+  /**
+   * Merge candidates that share the same MisuseCaseType into one — combine
+   * evidence (deduped), take the strongest severity/confidence, widen the time
+   * window, and shallow-merge the structured evidence summary. Behavior-event
+   * rules emit at most one candidate per type, so this only ever folds a
+   * context-derived candidate into a behavior-derived one (or vice versa).
+   */
+  private mergeSameType(candidates: CaseCandidate[]): CaseCandidate[] {
+    const byType = new Map<MisuseCaseType, CaseCandidate>();
+    for (const c of candidates) {
+      const existing = byType.get(c.type);
+      if (!existing) {
+        byType.set(c.type, { ...c, evidence: [...c.evidence] });
+        continue;
+      }
+      existing.severity = maxSeverity(existing.severity, c.severity);
+      existing.confidence = maxConfidence(existing.confidence, c.confidence);
+      existing.evidence = this.dedupeEvidence([...existing.evidence, ...c.evidence]);
+      existing.eventCount = Math.max(existing.eventCount, c.eventCount);
+      existing.firstDetectedAt = new Date(
+        Math.min(existing.firstDetectedAt.getTime(), c.firstDetectedAt.getTime()),
+      );
+      existing.lastDetectedAt = new Date(
+        Math.max(existing.lastDetectedAt.getTime(), c.lastDetectedAt.getTime()),
+      );
+      if (c.evidenceSummary || existing.evidenceSummary) {
+        existing.evidenceSummary = {
+          ...(existing.evidenceSummary ?? {}),
+          ...(c.evidenceSummary ?? {}),
+        };
+      }
+    }
+    return [...byType.values()];
+  }
+
+  private dedupeEvidence(evidence: EvidenceCandidate[]): EvidenceCandidate[] {
+    const seen = new Set<string>();
+    const out: EvidenceCandidate[] = [];
+    for (const e of evidence) {
+      const key = `${e.sourceType}:${e.sourceId ?? ''}:${e.eventType}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(e);
+    }
+    return out;
   }
 
   private mergeCollisionConfidence(candidates: CaseCandidate[]): CaseCandidate[] {

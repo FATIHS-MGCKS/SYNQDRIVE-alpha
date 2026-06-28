@@ -12,9 +12,37 @@ export interface VehicleBookingSummaryCardProps {
   status?: StatusTone;
   hint?: ReactNode;
   loading?: boolean;
-  /** `numeric` for counts/currency/percent; `text` for status phrases and durations. */
-  valueVariant?: 'numeric' | 'text';
+  /** `numeric` for counts/currency/percent; `text` for durations/dates; `status` for short status phrases. */
+  valueVariant?: 'numeric' | 'text' | 'status';
+  /** Muted compact styling for empty/zero values (0 €, —, „Kein Pickup geplant“). */
+  subdued?: boolean;
   className?: string;
+}
+
+const STATUS_VALUE_CLASS: Partial<Record<StatusTone, string>> = {
+  success: 'text-[color:var(--status-positive)]',
+  info: 'text-[color:var(--brand)]',
+  watch: 'text-amber-600 dark:text-amber-400',
+  critical: 'text-[color:var(--status-critical)]',
+};
+
+function valueVariantClass(
+  valueVariant: 'numeric' | 'text' | 'status',
+  subdued: boolean,
+): string {
+  if (subdued) return 'booking-kpi-tile__value--subdued';
+  if (valueVariant === 'numeric') return 'booking-kpi-tile__value--numeric';
+  if (valueVariant === 'status') return 'booking-kpi-tile__value--status';
+  return 'booking-kpi-tile__value--text';
+}
+
+function showStatusDot(
+  status: StatusTone | undefined,
+  subdued: boolean,
+  valueVariant: 'numeric' | 'text' | 'status',
+): boolean {
+  if (!status || subdued || status === 'neutral') return false;
+  return valueVariant === 'status' || valueVariant === 'numeric';
 }
 
 export function VehicleBookingSummaryCard({
@@ -26,53 +54,71 @@ export function VehicleBookingSummaryCard({
   hint,
   loading,
   valueVariant = 'text',
+  subdued = false,
   className,
 }: VehicleBookingSummaryCardProps) {
   if (loading) {
     return (
-      <div className={cn('sq-card flex h-full flex-col p-3.5 sm:p-4', className)}>
-        <div className="flex items-center justify-between gap-2">
-          <Skeleton className="h-3 w-24" />
-          <Skeleton className="h-4 w-4 rounded-md" />
+      <div className={cn('booking-kpi-tile booking-kpi-tile--dense', className)}>
+        <div className="flex items-center justify-between gap-1.5">
+          <Skeleton className="h-2.5 w-16" />
+          <Skeleton className="h-3 w-3 rounded" />
         </div>
-        <Skeleton className="mt-2.5 h-6 w-28" />
-        <Skeleton className="mt-2 h-3 w-36" />
+        <Skeleton className="mt-1 h-3.5 w-20" />
+        <Skeleton className="mt-0.5 h-2.5 w-28" />
       </div>
     );
   }
 
+  const toneClass =
+    !subdued && valueVariant === 'status' && status
+      ? STATUS_VALUE_CLASS[status]
+      : subdued
+        ? 'text-muted-foreground'
+        : 'text-foreground';
+
+  const dotVisible = showStatusDot(status, subdued, valueVariant);
+
   return (
-    <div className={cn('sq-card flex h-full min-h-0 flex-col p-3.5 sm:p-4', className)}>
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-1.5">
-          {status ? <StatusDot tone={status} /> : null}
-          <span className="truncate text-[12px] font-semibold text-muted-foreground sm:text-[13px]">
-            {label}
-          </span>
-        </div>
-        {icon ? <span className="shrink-0 text-muted-foreground/80">{icon}</span> : null}
+    <div className={cn('booking-kpi-tile booking-kpi-tile--dense min-w-0', className)}>
+      <div className="flex items-center gap-1 min-w-0">
+        {dotVisible ? <StatusDot tone={status!} className="shrink-0 scale-90" /> : null}
+        <span className="booking-kpi-tile__label min-w-0 flex-1 truncate">{label}</span>
+        {icon ? (
+          <span className="booking-kpi-tile__icon shrink-0 opacity-60">{icon}</span>
+        ) : null}
       </div>
 
-      <div className="mt-2 flex min-w-0 flex-1 flex-col justify-center">
+      <div className="booking-kpi-tile__value-row min-w-0">
         {valueVariant === 'numeric' ? (
-          <div className="flex min-w-0 items-baseline gap-1">
-            <span className="truncate font-mono text-[22px] font-bold leading-none tabular-nums tracking-tight text-foreground sm:text-[24px] lg:text-[28px]">
+          <div className="flex min-w-0 items-baseline gap-0.5">
+            <span
+              className={cn(
+                'booking-kpi-tile__value tabular-nums',
+                valueVariantClass(valueVariant, subdued),
+                toneClass,
+              )}
+            >
               {value}
             </span>
             {unit ? (
-              <span className="shrink-0 text-[12px] font-semibold text-muted-foreground">{unit}</span>
+              <span className="booking-kpi-tile__unit text-muted-foreground">{unit}</span>
             ) : null}
           </div>
         ) : (
-          <p className="text-[16px] font-semibold leading-[1.25] text-foreground sm:text-[17px] lg:text-[18px]">
+          <p
+            className={cn(
+              'booking-kpi-tile__value break-words',
+              valueVariantClass(valueVariant, subdued),
+              toneClass,
+            )}
+          >
             {value}
           </p>
         )}
       </div>
 
-      {hint ? (
-        <p className="mt-1.5 text-[12px] leading-[1.35] text-muted-foreground sm:text-[13px]">{hint}</p>
-      ) : null}
+      {hint ? <p className="booking-kpi-tile__hint line-clamp-2">{hint}</p> : null}
     </div>
   );
 }

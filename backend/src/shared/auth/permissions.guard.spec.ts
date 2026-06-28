@@ -4,6 +4,7 @@ import { PermissionsGuard } from './permissions.guard';
 import {
   evaluateModulePermission,
   normalizeMembershipPermissions,
+  resolvePermissionOrgId,
 } from './permission.util';
 
 describe('permission.util', () => {
@@ -38,6 +39,44 @@ describe('permission.util', () => {
       'users-roles': { read: true, write: false, manage: true },
     });
     expect(evaluateModulePermission(perms, 'users-roles', 'manage')).toBe(true);
+  });
+
+  describe('resolvePermissionOrgId', () => {
+    it('uses JWT organizationId when billing route has no path param', () => {
+      expect(
+        resolvePermissionOrgId(
+          { params: {}, query: {} },
+          { platformRole: 'USER', organizationId: 'org-a' },
+        ),
+      ).toBe('org-a');
+    });
+
+    it('uses query orgId when it matches JWT org', () => {
+      expect(
+        resolvePermissionOrgId(
+          { params: {}, query: { orgId: 'org-a' } },
+          { platformRole: 'USER', organizationId: 'org-a' },
+        ),
+      ).toBe('org-a');
+    });
+
+    it('rejects cross-org query orgId for tenant users', () => {
+      expect(() =>
+        resolvePermissionOrgId(
+          { params: {}, query: { orgId: 'org-b' } },
+          { platformRole: 'USER', organizationId: 'org-a' },
+        ),
+      ).toThrow(ForbiddenException);
+    });
+
+    it('allows master admin with explicit query orgId', () => {
+      expect(
+        resolvePermissionOrgId(
+          { params: {}, query: { orgId: 'org-b' } },
+          { platformRole: 'MASTER_ADMIN' },
+        ),
+      ).toBe('org-b');
+    });
   });
 });
 
@@ -126,6 +165,55 @@ describe('PermissionsGuard', () => {
     };
     await expect(guard.canActivate(ctx as never)).rejects.toBeInstanceOf(
       ForbiddenException,
+    );
+  });
+
+  it('allows billing.read via JWT org when route has no path orgId', async () => {
+    (reflector.getAllAndOverride as jest.Mock).mockReturnValue({
+      module: 'billing',
+      level: 'read',
+    });
+    prisma.organizationMembership.findFirst.mockResolvedValue({
+      role: 'WORKER',
+      permissions: { billing: { read: true, write: false } },
+    });
+    const ctx = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          user: { id: 'u1', organizationId: 'org-a' },
+          params: {},
+          query: { orgId: 'org-a' },
+        }),
+      }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    };
+    await expect(guard.canActivate(ctx as never)).resolves.toBe(true);
+    expect(prisma.organizationMembership.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ organizationId: 'org-a' }),
+      }),
+    );
+  });
+
+  it('denies billing access without any org context', async () => {
+    (reflector.getAllAndOverride as jest.Mock).mockReturnValue({
+      module: 'billing',
+      level: 'read',
+    });
+    const ctx = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          user: { id: 'u1' },
+          params: {},
+          query: {},
+        }),
+      }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    };
+    await expect(guard.canActivate(ctx as never)).rejects.toThrow(
+      'Organization context required',
     );
   });
 });

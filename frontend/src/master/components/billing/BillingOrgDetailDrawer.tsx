@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DetailDrawer } from '../../../components/patterns/detail-drawer';
+import { Button } from '../../../components/ui/button';
 import { api } from '../../../lib/api';
 import type { AdminOrgBillingRowDto } from '../../types/admin-billing.types';
 import {
@@ -49,15 +50,12 @@ export function BillingOrgDetailDrawer({
   };
 
   const adminActions = [
-    { label: 'Trial setzen/beenden', hint: 'Backend vorbereitet / nicht aktiv', action: undefined },
-    { label: 'Subscription Status bearbeiten', hint: 'Backend vorbereitet / nicht aktiv', action: undefined },
-    { label: 'Custom Price Override', hint: 'Backend vorbereitet / nicht aktiv', action: undefined },
     {
       label: 'Stripe Sync starten',
       hint: 'Gibt Prepared-State zurück, bis Stripe SDK aktiv ist',
       action: handleSyncStripe,
     },
-  ];
+  ] as const;
 
   return (
     <DetailDrawer
@@ -134,21 +132,21 @@ export function BillingOrgDetailDrawer({
               </p>
             )}
             {adminActions.map((action) => (
-              <button
+              <Button
                 key={action.label}
                 type="button"
-                disabled={!action.action}
+                variant="outline"
+                size="sm"
+                className="w-full justify-start"
                 title={action.hint}
-                onClick={() => void action.action?.()}
-                className={`w-full text-left px-3 py-2 rounded-xl border border-border/70 text-xs font-semibold ${
-                  action.action
-                    ? 'text-[var(--brand)] hover:bg-[var(--brand-soft)]'
-                    : 'text-muted-foreground cursor-not-allowed'
-                }`}
+                onClick={() => void action.action()}
               >
                 {action.label}
-              </button>
+              </Button>
             ))}
+            <p className="text-[10px] text-muted-foreground px-1">
+              Trial, Status-Override und Custom Price Override sind noch nicht angebunden.
+            </p>
           </div>
         </section>
       </div>

@@ -1,8 +1,9 @@
-import type { FleetConnectivityStatus } from '../../../../lib/api';
+import type { FleetConnectivityStatus, FleetDeviceConnectionDto } from '../../../../lib/api';
 import { StatusChip } from '../../../../components/patterns';
 import {
   connectionStatusLabel,
   connectionStatusTone,
+  deviceConnectionSeverityTone,
   readinessLabel,
   readinessTone,
   signalStateLabel,
@@ -62,4 +63,29 @@ export function JammingSnapshotChip({ count }: { count: number }) {
     return <StatusChip tone="watch">Snapshot · {count}</StatusChip>;
   }
   return <StatusChip tone="neutral">None</StatusChip>;
+}
+
+export function DeviceConnectionWebhookChip({
+  device,
+}: {
+  device: FleetDeviceConnectionDto | null | undefined;
+}) {
+  if (!device || device.eventSource !== 'dimo_webhook') {
+    return <StatusChip tone="noData">No webhook</StatusChip>;
+  }
+  if (device.openUnpluggedEpisode) {
+    return (
+      <StatusChip tone={deviceConnectionSeverityTone(device)} title="Explicit DIMO Vehicle Trigger — not offline/stale">
+        Unplugged · Webhook
+      </StatusChip>
+    );
+  }
+  if (device.currentDeviceConnectionStatus === 'plugged') {
+    return (
+      <StatusChip tone="success" title="Recovery via DIMO Vehicle Trigger">
+        Plugged · Webhook
+      </StatusChip>
+    );
+  }
+  return <StatusChip tone="neutral">Webhook</StatusChip>;
 }

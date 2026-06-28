@@ -13,6 +13,8 @@ import {
 } from '../../components/patterns';
 import {
   api,
+  type DataAnalyseEventArchitecture,
+  type DataAnalyseEventLayer,
   type DataAnalyseHealthTrace,
   type DataAnalyseHfAvailabilityStatus,
   type DataAnalyseHighFrequency,
@@ -22,8 +24,18 @@ import {
   type DataAnalyseSignalRow,
   type DataAnalyseTelemetryOverview,
   type DataAnalyseVehicle,
+  type DeviceConnectionSummary,
 } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
+import {
+  DEVICE_CONNECTION_LABELS,
+  deviceConnectionEventLabel,
+  deviceConnectionSeverityTone,
+  formatDeviceConnectionTimestamp,
+  formatDurationMs,
+  sortDeviceConnectionEvents,
+  webhookConfiguredLabel,
+} from '../lib/device-connection-ui';
 
 /**
  * Canonical operator legend for the aggregated HF-availability status. Single
@@ -65,6 +77,8 @@ type TabKey =
   | 'overview'
   | 'signals'
   | 'hf'
+  | 'events'
+  | 'deviceConnection'
   | 'launch'
   | 'health'
   | 'pipeline'
@@ -74,11 +88,27 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'signals', label: 'Signal Logs' },
   { key: 'hf', label: 'High Frequency' },
+  { key: 'events', label: 'Event-Architektur' },
+  { key: 'deviceConnection', label: 'Device Connection' },
   { key: 'launch', label: 'Launch Feasibility' },
   { key: 'health', label: 'Health Trace' },
   { key: 'pipeline', label: 'Pipeline' },
   { key: 'groups', label: 'Signal Groups' },
 ];
+
+const EVENT_LAYER_TONE: Record<string, 'success' | 'warning' | 'critical' | 'neutral'> = {
+  active: 'success',
+  configured: 'success',
+  sparse: 'warning',
+  snapshot_only: 'warning',
+  insufficient: 'warning',
+  no_events: 'neutral',
+  not_configured: 'neutral',
+  unknown: 'neutral',
+  skipped: 'neutral',
+  failed: 'critical',
+  unavailable: 'critical',
+};
 
 function statusChipTone(status: string): 'success' | 'warning' | 'critical' | 'neutral' | 'info' {
   if (status === 'OK' || status === 'fresh' || status === 'available' || status === 'Good for detection' || status === 'current') {
@@ -115,6 +145,188 @@ function formatTs(iso: string | null | undefined): string {
   }
 }
 
+function EventLayerCard({ title, layer }: { title: string; layer: DataAnalyseEventLayer }) {
+  return (
+    <div className="rounded-lg border border-border/60 bg-card p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold">{title}</span>
+        <StatusChip tone={EVENT_LAYER_TONE[layer.status] ?? 'neutral'}>{layer.label}</StatusChip>
+      </div>
+      <p className="text-[11px] text-muted-foreground leading-snug">{layer.detail}</p>
+      {layer.counters && layer.counters.length > 0 && (
+        <div className="flex flex-wrap gap-x-3 gap-y-1">
+          {layer.counters.map((c) => (
+            <span key={c.label} className="text-[10px] text-muted-foreground tabular-nums">
+              {c.label}: <span className="font-medium text-foreground">{c.value}</span>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** LTE_R1 Event Context Architecture diagnostic tab (read-only). */
+function EventArchitectureTab({ data }: { data: DataAnalyseEventArchitecture }) {
+  const feas = data.detectorFeasibility;
+  const m = data.metrics;
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <StatusChip tone={data.powertrainApplicable ? 'success' : 'neutral'}>
+          {data.powertrainApplicable ? 'LTE_R1 / ICE' : 'ICE-Kontext nicht anwendbar'}
+        </StatusChip>
+        <span className="text-xs text-muted-foreground">{data.powertrainNote}</span>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <EventLayerCard title="LTE_R1 Native Event Intake" layer={data.nativeEventIntake} />
+        <EventLayerCard title="Device Connection Webhook Intake" layer={data.deviceConnectionWebhookIntake} />
+        <EventLayerCard title="Event Context Enrichment" layer={data.eventContextEnrichment} />
+        <EventLayerCard title="Trip Signal Summary Enrichment" layer={data.tripSignalSummaryEnrichment} />
+      </div>
+
+      <div className="rounded-xl border border-border/60 p-4 space-y-3">
+        <span className="text-sm font-semibold">Detector Feasibility</span>
+        <div className="flex flex-wrap gap-2">
+          <StatusChip tone={feas.nativeBehaviorEvents ? 'success' : 'neutral'}>
+            Native Behavior Events: {feas.nativeBehaviorEvents ? 'verfügbar' : 'nein'}
+          </StatusChip>
+          <StatusChip tone={feas.deviceConnectionWebhooks ? 'success' : 'neutral'}>
+            Device Connection Webhooks: {feas.deviceConnectionWebhooks ? 'verfügbar' : 'nein'}
+          </StatusChip>
+          <StatusChip tone={feas.contextClassification ? 'success' : 'neutral'}>
+            Context Classification: {feas.contextClassification ? 'verfügbar' : 'nein'}
+          </StatusChip>
+          <StatusChip tone="warning">
+            HF-derived Kurzzeit-Detektion: {feas.shortEventHfDerivedDetection === 'disabled' ? 'deaktiviert' : 'nicht belastbar'}
+          </StatusChip>
+        </div>
+        {feas.notes.length > 0 && (
+          <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-1">
+            {feas.notes.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <MetricCard label="Effektive Kadenz" value={formatMs(m.effectiveCadenceMs)} />
+        <MetricCard label="Median Intervall" value={formatMs(m.medianIntervalMs)} />
+        <MetricCard label="P95 Intervall" value={formatMs(m.p95IntervalMs)} />
+        <MetricCard label="Kontextfenster verarbeitet" value={String(m.contextWindowsProcessed)} />
+        <MetricCard label="Device-Events (7d)" value={String(m.deviceConnectionEvents7d)} />
+        <MetricCard
+          label="Offene Aussteck-Episode"
+          value={m.openUnpluggedEpisode ? 'ja' : 'nein'}
+        />
+        <MetricCard
+          label="Fehlende Signale"
+          value={m.missingSignals.length ? m.missingSignals.join(', ') : '—'}
+        />
+      </div>
+    </div>
+  );
+}
+
+function DeviceConnectionTab({
+  data,
+  debugRaw,
+}: {
+  data: DeviceConnectionSummary;
+  debugRaw: boolean;
+}) {
+  const events = sortDeviceConnectionEvents(data.recentEvents);
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <StatusChip tone={data.lteR1Capable ? 'success' : 'neutral'}>
+          {data.lteR1Capable ? DEVICE_CONNECTION_LABELS.lteR1Connected : 'Nicht LTE_R1'}
+        </StatusChip>
+        <StatusChip tone={EVENT_LAYER_TONE[data.webhookConfigured] ?? 'neutral'}>
+          {webhookConfiguredLabel(data.webhookConfigured)}
+        </StatusChip>
+        {data.openUnpluggedEpisode && data.severity && (
+          <StatusChip tone={deviceConnectionSeverityTone(data.severity)}>
+            {DEVICE_CONNECTION_LABELS.telematicsInterruption}
+          </StatusChip>
+        )}
+        {data.rentalRelevant && (
+          <StatusChip tone="critical">{DEVICE_CONNECTION_LABELS.duringActiveBooking}</StatusChip>
+        )}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard label="Abgezogen (24h)" value={String(data.unpluggedCount24h)} />
+        <MetricCard label="Abgezogen (7d)" value={String(data.unpluggedCount7d)} />
+        <MetricCard label="Eingesteckt (24h)" value={String(data.pluggedCount24h)} />
+        <MetricCard label="Eingesteckt (7d)" value={String(data.pluggedCount7d)} />
+        <MetricCard
+          label="Letzter Webhook"
+          value={formatDeviceConnectionTimestamp(data.lastWebhookReceivedAt)}
+        />
+        <MetricCard
+          label="Offene Episode"
+          value={data.openUnpluggedEpisode ? 'ja' : DEVICE_CONNECTION_LABELS.noOpenInterruption}
+        />
+        <MetricCard
+          label="Episode-Dauer"
+          value={formatDurationMs(data.openUnpluggedDurationMs)}
+        />
+        <MetricCard
+          label="Buchungskontext"
+          value={data.activeBookingId ? data.activeBookingId : '—'}
+        />
+      </div>
+
+      <div className="rounded-xl border border-border/60 p-4 space-y-2">
+        <p className="text-sm font-semibold">DIMO Device Connection Events</p>
+        {events.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Keine Webhook-Ereignisse im Fenster.</p>
+        ) : (
+          <ul className="space-y-2">
+            {events.map((event) => (
+              <li
+                key={event.id}
+                className="flex flex-wrap items-center justify-between gap-2 text-xs border-b border-border/30 pb-2 last:border-0"
+              >
+                <span className="font-medium">{deviceConnectionEventLabel(event.eventType)}</span>
+                <span className="text-muted-foreground">
+                  {formatDeviceConnectionTimestamp(event.observedAt)}
+                </span>
+                <StatusChip tone={deviceConnectionSeverityTone(event.severity)} className="text-[10px]">
+                  {event.severity}
+                </StatusChip>
+                {event.rentalRelevant && (
+                  <StatusChip tone="critical" className="text-[10px]">
+                    {DEVICE_CONNECTION_LABELS.duringActiveBooking}
+                  </StatusChip>
+                )}
+                {(event.bookingId || event.tripId) && (
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    {event.bookingId ? `booking:${event.bookingId}` : ''}
+                    {event.tripId ? ` trip:${event.tripId}` : ''}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {debugRaw && data.rawEvents && data.rawEvents.length > 0 && (
+        <div className="rounded-xl border border-dashed border-border/60 p-4 space-y-2">
+          <p className="text-sm font-semibold">Admin Debug — Raw Payload</p>
+          <pre className="text-[10px] overflow-auto max-h-64 bg-muted/30 p-2 rounded-lg">
+            {JSON.stringify(data.rawEvents, null, 2)}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DataAnalyseView() {
   const { orgId, hasPermission } = useRentalOrg();
   const canAccess = hasPermission('data-analyse', 'read');
@@ -133,6 +345,9 @@ export function DataAnalyseView() {
   const [health, setHealth] = useState<DataAnalyseHealthTrace | null>(null);
   const [pipeline, setPipeline] = useState<DataAnalysePipeline | null>(null);
   const [groups, setGroups] = useState<DataAnalyseSignalGroup[]>([]);
+  const [eventArch, setEventArch] = useState<DataAnalyseEventArchitecture | null>(null);
+  const [deviceConnection, setDeviceConnection] = useState<DeviceConnectionSummary | null>(null);
+  const [deviceConnectionDebugRaw, setDeviceConnectionDebugRaw] = useState(false);
 
   const [signalSearch, setSignalSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('all');
@@ -170,7 +385,7 @@ export function DataAnalyseView() {
     setLoadingData(true);
     setError(null);
     try {
-      const [ov, sig, hfRes, launchRes, healthRes, pipe, grp] = await Promise.all([
+      const [ov, sig, hfRes, launchRes, healthRes, pipe, grp, evArch, devConn] = await Promise.all([
         api.dataAnalyse.telemetryOverview(orgId, selectedId),
         api.dataAnalyse.signals(orgId, selectedId),
         api.dataAnalyse.highFrequency(orgId, selectedId),
@@ -178,6 +393,8 @@ export function DataAnalyseView() {
         api.dataAnalyse.healthTrace(orgId, selectedId),
         api.dataAnalyse.pipeline(orgId, selectedId),
         api.dataAnalyse.signalGroups(orgId, selectedId),
+        api.dataAnalyse.eventArchitecture(orgId, selectedId),
+        api.dataAnalyse.deviceConnectionEvents(orgId, selectedId, deviceConnectionDebugRaw),
       ]);
       setOverview(ov);
       setSignals(sig);
@@ -186,12 +403,14 @@ export function DataAnalyseView() {
       setHealth(healthRes);
       setPipeline(pipe);
       setGroups(grp);
+      setEventArch(evArch);
+      setDeviceConnection(devConn);
     } catch {
       setError('Analysis data could not be loaded for the selected vehicle.');
     } finally {
       setLoadingData(false);
     }
-  }, [orgId, selectedId, canAccess]);
+  }, [orgId, selectedId, canAccess, deviceConnectionDebugRaw]);
 
   useEffect(() => {
     void loadVehicles();
@@ -537,6 +756,24 @@ export function DataAnalyseView() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {tab === 'events' && eventArch && (
+            <EventArchitectureTab data={eventArch} />
+          )}
+
+          {tab === 'deviceConnection' && deviceConnection && (
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={deviceConnectionDebugRaw}
+                  onChange={(e) => setDeviceConnectionDebugRaw(e.target.checked)}
+                />
+                Admin Debug — Raw Webhook Payload anzeigen
+              </label>
+              <DeviceConnectionTab data={deviceConnection} debugRaw={deviceConnectionDebugRaw} />
             </div>
           )}
 

@@ -12,6 +12,7 @@ import {
   partitionInsights,
 } from '../../lib/insights-categories';
 import { EmptyState } from '../../../components/patterns';
+import { Button } from '../../../components/ui/button';
 
 interface InsightsCockpitProps {
   isDarkMode: boolean;
@@ -241,13 +242,9 @@ export function InsightsCockpit({
       </div>
 
       <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => void refresh()}
-          className="text-[10px] font-semibold px-2 py-1 rounded-lg border border-border hover:bg-muted"
-        >
+        <Button type="button" variant="neutral" size="sm" onClick={() => void refresh()}>
           Insights aktualisieren
-        </button>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">

@@ -1,18 +1,18 @@
 /** Shared layout + surface tokens — Vehicle Bookings operator cockpit. */
 export const vb = {
-  page: 'flex flex-col gap-6',
+  page: 'flex flex-col gap-4 sm:gap-5',
   section: 'sq-card sq-glass rounded-2xl overflow-hidden shadow-[var(--shadow-1)]',
-  sectionHeader: 'border-b border-border/50 bg-muted/10 px-4 py-4 sm:px-5',
-  sectionBody: 'p-4 sm:p-5',
-  sectionBodyTight: 'px-4 py-3 sm:px-5',
-  title: 'text-[15px] font-semibold tracking-[-0.02em] text-foreground font-display',
-  titleSm: 'text-[13px] font-semibold tracking-[-0.015em] text-foreground',
-  subtitle: 'text-[12px] text-muted-foreground leading-relaxed',
-  meta: 'text-[11px] text-muted-foreground tabular-nums',
+  sectionHeader: 'border-b border-border/50 bg-muted/10 px-3 py-2 sm:px-3.5',
+  sectionBody: 'p-2.5 sm:p-3',
+  sectionBodyTight: 'px-3 py-2 sm:px-3.5',
+  title: 'text-[12px] font-semibold tracking-[-0.01em] text-foreground',
+  titleSm: 'text-[12px] font-semibold tracking-[-0.015em] text-foreground',
+  subtitle: 'text-[10.5px] text-muted-foreground leading-snug',
+  meta: 'text-[10px] text-muted-foreground tabular-nums',
   inset: 'rounded-xl border border-border/50 bg-background/35',
   divider: 'border-t border-border/50',
-  gridMetrics: 'grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-4',
-  gridAvailability: 'grid grid-cols-1 items-stretch gap-3 sm:grid-cols-3',
+  /** Single compact summary grid — cards height follows content (no stretch). */
+  gridSummary: 'grid grid-cols-2 items-start gap-1 sm:gap-1.5 lg:grid-cols-4',
   focusRing:
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
   action:

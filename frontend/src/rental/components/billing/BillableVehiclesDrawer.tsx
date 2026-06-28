@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { DetailDrawer } from '../../../components/patterns/detail-drawer';
 import { EmptyState } from '../../../components/patterns/states';
+import { Button } from '../../../components/ui/button';
 import type { BillableVehiclesResponseDto } from '../../types/billing.types';
 import { exclusionReasonLabel } from './billing.utils';
 import { Icon } from '../ui/Icon';
+import { cn } from '../../../components/ui/utils';
 
 interface BillableVehiclesDrawerProps {
   open: boolean;
@@ -24,38 +26,43 @@ export function BillableVehiclesDrawer({ open, onOpenChange, data }: BillableVeh
     <DetailDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title="Abgerechnete Fahrzeuge"
-      description="Übersicht aller verbundenen Fahrzeuge und Ausschlüsse für die monatliche Abrechnung."
+      title="Abrechenbare Fahrzeuge"
+      description="Verbundene Fahrzeuge mit Abrechnungsstatus. Ausgeschlossene Fahrzeuge werden nicht in Rechnung gestellt."
       widthClassName="sm:max-w-2xl"
       status={
         data ? (
           <span className="sq-tone-brand px-2 py-0.5 rounded-md text-[10px] font-semibold">
-            {data.billableVehicleCount} abrechenbar
+            {data.billableVehicleCount} abrechenbar · {data.connectedVehicleCount} verbunden
           </span>
         ) : undefined
       }
     >
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-4">
         {(
           [
             { key: 'billable' as const, label: 'Abrechenbar', count: billable.length },
             { key: 'excluded' as const, label: 'Ausgeschlossen', count: excluded.length },
           ] as const
         ).map((item) => (
-          <button
+          <Button
             key={item.key}
             type="button"
+            variant={tab === item.key ? 'secondary' : 'ghost'}
+            size="sm"
             onClick={() => setTab(item.key)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              tab === item.key
-                ? 'bg-[var(--brand-soft)] text-[var(--brand)]'
-                : 'bg-muted/40 text-muted-foreground hover:text-foreground'
-            }`}
+            className={cn(tab === item.key && 'bg-[var(--brand-soft)] text-[var(--brand)]')}
           >
             {item.label} ({item.count})
-          </button>
+          </Button>
         ))}
       </div>
+
+      {tab === 'billable' && (
+        <p className="text-[12px] text-muted-foreground mb-4 -mt-2">
+          Abrechenbar = Telematik/DIMO verbunden, nicht ausgeschlossen (Demo, außer Betrieb,
+          manuell ausgeschlossen).
+        </p>
+      )}
 
       {!data ? (
         <EmptyState compact title="Keine Fahrzeugdaten geladen" />
@@ -88,14 +95,14 @@ export function BillableVehiclesDrawer({ open, onOpenChange, data }: BillableVeh
                   Fahrzeug
                 </th>
                 <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Connectivity
+                  Provider
                 </th>
                 <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Billing
+                  Abrechnung
                 </th>
                 {tab === 'excluded' && (
                   <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Grund
+                    Ausschlussgrund
                   </th>
                 )}
               </tr>
@@ -103,14 +110,16 @@ export function BillableVehiclesDrawer({ open, onOpenChange, data }: BillableVeh
             <tbody>
               {activeList.map((v) => (
                 <tr key={v.id} className="border-t border-border/50 hover:bg-muted/20">
-                  <td className="px-3 py-2.5 text-xs font-medium text-foreground">
+                  <td className="px-3 py-2.5 text-[12px] font-medium text-foreground">
                     {v.licensePlate ?? '—'}
                   </td>
-                  <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                    <div>{v.make} {v.model}</div>
-                    <div className="font-mono text-[10px] mt-0.5">{v.vin}</div>
+                  <td className="px-3 py-2.5 text-[12px] text-muted-foreground">
+                    <div>
+                      {v.make} {v.model}
+                    </div>
+                    <div className="font-mono text-[10px] mt-0.5 opacity-70">{v.vin}</div>
                   </td>
-                  <td className="px-3 py-2.5 text-xs">
+                  <td className="px-3 py-2.5 text-[12px]">
                     <span
                       className={
                         v.connectivityStatus === 'CONNECTED'
@@ -121,7 +130,7 @@ export function BillableVehiclesDrawer({ open, onOpenChange, data }: BillableVeh
                       {v.connectivityStatus === 'CONNECTED' ? 'Verbunden' : 'Nicht verbunden'}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 text-xs">
+                  <td className="px-3 py-2.5 text-[12px]">
                     <span
                       className={
                         v.billingStatus === 'BILLABLE'
@@ -133,7 +142,7 @@ export function BillableVehiclesDrawer({ open, onOpenChange, data }: BillableVeh
                     </span>
                   </td>
                   {tab === 'excluded' && 'reason' in v && (
-                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                    <td className="px-3 py-2.5 text-[12px] text-muted-foreground">
                       {exclusionReasonLabel((v as { reason: string }).reason)}
                     </td>
                   )}

@@ -1,5 +1,6 @@
-import { StatusChip } from '../../../components/patterns';
+import { DataCard, StatusChip, Timeline } from '../../../components/patterns';
 import type { StatusTone } from '../../../components/patterns';
+import { Button } from '../../../components/ui/button';
 import type { CustomerDetail, CustomerEligibility, CustomerListRow } from './customerDetailTypes';
 import {
   customerStatusUiLabelDe,
@@ -15,14 +16,18 @@ import {
   formatDate,
   formatCurrencyCents,
   formatDateTime,
+  overallRentalClearanceLabel,
+  overallRentalClearanceTone,
 } from './customerDetailUtils';
-
-const cardBg = 'rounded-lg border border-border bg-card';
+import { CustomerQuickViewDetailRow } from './CustomerQuickViewDetailRow';
+import { cdv, ELIGIBILITY_LOAD_ERROR_USER } from './customer-detail-ui';
 
 interface CustomerOverviewTabProps {
   customer: CustomerListRow;
   detail: CustomerDetail | null;
   eligibility: CustomerEligibility | null;
+  eligibilityError?: string | null;
+  onRetryEligibility?: () => void;
   totalRevenueCents: number;
   totalBookings: number;
   openInvoices: number;
@@ -43,6 +48,8 @@ export function CustomerOverviewTab({
   customer,
   detail,
   eligibility,
+  eligibilityError,
+  onRetryEligibility,
   totalRevenueCents,
   totalBookings,
   openInvoices,
@@ -55,155 +62,140 @@ export function CustomerOverviewTab({
   const idUi = customerVerificationApiToUi(detail?.idVerificationStatus ?? undefined);
   const licenseUi = customerVerificationApiToUi(detail?.licenseVerificationStatus ?? undefined);
 
+  const timelineItems = timelinePreview.slice(0, 5).map((ev, idx) => ({
+    id: String(ev.id ?? `ev-${idx}`),
+    title: String(ev.title ?? ev.type ?? 'Ereignis'),
+    time: ev.createdAt ? formatDateTime(String(ev.createdAt)) : undefined,
+    description: ev.description ? String(ev.description) : undefined,
+  }));
+
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className={`${cardBg} p-4 space-y-3`}>
-          <h4 className="text-xs font-bold text-foreground">Identität & Kontakt</h4>
+    <div className="space-y-3">
+      <div className={cdv.twoColGrid}>
+        <DataCard title="Identität & Kontakt" bodyClassName="py-2">
           {[
             { label: 'Name', value: customer.name },
             { label: 'Geburtsdatum', value: formatDate(detail?.dateOfBirth) },
-            { label: 'Telefon', value: customer.phone || EM_DASH },
-            { label: 'E-Mail', value: customer.email || EM_DASH },
+            { label: 'Telefon', value: customer.phone },
+            { label: 'E-Mail', value: customer.email },
             {
               label: 'Adresse',
               value:
                 [detail?.address, [detail?.zip, detail?.city].filter(Boolean).join(' ')]
                   .filter(Boolean)
-                  .join(', ') || EM_DASH,
+                  .join(', ') || undefined,
             },
             { label: 'Kundentyp', value: customer.type === 'Corporate' ? 'Firma' : 'Privat' },
             ...(customer.company ? [{ label: 'Firma', value: customer.company }] : []),
             ...(detail?.taxId ? [{ label: 'USt-IdNr.', value: detail.taxId }] : []),
           ].map((row) => (
-            <div key={row.label} className="flex justify-between gap-3 text-xs">
-              <span className="text-muted-foreground">{row.label}</span>
-              <span className="font-medium text-foreground text-right">{row.value}</span>
-            </div>
+            <CustomerQuickViewDetailRow key={row.label} label={row.label} value={row.value} />
           ))}
-          {detail?.notes && (
-            <div className="pt-2 border-t border-border">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Notizen</p>
-              <p className="text-xs text-muted-foreground whitespace-pre-wrap">{detail.notes}</p>
+          {detail?.notes ? (
+            <div className="mt-2 border-t border-border/40 pt-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Notizen
+              </p>
+              <p className="mt-1 whitespace-pre-wrap text-[12px] text-muted-foreground">{detail.notes}</p>
             </div>
-          )}
-        </div>
+          ) : null}
+        </DataCard>
 
-        <div className={`${cardBg} p-4 space-y-3`}>
-          <h4 className="text-xs font-bold text-foreground">Mietfreigabe (Kurz)</h4>
-          {eligibility ? (
+        <DataCard
+          title="Mietfreigabe"
+          actions={
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto px-0 text-xs"
+              onClick={onOpenDocuments}
+            >
+              Dokumente
+            </Button>
+          }
+          bodyClassName="py-2"
+        >
+          {eligibilityError ? (
+            <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2" title={eligibilityError}>
+              <p className="text-[12px] font-medium">{ELIGIBILITY_LOAD_ERROR_USER}</p>
+              {onRetryEligibility ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="neutral"
+                  className="mt-2 h-7"
+                  onClick={onRetryEligibility}
+                >
+                  Erneut laden
+                </Button>
+              ) : null}
+            </div>
+          ) : eligibility ? (
             <>
-              <div className="space-y-1.5">
-                {[
-                  { label: 'Buchung erstellen', stage: eligibilityStageForCreate(eligibility) },
-                  { label: 'Bestätigung', stage: eligibilityStageForConfirm(eligibility) },
-                  { label: 'Übergabe', stage: eligibilityStageForPickup(eligibility) },
-                ].map((r) => (
-                  <div key={r.label} className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">{r.label}</span>
-                    <span className="font-semibold">{stageDe(r.stage)}</span>
-                  </div>
-                ))}
-              </div>
-              {(eligibility.blockingReasons.length > 0 || eligibility.warnings.length > 0) && (
-                <div className="space-y-1 pt-2 border-t border-border">
-                  {eligibility.blockingReasons.slice(0, 3).map((b) => (
-                    <p key={b} className="text-[10px] text-[color:var(--status-critical)]">• {b}</p>
-                  ))}
-                  {eligibility.warnings.slice(0, 2).map((w) => (
-                    <p key={w} className="text-[10px] text-[color:var(--status-attention)]">⚠ {w}</p>
-                  ))}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={onOpenDocuments}
-                className="text-[10px] font-semibold text-[color:var(--brand)]"
-              >
-                Dokumente & Verifikation →
-              </button>
+              <StatusChip tone={overallRentalClearanceTone(eligibility)} dot className="mb-2">
+                {overallRentalClearanceLabel(eligibility)}
+              </StatusChip>
+              {[
+                { label: 'Buchung erstellen', stage: eligibilityStageForCreate(eligibility) },
+                { label: 'Bestätigung', stage: eligibilityStageForConfirm(eligibility) },
+                { label: 'Übergabe', stage: eligibilityStageForPickup(eligibility) },
+              ].map((r) => (
+                <CustomerQuickViewDetailRow key={r.label} label={r.label} value={stageDe(r.stage)} />
+              ))}
             </>
           ) : (
-            <p className="text-xs text-muted-foreground">Freigabedaten nicht verfügbar</p>
+            <p className="text-[12px] text-muted-foreground">Freigabedaten nicht verfügbar</p>
           )}
-        </div>
+        </DataCard>
       </div>
 
-      <div className={`${cardBg} p-4`}>
-        <h4 className="text-xs font-bold text-foreground mb-3">Business-Zusammenfassung</h4>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-          <div>
-            <p className="text-muted-foreground">Status</p>
-            <p className="font-semibold">{customerStatusUiLabelDe(customer.status)}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Risiko</p>
-            <p className="font-semibold">{customerRiskUiLabelDe(customer.riskLevel)}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Verifikation</p>
-            <p className="font-semibold">
-              Ausweis: {customerVerificationUiLabelDe(idUi)} · FS: {customerVerificationUiLabelDe(licenseUi)}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Buchungen</p>
-            <p className="font-semibold">{totalBookings}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Umsatz</p>
-            <p className="font-semibold">
-              {totalRevenueCents > 0 ? formatCurrencyCents(totalRevenueCents) : EM_DASH}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Offene Rechnungen / Bußgelder</p>
-            <p className="font-semibold">
-              {openInvoices} / {openFines}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Letzte Buchung</p>
-            <p className="font-semibold">{formatDate(lastBookingDate)}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Kunde seit</p>
-            <p className="font-semibold">{formatDate(detail?.createdAt)}</p>
-          </div>
+      <DataCard title="Business-Zusammenfassung" bodyClassName="py-2">
+        <div className="grid grid-cols-1 gap-0 sm:grid-cols-2">
+          <CustomerQuickViewDetailRow
+            label="Status"
+            value={customerStatusUiLabelDe(customer.status)}
+          />
+          <CustomerQuickViewDetailRow label="Risiko" value={customerRiskUiLabelDe(customer.riskLevel)} />
+          <CustomerQuickViewDetailRow
+            label="Verifikation"
+            value={`Ausweis: ${customerVerificationUiLabelDe(idUi)} · FS: ${customerVerificationUiLabelDe(licenseUi)}`}
+          />
+          <CustomerQuickViewDetailRow label="Buchungen" value={String(totalBookings)} />
+          <CustomerQuickViewDetailRow
+            label="Umsatz"
+            value={totalRevenueCents > 0 ? formatCurrencyCents(totalRevenueCents) : EM_DASH}
+          />
+          <CustomerQuickViewDetailRow
+            label="Offene Rechnungen / Bußgelder"
+            value={`${openInvoices} / ${openFines}`}
+          />
+          <CustomerQuickViewDetailRow label="Letzte Buchung" value={formatDate(lastBookingDate)} />
+          <CustomerQuickViewDetailRow label="Kunde seit" value={formatDate(detail?.createdAt)} />
         </div>
-      </div>
+      </DataCard>
 
-      <div className={`${cardBg} p-4`}>
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-xs font-bold text-foreground">Letzte Aktivitäten</h4>
-          <button type="button" onClick={onOpenTimeline} className="text-[10px] font-semibold text-[color:var(--brand)]">
-            Alle anzeigen →
-          </button>
-        </div>
-        {timelinePreview.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Noch keine Timeline-Einträge.</p>
+      <DataCard
+        title="Letzte Aktivitäten"
+        actions={
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            className="h-auto px-0 text-xs"
+            onClick={onOpenTimeline}
+          >
+            Alle anzeigen
+          </Button>
+        }
+        bodyClassName="py-3"
+      >
+        {timelineItems.length === 0 ? (
+          <p className="text-[12px] text-muted-foreground">Noch keine Timeline-Einträge.</p>
         ) : (
-          <div className="divide-y divide-border">
-            {timelinePreview.slice(0, 5).map((ev) => (
-              <div key={String(ev.id)} className="py-2 flex justify-between gap-2">
-                <div>
-                  <p className="text-xs font-semibold text-foreground">
-                    {String(ev.title ?? ev.type ?? 'Ereignis')}
-                  </p>
-                  {ev.description ? (
-                    <p className="text-[10px] text-muted-foreground line-clamp-2">
-                      {String(ev.description)}
-                    </p>
-                  ) : null}
-                </div>
-                <span className="text-[10px] text-muted-foreground shrink-0">
-                  {ev.createdAt ? formatDateTime(String(ev.createdAt)) : EM_DASH}
-                </span>
-              </div>
-            ))}
-          </div>
+          <Timeline items={timelineItems} />
         )}
-      </div>
+      </DataCard>
     </div>
   );
 }

@@ -65,6 +65,8 @@ interface NewBookingViewProps {
   onBack: () => void;
   onCustomerCreated?: (customer: any) => void;
   onBookingCreated?: (booking: any) => void;
+  /** Pre-select customer when opening booking flow from Customer Detail. */
+  initialCustomerId?: string | null;
 }
 
 // Customer data reused from CustomersView
@@ -152,7 +154,12 @@ const steps = [
   { id: 5, label: 'Checkout', icon: CreditCard },
 ];
 
-export function NewBookingView({ onBack, onCustomerCreated, onBookingCreated }: NewBookingViewProps) {
+export function NewBookingView({
+  onBack,
+  onCustomerCreated,
+  onBookingCreated,
+  initialCustomerId = null,
+}: NewBookingViewProps) {
   const { fleetVehicles } = useFleetVehicles();
   const { orgId } = useRentalOrg();
   const { catalog, loading: catalogLoading } = usePriceTariffs(orgId);
@@ -242,6 +249,25 @@ export function NewBookingView({ onBack, onCustomerCreated, onBookingCreated }: 
   };
 
   const [currentStep, setCurrentStep] = useState(1);
+
+  useEffect(() => {
+    if (!orgId || !initialCustomerId || selectedCustomer?.id === initialCustomerId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const row = await api.customers.get(orgId, initialCustomerId);
+        if (cancelled) return;
+        setSelectedCustomer(mapApiCustomerToBookingCustomer(row));
+        setCurrentStep(2);
+      } catch {
+        /* prefill is best-effort */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, initialCustomerId, selectedCustomer?.id]);
+
   const [vehicleSearch, setVehicleSearch] = useState('');
   const [vehicleStationFilter, setVehicleStationFilter] = useState('all');
   const [vehicleFuelFilter, setVehicleFuelFilter] = useState('all');

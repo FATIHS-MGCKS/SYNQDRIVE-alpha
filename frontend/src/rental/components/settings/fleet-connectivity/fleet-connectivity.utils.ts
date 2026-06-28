@@ -3,6 +3,7 @@ import type {
   FleetConnectivitySignalState,
   FleetConnectivityStatus,
   FleetConnectivityVehicle,
+  FleetDeviceConnectionDto,
 } from '../../../../lib/api';
 import type { StatusTone } from '../../../../components/patterns/status-utils';
 
@@ -11,6 +12,7 @@ export type FleetReadinessFilter = 'all' | FleetConnectivityReadinessLevel;
 export type FleetSignalFilter =
   | 'all'
   | 'obd_unplugged'
+  | 'device_unplugged_webhook'
   | 'jamming'
   | 'missing_gps'
   | 'missing_odometer';
@@ -166,6 +168,12 @@ export function filterFleetConnectivityVehicles(
     if (opts.signalFilter === 'obd_unplugged' && v.obdIsPluggedIn !== false) {
       return false;
     }
+    if (
+      opts.signalFilter === 'device_unplugged_webhook' &&
+      !(v.deviceConnection?.eventSource === 'dimo_webhook' && v.deviceConnection.openUnpluggedEpisode)
+    ) {
+      return false;
+    }
     if (opts.signalFilter === 'jamming' && v.jammingDetectedCount <= 0) {
       return false;
     }
@@ -196,6 +204,25 @@ export function hasActiveFleetFilters(opts: {
     opts.readinessFilter !== 'all' ||
     opts.signalFilter !== 'all'
   );
+}
+
+export function deviceConnectionSeverityTone(
+  device: FleetDeviceConnectionDto | null | undefined,
+): 'success' | 'warning' | 'critical' | 'neutral' {
+  if (!device || device.eventSource !== 'dimo_webhook') return 'neutral';
+  if (device.severity === 'critical') return 'critical';
+  if (device.severity === 'warning') return 'warning';
+  if (device.severity === 'info') return 'success';
+  return 'neutral';
+}
+
+export function deviceConnectionRowLabel(
+  device: FleetDeviceConnectionDto | null | undefined,
+): string {
+  if (!device || device.eventSource !== 'dimo_webhook') return '—';
+  if (device.openUnpluggedEpisode) return 'Unplugged (Webhook)';
+  if (device.currentDeviceConnectionStatus === 'plugged') return 'Plugged (Webhook)';
+  return 'Webhook';
 }
 
 /** Guardrail: ensure no write-action labels appear in this read-only surface. */

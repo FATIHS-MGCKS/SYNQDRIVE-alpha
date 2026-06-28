@@ -35,6 +35,504 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'device-connection-ui-v4994-2026-06-28',
+    version: '4.9.94',
+    title: 'V4.9.94 — OBD Tamper UI: Fleet Connectivity, Vehicle Detail, Data Analyse & Trip Evidence',
+    summary: [
+      'Read-Model Endpoints: `GET …/vehicles/:vehicleId/device-connection`, `GET …/data-analyse/vehicles/:vehicleId/device-connection-events` (optional `debugRaw`), `GET …/trips/:tripId/device-connection-evidence` — Felder: last unplug/plug, open episode, severity, booking/trip context, recent events; raw payload nur Admin-Debug.',
+      'Fleet Connectivity: eigene Webhook-Spalte/KPI „Device Unplugged (Webhook)“ — getrennt von Offline/Stale und OBD-Snapshot; Severity info/warning/critical inkl. „Während aktiver Buchung“.',
+      'Vehicle Detail Overview: `VehicleDeviceConnectionCard` für LTE_R1 (DIMO-Gerät abgezogen/eingesteckt, offene Telematik-Unterbrechung, Manipulationshinweis).',
+      'Data Analyse: neuer Tab „Device Connection“ (Webhook-Status, Zähler 24h/7d, Event-Liste, optional Raw Debug) — keine RPM-Webhook-Anzeige.',
+      'Trip Detail: `TripDeviceConnectionEvidence` zeigt „Telematikgerät während Buchung getrennt“ mit Zeitpunkt, Wiederverbindungsdauer, Quelle DIMO Vehicle Trigger, Beweisstatus — kein automatischer Schaden.',
+    ],
+    reason:
+      'OBD unplug/plug Events aus Prompt 1+2 müssen in SynqDrive UI sichtbar werden — nur Backend-Daten, klar getrennt von Snapshot/Offline, mit Rental-Kontext.',
+    previousBehavior:
+      'Device-Connection-Events wurden persistiert, aber nicht in Fleet Connectivity, Vehicle Detail, Data Analyse oder Trip/Booking Evidence angezeigt.',
+    details:
+      '**Backend (neu)**: `device-connection-read-model.ts` (+ Spec), `device-connection-query.service.ts`; Fleet Connectivity Summary-Felder `deviceConnection`, `deviceUnpluggedOpenEpisodes`. **Frontend (neu)**: `device-connection-ui.ts` (+ Tests), `VehicleDeviceConnectionCard.tsx`, `TripDeviceConnectionEvidence.tsx`, Fleet Connectivity Badges/Filter, Data Analyse Tab. **Geändert**: `api.ts`, `FleetConnectivityTab`, `FleetConnectivityDetailDrawer`, `VehicleOverviewTab`, `TripTimelineExpanded`, `ChangesView`, `ArchitekturView`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-28T19:00:00.000Z',
+  },
+  {
+    id: 'dimo-webhook-verification-v4993-2026-06-28',
+    version: '4.9.93',
+    title: 'V4.9.93 — DIMO Vehicle Triggers: URL Verification & CloudEvent Intake',
+    summary: [
+      'Webhook-Endpoint `/api/v1/webhooks/dimo` beantwortet DIMO URL-Verification (`{"verification":"test"}`) mit `{ verificationToken }` aus `DIMO_WEBHOOK_VERIFICATION_TOKEN` — vor HMAC-Prüfung, production-safe fail-closed wenn ENV fehlt.',
+      'CloudEvent-Payloads (`type=dimo.trigger`) werden normalisiert: tokenId aus `subject`/`assetDID`, Signal aus `data.signal.name`/`metricName`, Timestamp aus Signal/CloudEvent.',
+      'OBD unplugged/plugged via `obdIsPluggedIn` oder dedizierte Console-Webhook-Namen → `DimoDeviceConnectionEvent` (Tamper-Evidenz, kein Misuse). RPM/Throttle/EngineLoad-Signale werden explizit ignoriert.',
+    ],
+    reason:
+      'DIMO Developer Console registriert Webhooks per Verification-Handshake und sendet Trigger als CloudEvents — SynqDrive muss beides korrekt verarbeiten.',
+    previousBehavior:
+      'Kein Verification-Handshake; Payload-Parsing erwartete flaches `{ tokenId, signal, value }` ohne CloudEvent-Unterstützung.',
+    details:
+      '**Neu**: `dimo-webhook-payload.util.ts` (+ Spec), `dimo-webhook.controller.spec.ts`, ENV `DIMO_WEBHOOK_VERIFICATION_TOKEN`. **Geändert**: `dimo-webhook.controller.ts` (Verification → HMAC → normalize → route), `device-connection-webhook.service.ts` (metricName-aware signal detection).',
+    affectsArchitecture: true,
+    module: 'DIMO Integration',
+    createdAt: '2026-06-28T18:00:00.000Z',
+  },
+  {
+    id: 'device-connection-webhook-cleanup-v4992-2026-06-28',
+    version: '4.9.92',
+    title: 'V4.9.92 — RPM-Webhook-Cleanup & DIMO Device Connection Intake',
+    summary: [
+      'RPM-Webhook-Candidate-Intake vollständig entfernt: DIMO Developer Console bietet keine RPM/Throttle/EngineLoad-Webhooks — keine Subscriptions, kein Candidate-Intake, kein Trip-UI, keine Data-Analyse-Anzeige als aktive Fähigkeit.',
+      'Neuer DIMO Device Connection Webhook Intake: `obdIsPluggedIn` → `OBD_DEVICE_UNPLUGGED` / `OBD_DEVICE_PLUGGED_IN` (idempotent, tenant-scoped, Prisma `DimoDeviceConnectionEvent`). Trigger-Bootstrap subscribed jetzt `obdIsPluggedIn` statt `powertrainCombustionEngineSpeed`.',
+      'Native DIMO Behavior Event Intake, Event Context Enrichment, Trip Signal Summary Enrichment und Misuse-Aggregation aus nativem Ereigniskontext bleiben unverändert aktiv.',
+      'Data Analyse Tab „Event-Architektur“: Device Connection Webhook Layer (configured/not configured/unknown, letztes Ein-/Ausstecken, offene Aussteck-Episode) statt RPM Webhook Candidate Intake.',
+      'Prisma: `rpm_webhook_candidates` Tabelle deprecated (keine neuen Writes), neue Migration `20260628170000_dimo_device_connection_event`.',
+    ],
+    reason:
+      'DIMO stellt keine RPM≥4000 Vehicle-Trigger-Webhooks bereit — SynqDrive darf diese Fähigkeit nicht vorgaukeln. OBD Ein-/Aus-Events sind verfügbar und liefern Konnektivitäts-/Tamper-Evidenz.',
+    previousBehavior:
+      'RPM-Webhook-Kandidaten wurden subscribed, persistiert, in Trip-Detail/Data Analyse/Misuse angezeigt — obwohl DIMO die Signale nicht anbietet.',
+    details:
+      '**Entfernt**: `rpm-webhook-candidate.service.ts`, `rpm-candidate-read-model.ts`, `GET .../rpm-candidates`, RPM-Dispatch in `dimo-webhook.controller.ts`, `registerRpmTrigger`, RPM-Misuse-Regel Rev-in-Idle via RPM_CANDIDATE, Frontend `TripRpmCandidatesList`/`useTripRpmCandidates`, API `tripRpmCandidates`/`TripRpmCandidate`. **Neu**: `device-connection-webhook.service.ts` (+ Spec), Prisma `DimoDeviceConnectionEvent`, Migration, Data Analyse `deviceConnectionWebhookIntake`. **Behalten**: EventContextEnrichmentService, native behavior wiring, context-misuse-rules (native anchors), event-context-ui Kontextblöcke.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-28T17:30:00.000Z',
+  },
+  {
+    id: 'lte-r1-event-context-ui-v4991-2026-06-28',
+    version: '4.9.91',
+    title: 'V4.9.91 — LTE_R1 Event Context Architektur: UI & Data Analyse Evidence-Layer',
+    summary: [
+      'Trip-Detail Behavior-Event-Liste zeigt für native LTE_R1/ICE-Events jetzt die Kontextbewertung: Klassifikation (z. B. „Kontext: Kickdown wahrscheinlich“), Confidence, Beweisstufe und Schlüsselwerte (Speed vor→nach, max. Drehzahl/Gaspedal/Motorlast, Kühlmittel) — bei dünnem Kontext ehrlich „Native Event erkannt, Kontext nicht ausreichend bewertbar“.',
+      'Neue RPM-Kandidaten-Sektion im Trip-Detail (RPM ≥ Schwelle): Status (empfangen/Kontext angereichert/klassifiziert/nicht ausreichend) und Klassifikation (Hochdrehen im Stand bestätigt, Dauerhaft hohe Drehzahl, Kaltmotor) — Kandidat/Anchor, nie automatisch Misuse.',
+      'Misuse-Case-Detail zeigt die Beweislage statt Blackbox: Quell-Anchors (native Events/RPM-Kandidaten), Beweisstufe, Confidence, genutzte/fehlende Signale, Gründe, Kontextfenster und Schlüsselwerte.',
+      'Trip-Bewertung korrigiert: kein „Unauffällig“ mehr bei unzureichender Datenqualität/insufficient Context/Enrichment nicht gelaufen — stattdessen „Nicht belastbar bewertet“ mit Hinweis (Native Events: keine/vorhanden · RPM-Kandidaten: keine/vorhanden). „Unauffällig“ nur bei verfügbarer Quelle/ausreichender Datenqualität.',
+      'Data Analyse: neuer Tab „Event-Architektur“ mit Layer-Status (Native Event Intake, RPM Webhook Candidate Intake, Event Context Enrichment, Trip Signal Summary Enrichment), Detector Feasibility (HF-Kurzzeit-Detektion deaktiviert/nicht belastbar) und Kennzahlen (effektive Kadenz, Median/P95, fehlende Signale, Kontextfenster, klassifizierte Kandidaten).',
+    ],
+    reason:
+      'Die neue LTE_R1 Event-Context-Architektur (Native Events, RPM-Kandidaten, Context Assessments, Misuse-Evidenz) muss verständlich, ehrlich und professionell sichtbar werden — ohne dass die UI eigene Detektion baut oder Tesla/EV-ICE-Kontext anzeigt.',
+    previousBehavior:
+      'Context Assessments und RPM-Kandidaten lagen im Backend vor, waren aber in Trip-Detail, Misuse-Detail und Data Analyse nicht sichtbar; saubere Trips ohne ausreichende Datenqualität wurden fälschlich als „Unauffällig“ dargestellt.',
+    details:
+      '**Backend (Read Model)**: neuer read-only Endpoint `GET /vehicles/:vehicleId/trips/:tripId/rpm-candidates` (+ pure Mapper `trips/rpm-candidate-read-model.ts` & Spec) und `GET /organizations/:orgId/data-analyse/vehicles/:vehicleId/event-architecture` (`DataAnalyseService.getEventArchitecture` + DTOs in `data-analyse.types.ts`); native Context Assessment fließt bereits über das Unified Read Model. **Frontend (neu)**: `trips/event-context-ui.ts` (pure Labels/Assessability + Tests), `trips/TripRpmCandidatesList.tsx`, `trips/hooks/useTripRpmCandidates.ts`, `trips/behavior-rating.test.ts`. **Frontend (geändert)**: `TripBehaviorEventList.tsx` (Kontextblock), `TripBehaviorSummary.tsx` + `behavior-ui.utils.ts` (Status `not_assessable` „Nicht belastbar bewertet“), `TripBehaviorPanel.tsx` (RPM-Wiring), `MisuseCasesPanel.tsx` (contextEvidence-Block), `DataAnalyseView.tsx` (Tab „Event-Architektur“), `lib/api.ts` (Typen/Methoden). **Bewusst**: keine neuen Detektionsregeln, keine Backend-Logik außer DTO/Read Model, kein Tesla/EV-ICE-Kontext.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-28T16:15:00.000Z',
+  },
+  {
+    id: 'misuse-aggregation-context-evidence-v4990-2026-06-28',
+    version: '4.9.90',
+    title: 'V4.9.90 — Misuse Case Aggregation mit Context Assessments & RPM-Kandidaten',
+    summary: [
+      'Die Misuse-Aggregation lädt jetzt zusätzlich Event Context Assessments als Evidenz: native `DrivingEvent.metadataJson.contextAssessment` und `RpmWebhookCandidate.contextAssessmentJson` im Trip-Fenster (oder per tripId).',
+      'Neue kontextbasierte Regeln (nur LTE_R1/ICE): Cold Engine Abuse, Launch Abuse, Aggressive Driving (AGGRESSIVE_START / repeated KICKDOWN_LIKELY|FULL_THROTTLE_LIKELY / HIGH_RPM_CONSTANT), Rev-in-Idle (REV_IN_IDLE_CONFIRMED bei Stillstand), Overheating Risk.',
+      'Strikte Guardrails: nur status COMPLETED + engineSignalsApplicable; INSUFFICIENT_CONTEXT erzeugt NIE einen Case; EvidenceGrade-Gating (nur A/B → harter Misuse, C/D nie); warmer Einzel-Kickdown ist nur Kontext, kein Case.',
+      'Native Event + RPM-Kandidat im selben Fenster kollabieren über `mergeSameType` (Typ-Schlüssel) zu EINEM kombinierten Case mit beiden Quell-Anchors — keine Duplikate, keine Doppelzählung.',
+      'Strukturierter Evidence-Payload pro Case in `evidenceSummary.contextEvidence`: sourceAnchors (drivingEventIds/rpmCandidateIds), contextClassifications, evidenceGrade, confidence, used/missingSignals, reasonCodes, windowStart/End, keyValues (maxRpm/maxThrottle/maxEngineLoad/coolant/pre-postSpeed), dataQuality.',
+    ],
+    reason:
+      'Vertrauenswürdige Anker (native Events + RPM-Webhook-Kandidaten) mit ihrem Motor-Kontext sollen konservativ und erklärbar zu echten Misuse Cases zusammengeführt werden — Evidenz/Confidence sichtbar, ohne False Positives und ohne bestehende Cases zu beschädigen.',
+    previousBehavior:
+      'Misuse Cases entstanden nur aus Behavior-/Driving-Events, DIMO-Safety-Events und DTCs; die neuen Context Assessments und RPM-Kandidaten wurden in der Aggregation nicht berücksichtigt.',
+    details:
+      '**Backend (neu)**: `misuse-cases/context-misuse-rules.ts` (pure Regeln + Evidence-Payload + Confidence/Severity-Mapping, Grade-Gating), `misuse-cases/context-misuse-rules.spec.ts` (ColdEngineKickdown, RevInIdleConfirmed, HighRPMSpike single → kein Case, InsufficientContext, Grade C, warm Overtaking, Launch, Overheating), Prisma-Migration `20260628160000_misuse_evidence_context_sources`. **Backend (geändert)**: `misuse-case-rules.service.ts` (evaluateContextAnchors + mergeSameType + Evidence-Dedup), `misuse-case-aggregator.service.ts` (loadContextAnchors aus DrivingEvent + RpmWebhookCandidate), `misuse-case.types.ts` (ContextAnchor, CaseCandidate.evidenceSummary, contextAnchors), `misuse-case-evidence.service.ts` (evidenceSummary merged candidate.evidenceSummary), `schema.prisma` (MisuseEvidenceSourceType += EVENT_CONTEXT_ASSESSMENT, RPM_WEBHOOK_CANDIDATE), rules-Spec (kombinierter Case-Test). **Dedupe/Idempotenz**: Fingerprint `org:trip:type` (Upsert) + mergeSameType pro Lauf → wiederholte Aggregation und Native+RPM-Overlap erzeugen keine Duplikate. **Read Model**: unverändert — evidenceSummary + Evidence-Rows sind bereits exponiert, Evidence/Confidence damit in der UI sichtbar. **Bewusst NICHT**: keine Tesla/EV-ICE-Regeln, keine Schwellenwert-Änderung bestehender Detektoren, keine neue Case-Taxonomie.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-28T15:30:00.000Z',
+  },
+  {
+    id: 'rpm-webhook-candidate-intake-v4989-2026-06-28',
+    version: '4.9.89',
+    title: 'V4.9.89 — RPM Webhook Candidate Intake (LTE_R1/ICE) Grundlage',
+    summary: [
+      'DIMO Vehicle-Trigger RPM-Feuern (RPM ≥ 4000) wird über die bestehende sichere Route `POST /webhooks/dimo` (HMAC-Signatur, Token→Vehicle-Auflösung) als tenant-scoped, idempotenter `RpmWebhookCandidate` (Anchor, KEIN Misuse Case) gespeichert.',
+      'Neues Prisma-Modell `RpmWebhookCandidate` (+ Enums `TelemetryTriggerType`, `RpmWebhookCandidateStatus`) mit Idempotenz-Unique `provider+vehicleId+triggerType+dedupBucket` (10s-Fenster) → Mehrfachfeuern kollabiert auf eine Zeile.',
+      'Best-effort Event Context Enrichment für den Kandidaten über `enrichAnchorContext` mit Fenster T-30s..T+90s; Status RECEIVED → CONTEXT_ENRICHED / INSUFFICIENT_CONTEXT / FAILED (CLASSIFIED reserviert für spätere Misuse-Aggregation).',
+      'Guardrails: nur LTE_R1/ICE (shouldRunIceEventContextEnrichment); Tesla/EV erzeugen keinen Kandidaten (NOT_APPLICABLE_POWERTRAIN); Enrichment-Fehler verliert nie den Kandidaten und wirft nicht aus dem Webhook-Pfad.',
+      'DIMO-Trigger-Registrierung um Signal `powertrainCombustionEngineSpeed` erweitert.',
+    ],
+    reason:
+      'Hochdrehzahl-Ereignisse (Rev-in-Idle, High RPM Constant, Cold Engine High RPM) brauchen einen vertrauenswürdigen Echtzeit-Anchor mit Motor-Kontextfenster — als Evidenz, nicht als sofortigen Alarm.',
+    previousBehavior:
+      'Die DIMO-Webhook-Route verarbeitete nur DTC/speed/ignition; RPM-Trigger gab es nicht und es existierte kein Kandidaten-/Trigger-Modell für hochfrequente Echtzeit-Anchors.',
+    details:
+      '**Backend (neu)**: `dimo/rpm-webhook-candidate.service.ts` (Intake, Dedup-Bucket, ICE-Guard, best-effort Enrichment, Trip-Verknüpfung), `dimo/rpm-webhook-candidate.service.spec.ts` (10 Tests: Threshold, EV-Skip, Create+Enrich, Insufficient, Idempotenz, best-effort, ohne Service), Prisma-Migration `20260628150000_rpm_webhook_candidate`. **Backend (geändert)**: `dimo/dimo-webhook.controller.ts` (RPM-Dispatch), `dimo/dimo-triggers.service.ts` (registerRpmTrigger + powertrainCombustionEngineSpeed), `dimo/dimo.module.ts` (Provider), `prisma/schema.prisma` (Modell + Enums + Vehicle/VehicleTrip-Relationen). **Wiederverwendet**: bestehende Webhook-Signaturprüfung, Token→Vehicle-Auflösung, EventContextEnrichmentService. **Bewusst NICHT**: keine Misuse Cases, keine Alerts, keine Klassifikations-Aggregation (Prompt 5+), keine Tesla/EV-Logik.',
+    affectsArchitecture: true,
+    module: 'DIMO / Vehicle Intelligence',
+    createdAt: '2026-06-28T14:00:00.000Z',
+  },
+  {
+    id: 'native-event-context-wiring-v4988-2026-06-28',
+    version: '4.9.88',
+    title: 'V4.9.88 — LTE_R1 Native Event Intake ↔ Event Context Enrichment verbunden',
+    summary: [
+      'Nach erfolgreicher Persistenz nativer DIMO `behavior.*` Events ruft `LteR1BehaviorEnrichmentService` jetzt `EventContextEnrichmentService.enrichDrivingEventContext(id)` pro Event auf — best-effort, NACH dem Commit (kein Event-Verlust möglich).',
+      'Nur LTE_R1/ICE: Tesla/EV & nicht-LTE_R1 werden mit `NOT_APPLICABLE_POWERTRAIN` übersprungen (kein ICE contextAssessment).',
+      'Behavior-aware Klassifikation: AnchorEvent (Kategorie + extreme) fließt in den Classifier → AGGRESSIVE_START, LAUNCH_LIKE_START, KICKDOWN_LIKELY, OVERTAKING_LIKELY, COLD_ENGINE_ACCELERATION/KICKDOWN, neuer Typ EMERGENCY_LIKE_BRAKING; bei zu wenig Daten `INSUFFICIENT_CONTEXT`.',
+      'Context Confidence neu geregelt: HIGH (3+ Signale, nearest ≤5s), MEDIUM (2 Signale, ≤10s), LOW (1 Signal/sparse), INSUFFICIENT (keine Daten).',
+      'Read Model: `contextAssessment` als First-Class-Feld in der Unified Behavior Event List + Frontend-Typ (optional, bricht bestehende UI nicht); alte Felder (rpm/coolantC/throttlePct) bleiben kompatibel erhalten.',
+    ],
+    reason:
+      'Vertrauenswürdige native Events sollen automatisch mit ihrem umgebenden Motor-Kontext (T±30s) angereichert werden, erklärbar und konservativ — als Evidenz/ReasonCodes, nicht als sofortige harte Misuse Cases.',
+    previousBehavior:
+      'Native Events wurden gespeichert und nur mit dem nächstgelegenen HF-Einzelpunkt (±5s: rpm/coolantC/throttlePct) annotiert; es gab keinen strukturierten Kontext-Payload und keine behavior-spezifische Kontextklassifikation.',
+    details:
+      '**Backend (geändert)**: `trips/lte-r1-behavior-enrichment.service.ts` (optionale Injection von EventContextEnrichmentService, post-commit `enrichNativeEventContexts`, Guard `shouldRunIceEventContextEnrichment`, Query um hardwareType/fuelType erweitert), `event-context/event-context-enrichment.service.ts` (liest eventType+classification → AnchorEventInfo, plumbt anchorEvent durch), `event-context/event-context-classifier.ts` (behavior-aware Klassifikation + Confidence-Regel), `event-context/event-context-stats.ts` (valueBeforeAnchor/valueAfterAnchor), `event-context/event-context.types.ts` (+EMERGENCY_LIKE_BRAKING), `event-context/event-context-assessment.types.ts` (AnchorEventInfo, pre/post-Felder), `trips/unified-behavior-read-model.ts` (+contextAssessment). **Frontend**: `lib/api.ts` (optional `contextAssessment` + `TripEventContextAssessment`). **±5s-Einzelpunkt** wird NICHT entfernt (UI-kompatibel), nur durch contextAssessment ergänzt. **Tests**: classifier-Spec (AGGRESSIVE/LAUNCH/KICKDOWN/COLD/EMERGENCY/INSUFFICIENT + Confidence), service-Spec (anchorEvent-Ableitung, extreme bleibt erkennbar, EV/SMART5-Skip, FAILED erhält Event), lte-r1-Spec (Wiring: per-Event-Aufruf, EV-Skip, best-effort, no-op ohne Service). **Bewusst NICHT**: keine RPM-Webhook-Logik, keine finalen Misuse Cases, keine Migration.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-28T13:30:00.000Z',
+  },
+  {
+    id: 'event-context-enrichment-service-v4987-2026-06-28',
+    version: '4.9.87',
+    title: 'V4.9.87 — EventContextEnrichmentService für LTE_R1/ICE (Phase 2)',
+    summary: [
+      'Neuer zentraler `EventContextEnrichmentService`: holt rund um einen Anchor-Zeitpunkt Signal-Zeitreihen, berechnet Signalqualität und erzeugt einen konservativen Context Assessment Payload.',
+      'Kontextfenster: native Behavior Events T−30s..T+30s; RPM-Webhook-Kandidaten T−30s..T+90s (Post-Tail konfigurierbar).',
+      'Wiederverwendung der bestehenden `DimoSegmentsService.fetchHighFrequency` (kein neuer Query); effektive Cadence wird aus echten Timestamps berechnet — keine Annahme echter 1s-Dichte.',
+      'Pro Signal (speed/rpm/throttle/engineLoad/coolant): count, nonNull, min/max/avg, nearest-to-anchor, Intervall-Median/P95, Gaps und coverageQuality (GOOD/SPARSE/MISSING/NOT_APPLICABLE).',
+      'Konservative Klassifikation: bei zu wenig Signalen `INSUFFICIENT_CONTEXT`; nur preliminary Context-Hypothesen, KEINE finalen Misuse Cases.',
+    ],
+    reason:
+      'Für vertrauenswürdige LTE_R1-Trigger (native Events, später RPM-Webhook) soll der umgebende Motor-Kontext sauber, erklärbar und datenqualitäts-bewusst erfasst werden — als Grundlage für die spätere Misuse-Aggregation, ohne die sparse Whole-Trip-HF-Schwäche zu erben.',
+    previousBehavior:
+      'Es gab nur die Foundation-Types/Guardrails (V4.9.86), aber keinen Service, der rund um einen Anchor Signale holt, Qualität bewertet und ein Assessment persistiert.',
+    details:
+      '**Backend (neu)**: `event-context/event-context-enrichment.service.ts`, `event-context-classifier.ts`, `event-context-window.ts`, `event-context-stats.ts`, `event-context-assessment.types.ts` + Specs (window/stats/service, 16 neue Tests; gesamt 36 grün im Modul). **Persistenz**: Phase-1 ohne Migration — Assessment wird unter `DrivingEvent.metadataJson.contextAssessment` gemerged (übrige Metadata bleibt erhalten, ein Assessment pro Event → idempotent). **Sicherheit**: best-effort & idempotent; DIMO-Fehler → status `FAILED`, native Event bleibt unverändert; Tesla/EV & nicht-LTE_R1 → `SKIPPED_NOT_APPLICABLE` ohne HF-Fetch. **Registriert** als Provider/Export in `vehicle-intelligence.module.ts`. **Bewusst NICHT umgesetzt**: keine Verdrahtung in Enrichment-Pipeline/Webhook, keine RPM-Candidate-Persistenz, keine finalen Misuse Cases.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-28T13:05:00.000Z',
+  },
+  {
+    id: 'lte-r1-event-context-foundation-v4986-2026-06-28',
+    version: '4.9.86',
+    title: 'V4.9.86 — LTE_R1 Misuse/Event Context: fachliche Grundlage (read-only)',
+    summary: [
+      'Neues Foundation-Modul `vehicle-intelligence/event-context/` (nur Types, Helper, Naming — keine Detektion, keine Schwellenwerte, nicht verdrahtet).',
+      'Reframing: der Whole-Trip-HF-Pfad wird als „Trip Signal Summary Enrichment“ benannt, nicht mehr als primäre „Post-Trip HF Abuse Detection“ (nur Kommentare/Labels, keine Renames).',
+      'Zentrale Types: `AnchorType`, `ContextClassification`, `EvidenceGrade`, `ContextConfidence`, `ContextReasonCode`, `SignalCoverageQuality`, `ContextWindowDataQuality`.',
+      'Guardrails auf Basis des Capability-Layers: `isLteR1NativeEventCapable`, `isIceEngineContextApplicable`, `isEvContextApplicable`, `shouldRunIceEventContextEnrichment`, `shouldSkipIceContextForEv`.',
+      'Regel: ICE-Engine-Context (RPM/Throttle/EngineLoad/Coolant) nur für LTE_R1/ICE; Tesla/EV nie in ICE-Logik; native DIMO behavior events bleiben für alle LTE_R1 (inkl. EV) erlaubt.',
+    ],
+    reason:
+      'DIMO `signals(interval:"1s")` liefert bei LTE_R1 real oft nur sparse Whole-Trip-Telemetrie (Median ~3–6s, P95 ~21s). Der alte Whole-Trip-HF-Pfad darf daraus keine aggressiven Kurzzeit-Misuse-Momente behaupten. Die neue Architektur ankert Misuse auf vertrauenswürdige Trigger (native Events + RPM-Webhook) und reichert nur deren Kontext an.',
+    previousBehavior:
+      'Der Whole-Trip-HF-Pfad wurde sprachlich als primäre „Abuse Detection“ verstanden; es fehlten zentrale Types/Guardrails für eine saubere LTE_R1/ICE-vs-Tesla/EV-Trennung.',
+    details:
+      '**Backend (neu)**: `event-context/event-context.types.ts`, `event-context/engine-context.guards.ts`, `event-context/index.ts` + Specs `engine-context.guards.spec.ts`, `event-context.types.spec.ts` (20 Tests grün). **Reframing-Kommentare (keine Logikänderung)**: `trips/trip-behavior-enrichment.service.ts` Header, `trips/hf-abuse.ts` Header. Guards bauen auf `vehicle-capabilities.ts` (`getVehicleCapabilities`, `deriveVehicleCapabilityProfile`) — keine zweite Wahrheit. **Bewusst NICHT umgesetzt**: keine Verdrahtung in Enrichment/Misuse, keine RPM-Webhook-Intake-Implementierung, keine Tesla/EV-Logik, keine Prisma/Migration, keine Schwellenwerte.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-28T12:30:00.000Z',
+  },
+  {
+    id: 'tenant-billing-ui-refactor-v4985-2026-06-27',
+    version: '4.9.85',
+    title: 'V4.9.85 — Tenant Billing UI/UX Refactor (Abrechnung & Abo)',
+    summary: [
+      'PageHeader-Konvention: Titel „Abrechnung & Abo“ ohne Subtext/Eyebrow; Hilfstext in Billing Overview Card.',
+      'Professionelle Loading-Skeletons, userfreundliche Fehlerzustände und Empty States ohne rohe Backend-Meldungen.',
+      'Billing Status Hero, Subscription Card, Payment Method Card und Invoice Section im kompakten SaaS-Stil.',
+      'Stripe-UI-Zustände: configured / prepared / not_configured — Portal-CTA nur bei `stripeConfigured`.',
+      'Billable Vehicles Drawer mit klarerem Ausschlussgrund und Provider-Status.',
+    ],
+    reason:
+      'Die Tenant-Billing-Seite soll wie eine professionelle SaaS-Abrechnungsseite wirken — klar, kompakt, Stripe-ready, ohne Fake-Actions.',
+    previousBehavior:
+      'Manueller Page-Titel mit Subtext, einzelne Lade-Pille, rohe Fehlertexte, deaktivierte aber irreführende Stripe-Buttons, inkonsistente Button-Stile.',
+    details:
+      '**Frontend**: `BillingTab`, `BillingStatusHero`, `BillingSubscriptionCard`, `BillingPaymentMethodCard`, `BillingInvoiceSection`, `BillableVehiclesDrawer`, `billing-stripe-ui.ts`, `useBillingStripeActions.ts`, `billing.utils.ts`, `billing-load.utils.ts`. Keine Backend-/Billing-Berechnungsänderungen.',
+    affectsArchitecture: false,
+    module: 'Billing',
+    createdAt: '2026-06-27T18:00:00.000Z',
+  },
+  {
+    id: 'stripe-billing-backend-integration-v4984-2026-06-27',
+    version: '4.9.84',
+    title: 'V4.9.84 — Stripe Billing Backend Integration',
+    summary: [
+      'Neuer `StripeBillingService`: Customer (idempotent), Customer Portal, Setup Intent, Payment-Method-Sync, Subscription-Sync.',
+      'Stripe Webhook Receiver `POST /api/v1/webhooks/stripe` mit Signaturprüfung, Event-Idempotenz und Invoice/Payment/Subscription Mirror.',
+      '`StripePreparedService` delegiert an echte Stripe-API wenn `STRIPE_SECRET_KEY` gesetzt; sonst weiterhin NOT_CONFIGURED.',
+      'Customer Mapping über `BillingSubscription.stripeCustomerId` (eine Org → ein Stripe Customer).',
+    ],
+    reason:
+      'SynqDrive nutzt Stripe als Zahlungsdienstleister; Portal, Setup Intent und Sync waren bisher Platzhalter/NOT_IMPLEMENTED.',
+    previousBehavior:
+      '`StripePreparedService` warf 501 für Portal/Setup Intent; kein Webhook Receiver; keine Invoice/Payment-Method-Spiegelung aus Stripe Events.',
+    details:
+      '**Backend**: `stripe-billing.service.ts`, `stripe-webhook.service.ts`, `stripe-webhook.controller.ts`, `stripe-invoice-mirror.service.ts`, `stripe-status.mapper.ts`, `stripe.config.ts`, `stripe` npm package. Tests in `stripe-*.spec.ts`. ENV: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CUSTOMER_PORTAL_RETURN_URL`, `STRIPE_DEFAULT_PRICE_ID`, `STRIPE_CURRENCY`. Keine Kartendaten lokal; keine Schemaänderung.',
+    affectsArchitecture: true,
+    module: 'Billing',
+    createdAt: '2026-06-27T16:00:00.000Z',
+  },
+  {
+    id: 'master-billing-control-center-canonical-v4983-2026-06-27',
+    version: '4.9.83',
+    title: 'V4.9.83 — Master Admin Billing: kanonisches Billing Control Center',
+    summary: [
+      'Sidebar-Route `subscriptions` → `billing`; App rendert direkt `BillingControlCenter`.',
+      '`SubscriptionsView` ist deprecated Re-Export — keine zweite Billing-Wahrheit.',
+      'OrganizationDetailView Billing-Tab: Mock-Plan/MRR/Rechnungen entfernt; Deep-Link ins Billing Control Center.',
+      'Header-Actions auf SynqDrive `Button`; Org-Drawer zeigt nur verdrahtete Admin-Actions (Stripe Sync).',
+    ],
+    reason:
+      'Master Admin hatte historisch eine Demo-SubscriptionsView; das Billing Control Center war bereits implementiert, aber Navigation und Org-Detail-Billing zeigten noch Mock-Daten.',
+    previousBehavior:
+      'Sidebar „Subscriptions“, App importierte `SubscriptionsView` (Wrapper). Org-Detail Billing-Tab mit hardcodierten Plan/MRR/Invoice-Daten aus platform-data.',
+    details:
+      '**Frontend**: `Sidebar.tsx`, `App.tsx`, `BillingControlCenter.tsx`, `SubscriptionsView.tsx`, `OrganizationDetailView.tsx`, `BillingOrgDetailDrawer.tsx`, `BillingStripeTab.tsx`. Test: `billing-control-center.test.ts`. Keine Backend-/Schemaänderung.',
+    affectsArchitecture: true,
+    module: 'Billing',
+    createdAt: '2026-06-27T14:00:00.000Z',
+  },
+  {
+    id: 'tenant-billing-org-scope-wiring-v4982-2026-06-27',
+    version: '4.9.82',
+    title: 'V4.9.82 — Tenant Billing: orgId-Wiring & PermissionsGuard-Fix',
+    summary: [
+      '`PermissionsGuard` löst Org-Kontext jetzt aus Path-Param, Query `orgId` oder JWT `organizationId` — tenant Billing-Routen (`/billing/*`) funktionieren ohne `:orgId` im Pfad.',
+      '`api.billing.org*` sendet optional `?orgId=`; `useBillingData` übergibt `orgId` an Summary, Invoices und Billable Vehicles.',
+      'BillingTab zeigt klare Fehlermeldungen bei fehlender Organisation oder fehlender Berechtigung statt „Organization context required“.',
+    ],
+    reason:
+      'Die Tenant-Seite „Abrechnung & Abo“ zeigte „Abrechnungsdaten nicht verfügbar“ / „Organization context required“, weil der Frontend-Hook orgId nicht an die API weitergab und der PermissionsGuard nur `params.orgId` akzeptierte.',
+    previousBehavior:
+      '`useBillingData` rief `api.billing.orgSummary()` ohne orgId auf; `orgSubscriptions`/`orgInvoices` unterstützten kein Query-Org; PermissionsGuard blockierte `/billing/*` für normale Org-User.',
+    details:
+      '**Backend**: `permission.util.ts` (`resolvePermissionOrgId`), `permissions.guard.ts`. **Frontend**: `api.ts` (`billingTenantQuery`), `useBillingData.ts`, `billing-load.utils.ts`, `BillingTab.tsx`. Tests in `permissions.guard.spec.ts`, `billing-load.utils.test.ts`, `useBillingData.test.ts`. Keine Stripe-Integration, keine Schemaänderung, keine Permission-Lockerung.',
+    affectsArchitecture: true,
+    module: 'Billing',
+    createdAt: '2026-06-27T12:00:00.000Z',
+  },
+  {
+    id: 'page-header-convention-v4981-2026-06-27',
+    version: '4.9.81',
+    title: 'V4.9.81 — Page Header Konvention: Stations, Tasks, Insights, Price Tariffs',
+    summary: [
+      'Stations: Titel-Icon entfernt; PageHeader nur mit Seitentitel + Actions.',
+      'Task Management: „New Task“ auf zentrale Button-Komponente (primary).',
+      'Insights: PageHeader mit Titel ergänzt; doppelter H1 entfernt; Refresh im Header.',
+      'Price Tariffs: Description/Subtext entfernt; Header-Actions auf Button-Komponente.',
+    ],
+    reason: 'Inkonsistente Page Headers (Icons, Subtexte, manuelle Button-Klassen) wichen von der neuen SynqDrive-Konvention ab.',
+    previousBehavior: 'Stations mit MapPin-Icon; Tasks mit sq-press-Button; Insights ohne Seitentitel; Price Tariffs mit Description-Subtext.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-27T02:00:00.000Z',
+  },
+  {
+    id: 'global-task-detail-panel-v4980-2026-06-26',
+    version: '4.9.80',
+    title: 'V4.9.80 — Task Detail Panel: operatives UI, Zuweisung & Notizen',
+    summary: [
+      'Globale Task-Detailansicht (`GlobalTaskDetailPanel`) ersetzt debug-lastiges AppDialog-Modal in TasksView.',
+      'Keine vollständigen UUIDs im Header; Task-Meta-Debugblock in einklappbare Technische Details verschoben.',
+      'Verantwortlichkeit via Routing (Assignee → Stationsleiter → Org-Leader); Zuweisen/Weiterleiten und Notizen über bestehende APIs.',
+      'Abschluss mit Dialog statt window.prompt; Timeline menschenlesbar (DE); Fahrzeug mit Kennzeichen/Modell.',
+    ],
+    reason:
+      'Die Task-Detailansicht war für operative Nutzer nicht nutzbar (UUIDs, System als Assignee, keine Notizen/Zuweisung).',
+    previousBehavior:
+      'AppDialog mit Task-Meta-Rohwerten, Assigned To: System, read-only Comments, window.prompt für Abschluss-Notiz.',
+    details:
+      'Neu: `GlobalTaskDetailPanel.tsx`, `task-responsibility.utils.ts`, `task-timeline-display.utils.ts`. Geändert: `TasksView.tsx`, `task-list.utils.ts`.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T12:00:00.000Z',
+  },
+  {
+    id: 'rental-rules-admin-ui-v4979-2026-06-26',
+    version: '4.9.79',
+    title: 'V4.9.79 — Rental Rules Admin: kompakter Header, Summary-KPIs & Requirements-UI',
+    summary: [
+      'Administration → Rental Rules: PageHeader ohne Icon; Actions als Button-Row (Refresh icon, Edit neutral, Create primary).',
+      'Summary-KPIs als `RentalRulesSummaryTile` (booking-kpi-tile); Rule-Hierarchy via `RuleInheritanceSteps`; Default Rules mit `RuleValueTile` density mini.',
+      'Kategorien/Overrides/Unassigned kompakter; Shared Requirements-UI (`RuleInheritanceSteps`, `RentalRulesSectionIntro`, `RuleValueTile`).',
+    ],
+    reason:
+      'Rental Rules wirkte wie ein Hero-Dashboard statt wie ein professionelles Regel-Center im Stil des Requirements Tabs.',
+    previousBehavior:
+      'MetricCard-Hero-KPIs, PageHeader mit Shield-Icon, große Default-Rule-Karten, luftige Category-Cards.',
+    details:
+      'Geändert: `RentalRulesTab.tsx`, `RentalRulesSummaryTile.tsx`, `rental-requirements-ui.tsx` (density mini). API/Hook unverändert.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T00:00:00.000Z',
+  },
+  {
+    id: 'customers-list-audit-v4979-2026-06-27',
+    version: '4.9.79',
+    title: 'V4.9.79 — Customers List: UI-Angleichung & Booking-Prefill',
+    summary: [
+      'Customers List: PageHeader „Kunden & Fahrer“, Button-System, dense KPI-Grid, deutsche Labels, Mobile Cards.',
+      'Shared mergeAdditionalCustomers + StatusChip-Tones aus customer-detail-ui.',
+      'Neue Buchung aus Customer Detail: initialCustomerId-Prefill in NewBookingView + Rücksprung zur Vollansicht.',
+    ],
+    reason: 'Finaler Customers-Audit: Liste, Quick View und Full Detail visuell und funktional konsistent verdrahten.',
+    previousBehavior: 'Hero-KPIs, englische List-Labels, Booking-Flow ohne customerId aus Customer Detail.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-06-27T04:00:00.000Z',
+  },
+  {
+    id: 'customer-full-detail-ui-v4978-2026-06-27',
+    version: '4.9.78',
+    title: 'V4.9.78 — Customer Full Detail: Header, Actions & Decision Cards',
+    summary: [
+      'Full Detail Header mit kompaktem `CustomerDetailHeader`: Backlink, Meta, StatusChip-Badges, Action Row auf `Button`-System.',
+      'Actions vereinheitlicht mit Quick View: Suspendieren/Reaktivieren-Shortcut, Kontakt, Neue Buchung, Dokument, Notiz, Status, Risiko.',
+      'Decision Cards: Mietfreigabe-Fehlerbox kompakt mit Retry, Verifikation/Finanzen/Fahrbelastung über `CustomerQuickViewDetailRow`.',
+      'Tabs, Finanzen-KPIs und Timeline auf SynqDrive Patterns migriert.',
+    ],
+    reason: 'Full Detail wich visuell und bei Actions von Quick View ab; Buttons nutzten noch alte sq-press-Klassen.',
+    previousBehavior: 'PageHeader mit truncate-Titel, sq-press Actions ohne Suspend-Shortcut/Kontakt, rohe Eligibility-Fehlertexte.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-06-27T03:00:00.000Z',
+  },
+  {
+    id: 'customer-quick-view-ui-v4977-2026-06-27',
+    version: '4.9.77',
+    title: 'V4.9.77 — Customer Quick View: kompaktes operatives Panel',
+    summary: [
+      'Quick View neu strukturiert: Header mit kontextuellem Status-Action, Identity Card mit StatusChip-Badges, kompakte KPI-Grid (`booking-kpi-tile--dense`).',
+      'Buttons auf `Button`-System migriert (neutral/destructive/success/warning); keine konkurrierenden Status-Actions mehr.',
+      'Sektionen: Mietfreigabe, Verifikation, Profil, Kontakt, Finanzbelastung (Rechnungen/Bußgelder), Notiz/Timeline.',
+      'Mobile: Sheet-artiges Modal, sticky Header, safe-area Padding, umbrechende Actions.',
+    ],
+    reason: 'Quick View wirkte mockartig mit farbigen Hero-KPIs, Dot-Separators und inkonsistenten Buttons.',
+    previousBehavior: 'Große sq-tone KPI-Flächen, englische Labels, doppelte Full-Detail-Buttons, keine Eligibility im Quick View.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-06-27T02:00:00.000Z',
+  },
+  {
+    id: 'customer-status-risk-wiring-v4976-2026-06-27',
+    version: '4.9.76',
+    title: 'V4.9.76 — Customers: Status/Risk-Endpunkte & Mietfreigabe-Wiring',
+    summary: [
+      'Customer Quick View „Suspend Customer“ nutzt jetzt `PATCH .../customers/:id/status` statt `PATCH .../customers/:id` mit `{ status }` (Validation: property status should not exist).',
+      'Gemeinsame Mutations-Utils `customer-mutations.utils.ts` für Status (`updateStatus`) und Risk (`updateRisk`).',
+      'Nach Statusänderung: Quick View Detail-Reload, Listen-Update via `onUpdateCustomer`, Toast-Feedback.',
+      'Mietfreigabe-Hook zeigt API-Fehlermeldungen und Retry-Button in Decision Cards und Overview.',
+    ],
+    reason: 'Statusänderungen liefen fälschlich über den generischen Customer-Update-DTO; Mietfreigabe-Fehler waren nicht diagnostizierbar.',
+    previousBehavior: 'CustomerDetailModal.changeStatus → api.customers.update({ status }); Eligibility-Fehler nur generisch ohne Retry.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Customers',
+    createdAt: '2026-06-27T01:00:00.000Z',
+  },
+  {
+    id: 'bookings-kpi-density-v4978-2026-06-26',
+    version: '4.9.78',
+    title: 'V4.9.78 — Bookings Tab: KPI-Karten dichter und ruhiger (Mobile + Desktop)',
+    summary: [
+      'Summary-KPIs: kleinere Typografie (numeric 20–24px, text/status 13–17px), `--dense` Padding, `items-start` statt Stretch — keine luftigen Hero-Karten mehr.',
+      'Ein gemeinsames `gridSummary` (2 Spalten mobile, 4 desktop); Header-Detailtext kleiner; leere Werte konsequent `subdued`.',
+      'Keine Änderung an Booking-/Timeline-/Drawer-Verdrahtung.',
+    ],
+    reason:
+      'KPI-Karten wirkten auf Mobile und Desktop weiterhin zu groß, zu hoch und wie Dashboard-Hero-Elemente.',
+    previousBehavior:
+      'Größere Schrift (bis 26px), items-stretch Grid, getrennte Metric-/Availability-Grids mit mehr vertikalem Abstand.',
+    details:
+      'Geändert: `VehicleBookingSummaryCard.tsx`, `VehicleBookingsOperatorHeader.tsx`, `vehicle-bookings-ui.ts`, `theme.css`.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T00:00:00.000Z',
+  },
+  {
+    id: 'bookings-tab-summary-ui-v4977-2026-06-26',
+    version: '4.9.77',
+    title: 'V4.9.77 — Bookings Tab: kompakter Header + ruhige Summary-KPIs',
+    summary: [
+      'Vehicle Detail → Bookings: Eyebrow „Fahrzeugbetrieb“ entfernt; Header „Buchungen & Verfügbarkeit“ kompakter mit Fahrzeugname als Meta und Status-Chip.',
+      'Summary-KPIs: `.booking-kpi-tile` statt großer sq-card/MetricCard-Optik; getrennte Typografie für numeric/text/status; Null-/Leerwerte subdued.',
+      'Labels leicht geklärt (z. B. „Auslastung“ statt „Auslastung · 14 Tage“ im Titel); Horizon im Hint. Timeline/Agenda/Drawer unverändert.',
+    ],
+    reason:
+      'Der obere Bookings-Bereich wirkte wie ein Hero-Dashboard mit zu großen KPI-Werten und redundantem Header.',
+    previousBehavior:
+      'Großer Section-Header mit Eyebrow, font-mono Hero-Zahlen für Umsatz/Auslastung, einspaltiges Mobile-Grid mit hohen Karten.',
+    details:
+      'Geändert: `VehicleBookingsOperatorHeader.tsx`, `VehicleBookingSummaryCard.tsx`, `vehicle-bookings-ui.ts`, `theme.css`. Datenfluss `VehicleBookingsView` → `api.bookings.list` unverändert.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T00:00:00.000Z',
+  },
+  {
+    id: 'damages-tab-summary-ui-v4976-2026-06-26',
+    version: '4.9.76',
+    title: 'V4.9.76 — Damages Tab: Damage Status + kompakte Summary-KPIs',
+    summary: [
+      'Vehicle Detail → Damages: obere Statusbox von „Rental status“ / „Vehicle rentable“ auf „Damage Status“ mit schadensbezogener Copy umgestellt (UI-only).',
+      'Summary-KPIs: kompaktere Typografie (`.damage-kpi-tile`), ruhigere Null-/Leerwerte, verständlichere Labels (Open damages, Blocking, Missing location, …).',
+      'Display-Helper `damage-summary-display.ts` für Status-Text/Badge; `deriveControlStats` und Rental-Impact-Logik unverändert.',
+    ],
+    reason:
+      'Im Damages Tab wirkte der obere Bereich wie ein Rental-Readiness-Block; KPI-Werte waren typografisch zu dominant.',
+    previousBehavior:
+      '„Rental status“ mit rentabilityLabel, große MetricCard-Hero-KPIs für Open/Blocking/Cost/Oldest.',
+    details:
+      'Geändert: `DamageControlSummary.tsx`, `damage-summary-display.ts`, `theme.css`. Verdrahtung über `DamagesView` → `useVehicleDamages` → `deriveControlStats` bleibt gleich.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T00:00:00.000Z',
+  },
+  {
+    id: 'tasks-page-audit-fix-v4975-2026-06-26',
+    version: '4.9.75',
+    title: 'V4.9.75 — Tasks-Seite: UUID-Anzeige entfernt, Erstellt von, Summary-Load & Mobile Cards',
+    summary: [
+      'Tasks-Liste zeigt primär den Aufgabentitel statt der vollen UUID; technische Referenz nur noch gekürzt im Detail (`#…bc10`).',
+      'Neue Spalte/Feld „Erstellt von“ neben „Zugewiesen an“; Systemtasks ohne Creator als „SynqDrive Automation“.',
+      'Backend `TasksService.format()` liefert jetzt `createdByUserId` und `updatedByUserId`; Frontend mappt Namen über Org-Members.',
+      'Initialer Page Load nutzt List + Summary gemeinsam; Sortierung über `createdAtRaw`/`dueDateRaw`. Mobile Card-Layout für Tasks.',
+      'New-Task-Wizard: ignoriertes Pflichtfeld „Erstellt von“ entfernt; Review zeigt aktuellen eingeloggten User — Backend bleibt Source of Truth.',
+    ],
+    reason: 'Die Tasks-Seite war operativ schwer lesbar (UUID als Hauptinhalt), Summary-KPIs erst nach Mutation korrekt, Creator-Feld im Formular wirkte Pflicht, wurde aber nicht gesendet.',
+    previousBehavior: 'Task-Spalte mit voller UUID über Titel; nur Assigned To; kein createdByUserId in API; Initial Load ohne Summary; Sort nach UUID/formatted date strings; Mobile nur horizontale Tabelle.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Tasks',
+    createdAt: '2026-06-27T00:00:00.000Z',
+  },
+  {
+    id: 'trips-overview-card-copy-v4975-2026-06-26',
+    version: '4.9.75',
+    title: 'V4.9.75 — Trips Overview Card: ruhigere Typografie und Copy',
+    summary: [
+      'Trips Tab Overview Card: redundante Eyebrow „Fahrzeug · Fahrten“ und Subline mit Fahrten/Event-Zahlen entfernt.',
+      '„Fahrverlauf“ typografisch verkleinert; Datum kompakt in derselben Header-Zeile (`formatSelectedPeriodHeaderDate`).',
+      'KPI-Labels: „Auffällig“ → „Ereignisse“, „Privat / offen“ → „Privat“; Datenqualität-KPI nur in dieser Card ausgeblendet (Logik bleibt).',
+      'Alert-Copy mit sauberer Singular/Plural-Form: „auffälliges Ereignis“ / „auffällige Ereignisse“.',
+    ],
+    reason: 'Die zusammengefasste Trips Overview Card wirkte redundant und typografisch zu laut.',
+    previousBehavior: 'Eyebrow + großer Titel + Subline mit Datum/Fahrten/auffällig; KPI „Auffällig“, „Privat / offen“, „Datenqualität“.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T23:55:00.000Z',
+  },
+  {
+    id: 'vehicle-detail-header-refactor-v4974-2026-06-26',
+    version: '4.9.74',
+    title: 'V4.9.74 — Vehicle Detail Header: kompakter Layout-Refactor + Ready/Not Ready',
+    summary: [
+      'Vehicle Detail Header aus `App.tsx` in `VehicleDetailHeader` extrahiert: Meta-Zeile (Kennzeichen/Station mit Icons), Titelzeile (Make/Model/Year + Brand-Logo), Status-Chips und Back-Button in klarer Desktop-/Mobile-Struktur.',
+      'Mobile: Last-Signal/Standby kompakt oben rechts in der Meta-Zeile; Brand-Logo neben dem kleineren Titel sichtbar.',
+      'Readiness-Chip zeigt kanonisch Ready / Not Ready statt „Available“ (Display-Mapping über `resolveFleetVehicleDisplayState`); operative Status-Dropdown-Aktionen bleiben unverändert.',
+    ],
+    reason: 'Der Vehicle-Detail-Header wirkte zu groß und auf Mobile unruhig; „Available“ war fachlich nicht das gewünschte Readiness-Label.',
+    previousBehavior: 'PageHeader mit großem Titel, Kennzeichen/Station als Eyebrow-Text, Status-Chips und Last Signal in der Actions-Spalte; Chip-Label „Available“.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T23:30:00.000Z',
+  },
+  {
     id: 'vehicle-health-box-compliance-tiles-v4973-2026-06-26',
     version: '4.9.73',
     title: 'V4.9.73 — Vehicle Health Box: Service/TÜV/BOKraft-Kacheln wieder sichtbar',

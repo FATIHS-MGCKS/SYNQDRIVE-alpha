@@ -98,6 +98,12 @@ export class CreateSubscriptionDto {
   stripeSubscriptionId!: string;
 }
 
+export class StripeCustomerPortalDto {
+  @IsOptional()
+  @IsString()
+  returnUrl?: string;
+}
+
 export class AdminInvoiceQueryDto {
   @IsOptional()
   @IsString()

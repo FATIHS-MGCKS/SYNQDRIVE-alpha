@@ -21,7 +21,7 @@
  *   Both are also mirrored to deprecated harsh* aliases.
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   DimoSegmentsService,
@@ -29,6 +29,8 @@ import {
 } from '../../dimo/dimo-segments.service';
 import { DrivingEventType, DrivingEventSource } from '@prisma/client';
 import { preprocessHighFrequency, type CleanHfPoint } from './hf-preprocessing';
+import { EventContextEnrichmentService } from '../event-context/event-context-enrichment.service';
+import { shouldRunIceEventContextEnrichment } from '../event-context/engine-context.guards';
 
 // ── Cold-engine badge threshold ────────────────────────────────────────────────
 // Events occurring when coolant < this value get a coldEngineContext badge.
@@ -140,6 +142,9 @@ export class LteR1BehaviorEnrichmentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly segments: DimoSegmentsService,
+    // Optional: native-event Context Enrichment (Phase 3). Best-effort add-on —
+    // when absent (e.g. in unit tests) native event intake works unchanged.
+    @Optional() private readonly eventContext?: EventContextEnrichmentService,
   ) {}
 
   /**
@@ -159,6 +164,8 @@ export class LteR1BehaviorEnrichmentService {
         vehicle: {
           select: {
             organizationId: true,
+            hardwareType: true,
+            fuelType: true,
             dimoVehicle: { select: { tokenId: true } },
           },
         },
@@ -281,6 +288,14 @@ export class LteR1BehaviorEnrichmentService {
       `harsh accel=${counters.harshAcceleration}, cold-engine=${coldEngineAnnotations})`,
     );
 
+    // ── 5. Best-effort per-event Context Enrichment (Phase 3) ─────────────────
+    // Runs AFTER native events are committed, so a context failure can never
+    // roll back / lose a native event. Only for LTE_R1/ICE; Tesla/EV skipped.
+    await this.enrichNativeEventContexts(tripId, {
+      hardwareType: trip.vehicle.hardwareType,
+      fuelType: trip.vehicle.fuelType,
+    }, normalized.length);
+
     return {
       drivingEventsIngested: normalized.length,
       harshBrakingCount: counters.harshBraking,
@@ -292,6 +307,59 @@ export class LteR1BehaviorEnrichmentService {
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
+
+  /**
+   * Best-effort: for each persisted native DrivingEvent of this trip, run Event
+   * Context Enrichment (T±30s signal window → contextAssessment in metadataJson).
+   *
+   * Guarantees:
+   *   - Never throws (a context failure must not abort trip enrichment).
+   *   - Skips entirely for Tesla/EV and non-LTE_R1/ICE vehicles
+   *     (NOT_APPLICABLE_POWERTRAIN) — no contextAssessment written.
+   *   - Runs only when the service is wired (optional dependency present).
+   */
+  private async enrichNativeEventContexts(
+    tripId: string,
+    vehicle: { hardwareType: import('@prisma/client').HardwareType | null; fuelType: string | null },
+    persistedCount: number,
+  ): Promise<void> {
+    if (!this.eventContext || persistedCount === 0) return;
+
+    if (!shouldRunIceEventContextEnrichment(vehicle)) {
+      this.logger.debug(
+        `LTE_R1 enrich: skip event context for trip ${tripId} — not LTE_R1/ICE (NOT_APPLICABLE_POWERTRAIN)`,
+      );
+      return;
+    }
+
+    let events: Array<{ id: string }>;
+    try {
+      events = await this.prisma.drivingEvent.findMany({
+        where: { tripId, source: DrivingEventSource.TELEMETRY_EVENTS },
+        select: { id: true },
+      });
+    } catch (err: any) {
+      this.logger.warn(
+        `LTE_R1 enrich: could not load events for context enrichment (trip ${tripId}): ${err?.message ?? err}`,
+      );
+      return;
+    }
+
+    let enriched = 0;
+    for (const ev of events) {
+      try {
+        // enrichDrivingEventContext is itself best-effort and never throws, but
+        // we double-guard so one bad event can never stop the rest.
+        await this.eventContext.enrichDrivingEventContext(ev.id);
+        enriched += 1;
+      } catch (err: any) {
+        this.logger.warn(
+          `LTE_R1 enrich: context enrichment failed for event ${ev.id}: ${err?.message ?? err}`,
+        );
+      }
+    }
+    this.logger.debug(`LTE_R1 enrich: context-enriched ${enriched}/${events.length} events for trip ${tripId}`);
+  }
 
   private async buildHfContextMap(
     tokenId: number,

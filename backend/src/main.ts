@@ -101,7 +101,7 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-seed-token', 'x-hm-signature', 'x-dimo-signature'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-seed-token', 'x-hm-signature', 'x-dimo-signature', 'stripe-signature'],
   });
 
   app.useGlobalPipes(

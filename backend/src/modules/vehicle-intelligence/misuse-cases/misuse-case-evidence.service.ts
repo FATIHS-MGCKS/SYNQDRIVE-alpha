@@ -82,6 +82,7 @@ export class MisuseCasePersistenceHelper {
     const evidenceSummary = {
       eventTypes: [...new Set(candidate.evidence.map((e) => e.eventType))],
       sources: [...new Set(candidate.evidence.map((e) => e.sourceType))],
+      ...(candidate.evidenceSummary ?? {}),
     };
 
     if (!existing) {

@@ -202,6 +202,10 @@ export interface UnifiedBehaviorEvent {
   // Native original event identity (only present for native DIMO events).
   originalEventName: string | null;
   originalEventSource: string | null;
+  // Phase 3: per-event Context Assessment (T±30s engine-signal window). Only
+  // present for native LTE_R1/ICE events that were context-enriched; null
+  // otherwise. Mirrors metadataJson.contextAssessment for first-class access.
+  contextAssessment: unknown | null;
   // ── Abuse relevance (explains the KPI contribution) ──
   abuseRelevant: boolean;
   abuseCategory: string | null;
@@ -259,6 +263,8 @@ export function mapDrivingEventRow(
       typeof meta.dimoEventName === 'string' ? meta.dimoEventName : null,
     originalEventSource:
       typeof meta.dimoEventSource === 'string' ? meta.dimoEventSource : null,
+    contextAssessment:
+      meta.contextAssessment !== undefined ? meta.contextAssessment : null,
     ...abuse,
   };
 }
@@ -300,6 +306,7 @@ export function mapBehaviorEventRow(e: BehaviorEventRow): UnifiedBehaviorEvent {
       : [],
     originalEventName: null,
     originalEventSource: null,
+    contextAssessment: null,
     ...abuse,
   };
 }

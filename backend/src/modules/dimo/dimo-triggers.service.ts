@@ -104,11 +104,17 @@ export class DimoTriggersService {
     await this.subscribeVehicle(webhookId, tokenId, ['obdDTCList']);
   }
 
+  /** Subscribe a vehicle to OBD plug/unplug state changes (connectivity/tamper). */
+  async registerDeviceConnectionTrigger(webhookId: string, tokenId: number): Promise<void> {
+    await this.subscribeVehicle(webhookId, tokenId, ['obdIsPluggedIn']);
+  }
+
   async registerAllTriggersForVehicle(webhookId: string, tokenId: number): Promise<void> {
     await this.subscribeVehicle(webhookId, tokenId, [
       'obdDTCList',
       'speed',
       'isIgnitionOn',
+      'obdIsPluggedIn',
     ]);
     this.logger.log(`All triggers registered for tokenId=${tokenId}`);
   }

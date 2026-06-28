@@ -8,6 +8,12 @@ import {
   sanitizeUserFacingIssueText,
   type OperationalIssue,
 } from '../lib/operational-issues';
+import {
+  confidenceLabel as contextConfidenceLabel,
+  contextClassificationLabel,
+  evidenceGradeLabel,
+  reasonCodeLabel,
+} from './trips/event-context-ui';
 
 export type MisuseCaseRecord = {
   id: string;
@@ -132,11 +138,134 @@ function normalizedCases(
   }).filter((issue) => issue.domain === 'misuse' || issue.domain === 'damage');
 }
 
+interface ContextEvidence {
+  sourceAnchors?: { drivingEventIds?: string[]; rpmCandidateIds?: string[] };
+  contextClassifications?: string[];
+  evidenceGrade?: string | null;
+  confidence?: string | null;
+  usedSignals?: string[];
+  missingSignals?: string[];
+  reasonCodes?: string[];
+  windowStart?: string | null;
+  windowEnd?: string | null;
+  keyValues?: Record<string, number | null | undefined>;
+}
+
+function readContextEvidence(
+  evidenceSummary: Record<string, unknown> | null | undefined,
+): ContextEvidence | null {
+  if (!evidenceSummary || typeof evidenceSummary !== 'object') return null;
+  const ce = (evidenceSummary as Record<string, unknown>).contextEvidence;
+  if (!ce || typeof ce !== 'object') return null;
+  return ce as ContextEvidence;
+}
+
+function formatWindow(start?: string | null, end?: string | null): string | null {
+  if (!start) return null;
+  try {
+    const s = new Date(start);
+    const e = end ? new Date(end) : null;
+    const t = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return e ? `${t(s)} – ${t(e)}` : t(s);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Renders the structured context evidence behind a misuse case so the operator
+ * sees WHY it was raised — source anchors, evidence grade/confidence, the engine
+ * signals used, reason codes and the context window. No "black box".
+ */
+function MisuseContextEvidence({ evidence }: { evidence: ContextEvidence }) {
+  const anchors = evidence.sourceAnchors;
+  const driving = anchors?.drivingEventIds?.length ?? 0;
+  const rpm = anchors?.rpmCandidateIds?.length ?? 0;
+  const window = formatWindow(evidence.windowStart, evidence.windowEnd);
+  const kv = evidence.keyValues ?? {};
+  const keyChips: Array<{ label: string; value: string }> = [];
+  if (typeof kv.maxRpm === 'number') keyChips.push({ label: 'Max Drehzahl', value: `${Math.round(kv.maxRpm)} rpm` });
+  if (typeof kv.maxThrottle === 'number') keyChips.push({ label: 'Max Gaspedal', value: `${Math.round(kv.maxThrottle)} %` });
+  if (typeof kv.maxEngineLoad === 'number') keyChips.push({ label: 'Max Motorlast', value: `${Math.round(kv.maxEngineLoad)} %` });
+  if (typeof kv.coolantAtEvent === 'number') keyChips.push({ label: 'Kühlmittel', value: `${Math.round(kv.coolantAtEvent)} °C` });
+  if (typeof kv.preSpeed === 'number' || typeof kv.postSpeed === 'number') {
+    keyChips.push({
+      label: 'Speed (vor→nach)',
+      value: `${typeof kv.preSpeed === 'number' ? Math.round(kv.preSpeed) : '—'} → ${typeof kv.postSpeed === 'number' ? Math.round(kv.postSpeed) : '—'} km/h`,
+    });
+  }
+
+  return (
+    <div className="mt-2 rounded-md border border-border/50 bg-muted/30 px-2.5 py-2 space-y-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Beweislage
+        </span>
+        {evidence.evidenceGrade && (
+          <span className="rounded-full border border-border/60 px-1.5 py-0.5 text-[8px] font-medium text-muted-foreground">
+            {evidenceGradeLabel(evidence.evidenceGrade)}
+          </span>
+        )}
+        {evidence.confidence && (
+          <span className="rounded-full border border-border/60 px-1.5 py-0.5 text-[8px] font-medium text-muted-foreground">
+            {contextConfidenceLabel(evidence.confidence)}
+          </span>
+        )}
+      </div>
+
+      {(evidence.contextClassifications?.length ?? 0) > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {evidence.contextClassifications!.map((c) => (
+            <span
+              key={c}
+              className="rounded-full border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-medium text-sky-600 dark:text-sky-400"
+            >
+              {contextClassificationLabel(c)}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <p className="text-[10px] text-muted-foreground">
+        Anker: {driving > 0 ? `${driving} natives Ereignis${driving === 1 ? '' : 'se'}` : 'keine'}
+        {rpm > 0 ? ` · ${rpm} RPM-Kandidat${rpm === 1 ? '' : 'en'}` : ''}
+        {window ? ` · Fenster ${window}` : ''}
+      </p>
+
+      {keyChips.length > 0 && (
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+          {keyChips.map((c) => (
+            <span key={c.label} className="text-[10px] text-muted-foreground tabular-nums">
+              {c.label}: <span className="font-medium text-foreground">{c.value}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {(evidence.usedSignals?.length ?? 0) > 0 && (
+        <p className="text-[9px] text-muted-foreground">
+          Signale: {evidence.usedSignals!.join(', ')}
+          {(evidence.missingSignals?.length ?? 0) > 0
+            ? ` · fehlend: ${evidence.missingSignals!.join(', ')}`
+            : ''}
+        </p>
+      )}
+
+      {(evidence.reasonCodes?.length ?? 0) > 0 && (
+        <p className="text-[9px] text-muted-foreground">
+          Gründe: {evidence.reasonCodes!.map((r) => reasonCodeLabel(r)).join(' · ')}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function issueForCase(
   issue: OperationalIssue,
   raw: MisuseCaseRecord | undefined,
   compact: boolean,
 ) {
+  const contextEvidence = readContextEvidence(raw?.evidenceSummary);
   const severity = raw?.severity ?? (issue.severity === 'critical' ? 'CRITICAL' : issue.severity === 'warning' ? 'WARNING' : 'INFO');
   const confidence = raw?.confidence ?? 'MEDIUM';
   return (
@@ -162,6 +291,7 @@ function issueForCase(
           ))}
         </div>
       ) : null}
+      {contextEvidence && <MisuseContextEvidence evidence={contextEvidence} />}
       {issue.recommendedAction && !compact && (
         <p className="text-[10px] text-muted-foreground mt-1">
           Empfohlen: {sanitizeUserFacingIssueText(issue.recommendedAction)}

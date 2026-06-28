@@ -22,7 +22,7 @@ export type MasterView =
   | 'users'
   | 'vehicles'
   | 'prospects'
-  | 'subscriptions'
+  | 'billing'
   | 'activity-log'
   | 'support'
   | 'settings'
@@ -124,8 +124,8 @@ export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, on
           <button onClick={() => go('activity-log')} className={itemCls(active('activity-log'))}>
             <Activity className={icon} /><span>Activity Log</span>
           </button>
-          <button onClick={() => go('subscriptions')} className={itemCls(active('subscriptions'))}>
-            <CreditCard className={icon} /><span>Subscriptions</span>
+          <button onClick={() => go('billing')} className={itemCls(active('billing'))}>
+            <CreditCard className={icon} /><span>Billing</span>
           </button>
           <button onClick={() => go('support')} className={itemCls(active('support'))}>
             <Headphones className={icon} /><span>Support Center</span>

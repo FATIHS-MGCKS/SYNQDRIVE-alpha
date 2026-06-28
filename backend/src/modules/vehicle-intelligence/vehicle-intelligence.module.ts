@@ -25,6 +25,7 @@ import { TripDetectionOrchestrationService } from './trips/trip-detection-orches
 import { TripBehaviorEnrichmentService } from './trips/trip-behavior-enrichment.service';
 import { TripEnrichmentOrchestratorService } from './trips/trip-enrichment-orchestrator.service';
 import { LteR1BehaviorEnrichmentService } from './trips/lte-r1-behavior-enrichment.service';
+import { EventContextEnrichmentService } from './event-context/event-context-enrichment.service';
 import { HfMirrorService } from './trips/hf-mirror.service';
 import { MapboxService } from './trips/mapbox.service';
 import { MapboxRouteMatcherService } from './trips/mapbox-route-matcher.service';
@@ -111,6 +112,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     TripBehaviorEnrichmentService,
     TripEnrichmentOrchestratorService,
     LteR1BehaviorEnrichmentService,
+    EventContextEnrichmentService,
     HfMirrorService,
     MapboxService,
     MapboxRouteMatcherService,
@@ -177,6 +179,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     TripBehaviorEnrichmentService,
     TripEnrichmentOrchestratorService,
     LteR1BehaviorEnrichmentService,
+    EventContextEnrichmentService,
     TripAssignmentService,
     DriverScoreService,
     TripAnalyticsCanonicalService,

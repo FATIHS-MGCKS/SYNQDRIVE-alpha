@@ -11,6 +11,7 @@ describe('CustomersService', () => {
       create: jest.fn(),
       findMany: jest.fn(),
       findFirst: jest.fn(),
+      findFirstOrThrow: jest.fn(),
       update: jest.fn(),
       count: jest.fn(),
     },
@@ -81,5 +82,53 @@ describe('CustomersService', () => {
         email: 'max@example.com',
       }),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('updateStatus changes status within org scope', async () => {
+    (prisma.customer.findFirst as jest.Mock).mockResolvedValue({
+      id: 'c1',
+      organizationId: 'org1',
+      status: 'ACTIVE',
+    });
+    (prisma.customer.update as jest.Mock).mockResolvedValue({
+      id: 'c1',
+      status: 'SUSPENDED',
+    });
+
+    const result = await service.updateStatus('org1', 'c1', { status: 'SUSPENDED', reason: 'test' }, 'u1');
+
+    expect(prisma.customer.update).toHaveBeenCalledWith({
+      where: { id: 'c1' },
+      data: { status: 'SUSPENDED' },
+    });
+    expect(timeline.addEvent).toHaveBeenCalled();
+    expect(result.status).toBe('SUSPENDED');
+  });
+
+  it('updateRisk sets manual risk within org scope', async () => {
+    (prisma.customer.findFirstOrThrow as jest.Mock).mockResolvedValue({
+      id: 'c1',
+      organizationId: 'org1',
+    });
+    (prisma.customer.update as jest.Mock).mockResolvedValue({
+      id: 'c1',
+      riskLevel: 'HIGH',
+    });
+
+    const result = await service.updateRisk(
+      'org1',
+      'c1',
+      { riskLevel: 'HIGH', riskReason: 'incidents' },
+      'u1',
+    );
+
+    expect(prisma.customer.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'c1' },
+        data: expect.objectContaining({ riskLevel: 'HIGH' }),
+      }),
+    );
+    expect(timeline.addEvent).toHaveBeenCalled();
+    expect(result.riskLevel).toBe('HIGH');
   });
 });

@@ -10,6 +10,7 @@ import {
 } from '@prisma/client';
 import type { DimoVehicleEventRecord } from '../../dimo/dimo-segments.service';
 import type { TripBehaviorEvent, DrivingEvent, VehicleTrip, VehicleDtcEvent } from '@prisma/client';
+import type { EventContextAssessment } from '../event-context/event-context-assessment.types';
 
 export type EvidenceCandidate = {
   sourceType: MisuseEvidenceSourceType;
@@ -33,6 +34,25 @@ export type CaseCandidate = {
   eventCount: number;
   firstDetectedAt: Date;
   lastDetectedAt: Date;
+  /**
+   * Optional structured evidence block merged into MisuseCase.evidenceSummary.
+   * Used by context-derived (LTE_R1/ICE) rules to surface source anchors,
+   * classifications, evidence grade/confidence, signals and key values.
+   */
+  evidenceSummary?: Record<string, unknown>;
+};
+
+/**
+ * A trustworthy anchor enriched with an Event Context Assessment, normalised for
+ * the misuse aggregator. `source` records where the anchor came from:
+ *   - DRIVING_EVENT : native DIMO behavior event (DrivingEvent.metadataJson.contextAssessment)
+ *   - RPM_CANDIDATE : RPM webhook candidate (RpmWebhookCandidate.contextAssessmentJson)
+ */
+export type ContextAnchor = {
+  source: 'DRIVING_EVENT' | 'RPM_CANDIDATE';
+  anchorId: string;
+  occurredAt: Date;
+  assessment: EventContextAssessment;
 };
 
 export type TripEvaluationContext = {
@@ -59,6 +79,12 @@ export type TripEvaluationContext = {
   drivingEvents: DrivingEvent[];
   dimoSafetyEvents: DimoVehicleEventRecord[];
   dtcEvents: VehicleDtcEvent[];
+  /**
+   * Event Context Assessments anchored inside the trip window — native behavior
+   * events and RPM webhook candidates. Optional for backward compatibility;
+   * defaults to an empty list when absent.
+   */
+  contextAnchors?: ContextAnchor[];
 };
 
 export type AttributionFields = {

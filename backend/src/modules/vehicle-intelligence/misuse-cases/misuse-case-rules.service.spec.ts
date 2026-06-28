@@ -37,7 +37,78 @@ function ctx(overrides: Partial<TripEvaluationContext>): TripEvaluationContext {
     drivingEvents: [],
     dimoSafetyEvents: [],
     dtcEvents: [],
+    contextAnchors: [],
     ...overrides,
+  };
+}
+
+function mkAnchor(
+  source: 'DRIVING_EVENT' | 'RPM_CANDIDATE',
+  id: string,
+  opts: {
+    anchorType?: 'DIMO_NATIVE_BEHAVIOR_EVENT' | 'RPM_WEBHOOK_CANDIDATE';
+    classifications: string[];
+    reasonCodes: string[];
+    sampleCount?: number;
+  },
+): any {
+  const sig = (max: number | null = null, extra: Record<string, unknown> = {}) => ({
+    signal: 'x',
+    count: 10,
+    nonNullCount: 8,
+    firstValue: null,
+    lastValue: null,
+    min: null,
+    max,
+    avg: null,
+    nearestValueToAnchor: null,
+    nearestSampleDistanceMs: 0,
+    valueBeforeAnchor: null,
+    valueAfterAnchor: null,
+    medianIntervalMs: 1000,
+    p95IntervalMs: 2000,
+    maxGapMs: 3000,
+    gapsOver2s: 0,
+    gapsOver5s: 0,
+    gapsOver10s: 0,
+    coverageQuality: 'GOOD',
+    ...extra,
+  });
+  return {
+    source,
+    anchorId: id,
+    occurredAt: new Date('2026-06-01T10:10:00Z'),
+    assessment: {
+      version: 1,
+      status: 'COMPLETED',
+      anchorType: opts.anchorType ?? 'DIMO_NATIVE_BEHAVIOR_EVENT',
+      anchorEvent: null,
+      anchorTimestamp: '2026-06-01T10:10:00.000Z',
+      windowStart: '2026-06-01T10:09:30.000Z',
+      windowEnd: '2026-06-01T10:11:30.000Z',
+      engineSignalsApplicable: true,
+      engineOnHint: true,
+      dataQuality: {
+        sampleCount: opts.sampleCount ?? 12,
+        medianIntervalMs: 1000,
+        p95IntervalMs: 2000,
+        maxGapMs: 3000,
+        nearestSampleToAnchorMs: 0,
+        coverage: [],
+      },
+      signalCoverage: [{ signal: 'rpm', nonNullCount: 8, quality: 'GOOD' }],
+      speedContext: sig(),
+      rpmContext: sig(4200),
+      throttleContext: sig(95),
+      engineLoadContext: sig(70),
+      coolantContext: sig(90),
+      reasonCodes: opts.reasonCodes,
+      preliminaryClassifications: opts.classifications,
+      confidence: 'MEDIUM',
+      evidenceGrade: 'B',
+      generatedAt: '2026-06-01T10:12:00.000Z',
+      error: null,
+    },
   };
 }
 
@@ -222,6 +293,29 @@ describe('MisuseCaseRulesService', () => {
       }),
     );
     expect(result.find((c) => c.type === MisuseCaseType.LAUNCH_ABUSE_PATTERN)).toBeUndefined();
+  });
+
+  it('native harsh acceleration context + RPM candidate overlap => one combined case', () => {
+    const aggStart = mkAnchor('DRIVING_EVENT', 'de-1', {
+      classifications: ['AGGRESSIVE_START'],
+      reasonCodes: ['NATIVE_EVENT_ANCHOR', 'HIGH_RPM', 'HIGH_THROTTLE'],
+    });
+    const highRpmConst = mkAnchor('RPM_CANDIDATE', 'rpm-1', {
+      anchorType: 'RPM_WEBHOOK_CANDIDATE',
+      classifications: ['HIGH_RPM_CONSTANT'],
+      reasonCodes: ['RPM_WEBHOOK_ANCHOR', 'HIGH_RPM'],
+      sampleCount: 9,
+    });
+
+    const result = service.evaluate(ctx({ contextAnchors: [aggStart, highRpmConst] }));
+    const aggressive = result.filter(
+      (c) => c.type === MisuseCaseType.AGGRESSIVE_DRIVING_PATTERN,
+    );
+    expect(aggressive).toHaveLength(1);
+    const summary = aggressive[0].evidenceSummary?.contextEvidence as any;
+    expect(summary.sourceAnchors.drivingEventIds).toContain('de-1');
+    expect(summary.sourceAnchors.rpmCandidateIds).toContain('rpm-1');
+    expect(aggressive[0].evidence).toHaveLength(2);
   });
 });
 

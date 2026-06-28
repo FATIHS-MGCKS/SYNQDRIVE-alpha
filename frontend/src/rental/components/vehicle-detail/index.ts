@@ -7,6 +7,12 @@ export {
   buildVehicleHealthBoxViewModel,
   resolveServiceComplianceTone,
 } from './vehicle-health-box.mapper';
+export { VehicleDetailHeader } from './VehicleDetailHeader';
+export type {
+  VehicleDetailHeaderProps,
+  VehicleOperationalUiStatus,
+  VehicleCleaningUiStatus,
+} from './VehicleDetailHeader';
 export { VehicleOverviewTab } from './VehicleOverviewTab';
 export { VehicleOverviewQuickView } from './VehicleOverviewQuickView';
 export { VehicleOverviewFreshnessHint } from './VehicleOverviewFreshnessHint';

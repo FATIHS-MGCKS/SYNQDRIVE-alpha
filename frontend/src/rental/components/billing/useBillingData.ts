@@ -6,6 +6,18 @@ import type {
   BillableVehiclesResponseDto,
   PaginatedBillingInvoices,
 } from '../../types/billing.types';
+import {
+  BILLING_ORG_MISSING_MESSAGE,
+  mapBillingLoadError,
+} from './billing-load.utils';
+
+export async function fetchTenantBillingData(orgId: string) {
+  return Promise.all([
+    api.billing.orgSummary(orgId),
+    api.billing.orgInvoices(orgId),
+    api.billing.orgBillableVehicles(orgId),
+  ]);
+}
 
 export function useBillingData(orgId: string | undefined) {
   const [summary, setSummary] = useState<BillingSummaryDto | null>(null);
@@ -19,6 +31,7 @@ export function useBillingData(orgId: string | undefined) {
       setSummary(null);
       setInvoices([]);
       setBillableVehicles(null);
+      setError(BILLING_ORG_MISSING_MESSAGE);
       setLoading(false);
       return;
     }
@@ -27,11 +40,7 @@ export function useBillingData(orgId: string | undefined) {
     setError(null);
 
     try {
-      const [summaryRes, invoicesRes, vehiclesRes] = await Promise.all([
-        api.billing.orgSummary(),
-        api.billing.orgInvoices(),
-        api.billing.orgBillableVehicles(),
-      ]);
+      const [summaryRes, invoicesRes, vehiclesRes] = await fetchTenantBillingData(orgId);
 
       setSummary(summaryRes as BillingSummaryDto);
 
@@ -44,7 +53,7 @@ export function useBillingData(orgId: string | undefined) {
       setInvoices(invoiceList);
       setBillableVehicles(vehiclesRes as BillableVehiclesResponseDto);
     } catch (e) {
-      setError((e as Error).message || 'Abrechnungsdaten konnten nicht geladen werden');
+      setError(mapBillingLoadError(e));
       setSummary(null);
       setInvoices([]);
       setBillableVehicles(null);

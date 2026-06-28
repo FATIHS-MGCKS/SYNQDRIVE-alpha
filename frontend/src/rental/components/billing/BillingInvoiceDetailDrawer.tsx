@@ -1,4 +1,5 @@
 import { DetailDrawer } from '../../../components/patterns/detail-drawer';
+import { Button } from '../../../components/ui/button';
 import type { BillingInvoiceDto } from '../../types/billing.types';
 import {
   formatDateDe,
@@ -12,6 +13,10 @@ interface BillingInvoiceDetailDrawerProps {
   invoice: BillingInvoiceDto | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+function invoiceNumber(inv: BillingInvoiceDto): string {
+  return inv.stripeInvoiceId ?? `RE-${inv.id.slice(0, 8).toUpperCase()}`;
 }
 
 export function BillingInvoiceDetailDrawer({
@@ -33,39 +38,33 @@ export function BillingInvoiceDetailDrawer({
     <DetailDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title={`Rechnung ${invoice.stripeInvoiceId ?? invoice.id.slice(0, 8)}`}
+      title={`Rechnung ${invoiceNumber(invoice)}`}
       description="Detailansicht mit Positionen und Nutzungskontext."
       status={
-        <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${invoiceStatusTone(statusRaw)}`}>
+        <span
+          className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${invoiceStatusTone(statusRaw)}`}
+        >
           {invoiceStatusLabel(statusRaw)}
         </span>
       }
       widthClassName="sm:max-w-lg"
       footer={
         invoice.invoicePdfUrl ? (
-          <a
-            href={invoice.invoicePdfUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--brand)] text-white hover:opacity-90 transition-opacity"
-          >
-            <Icon name="download" className="w-4 h-4" />
-            PDF herunterladen
-          </a>
+          <Button variant="default" size="sm" asChild>
+            <a href={invoice.invoicePdfUrl} target="_blank" rel="noreferrer">
+              <Icon name="download" className="w-3.5 h-3.5" />
+              Rechnung öffnen
+            </a>
+          </Button>
         ) : (
-          <button
-            type="button"
-            disabled
-            title="Kein PDF verfügbar"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold border border-border/70 text-muted-foreground cursor-not-allowed"
-          >
+          <Button type="button" variant="outline" size="sm" disabled title="Kein PDF verfügbar">
             Kein PDF verfügbar
-          </button>
+          </Button>
         )
       }
     >
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3 text-xs">
+        <div className="grid grid-cols-2 gap-3 text-[12px]">
           <div>
             <p className="text-muted-foreground">Zeitraum</p>
             <p className="font-semibold mt-0.5">
@@ -74,7 +73,9 @@ export function BillingInvoiceDetailDrawer({
           </div>
           <div>
             <p className="text-muted-foreground">Ausgestellt</p>
-            <p className="font-semibold mt-0.5">{formatDateDe(invoice.invoiceDate ?? invoice.date)}</p>
+            <p className="font-semibold mt-0.5">
+              {formatDateDe(invoice.invoiceDate ?? invoice.date)}
+            </p>
           </div>
           <div>
             <p className="text-muted-foreground">Netto</p>
@@ -93,14 +94,14 @@ export function BillingInvoiceDetailDrawer({
             Positionen
           </p>
           {lines.length === 0 ? (
-            <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border/70 p-3">
-              Für diese Rechnung sind keine detaillierten Positionen hinterlegt (Legacy-Rechnung).
+            <p className="text-[12px] text-muted-foreground rounded-lg border border-dashed border-border/70 p-3">
+              Für diese Rechnung sind keine detaillierten Positionen hinterlegt.
             </p>
           ) : (
             <div className="space-y-2">
               {lines.map((line) => (
                 <div key={line.id} className="rounded-xl border border-border/60 p-3">
-                  <p className="text-xs font-semibold text-foreground">{line.description}</p>
+                  <p className="text-[12px] font-semibold text-foreground">{line.description}</p>
                   <p className="text-[11px] mt-1 text-muted-foreground">
                     {line.quantity} × {formatMoneyCents(line.unitAmountCents, currency)} ={' '}
                     {formatMoneyCents(line.subtotalCents, currency)}

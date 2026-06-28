@@ -3,7 +3,12 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { DimoSegmentsService } from '../../dimo/dimo-segments.service';
 import { MisuseCaseRulesService } from './misuse-case-rules.service';
 import { MisuseCasePersistenceHelper } from './misuse-case-evidence.service';
-import { resolveAttribution, type TripEvaluationContext } from './misuse-case.types';
+import {
+  resolveAttribution,
+  type ContextAnchor,
+  type TripEvaluationContext,
+} from './misuse-case.types';
+import type { EventContextAssessment } from '../event-context/event-context-assessment.types';
 
 @Injectable()
 export class MisuseCaseAggregatorService {
@@ -56,6 +61,8 @@ export class MisuseCaseAggregatorService {
       },
     });
 
+    const contextAnchors = await this.loadContextAnchors(trip.events);
+
     const context: TripEvaluationContext = {
       trip: {
         id: trip.id,
@@ -80,6 +87,7 @@ export class MisuseCaseAggregatorService {
       drivingEvents: trip.events,
       dimoSafetyEvents,
       dtcEvents,
+      contextAnchors,
     };
 
     const candidates = this.rules.evaluate(context);
@@ -101,5 +109,45 @@ export class MisuseCaseAggregatorService {
       this.logger.log(`Misuse cases for trip ${tripId}: ${written} candidate(s) upserted`);
     }
     return written;
+  }
+
+  /**
+   * Collect Event Context Assessments anchored inside the trip — from native
+   * DrivingEvent.metadataJson.contextAssessment. Only well-formed assessments are
+   * returned; classification gating happens in the pure rules layer.
+   */
+  private async loadContextAnchors(
+    drivingEvents: Array<{ id: string; recordedAt: Date; metadataJson: unknown }>,
+  ): Promise<ContextAnchor[]> {
+    const anchors: ContextAnchor[] = [];
+
+    for (const ev of drivingEvents) {
+      const assessment = this.readAssessment(
+        (ev.metadataJson as Record<string, unknown> | null)?.contextAssessment,
+      );
+      if (assessment) {
+        anchors.push({
+          source: 'DRIVING_EVENT',
+          anchorId: ev.id,
+          occurredAt: ev.recordedAt,
+          assessment,
+        });
+      }
+    }
+
+    return anchors;
+  }
+
+  private readAssessment(value: unknown): EventContextAssessment | null {
+    if (!value || typeof value !== 'object') return null;
+    const candidate = value as Partial<EventContextAssessment>;
+    if (
+      typeof candidate.status !== 'string' ||
+      typeof candidate.anchorType !== 'string' ||
+      !Array.isArray(candidate.preliminaryClassifications)
+    ) {
+      return null;
+    }
+    return candidate as EventContextAssessment;
   }
 }

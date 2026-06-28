@@ -62,6 +62,27 @@ export class DataAnalyseController {
     return this.service.getPipeline(orgId, vehicleId);
   }
 
+  @Get('vehicles/:vehicleId/event-architecture')
+  @RequirePermission(DATA_ANALYSE_MODULE, 'read')
+  eventArchitecture(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+  ) {
+    return this.service.getEventArchitecture(orgId, vehicleId);
+  }
+
+  @Get('vehicles/:vehicleId/device-connection-events')
+  @RequirePermission(DATA_ANALYSE_MODULE, 'read')
+  deviceConnectionEvents(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Query('debugRaw') debugRaw?: string,
+  ) {
+    return this.service.getDeviceConnectionEvents(orgId, vehicleId, {
+      debugRaw: debugRaw === '1' || debugRaw === 'true',
+    });
+  }
+
   @Get('signal-groups')
   @RequirePermission(DATA_ANALYSE_MODULE, 'read')
   signalGroups(

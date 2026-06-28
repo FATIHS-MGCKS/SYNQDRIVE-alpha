@@ -896,6 +896,11 @@ export interface ApiTask {
   invoiceId: string | null;
   serviceCaseId: string | null;
   assignedUserId: string | null;
+  createdByUserId?: string | null;
+  updatedByUserId?: string | null;
+  createdByName?: string | null;
+  updatedByName?: string | null;
+  assignedUserName?: string | null;
   estimatedCostCents: number | null;
   actualCostCents: number | null;
   resolutionNote: string | null;
@@ -1395,6 +1400,9 @@ export interface CustomerApiRecord {
   // V4.6.66 — booking-derived aggregates returned by /customers and /customers/:id.
   totalRevenueCents?: number;
   lastBookingDate?: string | null;
+  status?: string | null;
+  archivedAt?: string | null;
+  riskLevel?: string | null;
   [key: string]: unknown;
 }
 
@@ -1978,6 +1986,18 @@ export interface ManualPickupCheckDto {
   notes?: string;
 }
 
+function billingTenantQuery(orgId?: string, params?: Record<string, string>): string {
+  const search = new URLSearchParams();
+  if (orgId) search.set('orgId', orgId);
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== '') search.set(key, value);
+    }
+  }
+  const q = search.toString();
+  return q ? `?${q}` : '';
+}
+
 export const api = {
   auth: {
     login: (email: string, password: string) =>
@@ -2253,6 +2273,10 @@ export const api = {
         `/organizations/${orgId}/fleet-connectivity${qs ? `?${qs}` : ''}`,
       );
     },
+    deviceConnection: (orgId: string, vehicleId: string) =>
+      get<DeviceConnectionSummary>(
+        `/organizations/${orgId}/vehicles/${vehicleId}/device-connection`,
+      ),
     listComplaints: (orgId: string, vehicleId: string) =>
       get<VehicleComplaint[]>(`/organizations/${orgId}/vehicles/${vehicleId}/complaints`),
     createComplaint: (orgId: string, vehicleId: string, body: { description: string; urgency?: string; region?: string | null }) =>
@@ -3042,6 +3066,16 @@ export const api = {
       get<DataAnalyseHealthTrace>(`/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/health-trace`),
     pipeline: (orgId: string, vehicleId: string) =>
       get<DataAnalysePipeline>(`/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/pipeline`),
+    eventArchitecture: (orgId: string, vehicleId: string) =>
+      get<DataAnalyseEventArchitecture>(
+        `/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/event-architecture`,
+      ),
+    deviceConnectionEvents: (orgId: string, vehicleId: string, debugRaw?: boolean) => {
+      const qs = debugRaw ? '?debugRaw=1' : '';
+      return get<DeviceConnectionSummary>(
+        `/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/device-connection-events${qs}`,
+      );
+    },
     signalGroups: (orgId: string, vehicleId?: string) => {
       const qs = vehicleId ? `?vehicleId=${encodeURIComponent(vehicleId)}` : '';
       return get<DataAnalyseSignalGroup[]>(`/organizations/${orgId}/data-analyse/signal-groups${qs}`);
@@ -3151,30 +3185,27 @@ export const api = {
     ) => post<any>(`/admin/billing/price-versions/${versionId}/publish`, body ?? {}),
     archivePriceVersion: (versionId: string) =>
       post<any>(`/admin/billing/price-versions/${versionId}/archive`, {}),
-    orgSummary: (orgId?: string) =>
-      get<any>(`/billing/summary${orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''}`),
+    orgSummary: (orgId?: string) => get<any>(`/billing/summary${billingTenantQuery(orgId)}`),
     orgBillableVehicles: (orgId?: string) =>
-      get<any>(`/billing/billable-vehicles${orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''}`),
+      get<any>(`/billing/billable-vehicles${billingTenantQuery(orgId)}`),
     orgNextInvoicePreview: (orgId?: string) =>
-      get<any>(`/billing/next-invoice-preview${orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''}`),
-    orgSubscriptions: () => get<any[]>('/billing/subscriptions'),
-    orgInvoices: () => get<any[]>('/billing/invoices'),
+      get<any>(`/billing/next-invoice-preview${billingTenantQuery(orgId)}`),
+    orgSubscriptions: (orgId?: string) =>
+      get<any[]>(`/billing/subscriptions${billingTenantQuery(orgId)}`),
+    orgInvoices: (orgId?: string, params?: Record<string, string>) =>
+      get<any>(`/billing/invoices${billingTenantQuery(orgId, params)}`),
     orgUsagePreview: (orgId?: string) =>
-      get<any>(`/billing/usage/preview${orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''}`),
+      get<any>(`/billing/usage/preview${billingTenantQuery(orgId)}`),
     orgPaymentMethods: (orgId?: string) =>
-      get<any[]>(`/billing/payment-methods${orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''}`),
+      get<any[]>(`/billing/payment-methods${billingTenantQuery(orgId)}`),
     orgPaymentMethod: (orgId?: string) =>
-      get<any>(`/billing/payment-method${orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''}`),
-    orgStripeCustomerPortal: (orgId?: string) =>
-      post<any>(
-        `/billing/stripe/customer-portal${orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''}`,
-        {},
-      ),
+      get<any>(`/billing/payment-method${billingTenantQuery(orgId)}`),
+    orgStripeCustomerPortal: (orgId?: string, returnUrl?: string) =>
+      post<any>(`/billing/stripe/customer-portal${billingTenantQuery(orgId)}`, {
+        returnUrl,
+      }),
     orgStripeSetupIntent: (orgId?: string) =>
-      post<any>(
-        `/billing/stripe/setup-intent${orgId ? `?orgId=${encodeURIComponent(orgId)}` : ''}`,
-        {},
-      ),
+      post<any>(`/billing/stripe/setup-intent${billingTenantQuery(orgId)}`, {}),
     adminSyncStripe: (orgId: string) =>
       post<any>(`/admin/billing/organizations/${encodeURIComponent(orgId)}/sync-stripe`, {}),
   },
@@ -3684,6 +3715,10 @@ export const api = {
     tripBehaviorEvents: (vehicleId: string, tripId: string, category?: string) =>
       get<{ status: 'ready' | 'pending'; behaviorReady: boolean; events: TripBehaviorEvent[] }>(
         `/vehicles/${vehicleId}/trips/${tripId}/behavior-events` + (category ? `?category=${category}` : ''),
+      ),
+    tripDeviceConnectionEvidence: (vehicleId: string, tripId: string) =>
+      get<TripDeviceConnectionEvidenceResponse>(
+        `/vehicles/${vehicleId}/trips/${tripId}/device-connection-evidence`,
       ),
     enrichTripBehavior: (vehicleId: string, tripId: string) =>
       post<any>(`/vehicles/${vehicleId}/trips/${tripId}/behavior-enrich`, {}),
@@ -5100,8 +5135,62 @@ export interface TripBehaviorEvent {
   abuseRelevant?: boolean;
   abuseCategory?: string | null;
   abuseReason?: string | null;
+  /**
+   * Phase 3 per-event Context Assessment (T±30s engine-signal window) for native
+   * LTE_R1/ICE events. Present only when the event was context-enriched; the UI
+   * must treat it as optional. Shape mirrors backend EventContextAssessment.
+   */
+  contextAssessment?: TripEventContextAssessment | null;
   metadataJson: any;
 }
+
+/** Per-event context assessment payload (subset surfaced to the UI). */
+export interface TripEventContextAssessment {
+  version: number;
+  status: 'COMPLETED' | 'INSUFFICIENT_CONTEXT' | 'FAILED' | 'SKIPPED_NOT_APPLICABLE';
+  anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT' | 'RPM_WEBHOOK_CANDIDATE';
+  anchorEvent?: {
+    category: 'ACCELERATION' | 'BRAKING' | 'CORNERING' | 'OTHER';
+    extreme: boolean;
+    eventType?: string;
+  } | null;
+  anchorTimestamp: string;
+  windowStart: string;
+  windowEnd: string;
+  engineSignalsApplicable: boolean;
+  engineOnHint: boolean | null;
+  reasonCodes: string[];
+  preliminaryClassifications: string[];
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW' | 'INSUFFICIENT';
+  evidenceGrade: 'A' | 'B' | 'C' | 'D';
+  generatedAt: string;
+  error?: string | null;
+  /** Per-signal context stats. Present on COMPLETED assessments. */
+  speedContext?: TripEventContextSignalStats;
+  rpmContext?: TripEventContextSignalStats;
+  throttleContext?: TripEventContextSignalStats;
+  engineLoadContext?: TripEventContextSignalStats;
+  coolantContext?: TripEventContextSignalStats;
+  /** Quantitative data-quality of the anchored window. */
+  dataQuality?: {
+    usedSignals?: string[];
+    missingSignals?: string[];
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+export interface TripEventContextSignalStats {
+  min?: number | null;
+  max?: number | null;
+  avg?: number | null;
+  valueBeforeAnchor?: number | null;
+  valueAfterAnchor?: number | null;
+  nonNullCount?: number;
+  coverageQuality?: string;
+  [key: string]: unknown;
+}
+
 
 export interface TripProfile {
   totalTrips: number;
@@ -5220,6 +5309,67 @@ export type FleetConnectivityStatus =
 
 export type FleetConnectivitySignalState = 'available' | 'missing' | 'unknown';
 
+export type DeviceConnectionStatus = 'plugged' | 'unplugged' | 'unknown';
+export type DeviceConnectionSeverity = 'info' | 'warning' | 'critical';
+export type DeviceConnectionWebhookStatus = 'active' | 'not_configured' | 'unknown';
+
+/** Explicit DIMO Vehicle Trigger OBD plug/unplug — distinct from snapshot obdIsPluggedIn / offline. */
+export interface FleetDeviceConnectionDto {
+  lastDeviceUnpluggedAt: string | null;
+  lastDevicePluggedInAt: string | null;
+  currentDeviceConnectionStatus: DeviceConnectionStatus;
+  openUnpluggedEpisode: boolean;
+  openUnpluggedSince: string | null;
+  openUnpluggedDurationMs: number | null;
+  severity: DeviceConnectionSeverity | null;
+  rentalRelevant: boolean;
+  duringActiveBooking: boolean;
+  eventSource: 'dimo_webhook' | 'none';
+}
+
+export interface DeviceConnectionEventView {
+  id: string;
+  eventType: 'OBD_DEVICE_UNPLUGGED' | 'OBD_DEVICE_PLUGGED_IN';
+  observedAt: string;
+  severity: DeviceConnectionSeverity;
+  rentalRelevant: boolean;
+  bookingId: string | null;
+  tripId: string | null;
+}
+
+export interface DeviceConnectionSummary {
+  lteR1Capable: boolean;
+  dimoLinked: boolean;
+  lastDeviceUnpluggedAt: string | null;
+  lastDevicePluggedInAt: string | null;
+  currentDeviceConnectionStatus: DeviceConnectionStatus;
+  openUnpluggedEpisode: boolean;
+  openUnpluggedSince: string | null;
+  openUnpluggedDurationMs: number | null;
+  severity: DeviceConnectionSeverity | null;
+  rentalRelevant: boolean;
+  activeBookingId: string | null;
+  webhookConfigured: DeviceConnectionWebhookStatus;
+  lastWebhookReceivedAt: string | null;
+  unpluggedCount24h: number;
+  unpluggedCount7d: number;
+  pluggedCount24h: number;
+  pluggedCount7d: number;
+  recentEvents: DeviceConnectionEventView[];
+  rawEvents?: unknown[];
+}
+
+export interface TripDeviceConnectionEvidenceItem extends DeviceConnectionEventView {
+  recoveryAt: string | null;
+  recoveryDurationMs: number | null;
+  source: 'DIMO Vehicle Trigger';
+  evidenceStatus: 'open' | 'recovered';
+}
+
+export interface TripDeviceConnectionEvidenceResponse {
+  events: TripDeviceConnectionEvidenceItem[];
+}
+
 export type FleetConnectivityReadinessLevel =
   | 'good'
   | 'watch'
@@ -5276,6 +5426,8 @@ export interface FleetConnectivityVehicle {
   dimoTokenId: number | null;
   /** @deprecated always null — use maskedSyntheticTokenId */
   syntheticTokenId: number | null;
+  /** Explicit DIMO webhook device connection (not snapshot/offline). */
+  deviceConnection: FleetDeviceConnectionDto | null;
 }
 
 export interface FleetConnectivityThresholds {
@@ -5296,6 +5448,8 @@ export interface FleetConnectivitySummary {
   obdUnplugged: number;
   obdNoData: number;
   jammingSnapshotDetected: number;
+  deviceUnpluggedOpenEpisodes: number;
+  deviceUnpluggedDuringBooking: number;
   avgSignalCoverage: number | null;
   avgReadinessScore: number | null;
 }
@@ -5573,6 +5727,52 @@ export interface DataAnalysePipeline {
   steps: DataAnalysePipelineStep[];
   lastSuccessfulProcessing: string | null;
   lastError: string | null;
+}
+
+// ── LTE_R1 Event Context Architecture diagnostic ────────────────────────────
+export type DataAnalyseEventLayerStatus =
+  | 'active'
+  | 'no_events'
+  | 'unavailable'
+  | 'configured'
+  | 'not_configured'
+  | 'failed'
+  | 'insufficient'
+  | 'skipped'
+  | 'sparse'
+  | 'snapshot_only'
+  | 'unknown';
+
+export interface DataAnalyseEventLayer {
+  status: DataAnalyseEventLayerStatus;
+  label: string;
+  detail: string;
+  counters?: Array<{ label: string; value: string }>;
+}
+
+export interface DataAnalyseEventArchitecture {
+  powertrainApplicable: boolean;
+  powertrainNote: string;
+  nativeEventIntake: DataAnalyseEventLayer;
+  deviceConnectionWebhookIntake: DataAnalyseEventLayer;
+  eventContextEnrichment: DataAnalyseEventLayer;
+  tripSignalSummaryEnrichment: DataAnalyseEventLayer;
+  detectorFeasibility: {
+    nativeBehaviorEvents: boolean;
+    deviceConnectionWebhooks: boolean;
+    contextClassification: boolean;
+    shortEventHfDerivedDetection: 'disabled' | 'not_reliable';
+    notes: string[];
+  };
+  metrics: {
+    effectiveCadenceMs: number | null;
+    medianIntervalMs: number | null;
+    p95IntervalMs: number | null;
+    missingSignals: string[];
+    contextWindowsProcessed: number;
+    deviceConnectionEvents7d: number;
+    openUnpluggedEpisode: boolean;
+  };
 }
 
 export interface DataAnalyseSignalGroup {

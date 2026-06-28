@@ -30,6 +30,7 @@ import { useRentalOrg } from '../../RentalContext';
 import { FleetConnectivityDetailDrawer } from './fleet-connectivity/FleetConnectivityDetailDrawer';
 import {
   ConnectionStatusChip,
+  DeviceConnectionWebhookChip,
   JammingSnapshotChip,
   ObdRowChip,
   ReadinessChip,
@@ -168,12 +169,23 @@ export function FleetConnectivityTab() {
       },
       {
         id: 'obd_unplugged',
-        label: 'OBD Unplugged',
+        label: 'OBD Unplugged (Snapshot)',
         value: s?.obdUnplugged ?? 0,
         status: 'warning' as const,
         icon: Plug,
         onClick: () => setSignalFilter('obd_unplugged'),
         active: signalFilter === 'obd_unplugged',
+        hint: 'Latest telemetry snapshot only',
+      },
+      {
+        id: 'device_unplugged_webhook',
+        label: 'Device Unplugged (Webhook)',
+        value: s?.deviceUnpluggedOpenEpisodes ?? 0,
+        status: 'critical' as const,
+        icon: ShieldAlert,
+        onClick: () => setSignalFilter('device_unplugged_webhook'),
+        active: signalFilter === 'device_unplugged_webhook',
+        hint: 'Explicit DIMO trigger — not offline/stale',
       },
       {
         id: 'readiness',
@@ -267,9 +279,15 @@ export function FleetConnectivityTab() {
       },
       {
         key: 'obd',
-        header: 'OBD',
+        header: 'OBD Snapshot',
         className: 'hidden lg:table-cell',
         cell: (v) => <ObdRowChip plugged={v.obdIsPluggedIn} />,
+      },
+      {
+        key: 'deviceWebhook',
+        header: 'Device Webhook',
+        className: 'hidden lg:table-cell',
+        cell: (v) => <DeviceConnectionWebhookChip device={v.deviceConnection} />,
       },
       {
         key: 'jamming',
@@ -411,7 +429,8 @@ export function FleetConnectivityTab() {
             className="px-3 py-2.5 rounded-xl border border-border/70 bg-card text-xs font-medium"
           >
             <option value="all">All signals</option>
-            <option value="obd_unplugged">OBD unplugged</option>
+            <option value="obd_unplugged">OBD unplugged (snapshot)</option>
+            <option value="device_unplugged_webhook">Device unplugged (webhook)</option>
             <option value="jamming">Jamming snapshot</option>
             <option value="missing_gps">Missing GPS</option>
             <option value="missing_odometer">Missing odometer</option>

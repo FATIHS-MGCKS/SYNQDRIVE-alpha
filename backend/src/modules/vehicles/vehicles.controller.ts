@@ -298,6 +298,15 @@ export class VehiclesController {
     return this.vehiclesService.getFleetConnectivity(orgId, query);
   }
 
+  @Get('organizations/:orgId/vehicles/:vehicleId/device-connection')
+  @UseGuards(OrgScopingGuard)
+  async getDeviceConnection(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+  ) {
+    return this.vehiclesService.getDeviceConnection(orgId, vehicleId);
+  }
+
   @Get('organizations/:orgId/vehicles/:vehicleId/complaints')
   async listVehicleComplaints(
     @Param('orgId') orgId: string,

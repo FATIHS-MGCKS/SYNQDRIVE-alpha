@@ -1,9 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { VehicleLatestState } from '@prisma/client';
+import { DimoDeviceConnectionEventType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ClickHouseService } from '@modules/clickhouse/clickhouse.service';
 import { ClickHouseHfService } from '@modules/clickhouse/clickhouse-hf.service';
 import { VehiclesService } from '@modules/vehicles/vehicles.service';
+import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { ONLINE_MAX_MS, STANDBY_MAX_MS } from '@modules/vehicles/fleet-connectivity.util';
 import {
   CLICKHOUSE_ANALYSIS_WINDOW_HOURS,
@@ -31,6 +33,8 @@ import {
 } from './data-analyse.utils';
 import type {
   DataAnalyseVehicleDto,
+  EventArchitectureDto,
+  EventLayerStatus,
   HealthTraceDto,
   HighFrequencyAnalysisDto,
   HfPracticalUse,
@@ -40,6 +44,11 @@ import type {
   SignalGroupDefinitionDto,
   TelemetryOverviewDto,
 } from './data-analyse.types';
+import {
+  isLteR1NativeEventCapable,
+  shouldRunIceEventContextEnrichment,
+} from '@modules/vehicle-intelligence/event-context/engine-context.guards';
+
 import type { SignalCatalogEntry } from './data-analyse-signal-catalog';
 
 interface ClickHouseSnapshotStats {
@@ -81,6 +90,7 @@ export class DataAnalyseService {
     private readonly clickHouse: ClickHouseService,
     private readonly vehiclesService: VehiclesService,
     private readonly clickHouseHf: ClickHouseHfService,
+    private readonly deviceConnectionQuery: DeviceConnectionQueryService,
   ) {}
 
   async listConnectedVehicles(orgId: string): Promise<DataAnalyseVehicleDto[]> {
@@ -438,6 +448,267 @@ export class DataAnalyseService {
     } catch {
       return { hfConfigured: this.clickHouse.isConfigured, hfMirrorStatus };
     }
+  }
+
+  /**
+   * LTE_R1 Event Context Architecture diagnostic (read-only). Surfaces the new
+   * intake/enrichment/feasibility layers honestly. No detection, no Tesla/EV ICE
+   * context — EV vehicles report powertrainApplicable=false and ICE layers are
+   * marked skipped/unavailable.
+   */
+  async getEventArchitecture(
+    orgId: string,
+    vehicleId: string,
+  ): Promise<EventArchitectureDto> {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: tenantVehicleWhere(orgId, vehicleId),
+      select: { id: true, hardwareType: true, fuelType: true, dimoVehicleId: true },
+    });
+    if (!vehicle) throw new NotFoundException('Vehicle not found');
+
+    const vehicleInput = {
+      hardwareType: vehicle.hardwareType,
+      fuelType: vehicle.fuelType,
+    };
+    const nativeCapable = isLteR1NativeEventCapable(vehicleInput);
+    const powertrainApplicable = shouldRunIceEventContextEnrichment(vehicleInput);
+
+    const now = Date.now();
+    const since7d = new Date(now - 7 * 24 * 60 * 60 * 1000);
+    const since24h = new Date(now - 24 * 60 * 60 * 1000);
+
+    // ── Native DIMO behavior events + per-event context assessment tally ──────
+    const drivingEvents = await this.prisma.drivingEvent.findMany({
+      where: { vehicleId, recordedAt: { gte: since7d } },
+      select: { id: true, recordedAt: true, metadataJson: true },
+    });
+    const nativeCount7d = drivingEvents.length;
+    const nativeCount24h = drivingEvents.filter((e) => e.recordedAt >= since24h).length;
+
+    let ctxCompleted = 0;
+    let ctxInsufficient = 0;
+    let ctxFailed = 0;
+    let ctxSkipped = 0;
+    let ctxWindows = 0;
+    for (const e of drivingEvents) {
+      const ca = (e.metadataJson as Record<string, unknown> | null)?.contextAssessment as
+        | Record<string, unknown>
+        | undefined;
+      if (!ca || typeof ca !== 'object') continue;
+      ctxWindows++;
+      switch (ca.status) {
+        case 'COMPLETED':
+          ctxCompleted++;
+          break;
+        case 'INSUFFICIENT_CONTEXT':
+          ctxInsufficient++;
+          break;
+        case 'FAILED':
+          ctxFailed++;
+          break;
+        case 'SKIPPED_NOT_APPLICABLE':
+          ctxSkipped++;
+          break;
+        default:
+          break;
+      }
+    }
+
+    // ── Device connection webhook events (OBD plug/unplug) ─────────────────────
+    const deviceEvents = await this.prisma.dimoDeviceConnectionEvent.findMany({
+      where: { vehicleId, observedAt: { gte: since7d } },
+      select: { id: true, eventType: true, observedAt: true },
+      orderBy: { observedAt: 'desc' },
+    });
+    const deviceEvents7d = deviceEvents.length;
+    const lastUnplugged = deviceEvents.find(
+      (e) => e.eventType === DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+    );
+    const lastPlugged = deviceEvents.find(
+      (e) => e.eventType === DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN,
+    );
+    const openUnpluggedEpisode =
+      !!lastUnplugged &&
+      (!lastPlugged || lastUnplugged.observedAt.getTime() > lastPlugged.observedAt.getTime());
+
+    const hasDimoLink = vehicle.dimoVehicleId != null;
+
+    // ── HF cadence / trip signal summary (reuse existing read model) ──────────
+    const hf = await this.getHighFrequency(orgId, vehicleId);
+    const medians = hf.signals
+      .map((s) => s.medianIntervalMs)
+      .filter((v): v is number => v != null);
+    const p95s = hf.signals.map((s) => s.p95IntervalMs).filter((v): v is number => v != null);
+    const medianIntervalMs = medians.length ? Math.min(...medians) : null;
+    const p95IntervalMs = p95s.length ? Math.max(...p95s) : null;
+    const expectedEngineSignals = ['rpm', 'throttle', 'engineLoad', 'coolant', 'speed'];
+    const seenKeys = new Set(hf.signals.map((s) => s.signalKey.toLowerCase()));
+    const missingSignals = powertrainApplicable
+      ? expectedEngineSignals.filter(
+          (sig) => ![...seenKeys].some((k) => k.includes(sig.toLowerCase())),
+        )
+      : [];
+
+    // ── Layer status assembly ────────────────────────────────────────────────
+    const nativeEventIntake = ((): EventArchitectureDto['nativeEventIntake'] => {
+      if (!nativeCapable) {
+        return {
+          status: 'unavailable',
+          label: 'Nicht verfügbar',
+          detail: 'Fahrzeug ist kein LTE_R1-Gerät — kein nativer DIMO-Event-Intake.',
+        };
+      }
+      const status: EventLayerStatus = nativeCount7d > 0 ? 'active' : 'no_events';
+      return {
+        status,
+        label: status === 'active' ? 'Aktiv' : 'Keine Ereignisse',
+        detail:
+          status === 'active'
+            ? 'Native DIMO Behavior Events werden empfangen und gespeichert.'
+            : 'LTE_R1-fähig, aber in den letzten 7 Tagen keine nativen Ereignisse.',
+        counters: [{ label: 'Native Events (24h/7d)', value: `${nativeCount24h} / ${nativeCount7d}` }],
+      };
+    })();
+
+    const deviceConnectionWebhookIntake = ((): EventArchitectureDto['deviceConnectionWebhookIntake'] => {
+      let status: EventLayerStatus = 'unknown';
+      if (deviceEvents7d > 0) status = 'active';
+      else if (hasDimoLink) status = 'not_configured';
+
+      const labelMap: Record<string, string> = {
+        active: 'Aktiv',
+        not_configured: 'Nicht konfiguriert',
+        unknown: 'Unbekannt',
+      };
+      const detailMap: Record<string, string> = {
+        active: 'OBD-Stecker Ein-/Aus-Events werden über DIMO Vehicle Triggers empfangen.',
+        not_configured:
+          'DIMO-Fahrzeug vorhanden, aber keine OBD-Verbindungs-Events in den letzten 7 Tagen.',
+        unknown: 'Keine OBD-Verbindungs-Events beobachtet — Status unklar.',
+      };
+      const counters: Array<{ label: string; value: string }> = [
+        { label: 'Events (7d)', value: String(deviceEvents7d) },
+      ];
+      if (lastUnplugged) {
+        counters.push({
+          label: 'Letztes Ausstecken',
+          value: lastUnplugged.observedAt.toISOString(),
+        });
+      }
+      if (lastPlugged) {
+        counters.push({
+          label: 'Letztes Einstecken',
+          value: lastPlugged.observedAt.toISOString(),
+        });
+      }
+      counters.push({
+        label: 'Offene Aussteck-Episode',
+        value: openUnpluggedEpisode ? 'ja' : 'nein',
+      });
+      return {
+        status,
+        label: labelMap[status] ?? 'Unbekannt',
+        detail: detailMap[status] ?? detailMap.unknown,
+        counters,
+      };
+    })();
+
+    const eventContextEnrichment = ((): EventArchitectureDto['eventContextEnrichment'] => {
+      if (!powertrainApplicable) {
+        return {
+          status: 'skipped',
+          label: 'Übersprungen',
+          detail: 'ICE-Kontextanreicherung nur für LTE_R1/ICE — Tesla/EV übersprungen.',
+        };
+      }
+      let status: EventLayerStatus = 'unknown';
+      if (ctxCompleted > 0) status = 'active';
+      else if (ctxInsufficient > 0) status = 'insufficient';
+      else if (ctxFailed > 0) status = 'failed';
+      else if (ctxWindows === 0) status = 'no_events';
+      const labelMap: Record<string, string> = {
+        active: 'Aktiv',
+        insufficient: 'Nicht ausreichend',
+        failed: 'Fehlgeschlagen',
+        no_events: 'Keine Ereignisse',
+        unknown: 'Unbekannt',
+      };
+      return {
+        status,
+        label: labelMap[status] ?? 'Unbekannt',
+        detail:
+          'Kontextfenster um native Events (T±30s) — Signalqualität & konservative Kontextklassifikation.',
+        counters: [
+          { label: 'Vollständig', value: String(ctxCompleted) },
+          { label: 'Nicht ausreichend', value: String(ctxInsufficient) },
+          { label: 'Fehler', value: String(ctxFailed) },
+          { label: 'Übersprungen', value: String(ctxSkipped) },
+        ],
+      };
+    })();
+
+    const tripSignalSummaryEnrichment = ((): EventArchitectureDto['tripSignalSummaryEnrichment'] => {
+      const map: Record<string, { status: EventLayerStatus; label: string }> = {
+        hf_available: { status: 'active', label: 'Aktiv' },
+        sparse: { status: 'sparse', label: 'Sparse' },
+        snapshot_only: { status: 'snapshot_only', label: 'Nur Snapshot (~30s)' },
+        missing: { status: 'unavailable', label: 'Nicht verfügbar' },
+        unknown: { status: 'unknown', label: 'Unbekannt' },
+      };
+      const entry = map[hf.hfAvailabilityStatus ?? 'unknown'] ?? map.unknown;
+      return {
+        status: entry.status,
+        label: entry.label,
+        detail:
+          'Beschreibende Trip-Signal-Zusammenfassung (Geschwindigkeit, Kadenz, Datenqualität) — keine Kurzzeit-Misuse-Erkennung.',
+      };
+    })();
+
+    return {
+      powertrainApplicable,
+      powertrainNote: powertrainApplicable
+        ? 'LTE_R1/ICE — Motorkontext anwendbar.'
+        : nativeCapable
+          ? 'LTE_R1, aber kein Verbrennungsmotor — Motorkontext (RPM/Last/Kühlmittel) nicht anwendbar.'
+          : 'Kein LTE_R1-Gerät — neue Event-Context-Architektur nicht anwendbar.',
+      nativeEventIntake,
+      deviceConnectionWebhookIntake,
+      eventContextEnrichment,
+      tripSignalSummaryEnrichment,
+      detectorFeasibility: {
+        nativeBehaviorEvents: nativeCapable,
+        deviceConnectionWebhooks: !!hasDimoLink,
+        contextClassification: powertrainApplicable,
+        shortEventHfDerivedDetection: nativeCapable ? 'disabled' : 'not_reliable',
+        notes: [
+          'Kurzzeit-Misuse stützt sich auf native Events + Ereigniskontext, nicht auf sparse Whole-Trip-HF.',
+          'OBD Ein-/Aus-Events dienen der Konnektivitäts-/Tamper-Evidenz — kein Motormisuse.',
+          ...(powertrainApplicable
+            ? []
+            : ['Tesla/EV: ICE-Motorkontext wird bewusst nicht angewendet.']),
+        ],
+      },
+      metrics: {
+        effectiveCadenceMs: medianIntervalMs,
+        medianIntervalMs,
+        p95IntervalMs,
+        missingSignals,
+        contextWindowsProcessed: ctxWindows,
+        deviceConnectionEvents7d: deviceEvents7d,
+        openUnpluggedEpisode,
+      },
+    };
+  }
+
+  async getDeviceConnectionEvents(
+    orgId: string,
+    vehicleId: string,
+    opts?: { debugRaw?: boolean },
+  ) {
+    return this.deviceConnectionQuery.getVehicleSummary(orgId, vehicleId, {
+      eventLimit: 50,
+      includeRawPayload: opts?.debugRaw === true,
+    });
   }
 
   async getLaunchFeasibility(

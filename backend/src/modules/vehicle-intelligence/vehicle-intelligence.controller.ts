@@ -65,6 +65,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { Inject, forwardRef, Logger } from '@nestjs/common';
 import { InvoicesService } from '@modules/invoices/invoices.service';
 import { AiTireSpecJobService } from '@modules/dimo/ai-tire-spec-job.service';
+import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { normalizeAiTireSpecResult, buildPersistedAiTireSpec, validateAiTireSpec } from './tires/ai-tire-spec-normalizer';
 import {
   CreateTireSetupDto,
@@ -135,6 +136,7 @@ export class VehicleIntelligenceController {
     private readonly invoicesService: InvoicesService,
     @Inject(forwardRef(() => AiTireSpecJobService))
     private readonly aiTireSpecJobService: AiTireSpecJobService,
+    private readonly deviceConnectionQuery: DeviceConnectionQueryService,
   ) {}
 
   // --- Composite Intelligence Endpoint ---
@@ -1215,6 +1217,25 @@ export class VehicleIntelligenceController {
       behaviorReady: true,
       events: merged,
     };
+  }
+
+  @Get('trips/:tripId/device-connection-evidence')
+  async getTripDeviceConnectionEvidence(
+    @Param('vehicleId') vehicleId: string,
+    @Param('tripId') tripId: string,
+  ) {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    if (!vehicle) {
+      throw new BadRequestException('Vehicle not found');
+    }
+    return this.deviceConnectionQuery.getTripEvidence(
+      vehicle.organizationId,
+      vehicleId,
+      tripId,
+    );
   }
 
   @Post('trips/:tripId/behavior-enrich')

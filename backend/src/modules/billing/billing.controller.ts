@@ -68,6 +68,8 @@ import {
 
   ReplaceTiersDto,
 
+  StripeCustomerPortalDto,
+
 } from './dto/billing.dto';
 
 
@@ -374,13 +376,15 @@ export class BillingController {
 
     @Query('orgId') orgId: string | undefined,
 
+    @Body() body: StripeCustomerPortalDto,
+
     @Req() req: any,
 
   ) {
 
     const scoped = resolveOrgScope(req?.user, orgId);
 
-    return this.stripePreparedService.createCustomerPortalSession(scoped);
+    return this.stripePreparedService.createCustomerPortalSession(scoped, body?.returnUrl);
 
   }
 

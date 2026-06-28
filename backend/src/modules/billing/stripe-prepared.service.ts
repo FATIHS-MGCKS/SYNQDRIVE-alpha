@@ -1,6 +1,12 @@
-import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { BillingPaymentMethodStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { StripeBillingService } from './stripe-billing.service';
 
 export interface StripePreparedStatusDto {
   configured: boolean;
@@ -17,10 +23,13 @@ export interface StripeNotConfiguredResponse {
 
 @Injectable()
 export class StripePreparedService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly stripeBilling: StripeBillingService,
+  ) {}
 
   isStripeConfigured(): boolean {
-    return Boolean(process.env.STRIPE_SECRET_KEY?.trim());
+    return this.stripeBilling.isStripeConfigured();
   }
 
   isWebhookConfigured(): boolean {
@@ -45,10 +54,6 @@ export class StripePreparedService {
       prepared: true,
       message: `Stripe is not configured. ${action} will be available once STRIPE_SECRET_KEY is set.`,
     };
-  }
-
-  private throwNotConfigured(action: string): never {
-    throw new HttpException(this.notConfiguredPayload(action), HttpStatus.NOT_IMPLEMENTED);
   }
 
   async getDefaultPaymentMethod(organizationId: string) {
@@ -84,20 +89,24 @@ export class StripePreparedService {
     };
   }
 
-  async createCustomerPortalSession(organizationId: string) {
+  async createCustomerPortalSession(organizationId: string, returnUrl?: string) {
     if (!this.isStripeConfigured()) {
-      this.throwNotConfigured('Customer portal');
+      throw new HttpException(
+        this.notConfiguredPayload('Customer portal'),
+        HttpStatus.NOT_IMPLEMENTED,
+      );
     }
-    // Future: Stripe Billing Portal session — no fake URLs
-    this.throwNotConfigured('Customer portal');
+    return this.stripeBilling.createCustomerPortalSession(organizationId, returnUrl);
   }
 
   async createSetupIntent(organizationId: string) {
     if (!this.isStripeConfigured()) {
-      this.throwNotConfigured('Setup intent');
+      throw new HttpException(
+        this.notConfiguredPayload('Setup intent'),
+        HttpStatus.NOT_IMPLEMENTED,
+      );
     }
-    // Future: Stripe SetupIntent — no fake client secrets
-    this.throwNotConfigured('Setup intent');
+    return this.stripeBilling.createSetupIntent(organizationId);
   }
 
   async syncOrganizationStripe(organizationId: string) {
@@ -117,13 +126,6 @@ export class StripePreparedService {
       };
     }
 
-    // Future: pull customer/subscription/payment method from Stripe API
-    return {
-      status: 'NOT_CONFIGURED' as const,
-      prepared: true,
-      message: 'Stripe SDK sync is not yet implemented.',
-      organizationId,
-      synced: false,
-    };
+    return this.stripeBilling.syncOrganizationStripe(organizationId);
   }
 }

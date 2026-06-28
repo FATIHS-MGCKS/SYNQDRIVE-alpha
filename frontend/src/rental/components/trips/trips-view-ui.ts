@@ -25,17 +25,18 @@ export const tv = {
 
 export const SUMMARY_COPY = {
   ariaLabel: 'Zeitraum-Zusammenfassung',
-  eyebrow: 'Fahrzeug · Fahrten',
   title: 'Fahrverlauf',
   trips: 'Fahrten',
   distance: 'Kilometer',
   duration: 'Fahrzeit',
-  notable: 'Auffällig',
-  private: 'Privat / offen',
+  notable: 'Ereignisse',
+  private: 'Privat',
   unlinked: 'Ohne Buchung',
   dataQuality: 'Datenqualität',
   notableHint: (n: number) =>
-    `${n} auffällige Belastungsereignisse im gewählten Zeitraum — Details in der Liste prüfen.`,
+    n === 1
+      ? '1 auffälliges Ereignis im gewählten Zeitraum — Details in der Liste prüfen.'
+      : `${n} auffällige Ereignisse im gewählten Zeitraum — Details in der Liste prüfen.`,
 } as const;
 
 export const TRIPS_COPY = {

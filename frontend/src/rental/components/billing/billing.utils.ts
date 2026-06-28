@@ -1,4 +1,8 @@
-import type { BillingCalculationStatus, BillingSubscriptionStatus } from '../../types/billing.types';
+import type {
+  BillingCalculationStatus,
+  BillingSubscriptionStatus,
+  BillingSummaryDto,
+} from '../../types/billing.types';
 
 export function formatMoneyCents(
   cents: number | null | undefined,
@@ -109,11 +113,22 @@ export function exclusionReasonLabel(reason: string): string {
     ARCHIVED: 'Archiviert',
     DEMO: 'Demo-Fahrzeug',
     DISABLED: 'Deaktiviert',
-    BILLING_EXCLUDED: 'Manuell ausgeschlossen',
+    BILLING_EXCLUDED: 'Manuell von Abrechnung ausgeschlossen',
+    OUT_OF_SERVICE: 'Außer Betrieb',
     ORG_INACTIVE: 'Organisation inaktiv',
     UNKNOWN: 'Unbekannt',
   };
   return map[reason] ?? reason;
+}
+
+export function planLabelFromSummary(summary: BillingSummaryDto): string {
+  if (summary.products.length > 0) {
+    return summary.products.map((p) => p.planDisplay || p.name).join(' · ');
+  }
+  if (!summary.subscription || summary.subscriptionStatus === 'NONE') {
+    return 'Kein aktives Abo';
+  }
+  return summary.priceBook?.name ?? 'SynqDrive';
 }
 
 export function paymentMethodLabel(type?: string): string {
@@ -124,5 +139,20 @@ export function paymentMethodLabel(type?: string): string {
       return 'SEPA-Lastschrift';
     default:
       return 'Zahlungsmethode';
+  }
+}
+
+export function paymentMethodStatusLabel(status?: string): string {
+  switch (status) {
+    case 'ACTIVE':
+      return 'Aktiv';
+    case 'FAILED':
+      return 'Fehlgeschlagen';
+    case 'REQUIRES_ACTION':
+      return 'Aktion erforderlich';
+    case 'EXPIRED':
+      return 'Abgelaufen';
+    default:
+      return status ?? 'Unbekannt';
   }
 }

@@ -71,6 +71,46 @@ export interface PermissionActor {
   id?: string;
   platformRole?: string;
   membershipRole?: string;
+  organizationId?: string;
+}
+
+export interface PermissionOrgRequest {
+  params?: { orgId?: string };
+  query?: { orgId?: string | string[] };
+}
+
+/**
+ * Resolve org id for permission checks on routes without `:orgId` path params
+ * (e.g. tenant billing under `/billing/*`).
+ *
+ * Resolution: path param → query `orgId` → JWT `organizationId`.
+ * Non–master-admin users cannot request a different org via param/query.
+ */
+export function resolvePermissionOrgId(
+  request: PermissionOrgRequest,
+  user: PermissionActor,
+): string | undefined {
+  const paramOrgId = request.params?.orgId;
+  const rawQueryOrgId = request.query?.orgId;
+  const queryOrgId = Array.isArray(rawQueryOrgId)
+    ? rawQueryOrgId[0]
+    : rawQueryOrgId;
+  const jwtOrgId = user.organizationId;
+
+  if (user.platformRole === 'MASTER_ADMIN') {
+    return paramOrgId || queryOrgId;
+  }
+
+  const requestedOrgId = paramOrgId || queryOrgId;
+
+  if (requestedOrgId) {
+    if (jwtOrgId && requestedOrgId !== jwtOrgId) {
+      throw new ForbiddenException('You do not have access to this organization');
+    }
+    return requestedOrgId;
+  }
+
+  return jwtOrgId;
 }
 
 /**

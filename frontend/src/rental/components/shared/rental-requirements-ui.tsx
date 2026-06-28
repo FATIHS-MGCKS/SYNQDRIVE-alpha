@@ -214,7 +214,7 @@ export function RuleValueTile({
   sourceName?: string | null;
   highlighted?: boolean;
   className?: string;
-  density?: 'default' | 'compact';
+  density?: 'default' | 'compact' | 'mini';
   locale?: 'en' | 'de';
   fieldKey?: string;
 }) {
@@ -230,14 +230,23 @@ export function RuleValueTile({
       ? ruleSourceLabelDe(source, sourceName)
       : labelRuleSource(source ?? null, sourceName ?? null);
 
-  const padding = density === 'compact' ? 'px-3 py-2.5' : 'px-3.5 py-3';
+  const padding =
+    density === 'mini' ? 'px-2.5 py-2' : density === 'compact' ? 'px-3 py-2.5' : 'px-3.5 py-3';
+  const labelClass =
+    density === 'mini'
+      ? 'text-[11px] font-semibold text-muted-foreground'
+      : 'text-[11px] font-semibold uppercase tracking-wide text-muted-foreground';
   const valueClass = isEmpty
-    ? 'text-[13px] font-medium text-muted-foreground'
-    : density === 'compact'
+    ? 'text-[12px] font-medium text-muted-foreground'
+    : density === 'mini'
       ? isNumeric
-        ? 'text-[16px] font-semibold leading-[1.2] tabular-nums text-foreground sm:text-[17px] lg:text-[18px]'
-        : 'text-[15px] font-semibold leading-[1.25] text-foreground sm:text-[16px] lg:text-[18px]'
-      : 'text-[17px] font-semibold tabular-nums tracking-tight text-foreground';
+        ? 'text-[14px] font-semibold leading-[1.2] tabular-nums text-foreground sm:text-[15px]'
+        : 'text-[13px] font-semibold leading-[1.25] text-foreground sm:text-[14px]'
+      : density === 'compact'
+        ? isNumeric
+          ? 'text-[16px] font-semibold leading-[1.2] tabular-nums text-foreground sm:text-[17px] lg:text-[18px]'
+          : 'text-[15px] font-semibold leading-[1.25] text-foreground sm:text-[16px] lg:text-[18px]'
+        : 'text-[17px] font-semibold tabular-nums tracking-tight text-foreground';
 
   return (
     <div
@@ -245,7 +254,7 @@ export function RuleValueTile({
         highlighted ? 'border-l-[3px] border-l-[color:var(--brand)]/45' : ''
       } ${className ?? ''}`}
     >
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className={`mt-0.5 ${labelClass}`}>
         {displayLabel}
       </p>
       <p className={`mt-1 ${valueClass}`}>{displayValue}</p>

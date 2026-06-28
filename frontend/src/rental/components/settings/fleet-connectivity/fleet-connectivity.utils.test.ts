@@ -57,6 +57,7 @@ function vehicle(
     deviceSerial: partial.deviceSerial ?? null,
     dimoTokenId: partial.dimoTokenId ?? null,
     syntheticTokenId: partial.syntheticTokenId ?? null,
+    deviceConnection: partial.deviceConnection ?? null,
   };
 }
 
@@ -117,7 +118,7 @@ describe('fleet-connectivity.utils', () => {
       vehicle({ vehicleId: '2', connectionStatus: 'not_connected' }),
     ];
 
-    it('filters by OBD unplugged', () => {
+    it('filters by OBD unplugged snapshot', () => {
       const result = filterFleetConnectivityVehicles(vehicles, {
         search: '',
         statusFilter: 'all',
@@ -126,6 +127,41 @@ describe('fleet-connectivity.utils', () => {
       });
       expect(result).toHaveLength(1);
       expect(result[0].vehicleId).toBe('1');
+    });
+
+    it('filters webhook unplugged separately from snapshot OBD', () => {
+      const webhookUnplugged = vehicle({
+        vehicleId: '4',
+        obdIsPluggedIn: true,
+        deviceConnection: {
+          eventSource: 'dimo_webhook',
+          openUnpluggedEpisode: true,
+          currentDeviceConnectionStatus: 'unplugged',
+          lastDeviceUnpluggedAt: '2026-06-28T10:00:00.000Z',
+          lastDevicePluggedInAt: null,
+          openUnpluggedSince: '2026-06-28T10:00:00.000Z',
+          openUnpluggedDurationMs: 3600000,
+          severity: 'warning',
+          rentalRelevant: false,
+          duringActiveBooking: false,
+        },
+      });
+      const rows = [...vehicles, webhookUnplugged];
+      const snapshotOnly = filterFleetConnectivityVehicles(rows, {
+        search: '',
+        statusFilter: 'all',
+        readinessFilter: 'all',
+        signalFilter: 'obd_unplugged',
+      });
+      const webhookOnly = filterFleetConnectivityVehicles(rows, {
+        search: '',
+        statusFilter: 'all',
+        readinessFilter: 'all',
+        signalFilter: 'device_unplugged_webhook',
+      });
+      expect(snapshotOnly.some((v) => v.vehicleId === '4')).toBe(false);
+      expect(webhookOnly).toHaveLength(1);
+      expect(webhookOnly[0].vehicleId).toBe('4');
     });
 
     it('filters by jamming snapshot', () => {

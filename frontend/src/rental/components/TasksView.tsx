@@ -6,16 +6,28 @@ import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
 import type { ApiTask, ApiTaskSummary, ApiTaskType, CreateTaskPayload, Station } from '../../lib/api';
+import { getStoredUser } from '../../lib/auth';
 import { checklistPreviewForType } from '../lib/task-templates';
 import {
   CATEGORY_TO_TASK_TYPE,
   TASK_CATEGORIES,
   VIEW_PRIORITY_TO_API,
   type TaskCategory,
-  type TaskPriorityView,
 } from '../lib/task-create.utils';
-import { PageHeader, StatusChip, PriorityBadge, EmptyState, ErrorState, DataTable, AppDialog, FormDialog } from '../../components/patterns';
+import {
+  mapApiTaskToTaskListRow,
+  sortTaskListRows,
+  userInitials,
+  fmtTaskDate,
+  type TaskListPriority,
+  type TaskListRow,
+  type TaskListStatus,
+  type OrgMemberRef,
+} from '../lib/task-list.utils';
+import { PageHeader, StatusChip, PriorityBadge, EmptyState, ErrorState, DataTable, FormDialog } from '../../components/patterns';
 import type { StatusTone, DataTableColumn } from '../../components/patterns';
+import { Button } from '../../components/ui/button';
+import { GlobalTaskDetailPanel } from './tasks/GlobalTaskDetailPanel';
 
 interface TasksViewProps {
   autoOpenNewTask?: boolean;
@@ -24,88 +36,9 @@ interface TasksViewProps {
   onHighlightConsumed?: () => void;
 }
 
-type TaskStatus = 'Open' | 'In Progress' | 'Waiting' | 'Completed' | 'Overdue';
-type TaskPriority = TaskPriorityView;
-
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  category: TaskCategory;
-  status: TaskStatus;
-  priority: TaskPriority;
-  vehicleId: string;
-  vehicleLicense: string;
-  vehicleModel: string;
-  station: string;
-  assignedUserId: string;
-  assignedUserName: string;
-  createdDate: string;
-  dueDate: string;
-  completedDate?: string;
-  estimatedDuration: string;
-  notes?: string;
-}
-
-// ─── Backend (OrgTask) → view-model mapping ──────────────────────────
-// Tasks now come from GET /organizations/:org/tasks. The backend stores
-// enum values (status OPEN/IN_PROGRESS/DONE/CANCELLED, priority
-// LOW/NORMAL/HIGH/CRITICAL) and a free-form category; we map them onto the
-// display vocabulary this view already uses.
-interface BackendTask {
-  id: string;
-  title: string;
-  description?: string | null;
-  category?: string | null;
-  status: string;
-  priority: string;
-  vehicleId?: string | null;
-  assignedUserId?: string | null;
-  source?: string | null;
-  dueDate?: string | null;
-  completedAt?: string | null;
-  createdAt?: string | null;
-  metadata?: Record<string, unknown> | null;
-}
-
-const KNOWN_CATEGORIES: TaskCategory[] = [...TASK_CATEGORIES];
-
-function mapCategory(c?: string | null): TaskCategory {
-  if (c && (KNOWN_CATEGORIES as string[]).includes(c)) return c as TaskCategory;
-  // Auto-task categories that have no exact display bucket.
-  if (c === 'BOKraft' || c === 'Service') return 'Inspection';
-  return 'Maintenance';
-}
-
-function mapPriority(p?: string): TaskPriority {
-  switch ((p || '').toUpperCase()) {
-    case 'CRITICAL':
-    case 'URGENT': return 'Critical';
-    case 'HIGH': return 'High';
-    case 'LOW': return 'Low';
-    case 'NORMAL':
-    case 'MEDIUM':
-    default: return 'Medium';
-  }
-}
-
-function fmtDate(iso?: string | null): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
-function mapStatus(status: string, dueIso?: string | null): TaskStatus {
-  const s = (status || '').toUpperCase();
-  if (s === 'DONE' || s === 'CANCELLED') return 'Completed';
-  if (s === 'WAITING') return 'Waiting';
-  if (dueIso) {
-    const due = new Date(dueIso);
-    if (!Number.isNaN(due.getTime()) && due.getTime() < Date.now() && s !== 'IN_PROGRESS' && s !== 'WAITING') return 'Overdue';
-  }
-  return s === 'IN_PROGRESS' ? 'In Progress' : 'Open';
-}
+type TaskStatus = TaskListStatus;
+type TaskPriority = TaskListPriority;
+type Task = TaskListRow;
 
 const categoryIcons: Record<TaskCategory, typeof Wrench> = {
   'Cleaning': Sparkles,
@@ -139,22 +72,22 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
   const [taskStep, setTaskStep] = useState(0);
   const [newTask, setNewTask] = useState({
     title: '', description: '', category: 'Maintenance' as TaskCategory, priority: 'Medium' as TaskPriority,
-    vehicleLicense: '', stationId: '', assignedUserId: '', createdBy: '',
+    vehicleLicense: '', stationId: '', assignedUserId: '',
     dueDate: '', estimatedDuration: '', notes: '',
   });
   const [taskFormErrors, setTaskFormErrors] = useState<Record<string, string>>({});
   const [flashingTaskId, setFlashingTaskId] = useState<string | null>(null);
-  const taskRowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
+  const taskRowRefs = useRef<Record<string, HTMLElement | null>>({});
   const { fleetVehicles } = useFleetVehicles();
-  const { orgId } = useRentalOrg();
-  const [rawTasks, setRawTasks] = useState<BackendTask[]>([]);
+  const { orgId, userRole, hasPermission } = useRentalOrg();
+  const [rawTasks, setRawTasks] = useState<ApiTask[]>([]);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [tasksError, setTasksError] = useState<string | null>(null);
   const [mutating, setMutating] = useState(false);
   // Full server detail for the open task (checklist / comments / timeline).
   const [detailFull, setDetailFull] = useState<ApiTask | null>(null);
   const [taskSummary, setTaskSummary] = useState<ApiTaskSummary | null>(null);
-  const [orgMembers, setOrgMembers] = useState<{ id: string; name: string }[]>([]);
+  const [orgMembers, setOrgMembers] = useState<OrgMemberRef[]>([]);
   const [orgStations, setOrgStations] = useState<Station[]>([]);
 
   useEffect(() => {
@@ -190,6 +123,12 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
           list.map((u) => ({
             id: u.id,
             name: u.name || `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email || u.id,
+            roleKey: u.roleKey,
+            membershipRole: u.membershipRole,
+            roleLabel: u.roleLabel,
+            position: u.position,
+            organizationRoleName: u.organizationRoleName,
+            stationIds: u.stationIds ?? [],
           })),
         );
       })
@@ -204,7 +143,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
     setTasksError(null);
     Promise.all([api.tasks.list(orgId), api.tasks.summary(orgId)])
       .then(([rows, summary]) => {
-        setRawTasks(Array.isArray(rows) ? (rows as unknown as BackendTask[]) : []);
+        setRawTasks(Array.isArray(rows) ? rows : []);
         setTaskSummary(summary);
         setTasksError(null);
       })
@@ -216,28 +155,10 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
       .finally(() => setTasksLoading(false));
   };
 
-  // Load org tasks from the API (replaces the previous empty mock array).
-  // V4.7.59 auto-tasks (source INSIGHT_*) show up here alongside manual ones.
+  // Load org tasks + summary on mount (same flow as post-mutation refresh).
   useEffect(() => {
     if (!orgId) return;
-    let cancelled = false;
-    setTasksLoading(true);
-    setTasksError(null);
-    api.tasks.list(orgId)
-      .then((rows) => {
-        if (!cancelled) {
-          setRawTasks(Array.isArray(rows) ? (rows as unknown as BackendTask[]) : []);
-          setTasksError(null);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setRawTasks([]);
-          setTasksError(err instanceof Error ? err.message : 'Failed to load tasks');
-        }
-      })
-      .finally(() => { if (!cancelled) setTasksLoading(false); });
-    return () => { cancelled = true; };
+    loadTasks.current();
   }, [orgId]);
 
   // Run a task mutation, then refresh the list + the open detail.
@@ -247,78 +168,57 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
     try {
       const updated = await fn();
       loadTasks.current();
-      if (updated && detailFull && updated.id === detailFull.id) setDetailFull(updated);
+      if (updated && detailFull && updated.id === detailFull.id) {
+        setDetailFull(updated);
+      }
+      if (updated && selectedTask && updated.id === selectedTask.id) {
+        const rowCtx = {
+          fleetVehicles: fleetVehicles.map((v) => ({
+            id: v.id,
+            license: v.license,
+            model: v.model,
+            station: v.station,
+          })),
+          orgMembers,
+          orgStations: orgStations.map((s) => ({ id: s.id, name: s.name })),
+        };
+        setSelectedTask(mapApiTaskToTaskListRow(updated, rowCtx));
+      }
+      return updated;
     } catch (err) {
       console.error('Task action failed', err);
+      throw err;
     } finally {
       setMutating(false);
     }
   };
 
-  const RESOLUTION_REQUIRED: ApiTaskType[] = [
-    'REPAIR', 'BRAKE_CHECK', 'TIRE_CHECK', 'BATTERY_CHECK', 'VEHICLE_SERVICE', 'VEHICLE_INSPECTION',
-  ];
-
-  const handleComplete = async () => {
-    if (!orgId || !detailFull) return;
-    let resolutionNote: string | undefined;
-    if (RESOLUTION_REQUIRED.includes(detailFull.type)) {
-      const entered = window.prompt('Abschluss-Notiz (erforderlich):', detailFull.resolutionNote ?? '');
-      if (entered === null || !entered.trim()) return;
-      resolutionNote = entered.trim();
-    }
-    await runTaskAction(() => api.tasks.complete(orgId, detailFull.id, resolutionNote ? { resolutionNote } : undefined));
-    closeTaskDetail();
+  const reloadTaskDetail = () => {
+    if (!orgId || !selectedTask) return;
+    api.tasks.get(orgId, selectedTask.id).then(setDetailFull).catch(() => setDetailFull(null));
   };
 
-  const handleCancelTask = async () => {
-    if (!orgId || !detailFull) return;
-    await runTaskAction(() => api.tasks.cancel(orgId, detailFull.id));
-    closeTaskDetail();
-  };
-
-  const toggleChecklistItem = (itemId: string, isDone: boolean) => {
-    if (!orgId || !detailFull) return;
-    void runTaskAction(() => api.tasks.updateChecklistItem(orgId, detailFull.id, itemId, { isDone }));
-  };
+  const currentUserLabel = useMemo(() => {
+    const user = getStoredUser();
+    if (!user) return 'Aktueller Benutzer';
+    if (user.name?.trim()) return user.name.trim();
+    if (user.email) return user.email.split('@')[0];
+    return 'Aktueller Benutzer';
+  }, []);
 
   // Enrich with vehicle metadata from the shared fleet context.
   const tasks = useMemo<Task[]>(() => {
-    const vById = new Map(fleetVehicles.map((v) => [v.id, v]));
-    const stationById = new Map(orgStations.map((s) => [s.id, s]));
-    return rawTasks.map((t) => {
-      const veh = t.vehicleId ? vById.get(t.vehicleId) : undefined;
-      const metaStationId =
-        typeof t.metadata?.stationId === 'string' ? t.metadata.stationId : null;
-      const stationName =
-        (metaStationId ? stationById.get(metaStationId)?.name : null) ??
-        veh?.station ??
-        '';
-      const isAuto = !!t.source && t.source.startsWith('INSIGHT_');
-      return {
-        id: t.id,
-        title: t.title,
-        description: t.description || '',
-        category: mapCategory(t.category),
-        status: mapStatus(t.status, t.dueDate),
-        priority: mapPriority(t.priority),
-        vehicleId: t.vehicleId || '',
-        vehicleLicense: veh?.license || '',
-        vehicleModel: veh?.model || '',
-        station: stationName,
-        assignedUserId: t.assignedUserId ?? '',
-        assignedUserName: (() => {
-          const uid = t.assignedUserId;
-          if (uid) return orgMembers.find((m) => m.id === uid)?.name ?? uid;
-          return isAuto ? 'System' : 'Unassigned';
-        })(),
-        createdDate: fmtDate(t.createdAt),
-        dueDate: fmtDate(t.dueDate),
-        completedDate: t.completedAt ? fmtDate(t.completedAt) : undefined,
-        estimatedDuration: '—',
-        notes: isAuto ? 'Automatisch erzeugt durch SynqDrive Insights.' : undefined,
-      };
-    });
+    const ctx = {
+      fleetVehicles: fleetVehicles.map((v) => ({
+        id: v.id,
+        license: v.license,
+        model: v.model,
+        station: v.station,
+      })),
+      orgMembers,
+      orgStations: orgStations.map((s) => ({ id: s.id, name: s.name })),
+    };
+    return rawTasks.map((t) => mapApiTaskToTaskListRow(t, ctx));
   }, [rawTasks, fleetVehicles, orgMembers, orgStations]);
 
   const openNewTask = () => {
@@ -398,7 +298,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
   const resetNewTaskForm = () => {
     setNewTask({
       title: '', description: '', category: 'Maintenance', priority: 'Medium',
-      vehicleLicense: '', stationId: '', assignedUserId: '', createdBy: '',
+      vehicleLicense: '', stationId: '', assignedUserId: '',
       dueDate: '', estimatedDuration: '', notes: '',
     });
     setTaskFormErrors({});
@@ -417,7 +317,6 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
     } else if (step === 2) {
       if (!newTask.dueDate) errors.dueDate = 'Fälligkeitsdatum erforderlich';
       if (!newTask.estimatedDuration.trim()) errors.estimatedDuration = 'Geschätzte Dauer erforderlich';
-      if (!newTask.createdBy.trim()) errors.createdBy = 'Ersteller erforderlich';
     }
     setTaskFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -478,6 +377,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
       t.vehicleLicense.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.vehicleModel.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.assignedUserName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.createdByUserName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.id.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
     const matchesPriority = priorityFilter === 'all' || t.priority === priorityFilter;
@@ -487,16 +387,10 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
     return matchesSearch && matchesStatus && matchesPriority && matchesCategory && matchesVehicle && matchesAssignee;
   });
 
-  const priorityOrder: Record<TaskPriority, number> = { 'Critical': 0, 'High': 1, 'Medium': 2, 'Low': 3 };
-  const statusOrder: Record<TaskStatus, number> = { 'Overdue': 0, 'Open': 1, 'Waiting': 2, 'In Progress': 3, 'Completed': 4 };
-
-  const sorted = [...filtered].sort((a, b) => {
-    if (sortBy === 'priority') return priorityOrder[a.priority] - priorityOrder[b.priority];
-    if (sortBy === 'status') return statusOrder[a.status] - statusOrder[b.status];
-    if (sortBy === 'created') return b.id.localeCompare(a.id);
-    // dueDate default
-    return a.dueDate.split('.').reverse().join('').localeCompare(b.dueDate.split('.').reverse().join(''));
-  });
+  const sorted = useMemo(
+    () => sortTaskListRows(filtered, sortBy),
+    [filtered, sortBy],
+  );
 
   const inProgressCount = taskSummary?.inProgress ?? tasks.filter(t => t.status === 'In Progress').length;
   const summaryOpen = taskSummary?.open ?? tasks.filter(t => t.status === 'Open').length;
@@ -587,65 +481,82 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
     );
   };
 
+  const AssigneeAvatar = ({ name }: { name: string }) => (
+    <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-brand text-brand-foreground shrink-0">
+      {userInitials(name)}
+    </div>
+  );
+
   const taskColumns = useMemo<DataTableColumn<Task>[]>(() => [
     {
       key: 'task',
-      header: 'Task',
+      header: 'Aufgabe',
       cell: (task) => (
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono text-muted-foreground/70">{task.id}</span>
-            {task.priority === 'Critical' && <Icon name="alert-triangle" className="w-3 h-3 text-[color:var(--status-critical)]" />}
+            <p className="text-xs font-semibold text-foreground line-clamp-2">{task.title}</p>
+            {task.priority === 'Critical' && <Icon name="alert-triangle" className="w-3 h-3 shrink-0 text-[color:var(--status-critical)]" />}
           </div>
-          <p className="text-xs font-semibold mt-0.5 text-foreground">{task.title}</p>
+          <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+            {task.displaySource}
+            {task.type !== 'CUSTOM' ? ` · ${task.type.replace(/_/g, ' ')}` : ''}
+          </p>
         </div>
       ),
     },
     {
       key: 'category',
-      header: 'Category',
+      header: 'Kategorie',
       cell: (task) => <TaskCategoryChip category={task.category} />,
     },
     {
       key: 'vehicle',
-      header: 'Vehicle',
+      header: 'Fahrzeug',
       cell: (task) => (
         <>
-          <p className="text-xs font-medium text-foreground">{task.vehicleLicense}</p>
-          <p className="text-[11px] text-muted-foreground/70">{task.vehicleModel.split(' ').slice(0, 2).join(' ')}</p>
+          <p className="text-xs font-medium text-foreground">{task.vehicleLicense || '—'}</p>
+          <p className="text-[11px] text-muted-foreground/70">{task.vehicleModel ? task.vehicleModel.split(' ').slice(0, 2).join(' ') : '—'}</p>
         </>
       ),
     },
     {
       key: 'station',
       header: 'Station',
-      cell: (task) => <span className="text-xs text-muted-foreground">{task.station}</span>,
+      cell: (task) => <span className="text-xs text-muted-foreground">{task.station || '—'}</span>,
     },
     {
       key: 'assignee',
-      header: 'Assigned To',
+      header: 'Zugewiesen an',
       cell: (task) => (
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-brand text-brand-foreground">
-            {task.assignedUserName.split(' ').map((n) => n[0]).join('')}
-          </div>
-          <span className="text-xs text-muted-foreground">{task.assignedUserName}</span>
+        <div className="flex items-center gap-2 min-w-[120px]">
+          <AssigneeAvatar name={task.assignedUserName} />
+          <span className="text-xs text-muted-foreground truncate">{task.assignedUserName}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'creator',
+      header: 'Erstellt von',
+      cell: (task) => (
+        <div className="flex items-center gap-2 min-w-[120px]">
+          <AssigneeAvatar name={task.createdByUserName} />
+          <span className="text-xs text-muted-foreground truncate">{task.createdByUserName}</span>
         </div>
       ),
     },
     {
       key: 'due',
-      header: 'Due Date',
+      header: 'Fällig am',
       cell: (task) => (
         <>
-          <span className={`text-xs font-medium ${task.status === 'Overdue' ? 'text-[color:var(--status-critical)]' : 'text-foreground'}`}>{task.dueDate}</span>
+          <span className={`text-xs font-medium ${task.status === 'Overdue' ? 'text-[color:var(--status-critical)]' : 'text-foreground'}`}>{task.dueDate || '—'}</span>
           <p className="text-[11px] text-muted-foreground/70">{task.estimatedDuration}</p>
         </>
       ),
     },
     {
       key: 'priority',
-      header: 'Priority',
+      header: 'Priorität',
       cell: (task) => <TaskPriorityBadge priority={task.priority} />,
     },
     {
@@ -697,14 +608,10 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
       <PageHeader
         title="Task Management"
         actions={(
-          <button
-            type="button"
-            className="sq-press flex items-center gap-2 rounded-xl bg-[color:var(--brand)] px-3 py-2 text-[10px] font-semibold text-white shadow-[var(--shadow-1)] transition-all hover:opacity-90"
-            onClick={openNewTask}
-          >
-            <Icon name="plus" className="h-4 w-4" />
+          <Button type="button" variant="primary" size="sm" onClick={openNewTask}>
+            <Icon name="plus" className="h-3.5 w-3.5" />
             New Task
-          </button>
+          </Button>
         )}
       />
 
@@ -752,7 +659,9 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
             filterVal: null,
           },
         ].map(card => {
-          const isActive = card.filterVal != null && statusFilter === card.filterVal;
+          const isActive = card.filterVal === 'Critical'
+            ? priorityFilter === 'Critical'
+            : card.filterVal != null && statusFilter === card.filterVal;
           const MetricIcon = card.icon;
           return (
             <button
@@ -930,7 +839,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
         </div>
       </div>
 
-      {/* Tasks Table */}
+      {/* Tasks Table — desktop */}
       {tasksError ? (
         <div className="sq-card overflow-hidden">
           <ErrorState
@@ -942,39 +851,113 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
           />
         </div>
       ) : (
-        <DataTable
-          columns={taskColumns}
-          rows={sorted}
-          getRowKey={(task) => task.id}
-          loading={tasksLoading}
-          skeletonRows={8}
-          dense
-          stickyHeader
-          onRowClick={openTaskDetail}
-          getRowClassName={(task) => {
-            if (flashingTaskId === task.id) {
-              return 'bg-[color:var(--brand-soft)] ring-1 ring-[color:var(--brand-soft)]';
-            }
-            if (task.status === 'Overdue') {
-              return 'bg-[color:var(--status-critical-soft)]';
-            }
-            return undefined;
-          }}
-          rowRef={(task, el) => {
-            taskRowRefs.current[task.id] = el;
-          }}
-          rowActions={() => (
-            <Icon name="chevron-right" className="w-5 h-5 text-muted-foreground/50" />
-          )}
-          empty={(
-            <EmptyState
-              compact
-              icon={<Icon name="list-todo" className="h-5 w-5" />}
-              title="No tasks match your filters"
-              description="Try adjusting your search or filter criteria."
+        <>
+          <div className="hidden md:block">
+            <DataTable
+              columns={taskColumns}
+              rows={sorted}
+              getRowKey={(task) => task.id}
+              loading={tasksLoading}
+              skeletonRows={8}
+              dense
+              stickyHeader
+              onRowClick={openTaskDetail}
+              getRowClassName={(task) => {
+                if (flashingTaskId === task.id) {
+                  return 'bg-[color:var(--brand-soft)] ring-1 ring-[color:var(--brand-soft)]';
+                }
+                if (task.status === 'Overdue') {
+                  return 'bg-[color:var(--status-critical-soft)]';
+                }
+                return undefined;
+              }}
+              rowRef={(task, el) => {
+                taskRowRefs.current[task.id] = el;
+              }}
+              rowActions={() => (
+                <Icon name="chevron-right" className="w-5 h-5 text-muted-foreground/50" />
+              )}
+              empty={(
+                <EmptyState
+                  compact
+                  icon={<Icon name="list-todo" className="h-5 w-5" />}
+                  title="No tasks match your filters"
+                  description="Try adjusting your search or filter criteria."
+                />
+              )}
             />
-          )}
-        />
+          </div>
+
+          {/* Mobile task cards */}
+          <div className="md:hidden space-y-2">
+            {tasksLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="sq-card h-28 animate-pulse rounded-2xl" />
+                ))}
+              </div>
+            ) : sorted.length === 0 ? (
+              <EmptyState
+                compact
+                icon={<Icon name="list-todo" className="h-5 w-5" />}
+                title="Keine Aufgaben gefunden"
+                description="Filter oder Suche anpassen."
+              />
+            ) : (
+              sorted.map((task) => (
+                <button
+                  key={task.id}
+                  type="button"
+                  onClick={() => openTaskDetail(task)}
+                  ref={(el) => { taskRowRefs.current[task.id] = el; }}
+                  className={`sq-card sq-press w-full rounded-2xl border p-4 text-left shadow-[var(--shadow-1)] transition-all ${
+                    flashingTaskId === task.id
+                      ? 'ring-1 ring-[color:var(--brand-soft)] bg-[color:var(--brand-soft)]'
+                      : task.status === 'Overdue'
+                        ? 'border-[color:var(--status-critical-soft)] bg-[color:var(--status-critical-soft)]/30'
+                        : 'border-border bg-card'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-foreground line-clamp-2">{task.title}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{task.displaySource}</p>
+                    </div>
+                    <TaskStatusChip status={task.status} />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <TaskCategoryChip category={task.category} />
+                    <TaskPriorityBadge priority={task.priority} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
+                    <div>
+                      <span className="text-muted-foreground">Fahrzeug</span>
+                      <p className="font-medium text-foreground truncate">{task.vehicleLicense || '—'}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Station</span>
+                      <p className="font-medium text-foreground truncate">{task.station || '—'}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Zugewiesen an</span>
+                      <p className="font-medium text-foreground truncate">{task.assignedUserName}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Erstellt von</span>
+                      <p className="font-medium text-foreground truncate">{task.createdByUserName}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-muted-foreground">Fällig am</span>
+                      <p className={`font-medium ${task.status === 'Overdue' ? 'text-[color:var(--status-critical)]' : 'text-foreground'}`}>
+                        {task.dueDate || '—'}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </>
       )}
 
       {/* Results Count */}
@@ -984,262 +967,27 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
 
       </div>{/* End of main content wrapper */}
 
-      <AppDialog
+      <GlobalTaskDetailPanel
         open={!!selectedTask}
-        onOpenChange={(open) => { if (!open) closeTaskDetail(); }}
-        maxWidthClassName="sm:max-w-3xl"
-      >
-        {selectedTask && (
-          <>
-            <div className="sticky top-0 z-10 border-b border-border bg-card px-6 pb-5 pt-6">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-xs font-mono ${textTertiary}`}>{selectedTask.id}</span>
-                    <TaskStatusChip status={selectedTask.status} />
-                    <TaskPriorityBadge priority={selectedTask.priority} />
-                  </div>
-                  <h2 className={`text-base font-bold ${textPrimary}`}>{selectedTask.title}</h2>
-                </div>
-                <div className="flex items-center gap-2">
-                  {detailFull && detailFull.status === 'WAITING' && (
-                    <button
-                      disabled={mutating}
-                      onClick={() => runTaskAction(() => api.tasks.start(orgId!, detailFull.id))}
-                      className="px-3 py-2 rounded-lg bg-brand hover:bg-[color:var(--brand-hover)] text-brand-foreground text-xs font-semibold transition-all shadow-sm disabled:opacity-50"
-                    >
-                      Resume
-                    </button>
-                  )}
-                  {detailFull && detailFull.status === 'OPEN' && (
-                    <button
-                      disabled={mutating}
-                      onClick={() => runTaskAction(() => api.tasks.start(orgId!, detailFull.id))}
-                      className="px-3 py-2 rounded-lg bg-brand hover:bg-[color:var(--brand-hover)] text-brand-foreground text-xs font-semibold transition-all shadow-sm disabled:opacity-50"
-                    >
-                      Start Task
-                    </button>
-                  )}
-                  {detailFull && (detailFull.status === 'OPEN' || detailFull.status === 'IN_PROGRESS' || detailFull.status === 'WAITING') && (
-                    <button
-                      disabled={mutating}
-                      onClick={handleComplete}
-                      className="px-3 py-2 rounded-lg bg-[color:var(--status-positive)] hover:opacity-90 text-white text-xs font-semibold transition-all shadow-sm disabled:opacity-50"
-                    >
-                      Complete
-                    </button>
-                  )}
-                  {detailFull && detailFull.status === 'IN_PROGRESS' && (
-                    <button
-                      disabled={mutating}
-                      onClick={() => runTaskAction(() => api.tasks.waiting(orgId!, detailFull.id))}
-                      className="px-3 py-2 rounded-lg bg-[color:var(--status-watch)] hover:opacity-90 text-white text-xs font-semibold transition-all shadow-sm disabled:opacity-50"
-                    >
-                      Set Waiting
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
+        onOpenChange={(open) => {
+          if (!open) closeTaskDetail();
+        }}
+        taskRow={selectedTask}
+        detail={detailFull}
+        detailLoading={!!selectedTask && !detailFull && !tasksError}
+        orgId={orgId}
+        orgMembers={orgMembers}
+        userRole={userRole}
+        canManageTasks={hasPermission('tasks', 'manage')}
+        canWriteTasks={hasPermission('tasks', 'write')}
+        mutating={mutating}
+        onReloadDetail={reloadTaskDetail}
+        onTaskUpdated={setDetailFull}
+        runTaskAction={async (fn) => {
+          await runTaskAction(fn);
+        }}
+      />
 
-            <div className="max-h-[min(70vh,100dvh-12rem)] overflow-y-auto p-6 space-y-5">
-              {/* Description */}
-              <div>
-                <h4 className={`text-xs uppercase tracking-wider font-semibold mb-2 ${textTertiary}`}>Description</h4>
-                <p className={`text-xs ${textSecondary}`}>{selectedTask.description || '—'}</p>
-              </div>
-
-              {detailFull && (
-                <div className={`rounded-lg border p-4 ${'bg-muted/40 border-border'}`}>
-                  <h4 className={`text-xs uppercase tracking-wider font-semibold mb-3 ${textTertiary}`}>Task Meta</h4>
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div><span className={textSecondary}>Type</span><p className={`font-medium ${textPrimary}`}>{detailFull.type.replace(/_/g, ' ')}</p></div>
-                    <div><span className={textSecondary}>Source</span><p className={`font-medium ${textPrimary}`}>{detailFull.sourceType}{detailFull.source ? ` · ${detailFull.source}` : ''}</p></div>
-                    <div><span className={textSecondary}>Priority</span><p className={`font-medium ${textPrimary}`}>{detailFull.priority}</p></div>
-                    <div><span className={textSecondary}>Status</span><p className={`font-medium ${textPrimary}`}>{detailFull.status}</p></div>
-                    {(detailFull.estimatedCostCents != null || detailFull.actualCostCents != null) && (
-                      <>
-                        <div><span className={textSecondary}>Est. Cost</span><p className={`font-medium ${textPrimary}`}>{detailFull.estimatedCostCents != null ? `${(detailFull.estimatedCostCents / 100).toFixed(2)} €` : '—'}</p></div>
-                        <div><span className={textSecondary}>Actual Cost</span><p className={`font-medium ${textPrimary}`}>{detailFull.actualCostCents != null ? `${(detailFull.actualCostCents / 100).toFixed(2)} €` : '—'}</p></div>
-                      </>
-                    )}
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {detailFull.vehicleId && <span className="text-[10px] px-2 py-1 rounded-full border border-border bg-card">Vehicle · {detailFull.vehicleId.slice(0, 8)}…</span>}
-                    {detailFull.bookingId && <span className="text-[10px] px-2 py-1 rounded-full border border-border bg-card">Booking · {detailFull.bookingId.slice(0, 8)}…</span>}
-                    {detailFull.customerId && <span className="text-[10px] px-2 py-1 rounded-full border border-border bg-card">Customer · {detailFull.customerId.slice(0, 8)}…</span>}
-                    {detailFull.vendorId && <span className="text-[10px] px-2 py-1 rounded-full border border-border bg-card">Vendor · {detailFull.vendorId.slice(0, 8)}…</span>}
-                    {detailFull.alertId && <span className="text-[10px] px-2 py-1 rounded-full border border-border bg-card">Alert · {detailFull.alertId.slice(0, 8)}…</span>}
-                    {detailFull.documentId && <span className="text-[10px] px-2 py-1 rounded-full border border-border bg-card">Document · {detailFull.documentId.slice(0, 8)}…</span>}
-                  </div>
-                </div>
-              )}
-
-              {/* Info Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className={`rounded-lg border p-4 ${'bg-muted/40 border-border'}`}>
-                  <h4 className={`text-xs uppercase tracking-wider font-semibold mb-3 ${textTertiary}`}>Task Details</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className={`text-xs ${textSecondary}`}>Category</span>
-                      <TaskCategoryChip category={selectedTask.category} />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-xs ${textSecondary}`}>Created</span>
-                      <span className={`text-xs font-medium ${textPrimary}`}>{selectedTask.createdDate}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-xs ${textSecondary}`}>Due Date</span>
-                      <span className={`text-xs font-medium ${selectedTask.status === 'Overdue' ? 'text-[color:var(--status-critical)]' : textPrimary}`}>{selectedTask.dueDate}</span>
-                    </div>
-                    {selectedTask.completedDate && (
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs ${textSecondary}`}>Completed</span>
-                        <span className="text-[10px] font-medium text-[color:var(--status-positive)]">{selectedTask.completedDate}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <span className={`text-xs ${textSecondary}`}>Est. Duration</span>
-                      <span className={`text-xs font-medium ${textPrimary}`}>{selectedTask.estimatedDuration}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className={`rounded-lg border p-4 ${'bg-muted/40 border-border'}`}>
-                  <h4 className={`text-xs uppercase tracking-wider font-semibold mb-3 ${textTertiary}`}>Assignment</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className={`text-xs ${textSecondary}`}>Assigned To</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold bg-brand text-brand-foreground">
-                          {selectedTask.assignedUserName.split(' ').map(n => n[0]).join('')}
-                        </div>
-                        <span className={`text-xs font-medium ${textPrimary}`}>{selectedTask.assignedUserName}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-xs ${textSecondary}`}>Station</span>
-                      <span className={`text-xs font-medium ${textPrimary}`}>{selectedTask.station}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Vehicle Info */}
-              <div className="rounded-lg border p-4 border-l-4 bg-[color:var(--brand-soft)]/50 border-border border-l-[color:var(--brand)]">
-                <div className="flex items-center gap-3">
-                  <Icon name="car" className="w-5 h-5 text-[color:var(--brand)]" />
-                  <div>
-                    <p className={`text-xs uppercase tracking-wider font-semibold ${textTertiary}`}>Linked Vehicle</p>
-                    <p className={`text-xs font-semibold mt-0.5 ${textPrimary}`}>{selectedTask.vehicleModel}</p>
-                    <p className={`text-xs ${textSecondary}`}>{selectedTask.vehicleLicense} · {selectedTask.station}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Notes */}
-              {selectedTask.notes && (
-                <div className="rounded-lg border p-4 border-l-4 bg-[color:var(--status-watch-soft)] border-border border-l-[color:var(--status-watch)]">
-                  <div className="flex items-start gap-3">
-                    <Icon name="file-text" className="w-5 h-5 mt-0.5 text-[color:var(--status-watch)]" />
-                    <div>
-                      <p className={`text-xs uppercase tracking-wider font-semibold ${textTertiary}`}>Notes</p>
-                      <p className={`text-xs mt-1 ${'text-foreground/80'}`}>{selectedTask.notes}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Checklist (from server detail) */}
-              {detailFull && detailFull.checklist && detailFull.checklist.length > 0 && (
-                <div>
-                  <h4 className={`text-xs uppercase tracking-wider font-semibold mb-2 ${textTertiary}`}>Checklist</h4>
-                  <div className="space-y-1.5">
-                    {detailFull.checklist.map((item) => (
-                      <label key={item.id} className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 cursor-pointer ${'bg-muted/40 border-border'}`}>
-                        <input
-                          type="checkbox"
-                          checked={item.isDone}
-                          disabled={mutating || detailFull.status === 'DONE' || detailFull.status === 'CANCELLED'}
-                          onChange={(e) => toggleChecklistItem(item.id, e.target.checked)}
-                          className="w-4 h-4 rounded accent-[color:var(--status-positive)]"
-                        />
-                        <span className={`text-xs ${item.isDone ? 'line-through ' + textTertiary : textPrimary}`}>{item.title}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Resolution note (when completed) */}
-              {detailFull && detailFull.resolutionNote && (
-                <div className="rounded-lg border p-4 border-l-4 bg-[color:var(--status-positive-soft)] border-border border-l-[color:var(--status-positive)]">
-                  <p className={`text-xs uppercase tracking-wider font-semibold ${textTertiary}`}>Resolution</p>
-                  <p className={`text-xs mt-1 ${'text-foreground/80'}`}>{detailFull.resolutionNote}</p>
-                </div>
-              )}
-
-              {detailFull && detailFull.comments && detailFull.comments.length > 0 && (
-                <div>
-                  <h4 className={`text-xs uppercase tracking-wider font-semibold mb-2 ${textTertiary}`}>Comments</h4>
-                  <div className="space-y-2">
-                    {detailFull.comments.map((c) => (
-                      <div key={c.id} className={`rounded-lg border px-3 py-2 text-xs ${'bg-muted/40 border-border'}`}>
-                        <p className={textPrimary}>{c.body}</p>
-                        <p className={`mt-1 ${textTertiary}`}>{fmtDate(c.createdAt)}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {detailFull && detailFull.attachments && detailFull.attachments.length > 0 && (
-                <div>
-                  <h4 className={`text-xs uppercase tracking-wider font-semibold mb-2 ${textTertiary}`}>Attachments</h4>
-                  <div className="space-y-1.5">
-                    {detailFull.attachments.map((a) => (
-                      <a key={a.id} href={a.fileUrl} target="_blank" rel="noopener noreferrer" className={`block text-xs underline ${textSecondary}`}>
-                        {a.fileName ?? a.fileUrl}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Timeline (from server detail) */}
-              {detailFull && detailFull.timeline && detailFull.timeline.length > 0 && (
-                <div>
-                  <h4 className={`text-xs uppercase tracking-wider font-semibold mb-2 ${textTertiary}`}>Timeline</h4>
-                  <div className="space-y-1.5">
-                    {detailFull.timeline.slice(0, 8).map((ev) => (
-                      <div key={ev.id} className="flex items-center justify-between text-[11px]">
-                        <span className={textSecondary}>
-                          {ev.type.replace(/_/g, ' ')}{ev.oldValue || ev.newValue ? `: ${ev.oldValue ?? '—'} → ${ev.newValue ?? '—'}` : ''}
-                        </span>
-                        <span className={textTertiary}>{fmtDate(ev.createdAt)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              {detailFull && detailFull.status !== 'DONE' && detailFull.status !== 'CANCELLED' && (
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    disabled={mutating}
-                    onClick={handleCancelTask}
-                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-[color:var(--status-critical)] hover:opacity-90 text-white text-xs font-semibold transition-all shadow-sm disabled:opacity-50"
-                  >
-                    <Icon name="x" className="w-5 h-5" />
-                    Cancel Task
-                  </button>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </AppDialog>
 
       <FormDialog
         open={isNewTaskOpen}
@@ -1455,12 +1203,12 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
 
                 {taskStep === 2 && (
                   <div className="space-y-4">
-                    {sectionTitle(Calendar, 'Zeitplan & Ersteller')}
+                    {sectionTitle(Calendar, 'Zeitplan')}
                     <div className="rounded-lg p-3.5 mb-1 border border-transparent sq-tone-info">
                       <div className="flex items-start gap-2.5">
                         <Icon name="clock" className="w-5 h-5 mt-0.5 shrink-0" />
                         <p className="text-xs">
-                          Erstellungsdatum: <span className="font-semibold">{today}</span> – wird automatisch gesetzt.
+                          Erstellt von: <span className="font-semibold">{currentUserLabel}</span> — wird automatisch vom System gesetzt.
                         </p>
                       </div>
                     </div>
@@ -1481,17 +1229,6 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                         </select>
                         {taskFormErrors.estimatedDuration && <p className="text-[11px] text-[color:var(--status-critical)] mt-1">{taskFormErrors.estimatedDuration}</p>}
                       </div>
-                    </div>
-                    <div>
-                      <label className={labelClass}>Erstellt von *</label>
-                      <div className="relative">
-                        <Icon name="user" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/50" />
-                        <select value={newTask.createdBy} onChange={e => setNewTask({ ...newTask, createdBy: e.target.value })} className={`${inputClass} pl-9`}>
-                          <option value="">Ersteller wählen...</option>
-                          {assigneesList.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                        </select>
-                      </div>
-                      {taskFormErrors.createdBy && <p className="text-[11px] text-[color:var(--status-critical)] mt-1">{taskFormErrors.createdBy}</p>}
                     </div>
                   </div>
                 )}
@@ -1527,7 +1264,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                       'bg-muted/40 border-border divide-border/60'
                     }`}>
                       <SummaryRow label="Erstellt am" value={today} />
-                      <SummaryRow label="Erstellt von" value={newTask.createdBy} />
+                      <SummaryRow label="Erstellt von" value={currentUserLabel} />
                       <SummaryRow label="Fälligkeitsdatum" value={newTask.dueDate} />
                       <SummaryRow label="Geschätzte Dauer" value={newTask.estimatedDuration} />
                     </div>

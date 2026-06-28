@@ -10,6 +10,8 @@ import { DimoApiSyncService } from './dimo-api-sync.service';
 import { DimoSegmentsService } from './dimo-segments.service';
 import { DimoTriggersService } from './dimo-triggers.service';
 import { DimoTriggersBootstrapService } from './dimo-triggers-bootstrap.service';
+import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
+import { DeviceConnectionQueryService } from './device-connection-query.service';
 import { DimoAgentsService } from './dimo-agents.service';
 import { DimoDocumentAgentService } from './dimo-document-agent.service';
 import { AiTireSpecJobService } from './ai-tire-spec-job.service';
@@ -29,6 +31,8 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DimoSegmentsService,
     DimoTriggersService,
     DimoTriggersBootstrapService,
+    DeviceConnectionWebhookService,
+    DeviceConnectionQueryService,
     DimoAgentsService,
     DimoDocumentAgentService,
     AiTireSpecJobService,
@@ -45,6 +49,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DimoDocumentAgentService,
     AiTireSpecJobService,
     ChatService,
+    DeviceConnectionQueryService,
   ],
 })
 export class DimoModule {}
