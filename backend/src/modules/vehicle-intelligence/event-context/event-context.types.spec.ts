@@ -39,7 +39,8 @@ describe('event-context.types', () => {
 
   describe('enum vocabularies are complete and unique', () => {
     it('AnchorType', () => {
-      expect(ANCHOR_TYPES).toHaveLength(2);
+      expect(ANCHOR_TYPES).toHaveLength(1);
+      expect(ANCHOR_TYPES).toEqual(['DIMO_NATIVE_BEHAVIOR_EVENT']);
       expect(unique(ANCHOR_TYPES)).toBe(true);
     });
     it('ContextClassification', () => {
