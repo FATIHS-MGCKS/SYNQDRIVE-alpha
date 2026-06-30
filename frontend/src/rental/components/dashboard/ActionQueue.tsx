@@ -230,7 +230,7 @@ function ActionQueueGroupRow({
   obdPlugByVehicleId: Map<string, boolean | null>;
 }) {
   const criticalLike = group.severity === 'critical' || group.severity === 'overdue';
-  const [expanded, setExpanded] = useState(criticalLike);
+  const [expanded, setExpanded] = useState(false);
   const groupContentId = `aq-group-${group.id}`;
 
   return (
