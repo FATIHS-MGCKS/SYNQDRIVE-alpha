@@ -105,4 +105,23 @@ describe('ChatService — fleet_chat routing', () => {
       { useCase: 'fleet_chat', orgId },
     );
   });
+
+  it('sendMessage surfaces DNS failure with actionable assistant text', async () => {
+    const prisma = makePrisma();
+    const agents = makeAgents();
+    agents.sendMessageStream.mockResolvedValueOnce({
+      success: false,
+      errorKind: 'DNS_ERROR',
+      errorCode: 'ENOTFOUND',
+      error:
+        'DIMO Agents host could not be resolved from this runtime (agents.dimo.zone). Check Docker/VPS DNS or network access.',
+    });
+    const svc = new ChatService(prisma as any, agents as any);
+
+    const result = await svc.sendMessage(orgId, 'Hello');
+
+    expect(result.content).toContain('cannot reach DIMO Agents');
+    expect(result.content).toContain('could not be resolved');
+    expect(result.content).not.toContain('getaddrinfo ENOTFOUND');
+  });
 });

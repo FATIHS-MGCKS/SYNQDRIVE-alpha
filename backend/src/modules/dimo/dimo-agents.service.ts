@@ -1,5 +1,6 @@
 import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
+import { promises as dns } from 'dns';
 import axios from 'axios';
 import dimoConfig from '@config/dimo.config';
 import { RedisService } from '@shared/redis/redis.service';
@@ -41,6 +42,16 @@ import {
   sanitizeDimoAgentError,
   sanitizeDimoAgentErrorMessage,
 } from './dimo-agent-error-sanitize.util';
+import {
+  applyDimoAgentClassifiedError,
+  classifyDimoAgentError,
+  ClassifyDimoAgentErrorInput,
+  DimoAgentClassifiedError,
+  DimoAgentErrorKind,
+  DimoAgentErrorResultShape,
+  extractNodeErrorCode,
+} from './dimo-agent-error-classification.util';
+import { DimoAgentsConnectivityResult } from './dimo-agents-connectivity.types';
 
 export type {
   DimoAgentUseCase,
@@ -49,6 +60,7 @@ export type {
   DimoAgentStreamCallContext,
   DimoAgentDiagnosticsOptions,
   DimoAgentDiagnosticsResult,
+  DimoAgentsConnectivityResult,
 };
 
 export interface AgentStep {
@@ -61,6 +73,9 @@ export interface CreateAgentResult {
   success: boolean;
   agentId?: string;
   error?: string;
+  errorKind?: DimoAgentErrorKind;
+  errorCode?: string;
+  failedBeforeHttp?: boolean;
   statusCode?: number;
   configFailure?: boolean;
 }
@@ -69,6 +84,9 @@ export interface SendMessageResult {
   success: boolean;
   response?: string;
   error?: string;
+  errorKind?: DimoAgentErrorKind;
+  errorCode?: string;
+  failedBeforeHttp?: boolean;
   statusCode?: number;
 }
 
@@ -118,6 +136,60 @@ export class DimoAgentsService {
 
   private get userWallet(): string {
     return ((this.conf as any).agentUserWallet ?? '').trim();
+  }
+
+  private getAgentsHostname(): string {
+    try {
+      return new URL(this.agentsBaseUrl).hostname;
+    } catch {
+      return 'agents.dimo.zone';
+    }
+  }
+
+  private logClassifiedAgentFailure(
+    operation: string,
+    classified: DimoAgentClassifiedError,
+    useCase?: DimoAgentUseCase,
+  ): void {
+    this.logger.warn(
+      `[Agents] ${operation} failed — useCase=${useCase ?? 'n/a'} hostname=${this.getAgentsHostname()} kind=${classified.kind} code=${classified.errorCode ?? 'n/a'} failedBeforeHttp=${classified.failedBeforeHttp} message=${sanitizeDimoAgentErrorMessage(classified.message)}`,
+    );
+  }
+
+  private classifyOperationFailure(
+    operation: string,
+    input: ClassifyDimoAgentErrorInput,
+    useCase?: DimoAgentUseCase,
+  ): DimoAgentClassifiedError {
+    const classified = classifyDimoAgentError({
+      ...input,
+      hostname: input.hostname ?? this.getAgentsHostname(),
+    });
+    this.logClassifiedAgentFailure(operation, classified, useCase);
+    return classified;
+  }
+
+  private failureFromClassification<T extends CreateAgentResult | SendMessageResult>(
+    base: T,
+    classified: DimoAgentClassifiedError,
+  ): T {
+    return applyDimoAgentClassifiedError(
+      { ...base, success: false } as T & DimoAgentErrorResultShape,
+      classified,
+    ) as T;
+  }
+
+  private configFailureResult(errorMessage: string): CreateAgentResult {
+    const classified = classifyDimoAgentError({
+      configFailure: true,
+      errorMessage,
+      hostname: this.getAgentsHostname(),
+    });
+    this.logClassifiedAgentFailure('config', classified);
+    return this.failureFromClassification(
+      { success: false, configFailure: true, error: errorMessage },
+      classified,
+    );
   }
 
   isConfigured(): boolean {
@@ -192,11 +264,8 @@ export class DimoAgentsService {
 
   async getOrCreateAgent(input: GetOrCreateAgentInput): Promise<GetOrCreateAgentResult> {
     if (!this.isConfigured()) {
-      return {
-        success: false,
-        configFailure: true,
-        error: 'DIMO_API_KEY or DIMO_AGENT_USER_WALLET not set',
-      };
+      const failure = this.configFailureResult('DIMO_API_KEY or DIMO_AGENT_USER_WALLET not set');
+      return { ...failure, cacheKey: undefined };
     }
 
     const { cacheKey, personality } = this.resolveScopedAgent(input);
@@ -227,7 +296,7 @@ export class DimoAgentsService {
 
   private async createAgentInstance(personality: string): Promise<CreateAgentResult> {
     if (!this.apiKey || !this.userWallet) {
-      return { success: false, configFailure: true, error: 'DIMO_API_KEY or DIMO_AGENT_USER_WALLET not set' };
+      return this.configFailureResult('DIMO_API_KEY or DIMO_AGENT_USER_WALLET not set');
     }
 
     // Create agent WITHOUT VEHICLE_IDS — DIMO 504s when vehicle lookup is included at creation time.
@@ -263,9 +332,18 @@ export class DimoAgentsService {
       }
 
       const err = String((data as any)?.message ?? (data as any)?.error ?? (data as any)?.detail ?? `HTTP ${res.status}`);
-      return { success: false, statusCode: res.status, error: sanitizeDimoAgentErrorMessage(err) };
+      const sanitized = sanitizeDimoAgentErrorMessage(err);
+      const classified = this.classifyOperationFailure('createAgent', {
+        statusCode: res.status,
+        errorMessage: sanitized,
+      });
+      return this.failureFromClassification(
+        { success: false, statusCode: res.status, error: sanitized },
+        classified,
+      );
     } catch (e: any) {
-      return { success: false, error: sanitizeDimoAgentError(e) };
+      const classified = this.classifyOperationFailure('createAgent', { err: e });
+      return this.failureFromClassification({ success: false, error: sanitizeDimoAgentError(e) }, classified);
     }
   }
 
@@ -313,15 +391,22 @@ export class DimoAgentsService {
         return { success: true, response: text };
       }
 
-      return {
-        success: false,
-        statusCode: res.status,
-        error: sanitizeDimoAgentErrorMessage(
-          String((data as any)?.message ?? (data as any)?.error ?? `HTTP ${res.status}`),
-        ),
-      };
+      return this.failureFromClassification(
+        {
+          success: false,
+          statusCode: res.status,
+          error: sanitizeDimoAgentErrorMessage(
+            String((data as any)?.message ?? (data as any)?.error ?? `HTTP ${res.status}`),
+          ),
+        },
+        this.classifyOperationFailure('sendMessage', {
+          statusCode: res.status,
+          errorMessage: `HTTP ${res.status}`,
+        }),
+      );
     } catch (e: any) {
-      return { success: false, error: sanitizeDimoAgentError(e) };
+      const classified = this.classifyOperationFailure('sendMessage', { err: e });
+      return this.failureFromClassification({ success: false, error: sanitizeDimoAgentError(e) }, classified);
     }
   }
 
@@ -369,7 +454,15 @@ export class DimoAgentsService {
         this.logger.warn(
           `[Agents] stream error ${res.status}: ${sanitizeDimoAgentErrorMessage(errBody).slice(0, 300)}`,
         );
-        return { success: false, statusCode: res.status, error: `HTTP ${res.status}` };
+        const classified = this.classifyOperationFailure(
+          'streamHttp',
+          { statusCode: res.status, errorMessage: `HTTP ${res.status}` },
+          context?.useCase,
+        );
+        return this.failureFromClassification(
+          { success: false, statusCode: res.status, error: `HTTP ${res.status}` },
+          classified,
+        );
       }
 
       return await new Promise<SendMessageResult>((resolve) => {
@@ -380,20 +473,36 @@ export class DimoAgentsService {
         const INACTIVITY_TIMEOUT_MS = 120_000;
         const resolveStream = (fallbackError?: string) => {
           if (parseState.streamError) {
-            resolve(this.finalizeAgentStream(parseState));
+            resolve(this.finalizeAgentStream(parseState, context?.useCase));
             return;
           }
           if (parseState.fullResponse) {
-            resolve(this.finalizeAgentStream(parseState));
+            resolve(this.finalizeAgentStream(parseState, context?.useCase));
             return;
           }
-          const finalized = this.finalizeAgentStream(parseState);
-          resolve({
-            success: false,
-            error: fallbackError
-              ? sanitizeDimoAgentErrorMessage(fallbackError)
-              : finalized.error,
-          });
+          const finalized = this.finalizeAgentStream(parseState, context?.useCase);
+          if (!finalized.success && !fallbackError) {
+            resolve(finalized);
+            return;
+          }
+          const errorMessage = fallbackError ?? finalized.error ?? 'Stream failed';
+          const classified = this.classifyOperationFailure(
+            fallbackError ? 'streamTransport' : 'streamParser',
+            {
+              parserFailure: !fallbackError,
+              errorMessage,
+            },
+            context?.useCase,
+          );
+          resolve(
+            this.failureFromClassification(
+              {
+                success: false,
+                error: sanitizeDimoAgentErrorMessage(errorMessage),
+              },
+              classified,
+            ),
+          );
         };
 
         const streamTimeout = setTimeout(() => {
@@ -432,7 +541,7 @@ export class DimoAgentsService {
               clearTimeout(streamTimeout);
               clearInterval(inactivityCheck);
               stream.removeAllListeners();
-              resolve(this.finalizeAgentStream(parseState));
+              resolve(this.finalizeAgentStream(parseState, context?.useCase));
               return;
             }
           }
@@ -448,7 +557,7 @@ export class DimoAgentsService {
             );
           }
           this.logger.log(`[Agents] Stream completed — responseLen=${parseState.fullResponse.length}`);
-          resolve(this.finalizeAgentStream(parseState));
+          resolve(this.finalizeAgentStream(parseState, context?.useCase));
         });
 
         stream.on('error', (err: Error) => {
@@ -459,14 +568,26 @@ export class DimoAgentsService {
         });
       });
     } catch (e: any) {
-      return { success: false, error: sanitizeDimoAgentError(e) };
+      const classified = this.classifyOperationFailure('streamRequest', { err: e }, context?.useCase);
+      return this.failureFromClassification({ success: false, error: sanitizeDimoAgentError(e) }, classified);
     }
   }
 
-  private finalizeAgentStream(state: ReturnType<typeof createDimoAgentStreamParseState>): SendMessageResult {
+  private finalizeAgentStream(
+    state: ReturnType<typeof createDimoAgentStreamParseState>,
+    useCase?: DimoAgentUseCase,
+  ): SendMessageResult {
     const result = finalizeDimoAgentStreamParse(state);
     if (!result.success && result.error) {
-      return { success: false, error: sanitizeDimoAgentErrorMessage(result.error) };
+      const classified = this.classifyOperationFailure(
+        'streamParser',
+        { parserFailure: true, errorMessage: result.error },
+        useCase,
+      );
+      return this.failureFromClassification(
+        { success: false, error: sanitizeDimoAgentErrorMessage(result.error) },
+        classified,
+      );
     }
     return result;
   }
@@ -1103,6 +1224,100 @@ Rules:
     return result;
   }
 
+  // ─── Connectivity probe (DNS + HTTP, no auth / no agent creation) ──
+
+  async checkDimoAgentsConnectivity(): Promise<DimoAgentsConnectivityResult> {
+    const baseUrl = (this.agentsBaseUrl || 'https://agents.dimo.zone').trim().replace(/\/$/, '');
+    let hostname = '';
+
+    try {
+      hostname = new URL(baseUrl).hostname;
+    } catch {
+      return {
+        ok: false,
+        baseUrl,
+        hostname: '',
+        dns: {
+          ok: false,
+          errorCode: 'INVALID_URL',
+          errorMessage: 'DIMO_AGENTS_BASE_URL is not a valid URL',
+        },
+        http: { ok: false, skipped: true },
+        hint: 'DIMO_AGENTS_BASE_URL is not a valid URL. Check backend configuration.',
+      };
+    }
+
+    if (!hostname) {
+      return {
+        ok: false,
+        baseUrl,
+        hostname: '',
+        dns: { ok: false, errorCode: 'MISSING_HOSTNAME', errorMessage: 'No hostname in base URL' },
+        http: { ok: false, skipped: true },
+        hint: 'DIMO Agents base URL has no hostname.',
+      };
+    }
+
+    const dnsProbe = { ok: true as boolean, errorCode: undefined as string | undefined, errorMessage: undefined as string | undefined };
+    try {
+      await dns.lookup(hostname);
+    } catch (err) {
+      dnsProbe.ok = false;
+      dnsProbe.errorCode = extractNodeErrorCode(err) ?? 'DNS_LOOKUP_FAILED';
+      dnsProbe.errorMessage = sanitizeDimoAgentError(err);
+      return {
+        ok: false,
+        baseUrl,
+        hostname,
+        dns: dnsProbe,
+        http: { ok: false, skipped: true },
+        hint: 'DIMO Agents hostname cannot be resolved from this backend runtime. Check Docker/VPS DNS configuration.',
+      };
+    }
+
+    const httpProbe: DimoAgentsConnectivityResult['http'] = { ok: false };
+    try {
+      const res = await axios.get(baseUrl, {
+        timeout: 15_000,
+        validateStatus: () => true,
+      });
+      httpProbe.statusCode = res.status;
+
+      if (res.status >= 200 && res.status < 300) {
+        const data = res.data;
+        if (data && typeof data === 'object') {
+          const record = data as Record<string, unknown>;
+          if (typeof record.service === 'string') httpProbe.service = record.service;
+          if (typeof record.status === 'string') httpProbe.status = record.status;
+          if (typeof record.version === 'string') httpProbe.version = record.version;
+        }
+        httpProbe.ok = true;
+        return { ok: true, baseUrl, hostname, dns: dnsProbe, http: httpProbe };
+      }
+
+      httpProbe.errorMessage = `HTTP ${res.status}`;
+      return {
+        ok: false,
+        baseUrl,
+        hostname,
+        dns: dnsProbe,
+        http: httpProbe,
+        hint: `DIMO Agents hostname resolves, but HTTP GET ${baseUrl} returned ${res.status}. Check firewall or outbound HTTPS from this runtime.`,
+      };
+    } catch (err) {
+      httpProbe.errorCode = extractNodeErrorCode(err);
+      httpProbe.errorMessage = sanitizeDimoAgentError(err);
+      return {
+        ok: false,
+        baseUrl,
+        hostname,
+        dns: dnsProbe,
+        http: httpProbe,
+        hint: `DIMO Agents hostname resolves, but HTTP GET failed (${httpProbe.errorMessage}). Check outbound HTTPS access from this runtime.`,
+      };
+    }
+  }
+
   // ─── Admin diagnostics (DIMO AI Agents layer only) ─────────────
 
   private static readonly DIAGNOSTIC_STREAM_TIMEOUT_MS = 60_000;
@@ -1113,6 +1328,19 @@ Rules:
     const useCase = options.useCase ?? 'vehicle_specs';
     const errors: string[] = [];
     const checks: DimoAgentDiagnosticCheck[] = [];
+
+    const connectivity = await this.checkDimoAgentsConnectivity();
+    checks.push({
+      name: 'agents_connectivity',
+      ok: connectivity.ok,
+      phase: 'config',
+      detail: connectivity.ok
+        ? `dns+http ok (${connectivity.http.service ?? 'agents'} ${connectivity.http.status ?? 'healthy'})`
+        : connectivity.hint ?? 'connectivity failed',
+    });
+    if (!connectivity.ok && connectivity.hint) {
+      errors.push(`Agents connectivity failed (phase: config): ${connectivity.hint}`);
+    }
 
     const hasApiKey = Boolean(this.apiKey);
     const hasUserWallet = Boolean(this.userWallet);
@@ -1219,6 +1447,7 @@ Rules:
       walletMasked: hasUserWallet ? maskDimoAgentWallet(this.userWallet) : undefined,
       hasDeveloperJwt,
       personalities,
+      connectivity,
       checks,
       errors,
     };

@@ -1,4 +1,5 @@
 import { DimoAgentUseCase } from './dimo-agent-use-case.types';
+import { DimoAgentsConnectivityResult } from './dimo-agents-connectivity.types';
 
 /** Harmless prompt used for live agent diagnostics — no customer data. */
 export const DIMO_AGENT_DIAGNOSTIC_TEST_PROMPT =
@@ -41,6 +42,7 @@ export interface DimoAgentDiagnosticsResult {
   walletMasked?: string;
   hasDeveloperJwt?: boolean;
   personalities: Record<DimoAgentUseCase, string>;
+  connectivity: DimoAgentsConnectivityResult;
   checks: DimoAgentDiagnosticCheck[];
   errors: string[];
 }

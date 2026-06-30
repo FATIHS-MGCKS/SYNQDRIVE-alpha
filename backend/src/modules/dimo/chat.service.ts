@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoAgentsService, SendMessageResult } from './dimo-agents.service';
+import { formatDimoAgentChatError } from './dimo-agent-error-classification.util';
 import {
   formatAgentScopeLog,
   resolveChatVehicleTokenIds,
@@ -95,10 +96,7 @@ export class ChatService {
     const result = await this.sendWithRetry(orgId, agent, enrichedMessage, tokenIds);
 
     if (!result.success) {
-      return this.persistAssistant(
-        orgId,
-        `I'm sorry, I couldn't process your request right now. ${result.error || 'Please try again later.'}`,
-      );
+      return this.persistAssistant(orgId, formatDimoAgentChatError(result));
     }
 
     return this.persistAssistant(orgId, result.response || 'No response received.');
@@ -136,7 +134,7 @@ export class ChatService {
 
     const text = result.success
       ? result.response || 'No response received.'
-      : `I'm sorry, I couldn't process your request right now. ${result.error || 'Please try again later.'}`;
+      : formatDimoAgentChatError(result);
 
     const saved = await this.persistAssistant(orgId, text);
     if (!isClosed()) emit('result', this.toResultDto(saved));

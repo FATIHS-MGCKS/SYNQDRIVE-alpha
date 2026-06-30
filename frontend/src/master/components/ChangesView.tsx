@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-agent-dns-diagnostics-v49126-2026-06-30',
+    version: '4.9.126',
+    title: 'V4.9.126 — DIMO AI Agent DNS/Network Error Diagnostics',
+    summary: [
+      'DimoAgentsService klassifiziert Agent-Fehler: DNS_ERROR, NETWORK_ERROR, DIMO_HTTP_ERROR, PARSER_ERROR, CONFIG_ERROR.',
+      'GET /api/v1/dimo/agents/health — DNS + unauthenticated HTTP-Probe (keine Secrets, kein Agent-Create).',
+      'POST /admin/dimo/agents/diagnostics erweitert um agents_connectivity; Chat-UI zeigt DNS-Hinweis statt generischem ENOTFOUND.',
+    ],
+    reason:
+      'AI Assistant antwortete mit generischem Fehler bei getaddrinfo ENOTFOUND agents.dimo.zone — Ursache (Docker/VPS DNS) war nicht erkennbar.',
+    previousBehavior:
+      'Rohe axios-Fehlermeldungen in Chat; keine strukturierte Fehlerklassifikation oder Connectivity-Health.',
+    details:
+      'dimo-agent-error-classification.util.ts, dimo-agents-connectivity.types.ts, dimo-agents-health.controller.ts, DimoAgentsService.checkDimoAgentsConnectivity(), chat.service formatDimoAgentChatError().',
+    affectsArchitecture: true,
+    module: 'DIMO',
+    createdAt: '2026-06-30T23:59:59.000Z',
+  },
+  {
     id: 'tasks-page-kpi-header-ui-v49125-2026-06-30',
     version: '4.9.125',
     title: 'V4.9.125 — Tasks Page: KPI-Boxen & Header-Button UI',
