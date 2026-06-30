@@ -286,7 +286,8 @@ describe('dashboard runtime model', () => {
     });
 
     const state = model.vehicleStates[0];
-    expect(state?.complianceSeverity).toBe('critical');
+    expect(state?.complianceSeverity).toBe('unknown');
+    expect(state?.healthSeverity).toBe('critical');
     expect(state?.criticalReasons.some((reason) => reason.title.includes('Service überfällig'))).toBe(true);
     expect(state?.blockReasons.some((reason) => reason.title.includes('Service überfällig'))).toBe(false);
     expect(state?.notReadyReasons.some((reason) => reason.title.includes('Service überfällig'))).toBe(false);
@@ -730,6 +731,140 @@ describe('dashboard runtime model', () => {
     expect(blocked.rows.map((row) => row.vehicleId)).toContain('svc-overdue');
     const complianceGroup = blocked.groups?.find((groupItem) => groupItem.id === 'blocked-by-compliance');
     expect(complianceGroup?.rows.map((row) => row.vehicleId)).toContain('svc-overdue');
+  });
+
+  it('blocks ready for TÜV overdue compliance blocker', () => {
+    const healthMap = new Map<string, VehicleHealthResponse>([
+      [
+        'tuv-overdue',
+        health({
+          vehicleId: 'tuv-overdue',
+          overall_state: 'critical',
+          rental_blocked: true,
+          blocking_reasons: ['TÜV abgelaufen seit 3 Tagen'],
+        }),
+      ],
+    ]);
+    const model = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles: [vehicle({ id: 'tuv-overdue', license: 'TUV-OD' })],
+      healthMap,
+      now: NOW,
+    });
+    const state = model.vehicleStates[0];
+    expect(state?.isReadyToRent).toBe(false);
+    expect(state?.isBlocked).toBe(true);
+    expect(
+      state?.blockReasons.some(
+        (reason) => reason.category === 'compliance' && reason.blocking === true,
+      ),
+    ).toBe(true);
+    expect(model.slices['critical-alerts'].rows.map((row) => row.vehicleId)).toContain('tuv-overdue');
+  });
+
+  it('blocks ready for BOKraft overdue compliance blocker', () => {
+    const healthMap = new Map<string, VehicleHealthResponse>([
+      [
+        'bokraft-overdue',
+        health({
+          vehicleId: 'bokraft-overdue',
+          overall_state: 'critical',
+          rental_blocked: true,
+          blocking_reasons: ['BOKraft abgelaufen seit 1 Tag'],
+        }),
+      ],
+    ]);
+    const model = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles: [vehicle({ id: 'bokraft-overdue', license: 'BOK-OD' })],
+      healthMap,
+      now: NOW,
+    });
+    const state = model.vehicleStates[0];
+    expect(state?.isReadyToRent).toBe(false);
+    expect(state?.isBlocked).toBe(true);
+    expect(
+      state?.blockReasons.some(
+        (reason) => reason.category === 'compliance' && reason.title.includes('BOKraft'),
+      ),
+    ).toBe(true);
+  });
+
+  it('places service overdue in service-critical group, not compliance-critical', () => {
+    const healthMap = new Map<string, VehicleHealthResponse>([
+      [
+        'svc-only',
+        health({
+          vehicleId: 'svc-only',
+          overall_state: 'critical',
+          rental_blocked: false,
+          blocking_reasons: [],
+          modules: {
+            service_compliance: {
+              state: 'critical',
+              reason: 'Service überfällig seit 117 Tagen (HM/OEM)',
+            },
+          },
+        }),
+      ],
+    ]);
+    const model = buildDashboardRuntimeModel({
+      locale: 'de',
+      fleetVehicles: [vehicle({ id: 'svc-only', license: 'SVC' })],
+      healthMap,
+      now: NOW,
+    });
+    const slice = model.slices['critical-alerts'];
+    const serviceGroup = slice.groups?.find((group) => group.id === 'service-critical');
+    const complianceGroup = slice.groups?.find((group) => group.id === 'compliance-critical');
+    expect(serviceGroup?.rows.map((row) => row.vehicleId)).toContain('svc-only');
+    expect(complianceGroup?.rows.map((row) => row.vehicleId) ?? []).not.toContain('svc-only');
+  });
+
+  it('keeps critical drawer header count aligned with visible rows and group sums', () => {
+    const healthMap = new Map<string, VehicleHealthResponse>([
+      [
+        'svc-only',
+        health({
+          vehicleId: 'svc-only',
+          overall_state: 'critical',
+          modules: {
+            service_compliance: { state: 'critical', reason: 'Service überfällig' },
+          },
+        }),
+      ],
+      [
+        'tuv-overdue',
+        health({
+          vehicleId: 'tuv-overdue',
+          rental_blocked: true,
+          blocking_reasons: ['TÜV abgelaufen'],
+        }),
+      ],
+    ]);
+    const model = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles: [
+        vehicle({ id: 'svc-only', license: 'SVC' }),
+        vehicle({ id: 'tuv-overdue', license: 'TUV' }),
+      ],
+      healthMap,
+      insights: [
+        insight({
+          id: 'svc-insight',
+          type: 'SERVICE_OVERDUE',
+          severity: 'CRITICAL',
+          title: 'Service überfällig',
+          entityIds: ['svc-only'],
+        }),
+      ],
+      now: NOW,
+    });
+    const slice = model.slices['critical-alerts'];
+    expect(slice.count).toBe(slice.rows.length);
+    const groupSum = (slice.groups ?? []).reduce((sum, group) => sum + group.count, 0);
+    expect(groupSum).toBe(slice.count);
+    expect(slice.count).toBe(2);
   });
 
   it('does not crash on missing optional inputs or unusable telemetry timestamps', () => {

@@ -86,7 +86,10 @@ export function normalizeOperationalIssues(
     if (draft) drafts.push(draft);
   }
 
-  return mergeDrafts(suppressGenericHealthFallbacks(drafts), options);
+  return mergeDrafts(
+    suppressHealthWhenServiceOverdue(suppressGenericHealthFallbacks(drafts)),
+    options,
+  );
 }
 
 function collectRuntimeReasons(state: VehicleRuntimeStateLike): RuntimeReasonLike[] {
@@ -780,6 +783,29 @@ function suppressGenericHealthFallbacks(drafts: OperationalIssueDraft[]): Operat
         vehiclesWithConcreteHealth.has(draft.vehicleId)
       ),
   );
+}
+
+function suppressHealthWhenServiceOverdue(drafts: OperationalIssueDraft[]): OperationalIssueDraft[] {
+  const vehiclesWithServiceOverdue = new Set(
+    drafts
+      .filter((draft) => draft.vehicleId && draft.issueType === 'service_overdue')
+      .map((draft) => draft.vehicleId as string),
+  );
+  return drafts.filter((draft) => {
+    if (!draft.vehicleId || !vehiclesWithServiceOverdue.has(draft.vehicleId)) return true;
+    if (draft.domain === 'vehicle_health' && draft.issueType === 'health_review_required') return false;
+    if (
+      draft.domain === 'vehicle_health'
+      && draft.issueType !== 'service_overdue'
+      && isOverdueText(`${draft.title} ${draft.subtitle ?? ''}`.toLowerCase())
+      && !['battery', 'tires', 'brakes', 'error_codes', 'vehicle_alerts'].some((module) =>
+        `${draft.source.rawType ?? ''} ${draft.source.debugLabel ?? ''}`.includes(module),
+      )
+    ) {
+      return false;
+    }
+    return true;
+  });
 }
 
 function mergeServiceWindowIntoOverdue(byKey: Map<string, OperationalIssueDraft[]>): void {

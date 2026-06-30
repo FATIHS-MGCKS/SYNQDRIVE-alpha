@@ -2,14 +2,16 @@ import { DimoDocumentAgentService, DocAgentField } from './dimo-document-agent.s
 
 type AgentsMock = {
   isConfigured: jest.Mock;
-  createAgent: jest.Mock;
+  getOrCreateAgent: jest.Mock;
+  invalidateAgentCache: jest.Mock;
   sendMessageStream: jest.Mock;
 };
 
 function makeAgents(overrides: Partial<AgentsMock> = {}): AgentsMock {
   return {
     isConfigured: jest.fn().mockReturnValue(true),
-    createAgent: jest.fn().mockResolvedValue({ success: true, agentId: 'agent-1' }),
+    getOrCreateAgent: jest.fn().mockResolvedValue({ success: true, agentId: 'agent-1' }),
+    invalidateAgentCache: jest.fn().mockResolvedValue(undefined),
     sendMessageStream: jest.fn().mockResolvedValue({ success: true, response: '{}' }),
     ...overrides,
   };
@@ -44,7 +46,7 @@ describe('DimoDocumentAgentService', () => {
     expect(res.success).toBe(false);
     expect(res.error).toMatch(/not configured/i);
     expect(res.dimoContextAvailable).toBe(true); // token was present
-    expect(agents.createAgent).not.toHaveBeenCalled();
+    expect(agents.getOrCreateAgent).not.toHaveBeenCalled();
   });
 
   it('returns a failure when DIMO credentials are not configured', async () => {
@@ -54,6 +56,26 @@ describe('DimoDocumentAgentService', () => {
     const res = await svc.extract({ documentType: 'SERVICE', fields: SERVICE_FIELDS, rawText: 't' });
     expect(res.success).toBe(false);
     expect(res.dimoContextAvailable).toBe(false);
+  });
+
+  it('document_extraction without dimoTokenId sends no vehicleIds', async () => {
+    const agents = makeAgents({
+      sendMessageStream: jest.fn().mockResolvedValue({ success: true, response: '{"fields":{}}' }),
+    });
+    const svc = new DimoDocumentAgentService(agents as any, { dimoAgentEnabled: true } as any);
+
+    await svc.extract({ documentType: 'SERVICE', fields: SERVICE_FIELDS, rawText: 'invoice text' });
+
+    expect(agents.getOrCreateAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ useCase: 'document_extraction', vehicleIds: undefined }),
+    );
+    expect(agents.sendMessageStream).toHaveBeenCalledWith(
+      'agent-1',
+      expect.any(String),
+      undefined,
+      undefined,
+      { useCase: 'document_extraction' },
+    );
   });
 
   it('parses structured JSON, drops unknown keys, and keeps notes', async () => {
@@ -90,8 +112,16 @@ describe('DimoDocumentAgentService', () => {
     expect(res.recommendedHumanReviewNotes).toEqual(['verify mileage']); // non-strings filtered
     expect(res.dimoContextAvailable).toBe(true);
 
-    // The vehicle tokenId is forwarded to the agent for vehicle-aware context.
-    expect(agents.sendMessageStream).toHaveBeenCalledWith('agent-1', expect.any(String), [777]);
+    expect(agents.getOrCreateAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ useCase: 'document_extraction', vehicleIds: [777] }),
+    );
+    expect(agents.sendMessageStream).toHaveBeenCalledWith(
+      'agent-1',
+      expect.any(String),
+      [777],
+      undefined,
+      { useCase: 'document_extraction' },
+    );
   });
 
   it('builds a strict JSON-only prompt with no confidence fields', async () => {
@@ -143,16 +173,21 @@ describe('DimoDocumentAgentService', () => {
       .fn()
       .mockResolvedValueOnce({ success: false, statusCode: 404 })
       .mockResolvedValueOnce({ success: true, response: '{"fields":{}}' });
-    const agents = makeAgents({ sendMessageStream });
+    const getOrCreateAgent = jest
+      .fn()
+      .mockResolvedValueOnce({ success: true, agentId: 'agent-1' })
+      .mockResolvedValueOnce({ success: true, agentId: 'agent-2' });
+    const agents = makeAgents({ sendMessageStream, getOrCreateAgent });
     const svc = new DimoDocumentAgentService(agents as any, { dimoAgentEnabled: true } as any);
 
     const res = await svc.extract({ documentType: 'SERVICE', fields: SERVICE_FIELDS, rawText: 't' });
     expect(res.success).toBe(true);
-    expect(agents.createAgent).toHaveBeenCalledTimes(2); // initial + recreate
+    expect(agents.invalidateAgentCache).toHaveBeenCalledTimes(1);
+    expect(getOrCreateAgent).toHaveBeenCalledTimes(2);
     expect(sendMessageStream).toHaveBeenCalledTimes(2);
   });
 
-  it('reuses a cached agentId across calls', async () => {
+  it('reuses a scoped agent across calls', async () => {
     const agents = makeAgents({
       sendMessageStream: jest.fn().mockResolvedValue({ success: true, response: '{"fields":{}}' }),
     });
@@ -160,12 +195,15 @@ describe('DimoDocumentAgentService', () => {
 
     await svc.extract({ documentType: 'SERVICE', fields: SERVICE_FIELDS, rawText: 't' });
     await svc.extract({ documentType: 'SERVICE', fields: SERVICE_FIELDS, rawText: 't2' });
-    expect(agents.createAgent).toHaveBeenCalledTimes(1);
+    expect(agents.getOrCreateAgent).toHaveBeenCalledTimes(2);
+    expect(agents.getOrCreateAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ useCase: 'document_extraction' }),
+    );
   });
 
   it('sanitizes thrown errors and never leaks bearer tokens', async () => {
     const agents = makeAgents({
-      createAgent: jest.fn().mockRejectedValue(new Error('failed Bearer abc.def.ghi while creating')),
+      getOrCreateAgent: jest.fn().mockRejectedValue(new Error('failed Bearer abc.def.ghi while creating')),
     });
     const svc = new DimoDocumentAgentService(agents as any, { dimoAgentEnabled: true } as any);
 

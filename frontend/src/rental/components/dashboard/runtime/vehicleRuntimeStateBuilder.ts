@@ -11,6 +11,7 @@ import {
   createRuntimeReason,
   dedupeRuntimeReasons,
   isComplianceCategory,
+  isLegalComplianceBlockingText,
 } from './dashboardRuntimeReasons';
 import type {
   BookingRuntimeState,
@@ -230,7 +231,14 @@ function isHardBlockingCategory(category: RuntimeReasonCategory): boolean {
   return (
     category === 'operational' ||
     category === 'rental' ||
-    category === 'telemetry'
+    category === 'telemetry' ||
+    category === 'compliance' ||
+    category === 'health' ||
+    category === 'tires' ||
+    category === 'brakes' ||
+    category === 'battery' ||
+    category === 'dtc' ||
+    category === 'damage'
   );
 }
 
@@ -246,29 +254,38 @@ function isHealthCategory(category: RuntimeReasonCategory): boolean {
 
 function categoryFromBlockingReason(reason: string): RuntimeReasonCategory {
   const normalized = reason.toLowerCase();
-  if (
-    normalized.includes('tüv') ||
-    normalized.includes('tuv') ||
-    normalized.includes('bokraft') ||
-    normalized.includes('compliance') ||
-    normalized.includes('service')
-  ) {
+  if (isLegalComplianceBlockingText(reason)) {
     return 'compliance';
+  }
+  if (
+    normalized.includes('service') ||
+    normalized.includes('wartung') ||
+    normalized.includes('hm/oem') ||
+    normalized.includes('oem')
+  ) {
+    return 'service';
+  }
+  if (normalized.includes('reifen') || normalized.includes('tire')) {
+    return 'tires';
+  }
+  if (normalized.includes('brems') || normalized.includes('brake')) {
+    return 'brakes';
   }
   if (
     normalized.includes('dtc') ||
     normalized.includes('fehlercode') ||
-    normalized.includes('battery') ||
-    normalized.includes('batterie') ||
-    normalized.includes('reifen') ||
-    normalized.includes('tires') ||
-    normalized.includes('brake') ||
-    normalized.includes('bremse') ||
-    normalized.includes('health')
+    normalized.includes('fehlercodes')
   ) {
+    return 'dtc';
+  }
+  if (normalized.includes('battery') || normalized.includes('batterie')) {
+    return 'battery';
+  }
+  if (normalized.includes('öl') || normalized.includes('oil')) {
     return 'health';
   }
   if (normalized.includes('damage') || normalized.includes('schaden')) return 'damage';
+  if (normalized.includes('health')) return 'health';
   return 'rental';
 }
 
@@ -342,14 +359,19 @@ function addHealthReasons(input: {
 
   if (input.health?.rental_blocked === true) {
     for (const reason of input.health.blocking_reasons) {
+      const category = categoryFromBlockingReason(reason);
+      // Service/HM/OEM overdue is never a rental blocker — backend should not
+      // emit it in blocking_reasons, but guard here to keep Ready truthful.
+      const blocking = category !== 'service';
       addReason(
         input.target,
         createRuntimeReason({
-          category: categoryFromBlockingReason(reason),
+          category,
           severity: 'critical',
           title: reason || 'Rental blocked',
           source: 'rental-health:blocking-reason',
-          blocking: true,
+          blocking,
+          preventsReady: blocking,
         }),
       );
       concreteHealthReasonAdded = true;

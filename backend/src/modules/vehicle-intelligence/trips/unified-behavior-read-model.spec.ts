@@ -1,8 +1,10 @@
 import {
   buildUnifiedBehaviorEvents,
+  dedupeUnifiedBehaviorEvents,
   deriveDerivedAbuseRelevance,
   deriveNativeAbuseRelevance,
   mapDrivingEventRow,
+  countVisibleUnifiedBehaviorEvents,
   type BehaviorEventRow,
   type DrivingEventRow,
 } from './unified-behavior-read-model';
@@ -154,13 +156,114 @@ describe('buildUnifiedBehaviorEvents', () => {
         behaviorEvent({
           eventCategory: 'BRAKING',
           eventType: 'BRAKING',
-          startedAt: new Date(T0.getTime() + 2_000), // within 5s
+          startedAt: new Date(T0.getTime() + 2_000), // within ±2s bucket
         }),
       ],
       tripId: TRIP,
     });
     expect(merged).toHaveLength(1);
     expect(merged[0].provenance).toBe('NATIVE');
+  });
+
+  it('same timestamp/type/source => one visible row', () => {
+    const row = nativeEvent({ eventType: 'HARSH_BRAKING', recordedAt: T0 });
+    const mapped = mapDrivingEventRow(row, TRIP);
+    const deduped = dedupeUnifiedBehaviorEvents([mapped, mapped], TRIP);
+    expect(deduped).toHaveLength(1);
+  });
+
+  it('context classification does not add a separate row', () => {
+    const bare = mapDrivingEventRow(
+      nativeEvent({ eventType: 'HARSH_ACCELERATION', recordedAt: T0 }),
+      TRIP,
+    );
+    const withContext = mapDrivingEventRow(
+      nativeEvent({
+        eventType: 'HARSH_ACCELERATION',
+        recordedAt: T0,
+        metadataJson: {
+          contextAssessment: {
+            status: 'COMPLETED',
+            classifications: ['AGGRESSIVE_START', 'KICKDOWN_LIKELY'],
+            confidence: 'MEDIUM',
+            evidenceGrade: 'B',
+          },
+        },
+      }),
+      TRIP,
+    );
+    const deduped = dedupeUnifiedBehaviorEvents([bare, withContext], TRIP);
+    expect(deduped).toHaveLength(1);
+    const ca = deduped[0].contextAssessment as { classifications?: string[] };
+    expect(ca.classifications).toEqual(
+      expect.arrayContaining(['AGGRESSIVE_START', 'KICKDOWN_LIKELY']),
+    );
+  });
+
+  it('higher severity wins for same native incident bucket', () => {
+    const moderate = mapDrivingEventRow(
+      nativeEvent({
+        eventType: 'HARSH_BRAKING',
+        recordedAt: T0,
+        metadataJson: { classification: 'MODERATE' },
+      }),
+      TRIP,
+    );
+    const hard = mapDrivingEventRow(
+      nativeEvent({
+        eventType: 'HARSH_BRAKING',
+        recordedAt: new Date(T0.getTime() + 1_000),
+        metadataJson: { classification: 'HARD' },
+      }),
+      TRIP,
+    );
+    const deduped = dedupeUnifiedBehaviorEvents([moderate, hard], TRIP);
+    expect(deduped).toHaveLength(1);
+    expect(deduped[0].classification).toBe('HARD');
+  });
+
+  it('reprocessing duplicate inputs yields stable visible count', () => {
+    const input = {
+      drivingEvents: [
+        nativeEvent({ eventType: 'HARSH_BRAKING', recordedAt: T0 }),
+        nativeEvent({ eventType: 'HARSH_ACCELERATION', recordedAt: new Date(T0.getTime() + 60_000) }),
+      ],
+      behaviorEvents: [
+        behaviorEvent({
+          eventCategory: 'BRAKING',
+          eventType: 'BRAKING',
+          startedAt: T0,
+        }),
+      ],
+      tripId: TRIP,
+    };
+    const first = buildUnifiedBehaviorEvents(input);
+    const second = buildUnifiedBehaviorEvents({
+      ...input,
+      drivingEvents: [...input.drivingEvents, ...input.drivingEvents],
+      behaviorEvents: [...input.behaviorEvents, ...input.behaviorEvents],
+    });
+    expect(countVisibleUnifiedBehaviorEvents(first)).toBe(2);
+    expect(countVisibleUnifiedBehaviorEvents(second)).toBe(2);
+  });
+
+  it('visible event count equals deduped list length', () => {
+    const merged = buildUnifiedBehaviorEvents({
+      drivingEvents: [
+        nativeEvent({ eventType: 'HARSH_BRAKING', recordedAt: T0 }),
+        nativeEvent({ eventType: 'HARSH_CORNERING', recordedAt: new Date(T0.getTime() + 30_000) }),
+      ],
+      behaviorEvents: [
+        behaviorEvent({
+          eventCategory: 'BRAKING',
+          eventType: 'BRAKING',
+          startedAt: T0,
+        }),
+      ],
+      tripId: TRIP,
+    });
+    expect(countVisibleUnifiedBehaviorEvents(merged)).toBe(merged.length);
+    expect(merged).toHaveLength(2);
   });
 
   it('native + derived DIFFERENT category → not deduped (both kept)', () => {

@@ -1,11 +1,55 @@
-import { Injectable, Logger, Inject, Optional, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import axios from 'axios';
 import dimoConfig from '@config/dimo.config';
 import { RedisService } from '@shared/redis/redis.service';
 import { DimoAuthService } from './dimo-auth.service';
+import {
+  createDimoAgentStreamParseState,
+  finalizeDimoAgentStreamParse,
+  isDimoAgentStreamKeepalive,
+  processDimoAgentStreamPayload,
+} from './dimo-agent-stream-parser.util';
+import {
+  DIMO_AGENT_CACHE_TTL_SECONDS,
+  resolveDimoAgentCacheKey,
+} from './dimo-agent-cache.util';
+import {
+  DimoAgentPersonality,
+  resolveDimoAgentPersonalityFromEnv,
+} from './dimo-agent-personality.util';
+import {
+  DimoAgentUseCase,
+  GetOrCreateAgentInput,
+  GetOrCreateAgentResult,
+} from './dimo-agent-use-case.types';
+import {
+  assertVehicleScopeIfRequired,
+  DimoAgentStreamCallContext,
+  formatAgentScopeLog,
+  normalizeAgentVehicleIds,
+  resolveVehicleSpecsScope,
+} from './dimo-agent-vehicle-scope.util';
+import {
+  DIMO_AGENT_DIAGNOSTIC_TEST_PROMPT,
+  DimoAgentDiagnosticCheck,
+  DimoAgentDiagnosticsOptions,
+  DimoAgentDiagnosticsResult,
+} from './dimo-agent-diagnostics.types';
+import {
+  maskDimoAgentWallet,
+  sanitizeDimoAgentError,
+  sanitizeDimoAgentErrorMessage,
+} from './dimo-agent-error-sanitize.util';
 
-const REDIS_AGENT_ID_KEY = 'dimo:agents:agent_id';
+export type {
+  DimoAgentUseCase,
+  GetOrCreateAgentInput,
+  GetOrCreateAgentResult,
+  DimoAgentStreamCallContext,
+  DimoAgentDiagnosticsOptions,
+  DimoAgentDiagnosticsResult,
+};
 
 export interface AgentStep {
   step: string;
@@ -46,29 +90,23 @@ export interface VehicleSpecsResult {
   error?: string;
   configFailure?: boolean;
   steps: AgentStep[];
+  /** True when a DIMO tokenId was passed and live vehicle scope is active. */
+  dimoVehicleConnected?: boolean;
+  /** True when specs were requested without DIMO tokenId (MMY/knowledge-only). */
+  knowledgeOnlyFallback?: boolean;
 }
 
 @Injectable()
-export class DimoAgentsService implements OnModuleInit {
+export class DimoAgentsService {
   private readonly logger = new Logger(DimoAgentsService.name);
-  private cachedAgentId: string | null = null;
-  private cachedVehicleIds = new Set<number>();
+  /** In-process agentId cache keyed by scoped Redis cache key. */
+  private readonly memoryAgentCache = new Map<string, string>();
 
   constructor(
     @Inject(dimoConfig.KEY) private readonly conf: ConfigType<typeof dimoConfig>,
     @Optional() private readonly redis?: RedisService,
     @Optional() private readonly dimoAuth?: DimoAuthService,
   ) {}
-
-  async onModuleInit(): Promise<void> {
-    if (this.redis) {
-      const stored = await this.redis.get(REDIS_AGENT_ID_KEY).catch(() => null);
-      if (stored) {
-        this.cachedAgentId = stored;
-        this.logger.log(`[Agents] Loaded persisted agentId from Redis: ${stored.slice(0, 24)}…`);
-      }
-    }
-  }
 
   private get agentsBaseUrl(): string {
     return (this.conf as any).agentsBaseUrl || 'https://agents.dimo.zone';
@@ -86,6 +124,30 @@ export class DimoAgentsService implements OnModuleInit {
     return Boolean(this.apiKey && this.userWallet);
   }
 
+  /** Resolve validated personality for a use case (env override → explicit → default). */
+  resolveAgentPersonality(useCase: DimoAgentUseCase, explicitOverride?: string): DimoAgentPersonality {
+    return resolveDimoAgentPersonalityFromEnv(
+      useCase,
+      {
+        vehicleSpecs: (this.conf as any).agentPersonalityVehicleSpecs,
+        tireSpecs: (this.conf as any).agentPersonalityTireSpecs,
+        document: (this.conf as any).agentPersonalityDocument,
+        chat: (this.conf as any).agentPersonalityChat,
+      },
+      explicitOverride,
+      (message) => this.logger.warn(message),
+    );
+  }
+
+  private resolveScopedAgent(input: GetOrCreateAgentInput): {
+    cacheKey: string;
+    personality: DimoAgentPersonality;
+    wallet: string;
+  } {
+    const personality = this.resolveAgentPersonality(input.useCase, input.personality);
+    return resolveDimoAgentCacheKey(input, this.userWallet, personality);
+  }
+
   // Agents API auth: Bearer JWT in header + DIMO_API_KEY in body secrets.
   private async getHeaders(): Promise<Record<string, string>> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -100,21 +162,70 @@ export class DimoAgentsService implements OnModuleInit {
     return headers;
   }
 
-  private async persistAgentId(agentId: string): Promise<void> {
+  private async persistScopedAgentId(cacheKey: string, agentId: string): Promise<void> {
+    this.memoryAgentCache.set(cacheKey, agentId);
     if (this.redis) {
-      await this.redis.set(REDIS_AGENT_ID_KEY, agentId, 'EX', 60 * 60 * 24 * 30).catch(() => null); // 30 days
+      await this.redis
+        .set(cacheKey, agentId, 'EX', DIMO_AGENT_CACHE_TTL_SECONDS)
+        .catch(() => null);
     }
   }
 
-  private async clearPersistedAgentId(): Promise<void> {
+  private async readScopedAgentId(cacheKey: string): Promise<string | null> {
+    const fromMemory = this.memoryAgentCache.get(cacheKey);
+    if (fromMemory) return fromMemory;
+    if (!this.redis) return null;
+    const fromRedis = await this.redis.get(cacheKey).catch(() => null);
+    if (fromRedis) this.memoryAgentCache.set(cacheKey, fromRedis);
+    return fromRedis;
+  }
+
+  async invalidateAgentCache(input: GetOrCreateAgentInput): Promise<void> {
+    const { cacheKey } = this.resolveScopedAgent(input);
+    this.memoryAgentCache.delete(cacheKey);
     if (this.redis) {
-      await this.redis.del(REDIS_AGENT_ID_KEY).catch(() => null);
+      await this.redis.del(cacheKey).catch(() => null);
     }
+  }
+
+  // ─── Scoped agent resolution ───────────────────────────────────
+
+  async getOrCreateAgent(input: GetOrCreateAgentInput): Promise<GetOrCreateAgentResult> {
+    if (!this.isConfigured()) {
+      return {
+        success: false,
+        configFailure: true,
+        error: 'DIMO_API_KEY or DIMO_AGENT_USER_WALLET not set',
+      };
+    }
+
+    const { cacheKey, personality } = this.resolveScopedAgent(input);
+    const cached = await this.readScopedAgentId(cacheKey);
+    if (cached) {
+      return { success: true, agentId: cached, cacheKey };
+    }
+
+    const created = await this.createAgentInstance(personality);
+    if (!created.success || !created.agentId) {
+      return { ...created, cacheKey };
+    }
+
+    await this.persistScopedAgentId(cacheKey, created.agentId);
+    this.logger.log(
+      `[Agents] Cached agent for ${input.useCase} — key=${cacheKey.slice(0, 48)}… id=${created.agentId.slice(0, 24)}…`,
+    );
+    return { success: true, agentId: created.agentId, cacheKey };
   }
 
   // ─── POST /agents ──────────────────────────────────────────────
 
+  /** @deprecated Prefer getOrCreateAgent with an explicit use case scope. */
   async createAgent(_tokenIds?: number[]): Promise<CreateAgentResult> {
+    const personality = this.resolveAgentPersonality('vehicle_specs');
+    return this.createAgentInstance(personality);
+  }
+
+  private async createAgentInstance(personality: string): Promise<CreateAgentResult> {
     if (!this.apiKey || !this.userWallet) {
       return { success: false, configFailure: true, error: 'DIMO_API_KEY or DIMO_AGENT_USER_WALLET not set' };
     }
@@ -123,13 +234,15 @@ export class DimoAgentsService implements OnModuleInit {
     // Vehicle IDs are passed per-message via sendMessage's vehicleIds field instead.
     const body = {
       type: 'driver_agent_v1',
-      personality: 'uncle_mechanic',
+      personality,
       secrets: { DIMO_API_KEY: this.apiKey },
       variables: { USER_WALLET: this.userWallet },
     };
 
     const url = `${this.agentsBaseUrl}/agents`;
-    this.logger.log(`[Agents] POST ${url} — wallet=${this.userWallet.slice(0, 10)}… (no VEHICLE_IDS at creation)`);
+    this.logger.log(
+      `[Agents] POST ${url} — wallet=${this.userWallet.slice(0, 10)}… personality=${personality}`,
+    );
 
     const headers = await this.getHeaders();
     try {
@@ -139,21 +252,20 @@ export class DimoAgentsService implements OnModuleInit {
         validateStatus: () => true,
       });
       const data = res.data as Record<string, unknown>;
-      this.logger.log(`[Agents] createAgent → ${res.status}: ${JSON.stringify(data).slice(0, 250)}`);
+      this.logger.log(
+        `[Agents] createAgent → ${res.status}: ${sanitizeDimoAgentErrorMessage(JSON.stringify(data)).slice(0, 250)}`,
+      );
 
       if (res.status >= 200 && res.status < 300) {
         const agentId = String(data?.agentId ?? data?.id ?? '');
         if (!agentId) return { success: false, error: 'No agentId in response' };
-        this.cachedAgentId = agentId;
-        this.cachedVehicleIds = new Set();
-        await this.persistAgentId(agentId);
         return { success: true, agentId };
       }
 
       const err = String((data as any)?.message ?? (data as any)?.error ?? (data as any)?.detail ?? `HTTP ${res.status}`);
-      return { success: false, statusCode: res.status, error: err };
+      return { success: false, statusCode: res.status, error: sanitizeDimoAgentErrorMessage(err) };
     } catch (e: any) {
-      return { success: false, error: e?.message ?? 'Network error' };
+      return { success: false, error: sanitizeDimoAgentError(e) };
     }
   }
 
@@ -166,10 +278,11 @@ export class DimoAgentsService implements OnModuleInit {
     try {
       await axios.delete(url, { headers, timeout: 10000, validateStatus: () => true });
     } catch { /* best-effort */ }
-    if (this.cachedAgentId === agentId) {
-      this.cachedAgentId = null;
-      this.cachedVehicleIds.clear();
-      await this.clearPersistedAgentId();
+    for (const [cacheKey, cachedId] of this.memoryAgentCache.entries()) {
+      if (cachedId === agentId) {
+        this.memoryAgentCache.delete(cacheKey);
+        if (this.redis) await this.redis.del(cacheKey).catch(() => null);
+      }
     }
   }
 
@@ -200,9 +313,15 @@ export class DimoAgentsService implements OnModuleInit {
         return { success: true, response: text };
       }
 
-      return { success: false, statusCode: res.status, error: String((data as any)?.message ?? (data as any)?.error ?? `HTTP ${res.status}`) };
+      return {
+        success: false,
+        statusCode: res.status,
+        error: sanitizeDimoAgentErrorMessage(
+          String((data as any)?.message ?? (data as any)?.error ?? `HTTP ${res.status}`),
+        ),
+      };
     } catch (e: any) {
-      return { success: false, error: e?.message ?? 'Network error' };
+      return { success: false, error: sanitizeDimoAgentError(e) };
     }
   }
 
@@ -213,10 +332,20 @@ export class DimoAgentsService implements OnModuleInit {
     message: string,
     tokenIds?: number[],
     onChunk?: (event: { type: string; content: string }) => void,
+    context?: DimoAgentStreamCallContext,
   ): Promise<SendMessageResult> {
+    const vehicleIds = normalizeAgentVehicleIds(tokenIds);
+    const scopeError = assertVehicleScopeIfRequired(context, vehicleIds);
+    if (scopeError) {
+      return { success: false, error: scopeError };
+    }
+    if (context) {
+      this.logger.log(`[Agents] stream ${formatAgentScopeLog(context, vehicleIds)}`);
+    }
+
     const body: Record<string, unknown> = {
       message,
-      ...(tokenIds?.length && { vehicleIds: tokenIds }),
+      ...(vehicleIds?.length && { vehicleIds }),
       ...(this.userWallet && { user: this.userWallet }),
     };
 
@@ -224,7 +353,7 @@ export class DimoAgentsService implements OnModuleInit {
     this.logger.log(`[Agents] POST ${url} (stream) — msgLen=${message.length}`);
 
     const headers = await this.getHeaders();
-    let fullResponse = '';
+    const parseState = createDimoAgentStreamParseState();
 
     try {
       const res = await axios.post(url, body, {
@@ -237,7 +366,9 @@ export class DimoAgentsService implements OnModuleInit {
       if (res.status >= 400) {
         let errBody = '';
         for await (const chunk of res.data) { errBody += chunk.toString(); }
-        this.logger.warn(`[Agents] stream error ${res.status}: ${errBody.slice(0, 300)}`);
+        this.logger.warn(
+          `[Agents] stream error ${res.status}: ${sanitizeDimoAgentErrorMessage(errBody).slice(0, 300)}`,
+        );
         return { success: false, statusCode: res.status, error: `HTTP ${res.status}` };
       }
 
@@ -247,14 +378,28 @@ export class DimoAgentsService implements OnModuleInit {
         let lastActivity = Date.now();
         const STREAM_TIMEOUT_MS = 300_000;
         const INACTIVITY_TIMEOUT_MS = 120_000;
+        const resolveStream = (fallbackError?: string) => {
+          if (parseState.streamError) {
+            resolve(this.finalizeAgentStream(parseState));
+            return;
+          }
+          if (parseState.fullResponse) {
+            resolve(this.finalizeAgentStream(parseState));
+            return;
+          }
+          const finalized = this.finalizeAgentStream(parseState);
+          resolve({
+            success: false,
+            error: fallbackError
+              ? sanitizeDimoAgentErrorMessage(fallbackError)
+              : finalized.error,
+          });
+        };
+
         const streamTimeout = setTimeout(() => {
           this.logger.warn(`[Agents] Stream hard timeout after ${STREAM_TIMEOUT_MS / 1000}s`);
           stream.removeAllListeners();
-          if (fullResponse) {
-            resolve({ success: true, response: fullResponse });
-          } else {
-            resolve({ success: false, error: `Stream timeout (${STREAM_TIMEOUT_MS / 1000}s)` });
-          }
+          resolveStream(`Stream timeout (${STREAM_TIMEOUT_MS / 1000}s)`);
         }, STREAM_TIMEOUT_MS);
 
         const inactivityCheck = setInterval(() => {
@@ -263,11 +408,7 @@ export class DimoAgentsService implements OnModuleInit {
             clearInterval(inactivityCheck);
             clearTimeout(streamTimeout);
             stream.removeAllListeners();
-            if (fullResponse) {
-              resolve({ success: true, response: fullResponse });
-            } else {
-              resolve({ success: false, error: `Stream inactivity timeout (${INACTIVITY_TIMEOUT_MS / 1000}s)` });
-            }
+            resolveStream(`Stream inactivity timeout (${INACTIVITY_TIMEOUT_MS / 1000}s)`);
           }
         }, 10_000);
 
@@ -279,29 +420,20 @@ export class DimoAgentsService implements OnModuleInit {
 
           for (const line of lines) {
             const trimmed = line.trim();
-            if (!trimmed || !trimmed.startsWith('data:')) continue;
+            if (!trimmed || trimmed.startsWith(':')) continue;
+            if (!trimmed.startsWith('data:')) continue;
             const payload = trimmed.slice(5).trim();
-            if (payload === '[DONE]') continue;
+            if (isDimoAgentStreamKeepalive(payload)) continue;
 
-            try {
-              const parsed = JSON.parse(payload);
-              const msgType = parsed.message_type || parsed.type || '';
-              const content = parsed.content || parsed.text || parsed.message || '';
+            const { progress } = processDimoAgentStreamPayload(payload, parseState);
+            if (progress && onChunk) onChunk(progress);
 
-              if (msgType === 'assistant_message' && content) {
-                fullResponse += content;
-              }
-
-              if (onChunk) {
-                const label =
-                  msgType === 'reasoning_message' ? 'KI denkt nach...' :
-                  msgType === 'tool_call_message' ? `Tool: ${parsed.tool_call?.name || 'Datenabfrage'}` :
-                  msgType === 'tool_return_message' ? 'Daten empfangen' :
-                  msgType === 'assistant_message' ? '' : msgType;
-                if (label) onChunk({ type: msgType, content: label });
-              }
-            } catch {
-              if (payload.length > 2) fullResponse += payload;
+            if (parseState.streamError) {
+              clearTimeout(streamTimeout);
+              clearInterval(inactivityCheck);
+              stream.removeAllListeners();
+              resolve(this.finalizeAgentStream(parseState));
+              return;
             }
           }
         });
@@ -309,27 +441,41 @@ export class DimoAgentsService implements OnModuleInit {
         stream.on('end', () => {
           clearTimeout(streamTimeout);
           clearInterval(inactivityCheck);
-          this.logger.log(`[Agents] Stream completed — responseLen=${fullResponse.length}`);
-          resolve({ success: true, response: fullResponse || '(empty stream)' });
+          const { metadata } = parseState;
+          if (metadata.done) {
+            this.logger.log(
+              `[Agents] Stream done — agentId=${metadata.agentId?.slice(0, 24) ?? 'n/a'}… vehiclesQueried=${metadata.vehiclesQueried?.length ?? 0}`,
+            );
+          }
+          this.logger.log(`[Agents] Stream completed — responseLen=${parseState.fullResponse.length}`);
+          resolve(this.finalizeAgentStream(parseState));
         });
 
         stream.on('error', (err: Error) => {
           clearTimeout(streamTimeout);
           clearInterval(inactivityCheck);
           this.logger.warn(`[Agents] Stream error: ${err.message}`);
-          if (fullResponse) {
-            resolve({ success: true, response: fullResponse });
-          } else {
-            resolve({ success: false, error: err.message });
-          }
+          resolveStream(err.message);
         });
       });
     } catch (e: any) {
-      return { success: false, error: e?.message ?? 'Network error' };
+      return { success: false, error: sanitizeDimoAgentError(e) };
     }
   }
 
-  private buildVehicleSpecMessage(vehicle?: VehicleContext, tokenIds?: number[]): string {
+  private finalizeAgentStream(state: ReturnType<typeof createDimoAgentStreamParseState>): SendMessageResult {
+    const result = finalizeDimoAgentStreamParse(state);
+    if (!result.success && result.error) {
+      return { success: false, error: sanitizeDimoAgentErrorMessage(result.error) };
+    }
+    return result;
+  }
+
+  private buildVehicleSpecMessage(
+    vehicle?: VehicleContext,
+    tokenIds?: number[],
+    options?: { knowledgeOnly?: boolean },
+  ): string {
     const vinLine = vehicle?.vin ? `VIN: ${vehicle.vin}` : '';
     const makeLine = vehicle?.make ? `MAKE: ${vehicle.make}` : '';
     const modelLine = vehicle?.model ? `MODEL: ${vehicle.model}` : '';
@@ -339,8 +485,13 @@ export class DimoAgentsService implements OnModuleInit {
     const fuelTypeLine = vehicle?.fuelType ? `FUEL_TYPE: ${vehicle.fuelType}` : '';
     const vehicleBlock = [vinLine, makeLine, modelLine, yearLine, drivetrainLine, powertrainLine, fuelTypeLine].filter(Boolean).join('\n');
     const tokenCtx = tokenIds && tokenIds.length > 0 ? `Vehicle Token IDs: ${tokenIds.join(', ')}` : '';
+    const scopeNote = options?.knowledgeOnly
+      ? `[SCOPE: No DIMO tokenId is available. Use make/model/year/VIN context only. Do NOT claim live DIMO telemetry or invent live vehicle data. This is a knowledge-only OEM specification lookup.]\n\n`
+      : tokenIds?.length
+        ? `[SCOPE: DIMO tokenId(s) provided — vehicle context may be used, but return OEM factory specs as JSON only.]\n\n`
+        : '';
 
-    return `You are a vehicle specification database assistant with deep automotive engineering knowledge. Answer IMMEDIATELY from your knowledge. Do NOT perform web searches or external API lookups — respond only with what you already know about this vehicle from your training data.
+    return `${scopeNote}You are a vehicle specification database assistant with deep automotive engineering knowledge. Answer IMMEDIATELY from your knowledge. Do NOT perform web searches or external API lookups — respond only with what you already know about this vehicle from your training data.
 
 ${vehicleBlock ? `Vehicle context:\n${vehicleBlock}\n${tokenCtx}\n\n` : ''}For the vehicle above, fill in the factory/OEM specifications from your automotive knowledge. Return ONLY this JSON (pretty-printed, no markdown, no prose):
 
@@ -425,40 +576,51 @@ Rules:
     }
     steps.push({ step: 'Configuration check', status: 'done', detail: 'API Key + Wallet OK' });
 
-    const requestedIds = tokenIds ?? [];
+    const scopeResolution = resolveVehicleSpecsScope(tokenIds);
+    const agentScope = this.vehicleSpecsAgentScope(scopeResolution.vehicleIds);
+    steps.push({
+      step: 'DIMO vehicle scope',
+      status: 'done',
+      detail: scopeResolution.hasVehicleScope
+        ? `DIMO tokenId scoped (count=${scopeResolution.vehicleIds!.length})`
+        : 'No DIMO tokenId — knowledge-only MMY fallback (no live telemetry)',
+    });
 
-    // 2) Reuse cached agent — vehicle IDs are scoped per-message, so no need to recreate for new vehicles
-    let agentId = this.cachedAgentId;
+    // 2) Scoped agent for vehicle specs (isolated from other use cases)
+    let agentId: string | undefined;
 
-    // 3) Create agent if no cached agent exists
-    if (!agentId) {
-      const createStep: AgentStep = {
-        step: 'Creating AI Agent',
-        status: 'done',
-        detail: 'POST /agents (vehicle IDs passed per message)',
-      };
-      steps.push(createStep);
+    const createStep: AgentStep = {
+      step: 'Creating AI Agent',
+      status: 'done',
+      detail: 'Resolving scoped vehicle_specs agent',
+    };
+    steps.push(createStep);
 
-      const cr = await this.createAgent();
-      if (!cr.success || !cr.agentId) {
-        createStep.status = 'error';
-        createStep.detail = cr.error ?? 'Failed';
-        return { success: false, configFailure: cr.configFailure, error: cr.error ?? 'Agent creation failed', steps };
-      }
-      agentId = cr.agentId;
-      createStep.detail = `Agent created: ${agentId}`;
-    } else {
-      steps.push({ step: 'Agent ready', status: 'done', detail: `Reusing ${agentId.slice(0, 24)}…` });
+    const cr = await this.getOrCreateAgent(agentScope);
+    if (!cr.success || !cr.agentId) {
+      createStep.status = 'error';
+      createStep.detail = cr.error ?? 'Failed';
+      return { success: false, configFailure: cr.configFailure, error: cr.error ?? 'Agent creation failed', steps };
     }
+    agentId = cr.agentId;
+    createStep.detail = `Agent ready: ${agentId}`;
 
     // 4) Build structured JSON extraction prompt
-    const message = this.buildVehicleSpecMessage(vehicle, requestedIds.length > 0 ? requestedIds : undefined);
+    const message = this.buildVehicleSpecMessage(vehicle, scopeResolution.vehicleIds, {
+      knowledgeOnly: scopeResolution.knowledgeOnlyFallback,
+    });
 
     // 5) Send message via stream endpoint (handles long responses without timeout)
     const msgStep: AgentStep = { step: 'Sending specs request to agent', status: 'done', detail: `POST /agents/${agentId}/stream` };
     steps.push(msgStep);
-    const tokenIdsToSend = requestedIds.length > 0 ? requestedIds : undefined;
-    let msgResult = await this.sendMessageStream(agentId, message, tokenIdsToSend);
+    const streamContext: DimoAgentStreamCallContext = { useCase: 'vehicle_specs' };
+    let msgResult = await this.sendMessageStream(
+      agentId,
+      message,
+      scopeResolution.vehicleIds,
+      undefined,
+      streamContext,
+    );
 
     // 6) On failure: try once with fresh agent (expired agent, not a timeout retry)
     if (!msgResult.success && (msgResult.statusCode === 404 || msgResult.statusCode === 410)) {
@@ -468,10 +630,9 @@ Rules:
       const retryStep: AgentStep = { step: 'Refreshing agent', status: 'done', detail: '' };
       steps.push(retryStep);
 
-      this.cachedAgentId = null;
-      this.cachedVehicleIds.clear();
+      await this.invalidateAgentCache(agentScope);
 
-      const retryCr = await this.createAgent();
+      const retryCr = await this.getOrCreateAgent(agentScope);
       if (!retryCr.success || !retryCr.agentId) {
         retryStep.status = 'error';
         retryStep.detail = retryCr.error;
@@ -480,7 +641,13 @@ Rules:
       agentId = retryCr.agentId;
       retryStep.detail = `New agent: ${agentId}`;
 
-      msgResult = await this.sendMessageStream(agentId, message, tokenIdsToSend);
+      msgResult = await this.sendMessageStream(
+        agentId,
+        message,
+        scopeResolution.vehicleIds,
+        undefined,
+        streamContext,
+      );
       if (!msgResult.success) {
         steps.push({ step: 'Retry request failed', status: 'error', detail: msgResult.error });
         return { success: false, error: msgResult.error, steps };
@@ -503,7 +670,15 @@ Rules:
       this.logger.warn(`[Agents] Raw response (no JSON parsed): ${msgResult.response?.slice(0, 500)}`);
     }
 
-    return { success: true, agentId, specs, rawResponse: msgResult.response, steps };
+    return {
+      success: true,
+      agentId,
+      specs,
+      rawResponse: msgResult.response,
+      steps,
+      dimoVehicleConnected: scopeResolution.hasVehicleScope,
+      knowledgeOnlyFallback: scopeResolution.knowledgeOnlyFallback,
+    };
   }
 
   /**
@@ -523,55 +698,68 @@ Rules:
     }
     emit('step', { step: 'Konfiguration prüfen', status: 'done', detail: 'API Key + Wallet OK' });
 
-    const requestedIds = tokenIds ?? [];
+    const scopeResolution = resolveVehicleSpecsScope(tokenIds);
+    const agentScope = this.vehicleSpecsAgentScope(scopeResolution.vehicleIds);
+    emit('step', {
+      step: 'DIMO Fahrzeug-Scope',
+      status: 'done',
+      detail: scopeResolution.hasVehicleScope
+        ? `DIMO tokenId aktiv (${scopeResolution.vehicleIds!.length})`
+        : 'Kein DIMO tokenId — Wissensdatenbank-Fallback (keine Live-Telemetrie)',
+    });
 
-    // 2) Agent
-    let agentId = this.cachedAgentId;
-    if (!agentId) {
-      emit('step', { step: 'KI-Agent erstellen', status: 'working' });
-      const cr = await this.createAgent();
-      if (!cr.success || !cr.agentId) {
-        emit('step', { step: 'KI-Agent erstellen', status: 'error', detail: cr.error });
-        emit('error', { message: cr.error ?? 'Agent creation failed' });
-        return;
-      }
-      agentId = cr.agentId;
-      emit('step', { step: 'KI-Agent erstellen', status: 'done', detail: 'Agent bereit' });
-    } else {
-      emit('step', { step: 'KI-Agent', status: 'done', detail: 'Agent bereit' });
+    // 2) Scoped agent
+    let agentId: string | undefined;
+    emit('step', { step: 'KI-Agent erstellen', status: 'working' });
+    const cr = await this.getOrCreateAgent(agentScope);
+    if (!cr.success || !cr.agentId) {
+      emit('step', { step: 'KI-Agent erstellen', status: 'error', detail: cr.error });
+      emit('error', { message: cr.error ?? 'Agent creation failed' });
+      return;
     }
+    agentId = cr.agentId;
+    emit('step', { step: 'KI-Agent erstellen', status: 'done', detail: 'Agent bereit' });
 
     // 3) Build prompt (shared with getVehicleSpecs)
-    const message = this.buildVehicleSpecMessage(vehicle, requestedIds.length > 0 ? requestedIds : undefined);
+    const message = this.buildVehicleSpecMessage(vehicle, scopeResolution.vehicleIds, {
+      knowledgeOnly: scopeResolution.knowledgeOnlyFallback,
+    });
 
     // 4) Stream the message
     emit('step', { step: 'Fahrzeugdaten abfragen', status: 'working', detail: 'Stream gestartet...' });
 
-    const tokenIdsToSend = requestedIds.length > 0 ? requestedIds : undefined;
-    const msgResult = await this.sendMessageStream(agentId, message, tokenIdsToSend, (chunk) => {
-      emit('progress', chunk);
-    });
+    const streamContext: DimoAgentStreamCallContext = { useCase: 'vehicle_specs' };
+    const msgResult = await this.sendMessageStream(
+      agentId,
+      message,
+      scopeResolution.vehicleIds,
+      (chunk) => emit('progress', chunk),
+      streamContext,
+    );
 
     if (!msgResult.success) {
       // If 404/410, agent expired — retry once
       if (msgResult.statusCode === 404 || msgResult.statusCode === 410) {
         emit('step', { step: 'Agent abgelaufen — erneuern', status: 'working' });
-        this.cachedAgentId = null;
-        this.cachedVehicleIds.clear();
-        const retryCr = await this.createAgent();
+        await this.invalidateAgentCache(agentScope);
+        const retryCr = await this.getOrCreateAgent(agentScope);
         if (retryCr.success && retryCr.agentId) {
           agentId = retryCr.agentId;
           emit('step', { step: 'Agent erneuert', status: 'done' });
-          const retryResult = await this.sendMessageStream(agentId, message, tokenIdsToSend, (chunk) => {
-            emit('progress', chunk);
-          });
+          const retryResult = await this.sendMessageStream(
+            agentId,
+            message,
+            scopeResolution.vehicleIds,
+            (chunk) => emit('progress', chunk),
+            streamContext,
+          );
           if (!retryResult.success) {
             emit('step', { step: 'Fahrzeugdaten abfragen', status: 'error', detail: retryResult.error });
             emit('error', { message: retryResult.error ?? 'Stream failed' });
             return;
           }
           // Use retry result for parsing below
-          return this.finishStream(retryResult, agentId, emit);
+          return this.finishStream(retryResult, agentId, emit, scopeResolution);
         }
       }
       emit('step', { step: 'Fahrzeugdaten abfragen', status: 'error', detail: msgResult.error });
@@ -579,13 +767,14 @@ Rules:
       return;
     }
 
-    return this.finishStream(msgResult, agentId, emit);
+    return this.finishStream(msgResult, agentId, emit, scopeResolution);
   }
 
   private finishStream(
     msgResult: SendMessageResult,
     agentId: string,
     emit: (event: string, data: unknown) => void,
+    scopeResolution?: ReturnType<typeof resolveVehicleSpecsScope>,
   ): void {
     emit('step', { step: 'Fahrzeugdaten abfragen', status: 'done', detail: 'Antwort empfangen' });
 
@@ -603,7 +792,9 @@ Rules:
 
     emit('result', {
       success: true,
-      degraded: !hasData,
+      degraded: !hasData || scopeResolution?.knowledgeOnlyFallback,
+      knowledgeOnlyFallback: scopeResolution?.knowledgeOnlyFallback ?? false,
+      dimoVehicleConnected: scopeResolution?.hasVehicleScope ?? false,
       agentId,
       specs: specs ?? {},
     });
@@ -622,20 +813,22 @@ Rules:
     }
     emit('step', { step: 'Konfiguration prüfen', status: 'done', detail: 'API Key + Wallet OK' });
 
-    let agentId = this.cachedAgentId;
-    if (!agentId) {
-      emit('step', { step: 'KI-Agent erstellen', status: 'working' });
-      const cr = await this.createAgent();
-      if (!cr.success || !cr.agentId) {
-        emit('step', { step: 'KI-Agent erstellen', status: 'error', detail: cr.error });
-        emit('error', { message: cr.error ?? 'Agent creation failed' });
-        return;
-      }
-      agentId = cr.agentId;
-      emit('step', { step: 'KI-Agent erstellen', status: 'done', detail: 'Agent bereit' });
-    } else {
-      emit('step', { step: 'KI-Agent', status: 'done', detail: 'Agent bereit' });
+    const agentScope: GetOrCreateAgentInput = { useCase: 'tire_specs' };
+    let agentId: string | undefined;
+    emit('step', { step: 'KI-Agent erstellen', status: 'working' });
+    const cr = await this.getOrCreateAgent(agentScope);
+    if (!cr.success || !cr.agentId) {
+      emit('step', { step: 'KI-Agent erstellen', status: 'error', detail: cr.error });
+      emit('error', { message: cr.error ?? 'Agent creation failed' });
+      return;
     }
+    agentId = cr.agentId;
+    emit('step', { step: 'KI-Agent erstellen', status: 'done', detail: 'Agent bereit' });
+    emit('step', {
+      step: 'Reifen-Scope',
+      status: 'done',
+      detail: 'Wissensdatenbank-Reifenanalyse (kein DIMO-Fahrzeug-Scope)',
+    });
 
     const ctxLines = [
       tireContext.brand ? `TIRE_BRAND: ${tireContext.brand}` : '',
@@ -646,7 +839,7 @@ Rules:
       tireContext.speedIndex ? `SPEED_INDEX: ${tireContext.speedIndex}` : '',
     ].filter(Boolean).join('\n');
 
-    const message = `You are a tire specification database assistant. Answer immediately from your knowledge. Do NOT perform web searches — respond only with what you already know.
+    const message = `[SCOPE: Knowledge-only tire specification lookup from brand/model/size data. No DIMO vehicle tokenId — do NOT claim live vehicle telemetry.]\n\nYou are a tire specification database assistant. Answer immediately from your knowledge. Do NOT perform web searches — respond only with what you already know.
 
 Tire context:
 ${ctxLines}
@@ -724,22 +917,30 @@ Rules:
 
     emit('step', { step: 'Reifendaten abfragen', status: 'working', detail: 'Stream gestartet...' });
 
-    const msgResult = await this.sendMessageStream(agentId, message, undefined, (chunk) => {
-      emit('progress', chunk);
-    });
+    const tireStreamContext: DimoAgentStreamCallContext = { useCase: 'tire_specs' };
+    const msgResult = await this.sendMessageStream(
+      agentId,
+      message,
+      undefined,
+      (chunk) => emit('progress', chunk),
+      tireStreamContext,
+    );
 
     if (!msgResult.success) {
       if (msgResult.statusCode === 404 || msgResult.statusCode === 410) {
         emit('step', { step: 'Agent abgelaufen — erneuern', status: 'working' });
-        this.cachedAgentId = null;
-        this.cachedVehicleIds.clear();
-        const retryCr = await this.createAgent();
+        await this.invalidateAgentCache(agentScope);
+        const retryCr = await this.getOrCreateAgent(agentScope);
         if (retryCr.success && retryCr.agentId) {
           agentId = retryCr.agentId;
           emit('step', { step: 'Agent erneuert', status: 'done' });
-          const retryResult = await this.sendMessageStream(agentId, message, undefined, (chunk) => {
-            emit('progress', chunk);
-          });
+          const retryResult = await this.sendMessageStream(
+            agentId,
+            message,
+            undefined,
+            (chunk) => emit('progress', chunk),
+            tireStreamContext,
+          );
           if (!retryResult.success) {
             emit('step', { step: 'Reifendaten abfragen', status: 'error', detail: retryResult.error });
             emit('error', { message: retryResult.error ?? 'Stream failed' });
@@ -774,7 +975,14 @@ Rules:
       this.logger.warn(`[Agents] Tire spec raw response (no JSON): ${msgResult.response?.slice(0, 500)}`);
     }
 
-    emit('result', { success: true, degraded: !hasData, agentId, specs: specs ?? {} });
+    emit('result', {
+      success: true,
+      degraded: !hasData,
+      knowledgeOnlyFallback: true,
+      dimoVehicleConnected: false,
+      agentId,
+      specs: specs ?? {},
+    });
   }
 
   private parseTireSpecJson(text: string): Record<string, string | number | boolean | string[] | null> {
@@ -796,6 +1004,13 @@ Rules:
   }
 
   // ─── JSON-first parser with regex fallback ─────────────────────
+
+  private vehicleSpecsAgentScope(tokenIds?: number[]): GetOrCreateAgentInput {
+    return {
+      useCase: 'vehicle_specs',
+      vehicleIds: tokenIds?.length ? tokenIds : undefined,
+    };
+  }
 
   private parseJsonSpecs(text: string): Record<string, string | number | boolean | null> {
     const empty: Record<string, string | number | boolean | null> = {
@@ -886,5 +1101,251 @@ Rules:
     result.curbWeightKg = extract([/curb\s*weight[:\s]+([\d,]+)/i]);
 
     return result;
+  }
+
+  // ─── Admin diagnostics (DIMO AI Agents layer only) ─────────────
+
+  private static readonly DIAGNOSTIC_STREAM_TIMEOUT_MS = 60_000;
+
+  async runAgentDiagnostics(
+    options: DimoAgentDiagnosticsOptions = {},
+  ): Promise<DimoAgentDiagnosticsResult> {
+    const useCase = options.useCase ?? 'vehicle_specs';
+    const errors: string[] = [];
+    const checks: DimoAgentDiagnosticCheck[] = [];
+
+    const hasApiKey = Boolean(this.apiKey);
+    const hasUserWallet = Boolean(this.userWallet);
+    const configured = hasApiKey && hasUserWallet;
+    const envBaseUrl = (process.env.DIMO_AGENTS_BASE_URL ?? '').trim();
+
+    checks.push({
+      name: 'config',
+      ok: configured,
+      phase: 'config',
+      detail: configured
+        ? 'DIMO_API_KEY and DIMO_AGENT_USER_WALLET present'
+        : 'DIMO_API_KEY and/or DIMO_AGENT_USER_WALLET missing',
+    });
+
+    const useCases: DimoAgentUseCase[] = [
+      'vehicle_specs',
+      'tire_specs',
+      'document_extraction',
+      'fleet_chat',
+    ];
+    const personalities = Object.fromEntries(
+      useCases.map((uc) => [uc, this.resolveAgentPersonality(uc)]),
+    ) as Record<DimoAgentUseCase, string>;
+
+    checks.push({
+      name: 'personalities',
+      ok: true,
+      phase: 'config',
+      detail: useCases.map((uc) => `${uc}=${personalities[uc]}`).join(', '),
+    });
+
+    let hasDeveloperJwt: boolean | undefined;
+    if (this.dimoAuth) {
+      const jwtStart = Date.now();
+      try {
+        const jwt = await this.dimoAuth.getDeveloperJwt();
+        hasDeveloperJwt = Boolean(jwt?.trim());
+        checks.push({
+          name: 'developer_jwt',
+          ok: hasDeveloperJwt,
+          durationMs: Date.now() - jwtStart,
+          phase: 'config',
+          detail: hasDeveloperJwt ? 'available' : 'missing or empty',
+        });
+        if (!hasDeveloperJwt) {
+          errors.push('Developer JWT not available — Agents API requests may fail (phase: config)');
+        }
+      } catch (err) {
+        const detail = sanitizeDimoAgentError(err);
+        checks.push({
+          name: 'developer_jwt',
+          ok: false,
+          durationMs: Date.now() - jwtStart,
+          phase: 'config',
+          detail,
+        });
+        errors.push(`Developer JWT fetch failed (phase: config): ${detail}`);
+      }
+    }
+
+    if (this.redis) {
+      const cacheStart = Date.now();
+      const probeKey = 'dimo:agents:diag:ping';
+      try {
+        await this.redis.set(probeKey, '1', 'EX', 10);
+        const value = await this.redis.get(probeKey);
+        await this.redis.del(probeKey).catch(() => null);
+        const ok = value === '1';
+        checks.push({
+          name: 'agent_cache_redis',
+          ok,
+          durationMs: Date.now() - cacheStart,
+          phase: 'cache',
+          detail: ok ? 'read/write ok' : 'redis read mismatch',
+        });
+        if (!ok) errors.push('Agent cache Redis probe failed (phase: cache)');
+      } catch (err) {
+        const detail = sanitizeDimoAgentError(err);
+        checks.push({
+          name: 'agent_cache_redis',
+          ok: false,
+          durationMs: Date.now() - cacheStart,
+          phase: 'cache',
+          detail,
+        });
+        errors.push(`Agent cache Redis unreachable (phase: cache): ${detail}`);
+      }
+    } else {
+      checks.push({
+        name: 'agent_cache_redis',
+        ok: true,
+        phase: 'cache',
+        detail: 'in-memory only (Redis not injected)',
+      });
+    }
+
+    const baseResult: DimoAgentDiagnosticsResult = {
+      configured,
+      baseUrl: this.agentsBaseUrl,
+      baseUrlSource: envBaseUrl ? 'env' : 'default',
+      hasApiKey,
+      hasUserWallet,
+      walletMasked: hasUserWallet ? maskDimoAgentWallet(this.userWallet) : undefined,
+      hasDeveloperJwt,
+      personalities,
+      checks,
+      errors,
+    };
+
+    if (!configured || options.skipLiveTests) {
+      return baseResult;
+    }
+
+    const personality = this.resolveAgentPersonality(useCase);
+    const testPrompt = DIMO_AGENT_DIAGNOSTIC_TEST_PROMPT;
+    let agentId: string | undefined;
+
+    const createStart = Date.now();
+    const created = await this.createAgentInstance(personality);
+    checks.push({
+      name: 'create_agent',
+      ok: created.success,
+      durationMs: Date.now() - createStart,
+      phase: 'create',
+      statusCode: created.statusCode,
+      detail: created.success ? undefined : sanitizeDimoAgentErrorMessage(created.error ?? 'create failed'),
+    });
+
+    if (!created.success || !created.agentId) {
+      errors.push(
+        `Agent create failed (phase: create)${created.statusCode ? ` HTTP ${created.statusCode}` : ''}: ${sanitizeDimoAgentErrorMessage(created.error ?? 'unknown')}`,
+      );
+      return { ...baseResult, checks, errors };
+    }
+
+    agentId = created.agentId;
+
+    try {
+      const messageStart = Date.now();
+      const messageResult = await this.sendMessage(agentId, testPrompt);
+      checks.push({
+        name: 'message',
+        ok: messageResult.success,
+        durationMs: Date.now() - messageStart,
+        phase: 'message',
+        statusCode: messageResult.statusCode,
+        detail: messageResult.success
+          ? undefined
+          : sanitizeDimoAgentErrorMessage(messageResult.error ?? 'message failed'),
+      });
+      if (!messageResult.success) {
+        errors.push(
+          `Message test failed (phase: message)${messageResult.statusCode ? ` HTTP ${messageResult.statusCode}` : ''}: ${sanitizeDimoAgentErrorMessage(messageResult.error ?? 'unknown')}`,
+        );
+      }
+
+      const streamStart = Date.now();
+      const streamResult = await this.runDiagnosticStream(agentId, testPrompt, undefined, useCase);
+      const receivedContent = Boolean(streamResult.response?.trim().length);
+      const streamOk = streamResult.success && receivedContent;
+      checks.push({
+        name: 'stream',
+        ok: streamOk,
+        durationMs: Date.now() - streamStart,
+        phase: streamResult.success ? (receivedContent ? 'stream' : 'parser') : 'stream',
+        statusCode: streamResult.statusCode,
+        receivedContent,
+        detail: !streamResult.success
+          ? sanitizeDimoAgentErrorMessage(streamResult.error ?? 'stream failed')
+          : !receivedContent
+            ? 'Stream completed but parser received no content'
+            : undefined,
+      });
+      if (!streamResult.success) {
+        errors.push(
+          `Stream test failed (phase: stream)${streamResult.statusCode ? ` HTTP ${streamResult.statusCode}` : ''}: ${sanitizeDimoAgentErrorMessage(streamResult.error ?? 'unknown')}`,
+        );
+      } else if (!receivedContent) {
+        errors.push('Stream parser received no content (phase: parser)');
+      }
+
+      if (options.dimoTokenId != null) {
+        const scopeStart = Date.now();
+        const scopeResult = await this.runDiagnosticStream(
+          agentId,
+          testPrompt,
+          [options.dimoTokenId],
+          'vehicle_specs',
+        );
+        const scopeReceived = Boolean(scopeResult.response?.trim().length);
+        checks.push({
+          name: 'vehicle_scope',
+          ok: scopeResult.success,
+          durationMs: Date.now() - scopeStart,
+          phase: 'vehicle_scope',
+          statusCode: scopeResult.statusCode,
+          receivedContent: scopeReceived,
+          detail: `tokenId=${options.dimoTokenId}${scopeResult.success ? '' : ` — ${sanitizeDimoAgentErrorMessage(scopeResult.error ?? 'failed')}`}`,
+        });
+        if (!scopeResult.success) {
+          errors.push(
+            `Vehicle scope test failed (phase: vehicle_scope)${scopeResult.statusCode ? ` HTTP ${scopeResult.statusCode}` : ''}: ${sanitizeDimoAgentErrorMessage(scopeResult.error ?? 'unknown')}`,
+          );
+        }
+      }
+    } finally {
+      if (agentId) {
+        await this.deleteAgent(agentId).catch(() => null);
+      }
+    }
+
+    return { ...baseResult, checks, errors };
+  }
+
+  private async runDiagnosticStream(
+    agentId: string,
+    message: string,
+    tokenIds: number[] | undefined,
+    useCase: DimoAgentUseCase,
+  ): Promise<SendMessageResult> {
+    try {
+      return await Promise.race([
+        this.sendMessageStream(agentId, message, tokenIds, undefined, { useCase }),
+        new Promise<SendMessageResult>((_, reject) => {
+          setTimeout(
+            () => reject(new Error(`Diagnostic stream timeout (${DimoAgentsService.DIAGNOSTIC_STREAM_TIMEOUT_MS / 1000}s)`)),
+            DimoAgentsService.DIAGNOSTIC_STREAM_TIMEOUT_MS,
+          );
+        }),
+      ]);
+    } catch (err) {
+      return { success: false, error: sanitizeDimoAgentError(err) };
+    }
   }
 }

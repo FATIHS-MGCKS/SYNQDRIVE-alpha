@@ -4,6 +4,7 @@ import {
   mapFaultsStat,
   mapOverallHealthBoxState,
   resolveServiceComplianceTone,
+  statTileTone,
 } from './vehicle-health-box.mapper';
 
 function rentalHealth(overall: VehicleHealthResponse['overall_state']): VehicleHealthResponse {
@@ -53,24 +54,33 @@ describe('vehicle-health-box.mapper', () => {
       expect(r.state).toBe('warning');
     });
 
-    it('good → Good Health', () => {
+    it('good → Good', () => {
       const r = mapOverallHealthBoxState({
         rentalHealth: rentalHealth('good'),
         rentalHealthLoading: false,
         healthError: null,
       });
       expect(r.state).toBe('good');
-      expect(r.label).toBe('Good Health');
+      expect(r.label).toBe('Good');
     });
 
-    it('unknown → Limited Data (never good)', () => {
+    it('unknown with 2 tracked modules and no issues → Good (not Limited Data)', () => {
+      const health = rentalHealth('unknown');
+      health.modules.brakes = {
+        state: 'unknown',
+        reason: 'No tracking',
+        last_updated_at: null,
+        data_stale: false,
+      };
       const r = mapOverallHealthBoxState({
-        rentalHealth: rentalHealth('unknown'),
+        rentalHealth: health,
         rentalHealthLoading: false,
         healthError: null,
+        trackedCount: 2,
       });
-      expect(r.state).toBe('insufficient');
-      expect(r.label).toBe('Limited Data');
+      expect(r.state).toBe('good');
+      expect(r.label).toBe('Good');
+      expect(r.label).not.toBe('Limited Data');
     });
 
     it('endpoint error without health → unavailable', () => {
@@ -99,7 +109,7 @@ describe('vehicle-health-box.mapper', () => {
       expect(r.sublabel).toBe('DTC unavailable');
     });
 
-    it('loaded 0 codes → 0', () => {
+    it('loaded 0 codes → 0 / success tone', () => {
       const health = rentalHealth('good');
       health.modules.error_codes = {
         state: 'good',
@@ -110,6 +120,7 @@ describe('vehicle-health-box.mapper', () => {
       const r = mapFaultsStat(health, 'loaded', 0);
       expect(r.displayValue).toBe('0');
       expect(r.sublabel).toBeUndefined();
+      expect(r.toneClass).toContain('sq-tone-success');
     });
 
     it('stale module → — / Datenstand verzögert', () => {
@@ -128,6 +139,18 @@ describe('vehicle-health-box.mapper', () => {
     it('never shows 0 on load error', () => {
       const r = mapFaultsStat(rentalHealth('good'), 'error', 0);
       expect(r.displayValue).toBe('—');
+    });
+  });
+
+  describe('statTileTone', () => {
+    it('zero counts use success tone for Critical and Warning', () => {
+      expect(statTileTone('Critical', 0)).toContain('sq-tone-success');
+      expect(statTileTone('Warning', 0)).toContain('sq-tone-success');
+    });
+
+    it('positive counts use severity tones', () => {
+      expect(statTileTone('Critical', 2)).toContain('sq-tone-critical');
+      expect(statTileTone('Warning', 1)).toContain('sq-tone-watch');
     });
   });
 

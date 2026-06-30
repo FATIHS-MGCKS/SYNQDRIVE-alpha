@@ -1,10 +1,8 @@
 /**
  * SynqDrive — Event Context Assessment payload types (LTE_R1 groundwork, Phase 2)
  *
- * Runtime shapes produced by the EventContextEnrichmentService around an anchor
- * (native DIMO behavior event or — later — an RPM webhook candidate). These build
- * on the vocabulary in `event-context.types.ts` and are persisted (for native
- * events) into `DrivingEvent.metadataJson.contextAssessment`.
+ * Runtime shapes produced by the EventContextEnrichmentService around a native
+ * DIMO behavior event anchor. Persisted into `DrivingEvent.metadataJson.contextAssessment`.
  *
  * No detection logic here — these are descriptive/diagnostic structures.
  */
@@ -32,7 +30,7 @@ export type AnchorEventCategory = 'ACCELERATION' | 'BRAKING' | 'CORNERING' | 'OT
 /**
  * Minimal description of the anchoring native event, passed into the classifier so
  * it can reason about the event semantics (e.g. "aggressive start" only makes
- * sense for an acceleration event). Optional — RPM webhook candidates have none.
+ * sense for an acceleration event). Optional for uncategorised anchors.
  */
 export interface AnchorEventInfo {
   category: AnchorEventCategory;
@@ -93,7 +91,7 @@ export interface EventContextAssessment {
   version: number;
   status: EventContextStatus;
   anchorType: AnchorType;
-  /** The native event the window is anchored on (absent for RPM candidates). */
+  /** The native DIMO behavior event the window is anchored on. */
   anchorEvent?: AnchorEventInfo | null;
   /** ISO timestamps. */
   anchorTimestamp: string;
@@ -113,8 +111,14 @@ export interface EventContextAssessment {
   reasonCodes: ContextReasonCode[];
   /** Conservative, preliminary context classifications — NOT misuse cases. */
   preliminaryClassifications: ContextClassification[];
+  /** Alias for `preliminaryClassifications` (consumer-facing key). */
+  classifications: ContextClassification[];
   confidence: ContextConfidence;
   evidenceGrade: EvidenceGrade;
+  /** Signals with GOOD or SPARSE coverage in the context window. */
+  usedSignals: EngineContextSignal[];
+  /** Applicable signals with zero usable samples in the window. */
+  missingSignals: EngineContextSignal[];
   generatedAt: string;
   /** Populated when status = FAILED. */
   error?: string | null;

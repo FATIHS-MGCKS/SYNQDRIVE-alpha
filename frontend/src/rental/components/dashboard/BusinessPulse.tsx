@@ -148,7 +148,9 @@ export function BusinessPulse({
 
   return (
     <section
-      className={panelShellClass('tertiary', 'border-solid border-border/55 bg-card/55 shadow-none')}
+      className={cn(
+        panelShellClass('tertiary', 'h-full border-solid border-border/55 bg-card/55 shadow-none'),
+      )}
       aria-label="Business Pulse"
     >
       <div className="flex items-center justify-between gap-2 px-3.5 pt-2.5">
@@ -195,11 +197,6 @@ export function BusinessPulse({
               />
             ))}
           </div>
-          <p className="border-t border-border/30 px-3.5 py-1.5 text-[10.5px] text-muted-foreground">
-            {de
-              ? 'Quelle: BusinessPulseSlices · keine Fleet-Statuslogik'
-              : 'Source: BusinessPulseSlices · no fleet status logic'}
-          </p>
         </>
       )}
     </section>

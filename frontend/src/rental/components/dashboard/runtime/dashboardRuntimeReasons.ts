@@ -117,6 +117,76 @@ export function categoryFromHealthModule(module: string | undefined): RuntimeRea
   }
 }
 
+/** Legal compliance only (TÜV / BOKraft). Service/maintenance is never compliance. */
 export function isComplianceCategory(category: RuntimeReasonCategory): boolean {
-  return category === 'compliance' || category === 'service';
+  return category === 'compliance';
+}
+
+export function isServiceCategory(category: RuntimeReasonCategory): boolean {
+  return category === 'service';
+}
+
+export function isLegalComplianceBlockingText(text: string): boolean {
+  const normalized = text.toLowerCase();
+  return (
+    normalized.includes('tüv') ||
+    normalized.includes('tuv') ||
+    normalized.includes('bokraft')
+  );
+}
+
+export function isServiceOverdueReason(
+  reason: Pick<RuntimeReason, 'category' | 'title' | 'description' | 'source'>,
+): boolean {
+  if (reason.category !== 'service') return false;
+  const text = `${reason.title} ${reason.description ?? ''}`.toLowerCase();
+  if (text.includes('überfällig') || text.includes('overdue')) return true;
+  if (reason.source?.includes('SERVICE_OVERDUE')) return true;
+  if (
+    reason.source?.includes('service_compliance') &&
+    (text.includes('überfällig') || text.includes('overdue') || text.includes('hm/oem'))
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function serviceOverdueCanonicalKey(vehicleId: string): string {
+  return `${vehicleId}:service:service_overdue`;
+}
+
+function serviceOverdueReasonScore(
+  reason: Pick<RuntimeReason, 'title' | 'description' | 'source'>,
+): number {
+  let score = reason.title.length;
+  if (reason.title.includes('HM/OEM') || reason.title.includes('(')) score += 50;
+  if (reason.source?.includes('service_compliance')) score += 100;
+  if (reason.description && reason.description.length > reason.title.length) score += 20;
+  return score;
+}
+
+/** Keep the most specific service-overdue row when generic duplicates exist. */
+export function pickPreferredServiceOverdueReason(
+  reasons: RuntimeReason[],
+): RuntimeReason {
+  return [...reasons].sort(
+    (a, b) => serviceOverdueReasonScore(b) - serviceOverdueReasonScore(a),
+  )[0];
+}
+
+export function dedupeServiceOverdueCriticalReasons(reasons: RuntimeReason[]): RuntimeReason[] {
+  const overdue = reasons.filter(isServiceOverdueReason);
+  if (overdue.length <= 1) return reasons;
+  const other = reasons.filter((reason) => !isServiceOverdueReason(reason));
+  return [...other, pickPreferredServiceOverdueReason(overdue)];
+}
+
+export function canonicalCriticalReasonKey(
+  vehicleId: string,
+  reason: RuntimeReason,
+): string {
+  if (isServiceOverdueReason(reason)) {
+    return serviceOverdueCanonicalKey(vehicleId);
+  }
+  return `${vehicleId}:${runtimeReasonDedupeKey(reason)}`;
 }

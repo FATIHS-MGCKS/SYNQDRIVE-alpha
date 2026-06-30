@@ -46,6 +46,8 @@ export interface FleetCommandPanelProps {
   onRowHover: (vehicleId: string | null) => void;
   isDarkMode?: boolean;
   listPanelRef?: React.RefObject<HTMLDivElement | null>;
+  /** When set, critical count matches the canonical Critical Alerts drawer. */
+  canonicalAlertCounts?: { critical: number; warning: number };
 }
 
 export function FleetCommandPanel({
@@ -70,10 +72,12 @@ export function FleetCommandPanel({
   onRowHover,
   isDarkMode,
   listPanelRef,
+  canonicalAlertCounts,
 }: FleetCommandPanelProps) {
   const tabCounts = useMemo(() => computeCommandTabCounts(contexts), [contexts]);
 
   const attentionStats = useMemo(() => {
+    if (canonicalAlertCounts) return canonicalAlertCounts;
     let critical = 0;
     let warning = 0;
     for (const ctx of contexts) {
@@ -90,7 +94,7 @@ export function FleetCommandPanel({
       }
     }
     return { critical, warning };
-  }, [contexts]);
+  }, [contexts, canonicalAlertCounts]);
 
   const visibleContexts = useMemo(
     () => sortFleetContexts(filterFleetByTab(contexts, activeTab)),

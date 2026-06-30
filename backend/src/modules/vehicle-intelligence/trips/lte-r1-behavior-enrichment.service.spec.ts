@@ -1,4 +1,8 @@
 import { DrivingEventType } from '@prisma/client';
+import { Test } from '@nestjs/testing';
+import { PrismaService } from '@shared/database/prisma.service';
+import { DimoSegmentsService } from '../../dimo/dimo-segments.service';
+import { EventContextEnrichmentService } from '../event-context/event-context-enrichment.service';
 import {
   LteR1BehaviorEnrichmentService,
   mapDimoEventName,
@@ -80,7 +84,7 @@ describe('resolveNativeSeverity', () => {
 });
 
 describe('LteR1BehaviorEnrichmentService.mapToNormalizedEvents', () => {
-  const service = new LteR1BehaviorEnrichmentService({} as any, {} as any);
+  const service = new LteR1BehaviorEnrichmentService({} as any, {} as any, {} as any);
 
   const sample = (name: string, metadata: string | null = '{"counterValue":1}'): DimoVehicleEventRecord => ({
     timestamp: '2026-01-01T12:00:00.000Z',
@@ -181,9 +185,112 @@ describe('LteR1BehaviorEnrichmentService.enrichNativeEventContexts (Phase 3 wiri
     expect(eventContext.enrichDrivingEventContext).toHaveBeenCalledTimes(2);
   });
 
-  it('no-ops when the optional EventContextEnrichmentService is not wired', async () => {
-    const { service, prisma } = makeService(undefined);
-    await (service as any).enrichNativeEventContexts('trip-1', ice, 2);
-    expect(prisma.drivingEvent.findMany).not.toHaveBeenCalled();
+  it('requires EventContextEnrichmentService in the DI graph', async () => {
+    await expect(
+      Test.createTestingModule({
+        providers: [
+          LteR1BehaviorEnrichmentService,
+          { provide: PrismaService, useValue: {} },
+          { provide: DimoSegmentsService, useValue: {} },
+        ],
+      }).compile(),
+    ).rejects.toThrow();
+  });
+});
+
+describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context flow', () => {
+  const tripStart = new Date('2026-06-26T11:00:00.000Z');
+  const tripEnd = new Date('2026-06-26T12:30:00.000Z');
+  const eventTs = '2026-06-26T12:00:00.000Z';
+
+  function makeEnrichTripHarness(opts?: {
+    fuelType?: string;
+    contextThrows?: boolean;
+    contextStatus?: 'COMPLETED' | 'FAILED';
+  }) {
+    const persistedIds = ['de-native-1'];
+    const tx = {
+      drivingEvent: {
+        deleteMany: jest.fn(async () => ({ count: 0 })),
+        createMany: jest.fn(async () => ({ count: 1 })),
+      },
+      vehicleTrip: { update: jest.fn(async () => ({})) },
+    };
+    const prisma = {
+      vehicleTrip: {
+        findUnique: jest.fn(async () => ({
+          id: 'trip-1',
+          vehicleId: 'veh-1',
+          startTime: tripStart,
+          endTime: tripEnd,
+          vehicle: {
+            organizationId: 'org-1',
+            hardwareType: 'LTE_R1',
+            fuelType: opts?.fuelType ?? 'GASOLINE',
+            dimoVehicle: { tokenId: 4242 },
+          },
+        })),
+      },
+      $transaction: jest.fn(async (fn: (t: typeof tx) => Promise<void>) => fn(tx)),
+      drivingEvent: {
+        findMany: jest.fn(async () => persistedIds.map((id) => ({ id }))),
+      },
+    };
+    const segments = {
+      fetchDrivingEvents: jest.fn(async () => [
+        {
+          timestamp: eventTs,
+          name: 'behavior.harshAcceleration',
+          source: '0xDEVICE',
+          durationNs: 0,
+          metadata: '{"counterValue":2}',
+        },
+      ]),
+      fetchHighFrequency: jest.fn(async () => []),
+    };
+    const enrichDrivingEventContext = jest.fn(async () => {
+      if (opts?.contextThrows) throw new Error('context boom');
+      return { status: opts?.contextStatus ?? 'COMPLETED' };
+    });
+    const service = new LteR1BehaviorEnrichmentService(
+      prisma as any,
+      segments as any,
+      { enrichDrivingEventContext } as any,
+    );
+    return { service, prisma, segments, tx, enrichDrivingEventContext, persistedIds };
+  }
+
+  it('persists native events via createMany then reloads IDs for context enrichment', async () => {
+    const { service, prisma, tx, enrichDrivingEventContext, persistedIds } = makeEnrichTripHarness();
+
+    const result = await service.enrichTrip('trip-1');
+
+    expect(result?.drivingEventsIngested).toBe(1);
+    expect(tx.drivingEvent.deleteMany).toHaveBeenCalled();
+    expect(tx.drivingEvent.createMany).toHaveBeenCalledTimes(1);
+    expect(prisma.drivingEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { tripId: 'trip-1', source: 'TELEMETRY_EVENTS' },
+      }),
+    );
+    expect(enrichDrivingEventContext).toHaveBeenCalledTimes(1);
+    expect(enrichDrivingEventContext).toHaveBeenCalledWith(persistedIds[0]);
+  });
+
+  it('does not roll back native events when context enrichment fails per event', async () => {
+    const { service, tx, enrichDrivingEventContext } = makeEnrichTripHarness({ contextThrows: true });
+
+    await expect(service.enrichTrip('trip-1')).resolves.toMatchObject({
+      drivingEventsIngested: 1,
+    });
+    expect(tx.drivingEvent.createMany).toHaveBeenCalledTimes(1);
+    expect(enrichDrivingEventContext).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips trip-level context enrichment for LTE_R1/EV (NOT_APPLICABLE_POWERTRAIN)', async () => {
+    const { service, enrichDrivingEventContext } = makeEnrichTripHarness({ fuelType: 'ELECTRIC' });
+
+    await service.enrichTrip('trip-1');
+    expect(enrichDrivingEventContext).not.toHaveBeenCalled();
   });
 });

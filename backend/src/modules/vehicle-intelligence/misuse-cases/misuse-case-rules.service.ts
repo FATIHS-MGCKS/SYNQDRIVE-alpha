@@ -52,10 +52,8 @@ export class MisuseCaseRulesService {
     const dtcAfter = this.ruleDtcAfterAbuseOrImpact(context, abuse);
     if (dtcAfter) candidates.push(dtcAfter);
 
-    // Context-derived candidates (LTE_R1/ICE event context assessments + RPM
-    // webhook candidates). These are merged by type with the behavior-event
-    // candidates above, so native events + RPM candidates in the same window
-    // collapse into one combined case.
+    // Context-derived candidates (LTE_R1/ICE native event context assessments).
+    // Merged by type with behavior-event candidates above.
     candidates.push(...evaluateContextAnchors(context.contextAnchors ?? []));
 
     return this.mergeCollisionConfidence(this.mergeSameType(candidates));

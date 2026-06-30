@@ -475,7 +475,7 @@ export function TechnicalObservationsHealthModule({
             <div className={`p-1.5 rounded-lg shrink-0 ${quickAccent}`}>
               <Icon name="clipboard-list" className="w-3.5 h-3.5" />
             </div>
-            <h3 className={`${quickCardTitleClass} truncate`}>Technische Beobachtungen</h3>
+            <h3 className={`${quickCardTitleClass} truncate`}>Mängelliste</h3>
           </div>
           <Icon name="chevron-right" className="w-4 h-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 shrink-0" />
         </div>
@@ -498,24 +498,23 @@ export function TechnicalObservationsHealthModule({
               >
                 {activeCount}
               </div>
-              <div className={`mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${moduleSummary.chipClass}`}>
-                {activeCount === 0 && complaintsModule?.state === 'good' ? (
-                  <><Icon name="check-circle" className="w-2.5 h-2.5" /> {moduleSummary.label}</>
+              <div className={`mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${
+                activeCount > 0 ? 'sq-chip-watch' : 'sq-chip-success'
+              }`}>
+                {activeCount === 0 ? (
+                  <><Icon name="check-circle" className="w-2.5 h-2.5" /> In Ordnung</>
                 ) : hasRentalBlock ? (
                   <><Icon name="alert-triangle" className="w-2.5 h-2.5" /> Vermietung blockiert</>
-                ) : activeCount > 0 ? (
-                  <><Icon name="alert-circle" className="w-2.5 h-2.5" /> {moduleSummary.label}</>
                 ) : (
-                  <><Icon name="check-circle" className="w-2.5 h-2.5" /> {moduleSummary.label}</>
+                  <><Icon name="alert-circle" className="w-2.5 h-2.5" /> Offen</>
                 )}
               </div>
             </>
           )}
         </div>
         <div className={`${quickCardFooterClass} flex items-center gap-1.5`}>
-          <Icon name="clipboard-list" className="w-3 h-3 text-muted-foreground/70 shrink-0" />
-          <p className="text-[10px] font-medium text-muted-foreground line-clamp-2">
-            Hinweise aus Rückgabe, Übergabe und Fahrzeugkontrolle
+          <p className="text-[10px] font-medium text-muted-foreground truncate">
+            Hinterlegte Mängel
           </p>
         </div>
       </div>
@@ -547,9 +546,9 @@ export function TechnicalObservationsHealthModule({
               </button>
 
               <div className="mb-4 pr-10">
-                <h2 className="text-base font-semibold text-foreground">Technische Beobachtungen</h2>
+                <h2 className="text-base font-semibold text-foreground">Mängelliste</h2>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Hinweise aus Rückgabe, Übergabe und Fahrzeugkontrolle, die keinem festen Health-Modul zugeordnet sind.
+                  Hinterlegte Mängel aus Rückgabe, Übergabe und Fahrzeugkontrolle.
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${moduleSummary.chipClass}`}>

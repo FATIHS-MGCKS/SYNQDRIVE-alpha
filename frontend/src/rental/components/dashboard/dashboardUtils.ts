@@ -483,7 +483,7 @@ export function buildControlCenterKpis(input: {
       zeroIsPositive: true,
     },
     {
-      id: 'maintenance',
+      id: 'blocked-maintenance',
       label: input.locale === 'de' ? 'Wartung / Blockiert' : 'Blocked / Maintenance',
       displayValue: input.fleetLoaded ? String(input.maintenanceCount) : noData,
       numericValue: input.fleetLoaded ? input.maintenanceCount : null,

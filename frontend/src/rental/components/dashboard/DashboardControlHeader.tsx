@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import { useRentalOrg } from '../../RentalContext';
 import { countVehiclesAtStation, syncStatusLabel, syncStatusTone } from './dashboardUtils';
 import type { DashboardViewModel } from './dashboardTypes';
 
@@ -10,10 +11,11 @@ interface DashboardControlHeaderProps {
   children?: ReactNode;
 }
 
-function headerCopy(locale: string) {
+function headerCopy(locale: string, orgName: string) {
   const de = locale === 'de';
+  const trimmed = orgName.trim();
   return {
-    title: 'Control Center',
+    title: trimmed || (de ? 'Dashboard' : 'Dashboard'),
     noStations: de ? 'Keine Standorte verfügbar' : 'No stations available',
   };
 }
@@ -40,7 +42,8 @@ export function DashboardControlHeader({ vm, children }: DashboardControlHeaderP
     applyStationFilter,
   } = vm;
 
-  const copy = headerCopy(locale);
+  const { orgName } = useRentalOrg();
+  const copy = headerCopy(locale, orgName);
   const syncTone = syncStatusTone(controlCenterStatus.syncStatus);
 
   return (

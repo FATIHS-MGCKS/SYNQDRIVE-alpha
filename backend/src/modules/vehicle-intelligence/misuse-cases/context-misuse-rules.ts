@@ -2,7 +2,7 @@
  * SynqDrive — Context-derived Misuse Rules (LTE_R1 / ICE) — Phase 5
  *
  * Pure functions that turn Event Context Assessments (anchored on native DIMO
- * behavior events or RPM webhook candidates) into MisuseCase candidates.
+ * behavior events only) into MisuseCase candidates.
  *
  * Guardrails (do NOT relax):
  *   - A candidate/assessment alone is never automatically misuse.
@@ -14,8 +14,7 @@
  *   - Conservative classification → severity mapping; no false positives.
  *
  * These candidates are merged by type with the existing behavior-event rules in
- * MisuseCaseRulesService, so native events + RPM candidates in the same window
- * collapse into one combined case (no duplicates).
+ * MisuseCaseRulesService — no duplicate cases per type.
  */
 import {
   MisuseCaseCategory,
@@ -26,6 +25,9 @@ import {
 } from '@prisma/client';
 import {
   COLD_COOLANT_C,
+  evaluateColdEngineLoad,
+  isClearlyHighColdEngineLoad,
+  isMildColdEngineBand,
   STANDSTILL_KMH,
 } from '../event-context/event-context-stats';
 import type {
@@ -48,8 +50,103 @@ const LAUNCH_PRE_SPEED_MAX = 5;
 
 const GRADE_RANK: Record<EvidenceGrade, number> = { A: 3, B: 2, C: 1, D: 0 };
 
+const CONFIDENCE_RANK: Record<EventContextAssessment['confidence'], number> = {
+  HIGH: 3,
+  MEDIUM: 2,
+  LOW: 1,
+  INSUFFICIENT: 0,
+};
+
 function gradeAtLeast(grade: EvidenceGrade, min: EvidenceGrade): boolean {
   return GRADE_RANK[grade] >= GRADE_RANK[min];
+}
+
+function confidenceAtLeast(
+  conf: EventContextAssessment['confidence'],
+  min: EventContextAssessment['confidence'],
+): boolean {
+  return CONFIDENCE_RANK[conf] >= CONFIDENCE_RANK[min];
+}
+
+function classificationList(a: ContextAnchor): ContextClassification[] {
+  const cls = a.assessment.classifications;
+  if (Array.isArray(cls) && cls.length > 0) return cls;
+  return a.assessment.preliminaryClassifications;
+}
+
+function hasClass(a: ContextAnchor, c: ContextClassification): boolean {
+  return classificationList(a).includes(c);
+}
+
+function coldEngineLoad(a: ContextAnchor) {
+  return evaluateColdEngineLoad({
+    rpm: a.assessment.rpmContext,
+    throttle: a.assessment.throttleContext,
+    engineLoad: a.assessment.engineLoadContext,
+  });
+}
+
+/** Misuse-grade engine load for cold-engine rules (not window-label reason codes alone). */
+function coldEngineMisuseConfidence(anchors: ContextAnchor[]): MisuseCaseConfidence {
+  if (anchors.length >= 2) return MisuseCaseConfidence.HIGH;
+
+  const a = anchors[0];
+  const load = coldEngineLoad(a);
+  const coolant = coolantAtAnchor(a);
+  const conf = a.assessment.confidence;
+  const grade = a.assessment.evidenceGrade;
+
+  let strong = 0;
+  if (coolant != null && coolant < COLD_COOLANT_C) strong++;
+  if (load.rpmHigh) strong++;
+  if (load.throttleHigh || load.engineLoadHigh) strong++;
+
+  const engineSignalsCovered = ['rpm', 'throttle', 'coolant'].filter((sig) =>
+    a.assessment.signalCoverage.some(
+      (c) => c.signal === sig && (c.quality === 'GOOD' || c.quality === 'SPARSE'),
+    ),
+  ).length;
+
+  if (
+    strong >= 3 &&
+    engineSignalsCovered >= 3 &&
+    grade === 'A' &&
+    conf === 'HIGH' &&
+    isClearlyHighColdEngineLoad(load)
+  ) {
+    return MisuseCaseConfidence.HIGH;
+  }
+  if (load.strongSignalCount >= 2 && confidenceAtLeast(conf, 'MEDIUM')) {
+    return MisuseCaseConfidence.MEDIUM;
+  }
+  return MisuseCaseConfidence.LOW;
+}
+
+function isSevereColdEngineAnchor(a: ContextAnchor): boolean {
+  const load = coldEngineLoad(a);
+  const coolant = coolantAtAnchor(a);
+  const extremeNative = a.assessment.anchorEvent?.extreme === true;
+  if (
+    extremeNative &&
+    coolant != null &&
+    coolant < COLD_COOLANT_C &&
+    isClearlyHighColdEngineLoad(load)
+  ) {
+    return true;
+  }
+  return isClearlyHighColdEngineLoad(load) && coolant != null && coolant < 50;
+}
+
+function qualifiesForColdEngineMisuse(a: ContextAnchor): boolean {
+  const coolant = coolantAtAnchor(a);
+  const load = coldEngineLoad(a);
+  return (
+    coolant != null &&
+    coolant < COLD_COOLANT_C &&
+    load.anyHigh &&
+    !isMildColdEngineBand(coolant, load) &&
+    confidenceAtLeast(a.assessment.confidence, 'MEDIUM')
+  );
 }
 
 function bestGrade(anchors: ContextAnchor[]): EvidenceGrade {
@@ -60,10 +157,6 @@ function bestGrade(anchors: ContextAnchor[]): EvidenceGrade {
         : acc,
     'D',
   );
-}
-
-function hasClass(a: ContextAnchor, c: ContextClassification): boolean {
-  return a.assessment.preliminaryClassifications.includes(c);
 }
 
 function highEngine(a: ContextAnchor): boolean {
@@ -284,29 +377,28 @@ export function evaluateContextAnchors(anchors: ContextAnchor[]): CaseCandidate[
     'COLD_ENGINE_HIGH_RPM',
   ];
   const coldAnchors = usable.filter(
-    (a) => coldClasses.some((c) => hasClass(a, c)) && coolantLow(a) && highEngine(a),
+    (a) =>
+      coldClasses.some((c) => hasClass(a, c)) &&
+      qualifiesForColdEngineMisuse(a),
   );
   if (coldAnchors.length > 0) {
     const severe =
-      coldAnchors.length >= 2 ||
-      coldAnchors.some(
-        (a) => a.assessment.evidenceGrade === 'A' || hasClass(a, 'COLD_ENGINE_KICKDOWN'),
-      );
-    out.push(
-      buildCandidate(
-        coldAnchors,
-        coldClasses,
-        {
-          type: MisuseCaseType.COLD_ENGINE_ABUSE,
-          category: MisuseCaseCategory.MISUSE_SUSPICION,
-          severity: severe ? MisuseCaseSeverity.SEVERE : MisuseCaseSeverity.WARNING,
-          title: 'Kaltmotor-Missbrauch erkannt',
-          description:
-            'Hohe Motorlast bei kaltem Motor im Ereigniskontext belegt (Kühlmittel niedrig, hohe Drehzahl/Last). Hinweis zur Prüfung, kein automatisierter Vorwurf.',
-          recommendedAction: 'Motor-Schonphase und Fahrweise prüfen.',
-        },
-      ),
+      coldAnchors.length >= 2 || coldAnchors.some((a) => isSevereColdEngineAnchor(a));
+    const candidate = buildCandidate(
+      coldAnchors,
+      coldClasses,
+      {
+        type: MisuseCaseType.COLD_ENGINE_ABUSE,
+        category: MisuseCaseCategory.MISUSE_SUSPICION,
+        severity: severe ? MisuseCaseSeverity.SEVERE : MisuseCaseSeverity.WARNING,
+        title: 'Kaltmotor-Missbrauch erkannt',
+        description:
+          'Hohe Motorlast bei kaltem Motor im Ereigniskontext belegt (Kühlmittel niedrig, hohe Drehzahl/Last). Hinweis zur Prüfung, kein automatisierter Vorwurf.',
+        recommendedAction: 'Motor-Schonphase und Fahrweise prüfen.',
+      },
     );
+    candidate.confidence = coldEngineMisuseConfidence(coldAnchors);
+    out.push(candidate);
   }
 
   // ── Launch Abuse Pattern ───────────────────────────────────────────────────

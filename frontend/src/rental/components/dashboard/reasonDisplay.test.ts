@@ -119,6 +119,21 @@ describe('dedupeDisplayReasons', () => {
     ];
     expect(dedupeDisplayReasons(reasons)).toHaveLength(1);
   });
+
+  it('drops generic service overdue when a specific overdue label exists', () => {
+    const reasons = [
+      reason({ category: 'service', title: 'Service überfällig', source: 'dashboard-insight:SERVICE_OVERDUE' }),
+      reason({
+        id: 'specific',
+        category: 'service',
+        title: 'Service überfällig seit 117 Tagen (HM/OEM)',
+        source: 'rental-health:service_compliance',
+      }),
+    ];
+    const result = dedupeDisplayReasons(reasons);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.title).toContain('117 Tagen');
+  });
 });
 
 describe('rowSeverityLabel', () => {

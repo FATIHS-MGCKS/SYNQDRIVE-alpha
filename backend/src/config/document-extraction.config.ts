@@ -18,6 +18,6 @@ export default registerAs('documentExtraction', () => ({
   queueEnabled: (process.env.DOCUMENT_EXTRACTION_QUEUE_ENABLED || 'true') === 'true',
   /** When false, the worker will not call the DIMO Agents API. */
   dimoAgentEnabled: (process.env.DIMO_DOCUMENT_AGENT_ENABLED || 'true') === 'true',
-  /** Preferred DIMO agent personality for document extraction (advisory). */
+  /** @deprecated Personality is resolved via dimo.config (DIMO_AGENT_PERSONALITY_DOCUMENT). */
   dimoAgentPersonality: process.env.DIMO_DOCUMENT_AGENT_PERSONALITY || 'fleet_manager_pro',
 }));

@@ -1,5 +1,5 @@
 import type { HighFrequencyReading } from '../../dimo/dimo-segments.service';
-import { computeSignalStats } from './event-context-stats';
+import { computeSignalStats, evaluateColdEngineLoad, isMildColdEngineBand } from './event-context-stats';
 
 const ANCHOR = new Date('2026-06-26T12:00:00.000Z').getTime();
 
@@ -92,5 +92,35 @@ describe('computeSignalStats', () => {
     expect(result.perSignal.speed.nearestSampleDistanceMs).toBe(1000);
     expect(result.reasonCodes).toContain('STANDSTILL_BEFORE_EVENT');
     expect(result.reasonCodes).toContain('HIGH_RPM');
+  });
+});
+
+describe('evaluateColdEngineLoad', () => {
+  it('treats 1151 rpm / 15 % throttle as mild (no misuse load)', () => {
+    const result = computeSignalStats(
+      [
+        reading({
+          offsetS: 0,
+          rpm: 1151,
+          throttlePosition: 15,
+          engineLoad: 20,
+          engineCoolantTempC: 59,
+        }),
+      ],
+      ANCHOR,
+      true,
+    );
+    const load = evaluateColdEngineLoad(result.perSignal);
+    expect(load.anyHigh).toBe(false);
+    expect(isMildColdEngineBand(59, load)).toBe(true);
+  });
+
+  it('detects high cold-engine load at 4200 rpm', () => {
+    const result = computeSignalStats(
+      [reading({ offsetS: 0, rpm: 4200, engineCoolantTempC: 45 })],
+      ANCHOR,
+      true,
+    );
+    expect(evaluateColdEngineLoad(result.perSignal).rpmHigh).toBe(true);
   });
 });

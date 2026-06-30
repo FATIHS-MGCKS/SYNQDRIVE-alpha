@@ -27,6 +27,8 @@ interface ServiceCenterViewProps {
   onOpenVehicle?: (vehicleId: string) => void;
   navigation?: ServiceCenterNavState | null;
   onNavigationConsumed?: () => void;
+  /** Hide eyebrow/title/subtitle when nested in FleetHub Maintenance tab. */
+  hideHeader?: boolean;
 }
 
 const TAB_ICONS = {
@@ -44,6 +46,7 @@ export function ServiceCenterView({
   onOpenVehicle,
   navigation,
   onNavigationConsumed,
+  hideHeader = false,
 }: ServiceCenterViewProps) {
   const { t } = useLanguage();
   const { orgId } = useRentalOrg();
@@ -124,15 +127,17 @@ export function ServiceCenterView({
 
   return (
     <div className={sc.shell}>
-      <div className="space-y-1">
-        <p className={sc.sectionEyebrow}>{t('serviceCenter.eyebrow')}</p>
-        <h2 className="text-base sm:text-lg font-semibold tracking-[-0.03em] text-foreground">
-          {t('serviceCenter.title')}
-        </h2>
-        <p className="text-[11px] text-muted-foreground max-w-2xl leading-relaxed">
-          {t('serviceCenter.subtitle')}
-        </p>
-      </div>
+      {!hideHeader && (
+        <div className="space-y-1">
+          <p className={sc.sectionEyebrow}>{t('serviceCenter.eyebrow')}</p>
+          <h2 className="text-base sm:text-lg font-semibold tracking-[-0.03em] text-foreground">
+            {t('serviceCenter.title')}
+          </h2>
+          <p className="text-[11px] text-muted-foreground max-w-2xl leading-relaxed">
+            {t('serviceCenter.subtitle')}
+          </p>
+        </div>
+      )}
 
       <ServiceControlBar
         kpis={data.kpis}

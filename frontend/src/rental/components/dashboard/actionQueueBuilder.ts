@@ -31,6 +31,11 @@ import type { DerivedOperationalInsight } from './deriveOperationalInsights';
 import type { PredictiveOperationsInsight } from './derivePredictiveOperationsInsights';
 import type { StatusTone } from '../../../components/patterns';
 import type { DashboardRuntimeModel } from './runtime';
+import {
+  buildRuntimeOperationalIssues,
+  normalizeAttentionItems,
+  usesRuntimeAttentionSource,
+} from './dashboardAttentionBuilder';
 
 const VEHICLE_HEALTH_INSIGHT_TYPES = new Set<InsightType>([
   'BATTERY_CRITICAL',
@@ -67,6 +72,9 @@ const NORMALIZED_PREDICTIVE_TYPES = new Set<string>([
   'RETURN_OVERDUE_THREATENS_FOLLOWUP',
   'STATION_SHORTAGE_24H',
 ]);
+
+const RUNTIME_INSIGHT_TYPES = NORMALIZED_INSIGHT_TYPES;
+const RUNTIME_PREDICTIVE_TYPES = NORMALIZED_PREDICTIVE_TYPES;
 
 function severityRank(s: ActionQueueSeverity): number {
   if (s === 'critical') return 4;
@@ -250,8 +258,12 @@ function issueGroupType(issue: OperationalIssue): ActionQueueItem['groupType'] {
 }
 
 function issueGroupKey(issue: OperationalIssue): string | undefined {
-  if (issue.domain === 'vehicle_health' && issue.vehicleId) return `vehicle-health:${issue.vehicleId}`;
-  if (issue.domain === 'service_compliance' && issue.vehicleId) return issue.semanticKey;
+  if (
+    (issue.domain === 'vehicle_health' || issue.domain === 'service_compliance')
+    && issue.vehicleId
+  ) {
+    return `vehicle-health:${issue.vehicleId}`;
+  }
   if ((issue.domain === 'rental_readiness' || issue.domain === 'telemetry') && issue.vehicleId) return issue.semanticKey;
   if ((issue.domain === 'booking' || issue.domain === 'return' || issue.domain === 'handover') && issue.bookingId) {
     return issue.semanticKey;
@@ -342,13 +354,16 @@ export function mapOperationalIssueToActionQueueItem(
 }
 
 export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQueueItem[] {
-  const normalizedIssues = normalizeOperationalIssues({
-    vehicleRuntimeStates: input.dashboardRuntime?.vehicleStates,
-    vehicleHealthAlerts: input.vehicleHealthAlerts,
-    dashboardInsights: input.insights,
-    predictiveInsights: input.predictiveInsights,
-    vehiclesById: input.fleetById,
-  }).filter((issue) => issue.visibility.dashboardAttention);
+  const runtimeBacked = usesRuntimeAttentionSource(input.dashboardRuntime);
+  const normalizedIssues = runtimeBacked
+    ? buildRuntimeOperationalIssues(input)
+    : normalizeOperationalIssues({
+        vehicleRuntimeStates: input.dashboardRuntime?.vehicleStates,
+        vehicleHealthAlerts: input.vehicleHealthAlerts,
+        dashboardInsights: input.insights,
+        predictiveInsights: input.predictiveInsights,
+        vehiclesById: input.fleetById,
+      }).filter((issue) => issue.visibility.dashboardAttention && issue.domain !== 'finance');
 
   const items: ActionQueueItem[] = normalizedIssues.map((issue) =>
     mapOperationalIssueToActionQueueItem(issue, input),
@@ -361,6 +376,7 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
   const de = input.locale === 'de';
 
   for (const insight of input.insights) {
+    if (runtimeBacked && RUNTIME_INSIGHT_TYPES.has(insight.type)) continue;
     if (NORMALIZED_INSIGHT_TYPES.has(insight.type)) continue;
     if (!matchesStation(input.stationFilter, input.fleetById, insight.entityIds)) continue;
 
@@ -377,6 +393,7 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
       : 'dashboard-insights';
 
     const insightCat = insightCategory(insight.type);
+    if (insightCat === 'financial') continue;
     let insightGroupKey: string | undefined;
     let insightGroupType: ActionQueueItem['groupType'];
     if (insightCat === 'health' && vehicleId) {
@@ -559,6 +576,7 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
   }
 
   for (const p of input.predictiveInsights) {
+    if (runtimeBacked && RUNTIME_PREDICTIVE_TYPES.has(p.type)) continue;
     if (NORMALIZED_PREDICTIVE_TYPES.has(p.type)) continue;
     if (seenPredictive.has(p.id) || existingIds.has(p.id)) continue;
     seenPredictive.add(p.id);
@@ -596,7 +614,7 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
     });
   }
 
-  const sorted = items.sort((a, b) => {
+  const sorted = normalizeAttentionItems(items).sort((a, b) => {
     if (b.priority !== a.priority) return b.priority - a.priority;
     return a.timeSortMs - b.timeSortMs;
   });

@@ -144,6 +144,7 @@ export interface DashboardSlice {
   hint?: string;
   tone: 'neutral' | 'success' | 'info' | 'watch' | 'critical';
   rows: DashboardSliceRow[];
+  /** Programmatic mirror of grouped rows (e.g. not-ready). Active UI reads `groups` via `dashboardSliceAccess`. */
   secondaryRows?: DashboardSliceRow[];
   groups?: Array<{
     id: string;

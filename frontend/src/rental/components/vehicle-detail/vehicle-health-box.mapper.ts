@@ -42,6 +42,11 @@ import {
   type SegmentLevel,
   type SegmentTone,
 } from '../../lib/health-segment-display';
+import {
+  mapDataCoverageDisplay,
+  mapHealthSeverityDisplay,
+  type HealthSeverityDisplay,
+} from './vehicle-health-display.mapper';
 
 export type VehicleHealthBoxOverallState =
   | 'loading'
@@ -73,6 +78,7 @@ export interface VehicleHealthBoxViewModel {
   overallTitle?: string;
   overallDot: string;
   overallAccentRing: string;
+  dataCoverageLabel: string | null;
   statCriticalCount: number;
   statWarningCount: number;
   faultsStat: FaultsStatDisplay;
@@ -106,6 +112,24 @@ export interface VehicleHealthBoxViewModel {
     reasons: string[];
     degraded: Array<{ source: string; message: string }>;
   } | null;
+}
+
+function severityToBoxState(severity: HealthSeverityDisplay): VehicleHealthBoxOverallState {
+  switch (severity) {
+    case 'loading':
+      return 'loading';
+    case 'unavailable':
+      return 'unavailable';
+    case 'critical':
+      return 'critical';
+    case 'warning':
+      return 'warning';
+    case 'good':
+      return 'good';
+    case 'no_data':
+    default:
+      return 'insufficient';
+  }
 }
 
 function overallVisual(state: VehicleHealthBoxOverallState): {
@@ -143,41 +167,16 @@ export function mapOverallHealthBoxState(params: {
   rentalHealth: VehicleHealthResponse | null;
   rentalHealthLoading: boolean;
   healthError: string | null;
+  trackedCount?: number;
+  statCriticalCount?: number;
+  statWarningCount?: number;
 }): { state: VehicleHealthBoxOverallState; label: string; title?: string } {
-  const { rentalHealth, rentalHealthLoading, healthError } = params;
-
-  if (rentalHealthLoading && !rentalHealth) {
-    return { state: 'loading', label: 'Loading…' };
-  }
-  if (healthError && !rentalHealth) {
-    return { state: 'unavailable', label: 'Limited Data' };
-  }
-  if (!rentalHealth) {
-    return { state: 'insufficient', label: 'Insufficient Data' };
-  }
-
-  const rentalReasons = collectRentalHealthReasons(rentalHealth);
-  const titleParts: string[] = [];
-  if (rentalHealth.rental_blocked && rentalHealth.blocking_reasons.length > 0) {
-    titleParts.push(`Blocked: ${rentalHealth.blocking_reasons.join(' · ')}`);
-  }
-  for (const r of rentalReasons) {
-    titleParts.push(`${r.label}: ${r.reason}`);
-  }
-  const title = titleParts.join(' · ') || undefined;
-
-  switch (rentalHealth.overall_state) {
-    case 'critical':
-      return { state: 'critical', label: 'Critical', title };
-    case 'warning':
-      return { state: 'warning', label: 'Warning', title };
-    case 'good':
-      return { state: 'good', label: 'Good Health', title };
-    case 'unknown':
-    case 'n_a':
-    default:
-      return { state: 'insufficient', label: 'Limited Data', title };
-  }
+  const mapped = mapHealthSeverityDisplay(params);
+  return {
+    state: severityToBoxState(mapped.severity),
+    label: mapped.label,
+    title: mapped.title,
+  };
 }
 
 /** Service tile severity: RentalHealth service_compliance wins; detail text stays HM/OEM. */
@@ -232,7 +231,7 @@ export function mapFaultsStat(
 
   const count = dtcCount ?? 0;
   if (count === 0) {
-    return { displayValue: '0', toneClass: neutralTone };
+    return { displayValue: '0', toneClass: 'border-transparent sq-tone-success' };
   }
   return {
     displayValue: String(count),
@@ -417,9 +416,6 @@ export function buildVehicleHealthBoxViewModel(params: {
     lvBatteryVoltage,
   } = params;
 
-  const overall = mapOverallHealthBoxState({ rentalHealth, rentalHealthLoading, healthError });
-  const { dot, accentRing } = overallVisual(overall.state);
-
   const rentalReasons = collectRentalHealthReasons(rentalHealth);
   const rentalCriticalCount = rentalReasons.filter((r) => r.state === 'critical').length;
   const rentalWarningCount = rentalReasons.filter((r) => r.state === 'warning').length;
@@ -483,6 +479,17 @@ export function buildVehicleHealthBoxViewModel(params: {
 
   const statCriticalCount = rentalHealth ? rentalCriticalCount : localCriticalCount;
   const statWarningCount = rentalHealth ? rentalWarningCount : localDueSoonCount;
+
+  const overall = mapOverallHealthBoxState({
+    rentalHealth,
+    rentalHealthLoading,
+    healthError,
+    trackedCount,
+    statCriticalCount,
+    statWarningCount,
+  });
+  const { dot, accentRing } = overallVisual(overall.state);
+  const dataCoverage = mapDataCoverageDisplay({ rentalHealth, trackedCount, untrackedCount });
 
   const brakesDetail = (() => {
     const remKm = brakes?.estimatedReplacementDueInKm ?? brakes?.legacy?.remainingKm ?? null;
@@ -640,6 +647,7 @@ export function buildVehicleHealthBoxViewModel(params: {
     overallTitle: overall.title,
     overallDot: dot,
     overallAccentRing: accentRing,
+    dataCoverageLabel: dataCoverage?.label ?? null,
     statCriticalCount,
     statWarningCount,
     faultsStat: mapFaultsStat(rentalHealth, dtcLoadState, dtcCount),
@@ -665,9 +673,7 @@ export function statTileTone(
   if (label === 'Critical') {
     return count > 0 ? 'border-transparent sq-tone-critical' : 'border-transparent sq-tone-success';
   }
-  return count > 0
-    ? 'border-transparent sq-tone-watch'
-    : 'border-border bg-muted/40 text-muted-foreground';
+  return count > 0 ? 'border-transparent sq-tone-watch' : 'border-transparent sq-tone-success';
 }
 
 export function complianceToneClass(

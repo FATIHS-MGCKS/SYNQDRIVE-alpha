@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { deriveOperationalChips } from './timeline.utils';
-import { eventTypeLabel, eventExplanation, formatEventEvidence } from './behavior-ui.utils';
+import { eventTypeLabel, eventExplanation, formatEventEvidence, formatLegacyMeasurements } from './behavior-ui.utils';
 import { needsAssignmentReview } from './utils/tripRentalContext';
 import type { TripTimelineTrip, TripBehaviorEvent } from './timeline.types';
 
@@ -118,6 +118,37 @@ describe('behavior event labels & evidence', () => {
     expect(map['Gaspedal']).toBe('95 %');
     expect(map['Kühlmittel']).toBe('40 °C');
     expect('Dauer' in map).toBe(false);
+  });
+
+  it('omits legacy rpm/throttle/coolant when contextAssessment is present', () => {
+    const evidence = formatEventEvidence(
+      makeEvent({
+        maxEngineRpm: 4200,
+        maxThrottlePos: 95,
+        maxCoolantTemp: 40,
+        contextAssessment: {
+          version: 1,
+          status: 'COMPLETED',
+          anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT',
+          anchorTimestamp: '2026-02-27T08:05:00.000Z',
+          windowStart: '2026-02-27T08:04:30.000Z',
+          windowEnd: '2026-02-27T08:05:30.000Z',
+          engineSignalsApplicable: true,
+          engineOnHint: true,
+          reasonCodes: [],
+          preliminaryClassifications: ['KICKDOWN_LIKELY'],
+          classifications: ['KICKDOWN_LIKELY'],
+          usedSignals: [],
+          missingSignals: [],
+          signalCoverage: [],
+          confidence: 'MEDIUM',
+          evidenceGrade: 'B',
+          generatedAt: '2026-02-27T08:05:00.000Z',
+        },
+      }),
+    );
+    expect(evidence.find((e) => e.label === 'Drehzahl')).toBeUndefined();
+    expect(formatLegacyMeasurements(makeEvent({ maxEngineRpm: 4200 }))).toHaveLength(1);
   });
 
   it('returns no evidence items when no metrics are present', () => {

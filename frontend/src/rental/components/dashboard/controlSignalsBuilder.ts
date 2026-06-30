@@ -14,8 +14,12 @@ import type {
   TodayBookingApiRow,
   StationDataFreshness,
 } from './dashboardTypes';
-import { countReadyToRent, formatLastSyncLabel, isVehicleReadyToRent } from './dashboardUtils';
-import type { DashboardRuntimeModel, VehicleRuntimeState } from './runtime/dashboardRuntimeTypes';
+import { formatLastSyncLabel, isVehicleReadyToRent } from './dashboardUtils';
+import type {
+  DashboardRuntimeModel,
+  VehicleRuntimeState,
+} from './runtime/dashboardRuntimeTypes';
+import { readyToRentNotReadyRows } from './dashboardSliceAccess';
 
 export type VehicleTelemetryBucket = 'live' | 'standby' | 'soft_offline' | 'offline' | 'unknown';
 
@@ -147,72 +151,34 @@ function isBlockedVehicle(
   return h?.rental_blocked === true;
 }
 
-function countConflicts(
-  vehicles: VehicleData[],
-  healthMap: Map<string, VehicleHealthResponse>,
-): number {
-  let n = 0;
-  for (const v of vehicles) {
-    if (v.reservedIsOverdue) n += 1;
-    else if (v.status === 'Reserved' && isBlockedVehicle(v, healthMap)) n += 1;
-  }
-  return n;
-}
-
-function availableButNotReadyCount(runtime: DashboardRuntimeModel | undefined): number {
-  if (!runtime) return 0;
-  const slice = runtime.slices['ready-to-rent'];
-  const groupRows = slice.groups?.find((group) => group.id === 'available-but-not-ready')?.rows;
-  return groupRows?.length ?? slice.secondaryRows?.length ?? 0;
-}
-
 export function computeFleetReadiness(input: {
   vehicles: VehicleData[];
-  availableVehicles: VehicleData[];
   healthMap: Map<string, VehicleHealthResponse>;
-  healthAlerts: VehicleHealthAlert[];
   pickupItems: PickupTileItem[];
   returnItems: ReturnTileItem[];
   telemetry: VehicleTelemetryFreshness;
   locale: string;
   fleetLoading: boolean;
-  readyOptions?: import('./dashboardUtils').ReadyToRentOptions;
-  runtime?: DashboardRuntimeModel;
+  runtime: DashboardRuntimeModel;
 }): FleetReadinessSummary {
   const runtime = input.runtime;
-  const scopedAlertIds = new Set(input.vehicles.map((v) => v.id));
-  const criticalAlerts = runtime?.slices['critical-alerts'].count ?? input.healthAlerts.filter(
-    (a) => a.severity === 'critical' && scopedAlertIds.has(a.vehicleId),
-  ).length;
-
-  const ready = runtime?.slices['ready-to-rent'].count ?? countReadyToRent(input.availableVehicles, input.readyOptions);
-  const blocked = runtime?.slices['blocked-maintenance'].count ?? input.vehicles.filter((v) => isBlockedVehicle(v, input.healthMap)).length;
-  const overdueFromReturns = input.returnItems.filter((r) => r.isOverdue && !r.done).length;
-  const returnBookingIds = new Set(
-    input.returnItems.map((r) => r.bookingId).filter(Boolean),
-  );
-  let overdueFromFleet = 0;
-  for (const v of input.vehicles) {
-    if (v.activeIsOverdue && v.activeBookingId && !returnBookingIds.has(v.activeBookingId)) {
-      overdueFromFleet += 1;
-    }
-  }
-  const overdueReturns = runtime?.slices['overdue-returns'].count ?? overdueFromReturns + overdueFromFleet;
-  const cleaningNeeded = runtime?.vehicleStates.filter(
+  const criticalAlerts = runtime.slices['critical-alerts'].count ?? 0;
+  const ready = runtime.slices['ready-to-rent'].count ?? 0;
+  const blocked = runtime.slices['blocked-maintenance'].count ?? 0;
+  const overdueReturns = runtime.slices['overdue-returns'].count ?? 0;
+  const cleaningNeeded = runtime.vehicleStates.filter(
     (state) =>
       (state.operationalStatus === 'available' || state.operationalStatus === 'reserved') &&
       state.warningReasons.some((reason) => reason.category === 'cleaning'),
-  ).length ?? input.vehicles.filter(
-    (v) => v.cleaningStatus !== 'Clean' && (v.status === 'Available' || v.status === 'Reserved'),
   ).length;
-  const softOfflineCount = runtime?.vehicleStates.filter(
+  const softOfflineCount = runtime.vehicleStates.filter(
     (state) => state.telemetryState === 'soft_offline',
-  ).length ?? input.telemetry.softOfflineCount ?? input.telemetry.staleCount;
-  const offlineCount = runtime?.vehicleStates.filter(
+  ).length;
+  const offlineCount = runtime.vehicleStates.filter(
     (state) => state.telemetryState === 'offline',
-  ).length ?? input.telemetry.offlineCount;
+  ).length;
   const staleData = softOfflineCount + offlineCount;
-  const conflicts = runtime ? availableButNotReadyCount(runtime) : countConflicts(input.vehicles, input.healthMap);
+  const conflicts = readyToRentNotReadyRows(runtime.slices['ready-to-rent']).length;
 
   const breakdown: FleetReadinessBreakdown = {
     ready,

@@ -1,27 +1,36 @@
 import { useMemo, useState, memo } from 'react';
 import { Icon } from '../ui/Icon';
-import { StatusChip, SkeletonRows } from '../../../components/patterns';
+import { SkeletonRows } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import {
   countAtomicActions,
   filterActionQueueEntries,
   groupActionQueueEntries,
+  toChildSeverity,
 } from './actionQueueGrouping';
+import { attentionCountLabel } from './dashboardAttentionBuilder';
+import {
+  attentionExpandLabel,
+  composeAttentionChildCopy,
+  composeAttentionGroupCopy,
+  composeAttentionItemCopy,
+  enrichAttentionCopyWithObdUnplugged,
+} from './attentionItemDisplay';
+import { AttentionItemRow } from './AttentionItemRow';
 import { DataTrustHint } from './DataTrustHint';
+import { useRentalOrg } from '../../RentalContext';
+import { useFleetObdPlugIndex } from '../../hooks/useFleetObdPlugIndex';
 import { sectionTrustHint } from './dataTrustBuilder';
 import {
   ACTION_QUEUE_LIST_CAP,
-  INTERACTIVE_ROW_CLASS,
   panelShellClass,
 } from './dashboardShell';
 import type {
   ActionQueueChildAction,
-  ActionQueueChildSeverity,
   ActionQueueCta,
   ActionQueueFilterTab,
   ActionQueueGroupItem,
   ActionQueueItem,
-  ActionQueueSeverity,
   DashboardViewModel,
 } from './dashboardTypes';
 
@@ -48,28 +57,7 @@ const FILTER_TABS: ActionQueueFilterTab[] = [
 ];
 
 const STANDARD_VISIBLE_ITEMS = 8;
-
-function severityLabel(severity: ActionQueueSeverity, de: boolean): string {
-  if (severity === 'critical') return de ? 'Kritisch' : 'Critical';
-  if (severity === 'warning') return de ? 'Warnung' : 'Warning';
-  if (severity === 'attention') return de ? 'Aufmerksamkeit' : 'Attention';
-  return 'Info';
-}
-
-function categoryLabel(category: ActionQueueItem['category'], de: boolean): string {
-  const map: Record<ActionQueueItem['category'], [string, string]> = {
-    vehicle: ['Vehicle', 'Fahrzeug'],
-    booking: ['Booking', 'Buchung'],
-    financial: ['Financial', 'Finanzen'],
-    notification: ['Notification', 'Benachrichtigung'],
-    handover: ['Handover', 'Übergabe'],
-    health: ['Health', 'Gesundheit'],
-    operations: ['Operations', 'Betrieb'],
-    task: ['Task', 'Aufgabe'],
-  };
-  const [en, d] = map[category];
-  return de ? d : en;
-}
+const COLLAPSED_PREVIEW_COUNT = 3;
 
 function ctaLabel(cta: ActionQueueCta, de: boolean, override?: string): string {
   if (override) return override;
@@ -79,44 +67,6 @@ function ctaLabel(cta: ActionQueueCta, de: boolean, override?: string): string {
   if (cta === 'start-handover-return') return de ? 'Rückgabe starten' : 'Start return';
   if (cta === 'open-stations') return de ? 'Stationen öffnen' : 'Open stations';
   return de ? 'Vermietung öffnen' : 'Open rental';
-}
-
-function categoryIcon(category: ActionQueueItem['category']) {
-  if (category === 'handover') return 'key';
-  if (category === 'health') return 'heart';
-  if (category === 'financial') return 'wallet';
-  if (category === 'notification') return 'bell';
-  if (category === 'operations') return 'calendar-clock';
-  return 'car';
-}
-
-function severityTone(severity: ActionQueueSeverity) {
-  if (severity === 'critical') return 'critical' as const;
-  if (severity === 'warning') return 'watch' as const;
-  if (severity === 'attention') return 'info' as const;
-  return 'neutral' as const;
-}
-
-function childSeverityLabel(severity: ActionQueueChildSeverity, de: boolean): string {
-  if (severity === 'critical') return de ? 'Kritisch' : 'Critical';
-  if (severity === 'overdue') return de ? 'Überfällig' : 'Overdue';
-  if (severity === 'warning') return de ? 'Warnung' : 'Warning';
-  if (severity === 'attention') return de ? 'Aufmerksamkeit' : 'Attention';
-  return 'Info';
-}
-
-function childSeverityTone(severity: ActionQueueChildSeverity) {
-  if (severity === 'critical') return 'critical' as const;
-  if (severity === 'overdue') return 'watch' as const;
-  if (severity === 'warning') return 'watch' as const;
-  if (severity === 'attention') return 'info' as const;
-  return 'neutral' as const;
-}
-
-function confidenceLabel(confidence: 'high' | 'medium' | 'low', de: boolean): string {
-  if (confidence === 'high') return de ? 'Evidenz: hoch' : 'Evidence: high';
-  if (confidence === 'medium') return de ? 'Evidenz: mittel' : 'Evidence: medium';
-  return de ? 'Evidenz: niedrig' : 'Evidence: low';
 }
 
 function tabLabel(tab: ActionQueueFilterTab, de: boolean): string {
@@ -192,7 +142,7 @@ const ActionQueueLeafRow = memo(function ActionQueueLeafRow({
   vm,
   handlers,
   pinned,
-  focusMode,
+  obdPlugByVehicleId,
 }: {
   item: ActionQueueItem;
   de: boolean;
@@ -200,100 +150,28 @@ const ActionQueueLeafRow = memo(function ActionQueueLeafRow({
   handlers: ActionQueueHandlers;
   pinned?: boolean;
   focusMode?: boolean;
+  obdPlugByVehicleId: Map<string, boolean | null>;
 }) {
-  const metaParts = [
-    item.entityLabel,
-    item.predictiveInsight ? confidenceLabel(item.predictiveInsight.confidence, de) : null,
-  ].filter(Boolean);
-
+  const copy = enrichAttentionCopyWithObdUnplugged(
+    composeAttentionItemCopy(item),
+    item,
+    obdPlugByVehicleId,
+  );
   return (
-    <li
-      className={[
-        'group relative flex flex-col gap-1.5 border-b border-border/35 px-2.5 py-1.5 last:border-b-0 sm:flex-row sm:items-center sm:gap-2.5 sm:px-3 sm:py-2',
-        INTERACTIVE_ROW_CLASS,
-        pinned ? 'bg-[color:var(--status-critical)]/[0.025]' : 'hover:bg-muted/20',
-        'cursor-pointer',
-      ].join(' ')}
-      onClick={() => vm.openDrilldown({ type: 'action-item', itemId: item.id })}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          vm.openDrilldown({ type: 'action-item', itemId: item.id });
-        }
-      }}
-      role="button"
-      tabIndex={0}
-    >
-      <div className="flex min-w-0 flex-1 items-start gap-2">
-        <div
-          className={[
-            'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-transform group-hover:scale-[1.03]',
-            pinned ? 'sq-tone-critical' : 'sq-tone-neutral bg-muted/45',
-          ].join(' ')}
-        >
-          <Icon name={categoryIcon(item.category)} className="h-3 w-3" />
-        </div>
-
-        <div className="min-w-0 flex-1 space-y-0.5">
-          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-            <StatusChip tone={severityTone(item.severity)} className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide">
-              {severityLabel(item.severity, de)}
-            </StatusChip>
-            <span className="text-[9.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {categoryLabel(item.category, de)}
-            </span>
-            {item.source === 'predictive-operations' ? (
-              <span className="text-[9.5px] font-semibold uppercase tracking-wide text-[color:var(--status-ai)]">
-                {de ? 'Operatives Risiko' : 'Operational risk'}
-              </span>
-            ) : null}
-            {item.timeLabel && (
-              <span className="text-[10.5px] tabular-nums text-muted-foreground">{item.timeLabel}</span>
-            )}
-          </div>
-
-          <p
-            className={cn(
-              'text-[11px] font-semibold leading-snug tracking-[-0.01em] text-foreground text-pretty',
-              focusMode && 'text-[12px]',
-            )}
-          >
-            {item.title}
-          </p>
-
-          {item.predictiveInsight ? (
-            <p className="line-clamp-1 text-[10px] leading-snug text-muted-foreground text-pretty">
-              {item.predictiveInsight.explanation}
-            </p>
-          ) : item.reason ? (
-            <p className="line-clamp-1 text-[10px] leading-snug text-muted-foreground text-pretty">
-              {item.reason}
-            </p>
-          ) : null}
-
-          {item.predictiveInsight ? (
-            <p className="line-clamp-1 text-[10px] font-medium leading-snug text-foreground/80 text-pretty">
-              {item.predictiveInsight.recommendedAction}
-            </p>
-          ) : null}
-
-          {metaParts.length > 0 && (
-            <p className="text-[10.5px] text-muted-foreground">{metaParts.join(' · ')}</p>
-          )}
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          runCta(item, vm, handlers);
-        }}
-        className="sq-press inline-flex min-h-9 w-full shrink-0 items-center justify-center gap-1 rounded-md px-1.5 text-[10.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] sm:w-[116px] sm:self-center"
-      >
-        {ctaLabel(item.cta, de, item.ctaLabel)}
-        <Icon name="arrow-right" className="h-3 w-3 opacity-70" />
-      </button>
+    <li className="list-none">
+      <AttentionItemRow
+        severity={toChildSeverity(item)}
+        category={item.category}
+        module={item.module}
+        groupType={item.groupType}
+        copy={copy}
+        timeLabel={item.timeLabel}
+        ctaLabel={ctaLabel(item.cta, de, item.ctaLabel)}
+        de={de}
+        pinned={pinned}
+        onRowClick={() => vm.openDrilldown({ type: 'action-item', itemId: item.id })}
+        onCtaClick={() => runCta(item, vm, handlers)}
+      />
     </li>
   );
 });
@@ -303,66 +181,37 @@ function ActionQueueChildRow({
   de,
   vm,
   handlers,
+  obdPlugByVehicleId,
 }: {
   child: ActionQueueChildAction;
   de: boolean;
   vm: DashboardViewModel;
   handlers: ActionQueueHandlers;
+  obdPlugByVehicleId: Map<string, boolean | null>;
 }) {
-  const moduleLabel = child.moduleLabel ?? categoryLabel(child.category, de);
+  const copy = enrichAttentionCopyWithObdUnplugged(
+    composeAttentionChildCopy(child),
+    {
+      title: child.title,
+      vehicleId: child.vehicleId,
+      reason: child.detail,
+    },
+    obdPlugByVehicleId,
+  );
   return (
-    <li
-      className={cn(
-        'group/child relative flex flex-col gap-1 border-b border-border/25 py-1.5 pl-9 pr-2.5 last:border-b-0 sm:flex-row sm:items-center sm:gap-2.5 sm:pr-3',
-        INTERACTIVE_ROW_CLASS,
-        'cursor-pointer hover:bg-muted/15',
-      )}
-      onClick={() => vm.openDrilldown({ type: 'action-item', itemId: child.itemId })}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          vm.openDrilldown({ type: 'action-item', itemId: child.itemId });
-        }
-      }}
-      role="button"
-      tabIndex={0}
-    >
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-          <StatusChip
-            tone={childSeverityTone(child.severity)}
-            className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
-          >
-            {childSeverityLabel(child.severity, de)}
-          </StatusChip>
-          <span className="text-[9.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {moduleLabel}
-          </span>
-          {child.timeLabel ? (
-            <span className="text-[10.5px] tabular-nums text-muted-foreground">{child.timeLabel}</span>
-          ) : null}
-        </div>
-        <p className="text-[11px] font-semibold leading-snug tracking-[-0.01em] text-foreground text-pretty">
-          {child.title}
-        </p>
-        {child.detail ? (
-          <p className="line-clamp-1 text-[10px] leading-snug text-muted-foreground text-pretty">
-            {child.detail}
-          </p>
-        ) : null}
-      </div>
-
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          runChildCta(child, handlers);
-        }}
-        className="sq-press inline-flex min-h-9 w-full shrink-0 items-center justify-center gap-1 rounded-md px-1.5 text-[10.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] sm:w-[116px] sm:self-center"
-      >
-        {ctaLabel(child.cta, de, child.ctaLabel)}
-        <Icon name="arrow-right" className="h-3 w-3 opacity-70" />
-      </button>
+    <li className="list-none">
+      <AttentionItemRow
+        severity={child.severity}
+        category={child.category}
+        module={child.module}
+        copy={copy}
+        timeLabel={child.timeLabel}
+        ctaLabel={ctaLabel(child.cta, de, child.ctaLabel)}
+        de={de}
+        nested
+        onRowClick={() => vm.openDrilldown({ type: 'action-item', itemId: child.itemId })}
+        onCtaClick={() => runChildCta(child, handlers)}
+      />
     </li>
   );
 }
@@ -372,78 +221,62 @@ function ActionQueueGroupRow({
   de,
   vm,
   handlers,
+  obdPlugByVehicleId,
 }: {
   group: ActionQueueGroupItem;
   de: boolean;
   vm: DashboardViewModel;
   handlers: ActionQueueHandlers;
+  obdPlugByVehicleId: Map<string, boolean | null>;
 }) {
   const criticalLike = group.severity === 'critical' || group.severity === 'overdue';
   const [expanded, setExpanded] = useState(criticalLike);
   const groupContentId = `aq-group-${group.id}`;
 
   return (
-    <li
-      className={cn(
-        'border-b border-border/35 last:border-b-0',
-        criticalLike ? 'bg-[color:var(--status-critical)]/[0.025]' : 'bg-muted/[0.18]',
-      )}
-    >
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
-        aria-controls={groupContentId}
-        className={cn(
-          'group/header flex w-full items-start gap-2 px-2.5 py-1.5 text-left transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] sm:px-3 sm:py-2',
+    <li className="list-none space-y-1">
+      <AttentionItemRow
+        severity={group.severity}
+        category={group.category}
+        groupType={group.groupType}
+        copy={composeAttentionGroupCopy(group)}
+        de={de}
+        pinned={criticalLike}
+        onRowClick={() => setExpanded((value) => !value)}
+        trailing={(
+          <button
+            type="button"
+            aria-expanded={expanded}
+            aria-controls={groupContentId}
+            onClick={(event) => {
+              event.stopPropagation();
+              setExpanded((value) => !value);
+            }}
+            className="sq-btn sq-btn-secondary min-h-9 shrink-0 self-start px-2 text-[11px]"
+          >
+            {expanded ? (de ? 'Einklappen' : 'Collapse') : (de ? 'Details' : 'Details')}
+            <Icon
+              name="chevron-down"
+              className={cn('h-3.5 w-3.5 opacity-70 transition-transform duration-200', !expanded && '-rotate-90')}
+            />
+          </button>
         )}
-      >
-        <span
-          className={cn(
-            'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-transform group-hover/header:scale-[1.03]',
-            criticalLike ? 'sq-tone-critical' : 'sq-tone-neutral bg-muted/45',
-          )}
-          aria-hidden
-        >
-          <Icon name={categoryIcon(group.category)} className="h-3 w-3" />
-        </span>
-        <span className="min-w-0 flex-1 space-y-0.5">
-          <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-            <StatusChip
-              tone={childSeverityTone(group.severity)}
-              className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
-            >
-              {childSeverityLabel(group.severity, de)}
-            </StatusChip>
-            <span className="block truncate text-[12px] font-semibold leading-tight tracking-[-0.01em] text-foreground">
-              {group.title}
-            </span>
-          </span>
-          <span className="block truncate text-[10.5px] leading-snug text-muted-foreground">
-            {group.subtitle}
-          </span>
-        </span>
-        <Icon
-          name="chevron-down"
-          className={cn(
-            'mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200',
-            !expanded && '-rotate-90',
-          )}
-          aria-hidden
-        />
-      </button>
+      />
 
-      <ul id={groupContentId} hidden={!expanded} className={expanded ? 'animate-fade-up' : undefined}>
-        {group.children.map((child) => (
-          <ActionQueueChildRow
-            key={child.id}
-            child={child}
-            de={de}
-            vm={vm}
-            handlers={handlers}
-          />
-        ))}
-      </ul>
+      {expanded ? (
+        <ul id={groupContentId} className="space-y-1 animate-fade-up">
+          {group.children.map((child) => (
+            <ActionQueueChildRow
+              key={child.id}
+              child={child}
+              de={de}
+              vm={vm}
+              handlers={handlers}
+              obdPlugByVehicleId={obdPlugByVehicleId}
+            />
+          ))}
+        </ul>
+      ) : null}
     </li>
   );
 }
@@ -454,12 +287,16 @@ function ActionQueueCollapsedPreview({
   loading,
   de,
   vm,
+  handlers,
+  obdPlugByVehicleId,
 }: {
   items: ActionQueueItem[];
   totalCount: number;
   loading: boolean;
   de: boolean;
   vm: DashboardViewModel;
+  handlers: ActionQueueHandlers;
+  obdPlugByVehicleId: Map<string, boolean | null>;
 }) {
   if (loading) {
     return (
@@ -471,8 +308,8 @@ function ActionQueueCollapsedPreview({
 
   if (items.length === 0) {
     return (
-      <div className="px-3.5 py-2.5 text-[11px] text-muted-foreground">
-        {de ? 'Keine offenen Einträge.' : 'No open items.'}
+      <div className="px-3.5 py-3 text-[12px] text-muted-foreground">
+        {de ? 'Keine offenen Meldungen.' : 'No open alerts.'}
       </div>
     );
   }
@@ -480,58 +317,25 @@ function ActionQueueCollapsedPreview({
   const hiddenCount = Math.max(0, totalCount - items.length);
 
   return (
-    <div>
-      <ul>
+    <div className="space-y-2 px-2 pb-2 sm:px-3">
+      <ul className="space-y-2">
         {items.map((item) => (
-          <li key={item.id}>
-            <button
-              type="button"
-              onClick={() => vm.openDrilldown({ type: 'action-item', itemId: item.id })}
-              className={cn(
-                'group flex w-full items-start gap-2 border-b border-border/35 px-2.5 py-1.5 text-left transition-colors last:border-b-0 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] sm:px-3',
-                item.pinned && 'bg-[color:var(--status-critical)]/[0.025]',
-              )}
-            >
-              <span
-                className={cn(
-                  'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-transform group-hover:scale-[1.03]',
-                  item.pinned ? 'sq-tone-critical' : 'sq-tone-neutral bg-muted/45',
-                )}
-                aria-hidden
-              >
-                <Icon name={categoryIcon(item.category)} className="h-3 w-3" />
-              </span>
-              <span className="min-w-0 flex-1 space-y-0.5">
-                <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                  <StatusChip
-                    tone={severityTone(item.severity)}
-                    className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
-                  >
-                    {severityLabel(item.severity, de)}
-                  </StatusChip>
-                  <span className="text-[9.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {categoryLabel(item.category, de)}
-                  </span>
-                  {item.timeLabel ? (
-                    <span className="text-[10.5px] tabular-nums text-muted-foreground">{item.timeLabel}</span>
-                  ) : null}
-                </span>
-                <span className="block truncate text-[11px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
-                  {item.title}
-                </span>
-                {(item.entityLabel || item.reason || item.predictiveInsight?.explanation) ? (
-                  <span className="block truncate text-[10px] leading-snug text-muted-foreground">
-                    {item.entityLabel ?? item.predictiveInsight?.explanation ?? item.reason}
-                  </span>
-                ) : null}
-              </span>
-            </button>
-          </li>
+          <ActionQueueLeafRow
+            key={item.id}
+            item={item}
+            de={de}
+            vm={vm}
+            handlers={handlers}
+            pinned={item.pinned}
+            obdPlugByVehicleId={obdPlugByVehicleId}
+          />
         ))}
       </ul>
       {hiddenCount > 0 ? (
-        <p className="border-t border-border/25 px-3.5 py-1.5 text-[10.5px] text-muted-foreground">
-          {de ? `+ ${hiddenCount} weitere — aufklappen für Details` : `+ ${hiddenCount} more — open for details`}
+        <p className="px-1 text-center text-[11px] text-muted-foreground">
+          {de
+            ? `+ ${hiddenCount} weitere Meldungen`
+            : `+ ${hiddenCount} more alerts`}
         </p>
       ) : null}
     </div>
@@ -540,32 +344,32 @@ function ActionQueueCollapsedPreview({
 
 function ActionQueueSkeleton({ de }: { de: boolean }) {
   return (
-    <div className="px-2 py-2" aria-busy aria-label={de ? 'Aktionsliste lädt' : 'Loading action queue'}>
+    <div className="px-3 py-2" aria-busy aria-label={de ? 'Meldungen laden' : 'Loading alerts'}>
       <SkeletonRows rows={3} />
     </div>
   );
 }
 
 function ActionQueueEmpty({ vm }: { vm: DashboardViewModel }) {
-  const { actionQueueEmptySummary: s, locale } = vm;
+  const { actionQueueEmptySummary: summary, locale } = vm;
   const de = locale === 'de';
 
   return (
-    <div className="flex flex-col items-center gap-4 px-4 py-8 text-center">
-      <div className="sq-tone-success flex h-12 w-12 items-center justify-center rounded-2xl">
-        <Icon name="check-circle" className="h-6 w-6" />
+    <div className="flex flex-col items-center gap-3 px-4 py-7 text-center">
+      <div className="sq-tone-success flex h-10 w-10 items-center justify-center rounded-xl">
+        <Icon name="check-circle" className="h-5 w-5" />
       </div>
       <div className="space-y-1">
-        <p className="text-sm font-semibold text-foreground">{s.title}</p>
-        <p className="text-[12px] text-muted-foreground">{s.subtitle}</p>
+        <p className="text-[13px] font-semibold text-foreground">
+          {de ? 'Keine offenen Meldungen' : 'No open alerts'}
+        </p>
+        <p className="text-[12px] text-muted-foreground">
+          {de ? 'Alles im grünen Bereich' : 'Everything looks clear'}
+        </p>
       </div>
-      <div className="flex flex-wrap justify-center gap-2">
-        <span className="sq-chip sq-tone-success">{s.readyLabel}</span>
-        <span className="sq-chip sq-tone-neutral">{s.handoverLabel}</span>
-        <span className="sq-chip sq-tone-info">
-          {de ? `Sync: ${s.syncLabel}` : `Sync: ${s.syncLabel}`}
-        </span>
-      </div>
+      {summary.readyCount > 0 ? (
+        <p className="text-[11px] text-muted-foreground">{summary.readyLabel}</p>
+      ) : null}
     </div>
   );
 }
@@ -590,19 +394,11 @@ function ActionQueueHeader({
   const { locale, operatorFocusMode } = vm;
   const de = locale === 'de';
   const title = operatorFocusMode
-    ? de
-      ? 'Kritische Aktionen'
-      : 'Critical actions'
-    : de
-      ? 'Aufmerksamkeit'
-      : 'Attention';
+    ? de ? 'Kritische Aktionen' : 'Critical actions'
+    : 'Notifications';
   const subtitle = operatorFocusMode
-    ? de
-      ? 'Dringende Schritte'
-      : 'Urgent steps'
-    : de
-      ? 'Priorisierte Ops-Aktionen'
-      : 'Prioritized actions';
+    ? de ? 'Dringende Schritte' : 'Urgent steps'
+    : de ? 'Priorisierte Meldungen' : 'Prioritized notifications';
 
   return (
     <div className="flex flex-col gap-2 border-b border-border/35 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
@@ -625,7 +421,7 @@ function ActionQueueHeader({
       <div className="flex shrink-0 items-center gap-2 sm:justify-end">
         {hasItems ? (
           <span className="text-[11px] font-medium tabular-nums text-muted-foreground">
-            {totalCount} {de ? 'Einträge' : 'items'}
+            {attentionCountLabel(totalCount, de)}
           </span>
         ) : null}
         <DataTrustHint
@@ -633,19 +429,21 @@ function ActionQueueHeader({
           locale={locale}
           className="hidden text-right sm:block"
         />
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={isExpanded}
-          aria-controls={controlsId}
-          className="sq-press inline-flex min-h-9 items-center gap-1 rounded-md px-2 text-[10.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
-        >
-          {isExpanded ? (de ? 'Zu' : 'Close') : (de ? 'Auf' : 'Open')}
-          <Icon
-            name="chevron-down"
-            className={cn('h-3 w-3 transition-transform duration-200', !isExpanded && '-rotate-90')}
-          />
-        </button>
+        {hasItems ? (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={isExpanded}
+            aria-controls={controlsId}
+            className="sq-btn sq-btn-secondary min-h-9 px-2.5 text-[11px]"
+          >
+            {attentionExpandLabel(totalCount, de, isExpanded)}
+            <Icon
+              name="chevron-down"
+              className={cn('h-3.5 w-3.5 opacity-70 transition-transform duration-200', !isExpanded && '-rotate-90')}
+            />
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -665,6 +463,8 @@ export function ActionQueue({
     operatorFocusMode,
     locale,
   } = vm;
+  const { orgId } = useRentalOrg();
+  const obdPlugByVehicleId = useFleetObdPlugIndex(orgId);
   const de = locale === 'de';
   const [filterTab, setFilterTab] = useState<ActionQueueFilterTab>('all');
   const [isExpanded, setIsExpanded] = useState(true);
@@ -705,11 +505,10 @@ export function ActionQueue({
   );
 
   const collapsedPreviewItems = useMemo(
-    () => [...pinnedItems, ...groupableItems].slice(0, operatorFocusMode ? 3 : 2),
+    () => [...pinnedItems, ...groupableItems].slice(0, operatorFocusMode ? 3 : COLLAPSED_PREVIEW_COUNT),
     [operatorFocusMode, pinnedItems, groupableItems],
   );
 
-  // Header / overflow counts are in atomic actions, not visible groups.
   const hiddenCount = Math.max(
     0,
     countAtomicActions(filteredEntries) - countAtomicActions(visibleEntries),
@@ -720,13 +519,16 @@ export function ActionQueue({
 
   return (
     <section
-      className={panelShellClass(
-        operatorFocusMode ? 'secondary' : 'tertiary',
-        operatorFocusMode
-          ? 'shadow-none ring-1 ring-border/30'
-          : 'border-solid border-border/55 bg-card/55 shadow-none',
+      className={cn(
+        panelShellClass(
+          operatorFocusMode ? 'secondary' : 'tertiary',
+          operatorFocusMode
+            ? 'shadow-none ring-1 ring-border/30'
+            : 'border-solid border-border/55 bg-card/55 shadow-none',
+        ),
+        'h-full',
       )}
-      aria-label={de ? 'Aktionsliste' : 'Action queue'}
+      aria-label="Notifications"
     >
       <ActionQueueHeader
         vm={vm}
@@ -744,6 +546,8 @@ export function ActionQueue({
           loading={actionQueueLoading}
           de={de}
           vm={vm}
+          handlers={handlers}
+          obdPlugByVehicleId={obdPlugByVehicleId}
         />
       )}
       <div id={contentId} hidden={!isExpanded} className={isExpanded ? 'animate-fade-up' : undefined}>
@@ -782,11 +586,11 @@ export function ActionQueue({
           )}
 
           {pinnedItems.length > 0 && (
-            <div className="border-b border-border/40">
-              <p className="px-3.5 pb-1 pt-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="border-b border-border/35 px-2 pb-2 pt-2 sm:px-3">
+              <p className="px-1 pb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {de ? 'Sofort handeln' : 'Act now'}
               </p>
-              <ul>
+              <ul className="space-y-2">
                 {pinnedItems.map((item) => (
                   <ActionQueueLeafRow
                     key={item.id}
@@ -795,7 +599,7 @@ export function ActionQueue({
                     vm={vm}
                     handlers={handlers}
                     pinned
-                    focusMode={operatorFocusMode}
+                    obdPlugByVehicleId={obdPlugByVehicleId}
                   />
                 ))}
               </ul>
@@ -808,7 +612,7 @@ export function ActionQueue({
             <ActionQueueEmpty vm={vm} />
           ) : filteredEntries.length > 0 ? (
             <>
-              <ul>
+              <ul className="space-y-2 px-2 pb-2 sm:px-3">
                 {visibleEntries.map((entry) =>
                   entry.kind === 'group' ? (
                     <ActionQueueGroupRow
@@ -817,6 +621,7 @@ export function ActionQueue({
                       de={de}
                       vm={vm}
                       handlers={handlers}
+                      obdPlugByVehicleId={obdPlugByVehicleId}
                     />
                   ) : (
                     <ActionQueueLeafRow
@@ -825,16 +630,16 @@ export function ActionQueue({
                       de={de}
                       vm={vm}
                       handlers={handlers}
-                      focusMode={operatorFocusMode}
+                      obdPlugByVehicleId={obdPlugByVehicleId}
                     />
                   ),
                 )}
               </ul>
               {hiddenCount > 0 && (
-                <p className="border-t border-border/40 px-4 py-3 text-center text-[12px] text-muted-foreground">
+                <p className="border-t border-border/35 px-4 py-2.5 text-center text-[11px] text-muted-foreground">
                   {de
-                    ? `${hiddenCount} weitere Einträge — Filter eingrenzen`
-                    : `${hiddenCount} more items — narrow filters`}
+                    ? `${hiddenCount} weitere Meldungen — Filter eingrenzen oder „Alle anzeigen“ nutzen`
+                    : `${hiddenCount} more alerts — narrow filters or show all`}
                 </p>
               )}
             </>
@@ -842,7 +647,7 @@ export function ActionQueue({
             <ActionQueueEmpty vm={vm} />
           ) : (
             <p className="px-4 py-3 text-center text-[12px] text-muted-foreground">
-              {de ? 'Keine weiteren Items in diesem Filter.' : 'No more items in this filter.'}
+              {de ? 'Keine weiteren Meldungen in diesem Filter.' : 'No more alerts in this filter.'}
             </p>
           )}
       </div>

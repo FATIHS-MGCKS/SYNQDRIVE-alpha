@@ -7,6 +7,10 @@ export {
   buildVehicleHealthBoxViewModel,
   resolveServiceComplianceTone,
 } from './vehicle-health-box.mapper';
+export {
+  mapHealthSeverityDisplay,
+  mapDataCoverageDisplay,
+} from './vehicle-health-display.mapper';
 export { VehicleDetailHeader } from './VehicleDetailHeader';
 export type {
   VehicleDetailHeaderProps,

@@ -14,8 +14,8 @@ export function TripsView(props: TripsViewProps) {
   const tab = useTripsTab(props);
 
   const periodSummary = useMemo(
-    () => computeTripsPeriodSummary(tab.trips),
-    [tab.trips],
+    () => computeTripsPeriodSummary(tab.trips, tab.behaviorEvents),
+    [tab.trips, tab.behaviorEvents],
   );
 
   return (

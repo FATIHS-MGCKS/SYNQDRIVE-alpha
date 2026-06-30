@@ -26,8 +26,10 @@ import type {
 import type { AnchorEventInfo, ContextSignalStats } from './event-context-assessment.types';
 import {
   COLD_COOLANT_C,
+  evaluateColdEngineLoad,
   HIGH_ENGINE_LOAD_PCT,
   HIGH_RPM_ABS,
+  isMildColdEngineBand,
   STANDSTILL_KMH,
 } from './event-context-stats';
 
@@ -51,7 +53,7 @@ export interface ClassifyContextInput {
   perSignal: Record<EngineContextSignal, ContextSignalStats>;
   dataQuality: ContextWindowDataQuality;
   reasonCodes: ContextReasonCode[];
-  /** Native event semantics (absent for RPM webhook candidates). */
+  /** Native event semantics for behaviour-aware classification (optional). */
   anchorEvent?: AnchorEventInfo | null;
 }
 
@@ -119,13 +121,14 @@ function classifyAcceleration(
   const coolantNear = perSignal.coolant.nearestValueToAnchor;
   const cold = coolantNear != null && coolantNear < COLD_COOLANT_C;
   const warm = coolantNear != null && coolantNear >= COLD_COOLANT_C;
+  const loadCheck = evaluateColdEngineLoad(perSignal);
   const highLoad =
     reasonCodes.includes('HIGH_RPM') ||
     reasonCodes.includes('HIGH_THROTTLE') ||
     reasonCodes.includes('HIGH_ENGINE_LOAD');
 
-  // Cold-engine takes precedence (it carries an extra damage-risk meaning).
-  if (cold && highLoad) {
+  // Cold-engine misuse labels require real load — not coolant alone.
+  if (cold && loadCheck.anyHigh && !isMildColdEngineBand(coolantNear, loadCheck)) {
     out.add(preSpeed != null && preSpeed > KICKDOWN_MIN_PRE_KMH
       ? 'COLD_ENGINE_KICKDOWN'
       : 'COLD_ENGINE_ACCELERATION');
@@ -166,7 +169,7 @@ function classifyBraking(
   return [];
 }
 
-/** Generic (RPM-candidate / uncategorised) classifications. */
+/** Generic classifications for uncategorised native behavior anchors. */
 function classifyGeneric(
   perSignal: ClassifyContextInput['perSignal'],
   reasonCodes: ContextReasonCode[],
@@ -182,9 +185,16 @@ function classifyGeneric(
     (speedNear != null && speedNear <= STANDSTILL_KMH);
   const moving = !standstill && speedNear != null;
 
+  const loadCheck = evaluateColdEngineLoad(perSignal);
+
   if (rpmMax != null) {
     if (standstill && rpmMax >= REV_IN_IDLE_MIN_RPM) out.add('REV_IN_IDLE_CANDIDATE');
-    if (coolantNear != null && coolantNear < COLD_COOLANT_C && rpmMax >= HIGH_RPM_ABS) {
+    if (
+      coolantNear != null &&
+      coolantNear < COLD_COOLANT_C &&
+      loadCheck.rpmHigh &&
+      !isMildColdEngineBand(coolantNear, loadCheck)
+    ) {
       out.add('COLD_ENGINE_HIGH_RPM');
     }
     if (moving && rpmMax >= HIGH_RPM_ABS) out.add('HIGH_RPM_SPIKE');

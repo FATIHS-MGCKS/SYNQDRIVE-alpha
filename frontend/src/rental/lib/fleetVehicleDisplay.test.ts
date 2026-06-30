@@ -218,10 +218,10 @@ describe('health vs rental display separation', () => {
         }),
       },
     );
-    expect(d.primaryStatus).toBe('critical');
+    expect(d.primaryStatus).toBe('ready');
     expect(d.healthDisplay.status).toBe('critical');
     expect(d.rentalDisplay.status).toBe('ready');
-    expect(d.rentalDisplay.label).toBe('Ready');
+    expect(d.rentalDisplay.label).toBe('Ready · Action needed');
     expect(d.reasonBadge?.text).toBe('Service overdue');
   });
 

@@ -1,5 +1,6 @@
+import type { TripBehaviorEvent } from '../../../../lib/api';
 import type { TripTimelineTrip } from '../trips.types';
-import { countTripEvents } from '../trips-map.utils';
+import { resolveNotableEventCount } from '../behavior-event-count.utils';
 
 export interface TripsPeriodSummary {
   tripCount: number;
@@ -12,7 +13,10 @@ export interface TripsPeriodSummary {
   unlinkedCount: number;
 }
 
-export function computeTripsPeriodSummary(trips: TripTimelineTrip[]): TripsPeriodSummary {
+export function computeTripsPeriodSummary(
+  trips: TripTimelineTrip[],
+  behaviorEventsByTripId?: Record<string, TripBehaviorEvent[]>,
+): TripsPeriodSummary {
   let totalKm = 0;
   let totalMinutes = 0;
   let notableEvents = 0;
@@ -24,7 +28,14 @@ export function computeTripsPeriodSummary(trips: TripTimelineTrip[]): TripsPerio
   for (const trip of trips) {
     totalKm += trip.distanceKm ?? 0;
     totalMinutes += trip.durationMinutes ?? 0;
-    const ev = countTripEvents(trip);
+    const eventsLoaded =
+      behaviorEventsByTripId != null &&
+      Object.prototype.hasOwnProperty.call(behaviorEventsByTripId, trip.id);
+    const ev = resolveNotableEventCount(
+      trip,
+      behaviorEventsByTripId?.[trip.id],
+      eventsLoaded,
+    );
     if (ev != null) notableEvents += ev;
     if (trip.isPrivateTrip || trip.assignmentStatus === 'PRIVATE_UNASSIGNED') privateCount += 1;
     if (trip.detailsLimited || trip.behaviorEnrichmentStatus === 'SKIPPED_NO_HF_DATA') {

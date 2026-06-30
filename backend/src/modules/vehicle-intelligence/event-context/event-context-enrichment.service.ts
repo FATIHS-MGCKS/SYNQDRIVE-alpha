@@ -1,10 +1,9 @@
 /**
  * SynqDrive — EventContextEnrichmentService (LTE_R1 / ICE, Phase 2)
  *
- * Central service that, around an anchor timestamp (a native DIMO behavior event,
- * or — later — an RPM webhook candidate), fetches the surrounding signal window,
- * computes effective signal quality, and produces a conservative Context
- * Assessment payload.
+ * Central service that, around a native DIMO behavior event anchor timestamp,
+ * fetches the surrounding signal window, computes effective signal quality, and
+ * produces a conservative Context Assessment payload.
  *
  * SCOPE & SAFETY (per spec):
  *   - LTE_R1 / ICE only. Tesla/EV is never run through ICE engine-context logic.
@@ -20,8 +19,8 @@
  * `interval:"1s"`, this service derives the EFFECTIVE cadence from real sample
  * timestamps and never assumes true 1 Hz density.
  *
- * Not yet wired into any pipeline/webhook — methods are ready for a later intake
- * layer to call. Registering this provider cannot change current behavior.
+ * Not wired into webhooks — consumed by LteR1BehaviorEnrichmentService after native
+ * DIMO events are persisted (best-effort, never throws).
  */
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -35,7 +34,7 @@ import {
   shouldSkipIceContextForEv,
   type EngineContextVehicleInput,
 } from './engine-context.guards';
-import type { AnchorType } from './event-context.types';
+import type { AnchorType, ContextReasonCode } from './event-context.types';
 import {
   CONTEXT_ASSESSMENT_VERSION,
   type AnchorEventCategory,
@@ -44,7 +43,7 @@ import {
   type EventContextStatus,
 } from './event-context-assessment.types';
 import { buildContextWindow, type ContextWindow } from './event-context-window';
-import { computeSignalStats } from './event-context-stats';
+import { computeSignalStats, deriveUsedAndMissingSignals } from './event-context-stats';
 import { classifyEventContext } from './event-context-classifier';
 
 export interface EnrichAnchorContextInput {
@@ -244,6 +243,7 @@ export class EventContextEnrichmentService {
 
     const rpmNear = stats.perSignal.rpm.nearestValueToAnchor;
     const engineOnHint = rpmNear != null ? rpmNear > 0 : null;
+    const { usedSignals, missingSignals } = deriveUsedAndMissingSignals(stats.signalCoverage);
 
     return {
       version: CONTEXT_ASSESSMENT_VERSION,
@@ -264,8 +264,11 @@ export class EventContextEnrichmentService {
       coolantContext: stats.perSignal.coolant,
       reasonCodes: classification.reasonCodes,
       preliminaryClassifications: classification.preliminaryClassifications,
+      classifications: classification.preliminaryClassifications,
       confidence: classification.confidence,
       evidenceGrade: classification.evidenceGrade,
+      usedSignals,
+      missingSignals,
       generatedAt: new Date().toISOString(),
       error: input.fetchError ?? null,
     };
@@ -326,7 +329,19 @@ export class EventContextEnrichmentService {
       readings: [],
       anchorEvent,
     });
-    return { ...assessment, status: 'SKIPPED_NOT_APPLICABLE', error: null };
+    const reasonCodes = [
+      ...new Set<ContextReasonCode>([...assessment.reasonCodes, 'NOT_APPLICABLE_POWERTRAIN']),
+    ];
+    return {
+      ...assessment,
+      status: 'SKIPPED_NOT_APPLICABLE',
+      error: null,
+      reasonCodes,
+      preliminaryClassifications: [],
+      classifications: [],
+      usedSignals: [],
+      missingSignals: [],
+    };
   }
 
   private buildFailedAssessment(

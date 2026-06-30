@@ -92,6 +92,7 @@ import {
   buildUnifiedBehaviorEvents,
   DRIVING_EVENT_CATEGORY_MAP,
 } from './trips/unified-behavior-read-model';
+import { serializeUnifiedBehaviorEvent } from './trips/unified-behavior-event.dto';
 
 @Controller('vehicles/:vehicleId')
 @UseGuards(RolesGuard, VehicleOwnershipGuard)
@@ -1223,7 +1224,8 @@ export class VehicleIntelligenceController {
     return {
       status: 'ready',
       behaviorReady: true,
-      events: merged,
+      visibleEventCount: merged.length,
+      events: merged.map(serializeUnifiedBehaviorEvent),
     };
   }
 

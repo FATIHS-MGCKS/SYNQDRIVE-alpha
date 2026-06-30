@@ -1,11 +1,11 @@
-import { AlertTriangle, Calendar, Camera, Car, CheckCircle, CircleDot, Clock, Eye, FileText, ListTodo, Shield, Sparkles, Timer, Wrench } from 'lucide-react';
+import { AlertTriangle, Calendar, Car, CheckCircle, FileText, ListTodo } from 'lucide-react';
 import { Icon } from './ui/Icon';
 import { useState, useEffect, useMemo, useRef } from 'react';
 
 import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
-import type { ApiTask, ApiTaskSummary, ApiTaskType, CreateTaskPayload, Station } from '../../lib/api';
+import type { ApiTask, ApiTaskSummary, CreateTaskPayload, Station } from '../../lib/api';
 import { getStoredUser } from '../../lib/auth';
 import { checklistPreviewForType } from '../lib/task-templates';
 import {
@@ -17,17 +17,18 @@ import {
 import {
   mapApiTaskToTaskListRow,
   sortTaskListRows,
-  userInitials,
-  fmtTaskDate,
+  taskPriorityLabelDe,
+  taskStatusLabelDe,
   type TaskListPriority,
   type TaskListRow,
   type TaskListStatus,
   type OrgMemberRef,
 } from '../lib/task-list.utils';
-import { PageHeader, StatusChip, PriorityBadge, EmptyState, ErrorState, DataTable, FormDialog } from '../../components/patterns';
-import type { StatusTone, DataTableColumn } from '../../components/patterns';
+import { PageHeader, EmptyState, ErrorState, FormDialog } from '../../components/patterns';
 import { Button } from '../../components/ui/button';
 import { GlobalTaskDetailPanel } from './tasks/GlobalTaskDetailPanel';
+import { TaskWorkItemCard } from './tasks/TaskWorkItemCard';
+import { TaskCategoryChip, TaskPriorityBadge } from './tasks/task-display';
 
 interface TasksViewProps {
   autoOpenNewTask?: boolean;
@@ -36,22 +37,8 @@ interface TasksViewProps {
   onHighlightConsumed?: () => void;
 }
 
-type TaskStatus = TaskListStatus;
 type TaskPriority = TaskListPriority;
 type Task = TaskListRow;
-
-const categoryIcons: Record<TaskCategory, typeof Wrench> = {
-  'Cleaning': Sparkles,
-  'Maintenance': Wrench,
-  'Repair': Wrench,
-  'Inspection': Eye,
-  'Damage': Camera,
-  'TÜV': Shield,
-  'Insurance': FileText,
-  'Documents': FileText,
-  'Tire Change': CircleDot,
-  'Oil Change': Timer,
-};
 
 export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTaskId, onHighlightConsumed }: TasksViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -420,22 +407,22 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
     vehicle === 'all' ? tasks.length : tasks.filter(t => t.vehicleLicense === vehicle).length;
   const assigneeCount = (assignee: string) =>
     assignee === 'all' ? tasks.length : tasks.filter(t => t.assignedUserName === assignee).length;
-  const activeStatusLabel = statusFilter === 'all' ? 'All Status' : statusFilter;
-  const activePriorityLabel = priorityFilter === 'all' ? 'All Priorities' : priorityFilter;
-  const activeCategoryLabel = categoryFilter === 'all' ? 'All Categories' : categoryFilter;
+  const activeStatusLabel = statusFilter === 'all' ? 'Alle Status' : taskStatusLabelDe(statusFilter as TaskListStatus);
+  const activePriorityLabel = priorityFilter === 'all' ? 'Alle Prioritäten' : taskPriorityLabelDe(priorityFilter as TaskListPriority);
+  const activeCategoryLabel = categoryFilter === 'all' ? 'Alle Kategorien' : categoryFilter;
   const activeVehicleLabel =
     vehicleFilter === 'all'
-      ? 'All Vehicles'
+      ? 'Alle Fahrzeuge'
       : uniqueVehicles.find(v => v.value === vehicleFilter)?.label ?? vehicleFilter;
-  const activeAssigneeLabel = assigneeFilter === 'all' ? 'All Assignees' : assigneeFilter;
+  const activeAssigneeLabel = assigneeFilter === 'all' ? 'Alle Zuständigen' : assigneeFilter;
   const activeSortLabel =
     sortBy === 'dueDate'
-      ? 'Due Date'
+      ? 'Fälligkeitsdatum'
       : sortBy === 'priority'
-        ? 'Priority'
+        ? 'Priorität'
         : sortBy === 'status'
           ? 'Status'
-          : 'Newest First';
+          : 'Neueste zuerst';
   const clearFilters = () => {
     setStatusFilter('all');
     setPriorityFilter('all');
@@ -448,142 +435,30 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
 
 
   const textPrimary = 'text-foreground';
-  const textSecondary = 'text-muted-foreground';
   const textTertiary = 'text-muted-foreground/70';
-
-  const taskStatusTone = (status: TaskStatus): StatusTone => {
-    switch (status) {
-      case 'In Progress': return 'info';
-      case 'Completed': return 'success';
-      case 'Overdue': return 'critical';
-      case 'Waiting': return 'watch';
-      default: return 'watch';
-    }
-  };
-
-  const TaskStatusChip = ({ status }: { status: TaskStatus }) => (
-    <StatusChip tone={taskStatusTone(status)} dot>{status}</StatusChip>
-  );
-
-  const TaskPriorityBadge = ({ priority }: { priority: TaskPriority }) => (
-    <PriorityBadge
-      priority={priority === 'Critical' ? 'urgent' : priority.toLowerCase()}
-      label={priority}
-    />
-  );
-
-  const TaskCategoryChip = ({ category }: { category: TaskCategory }) => {
-    const CatIcon = categoryIcons[category];
-    return (
-      <StatusChip tone="neutral" icon={<CatIcon className="h-3 w-3" />}>
-        {category}
-      </StatusChip>
-    );
-  };
-
-  const AssigneeAvatar = ({ name }: { name: string }) => (
-    <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-brand text-brand-foreground shrink-0">
-      {userInitials(name)}
-    </div>
-  );
-
-  const taskColumns = useMemo<DataTableColumn<Task>[]>(() => [
-    {
-      key: 'task',
-      header: 'Aufgabe',
-      cell: (task) => (
-        <div>
-          <div className="flex items-center gap-2">
-            <p className="text-xs font-semibold text-foreground line-clamp-2">{task.title}</p>
-            {task.priority === 'Critical' && <Icon name="alert-triangle" className="w-3 h-3 shrink-0 text-[color:var(--status-critical)]" />}
-          </div>
-          <p className="text-[10px] text-muted-foreground/70 mt-0.5">
-            {task.displaySource}
-            {task.type !== 'CUSTOM' ? ` · ${task.type.replace(/_/g, ' ')}` : ''}
-          </p>
-        </div>
-      ),
-    },
-    {
-      key: 'category',
-      header: 'Kategorie',
-      cell: (task) => <TaskCategoryChip category={task.category} />,
-    },
-    {
-      key: 'vehicle',
-      header: 'Fahrzeug',
-      cell: (task) => (
-        <>
-          <p className="text-xs font-medium text-foreground">{task.vehicleLicense || '—'}</p>
-          <p className="text-[11px] text-muted-foreground/70">{task.vehicleModel ? task.vehicleModel.split(' ').slice(0, 2).join(' ') : '—'}</p>
-        </>
-      ),
-    },
-    {
-      key: 'station',
-      header: 'Station',
-      cell: (task) => <span className="text-xs text-muted-foreground">{task.station || '—'}</span>,
-    },
-    {
-      key: 'assignee',
-      header: 'Zugewiesen an',
-      cell: (task) => (
-        <div className="flex items-center gap-2 min-w-[120px]">
-          <AssigneeAvatar name={task.assignedUserName} />
-          <span className="text-xs text-muted-foreground truncate">{task.assignedUserName}</span>
-        </div>
-      ),
-    },
-    {
-      key: 'creator',
-      header: 'Erstellt von',
-      cell: (task) => (
-        <div className="flex items-center gap-2 min-w-[120px]">
-          <AssigneeAvatar name={task.createdByUserName} />
-          <span className="text-xs text-muted-foreground truncate">{task.createdByUserName}</span>
-        </div>
-      ),
-    },
-    {
-      key: 'due',
-      header: 'Fällig am',
-      cell: (task) => (
-        <>
-          <span className={`text-xs font-medium ${task.status === 'Overdue' ? 'text-[color:var(--status-critical)]' : 'text-foreground'}`}>{task.dueDate || '—'}</span>
-          <p className="text-[11px] text-muted-foreground/70">{task.estimatedDuration}</p>
-        </>
-      ),
-    },
-    {
-      key: 'priority',
-      header: 'Priorität',
-      cell: (task) => <TaskPriorityBadge priority={task.priority} />,
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      cell: (task) => <TaskStatusChip status={task.status} />,
-    },
-  ], []);
 
   const DropdownFilter = ({ label, value, options, isOpen, onToggle, onSelect }: {
     label: string; value: string; options: { value: string; label: string; count?: number }[];
     isOpen: boolean; onToggle: () => void; onSelect: (v: string) => void;
   }) => (
     <div className="relative">
-      <button onClick={onToggle} className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg border text-xs font-medium transition-all ${
-        value !== 'all'
-          ? 'bg-[color:var(--brand-soft)] border-transparent text-[color:var(--brand-ink)]'
-          : 'bg-card border-border text-foreground hover:bg-muted'
-      }`}>
-        <span>{value === 'all' ? label : options.find(o => o.value === value)?.label}</span>
-        <Icon name="chevron-down" className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
+      <Button
+        type="button"
+        variant={value !== 'all' ? 'secondary' : 'outline'}
+        size="sm"
+        onClick={onToggle}
+        className="h-8 gap-1.5 px-2.5 text-xs font-medium"
+      >
+        <span className="max-w-[140px] truncate">
+          {value === 'all' ? label : options.find(o => o.value === value)?.label}
+        </span>
+        <Icon name="chevron-down" className={`h-3 w-3 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </Button>
       {isOpen && (
-        <div className="sq-overlay absolute top-full mt-2 left-0 z-50 min-w-[180px] overflow-hidden">
+        <div className="sq-overlay absolute top-full left-0 z-50 mt-1.5 min-w-[180px] overflow-hidden">
           {options.map(o => (
             <button key={o.value} onClick={() => { onSelect(o.value); onToggle(); }}
-              className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-xs font-medium transition-colors ${
+              className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs font-medium transition-colors ${
                 o.value === value
                   ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
                   : 'text-foreground hover:bg-muted'
@@ -606,28 +481,28 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
       {/* Main Content with zoom-out effect */}
       <div className="space-y-5">
       <PageHeader
-        title="Task Management"
+        title="Aufgabenverwaltung"
         actions={(
           <Button type="button" variant="primary" size="sm" onClick={openNewTask}>
             <Icon name="plus" className="h-3.5 w-3.5" />
-            New Task
+            Neuen Task
           </Button>
         )}
       />
 
       {/* Segment metrics — canonical counts from GET /tasks/summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
         {[
           {
-            label: 'Open',
+            label: 'Offen',
             value: summaryOpen,
-            helper: `${inProgressCount} in progress`,
+            helper: `${inProgressCount} in Bearbeitung`,
             icon: ListTodo,
             tone: 'sq-tone-brand',
             filterVal: 'Open',
           },
           {
-            label: 'Due Today',
+            label: 'Heute fällig',
             value: summaryDueToday,
             helper: 'fällig heute',
             icon: Calendar,
@@ -635,25 +510,25 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
             filterVal: null,
           },
           {
-            label: 'Overdue',
+            label: 'Überfällig',
             value: summaryOverdue,
-            helper: summaryOverdue > 0 ? 'needs attention' : 'no overdue tasks',
+            helper: summaryOverdue > 0 ? 'Handlungsbedarf' : 'keine überfälligen',
             icon: AlertTriangle,
             tone: summaryOverdue > 0 ? 'sq-tone-critical' : 'sq-tone-neutral',
             filterVal: 'Overdue',
           },
           {
-            label: 'Critical',
+            label: 'Kritisch',
             value: summaryCritical,
-            helper: 'priority CRITICAL',
+            helper: 'Priorität kritisch',
             icon: AlertTriangle,
             tone: summaryCritical > 0 ? 'sq-tone-critical' : 'sq-tone-neutral',
             filterVal: 'Critical',
           },
           {
-            label: 'Assigned To Me',
+            label: 'Mir zugewiesen',
             value: summaryAssignedToMe,
-            helper: 'my open tasks',
+            helper: 'meine offenen Aufgaben',
             icon: CheckCircle,
             tone: 'sq-tone-info',
             filterVal: null,
@@ -674,21 +549,21 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                   setStatusFilter(isActive ? 'all' : card.filterVal);
                 }
               }}
-              disabled={card.filterVal == null && card.label !== 'Due Today'}
-              className={`group sq-card sq-press rounded-2xl p-4 text-left shadow-[var(--shadow-1)] transition-all ${
+              disabled={card.filterVal == null}
+              className={`group sq-card sq-press rounded-xl p-3 text-left shadow-[var(--shadow-1)] transition-all ${
                 isActive ? 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_22%,transparent)]' : 'hover:bg-muted/35'
               } ${card.filterVal == null ? 'cursor-default' : ''}`}
             >
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-[10px] font-semibold text-muted-foreground">{card.label}</p>
-                  <p className="mt-1 truncate text-[20px] font-bold leading-none tracking-[-0.03em] text-foreground tabular-nums">
+                  <p className="text-[11px] font-semibold text-muted-foreground">{card.label}</p>
+                  <p className="mt-1 truncate text-[22px] font-bold leading-none tracking-[-0.03em] text-foreground tabular-nums">
                     {card.value}
                   </p>
-                  <p className="mt-2 truncate text-[10px] font-medium text-muted-foreground">{card.helper}</p>
+                  <p className="mt-1 truncate text-[10px] font-medium text-muted-foreground">{card.helper}</p>
                 </div>
-                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${card.tone}`}>
-                  <MetricIcon className="h-4 w-4" />
+                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${card.tone}`}>
+                  <MetricIcon className="h-3.5 w-3.5" />
                 </span>
               </div>
             </button>
@@ -697,135 +572,141 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
       </div>
 
       {/* Search & Filters */}
-      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+      <div className="sq-card rounded-2xl p-3 shadow-[var(--shadow-1)] md:p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <Icon name="filter" className="h-4 w-4 text-muted-foreground" />
             <div className="min-w-0">
-              <h2 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">Filters</h2>
+              <h2 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">Filter</h2>
               <p className="mt-0.5 text-[10px] text-muted-foreground">
-                Showing {sorted.length} of {tasks.length} tasks
+                {sorted.length} von {tasks.length} Aufgaben
               </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
             {statusFilter !== 'all' && (
               <button type="button" onClick={() => setStatusFilter('all')} className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-brand">
-                {activeStatusLabel} active ×
+                {activeStatusLabel} ×
               </button>
             )}
             {priorityFilter !== 'all' && (
               <button type="button" onClick={() => setPriorityFilter('all')} className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-warning">
-                {activePriorityLabel} active ×
+                {activePriorityLabel} ×
               </button>
             )}
             {categoryFilter !== 'all' && (
               <button type="button" onClick={() => setCategoryFilter('all')} className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-neutral">
-                {activeCategoryLabel} active ×
+                {activeCategoryLabel} ×
               </button>
             )}
             {vehicleFilter !== 'all' && (
               <button type="button" onClick={() => setVehicleFilter('all')} className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-neutral">
-                Vehicle active ×
+                Fahrzeug ×
               </button>
             )}
             {assigneeFilter !== 'all' && (
               <button type="button" onClick={() => setAssigneeFilter('all')} className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-neutral">
-                Assignee active ×
+                Zuständig ×
               </button>
             )}
             {searchQuery && (
               <span className="rounded-full px-2 py-1 text-[10px] font-semibold sq-tone-neutral">
-                Search active
+                Suche aktiv
               </span>
             )}
             {hasFilters && (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={clearFilters}
-                className="flex items-center gap-1.5 rounded-lg border border-transparent px-2.5 py-1.5 text-[10px] font-semibold transition-all sq-tone-critical hover:opacity-90"
+                className="h-7 gap-1 px-2 text-[10px] font-semibold text-[color:var(--status-critical)]"
               >
                 <Icon name="x" className="h-3.5 w-3.5" />
-                Clear filters
-              </button>
+                Filter zurücksetzen
+              </Button>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex-1 min-w-[240px] relative">
-            <Icon name="search" className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 ${textTertiary}`} />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[200px] flex-1">
+            <Icon name="search" className={`absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${textTertiary}`} />
             <input
               type="text"
-              placeholder="Search tasks, vehicles, assignees..."
+              placeholder="Aufgaben, Fahrzeuge, Zuständige suchen…"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground outline-none transition-all text-xs focus:border-[color:var(--brand)]"
+              className="w-full rounded-lg border border-border bg-card py-2 pl-9 pr-3 text-xs text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-[color:var(--brand)]"
             />
           </div>
           <DropdownFilter
-            label="Status" value={statusFilter} isOpen={isStatusOpen}
+            label="Alle Status" value={statusFilter} isOpen={isStatusOpen}
             onToggle={() => { closeAllDropdowns('status'); setIsStatusOpen(!isStatusOpen); }}
             onSelect={setStatusFilter}
             options={[
-              { value: 'all', label: 'All Status', count: statusCount('all') },
-              { value: 'Open', label: 'Open', count: statusCount('Open') },
-              { value: 'In Progress', label: 'In Progress', count: statusCount('In Progress') },
-              { value: 'Waiting', label: 'Waiting', count: statusCount('Waiting') },
-              { value: 'Completed', label: 'Completed', count: statusCount('Completed') },
-              { value: 'Overdue', label: 'Overdue', count: statusCount('Overdue') },
+              { value: 'all', label: 'Alle Status', count: statusCount('all') },
+              { value: 'Open', label: 'Offen', count: statusCount('Open') },
+              { value: 'In Progress', label: 'In Bearbeitung', count: statusCount('In Progress') },
+              { value: 'Waiting', label: 'Wartend', count: statusCount('Waiting') },
+              { value: 'Completed', label: 'Erledigt', count: statusCount('Completed') },
+              { value: 'Overdue', label: 'Überfällig', count: statusCount('Overdue') },
             ]}
           />
           <DropdownFilter
-            label="Priority" value={priorityFilter} isOpen={isPriorityOpen}
+            label="Alle Prioritäten" value={priorityFilter} isOpen={isPriorityOpen}
             onToggle={() => { closeAllDropdowns('priority'); setIsPriorityOpen(!isPriorityOpen); }}
             onSelect={setPriorityFilter}
             options={[
-              { value: 'all', label: 'All Priorities', count: priorityCount('all') },
-              { value: 'Critical', label: 'Critical', count: priorityCount('Critical') },
-              { value: 'High', label: 'High', count: priorityCount('High') },
-              { value: 'Medium', label: 'Medium', count: priorityCount('Medium') },
-              { value: 'Low', label: 'Low', count: priorityCount('Low') },
+              { value: 'all', label: 'Alle Prioritäten', count: priorityCount('all') },
+              { value: 'Critical', label: 'Kritisch', count: priorityCount('Critical') },
+              { value: 'High', label: 'Hoch', count: priorityCount('High') },
+              { value: 'Medium', label: 'Mittel', count: priorityCount('Medium') },
+              { value: 'Low', label: 'Niedrig', count: priorityCount('Low') },
             ]}
           />
           <DropdownFilter
-            label="Category" value={categoryFilter} isOpen={isCategoryOpen}
+            label="Alle Kategorien" value={categoryFilter} isOpen={isCategoryOpen}
             onToggle={() => { closeAllDropdowns('category'); setIsCategoryOpen(!isCategoryOpen); }}
             onSelect={setCategoryFilter}
             options={[
-              { value: 'all', label: 'All Categories', count: categoryCount('all') },
+              { value: 'all', label: 'Alle Kategorien', count: categoryCount('all') },
               ...(['Cleaning', 'Maintenance', 'Repair', 'Inspection', 'Damage', 'TÜV', 'Insurance', 'Documents', 'Tire Change', 'Oil Change'] as TaskCategory[]).map(c => ({ value: c, label: c, count: categoryCount(c) })),
             ]}
           />
           <DropdownFilter
-            label="Vehicle" value={vehicleFilter} isOpen={isVehicleOpen}
+            label="Alle Fahrzeuge" value={vehicleFilter} isOpen={isVehicleOpen}
             onToggle={() => { closeAllDropdowns('vehicle'); setIsVehicleOpen(!isVehicleOpen); }}
             onSelect={setVehicleFilter}
-            options={[{ value: 'all', label: 'All Vehicles', count: vehicleCount('all') }, ...uniqueVehicles.map(v => ({ ...v, count: vehicleCount(v.value) }))]}
+            options={[{ value: 'all', label: 'Alle Fahrzeuge', count: vehicleCount('all') }, ...uniqueVehicles.map(v => ({ ...v, count: vehicleCount(v.value) }))]}
           />
           <DropdownFilter
-            label="Assignee" value={assigneeFilter} isOpen={isAssigneeOpen}
+            label="Alle Zuständigen" value={assigneeFilter} isOpen={isAssigneeOpen}
             onToggle={() => { closeAllDropdowns('assignee'); setIsAssigneeOpen(!isAssigneeOpen); }}
             onSelect={setAssigneeFilter}
-            options={[{ value: 'all', label: 'All Assignees', count: assigneeCount('all') }, ...uniqueAssignees.map(a => ({ ...a, count: assigneeCount(a.value) }))]}
+            options={[{ value: 'all', label: 'Alle Zuständigen', count: assigneeCount('all') }, ...uniqueAssignees.map(a => ({ ...a, count: assigneeCount(a.value) }))]}
           />
-          {/* Sort */}
           <div className="relative">
-            <button onClick={() => { closeAllDropdowns('sort'); setIsSortOpen(!isSortOpen); }}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card text-foreground hover:bg-muted text-xs font-medium transition-all">
-              <Icon name="arrow-up-down" className="w-3 h-3" />
-              <span>Sort: {activeSortLabel}</span>
-            </button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => { closeAllDropdowns('sort'); setIsSortOpen(!isSortOpen); }}
+              className="h-8 gap-1.5 px-2.5 text-xs font-medium"
+            >
+              <Icon name="arrow-up-down" className="h-3 w-3" />
+              <span>Sortierung: {activeSortLabel}</span>
+            </Button>
             {isSortOpen && (
-              <div className="sq-overlay absolute top-full mt-2 right-0 z-50 min-w-[160px] overflow-hidden">
+              <div className="sq-overlay absolute right-0 top-full z-50 mt-1.5 min-w-[180px] overflow-hidden">
                 {[
-                  { value: 'dueDate', label: 'Due Date' },
-                  { value: 'priority', label: 'Priority' },
+                  { value: 'dueDate', label: 'Fälligkeitsdatum' },
+                  { value: 'priority', label: 'Priorität' },
                   { value: 'status', label: 'Status' },
-                  { value: 'created', label: 'Newest First' },
+                  { value: 'created', label: 'Neueste zuerst' },
                 ].map(o => (
-                  <button key={o.value} onClick={() => { setSortBy(o.value as any); setIsSortOpen(false); }}
-                    className={`w-full px-3 py-2.5 text-left text-xs font-medium transition-colors ${
+                  <button key={o.value} onClick={() => { setSortBy(o.value as typeof sortBy); setIsSortOpen(false); }}
+                    className={`w-full px-3 py-2 text-left text-xs font-medium transition-colors ${
                       sortBy === o.value
                         ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
                         : 'text-foreground hover:bg-muted'
@@ -839,130 +720,52 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
         </div>
       </div>
 
-      {/* Tasks Table — desktop */}
+      {/* Unified task list — same component on mobile and desktop */}
       {tasksError ? (
         <div className="sq-card overflow-hidden">
           <ErrorState
             compact
-            title="Could not load tasks"
+            title="Aufgaben konnten nicht geladen werden"
             error={tasksError}
             onRetry={() => loadTasks.current()}
             className="py-12"
           />
         </div>
+      ) : tasksLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="sq-card h-24 animate-pulse rounded-2xl md:h-20" />
+          ))}
+        </div>
+      ) : sorted.length === 0 ? (
+        <EmptyState
+          compact
+          icon={<Icon name="list-todo" className="h-5 w-5" />}
+          title="Keine Aufgaben gefunden"
+          description={hasFilters ? 'Filter oder Suche anpassen.' : 'Es sind noch keine Aufgaben vorhanden.'}
+          action={hasFilters ? (
+            <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
+              Filter zurücksetzen
+            </Button>
+          ) : undefined}
+        />
       ) : (
-        <>
-          <div className="hidden md:block">
-            <DataTable
-              columns={taskColumns}
-              rows={sorted}
-              getRowKey={(task) => task.id}
-              loading={tasksLoading}
-              skeletonRows={8}
-              dense
-              stickyHeader
-              onRowClick={openTaskDetail}
-              getRowClassName={(task) => {
-                if (flashingTaskId === task.id) {
-                  return 'bg-[color:var(--brand-soft)] ring-1 ring-[color:var(--brand-soft)]';
-                }
-                if (task.status === 'Overdue') {
-                  return 'bg-[color:var(--status-critical-soft)]';
-                }
-                return undefined;
-              }}
-              rowRef={(task, el) => {
-                taskRowRefs.current[task.id] = el;
-              }}
-              rowActions={() => (
-                <Icon name="chevron-right" className="w-5 h-5 text-muted-foreground/50" />
-              )}
-              empty={(
-                <EmptyState
-                  compact
-                  icon={<Icon name="list-todo" className="h-5 w-5" />}
-                  title="No tasks match your filters"
-                  description="Try adjusting your search or filter criteria."
-                />
-              )}
+        <div className="space-y-2">
+          {sorted.map((task) => (
+            <TaskWorkItemCard
+              key={task.id}
+              task={task}
+              isFlashing={flashingTaskId === task.id}
+              onClick={() => openTaskDetail(task)}
+              rowRef={(el) => { taskRowRefs.current[task.id] = el; }}
             />
-          </div>
-
-          {/* Mobile task cards */}
-          <div className="md:hidden space-y-2">
-            {tasksLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="sq-card h-28 animate-pulse rounded-2xl" />
-                ))}
-              </div>
-            ) : sorted.length === 0 ? (
-              <EmptyState
-                compact
-                icon={<Icon name="list-todo" className="h-5 w-5" />}
-                title="Keine Aufgaben gefunden"
-                description="Filter oder Suche anpassen."
-              />
-            ) : (
-              sorted.map((task) => (
-                <button
-                  key={task.id}
-                  type="button"
-                  onClick={() => openTaskDetail(task)}
-                  ref={(el) => { taskRowRefs.current[task.id] = el; }}
-                  className={`sq-card sq-press w-full rounded-2xl border p-4 text-left shadow-[var(--shadow-1)] transition-all ${
-                    flashingTaskId === task.id
-                      ? 'ring-1 ring-[color:var(--brand-soft)] bg-[color:var(--brand-soft)]'
-                      : task.status === 'Overdue'
-                        ? 'border-[color:var(--status-critical-soft)] bg-[color:var(--status-critical-soft)]/30'
-                        : 'border-border bg-card'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-foreground line-clamp-2">{task.title}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{task.displaySource}</p>
-                    </div>
-                    <TaskStatusChip status={task.status} />
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <TaskCategoryChip category={task.category} />
-                    <TaskPriorityBadge priority={task.priority} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
-                    <div>
-                      <span className="text-muted-foreground">Fahrzeug</span>
-                      <p className="font-medium text-foreground truncate">{task.vehicleLicense || '—'}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Station</span>
-                      <p className="font-medium text-foreground truncate">{task.station || '—'}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Zugewiesen an</span>
-                      <p className="font-medium text-foreground truncate">{task.assignedUserName}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Erstellt von</span>
-                      <p className="font-medium text-foreground truncate">{task.createdByUserName}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <span className="text-muted-foreground">Fällig am</span>
-                      <p className={`font-medium ${task.status === 'Overdue' ? 'text-[color:var(--status-critical)]' : 'text-foreground'}`}>
-                        {task.dueDate || '—'}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
-        </>
+          ))}
+        </div>
       )}
 
       {/* Results Count */}
       <div className="flex items-center justify-between">
-        <p className={`text-xs ${textTertiary}`}>Showing {sorted.length} of {tasks.length} tasks</p>
+        <p className={`text-xs ${textTertiary}`}>{sorted.length} von {tasks.length} Aufgaben</p>
       </div>
 
       </div>{/* End of main content wrapper */}

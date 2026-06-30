@@ -7,17 +7,14 @@ import {
   eventTypeLabel,
   formatBehaviorTime,
   formatEventEvidence,
+  formatLegacyMeasurements,
+  hasLegacyMeasurements,
   sortBehaviorEvents,
 } from './behavior-ui.utils';
 import { BEHAVIOR_COPY, tv } from './trips-view-ui';
 import { TripEventSeverityBadge } from './TripEventSeverityBadge';
-import {
-  confidenceLabel,
-  contextKeyValues,
-  contextSummarySuffix,
-  evidenceGradeLabel,
-  isContextInsufficient,
-} from './event-context-ui';
+import { TripEventContextBlock } from './TripEventContextBlock';
+import { shouldRenderContextBlock } from './event-context-ui';
 
 type CategoryFilter = 'all' | 'ACCELERATION' | 'BRAKING' | 'ABUSE';
 
@@ -76,55 +73,23 @@ function AbuseRelevanceBadge({ event }: { event: TripBehaviorEvent }) {
 }
 
 /**
- * Phase 6 — honest, non-detecting context line for native LTE_R1/ICE events.
- * Renders the conservative context classification, confidence and evidence grade
- * the backend produced, plus key engine/context values. For insufficient context
- * it states this plainly instead of implying a clean read.
+ * Secondary legacy measurements when context assessment is primary.
  */
-function ContextBlock({ event }: { event: TripBehaviorEvent }) {
-  const ca = event.contextAssessment;
-  const suffix = contextSummarySuffix(ca);
-  if (!ca || !suffix) return null;
-  const insufficient = isContextInsufficient(ca);
-  const keyValues = insufficient ? [] : contextKeyValues(ca);
-
+function LegacyMeasurementsBlock({ event }: { event: TripBehaviorEvent }) {
+  const items = formatLegacyMeasurements(event);
+  if (items.length === 0) return null;
   return (
-    <div className="mt-2 rounded-lg border border-border/50 bg-muted/30 px-2 py-1.5">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-400">
-          Kontextbewertung
-        </span>
-        <span
-          className={`text-[10px] font-medium ${
-            insufficient ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'
-          }`}
-        >
-          {insufficient ? 'Native Event erkannt, Kontext nicht ausreichend bewertbar' : suffix}
-        </span>
+    <div className="mt-1.5">
+      <p className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+        Messwerte (Zeitpunkt)
+      </p>
+      <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
+        {items.map((item) => (
+          <span key={item.label} className="text-[10px] text-muted-foreground tabular-nums">
+            {item.label}: <span className="font-medium text-foreground/80">{item.value}</span>
+          </span>
+        ))}
       </div>
-      {!insufficient && (
-        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-          {ca.confidence && (
-            <span className="rounded-full border border-border/60 px-1.5 py-0.5 text-[8px] font-medium text-muted-foreground">
-              {confidenceLabel(ca.confidence)}
-            </span>
-          )}
-          {ca.evidenceGrade && (
-            <span className="rounded-full border border-border/60 px-1.5 py-0.5 text-[8px] font-medium text-muted-foreground">
-              {evidenceGradeLabel(ca.evidenceGrade)}
-            </span>
-          )}
-        </div>
-      )}
-      {keyValues.length > 0 && (
-        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
-          {keyValues.map((item) => (
-            <span key={item.label} className="text-[10px] text-muted-foreground tabular-nums">
-              {item.label}: <span className="font-medium text-foreground">{item.value}</span>
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -193,6 +158,8 @@ export function TripBehaviorEventList({
           const hasMapPosition = ev.latitude != null && ev.longitude != null;
           const severity = classificationToSeverity(ev.classification, ev.eventCategory);
           const evidence = formatEventEvidence(ev);
+          const hasContext = shouldRenderContextBlock(ev.contextAssessment);
+          const showSecondaryLegacy = hasContext && hasLegacyMeasurements(ev);
 
           return (
             <li key={ev.id} data-event-id={ev.id}>
@@ -231,6 +198,7 @@ export function TripBehaviorEventList({
                       <p className="mt-1 text-[10px] text-muted-foreground leading-snug line-clamp-2">
                         {eventExplanation(ev)}
                       </p>
+                      <TripEventContextBlock event={ev} />
                       {evidence.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
                           {evidence.map((item) => (
@@ -244,7 +212,7 @@ export function TripBehaviorEventList({
                           ))}
                         </div>
                       )}
-                      <ContextBlock event={ev} />
+                      {showSecondaryLegacy && <LegacyMeasurementsBlock event={ev} />}
                     </div>
                   </div>
                 </button>

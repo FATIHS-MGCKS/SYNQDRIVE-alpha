@@ -35,12 +35,15 @@ import {
   TIRE_TREAD_LIFE_SCORE_HINT,
   WHEEL_POSITIONS,
   formatLowestTreadLine,
+  formatTireQuickNextMeasurementLabel,
   formatWheelLastMeasured,
   resolveWheelByPosition,
   tireForecastBadgeLabel,
   treadMmColorClass,
   wheelMeasurementBadge,
 } from '../lib/tire-health-detail-ui';
+import { segmentFromHealthState } from '../lib/health-segment-display';
+import { SegmentedHealthIndicator } from './health/SegmentedHealthIndicator';
 import { normalizeLvBatteryVoltage } from '../lib/battery-display.utils';
 import { useRentalOrg } from '../RentalContext';
 import { useEffectiveHealth } from '../FleetContext';
@@ -1642,20 +1645,14 @@ export function HealthErrorsView({
           const hasTireData = (th != null && th.overallPercent != null) || (tireWear != null && tireWear.overallPercent != null);
           const pct = th?.overallPercent ?? tireWear?.overallPercent ?? null;
           const remKm = th?.overallRemainingKm ?? tireWear?.estimatedRemainingKm ?? null;
-          const barColor = pct != null ? (pct >= 50 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : pct >= 25 ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]') : 'bg-gray-300';
-          const conf = th?.confidenceLabel ?? null;
           const hasAlerts = (th?.alerts?.length ?? 0) > 0;
           const activeSetup = resolveActiveSetup(tiresData);
-          // ── Canonical read model (single source of truth — measured vs estimated honesty) ──
           const canonStatus = th?.overallStatus ?? null;
-          const canonStyle = tireStatusStyle(canonStatus);
-          const displayMm = th?.displayTreadMm ?? th?.lowestTreadMm ?? null;
-          const lowestPos = th?.lowestTreadPosition ?? null;
           const displayMode = th?.displayMode ?? (th?.measurementState === 'measured' ? 'MEASURED' : th?.measurementState ? 'ESTIMATED' : null);
-          const confLevel = th?.confidence ?? null;
           const lastMeasuredAt = th?.lastMeasurementAt ?? th?.latestMeasurementAt ?? null;
           const estRemKm = th?.estimatedRemainingKm ?? remKm;
-          const topRec = th?.recommendations?.find((r) => r && r.trim().length > 0) ?? null;
+          const nextMeasurementLabel = formatTireQuickNextMeasurementLabel(th);
+          const tireSegment = segmentFromHealthState(canonStatus ?? th?.overallStatus, pct);
           const tireAccent = quickCardAccentFromRentalState(rentalHealth?.modules.tires.state);
           return (
             <div onClick={() => { setTireActionError(null); openModal(setShowTires); loadTireDetail(); }} className={`${quickCardClass} order-5 ${!hasTireData ? 'opacity-60' : ''}`}>
@@ -1678,86 +1675,27 @@ export function HealthErrorsView({
               </div>
               {hasTireData && pct != null ? (
                 <div className={quickCardBodyClass}>
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className={`text-[18px] font-black tracking-tight text-foreground leading-none`}>{pct}</span>
-                    <span className="text-xs font-bold text-muted-foreground tracking-tight">% Tread</span>
-                    {th?.actionState && th.actionState !== 'OBSERVE' && (
-                      <span className={`ml-auto px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border ${
-                        th.actionState === 'REPLACE' ? ('sq-chip-critical border border-border') :
-                        th.actionState === 'PLAN_SERVICE' ? ('sq-chip-watch border border-border') :
-                        ('sq-chip-info border border-border')
-                      }`}>
-                        {formatEnumLabel(th.actionState)}
-                      </span>
-                    )}
-                  </div>
-                  <div className={`w-full h-2 rounded-full overflow-hidden mb-2.5 bg-muted shadow-inner`}>
-                    <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${pct}%` }} />
-                  </div>
-                  <p className={`text-[10px] font-medium text-muted-foreground`}>
-                    Lifetime: <span className={`font-bold text-foreground tabular-nums`}>{remKm != null ? `${Math.floor(remKm).toLocaleString('de-DE')} km` : '—'}</span>
+                  <p className="text-[10px] uppercase tracking-wider font-semibold mb-1 text-muted-foreground">
+                    Tire Health
                   </p>
-                  {/* Canonical status (single source of truth) — falls back to % bucket for legacy payloads */}
-                  {canonStatus && canonStatus !== 'UNKNOWN' ? (
-                    <div className={`mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest w-fit ${canonStyle.pill}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${canonStyle.dot}`} />
-                      {canonStyle.label}
-                    </div>
-                  ) : (
-                    <div className={`mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest w-fit ${
-                      pct >= 50 ? ('sq-chip-success') :
-                      pct >= 25 ? ('sq-chip-watch') :
-                      ('sq-chip-critical')
-                    }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${
-                        pct >= 50 ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]' :
-                        pct >= 25 ? 'bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.6)]' :
-                        'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.6)]'
-                      }`} />
-                      {pct >= 50 ? 'Healthy' : pct >= 25 ? 'Monitor' : 'Critical'}
-                    </div>
-                  )}
-                  {/* Lowest tread (mm) + position + measured/estimated honesty */}
-                  {displayMm != null && (() => {
-                    const treadLine = formatLowestTreadLine(displayMm, lowestPos, displayMode);
-                    return (
-                      <p className={`text-[10px] mt-2 font-medium text-muted-foreground`}>
-                        {treadLine.prefix}{' '}
-                        <span className="font-bold text-foreground tabular-nums">{treadLine.value}</span>
-                        {treadLine.suffix ? <span className="text-muted-foreground">{treadLine.suffix}</span> : null}
-                      </p>
-                    );
-                  })()}
-                  {displayMode && (
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider ${
-                        displayMode === 'MEASURED'
-                          ? ('sq-chip-info')
-                          : ('sq-tone-ai')
-                      }`}>
-                        {displayMode === 'MEASURED' ? 'Measured' : displayMode === 'ESTIMATED' ? 'Estimated' : 'Unknown'}
-                      </span>
-                      {confLevel && (
-                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider ${
-                          confLevel === 'HIGH' ? ('sq-chip-success') :
-                          confLevel === 'MEDIUM' ? ('sq-chip-watch') :
-                          ('sq-chip-warning')
-                        }`}>
-                          Conf: {confLevel}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  {lastMeasuredAt && (
-                    <p className={`text-[10px] mt-1 font-medium text-muted-foreground/70`}>
-                      Last measured: {formatMeasuredAgo(lastMeasuredAt) ?? '—'}
-                    </p>
-                  )}
-                  {topRec && (
-                    <p className={`text-[10px] mt-1 font-medium ${'text-[color:var(--status-info)]'} line-clamp-2`}>
-                      {topRec}
-                    </p>
-                  )}
+                  <div className="mb-2 flex items-center gap-2">
+                    <SegmentedHealthIndicator
+                      level={tireSegment.level}
+                      tone={tireSegment.tone}
+                      label={tireSegment.label}
+                      ariaLabel={`Tires: ${tireSegment.label}`}
+                    />
+                  </div>
+                  <p className="text-[10px] font-medium text-muted-foreground">
+                    Lifetime:{' '}
+                    <span className="font-bold text-foreground tabular-nums">
+                      {estRemKm != null ? `${Math.floor(estRemKm).toLocaleString('de-DE')} km` : '—'}
+                    </span>
+                  </p>
+                  <p className="text-[10px] mt-1 font-medium text-muted-foreground">
+                    Nächste Messung:{' '}
+                    <span className="font-semibold text-foreground">{nextMeasurementLabel}</span>
+                  </p>
                 </div>
               ) : (
                 <div className={quickCardBodyClass}>
@@ -1771,6 +1709,13 @@ export function HealthErrorsView({
                   )}
                   <p className={`text-[10px] text-muted-foreground`}>
                     Bitte Reifeninformationen hinterlegen, um die Reifenüberwachung zu aktivieren.
+                  </p>
+                </div>
+              )}
+              {hasTireData && pct != null && (
+                <div className={`${quickCardFooterClass} flex items-center gap-1.5`}>
+                  <p className="text-[10px] font-medium text-muted-foreground/70">
+                    Last measured: {lastMeasuredAt ? (formatMeasuredAgo(lastMeasuredAt) ?? '—') : '—'}
                   </p>
                 </div>
               )}

@@ -103,7 +103,52 @@ export function dedupeDisplayReasons(reasons: RuntimeReason[]): RuntimeReason[] 
     seen.add(key);
     result.push(reason);
   }
-  return result;
+  return semanticDedupeDisplayReasons(result, 'de');
+}
+
+/**
+ * Drops shorter/generic labels dominated by a more specific reason label
+ * (e.g. "Service überfällig" when "Service überfällig seit 117 Tagen (HM/OEM)" exists).
+ */
+export function semanticDedupeDisplayReasons(
+  reasons: RuntimeReason[],
+  locale: string,
+): RuntimeReason[] {
+  const labeled = reasons
+    .map((reason) => ({
+      reason,
+      label: normalizeTitle(formatRuntimeReasonLabel(reason, locale)),
+    }))
+    .filter((entry) => entry.label.length > 0);
+
+  labeled.sort((a, b) => b.label.length - a.label.length);
+
+  const kept: RuntimeReason[] = [];
+  const keptLabels: string[] = [];
+
+  for (const { reason, label } of labeled) {
+    const dominated = keptLabels.some(
+      (kept) => kept !== label && kept.includes(label) && kept.length > label.length,
+    );
+    if (dominated) continue;
+
+    const dominatedIndices: number[] = [];
+    keptLabels.forEach((kept, index) => {
+      if (kept !== label && label.includes(kept) && label.length > kept.length) {
+        dominatedIndices.push(index);
+      }
+    });
+    for (let i = dominatedIndices.length - 1; i >= 0; i -= 1) {
+      const index = dominatedIndices[i]!;
+      kept.splice(index, 1);
+      keptLabels.splice(index, 1);
+    }
+
+    kept.push(reason);
+    keptLabels.push(label);
+  }
+
+  return kept;
 }
 
 /**

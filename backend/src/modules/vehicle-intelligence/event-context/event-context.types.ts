@@ -19,18 +19,18 @@
  * signal coverage, detector feasibility, trip assessment status) — NOT a primary
  * short-event misuse detector.
  *
- * The new LTE_R1 architecture instead anchors misuse classification on discrete,
- * trustworthy triggers (native DIMO behavior events + RPM webhook candidates) and
- * only *enriches* those anchors with the surrounding engine context where the
- * powertrain and signal quality allow it.
+ * The LTE_R1 architecture anchors misuse classification on discrete,
+ * trustworthy triggers — native DIMO `behavior.*` events only. DIMO Developer
+ * Console does NOT offer RPM/throttle/engine-load webhooks; there is no RPM
+ * webhook intake path. Context enrichment uses HF signals (incl. RPM) around
+ * those native anchors where the powertrain and signal quality allow it.
  *
  * Target layers (this file underpins layers 3–6):
  *   1. LTE_R1 Native Event Intake
- *   2. RPM Webhook Candidate Intake
- *   3. Event / Trigger Context Enrichment
- *   4. Context Classification Engine
- *   5. Misuse Case Aggregation
- *   6. UI / Data Analyse Evidence Layer
+ *   2. Event / Trigger Context Enrichment (native anchors only)
+ *   3. Context Classification Engine
+ *   4. Misuse Case Aggregation
+ *   5. UI / Data Analyse Evidence Layer
  *
  * Tesla/EV is intentionally out of scope here and handled separately later.
  */
@@ -83,10 +83,14 @@ export const ANCHOR_TYPES: readonly AnchorType[] = [
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**
- * Classification a context-enrichment engine MAY assign to an anchored window.
- * `*_CANDIDATE` vs `*_CONFIRMED` and `*_LIKELY` encode confidence in the name so
- * sparse-data results are never overstated. `INSUFFICIENT_CONTEXT` is the honest
- * fallback when the window cannot be evaluated.
+ * Classification a context-enrichment engine MAY assign to a native DIMO behavior
+ * anchor window. `*_CANDIDATE` / `*_LIKELY` encode conservative confidence.
+ * `INSUFFICIENT_CONTEXT` is the honest fallback when the window cannot be evaluated.
+ *
+ * RPM-related entries (REV_IN_IDLE_*, HIGH_RPM_*, COLD_ENGINE_HIGH_RPM) describe
+ * engine signal patterns in the ±30s window around a native event — NOT DIMO
+ * webhook triggers. See `FUTURE_ONLY_CONTEXT_CLASSIFICATIONS` for values kept in
+ * the union but not currently emitted by the classifier.
  */
 export type ContextClassification =
   | 'AGGRESSIVE_START'
@@ -104,11 +108,10 @@ export type ContextClassification =
   | 'COLD_ENGINE_HIGH_RPM'
   | 'HIGH_RPM_UNDER_LOAD'
   | 'OVERHEATING_RISK'
-  // Braking-anchored contextual classification (high speed before a native
-  // braking event). Distinct from the RPM/acceleration classifications above.
   | 'EMERGENCY_LIKE_BRAKING'
   | 'INSUFFICIENT_CONTEXT';
 
+/** Classifications the live classifier may emit today (native DIMO anchors only). */
 export const CONTEXT_CLASSIFICATIONS: readonly ContextClassification[] = [
   'AGGRESSIVE_START',
   'LAUNCH_LIKE_START',
@@ -119,14 +122,22 @@ export const CONTEXT_CLASSIFICATIONS: readonly ContextClassification[] = [
   'COLD_ENGINE_KICKDOWN',
   'HIGH_LOAD_ACCELERATION',
   'REV_IN_IDLE_CANDIDATE',
-  'REV_IN_IDLE_CONFIRMED',
   'HIGH_RPM_SPIKE',
   'HIGH_RPM_CONSTANT',
   'COLD_ENGINE_HIGH_RPM',
-  'HIGH_RPM_UNDER_LOAD',
   'OVERHEATING_RISK',
   'EMERGENCY_LIKE_BRAKING',
   'INSUFFICIENT_CONTEXT',
+] as const;
+
+/**
+ * Inactive / future-only classification names — NOT produced by DIMO webhook intake
+ * and NOT emitted by the current native-event classifier. Kept on the type union for
+ * forward compatibility and historical persisted assessments only.
+ */
+export const FUTURE_ONLY_CONTEXT_CLASSIFICATIONS: readonly ContextClassification[] = [
+  'REV_IN_IDLE_CONFIRMED',
+  'HIGH_RPM_UNDER_LOAD',
 ] as const;
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -171,7 +182,6 @@ export const CONTEXT_CONFIDENCES: readonly ContextConfidence[] = [
  */
 export type ContextReasonCode =
   | 'NATIVE_EVENT_ANCHOR'
-  | 'RPM_WEBHOOK_ANCHOR'
   | 'SPARSE_SIGNAL_CADENCE'
   | 'MISSING_RPM'
   | 'MISSING_SPEED'
@@ -189,7 +199,6 @@ export type ContextReasonCode =
 
 export const CONTEXT_REASON_CODES: readonly ContextReasonCode[] = [
   'NATIVE_EVENT_ANCHOR',
-  'RPM_WEBHOOK_ANCHOR',
   'SPARSE_SIGNAL_CADENCE',
   'MISSING_RPM',
   'MISSING_SPEED',

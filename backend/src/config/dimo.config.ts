@@ -47,5 +47,20 @@ export default registerAs('dimo', () => {
     agentUserWallet: process.env.DIMO_AGENT_USER_WALLET ?? '',
     /** Environment: 'production' or 'dev'. Affects triggers API URL. */
     dimoEnv,
+    /**
+     * When true, DimoTriggersBootstrapService registers webhooks and vehicle
+     * subscriptions on startup. Default false — configure webhooks in DIMO Developer Console.
+     */
+    triggerBootstrapEnabled:
+      (process.env.DIMO_TRIGGER_BOOTSTRAP_ENABLED ?? '').trim().toLowerCase() === 'true',
+    /** Per-use-case DIMO agent personalities (validated in DimoAgentsService). */
+    agentPersonalityVehicleSpecs: process.env.DIMO_AGENT_PERSONALITY_VEHICLE_SPECS?.trim() || undefined,
+    agentPersonalityTireSpecs: process.env.DIMO_AGENT_PERSONALITY_TIRE_SPECS?.trim() || undefined,
+    /** Prefer DIMO_AGENT_PERSONALITY_DOCUMENT; DIMO_DOCUMENT_AGENT_PERSONALITY is legacy fallback. */
+    agentPersonalityDocument:
+      process.env.DIMO_AGENT_PERSONALITY_DOCUMENT?.trim() ||
+      process.env.DIMO_DOCUMENT_AGENT_PERSONALITY?.trim() ||
+      undefined,
+    agentPersonalityChat: process.env.DIMO_AGENT_PERSONALITY_CHAT?.trim() || undefined,
   };
 });

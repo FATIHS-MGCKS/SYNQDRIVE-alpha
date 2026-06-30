@@ -2,6 +2,7 @@ import {
   TRIP_SIGNAL_SUMMARY_ENRICHMENT,
   ANCHOR_TYPES,
   CONTEXT_CLASSIFICATIONS,
+  FUTURE_ONLY_CONTEXT_CLASSIFICATIONS,
   EVIDENCE_GRADES,
   CONTEXT_CONFIDENCES,
   CONTEXT_REASON_CODES,
@@ -43,11 +44,21 @@ describe('event-context.types', () => {
       expect(ANCHOR_TYPES).toEqual(['DIMO_NATIVE_BEHAVIOR_EVENT']);
       expect(unique(ANCHOR_TYPES)).toBe(true);
     });
-    it('ContextClassification', () => {
-      expect(CONTEXT_CLASSIFICATIONS).toHaveLength(17);
+    it('ContextClassification (active only)', () => {
+      expect(CONTEXT_CLASSIFICATIONS).toHaveLength(15);
       expect(unique(CONTEXT_CLASSIFICATIONS)).toBe(true);
       expect(CONTEXT_CLASSIFICATIONS).toContain('INSUFFICIENT_CONTEXT');
       expect(CONTEXT_CLASSIFICATIONS).toContain('EMERGENCY_LIKE_BRAKING');
+      expect(CONTEXT_CLASSIFICATIONS).not.toContain('REV_IN_IDLE_CONFIRMED');
+    });
+    it('future-only classifications are not active', () => {
+      expect(FUTURE_ONLY_CONTEXT_CLASSIFICATIONS).toEqual([
+        'REV_IN_IDLE_CONFIRMED',
+        'HIGH_RPM_UNDER_LOAD',
+      ]);
+      for (const c of FUTURE_ONLY_CONTEXT_CLASSIFICATIONS) {
+        expect(CONTEXT_CLASSIFICATIONS).not.toContain(c);
+      }
     });
     it('EvidenceGrade', () => {
       expect(EVIDENCE_GRADES).toEqual(['A', 'B', 'C', 'D']);
@@ -56,10 +67,11 @@ describe('event-context.types', () => {
       expect(CONTEXT_CONFIDENCES).toHaveLength(4);
       expect(CONTEXT_CONFIDENCES).toContain('INSUFFICIENT');
     });
-    it('ContextReasonCode', () => {
-      expect(CONTEXT_REASON_CODES).toHaveLength(16);
+    it('ContextReasonCode has no RPM webhook anchor', () => {
+      expect(CONTEXT_REASON_CODES).toHaveLength(15);
       expect(unique(CONTEXT_REASON_CODES)).toBe(true);
       expect(CONTEXT_REASON_CODES).toContain('NOT_APPLICABLE_POWERTRAIN');
+      expect(CONTEXT_REASON_CODES).not.toContain('RPM_WEBHOOK_ANCHOR' as never);
     });
     it('SignalCoverageQuality', () => {
       expect(SIGNAL_COVERAGE_QUALITIES).toEqual(['GOOD', 'SPARSE', 'MISSING', 'NOT_APPLICABLE']);

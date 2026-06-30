@@ -124,7 +124,7 @@ function ReportsSection({ vm }: { vm: VehicleHealthBoxViewModel }) {
   );
 }
 
-function UntrackedDimensionsInfo({ untrackedCount }: { untrackedCount: number }) {
+function UntrackedModulesInfo({ untrackedCount }: { untrackedCount: number }) {
   if (untrackedCount <= 0) return null;
   return (
     <div className="mt-2 mb-2 flex items-start gap-1.5 rounded-[10px] border border-transparent px-2 py-1.5 sq-tone-info">
@@ -144,7 +144,7 @@ function UntrackedDimensionsInfo({ untrackedCount }: { untrackedCount: number })
         <line x1="12" y1="8" x2="12.01" y2="8" />
       </svg>
       <span className="text-[9.5px] leading-snug">
-        {untrackedCount} of 3 health dimensions untracked — enable tracking for accurate results.
+        {untrackedCount} of 3 health modules untracked — enable tracking for accurate results.
       </span>
     </div>
   );
@@ -303,7 +303,7 @@ export function VehicleHealthBox({
   return (
     <div className="group relative flex h-full flex-col rounded-xl p-3 border transition-shadow duration-300 ease-[var(--ease-out-soft)] hover:shadow-md border-border bg-card text-foreground shadow-sm">
       <div className="mb-2.5 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <h3 className="text-[11px] font-bold tracking-[-0.01em] text-foreground">Vehicle Health</h3>
           <span
             title={vm.overallTitle}
@@ -312,6 +312,14 @@ export function VehicleHealthBox({
             <span className={`h-1.5 w-1.5 rounded-full ${vm.overallDot}`} />
             {vm.overallStatusLabel}
           </span>
+          {vm.dataCoverageLabel ? (
+            <span
+              className="inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[8.5px] font-semibold text-muted-foreground ring-1 ring-border bg-muted/30"
+              title="Data coverage — not a health severity"
+            >
+              {vm.dataCoverageLabel}
+            </span>
+          ) : null}
         </div>
         {!compactOverview && (
           <span className="shrink-0 text-[10px] font-semibold text-muted-foreground">
@@ -353,7 +361,10 @@ export function VehicleHealthBox({
       </div>
 
       <HealthModuleRows vm={vm} isDarkMode={isDarkMode} />
-      <UntrackedDimensionsInfo untrackedCount={vm.untrackedCount} />
+      <UntrackedModulesInfo untrackedCount={vm.untrackedCount} />
+      <div className={vm.untrackedCount <= 0 ? 'mt-2' : undefined}>
+        <ComplianceGrid vm={vm} />
+      </div>
 
       {vm.findings.length > 0 && (
         <>
@@ -368,9 +379,6 @@ export function VehicleHealthBox({
         loading={boxData.dashboardLightsLoading && !telltales}
         onViewDetails={onViewDetails}
       />
-
-      {divider}
-      <ComplianceGrid vm={vm} />
 
       {showDataBasis && vm.dataBasis && (
         <>

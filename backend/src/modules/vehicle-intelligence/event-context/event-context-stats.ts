@@ -34,6 +34,17 @@ export const HIGH_THROTTLE_PCT = 80;
 export const HIGH_ENGINE_LOAD_PCT = 80;
 export const STANDSTILL_KMH = 3;
 
+/** Minimum peaks for context-derived cold-engine misuse (not window-label tags). */
+export const MISUSE_HIGH_RPM_MIN = 2_500;
+export const MISUSE_HIGH_THROTTLE_PCT = 40;
+export const MISUSE_HIGH_ENGINE_LOAD_PCT = 70;
+/** Borderline coolant band: low load here is context-only, not misuse. */
+export const COLD_ENGINE_MILD_COOLANT_MIN_C = 55;
+/** Clearly high load — severe cold-engine misuse candidate. */
+export const COLD_ENGINE_SEVERE_RPM_MIN = 3_500;
+export const COLD_ENGINE_SEVERE_THROTTLE_PCT = 80;
+export const COLD_ENGINE_SEVERE_LOAD_PCT = 85;
+
 const ACCESSORS: Record<EngineContextSignal, (r: HighFrequencyReading) => number | null> = {
   speed: (r) => r.speedKmh,
   rpm: (r) => r.rpm,
@@ -207,4 +218,87 @@ export function computeSignalStats(
   }
 
   return { perSignal, dataQuality, signalCoverage, reasonCodes: [...reasonCodes] };
+}
+
+/** Split signal coverage into used (GOOD/SPARSE) vs missing (MISSING) lists. */
+export function deriveUsedAndMissingSignals(signalCoverage: SignalCoverage[]): {
+  usedSignals: EngineContextSignal[];
+  missingSignals: EngineContextSignal[];
+} {
+  const usedSignals: EngineContextSignal[] = [];
+  const missingSignals: EngineContextSignal[] = [];
+  for (const sc of signalCoverage) {
+    if (sc.quality === 'GOOD' || sc.quality === 'SPARSE') {
+      usedSignals.push(sc.signal);
+    } else if (sc.quality === 'MISSING') {
+      missingSignals.push(sc.signal);
+    }
+  }
+  return { usedSignals, missingSignals };
+}
+
+export function peakContextValue(
+  stats: Pick<ContextSignalStats, 'nearestValueToAnchor' | 'max'>,
+): number | null {
+  const values = [stats.nearestValueToAnchor, stats.max].filter(
+    (v): v is number => v != null && Number.isFinite(v),
+  );
+  return values.length ? Math.max(...values) : null;
+}
+
+export interface ColdEngineLoadCheck {
+  rpmPeak: number | null;
+  throttlePeak: number | null;
+  engineLoadPeak: number | null;
+  rpmHigh: boolean;
+  throttleHigh: boolean;
+  engineLoadHigh: boolean;
+  anyHigh: boolean;
+  strongSignalCount: number;
+}
+
+export function evaluateColdEngineLoad(
+  perSignal: Pick<
+    Record<EngineContextSignal, ContextSignalStats>,
+    'rpm' | 'throttle' | 'engineLoad'
+  >,
+): ColdEngineLoadCheck {
+  const rpmPeak = peakContextValue(perSignal.rpm);
+  const throttlePeak = peakContextValue(perSignal.throttle);
+  const engineLoadPeak = peakContextValue(perSignal.engineLoad);
+  const rpmHigh = rpmPeak != null && rpmPeak >= MISUSE_HIGH_RPM_MIN;
+  const throttleHigh = throttlePeak != null && throttlePeak >= MISUSE_HIGH_THROTTLE_PCT;
+  const engineLoadHigh =
+    engineLoadPeak != null && engineLoadPeak >= MISUSE_HIGH_ENGINE_LOAD_PCT;
+  const strongSignalCount = [rpmHigh, throttleHigh, engineLoadHigh].filter(Boolean).length;
+  return {
+    rpmPeak,
+    throttlePeak,
+    engineLoadPeak,
+    rpmHigh,
+    throttleHigh,
+    engineLoadHigh,
+    anyHigh: rpmHigh || throttleHigh || engineLoadHigh,
+    strongSignalCount,
+  };
+}
+
+/**
+ * True when coolant is cold but load is too mild for misuse (e.g. 59 °C, 1151 rpm, 15 % throttle).
+ */
+export function isMildColdEngineBand(
+  coolantC: number | null,
+  load: ColdEngineLoadCheck,
+): boolean {
+  if (coolantC == null || coolantC >= COLD_COOLANT_C) return false;
+  if (load.anyHigh) return false;
+  return true;
+}
+
+export function isClearlyHighColdEngineLoad(load: ColdEngineLoadCheck): boolean {
+  return (
+    (load.rpmPeak != null && load.rpmPeak >= COLD_ENGINE_SEVERE_RPM_MIN) ||
+    (load.throttlePeak != null && load.throttlePeak >= COLD_ENGINE_SEVERE_THROTTLE_PCT) ||
+    (load.engineLoadPeak != null && load.engineLoadPeak >= COLD_ENGINE_SEVERE_LOAD_PCT)
+  );
 }

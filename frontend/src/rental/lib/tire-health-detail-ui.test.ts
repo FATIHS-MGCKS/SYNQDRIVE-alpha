@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { TireWheelEstimate } from '../../lib/api';
 import {
   formatLowestTreadLine,
+  formatTireQuickNextMeasurementLabel,
   tireForecastBadgeLabel,
   wheelIsMeasured,
   wheelMeasurementBadge,
@@ -23,6 +24,17 @@ describe('tire-health-detail-ui', () => {
   it('uses clearer forecast badge labels', () => {
     expect(tireForecastBadgeLabel('MEASURED')).toBe('Measured · Forecast');
     expect(tireForecastBadgeLabel('ESTIMATED')).toBe('ML forecast');
+  });
+
+  it('formats next measurement from actionState and recommendations only', () => {
+    expect(formatTireQuickNextMeasurementLabel({ actionState: 'CHECK_SOON', recommendations: [] })).toBe('empfohlen');
+    expect(
+      formatTireQuickNextMeasurementLabel({
+        actionState: 'OBSERVE',
+        recommendations: ['Re-measure tread depth — the last measurement is overdue.'],
+      }),
+    ).toBe('überfällig');
+    expect(formatTireQuickNextMeasurementLabel({ actionState: 'OBSERVE', recommendations: [] })).toBe('—');
   });
 
   it('detects measured wheels from lastMeasuredMm', () => {

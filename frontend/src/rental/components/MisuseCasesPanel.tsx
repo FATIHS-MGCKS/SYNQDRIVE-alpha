@@ -139,7 +139,7 @@ function normalizedCases(
 }
 
 interface ContextEvidence {
-  sourceAnchors?: { drivingEventIds?: string[]; rpmCandidateIds?: string[] };
+  sourceAnchors?: { drivingEventIds?: string[] };
   contextClassifications?: string[];
   evidenceGrade?: string | null;
   confidence?: string | null;
@@ -180,7 +180,6 @@ function formatWindow(start?: string | null, end?: string | null): string | null
 function MisuseContextEvidence({ evidence }: { evidence: ContextEvidence }) {
   const anchors = evidence.sourceAnchors;
   const driving = anchors?.drivingEventIds?.length ?? 0;
-  const rpm = anchors?.rpmCandidateIds?.length ?? 0;
   const window = formatWindow(evidence.windowStart, evidence.windowEnd);
   const kv = evidence.keyValues ?? {};
   const keyChips: Array<{ label: string; value: string }> = [];
@@ -228,7 +227,6 @@ function MisuseContextEvidence({ evidence }: { evidence: ContextEvidence }) {
 
       <p className="text-[10px] text-muted-foreground">
         Anker: {driving > 0 ? `${driving} natives Ereignis${driving === 1 ? '' : 'se'}` : 'keine'}
-        {rpm > 0 ? ` · ${rpm} RPM-Kandidat${rpm === 1 ? '' : 'en'}` : ''}
         {window ? ` · Fenster ${window}` : ''}
       </p>
 

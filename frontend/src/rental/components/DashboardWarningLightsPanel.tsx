@@ -78,7 +78,7 @@ export function DashboardWarningLightsPanel({
   const [detailOpen, setDetailOpen] = useState(false);
 
   if (loading && !telltales) {
-    return <SkeletonCard className={`h-56 rounded-xl ${className}`} />;
+    return <SkeletonCard className={`h-36 rounded-xl ${className}`} />;
   }
 
   const presentation = resolveTelltalePanelPresentation(telltales);
@@ -105,62 +105,53 @@ export function DashboardWarningLightsPanel({
       <button
         type="button"
         onClick={() => setDetailOpen(true)}
-        className={`w-full text-left rounded-xl border border-border/60 bg-card shadow-sm p-4 sm:p-5 pb-6 transition-colors hover:bg-card/90 hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer ${className}`}
+        className={`group w-full text-left rounded-xl border border-border/60 bg-card shadow-sm p-2.5 transition-all duration-300 ease-out hover:shadow-lg hover:-translate-y-0.5 hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer ${className}`}
         aria-labelledby="tacho-warnleuchten-title"
         aria-describedby="tacho-warnleuchten-summary"
       >
-        {/* Header */}
-        <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="sq-tone-brand p-2 rounded-xl shrink-0">
-              <Icon name="alert-triangle" className="w-4 h-4" aria-hidden="true" />
+        <div className="mb-1 flex items-center justify-between gap-2 relative z-10">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="sq-tone-brand p-1.5 rounded-lg shrink-0">
+              <Icon name="alert-triangle" className="w-3.5 h-3.5" aria-hidden="true" />
             </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3
-                  id="tacho-warnleuchten-title"
-                  className="text-[11px] font-semibold tracking-tight text-foreground"
-                >
-                  Tacho Warnleuchten
-                </h3>
-                <StatusChip tone={presentation.badgeTone} dot>
-                  {presentation.badgeLabel}
-                </StatusChip>
-              </div>
-            </div>
+            <h3 id="tacho-warnleuchten-title" className="text-[10px] font-bold tracking-tight text-foreground">
+              Tacho Warnleuchten
+            </h3>
+            <StatusChip tone={presentation.badgeTone} className="!text-[9px] !py-0 !px-1.5">
+              {presentation.badgeLabel}
+            </StatusChip>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[9px] text-muted-foreground/80">{presentation.sourceFooter}</span>
-            <Icon name="chevron-right" className="w-3.5 h-3.5 text-muted-foreground/70" aria-hidden />
-          </div>
+          <Icon
+            name="chevron-right"
+            className="w-4 h-4 text-muted-foreground shrink-0 transition-transform group-hover:translate-x-0.5"
+            aria-hidden
+          />
         </div>
 
-        {/* Subline */}
         <p
           id="tacho-warnleuchten-summary"
-          className="text-[11px] leading-relaxed text-muted-foreground mb-4"
+          className="text-[10px] leading-snug text-muted-foreground mb-2 line-clamp-2 relative z-10"
         >
           {syncErrorMessage && presentation.badgeLabel === 'Unbekannt'
             ? 'Warnleuchtenstatus aktuell nicht verfügbar.'
             : presentation.summaryText}
         </p>
 
-        {/* Tile grid — 2 cols mobile, up to 5 on wide screens */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5 pointer-events-none">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 pointer-events-none relative z-10">
           {tiles.map((tile) => (
             <div
               key={tile.key}
-              className={`flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 min-h-[88px] ${tileBorderClass(tile.tone, disabled)}`}
+              className={`flex flex-col items-center gap-1 rounded-[10px] border px-1 py-2 min-h-[64px] ${tileBorderClass(tile.tone, disabled)}`}
               aria-hidden="true"
             >
               <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${tileIconBg(tile.tone, disabled)}`}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${tileIconBg(tile.tone, disabled)}`}
               >
                 <img
                   src={tile.icon}
                   alt=""
                   aria-hidden="true"
-                  className={`w-4 h-4 object-contain ${
+                  className={`w-3.5 h-3.5 object-contain ${
                     disabled
                       ? 'opacity-30 grayscale'
                       : tile.tone === 'alert' || tile.tone === 'critical'
@@ -171,11 +162,11 @@ export function DashboardWarningLightsPanel({
                   }`}
                 />
               </div>
-              <span className="text-[10px] font-semibold text-foreground text-center leading-tight">
+              <span className="text-[9px] font-semibold text-foreground text-center leading-tight line-clamp-2">
                 {tile.label}
               </span>
               <span
-                className={`text-[9px] tabular-nums text-center ${statusTextClass(tile.tone, disabled)}`}
+                className={`text-[8px] tabular-nums text-center leading-tight ${statusTextClass(tile.tone, disabled)}`}
               >
                 {tile.statusLabel === '—' ? '\u00A0' : tile.statusLabel}
               </span>
@@ -183,31 +174,29 @@ export function DashboardWarningLightsPanel({
           ))}
         </div>
 
-        {/* Footer */}
-        <div className="mt-4 pt-3 border-t border-border/50 flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted-foreground">
+        <div className="mt-2 pt-1 border-t border-border/50 flex flex-wrap items-center justify-between gap-1.5 text-[9px] text-muted-foreground relative z-10">
           {presentation.activeCount > 0 ? (
             <span className="font-medium text-[color:var(--status-watch)]">
-              {presentation.activeCount} aktive Warnleuchte{presentation.activeCount === 1 ? '' : 'n'}
+              {presentation.activeCount} aktiv
             </span>
           ) : presentation.historicalCount > 0 ? (
-            <span className="text-muted-foreground">
-              {presentation.historicalCount} historische Meldung
-              {presentation.historicalCount === 1 ? '' : 'en'}
+            <span>
+              {presentation.historicalCount} historisch
             </span>
           ) : (
-            <span>
+            <span className="line-clamp-1">
               {presentation.badgeLabel === 'Nicht verbunden'
-                ? 'Warnleuchten können nicht angezeigt werden.'
+                ? 'Nicht verbunden'
                 : presentation.badgeLabel === 'Alles klar'
-                  ? 'Alle überwachten Warnleuchten inaktiv.'
-                  : null}
+                  ? 'Alle inaktiv'
+                  : '\u00A0'}
             </span>
           )}
-          <span className="flex items-center gap-1.5">
+          <span className="flex items-center gap-1 shrink-0">
             {lastUpdateRel && presentation.isConnected && (
-              <span className="text-[9px] tabular-nums">{lastUpdateRel}</span>
+              <span className="tabular-nums">{lastUpdateRel}</span>
             )}
-            <span className="text-[9px] font-medium text-[color:var(--brand)]">Details</span>
+            <span className="font-medium text-[color:var(--brand)]">Details</span>
           </span>
         </div>
       </button>

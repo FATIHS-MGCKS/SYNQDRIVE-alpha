@@ -11,7 +11,7 @@ import {
   deriveTripAssessability,
   hasNativeBehaviorEvents,
 } from './event-context-ui';
-import { countTripEvents } from './trips-map.utils';
+import { formatBehaviorEventCountLabel } from './trip-assessment-copy';
 
 interface TripBehaviorSummaryProps {
   trip: TripTimelineTrip;
@@ -30,7 +30,7 @@ export function TripBehaviorSummary({ trip, events }: TripBehaviorSummaryProps) 
   const overall = deriveBehaviorOverallStatus(trip, events, {
     assessable: assessability.assessable,
   });
-  const eventCount = countTripEvents(trip) ?? events.length;
+  const eventCountLabel = formatBehaviorEventCountLabel(events, trip);
   const criticalCount = countCriticalEvents(events);
   const severest = findSeverestEvent(events);
 
@@ -39,7 +39,7 @@ export function TripBehaviorSummary({ trip, events }: TripBehaviorSummaryProps) 
   const showSeverest = severestLabel != null && severestLabel !== title;
 
   const metaParts = [
-    `${eventCount} ${eventCount === 1 ? 'Ereignis' : 'Ereignisse'}`,
+    eventCountLabel,
     criticalCount > 0 ? `${criticalCount} kritisch` : null,
   ].filter(Boolean);
 

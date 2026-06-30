@@ -4,6 +4,8 @@ import { MisuseCasesPanel } from '../MisuseCasesPanel';
 import { VehicleStressPanel } from '../VehicleStressPanel';
 import { getStressLevel, resolveDrivingStressScore } from '../../lib/scoreFormat';
 import { TripBehaviorPanel } from './TripBehaviorPanel';
+import { hasNativeBehaviorEvents } from './event-context-ui';
+import { resolveBehaviorEventCount } from './trip-assessment-copy';
 import { TripEvidencePanel } from './TripEvidencePanel';
 import { TripDeviceConnectionEvidence } from './TripDeviceConnectionEvidence';
 import { TripRentalContextPanel } from './TripRentalContextPanel';
@@ -23,6 +25,7 @@ export interface TripTimelineExpandedProps {
   detailLoading?: boolean;
   detailError?: boolean;
   behaviorEvents: TripBehaviorEvent[];
+  behaviorEventsByTripId?: Record<string, TripBehaviorEvent[]>;
   behaviorLoading: boolean;
   selectedBehaviorEventId: string | null;
   onSelectBehaviorEvent: (event: TripBehaviorEvent) => void;
@@ -70,6 +73,7 @@ export function TripTimelineExpanded({
   detailLoading,
   detailError,
   behaviorEvents,
+  behaviorEventsByTripId,
   behaviorLoading,
   selectedBehaviorEventId,
   onSelectBehaviorEvent,
@@ -201,6 +205,14 @@ export function TripTimelineExpanded({
           stressLevel={stressLevel}
           hasEnoughData={stressScore != null}
           compact={false}
+          stressMissingContext={{
+            behaviorEventCount: resolveBehaviorEventCount(
+              behaviorEvents,
+              trip,
+              behaviorEventsByTripId,
+            ),
+            hasNativeBehaviorEvents: hasNativeBehaviorEvents(behaviorEvents),
+          }}
         />
 
         {/* 4. Fahrverhalten — operativ, ohne technische Debug-Details */}

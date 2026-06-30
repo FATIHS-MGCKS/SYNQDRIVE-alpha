@@ -22,12 +22,14 @@ backend/public/
 
 # Environment files (NEVER commit secrets)
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env.production
-*.env
+.env.*
+!.env.example
+!**/.env.example
+
+# DIMO AI Agent local test payloads — never commit real API keys or wallets
+test-agent.json
+*agent*.local.json
+*secrets*.json
 
 # Logs
 logs/

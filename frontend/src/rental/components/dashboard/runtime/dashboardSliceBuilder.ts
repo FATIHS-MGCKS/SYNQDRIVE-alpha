@@ -2,7 +2,14 @@ import type { VehicleHealthResponse } from '../../../../lib/api';
 import type { DashboardInsight } from '../../../DashboardInsightsContext';
 import type { VehicleData } from '../../../data/vehicles';
 import type { PickupTileItem, ReturnTileItem } from '../../StatInlineDetail';
-import { runtimeReasonDedupeKey } from './dashboardRuntimeReasons';
+import {
+  canonicalCriticalReasonKey,
+  dedupeRuntimeReasons,
+  dedupeServiceOverdueCriticalReasons,
+  isServiceOverdueReason,
+  pickPreferredServiceOverdueReason,
+  runtimeReasonDedupeKey,
+} from './dashboardRuntimeReasons';
 import type {
   DashboardRuntimeModel,
   DashboardSlice,
@@ -64,6 +71,7 @@ type RuntimeGroupId =
   | 'unavailable'
   | 'offline-blocked'
   | 'health-critical'
+  | 'service-critical'
   | 'compliance-critical'
   | 'operations-critical'
   | 'telemetry-critical'
@@ -115,13 +123,32 @@ function vehicleSeverity(state: VehicleRuntimeState): DashboardSliceRow['severit
 }
 
 function vehicleSubtitle(state: VehicleRuntimeState): string | undefined {
-  return [
-    state.displayName !== state.license ? state.displayName : null,
-    state.stationLabel,
-    state.operationalStatus.replace(/_/g, ' '),
-  ]
-    .filter(Boolean)
-    .join(' · ') || undefined;
+  const license = (state.license ?? '').trim();
+  let remainder = state.displayName.trim();
+  if (license) {
+    const licensePrefix = new RegExp(`^${license.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*(·|-)?\\s*`, 'i');
+    remainder = remainder.replace(licensePrefix, '').trim();
+  }
+  const operationalTerms = new Set([
+    'available',
+    'reserved',
+    'active rented',
+    'active_rented',
+    'maintenance',
+    'unavailable',
+    'unknown',
+  ]);
+  const parts = remainder
+    .split('·')
+    .map((part) => part.trim())
+    .filter((part) => {
+      if (!part) return false;
+      const normalized = part.toLowerCase().replace(/_/g, ' ');
+      if (operationalTerms.has(normalized)) return false;
+      if (state.stationLabel && normalized === state.stationLabel.trim().toLowerCase()) return false;
+      return true;
+    });
+  return parts.join(' · ') || undefined;
 }
 
 function vehicleRow(input: {
@@ -133,15 +160,19 @@ function vehicleRow(input: {
 }): DashboardSliceRow {
   const reasons = input.reasons ?? [...input.state.criticalReasons, ...input.state.warningReasons];
   const subtitle = vehicleSubtitle(input.state);
+  const primary = primaryReason(reasons);
   return {
     id: `vehicle:${input.state.vehicleId}:${input.slice}`,
     vehicleId: input.state.vehicleId,
     title: input.state.license || input.state.displayName,
     ...(subtitle ? { subtitle } : {}),
-    ...(primaryReason(reasons)?.title ? { meta: primaryReason(reasons)?.title } : {}),
     stationLabel: input.state.stationLabel ?? null,
     severity: input.severity ?? vehicleSeverity(input.state),
-    ...(reasons.length > 0 ? { reasons, reasonIds: reasons.map((reason) => reason.id) } : {}),
+    ...(reasons.length > 0
+      ? { reasons, reasonIds: reasons.map((reason) => reason.id) }
+      : primary?.title
+        ? { meta: primary.title }
+        : {}),
     primaryActionLabel: label(input.locale, 'Fahrzeug öffnen', 'Open vehicle'),
   };
 }
@@ -219,9 +250,6 @@ function dedupeRows(rows: DashboardSliceRow[]): DashboardSliceRow[] {
   return result;
 }
 
-function runtimeReasonRowKey(vehicleId: string, reason: RuntimeReason): string {
-  return `${vehicleId}:${runtimeReasonDedupeKey(reason)}`;
-}
 
 function criticalReasonGroup(reason: RuntimeReason): RuntimeGroupId {
   if (
@@ -234,7 +262,8 @@ function criticalReasonGroup(reason: RuntimeReason): RuntimeGroupId {
   ) {
     return 'health-critical';
   }
-  if (reason.category === 'compliance' || reason.category === 'service') return 'compliance-critical';
+  if (reason.category === 'service') return 'service-critical';
+  if (reason.category === 'compliance') return 'compliance-critical';
   if (reason.category === 'telemetry') return 'telemetry-critical';
   if (reason.category === 'rental') return 'rental-critical';
   return 'operations-critical';
@@ -424,7 +453,7 @@ function buildBlockedMaintenanceSlice(states: VehicleRuntimeState[], locale: str
     .filter((state) => reasonHasCategory(state, ['health', 'battery', 'tires', 'brakes', 'dtc', 'damage']))
     .map((state) => vehicleRow({ state, slice: 'blocked-health', locale, reasons: state.blockReasons }));
   const complianceRows = blocked
-    .filter((state) => reasonHasCategory(state, ['compliance', 'service']))
+    .filter((state) => reasonHasCategory(state, ['compliance']))
     .map((state) => vehicleRow({ state, slice: 'blocked-compliance', locale, reasons: state.blockReasons }));
   const operationsRows = blocked
     .filter((state) => reasonHasCategory(state, ['operational', 'handover']))
@@ -473,7 +502,6 @@ function insightBlockingInDrawer(category: RuntimeReasonCategory): boolean {
 
 function buildCriticalAlertsSlice(input: BuildDashboardSlicesInput): DashboardSlice {
   const byVehicle = new Map(input.vehicleStates.map((state) => [state.vehicleId, state]));
-  const seen = new Set<string>();
   const grouped: Record<RuntimeGroupId, DashboardSliceRow[]> = {
     'ready-now': [],
     'available-but-not-ready': [],
@@ -492,54 +520,61 @@ function buildCriticalAlertsSlice(input: BuildDashboardSlicesInput): DashboardSl
     unavailable: [],
     'offline-blocked': [],
     'health-critical': [],
+    'service-critical': [],
     'compliance-critical': [],
     'operations-critical': [],
     'telemetry-critical': [],
     'rental-critical': [],
   };
 
-  const addCriticalRow = (vehicleId: string, reason: RuntimeReason, sourceSuffix: string): void => {
-    const key = runtimeReasonRowKey(vehicleId, reason);
-    if (seen.has(key)) return;
-    seen.add(key);
-    const state = byVehicle.get(vehicleId);
-    const row = vehicleRow({
-      state:
-        state ??
-        ({
-          vehicleId,
-          displayName: vehicleId,
-          operationalStatus: 'unknown',
-          rentalReadiness: 'not_ready',
-          blockLevel: 'none',
-          healthSeverity: 'unknown',
-          complianceSeverity: 'unknown',
-          telemetryState: 'unknown',
-          dataQualityState: 'unknown',
-          bookingState: 'unknown',
-          readyReasons: [],
-          notReadyReasons: [],
-          blockReasons: [],
-          warningReasons: [],
-          criticalReasons: [reason],
-          isAvailable: false,
-          isReadyToRent: false,
-          isBlocked: false,
-          isMaintenance: false,
-          isCritical: true,
-          isWarning: false,
-        } satisfies VehicleRuntimeState),
-      slice: `critical-${sourceSuffix}`,
-      locale: input.locale,
-      severity: 'critical',
-      reasons: [reason],
-    });
-    grouped[criticalReasonGroup(reason)].push(row);
+  const pendingByGroup = new Map<RuntimeGroupId, Map<string, RuntimeReason[]>>();
+
+  const queueCritical = (vehicleId: string, reason: RuntimeReason): void => {
+    const groupId = criticalReasonGroup(reason);
+    const groupMap = pendingByGroup.get(groupId) ?? new Map<string, RuntimeReason[]>();
+    const list = groupMap.get(vehicleId) ?? [];
+    const key = canonicalCriticalReasonKey(vehicleId, reason);
+    const existingIndex = list.findIndex(
+      (entry) => canonicalCriticalReasonKey(vehicleId, entry) === key,
+    );
+    if (existingIndex >= 0) {
+      if (isServiceOverdueReason(reason) && isServiceOverdueReason(list[existingIndex])) {
+        list[existingIndex] = pickPreferredServiceOverdueReason([list[existingIndex], reason]);
+      }
+      return;
+    }
+    list.push(reason);
+    groupMap.set(vehicleId, list);
+    pendingByGroup.set(groupId, groupMap);
   };
+
+  const fallbackState = (vehicleId: string, reasons: RuntimeReason[]): VehicleRuntimeState => ({
+    vehicleId,
+    displayName: vehicleId,
+    operationalStatus: 'unknown',
+    rentalReadiness: 'not_ready',
+    blockLevel: 'none',
+    healthSeverity: 'unknown',
+    complianceSeverity: 'unknown',
+    telemetryState: 'unknown',
+    dataQualityState: 'unknown',
+    bookingState: 'unknown',
+    readyReasons: [],
+    notReadyReasons: [],
+    blockReasons: [],
+    warningReasons: [],
+    criticalReasons: reasons,
+    isAvailable: false,
+    isReadyToRent: false,
+    isBlocked: false,
+    isMaintenance: false,
+    isCritical: true,
+    isWarning: false,
+  } satisfies VehicleRuntimeState);
 
   for (const state of input.vehicleStates) {
     for (const reason of state.criticalReasons) {
-      addCriticalRow(state.vehicleId, reason, reason.category);
+      queueCritical(state.vehicleId, reason);
     }
   }
 
@@ -550,7 +585,7 @@ function buildCriticalAlertsSlice(input: BuildDashboardSlicesInput): DashboardSl
     for (const vehicleId of vehicleIds) {
       const state = byVehicle.get(vehicleId);
       if (insightDuplicatesRuntimeCritical(state, insight.type)) continue;
-      addCriticalRow(
+      queueCritical(
         vehicleId,
         {
           id: `dashboard-insight:${insight.type}:${insight.id}`,
@@ -563,14 +598,42 @@ function buildCriticalAlertsSlice(input: BuildDashboardSlicesInput): DashboardSl
           actionLabel: insight.actionLabel ?? undefined,
           actionTarget: insight.actionType ?? undefined,
         },
-        `insight-${insight.id}`,
       );
     }
+  }
+
+  const criticalGroupIds: RuntimeGroupId[] = [
+    'health-critical',
+    'service-critical',
+    'compliance-critical',
+    'operations-critical',
+    'telemetry-critical',
+    'rental-critical',
+  ];
+
+  for (const groupId of criticalGroupIds) {
+    const groupMap = pendingByGroup.get(groupId);
+    if (!groupMap) continue;
+    for (const [vehicleId, reasons] of groupMap) {
+      const mergedReasons = dedupeServiceOverdueCriticalReasons(dedupeRuntimeReasons(reasons));
+      const state = byVehicle.get(vehicleId) ?? fallbackState(vehicleId, mergedReasons);
+      grouped[groupId].push(
+        vehicleRow({
+          state,
+          slice: `critical-${groupId}`,
+          locale: input.locale,
+          severity: 'critical',
+          reasons: mergedReasons,
+        }),
+      );
+    }
+    grouped[groupId].sort(byRowTitle);
   }
 
   const rows = dedupeRows(
     [
       ...grouped['health-critical'],
+      ...grouped['service-critical'],
       ...grouped['compliance-critical'],
       ...grouped['operations-critical'],
       ...grouped['telemetry-critical'],
@@ -585,6 +648,7 @@ function buildCriticalAlertsSlice(input: BuildDashboardSlicesInput): DashboardSl
     rows,
     groups: [
       group('health-critical', label(input.locale, 'Health kritisch', 'Health critical'), grouped['health-critical']),
+      group('service-critical', label(input.locale, 'Service kritisch', 'Service critical'), grouped['service-critical']),
       group('compliance-critical', label(input.locale, 'Compliance kritisch', 'Compliance critical'), grouped['compliance-critical']),
       group('operations-critical', label(input.locale, 'Operations kritisch', 'Operations critical'), grouped['operations-critical']),
       group('telemetry-critical', label(input.locale, 'Telemetry kritisch', 'Telemetry critical'), grouped['telemetry-critical']),

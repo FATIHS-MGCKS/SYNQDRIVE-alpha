@@ -35,6 +35,547 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-agent-test-coverage-v49119-2026-06-30',
+    version: '4.9.119',
+    title: 'V4.9.119 — DIMO AI Agent Test Coverage',
+    summary: [
+      'Tests für SSE-Parser, Cache-Keys, Use-Case-Routing (vehicle/tire/document/chat), Vehicle-Scope und Error-Handling (mocked axios).',
+      'Agent-Fehlerantworten und Stream-Error-Logs redacted (Bearer/API-Key).',
+    ],
+    reason: 'DIMO AI Agent hatte unzureichende Testabdeckung für Parser, Cache-Isolation und Use-Case-Routing.',
+    previousBehavior: 'Teilweise Parser/Cache-Tests; kein Service-Level Routing/Error-Suite.',
+    details: 'dimo-agents.service.spec.ts, chat.service.spec.ts; erweiterte parser/cache/scope/document specs.',
+    affectsArchitecture: false,
+    module: 'DIMO',
+    createdAt: '2026-06-30T22:30:00.000Z',
+  },
+  {
+    id: 'dimo-agent-secrets-cleanup-v49118-2026-06-30',
+    version: '4.9.118',
+    title: 'V4.9.118 — DIMO Agent Secrets Security Cleanup',
+    summary: [
+      'Committed test-agent.json mit echtem DIMO_API_KEY entfernt — ersetzt durch test-agent.example.json (Platzhalter).',
+      '.gitignore erweitert: test-agent.json, *agent*.local.json, *secrets*.json, .env.* mit !.env.example.',
+      'backend/.env.example: Hinweis auf Key-Rotation bei leaked Secrets; DIMO_API_KEY nur server-side.',
+    ],
+    reason: 'test-agent.json enthielt seit Initial Commit einen echten DIMO API Key und Wallet — Leak- und Sperr-Risiko.',
+    previousBehavior: 'test-agent.json im Repo-Root mit echten Credentials; unvollständige gitignore für Agent-Test-Dateien.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'DIMO',
+    createdAt: '2026-06-30T22:00:00.000Z',
+  },
+  {
+    id: 'dimo-agent-diagnostics-v49117-2026-06-30',
+    version: '4.9.117',
+    title: 'V4.9.117 — DIMO AI Agent Diagnose (Admin)',
+    summary: [
+      'POST /api/v1/admin/dimo/agents/diagnostics — Master-Admin-only Probe für Config, Personality, Redis-Cache, Developer-JWT (yes/no), Create/Message/Stream/Parser.',
+      'Harmlose Test-Prompts, keine Secrets in Response; optionaler vehicle_scope-Test via dimoTokenId oder vehicleId.',
+      'DimoAgentsService.runAgentDiagnostics() + sichere Fehler-Sanitization (Bearer/API-Key redacted).',
+    ],
+    reason:
+      'Bei Agent-Ausfällen war unklar, ob Config, Create, Message, Stream-Parser oder vehicleIds die Ursache sind.',
+    previousBehavior: 'Keine strukturierte Agent-Diagnose — nur generische Fehler in Feature-Flows.',
+    details: 'dimo-agents-admin.controller.ts, dimo-agent-diagnostics.types.ts, dimo-agent-error-sanitize.util.ts (+ Tests).',
+    affectsArchitecture: true,
+    module: 'DIMO',
+    createdAt: '2026-06-30T21:00:00.000Z',
+  },
+  {
+    id: 'dimo-agent-personality-config-v49116-2026-06-30',
+    version: '4.9.116',
+    title: 'V4.9.116 — DIMO AI Agent Personality per Use Case',
+    summary: [
+      'Entfernt globalen uncle_mechanic-Default — Personalities pro Use Case: vehicle_specs/tire_specs → master_technician, document_extraction/fleet_chat → fleet_manager_pro.',
+      'Neue Env-Overrides: DIMO_AGENT_PERSONALITY_VEHICLE_SPECS, _TIRE_SPECS, _DOCUMENT, _CHAT; Legacy DIMO_DOCUMENT_AGENT_PERSONALITY bleibt kompatibel.',
+      'Ungültige Personality-Werte: Warn-Log + Fallback auf Use-Case-Default (kein Crash). DTC nutzt vehicle_specs-Scope statt document_extraction.',
+    ],
+    reason:
+      'Alle Agenten wurden teilweise mit uncle_mechanic erstellt — passt nicht zu technischen Specs, Dokumenten und Fleet-Chat.',
+    previousBehavior:
+      'Globaler uncle_mechanic in Defaults und deprecated createAgent(); Document-Agent las Personality lokal aus document-extraction.config.',
+    details: 'dimo-agent-personality.util.ts (+ Tests). DimoAgentsService.resolveAgentPersonality(). dimo.config.ts Env-Felder.',
+    affectsArchitecture: true,
+    module: 'DIMO',
+    createdAt: '2026-06-30T20:00:00.000Z',
+  },
+  {
+    id: 'obd-unplugged-operational-hints-v49115-2026-06-26',
+    version: '4.9.115',
+    title: 'V4.9.115 — OBD unplugged an Header & Dashboard Notifications',
+    summary: [
+      'Zentraler Helper `obd-plug-status.ts` nutzt Snapshot `obdIsPluggedIn` aus Fleet Connectivity (gleiche Quelle wie Technical Telemetry).',
+      'Vehicle Detail Header: kompaktes Badge „OBD unplugged“ neben Last Signal/Standby nur bei explizit `false`.',
+      'Dashboard Notifications: Offline-Meldungen um „OBD unplugged“ angereichert, ohne Doppelung.',
+    ],
+    reason:
+      'OBD-Unplugged war nur in Fleet Connectivity sichtbar — operative Stellen (Header, Offline-Notifications) brauchten denselben Hinweis.',
+    previousBehavior:
+      'obdIsPluggedIn nur in Settings/Fleet Connectivity; Header und Notifications ohne OBD-Plug-Hinweis.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T23:00:00.000Z',
+  },
+  {
+    id: 'dashboard-ui-polish-v49114-2026-06-26',
+    version: '4.9.114',
+    title: 'V4.9.114 — Dashboard: Org-Titel, Business Pulse & Notifications Layout',
+    summary: [
+      'Dashboard-Titel zeigt Organisationsnamen aus RentalContext statt „Control Center“.',
+      'Business Pulse und Notifications (ehem. Attention) symmetrisch nebeneinander (lg: 2-Spalten); Source-Footer entfernt.',
+      'Topbar „Eingeloggt als …“ typografisch an Topbar-Rhythmus angeglichen (12px, muted, font-normal).',
+    ],
+    reason:
+      'Dashboard wirkte uneinheitlich — technischer Source-Text, asymmetrisches Layout und generischer Titel statt Firmenname.',
+    previousBehavior:
+      'Control Center als Titel; Business Pulse full-width mit Quelle-Footer; Attention-Box unter Operative Steuerung.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T22:00:00.000Z',
+  },
+  {
+    id: 'dimo-agent-vehicle-scope-v49113-2026-06-30',
+    version: '4.9.113',
+    title: 'V4.9.113 — DIMO Agent vehicleIds / Token Scope',
+    summary: [
+      'Explizite Vehicle-Scope-Regeln pro Use Case: vehicle_specs (tokenId oder knowledge-only), document_extraction (optional tokenId), tire_specs (kein Scope), fleet_chat (nur bei aufgelöstem Fahrzeug).',
+      'Chat sendet nicht mehr alle Fleet-tokenIds — nur tokenId des per Kennzeichen/Name/VIN aufgelösten Fahrzeugs.',
+      'Scope-Logging: useCase, hasVehicleScope, vehicleIdsCount, orgId — keine Secrets.',
+    ],
+    reason:
+      'vehicleIds wurden inkonsistent übergeben; Chat schickte alle Fleet-TokenIds, Tire/Specs vermischten DIMO-live mit Wissensdatenbank.',
+    previousBehavior:
+      'Chat: alle Fleet-tokenIds pro Message. Vehicle Specs ohne tokenId ohne klare Kennzeichnung. Tire ohne explizite knowledge-only Markierung.',
+    details: 'dimo-agent-vehicle-scope.util.ts (+ Tests). Ergebnis-Felder dimoVehicleConnected / knowledgeOnlyFallback in Vehicle Specs + Tire Stream.',
+    affectsArchitecture: true,
+    module: 'DIMO',
+    createdAt: '2026-06-30T18:00:00.000Z',
+  },
+  {
+    id: 'dimo-agent-use-case-scoping-v49112-2026-06-30',
+    version: '4.9.112',
+    title: 'V4.9.112 — DIMO AI Agent Use-Case Scoping',
+    summary: [
+      'Global Redis-Key `dimo:agents:agent_id` entfernt — Agent-IDs pro Use Case: vehicle_specs, tire_specs, document_extraction, fleet_chat.',
+      'Neue `getOrCreateAgent({ useCase, personality, vehicleIds, orgId })` + `invalidateAgentCache`; Cache-Key ohne Secrets (wallet/vehicleIds gehasht).',
+      'Keine History-Vermischung mehr zwischen Specs, Dokumenten, Chat und DTC.',
+    ],
+    reason:
+      'Ein globaler DIMO-Agent teilte Server-seitige History zwischen allen AI-Features.',
+    previousBehavior:
+      'Einzelner Redis/Memory-Cache; createAgent() überschrieb Global-Cache für alle Consumer.',
+    details:
+      'dimo-agent-use-case.types.ts, dimo-agent-cache.util.ts (+ Tests). Chat: OrganizationChatAgent (DB) + fleet_chat Redis-Scope mit orgId.',
+    affectsArchitecture: true,
+    module: 'DIMO',
+    createdAt: '2026-06-30T14:00:00.000Z',
+  },
+  {
+    id: 'tasks-page-unified-ui-v49111-2026-06-26',
+    version: '4.9.111',
+    title: 'V4.9.111 — Tasks Page: Einheitliche Mobile/Desktop Task Rows',
+    summary: [
+      'Desktop-DataTable durch gemeinsame `TaskWorkItemCard` ersetzt — Mobile und Desktop nutzen dieselbe Informationshierarchie.',
+      'KPI-Karten kompakter (11–22px), Filter/Sort auf Deutsch, zentrale Button-Optik.',
+      'Zugewiesen an / Erstellt von einheitlich; Status/Priority-Badges über `task-display.tsx` geteilt.',
+    ],
+    reason:
+      'Tasks Page wirkte auf Desktop wie ein altes Admin-Table-UI und auf Mobile wie ein anderes Produkt — Parität und operative Lesbarkeit.',
+    previousBehavior:
+      'Desktop: breite DataTable mit Spalten; Mobile: eigene Card-Logik; gemischte EN/DE-Labels in KPIs und Filtern.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T21:00:00.000Z',
+  },
+  {
+    id: 'dimo-agent-stream-parser-v49110-2026-06-30',
+    version: '4.9.110',
+    title: 'V4.9.110 — DIMO Agent SSE Stream Parser Fix',
+    summary: [
+      'Neuer reiner Parser `dimo-agent-stream-parser.util.ts` — unterstützt DIMO-Token-Chunks `{"content":"..."}`, typed `assistant_message`, `done`-Metadata und Error-Payloads.',
+      '`sendMessageStream` hängt Content auch ohne `message_type` an; leerer Stream liefert `success: false` statt falscher `"(empty stream)"`-Success-Antwort.',
+      '10 Unit-Tests für Standard-Chunks, Legacy-Typen, done/error/keepalive und invalid JSON.',
+    ],
+    reason:
+      'DIMO Agents API streamt Token-Chunks ohne message_type; der alte Parser sammelte nur assistant_message → leere fullResponse trotz gültigem Stream.',
+    previousBehavior:
+      'Nur `message_type === "assistant_message"` wurde an fullResponse angehängt; Stream-Ende mit leerem Buffer gab success + "(empty stream)".',
+    details:
+      'Betrifft Chat, Vehicle/Tire Specs, Document Extraction und DTC Research — alle nutzen DimoAgentsService.sendMessageStream. Keine Änderung an DimoAuthService oder Telemetry.',
+    affectsArchitecture: true,
+    module: 'DIMO',
+    createdAt: '2026-06-30T12:00:00.000Z',
+  },
+  {
+    id: 'requirements-tab-compact-v49109-2026-06-26',
+    version: '4.9.109',
+    title: 'V4.9.109 — Requirements Tab: Klarere Regeln & kompaktes Desktop-Layout',
+    summary: [
+      '„Kernanforderungen“ + „Effektive Anforderungen“ → ein Block „Gültige Mietvoraussetzungen“ mit Quelle pro Feld.',
+      'Desktop: Regel-Grid links (~70%), kompakte „Regelquelle“-Card rechts (Org/Kategorie/Override, Kategorie-CTA).',
+      'Workflow-Pfad kompakter (Org-Standard → Kategorie → Overrides → Gültige Regeln); Rule-Tiles kleinere Typografie.',
+    ],
+    reason:
+      'Requirements Tab wirkte auf Desktop redundant und unklar — Nutzer sollen sofort sehen, welche Regeln gelten und woher sie kommen.',
+    previousBehavior:
+      'Doppelte Darstellung (Kern- + Effektiv-Grid), große Karten, unklare Begriffe Kernanforderungen/Effektive Anforderungen.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T20:00:00.000Z',
+  },
+  {
+    id: 'documents-tab-compact-header-v49108-2026-06-26',
+    version: '4.9.108',
+    title: 'V4.9.108 — Documents Tab: Kompakter Header & KPI-Summary',
+    summary: [
+      'Desktop: Fahrzeugakte links (~62%), kompakte KPI-Übersicht rechts — statt voller Breite untereinander.',
+      'Pflichtdokument-KPI zusammengeführt (0/4 + Subtext „4 fehlen“); separate „Fehlende Pflicht“-Karte entfernt.',
+      'KPI-Typografie kompakter (11–20px); Compliance als kleine Pills; Document Cards: Badge „Pflicht“.',
+    ],
+    reason: 'Documents-Tab-Header wirkte redundant und nahm auf Desktop zu viel vertikalen Platz ein.',
+    previousBehavior:
+      'Große Display-Titel, fünf breite MetricCards inkl. doppelter Pflichtdokument-KPIs, prominenter Service-Hinweis.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T18:00:00.000Z',
+  },
+  {
+    id: 'health-tab-quick-boxes-ui-v49107-2026-06-26',
+    version: '4.9.107',
+    title: 'V4.9.107 — Health Tab Quick Boxes: Layout, Mängelliste & Tires',
+    summary: [
+      'Tacho-Warnleuchten-Panel kompakter (Padding, Kacheln, Footer) — optisch näher an Error Codes / Service Quick Cards.',
+      '„Technische Beobachtungen“ → „Mängelliste“ (Quick Box + Modal); Badge-Layout wie Error Codes (Zahl + IN ORDNUNG/OFFEN).',
+      'Tires Quick Box: Progress Bar entfernt, `SegmentedHealthIndicator` (3 Balken) wie Battery; Lifetime, Nächste Messung, Last measured im Footer.',
+    ],
+    reason: 'Health-Tab Quick Boxes visuell symmetrischer und professioneller — ohne Fachlogik zu ändern.',
+    previousBehavior:
+      'Tacho-Box höher als Peer-Cards; Beobachtungen-Box mit langem Subtext; Tires mit Progress Bar und Lowest-tread-Zeile.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T16:00:00.000Z',
+  },
+  {
+    id: 'behavior-event-dedupe-v49112-2026-06-28',
+    version: '4.9.112',
+    title: 'V4.9.112 — Trip Event Dedupe & sichtbare Counts',
+    summary: [
+      'Unified Behavior Read-Model: Incident-Dedupe nach tripId + ±2s-Bucket + normalizedEventType; native bevorzugt, höhere Severity bei Kollision.',
+      'contextAssessment-Klassifikationen werden auf einer Event-Zeile zusammengeführt — keine zusätzlichen Rows.',
+      'Trip-/Tages-Summaries und API `visibleEventCount` zählen die deduplizierte sichtbare Liste, nicht rohe KPI-Deltas.',
+      'TripEventContextBlock: mehrere Kontextklassifikationen als Chips auf einer Karte.',
+    ],
+    reason:
+      'Trip Details zeigten doppelte Zeitpunkte, widersprüchliche Schweregrade und Event-Counts (z. B. 39 vs. 85) durch fehlende Read-Model-Dedupe und KPI-Fallback.',
+    previousBehavior:
+      'HF-Dedupe nur per Kategorie-Fenster (5s); exakte timestamp+type-Keys; Summaries nutzten accel+brake+abuse KPI ohne Cornering/Dedupe.',
+    details:
+      '**Geändert**: `unified-behavior-read-model.ts` (+ Spec), `vehicle-intelligence.controller.ts` (`visibleEventCount`), Frontend `behavior-event-count.utils.ts`, `tripTimeline.ts`, `tripSummary.ts`, `tripStatus.ts`, `TripEventContextBlock.tsx`, `event-context-ui.ts`, `api.ts`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence / Trips UI',
+    createdAt: '2026-06-29T00:15:00.000Z',
+  },
+  {
+    id: 'cold-engine-misuse-tighten-v49111-2026-06-28',
+    version: '4.9.111',
+    title: 'V4.9.111 — Context Cold Engine Misuse: konservative Schwellen',
+    summary: [
+      'Kaltmotor-Missbrauch nur bei kaltem Kühlmittel (<60 °C) UND echter Last (rpm ≥2500, throttle ≥40 %, load ≥70 %).',
+      'Milde Werte (z. B. 59 °C, 1151 rpm, 15 % Gaspedal) erzeugen keinen schweren Misuse Case und keine hohe Sicherheit.',
+      'SEVERE nur bei wiederholten Events oder klar hoher Last; HIGH confidence nur bei mehreren starken Signalen.',
+    ],
+    reason:
+      'Context-derived Cold Engine Regeln waren zu aggressiv bei niedriger Last trotz kaltem Kühlmittel.',
+    previousBehavior:
+      'Kühlmittel <60 °C + HIGH_RPM ReasonCode (Fenster-Max) reichte für COLD_ENGINE_ACCELERATION und schweren Misuse.',
+    details:
+      '**Geändert**: `event-context-stats.ts` (Misuse-Schwellen + evaluateColdEngineLoad), `event-context-classifier.ts`, `context-misuse-rules.ts` + Specs.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-28T23:45:00.000Z',
+  },
+  {
+    id: 'stress-behavior-split-v49110-2026-06-28',
+    version: '4.9.110',
+    title: 'V4.9.110 — Trip UI: Fahrbelastung vs. Fahrverhalten ehrlich getrennt',
+    summary: [
+      'Fahrbelastungs-Panel: bei fehlendem Score aber native Events ehrlicher Hinweis statt „keine verwertbaren Fahrbelastungsdaten“.',
+      'Fahrverhalten-Summary: Event-Count als „erkannte native Fahrereignisse“ — nicht als Belastungs-Score.',
+      '`deriveBehaviorOverallStatus`: Stress nur bei vorhandenem Score; nicht belastbar nur ohne Events + insufficient data.',
+    ],
+    reason:
+      'UI widersprach sich, wenn Fahrbelastungs-Score fehlte, aber native DIMO-Fahrereignisse vorlagen.',
+    previousBehavior:
+      'VehicleStressPanel und Fahrverhalten nutzten dieselbe „keine Daten“-Sprache; Stress-Level konnte ohne Score Fahrverhalten beeinflussen.',
+    details:
+      '**Neu**: `trip-assessment-copy.ts` (+ Tests). **Geändert**: `VehicleStressPanel.tsx`, `TripTimelineExpanded.tsx`, `TripBehaviorSummary.tsx`, `behavior-ui.utils.ts`, `scoreFormat.ts`.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence / Trips UI',
+    createdAt: '2026-06-28T23:30:00.000Z',
+  },
+  {
+    id: 'trip-context-ui-v49109-2026-06-28',
+    version: '4.9.109',
+    title: 'V4.9.109 — Trip UI: Native Event Context sichtbar',
+    summary: [
+      'TripBehaviorEventList zeigt `contextAssessment` prominent als Kontextbewertung (Klassifikation, Sicherheit, Beweisstufe, Key Values, ReasonCodes).',
+      'Unzureichender Kontext: ehrliche Meldung + fehlende Signale — ohne Missbrauchsframing.',
+      'Legacy rpm/throttle/coolant nur noch als Fallback oder unter „Messwerte (Zeitpunkt)“.',
+    ],
+    reason:
+      'Die Backend-Kontextanalyse soll in der Trip-Detail-UI verständlich sichtbar sein, ohne eigene Detection im Frontend.',
+    previousBehavior:
+      'Kontextblock war klein/optional; Legacy-Drehzahl/Gaspedal/Kühlmittel dominierten; insufficient context oft unsichtbar.',
+    details:
+      '**Neu**: `TripEventContextBlock.tsx` (+ Tests). **Geändert**: `event-context-ui.ts`, `behavior-ui.utils.ts`, `TripBehaviorEventList.tsx`. **Unverändert**: Backend-Regeln, Misuse-Detektoren.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence / Trips UI',
+    createdAt: '2026-06-28T23:00:00.000Z',
+  },
+  {
+    id: 'unified-behavior-context-dto-v49108-2026-06-28',
+    version: '4.9.108',
+    title: 'V4.9.108 — Unified Behavior Read-Model: vollständiges contextAssessment DTO',
+    summary: [
+      'GET …/trips/:tripId/behavior-events serialisiert `contextAssessment` als strukturiertes API-DTO (status, anchor, Fenster, classifications, confidence, evidenceGrade, reasonCodes, used/missingSignals, signalCoverage, Signal-Stats, keyValues).',
+      'Legacy-Ingest (`rpm`/`throttlePct`/`coolantC`) als `legacyIngestEvidence` getrennt; bestehende Row-Felder `maxEngineRpm`/`maxThrottlePos`/`maxCoolantTemp` bleiben kompatibel.',
+      'Read-Model Dedupe: gleiche timestamp+type+source → eine Row; native bevorzugt; Kontext-Assessment ist Annotation (keine Extra-Event-Row).',
+      'Frontend `api.ts`: `TripEventContextAssessment` + `legacyIngestEvidence` an Backend-DTO angeglichen.',
+    ],
+    reason:
+      'Native Event Context Analyse soll vollständig und typisiert im Frontend ankommen, ohne UI- oder Detektor-Änderungen.',
+    previousBehavior:
+      'Controller lieferte rohe Prisma-Rows mit `contextAssessment: unknown`; Dedupe nur category+5s; keine keyValues/legacy-Trennung im API-Vertrag.',
+    details:
+      '**Neu**: `trips/unified-behavior-event.dto.ts` (+ Spec). **Geändert**: `unified-behavior-read-model.ts` (+legacyIngestEvidence, dedupeUnifiedBehaviorEvents), `vehicle-intelligence.controller.ts` (serializeUnifiedBehaviorEvent), `frontend/src/lib/api.ts`. **Unverändert**: Misuse-Regeln, Webhooks, UI-Komponenten, Enrichment-Detektoren.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-28T22:00:00.000Z',
+  },
+  {
+    id: 'runtime-service-compliance-split-v49107-2026-06-28',
+    version: '4.9.107',
+    title: 'V4.9.107 — Runtime: Service vs. Compliance final getrennt',
+    summary: [
+      'Runtime-Kategorien: service = Wartung/HM/OEM (non-blocking), compliance = TÜV/BOKraft (blocking), telemetry/health/rental unverändert getrennt.',
+      'Service overdue blockiert Ready nicht mehr; nur TÜV/BOKraft und explizite Hard-Blocker verhindern Vermietbarkeit.',
+      'Critical Drawer: service-critical Gruppe, service_overdue Dedupe (vehicleId+service+service_overdue), Header/Group/Footer Counts aus canonical rows.',
+      'Fleet Command critical count liest dieselbe canonical Critical-Alerts-Wahrheit wie der Drawer.',
+      'Fleet Display: „Ready · Action needed“ bei Service-overdue-only; Compliance-Block nur bei TÜV/BOKraft.',
+    ],
+    reason:
+      'Service overdue wurde erneut mit Compliance Critical vermischt und doppelt gezählt; Ready wurde fälschlich blockiert.',
+    previousBehavior:
+      'service-Kategorie zählte als compliance; doppelte Service-Rows; Fleet Command und Critical Drawer nutzten unterschiedliche Zähllogik.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-28T18:00:00.000Z',
+  },
+  {
+    id: 'vehicle-health-severity-coverage-v49106-2026-06-26',
+    version: '4.9.106',
+    title: 'V4.9.106 — Vehicle Detail: Health Severity vs. Data Coverage getrennt',
+    summary: [
+      'Neuer Display-Mapper trennt Health Severity (Good/Critical/Warning/No Data) von Data Coverage (Limited Data/No Tracking/Stale).',
+      'Vehicle Health Box und Page Header zeigen „Limited Data“ nur noch als sekundären Coverage-Hinweis — nicht als dominanter Health-Status bei untracked Modulen ohne aktive Meldungen.',
+      'Bei Battery+Tires Good und Brakes untracked: Header „Good“ + optional kleines „Limited Data“ (Desktop); Health Box „Good“ + Coverage-Badge.',
+    ],
+    reason:
+      '„Limited Data“ war missverständlich als Health-Problem dargestellt, obwohl es nur fehlende Modul-Abdeckung bedeutet.',
+    previousBehavior:
+      'RentalHealth `unknown`/`n_a` wurde in Overview und Page Header direkt als „Limited Data“ Health-Status angezeigt.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T14:00:00.000Z',
+  },
+  {
+    id: 'dashboard-attention-ui-v49106-2026-06-29',
+    version: '4.9.106',
+    title: 'V4.9.106 — Dashboard Attention Box: einheitliche Row-UI & Meldungen-Header',
+    summary: [
+      'Neue UI-Schicht `AttentionItemRow` + `attentionItemDisplay.ts`: einheitliche Severity/Kategorie/Titel/Kontext/Action-Struktur im Fleet-Command-Stil.',
+      'Header: „Priorisierte Meldungen“, Count `7 Meldungen`, Toggle `Alle 7 anzeigen` / `Weniger anzeigen` mit `sq-btn-secondary`.',
+      'Redundanz-freie Row-Copy, ruhiger Empty State, Collapsed Preview Top 3.',
+    ],
+    reason: 'UI-only Refactor: Attention Box wirkte optisch inkonsistent trotz deduplizierter Runtime-Daten.',
+    previousBehavior:
+      'Uneinheitliche Leaf/Child/Group-Rows, unruhige Textlink-Toggles, redundante Meta-Zeilen.',
+    details:
+      'Geändert: `AttentionItemRow.tsx`, `attentionItemDisplay.ts` (+ Test), `ActionQueue.tsx`. Keine Runtime-/Dedupe-/Backend-Änderung.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-29T23:30:00.000Z',
+  },
+  {
+    id: 'vehicle-health-box-overview-ui-v49105-2026-06-26',
+    version: '4.9.105',
+    title: 'V4.9.105 — Vehicle Health Box (Overview): Layout, Zero-State & Copy',
+    summary: [
+      'Service / TÜV / BOKraft-Kacheln direkt unter dem Health-Module-Hinweis-Badge (vor Reports & Tacho-Warnleuchten).',
+      'Critical / Warning / Error Codes zeigen bei 0 Meldungen einheitlich grünen OK-State (`sq-tone-success`).',
+      'UI-Copy: „health dimensions“ → „health modules“ im Untracked-Hinweis.',
+    ],
+    reason:
+      'Overview-Tab Vehicle Health Box soll kompakter und visuell konsistenter wirken — Compliance-Kacheln näher an Modul-Hinweis, positive Zero-States, korrekte Terminologie.',
+    previousBehavior:
+      'Service/TÜV/BOKraft standen unter den Tacho-Warnleuchten; Warning/Error Codes bei 0 teils neutral/grau; Hinweis nutzte „health dimensions“.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-26T12:00:00.000Z',
+  },
+  {
+    id: 'dashboard-attention-runtime-v49104-2026-06-29',
+    version: '4.9.104',
+    title: 'V4.9.104 — Dashboard Attention Box: Runtime-only, Dedupe & Meldungen-Count',
+    summary: [
+      'Neue Schicht `dashboardAttentionBuilder.ts`: Fleet/Operational Attention nur aus `dashboardRuntime.vehicleStates` (+ deduplizierte Booking/Notification-Ergänzungen), keine parallelen `vehicleHealthAlerts` mehr im Runtime-Pfad.',
+      'Service-Overdue-Dedupe: generische „Service überfällig“ + spezifische HM/OEM-Meldung werden zu einer Meldung zusammengeführt; Service-Compliance gruppiert mit Vehicle-Health; Finance-Items aus Operational Attention entfernt.',
+      'Attention-Header zählt deduplizierte Meldungen (`7 Meldungen` / collapsed `2 von 7 Meldungen`) statt irreführendem `items`-Label bei gruppierten Rows.',
+    ],
+    reason: 'Attention Box zeigte 7 items bei 2 sichtbaren Rows, doppelte Service-Overdue-Meldungen und Legacy-Parallelquellen.',
+    previousBehavior:
+      'Attention mischte Runtime, Health Alerts, Insights und Predictive parallel; Service erschien als Health-Hinweis + Compliance-Leaf; Header zählte atomare Items statt klarer Meldungszahl.',
+    details:
+      'Geändert: `dashboardAttentionBuilder.ts` (+ Test), `actionQueueBuilder.ts`, `ActionQueue.tsx`, `actionQueueGrouping.test.ts`, `normalizeOperationalIssues.ts`. Keine Backend-/API-/Health-Berechnungsänderung.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-29T23:00:00.000Z',
+  },
+  {
+    id: 'dashboard-drawer-row-normalize-v49103-2026-06-29',
+    version: '4.9.103',
+    title: 'V4.9.103 — Dashboard KPI Drawer: globale Row-Normalisierung & Reason-Dedupe',
+    summary: [
+      'Neue Schicht `dashboardDrawerNormalize.ts`: `mergeDrawerGroupRows`, `normalizeDashboardDrawerGroups`, nutzerrelevante `drawerHeaderHint` pro KPI-Slice.',
+      'Critical Alerts: `buildCriticalAlertsSlice` merged pro Gruppe nach `vehicleId` (eine Karte pro Fahrzeug/Gruppe); semantische Reason-Dedupe in `reasonDisplay.ts` (spezifischer Service-Overdue-Text schlägt generischen).',
+      'Drawer-Rows: kein `meta`+`reasons`-Doppelrendering; `vehicleSubtitle` ohne OperationalStatus/Station-Duplikat; Booking-Rows kompakter; technische Source-Zeile aus KPI-Drawer-Headern entfernt.',
+    ],
+    reason: 'Finaler globaler Fix für redundante Drilldown-Drawer-Rows (KS MX 2024 Service-Overdue-Doppelkarte, Ready-to-Rent-Duplikate, sichtbares `available`).',
+    previousBehavior:
+      'Critical Alerts erzeugte pro Reason eine Row; generische und spezifische Service-Overdue-Texte erschienen als zwei Karten; Kennzeichen/Station/Reason wurden mehrfach gerendert; operative Source-Zeile im Header.',
+    details:
+      'Geändert: `dashboardDrawerNormalize.ts` (+ Test), `dashboardDrilldownGroups.ts`, `DashboardDrilldownDrawer.tsx`, `dashboardDrilldownRowDisplay.test.ts`, `reasonDisplay.ts` (+ Test), `runtime/dashboardSliceBuilder.ts`. Keine Backend/API/DB-/Health-Berechnungsänderung.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-29T22:00:00.000Z',
+  },
+  {
+    id: 'dashboard-wiring-runtime-only-v49102-2026-06-29',
+    version: '4.9.102',
+    title: 'V4.9.102 — Dashboard Wiring: Runtime-only KPI/Drawer, Legacy-Builder entfernt',
+    summary: [
+      'Legacy-Dateien endgültig entfernt: `dashboardDrilldownBuilder.ts`, `runtime/dashboardRuntimeViewModelAdapters.ts` (+ Test).',
+      'Neue kanonische Slice-Zugriffsschicht `dashboardSliceAccess.ts` — Not-Ready/Ready nur aus `groups`, nie aus `secondaryRows` im UI.',
+      '`computeFleetReadiness` liest KPI-Breakdown nur noch aus `dashboardRuntime.slices`; `buildDashboardGroups` bleibt groups-only ohne secondaryRows-Append.',
+    ],
+    reason: 'Architektur-/Wiring-Cleanup: eine aktive Dashboard-Wahrheit ohne Legacy-Adapter-Drift.',
+    previousBehavior:
+      'Legacy Builder/Adapter existierten parallel; Not-Ready konnte über groups + secondaryRows doppelt gelesen werden; Fleet Readiness hatte Legacy-Fallbacks.',
+    details:
+      'Geändert: `dashboardSliceAccess.ts` (neu), `dashboardDrilldownGroups.ts`, `dashboardDrilldownRowDisplay.ts`, `controlSignalsBuilder.ts`, `useDashboardViewModel.ts`, `FleetStateBoard.tsx`, `dashboardRuntimeUI.test.ts`. Gelöscht: `dashboardDrilldownBuilder.ts`, `dashboardRuntimeViewModelAdapters.ts`, `dashboardRuntimeViewModelAdapters.test.ts`. Keine Runtime-Fachlogik-, Backend- oder API-Änderung.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-29T21:00:00.000Z',
+  },
+  {
+    id: 'dashboard-e2e-regression-audit-v49101-2026-06-29',
+    version: '4.9.101',
+    title: 'V4.9.101 — Dashboard E2E Regression Audit: Runtime-only KPI/Drawer-Vertrag',
+    summary: [
+      'Neue Regression-Suite `dashboardRegressionAudit.test.ts`: KPI-Count = Drawer-Header-Count, unique vehicleStates/Rows/Groups, Ready/Not-Ready-Trennung, Szenarien A–E, Legacy-Import-Audit.',
+      'Bestätigt: aktive UI (`ControlKpiStrip`, `DashboardDrilldownDrawer`, `useDashboardViewModel`, `BusinessPulse`, `DashboardView`) liest nur `dashboardRuntime.slices` / `businessPulseSlices`; verwaiste `dashboardDrilldownBuilder` + Runtime-Adapter-Dateien sind nicht mehr im Repo.',
+      'Fleet Command bleibt bewusst eigene Fleet-Seite über `fleet-operator-panel` (nicht Dashboard-Runtime-Drawer).',
+    ],
+    reason: 'Finaler End-to-End-Audit nach Prompt 1–3: eine aktive Dashboard-Wahrheit ohne Legacy-Drift.',
+    previousBehavior:
+      'Legacy-Builder/Adapter konnten parallel existieren; Ready-Drawer-Duplikate und Count-Drift waren möglich.',
+    details:
+      'Neu: `dashboardRegressionAudit.test.ts`. Kleine UI-Dedupe-Ergänzung in `dashboardDrilldownRowDisplay.ts`: Telemetry-Label (z. B. Offline) wird nicht zusätzlich als Primary Reason gerendert, wenn es bereits in der Location-Zeile steht.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-29T20:00:00.000Z',
+  },
+  {
+    id: 'ready-to-rent-drawer-dedup-v49100-2026-06-29',
+    version: '4.9.100',
+    title: 'V4.9.100 — Ready-to-Rent Drawer: deduplizierte Rows, Ready/Not-Ready-Sections',
+    summary: [
+      'Ready-to-Rent-Drawer zeigt nur Ready- und Not-Ready-Sections aus `slice.groups` (kein `blocked-excluded`, kein doppeltes `secondaryRows`-Rendering).',
+      'Neue UI-Schicht `dashboardDrilldownRowDisplay.ts`: Header-Hint „X bereit · Y nicht bereit“, Row-Komposition ohne sichtbares `operationalStatus` (available/reserved/…), dedupliziertes Kennzeichen/Station/Reason.',
+      '`VehicleDrawerRowCard` / `BookingDrawerRowCard` im Drawer: kompakte Fleet-Command-ähnliche Cards mit StatusChips rechts; technische Source-Zeile aus operativem Drawer-Header entfernt.',
+    ],
+    reason:
+      'Ready-to-Rent-Drilldown war redundant (doppelte Fahrzeuge, Kennzeichen, Station, Gründe; sichtbares „available“ verwirrend).',
+    previousBehavior:
+      'Drawer hing `secondaryRows` an grouped Sections; Row-Subtitle enthielt operationalStatus; Meta/Reason/Chips duplizierten dieselben Fakten.',
+    details:
+      'Geändert: `DashboardDrilldownDrawer.tsx`, `dashboardDrilldownGroups.ts`, neu `dashboardDrilldownRowDisplay.ts` (+ Tests), `dashboardRuntimeUI.test.ts`. Keine Runtime-Fachlogik-, Backend-, API- oder Health-/Booking-Berechnungsänderung.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-29T18:00:00.000Z',
+  },
+  {
+    id: 'dashboard-runtime-only-ui-v4999-2026-06-29',
+    version: '4.9.99',
+    title: 'V4.9.99 — Dashboard KPI/Drawer: Legacy-Adapter entfernt, Runtime-only UI',
+    summary: [
+      'Aktive KPI-/Drawer-UI liest ausschließlich aus `dashboardRuntime.slices` und `businessPulseSlices`; `dashboardDrilldownGroups.ts` gruppiert Drawer-Sections nur aus `slice.groups` (kein doppeltes `secondaryRows`-Append).',
+      'Gelöscht: `dashboardDrilldownBuilder.ts`, `runtime/dashboardRuntimeViewModelAdapters.ts` (+ Tests). Entfernt aus aktivem Export: Runtime-Adapter-Barrel, `FleetStateBoard`-Re-Export.',
+      '`useDashboardViewModel` ohne tote `fleetBoardFilter`/`fleetStatusTab`-Kopplung; KPI-Klicks öffnen nur noch den Runtime-Drawer. Neue Tests: `dashboardRuntimeUI.test.ts`.',
+    ],
+    reason:
+      'Prompt-2-Cleanup nach Runtime-Audit: keine zweite Dashboard-Wahrheit mehr in aktiven Renderpfaden.',
+    previousBehavior:
+      'Drawer hing `secondaryRows` zusätzlich an, wenn `groups` bereits `available-but-not-ready` enthielt; Legacy-Adapter/Builder existierten parallel zur Runtime-only-Verdrahtung.',
+    details:
+      'Geändert: `DashboardDrilldownDrawer.tsx`, `dashboardDrilldownGroups.ts`, `useDashboardViewModel.ts`, `dashboardTypes.ts`, `dataTrustBuilder.ts`, `runtime/index.ts`, `index.ts`, `dataTrustBuilder.test.ts`. Gelöscht: `dashboardDrilldownBuilder.ts`, `dashboardRuntimeViewModelAdapters.ts`, `dashboardRuntimeViewModelAdapters.test.ts`. Keine Backend-/API-/Runtime-Fachlogik-Änderung.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-29T12:00:00.000Z',
+  },
+  {
+    id: 'map-glass-controls-v4998-2026-06-28',
+    version: '4.9.98',
+    title: 'V4.9.98 — Map-Glass-Controls: lesbare Liquid-Glass-Steuerung',
+    summary: [
+      'Neue zentrale `MapGlassControls` (Alle / Auswahl / Stationen) mit horizontaler Glass-Optik.',
+      'Fleet Map nutzt die Komponente über `FleetMapControls`; Icon+Label Desktop, Icon-only Mobile mit aria-label.',
+      'Dedicated CSS-Tokens `.sq-map-glass-controls` / `.sq-map-glass-control-btn` in theme.css.',
+    ],
+    reason: 'Die drei Map-Control-Tasten oben links wirkten unklar und schlecht lesbar.',
+    previousBehavior: 'Vertikale sq-map-liquid-pill Buttons mit englischen Labels und schwacher Lesbarkeit.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-28T04:00:00.000Z',
+  },
+  {
+    id: 'fleet-hub-header-v4997-2026-06-28',
+    version: '4.9.97',
+    title: 'V4.9.97 — Fleet Hub: einheitlicher Header, kompakte Health-KPIs',
+    summary: [
+      'FleetHubView: Titel links, Tabs mittig, tab-spezifische Actions rechts (Health Refresh).',
+      'Maintenance Tab: Service-Center-Eyebrow/Titel/Subtext im Fleet-Kontext ausgeblendet (`hideHeader`).',
+      'Health Tab: kompakte `FleetHealthKpiCard` statt hero-artiger MetricCard; Refresh in Hub-Header.',
+    ],
+    reason: 'Fleet Page wirkte mit getrennten Tab-/Header-Zeilen und zu großen Health-KPIs inkonsistent zur neuen SynqDrive UI.',
+    previousBehavior: 'Tabs unter Page Title; Health Refresh separat; Maintenance mit redundantem Service-Center-Header; große MetricCards.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-28T02:00:00.000Z',
+  },
+  {
     id: 'trip-device-connection-v4996-2026-06-28',
     version: '4.9.96',
     title: 'V4.9.96 — OBD Plug/Unplug in Fahrtenliste & Trip-Evidenz',
@@ -53,6 +594,84 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-06-28T18:00:00.000Z',
+  },
+  {
+    id: 'event-context-di-v4998-2026-06-29',
+    version: '4.9.98',
+    title: 'V4.9.98 — EventContextEnrichmentService: Required DI im LTE_R1 Flow',
+    summary: [
+      '`EventContextEnrichmentService` bleibt Provider+Export in `VehicleIntelligenceModule`; Provider-Reihenfolge vor `LteR1BehaviorEnrichmentService`.',
+      '`@Optional()` auf `LteR1BehaviorEnrichmentService.eventContext` entfernt — fehlender Provider bricht DI/Build ab statt still keine Context-Analyse.',
+      'Tests: `vehicle-intelligence.module.spec.ts` (Module-Metadata + DI-Graph), LTE_R1 Spec aktualisiert.',
+    ],
+    reason:
+      'Event Context Enrichment muss im produktiven LTE_R1 Flow zuverlässig verfügbar sein; optional injection konnte Context-Analyse still überspringen.',
+    previousBehavior:
+      'Service war registriert, aber `LteR1BehaviorEnrichmentService` injizierte `EventContextEnrichmentService` als `@Optional()` — bei fehlendem Provider kein Context ohne Fehler.',
+    details:
+      '**Geändert**: `lte-r1-behavior-enrichment.service.ts`, `vehicle-intelligence.module.ts`, `event-context/index.ts`, Specs. **Unverändert**: Misuse-Regeln, Webhooks, UI, Tesla/EV Guards (`shouldRunIceEventContextEnrichment`).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-29T20:35:00.000Z',
+  },
+  {
+    id: 'rpm-webhook-vocabulary-cleanup-v49100-2026-06-29',
+    version: '4.9.100',
+    title: 'V4.9.100 — RPM Webhook Vokabular-Cleanup (kein Re-Activate)',
+    summary: [
+      '`RPM_WEBHOOK_ANCHOR` aus aktiven ContextReasonCodes entfernt; `ANCHOR_TYPES` bleibt nur `DIMO_NATIVE_BEHAVIOR_EVENT`.',
+      '`FUTURE_ONLY_CONTEXT_CLASSIFICATIONS` für REV_IN_IDLE_CONFIRMED / HIGH_RPM_UNDER_LOAD.',
+      'UI/Misuse-Kommentare ohne RPM-Kandidaten; Prisma `RpmWebhookCandidate` audit-only deprecated.',
+      'Guard-Spec `rpm-webhook-vocabulary.spec.ts`.',
+    ],
+    reason:
+      'DIMO bietet keine RPM-Webhooks — Vokabular darf zukünftige Implementierungen nicht wieder zu aktivem RPM-Webhook-Intake verleiten.',
+    previousBehavior:
+      'Historische Kommentare/Labels erwähnten RPM Webhook Candidates; `RPM_WEBHOOK_ANCHOR` noch im ReasonCode-Enum.',
+    details:
+      '**Geändert**: event-context types/classifier comments, misuse comments, MisuseCasesPanel, event-context-ui, schema.prisma comments, specs. **Behalten**: RPM als HF-Signal im native ±30s Kontext.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence / DIMO',
+    createdAt: '2026-06-29T21:00:00.000Z',
+  },
+  {
+    id: 'lte-r1-context-flow-v4999-2026-06-29',
+    version: '4.9.99',
+    title: 'V4.9.99 — LTE_R1 Native Events → Event Context Enrichment Flow',
+    summary: [
+      'Nach `createMany` werden persistierte DrivingEvent-IDs per `findMany` geladen und pro Event `enrichDrivingEventContext` aufgerufen (best-effort, außerhalb der Transaction).',
+      '`contextAssessment` enthält jetzt `classifications`, `usedSignals`, `missingSignals` neben dem vollen T±30s-Fenster und Signal-Stats.',
+      'Trip-Logs: requested/enriched/failed/skipped/no-events; EV/Tesla skip mit `NOT_APPLICABLE_POWERTRAIN`. Legacy `rpm`/`throttlePct`/`coolantC` in metadataJson bleiben erhalten.',
+    ],
+    reason:
+      'Native DIMO behavior events sollen zuverlässig mit ±30s Kontext angereichert werden, ohne Native-Persistenz zu blockieren.',
+    previousBehavior:
+      'Flow war verdrahtet, aber Logging/Assessment-Payload unvollständig; EV skip reason nicht explizit im Assessment.',
+    details:
+      '**Geändert**: `lte-r1-behavior-enrichment.service.ts`, `event-context-enrichment.service.ts`, `event-context-assessment.types.ts`, `event-context-stats.ts`, Specs. **Unverändert**: Misuse, Webhooks, UI.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-06-29T20:40:00.000Z',
+  },
+  {
+    id: 'dimo-trigger-bootstrap-opt-in-v4997-2026-06-28',
+    version: '4.9.97',
+    title: 'V4.9.97 — DIMO Trigger Bootstrap: Default Off, Manual Console Only',
+    summary: [
+      '`DimoTriggersBootstrapService` als opt-in Hook (OnModuleInit), standardmäßig deaktiviert — loggt „DIMO trigger bootstrap disabled; webhooks are managed manually in DIMO Developer Console.“',
+      'Nur bei `DIMO_TRIGGER_BOOTSTRAP_ENABLED=true` werden Webhook + Vehicle-Subscriptions über die Triggers API angestoßen (Legacy/Ops).',
+      '`DimoTriggersService.subscribeVehicle` filtert RPM/throttle/engineLoad — keine Engine-Trigger-Registrierung.',
+      'Toter `DimoTriggersService`-Inject in `vehicles.service` entfernt. `.env.example`: `DIMO_TRIGGER_BOOTSTRAP_ENABLED=false`.',
+    ],
+    reason:
+      'DIMO Webhooks (OBD plug/unplug) werden manuell in der DIMO Developer Console auf https://app.synqdrive.eu/api/v1/webhooks/dimo konfiguriert — SynqDrive darf nicht automatisch registrieren.',
+    previousBehavior:
+      'V4.9.95 entfernte Bootstrap komplett; Ops-Flag fehlte für kontrolliertes Re-Enable. subscribeVehicle konnte theoretisch Engine-Signale durchreichen.',
+    details:
+      '**Geändert**: `dimo-triggers-bootstrap.service.ts` (gated), `dimo-trigger-bootstrap.util.ts`, `dimo.config.ts`, `dimo-triggers.service.ts`, `dimo.module.ts`, `vehicles.service.ts`, `.env.example`. **Tests**: `dimo-triggers-bootstrap.service.spec.ts`, `dimo-triggers.service.spec.ts`. Webhook-Receiver unverändert.',
+    affectsArchitecture: true,
+    module: 'Platform / DIMO',
+    createdAt: '2026-06-28T23:45:00.000Z',
   },
   {
     id: 'audit-cleanup-v4995-2026-06-28',

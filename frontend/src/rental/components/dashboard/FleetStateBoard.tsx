@@ -10,6 +10,7 @@ import type {
   DashboardSliceRow,
   VehicleRuntimeState,
 } from './runtime';
+import { readyToRentNotReadyRows } from './dashboardSliceAccess';
 
 interface FleetStateBoardProps {
   dashboardRuntime: DashboardRuntimeModel;
@@ -134,9 +135,7 @@ function sectionLabel(sliceId: DashboardSliceId, de: boolean): string {
 }
 
 function availableButNotReadyRows(runtime: DashboardRuntimeModel): DashboardSliceRow[] {
-  const readySlice = runtime.slices['ready-to-rent'];
-  const groupRows = readySlice.groups?.find((group) => group.id === 'available-but-not-ready')?.rows;
-  return groupRows?.length ? groupRows : readySlice.secondaryRows ?? [];
+  return readyToRentNotReadyRows(runtime.slices['ready-to-rent']);
 }
 
 function buildSections(runtime: DashboardRuntimeModel, de: boolean): RuntimeBoardSection[] {

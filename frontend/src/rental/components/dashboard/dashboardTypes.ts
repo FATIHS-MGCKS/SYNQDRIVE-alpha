@@ -38,10 +38,7 @@ export type DataSyncStatus = 'live' | 'partial' | 'stale' | 'offline';
 export type DashboardTimeframe = 'today' | 'next24h';
 
 /**
- * @deprecated Legacy KPI target ids. The active Dashboard uses
- * `DashboardSliceId` directly (`blocked-maintenance` instead of `maintenance`).
- * Only the deprecated `runtime/dashboardRuntimeViewModelAdapters` still
- * reference this for backwards-compatible adapters.
+ * @deprecated Legacy KPI target ids. Prefer `DashboardSliceId` (`blocked-maintenance`, not `maintenance`).
  */
 export type OperationalKpiTarget =
   | 'ready-to-rent'
@@ -60,12 +57,11 @@ export interface ControlCenterStatus {
 }
 
 /**
- * @deprecated Legacy KPI view model. `ControlKpiStrip` now renders directly
- * from `dashboardRuntime.slices`. Only deprecated runtime adapters still emit
- * this shape.
+ * @deprecated Legacy KPI view model retained for trust-hint helpers only.
+ * `ControlKpiStrip` renders directly from `dashboardRuntime.slices`.
  */
 export interface ControlCenterKpi {
-  id: OperationalKpiTarget;
+  id: DashboardSliceId;
   label: string;
   displayValue: string;
   numericValue: number | null;
@@ -343,9 +339,9 @@ export interface ActionQueueGroupItem {
 export type ActionQueueEntry = ActionQueueLeafItem | ActionQueueGroupItem;
 
 /**
- * @deprecated Legacy fleet-state tab model. The active FleetStateBoard reads
+ * @deprecated Legacy fleet-state tab model. Not used by the active Dashboard.
  * `dashboardRuntime.slices`/`vehicleStates` directly. Kept only for deprecated
- * runtime adapters.
+ * fleet-board builders and tests.
  */
 export interface FleetStateTab {
   key: FleetStatusTabKey;
@@ -406,10 +402,7 @@ export interface FleetBoardItem {
 }
 
 /**
- * @deprecated Legacy fleet-board model. The active FleetStateBoard renders from
- * `dashboardRuntime` directly; this shape is produced only by deprecated
- * runtime adapters. Lanes `ready`/`maintenance`/`critical` must not be treated
- * as active Dashboard truth — use the canonical slices instead.
+ * @deprecated Legacy fleet-board model. Not used by the active Dashboard.
  */
 export interface FleetBoardModel {
   items: FleetBoardItem[];
@@ -689,14 +682,6 @@ export interface DashboardViewModel {
   monthlyKpis: MonthlyKpiSnapshot;
   fmtMonthlyEUR: (cents: number) => string;
   financeKpis: FinanceKpi[];
-
-  fleetStatusTab: FleetStatusTabKey;
-  setFleetStatusTab: (tab: FleetStatusTabKey) => void;
-  fleetBoardFilter: FleetBoardLane;
-  setFleetBoardFilter: (lane: FleetBoardLane) => void;
-
-  todayTab: TodayTabKey;
-  setTodayTab: (tab: TodayTabKey) => void;
 
   pickupItems: PickupTileItem[];
   returnItems: ReturnTileItem[];

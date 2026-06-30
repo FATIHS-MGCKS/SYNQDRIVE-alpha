@@ -3713,7 +3713,12 @@ export const api = {
     enrichTrip: (vehicleId: string, tripId: string) =>
       post<TripEnrichment>(`/vehicles/${vehicleId}/trips/${tripId}/enrich`, {}),
     tripBehaviorEvents: (vehicleId: string, tripId: string, category?: string) =>
-      get<{ status: 'ready' | 'pending'; behaviorReady: boolean; events: TripBehaviorEvent[] }>(
+      get<{
+        status: 'ready' | 'pending';
+        behaviorReady: boolean;
+        visibleEventCount?: number;
+        events: TripBehaviorEvent[];
+      }>(
         `/vehicles/${vehicleId}/trips/${tripId}/behavior-events` + (category ? `?category=${category}` : ''),
       ),
     tripDeviceConnectionEvidence: (vehicleId: string, tripId: string) =>
@@ -5141,14 +5146,24 @@ export interface TripBehaviorEvent {
    * must treat it as optional. Shape mirrors backend EventContextAssessment.
    */
   contextAssessment?: TripEventContextAssessment | null;
+  /** Point-in-time legacy ingest snapshot — not T±30s context analysis. */
+  legacyIngestEvidence?: TripEventLegacyIngestEvidence | null;
   metadataJson: any;
 }
 
-/** Per-event context assessment payload (subset surfaced to the UI). */
+export interface TripEventLegacyIngestEvidence {
+  rpm: number | null;
+  throttlePct: number | null;
+  coolantC: number | null;
+}
+
+/** Per-event context assessment payload (mirrors backend API DTO). */
 export interface TripEventContextAssessment {
   version: number;
   status: 'COMPLETED' | 'INSUFFICIENT_CONTEXT' | 'FAILED' | 'SKIPPED_NOT_APPLICABLE';
   anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT';
+  originalEventName?: string | null;
+  dimoEventName?: string | null;
   anchorEvent?: {
     category: 'ACCELERATION' | 'BRAKING' | 'CORNERING' | 'OTHER';
     extreme: boolean;
@@ -5161,8 +5176,12 @@ export interface TripEventContextAssessment {
   engineOnHint: boolean | null;
   reasonCodes: string[];
   preliminaryClassifications: string[];
+  classifications: string[];
   confidence: 'HIGH' | 'MEDIUM' | 'LOW' | 'INSUFFICIENT';
   evidenceGrade: 'A' | 'B' | 'C' | 'D';
+  usedSignals: string[];
+  missingSignals: string[];
+  signalCoverage: unknown[];
   generatedAt: string;
   error?: string | null;
   /** Per-signal context stats. Present on COMPLETED assessments. */
@@ -5171,6 +5190,8 @@ export interface TripEventContextAssessment {
   throttleContext?: TripEventContextSignalStats;
   engineLoadContext?: TripEventContextSignalStats;
   coolantContext?: TripEventContextSignalStats;
+  /** Convenience flattening of the most-used signal stats. */
+  keyValues?: TripEventContextKeyValues;
   /** Quantitative data-quality of the anchored window. */
   dataQuality?: {
     usedSignals?: string[];
@@ -5178,6 +5199,18 @@ export interface TripEventContextAssessment {
     [key: string]: unknown;
   };
   [key: string]: unknown;
+}
+
+export interface TripEventContextKeyValues {
+  preSpeed: number | null;
+  postSpeed: number | null;
+  maxSpeed: number | null;
+  maxRpm: number | null;
+  maxThrottle: number | null;
+  maxEngineLoad: number | null;
+  coolantAtEvent: number | null;
+  coolantMin: number | null;
+  coolantMax: number | null;
 }
 
 export interface TripEventContextSignalStats {

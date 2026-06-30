@@ -246,6 +246,29 @@ export function mapApiTaskToTaskListRow(
   };
 }
 
+export const TASK_STATUS_LABEL_DE: Record<TaskListStatus, string> = {
+  Open: 'Offen',
+  'In Progress': 'In Bearbeitung',
+  Waiting: 'Wartend',
+  Completed: 'Erledigt',
+  Overdue: 'Überfällig',
+};
+
+export const TASK_PRIORITY_LABEL_DE: Record<TaskListPriority, string> = {
+  Critical: 'Kritisch',
+  High: 'Hoch',
+  Medium: 'Mittel',
+  Low: 'Niedrig',
+};
+
+export function taskStatusLabelDe(status: TaskListStatus): string {
+  return TASK_STATUS_LABEL_DE[status] ?? status;
+}
+
+export function taskPriorityLabelDe(priority: TaskListPriority): string {
+  return TASK_PRIORITY_LABEL_DE[priority] ?? priority;
+}
+
 export function sortTaskListRows(
   rows: TaskListRow[],
   sortBy: 'dueDate' | 'priority' | 'status' | 'created',

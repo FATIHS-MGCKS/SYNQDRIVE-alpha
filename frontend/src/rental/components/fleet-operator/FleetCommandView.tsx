@@ -1,11 +1,13 @@
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { VehicleData } from '../../data/vehicles';
 import type { VehicleHealthResponse } from '../../../lib/api';
+import type { DashboardRuntimeModel } from '../dashboard/runtime/dashboardRuntimeTypes';
 import { FleetCommandPanel } from './FleetCommandPanel';
 import {
   buildFleetVehicleContexts,
   filterFleetBySearch,
   filterFleetByTab,
+  resolveCanonicalFleetAlertCounts,
   resolveOperatorTabForVehicle,
   type FleetCommandTab,
   type FleetVehicleContext,
@@ -39,6 +41,8 @@ export interface FleetCommandViewProps {
   /** Optional header control (e.g. station selector) next to refresh. */
   headerAction?: ReactNode;
   isDarkMode?: boolean;
+  /** Canonical runtime model — aligns Fleet Command critical count with Critical Drawer. */
+  dashboardRuntime?: DashboardRuntimeModel;
 }
 
 export function FleetCommandView({
@@ -51,6 +55,7 @@ export function FleetCommandView({
   onOpenVehicle,
   headerAction,
   isDarkMode,
+  dashboardRuntime,
 }: FleetCommandViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<FleetCommandTab>('Available');
@@ -101,6 +106,11 @@ export function FleetCommandView({
     });
   }, [hiddenSelectedVehicle]);
 
+  const canonicalAlertCounts = useMemo(
+    () => (dashboardRuntime ? resolveCanonicalFleetAlertCounts(dashboardRuntime) : undefined),
+    [dashboardRuntime],
+  );
+
   return (
     <FleetCommandPanel
       contexts={searchContexts}
@@ -118,6 +128,7 @@ export function FleetCommandView({
       onRefresh={onRefresh ?? (() => {})}
       refreshing={refreshing}
       headerAction={headerAction}
+      canonicalAlertCounts={canonicalAlertCounts}
       onRowClick={openVehicle}
       onDetailClick={(ctx, e) => {
         e.stopPropagation();

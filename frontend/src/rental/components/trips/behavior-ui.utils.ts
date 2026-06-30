@@ -1,8 +1,8 @@
 import type { TripBehaviorEvent } from '../../../lib/api';
 import { getStressLevel, resolveDrivingStressScore } from '../../lib/scoreFormat';
 import type { TripTimelineTrip } from './timeline.types';
-import { countTripEvents } from './trips-map.utils';
 import { formatTripTimeWithSeconds } from './utils/tripFormatters';
+import { shouldRenderContextBlock } from './event-context-ui';
 
 export type BehaviorSeverityLevel = 'neutral' | 'watch' | 'notable' | 'critical' | 'abuse';
 export type BehaviorOverallStatus =
@@ -111,29 +111,53 @@ export interface EventEvidenceItem {
 }
 
 /**
- * Concrete, non-fabricated evidence metrics for a behavior event.
- * Only fields that are actually present on the event are returned — never
- * placeholder or invented values. Speed is intentionally omitted here because
- * the event card already renders the start/end speed in its time row.
+ * Legacy point-in-time ingest values (rpm/throttle/coolant at event time).
+ * Not the T±30s context window — use only as fallback or under "Messwerte".
  */
-export function formatEventEvidence(event: TripBehaviorEvent): EventEvidenceItem[] {
+export function formatLegacyMeasurements(event: TripBehaviorEvent): EventEvidenceItem[] {
   const items: EventEvidenceItem[] = [];
-  if (event.maxEngineRpm != null) {
-    items.push({ label: 'Drehzahl', value: `${Math.round(event.maxEngineRpm)} rpm` });
-  }
-  if (event.maxThrottlePos != null) {
-    items.push({ label: 'Gaspedal', value: `${Math.round(event.maxThrottlePos)} %` });
-  }
+  const legacy = event.legacyIngestEvidence;
+  const rpm = legacy?.rpm ?? event.maxEngineRpm;
+  const throttle = legacy?.throttlePct ?? event.maxThrottlePos;
   const coolant =
+    legacy?.coolantC ??
     event.maxCoolantTemp ??
     (typeof event.metadataJson?.coolantC === 'number' ? event.metadataJson.coolantC : null);
+
+  if (rpm != null) {
+    items.push({ label: 'Drehzahl', value: `${Math.round(rpm)} rpm` });
+  }
+  if (throttle != null) {
+    items.push({ label: 'Gaspedal', value: `${Math.round(throttle)} %` });
+  }
   if (coolant != null) {
     items.push({ label: 'Kühlmittel', value: `${Math.round(coolant)} °C` });
   }
+  return items;
+}
+
+/**
+ * Concrete, non-fabricated evidence metrics for a behavior event.
+ * Legacy rpm/throttle/coolant are omitted when a context assessment is present —
+ * those values are shown under Kontextbewertung or secondary "Messwerte".
+ */
+export function formatEventEvidence(event: TripBehaviorEvent): EventEvidenceItem[] {
+  const items: EventEvidenceItem[] = [];
+  const hasContext = shouldRenderContextBlock(event.contextAssessment);
+
+  if (!hasContext) {
+    items.push(...formatLegacyMeasurements(event));
+  }
+
   if (event.durationMs != null && event.durationMs > 0) {
     items.push({ label: 'Dauer', value: `${Math.max(1, Math.round(event.durationMs / 1000))} s` });
   }
   return items;
+}
+
+/** Whether legacy ingest measurements exist on the event row. */
+export function hasLegacyMeasurements(event: TripBehaviorEvent): boolean {
+  return formatLegacyMeasurements(event).length > 0;
 }
 
 export function hfQualityLabel(trip: TripTimelineTrip): string {
@@ -171,13 +195,19 @@ export function deriveBehaviorOverallStatus(
   if (worst === 'critical') return 'critical';
   if (worst === 'notable' || worst === 'abuse') return 'notable';
 
-  const stress = trip.stressLevel ?? getStressLevel(resolveDrivingStressScore(trip));
+  // Fahrbelastungs-Score only informs Fahrverhalten when a score actually exists.
+  const stressScore = resolveDrivingStressScore(trip);
+  const stress =
+    stressScore != null ? (trip.stressLevel ?? getStressLevel(stressScore)) : null;
   if (stress === 'critical' || stress === 'high') return 'notable';
   if (stress === 'moderate' || worst === 'watch') return 'watch';
 
-  // No notable events. Only call it "Unauffällig" when the trip is reliably
-  // assessable; otherwise be honest that the data is not conclusive.
-  if (options && options.assessable === false) return 'not_assessable';
+  if (events.length === 0) {
+    if (options && options.assessable === false) return 'not_assessable';
+    return 'unremarkable';
+  }
+
+  // Loaded behavior events are a valid source — never "nicht belastbar".
   return 'unremarkable';
 }
 

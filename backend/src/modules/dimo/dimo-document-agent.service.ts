@@ -2,6 +2,10 @@ import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import documentExtractionConfig from '@config/document-extraction.config';
 import { DimoAgentsService } from './dimo-agents.service';
+import {
+  formatAgentScopeLog,
+  normalizeAgentVehicleIds,
+} from './dimo-agent-vehicle-scope.util';
 
 /** Minimal field descriptor (kept local so DIMO has no dep on document-extraction). */
 export interface DocAgentField {
@@ -43,8 +47,7 @@ const MAX_DOC_TEXT_CHARS = 12000;
 /**
  * Vehicle-aware document extraction layer built on top of the existing
  * {@link DimoAgentsService}. It does NOT modify any existing DIMO behaviour:
- * it reuses the public createAgent / sendMessageStream methods and keeps its own
- * small agentId cache so document jobs reuse one agent.
+ * it reuses getOrCreateAgent / sendMessageStream with a document_extraction scope.
  *
  * DIMO Agents are not a raw OCR/parse API — text is always extracted first
  * (see DocumentTextExtractorService) and only text + structured instructions are
@@ -56,7 +59,7 @@ const MAX_DOC_TEXT_CHARS = 12000;
 @Injectable()
 export class DimoDocumentAgentService {
   private readonly logger = new Logger(DimoDocumentAgentService.name);
-  private cachedAgentId: string | null = null;
+  private lastAgentId: string | null = null;
 
   constructor(
     private readonly agents: DimoAgentsService,
@@ -85,11 +88,16 @@ export class DimoDocumentAgentService {
     }
 
     const message = this.buildPrompt(input);
-    const tokenIds = dimoContextAvailable ? [input.dimoTokenId as number] : undefined;
+    const vehicleIds = normalizeAgentVehicleIds(
+      dimoContextAvailable ? [input.dimoTokenId as number] : undefined,
+    );
+    this.logger.log(
+      `[DocAgent] ${formatAgentScopeLog({ useCase: 'document_extraction' }, vehicleIds)}`,
+    );
 
     let response: string | null = null;
     try {
-      response = await this.runWithAgent(message, tokenIds);
+      response = await this.runWithAgent(message, vehicleIds);
     } catch (err) {
       return {
         success: false,
@@ -116,34 +124,50 @@ export class DimoDocumentAgentService {
       fields: parsed.fields,
       recommendedHumanReviewNotes: parsed.notes,
       dimoContextAvailable,
-      agentId: this.cachedAgentId ?? undefined,
+      agentId: this.lastAgentId ?? undefined,
     };
   }
 
   // ── agent lifecycle (reuses existing public DimoAgentsService methods) ───
 
-  private async runWithAgent(message: string, tokenIds?: number[]): Promise<string | null> {
-    let agentId = this.cachedAgentId;
-    if (!agentId) {
-      const created = await this.agents.createAgent();
-      if (!created.success || !created.agentId) {
-        throw new Error(created.error || 'Agent creation failed');
-      }
-      agentId = created.agentId;
-      this.cachedAgentId = agentId;
+  private async runWithAgent(message: string, vehicleIds?: number[]): Promise<string | null> {
+    const scope = {
+      useCase: 'document_extraction' as const,
+      vehicleIds,
+    };
+
+    const created = await this.agents.getOrCreateAgent(scope);
+    if (!created.success || !created.agentId) {
+      throw new Error(created.error || 'Agent creation failed');
     }
+    let agentId = created.agentId;
+    this.lastAgentId = agentId;
 
-    let result = await this.agents.sendMessageStream(agentId, message, tokenIds);
+    const streamContext = { useCase: 'document_extraction' as const };
+    let result = await this.agents.sendMessageStream(
+      agentId,
+      message,
+      vehicleIds,
+      undefined,
+      streamContext,
+    );
 
-    // Agent expired — recreate once and retry.
+    // Agent expired — invalidate scoped cache once and retry.
     if (!result.success && (result.statusCode === 404 || result.statusCode === 410)) {
-      this.cachedAgentId = null;
-      const created = await this.agents.createAgent();
-      if (!created.success || !created.agentId) {
-        throw new Error(created.error || 'Agent re-creation failed');
+      await this.agents.invalidateAgentCache(scope);
+      const recreated = await this.agents.getOrCreateAgent(scope);
+      if (!recreated.success || !recreated.agentId) {
+        throw new Error(recreated.error || 'Agent re-creation failed');
       }
-      this.cachedAgentId = created.agentId;
-      result = await this.agents.sendMessageStream(created.agentId, message, tokenIds);
+      agentId = recreated.agentId;
+      this.lastAgentId = agentId;
+      result = await this.agents.sendMessageStream(
+        agentId,
+        message,
+        vehicleIds,
+        undefined,
+        streamContext,
+      );
     }
 
     if (!result.success) {

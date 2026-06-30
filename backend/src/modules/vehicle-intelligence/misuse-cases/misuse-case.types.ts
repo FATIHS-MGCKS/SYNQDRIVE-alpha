@@ -79,9 +79,8 @@ export type TripEvaluationContext = {
   dimoSafetyEvents: DimoVehicleEventRecord[];
   dtcEvents: VehicleDtcEvent[];
   /**
-   * Event Context Assessments anchored inside the trip window — native behavior
-   * events and RPM webhook candidates. Optional for backward compatibility;
-   * defaults to an empty list when absent.
+   * Event Context Assessments anchored inside the trip window — native DIMO
+   * behavior events only (`DrivingEvent.metadataJson.contextAssessment`).
    */
   contextAnchors?: ContextAnchor[];
 };

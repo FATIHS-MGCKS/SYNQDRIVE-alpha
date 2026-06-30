@@ -3,6 +3,7 @@ import { ConfigType } from '@nestjs/config';
 import axios from 'axios';
 import { DimoAuthService } from './dimo-auth.service';
 import dimoConfig from '@config/dimo.config';
+import { isBlockedEngineWebhookSignal } from './dimo-webhook-payload.util';
 
 /**
  * DIMO Vehicle Triggers API client (ops/helpers only).
@@ -78,14 +79,30 @@ export class DimoTriggersService {
   }
 
   async subscribeVehicle(webhookId: string, tokenId: number, signals: string[]): Promise<any> {
+    const allowedSignals = signals.filter((s) => !isBlockedEngineWebhookSignal(s));
+    if (allowedSignals.length === 0) {
+      this.logger.warn(
+        `Subscribe vehicle skipped for tokenId=${tokenId}: no allowed signals (RPM/engine blocked)`,
+      );
+      return null;
+    }
+    if (allowedSignals.length < signals.length) {
+      const blocked = signals.filter((s) => isBlockedEngineWebhookSignal(s));
+      this.logger.warn(
+        `Filtered blocked engine/RPM signals for tokenId=${tokenId}: ${blocked.join(', ')}`,
+      );
+    }
+
     try {
       const jwt = await this.auth.getDeveloperJwt();
       const res = await axios.post(
         `${this.triggersApiUrl}/v1/webhooks/${webhookId}/vehicles/${tokenId}`,
-        { signals },
+        { signals: allowedSignals },
         { headers: { Authorization: `Bearer ${jwt}` } },
       );
-      this.logger.log(`Subscribed vehicle ${tokenId} to webhook ${webhookId} for signals: ${signals.join(', ')}`);
+      this.logger.log(
+        `Subscribed vehicle ${tokenId} to webhook ${webhookId} for signals: ${allowedSignals.join(', ')}`,
+      );
       return res.data;
     } catch (err: any) {
       this.logger.warn(`Subscribe vehicle failed for tokenId=${tokenId}: ${err.message}`);

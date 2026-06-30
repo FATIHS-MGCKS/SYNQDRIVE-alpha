@@ -45,13 +45,19 @@ export class DimoAgentsController {
       const hasData = result.specs && Object.values(result.specs).some(v => v !== null);
       return {
         success: true,
-        degraded: !hasData,
+        degraded: !hasData || result.knowledgeOnlyFallback,
         configFailure: false,
         agentId: result.agentId,
         specs: result.specs ?? {},
         rawResponse: result.rawResponse,
         steps: result.steps,
-        message: hasData ? undefined : 'Agent responded but no structured specs were extracted',
+        dimoVehicleConnected: result.dimoVehicleConnected,
+        knowledgeOnlyFallback: result.knowledgeOnlyFallback,
+        message: result.knowledgeOnlyFallback
+          ? 'No DIMO tokenId — specs from knowledge-only fallback (not live telemetry)'
+          : hasData
+            ? undefined
+            : 'Agent responded but no structured specs were extracted',
       };
     }
 

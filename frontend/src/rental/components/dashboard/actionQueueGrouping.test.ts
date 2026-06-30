@@ -239,13 +239,18 @@ describe('actionQueueBuilder — structured vehicle health', () => {
 });
 
 describe('groupActionQueueEntries', () => {
-  it('groups vehicle-health modules but keeps service overdue as its own semantic action', () => {
+  it('groups vehicle-health modules including service compliance into one vehicle card', () => {
     const entries = groupActionQueueEntries(buildHealthOnly(), 'en');
-    expect(entries).toHaveLength(2);
+    expect(entries).toHaveLength(1);
     const vehicleGroup = entries.find(
       (entry): entry is ActionQueueGroupItem => entry.kind === 'group' && entry.groupKey === 'vehicle-health:v1',
     );
-    expect(vehicleGroup?.children).toHaveLength(2);
+    expect(vehicleGroup?.children).toHaveLength(3);
+    expect(vehicleGroup?.children.map((child) => child.module)).toEqual([
+      'battery',
+      'service_compliance',
+      'tires',
+    ]);
     expect(vehicleGroup?.title).toBe('KS MX 2024 · Mercedes-Benz C 63 AMG 2016');
   });
 
@@ -262,10 +267,12 @@ describe('groupActionQueueEntries', () => {
     )!;
     expect(group.children.map((c) => c.module)).toEqual([
       'battery',
+      'service_compliance',
       'tires',
     ]);
     expect(group.children.map((c) => c.severity)).toEqual([
       'critical',
+      'overdue',
       'attention',
     ]);
   });
@@ -284,13 +291,13 @@ describe('filterActionQueueEntries', () => {
   it('keeps a group in the critical filter when a child is critical or overdue', () => {
     const entries = groupActionQueueEntries(buildHealthOnly(), 'en');
     const critical = filterActionQueueEntries(entries, 'critical');
-    expect(critical).toHaveLength(2);
-    expect(critical[0].kind).toBe('group');
+    expect(critical).toHaveLength(1);
+    expect(critical[0]?.kind).toBe('group');
   });
 
   it('keeps health groups under the vehicle filter', () => {
     const entries = groupActionQueueEntries(buildHealthOnly(), 'en');
-    expect(filterActionQueueEntries(entries, 'vehicle')).toHaveLength(2);
+    expect(filterActionQueueEntries(entries, 'vehicle')).toHaveLength(1);
     expect(filterActionQueueEntries(entries, 'financial')).toHaveLength(0);
   });
 });
@@ -298,7 +305,7 @@ describe('filterActionQueueEntries', () => {
 describe('countAtomicActions', () => {
   it('counts children/atomic actions, not visible groups', () => {
     const entries = groupActionQueueEntries(buildHealthOnly(), 'en');
-    expect(entries).toHaveLength(2);
+    expect(entries).toHaveLength(1);
     expect(countAtomicActions(entries)).toBe(3);
   });
 
@@ -431,6 +438,16 @@ describe('actionQueueBuilder — OperationalIssue normalization', () => {
           message: 'Rückgabe überfällig',
           entityIds: ['b1'],
         }),
+      ],
+    });
+    expect(items).toHaveLength(1);
+    expect(items.some((item) => item.category === 'handover' && item.bookingId === 'b1')).toBe(true);
+  });
+
+  it('does not surface finance insights in operational attention', () => {
+    const items = buildQueue({
+      dashboardRuntime: runtimeModel([runtimeState()]),
+      insights: [
         insight({
           id: 'finance-low-util',
           type: 'LOW_UTILIZATION',
@@ -441,9 +458,7 @@ describe('actionQueueBuilder — OperationalIssue normalization', () => {
         }),
       ],
     });
-    expect(items).toHaveLength(2);
-    expect(items.some((item) => item.category === 'handover' && item.bookingId === 'b1')).toBe(true);
-    expect(items.some((item) => item.category === 'financial')).toBe(true);
+    expect(items.some((item) => item.category === 'financial')).toBe(false);
   });
 
   it('tab filtering reuses the same item instead of duplicating it', () => {

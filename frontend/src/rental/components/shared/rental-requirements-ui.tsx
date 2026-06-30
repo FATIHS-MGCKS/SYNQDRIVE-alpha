@@ -240,12 +240,12 @@ export function RuleValueTile({
     ? 'text-[12px] font-medium text-muted-foreground'
     : density === 'mini'
       ? isNumeric
-        ? 'text-[14px] font-semibold leading-[1.2] tabular-nums text-foreground sm:text-[15px]'
-        : 'text-[13px] font-semibold leading-[1.25] text-foreground sm:text-[14px]'
+        ? 'text-[18px] font-semibold leading-[1.15] tabular-nums text-foreground'
+        : 'text-[14px] font-semibold leading-[1.2] text-foreground'
       : density === 'compact'
         ? isNumeric
-          ? 'text-[16px] font-semibold leading-[1.2] tabular-nums text-foreground sm:text-[17px] lg:text-[18px]'
-          : 'text-[15px] font-semibold leading-[1.25] text-foreground sm:text-[16px] lg:text-[18px]'
+          ? 'text-[18px] font-semibold leading-[1.15] tabular-nums text-foreground sm:text-[20px]'
+          : 'text-[15px] font-semibold leading-[1.25] text-foreground sm:text-[16px]'
         : 'text-[17px] font-semibold tabular-nums tracking-tight text-foreground';
 
   return (
@@ -259,7 +259,10 @@ export function RuleValueTile({
       </p>
       <p className={`mt-1 ${valueClass}`}>{displayValue}</p>
       {(source || sourceName) && (
-        <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground">{sourceLabel}</p>
+        <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
+          {locale === 'de' ? 'Quelle' : 'Source'}:{' '}
+          <span className="font-medium text-foreground/80">{sourceLabel}</span>
+        </p>
       )}
     </div>
   );
@@ -319,26 +322,36 @@ export function RuleInheritanceSteps({
   activeStep,
   rulesActive,
   locale = 'de',
+  compact = false,
 }: {
   steps: readonly { key: string; label: string; labelDe: string }[];
   activeStep: string;
   rulesActive?: boolean;
   locale?: 'en' | 'de';
+  compact?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-muted/10 px-3 py-2.5 sm:px-4 sm:py-3">
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {locale === 'de' ? 'Regelherkunft' : 'Rule inheritance'}
-      </p>
-      <div className="flex flex-wrap items-center gap-1.5">
+    <div
+      className={`rounded-xl border border-border/60 bg-muted/10 ${
+        compact ? 'px-2.5 py-2' : 'px-3 py-2.5 sm:px-4 sm:py-3'
+      }`}
+    >
+      {!compact && (
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {locale === 'de' ? 'Regelherkunft' : 'Rule inheritance'}
+        </p>
+      )}
+      <div className="flex flex-wrap items-center gap-1">
         {steps.map((step, index) => {
           const isActive =
             step.key === activeStep || (step.key === 'effective' && rulesActive);
           const label = locale === 'de' ? step.labelDe : step.label;
           return (
-            <div key={step.key} className="flex items-center gap-1.5">
+            <div key={step.key} className="flex items-center gap-1">
               <span
-                className={`rounded-md border px-2 py-1 text-[10px] font-semibold sm:text-[11px] ${
+                className={`rounded-md border px-1.5 py-0.5 font-semibold ${
+                  compact ? 'text-[9px] sm:text-[10px]' : 'text-[10px] sm:text-[11px]'
+                } ${
                   isActive
                     ? 'border-[color:var(--brand)]/30 bg-[color:var(--brand)]/8 text-foreground'
                     : 'border-border/60 bg-background/50 text-muted-foreground'
@@ -347,7 +360,7 @@ export function RuleInheritanceSteps({
                 {label}
               </span>
               {index < steps.length - 1 && (
-                <span className="text-[10px] text-muted-foreground/70" aria-hidden>
+                <span className="text-[9px] text-muted-foreground/60" aria-hidden>
                   →
                 </span>
               )}
@@ -356,6 +369,100 @@ export function RuleInheritanceSteps({
         })}
       </div>
     </div>
+  );
+}
+
+export function RuleSourcePanel({
+  effectiveSourceSummary,
+  categoryName,
+  missingCategory,
+  hasOverrides,
+  orgConfigured,
+  incompleteRules,
+  canWrite,
+  onAssignCategory,
+  onOpenRentalRules,
+  locale = 'de',
+}: {
+  effectiveSourceSummary?: string | null;
+  categoryName?: string | null;
+  missingCategory: boolean;
+  hasOverrides: boolean;
+  orgConfigured: boolean;
+  incompleteRules: boolean;
+  canWrite: boolean;
+  onAssignCategory?: () => void;
+  onOpenRentalRules?: () => void;
+  locale?: 'en' | 'de';
+}) {
+  const de = locale === 'de';
+
+  return (
+    <aside className="sq-card-elevated flex flex-col rounded-xl border border-border/70 bg-card/60 p-3 sm:p-3.5">
+      <p className="sq-section-label">{de ? 'Regelquelle' : 'Rule source'}</p>
+      <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+        {de
+          ? 'Woher die gültigen Regeln für dieses Fahrzeug stammen.'
+          : 'Where the active rules for this vehicle come from.'}
+      </p>
+
+      <ul className="mt-2.5 space-y-1.5">
+        <li className="flex items-start justify-between gap-2 text-[11px]">
+          <span className="text-muted-foreground">{de ? 'Organisationsstandard' : 'Organization'}</span>
+          <span className="font-semibold text-foreground text-right">
+            {orgConfigured ? (de ? 'Aktiv' : 'Active') : de ? 'Nicht konfiguriert' : 'Not configured'}
+          </span>
+        </li>
+        <li className="flex items-start justify-between gap-2 text-[11px]">
+          <span className="text-muted-foreground">{de ? 'Kategorie' : 'Category'}</span>
+          <span className="font-semibold text-foreground text-right">
+            {categoryName ?? (de ? 'Nicht zugewiesen' : 'Not assigned')}
+          </span>
+        </li>
+        <li className="flex items-start justify-between gap-2 text-[11px]">
+          <span className="text-muted-foreground">{de ? 'Fahrzeug-Override' : 'Vehicle override'}</span>
+          <span className="font-semibold text-foreground text-right">
+            {hasOverrides ? (de ? 'Vorhanden' : 'Present') : de ? 'Keine' : 'None'}
+          </span>
+        </li>
+      </ul>
+
+      {effectiveSourceSummary ? (
+        <p className="mt-2 text-[10px] leading-snug text-muted-foreground/90 line-clamp-3">
+          {effectiveSourceSummary}
+        </p>
+      ) : null}
+
+      {missingCategory && orgConfigured ? (
+        <div className="mt-2.5 rounded-lg border border-border/60 bg-muted/15 px-2.5 py-2">
+          <p className="text-[11px] font-semibold text-foreground">
+            {de ? 'Keine Fahrzeugkategorie zugewiesen' : 'No vehicle category assigned'}
+          </p>
+          <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
+            {de ? 'Es gelten die Organisationsregeln.' : 'Organization defaults apply.'}
+          </p>
+          {canWrite && onAssignCategory ? (
+            <button
+              type="button"
+              className="sq-btn sq-btn-secondary mt-2 min-h-8 w-full text-[11px] sm:w-auto"
+              onClick={onAssignCategory}
+            >
+              {de ? 'Kategorie zuweisen' : 'Assign category'}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {incompleteRules && onOpenRentalRules ? (
+        <button
+          type="button"
+          className="sq-btn sq-btn-primary mt-2.5 min-h-8 w-full text-[11px] sm:w-auto"
+          onClick={onOpenRentalRules}
+        >
+          {de ? 'Mietregeln öffnen' : 'Open rental rules'}
+        </button>
+      ) : null}
+    </aside>
   );
 }
 

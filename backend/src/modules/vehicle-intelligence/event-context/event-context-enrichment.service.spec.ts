@@ -140,11 +140,64 @@ describe('EventContextEnrichmentService', () => {
     expect(segments.fetchHighFrequency).not.toHaveBeenCalled();
     expect(assessment.status).toBe('SKIPPED_NOT_APPLICABLE');
     expect(assessment.engineSignalsApplicable).toBe(false);
+    expect(assessment.reasonCodes).toContain('NOT_APPLICABLE_POWERTRAIN');
+    expect(assessment.classifications).toEqual([]);
     // Native event row is still updated only with the (skipped) assessment.
     expect(prisma.drivingEvent.update).toHaveBeenCalledTimes(1);
   });
 
-  it('is idempotent: re-persisting merges and preserves existing metadata keys', async () => {
+  it('persists a complete contextAssessment for harshAcceleration native events', async () => {
+    const { service, prisma } = makeService({
+      hf: denseReadings(),
+      event: {
+        id: 'ev-harsh-accel',
+        recordedAt: ANCHOR,
+        eventType: 'HARSH_ACCELERATION',
+        metadataJson: {
+          classification: 'HARD',
+          dimoEventName: 'behavior.harshAcceleration',
+          rpm: 1800,
+          throttlePct: 45,
+          coolantC: 72,
+        },
+        vehicle: {
+          hardwareType: 'LTE_R1',
+          fuelType: 'GASOLINE',
+          dimoVehicle: { tokenId: 4242 },
+        },
+      },
+    });
+
+    const assessment = await service.enrichDrivingEventContext('ev-harsh-accel');
+    const updateArg = prisma.drivingEvent.update.mock.calls[0][0];
+    const ctx = updateArg.data.metadataJson.contextAssessment;
+
+    expect(assessment.status).toBe('COMPLETED');
+    expect(ctx.status).toBe('COMPLETED');
+    expect(ctx.anchorType).toBe('DIMO_NATIVE_BEHAVIOR_EVENT');
+    expect(ctx.anchorTimestamp).toBe(ANCHOR.toISOString());
+    expect(ctx.windowStart).toBe('2026-06-26T11:59:30.000Z');
+    expect(ctx.windowEnd).toBe('2026-06-26T12:00:30.000Z');
+    expect(ctx.signalCoverage).toBeDefined();
+    expect(ctx.speedContext).toBeDefined();
+    expect(ctx.rpmContext).toBeDefined();
+    expect(ctx.throttleContext).toBeDefined();
+    expect(ctx.engineLoadContext).toBeDefined();
+    expect(ctx.coolantContext).toBeDefined();
+    expect(ctx.classifications).toEqual(assessment.preliminaryClassifications);
+    expect(ctx.confidence).toBeDefined();
+    expect(ctx.evidenceGrade).toBeDefined();
+    expect(Array.isArray(ctx.reasonCodes)).toBe(true);
+    expect(Array.isArray(ctx.usedSignals)).toBe(true);
+    expect(Array.isArray(ctx.missingSignals)).toBe(true);
+    // Legacy compact metadata preserved alongside contextAssessment.
+    expect(updateArg.data.metadataJson.dimoEventName).toBe('behavior.harshAcceleration');
+    expect(updateArg.data.metadataJson.rpm).toBe(1800);
+    expect(updateArg.data.metadataJson.throttlePct).toBe(45);
+    expect(updateArg.data.metadataJson.coolantC).toBe(72);
+  });
+
+  it('re-run replaces contextAssessment without duplicating classifications', async () => {
     const { service, prisma } = makeService({
       existingMetadata: { dimoEventName: 'behavior.harshAcceleration', classification: 'HARD' },
     });
@@ -173,22 +226,29 @@ describe('EventContextEnrichmentService', () => {
       engineLoadContext: {} as any,
       coolantContext: {} as any,
       reasonCodes: [],
-      preliminaryClassifications: [],
+      preliminaryClassifications: ['AGGRESSIVE_START'] as const,
+      classifications: ['AGGRESSIVE_START'] as const,
       confidence: 'LOW' as const,
       evidenceGrade: 'C' as const,
+      usedSignals: ['speed'] as const,
+      missingSignals: [] as const,
       generatedAt: ANCHOR.toISOString(),
       error: null,
-    };
+    } as import('./event-context-assessment.types').EventContextAssessment;
 
     await service.persistContextAssessment('ev-1', assessment);
-    await service.persistContextAssessment('ev-1', assessment);
+    await service.persistContextAssessment('ev-1', {
+      ...assessment,
+      preliminaryClassifications: ['AGGRESSIVE_START'],
+      classifications: ['AGGRESSIVE_START'],
+    });
 
     expect(prisma.drivingEvent.update).toHaveBeenCalledTimes(2);
     const lastUpdate = prisma.drivingEvent.update.mock.calls[1][0];
-    // Existing native-event metadata is preserved alongside the assessment.
     expect(lastUpdate.data.metadataJson.dimoEventName).toBe('behavior.harshAcceleration');
     expect(lastUpdate.data.metadataJson.classification).toBe('HARD');
-    expect(lastUpdate.data.metadataJson.contextAssessment).toBeDefined();
+    expect(lastUpdate.data.metadataJson.contextAssessment.classifications).toEqual(['AGGRESSIVE_START']);
+    expect(lastUpdate.data.metadataJson.contextAssessment.classifications).toHaveLength(1);
   });
 
   it('derives the anchor event category from the native eventType', async () => {

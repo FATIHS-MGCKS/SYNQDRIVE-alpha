@@ -668,7 +668,9 @@ enum DrivingEventSource {
   HF_DERIVED
 }
 
-// ── DEPRECATED: RPM webhook candidate intake (removed — DIMO does not expose RPM triggers) ──
+// ── DEPRECATED: RPM webhook candidate intake (V4.9.92 removed — no reads/writes) ──
+// DIMO Developer Console does not expose RPM/throttle/engine-load webhooks.
+// Table `rpm_webhook_candidates` retained for audit history only.
 enum TelemetryTriggerType {
   RPM_THRESHOLD
 }
@@ -4021,10 +4023,9 @@ model DrivingEvent {
 }
 
 // ------------------------------------------------
-// DEPRECATED — RPM WEBHOOK CANDIDATE (table retained, intake removed)
+// DEPRECATED — RPM WEBHOOK CANDIDATE (audit-only, intake removed V4.9.92)
 // ------------------------------------------------
-// DIMO Developer Console does not expose RPM/throttle/engine-load webhooks.
-// Table kept for audit/history; new writes disabled. Use DimoDeviceConnectionEvent.
+// No application code reads or writes this model. Use DimoDeviceConnectionEvent.
 model RpmWebhookCandidate {
   id             String                    @id @default(uuid())
   organizationId String                    @map("organization_id")
@@ -5047,6 +5048,7 @@ enum MisuseEvidenceSourceType {
   VEHICLE_LATEST_STATE
   DERIVED_PATTERN
   EVENT_CONTEXT_ASSESSMENT
+  /// @deprecated Historical rows only — RPM webhook intake removed (V4.9.92). No new writes.
   RPM_WEBHOOK_CANDIDATE
 }
 

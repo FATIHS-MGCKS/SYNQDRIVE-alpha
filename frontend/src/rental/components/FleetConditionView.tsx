@@ -13,7 +13,6 @@ import { Icon } from './ui/Icon';
 import { useState, useEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import {
   PageHeader,
-  MetricCard,
   StatusChip,
   EmptyState,
   ErrorState,
@@ -22,6 +21,7 @@ import {
 } from '../../components/patterns';
 import type { StatusTone } from '../../components/patterns';
 import { cn } from '../../components/ui/utils';
+import { FleetHealthKpiCard } from './fleet/FleetHealthKpiCard';
 
 import { getShortModel } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
@@ -66,6 +66,8 @@ export type ConditionCategory =
 interface FleetConditionViewProps {
   onDrillDown?: (vehicleId: string, category: ConditionCategory) => void;
   embedded?: boolean;
+  /** When embedded in FleetHub, header refresh is owned by the hub. */
+  hideHeaderActions?: boolean;
   onOpenServiceCenter?: () => void;
   onOpenExistingTask?: (taskId: string) => void;
 }
@@ -144,6 +146,7 @@ function toneClass(tone: Tone): string {
 
 export function FleetConditionView({
   embedded = false,
+  hideHeaderActions = false,
   onOpenServiceCenter,
   onOpenExistingTask,
 }: FleetConditionViewProps) {
@@ -411,7 +414,7 @@ export function FleetConditionView({
         />
       )}
 
-      {embedded && (
+      {embedded && !hideHeaderActions && (
         <div className="flex items-center justify-end gap-2">{headerActions}</div>
       )}
 
@@ -434,21 +437,16 @@ export function FleetConditionView({
             const active = statusFilter === card.filter && card.filter !== 'all';
             const CardIcon = card.icon;
             return (
-              <MetricCard
+              <FleetHealthKpiCard
                 key={card.key}
                 label={card.label}
                 value={card.value}
                 hint={card.hint}
-                icon={<CardIcon className="w-4 h-4" />}
-                status={card.tone}
+                tone={card.tone}
+                icon={CardIcon}
+                active={active}
+                emphasize={card.emphasize}
                 onClick={() => applyStatusFilter(card.filter)}
-                className={
-                  active
-                    ? 'ring-2 ring-[color:var(--brand)]'
-                    : card.emphasize && card.value > 0
-                      ? 'ring-1 ring-[color:color-mix(in_srgb,var(--status-critical)_25%,transparent)]'
-                      : ''
-                }
               />
             );
           })}

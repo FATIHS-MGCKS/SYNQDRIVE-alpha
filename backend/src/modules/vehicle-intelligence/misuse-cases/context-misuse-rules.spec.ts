@@ -89,8 +89,11 @@ function mkAssessment(
     coolantContext: signal('coolant', overrides.coolant),
     reasonCodes: overrides.reasonCodes ?? ['NATIVE_EVENT_ANCHOR', 'HIGH_RPM'],
     preliminaryClassifications: overrides.classifications ?? [],
+    classifications: overrides.classifications ?? [],
     confidence: overrides.confidence ?? 'MEDIUM',
     evidenceGrade: overrides.evidenceGrade ?? 'B',
+    usedSignals: ['speed', 'rpm'],
+    missingSignals: [],
     generatedAt: '2026-06-01T10:12:00.000Z',
     error: null,
   };
@@ -218,5 +221,119 @@ describe('evaluateContextAnchors', () => {
     const oh = cases.find((c) => c.type === MisuseCaseType.OVERHEATING_DAMAGE_RISK);
     expect(oh).toBeDefined();
     expect(oh?.category).toBe('TECHNICAL_RISK');
+  });
+
+  it('mild cold context (59 °C, 1151 rpm, 15 % throttle) => kein ColdEngineAbuse', () => {
+    const a = anchor(
+      'DRIVING_EVENT',
+      'de-mild',
+      mkAssessment({
+        classifications: ['COLD_ENGINE_ACCELERATION'],
+        reasonCodes: ['NATIVE_EVENT_ANCHOR', 'COLD_ENGINE'],
+        coolant: { nearestValueToAnchor: 59, min: 55, max: 60 },
+        rpm: { nearestValueToAnchor: 1151, max: 1151 },
+        throttle: { nearestValueToAnchor: 15, max: 15 },
+        engineLoad: { nearestValueToAnchor: 20, max: 25 },
+        confidence: 'HIGH',
+        evidenceGrade: 'A',
+      }),
+    );
+    expect(evaluateContextAnchors([a]).find((c) => c.type === MisuseCaseType.COLD_ENGINE_ABUSE)).toBeUndefined();
+  });
+
+  it('cold coolant 45 °C + rpm 4200 => ColdEngineAbuse', () => {
+    const a = anchor(
+      'DRIVING_EVENT',
+      'de-rpm',
+      mkAssessment({
+        classifications: ['COLD_ENGINE_HIGH_RPM'],
+        reasonCodes: ['NATIVE_EVENT_ANCHOR', 'COLD_ENGINE', 'HIGH_RPM'],
+        coolant: { nearestValueToAnchor: 45, min: 42, max: 48 },
+        rpm: { nearestValueToAnchor: 4200, max: 4200 },
+        throttle: { nearestValueToAnchor: 30, max: 35 },
+        confidence: 'MEDIUM',
+        evidenceGrade: 'B',
+      }),
+    );
+    const cold = evaluateContextAnchors([a]).find((c) => c.type === MisuseCaseType.COLD_ENGINE_ABUSE);
+    expect(cold).toBeDefined();
+    expect(cold?.severity).toBe('SEVERE');
+  });
+
+  it('cold coolant 45 °C + throttle 90 % => ColdEngineAbuse', () => {
+    const a = anchor(
+      'DRIVING_EVENT',
+      'de-throttle',
+      mkAssessment({
+        classifications: ['COLD_ENGINE_KICKDOWN'],
+        reasonCodes: ['NATIVE_EVENT_ANCHOR', 'COLD_ENGINE', 'HIGH_THROTTLE'],
+        coolant: { nearestValueToAnchor: 45, min: 42, max: 48 },
+        rpm: { nearestValueToAnchor: 2000, max: 2200 },
+        throttle: { nearestValueToAnchor: 90, max: 95 },
+        confidence: 'MEDIUM',
+        evidenceGrade: 'B',
+      }),
+    );
+    expect(
+      evaluateContextAnchors([a]).find((c) => c.type === MisuseCaseType.COLD_ENGINE_ABUSE),
+    ).toBeDefined();
+  });
+
+  it('cold coolant 45 °C + engineLoad 85 % => ColdEngineAbuse', () => {
+    const a = anchor(
+      'DRIVING_EVENT',
+      'de-load',
+      mkAssessment({
+        classifications: ['COLD_ENGINE_ACCELERATION'],
+        reasonCodes: ['NATIVE_EVENT_ANCHOR', 'COLD_ENGINE', 'HIGH_ENGINE_LOAD'],
+        coolant: { nearestValueToAnchor: 45, min: 42, max: 48 },
+        rpm: { nearestValueToAnchor: 1800, max: 2000 },
+        engineLoad: { nearestValueToAnchor: 85, max: 88 },
+        confidence: 'MEDIUM',
+        evidenceGrade: 'B',
+      }),
+    );
+    expect(
+      evaluateContextAnchors([a]).find((c) => c.type === MisuseCaseType.COLD_ENGINE_ABUSE),
+    ).toBeDefined();
+  });
+
+  it('repeated cold high-load events => severe ColdEngineAbuse', () => {
+    const mk = (id: string) =>
+      anchor(
+        'DRIVING_EVENT',
+        id,
+        mkAssessment({
+          classifications: ['COLD_ENGINE_ACCELERATION'],
+          reasonCodes: ['NATIVE_EVENT_ANCHOR', 'COLD_ENGINE', 'HIGH_RPM'],
+          coolant: { nearestValueToAnchor: 48, min: 45, max: 52 },
+          rpm: { nearestValueToAnchor: 2800, max: 3000 },
+          throttle: { nearestValueToAnchor: 55, max: 60 },
+          confidence: 'MEDIUM',
+          evidenceGrade: 'B',
+        }),
+        new Date(`2026-06-01T10:${id === 'a' ? '10' : '20'}:00Z`),
+      );
+    const cold = evaluateContextAnchors([mk('a'), mk('b')]).find(
+      (c) => c.type === MisuseCaseType.COLD_ENGINE_ABUSE,
+    );
+    expect(cold?.severity).toBe('SEVERE');
+    expect(cold?.confidence).toBe('HIGH');
+  });
+
+  it('single cold high-load with only LOW confidence => kein ColdEngineAbuse', () => {
+    const a = anchor(
+      'DRIVING_EVENT',
+      'de-low-conf',
+      mkAssessment({
+        classifications: ['COLD_ENGINE_ACCELERATION'],
+        reasonCodes: ['NATIVE_EVENT_ANCHOR', 'COLD_ENGINE', 'HIGH_RPM'],
+        coolant: { nearestValueToAnchor: 45, min: 42, max: 48 },
+        rpm: { nearestValueToAnchor: 4200, max: 4200 },
+        confidence: 'LOW',
+        evidenceGrade: 'B',
+      }),
+    );
+    expect(evaluateContextAnchors([a]).find((c) => c.type === MisuseCaseType.COLD_ENGINE_ABUSE)).toBeUndefined();
   });
 });

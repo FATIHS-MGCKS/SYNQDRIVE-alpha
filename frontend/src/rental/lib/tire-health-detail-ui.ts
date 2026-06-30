@@ -1,4 +1,4 @@
-import type { TireDisplayMode, TireWheelEstimate } from '../../lib/api';
+import type { TireDisplayMode, TireHealthSummaryResponse, TireWheelEstimate } from '../../lib/api';
 
 export const TIRE_FORECAST_QUALITY_SUBTEXT =
   'Forecast based on tread baseline, mileage, usage profile and driving behavior.';
@@ -83,6 +83,18 @@ export function resolveWheelByPosition(
     highwayKm: 0,
     ruralKm: 0,
   };
+}
+
+/** Quick-card label for next manual measurement — uses only existing summary fields. */
+export function formatTireQuickNextMeasurementLabel(
+  summary: Pick<TireHealthSummaryResponse, 'actionState' | 'recommendations'> | null | undefined,
+): string {
+  if (!summary) return '—';
+  if (summary.actionState === 'CHECK_SOON') return 'empfohlen';
+  const rec = summary.recommendations?.find((r) => /re-measure|measurement|messung/i.test(r));
+  if (!rec) return '—';
+  if (/overdue/i.test(rec)) return 'überfällig';
+  return 'empfohlen';
 }
 
 export function treadMmColorClass(mm: number): string {

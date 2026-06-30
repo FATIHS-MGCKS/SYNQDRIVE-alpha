@@ -82,7 +82,7 @@ export function getStressDescription(level: StressLevel | null): string {
     case 'critical':
       return 'Kritische Belastung — Fahrzeug stark beansprucht.';
     default:
-      return 'Für diese Auswertung liegen keine verwertbaren Fahrbelastungsdaten vor.';
+      return 'Fahrbelastungs-Score für diese Fahrt nicht verfügbar.';
   }
 }
 

@@ -1,6 +1,7 @@
 import { getStressLevel, resolveDrivingStressScore } from '../../../lib/scoreFormat';
+import type { TripBehaviorEvent } from '../../../../lib/api';
 import type { TripTimelineTrip } from '../trips.types';
-import { countTripEvents } from '../trips-map.utils';
+import { resolveNotableEventCount } from '../behavior-event-count.utils';
 
 export function getOperatorStressLabel(trip: TripTimelineTrip): string {
   const score = resolveDrivingStressScore(trip);
@@ -20,8 +21,18 @@ export function getOperatorStressLabel(trip: TripTimelineTrip): string {
   }
 }
 
-export function getEventsSummary(trip: TripTimelineTrip): string {
-  const count = countTripEvents(trip);
+export function getEventsSummary(
+  trip: TripTimelineTrip,
+  behaviorEventsByTripId?: Record<string, TripBehaviorEvent[]>,
+): string {
+  const eventsLoaded =
+    behaviorEventsByTripId != null &&
+    Object.prototype.hasOwnProperty.call(behaviorEventsByTripId, trip.id);
+  const count = resolveNotableEventCount(
+    trip,
+    behaviorEventsByTripId?.[trip.id],
+    eventsLoaded,
+  );
   if (count == null) return 'Analyse läuft';
   if (count === 0) return 'Keine Ereignisse';
   return `${count} ${count === 1 ? 'Ereignis' : 'Ereignisse'}`;

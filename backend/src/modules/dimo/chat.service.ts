@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoAgentsService, SendMessageResult } from './dimo-agents.service';
+import {
+  formatAgentScopeLog,
+  resolveChatVehicleTokenIds,
+} from './dimo-agent-vehicle-scope.util';
 
 export interface ChatMessageResult {
   id?: string;
@@ -56,7 +60,10 @@ export class ChatService {
     const agentName = `${shortCode}_chatagent`;
     this.logger.log(`[Chat] Creating DIMO agent "${agentName}" for org ${orgId}`);
 
-    const result = await this.agentsService.createAgent();
+    const result = await this.agentsService.getOrCreateAgent({
+      useCase: 'fleet_chat',
+      orgId,
+    });
     if (!result.success || !result.agentId) {
       throw new Error(result.error || 'Failed to create DIMO agent');
     }
@@ -150,15 +157,19 @@ export class ChatService {
     }
   }
 
-  /** Build the fleet-enriched message + token IDs for the agent. */
+  /** Build the fleet-enriched message + optional vehicle scope for the agent. */
   private async buildContext(
     orgId: string,
     content: string,
-  ): Promise<{ enrichedMessage: string; tokenIds: number[] }> {
+  ): Promise<{ enrichedMessage: string; tokenIds?: number[]; hasVehicleScope: boolean }> {
     const fleet = await this.getOrgFleetInfo(orgId);
-    const tokenIds = fleet.map((v) => v.tokenId).filter((t): t is number => t != null);
-    const enrichedMessage = this.buildEnrichedMessage(content, fleet);
-    return { enrichedMessage, tokenIds };
+    const resolvedVehicle = this.tryResolveVehicle(content, fleet);
+    const tokenIds = resolveChatVehicleTokenIds(resolvedVehicle?.tokenId);
+    const enrichedMessage = this.buildEnrichedMessage(content, fleet, resolvedVehicle);
+    this.logger.log(
+      `[Chat] ${formatAgentScopeLog({ useCase: 'fleet_chat', orgId }, tokenIds)}`,
+    );
+    return { enrichedMessage, tokenIds, hasVehicleScope: Boolean(tokenIds?.length) };
   }
 
   private async saveUserMessage(orgId: string, content: string): Promise<void> {
@@ -175,17 +186,31 @@ export class ChatService {
     orgId: string,
     agent: { agentName: string; dimoAgentId: string },
     enrichedMessage: string,
-    tokenIds: number[],
+    tokenIds: number[] | undefined,
     onChunk?: (event: { type: string; content: string }) => void,
   ): Promise<SendMessageResult> {
-    let result = await this.agentsService.sendMessageStream(agent.dimoAgentId, enrichedMessage, tokenIds, onChunk);
+    const streamContext = { useCase: 'fleet_chat' as const, orgId };
+    let result = await this.agentsService.sendMessageStream(
+      agent.dimoAgentId,
+      enrichedMessage,
+      tokenIds,
+      onChunk,
+      streamContext,
+    );
 
     if (!result.success && (result.statusCode === 404 || result.statusCode === 410)) {
       this.logger.warn(`[Chat] Agent ${agent.dimoAgentId} expired, recreating...`);
+      await this.agentsService.invalidateAgentCache({ useCase: 'fleet_chat', orgId });
       await this.prisma.organizationChatAgent.delete({ where: { organizationId: orgId } }).catch(() => {});
       try {
         const newAgent = await this.ensureAgent(orgId);
-        result = await this.agentsService.sendMessageStream(newAgent.dimoAgentId, enrichedMessage, tokenIds, onChunk);
+        result = await this.agentsService.sendMessageStream(
+          newAgent.dimoAgentId,
+          enrichedMessage,
+          tokenIds,
+          onChunk,
+          streamContext,
+        );
       } catch (retryErr: any) {
         this.logger.error(`[Chat] Agent re-creation failed: ${retryErr.message}`);
         result = { success: false, error: 'Agent temporarily unavailable. Please try again.' };
@@ -273,7 +298,11 @@ export class ChatService {
     }));
   }
 
-  private buildEnrichedMessage(userMessage: string, fleet: FleetVehicleInfo[]): string {
+  private buildEnrichedMessage(
+    userMessage: string,
+    fleet: FleetVehicleInfo[],
+    resolvedVehicle?: FleetVehicleInfo | null,
+  ): string {
     if (fleet.length === 0) return userMessage;
 
     const vehicleLines = fleet.map((v, i) => {
@@ -286,12 +315,19 @@ export class ChatService {
       return parts.join(', ');
     });
 
-    const resolvedVehicle = this.tryResolveVehicle(userMessage, fleet);
-    const resolutionHint = resolvedVehicle
-      ? `\n[System: The user is likely referring to vehicle "${resolvedVehicle.make} ${resolvedVehicle.model} ${resolvedVehicle.year}"${resolvedVehicle.licensePlate ? ` (plate: ${resolvedVehicle.licensePlate})` : ''}${resolvedVehicle.tokenId ? `, tokenId=${resolvedVehicle.tokenId}` : ''}. Use this vehicle for data lookups.]`
-      : '';
+    const resolved = resolvedVehicle ?? this.tryResolveVehicle(userMessage, fleet);
+    let resolutionHint = '';
+    if (resolved) {
+      const platePart = resolved.licensePlate ? ` (plate: ${resolved.licensePlate})` : '';
+      const tokenPart = resolved.tokenId ? `, tokenId=${resolved.tokenId}` : '';
+      resolutionHint = `\n[System: The user is likely referring to vehicle "${resolved.make} ${resolved.model} ${resolved.year}"${platePart}${tokenPart}. Use this vehicle for data lookups.]`;
+      if (!resolved.tokenId) {
+        resolutionHint +=
+          '\n[System: This vehicle has no DIMO tokenId — do not claim live DIMO telemetry for it.]';
+      }
+    }
 
-    return `[Fleet context — ${fleet.length} registered vehicles:\n${vehicleLines.join('\n')}\nUse this fleet data to identify vehicles when users refer to them by license plate, name, make/model, or VIN.]${resolutionHint}\n\nUser message: ${userMessage}`;
+    return `[Fleet context — ${fleet.length} registered vehicles:\n${vehicleLines.join('\n')}\nUse this fleet data to identify vehicles when users refer to them by license plate, name, make/model, or VIN. Only pass vehicle-scoped DIMO lookups when a specific vehicle with tokenId is resolved.]${resolutionHint}\n\nUser message: ${userMessage}`;
   }
 
   private tryResolveVehicle(message: string, fleet: FleetVehicleInfo[]): FleetVehicleInfo | null {

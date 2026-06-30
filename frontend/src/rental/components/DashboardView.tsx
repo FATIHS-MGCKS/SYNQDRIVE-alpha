@@ -106,7 +106,7 @@ export function DashboardView({
           </DashboardControlHeader>
         </div>
 
-        <div className="animate-fade-up" style={{ animationDelay: '70ms' }}>
+        <div className={`${DASHBOARD_LAYOUT.signalsGrid} animate-fade-up`} style={{ animationDelay: '70ms' }}>
           <BusinessPulse
             businessPulseSlices={vm.businessPulseSlices}
             onSelectBusinessMetric={vm.openBusinessMetricDrilldown}
@@ -116,6 +116,7 @@ export function DashboardView({
             loading={!vm.dataFreshness.invoicesLoaded}
             error={vm.dataFreshness.invoicesError}
           />
+          <ActionQueue vm={vm} {...handlers} />
         </div>
 
         <div className={`${DASHBOARD_LAYOUT.opsStack} animate-fade-up`} style={{ animationDelay: '120ms' }}>
@@ -123,14 +124,12 @@ export function DashboardView({
             {vm.locale === 'de' ? 'Operative Steuerung' : 'Operational control'}
           </DashboardSectionLabel>
 
-          <div className={DASHBOARD_LAYOUT.opsGrid}>
-            <ActionQueue vm={vm} {...handlers} />
-            <OperationsSchedulePanel vm={vm} {...handlers} />
-          </div>
+          <OperationsSchedulePanel vm={vm} {...handlers} />
 
           <FleetCommandView
             vehicles={vm.filteredFleetVehicles}
             getHealth={getFleetHealth}
+            dashboardRuntime={vm.dashboardRuntime}
             loading={vm.dataFreshness.fleetLoading}
             refreshing={vm.isRefreshing}
             onRefresh={vm.refreshAll}

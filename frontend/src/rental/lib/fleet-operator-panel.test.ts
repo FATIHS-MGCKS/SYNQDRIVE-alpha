@@ -279,3 +279,74 @@ describe('fleet-operator-panel', () => {
     expect(order[order.length - 1]).toBe('offline');
   });
 });
+
+describe('resolveCanonicalFleetAlertCounts', () => {
+  it('matches critical drawer canonical row count', async () => {
+    const { buildDashboardRuntimeModel } = await import(
+      '../components/dashboard/runtime/dashboardSliceBuilder'
+    );
+    const { resolveCanonicalFleetAlertCounts } = await import('./fleet-operator-panel');
+
+    const model = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles: [
+        {
+          id: 'svc',
+          license: 'SVC 1',
+          make: 'VW',
+          model: 'Golf',
+          year: 2024,
+          station: 'Zentrale',
+          fuelType: 'Petrol',
+          status: 'Available',
+          cleaningStatus: 'Clean',
+          healthStatus: 'Good Health',
+          online: true,
+          lastSignal: new Date().toISOString(),
+          badge: 0,
+          odometer: 1,
+          fuel: 50,
+          battery: 100,
+          speed: 0,
+          coolant: 90,
+          brakes: 90,
+          tires: 90,
+          engineOil: 90,
+          isElectric: false,
+          hvBatteryCapacityKwh: null,
+          isFresh: true,
+          onlineStatus: 'ONLINE',
+          leasingRate: '',
+          insuranceCost: '',
+          taxCost: '',
+          totalMonthlyCost: '',
+        },
+      ],
+      healthMap: new Map([
+        [
+          'svc',
+          {
+            vehicle_id: 'svc',
+            organization_id: 'org',
+            overall_state: 'critical',
+            rental_blocked: false,
+            blocking_reasons: [],
+            modules: {
+              service_compliance: {
+                state: 'critical',
+                reason: 'Service overdue 117 days (HM/OEM)',
+                last_updated_at: null,
+                data_stale: false,
+              },
+            },
+            generated_at: new Date().toISOString(),
+          },
+        ],
+      ]),
+    });
+
+    const counts = resolveCanonicalFleetAlertCounts(model);
+    expect(counts.critical).toBe(model.slices['critical-alerts'].count);
+    expect(counts.critical).toBe(1);
+  });
+});

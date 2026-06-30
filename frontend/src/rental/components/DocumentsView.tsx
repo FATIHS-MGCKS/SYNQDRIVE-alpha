@@ -7,9 +7,7 @@ import {
   DataCard,
   EmptyState,
   ErrorState,
-  MetricCard,
   SectionHeader,
-  SkeletonMetricGrid,
   SkeletonRows,
   StatusChip,
   Timeline,
@@ -222,74 +220,7 @@ export function DocumentsView({ vehicle, onOpenLinkedTask }: DocumentsViewProps)
   }
 
   return (
-    <div className="space-y-6 pb-8">
-      {/* ── Header ── */}
-      <header className="sq-card-elevated rounded-2xl border border-border/70 bg-card/60 p-4 sm:p-5 backdrop-blur-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0 space-y-2">
-            <p className="sq-section-label">Fahrzeugakte</p>
-            <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.2] tracking-[var(--tracking-display)] text-foreground">
-              {vehicleName}
-            </h1>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-              {licensePlate ? (
-                <span className="inline-flex items-center gap-1 font-semibold text-foreground">
-                  <Icon name="hash" className="w-3 h-3" />
-                  {licensePlate}
-                </span>
-              ) : null}
-              {vin ? <span className="font-mono text-[10px]">VIN {vin}</span> : null}
-              {odometer ? <span>{odometer}</span> : null}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-          {summary ? (
-            <div className="flex flex-wrap gap-1.5 lg:max-w-md lg:justify-end">
-              <StatusChip
-                tone={
-                  summary.canonicalStatus.rentalHealthStatus === 'blocked' ||
-                  summary.canonicalStatus.rentalHealthStatus === 'critical'
-                    ? 'critical'
-                    : summary.canonicalStatus.rentalHealthStatus === 'warning'
-                      ? 'watch'
-                      : 'success'
-                }
-              >
-                Rental Health: {rentalHealthLabelDe(summary.canonicalStatus.rentalHealthStatus)}
-              </StatusChip>
-              {missingMandatory != null && missingMandatory > 0 ? (
-                <StatusChip tone="watch">{missingMandatory} Pflichtdok. fehlen</StatusChip>
-              ) : null}
-              {summary.pendingReviews.count > 0 ? (
-                <StatusChip tone="watch">{summary.pendingReviews.count} zur Prüfung</StatusChip>
-              ) : null}
-              {summary.canonicalStatus.serviceCompliance.tuv?.uiStatus === 'expiring_soon' ||
-              summary.canonicalStatus.serviceCompliance.tuv?.uiStatus === 'expired' ? (
-                <StatusChip tone="watch">
-                  TÜV: {uiStatusLabel(summary.canonicalStatus.serviceCompliance.tuv.uiStatus, true)}
-                </StatusChip>
-              ) : null}
-              {summary.canonicalStatus.serviceCompliance.bokraft?.uiStatus === 'expiring_soon' ||
-              summary.canonicalStatus.serviceCompliance.bokraft?.uiStatus === 'expired' ? (
-                <StatusChip tone="watch">
-                  BOKraft: {uiStatusLabel(summary.canonicalStatus.serviceCompliance.bokraft.uiStatus, true)}
-                </StatusChip>
-              ) : null}
-            </div>
-          ) : null}
-          </div>
-        </div>
-
-        {summary ? (
-          <p className="mt-3 border-t border-border/60 pt-3 text-[10px] leading-relaxed text-muted-foreground/90">
-            {summary.canonicalStatus.note}
-            <span className="mx-1">·</span>
-            Quelle Rental Health: {formatStatusSource(summary.canonicalStatus.rentalHealthSource)}
-          </p>
-        ) : null}
-      </header>
-
+    <div className="space-y-4 pb-8">
       {error ? (
         <ErrorState
           compact
@@ -300,40 +231,118 @@ export function DocumentsView({ vehicle, onOpenLinkedTask }: DocumentsViewProps)
         />
       ) : null}
 
-      {/* ── KPI Row ── */}
       {loading && !summary ? (
-        <SkeletonMetricGrid count={5} />
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <div className="sq-card h-32 animate-pulse rounded-xl border border-border/60 bg-muted/20" />
+          <div className="sq-card h-32 animate-pulse rounded-xl border border-border/60 bg-muted/20" />
+        </div>
       ) : summary ? (
-        <div className="grid grid-cols-2 items-stretch gap-2 sm:grid-cols-3 lg:grid-cols-5">
-          <MetricCard
-            label="Pflichtdokumente"
-            value={`${summary.mandatoryDocumentCoverage.configured}/${summary.mandatoryDocumentCoverage.total}`}
-            valueSize="compact"
-            status={
-              summary.mandatoryDocumentCoverage.configured >= summary.mandatoryDocumentCoverage.total
-                ? 'success'
-                : 'warning'
-            }
-          />
-          <MetricCard
-            label="Offene Reviews"
-            value={String(summary.pendingReviews.count)}
-            valueSize="compact"
-            status={summary.pendingReviews.count > 0 ? 'warning' : 'neutral'}
-          />
-          <MetricCard
-            label="Fehlende Pflicht"
-            value={missingMandatory != null ? String(missingMandatory) : '—'}
-            valueSize="compact"
-            status={missingMandatory && missingMandatory > 0 ? 'warning' : 'success'}
-          />
-          <DocumentComplianceSummaryCard summary={summary} />
-          <MetricCard
-            label="Fixkosten / Monat"
-            value={formatEuroAmount(summary.fixedCosts.monthlyTotal)}
-            valueSize="compact"
-            status={summary.fixedCosts.monthlyTotal != null ? 'success' : 'neutral'}
-          />
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-stretch">
+          <header className="sq-card-elevated flex flex-col rounded-xl border border-border/70 bg-card/60 p-3 sm:p-4 backdrop-blur-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 space-y-1.5">
+                <p className="sq-section-label">Fahrzeugakte</p>
+                <h1 className="min-w-0 truncate text-[18px] font-bold leading-tight tracking-[-0.02em] text-foreground sm:text-[20px]">
+                  {vehicleName}
+                </h1>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                  {licensePlate ? (
+                    <span className="inline-flex items-center gap-1 font-semibold text-foreground">
+                      <Icon name="hash" className="w-3 h-3" />
+                      {licensePlate}
+                    </span>
+                  ) : null}
+                  {vin ? <span className="font-mono text-[10px]">VIN {vin}</span> : null}
+                  {odometer ? <span>{odometer}</span> : null}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5 sm:max-w-[280px] sm:justify-end">
+                <StatusChip
+                  tone={
+                    summary.canonicalStatus.rentalHealthStatus === 'blocked' ||
+                    summary.canonicalStatus.rentalHealthStatus === 'critical'
+                      ? 'critical'
+                      : summary.canonicalStatus.rentalHealthStatus === 'warning'
+                        ? 'watch'
+                        : 'success'
+                  }
+                  className="!text-[10px]"
+                >
+                  Rental Health: {rentalHealthLabelDe(summary.canonicalStatus.rentalHealthStatus)}
+                </StatusChip>
+                {missingMandatory != null && missingMandatory > 0 ? (
+                  <StatusChip tone="watch" className="!text-[10px]">
+                    {missingMandatory} Pflichtdok. fehlen
+                  </StatusChip>
+                ) : null}
+                {summary.pendingReviews.count > 0 ? (
+                  <StatusChip tone="watch" className="!text-[10px]">
+                    {summary.pendingReviews.count} zur Prüfung
+                  </StatusChip>
+                ) : null}
+                {summary.canonicalStatus.serviceCompliance.tuv?.uiStatus === 'expiring_soon' ||
+                summary.canonicalStatus.serviceCompliance.tuv?.uiStatus === 'expired' ? (
+                  <StatusChip tone="watch" className="!text-[10px]">
+                    TÜV: {uiStatusLabel(summary.canonicalStatus.serviceCompliance.tuv.uiStatus, true)}
+                  </StatusChip>
+                ) : null}
+                {summary.canonicalStatus.serviceCompliance.bokraft?.uiStatus === 'expiring_soon' ||
+                summary.canonicalStatus.serviceCompliance.bokraft?.uiStatus === 'expired' ? (
+                  <StatusChip tone="watch" className="!text-[10px]">
+                    BOKraft:{' '}
+                    {uiStatusLabel(summary.canonicalStatus.serviceCompliance.bokraft.uiStatus, true)}
+                  </StatusChip>
+                ) : null}
+              </div>
+            </div>
+
+            <p
+              className="mt-2 text-[10px] leading-snug text-muted-foreground/70 line-clamp-2"
+              title={`${summary.canonicalStatus.note} · Quelle Rental Health: ${formatStatusSource(summary.canonicalStatus.rentalHealthSource)}`}
+            >
+              {summary.canonicalStatus.note}
+              <span className="mx-1 opacity-60">·</span>
+              Quelle: {formatStatusSource(summary.canonicalStatus.rentalHealthSource)}
+            </p>
+          </header>
+
+          <aside className="sq-card-elevated rounded-xl border border-border/70 bg-card/60 p-3 sm:p-4 backdrop-blur-sm">
+            <p className="mb-2 sq-section-label">Übersicht</p>
+            <div className="grid grid-cols-2 gap-2">
+              <CompactSummaryMetric
+                label="Pflichtdokumente"
+                value={`${summary.mandatoryDocumentCoverage.configured}/${summary.mandatoryDocumentCoverage.total}`}
+                subtext={
+                  missingMandatory != null && missingMandatory > 0
+                    ? `${missingMandatory} fehlen`
+                    : `${summary.mandatoryDocumentCoverage.configured} von ${summary.mandatoryDocumentCoverage.total} vorhanden`
+                }
+                emphasis={
+                  summary.mandatoryDocumentCoverage.configured >=
+                  summary.mandatoryDocumentCoverage.total
+                    ? 'success'
+                    : 'watch'
+                }
+              />
+              <CompactSummaryMetric
+                label="Offene Reviews"
+                value={String(summary.pendingReviews.count)}
+                subtext={
+                  summary.pendingReviews.count > 0 ? 'Zur Prüfung offen' : 'Keine offenen Reviews'
+                }
+                emphasis={summary.pendingReviews.count > 0 ? 'watch' : 'neutral'}
+              />
+              <DocumentComplianceSummaryCard summary={summary} compact />
+              <CompactSummaryMetric
+                label="Fixkosten / Monat"
+                value={formatEuroAmount(summary.fixedCosts.monthlyTotal)}
+                subtext="Feste monatliche Last"
+                emphasis={summary.fixedCosts.monthlyTotal != null ? 'neutral' : 'neutral'}
+                mono
+              />
+            </div>
+          </aside>
         </div>
       ) : null}
 
@@ -512,6 +521,39 @@ export function DocumentsView({ vehicle, onOpenLinkedTask }: DocumentsViewProps)
   );
 }
 
+function CompactSummaryMetric({
+  label,
+  value,
+  subtext,
+  emphasis = 'neutral',
+  mono = false,
+}: {
+  label: string;
+  value: string;
+  subtext?: string;
+  emphasis?: 'success' | 'watch' | 'neutral';
+  mono?: boolean;
+}) {
+  const valueClass =
+    emphasis === 'success'
+      ? 'text-[color:var(--status-positive)]'
+      : emphasis === 'watch'
+        ? 'text-[color:var(--status-watch)]'
+        : 'text-foreground';
+
+  return (
+    <div className="rounded-xl border border-border/60 bg-muted/15 px-2.5 py-2">
+      <p className="text-[11px] font-semibold text-muted-foreground">{label}</p>
+      <p
+        className={`mt-0.5 text-[20px] font-bold leading-none tabular-nums ${mono ? 'font-mono' : ''} ${valueClass}`}
+      >
+        {value}
+      </p>
+      {subtext ? <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{subtext}</p> : null}
+    </div>
+  );
+}
+
 function categoryToneClass(tone: CategoryUiMeta['tone']): string {
   if (tone === 'brand') return 'sq-tone-brand';
   if (tone === 'info') return 'sq-tone-info';
@@ -561,7 +603,7 @@ function DocumentCategoryCard({
             <h3 className="text-[12px] font-semibold text-foreground">{meta.shortTitle}</h3>
             {isMandatory ? (
               <span className="rounded-md bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Pflichtdokument
+                Pflicht
               </span>
             ) : (
               <span className="text-[9px] text-muted-foreground">Optional</span>

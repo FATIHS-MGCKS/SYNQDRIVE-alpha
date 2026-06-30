@@ -14,7 +14,6 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RedisService } from '@shared/redis/redis.service';
-import { DimoTriggersService } from '@modules/dimo/dimo-triggers.service';
 import { DimoAuthService } from '@modules/dimo/dimo-auth.service';
 import { DimoTelemetryService } from '@modules/dimo/dimo-telemetry.service';
 import { VehicleProviderConsentService } from './vehicle-provider-consent.service';
@@ -226,7 +225,6 @@ export class VehiclesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
-    private readonly dimoTriggers: DimoTriggersService,
     private readonly dimoAuth: DimoAuthService,
     private readonly dimoTelemetry: DimoTelemetryService,
     private readonly providerConsent: VehicleProviderConsentService,

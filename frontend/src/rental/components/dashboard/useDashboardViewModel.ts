@@ -15,7 +15,6 @@ import {
 } from '../../DashboardInsightsContext';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
-import type { FleetStatusTabKey } from '../../lib/vehicle-status';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
 import type { DashboardNotificationItem } from '../BusinessInsightsBox';
 import {
@@ -24,7 +23,6 @@ import {
   type DashboardViewModel,
   type DashboardViewProps,
   type TodayBookingApiRow,
-  type TodayTabKey,
   type DashboardTimeframe,
   type FleetBoardLane,
 } from './dashboardTypes';
@@ -169,9 +167,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   const [stationsApi, setStationsApi] = useState<Station[]>([]);
   const [isStationDropdownOpen, setIsStationDropdownOpen] = useState(false);
   const stationDropdownRef = useRef<HTMLDivElement | null>(null);
-  const [fleetStatusTab, setFleetStatusTab] = useState<FleetStatusTabKey>('Available');
-  const [fleetBoardFilter, setFleetBoardFilter] = useState<FleetBoardLane>('all');
-  const [todayTab, setTodayTab] = useState<TodayTabKey>('Pick Up Today');
   const [criticalOnly, setCriticalOnly] = useState(false);
   // Operator focus mode no longer has a header toggle; the dashboard now always
   // renders the clean standard layout. State + setter are kept for backward
@@ -575,41 +570,12 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
 
   const openSliceDrilldown = useCallback(
     (sliceId: DashboardSliceId) => {
-      switch (sliceId) {
-        case 'ready-to-rent':
-          setFleetBoardFilter('ready');
-          setFleetStatusTab('Available');
-          break;
-        case 'active-rented':
-          setFleetBoardFilter('rented');
-          setFleetStatusTab('Active Rented');
-          break;
-        case 'blocked-maintenance':
-          setFleetBoardFilter(
-            dashboardRuntime.vehicleStates.some((state) => state.isBlocked && !state.isMaintenance)
-              ? 'blocked'
-              : 'maintenance',
-          );
-          setFleetStatusTab('Maintenance');
-          break;
-        case 'overdue-returns':
-          setFleetBoardFilter('overdue');
-          setTodayTab('Return Today');
-          break;
-        case 'due-soon':
-          setFleetBoardFilter('due-soon');
-          setTodayTab('Return Today');
-          break;
-        case 'critical-alerts':
-          setFleetBoardFilter('critical');
-          setCriticalOnly(true);
-          break;
-        default:
-          break;
+      if (sliceId === 'critical-alerts') {
+        setCriticalOnly(true);
       }
       openDrilldown({ type: 'kpi', target: sliceId });
     },
-    [dashboardRuntime, openDrilldown],
+    [openDrilldown],
   );
 
   const openBusinessMetricDrilldown = useCallback(
@@ -768,28 +734,22 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     () =>
       computeFleetReadiness({
         vehicles: filteredFleetVehicles,
-        availableVehicles,
         healthMap,
-        healthAlerts: vehicleHealthAlerts,
         pickupItems,
         returnItems,
         telemetry: vehicleTelemetryFreshness,
         locale,
         fleetLoading,
-        readyOptions,
         runtime: dashboardRuntime,
       }),
     [
       filteredFleetVehicles,
-      availableVehicles,
       healthMap,
-      vehicleHealthAlerts,
       pickupItems,
       returnItems,
       vehicleTelemetryFreshness,
       locale,
       fleetLoading,
-      readyOptions,
       dashboardRuntime,
     ],
   );
@@ -1048,12 +1008,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     monthlyKpis,
     fmtMonthlyEUR,
     financeKpis,
-    fleetStatusTab,
-    setFleetStatusTab,
-    fleetBoardFilter,
-    setFleetBoardFilter,
-    todayTab,
-    setTodayTab,
     pickupItems,
     returnItems,
     pickupNeedsCleaning,

@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import {
   ChevronDown,
-  Crosshair,
-  Layers,
   MapPin,
-  Maximize2,
   RefreshCw,
 } from 'lucide-react';
+import { MapGlassControls } from '../../components/map/MapGlassControls';
 import {
   FLEET_MAP_LEGEND_ITEMS,
   getFleetMapToneHex,
@@ -74,38 +72,13 @@ export function FleetMapControls({
 
       {/* Top-left: map actions */}
       <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 pointer-events-none">
-        <div className="sq-map-liquid-glass pointer-events-auto p-1 flex flex-col gap-0.5">
-          <button
-            type="button"
-            title="Fit all vehicles"
-            onClick={onFitAll}
-            className="sq-map-liquid-pill flex-row justify-start gap-2 py-1.5 px-2.5 rounded-lg w-full"
-          >
-            <Maximize2 className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-            <span className="text-[10px] font-medium">Fit all</span>
-          </button>
-          <button
-            type="button"
-            title="Locate selected vehicle"
-            onClick={onLocateSelected}
-            disabled={!selectedVehicleId}
-            className="sq-map-liquid-pill flex-row justify-start gap-2 py-1.5 px-2.5 rounded-lg w-full disabled:opacity-45"
-          >
-            <Crosshair className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-            <span className="text-[10px] font-medium">Locate selected</span>
-          </button>
-          <button
-            type="button"
-            title="Toggle station geofences"
-            onClick={onToggleStations}
-            className={`sq-map-liquid-pill flex-row justify-start gap-2 py-1.5 px-2.5 rounded-lg w-full ${
-              showStations ? 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_25%,transparent)]' : ''
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-            <span className="text-[10px] font-medium">Stations</span>
-          </button>
-        </div>
+        <MapGlassControls
+          onFitAll={onFitAll}
+          onLocateSelected={onLocateSelected}
+          onToggleStations={onToggleStations}
+          selectedVehicleId={selectedVehicleId}
+          showStations={showStations}
+        />
 
         {(vehicleCount === 0 || noLocationCount > 0) && (
           <div className="sq-map-liquid-badge pointer-events-auto px-2.5 py-1.5 max-w-[11rem]">

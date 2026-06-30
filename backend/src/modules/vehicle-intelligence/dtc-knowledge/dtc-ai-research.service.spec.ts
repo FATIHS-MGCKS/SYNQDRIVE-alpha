@@ -3,7 +3,8 @@ import { DtcAiResearchService } from './dtc-ai-research.service';
 function makeAgents(overrides: Partial<Record<string, jest.Mock>> = {}) {
   return {
     isConfigured: jest.fn().mockReturnValue(true),
-    createAgent: jest.fn().mockResolvedValue({ success: true, agentId: 'a1' }),
+    getOrCreateAgent: jest.fn().mockResolvedValue({ success: true, agentId: 'a1' }),
+    invalidateAgentCache: jest.fn().mockResolvedValue(undefined),
     sendMessageStream: jest.fn(),
     ...overrides,
   };
@@ -23,7 +24,7 @@ describe('DtcAiResearchService', () => {
     expect(service.isEnabled()).toBe(false);
     const res = await service.research(GENERIC_INPUT);
     expect(res.success).toBe(false);
-    expect(agents.createAgent).not.toHaveBeenCalled();
+    expect(agents.getOrCreateAgent).not.toHaveBeenCalled();
   });
 
   it('parses and sanitizes valid JSON (enum coercion, list cleanup, unsafe URLs)', async () => {
@@ -83,17 +84,18 @@ describe('DtcAiResearchService', () => {
       .fn()
       .mockResolvedValueOnce({ success: false, statusCode: 404 })
       .mockResolvedValueOnce({ success: true, response: valid });
-    const createAgent = jest
+    const getOrCreateAgent = jest
       .fn()
       .mockResolvedValueOnce({ success: true, agentId: 'a1' })
       .mockResolvedValueOnce({ success: true, agentId: 'a2' });
-    const agents = makeAgents({ sendMessageStream, createAgent });
+    const agents = makeAgents({ sendMessageStream, getOrCreateAgent });
     const service = new DtcAiResearchService(agents as any);
 
     const res = await service.research(GENERIC_INPUT);
 
     expect(res.success).toBe(true);
-    expect(createAgent).toHaveBeenCalledTimes(2);
+    expect(agents.invalidateAgentCache).toHaveBeenCalledTimes(1);
+    expect(getOrCreateAgent).toHaveBeenCalledTimes(2);
     expect(sendMessageStream).toHaveBeenCalledTimes(2);
   });
 

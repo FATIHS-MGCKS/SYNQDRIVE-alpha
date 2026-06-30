@@ -92,7 +92,7 @@ export function TripTimeline({
 }: TripTimelineProps) {
   const isDark = isDarkMode;
   const isEmpty = !loading && timelineItems.length === 0;
-  const groups = groupTimelineByDate(timelineItems);
+  const groups = groupTimelineByDate(timelineItems, behaviorEvents);
   const resolve = resolveTrip ?? ((t: TripTimelineTrip) => t);
 
   let emptyVariant: TripTimelineEmptyVariant | null = null;
@@ -197,6 +197,7 @@ export function TripTimeline({
                           detailLoading={detailLoadingId === trip.id}
                           detailError={detailErrorId === trip.id}
                           behaviorEvents={behaviorEvents[trip.id] ?? []}
+                          behaviorEventsByTripId={behaviorEvents}
                           behaviorLoading={behaviorLoadingId === trip.id}
                           selectedBehaviorEventId={selectedBehaviorEventId}
                           onSelectBehaviorEvent={onSelectBehaviorEvent}

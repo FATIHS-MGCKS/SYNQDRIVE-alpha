@@ -31,7 +31,8 @@ const MAX_TITLE_CHARS = 200;
 /**
  * DTC research adapter backed by the existing {@link DimoAgentsService} (DIMO
  * Agents API = web/AI JSON extraction). It reuses the public createAgent /
- * sendMessageStream methods and an internal agentId cache — it does NOT touch
+ * sendMessageStream methods via a scoped getOrCreateAgent cache (vehicle_specs
+ * use case, master_technician default) — it does NOT touch
  * existing DIMO auth, telemetry, polling, or trip logic.
  *
  * Strict JSON-only prompt, German user-facing text. The response is always
@@ -42,7 +43,6 @@ const MAX_TITLE_CHARS = 200;
 @Injectable()
 export class DtcAiResearchService implements DtcResearchPort {
   private readonly logger = new Logger(DtcAiResearchService.name);
-  private cachedAgentId: string | null = null;
 
   constructor(private readonly agents: DimoAgentsService) {}
 
@@ -80,26 +80,29 @@ export class DtcAiResearchService implements DtcResearchPort {
   // ── agent lifecycle (mirrors DimoDocumentAgentService, no DIMO changes) ────
 
   private async runWithAgent(message: string): Promise<string | null> {
-    let agentId = this.cachedAgentId;
-    if (!agentId) {
-      const created = await this.agents.createAgent();
-      if (!created.success || !created.agentId) {
-        throw new Error(created.error || 'Agent creation failed');
-      }
-      agentId = created.agentId;
-      this.cachedAgentId = agentId;
+    // vehicle_specs scope isolates DTC cache from document_extraction agents.
+    const scope = {
+      useCase: 'vehicle_specs' as const,
+    };
+
+    const created = await this.agents.getOrCreateAgent(scope);
+    if (!created.success || !created.agentId) {
+      throw new Error(created.error || 'Agent creation failed');
     }
 
-    let result = await this.agents.sendMessageStream(agentId, message);
+    let result = await this.agents.sendMessageStream(created.agentId, message, undefined, undefined, {
+      useCase: 'vehicle_specs',
+    });
 
     if (!result.success && (result.statusCode === 404 || result.statusCode === 410)) {
-      this.cachedAgentId = null;
-      const created = await this.agents.createAgent();
-      if (!created.success || !created.agentId) {
-        throw new Error(created.error || 'Agent re-creation failed');
+      await this.agents.invalidateAgentCache(scope);
+      const recreated = await this.agents.getOrCreateAgent(scope);
+      if (!recreated.success || !recreated.agentId) {
+        throw new Error(recreated.error || 'Agent re-creation failed');
       }
-      this.cachedAgentId = created.agentId;
-      result = await this.agents.sendMessageStream(created.agentId, message);
+      result = await this.agents.sendMessageStream(recreated.agentId, message, undefined, undefined, {
+        useCase: 'vehicle_specs',
+      });
     }
 
     if (!result.success) {

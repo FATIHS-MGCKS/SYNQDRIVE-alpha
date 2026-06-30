@@ -12,10 +12,10 @@ import { useRentalOrg } from '../../RentalContext';
 import { VehicleCategoryAssignDrawer } from './VehicleCategoryAssignDrawer';
 import { VehicleOverrideEditorDrawer } from './VehicleOverrideEditorDrawer';
 import {
-  EffectiveRequirementsSummaryGrid,
   EffectiveRulesListSkeleton,
   RentalRequirementsStatusBadge,
   RuleInheritanceSteps,
+  RuleSourcePanel,
   RuleValueTile,
 } from '../shared/rental-requirements-ui';
 
@@ -26,10 +26,10 @@ interface VehicleRequirementsTabProps {
 }
 
 const INHERITANCE_STEPS = [
-  { key: 'org', label: 'Organization defaults', labelDe: 'Organisationsstandard' },
-  { key: 'category', label: 'Category rules', labelDe: 'Kategorieregeln' },
-  { key: 'override', label: 'Vehicle overrides', labelDe: 'Fahrzeug-Overrides' },
-  { key: 'effective', label: 'Effective rules', labelDe: 'Effektive Regeln' },
+  { key: 'org', label: 'Org defaults', labelDe: 'Org-Standard' },
+  { key: 'category', label: 'Category', labelDe: 'Kategorie' },
+  { key: 'override', label: 'Overrides', labelDe: 'Overrides' },
+  { key: 'effective', label: 'Active rules', labelDe: 'Gültige Regeln' },
 ] as const;
 
 const LOCALE = 'de' as const;
@@ -63,6 +63,8 @@ export function VehicleRequirementsTab({
     ? [selectedVehicle.license, selectedVehicle.make, selectedVehicle.model].filter(Boolean).join(' · ')
     : 'Fahrzeug';
 
+  const hasOverrides = rows.some((r) => r.isOverridden);
+
   if (!vehicleId) {
     return (
       <EmptyState
@@ -94,22 +96,22 @@ export function VehicleRequirementsTab({
   const missingCategory = !requirements?.rentalCategoryId;
   const incompleteRules = !orgDefaults?.configured && missingCategory;
   const hasCategory = Boolean(requirements?.rentalCategory?.name);
+  const effectiveSourceSummary = effective ? effectiveSourceSummaryDe(effective) : null;
 
   const activeStep = (() => {
     if (!effective) return 'org';
-    if (rows.some((r) => r.isOverridden)) return 'override';
+    if (hasOverrides) return 'override';
     if (requirements?.rentalCategoryId) return 'category';
     return 'org';
   })();
 
   return (
-    <div className="mb-4 animate-fade-up space-y-4">
-      {/* ── Header ── */}
-      <section className="sq-card rounded-2xl border border-border/70 bg-card/60 p-4 sm:p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 space-y-2">
+    <div className="mb-4 animate-fade-up space-y-3">
+      <section className="sq-card rounded-xl border border-border/70 bg-card/60 p-3 sm:p-4">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-1.5">
             <p className="sq-section-label">Mietvoraussetzungen</p>
-            <h2 className="text-[15px] font-semibold tracking-[-0.02em] text-foreground">
+            <h2 className="text-[14px] font-semibold tracking-[-0.02em] text-foreground sm:text-[15px]">
               {vehicleLabel}
             </h2>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -123,16 +125,6 @@ export function VehicleRequirementsTab({
                 <RentalRequirementsStatusBadge kind="incomplete" locale={LOCALE} />
               )}
             </div>
-            {effective ? (
-              <p className="text-[12px] leading-relaxed text-muted-foreground">
-                {effectiveSourceSummaryDe(effective)}
-              </p>
-            ) : null}
-            {hasCategory && !rows.some((r) => r.isOverridden) && (
-              <p className="text-[11px] text-muted-foreground/90">
-                Regeln stammen primär aus dieser Kategorie.
-              </p>
-            )}
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:justify-end">
@@ -175,92 +167,77 @@ export function VehicleRequirementsTab({
         activeStep={activeStep}
         rulesActive={effective?.rulesActive}
         locale={LOCALE}
+        compact
       />
 
       {incompleteRules && (
-        <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-3.5 py-3 sm:px-4">
-          <p className="text-[13px] font-semibold text-foreground">Mietregeln unvollständig</p>
-          <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-3 py-2.5 sm:hidden">
+          <p className="text-[12px] font-semibold text-foreground">Mietregeln unvollständig</p>
+          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
             Konfiguriere Organisationsregeln oder weise eine Fahrzeugkategorie zu.
           </p>
-          {onOpenRentalRulesCenter && (
-            <button
-              type="button"
-              className="sq-btn sq-btn-primary mt-2.5 min-h-8 text-[12px]"
-              onClick={onOpenRentalRulesCenter}
-            >
-              Mietregeln öffnen
-            </button>
-          )}
         </div>
       )}
 
-      {missingCategory && orgDefaults?.configured && (
-        <div className="rounded-xl border border-border/70 bg-muted/15 px-3.5 py-3 sm:px-4">
-          <p className="text-[13px] font-semibold text-foreground">
-            Keine Fahrzeugkategorie zugewiesen
-          </p>
-          <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-            Aktuell gelten die Standardregeln der Organisation. Weise eine Kategorie zu, wenn dieses
-            Fahrzeug eigene Fahrzeuggruppen-Regeln nutzen soll.
-          </p>
-          {canWrite && (
-            <button
-              type="button"
-              className="sq-btn sq-btn-secondary mt-2.5 min-h-8 text-[12px]"
-              onClick={() => setAssignOpen(true)}
-            >
-              Kategorie zuweisen
-            </button>
-          )}
-        </div>
-      )}
-
-      {rows.length > 0 && (
-        <section className="space-y-2.5">
-          <h3 className="text-[13px] font-semibold text-foreground">Kernanforderungen</h3>
-          <EffectiveRequirementsSummaryGrid rows={rows} locale={LOCALE} />
-        </section>
-      )}
-
-      <section className="space-y-2.5">
-        <h3 className="text-[13px] font-semibold text-foreground">Effektive Anforderungen</h3>
-        {rows.length > 0 ? (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {rows.map((row) => (
-              <RuleValueTile
-                key={row.key}
-                fieldKey={row.key}
-                label={row.label}
-                value={row.value}
-                source={row.source}
-                sourceName={row.sourceName}
-                highlighted={row.isOverridden}
-                density="compact"
-                locale={LOCALE}
-              />
-            ))}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] lg:items-start">
+        <section className="sq-card-elevated rounded-xl border border-border/70 bg-card/60 p-3 sm:p-4">
+          <div className="mb-2.5">
+            <h3 className="text-[13px] font-semibold text-foreground">Gültige Mietvoraussetzungen</h3>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Diese Regeln gelten aktuell für dieses Fahrzeug.
+            </p>
           </div>
-        ) : !loading ? (
-          <EmptyState
-            compact
-            icon={<ShieldCheck className="h-5 w-5" />}
-            title="Noch keine effektiven Regeln"
-            description="Richte Mietregeln in der Administration ein, um Anforderungen hier zu sehen."
-            action={
-              onOpenRentalRulesCenter ? (
-                <button
-                  type="button"
-                  className="sq-btn sq-btn-primary min-h-9 text-[12px]"
-                  onClick={onOpenRentalRulesCenter}
-                >
-                  Mietregeln öffnen
-                </button>
-              ) : undefined
-            }
-          />
-        ) : null}
-      </section>
+
+          {rows.length > 0 ? (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {rows.map((row) => (
+                <RuleValueTile
+                  key={row.key}
+                  fieldKey={row.key}
+                  label={row.label}
+                  value={row.value}
+                  source={row.source}
+                  sourceName={row.sourceName}
+                  highlighted={row.isOverridden}
+                  density="mini"
+                  locale={LOCALE}
+                />
+              ))}
+            </div>
+          ) : !loading ? (
+            <EmptyState
+              compact
+              icon={<ShieldCheck className="h-5 w-5" />}
+              title="Noch keine gültigen Regeln"
+              description="Richte Mietregeln in der Administration ein, um Anforderungen hier zu sehen."
+              action={
+                onOpenRentalRulesCenter ? (
+                  <button
+                    type="button"
+                    className="sq-btn sq-btn-primary min-h-9 text-[12px]"
+                    onClick={onOpenRentalRulesCenter}
+                  >
+                    Mietregeln öffnen
+                  </button>
+                ) : undefined
+              }
+            />
+          ) : null}
+        </section>
+
+        <RuleSourcePanel
+          effectiveSourceSummary={effectiveSourceSummary}
+          categoryName={requirements?.rentalCategory?.name ?? null}
+          missingCategory={missingCategory}
+          hasOverrides={hasOverrides}
+          orgConfigured={orgDefaults?.configured ?? false}
+          incompleteRules={incompleteRules}
+          canWrite={canWrite}
+          onAssignCategory={() => setAssignOpen(true)}
+          onOpenRentalRules={onOpenRentalRulesCenter}
+          locale={LOCALE}
+        />
+      </div>
 
       <VehicleOverrideEditorDrawer
         open={overrideOpen}

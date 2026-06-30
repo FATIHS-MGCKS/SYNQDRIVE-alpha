@@ -11,6 +11,10 @@ import {
   type DataConfidence,
   type StressLevel,
 } from '../lib/scoreFormat';
+import {
+  getStressScoreMissingMessage,
+  type StressScoreMissingContext,
+} from '../components/trips/trip-assessment-copy';
 
 export interface VehicleStressComponents {
   drivingStressScore?: number | null;
@@ -31,6 +35,8 @@ interface VehicleStressPanelProps {
   dataConfidence?: DataConfidence | string | null;
   compact?: boolean;
   footnote?: string;
+  /** Separates Fahrbelastung from Fahrverhalten when the stress score is missing. */
+  stressMissingContext?: StressScoreMissingContext;
 }
 
 const COMPONENT_ROWS: Array<{
@@ -76,6 +82,7 @@ export function VehicleStressPanel({
   dataConfidence,
   compact = false,
   footnote,
+  stressMissingContext,
 }: VehicleStressPanelProps) {
   const display = formatStressScore(stressScore, {
     hasEnoughData,
@@ -93,7 +100,7 @@ export function VehicleStressPanel({
           {title}
         </h4>
         <p className="text-xs text-muted-foreground">
-          Für diese Auswertung liegen keine verwertbaren Fahrbelastungsdaten vor.
+          {getStressScoreMissingMessage(stressMissingContext)}
         </p>
         {dataConfidence && (
           <p className="text-[10px] text-muted-foreground mt-2">

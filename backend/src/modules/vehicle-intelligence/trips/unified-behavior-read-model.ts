@@ -28,8 +28,21 @@
 /** Where the event physically came from. */
 export type EventProvenance = 'NATIVE' | 'RECONSTRUCTED';
 
-/** Native DIMO events are deduped preferentially within this window. */
+/** @deprecated Use TIMESTAMP_BUCKET_MS — kept for callers/tests referencing the old window. */
 export const DEDUP_WINDOW_MS = 5_000;
+
+/** Incident bucket for visible dedupe (±2s grouping). */
+export const TIMESTAMP_BUCKET_MS = 2_000;
+
+const CLASSIFICATION_RANK: Record<string, number> = {
+  LIGHT: 1,
+  MODERATE: 2,
+  WARNING: 3,
+  HARD: 4,
+  SEVERE: 5,
+  EXTREME: 6,
+  CRITICAL: 7,
+};
 
 /**
  * Native DrivingEventType → UI behaviour category. Mirrors the categories used
@@ -170,6 +183,13 @@ export interface BehaviorEventRow {
   createdAt: Date;
 }
 
+/** Legacy ingest snapshot from native event metadata — not T±30s context analysis. */
+export interface LegacyIngestEvidence {
+  rpm: number | null;
+  throttlePct: number | null;
+  coolantC: number | null;
+}
+
 export interface UnifiedBehaviorEvent {
   id: string;
   organizationId: string | null;
@@ -206,10 +226,22 @@ export interface UnifiedBehaviorEvent {
   // present for native LTE_R1/ICE events that were context-enriched; null
   // otherwise. Mirrors metadataJson.contextAssessment for first-class access.
   contextAssessment: unknown | null;
+  /** Point-in-time legacy ingest values — kept for backward compatibility. */
+  legacyIngestEvidence: LegacyIngestEvidence | null;
   // ── Abuse relevance (explains the KPI contribution) ──
   abuseRelevant: boolean;
   abuseCategory: string | null;
   abuseReason: string | null;
+}
+
+function extractLegacyIngestEvidence(
+  meta: Record<string, unknown>,
+): LegacyIngestEvidence | null {
+  const rpm = typeof meta.rpm === 'number' ? meta.rpm : null;
+  const throttlePct = typeof meta.throttlePct === 'number' ? meta.throttlePct : null;
+  const coolantC = typeof meta.coolantC === 'number' ? meta.coolantC : null;
+  if (rpm == null && throttlePct == null && coolantC == null) return null;
+  return { rpm, throttlePct, coolantC };
 }
 
 // ── Mappers ──────────────────────────────────────────────────────────────────
@@ -246,6 +278,7 @@ export function mapDrivingEventRow(
     peakValue: de.deltaKmh ?? de.severity,
     peakValueUnit: de.deltaKmh != null ? 'km/h delta' : 'severity',
     peakG,
+    // Legacy ingest snapshot — retained on row fields for backward compatibility.
     maxThrottlePos: typeof meta.throttlePct === 'number' ? meta.throttlePct : null,
     maxEngineRpm: typeof meta.rpm === 'number' ? meta.rpm : null,
     maxCoolantTemp: typeof meta.coolantC === 'number' ? meta.coolantC : null,
@@ -265,6 +298,7 @@ export function mapDrivingEventRow(
       typeof meta.dimoEventSource === 'string' ? meta.dimoEventSource : null,
     contextAssessment:
       meta.contextAssessment !== undefined ? meta.contextAssessment : null,
+    legacyIngestEvidence: extractLegacyIngestEvidence(meta),
     ...abuse,
   };
 }
@@ -307,22 +341,202 @@ export function mapBehaviorEventRow(e: BehaviorEventRow): UnifiedBehaviorEvent {
     originalEventName: null,
     originalEventSource: null,
     contextAssessment: null,
+    legacyIngestEvidence: null,
     ...abuse,
   };
 }
 
-// ── Merge + native-preferred dedup ───────────────────────────────────────────
+/** Stable exact key: same timestamp + type + source → one row (intra-source). */
+export function behaviorEventDedupeKey(event: UnifiedBehaviorEvent): string {
+  return `${event.startedAt.getTime()}:${event.eventType}:${event.source}`;
+}
+
+export function classificationRank(classification: string): number {
+  return CLASSIFICATION_RANK[classification.toUpperCase()] ?? 0;
+}
+
+/**
+ * Canonical incident type for cross-source dedupe. Native harsh/extreme braking
+ * share `braking` so HF BRAKING duplicates collapse onto the native row.
+ */
+export function normalizeDedupeEventType(event: UnifiedBehaviorEvent): string {
+  if (event.provenance === 'NATIVE') {
+    switch (event.eventType) {
+      case 'HARSH_BRAKING':
+      case 'EXTREME_BRAKING':
+        return 'braking';
+      case 'HARSH_ACCELERATION':
+        return 'acceleration';
+      case 'HARSH_CORNERING':
+        return 'cornering';
+      case 'SPEEDING':
+        return 'abuse:speeding';
+      case 'IDLE_EXCESSIVE':
+        return 'abuse:idle';
+      default:
+        return `native:${event.eventType.toLowerCase()}`;
+    }
+  }
+  if (event.eventCategory === 'BRAKING') return 'braking';
+  if (event.eventCategory === 'ACCELERATION') return 'acceleration';
+  if (event.eventCategory === 'ABUSE') {
+    return `abuse:${event.eventType.toLowerCase()}`;
+  }
+  return `derived:${event.eventCategory}:${event.eventType}`.toLowerCase();
+}
+
+/** Floor timestamp into 2s grid index (used with sliding-window merge). */
+export function incidentBucketMs(timestampMs: number): number {
+  return Math.floor(timestampMs / TIMESTAMP_BUCKET_MS) * TIMESTAMP_BUCKET_MS;
+}
+
+/**
+ * Visible incident key: trip + bucket + normalized type.
+ * Context classifications are annotations — they never widen the key.
+ */
+export function visibleIncidentDedupeKey(
+  tripId: string,
+  event: UnifiedBehaviorEvent,
+): string {
+  const bucket = incidentBucketMs(event.startedAt.getTime());
+  const normType = normalizeDedupeEventType(event);
+  return `${tripId}|${bucket}|${normType}`;
+}
+
+function mergeContextAssessment(a: unknown, b: unknown): unknown {
+  if (!a) return b;
+  if (!b) return a;
+  const ta = a as Record<string, unknown>;
+  const tb = b as Record<string, unknown>;
+  const classesA = Array.isArray(ta.classifications) ? (ta.classifications as string[]) : [];
+  const classesB = Array.isArray(tb.classifications) ? (tb.classifications as string[]) : [];
+  const mergedClasses = [...new Set([...classesA, ...classesB])];
+  const pickRicher = <T>(va: T | undefined, vb: T | undefined): T | undefined => {
+    if (va === 'INSUFFICIENT' || va === 'INSUFFICIENT_CONTEXT') return vb ?? va;
+    if (vb === 'INSUFFICIENT' || vb === 'INSUFFICIENT_CONTEXT') return va ?? vb;
+    return va ?? vb;
+  };
+  return {
+    ...ta,
+    ...tb,
+    classifications:
+      mergedClasses.length > 0 ? mergedClasses : (ta.classifications ?? tb.classifications),
+    confidence: pickRicher(
+      ta.confidence as string | undefined,
+      tb.confidence as string | undefined,
+    ),
+    evidenceGrade: pickRicher(
+      ta.evidenceGrade as string | undefined,
+      tb.evidenceGrade as string | undefined,
+    ),
+  };
+}
+
+function pickPreferredEvent(
+  current: UnifiedBehaviorEvent,
+  candidate: UnifiedBehaviorEvent,
+): UnifiedBehaviorEvent {
+  const currentNative = current.provenance === 'NATIVE';
+  const candidateNative = candidate.provenance === 'NATIVE';
+  if (candidateNative && !currentNative) return candidate;
+  if (currentNative && !candidateNative) return current;
+
+  const currentHasContext = current.contextAssessment != null;
+  const candidateHasContext = candidate.contextAssessment != null;
+  const currentRank = classificationRank(current.classification);
+  const candidateRank = classificationRank(candidate.classification);
+
+  let winner: UnifiedBehaviorEvent;
+  let loser: UnifiedBehaviorEvent;
+  if (candidateRank > currentRank) {
+    winner = candidate;
+    loser = current;
+  } else if (candidateRank < currentRank) {
+    winner = current;
+    loser = candidate;
+  } else if (candidateHasContext && !currentHasContext) {
+    winner = candidate;
+    loser = current;
+  } else if (currentHasContext && !candidateHasContext) {
+    winner = current;
+    loser = candidate;
+  } else {
+    winner = current.createdAt >= candidate.createdAt ? current : candidate;
+    loser = winner === current ? candidate : current;
+  }
+
+  if (
+    classificationRank(loser.classification) > classificationRank(winner.classification)
+  ) {
+    winner = { ...winner, classification: loser.classification };
+  }
+
+  if (loser.contextAssessment) {
+    winner = {
+      ...winner,
+      contextAssessment: mergeContextAssessment(
+        winner.contextAssessment,
+        loser.contextAssessment,
+      ),
+    };
+  }
+
+  return winner;
+}
+
+/**
+ * Drop duplicate visible rows. Rules:
+ *   - Group by tripId + ±2s bucket + normalizedEventType
+ *   - Native preferred over reconstructed at the same incident
+ *   - Higher classification severity wins when provenance matches
+ *   - contextAssessment classifications merge onto one row (never extra rows)
+ */
+export function dedupeUnifiedBehaviorEvents(
+  events: UnifiedBehaviorEvent[],
+  _tripId?: string,
+): UnifiedBehaviorEvent[] {
+  const sorted = [...events].sort(
+    (a, b) => a.startedAt.getTime() - b.startedAt.getTime(),
+  );
+  const merged: UnifiedBehaviorEvent[] = [];
+
+  for (const event of sorted) {
+    const normType = normalizeDedupeEventType(event);
+    const t = event.startedAt.getTime();
+    let mergedInto = false;
+
+    for (let i = merged.length - 1; i >= 0; i -= 1) {
+      const existing = merged[i];
+      if (normalizeDedupeEventType(existing) !== normType) continue;
+      if (Math.abs(existing.startedAt.getTime() - t) > TIMESTAMP_BUCKET_MS) break;
+      merged[i] = pickPreferredEvent(existing, event);
+      mergedInto = true;
+      break;
+    }
+
+    if (!mergedInto) merged.push(event);
+  }
+
+  return merged;
+}
+
+/** Visible event count for trip/day summaries — length of deduped list. */
+export function countVisibleUnifiedBehaviorEvents(
+  events: UnifiedBehaviorEvent[],
+): number {
+  return events.length;
+}
 
 /**
  * Build the unified, deduped, time-sorted behaviour event list.
  *
- * Dedup rules (task 5):
- *   - Native events are PREFERRED. When a native event and an HF-reconstructed
- *     event share the SAME category within DEDUP_WINDOW_MS, the reconstructed
- *     duplicate is dropped (the native one wins).
- *   - Dedup is category-scoped, so different event types are NEVER merged
- *     together (e.g. native BRAKING never suppresses an HF ABUSE event — abuse
- *     events have no native equivalent and are always preserved).
+ * Dedup rules:
+ *   - All native + HF rows are mapped, then collapsed by incident bucket (±2s)
+ *     + normalizedEventType within the trip.
+ *   - Native events are PREFERRED over HF-reconstructed duplicates.
+ *   - Higher classification severity wins when provenance matches.
+ *   - contextAssessment classifications are merged as annotations — never
+ *     separate visible rows.
  */
 export function buildUnifiedBehaviorEvents(input: {
   behaviorEvents: BehaviorEventRow[];
@@ -332,23 +546,9 @@ export function buildUnifiedBehaviorEvents(input: {
   const mappedDriving = input.drivingEvents.map((de) =>
     mapDrivingEventRow(de, input.tripId),
   );
-
-  const nativeKeys = mappedDriving.map((de) => ({
-    category: de.eventCategory,
-    t: de.startedAt.getTime(),
-  }));
-  const collidesWithNative = (category: string, startedAt: Date): boolean =>
-    nativeKeys.some(
-      (n) =>
-        n.category === category &&
-        Math.abs(n.t - startedAt.getTime()) <= DEDUP_WINDOW_MS,
-    );
-
-  const mappedBehavior = input.behaviorEvents
-    .filter((e) => !collidesWithNative(e.eventCategory, e.startedAt))
-    .map((e) => mapBehaviorEventRow(e));
-
-  const merged = [...mappedBehavior, ...mappedDriving];
-  merged.sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime());
-  return merged;
+  const mappedBehavior = input.behaviorEvents.map((e) => mapBehaviorEventRow(e));
+  return dedupeUnifiedBehaviorEvents(
+    [...mappedDriving, ...mappedBehavior],
+    input.tripId,
+  );
 }

@@ -5,10 +5,15 @@ import { cn } from '../../../components/ui/utils';
 import {
   dedupeDisplayReasons,
   formatRuntimeReasonLabel,
-  rowSeverityLabel,
   runtimeReasonTooltip,
 } from './reasonDisplay';
-import { sanitizeUserFacingIssueText } from '../../lib/operational-issues';
+import { buildDashboardGroups } from './dashboardDrilldownGroups';
+import {
+  composeBookingDrawerRowDisplay,
+  composeVehicleDrawerRowDisplay,
+  readyToRentDrawerHint,
+} from './dashboardDrilldownRowDisplay';
+import { drawerHeaderHint } from './dashboardDrawerNormalize';
 import type { DashboardViewModel, DashboardViewProps } from './dashboardTypes';
 import type {
   BusinessMetricId,
@@ -18,6 +23,7 @@ import type {
   DashboardSlice,
   DashboardSliceId,
   DashboardSliceRow,
+  VehicleRuntimeState,
 } from './runtime';
 
 interface DashboardDrilldownDrawerProps {
@@ -92,6 +98,17 @@ function reasonsLabel(count: number, de: boolean): string {
   return de ? `+${count} Gründe` : `+${count} reasons`;
 }
 
+function chipToneClass(tone: 'success' | 'watch' | 'critical' | 'neutral'): string {
+  if (tone === 'critical') return 'sq-tone-critical';
+  if (tone === 'watch') return 'sq-tone-watch';
+  if (tone === 'success') return 'sq-tone-success';
+  return 'bg-muted text-muted-foreground';
+}
+
+function vehicleStatesById(states: VehicleRuntimeState[]): Map<string, VehicleRuntimeState> {
+  return new Map(states.map((state) => [state.vehicleId, state]));
+}
+
 function sliceDisplayTitle(slice: DashboardSlice, de: boolean): string {
   if (slice.id === 'blocked-maintenance') {
     return de ? 'Blockiert / Wartung' : 'Blocked / maintenance';
@@ -117,10 +134,11 @@ function sourceLabel(kind: 'runtime' | 'business', de: boolean): string {
 }
 
 function operativeEyebrow(sliceId: DashboardSliceId, de: boolean): string {
+  if (sliceId === 'ready-to-rent') return de ? 'Mietbereitschaft' : 'Rental readiness';
   if (sliceId === 'critical-alerts') return de ? 'Alerts & Probleme' : 'Alerts & issues';
   if (sliceId === 'due-soon') return de ? 'Timeline' : 'Timeline';
   if (sliceId === 'overdue-returns') return de ? 'Rückgaben' : 'Returns';
-  return de ? 'Operative Runtime' : 'Operational runtime';
+  return de ? 'Operativ' : 'Operations';
 }
 
 function emptyTitle(slice: DashboardSlice, de: boolean): string {
@@ -131,39 +149,115 @@ function emptyDescription(slice: DashboardSlice, de: boolean): string {
   return slice.emptyDescription ?? (de ? 'Aktuell keine Einträge in diesem Bereich.' : 'No items in this area right now.');
 }
 
-function buildDashboardGroups(slice: DashboardSlice, de: boolean) {
-  const groups = (slice.groups ?? []).filter((group) => group.rows.length > 0);
-  const groupedRowIds = new Set(groups.flatMap((group) => group.rows.map((row) => row.id)));
-  const primaryRows = slice.rows.filter((row) => !groupedRowIds.has(row.id));
-  const fallbackGroups = groups.length > 0
-    ? groups
-    : primaryRows.length > 0
-      ? [{ id: `${slice.id}:primary`, title: slice.title, count: primaryRows.length, rows: primaryRows }]
-      : [];
+function VehicleDrawerRowCard({
+  row,
+  state,
+  locale,
+  de,
+  showReadiness,
+  onOpenVehicle,
+  onClose,
+}: {
+  row: DashboardSliceRow;
+  state?: VehicleRuntimeState;
+  locale: string;
+  de: boolean;
+  showReadiness: boolean;
+  onOpenVehicle?: DashboardViewProps['onOpenVehicleById'];
+  onClose: () => void;
+}) {
+  const display = composeVehicleDrawerRowDisplay(row, state, locale, { showReadiness });
+  const canOpen = Boolean(row.vehicleId && onOpenVehicle);
+  const ctaLabel = row.primaryActionLabel ?? defaultVehicleCta(de);
+  const extraReasons = row.reasons ? dedupeDisplayReasons(row.reasons).slice(1, 3) : [];
 
-  if (!slice.secondaryRows?.length) return fallbackGroups;
+  return (
+    <article className="rounded-lg border border-border/45 bg-card/45 px-2.5 py-2 shadow-sm shadow-black/[0.02] transition-colors hover:border-border/65 hover:bg-muted/10">
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex min-w-0 items-start justify-between gap-2">
+            <span className="shrink-0 text-[12px] font-bold tabular-nums tracking-[-0.01em] text-foreground">
+              {display.title}
+            </span>
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+              {display.healthLabel ? (
+                <StatusChip tone={display.healthTone} className="px-1.5 py-0.5 text-[9.5px] font-semibold">
+                  {display.healthLabel}
+                </StatusChip>
+              ) : null}
+              {display.readinessLabel ? (
+                <StatusChip tone={display.readinessTone} className="px-1.5 py-0.5 text-[9.5px] font-semibold">
+                  {display.readinessLabel}
+                </StatusChip>
+              ) : null}
+            </div>
+          </div>
 
-  const secondaryTitle =
-    slice.id === 'ready-to-rent'
-      ? de
-        ? 'Verfügbar, aber nicht bereit'
-        : 'Available but not ready'
-      : de
-        ? 'Weitere Einträge'
-        : 'Additional items';
+          {display.subtitle ? (
+            <p className="truncate text-[10.5px] leading-snug text-muted-foreground">{display.subtitle}</p>
+          ) : null}
 
-  return [
-    ...fallbackGroups,
-    {
-      id: `${slice.id}:secondary`,
-      title: secondaryTitle,
-      count: slice.secondaryRows.length,
-      rows: slice.secondaryRows,
-    },
-  ];
+          {display.locationLine ? (
+            <p className="flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground">
+              <Icon name="map-pin" className="h-3 w-3 shrink-0 text-muted-foreground/80" />
+              <span className="truncate">{display.locationLine}</span>
+            </p>
+          ) : null}
+
+          {display.primaryReason ? (
+            <p className="line-clamp-2 text-[10.5px] leading-snug text-muted-foreground/95 text-pretty">
+              {display.primaryReason}
+            </p>
+          ) : null}
+
+          {display.extraReasonCount > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {extraReasons.map((reason) => (
+                <span
+                  key={reason.id}
+                  title={runtimeReasonTooltip(reason, locale)}
+                  className={cn(
+                    'rounded-full px-2 py-0.5 text-[10px] font-medium',
+                    chipToneClass(
+                      reason.severity === 'critical'
+                        ? 'critical'
+                        : reason.severity === 'warning'
+                          ? 'watch'
+                          : 'neutral',
+                    ),
+                  )}
+                >
+                  {formatRuntimeReasonLabel(reason, locale)}
+                </span>
+              ))}
+              {display.extraReasonCount > extraReasons.length ? (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  {reasonsLabel(display.extraReasonCount - extraReasons.length, de)}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        {canOpen ? (
+          <button
+            type="button"
+            onClick={() => {
+              if (row.vehicleId && onOpenVehicle) onOpenVehicle(row.vehicleId);
+              onClose();
+            }}
+            className="sq-btn sq-btn-secondary min-h-9 shrink-0 self-start px-2 text-[11px]"
+          >
+            {ctaLabel}
+            <Icon name="arrow-right" className="h-3.5 w-3.5 opacity-70" />
+          </button>
+        ) : null}
+      </div>
+    </article>
+  );
 }
 
-function DashboardRowCard({
+function BookingDrawerRowCard({
   row,
   de,
   onOpenVehicle,
@@ -177,43 +271,94 @@ function DashboardRowCard({
   onClose: () => void;
 }) {
   const locale = de ? 'de' : 'en';
+  const display = composeBookingDrawerRowDisplay(row);
   const reasons = dedupeDisplayReasons(row.reasons ?? []);
-  const visibleReasons = reasons.slice(0, 2);
-  const remainingReasons = Math.max(0, reasons.length - visibleReasons.length);
-  const severityText = rowSeverityLabel(row.severity, locale);
-  const title = sanitizeUserFacingIssueText(row.title) || row.title;
-  const subtitle = sanitizeUserFacingIssueText(row.subtitle);
-  const meta = sanitizeUserFacingIssueText(row.meta);
+  const excluded = new Set(
+    [display.subtitle, display.title, row.stationLabel].map((value) => (value ?? '').trim().toLowerCase()),
+  );
+  const visibleReasons = reasons.filter(
+    (reason) => !excluded.has(formatRuntimeReasonLabel(reason, locale).trim().toLowerCase()),
+  );
+  const primaryReasonText = visibleReasons[0]
+    ? formatRuntimeReasonLabel(visibleReasons[0], locale)
+    : undefined;
+  const metaNormalized = (display.meta ?? '').trim().toLowerCase();
+  const showMeta = display.meta
+    && !metaNormalized.includes((row.stationLabel ?? '').trim().toLowerCase())
+    && (!primaryReasonText || metaNormalized !== primaryReasonText.trim().toLowerCase());
+  const showStation = row.stationLabel
+    && !metaNormalized.includes(row.stationLabel.trim().toLowerCase());
+  const severityText =
+    row.severity === 'critical'
+      ? de ? 'Kritisch' : 'Critical'
+      : row.severity === 'warning'
+        ? de ? 'Warnung' : 'Warning'
+        : row.severity === 'success'
+          ? de ? 'Bereit' : 'Ready'
+          : null;
   const canOpenVehicle = Boolean(row.vehicleId && onOpenVehicle);
   const canOpenBooking = Boolean(row.bookingId && onOpenBooking);
   const ctaLabel = row.primaryActionLabel ?? (row.bookingId ? defaultBookingCta(de) : defaultVehicleCta(de));
   const canOpen = canOpenVehicle || canOpenBooking;
 
   return (
-    <article className="rounded-xl border border-border/50 bg-card/55 p-3 shadow-sm shadow-black/[0.025] transition-colors hover:border-border/70">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
+    <article className="rounded-lg border border-border/45 bg-card/45 px-2.5 py-2 shadow-sm shadow-black/[0.02] transition-colors hover:border-border/65 hover:bg-muted/10">
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <h3 className="truncate text-[14px] font-semibold tracking-[-0.01em] text-foreground">
-              {title}
+            <h3 className="truncate text-[12px] font-semibold tracking-[-0.01em] text-foreground">
+              {display.title}
             </h3>
             {severityText ? (
-              <StatusChip tone={severityTone(row.severity)} className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide">
+              <StatusChip
+                tone={severityTone(row.severity)}
+                className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
+              >
                 {severityText}
               </StatusChip>
             ) : null}
           </div>
-          {subtitle ? (
-            <p className="truncate text-[12px] text-muted-foreground">{subtitle}</p>
+          {display.subtitle ? (
+            <p className="truncate text-[10.5px] text-muted-foreground">{display.subtitle}</p>
           ) : null}
-          {meta ? (
-            <p className="line-clamp-2 text-[12px] leading-snug text-muted-foreground/90 text-pretty">{meta}</p>
-          ) : null}
-          {row.stationLabel ? (
-            <p className="inline-flex items-center gap-1 rounded-md bg-muted/45 px-1.5 py-0.5 text-[10.5px] text-muted-foreground">
-              <Icon name="map-pin" className="h-3 w-3" />
-              {row.stationLabel}
+          {showStation ? (
+            <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <Icon name="map-pin" className="h-3 w-3 shrink-0" />
+              <span className="truncate">{row.stationLabel}</span>
             </p>
+          ) : null}
+          {showMeta ? (
+            <p className="line-clamp-2 text-[10.5px] leading-snug text-muted-foreground/90 text-pretty">{display.meta}</p>
+          ) : null}
+          {primaryReasonText ? (
+            <p className="line-clamp-2 text-[10.5px] leading-snug text-muted-foreground/95 text-pretty">
+              {primaryReasonText}
+            </p>
+          ) : null}
+          {visibleReasons.length > 1 ? (
+            <div className="flex flex-wrap gap-1">
+              {visibleReasons.slice(1, 3).map((reason) => (
+                <span
+                  key={reason.id}
+                  title={runtimeReasonTooltip(reason, locale)}
+                  className={cn(
+                    'rounded-full px-2 py-0.5 text-[10px] font-medium',
+                    reason.severity === 'critical'
+                      ? 'bg-[color:var(--status-critical)]/10 text-[color:var(--status-critical)]'
+                      : reason.severity === 'warning'
+                        ? 'bg-[color:var(--status-watch)]/10 text-[color:var(--status-watch)]'
+                        : 'bg-muted text-muted-foreground',
+                  )}
+                >
+                  {formatRuntimeReasonLabel(reason, locale)}
+                </span>
+              ))}
+              {visibleReasons.length > 3 ? (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  {reasonsLabel(visibleReasons.length - 3, de)}
+                </span>
+              ) : null}
+            </div>
           ) : null}
         </div>
         {canOpen ? (
@@ -224,39 +369,57 @@ function DashboardRowCard({
               else if (row.bookingId && onOpenBooking) onOpenBooking(row.bookingId);
               onClose();
             }}
-            className="sq-btn sq-btn-secondary min-h-10 shrink-0 px-2 text-[12px]"
+            className="sq-btn sq-btn-secondary min-h-9 shrink-0 px-2 text-[11px]"
           >
             {ctaLabel}
-            <Icon name="arrow-right" className="h-4 w-4 opacity-70" />
+            <Icon name="arrow-right" className="h-3.5 w-3.5 opacity-70" />
           </button>
         ) : null}
       </div>
-      {reasons.length > 0 ? (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {visibleReasons.map((reason) => (
-            <span
-              key={reason.id}
-              title={runtimeReasonTooltip(reason, locale)}
-              className={cn(
-                'rounded-full px-2 py-0.5 text-[10px] font-medium',
-                reason.severity === 'critical'
-                  ? 'bg-[color:var(--status-critical)]/10 text-[color:var(--status-critical)]'
-                  : reason.severity === 'warning'
-                    ? 'bg-[color:var(--status-watch)]/10 text-[color:var(--status-watch)]'
-                    : 'bg-muted text-muted-foreground',
-              )}
-            >
-              {formatRuntimeReasonLabel(reason, locale)}
-            </span>
-          ))}
-          {remainingReasons > 0 ? (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-              {reasonsLabel(remainingReasons, de)}
-            </span>
-          ) : null}
-        </div>
-      ) : null}
     </article>
+  );
+}
+
+function DashboardRowCard({
+  row,
+  sliceId,
+  state,
+  de,
+  onOpenVehicle,
+  onOpenBooking,
+  onClose,
+}: {
+  row: DashboardSliceRow;
+  sliceId: DashboardSliceId;
+  state?: VehicleRuntimeState;
+  de: boolean;
+  onOpenVehicle?: DashboardViewProps['onOpenVehicleById'];
+  onOpenBooking?: DashboardViewProps['onOpenBookingById'];
+  onClose: () => void;
+}) {
+  const locale = de ? 'de' : 'en';
+  if (row.vehicleId && !row.bookingId) {
+    return (
+      <VehicleDrawerRowCard
+        row={row}
+        state={state}
+        locale={locale}
+        de={de}
+        showReadiness={sliceId === 'ready-to-rent'}
+        onOpenVehicle={onOpenVehicle}
+        onClose={onClose}
+      />
+    );
+  }
+
+  return (
+    <BookingDrawerRowCard
+      row={row}
+      de={de}
+      onOpenVehicle={onOpenVehicle}
+      onOpenBooking={onOpenBooking}
+      onClose={onClose}
+    />
   );
 }
 
@@ -320,18 +483,22 @@ function BusinessRowCard({
 
 function DashboardGroupList({
   slice,
+  vehicleStates,
+  locale,
   de,
   onOpenVehicle,
   onOpenBooking,
   onClose,
 }: {
   slice: DashboardSlice;
+  vehicleStates: Map<string, VehicleRuntimeState>;
+  locale: string;
   de: boolean;
   onOpenVehicle?: DashboardViewProps['onOpenVehicleById'];
   onOpenBooking?: DashboardViewProps['onOpenBookingById'];
   onClose: () => void;
 }) {
-  const groups = buildDashboardGroups(slice, de);
+  const groups = buildDashboardGroups(slice, locale);
   if (groups.length === 0) {
     return (
       <EmptyState
@@ -356,6 +523,8 @@ function DashboardGroupList({
               <DashboardRowCard
                 key={row.id}
                 row={row}
+                sliceId={slice.id}
+                state={row.vehicleId ? vehicleStates.get(row.vehicleId) : undefined}
                 de={de}
                 onOpenVehicle={onOpenVehicle}
                 onOpenBooking={onOpenBooking}
@@ -476,16 +645,18 @@ export function DashboardDrilldownDrawer({
   const description = dashboardSlice
     ? (
       <div className="space-y-1">
-        {dashboardSlice.description ? <p>{dashboardSlice.description}</p> : null}
-        {dashboardSlice.hint ? <p>{dashboardSlice.hint}</p> : null}
-        <p className="text-[11px] text-muted-foreground/80">{sourceLabel('runtime', de)}</p>
+        {dashboardSlice.id === 'ready-to-rent' ? (
+          <p className="text-[12px] text-muted-foreground">{readyToRentDrawerHint(dashboardSlice, locale)}</p>
+        ) : drawerHeaderHint(dashboardSlice, locale) ? (
+          <p className="text-[12px] text-muted-foreground">{drawerHeaderHint(dashboardSlice, locale)}</p>
+        ) : null}
       </div>
     )
     : businessSlice
       ? (
         <div className="space-y-1">
           {businessSlice.hint ? <p>{businessSlice.hint}</p> : null}
-          <p className="text-[11px] text-muted-foreground/80">{sourceLabel('business', de)}</p>
+          <p className="text-[10px] text-muted-foreground/60">{sourceLabel('business', de)}</p>
         </div>
       )
       : undefined;
@@ -530,6 +701,8 @@ export function DashboardDrilldownDrawer({
       ) : dashboardSlice ? (
         <DashboardGroupList
           slice={dashboardSlice}
+          vehicleStates={vehicleStatesById(dashboardRuntime.vehicleStates)}
+          locale={locale}
           de={de}
           onOpenVehicle={onOpenVehicle}
           onOpenBooking={onOpenBooking}

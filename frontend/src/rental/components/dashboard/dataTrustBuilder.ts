@@ -405,16 +405,8 @@ export function attachKpiTrustHints(
   kpis: ControlCenterKpi[],
   trust: DataTrustLayer,
 ): ControlCenterKpi[] {
-  const byId = Object.fromEntries(trust.domains.map((d) => [d.id, d])) as Record<
-    DataTrustDomainId,
-    DataTrustDomainSummary
-  >;
-
   return kpis.map((kpi) => {
-    const trustHint =
-      kpi.id === 'maintenance'
-        ? domainToTrustHint(byId.fleet)
-        : dashboardSliceTrustHint(kpi.id, trust);
+    const trustHint = dashboardSliceTrustHint(kpi.id, trust);
     return trustHint ? { ...kpi, trustHint } : kpi;
   });
 }

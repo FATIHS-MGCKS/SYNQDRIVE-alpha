@@ -16,6 +16,19 @@ import {
   resolveFleetVehicleDisplayState,
 } from './fleetVehicleDisplay';
 
+import type { DashboardRuntimeModel } from '../components/dashboard/runtime/dashboardRuntimeTypes';
+
+export function resolveCanonicalFleetAlertCounts(
+  runtime: DashboardRuntimeModel,
+): { critical: number; warning: number } {
+  const criticalSlice = runtime.slices['critical-alerts'];
+  const critical = criticalSlice.count ?? criticalSlice.rows.length;
+  const warning = runtime.vehicleStates.filter(
+    (state) => state.isWarning && !state.isCritical && !state.isBlocked,
+  ).length;
+  return { critical, warning };
+}
+
 export type FleetCommandTab = 'Available' | 'Active' | 'Reserved';
 
 export interface FleetVehicleContext {

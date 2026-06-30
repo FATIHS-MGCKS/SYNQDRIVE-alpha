@@ -21,7 +21,7 @@
  *   Both are also mirrored to deprecated harsh* aliases.
  */
 
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   DimoSegmentsService,
@@ -142,9 +142,7 @@ export class LteR1BehaviorEnrichmentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly segments: DimoSegmentsService,
-    // Optional: native-event Context Enrichment (Phase 3). Best-effort add-on —
-    // when absent (e.g. in unit tests) native event intake works unchanged.
-    @Optional() private readonly eventContext?: EventContextEnrichmentService,
+    private readonly eventContext: EventContextEnrichmentService,
   ) {}
 
   /**
@@ -316,18 +314,23 @@ export class LteR1BehaviorEnrichmentService {
    *   - Never throws (a context failure must not abort trip enrichment).
    *   - Skips entirely for Tesla/EV and non-LTE_R1/ICE vehicles
    *     (NOT_APPLICABLE_POWERTRAIN) — no contextAssessment written.
-   *   - Runs only when the service is wired (optional dependency present).
    */
   private async enrichNativeEventContexts(
     tripId: string,
     vehicle: { hardwareType: import('@prisma/client').HardwareType | null; fuelType: string | null },
     persistedCount: number,
   ): Promise<void> {
-    if (!this.eventContext || persistedCount === 0) return;
+    if (persistedCount === 0) {
+      this.logger.debug(
+        `LTE_R1 enrich: no native events for trip ${tripId} — context enrichment skipped`,
+      );
+      return;
+    }
 
     if (!shouldRunIceEventContextEnrichment(vehicle)) {
       this.logger.debug(
-        `LTE_R1 enrich: skip event context for trip ${tripId} — not LTE_R1/ICE (NOT_APPLICABLE_POWERTRAIN)`,
+        `LTE_R1 enrich: context enrichment skipped for trip ${tripId} — ` +
+          `NOT_APPLICABLE_POWERTRAIN (${persistedCount} native event(s) preserved)`,
       );
       return;
     }
@@ -337,6 +340,7 @@ export class LteR1BehaviorEnrichmentService {
       events = await this.prisma.drivingEvent.findMany({
         where: { tripId, source: DrivingEventSource.TELEMETRY_EVENTS },
         select: { id: true },
+        orderBy: { recordedAt: 'asc' },
       });
     } catch (err: any) {
       this.logger.warn(
@@ -345,20 +349,40 @@ export class LteR1BehaviorEnrichmentService {
       return;
     }
 
+    if (events.length === 0) {
+      this.logger.warn(
+        `LTE_R1 enrich: context enrichment requested for trip ${tripId} but no persisted ` +
+          `TELEMETRY_EVENTS rows found after createMany`,
+      );
+      return;
+    }
+
+    this.logger.debug(
+      `LTE_R1 enrich: context enrichment requested for trip ${tripId} (${events.length} event(s))`,
+    );
+
     let enriched = 0;
+    let failed = 0;
+    let skipped = 0;
+
     for (const ev of events) {
       try {
-        // enrichDrivingEventContext is itself best-effort and never throws, but
-        // we double-guard so one bad event can never stop the rest.
-        await this.eventContext.enrichDrivingEventContext(ev.id);
-        enriched += 1;
+        const assessment = await this.eventContext.enrichDrivingEventContext(ev.id);
+        if (assessment.status === 'FAILED') failed += 1;
+        else if (assessment.status === 'SKIPPED_NOT_APPLICABLE') skipped += 1;
+        else enriched += 1;
       } catch (err: any) {
+        failed += 1;
         this.logger.warn(
           `LTE_R1 enrich: context enrichment failed for event ${ev.id}: ${err?.message ?? err}`,
         );
       }
     }
-    this.logger.debug(`LTE_R1 enrich: context-enriched ${enriched}/${events.length} events for trip ${tripId}`);
+
+    this.logger.log(
+      `LTE_R1 enrich: context enrichment trip ${tripId}: ` +
+        `enriched=${enriched} failed=${failed} skipped=${skipped} total=${events.length}`,
+    );
   }
 
   private async buildHfContextMap(

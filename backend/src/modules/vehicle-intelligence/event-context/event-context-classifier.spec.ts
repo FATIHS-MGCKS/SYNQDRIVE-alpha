@@ -92,7 +92,20 @@ describe('classifyEventContext — behaviour-aware classification', () => {
     expect(res.preliminaryClassifications).toContain('KICKDOWN_LIKELY');
   });
 
-  it('classifies COLD_ENGINE_ACCELERATION when coolant is low', () => {
+  it('does NOT classify COLD_ENGINE_ACCELERATION for mild cold load (59 °C, low rpm/throttle)', () => {
+    const readings = window((s) => ({
+      speedKmh: s < 0 ? 25 : 25 + (s + 1) * 2,
+      rpm: 1151,
+      throttlePosition: 15,
+      engineLoad: 22,
+      engineCoolantTempC: 59,
+    }));
+    const res = classify(readings, accel);
+    expect(res.preliminaryClassifications).not.toContain('COLD_ENGINE_ACCELERATION');
+    expect(res.preliminaryClassifications).not.toContain('COLD_ENGINE_KICKDOWN');
+  });
+
+  it('classifies COLD_ENGINE_ACCELERATION when coolant is low AND load is high', () => {
     const readings = window((s) => ({
       speedKmh: s < 0 ? 2 : 2 + (s + 1) * 5,
       rpm: 3600,

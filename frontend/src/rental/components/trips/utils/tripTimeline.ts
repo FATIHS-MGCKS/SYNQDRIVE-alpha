@@ -1,7 +1,7 @@
-import type { EnergyEvent } from '../../../../lib/api';
+import type { EnergyEvent, TripBehaviorEvent } from '../../../../lib/api';
 import type { TripData, TripDaySummary, TripTimelineItem, TripTimelineTrip } from '../trips.types';
 import { dateKeyFromIso, formatTripDateLong } from './tripFormatters';
-import { countTripEvents } from '../trips-map.utils';
+import { resolveNotableEventCount } from '../behavior-event-count.utils';
 
 /**
  * Normalizes API `trips-timeline` items (flat trip/event fields + itemType)
@@ -90,7 +90,10 @@ export function buildMergedTimelineItems(
   );
 }
 
-export function summarizeDay(trips: TripTimelineTrip[]): TripDaySummary {
+export function summarizeDay(
+  trips: TripTimelineTrip[],
+  behaviorEventsByTripId?: Record<string, TripBehaviorEvent[]>,
+): TripDaySummary {
   let totalKm = 0;
   let totalMinutes = 0;
   let notableEvents = 0;
@@ -99,7 +102,14 @@ export function summarizeDay(trips: TripTimelineTrip[]): TripDaySummary {
   for (const trip of trips) {
     totalKm += trip.distanceKm ?? 0;
     totalMinutes += trip.durationMinutes ?? 0;
-    const ev = countTripEvents(trip);
+    const eventsLoaded =
+      behaviorEventsByTripId != null &&
+      Object.prototype.hasOwnProperty.call(behaviorEventsByTripId, trip.id);
+    const ev = resolveNotableEventCount(
+      trip,
+      behaviorEventsByTripId?.[trip.id],
+      eventsLoaded,
+    );
     if (ev != null) notableEvents += ev;
     if (trip.isPrivateTrip || trip.assignmentStatus === 'PRIVATE_UNASSIGNED') privateCount += 1;
   }
@@ -120,7 +130,10 @@ export interface TripTimelineDateGroup {
   summary: TripDaySummary;
 }
 
-export function groupTimelineByDate(items: TripTimelineItem[]): TripTimelineDateGroup[] {
+export function groupTimelineByDate(
+  items: TripTimelineItem[],
+  behaviorEventsByTripId?: Record<string, TripBehaviorEvent[]>,
+): TripTimelineDateGroup[] {
   const map = new Map<string, TripTimelineItem[]>();
 
   for (const item of items) {
@@ -140,7 +153,7 @@ export function groupTimelineByDate(items: TripTimelineItem[]): TripTimelineDate
         dateKey,
         dateLabel: formatTripDateLong(groupItems[0]?.startTime ?? dateKey),
         items: groupItems,
-        summary: summarizeDay(trips),
+        summary: summarizeDay(trips, behaviorEventsByTripId),
       };
     });
 }

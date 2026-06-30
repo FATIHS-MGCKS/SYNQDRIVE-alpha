@@ -39,4 +39,34 @@ describe('deriveBehaviorOverallStatus — assessability gate', () => {
   it('defaults to unremarkable when no assessability gate is supplied', () => {
     expect(deriveBehaviorOverallStatus(trip(), noEvents)).toBe('unremarkable');
   });
+
+  it('does not return not_assessable when behavior events are loaded', () => {
+    const native: TripBehaviorEvent = {
+      id: 'e1',
+      organizationId: 'o1',
+      vehicleId: 'v1',
+      tripId: 't1',
+      eventCategory: 'ACCELERATION',
+      eventType: 'HARSH_ACCELERATION',
+      classification: 'MODERATE',
+      startedAt: '2026-06-01T10:00:00Z',
+      endedAt: null,
+      durationMs: null,
+      startSpeedKmh: null,
+      endSpeedKmh: null,
+      peakValue: null,
+      peakValueUnit: null,
+      peakG: null,
+      maxThrottlePos: null,
+      maxEngineRpm: null,
+      maxCoolantTemp: null,
+      latitude: null,
+      longitude: null,
+      metadataJson: {},
+      provenance: 'NATIVE',
+    };
+    expect(
+      deriveBehaviorOverallStatus(trip(), [native], { assessable: false }),
+    ).toBe('watch');
+  });
 });

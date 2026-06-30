@@ -28,7 +28,6 @@ export { DashboardControlHeader } from './DashboardControlHeader';
 export { DashboardDrilldownDrawer } from './DashboardDrilldownDrawer';
 export { ControlKpiStrip } from './ControlKpiStrip';
 export { ActionQueue } from './ActionQueue';
-export { FleetStateBoard } from './FleetStateBoard';
 export { NowNextTimeline } from './NowNextTimeline';
 export { OperationsSchedulePanel } from './OperationsSchedulePanel';
 export { TodayOperations } from './TodayOperations';

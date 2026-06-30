@@ -205,7 +205,19 @@ function isHealthWarning(
 function hasExplicitRentalBlocker(
   rentalHealth?: DeriveFleetVisualStateOptions['rentalHealth'],
 ): boolean {
-  return rentalHealth?.rental_blocked === true || (rentalHealth?.blocking_reasons?.length ?? 0) > 0;
+  const reasons = rentalHealth?.blocking_reasons ?? [];
+  if (reasons.length === 0) return rentalHealth?.rental_blocked === true;
+  return reasons.some((reason) => {
+    const normalized = reason.toLowerCase();
+    if (
+      normalized.includes('tüv') ||
+      normalized.includes('tuv') ||
+      normalized.includes('bokraft')
+    ) {
+      return true;
+    }
+    return !normalized.includes('service') && !normalized.includes('wartung');
+  });
 }
 
 // Soft-offline ("signal delayed") detection: 24–48h since last signal. This is

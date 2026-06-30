@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { attachKpiTrustHints, buildDataTrustLayer } from './dataTrustBuilder';
-import { buildControlCenterKpis } from './dashboardUtils';
+import type { ControlCenterKpi } from './dashboardTypes';
 import type { VehicleTelemetryFreshness } from './controlSignalsBuilder';
 
 const baseTelemetry: VehicleTelemetryFreshness = {
@@ -105,26 +105,15 @@ describe('buildDataTrustLayer', () => {
       lastManualSyncAt: null,
     });
 
-    const kpis = attachKpiTrustHints(
-      buildControlCenterKpis({
-        locale: 'en',
-        timeframe: 'today',
-        todayBookingsLoaded: false,
-        todayBookingsError: false,
-        fleetLoaded: false,
-        availableVehicles: [],
-        activeRentedCount: 0,
-        maintenanceCount: 0,
-        pickupItems: [],
-        returnItems: [],
-        overdueReturns: 0,
-        criticalAlerts: null,
-        insightsLoaded: false,
-      }),
-      trust,
-    );
+    const kpis: ControlCenterKpi[] = [
+      { id: 'ready-to-rent', label: 'Ready', displayValue: '—', numericValue: null, tone: 'neutral' },
+      { id: 'due-soon', label: 'Due soon', displayValue: '—', numericValue: null, tone: 'neutral' },
+      { id: 'blocked-maintenance', label: 'Blocked', displayValue: '—', numericValue: null, tone: 'neutral' },
+    ];
 
-    expect(kpis.find((k) => k.id === 'ready-to-rent')?.trustHint).toBe('partial-data');
-    expect(kpis.find((k) => k.id === 'due-soon')?.trustHint).toBe('partial-data');
+    const withHints = attachKpiTrustHints(kpis, trust);
+
+    expect(withHints.find((k) => k.id === 'ready-to-rent')?.trustHint).toBe('partial-data');
+    expect(withHints.find((k) => k.id === 'due-soon')?.trustHint).toBe('partial-data');
   });
 });

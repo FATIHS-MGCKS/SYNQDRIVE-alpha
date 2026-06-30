@@ -112,7 +112,7 @@ export function VehicleDetailHeader({
               ) : null}
             </div>
             <div className="shrink-0 sm:hidden">
-              <VehicleConnectionBadge compact />
+              <VehicleConnectionBadge compact vehicleId={vehicle.id} />
             </div>
           </div>
 
@@ -212,7 +212,7 @@ export function VehicleDetailHeader({
             <VehicleHealthChip vehicleId={vehicle.id ?? null} />
 
             <div className="hidden sm:block">
-              <VehicleConnectionBadge />
+              <VehicleConnectionBadge vehicleId={vehicle.id} />
             </div>
           </div>
         </div>
