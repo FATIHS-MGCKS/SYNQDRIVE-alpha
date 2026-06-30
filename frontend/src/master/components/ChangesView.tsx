@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'price-tariffs-page-kpi-header-ui-v49126-2026-06-30',
+    version: '4.9.126',
+    title: 'V4.9.126 — Price Tariffs Page: KPI-Standard, Header-Actions & Refresh entfernt',
+    summary: [
+      'Sechs Tariff-KPIs im Control-Center-Stil (`TariffKpiCard`): Active groups, Vehicles assigned, Without tariff, Avg. daily rate, Incomplete, Last updated.',
+      'Header: Refresh entfernt; `Simulate` (`variant="secondary"`) + `Create tariff group` (`variant="primary"`) rechts neben Titel.',
+    ],
+    reason:
+      'KPI-Karten und Header wirkten inkonsistent; redundanter Refresh-Button machte die Price Tariffs Page unruhig.',
+    previousBehavior:
+      'Refresh + Simulate + Create im Header; große `sq-card`-KPI-Flächen mit 18px bold Werten ohne Icon-Tiles.',
+    details:
+      'Geändert: `PriceTariffsPage.tsx`. Keine Tariff-/Simulator-/API-/Tabellenlogik geändert.',
+    affectsArchitecture: false,
+    module: 'Rental Pricing',
+    createdAt: '2026-06-30T23:59:59.000Z',
+  },
+  {
     id: 'tasks-page-kpi-header-ui-v49125-2026-06-30',
     version: '4.9.125',
     title: 'V4.9.125 — Tasks Page: KPI-Boxen & Header-Button UI',
