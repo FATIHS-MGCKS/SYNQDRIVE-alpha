@@ -15,6 +15,7 @@ git clone --depth 1 --branch main https://github.com/FATIHS-MGCKS/SYNQDRIVE-alph
 
 echo "==> Link shared env/uploads"
 ln -sfn /opt/synqdrive/shared/backend.env "$RELEASE_DIR/backend/.env"
+ln -sfn /opt/synqdrive/shared/frontend.env "$RELEASE_DIR/frontend/.env"
 ln -sfn /opt/synqdrive/shared/uploads "$RELEASE_DIR/backend/uploads"
 
 echo "==> Backend install/build/migrate"
