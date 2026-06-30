@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-notifications-row-ui-v49120-2026-06-30',
+    version: '4.9.120',
+    title: 'V4.9.120 — Dashboard Notifications: Row-UI an Fleet Command angeglichen',
+    summary: [
+      '`AttentionItemRow` nutzt jetzt flache Fleet-Command-Rows (`divide-y`, `hover:bg-muted/25`) statt einzelner Card-Borders pro Eintrag.',
+      'Typografie kompakter: Titel 14px semibold, Kontext 12px muted, Kategorie 10px uppercase, Severity-Badges 9.5px.',
+      'Actions (`Open vehicle`, `Details`, `Collapse`) als dezente `AttentionRowAction` (`sq-press`, 10.5px) wie FleetOperatorRow „Open“.',
+      'Expanded Groups: Parent + Child Rows in einer dezenten Gruppe (`border-border/35`, `bg-muted/[0.03]`) ohne massive Critical-Flächen.',
+    ],
+    reason:
+      'Notification-Einträge wirkten typografisch und visuell inkonsistent im Vergleich zur kompakteren Fleet Command Box.',
+    previousBehavior:
+      'Einzelne Card-Rows mit Schatten/Border, größere Icons (7×7), `sq-btn-secondary`-Actions und unruhige Critical-Tints.',
+    details:
+      'Geändert: `AttentionItemRow.tsx` (+ export `AttentionRowAction`), `ActionQueue.tsx` (List-Rhythmus, Group-Container). Keine Runtime-/Dedupe-/Backend-Änderung; Fleet Command unverändert.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-30T23:45:00.000Z',
+  },
+  {
     id: 'dimo-agent-test-coverage-v49119-2026-06-30',
     version: '4.9.119',
     title: 'V4.9.119 — DIMO AI Agent Test Coverage',
