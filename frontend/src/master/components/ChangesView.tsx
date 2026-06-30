@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'data-auth-consent-center-kpi-header-ui-v49126-2026-06-30',
+    version: '4.9.126',
+    title: 'V4.9.126 — Data Authorization & Consent Center: KPI-Standard & Desktop-Header',
+    summary: [
+      'Fünf Authorization-KPIs im Control-Center-Stil (`DataAuthKpiCard`): kompakte Cards, 21px-Werte, Helper-Zeile, dezente Icon-Tiles.',
+      'Desktop: Titel + `Systemfreigaben synchronisieren` (secondary) + `Freigabe anlegen` (primary) in einer Zeile; Mobile: Buttons unter Titel beibehalten.',
+    ],
+    reason:
+      'KPI-Karten wirkten zu groß; Header-Actions saßen auf Desktop nicht in der finalen Zielstruktur.',
+    previousBehavior:
+      'Native Border-Buttons + `MetricCard`-KPIs mit großen Icons; PageHeader ohne Desktop-Zentrierung.',
+    details:
+      'Geändert: `DataAuthorizationTab.tsx`. Keine Authorization-/Consent-/DIMO-/Filter-/API-Logik geändert.',
+    affectsArchitecture: false,
+    module: 'Administration',
+    createdAt: '2026-06-30T23:59:59.000Z',
+  },
+  {
     id: 'tasks-page-kpi-header-ui-v49125-2026-06-30',
     version: '4.9.125',
     title: 'V4.9.125 — Tasks Page: KPI-Boxen & Header-Button UI',

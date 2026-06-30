@@ -16,13 +16,14 @@ import {
   DataTable,
   EmptyState,
   ErrorState,
-  MetricCard,
   PageHeader,
   SkeletonMetricGrid,
   SkeletonRows,
   StatusChip,
   type DataTableColumn,
 } from '../../../../components/patterns';
+import { Button } from '../../../../components/ui/button';
+import { cn } from '../../../../components/ui/utils';
 import type { DataAuthorizationDto } from '../../../../lib/api';
 import { DataAuthorizationCreateDialog } from './DataAuthorizationCreateDialog';
 import { DataAuthorizationDetailDrawer } from './DataAuthorizationDetailDrawer';
@@ -62,6 +63,109 @@ const DEFAULT_FILTERS: DataAuthorizationFilters = {
   risk: 'all',
   dataCategory: 'all',
 };
+
+interface DataAuthKpiCardProps {
+  label: string;
+  value: number;
+  helper: string;
+  icon: LucideIcon;
+  tone?: 'critical' | 'watch' | 'success' | 'info';
+  subdued?: boolean;
+  isActive?: boolean;
+  onClick?: () => void;
+}
+
+function DataAuthKpiCard({
+  label,
+  value,
+  helper,
+  icon: MetricIcon,
+  tone,
+  subdued = false,
+  isActive = false,
+  onClick,
+}: DataAuthKpiCardProps) {
+  const isCritical = tone === 'critical' && value > 0;
+  const isWatch = tone === 'watch' && value > 0;
+  const isSuccess = tone === 'success' && value > 0;
+  const isInfo = tone === 'info' && value > 0;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={isActive}
+      aria-label={`${label}: ${value}`}
+      className={cn(
+        'sq-press group relative w-full overflow-hidden border text-left transition-colors duration-200',
+        'hover:border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+        'min-h-[96px] rounded-lg bg-card/55 px-2.5 py-2',
+        isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
+        isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
+        isSuccess && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
+        isInfo && 'border-border/45 bg-card/55',
+        !isCritical && !isWatch && !isSuccess && !isInfo && 'border-border/45',
+        isActive && 'ring-2 ring-[color:var(--brand)]/55',
+      )}
+    >
+      <div className="flex h-full items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-[10.5px] font-medium tracking-[-0.01em] text-muted-foreground">
+            {label}
+          </p>
+          <p
+            className={cn(
+              'mt-1 text-[21px] font-semibold tabular-nums leading-none tracking-[-0.03em]',
+              subdued && 'text-muted-foreground',
+              isCritical && 'text-[color:var(--status-critical)]',
+              isSuccess && 'text-[color:var(--status-positive)]',
+              isWatch && 'text-[color:var(--status-watch)]',
+              !subdued && !isCritical && !isSuccess && !isWatch && 'text-foreground',
+            )}
+          >
+            {value}
+          </p>
+          <p className="mt-1 truncate text-[10px] leading-snug text-muted-foreground">{helper}</p>
+        </div>
+        <div
+          className={cn(
+            'flex h-6 w-6 shrink-0 items-center justify-center rounded-md',
+            isCritical && 'sq-tone-critical',
+            isWatch && 'sq-tone-watch',
+            isSuccess && 'sq-tone-success',
+            isInfo && 'sq-tone-info',
+            !isCritical && !isWatch && !isSuccess && !isInfo && 'bg-muted text-muted-foreground',
+          )}
+        >
+          <MetricIcon className="h-3 w-3" />
+        </div>
+      </div>
+      {isCritical ? (
+        <span
+          className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[color:var(--status-critical)]"
+          aria-hidden
+        />
+      ) : null}
+    </button>
+  );
+}
+
+function kpiStatusToTone(
+  status: 'success' | 'warning' | 'critical' | 'watch' | 'neutral',
+): DataAuthKpiCardProps['tone'] {
+  switch (status) {
+    case 'success':
+      return 'success';
+    case 'warning':
+      return 'watch';
+    case 'critical':
+      return 'critical';
+    case 'watch':
+      return 'watch';
+    default:
+      return undefined;
+  }
+}
 
 export function DataAuthorizationTab({ canWrite = false, canManage = false }: Props) {
   const { orgId } = useRentalOrg();
@@ -239,28 +343,26 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
     <div className="space-y-5 max-w-[1600px] mx-auto">
       <PageHeader
         title="Data Authorization & Consent Center"
+        className="mb-4 flex-col gap-2.5 sm:mb-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
         actions={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-1.5 sm:w-auto sm:justify-end sm:gap-2">
             {canManage && (
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => void syncSystem()}
                 disabled={actionId === 'sync'}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border border-border hover:bg-muted disabled:opacity-50"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${actionId === 'sync' ? 'animate-spin' : ''}`} />
+                <RefreshCw className={cn('h-3.5 w-3.5', actionId === 'sync' && 'animate-spin')} />
                 Systemfreigaben synchronisieren
-              </button>
+              </Button>
             )}
             {canWrite && (
-              <button
-                type="button"
-                onClick={() => setShowCreate(true)}
-                className="sq-3d-btn sq-3d-btn--primary inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold"
-              >
-                <Plus className="w-4 h-4" />
+              <Button type="button" variant="primary" size="sm" onClick={() => setShowCreate(true)}>
+                <Plus className="h-3.5 w-3.5" />
                 Freigabe anlegen
-              </button>
+              </Button>
             )}
           </div>
         }
@@ -269,24 +371,26 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
       {loading && !stats ? (
         <SkeletonMetricGrid count={5} />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
-          {kpiCards.map((card) => {
+        <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-5">
+          {kpiCards.map((card, index) => {
             const Icon = card.icon;
+            const tone = kpiStatusToTone(card.status);
             return (
-              <button
+              <div
                 key={card.id}
-                type="button"
-                onClick={card.onClick}
-                className={`text-left rounded-2xl transition-all ${card.active ? 'ring-1 ring-[var(--brand)]' : ''}`}
+                className={cn(index === kpiCards.length - 1 && 'col-span-2 lg:col-span-1')}
               >
-                <MetricCard
+                <DataAuthKpiCard
                   label={card.label}
                   value={card.value}
-                  status={card.status}
-                  icon={<Icon className="w-5 h-5" />}
-                  hint={card.hint}
+                  helper={card.hint}
+                  icon={Icon}
+                  tone={tone}
+                  subdued={card.status === 'neutral' && card.value === 0}
+                  isActive={card.active}
+                  onClick={card.onClick}
                 />
-              </button>
+              </div>
             );
           })}
         </div>
