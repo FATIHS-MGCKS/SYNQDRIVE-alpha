@@ -12,13 +12,21 @@ User says: deploy, commit and deploy, release, production, VPS.
 
 ## Prerequisites (Cloud Agent only)
 
-Secrets in [Cursor Cloud Agents dashboard](https://cursor.com/dashboard/cloud-agents) → Secrets:
+[Cursor Cloud Agents dashboard](https://cursor.com/dashboard/cloud-agents) → Secrets.
 
-- `TAILSCALE_AUTH_KEY`
-- `CLOUD_AGENT_SSH_PRIVATE_KEY`
-- Optional: `CLOUD_AGENT_VPS_HOST` (default `mein-vps.internal`)
+**Deploy without Tailscale (path A):**
 
-See `AGENTS.md` for full checklist.
+| Name | Type |
+|------|------|
+| `CLOUD_AGENT_SSH_PRIVATE_KEY` | Runtime Secret |
+| `CLOUD_AGENT_VPS_HOST` | Environment Variable → `srv1374778.hstgr.cloud` |
+| `CLOUD_AGENT_SSH_USER` | Environment Variable → `root` |
+
+Do **not** add `TAILSCALE_AUTH_KEY`.
+
+**With Tailscale (path B):** add `TAILSCALE_AUTH_KEY` (Runtime Secret) and set host to `mein-vps.internal`.
+
+See `AGENTS.md` for full checklist and Runtime Secret vs Environment Variable guidance.
 
 ## Workflow
 
@@ -50,13 +58,13 @@ ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes root@srv1374778.hstgr.cloud \
   "bash /opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh"
 ```
 
-Cloud Agents must use `cloud-agent-deploy.sh` (Tailscale + dashboard SSH key).
+Cloud Agents must use `cloud-agent-deploy.sh` (dashboard SSH key; Tailscale optional).
 
 ## Failure modes
 
 | Symptom | Fix |
 |---------|-----|
 | Git preflight: unpushed commits | `git push origin main` |
-| SSH auth failed | Check `CLOUD_AGENT_SSH_PRIVATE_KEY` and Tailscale ACL (port 22) |
+| SSH auth failed | Check `CLOUD_AGENT_SSH_PRIVATE_KEY`; without Tailscale check Hostinger firewall (port 22) |
 | Health check exit 7 | Often timing; verify `app.synqdrive.eu/api/v1/health` manually |
 | Mapbox broken after deploy | Ensure VPS symlinks `frontend.env` (in deploy script) |

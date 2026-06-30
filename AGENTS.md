@@ -27,7 +27,32 @@ Env template: `backend/.env.example` — **never commit real secrets**.
 ## Cursor Cloud Agent setup
 
 Cloud Agents use `.cursor/environment.json` (Dockerfile + install/start scripts).
-**All secrets belong in the [Cursor Cloud Agents dashboard](https://cursor.com/dashboard/cloud-agents) → Secrets tab — not in git.**
+**Configure credentials in the [Cursor Cloud Agents dashboard](https://cursor.com/dashboard/cloud-agents) → Secrets tab — never in git.**
+
+### Runtime Secret vs Environment Variable
+
+Both types are injected as shell environment variables at agent runtime. The difference is visibility to the AI agent:
+
+| Cursor type | Use for | Agent can read value? | Redacted in chat/commits? |
+|-------------|---------|----------------------|---------------------------|
+| **Runtime Secret** | Passwords, private keys, API secrets, DB URLs | No (`[REDACTED]`) | Yes |
+| **Environment Variable** | Hostnames, usernames, public URLs, feature flags | Yes | No |
+
+**Rule of thumb for SynqDrive:**
+
+- **Runtime Secret:** anything that must not appear in commits or agent transcripts.
+- **Environment Variable:** non-sensitive config the agent may need to see (e.g. `CLOUD_AGENT_VPS_HOST`).
+
+Build-time-only credentials (private npm registries) → **Build Secret** (not used for VPS deploy).
+
+### Choose a VPS path
+
+| Path | When | `CLOUD_AGENT_VPS_HOST` | `TAILSCALE_AUTH_KEY` |
+|------|------|--------------------------|----------------------|
+| **A — Public SSH** (simpler) | Deploy only, Hostinger SSH reachable | `srv1374778.hstgr.cloud` | **Do not add** |
+| **B — Tailscale** (more secure) | Private VPS + optional prod DB from agent | `mein-vps.internal` | **Runtime Secret** |
+
+**Tailscale without using it:** do **not** create an empty `TAILSCALE_AUTH_KEY` entry. Omit the variable entirely — `cloud-agent-start.sh` only connects when the key is set and non-empty. Add it later when you switch to path B.
 
 ### Dashboard checklist (one-time)
 
@@ -35,41 +60,73 @@ Cloud Agents use `.cursor/environment.json` (Dockerfile + install/start scripts)
 2. **Create environment** — select this repo; Cursor builds from `.cursor/environment.json`.
 3. **Network policy** — Dashboard → Cloud Agents → **Security**:
    - Mode: **Default + allowlist** (recommended)
-   - Add allowlist host: `mein-vps.internal`
-   - Add allowlist host: `app.synqdrive.eu` (public health verification)
+   - Path A: `srv1374778.hstgr.cloud`, `app.synqdrive.eu`, `github.com`
+   - Path B: also `mein-vps.internal`
    - Required artifact host: `cloud-agent-artifacts.s3.us-east-1.amazonaws.com`
-4. **Tailscale ACL** — allow the Cloud Agent node (`synqdrive-cursor-cloud`) to reach `mein-vps` on **TCP 22** and **TCP 5432**.
-5. **Secrets** — add as **Runtime Secret** unless noted:
-
-| Secret | Purpose |
-|--------|---------|
-| `TAILSCALE_AUTH_KEY` | Reusable/ephemeral Tailscale auth key (tagged for cloud agents) |
-| `CLOUD_AGENT_SSH_PRIVATE_KEY` | PEM for SSH deploy to VPS (`root@mein-vps.internal`) |
-| `CLOUD_AGENT_SSH_USER` | SSH user (default `root` if unset) |
-| `CLOUD_AGENT_VPS_HOST` | VPS MagicDNS hostname (default `mein-vps.internal`) |
-| `DATABASE_URL` | Optional: `postgresql://USER:PASS@mein-vps.internal:5432/synqdrive?schema=public` |
-| `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY` | Auth |
-| `DIMO_API_KEY`, `DIMO_PRIVATE_KEY`, `DIMO_CLIENT_ID` | DIMO integration |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Billing |
-| Other keys from `backend/.env.example` | As needed for the task |
-
+4. **Tailscale ACL** (path B only) — allow node `synqdrive-cursor-cloud` → `mein-vps` on TCP **22** and **5432**.
+5. **Secrets** — see table below.
 6. **Restart** the Cloud Agent after adding or changing secrets.
+
+#### Secrets inventory
+
+| Name | Cursor type | Path A (public SSH) | Path B (Tailscale) |
+|------|-------------|---------------------|---------------------|
+| `CLOUD_AGENT_SSH_PRIVATE_KEY` | **Runtime Secret** | Required | Required |
+| `CLOUD_AGENT_VPS_HOST` | Environment Variable | `srv1374778.hstgr.cloud` | `mein-vps.internal` |
+| `CLOUD_AGENT_SSH_USER` | Environment Variable | `root` (optional) | `root` (optional) |
+| `TAILSCALE_AUTH_KEY` | **Runtime Secret** | **omit** | Required |
+| `DATABASE_URL` | **Runtime Secret** | omit (unless needed) | Optional (prod DB via tailnet) |
+| `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY` | Runtime Secret | As needed for task | As needed |
+| `DIMO_API_KEY`, `DIMO_PRIVATE_KEY`, `DIMO_CLIENT_ID` | Runtime Secret | As needed | As needed |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Runtime Secret | As needed | As needed |
+| Other keys from `backend/.env.example` | Runtime Secret | As needed | As needed |
+
+`CLOUD_AGENT_SSH_PRIVATE_KEY` = full PEM from local `id_ed25519` (Windows: `C:\Users\<you>\.ssh\id_ed25519`).
 
 ### VPS connectivity
 
-On boot, the agent:
+On boot, `cloud-agent-start.sh`:
 
-1. Runs `tailscaled` in **userspace networking** mode (required in Cursor VMs).
-2. Joins your tailnet via `TAILSCALE_AUTH_KEY`.
-3. Materializes `~/.ssh/id_ed25519` from `CLOUD_AGENT_SSH_PRIVATE_KEY`.
-4. Verifies TCP to `mein-vps.internal:22` (SSH) and `:5432` (PostgreSQL).
+1. Connects Tailscale **only if** `TAILSCALE_AUTH_KEY` is set (path B).
+2. Materializes `~/.ssh/id_ed25519` from `CLOUD_AGENT_SSH_PRIVATE_KEY`.
+3. Runs connectivity checks when Tailscale is active (path B).
 
 Manual verification inside a Cloud Agent shell:
 
 ```bash
 bash .cursor/scripts/cloud-agent-verify-vps.sh
-source ~/.cursor-cloud-proxy.env   # HTTP(S) via Tailscale proxy if needed
-ssh ${CLOUD_AGENT_SSH_USER:-root}@mein-vps.internal 'hostname'
+ssh ${CLOUD_AGENT_SSH_USER:-root}@${CLOUD_AGENT_VPS_HOST:-srv1374778.hstgr.cloud} 'hostname'
+```
+
+Path B only — HTTP(S) via Tailscale proxy:
+
+```bash
+source ~/.cursor-cloud-proxy.env
+```
+
+### Deploy without Tailscale (path A — recommended for deploy-only)
+
+No Tailscale account or auth key required. Same deploy script as path B.
+
+**Minimum secrets (Cursor dashboard):**
+
+| Name | Type | Value |
+|------|------|-------|
+| `CLOUD_AGENT_SSH_PRIVATE_KEY` | Runtime Secret | Your `id_ed25519` private key (full PEM) |
+| `CLOUD_AGENT_VPS_HOST` | Environment Variable | `srv1374778.hstgr.cloud` |
+| `CLOUD_AGENT_SSH_USER` | Environment Variable | `root` |
+
+**Do not add** `TAILSCALE_AUTH_KEY`.
+
+**Allowlist:** `srv1374778.hstgr.cloud`, `app.synqdrive.eu`, `github.com`.
+
+**Prerequisite:** VPS SSH (port 22) must be reachable from Cursor Cloud Agent IPs. Hostinger firewall must allow inbound SSH (key-only auth). If SSH is IP-restricted to your home IP only, path A will fail — use path B (Tailscale) instead.
+
+**Test in Cloud Agent terminal:**
+
+```bash
+ssh -o BatchMode=yes root@srv1374778.hstgr.cloud hostname
+bash .cursor/scripts/cloud-agent-deploy.sh
 ```
 
 ---
@@ -93,7 +150,7 @@ bash .cursor/scripts/cloud-agent-deploy.sh
 
 The deploy script:
 
-- Verifies Tailscale + SSH to the VPS
+- Verifies SSH to the VPS (Tailscale optional)
 - Ensures working tree is clean and `main` is pushed to `origin`
 - SSHs to the VPS and runs `backend/scripts/ops/vps-deploy-release.sh`
 - That remote script: DB backup → clone release → link `backend.env` + `frontend.env` → `npm ci` + build → Prisma migrate → PM2 restart → health check
@@ -111,13 +168,13 @@ Skip git preflight (e.g. redeploy current `main` without local checkout):
 CLOUD_AGENT_SKIP_GIT_PREFLIGHT=1 bash .cursor/scripts/cloud-agent-deploy.sh
 ```
 
-### Override targets (optional secrets)
+### Override targets (optional)
 
-| Secret | Default |
-|--------|---------|
-| `CLOUD_AGENT_VPS_HOST` | `mein-vps.internal` |
-| `CLOUD_AGENT_VPS_DEPLOY_SCRIPT` | `/opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh` |
-| `CLOUD_AGENT_HEALTH_URL` | `https://app.synqdrive.eu/api/v1/health` |
+| Name | Type | Default |
+|------|------|---------|
+| `CLOUD_AGENT_VPS_HOST` | Environment Variable | `mein-vps.internal` (use `srv1374778.hstgr.cloud` without Tailscale) |
+| `CLOUD_AGENT_VPS_DEPLOY_SCRIPT` | Environment Variable | `/opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh` |
+| `CLOUD_AGENT_HEALTH_URL` | Environment Variable | `https://app.synqdrive.eu/api/v1/health` |
 
 ---
 

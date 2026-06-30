@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'cloud-agent-no-tailscale-docs-v49128-2026-06-30',
+    version: '4.9.128',
+    title: 'V4.9.128 — Cloud Agent: Deploy ohne Tailscale (Doku)',
+    summary: [
+      'AGENTS.md: Pfad A (öffentlicher SSH srv1374778.hstgr.cloud) vs. Pfad B (Tailscale).',
+      'Runtime Secret vs Environment Variable — welche Keys welchen Typ im Cursor Dashboard bekommen.',
+      'TAILSCALE_AUTH_KEY weglassen (nicht leer eintragen), wenn nur Deploy ohne VPN genutzt wird.',
+    ],
+    reason:
+      'Cloud-Agent-Setup soll ohne Tailscale möglich sein; klare Anleitung welche Dashboard-Felder Runtime vs. Environment sind.',
+    previousBehavior:
+      'Doku setzte Tailscale voraus; Secret-Typen nicht differenziert.',
+    details: 'Siehe AGENTS.md Abschnitte „Runtime Secret vs Environment Variable“ und „Deploy without Tailscale“.',
+    affectsArchitecture: false,
+    module: 'Automation',
+    createdAt: '2026-06-30T21:00:00.000Z',
+  },
+  {
     id: 'cloud-agent-vps-deploy-v49127-2026-06-30',
     version: '4.9.127',
     title: 'V4.9.127 — Cursor Cloud Agent: VPS Deploy Flow',

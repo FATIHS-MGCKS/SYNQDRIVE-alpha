@@ -16,10 +16,12 @@
 
 - **Cloud Agent VM** builds from committed `.cursor/environment.json`; secrets
   resolve from Cursor Dashboard (Runtime Secret), never from git.
-- **Private VPS access** uses Tailscale userspace networking inside the Cursor VM:
-  `tailscaled` → `tailscale up` (auth key) → MagicDNS `mein-vps.internal` →
-  TCP 22 (SSH) / 5432 (PostgreSQL). HTTP(S) tools may use SOCKS/HTTP proxy env
-  written to `~/.cursor-cloud-proxy.env`.
+- **VPS access (two paths):**
+  - **Path A (public SSH):** `CLOUD_AGENT_VPS_HOST=srv1374778.hstgr.cloud`, no Tailscale.
+  - **Path B (Tailscale):** `tailscaled` → `tailscale up` → `mein-vps.internal` →
+    TCP 22 / 5432; proxy env in `~/.cursor-cloud-proxy.env`.
+- **Cursor secret types:** Runtime Secret for keys/credentials; Environment Variable
+  for non-sensitive host/user config (both injected as env vars at runtime).
 - **Production deploy path**: Cloud Agent → SSH (`CLOUD_AGENT_SSH_PRIVATE_KEY`) →
   VPS `vps-deploy-release.sh` → fresh git clone from GitHub `main` → build → PM2.
   Requires `main` pushed before deploy; `frontend.env` symlink on VPS ensures
