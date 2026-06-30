@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'insights-page-kpi-cleanup-v49126-2026-06-30',
+    version: '4.9.126',
+    title: 'V4.9.126 — Insights Page: KPI-Standard & redundante Refresh-Buttons entfernt',
+    summary: [
+      'Insights-KPIs (Business Risks, Finanzrisiko, Forderungen, Kritische Buchungen, Revenue Leakage) im Control-Center-Stil (`InsightKpiCard`).',
+      'Entfernt: Header-Button „Refresh“ und „Insights aktualisieren“ — Initial Load / automatische Insights-Abfrage bleiben unverändert.',
+    ],
+    reason:
+      'KPI-Karten wirkten zu dominant und inkonsistent; doppelte Refresh-Actions machten die Insights Page unruhig.',
+    previousBehavior:
+      'Farbige `sq-card`-KPI-Flächen mit großen Werten; Refresh unter Titel + „Insights aktualisieren“ unter KPIs.',
+    details:
+      'Geändert: `InsightsCockpit.tsx`, `FinancialInsightsView.tsx`. Keine Insights-Berechnung/API-Logik geändert.',
+    affectsArchitecture: false,
+    module: 'Rental Insights',
+    createdAt: '2026-06-30T23:59:59.000Z',
+  },
+  {
     id: 'tasks-page-kpi-header-ui-v49125-2026-06-30',
     version: '4.9.125',
     title: 'V4.9.125 — Tasks Page: KPI-Boxen & Header-Button UI',

@@ -13,7 +13,6 @@ import {
 
 import { api } from '../../lib/api';
 import { PageHeader } from '../../components/patterns';
-import { Button } from '../../components/ui/button';
 import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -170,7 +169,6 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   const [customers, setCustomers] = useState<CustomerLite[]>([]);
   const [activePopup, setActivePopup] = useState<'revenue' | 'expenses' | null>(null);
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     if (!orgId) {
@@ -207,17 +205,11 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
       setReportingAnchor(new Date());
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   }, [orgId]);
 
   useEffect(() => {
     setLoading(true);
-    void load();
-  }, [load]);
-
-  const handleRefresh = useCallback(() => {
-    setRefreshing(true);
     void load();
   }, [load]);
 
@@ -431,15 +423,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-5">
-      <PageHeader
-        title={t('nav.financialInsights')}
-        actions={(
-          <Button type="button" variant="neutral" size="sm" onClick={handleRefresh} disabled={refreshing}>
-            <Icon name="refresh-cw" className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        )}
-      />
+      <PageHeader title={t('nav.financialInsights')} />
       <InsightsCockpit
         isDarkMode={isDarkMode}
         openReceivablesEur={Math.round(outstandingCents / 100)}
