@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fs-mobility-ops-scripts-v49130-2026-06-30',
+    version: '4.9.130',
+    title: 'V4.9.130 — FS Mobility: Prod Audit & Demo-Cleanup Scripts',
+    summary: [
+      'Prisma-Audit `audit-fs-mobility-invoices.ts` — Rechnungen, Generated Docs, Sequences, Tasks für FS Mobility.',
+      'Prisma-Cleanup `cleanup-fs-mobility-demo-data.ts` mit inspect / dry-run / execute (behält Mercedes Service-Task).',
+      'VPS-Wrapper `prod-audit-fs-mobility.sh` und `prod-cleanup-fs-mobility.sh` für manuelle Prod-Ops per psql.',
+    ],
+    reason:
+      'Demo-/Testdaten und fehlerhafte Rechnungen bei FS Mobility gezielt prüfen und bereinigen, ohne Fleet/Vehicles anzutasten.',
+    previousBehavior: 'Keine versionierten Ops-Skripte für tenant-spezifische FS-Mobility-Bereinigung.',
+    details:
+      'Org-scoped auf FS Mobility; Cleanup behält `service_overdue`-Task für Mercedes. Nur manuell auf VPS ausführen — nicht Teil des Deploy-Flows.',
+    affectsArchitecture: false,
+    module: 'Automation',
+    createdAt: '2026-06-30T22:10:00.000Z',
+  },
+  {
     id: 'cloud-agent-no-tailscale-docs-v49128-2026-06-30',
     version: '4.9.128',
     title: 'V4.9.128 — Cloud Agent: Deploy ohne Tailscale (Doku)',
