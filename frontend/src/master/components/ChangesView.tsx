@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stations-page-kpi-header-ui-v49124-2026-06-30',
+    version: '4.9.124',
+    title: 'V4.9.124 — Stations Page: KPI-Boxen & Header-Actions UI',
+    summary: [
+      'Sechs Stations-KPIs im Control-Center-Stil (`StationKpiCard`): kompakte Cards, 21px-Werte, Icon-Tiles, dezente Status-Tints.',
+      'Header: `List view` + `New station` rechts in derselben Zeile wie der Titel (auch Mobile); Primary/Secondary `Button`-Varianten.',
+    ],
+    reason:
+      'Stations KPI-Boxen wirkten zu groß/inkonsistent; Header-Actions brachen auf Mobile unter den Seitentitel.',
+    previousBehavior:
+      'Große `MetricCard`-KPIs; `PageHeader` stackte Actions unter den Titel auf Mobile.',
+    details:
+      'Geändert: `StationsView.tsx` (+ lokale `StationKpiCard`). Keine Stations-/Filter-/API-Logik geändert.',
+    affectsArchitecture: false,
+    module: 'Rental Stations',
+    createdAt: '2026-06-30T23:59:45.000Z',
+  },
+  {
     id: 'customers-page-kpi-header-ui-v49123-2026-06-30',
     version: '4.9.123',
     title: 'V4.9.123 — Customers Page: KPI-Boxen & Header-Button UI',

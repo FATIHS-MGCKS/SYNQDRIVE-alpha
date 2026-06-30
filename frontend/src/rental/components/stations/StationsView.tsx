@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   Archive,
@@ -21,7 +21,6 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
 import {
   PageHeader,
-  MetricCard,
   StatusChip,
   EmptyState,
   ErrorState,
@@ -29,6 +28,7 @@ import {
   SkeletonCard,
 } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
+import { cn } from '../../../components/ui/utils';
 import {
   formatStationAddress,
   getStationWarnings,
@@ -53,6 +53,77 @@ type Filters = {
 
 interface StationsViewProps {
   onOpenStation?: (station: Station) => void;
+}
+
+interface StationKpiCardProps {
+  label: string;
+  value: string | number;
+  icon: ReactNode;
+  tone?: 'critical' | 'watch' | 'success';
+  subdued?: boolean;
+}
+
+function StationKpiCard({
+  label,
+  value,
+  icon,
+  tone,
+  subdued = false,
+}: StationKpiCardProps) {
+  const numericValue = typeof value === 'number' ? value : null;
+  const isCritical = tone === 'critical' && numericValue !== null && numericValue > 0;
+  const isWatch = tone === 'watch' && numericValue !== null && numericValue > 0;
+  const isSuccess = tone === 'success' && numericValue !== null && numericValue > 0;
+
+  return (
+    <div
+      className={cn(
+        'relative overflow-hidden border text-left',
+        'min-h-[96px] rounded-lg bg-card/55 px-2.5 py-2',
+        isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
+        isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
+        isSuccess && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
+        !isCritical && !isWatch && !isSuccess && 'border-border/45',
+      )}
+      aria-label={`${label}: ${value}`}
+    >
+      <div className="flex h-full items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-[10.5px] font-medium tracking-[-0.01em] text-muted-foreground">
+            {label}
+          </p>
+          <p
+            className={cn(
+              'mt-1 text-[21px] font-semibold tabular-nums leading-none tracking-[-0.03em]',
+              (subdued || value === '—') && 'text-muted-foreground',
+              isCritical && 'text-[color:var(--status-critical)]',
+              isSuccess && 'text-[color:var(--status-positive)]',
+              isWatch && 'text-[color:var(--status-watch)]',
+            )}
+          >
+            {value}
+          </p>
+        </div>
+        <div
+          className={cn(
+            'flex h-6 w-6 shrink-0 items-center justify-center rounded-md',
+            isCritical && 'sq-tone-critical',
+            isWatch && 'sq-tone-watch',
+            isSuccess && 'sq-tone-success',
+            !isCritical && !isWatch && !isSuccess && 'bg-muted text-muted-foreground',
+          )}
+        >
+          {icon}
+        </div>
+      </div>
+      {isWatch ? (
+        <span
+          className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[color:var(--status-watch)]"
+          aria-hidden
+        />
+      ) : null}
+    </div>
+  );
 }
 
 export function StationsView({ onOpenStation }: StationsViewProps) {
@@ -249,8 +320,9 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
     <div className="space-y-4 pb-8 animate-fade-up">
       <PageHeader
         title={t('stations.pageTitle')}
+        className="mb-4 flex-row items-center justify-between gap-2 sm:mb-5 sm:items-start sm:gap-4"
         actions={(
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             {missingCoords > 0 && (
               <Button
                 type="button"
@@ -258,6 +330,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
                 disabled={backfillRunning}
                 variant="neutral"
                 size="sm"
+                className="hidden sm:inline-flex"
               >
                 {backfillRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                 {t('stations.backfillCoords')} ({missingCoords})
@@ -266,19 +339,24 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
             <Button
               type="button"
               onClick={() => setViewMode((m) => (m === 'cards' ? 'list' : 'cards'))}
-              variant="neutral"
+              variant="secondary"
               size="sm"
+              aria-label={viewMode === 'cards' ? t('stations.viewList') : t('stations.viewCards')}
             >
               {viewMode === 'cards' ? <List className="w-3.5 h-3.5" /> : <LayoutGrid className="w-3.5 h-3.5" />}
-              {viewMode === 'cards' ? t('stations.viewList') : t('stations.viewCards')}
+              <span className="hidden min-[440px]:inline">
+                {viewMode === 'cards' ? t('stations.viewList') : t('stations.viewCards')}
+              </span>
             </Button>
             <Button
               type="button"
               onClick={handleCreate}
+              variant="primary"
               size="sm"
             >
               <Plus className="w-3.5 h-3.5" />
-              {t('stations.newStation')}
+              <span className="hidden min-[400px]:inline">{t('stations.newStation')}</span>
+              <span className="min-[400px]:hidden">{t('stations.newStation').split(' ')[0]}</span>
             </Button>
           </div>
         )}
@@ -286,7 +364,11 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
 
       {loading ? (
         <>
-          <SkeletonMetricGrid count={6} />
+          <SkeletonMetricGrid
+            count={6}
+            className="gap-3 sm:gap-3.5 lg:grid-cols-3 xl:grid-cols-6"
+            cardClassName="min-h-[96px] rounded-lg border border-border/45 bg-card/55 p-2.5"
+          />
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <SkeletonCard key={i} />
@@ -297,27 +379,43 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
         <ErrorState error={error} onRetry={() => void load()} />
       ) : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-            <MetricCard label={t('stations.kpi.active')} value={kpi.active} icon={<MapPin className="w-4 h-4" />} />
-            <MetricCard label={t('stations.kpi.vehicles')} value={kpi.vehicles} icon={<Car className="w-4 h-4" />} />
-            <MetricCard
+          <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-3 xl:grid-cols-6">
+            <StationKpiCard
+              label={t('stations.kpi.active')}
+              value={kpi.active}
+              icon={<MapPin className="h-3 w-3" />}
+              tone="success"
+              subdued={kpi.active === 0}
+            />
+            <StationKpiCard
+              label={t('stations.kpi.vehicles')}
+              value={kpi.vehicles}
+              icon={<Car className="h-3 w-3" />}
+            />
+            <StationKpiCard
               label={t('stations.kpi.available')}
               value={statsLoading && !Object.keys(overviewById).length ? '—' : kpi.available}
-              icon={<Car className="w-4 h-4" />}
+              icon={<Car className="h-3 w-3" />}
+              subdued={statsLoading && !Object.keys(overviewById).length}
             />
-            <MetricCard
+            <StationKpiCard
               label={t('stations.kpi.todayPickups')}
               value={statsLoading && !Object.keys(overviewById).length ? '—' : kpi.todayPickups}
+              icon={<Users className="h-3 w-3" />}
+              subdued={statsLoading && !Object.keys(overviewById).length}
             />
-            <MetricCard
+            <StationKpiCard
               label={t('stations.kpi.todayReturns')}
               value={statsLoading && !Object.keys(overviewById).length ? '—' : kpi.todayReturns}
+              icon={<Users className="h-3 w-3" />}
+              subdued={statsLoading && !Object.keys(overviewById).length}
             />
-            <MetricCard
+            <StationKpiCard
               label={t('stations.kpi.problems')}
               value={kpi.problems}
-              status={kpi.problems > 0 ? 'warning' : 'neutral'}
-              icon={<AlertTriangle className="w-4 h-4" />}
+              icon={<AlertTriangle className="h-3 w-3" />}
+              tone="watch"
+              subdued={kpi.problems === 0}
             />
           </div>
 
