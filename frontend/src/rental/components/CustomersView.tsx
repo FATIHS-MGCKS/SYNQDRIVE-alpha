@@ -24,11 +24,10 @@ import { mergeAdditionalCustomers } from '../lib/customer-list.utils';
 import {
   customerRiskTone,
   customerStatusTone,
-  cdv,
 } from './customer-detail/customer-detail-ui';
 import { CustomerListMobileCards } from './customer-list/CustomerListMobileCards';
-import { VehicleBookingSummaryCard } from './vehicle-bookings/VehicleBookingSummaryCard';
 import { Button } from '../../components/ui/button';
+import { cn } from '../../components/ui/utils';
 import {
   PageHeader,
   DataTable,
@@ -76,6 +75,89 @@ interface Customer {
 }
 
 const EM_DASH = '\u2014';
+
+type CustomerSegmentFilter = 'all' | 'active' | 'suspended' | 'attention';
+
+interface CustomerKpiCardProps {
+  label: string;
+  value: number;
+  filterKey: CustomerSegmentFilter;
+  isActive: boolean;
+  onToggle: (key: CustomerSegmentFilter) => void;
+  icon: string;
+  tone?: 'critical' | 'watch' | 'success';
+  subdued?: boolean;
+}
+
+function CustomerKpiCard({
+  label,
+  value,
+  filterKey,
+  isActive,
+  onToggle,
+  icon,
+  tone,
+  subdued = false,
+}: CustomerKpiCardProps) {
+  const isCritical = tone === 'critical' && value > 0;
+  const isWatch = tone === 'watch' && value > 0;
+  const isSuccess = tone === 'success' && value > 0;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(filterKey)}
+      aria-pressed={isActive}
+      aria-label={`${label}: ${value}`}
+      className={cn(
+        'sq-press group relative overflow-hidden border text-left transition-colors duration-200',
+        'hover:border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+        'min-h-[96px] rounded-lg bg-card/55 px-2.5 py-2',
+        isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
+        isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
+        isSuccess && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
+        !isCritical && !isWatch && !isSuccess && 'border-border/45',
+        isActive && 'ring-2 ring-[color:var(--brand)]/55',
+      )}
+    >
+      <div className="flex h-full items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-[10.5px] font-medium tracking-[-0.01em] text-muted-foreground">
+            {label}
+          </p>
+          <p
+            className={cn(
+              'mt-1 text-[21px] font-semibold tabular-nums leading-none tracking-[-0.03em]',
+              subdued && 'text-muted-foreground',
+              isCritical && 'text-[color:var(--status-critical)]',
+              isSuccess && 'text-[color:var(--status-positive)]',
+              isWatch && 'text-[color:var(--status-watch)]',
+            )}
+          >
+            {value}
+          </p>
+        </div>
+        <div
+          className={cn(
+            'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors',
+            isCritical && 'sq-tone-critical',
+            isWatch && 'sq-tone-watch',
+            isSuccess && 'sq-tone-success',
+            !isCritical && !isWatch && !isSuccess && 'bg-muted text-muted-foreground',
+          )}
+        >
+          <Icon name={icon} className="h-3 w-3" />
+        </div>
+      </div>
+      {isCritical ? (
+        <span
+          className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[color:var(--status-critical)]"
+          aria-hidden
+        />
+      ) : null}
+    </button>
+  );
+}
 
 function formatDateShort(raw?: string | Date | null): string {
   if (!raw) return EM_DASH;
@@ -556,51 +638,55 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       {/* Header */}
       <PageHeader
         title="Kunden & Fahrer"
+        className="mb-4 flex-row items-center justify-between gap-2 sm:mb-5 sm:items-start sm:gap-4"
         actions={(
           <Button type="button" size="sm" variant="primary" onClick={openAddCustomer}>
             <Icon name="plus" className="size-3.5" />
-            Kunde anlegen
+            <span className="hidden min-[380px]:inline">Kunde anlegen</span>
+            <span className="min-[380px]:hidden">Anlegen</span>
           </Button>
         )}
       />
 
-      <div className={cdv.summaryGrid}>
-        {[
-          { label: 'Gesamt', value: totalDrivers, filterKey: 'all' as const, subdued: false },
-          { label: 'Aktiv', value: activeDrivers, filterKey: 'active' as const, subdued: activeDrivers === 0 },
-          {
-            label: 'Gesperrt',
-            value: suspendedDrivers,
-            filterKey: 'suspended' as const,
-            subdued: suspendedDrivers === 0,
-            status: suspendedDrivers > 0 ? ('critical' as const) : undefined,
-          },
-          {
-            label: 'Aufmerksamkeit',
-            value: attentionNeeded,
-            filterKey: 'attention' as const,
-            subdued: attentionNeeded === 0,
-            status: attentionNeeded > 0 ? ('warning' as const) : undefined,
-          },
-        ].map((card) => {
-          const isActive = cardFilter === card.filterKey;
-          return (
-            <button
-              key={card.label}
-              type="button"
-              onClick={() => setCardFilter(isActive ? 'all' : card.filterKey)}
-              className={`text-left ${isActive ? 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_22%,transparent)] rounded-[0.625rem]' : ''}`}
-            >
-              <VehicleBookingSummaryCard
-                label={card.label}
-                value={String(card.value)}
-                valueVariant="numeric"
-                subdued={card.subdued}
-                status={card.status}
-              />
-            </button>
-          );
-        })}
+      <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-4">
+        <CustomerKpiCard
+          label="Gesamt"
+          value={totalDrivers}
+          filterKey="all"
+          isActive={cardFilter === 'all'}
+          onToggle={(key) => setCardFilter(cardFilter === key ? 'all' : key)}
+          icon="users"
+        />
+        <CustomerKpiCard
+          label="Aktiv"
+          value={activeDrivers}
+          filterKey="active"
+          isActive={cardFilter === 'active'}
+          onToggle={(key) => setCardFilter(cardFilter === key ? 'all' : key)}
+          icon="check-circle"
+          tone="success"
+          subdued={activeDrivers === 0}
+        />
+        <CustomerKpiCard
+          label="Gesperrt"
+          value={suspendedDrivers}
+          filterKey="suspended"
+          isActive={cardFilter === 'suspended'}
+          onToggle={(key) => setCardFilter(cardFilter === key ? 'all' : key)}
+          icon="ban"
+          tone="critical"
+          subdued={suspendedDrivers === 0}
+        />
+        <CustomerKpiCard
+          label="Aufmerksamkeit"
+          value={attentionNeeded}
+          filterKey="attention"
+          isActive={cardFilter === 'attention'}
+          onToggle={(key) => setCardFilter(cardFilter === key ? 'all' : key)}
+          icon="alert-triangle"
+          tone="watch"
+          subdued={attentionNeeded === 0}
+        />
       </div>
 
       <div className="sq-card rounded-2xl p-3 sm:p-4 shadow-[var(--shadow-1)]">

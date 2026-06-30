@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customers-page-kpi-header-ui-v49123-2026-06-30',
+    version: '4.9.123',
+    title: 'V4.9.123 — Customers Page: KPI-Boxen & Header-Button UI',
+    summary: [
+      'Vier Segment-KPIs (Gesamt/Aktiv/Gesperrt/Aufmerksamkeit) im Control-Center-Stil: kompakte Cards, 21px-Werte, Icon-Tiles, dezente Status-Tints.',
+      '„Kunde anlegen“ steht auf Mobile in derselben Zeile wie der Seitentitel (rechts); sehr schmale Screens zeigen „Anlegen“.',
+    ],
+    reason:
+      'Customers KPI-Boxen wirkten anders als Dashboard Control Center; der Primary-Button brach auf Mobile unter den Titel.',
+    previousBehavior:
+      '`VehicleBookingSummaryCard`/`booking-kpi-tile` mit blauer Outline-Ring; `PageHeader` stackte Actions auf Mobile unter den Titel.',
+    details:
+      'Geändert: `CustomersView.tsx` (+ lokale `CustomerKpiCard`). Keine Customer-/Filter-/API-Logik geändert.',
+    affectsArchitecture: false,
+    module: 'Rental Customers',
+    createdAt: '2026-06-30T23:59:30.000Z',
+  },
+  {
     id: 'bookings-new-booking-button-ui-v49122-2026-06-30',
     version: '4.9.122',
     title: 'V4.9.122 — Bookings Page: „Neue Buchung“ an SynqDrive Button-Stil',
