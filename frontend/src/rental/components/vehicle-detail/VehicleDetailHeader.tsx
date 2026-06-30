@@ -38,6 +38,9 @@ function MetaItem({ icon, children }: { icon: ReactNode; children: ReactNode }) 
   );
 }
 
+const backButtonClassName =
+  'sq-press shrink-0 rounded-xl border border-border/60 bg-card p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]';
+
 function readinessChipFromDisplay(
   vehicleStatus: VehicleOperationalUiStatus,
   vehicle: VehicleData,
@@ -91,130 +94,149 @@ export function VehicleDetailHeader({
   const readinessChip = readinessChipFromDisplay(vehicleStatus, vehicle, rentalHealth);
   const title = `${vehicle.make ?? ''} ${vehicle.model} ${vehicle.year}`.trim();
   const brand = getBrandFromModel({ make: vehicle.make, model: vehicle.model });
+  const hasLicense = Boolean(vehicle.license);
+  const hasStation = Boolean(vehicle.station);
 
   return (
     <div className="mb-3 animate-fade-up">
       <div className="flex items-start gap-2 sm:gap-3">
         <div className="min-w-0 flex-1">
-          {/* Meta row: plate + station; mobile last-signal top-right */}
+          {/* Row 1 — Meta / Navigation / Signal */}
           <div className="mb-1.5 flex items-center justify-between gap-2">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
-              {vehicle.license ? (
-                <MetaItem icon={<Icon name="car" className="h-3.5 w-3.5" />}>
-                  {vehicle.license}
-                </MetaItem>
-              ) : null}
-              {vehicle.station ? (
-                <MetaItem icon={<Icon name="map-pin" className="h-3.5 w-3.5" />}>
-                  {vehicle.station}
-                </MetaItem>
-              ) : null}
-              {!vehicle.license && !vehicle.station ? (
-                <span className="text-[11px] font-medium text-muted-foreground">Vehicle</span>
-              ) : null}
+            <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden sm:gap-2">
+              <button
+                type="button"
+                onClick={onBack}
+                className={`${backButtonClassName} sm:hidden`}
+                title="Back to Fleet"
+                aria-label="Back to Fleet"
+              >
+                <Icon name="arrow-left" className="h-4 w-4" />
+              </button>
+
+              <div className="flex min-w-0 flex-1 items-center gap-x-2 overflow-hidden sm:flex-wrap sm:gap-x-3 sm:gap-y-1">
+                {hasLicense ? (
+                  <MetaItem icon={<Icon name="car" className="h-3.5 w-3.5" />}>
+                    {vehicle.license}
+                  </MetaItem>
+                ) : null}
+                {hasLicense && hasStation ? (
+                  <span className="h-3 w-px shrink-0 bg-border/60" aria-hidden="true" />
+                ) : null}
+                {hasStation ? (
+                  <MetaItem icon={<Icon name="map-pin" className="h-3.5 w-3.5" />}>
+                    {vehicle.station}
+                  </MetaItem>
+                ) : null}
+                {!hasLicense && !hasStation ? (
+                  <span className="truncate text-[11px] font-medium text-muted-foreground">Vehicle</span>
+                ) : null}
+              </div>
             </div>
+
             <div className="shrink-0 sm:hidden">
               <VehicleConnectionBadge compact vehicleId={vehicle.id} />
             </div>
           </div>
 
-          {/* Title row: brand logo + make/model/year */}
-          <div className="mb-2 flex min-w-0 items-center gap-2">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-card sm:h-8 sm:w-8">
-              <BrandLogo brand={brand} size={22} isDarkMode={isDarkMode} />
-            </span>
-            <h1 className="min-w-0 truncate font-display text-[20px] font-bold leading-[1.2] tracking-[-0.02em] text-foreground sm:text-[24px] lg:text-[28px]">
-              {title}
-            </h1>
-          </div>
-
-          {/* Status chips */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <div className="relative">
-              <button
-                type="button"
-                onClick={onToggleStatusDropdown}
-                className="sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
-                aria-expanded={isStatusDropdownOpen}
-                aria-haspopup="menu"
-              >
-                <StatusChip tone={readinessChip.tone} icon={readinessChip.icon}>
-                  {readinessChip.label}
-                </StatusChip>
-              </button>
-
-              {isStatusDropdownOpen ? (
-                <div className="sq-overlay animate-fade-up absolute left-0 top-full z-50 mt-1.5 min-w-[170px] rounded-xl p-1">
-                  <button
-                    type="button"
-                    onClick={() => onVehicleStatusChange('Available')}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
-                  >
-                    <Icon name="check-circle" className="h-3.5 w-3.5 text-[color:var(--status-positive)]" />
-                    <span className="text-[12px] font-medium text-foreground">Available</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onVehicleStatusChange('Manual Block')}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
-                  >
-                    <Icon name="x-circle" className="h-3.5 w-3.5 text-[color:var(--status-critical)]" />
-                    <span className="text-[12px] font-medium text-foreground">Manual Block</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onVehicleStatusChange('Maintenance')}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
-                  >
-                    <Icon name="wrench" className="h-3.5 w-3.5 text-[color:var(--status-attention)]" />
-                    <span className="text-[12px] font-medium text-foreground">Maintenance</span>
-                  </button>
-                </div>
-              ) : null}
+          {/* Row 2 — Vehicle identity + status chips (responsive on mobile) */}
+          <div className="flex flex-col gap-1.5 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between min-[420px]:gap-2 sm:flex-col sm:items-start">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-card sm:h-8 sm:w-8">
+                <BrandLogo brand={brand} size={22} isDarkMode={isDarkMode} />
+              </span>
+              <h1 className="min-w-0 truncate font-display text-[20px] font-bold leading-[1.2] tracking-[-0.02em] text-foreground sm:text-[24px] lg:text-[28px]">
+                {title}
+              </h1>
             </div>
 
-            <div className="relative">
-              <button
-                type="button"
-                onClick={onToggleCleaningDropdown}
-                className="sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
-                aria-expanded={isCleaningDropdownOpen}
-                aria-haspopup="menu"
-              >
-                <StatusChip
-                  tone={cleaningStatus === 'Clean' ? 'info' : 'critical'}
-                  icon={<Icon name="sparkles" className="h-3 w-3" />}
+            <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={onToggleStatusDropdown}
+                  className="sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+                  aria-expanded={isStatusDropdownOpen}
+                  aria-haspopup="menu"
                 >
-                  {cleaningStatus}
-                </StatusChip>
-              </button>
+                  <StatusChip tone={readinessChip.tone} icon={readinessChip.icon}>
+                    {readinessChip.label}
+                  </StatusChip>
+                </button>
 
-              {isCleaningDropdownOpen ? (
-                <div className="sq-overlay animate-fade-up absolute left-0 top-full z-50 mt-1.5 min-w-[170px] rounded-xl p-1">
-                  <button
-                    type="button"
-                    onClick={() => onCleaningStatusChange('Clean')}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
+                {isStatusDropdownOpen ? (
+                  <div className="sq-overlay animate-fade-up absolute left-0 top-full z-50 mt-1.5 min-w-[170px] rounded-xl p-1">
+                    <button
+                      type="button"
+                      onClick={() => onVehicleStatusChange('Available')}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
+                    >
+                      <Icon name="check-circle" className="h-3.5 w-3.5 text-[color:var(--status-positive)]" />
+                      <span className="text-[12px] font-medium text-foreground">Available</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onVehicleStatusChange('Manual Block')}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
+                    >
+                      <Icon name="x-circle" className="h-3.5 w-3.5 text-[color:var(--status-critical)]" />
+                      <span className="text-[12px] font-medium text-foreground">Manual Block</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onVehicleStatusChange('Maintenance')}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
+                    >
+                      <Icon name="wrench" className="h-3.5 w-3.5 text-[color:var(--status-attention)]" />
+                      <span className="text-[12px] font-medium text-foreground">Maintenance</span>
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={onToggleCleaningDropdown}
+                  className="sq-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+                  aria-expanded={isCleaningDropdownOpen}
+                  aria-haspopup="menu"
+                >
+                  <StatusChip
+                    tone={cleaningStatus === 'Clean' ? 'info' : 'critical'}
+                    icon={<Icon name="sparkles" className="h-3 w-3" />}
                   >
-                    <Icon name="sparkles" className="h-3.5 w-3.5 text-[color:var(--status-info)]" />
-                    <span className="text-[12px] font-medium text-foreground">Clean</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onCleaningStatusChange('Needs Cleaning')}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
-                  >
-                    <Icon name="alert-triangle" className="h-3.5 w-3.5 text-[color:var(--status-critical)]" />
-                    <span className="text-[12px] font-medium text-foreground">Needs Cleaning</span>
-                  </button>
-                </div>
-              ) : null}
-            </div>
+                    {cleaningStatus}
+                  </StatusChip>
+                </button>
 
-            <VehicleHealthChip vehicleId={vehicle.id ?? null} />
+                {isCleaningDropdownOpen ? (
+                  <div className="sq-overlay animate-fade-up absolute left-0 top-full z-50 mt-1.5 min-w-[170px] rounded-xl p-1">
+                    <button
+                      type="button"
+                      onClick={() => onCleaningStatusChange('Clean')}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
+                    >
+                      <Icon name="sparkles" className="h-3.5 w-3.5 text-[color:var(--status-info)]" />
+                      <span className="text-[12px] font-medium text-foreground">Clean</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onCleaningStatusChange('Needs Cleaning')}
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted"
+                    >
+                      <Icon name="alert-triangle" className="h-3.5 w-3.5 text-[color:var(--status-critical)]" />
+                      <span className="text-[12px] font-medium text-foreground">Needs Cleaning</span>
+                    </button>
+                  </div>
+                ) : null}
+              </div>
 
-            <div className="hidden sm:block">
-              <VehicleConnectionBadge vehicleId={vehicle.id} />
+              <VehicleHealthChip vehicleId={vehicle.id ?? null} />
+
+              <div className="hidden sm:block">
+                <VehicleConnectionBadge vehicleId={vehicle.id} />
+              </div>
             </div>
           </div>
         </div>
@@ -222,7 +244,7 @@ export function VehicleDetailHeader({
         <button
           type="button"
           onClick={onBack}
-          className="sq-press shrink-0 rounded-xl border border-border/60 bg-card p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+          className={`${backButtonClassName} hidden sm:inline-flex`}
           title="Back to Fleet"
           aria-label="Back to Fleet"
         >

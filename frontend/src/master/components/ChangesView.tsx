@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-header-mobile-layout-v49128-2026-06-30',
+    version: '4.9.128',
+    title: 'V4.9.128 — Vehicle Detail Header: Mobile Layout & Spacing',
+    summary: [
+      'Mobile Header Row 1: Back Button links vor Kennzeichen/Station; Signal-Badge (VehicleConnectionBadge compact) allein rechts.',
+      'Mobile Row 2: BrandLogo + Titel links, Status-Chips rechts (ab ~420px); auf sehr schmalen Viewports Chips unter dem Titel.',
+      'Desktop unverändert: Back Button rechts, Meta/Titel/Chips wie bisher (sm: Breakpoints).',
+    ],
+    reason:
+      'Mobile Vehicle-Detail-Header wirkte asymmetrisch (Back rechts, Signal neben Meta, Chips unter Titel statt symmetrisch).',
+    previousBehavior:
+      'Back Button außerhalb rechts; Meta-Zeile nur Kennzeichen/Station; Titel und Status-Chips in getrennten Zeilen.',
+    details:
+      'Geändert: VehicleDetailHeader.tsx (JSX-Struktur + responsive Klassen). Keine Logik-, Badge-, Telemetry- oder Tab-Änderungen.',
+    affectsArchitecture: false,
+    module: 'Rental Vehicle Detail',
+    createdAt: '2026-06-30T23:59:59.800Z',
+  },
+  {
     id: 'brand-logo-mobile-fix-v49127-2026-06-30',
     version: '4.9.127',
     title: 'V4.9.127 — Markenlogos auf Mobile (Vehicle Detail Header + New Booking)',
