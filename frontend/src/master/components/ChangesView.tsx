@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'bookings-new-booking-button-ui-v49122-2026-06-30',
+    version: '4.9.122',
+    title: 'V4.9.122 — Bookings Page: „Neue Buchung“ an SynqDrive Button-Stil',
+    summary: [
+      'Toolbar-CTA „Neue Buchung“ nutzt jetzt die zentrale `Button`-Komponente (`variant="primary"`, `size="sm"`) mit `sq-3d-btn`-Look.',
+      'Icon + Text wie Tasks/Kunden-Primary-Actions; kein flaches Outline-Button mehr neben Timeline/Tabelle/Kalender.',
+    ],
+    reason: 'Der Button wirkte optisch inkonsistent zu den modernisierten Primary Actions im System.',
+    previousBehavior:
+      'Nativer `<button>` mit `sq-press`, flacher Border und `text-[10px]` in `BookingsToolbar`.',
+    details:
+      'Geändert: `BookingsToolbar.tsx` nur UI. Keine Booking-Logik, Route oder API-Änderung.',
+    affectsArchitecture: false,
+    module: 'Rental Bookings',
+    createdAt: '2026-06-30T23:59:00.000Z',
+  },
+  {
     id: 'dashboard-notifications-groups-collapsed-v49121-2026-06-30',
     version: '4.9.121',
     title: 'V4.9.121 — Dashboard Notifications: Gruppen starten collapsed',
