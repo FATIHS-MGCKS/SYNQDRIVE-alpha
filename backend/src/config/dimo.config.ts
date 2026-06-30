@@ -37,7 +37,7 @@ export default registerAs('dimo', () => {
       'http://localhost:3001',
     /** Token echoed as plain/text during DIMO Vehicle Triggers URL verification. */
     webhookVerificationToken: process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN ?? '',
-    /** DIMO Agents API (create-agent uses body credentials, NOT Developer JWT). */
+    /** DIMO Agents API — Bearer Developer JWT in headers + DIMO_API_KEY in create-agent body secrets. */
     agentsBaseUrl:
       process.env.DIMO_AGENTS_BASE_URL ||
       (dimoEnv === 'dev' ? 'https://agents.dev.dimo.zone' : 'https://agents.dimo.zone'),

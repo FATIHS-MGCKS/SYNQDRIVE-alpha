@@ -73,6 +73,17 @@ describe('dimo-agent-error-classification', () => {
     expect(extractNodeErrorCode({ code: 'ETIMEDOUT', message: 'timeout' })).toBe('ETIMEDOUT');
   });
 
+  it('classifies auth failures', () => {
+    const classified = classifyDimoAgentError({
+      authFailure: true,
+      errorMessage: 'Developer JWT not available — DIMO Agents API requires Bearer authentication',
+    });
+
+    expect(classified.kind).toBe('AUTH_ERROR');
+    expect(classified.errorCode).toBe('DEVELOPER_JWT_MISSING');
+    expect(classified.failedBeforeHttp).toBe(true);
+  });
+
   it('formatDimoAgentChatError surfaces DNS context', () => {
     const text = formatDimoAgentChatError({
       errorKind: 'DNS_ERROR',

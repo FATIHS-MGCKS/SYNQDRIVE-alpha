@@ -5,7 +5,8 @@ export type DimoAgentErrorKind =
   | 'NETWORK_ERROR'
   | 'DIMO_HTTP_ERROR'
   | 'PARSER_ERROR'
-  | 'CONFIG_ERROR';
+  | 'CONFIG_ERROR'
+  | 'AUTH_ERROR';
 
 export interface DimoAgentClassifiedError {
   kind: DimoAgentErrorKind;
@@ -21,6 +22,7 @@ export interface ClassifyDimoAgentErrorInput {
   errorMessage?: string;
   statusCode?: number;
   configFailure?: boolean;
+  authFailure?: boolean;
   parserFailure?: boolean;
   hostname?: string;
 }
@@ -43,6 +45,18 @@ export function classifyDimoAgentError(input: ClassifyDimoAgentErrorInput): Dimo
   );
   const errorCode = extractNodeErrorCode(input.err) ?? extractNodeErrorCode({ message: rawMessage });
   const hostname = input.hostname?.trim() || 'agents.dimo.zone';
+
+  if (input.authFailure) {
+    return {
+      kind: 'AUTH_ERROR',
+      errorCode: errorCode ?? 'DEVELOPER_JWT_MISSING',
+      message: rawMessage,
+      userMessage:
+        rawMessage ||
+        'Developer JWT is not available. DIMO Agents API requires Bearer authentication.',
+      failedBeforeHttp: true,
+    };
+  }
 
   if (input.configFailure) {
     return {
@@ -160,7 +174,7 @@ export function formatDimoAgentChatError(result: {
   if (result.errorKind === 'NETWORK_ERROR') {
     return `I'm sorry, the AI assistant could not connect to DIMO Agents. ${detail}`;
   }
-  if (result.errorKind === 'CONFIG_ERROR') {
+  if (result.errorKind === 'CONFIG_ERROR' || result.errorKind === 'AUTH_ERROR') {
     return `I'm sorry, the AI assistant is not configured on this server. ${detail}`;
   }
   return `I'm sorry, I couldn't process your request right now. ${detail}`;

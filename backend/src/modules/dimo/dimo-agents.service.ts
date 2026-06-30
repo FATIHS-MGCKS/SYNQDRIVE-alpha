@@ -88,6 +88,7 @@ export interface SendMessageResult {
   errorCode?: string;
   failedBeforeHttp?: boolean;
   statusCode?: number;
+  configFailure?: boolean;
 }
 
 export interface VehicleContext {
@@ -220,18 +221,87 @@ export class DimoAgentsService {
     return resolveDimoAgentCacheKey(input, this.userWallet, personality);
   }
 
-  // Agents API auth: Bearer JWT in header + DIMO_API_KEY in body secrets.
-  private async getHeaders(): Promise<Record<string, string>> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (this.dimoAuth) {
-      try {
-        const jwt = await this.dimoAuth.getDeveloperJwt();
-        if (jwt) headers['Authorization'] = `Bearer ${jwt}`;
-      } catch (e: any) {
-        this.logger.warn(`[Agents] Could not fetch developer JWT: ${e?.message}`);
-      }
+  // Agents API auth: Bearer Developer JWT required (data-sdk auth: developer_jwt) + DIMO_API_KEY in body secrets.
+  private async resolveAgentAuthHeaders(
+    operation: string,
+    useCase?: DimoAgentUseCase,
+  ): Promise<
+    | { ok: true; headers: Record<string, string> }
+    | { ok: false; failure: CreateAgentResult }
+  > {
+    if (!this.dimoAuth) {
+      const classified = this.classifyOperationFailure(
+        operation,
+        {
+          authFailure: true,
+          errorMessage: 'DimoAuthService not available — Developer JWT is required for DIMO Agents API',
+        },
+        useCase,
+      );
+      return {
+        ok: false,
+        failure: this.failureFromClassification(
+          { success: false, configFailure: true },
+          classified,
+        ),
+      };
     }
-    return headers;
+
+    try {
+      const jwt = (await this.dimoAuth.getDeveloperJwt())?.trim();
+      if (!jwt) {
+        const classified = this.classifyOperationFailure(
+          operation,
+          {
+            authFailure: true,
+            errorMessage: 'Developer JWT not available — DIMO Agents API requires Bearer authentication',
+          },
+          useCase,
+        );
+        return {
+          ok: false,
+          failure: this.failureFromClassification(
+            { success: false, configFailure: true },
+            classified,
+          ),
+        };
+      }
+
+      return {
+        ok: true,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${jwt}`,
+        },
+      };
+    } catch (e: any) {
+      const classified = this.classifyOperationFailure(
+        operation,
+        {
+          authFailure: true,
+          errorMessage: sanitizeDimoAgentError(e),
+        },
+        useCase,
+      );
+      return {
+        ok: false,
+        failure: this.failureFromClassification(
+          { success: false, configFailure: true, error: sanitizeDimoAgentError(e) },
+          classified,
+        ),
+      };
+    }
+  }
+
+  private authFailureAsSendResult(failure: CreateAgentResult): SendMessageResult {
+    return {
+      success: false,
+      error: failure.error,
+      errorKind: failure.errorKind,
+      errorCode: failure.errorCode,
+      failedBeforeHttp: failure.failedBeforeHttp,
+      configFailure: failure.configFailure,
+    };
   }
 
   private async persistScopedAgentId(cacheKey: string, agentId: string): Promise<void> {
@@ -313,7 +383,10 @@ export class DimoAgentsService {
       `[Agents] POST ${url} — wallet=${this.userWallet.slice(0, 10)}… personality=${personality}`,
     );
 
-    const headers = await this.getHeaders();
+    const auth = await this.resolveAgentAuthHeaders('createAgent');
+    if (!auth.ok) return auth.failure;
+
+    const headers = auth.headers;
     try {
       const res = await axios.post(url, body, {
         headers,
@@ -352,7 +425,9 @@ export class DimoAgentsService {
   async deleteAgent(agentId: string): Promise<void> {
     const url = `${this.agentsBaseUrl}/agents/${agentId}`;
     this.logger.log(`[Agents] DELETE ${url}`);
-    const headers = await this.getHeaders();
+    const auth = await this.resolveAgentAuthHeaders('deleteAgent');
+    if (!auth.ok) return;
+    const headers = auth.headers;
     try {
       await axios.delete(url, { headers, timeout: 10000, validateStatus: () => true });
     } catch { /* best-effort */ }
@@ -376,7 +451,10 @@ export class DimoAgentsService {
     const url = `${this.agentsBaseUrl}/agents/${agentId}/message`;
     this.logger.log(`[Agents] POST ${url} — msgLen=${message.length}`);
 
-    const headers = await this.getHeaders();
+    const auth = await this.resolveAgentAuthHeaders('sendMessage');
+    if (!auth.ok) return this.authFailureAsSendResult(auth.failure);
+
+    const headers = auth.headers;
     try {
       const res = await axios.post(url, body, {
         headers,
@@ -437,7 +515,10 @@ export class DimoAgentsService {
     const url = `${this.agentsBaseUrl}/agents/${agentId}/stream`;
     this.logger.log(`[Agents] POST ${url} (stream) — msgLen=${message.length}`);
 
-    const headers = await this.getHeaders();
+    const auth = await this.resolveAgentAuthHeaders('streamRequest', context?.useCase);
+    if (!auth.ok) return this.authFailureAsSendResult(auth.failure);
+
+    const headers = auth.headers;
     const parseState = createDimoAgentStreamParseState();
 
     try {

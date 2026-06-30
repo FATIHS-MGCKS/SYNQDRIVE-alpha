@@ -173,6 +173,22 @@ describe('DimoAgentsService — error handling (mocked DIMO API)', () => {
     expect(result.error).not.toContain('secret-in-body');
   });
 
+  it('fails fast when developer JWT is missing', async () => {
+    const dimoAuth = {
+      getDeveloperJwt: jest.fn().mockResolvedValue(''),
+    };
+    const svc = new DimoAgentsService(makeConfig() as any, undefined, dimoAuth as any);
+
+    const result = await svc.sendMessageStream('agent-1', 'ping', undefined, undefined, {
+      useCase: 'fleet_chat',
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.errorKind).toBe('AUTH_ERROR');
+    expect(result.failedBeforeHttp).toBe(true);
+    expect(mockedAxios.post).not.toHaveBeenCalled();
+  });
+
   it('DNS ENOTFOUND is classified and returns actionable user message', async () => {
     const svc = makeService();
     const dnsError = Object.assign(new Error('getaddrinfo ENOTFOUND agents.dimo.zone'), {
