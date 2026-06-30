@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'cloud-agent-vps-deploy-v49127-2026-06-30',
+    version: '4.9.127',
+    title: 'V4.9.127 — Cursor Cloud Agent: VPS Deploy Flow',
+    summary: [
+      'Cloud Agent Umgebung wiederhergestellt (.cursor/environment.json, Dockerfile, Tailscale bootstrap).',
+      'Neues Script cloud-agent-deploy.sh: Git-Preflight, SSH-Deploy via vps-deploy-release.sh, Health-Check.',
+      'AGENTS.md + vps-deploy Skill dokumentieren Commit → Push → Deploy für Cloud Agents.',
+    ],
+    reason:
+      'Deploy-Flow aus dem lokalen Agent soll auch in Cursor Cloud Agents verfügbar sein — ohne Secrets im Repo.',
+    previousBehavior:
+      'Cloud Agent Setup war revertiert; Deploy nur manuell vom lokalen Rechner per SSH möglich.',
+    details:
+      'Secrets: TAILSCALE_AUTH_KEY, CLOUD_AGENT_SSH_PRIVATE_KEY im Cursor Dashboard. VPS über mein-vps.internal (Tailscale MagicDNS).',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-06-30T20:00:00.000Z',
+  },
+  {
     id: 'dimo-agent-dns-diagnostics-v49126-2026-06-30',
     version: '4.9.126',
     title: 'V4.9.126 — DIMO AI Agent DNS/Network Error Diagnostics',
