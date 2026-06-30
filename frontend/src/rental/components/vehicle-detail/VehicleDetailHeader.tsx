@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Icon } from '../ui/Icon';
 import { BrandLogo, getBrandFromModel } from '../BrandLogo';
+import { useDocumentDark } from '../../hooks/useDocumentDark';
 import { StatusChip, type StatusTone } from '../../../components/patterns';
 import type { VehicleData } from '../../data/vehicles';
 import { useEffectiveHealth } from '../../FleetContext';
@@ -85,10 +86,11 @@ export function VehicleDetailHeader({
   onCleaningStatusChange,
   onBack,
 }: VehicleDetailHeaderProps) {
+  const isDarkMode = useDocumentDark();
   const { health: rentalHealth } = useEffectiveHealth(vehicle.id ?? null);
   const readinessChip = readinessChipFromDisplay(vehicleStatus, vehicle, rentalHealth);
   const title = `${vehicle.make ?? ''} ${vehicle.model} ${vehicle.year}`.trim();
-  const brand = getBrandFromModel(vehicle.make || vehicle.model || '');
+  const brand = getBrandFromModel({ make: vehicle.make, model: vehicle.model });
 
   return (
     <div className="mb-3 animate-fade-up">
@@ -119,7 +121,7 @@ export function VehicleDetailHeader({
           {/* Title row: brand logo + make/model/year */}
           <div className="mb-2 flex min-w-0 items-center gap-2">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-card sm:h-8 sm:w-8">
-              <BrandLogo brand={brand} size={22} />
+              <BrandLogo brand={brand} size={22} isDarkMode={isDarkMode} />
             </span>
             <h1 className="min-w-0 truncate font-display text-[20px] font-bold leading-[1.2] tracking-[-0.02em] text-foreground sm:text-[24px] lg:text-[28px]">
               {title}

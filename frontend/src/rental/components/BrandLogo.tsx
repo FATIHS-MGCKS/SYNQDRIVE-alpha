@@ -4,6 +4,8 @@ interface BrandLogoProps {
   brand: string;
   size?: number;
   isDarkMode?: boolean;
+  /** Small header/picker logos should load eagerly — lazy + scroll containers breaks on mobile Safari. */
+  loading?: 'eager' | 'lazy';
 }
 
 /** Accepts a free-text model string, a `make + model` string, or an object from fleet API rows. */
@@ -103,7 +105,12 @@ function FallbackIcon({ size, isDarkMode }: { size: number; isDarkMode: boolean 
   );
 }
 
-export function BrandLogo({ brand, size = 36, isDarkMode = false }: BrandLogoProps) {
+export function BrandLogo({
+  brand,
+  size = 36,
+  isDarkMode = false,
+  loading = 'eager',
+}: BrandLogoProps) {
   const slug = brandSlugMap[brand];
   const [imgFailed, setImgFailed] = useState(false);
 
@@ -123,7 +130,7 @@ export function BrandLogo({ brand, size = 36, isDarkMode = false }: BrandLogoPro
       alt={brand}
       width={size}
       height={size}
-      loading="lazy"
+      loading={loading}
       decoding="async"
       referrerPolicy="no-referrer"
       style={{

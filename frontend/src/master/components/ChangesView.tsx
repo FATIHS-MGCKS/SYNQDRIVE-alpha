@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'brand-logo-mobile-fix-v49127-2026-06-30',
+    version: '4.9.127',
+    title: 'V4.9.127 — Markenlogos auf Mobile (Vehicle Detail Header + New Booking)',
+    summary: [
+      'Vehicle Detail Header und New Booking: `BrandLogo` erhält Dark-Mode-Invert wie Fleet Health — dunkle OEM-PNGs sind auf Mobile (häufig Dark Mode) wieder sichtbar.',
+      'New Booking: responsives Layout (`grid-cols-1 lg:grid-cols-3`) statt 3-Spalten-Grid auf schmalen Viewports; Markenauflösung über `{ make, modelType }`.',
+      'BrandLogo lädt standardmäßig eager (fix für lazy + Scroll-Container auf iOS Safari).',
+    ],
+    reason:
+      'Markenlogos waren im Vehicle-Detail-Header und in der New-Booking-Fahrzeugauswahl auf Mobile nicht sichtbar, auf Desktop aber schon.',
+    previousBehavior:
+      'BrandLogo ohne `isDarkMode` in Header/Picker; New Booking nutzte `grid-cols-3` auf allen Breiten; lazy loading in overflow-Listen.',
+    details:
+      'Geändert: BrandLogo.tsx, VehicleDetailHeader.tsx, NewBookingView.tsx, useDocumentDark.ts. Keine Backend-/API-Änderungen.',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-06-30T23:59:59.500Z',
+  },
+  {
     id: 'trip-detail-ui-refactor-v49126-2026-06-30',
     version: '4.9.126',
     title: 'V4.9.126 — Vehicle Trips: Einzel-Trip Detail UI Refactor',

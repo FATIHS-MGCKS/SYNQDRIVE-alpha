@@ -27,6 +27,7 @@ import {
 // vehicle picker shows real brand artwork (Volkswagen, BMW, Tesla, …) instead
 // of an inline mock map of carlogos.org URLs.
 import { BrandLogo, getBrandFromModel } from './BrandLogo';
+import { useDocumentDark } from '../hooks/useDocumentDark';
 import {
   buildCustomerCreatePayload,
   buildBookingCreatePayload,
@@ -160,6 +161,7 @@ export function NewBookingView({
   onBookingCreated,
   initialCustomerId = null,
 }: NewBookingViewProps) {
+  const isDarkMode = useDocumentDark();
   const { fleetVehicles } = useFleetVehicles();
   const { orgId } = useRentalOrg();
   const { catalog, loading: catalogLoading } = usePriceTariffs(orgId);
@@ -1192,9 +1194,9 @@ export function NewBookingView({
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-3">
-          {/* Main Content - 2 cols */}
-          <div className="col-span-2 space-y-5">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          {/* Main Content - 2 cols on desktop */}
+          <div className="space-y-5 lg:col-span-2">
             {/* STEP 4: Customer Selection */}
             {currentStep === 4 && (
               <>
@@ -1812,7 +1814,7 @@ export function NewBookingView({
                         // backend), fall back to the model string. Use the shared
                         // BrandLogo component (carlogos-dataset CDN) for the icon
                         // and `buildMMY` for the Make Model Year title.
-                        const brandKey = getBrandFromModel(v.make ?? v.model ?? '');
+                        const brandKey = getBrandFromModel({ make: v.make, model: v.model });
                         const mmy = buildMMY(v);
                         return (
                         <button
@@ -1834,7 +1836,7 @@ export function NewBookingView({
                         >
                           {/* Brand Logo (shared CDN component, isomorphic with FleetView) */}
                           <div className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 p-1.5 ${ 'bg-muted/50' } ${(isMaintenance || offline) ? 'grayscale opacity-70' : ''}`}>
-                            <BrandLogo brand={brandKey} size={28} />
+                            <BrandLogo brand={brandKey} size={28} isDarkMode={isDarkMode} />
                           </div>
 
                           {/* Vehicle Info */}
@@ -3011,8 +3013,12 @@ export function NewBookingView({
                         <div className="flex items-center gap-2">
                           <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 p-1 bg-muted/50">
                             <BrandLogo
-                              brand={getBrandFromModel(selectedVehicle.make ?? selectedVehicle.model ?? '')}
+                              brand={getBrandFromModel({
+                                make: selectedVehicle.make,
+                                model: selectedVehicle.model,
+                              })}
                               size={20}
+                              isDarkMode={isDarkMode}
                             />
                           </div>
                           <div className="min-w-0">
