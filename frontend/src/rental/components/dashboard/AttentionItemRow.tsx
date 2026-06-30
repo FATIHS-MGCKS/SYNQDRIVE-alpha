@@ -1,4 +1,4 @@
-import { memo, type ReactNode } from 'react';
+import { memo, type MouseEvent, type ReactNode } from 'react';
 import { Icon } from '../ui/Icon';
 import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
@@ -36,6 +36,57 @@ function categoryIcon(category: ActionQueueItem['category']) {
   return 'car';
 }
 
+function rowTint(severity: AttentionSeverity, pinned: boolean, nested: boolean): string {
+  if (nested) return '';
+  const criticalLike = severity === 'critical' || severity === 'overdue' || pinned;
+  if (criticalLike) {
+    return 'bg-[color:color-mix(in_srgb,var(--status-critical)_5%,transparent)]';
+  }
+  if (severity === 'warning') {
+    return 'bg-[color:color-mix(in_srgb,var(--status-watch)_4%,transparent)]';
+  }
+  return '';
+}
+
+export interface AttentionRowActionProps {
+  label: string;
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void;
+  icon?: 'arrow-right' | 'chevron-down';
+  expanded?: boolean;
+  ariaExpanded?: boolean;
+  ariaControls?: string;
+}
+
+/** Compact text action — matches FleetOperatorRow "Open" control. */
+export function AttentionRowAction({
+  label,
+  onClick,
+  icon = 'arrow-right',
+  expanded,
+  ariaExpanded,
+  ariaControls,
+}: AttentionRowActionProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={ariaExpanded}
+      aria-controls={ariaControls}
+      className="sq-press inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md px-2 text-[10.5px] font-medium text-muted-foreground opacity-90 transition-colors hover:bg-muted/40 hover:text-foreground group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+    >
+      {label}
+      <Icon
+        name={icon}
+        className={cn(
+          'h-3 w-3',
+          icon === 'chevron-down' && 'transition-transform duration-200',
+          icon === 'chevron-down' && !expanded && '-rotate-90',
+        )}
+      />
+    </button>
+  );
+}
+
 export interface AttentionItemRowProps {
   severity: AttentionSeverity;
   category: ActionQueueItem['category'];
@@ -68,18 +119,21 @@ export const AttentionItemRow = memo(function AttentionItemRow({
   onCtaClick,
 }: AttentionItemRowProps) {
   const eyebrow = attentionCategoryEyebrow({ category, module, groupType }, de);
-  const criticalTint = severity === 'critical' || severity === 'overdue' || pinned;
+  const criticalLike = severity === 'critical' || severity === 'overdue' || pinned;
   const interactive = Boolean(onRowClick);
+  const tint = rowTint(severity, pinned, nested);
 
   return (
     <article
       className={cn(
-        'transition-colors',
+        'group transition-colors',
         nested
-          ? 'border-b border-border/25 py-2 pl-9 pr-2.5 last:border-b-0 sm:pr-3'
-          : 'rounded-lg border border-border/45 bg-card/45 px-2.5 py-2 shadow-sm shadow-black/[0.02] hover:border-border/65 hover:bg-muted/10',
-        criticalTint && !nested && 'border-[color:color-mix(in_srgb,var(--status-critical)_22%,var(--border))] bg-[color:color-mix(in_srgb,var(--status-critical)_4%,transparent)]',
-        interactive && !nested && 'cursor-pointer',
+          ? 'border-b border-border/20 py-1.5 pl-7 pr-2.5 last:border-b-0 sm:pl-8 sm:pr-3'
+          : cn(
+              'px-2.5 py-2 hover:bg-muted/25',
+              tint,
+              interactive && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--brand)]',
+            ),
       )}
       onClick={onRowClick}
       onKeyDown={
@@ -98,28 +152,31 @@ export const AttentionItemRow = memo(function AttentionItemRow({
       <div className="flex items-start gap-2">
         <span
           className={cn(
-            'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md',
-            criticalTint ? 'sq-tone-critical' : 'sq-tone-neutral bg-muted/45',
+            'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md',
+            criticalLike ? 'sq-tone-critical' : 'bg-muted/45 text-muted-foreground',
           )}
           aria-hidden
         >
-          <Icon name={categoryIcon(category)} className="h-3.5 w-3.5" />
+          <Icon name={categoryIcon(category)} className="h-3 w-3" />
         </span>
 
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <StatusChip tone={severityTone(severity)} className="px-1.5 py-0.5 text-[11px] font-semibold">
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            <StatusChip
+              tone={severityTone(severity)}
+              className="px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide"
+            >
               {severityLabel(severity, de)}
             </StatusChip>
-            <span className="text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               {eyebrow}
             </span>
             {timeLabel ? (
-              <span className="text-[11px] tabular-nums text-muted-foreground">{timeLabel}</span>
+              <span className="text-[10.5px] tabular-nums text-muted-foreground">{timeLabel}</span>
             ) : null}
           </div>
 
-          <p className="text-[13px] font-semibold leading-snug tracking-[-0.01em] text-foreground text-pretty">
+          <p className="text-[14px] font-semibold leading-snug tracking-[-0.01em] text-foreground text-pretty">
             {copy.title}
           </p>
 
@@ -134,21 +191,19 @@ export const AttentionItemRow = memo(function AttentionItemRow({
           ) : null}
         </div>
 
-        {trailing ?? (
-          onCtaClick ? (
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onCtaClick();
-              }}
-              className="sq-btn sq-btn-secondary min-h-9 shrink-0 self-start px-2 text-[11px]"
-            >
-              {ctaLabel}
-              <Icon name="arrow-right" className="h-3.5 w-3.5 opacity-70" />
-            </button>
-          ) : null
-        )}
+        <div className="flex shrink-0 flex-col items-end self-start pt-0.5">
+          {trailing ?? (
+            onCtaClick ? (
+              <AttentionRowAction
+                label={ctaLabel ?? ''}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onCtaClick();
+                }}
+              />
+            ) : null
+          )}
+        </div>
       </div>
     </article>
   );

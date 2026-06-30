@@ -16,7 +16,7 @@ import {
   composeAttentionItemCopy,
   enrichAttentionCopyWithObdUnplugged,
 } from './attentionItemDisplay';
-import { AttentionItemRow } from './AttentionItemRow';
+import { AttentionItemRow, AttentionRowAction } from './AttentionItemRow';
 import { DataTrustHint } from './DataTrustHint';
 import { useRentalOrg } from '../../RentalContext';
 import { useFleetObdPlugIndex } from '../../hooks/useFleetObdPlugIndex';
@@ -234,49 +234,54 @@ function ActionQueueGroupRow({
   const groupContentId = `aq-group-${group.id}`;
 
   return (
-    <li className="list-none space-y-1">
-      <AttentionItemRow
-        severity={group.severity}
-        category={group.category}
-        groupType={group.groupType}
-        copy={composeAttentionGroupCopy(group)}
-        de={de}
-        pinned={criticalLike}
-        onRowClick={() => setExpanded((value) => !value)}
-        trailing={(
-          <button
-            type="button"
-            aria-expanded={expanded}
-            aria-controls={groupContentId}
-            onClick={(event) => {
-              event.stopPropagation();
-              setExpanded((value) => !value);
-            }}
-            className="sq-btn sq-btn-secondary min-h-9 shrink-0 self-start px-2 text-[11px]"
-          >
-            {expanded ? (de ? 'Einklappen' : 'Collapse') : (de ? 'Details' : 'Details')}
-            <Icon
-              name="chevron-down"
-              className={cn('h-3.5 w-3.5 opacity-70 transition-transform duration-200', !expanded && '-rotate-90')}
-            />
-          </button>
+    <li className="list-none">
+      <div
+        className={cn(
+          'overflow-hidden rounded-lg transition-colors',
+          expanded && 'border border-border/35 bg-muted/[0.03]',
         )}
-      />
-
-      {expanded ? (
-        <ul id={groupContentId} className="space-y-1 animate-fade-up">
-          {group.children.map((child) => (
-            <ActionQueueChildRow
-              key={child.id}
-              child={child}
-              de={de}
-              vm={vm}
-              handlers={handlers}
-              obdPlugByVehicleId={obdPlugByVehicleId}
+      >
+        <AttentionItemRow
+          severity={group.severity}
+          category={group.category}
+          groupType={group.groupType}
+          copy={composeAttentionGroupCopy(group)}
+          de={de}
+          pinned={criticalLike}
+          onRowClick={() => setExpanded((value) => !value)}
+          trailing={(
+            <AttentionRowAction
+              label={expanded ? (de ? 'Einklappen' : 'Collapse') : (de ? 'Details' : 'Details')}
+              icon="chevron-down"
+              expanded={expanded}
+              ariaExpanded={expanded}
+              ariaControls={groupContentId}
+              onClick={(event) => {
+                event.stopPropagation();
+                setExpanded((value) => !value);
+              }}
             />
-          ))}
-        </ul>
-      ) : null}
+          )}
+        />
+
+        {expanded ? (
+          <ul
+            id={groupContentId}
+            className="border-t border-border/25 animate-fade-up"
+          >
+            {group.children.map((child) => (
+              <ActionQueueChildRow
+                key={child.id}
+                child={child}
+                de={de}
+                vm={vm}
+                handlers={handlers}
+                obdPlugByVehicleId={obdPlugByVehicleId}
+              />
+            ))}
+          </ul>
+        ) : null}
+      </div>
     </li>
   );
 }
@@ -317,8 +322,8 @@ function ActionQueueCollapsedPreview({
   const hiddenCount = Math.max(0, totalCount - items.length);
 
   return (
-    <div className="space-y-2 px-2 pb-2 sm:px-3">
-      <ul className="space-y-2">
+    <div className="px-1 pb-1.5 sm:px-2">
+      <ul className="divide-y divide-border/30 overflow-hidden rounded-lg">
         {items.map((item) => (
           <ActionQueueLeafRow
             key={item.id}
@@ -586,11 +591,11 @@ export function ActionQueue({
           )}
 
           {pinnedItems.length > 0 && (
-            <div className="border-b border-border/35 px-2 pb-2 pt-2 sm:px-3">
-              <p className="px-1 pb-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="border-b border-border/35 px-1 pb-1.5 pt-1.5 sm:px-2">
+              <p className="px-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {de ? 'Sofort handeln' : 'Act now'}
               </p>
-              <ul className="space-y-2">
+              <ul className="divide-y divide-border/30 overflow-hidden rounded-lg border border-border/35">
                 {pinnedItems.map((item) => (
                   <ActionQueueLeafRow
                     key={item.id}
@@ -612,7 +617,7 @@ export function ActionQueue({
             <ActionQueueEmpty vm={vm} />
           ) : filteredEntries.length > 0 ? (
             <>
-              <ul className="space-y-2 px-2 pb-2 sm:px-3">
+              <ul className="divide-y divide-border/30 px-1 pb-1.5 sm:px-2">
                 {visibleEntries.map((entry) =>
                   entry.kind === 'group' ? (
                     <ActionQueueGroupRow
