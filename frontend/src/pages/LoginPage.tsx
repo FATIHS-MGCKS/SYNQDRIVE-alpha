@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { setAuth } from '../lib/auth';
 import { Eye, EyeOff, ArrowRight, Car, Zap, Shield, Globe } from 'lucide-react';
-import synqdriveLogoLight from '../assets/synqdrive-logo-light.png';
-import synqdriveLogoDark from '../assets/synqdrive-logo-dark.png';
+import synqdriveLogo from '../assets/synqdrive-logo-new.png';
 import loginHeroVideo from '../assets/synqdrive-login.mp4';
 
 const loginCopy: Record<string, { en: string; de: string }> = {
@@ -37,11 +36,6 @@ const loginCopy: Record<string, { en: string; de: string }> = {
 export default function LoginPage() {
   const navigate = useNavigate();
   const [locale, setLocale] = useState<'en' | 'de'>('de');
-  const [prefersDark, setPrefersDark] = useState<boolean>(() =>
-    typeof window !== 'undefined' && window.matchMedia
-      ? window.matchMedia('(prefers-color-scheme: dark)').matches
-      : false,
-  );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -49,15 +43,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showLangMenu, setShowLangMenu] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-    const onChange = (e: MediaQueryListEvent) => setPrefersDark(e.matches);
-    setPrefersDark(media.matches);
-    media.addEventListener('change', onChange);
-    return () => media.removeEventListener('change', onChange);
-  }, []);
 
   const t = (key: keyof typeof loginCopy) => loginCopy[key]?.[locale] ?? loginCopy[key]?.en ?? '';
 
@@ -237,7 +222,7 @@ export default function LoginPage() {
               {/* Logo */}
               <div className="flex items-center justify-center mb-5">
                 <img
-                  src={prefersDark ? synqdriveLogoDark : synqdriveLogoLight}
+                  src={synqdriveLogo}
                   alt="SYNQDRIVE"
                   className="h-5 w-auto object-contain"
                 />

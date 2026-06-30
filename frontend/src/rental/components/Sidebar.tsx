@@ -11,8 +11,7 @@ import {
   CollapsedNavTooltip,
   NavComingSoonBadge,
 } from '../../components/shell';
-import synqdriveLogoLight from '../../assets/synqdrive-logo-light.png';
-import synqdriveLogoDark from '../../assets/synqdrive-logo-dark.png';
+import synqdriveLogo from '../../assets/synqdrive-logo-new.png';
 
 type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents' | 'rental-rules';
 
@@ -50,10 +49,7 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const SynqLogo = ({ className }: { className?: string }) => (
-    <>
-      <img src={synqdriveLogoLight} alt="SYNQDRIVE" className={`dark:hidden ${className ?? ''}`} />
-      <img src={synqdriveLogoDark} alt="SYNQDRIVE" className={`hidden dark:block ${className ?? ''}`} />
-    </>
+    <img src={synqdriveLogo} alt="SYNQDRIVE" className={className ?? ''} />
   );
 
   // Close mobile menu on view change

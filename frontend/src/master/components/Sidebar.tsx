@@ -8,8 +8,7 @@ import {
   MapPin, Gauge, BookOpen, ShieldCheck
 } from 'lucide-react';
 import { useState } from 'react';
-import synqdriveLogoDark from '../../assets/synqdrive-logo-dark.png';
-import synqdriveLogoLight from '../../assets/synqdrive-logo.png';
+import synqdriveLogo from '../../assets/synqdrive-logo-new.png';
 import {
   navItemClass,
   navSectionLabelClass,
@@ -51,7 +50,7 @@ export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, on
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const logo = isDarkMode ? synqdriveLogoDark : synqdriveLogoLight;
+  const logo = synqdriveLogo;
 
   const toggle = (key: string) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 

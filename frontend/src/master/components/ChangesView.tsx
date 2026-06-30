@@ -109,6 +109,23 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-06-30T23:59:55.000Z',
   },
   {
+    id: 'synqdrive-brand-logo-new-v49129-2026-06-30',
+    version: '4.9.129',
+    title: 'V4.9.129 — SynqDrive Brand-Logo (Rental + Master Admin)',
+    summary: [
+      'Neues Plattform-Logo `synqdrive-logo-new.png` in Rental-Sidebar, Master-Admin-Sidebar und Login-Seite.',
+      'Ersetzt die bisherigen getrennten Light/Dark-Logo-Assets durch ein einheitliches Brand-Asset in allen drei Shell-Oberflächen.',
+    ],
+    reason: 'Neues SynqDrive-Logo soll in Rental Operations und Master Admin konsistent sichtbar sein.',
+    previousBehavior:
+      'Rental nutzte `synqdrive-logo-light.png` + `synqdrive-logo-dark.png` per `dark:`-Toggle; Master wechselte per `isDarkMode` zwischen `synqdrive-logo.png` und `synqdrive-logo-dark.png`.',
+    details:
+      'Geändert: `frontend/src/assets/synqdrive-logo-new.png` (aus `backend/public/assets`), `rental/components/Sidebar.tsx`, `master/components/Sidebar.tsx`, `pages/LoginPage.tsx`.',
+    affectsArchitecture: false,
+    module: 'Platform Branding',
+    createdAt: '2026-06-30T23:59:59.000Z',
+  },
+  {
     id: 'stations-page-kpi-header-ui-v49124-2026-06-30',
     version: '4.9.124',
     title: 'V4.9.124 — Stations Page: KPI-Boxen & Header-Actions UI',
