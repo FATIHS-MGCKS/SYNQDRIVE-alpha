@@ -1,4 +1,5 @@
 import { Icon } from '../ui/Icon';
+import { Button } from '../../../components/ui/button';
 import type { BookingPlannerView, BookingFiltersState, BookingStatusFilter } from './bookingTypes';
 import type { VehicleData } from '../../data/vehicles';
 
@@ -73,14 +74,10 @@ export function BookingsToolbar({
           ))}
         </div>
         {onCreateNewBooking && (
-          <button
-            type="button"
-            onClick={onCreateNewBooking}
-            className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-semibold"
-          >
-            <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" />
+          <Button type="button" variant="primary" size="sm" onClick={onCreateNewBooking}>
+            <Icon name="plus" className="h-3.5 w-3.5" />
             Neue Buchung
-          </button>
+          </Button>
         )}
       </div>
 
