@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoices-page-kpi-button-cleanup-v49126-2026-06-30',
+    version: '4.9.126',
+    title: 'V4.9.126 — Invoices Page: KPI-Standard & Header-Buttons im SynqDrive-Stil',
+    summary: [
+      'Invoice-KPIs (Gesamt, Umsatz, Ausgaben, Unbezahlt) im Control-Center-Stil (`InvoiceKpiCard`).',
+      'Header: `PageHeader` mit `Button` — KI-Upload (`variant="ai"`), Rechnung erstellen (`variant="primary"`).',
+    ],
+    reason:
+      'KPI-Karten und Header-Buttons wirkten zu groß und inkonsistent gegenüber Dashboard, Customers, Stations und Tasks.',
+    previousBehavior:
+      'Native `sq-press`-Buttons und große `sq-card`-KPI-Flächen mit 8×8 Icon-Kreisen und bold 20px-Werten.',
+    details:
+      'Geändert: `InvoicesView.tsx`. Keine Invoice-/Filter-/Tabellen-/API-Logik geändert.',
+    affectsArchitecture: false,
+    module: 'Rental Invoices',
+    createdAt: '2026-06-30T23:59:59.000Z',
+  },
+  {
     id: 'tasks-page-kpi-header-ui-v49125-2026-06-30',
     version: '4.9.125',
     title: 'V4.9.125 — Tasks Page: KPI-Boxen & Header-Button UI',
