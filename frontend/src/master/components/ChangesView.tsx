@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-detail-ui-refactor-v49126-2026-06-30',
+    version: '4.9.126',
+    title: 'V4.9.126 — Vehicle Trips: Einzel-Trip Detail UI Refactor',
+    summary: [
+      'Aufgeklappte Fahrt: klare Leseführung — Trip Header mit Tagesnummer + einheitlicher Bewertung, Trip Analyse, Fahrbelastung (Donut), Fahrverhalten (Kategorie-Balken + Events), integrierter Missbrauchsverdacht.',
+      'Redundanzen entfernt: widersprüchliche Statuszeilen, separate Boxen Zuordnung/Buchungsbezug, technische Kontext-/Beweis-Debug-UI in Event Cards.',
+      'Desktop: Trip Analyse + Fahrbelastung im 2-Spalten-Grid; Mobile: kompakt gestapelt.',
+    ],
+    reason:
+      'Die Einzel-Trip-Detailansicht war redundant, widersprüchlich (Unauffällig vs. Beobachten vs. Auffällig) und schwer scannbar.',
+    previousBehavior:
+      'Beweisübersicht mit Ereignisse/Route/Datenqualität; Statuszeile „Beobachten · N Ereignisse“; getrennte Zuordnung & Buchungsbezug-Boxen; verbose Kontextbewertung pro Event.',
+    details:
+      'Geändert: TripTimeline, TripTimelineCard, TripMetricRow, TripEvidencePanel, TripTimelineExpanded, VehicleStressPanel (+ StressDonut), TripBehaviorSummary, TripBehaviorEventList, TripEventMetricsGrid, MisuseCasesPanel, behavior-category.utils, trip-day-numbering, trip-overall-status, trips-view-ui, Tests. Keine Backend-/API-/Score-/Event-/Misuse-Logik geändert.',
+    affectsArchitecture: false,
+    module: 'Rental Trips',
+    createdAt: '2026-06-30T23:59:59.000Z',
+  },
+  {
     id: 'tasks-page-kpi-header-ui-v49125-2026-06-30',
     version: '4.9.125',
     title: 'V4.9.125 — Tasks Page: KPI-Boxen & Header-Button UI',

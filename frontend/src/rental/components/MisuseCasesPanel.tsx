@@ -50,6 +50,7 @@ type MisuseCasesPanelProps = {
   /** Calm subline shown when there are no cases. */
   emptyDescription?: string;
   compact?: boolean;
+  embedded?: boolean;
   limit?: number;
 };
 
@@ -105,11 +106,15 @@ function EmptyMisuseState({
   title,
   emptyTitle,
   emptyDescription,
+  embedded,
 }: {
   title: string;
   emptyTitle?: string;
   emptyDescription?: string;
+  embedded?: boolean;
 }) {
+  if (embedded) return null;
+
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
@@ -262,37 +267,57 @@ function issueForCase(
   issue: OperationalIssue,
   raw: MisuseCaseRecord | undefined,
   compact: boolean,
+  embedded?: boolean,
 ) {
   const contextEvidence = readContextEvidence(raw?.evidenceSummary);
   const severity = raw?.severity ?? (issue.severity === 'critical' ? 'CRITICAL' : issue.severity === 'warning' ? 'WARNING' : 'INFO');
   const confidence = raw?.confidence ?? 'MEDIUM';
   return (
-    <div key={issue.id} className={compact ? 'px-3 py-2' : 'px-4 py-3'}>
-      <div className="flex flex-wrap items-center gap-2 mb-1">
-        <span className="text-xs font-semibold text-foreground">{issue.title}</span>
-        <StatusChip tone={severityTone(severity)} dot>
+    <div
+      key={issue.id}
+      className={
+        embedded
+          ? 'rounded-xl border border-border/60 bg-card/50 px-3 py-2.5'
+          : compact
+            ? 'px-3 py-2'
+            : 'px-4 py-3'
+      }
+    >
+      <div className="mb-1 flex flex-wrap items-center gap-1.5">
+        <span className="text-[11px] font-semibold text-foreground">{issue.title}</span>
+        <StatusChip tone={severityTone(severity)} dot className="text-[9px]">
           {severityLabel(severity)}
         </StatusChip>
-        <StatusChip tone={confidenceTone(confidence)}>
-          {confidenceLabel(confidence)}
-        </StatusChip>
+        {(confidence === 'LOW' || confidence === 'INSUFFICIENT') && (
+          <StatusChip tone={confidenceTone(confidence)} className="text-[9px]">
+            {confidenceLabel(confidence)}
+          </StatusChip>
+        )}
       </div>
       {issue.subtitle && (
-        <p className="text-xs text-muted-foreground">{issue.subtitle}</p>
+        <p className="text-[10px] leading-snug text-muted-foreground">{issue.subtitle}</p>
       )}
       {issue.evidence?.length ? (
-        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+        <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-3">
           {issue.evidence.map((evidence) => (
-            <span key={`${evidence.label}:${evidence.value}:${evidence.unit ?? ''}`} className="text-[10px] text-muted-foreground tabular-nums">
-              {formatOperationalIssueEvidence(evidence)}
-            </span>
+            <div key={`${evidence.label}:${evidence.value}:${evidence.unit ?? ''}`} className="min-w-0">
+              <p className="text-[9px] font-medium text-muted-foreground">{evidence.label}</p>
+              <p className="text-[10px] font-semibold tabular-nums text-foreground break-words">
+                {formatOperationalIssueEvidence(evidence)}
+              </p>
+            </div>
           ))}
         </div>
       ) : null}
       {contextEvidence && <MisuseContextEvidence evidence={contextEvidence} />}
-      {issue.recommendedAction && !compact && (
+      {issue.recommendedAction && !compact && !embedded && (
         <p className="text-[10px] text-muted-foreground mt-1">
           Empfohlen: {sanitizeUserFacingIssueText(issue.recommendedAction)}
+        </p>
+      )}
+      {embedded && (
+        <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
+          Hinweis zur Prüfung — kein automatisierter Vorwurf.
         </p>
       )}
     </div>
@@ -309,6 +334,7 @@ export function MisuseCasesPanel({
   emptyTitle,
   emptyDescription,
   compact = false,
+  embedded = false,
   limit = 20,
 }: MisuseCasesPanelProps) {
   const [cases, setCases] = useState<MisuseCaseRecord[]>([]);
@@ -350,7 +376,14 @@ export function MisuseCasesPanel({
   }, [orgId, vehicleId, tripId, bookingId, customerId, limit]);
 
   if (!orgId) {
-    return <EmptyMisuseState title={title} emptyTitle={emptyTitle} emptyDescription={emptyDescription} />;
+    return (
+      <EmptyMisuseState
+        title={title}
+        emptyTitle={emptyTitle}
+        emptyDescription={emptyDescription}
+        embedded={embedded}
+      />
+    );
   }
 
   if (loading) {
@@ -370,29 +403,57 @@ export function MisuseCasesPanel({
   }
 
   if (cases.length === 0) {
-    return <EmptyMisuseState title={title} emptyTitle={emptyTitle} emptyDescription={emptyDescription} />;
+    return (
+      <EmptyMisuseState
+        title={title}
+        emptyTitle={emptyTitle}
+        emptyDescription={emptyDescription}
+        embedded={embedded}
+      />
+    );
   }
 
   const issues = normalizedCases(cases, { vehicleId, tripId, bookingId, customerId });
   if (issues.length === 0) {
-    return <EmptyMisuseState title={title} emptyTitle={emptyTitle} emptyDescription={emptyDescription} />;
+    return (
+      <EmptyMisuseState
+        title={title}
+        emptyTitle={emptyTitle}
+        emptyDescription={emptyDescription}
+        embedded={embedded}
+      />
+    );
   }
   const rawById = new Map(cases.map((c) => [c.id, c]));
   const criticalCount = issues.filter((issue) => issue.severity === 'critical' || issue.domain === 'damage').length;
 
   return (
-    <div className="rounded-lg border border-border bg-card">
-      <div className="px-4 py-3 border-b border-border">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+    <div
+      className={
+        embedded
+          ? 'space-y-2'
+          : 'rounded-lg border border-border bg-card'
+      }
+    >
+      <div className={embedded ? 'space-y-0.5' : 'border-b border-border px-4 py-3'}>
+        <h3
+          className={
+            embedded
+              ? 'text-[12px] font-semibold text-foreground'
+              : 'text-xs font-semibold uppercase tracking-wider text-muted-foreground'
+          }
+        >
           {title}
         </h3>
-        <p className="text-[10px] text-muted-foreground mt-1">
+        <p className="text-[10px] text-muted-foreground">
           {issues.length === 1 ? '1 Verdacht erkannt' : `${issues.length} Hinweise erkannt`}
           {criticalCount > 0 ? ` · ${criticalCount} mit Schadensbezug` : ''}
         </p>
       </div>
-      <div className="divide-y divide-border">
-        {issues.map((issue) => issueForCase(issue, rawById.get(issue.primarySource.sourceId ?? ''), compact))}
+      <div className={embedded ? 'space-y-2' : 'divide-y divide-border'}>
+        {issues.map((issue) =>
+          issueForCase(issue, rawById.get(issue.primarySource.sourceId ?? ''), compact, embedded),
+        )}
       </div>
     </div>
   );

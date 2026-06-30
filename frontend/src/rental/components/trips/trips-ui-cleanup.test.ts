@@ -34,9 +34,9 @@ describe('Trips UI cleanup', () => {
     expect('listEyebrow' in TIMELINE_COPY).toBe(false);
   });
 
-  it('includes Start and Ziel in the evidence overview', () => {
-    expect(RENTAL_COPY.evidenceStart).toBe('Start');
-    expect(RENTAL_COPY.evidenceDestination).toBe('Ziel');
+  it('renames the evidence overview to Trip Analyse', () => {
+    expect(RENTAL_COPY.tripAnalysisTitle).toBe('Trip Analyse');
+    expect(RENTAL_COPY.evidenceSummaryTitle).toBe('Trip Analyse');
   });
 
   it('drops the separate route-quality and technical sections from the copy', () => {

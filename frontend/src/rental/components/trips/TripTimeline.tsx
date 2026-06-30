@@ -7,7 +7,8 @@ import { TripTimelineExpanded } from './TripTimelineExpanded';
 import { TripTimelineSkeleton } from './TripTimelineSkeleton';
 import { TripTimelineEnergyCard } from './trip-timeline-shared';
 import { TIMELINE_COPY, TRIPS_COPY, tv } from './trips-view-ui';
-import { deriveOperationalChips, formatTripDistance, formatTripDuration, groupTimelineByDate } from './timeline.utils';
+import { formatTripDistance, formatTripDuration, groupTimelineByDate } from './timeline.utils';
+import { computeDayTripNumbers } from './utils/trip-day-numbering';
 import type { EnergyEvent } from '../../../lib/api';
 import type { TimelineLoadSource } from './hooks/useVehicleTrips';
 
@@ -161,7 +162,9 @@ export function TripTimeline({
               </div>
 
               <div className="space-y-2.5">
-                {group.items.map((item) => {
+                {(() => {
+                  const dayTripNumbers = computeDayTripNumbers(group.items);
+                  return group.items.map((item) => {
                   if (item.itemType === 'energy-event') {
                     return (
                       <TripTimelineEnergyCard key={item.id} event={item.event} isDark={isDark} />
@@ -172,7 +175,6 @@ export function TripTimeline({
                   const displayTrip = resolve(trip);
                   const isSelected = selectedTripId === trip.id;
                   const rentalContext = rentalContextByTripId?.get(trip.id);
-                  const chips = deriveOperationalChips(displayTrip, rentalContext);
 
                   return (
                     <TripTimelineCard
@@ -180,7 +182,8 @@ export function TripTimeline({
                       trip={displayTrip}
                       isSelected={isSelected}
                       isDark={isDark}
-                      chips={chips}
+                      dayTripNumber={dayTripNumbers.get(trip.id)}
+                      behaviorEvents={behaviorEvents[trip.id] ?? []}
                       onSelect={() => onSelectTrip(trip)}
                     >
                       <div
@@ -220,7 +223,8 @@ export function TripTimeline({
                       </div>
                     </TripTimelineCard>
                   );
-                })}
+                });
+                })()}
               </div>
             </section>
           ))}
