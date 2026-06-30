@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-notifications-groups-collapsed-v49121-2026-06-30',
+    version: '4.9.121',
+    title: 'V4.9.121 — Dashboard Notifications: Gruppen starten collapsed',
+    summary: [
+      'Notification-Gruppen (Critical/Overdue/Health etc.) starten nicht mehr automatisch expanded.',
+      'Expand/Collapse nur noch durch expliziten Nutzerklick auf die Gruppenzeile oder „Details“.',
+    ],
+    reason:
+      'Auto-expanded Critical/Overdue-Gruppen machten die Notifications Box visuell zu groß und unruhig.',
+    previousBehavior:
+      '`ActionQueueGroupRow` initialisierte `expanded` mit `criticalLike` (Critical/Overdue → sofort aufgeklappt).',
+    details:
+      'Geändert: `ActionQueue.tsx` (`useState(false)` statt `useState(criticalLike)`). Keine Runtime-/Dedupe-/Filter-Änderung.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-06-30T23:55:00.000Z',
+  },
+  {
     id: 'dashboard-notifications-row-ui-v49120-2026-06-30',
     version: '4.9.120',
     title: 'V4.9.120 — Dashboard Notifications: Row-UI an Fleet Command angeglichen',
