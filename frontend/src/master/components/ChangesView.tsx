@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'tasks-page-kpi-header-ui-v49125-2026-06-30',
+    version: '4.9.125',
+    title: 'V4.9.125 — Tasks Page: KPI-Boxen & Header-Button UI',
+    summary: [
+      'Fünf Task-Segment-KPIs im Control-Center-Stil (`TaskKpiCard`): kompakte Cards, 21px-Werte, Helper-Zeile, Icon-Tiles.',
+      '„Neuen Task“ rechts in derselben Zeile wie „Aufgabenverwaltung“ (auch Mobile); Filter-Klick auf Offen/Überfällig/Kritisch unverändert.',
+    ],
+    reason:
+      'Tasks KPI-Boxen wirkten inkonsistent zu Dashboard/Customers/Stations; Primary-Button brach auf Mobile unter den Titel.',
+    previousBehavior:
+      'Große `sq-card`-KPI-Buttons mit 22px bold und 7×7 Icon-Tiles; `PageHeader` stackte Actions auf Mobile.',
+    details:
+      'Geändert: `TasksView.tsx` (+ lokale `TaskKpiCard`). Keine Task-/Filter-/API-Logik geändert.',
+    affectsArchitecture: false,
+    module: 'Rental Tasks',
+    createdAt: '2026-06-30T23:59:55.000Z',
+  },
+  {
     id: 'stations-page-kpi-header-ui-v49124-2026-06-30',
     version: '4.9.124',
     title: 'V4.9.124 — Stations Page: KPI-Boxen & Header-Actions UI',

@@ -1,4 +1,4 @@
-import { AlertTriangle, Calendar, Car, CheckCircle, FileText, ListTodo } from 'lucide-react';
+import { AlertTriangle, Calendar, Car, CheckCircle, FileText, ListTodo, type LucideIcon } from 'lucide-react';
 import { Icon } from './ui/Icon';
 import { useState, useEffect, useMemo, useRef } from 'react';
 
@@ -26,6 +26,7 @@ import {
 } from '../lib/task-list.utils';
 import { PageHeader, EmptyState, ErrorState, FormDialog } from '../../components/patterns';
 import { Button } from '../../components/ui/button';
+import { cn } from '../../components/ui/utils';
 import { GlobalTaskDetailPanel } from './tasks/GlobalTaskDetailPanel';
 import { TaskWorkItemCard } from './tasks/TaskWorkItemCard';
 import { TaskCategoryChip, TaskPriorityBadge } from './tasks/task-display';
@@ -39,6 +40,96 @@ interface TasksViewProps {
 
 type TaskPriority = TaskListPriority;
 type Task = TaskListRow;
+
+interface TaskKpiCardProps {
+  label: string;
+  value: number;
+  helper: string;
+  icon: LucideIcon;
+  tone?: 'critical' | 'watch' | 'success' | 'info';
+  subdued?: boolean;
+  isActive?: boolean;
+  interactive?: boolean;
+  onClick?: () => void;
+}
+
+function TaskKpiCard({
+  label,
+  value,
+  helper,
+  icon: MetricIcon,
+  tone,
+  subdued = false,
+  isActive = false,
+  interactive = false,
+  onClick,
+}: TaskKpiCardProps) {
+  const isCritical = tone === 'critical' && value > 0;
+  const isWatch = tone === 'watch' && value > 0;
+  const isSuccess = tone === 'success' && value > 0;
+  const isInfo = tone === 'info' && value > 0;
+  const Component = interactive ? 'button' : 'div';
+
+  return (
+    <Component
+      type={interactive ? 'button' : undefined}
+      onClick={interactive ? onClick : undefined}
+      aria-pressed={interactive ? isActive : undefined}
+      aria-label={`${label}: ${value}`}
+      className={cn(
+        'relative overflow-hidden border text-left transition-colors duration-200',
+        'min-h-[96px] rounded-lg bg-card/55 px-2.5 py-2',
+        interactive && 'sq-press hover:border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+        !interactive && 'cursor-default',
+        isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
+        isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
+        isSuccess && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
+        isInfo && 'border-border/45 bg-card/55',
+        !isCritical && !isWatch && !isSuccess && !isInfo && 'border-border/45',
+        isActive && 'ring-2 ring-[color:var(--brand)]/55',
+      )}
+    >
+      <div className="flex h-full items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-[10.5px] font-medium tracking-[-0.01em] text-muted-foreground">
+            {label}
+          </p>
+          <p
+            className={cn(
+              'mt-1 text-[21px] font-semibold tabular-nums leading-none tracking-[-0.03em]',
+              subdued && 'text-muted-foreground',
+              isCritical && 'text-[color:var(--status-critical)]',
+              isSuccess && 'text-[color:var(--status-positive)]',
+              isWatch && 'text-[color:var(--status-watch)]',
+              !subdued && !isCritical && !isSuccess && !isWatch && 'text-foreground',
+            )}
+          >
+            {value}
+          </p>
+          <p className="mt-1 truncate text-[10px] leading-snug text-muted-foreground">{helper}</p>
+        </div>
+        <div
+          className={cn(
+            'flex h-6 w-6 shrink-0 items-center justify-center rounded-md',
+            isCritical && 'sq-tone-critical',
+            isWatch && 'sq-tone-watch',
+            isSuccess && 'sq-tone-success',
+            isInfo && 'sq-tone-info',
+            !isCritical && !isWatch && !isSuccess && !isInfo && 'bg-muted text-muted-foreground',
+          )}
+        >
+          <MetricIcon className="h-3 w-3" />
+        </div>
+      </div>
+      {isCritical ? (
+        <span
+          className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[color:var(--status-critical)]"
+          aria-hidden
+        />
+      ) : null}
+    </Component>
+  );
+}
 
 export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTaskId, onHighlightConsumed }: TasksViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -482,93 +573,67 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
       <div className="space-y-5">
       <PageHeader
         title="Aufgabenverwaltung"
+        className="mb-4 flex-row items-center justify-between gap-2 sm:mb-5 sm:items-start sm:gap-4"
         actions={(
           <Button type="button" variant="primary" size="sm" onClick={openNewTask}>
             <Icon name="plus" className="h-3.5 w-3.5" />
-            Neuen Task
+            <span className="hidden min-[400px]:inline">Neuen Task</span>
+            <span className="min-[400px]:hidden">Neu</span>
           </Button>
         )}
       />
 
       {/* Segment metrics — canonical counts from GET /tasks/summary */}
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
-        {[
-          {
-            label: 'Offen',
-            value: summaryOpen,
-            helper: `${inProgressCount} in Bearbeitung`,
-            icon: ListTodo,
-            tone: 'sq-tone-brand',
-            filterVal: 'Open',
-          },
-          {
-            label: 'Heute fällig',
-            value: summaryDueToday,
-            helper: 'fällig heute',
-            icon: Calendar,
-            tone: 'sq-tone-warning',
-            filterVal: null,
-          },
-          {
-            label: 'Überfällig',
-            value: summaryOverdue,
-            helper: summaryOverdue > 0 ? 'Handlungsbedarf' : 'keine überfälligen',
-            icon: AlertTriangle,
-            tone: summaryOverdue > 0 ? 'sq-tone-critical' : 'sq-tone-neutral',
-            filterVal: 'Overdue',
-          },
-          {
-            label: 'Kritisch',
-            value: summaryCritical,
-            helper: 'Priorität kritisch',
-            icon: AlertTriangle,
-            tone: summaryCritical > 0 ? 'sq-tone-critical' : 'sq-tone-neutral',
-            filterVal: 'Critical',
-          },
-          {
-            label: 'Mir zugewiesen',
-            value: summaryAssignedToMe,
-            helper: 'meine offenen Aufgaben',
-            icon: CheckCircle,
-            tone: 'sq-tone-info',
-            filterVal: null,
-          },
-        ].map(card => {
-          const isActive = card.filterVal === 'Critical'
-            ? priorityFilter === 'Critical'
-            : card.filterVal != null && statusFilter === card.filterVal;
-          const MetricIcon = card.icon;
-          return (
-            <button
-              key={card.label}
-              type="button"
-              onClick={() => {
-                if (card.filterVal === 'Critical') {
-                  setPriorityFilter(isActive ? 'all' : 'Critical');
-                } else if (card.filterVal) {
-                  setStatusFilter(isActive ? 'all' : card.filterVal);
-                }
-              }}
-              disabled={card.filterVal == null}
-              className={`group sq-card sq-press rounded-xl p-3 text-left shadow-[var(--shadow-1)] transition-all ${
-                isActive ? 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_22%,transparent)]' : 'hover:bg-muted/35'
-              } ${card.filterVal == null ? 'cursor-default' : ''}`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold text-muted-foreground">{card.label}</p>
-                  <p className="mt-1 truncate text-[22px] font-bold leading-none tracking-[-0.03em] text-foreground tabular-nums">
-                    {card.value}
-                  </p>
-                  <p className="mt-1 truncate text-[10px] font-medium text-muted-foreground">{card.helper}</p>
-                </div>
-                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${card.tone}`}>
-                  <MetricIcon className="h-3.5 w-3.5" />
-                </span>
-              </div>
-            </button>
-          );
-        })}
+      <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-5">
+        <TaskKpiCard
+          label="Offen"
+          value={summaryOpen}
+          helper={`${inProgressCount} in Bearbeitung`}
+          icon={ListTodo}
+          tone="info"
+          subdued={summaryOpen === 0}
+          interactive
+          isActive={statusFilter === 'Open'}
+          onClick={() => setStatusFilter(statusFilter === 'Open' ? 'all' : 'Open')}
+        />
+        <TaskKpiCard
+          label="Heute fällig"
+          value={summaryDueToday}
+          helper="fällig heute"
+          icon={Calendar}
+          tone="watch"
+          subdued={summaryDueToday === 0}
+        />
+        <TaskKpiCard
+          label="Überfällig"
+          value={summaryOverdue}
+          helper={summaryOverdue > 0 ? 'Handlungsbedarf' : 'keine überfälligen'}
+          icon={AlertTriangle}
+          tone="critical"
+          subdued={summaryOverdue === 0}
+          interactive
+          isActive={statusFilter === 'Overdue'}
+          onClick={() => setStatusFilter(statusFilter === 'Overdue' ? 'all' : 'Overdue')}
+        />
+        <TaskKpiCard
+          label="Kritisch"
+          value={summaryCritical}
+          helper="Priorität kritisch"
+          icon={AlertTriangle}
+          tone="critical"
+          subdued={summaryCritical === 0}
+          interactive
+          isActive={priorityFilter === 'Critical'}
+          onClick={() => setPriorityFilter(priorityFilter === 'Critical' ? 'all' : 'Critical')}
+        />
+        <TaskKpiCard
+          label="Mir zugewiesen"
+          value={summaryAssignedToMe}
+          helper="meine offenen Aufgaben"
+          icon={CheckCircle}
+          tone="info"
+          subdued={summaryAssignedToMe === 0}
+        />
       </div>
 
       {/* Search & Filters */}
