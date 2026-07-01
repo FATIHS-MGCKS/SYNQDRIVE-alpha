@@ -185,6 +185,31 @@ cd backend && npm test
 cd frontend && npm test
 ```
 
+## DIMO Agents DNS (deployment)
+
+`getaddrinfo ENOTFOUND agents.dimo.zone` is a **runtime DNS** issue. Official URL: `https://agents.dimo.zone` (do not change base URL).
+
+- **Production VPS** runs NestJS via **PM2 on the host** — fix **host DNS**, not Docker.
+- **Optional** containerized backend: `backend/docker-compose.yml` → `backend` service with `dns: [1.1.1.1, 8.8.8.8]`.
+
+Full runbook: [`backend/docs/dimo-agents-dns-troubleshooting.md`](backend/docs/dimo-agents-dns-troubleshooting.md)
+
+Quick checks:
+
+```bash
+# Host
+curl -sS -o /dev/null -w "%{http_code}\n" https://agents.dimo.zone
+nslookup agents.dimo.zone
+
+# Container (after: cd backend && docker compose up -d --build backend)
+docker compose exec backend sh -lc "node -e \"require('node:dns').lookup('agents.dimo.zone',(e,a,f)=>console.log({e:e?.message,code:e?.code,a,f}))\""
+
+# App probe (3000 local / 3001 production PM2)
+curl -sS "http://localhost:3000/api/v1/dimo/agents/health"
+```
+
+If host DNS fails: check VPS `systemd-resolved`, `/etc/resolv.conf`, Hostinger firewall (outbound 53/443). If host OK but container fails: `docker compose down && docker compose up -d --build`.
+
 ## Architecture rules
 
 - Preserve multi-tenant org scoping — no hardcoded org/vehicle IDs.

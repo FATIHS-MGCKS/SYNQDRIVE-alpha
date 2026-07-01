@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-agents-dns-docker-v49136-2026-07-01',
+    version: '4.9.136',
+    title: 'V4.9.136 — DIMO Agents DNS (Docker + Deployment Runbook)',
+    summary: [
+      'Optional `backend`-Service in `docker-compose.yml` mit expliziten DNS-Resolvern `1.1.1.1` / `8.8.8.8` für DIMO Agents Outbound.',
+      'Deployment-Runbook `backend/docs/dimo-agents-dns-troubleshooting.md`: Host- vs. Container-DNS, PM2-VPS vs. Docker, Testbefehle.',
+      'AGENTS.md verlinkt Diagnose (`curl`/`nslookup`/container `node dns.lookup`/GET `/dimo/agents/health`).',
+    ],
+    reason:
+      'AI Assistant `ENOTFOUND agents.dimo.zone` — Ursache war nicht erkennbar; Production läuft per PM2 (Host-DNS), optionaler Container-Backend braucht explizite Resolver.',
+    previousBehavior:
+      'docker-compose enthielt nur Postgres/Redis/ClickHouse; kein Backend-Container, keine Deployment-DNS-Diagnose.',
+    details:
+      'Geändert: `backend/docker-compose.yml`, `backend/Dockerfile`, `backend/.dockerignore`, `backend/docs/dimo-agents-dns-troubleshooting.md`, `AGENTS.md`. Keine Auth-/Agent-Business-Logic-Änderungen; `https://agents.dimo.zone` unverändert.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-01T12:00:00.000Z',
+  },
+  {
     id: 'dimo-agents-sdk-alignment-v49135-2026-07-01',
     version: '4.9.135',
     title: 'V4.9.135 — DIMO Agents SDK Alignment & Connectivity Health',
