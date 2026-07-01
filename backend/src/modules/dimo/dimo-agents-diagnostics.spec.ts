@@ -1,4 +1,9 @@
+import { promises as dns } from 'dns';
+import axios from 'axios';
 import { DimoAgentsService } from './dimo-agents.service';
+
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 function makeConfig(overrides: Record<string, unknown> = {}) {
   return {
@@ -14,6 +19,19 @@ function makeConfig(overrides: Record<string, unknown> = {}) {
 }
 
 describe('DimoAgentsService.runAgentDiagnostics', () => {
+  beforeEach(() => {
+    jest.spyOn(dns, 'lookup').mockResolvedValue({ address: '1.2.3.4', family: 4 });
+    mockedAxios.get.mockResolvedValue({
+      status: 200,
+      data: { service: 'agents', status: 'healthy', version: '1.0.0' },
+    } as any);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.clearAllMocks();
+  });
+
   it('returns config-only diagnostics when skipLiveTests is true', async () => {
     const svc = new DimoAgentsService(makeConfig() as any);
     const res = await svc.runAgentDiagnostics({ skipLiveTests: true });
@@ -27,6 +45,7 @@ describe('DimoAgentsService.runAgentDiagnostics', () => {
     expect(res.personalities.fleet_chat).toBe('fleet_manager_pro');
     expect(res.checks.some((c) => c.name === 'config' && c.ok)).toBe(true);
     expect(res.checks.some((c) => c.name === 'personalities')).toBe(true);
+    expect(res.checks.some((c) => c.name === 'agents_connectivity' && c.ok)).toBe(true);
     expect(res.checks.some((c) => c.name === 'create_agent')).toBe(false);
     expect(res.errors).toEqual([]);
   });

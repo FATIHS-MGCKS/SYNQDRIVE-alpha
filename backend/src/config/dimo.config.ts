@@ -39,8 +39,7 @@ export default registerAs('dimo', () => {
     webhookVerificationToken: process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN ?? '',
     /** DIMO Agents API — Bearer Developer JWT in headers + DIMO_API_KEY in create-agent body secrets. */
     agentsBaseUrl:
-      process.env.DIMO_AGENTS_BASE_URL ||
-      (dimoEnv === 'dev' ? 'https://agents.dev.dimo.zone' : 'https://agents.dimo.zone'),
+      process.env.DIMO_AGENTS_BASE_URL?.trim() || 'https://agents.dimo.zone',
     /** API key sent in create-agent body secrets.DIMO_API_KEY (do not use for Bearer auth). */
     dimoApiKey: process.env.DIMO_API_KEY ?? '',
     /** User wallet sent in create-agent body variables.USER_WALLET. */
