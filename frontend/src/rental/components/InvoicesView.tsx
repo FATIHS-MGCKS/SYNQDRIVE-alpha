@@ -1,9 +1,25 @@
-import { ArrowDownLeft, ArrowUpRight, Building2, Calendar, CheckCircle, Clock, DollarSign, FileText, Receipt, Tag, User } from 'lucide-react';
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  Building2,
+  Calendar,
+  CheckCircle,
+  Clock,
+  DollarSign,
+  FileText,
+  Receipt,
+  Tag,
+  User,
+  type LucideIcon,
+} from 'lucide-react';
 import { Icon } from './ui/Icon';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 
 import { api } from '../../lib/api';
+import { PageHeader } from '../../components/patterns';
+import { Button } from '../../components/ui/button';
+import { cn } from '../../components/ui/utils';
 import { SupportContextButton } from '../../components/support/SupportContextButton';
 import { useRentalOrg } from '../RentalContext';
 import type { Invoice, InvoiceStats } from './invoices/invoiceTypes';
@@ -34,6 +50,96 @@ const TEMPLATES = [
   { id: 'extra', name: 'Zusatzleistungen', description: 'Zusätzliche Services & Gebühren' },
 ];
 interface InvoicesViewProps { isDarkMode: boolean; }
+
+interface InvoiceKpiCardProps {
+  label: string;
+  value: string | number;
+  helper: string;
+  icon: LucideIcon;
+  tone?: 'critical' | 'watch' | 'success' | 'info';
+  subdued?: boolean;
+  accent?: boolean;
+  isActive?: boolean;
+  onClick?: () => void;
+}
+
+function InvoiceKpiCard({
+  label,
+  value,
+  helper,
+  icon: MetricIcon,
+  tone,
+  subdued = false,
+  accent,
+  isActive = false,
+  onClick,
+}: InvoiceKpiCardProps) {
+  const hasAccent = accent ?? (typeof value === 'number' ? value > 0 : false);
+  const isCritical = tone === 'critical' && hasAccent;
+  const isWatch = tone === 'watch' && hasAccent;
+  const isSuccess = tone === 'success' && hasAccent;
+  const isInfo = tone === 'info' && hasAccent;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={isActive}
+      aria-label={`${label}: ${value}`}
+      className={cn(
+        'sq-press group relative overflow-hidden border text-left transition-colors duration-200',
+        'hover:border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+        'min-h-[96px] rounded-lg bg-card/55 px-2.5 py-2',
+        isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
+        isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
+        isSuccess && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
+        isInfo && 'border-border/45 bg-card/55',
+        !isCritical && !isWatch && !isSuccess && !isInfo && 'border-border/45',
+        isActive && 'ring-2 ring-[color:var(--brand)]/55',
+      )}
+    >
+      <div className="flex h-full items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-[10.5px] font-medium tracking-[-0.01em] text-muted-foreground">
+            {label}
+          </p>
+          <p
+            className={cn(
+              'mt-1 truncate text-[21px] font-semibold tabular-nums leading-none tracking-[-0.03em]',
+              subdued && 'text-muted-foreground',
+              isCritical && 'text-[color:var(--status-critical)]',
+              isSuccess && 'text-[color:var(--status-positive)]',
+              isWatch && 'text-[color:var(--status-watch)]',
+              isInfo && 'text-[color:var(--status-info)]',
+              !subdued && !isCritical && !isSuccess && !isWatch && !isInfo && 'text-foreground',
+            )}
+          >
+            {value}
+          </p>
+          <p className="mt-1 truncate text-[10px] leading-snug text-muted-foreground">{helper}</p>
+        </div>
+        <div
+          className={cn(
+            'flex h-6 w-6 shrink-0 items-center justify-center rounded-md',
+            isCritical && 'sq-tone-critical',
+            isWatch && 'sq-tone-watch',
+            isSuccess && 'sq-tone-success',
+            isInfo && 'sq-tone-info',
+            !isCritical && !isWatch && !isSuccess && !isInfo && 'bg-muted text-muted-foreground',
+          )}
+        >
+          <MetricIcon className="h-3 w-3" />
+        </div>
+      </div>
+      {isCritical ? (
+        <span
+          className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[color:var(--status-critical)]"
+          aria-hidden
+        />
+      ) : null}
+    </button>
+  );
+}
 
 export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
   const { orgId } = useRentalOrg();
@@ -158,98 +264,65 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-5">
-      {/* Header */}
-      <div className="flex min-h-8 flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">
-            Rechnungen
-          </h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setView('upload')}
-            className="sq-press flex items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-2 text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
-          >
-            <Icon name="sparkles" className="h-4 w-4 text-purple-500" />
-            KI-Upload
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('create')}
-            className="sq-press flex items-center gap-2 rounded-xl bg-[color:var(--brand)] px-3 py-2 text-[10px] font-semibold text-white shadow-[var(--shadow-1)] transition-all hover:opacity-90"
-          >
-            <Icon name="plus" className="h-4 w-4" />
-            Rechnung erstellen
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Rechnungen"
+        className="mb-4 flex-row items-center justify-between gap-2 sm:mb-5 sm:items-start sm:gap-4"
+        actions={(
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+            <Button type="button" variant="ai" size="sm" onClick={() => setView('upload')}>
+              <Icon name="sparkles" className="size-3.5" />
+              KI-Upload
+            </Button>
+            <Button type="button" variant="primary" size="sm" onClick={() => setView('create')}>
+              <Icon name="plus" className="size-3.5" />
+              <span className="hidden min-[420px]:inline">Rechnung erstellen</span>
+              <span className="min-[420px]:hidden">Neu</span>
+            </Button>
+          </div>
+        )}
+      />
 
-      {/* Segment metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-        {[
-          {
-            label: 'Gesamt',
-            value: stats?.total ?? invoices.length,
-            helper: `${filtered.length} aktuell sichtbar`,
-            icon: Receipt,
-            action: () => clearFilters(),
-            active: !hasActiveFilters,
-            tone: 'sq-tone-neutral',
-          },
-          {
-            label: 'Umsatz',
-            value: formatAmount(stats?.totalRevenueCents || 0),
-            helper: `${directionCount('outgoing')} Ausgangsrechnungen`,
-            icon: ArrowUpRight,
-            action: () => setDirectionFilter('outgoing'),
-            active: directionFilter === 'outgoing',
-            tone: 'sq-tone-brand',
-          },
-          {
-            label: 'Ausgaben',
-            value: formatAmount(stats?.totalExpensesCents || 0),
-            helper: `${directionCount('incoming')} Eingangsrechnungen`,
-            icon: ArrowDownLeft,
-            action: () => setDirectionFilter('incoming'),
-            active: directionFilter === 'incoming',
-            tone: 'sq-tone-warning',
-          },
-          {
-            label: 'Unbezahlt',
-            value: unpaidCount,
-            helper: `${overdueCount} überfällig`,
-            icon: Clock,
-            action: () => setStatusFilter(statusFilter === 'OVERDUE' ? 'all' : 'OVERDUE'),
-            active: statusFilter === 'OVERDUE',
-            tone: unpaidCount > 0 ? 'sq-tone-critical' : 'sq-tone-success',
-          },
-        ].map(metric => {
-          const MetricIcon = metric.icon;
-          return (
-            <button
-              key={metric.label}
-              type="button"
-              onClick={metric.action}
-              className={`group sq-card sq-press rounded-2xl p-4 text-left shadow-[var(--shadow-1)] transition-all ${
-                metric.active ? 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_22%,transparent)]' : 'hover:bg-muted/35'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold text-muted-foreground">{metric.label}</p>
-                  <p className="mt-1 truncate text-[20px] font-bold leading-none tracking-[-0.03em] text-foreground tabular-nums">
-                    {metric.value}
-                  </p>
-                  <p className="mt-2 truncate text-[10px] font-medium text-muted-foreground">{metric.helper}</p>
-                </div>
-                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${metric.tone}`}>
-                  <MetricIcon className="h-4 w-4" />
-                </span>
-              </div>
-            </button>
-          );
-        })}
+      <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-4">
+        <InvoiceKpiCard
+          label="Gesamt"
+          value={stats?.total ?? invoices.length}
+          helper={`${filtered.length} aktuell sichtbar`}
+          icon={Receipt}
+          isActive={!hasActiveFilters}
+          onClick={clearFilters}
+        />
+        <InvoiceKpiCard
+          label="Umsatz"
+          value={formatAmount(stats?.totalRevenueCents || 0)}
+          helper={`${directionCount('outgoing')} Ausgangsrechnungen`}
+          icon={ArrowUpRight}
+          tone="info"
+          accent={(stats?.totalRevenueCents || 0) > 0}
+          subdued={(stats?.totalRevenueCents || 0) === 0}
+          isActive={directionFilter === 'outgoing'}
+          onClick={() => setDirectionFilter('outgoing')}
+        />
+        <InvoiceKpiCard
+          label="Ausgaben"
+          value={formatAmount(stats?.totalExpensesCents || 0)}
+          helper={`${directionCount('incoming')} Eingangsrechnungen`}
+          icon={ArrowDownLeft}
+          tone="watch"
+          accent={(stats?.totalExpensesCents || 0) > 0}
+          subdued={(stats?.totalExpensesCents || 0) === 0}
+          isActive={directionFilter === 'incoming'}
+          onClick={() => setDirectionFilter('incoming')}
+        />
+        <InvoiceKpiCard
+          label="Unbezahlt"
+          value={unpaidCount}
+          helper={`${overdueCount} überfällig`}
+          icon={Clock}
+          tone={unpaidCount > 0 ? 'critical' : 'success'}
+          subdued={unpaidCount === 0}
+          isActive={statusFilter === 'OVERDUE'}
+          onClick={() => setStatusFilter(statusFilter === 'OVERDUE' ? 'all' : 'OVERDUE')}
+        />
       </div>
 
       {/* Search & Filters */}
