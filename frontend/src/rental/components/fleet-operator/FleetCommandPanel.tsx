@@ -10,7 +10,6 @@ import {
   filterFleetByTab,
   sortFleetContexts,
 } from '../../lib/fleet-operator-panel';
-import { formatFleetMapRefreshAgo } from '../../lib/fleet-map-sync';
 import { FleetOperatorRow } from './FleetOperatorRow';
 import { CommandCountBadge, PanelStatusChip } from './fleetOperatorUi';
 
@@ -61,8 +60,8 @@ export function FleetCommandPanel({
   onClearSelection,
   onRevealHiddenSelection,
   loading,
-  totalVehicleCount,
-  lastFetchedAt,
+  totalVehicleCount: _totalVehicleCount,
+  lastFetchedAt: _lastFetchedAt,
   onRefresh,
   refreshing,
   headerAction,
@@ -111,9 +110,6 @@ export function FleetCommandPanel({
             <h3 className="text-[12px] font-semibold tracking-[-0.005em] text-foreground">
               Fleet Command
             </h3>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              {totalVehicleCount} vehicles · Updated {formatFleetMapRefreshAgo(lastFetchedAt)}
-            </p>
             <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
               {attentionStats.critical > 0 && (
                 <PanelStatusChip label={`${attentionStats.critical} critical`} tone="critical" />

@@ -35,6 +35,44 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-header-subtext-cleanup-v49138-2026-07-01',
+    version: '4.9.138',
+    title: 'V4.9.138 — Dashboard: cleaner module headers & station filter',
+    summary: [
+      'Stations-Filter im Control Header: `All Stations` / `Alle Stationen` vollständig lesbar (kein `All Stati...`).',
+      'Subtexte in Business Pulse, Notifications, Day Plan und Fleet Command entfernt — nur Titel + Actions/Badges.',
+      'Card-Header-Abstände harmonisiert; keine Runtime-/KPI-/API-Logik geändert.',
+    ],
+    reason:
+      'Dashboard-Module wirkten redundant durch erklärende Subtexte; Stations-Filter wurde im Header abgeschnitten.',
+    previousBehavior:
+      'Subtexte wie „Slice based“, „Prioritized notifications“, „5 vehicles · Updated —“ unter Modultiteln.',
+    details:
+      'Geändert: DashboardControlHeader, BusinessPulse, ActionQueue, OperationsSchedulePanel, FleetCommandPanel, de.ts allStations-Label. UI-only.',
+    affectsArchitecture: false,
+    module: 'Dashboard',
+    createdAt: '2026-07-01T14:00:00.000Z',
+  },
+  {
+    id: 'ai-assistant-error-copy-v49137-2026-07-01',
+    version: '4.9.137',
+    title: 'V4.9.137 — AI Assistant: operator-friendly DIMO error messages',
+    summary: [
+      'Chat-Bubbles zeigen nur kurze Operator-Meldungen (EN/DE); keine Hostnames, ENOTFOUND, Docker/VPS-Hinweise.',
+      '`formatDimoAgentChatUserMessage` trennt User-Copy von `adminDetail` (Diagnostics/Logs/Health).',
+      'Chat-Stream akzeptiert optional `locale` für deutsche Fehlermeldungen.',
+    ],
+    reason:
+      'DNS-Fehler im AI Assistant waren zu technisch in der Chat-Blase (agents.dimo.zone, getaddrinfo, Docker/VPS).',
+    previousBehavior:
+      'formatDimoAgentChatError prepended „cannot reach DIMO Agents“ und hing technische userMessage an.',
+    details:
+      'Geändert: dimo-agent-error-classification.util.ts, chat.service.ts, chat.controller.ts, AIAssistantView.tsx, api.ts streamChatMessage. Auth/Agent-Business-Logic unverändert.',
+    affectsArchitecture: false,
+    module: 'DIMO Integration',
+    createdAt: '2026-07-01T12:30:00.000Z',
+  },
+  {
     id: 'dimo-agents-sdk-alignment-v49135-2026-07-01',
     version: '4.9.135',
     title: 'V4.9.135 — DIMO Agents SDK Alignment & Connectivity Health',

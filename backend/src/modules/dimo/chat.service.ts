@@ -86,7 +86,7 @@ export class ChatService {
    * gateway timeouts that the synchronous /message endpoint returns for any
    * request that requires real agent work (tool calls / telemetry lookups).
    */
-  async sendMessage(orgId: string, content: string): Promise<ChatMessageResult> {
+  async sendMessage(orgId: string, content: string, locale?: string): Promise<ChatMessageResult> {
     const { agent, error } = await this.ensureAgentSafe(orgId);
     if (!agent) return this.persistAssistant(orgId, error as string);
 
@@ -96,7 +96,7 @@ export class ChatService {
     const result = await this.sendWithRetry(orgId, agent, enrichedMessage, tokenIds);
 
     if (!result.success) {
-      return this.persistAssistant(orgId, formatDimoAgentChatError(result));
+      return this.persistAssistant(orgId, formatDimoAgentChatError({ ...result, locale }));
     }
 
     return this.persistAssistant(orgId, result.response || 'No response received.');
@@ -116,6 +116,7 @@ export class ChatService {
     content: string,
     emit: (event: string, data: unknown) => void,
     isClosed: () => boolean,
+    locale?: string,
   ): Promise<void> {
     const { agent, error } = await this.ensureAgentSafe(orgId);
     if (!agent) {
@@ -134,7 +135,7 @@ export class ChatService {
 
     const text = result.success
       ? result.response || 'No response received.'
-      : formatDimoAgentChatError(result);
+      : formatDimoAgentChatError({ ...result, locale });
 
     const saved = await this.persistAssistant(orgId, text);
     if (!isClosed()) emit('result', this.toResultDto(saved));
