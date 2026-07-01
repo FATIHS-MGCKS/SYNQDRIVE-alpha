@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@cardog-icons/react": "^1.2.0",
     "@didit-protocol/sdk-web": "^0.2.1",
     "@iconify-json/lets-icons": "^1.2.2",
     "@iconify-json/solar": "^1.2.5",
