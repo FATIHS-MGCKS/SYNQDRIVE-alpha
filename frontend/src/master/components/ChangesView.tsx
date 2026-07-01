@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-mobile-ui-topbar-v49132-2026-07-01',
+    version: '4.9.132',
+    title: 'V4.9.132 — Fleet Health Mobile UI & Topbar Login Label',
+    summary: [
+      'Fleet Health Tab: mobiler Refresh-Button ausgeblendet; „Updated … ago“ dezent unter den Tabs.',
+      'Mobile Topbar zeigt „Eingeloggt als …“ mit derselben Quelle wie Desktop (`getStoredUser`).',
+    ],
+    reason: 'Mobiler Health-Refresh war redundant; Login-Kontext fehlte in der mobilen Topbar.',
+    previousBehavior: 'Refresh-Button mobil sichtbar; „Eingeloggt als …“ nur ab `sm` Breakpoint.',
+    details: 'Geändert: `FleetHubView.tsx`, `TopBar.tsx`. Keine Fleet-/Health-/Auth-Logik geändert.',
+    affectsArchitecture: false,
+    module: 'Rental Fleet',
+    createdAt: '2026-07-01T03:30:00.000Z',
+  },
+  {
     id: 'fs-mobility-ops-scripts-v49130-2026-06-30',
     version: '4.9.130',
     title: 'V4.9.130 — FS Mobility: Prod Audit & Demo-Cleanup Scripts',

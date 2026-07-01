@@ -322,9 +322,9 @@ export function TopBar({ isDarkMode, setIsDarkMode, onViewChange, onVehicleSelec
   return (
     <div className="flex items-center justify-between gap-3 pb-3 mb-5 border-b border-border/50 z-10 relative">
       {/* Left Section — login context (replaces breadcrumb) */}
-      <div className="flex min-h-7 min-w-0 shrink items-center">
+      <div className="flex min-h-7 min-w-0 flex-1 items-center sm:flex-initial sm:shrink">
         <p
-          className="hidden truncate text-[12px] font-normal leading-snug text-muted-foreground sm:block"
+          className="truncate pr-2 text-[12px] font-normal leading-snug text-muted-foreground sm:pr-0"
           title={loggedInLabel}
         >
           {loggedInLabel}

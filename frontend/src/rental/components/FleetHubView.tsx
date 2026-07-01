@@ -85,7 +85,11 @@ export function FleetHubView({
     </div>
   );
 
-  const headerActions =
+  const lastHealthUpdatedLabel = lastHealthUpdated
+    ? `Updated ${formatRelativeTime(lastHealthUpdated)}`
+    : null;
+
+  const healthHeaderActions =
     activeTab === 'health' ? (
       <div className="flex flex-col items-end gap-1">
         <Button
@@ -94,14 +98,13 @@ export function FleetHubView({
           size="sm"
           disabled={healthLoading}
           onClick={() => reloadHealth()}
+          className="hidden sm:inline-flex"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${healthLoading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
-        {lastHealthUpdated ? (
-          <span className="text-[10px] text-muted-foreground">
-            Updated {formatRelativeTime(lastHealthUpdated)}
-          </span>
+        {lastHealthUpdatedLabel ? (
+          <span className="text-[10px] text-muted-foreground">{lastHealthUpdatedLabel}</span>
         ) : null}
       </div>
     ) : null;
@@ -113,9 +116,18 @@ export function FleetHubView({
           {t('view.fleet')}
         </h1>
 
-        <div className="mx-auto w-full lg:justify-self-center">{tabBar}</div>
+        <div className="mx-auto w-full lg:justify-self-center">
+          {tabBar}
+          {activeTab === 'health' && lastHealthUpdatedLabel ? (
+            <p className="mt-1.5 text-center text-[12px] font-normal text-muted-foreground sm:hidden">
+              {lastHealthUpdatedLabel}
+            </p>
+          ) : null}
+        </div>
 
-        <div className="flex min-h-8 items-start justify-end lg:justify-self-end">{headerActions}</div>
+        <div className="hidden min-h-8 items-start justify-end sm:flex lg:justify-self-end">
+          {healthHeaderActions}
+        </div>
       </header>
 
       {activeTab === 'status' && (
