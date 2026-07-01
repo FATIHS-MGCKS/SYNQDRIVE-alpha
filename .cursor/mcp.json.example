@@ -1,5 +1,8 @@
 {
   "mcpServers": {
+    "didit": {
+      "url": "https://mcp.didit.me/mcp"
+    },
     "dimo": {
       "command": "mcp-dimo",
       "env": {

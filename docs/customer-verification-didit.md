@@ -27,10 +27,16 @@
 - `DIDIT_WEBHOOK_SECRET` — webhook signature verification
 - `DIDIT_ENABLED`, `DIDIT_BASE_URL`, `DIDIT_WEBHOOK_PUBLIC_URL`, `DIDIT_DEFAULT_RETENTION_DAYS` — see `backend/.env.example`
 
-## Workflow IDs (server-side config file)
+## Workflow IDs
 
-Configured in `backend/src/config/didit.config.ts` as `DIDIT_WORKFLOWS` — **not** in env or frontend.
-Must not include selfie, liveness, or face-match steps.
+Preferred: `DIDIT_WORKFLOW_ID_DOCUMENT`, `DIDIT_WORKFLOW_ID_DRIVING_LICENSE`,
+`DIDIT_WORKFLOW_ID_PROOF_OF_ADDRESS` in `backend/.env` / VPS `backend.env`.
+
+Fallback placeholders remain in `backend/src/config/didit.config.ts`.
+
+Use Didit MCP or console to list workflows — document-only, no liveness/selfie/face-match.
+
+Setup runbook: `docs/didit-setup.md`
 
 ## Migration away from Veriff
 

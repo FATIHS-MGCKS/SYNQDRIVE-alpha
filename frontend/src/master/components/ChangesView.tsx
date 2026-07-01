@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'didit-mcp-setup-v49138-2026-07-01',
+    version: '4.9.138',
+    title: 'V4.9.138 — Didit MCP + Workflow-Env + VPS Env-Sync',
+    summary: [
+      'Didit MCP Server in `.cursor/mcp.json` (hosted https://mcp.didit.me/mcp, OAuth).',
+      'Workflow-IDs jetzt per `DIDIT_WORKFLOW_ID_*` env; Runbook `docs/didit-setup.md`.',
+      'Script `sync-didit-env-to-vps.sh` synchronisiert lokale DIDIT-Blöcke nach Production.',
+    ],
+    reason:
+      'Didit-Secrets lagen nur in lokaler backend/.env; MCP + Webhook-Setup und VPS-Sync fehlten.',
+    previousBehavior:
+      'Workflow-IDs nur als REPLACE_WITH-Platzhalter in didit.config.ts; VPS ohne DIDIT_*; kein Didit MCP.',
+    details:
+      'Nach MCP-Login Workflows/Webhook in Didit konfigurieren; DIDIT_WORKFLOW_ID_* in .env; sync + pm2 restart.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-01T17:55:00.000Z',
+  },
+  {
     id: 'brandlogo-consumer-audit-v49137-2026-07-01',
     version: '4.9.137',
     title: 'V4.9.137 — BrandLogo Consumer-Audit: Fleet, Dashboard-Popups, Bookings',
