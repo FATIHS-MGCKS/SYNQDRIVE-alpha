@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'financial-insights-invoice-api-wiring-v49139-2026-07-01',
+    version: '4.9.139',
+    title: 'V4.9.139 — Financial Insights: org-scoped invoices API wiring',
+    summary: [
+      '`api.invoices.list/stats/get` typisiert auf `Invoice`/`InvoiceStats`; URLs `/organizations/:orgId/invoices*`.',
+      'Klarstellung org-scoped vs. `api.vendors.invoices` (Vendor) und `api.billing` (Stripe).',
+      'FinancialInsightsView nutzt `Invoice`-Typ + strikte Array-Validierung der List-Response.',
+    ],
+    reason:
+      'Financial Insights soll exakt die org-scoped Invoices-Endpoints nutzen — keine kaputte oder doppelte API.',
+    previousBehavior:
+      'Inline-Import-Typen in api.invoices; FinancialInsightsView mit lokalem InvoiceLite-Duplikat.',
+    details:
+      'Geändert: frontend/src/lib/api.ts, FinancialInsightsView.tsx. Keine UI-/Backend-Änderung.',
+    affectsArchitecture: false,
+    module: 'Insights',
+    createdAt: '2026-07-01T15:00:00.000Z',
+  },
+  {
     id: 'dimo-agents-sdk-alignment-v49135-2026-07-01',
     version: '4.9.135',
     title: 'V4.9.135 — DIMO Agents SDK Alignment & Connectivity Health',
