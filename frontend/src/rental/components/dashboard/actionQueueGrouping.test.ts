@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildUnifiedActionQueue, type BuildActionQueueInput } from './actionQueueBuilder';
+import { ACTION_QUEUE_FILTER_TABS } from './dashboardTypes';
 import {
   countAtomicActions,
   filterActionQueueEntries,
@@ -298,7 +299,19 @@ describe('filterActionQueueEntries', () => {
   it('keeps health groups under the vehicle filter', () => {
     const entries = groupActionQueueEntries(buildHealthOnly(), 'en');
     expect(filterActionQueueEntries(entries, 'vehicle')).toHaveLength(1);
-    expect(filterActionQueueEntries(entries, 'financial')).toHaveLength(0);
+  });
+});
+
+describe('ACTION_QUEUE_FILTER_TABS', () => {
+  it('does not expose a Financial tab while finance items are excluded from the queue', () => {
+    expect(ACTION_QUEUE_FILTER_TABS).not.toContain('financial');
+    expect(ACTION_QUEUE_FILTER_TABS).toEqual([
+      'all',
+      'critical',
+      'operations',
+      'vehicle',
+      'notifications',
+    ]);
   });
 });
 
@@ -459,6 +472,7 @@ describe('actionQueueBuilder — OperationalIssue normalization', () => {
       ],
     });
     expect(items.some((item) => item.category === 'financial')).toBe(false);
+    expect(items.some((item) => item.source === 'financial')).toBe(false);
   });
 
   it('tab filtering reuses the same item instead of duplicating it', () => {
