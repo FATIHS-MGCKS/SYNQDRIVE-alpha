@@ -2,6 +2,10 @@
 set -euo pipefail
 
 VPS_HOST="${CLOUD_AGENT_VPS_HOST:-mein-vps.internal}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=cloud-agent-ssh-common.sh
+source "${SCRIPT_DIR}/cloud-agent-ssh-common.sh"
+SSH_USER="$(cloud_agent_ssh_user)"
 SSH_PORT="${CLOUD_AGENT_VPS_SSH_PORT:-22}"
 PG_PORT="${CLOUD_AGENT_VPS_PG_PORT:-5432}"
 
@@ -41,10 +45,11 @@ if [[ -n "${DATABASE_URL:-}" ]]; then
 fi
 
 if [[ -n "${CLOUD_AGENT_SSH_PRIVATE_KEY:-}" ]]; then
+  cloud_agent_materialize_ssh_key "${HOME}/.ssh/id_ed25519" || true
   if timeout 10 ssh -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=5 \
-    "${CLOUD_AGENT_SSH_USER:-root}@${VPS_HOST}" 'echo ok' >/dev/null 2>&1; then
-    echo "[cloud-agent] SSH auth OK for ${CLOUD_AGENT_SSH_USER:-root}@${VPS_HOST}."
+    "${SSH_USER}@${VPS_HOST}" 'echo ok' >/dev/null 2>&1; then
+    echo "[cloud-agent] SSH auth OK for ${SSH_USER}@${VPS_HOST}."
   else
-    echo "[cloud-agent] WARN: SSH auth failed for ${CLOUD_AGENT_SSH_USER:-root}@${VPS_HOST}." >&2
+    echo "[cloud-agent] WARN: SSH auth failed for ${SSH_USER}@${VPS_HOST}." >&2
   fi
 fi
