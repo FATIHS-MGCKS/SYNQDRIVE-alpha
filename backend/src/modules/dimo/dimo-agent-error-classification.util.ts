@@ -11,11 +11,17 @@ export type DimoAgentErrorKind =
 export interface DimoAgentClassifiedError {
   kind: DimoAgentErrorKind;
   errorCode?: string;
+  /** Raw/sanitized technical message for logs. */
   message: string;
+  /** Short operator-facing chat copy (English default). */
   userMessage: string;
+  /** Safe diagnostic detail for admin/diagnostics endpoints (no secrets). */
+  adminDetail: string;
   failedBeforeHttp: boolean;
   statusCode?: number;
 }
+
+export type DimoAgentChatLocale = 'en' | 'de';
 
 export interface ClassifyDimoAgentErrorInput {
   err?: unknown;
@@ -51,9 +57,8 @@ export function classifyDimoAgentError(input: ClassifyDimoAgentErrorInput): Dimo
       kind: 'AUTH_ERROR',
       errorCode: errorCode ?? 'DEVELOPER_JWT_MISSING',
       message: rawMessage,
-      userMessage:
-        rawMessage ||
-        'Developer JWT is not available. DIMO Agents API requires Bearer authentication.',
+      userMessage: formatDimoAgentChatUserMessage('AUTH_ERROR'),
+      adminDetail: 'Developer JWT is not available for DIMO Agents API.',
       failedBeforeHttp: true,
     };
   }
@@ -63,7 +68,8 @@ export function classifyDimoAgentError(input: ClassifyDimoAgentErrorInput): Dimo
       kind: 'CONFIG_ERROR',
       errorCode,
       message: rawMessage,
-      userMessage: rawMessage || 'DIMO Agent API is not configured.',
+      userMessage: formatDimoAgentChatUserMessage('CONFIG_ERROR'),
+      adminDetail: rawMessage || 'DIMO Agent API is not configured.',
       failedBeforeHttp: true,
     };
   }
@@ -73,7 +79,8 @@ export function classifyDimoAgentError(input: ClassifyDimoAgentErrorInput): Dimo
       kind: 'PARSER_ERROR',
       errorCode,
       message: rawMessage,
-      userMessage: rawMessage,
+      userMessage: formatDimoAgentChatUserMessage('PARSER_ERROR'),
+      adminDetail: rawMessage || 'DIMO Agents response could not be parsed.',
       failedBeforeHttp: false,
       statusCode: input.statusCode,
     };
@@ -84,7 +91,8 @@ export function classifyDimoAgentError(input: ClassifyDimoAgentErrorInput): Dimo
       kind: 'DIMO_HTTP_ERROR',
       errorCode: errorCode ?? `HTTP_${input.statusCode}`,
       message: rawMessage || `HTTP ${input.statusCode}`,
-      userMessage: `DIMO Agents returned an error (HTTP ${input.statusCode}). Please try again later.`,
+      userMessage: formatDimoAgentChatUserMessage('DIMO_HTTP_ERROR'),
+      adminDetail: `DIMO Agents returned HTTP ${input.statusCode}.`,
       failedBeforeHttp: false,
       statusCode: input.statusCode,
     };
@@ -95,7 +103,8 @@ export function classifyDimoAgentError(input: ClassifyDimoAgentErrorInput): Dimo
       kind: 'DNS_ERROR',
       errorCode,
       message: rawMessage,
-      userMessage: `DIMO Agents host could not be resolved from this runtime (${hostname}). Check Docker/VPS DNS or network access.`,
+      userMessage: formatDimoAgentChatUserMessage('DNS_ERROR'),
+      adminDetail: `DIMO Agents DNS resolution failed for ${hostname}. Check Docker/VPS DNS.`,
       failedBeforeHttp: true,
     };
   }
@@ -105,7 +114,8 @@ export function classifyDimoAgentError(input: ClassifyDimoAgentErrorInput): Dimo
       kind: 'NETWORK_ERROR',
       errorCode,
       message: rawMessage,
-      userMessage: `Could not reach DIMO Agents (${hostname}). Connection refused or timed out — check network access from this server.`,
+      userMessage: formatDimoAgentChatUserMessage('NETWORK_ERROR'),
+      adminDetail: 'Outbound HTTPS/network request to DIMO Agents failed.',
       failedBeforeHttp: true,
     };
   }
@@ -115,7 +125,8 @@ export function classifyDimoAgentError(input: ClassifyDimoAgentErrorInput): Dimo
       kind: 'DNS_ERROR',
       errorCode: errorCode ?? 'ENOTFOUND',
       message: rawMessage,
-      userMessage: `DIMO Agents host could not be resolved from this runtime (${hostname}). Check Docker/VPS DNS or network access.`,
+      userMessage: formatDimoAgentChatUserMessage('DNS_ERROR'),
+      adminDetail: `DIMO Agents DNS resolution failed for ${hostname}. Check Docker/VPS DNS.`,
       failedBeforeHttp: true,
     };
   }
@@ -125,7 +136,8 @@ export function classifyDimoAgentError(input: ClassifyDimoAgentErrorInput): Dimo
       kind: 'NETWORK_ERROR',
       errorCode: errorCode ?? 'NETWORK',
       message: rawMessage,
-      userMessage: `Could not reach DIMO Agents (${hostname}). Connection refused or timed out — check network access from this server.`,
+      userMessage: formatDimoAgentChatUserMessage('NETWORK_ERROR'),
+      adminDetail: 'Outbound HTTPS/network request to DIMO Agents failed.',
       failedBeforeHttp: true,
     };
   }
@@ -134,7 +146,8 @@ export function classifyDimoAgentError(input: ClassifyDimoAgentErrorInput): Dimo
     kind: 'NETWORK_ERROR',
     errorCode,
     message: rawMessage,
-    userMessage: rawMessage || 'DIMO Agents request failed. Please try again later.',
+    userMessage: formatDimoAgentChatUserMessage('NETWORK_ERROR'),
+    adminDetail: 'Outbound HTTPS/network request to DIMO Agents failed.',
     failedBeforeHttp: true,
   };
 }
@@ -155,7 +168,7 @@ export function applyDimoAgentClassifiedError<T extends DimoAgentErrorResultShap
 ): T {
   return {
     ...result,
-    error: classified.userMessage,
+    error: classified.adminDetail,
     errorKind: classified.kind,
     errorCode: classified.errorCode,
     failedBeforeHttp: classified.failedBeforeHttp,
@@ -163,19 +176,50 @@ export function applyDimoAgentClassifiedError<T extends DimoAgentErrorResultShap
   };
 }
 
+const CHAT_USER_MESSAGES: Record<DimoAgentErrorKind, Record<DimoAgentChatLocale, string>> = {
+  DNS_ERROR: {
+    en: 'AI Assistant is temporarily unavailable because the DIMO Agent service cannot be reached.',
+    de: 'Der AI Assistant ist vorübergehend nicht verfügbar, weil der DIMO Agent Service nicht erreichbar ist.',
+  },
+  NETWORK_ERROR: {
+    en: 'AI Assistant is temporarily unavailable because the DIMO Agent service is not reachable.',
+    de: 'Der AI Assistant ist vorübergehend nicht verfügbar, weil der DIMO Agent Service nicht erreichbar ist.',
+  },
+  DIMO_HTTP_ERROR: {
+    en: 'AI Assistant is temporarily unavailable.',
+    de: 'Der AI Assistant ist vorübergehend nicht verfügbar.',
+  },
+  PARSER_ERROR: {
+    en: 'AI Assistant is temporarily unavailable.',
+    de: 'Der AI Assistant ist vorübergehend nicht verfügbar.',
+  },
+  CONFIG_ERROR: {
+    en: 'AI Assistant is not configured correctly.',
+    de: 'Der AI Assistant ist nicht korrekt konfiguriert.',
+  },
+  AUTH_ERROR: {
+    en: 'AI Assistant is not configured correctly.',
+    de: 'Der AI Assistant ist nicht korrekt konfiguriert.',
+  },
+};
+
+function resolveChatLocale(locale?: string): DimoAgentChatLocale {
+  return locale?.trim().toLowerCase() === 'de' ? 'de' : 'en';
+}
+
+/** Operator-facing chat bubble copy only — no hostnames, codes, or infra hints. */
+export function formatDimoAgentChatUserMessage(
+  errorKind?: DimoAgentErrorKind,
+  locale?: string,
+): string {
+  const kind = errorKind ?? 'NETWORK_ERROR';
+  const resolvedLocale = resolveChatLocale(locale);
+  return CHAT_USER_MESSAGES[kind]?.[resolvedLocale] ?? CHAT_USER_MESSAGES.NETWORK_ERROR[resolvedLocale];
+}
+
 export function formatDimoAgentChatError(result: {
-  error?: string;
   errorKind?: DimoAgentErrorKind;
+  locale?: string;
 }): string {
-  const detail = result.error || 'Please try again later.';
-  if (result.errorKind === 'DNS_ERROR') {
-    return `I'm sorry, the AI assistant cannot reach DIMO Agents right now. ${detail}`;
-  }
-  if (result.errorKind === 'NETWORK_ERROR') {
-    return `I'm sorry, the AI assistant could not connect to DIMO Agents. ${detail}`;
-  }
-  if (result.errorKind === 'CONFIG_ERROR' || result.errorKind === 'AUTH_ERROR') {
-    return `I'm sorry, the AI assistant is not configured on this server. ${detail}`;
-  }
-  return `I'm sorry, I couldn't process your request right now. ${detail}`;
+  return formatDimoAgentChatUserMessage(result.errorKind, result.locale);
 }

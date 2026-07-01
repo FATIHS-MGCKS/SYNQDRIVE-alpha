@@ -23,7 +23,7 @@ export class ChatController {
   @Post('message')
   async sendMessage(
     @Param('orgId') orgId: string,
-    @Body() body: { content: string },
+    @Body() body: { content: string; locale?: string },
   ) {
     if (!body.content?.trim()) {
       return {
@@ -34,7 +34,7 @@ export class ChatController {
     }
 
     try {
-      return await this.chatService.sendMessage(orgId, body.content.trim());
+      return await this.chatService.sendMessage(orgId, body.content.trim(), body.locale);
     } catch (err: any) {
       this.logger.error(`[Chat] Unhandled error in sendMessage for org ${orgId}: ${err.message}`, err.stack);
       return {
@@ -54,7 +54,7 @@ export class ChatController {
   @Post('message/stream')
   async streamMessage(
     @Param('orgId') orgId: string,
-    @Body() body: { content: string },
+    @Body() body: { content: string; locale?: string },
     @Res() res: Response,
   ) {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -81,7 +81,7 @@ export class ChatController {
     }
 
     try {
-      await this.chatService.streamMessage(orgId, body.content.trim(), send, () => closed.value);
+      await this.chatService.streamMessage(orgId, body.content.trim(), send, () => closed.value, body.locale);
     } catch (err: any) {
       this.logger.error(`[Chat] Unhandled error in streamMessage for org ${orgId}: ${err.message}`, err.stack);
       send('error', {

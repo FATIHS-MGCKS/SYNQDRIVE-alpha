@@ -242,7 +242,8 @@ describe('DimoAgentsService — error handling (mocked DIMO API)', () => {
     expect(result.errorKind).toBe('DNS_ERROR');
     expect(result.errorCode).toBe('ENOTFOUND');
     expect(result.failedBeforeHttp).toBe(true);
-    expect(result.error).toContain('could not be resolved');
+    expect(result.error).toContain('DNS resolution failed');
+    expect(result.error).toContain('agents.dimo.zone');
     expect(result.error).toContain('Docker/VPS DNS');
   });
 });
