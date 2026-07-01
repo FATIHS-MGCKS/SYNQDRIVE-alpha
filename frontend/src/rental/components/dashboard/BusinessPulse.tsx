@@ -131,20 +131,6 @@ export function BusinessPulse({
     ...BUSINESS_METRIC_ORDER,
     ...OPTIONAL_BUSINESS_METRICS.filter((id) => (businessPulseSlices[id]?.count ?? 0) > 0),
   ];
-  const invoiceCount = businessPulseSlices.revenue?.count ?? 0;
-
-  const subline = [
-    de ? 'Business Pulse · Rechnungen' : 'Business Pulse · Invoices',
-    invoiceCount > 0
-      ? de
-        ? `${invoiceCount} Dokumente`
-        : `${invoiceCount} document${invoiceCount === 1 ? '' : 's'}`
-      : de
-        ? 'Slice-basiert'
-        : 'Slice based',
-  ]
-    .filter(Boolean)
-    .join(' · ');
 
   return (
     <section
@@ -169,7 +155,6 @@ export function BusinessPulse({
           <Icon name="arrow-right" className="h-3 w-3" />
         </button>
       </div>
-      <p className="mt-0.5 truncate px-3.5 text-[11px] leading-snug text-muted-foreground">{subline}</p>
 
       {loading ? (
         <div className="px-3.5 py-3" aria-busy>

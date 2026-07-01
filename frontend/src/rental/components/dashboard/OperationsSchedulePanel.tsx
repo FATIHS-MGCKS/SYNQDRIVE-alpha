@@ -33,16 +33,8 @@ function OperationsScheduleHeader({
   totalCount: number;
   criticalCount: number;
 }) {
-  const { locale, selectedStationName, timeframe } = vm;
+  const { locale } = vm;
   const de = locale === 'de';
-  const horizon =
-    timeframe === 'next24h'
-      ? de
-        ? 'Heute + nächste 24h'
-        : 'Today + next 24h'
-      : de
-        ? 'Pickups, Returns, nächste Schritte'
-        : 'Pickups, returns, next steps';
 
   return (
     <div className="flex flex-col gap-2 border-b border-border/35 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
@@ -54,15 +46,9 @@ function OperationsScheduleHeader({
           )}
           aria-hidden
         />
-        <div className="min-w-0">
-          <h2 className="text-[13px] font-semibold leading-tight tracking-[-0.01em] text-foreground text-balance">
-            {de ? 'Tagesplan' : 'Day plan'}
-          </h2>
-          <p className="mt-0.5 truncate text-[11px] leading-snug text-muted-foreground">
-            {horizon}
-            {selectedStationName ? ` · ${selectedStationName}` : ''}
-          </p>
-        </div>
+        <h2 className="text-[13px] font-semibold leading-tight tracking-[-0.01em] text-foreground text-balance">
+          {de ? 'Tagesplan' : 'Day plan'}
+        </h2>
       </div>
 
       {totalCount > 0 ? (

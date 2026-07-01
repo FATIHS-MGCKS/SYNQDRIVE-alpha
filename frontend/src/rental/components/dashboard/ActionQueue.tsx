@@ -401,9 +401,6 @@ function ActionQueueHeader({
   const title = operatorFocusMode
     ? de ? 'Kritische Aktionen' : 'Critical actions'
     : 'Notifications';
-  const subtitle = operatorFocusMode
-    ? de ? 'Dringende Schritte' : 'Urgent steps'
-    : de ? 'Priorisierte Meldungen' : 'Prioritized notifications';
 
   return (
     <div className="flex flex-col gap-2 border-b border-border/35 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
@@ -415,12 +412,9 @@ function ActionQueueHeader({
           )}
           aria-hidden
         />
-        <div className="min-w-0">
-          <h2 className="text-[13px] font-semibold leading-tight tracking-[-0.01em] text-foreground text-balance">
-            {title}
-          </h2>
-          <p className="mt-0.5 truncate text-[11px] leading-snug text-muted-foreground">{subtitle}</p>
-        </div>
+        <h2 className="text-[13px] font-semibold leading-tight tracking-[-0.01em] text-foreground text-balance">
+          {title}
+        </h2>
       </div>
 
       <div className="flex shrink-0 items-center gap-2 sm:justify-end">

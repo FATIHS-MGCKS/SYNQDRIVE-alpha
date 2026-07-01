@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-header-subtext-cleanup-v49138-2026-07-01',
+    version: '4.9.138',
+    title: 'V4.9.138 — Dashboard: cleaner module headers & station filter',
+    summary: [
+      'Stations-Filter im Control Header: `All Stations` / `Alle Stationen` vollständig lesbar (kein `All Stati...`).',
+      'Subtexte in Business Pulse, Notifications, Day Plan und Fleet Command entfernt — nur Titel + Actions/Badges.',
+      'Card-Header-Abstände harmonisiert; keine Runtime-/KPI-/API-Logik geändert.',
+    ],
+    reason:
+      'Dashboard-Module wirkten redundant durch erklärende Subtexte; Stations-Filter wurde im Header abgeschnitten.',
+    previousBehavior:
+      'Subtexte wie „Slice based“, „Prioritized notifications“, „5 vehicles · Updated —“ unter Modultiteln.',
+    details:
+      'Geändert: DashboardControlHeader, BusinessPulse, ActionQueue, OperationsSchedulePanel, FleetCommandPanel, de.ts allStations-Label. UI-only.',
+    affectsArchitecture: false,
+    module: 'Dashboard',
+    createdAt: '2026-07-01T14:00:00.000Z',
+  },
+  {
     id: 'ai-assistant-error-copy-v49137-2026-07-01',
     version: '4.9.137',
     title: 'V4.9.137 — AI Assistant: operator-friendly DIMO error messages',

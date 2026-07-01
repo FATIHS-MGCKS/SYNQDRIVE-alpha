@@ -58,15 +58,23 @@ export function DashboardControlHeader({ vm, children }: DashboardControlHeaderP
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <div className="relative min-w-0" ref={stationDropdownRef}>
+        <div className="relative shrink-0" ref={stationDropdownRef}>
           <button
             type="button"
             onClick={() => setIsStationDropdownOpen((prev) => !prev)}
             aria-haspopup="listbox"
             aria-expanded={isStationDropdownOpen}
-            className="sq-press -mx-1 flex min-h-8 max-w-full items-center gap-1 rounded-md px-1 text-[13px] font-semibold text-foreground transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+            className="sq-press -mx-1 flex min-h-8 items-center gap-1 rounded-md px-1 text-[13px] font-semibold text-foreground transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
           >
-            <span className="truncate">{selectedStationName ?? t('dashboard.allStations')}</span>
+            <span
+              className={cn(
+                selectedStationId === null
+                  ? 'whitespace-nowrap'
+                  : 'max-w-[min(200px,50vw)] truncate',
+              )}
+            >
+              {selectedStationName ?? t('dashboard.allStations')}
+            </span>
             <Icon
               name="chevron-down"
               className={cn(
