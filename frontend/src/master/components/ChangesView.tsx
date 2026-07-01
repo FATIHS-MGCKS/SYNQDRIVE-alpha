@@ -35,6 +35,20 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-notifications-typography-v49134-2026-07-01',
+    version: '4.9.134',
+    title: 'V4.9.134 — Dashboard Notifications Typografie (Fleet Command Alignment)',
+    summary: [
+      'Notification Rows in `AttentionItemRow` typografisch an Fleet Command Rows angeglichen: Titel 12px bold, Subtext 10.5px muted, Badges 9.5px semibold.',
+    ],
+    reason: 'Notifications Box wirkte typografisch größer und inkonsistent zur Fleet Command Box.',
+    previousBehavior: 'Titel 14px semibold; Subtexte 12px; Severity-/Category-Badges mit uppercase tracking-wide.',
+    details: 'Nur UI-Typografie in `AttentionItemRow.tsx`. Keine Notification-Logik, Layout oder Fleet Command geändert.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-01T08:00:00.000Z',
+  },
+  {
     id: 'fleet-mobile-ui-topbar-v49132-2026-07-01',
     version: '4.9.132',
     title: 'V4.9.132 — Fleet Health Mobile UI & Topbar Login Label',
