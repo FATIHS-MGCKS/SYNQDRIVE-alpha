@@ -164,28 +164,32 @@ export const AttentionItemRow = memo(function AttentionItemRow({
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
             <StatusChip
               tone={severityTone(severity)}
-              className="px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide"
+              className="px-1.5 py-0.5 text-[9.5px] font-semibold"
             >
               {severityLabel(severity, de)}
             </StatusChip>
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <span className="text-[9.5px] font-semibold text-muted-foreground">
               {eyebrow}
             </span>
             {timeLabel ? (
-              <span className="text-[10.5px] tabular-nums text-muted-foreground">{timeLabel}</span>
+              <span className="text-[10.5px] leading-snug tabular-nums text-muted-foreground">
+                {timeLabel}
+              </span>
             ) : null}
           </div>
 
-          <p className="text-[14px] font-semibold leading-snug tracking-[-0.01em] text-foreground text-pretty">
+          <p className="text-[12px] font-bold leading-snug tracking-[-0.01em] text-foreground text-pretty">
             {copy.title}
           </p>
 
           {copy.contextLine ? (
-            <p className="truncate text-[12px] leading-snug text-muted-foreground">{copy.contextLine}</p>
+            <p className="truncate text-[10.5px] leading-snug text-muted-foreground">
+              {copy.contextLine}
+            </p>
           ) : null}
 
           {copy.hintLine ? (
-            <p className="line-clamp-2 text-[12px] leading-snug text-muted-foreground/95 text-pretty">
+            <p className="line-clamp-2 text-[10.5px] leading-snug text-muted-foreground text-pretty">
               {copy.hintLine}
             </p>
           ) : null}
