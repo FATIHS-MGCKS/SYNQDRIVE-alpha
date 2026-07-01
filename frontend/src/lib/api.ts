@@ -361,6 +361,7 @@ export function streamChatMessage(
   content: string,
   onEvent: (evt: ChatStreamEvent) => void,
   onDone: () => void,
+  locale?: string,
 ): AbortController {
   const url = `${BASE_URL}/organizations/${orgId}/chat/message/stream`;
   const controller = new AbortController();
@@ -373,7 +374,7 @@ export function streamChatMessage(
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, ...(locale ? { locale } : {}) }),
   })
     .then(async (res) => {
       if (!res.ok || !res.body) {

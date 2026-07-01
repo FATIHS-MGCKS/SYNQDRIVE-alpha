@@ -19,7 +19,7 @@ interface ChatMessage {
 }
 
 export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -155,8 +155,9 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
         setThinkingLabel(null);
         streamAbortRef.current = null;
       },
+      locale,
     );
-  }, [input, isTyping, orgId, agentReady]);
+  }, [input, isTyping, orgId, agentReady, locale]);
 
   useEffect(() => {
     return () => { streamAbortRef.current?.abort(); };

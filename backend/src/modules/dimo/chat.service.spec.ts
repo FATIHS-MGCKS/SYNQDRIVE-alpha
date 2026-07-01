@@ -106,7 +106,7 @@ describe('ChatService — fleet_chat routing', () => {
     );
   });
 
-  it('sendMessage surfaces DNS failure with actionable assistant text', async () => {
+  it('sendMessage surfaces DNS failure with operator-friendly assistant text', async () => {
     const prisma = makePrisma();
     const agents = makeAgents();
     agents.sendMessageStream.mockResolvedValueOnce({
@@ -114,14 +114,34 @@ describe('ChatService — fleet_chat routing', () => {
       errorKind: 'DNS_ERROR',
       errorCode: 'ENOTFOUND',
       error:
-        'DIMO Agents host could not be resolved from this runtime (agents.dimo.zone). Check Docker/VPS DNS or network access.',
+        'DIMO Agents DNS resolution failed for agents.dimo.zone. Check Docker/VPS DNS.',
     });
     const svc = new ChatService(prisma as any, agents as any);
 
-    const result = await svc.sendMessage(orgId, 'Hello');
+    const result = await svc.sendMessage(orgId, 'Hello', 'en');
 
-    expect(result.content).toContain('cannot reach DIMO Agents');
-    expect(result.content).toContain('could not be resolved');
-    expect(result.content).not.toContain('getaddrinfo ENOTFOUND');
+    expect(result.content).toContain('temporarily unavailable');
+    expect(result.content).not.toContain('agents.dimo.zone');
+    expect(result.content).not.toContain('ENOTFOUND');
+    expect(result.content).not.toContain('getaddrinfo');
+    expect(result.content).not.toContain('Docker');
+  });
+
+  it('sendMessage uses German operator copy when locale=de', async () => {
+    const prisma = makePrisma();
+    const agents = makeAgents();
+    agents.sendMessageStream.mockResolvedValueOnce({
+      success: false,
+      errorKind: 'DNS_ERROR',
+      errorCode: 'ENOTFOUND',
+      error:
+        'DIMO Agents DNS resolution failed for agents.dimo.zone. Check Docker/VPS DNS.',
+    });
+    const svc = new ChatService(prisma as any, agents as any);
+
+    const result = await svc.sendMessage(orgId, 'Hallo', 'de');
+
+    expect(result.content).toContain('vorübergehend nicht verfügbar');
+    expect(result.content).not.toContain('agents.dimo.zone');
   });
 });
