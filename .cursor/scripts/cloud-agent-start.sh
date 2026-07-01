@@ -5,6 +5,9 @@ STATE_DIR="${HOME}/.cursor-tailscale"
 SOCKET="${STATE_DIR}/tailscaled.sock"
 PROXY_ENV="${HOME}/.cursor-cloud-proxy.env"
 VPS_HOST="${CLOUD_AGENT_VPS_HOST:-mein-vps.internal}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=cloud-agent-ssh-common.sh
+source "${SCRIPT_DIR}/cloud-agent-ssh-common.sh"
 
 mkdir -p "$STATE_DIR"
 
@@ -45,11 +48,7 @@ export HTTPS_PROXY=http://localhost:1054/
 export NO_PROXY=localhost,127.0.0.1
 EOF
 
-if [[ -n "${CLOUD_AGENT_SSH_PRIVATE_KEY:-}" ]]; then
-  mkdir -p "${HOME}/.ssh"
-  chmod 700 "${HOME}/.ssh"
-  printf '%s\n' "$CLOUD_AGENT_SSH_PRIVATE_KEY" > "${HOME}/.ssh/id_ed25519"
-  chmod 600 "${HOME}/.ssh/id_ed25519"
+if cloud_agent_materialize_ssh_key "${HOME}/.ssh/id_ed25519"; then
   ssh-keyscan -H "$VPS_HOST" >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
   echo "[cloud-agent] SSH key materialized for ${VPS_HOST}."
 fi

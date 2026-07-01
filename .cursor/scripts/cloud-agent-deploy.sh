@@ -5,7 +5,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
 VPS_HOST="${CLOUD_AGENT_VPS_HOST:-mein-vps.internal}"
-SSH_USER="${CLOUD_AGENT_SSH_USER:-root}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=cloud-agent-ssh-common.sh
+source "${SCRIPT_DIR}/cloud-agent-ssh-common.sh"
+SSH_USER="$(cloud_agent_ssh_user)"
 SSH_PORT="${CLOUD_AGENT_VPS_SSH_PORT:-22}"
 SSH_KEY="${HOME}/.ssh/id_ed25519"
 DEPLOY_SCRIPT="${CLOUD_AGENT_VPS_DEPLOY_SCRIPT:-/opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh}"
@@ -17,14 +20,10 @@ ensure_ssh_key() {
   if [[ -f "$SSH_KEY" ]]; then
     return 0
   fi
-  if [[ -z "${CLOUD_AGENT_SSH_PRIVATE_KEY:-}" ]]; then
+  if ! cloud_agent_materialize_ssh_key "$SSH_KEY"; then
     echo "[cloud-agent] ERROR: SSH key missing. Set CLOUD_AGENT_SSH_PRIVATE_KEY in Cursor Dashboard → Secrets." >&2
     exit 1
   fi
-  mkdir -p "${HOME}/.ssh"
-  chmod 700 "${HOME}/.ssh"
-  printf '%s\n' "$CLOUD_AGENT_SSH_PRIVATE_KEY" > "$SSH_KEY"
-  chmod 600 "$SSH_KEY"
   ssh-keyscan -H "$VPS_HOST" >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
 }
 
