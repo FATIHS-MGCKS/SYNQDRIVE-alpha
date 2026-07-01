@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 
 import { api } from '../../lib/api';
+import type { Invoice } from './invoices/invoiceTypes';
 import { PageHeader } from '../../components/patterns';
 import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
@@ -27,33 +28,6 @@ import {
 } from '../lib/financial-insights.logic';
 
 // ─── Types ─────────────────────────────────────────────────────────────
-
-/**
- * Lightweight invoice shape consumed by the Financial Insights view.
- * Mirrors the backend `OrgInvoice` row exposed via `/organizations/:orgId/invoices`
- * — every field is optional/null-tolerant because legacy rows occasionally
- * miss some columns and we never want to crash an aggregate dashboard on a
- * single bad invoice.
- */
-interface InvoiceLite {
-  id: string;
-  invoiceNumber: number | null;
-  type: string;
-  status: string;
-  customerId: string | null;
-  vendorName: string | null;
-  vehicleId: string | null;
-  bookingId: string | null;
-  title: string | null;
-  totalCents: number | null;
-  subtotalCents: number | null;
-  taxCents: number | null;
-  currency: string | null;
-  invoiceDate: string | null;
-  dueDate: string | null;
-  paidAt: string | null;
-  createdAt: string | null;
-}
 
 interface CustomerLite {
   id: string;
@@ -120,7 +94,7 @@ function parseDate(iso: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function effectiveDateOf(inv: InvoiceLite): Date | null {
+function effectiveDateOf(inv: Invoice): Date | null {
   return parseDate(inv.invoiceDate) || parseDate(inv.createdAt);
 }
 
@@ -165,7 +139,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
   const [customerLoadWarning, setCustomerLoadWarning] = useState<string | null>(null);
   const [reportingAnchor, setReportingAnchor] = useState(() => new Date());
-  const [invoices, setInvoices] = useState<InvoiceLite[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [customers, setCustomers] = useState<CustomerLite[]>([]);
   const [activePopup, setActivePopup] = useState<'revenue' | 'expenses' | null>(null);
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
@@ -180,10 +154,13 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     setInvoiceError(null);
     setCustomerLoadWarning(null);
     try {
-      let invoicesArr: InvoiceLite[] = [];
+      let invoicesArr: Invoice[] = [];
       try {
         const iList = await api.invoices.list(orgId);
-        invoicesArr = Array.isArray(iList) ? (iList as InvoiceLite[]) : [];
+        if (!Array.isArray(iList)) {
+          throw new Error('Unexpected invoice list response');
+        }
+        invoicesArr = iList;
       } catch {
         invoicesArr = [];
         setInvoiceError('Finanzdaten konnten nicht geladen werden.');
@@ -350,10 +327,10 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     label: string;
     weekday: string;
     totalCents: number;
-    items: InvoiceLite[];
+    items: Invoice[];
   };
 
-  const buildDailyBreakdown = (rows: InvoiceLite[]): DailyBreakdownDay[] => {
+  const buildDailyBreakdown = (rows: Invoice[]): DailyBreakdownDay[] => {
     const map = new Map<string, DailyBreakdownDay>();
     for (const inv of rows) {
       const d = effectiveDateOf(inv);
@@ -942,7 +919,7 @@ function BreakdownPopup({
   monthLabel: string;
   totalCents: number;
   tone: 'revenue' | 'expense';
-  days: { iso: string; label: string; weekday: string; totalCents: number; items: InvoiceLite[] }[];
+  days: { iso: string; label: string; weekday: string; totalCents: number; items: Invoice[] }[];
   expandedDay: string | null;
   onExpand: (iso: string) => void;
   onClose: () => void;

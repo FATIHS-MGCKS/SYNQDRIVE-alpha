@@ -10,6 +10,27 @@ import type {
   UpdateVehicleDamageInput,
 } from '../rental/lib/damage.types';
 
+import type {
+  Invoice,
+  InvoiceStats,
+  OrgInvoiceStatus,
+  OrgInvoiceType,
+} from '../rental/components/invoices/invoiceTypes';
+
+export type {
+  Invoice,
+  InvoiceStats,
+  OrgInvoiceStatus,
+  OrgInvoiceType,
+} from '../rental/components/invoices/invoiceTypes';
+
+/** Query params for org-scoped rental invoices (`GET /organizations/:orgId/invoices`). */
+export interface OrgInvoiceListParams {
+  type?: OrgInvoiceType | string;
+  status?: OrgInvoiceStatus | string;
+  direction?: 'outgoing' | 'incoming';
+}
+
 export type {
   AddDamageImageInput,
   CreateVehicleDamageInput,
@@ -3387,63 +3408,36 @@ export const api = {
       );
     },
   },
+  /** Org-scoped rental invoices — `InvoicesController` (`/organizations/:orgId/invoices*`). Not vendor or Stripe billing. */
   invoices: {
-    list: (orgId: string, params?: { type?: string; status?: string; direction?: string }) => {
+    list: (orgId: string, params?: OrgInvoiceListParams) => {
       const q = new URLSearchParams();
       if (params?.type) q.set('type', params.type);
       if (params?.status) q.set('status', params.status);
       if (params?.direction) q.set('direction', params.direction);
       const qs = q.toString();
-      return get<import('../rental/components/invoices/invoiceTypes').Invoice[]>(
-        `/organizations/${orgId}/invoices${qs ? `?${qs}` : ''}`,
-      );
+      return get<Invoice[]>(`/organizations/${orgId}/invoices${qs ? `?${qs}` : ''}`);
     },
-    stats: (orgId: string) =>
-      get<import('../rental/components/invoices/invoiceTypes').InvoiceStats>(
-        `/organizations/${orgId}/invoices/stats`,
-      ),
-    get: (orgId: string, id: string) =>
-      get<import('../rental/components/invoices/invoiceTypes').Invoice>(
-        `/organizations/${orgId}/invoices/${id}`,
-      ),
+    stats: (orgId: string) => get<InvoiceStats>(`/organizations/${orgId}/invoices/stats`),
+    get: (orgId: string, invoiceId: string) =>
+      get<Invoice>(`/organizations/${orgId}/invoices/${invoiceId}`),
     create: (orgId: string, data: Record<string, unknown>) =>
-      post<import('../rental/components/invoices/invoiceTypes').Invoice>(
-        `/organizations/${orgId}/invoices`,
-        data,
-      ),
-    update: (orgId: string, id: string, data: Record<string, unknown>) =>
-      patch<import('../rental/components/invoices/invoiceTypes').Invoice>(
-        `/organizations/${orgId}/invoices/${id}`,
-        data,
-      ),
-    issue: (orgId: string, id: string) =>
-      post<import('../rental/components/invoices/invoiceTypes').Invoice>(
-        `/organizations/${orgId}/invoices/${id}/issue`,
-        {},
-      ),
-    markSent: (orgId: string, id: string) =>
-      post<import('../rental/components/invoices/invoiceTypes').Invoice>(
-        `/organizations/${orgId}/invoices/${id}/mark-sent`,
-        {},
-      ),
+      post<Invoice>(`/organizations/${orgId}/invoices`, data),
+    update: (orgId: string, invoiceId: string, data: Record<string, unknown>) =>
+      patch<Invoice>(`/organizations/${orgId}/invoices/${invoiceId}`, data),
+    issue: (orgId: string, invoiceId: string) =>
+      post<Invoice>(`/organizations/${orgId}/invoices/${invoiceId}/issue`, {}),
+    markSent: (orgId: string, invoiceId: string) =>
+      post<Invoice>(`/organizations/${orgId}/invoices/${invoiceId}/mark-sent`, {}),
     recordPayment: (
       orgId: string,
-      id: string,
+      invoiceId: string,
       data: { amountCents: number; method?: string; paidAt?: string; reference?: string; note?: string },
-    ) =>
-      post<import('../rental/components/invoices/invoiceTypes').Invoice>(
-        `/organizations/${orgId}/invoices/${id}/payments`,
-        data,
-      ),
-    markPaid: (orgId: string, id: string) =>
-      patch<import('../rental/components/invoices/invoiceTypes').Invoice>(
-        `/organizations/${orgId}/invoices/${id}/pay`,
-        {},
-      ),
+    ) => post<Invoice>(`/organizations/${orgId}/invoices/${invoiceId}/payments`, data),
+    markPaid: (orgId: string, invoiceId: string) =>
+      patch<Invoice>(`/organizations/${orgId}/invoices/${invoiceId}/pay`, {}),
     byCustomer: (orgId: string, customerId: string) =>
-      get<import('../rental/components/invoices/invoiceTypes').Invoice[]>(
-        `/organizations/${orgId}/customers/${customerId}/invoices`,
-      ),
+      get<Invoice[]>(`/organizations/${orgId}/customers/${customerId}/invoices`),
     /** Attachment upload only — NOT for AI extraction. */
     uploadFile: async (orgId: string, file: File) => {
       const form = new FormData();
