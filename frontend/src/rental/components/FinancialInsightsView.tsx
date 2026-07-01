@@ -16,6 +16,8 @@ import { PageHeader } from '../../components/patterns';
 import { useRentalOrg } from '../RentalContext';
 import { useFleetVehicles } from '../FleetContext';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useFleetMapStore } from '../stores/useFleetMapStore';
+import { stationFilterToDashboardId } from '../lib/fleet-station-filter';
 import { InsightsCockpit } from './insights/InsightsCockpit';
 import {
   expensesInRange,
@@ -154,6 +156,11 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   const { orgId } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
   const { t, locale } = useLanguage();
+  const stationFilter = useFleetMapStore((state) => state.filters.stationId);
+  const selectedStationId = useMemo(
+    () => stationFilterToDashboardId(stationFilter),
+    [stationFilter],
+  );
 
   const localeMap: Record<string, string> = {
     en: 'en-US', de: 'de-DE', fr: 'fr-FR', nl: 'nl-NL',
@@ -395,6 +402,8 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   // ─── Render ──────────────────────────────────────────────────────────
 
   const monthLabel = now.toLocaleDateString(intlLocale, { month: 'long', year: 'numeric' });
+  const openReceivablesEur = Math.round(outstandingCents / 100);
+  const financialRiskEur = Math.round(overdueCents / 100);
 
   if (loading) {
     return (
@@ -408,28 +417,23 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
     );
   }
 
-  if (invoiceError) {
-    return (
-      <div className="max-w-[1600px] mx-auto space-y-4">
-        <PageHeader title={t('nav.financialInsights')} />
-        <InsightsCockpit isDarkMode={isDarkMode} openReceivablesEur={0} />
-        <div className="rounded-xl p-4 sq-tone-critical text-sm font-medium flex items-center gap-2">
-          <Icon name="alert-circle" className="w-5 h-5" />
-          {invoiceError}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-[1600px] mx-auto space-y-5">
       <PageHeader title={t('nav.financialInsights')} />
       <InsightsCockpit
         isDarkMode={isDarkMode}
-        openReceivablesEur={Math.round(outstandingCents / 100)}
-        financialRiskEur={Math.round(overdueCents / 100)}
+        stationId={selectedStationId}
+        openReceivablesEur={openReceivablesEur}
+        financialRiskEur={financialRiskEur}
       />
 
+      {invoiceError ? (
+        <div className="rounded-xl p-4 sq-tone-critical text-sm font-medium flex items-center gap-2">
+          <Icon name="alert-circle" className="w-5 h-5" />
+          {invoiceError}
+        </div>
+      ) : (
+      <>
       <div className="pt-2 border-t border-border">
         <h2 className="text-[14px] font-bold text-foreground mb-1">Financial Intelligence</h2>
         <p className="text-[11px] text-muted-foreground mb-4">
@@ -771,6 +775,8 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           customerById={customerById}
           vehicleById={vehicleById}
         />
+      )}
+      </>
       )}
     </div>
   );

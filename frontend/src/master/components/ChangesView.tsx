@@ -119,6 +119,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-06-30T22:10:00.000Z',
   },
   {
+    id: 'insights-cockpit-wiring-v49140-2026-07-01',
+    version: '4.9.140',
+    title: 'V4.9.140 — Insights Cockpit: funktionale Verdrahtung vereinheitlicht',
+    summary: [
+      'Route `financial-insights` bleibt die zentrale Insights-Seite (`FinancialInsightsView` + `InsightsCockpit`).',
+      'Einheitlicher Render-Pfad: `openReceivablesEur` / `financialRiskEur` stets aus `financial-insights.logic` abgeleitet — kein hardcodiertes `0` im Invoice-Fehlerpfad.',
+      'Station-Filter aus dem Dashboard (`useFleetMapStore` → `stationFilterToDashboardId`) wird an `InsightsCockpit` durchgereicht.',
+      'Bei Invoice-API-Fehler: Cockpit + Dashboard-Insights bleiben sichtbar; Financial-Intelligence-KPIs werden unterdrückt.',
+    ],
+    reason:
+      'InsightsCockpit war im Fehlerpfad mit Mock-`0` verdrahtet und hatte einen separaten Early-Return statt eines konsistenten Datenflusses.',
+    previousBehavior:
+      'Bei Invoice-Ladefehler: `openReceivablesEur={0}` hardcodiert, `financialRiskEur` fehlte; kein Station-Filter.',
+    details:
+      'Geändert: `FinancialInsightsView.tsx`. Keine UI-/Styling-Änderung, keine neue Route, keine Mock-Daten.',
+    affectsArchitecture: false,
+    module: 'Rental Insights',
+    createdAt: '2026-07-01T12:00:00.000Z',
+  },
+  {
     id: 'insights-page-kpi-cleanup-v49126-2026-06-30',
     version: '4.9.126',
     title: 'V4.9.126 — Insights Page: KPI-Standard & redundante Refresh-Buttons entfernt',
