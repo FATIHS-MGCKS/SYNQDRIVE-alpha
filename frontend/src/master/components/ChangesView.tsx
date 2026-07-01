@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'brandlogo-consumer-audit-v49137-2026-07-01',
+    version: '4.9.137',
+    title: 'V4.9.137 — BrandLogo Consumer-Audit: Fleet, Dashboard-Popups, Bookings',
+    summary: [
+      'Fleet Command Rows (`FleetOperatorRow`) und Dashboard Fleet-Status-Popups (`StatInlineDetail`) zeigen OEM-Icons über die zentrale `BrandLogo`-Komponente (Cardog, `variant="icon"`).',
+      '`BookingsView`: Vehicle-Spalte und Edit-Fahrzeug-Select mit `BrandLogo` + `getBrandFromModel`; kein toter Import mehr.',
+      'Bestehende Consumer (`VehicleDetailHeader`, `NewBookingView`, `FleetConditionView`) explizit auf `variant="icon"` und aktualisierte Cardog-Kommentare.',
+    ],
+    reason:
+      'Nach Cardog-Migration sollten alle Automarken-UI-Stellen die zentrale Komponente nutzen — keine zweite Logo-Quelle, keine CDN-Reste.',
+    previousBehavior:
+      'Fleet Overview und Dashboard Fleet-Popups zeigten nur Text (Kennzeichen/MMY); `BookingsView` importierte `BrandLogo` ohne JSX-Nutzung.',
+    details:
+      'Geändert: `FleetOperatorRow.tsx`, `StatInlineDetail.tsx`, `BookingsView.tsx`, `NewBookingView.tsx` (Kommentare), `VehicleDetailHeader.tsx`, `FleetConditionView.tsx`, `BrandLogo.test.ts`.',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-01T11:30:00.000Z',
+  },
+  {
     id: 'brandlogo-cardog-migration-v49136-2026-07-01',
     version: '4.9.136',
     title: 'V4.9.136 — BrandLogo auf @cardog-icons/react (CDN entfernt)',

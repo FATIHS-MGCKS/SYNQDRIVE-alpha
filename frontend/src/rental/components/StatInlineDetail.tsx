@@ -1,5 +1,6 @@
 import { Icon } from './ui/Icon';
 import { useMemo } from 'react';
+import { BrandLogo, getBrandFromModel } from './BrandLogo';
 
 import { VehicleData, isVehicleOffline, VEHICLE_OFFLINE_LABEL } from '../data/vehicles';
 import { useFleetVehicles, useEffectiveHealth } from '../FleetContext';
@@ -110,6 +111,19 @@ function OdometerText({ v, isDarkMode }: { v: VehicleData; isDarkMode: boolean }
   return (
     <span className={`text-[10px] font-semibold inline-block w-[68px] text-right tabular-nums shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
       {formatOdometerKmFloor(km)}
+    </span>
+  );
+}
+
+function VehicleBrandMark({ vehicle, isDarkMode }: { vehicle: VehicleData; isDarkMode: boolean }) {
+  return (
+    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted/50">
+      <BrandLogo
+        brand={getBrandFromModel({ make: vehicle.make, model: vehicle.model })}
+        size={14}
+        isDarkMode={isDarkMode}
+        variant="icon"
+      />
     </span>
   );
 }
@@ -451,7 +465,8 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                       Ready badge moved up here to sit directly to the right of
                       Clean + Health (was previously in the footer row). */}
                   <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
-                    <div className="flex items-baseline gap-2 min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <VehicleBrandMark vehicle={v} isDarkMode={isDarkMode} />
                       <span className={`text-[10.5px] font-bold leading-tight shrink-0 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{v.license}</span>
                       <span className={`text-[10px] font-semibold tracking-wide truncate ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{fleetTitle(v)}</span>
                       <BlockingBadge vehicleId={v.id} />
@@ -581,7 +596,8 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                   <div key={v.id} onClick={vehicleClick(v)} onMouseEnter={() => onItemHover?.(v.model)} onMouseLeave={() => onItemHover?.(null)} className={`rounded-xl p-3 border transition-all hover:shadow-sm cursor-pointer ${cardClass}`}>
                     {/* Row 1: License + Customer + BK-Chip + BlockingBadge | Health + Reserved/Overdue + Chevron */}
                     <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
-                      <div className="flex items-baseline gap-2 min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <VehicleBrandMark vehicle={v} isDarkMode={isDarkMode} />
                         <span className={`text-[10.5px] font-bold leading-tight shrink-0 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{v.license}</span>
                         <span
                           className={`text-[10px] font-medium tracking-wide truncate min-w-0 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}
@@ -747,7 +763,8 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                   >
                     {/* Row 1: License + MMY + BlockingBadge | Health / On-Time badges + Chevron */}
                     <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
-                      <div className="flex items-baseline gap-2 min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <VehicleBrandMark vehicle={v} isDarkMode={isDarkMode} />
                         <span className={`text-[10.5px] font-bold leading-tight shrink-0 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{v.license}</span>
                         <span className={`text-[10px] font-semibold tracking-wide truncate ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{fleetTitle(v)}</span>
                         <BlockingBadge vehicleId={v.id} />
@@ -1165,7 +1182,8 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                   <div key={v.id} onClick={vehicleClick(v)} onMouseEnter={() => onItemHover?.(v.model)} onMouseLeave={() => onItemHover?.(null)} className={`rounded-xl p-3 border transition-all hover:shadow-sm cursor-pointer ${cardClass}`}>
                     {/* Row 1: License + MMY + BlockingBadge | Clean / Health / Bucket badges + Chevron */}
                     <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
-                      <div className="flex items-baseline gap-2 min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <VehicleBrandMark vehicle={v} isDarkMode={isDarkMode} />
                         <span className={`text-[10.5px] font-bold leading-tight shrink-0 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{v.license}</span>
                         <span className={`text-[10px] font-semibold tracking-wide truncate ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{fleetTitle(v)}</span>
                         <BlockingBadge vehicleId={v.id} />

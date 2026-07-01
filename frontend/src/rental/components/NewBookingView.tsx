@@ -23,9 +23,7 @@ import {
   getVehicleTariffFromCatalog,
   grossFromNetCents,
 } from '../pricing/pricingUtils';
-// V4.6.67 — share the same brand-logo CDN/component used in FleetView so the
-// vehicle picker shows real brand artwork (Volkswagen, BMW, Tesla, …) instead
-// of an inline mock map of carlogos.org URLs.
+// V4.6.67 — share the same BrandLogo component used across Fleet / Booking surfaces.
 import { BrandLogo, getBrandFromModel } from './BrandLogo';
 import { useDocumentDark } from '../hooks/useDocumentDark';
 import {
@@ -121,8 +119,7 @@ const mapApiCustomerToBookingCustomer = (c: any): Customer => {
 };
 
 // V4.6.67 — Removed mock `vehicleImages` map and `getVehicleImage` helper.
-// The vehicle picker now uses the shared BrandLogo component which fetches the
-// brand artwork from the carlogos-dataset CDN, identical to FleetView.
+// The vehicle picker uses the shared BrandLogo component (Cardog Icons).
 
 // V4.6.67 — Build the canonical Make Model Year ("MMY") label.
 // Falls back to the legacy `model` string (which already includes the year for
@@ -1812,8 +1809,7 @@ export function NewBookingView({
                         const noTariff = !dailyLabel && !catalogLoading;
                         // V4.6.67 — derive brand from `make` first (true source from
                         // backend), fall back to the model string. Use the shared
-                        // BrandLogo component (carlogos-dataset CDN) for the icon
-                        // and `buildMMY` for the Make Model Year title.
+                        // BrandLogo (Cardog Icons) for the icon and `buildMMY` for the title.
                         const brandKey = getBrandFromModel({ make: v.make, model: v.model });
                         const mmy = buildMMY(v);
                         return (
@@ -1834,9 +1830,9 @@ export function NewBookingView({
                           }}
                           className={`flex items-center gap-3 w-full text-left rounded-lg border px-3 py-2 transition-all duration-200 ${ offline ? 'border-border bg-muted/30 opacity-60 grayscale cursor-not-allowed' : isMaintenance ? selectedVehicle?.id === v.id ? 'border-[color:var(--brand)] ring-1 ring-[color:var(--brand-glow)] bg-[color:var(--brand-soft)] opacity-70 cursor-pointer' : 'border-[color:var(--status-critical)]/30 bg-muted/40 opacity-70 hover:border-[color:var(--status-critical)]/50 cursor-pointer' : selectedVehicle?.id === v.id ? 'border-[color:var(--brand)] ring-1 ring-[color:var(--brand-glow)] bg-[color:var(--brand-soft)] cursor-pointer' : 'border-border bg-muted/40 hover:border-border hover:bg-card cursor-pointer' }`}
                         >
-                          {/* Brand Logo (shared CDN component, isomorphic with FleetView) */}
+                          {/* Brand Logo (shared Cardog component) */}
                           <div className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 p-1.5 ${ 'bg-muted/50' } ${(isMaintenance || offline) ? 'grayscale opacity-70' : ''}`}>
-                            <BrandLogo brand={brandKey} size={28} isDarkMode={isDarkMode} />
+                            <BrandLogo brand={brandKey} size={28} isDarkMode={isDarkMode} variant="icon" />
                           </div>
 
                           {/* Vehicle Info */}
@@ -3019,6 +3015,7 @@ export function NewBookingView({
                               })}
                               size={20}
                               isDarkMode={isDarkMode}
+                              variant="icon"
                             />
                           </div>
                           <div className="min-w-0">

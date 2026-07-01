@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react';
+import { BrandLogo, getBrandFromModel } from '../BrandLogo';
 import { Icon } from '../ui/Icon';
 import { StatusChip, type StatusTone } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
@@ -65,6 +66,7 @@ export function FleetOperatorRow({
   rowRef,
   onMouseEnter,
   onMouseLeave,
+  isDarkMode = false,
 }: FleetOperatorRowProps) {
   const { vehicle: v, visual, health } = ctx;
   const { locale } = useLanguage();
@@ -119,6 +121,15 @@ export function FleetOperatorRow({
         selected && 'bg-[color:color-mix(in_srgb,var(--brand)_8%,transparent)]',
       )}
     >
+      <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted/70', dimmed && 'opacity-75')}>
+        <BrandLogo
+          brand={getBrandFromModel({ make: v.make, model: v.model })}
+          size={16}
+          isDarkMode={isDarkMode}
+          variant="icon"
+        />
+      </div>
+
       <div className={cn('min-w-0 flex-1 space-y-1', dimmed && 'opacity-75')}>
         <div className="flex min-w-0 items-baseline gap-1.5">
           <span className="shrink-0 text-[12px] font-bold tabular-nums tracking-[-0.01em] text-foreground">

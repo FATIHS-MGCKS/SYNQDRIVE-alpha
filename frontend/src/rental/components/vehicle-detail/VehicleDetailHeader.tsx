@@ -143,7 +143,7 @@ export function VehicleDetailHeader({
           <div className="flex flex-col gap-1.5 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between min-[420px]:gap-2 sm:flex-col sm:items-start">
             <div className="flex min-w-0 items-center gap-2">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-card sm:h-8 sm:w-8">
-                <BrandLogo brand={brand} size={22} isDarkMode={isDarkMode} />
+                <BrandLogo brand={brand} size={22} isDarkMode={isDarkMode} variant="icon" />
               </span>
               <h1 className="min-w-0 truncate font-display text-[20px] font-bold leading-[1.2] tracking-[-0.02em] text-foreground sm:text-[24px] lg:text-[28px]">
                 {title}

@@ -840,7 +840,7 @@ function OperatorVehicleRow({
       )}
     >
       <div className="h-8 w-8 shrink-0 rounded-lg bg-muted/70 flex items-center justify-center">
-        <BrandLogo brand={brand} size={16} isDarkMode={systemDark} />
+        <BrandLogo brand={brand} size={16} isDarkMode={systemDark} variant="icon" />
       </div>
 
       <div className="min-w-0 flex-1 space-y-1">

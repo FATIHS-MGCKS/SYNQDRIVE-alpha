@@ -1176,12 +1176,25 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
       {
         key: 'vehicle',
         header: 'Vehicle',
-        cell: (booking: BookingUiRow) => (
-          <div className="text-xs">
-            <div className="font-medium text-foreground">{booking.vehicle}</div>
-            <div className="text-muted-foreground">{booking.plate}</div>
-          </div>
-        ),
+        cell: (booking: BookingUiRow) => {
+          const fleetVehicle = booking.vehicleId
+            ? fleetVehicles.find((v) => v.id === booking.vehicleId)
+            : undefined;
+          const brand = fleetVehicle
+            ? getBrandFromModel({ make: fleetVehicle.make, model: fleetVehicle.model })
+            : getBrandFromModel(booking.vehicle);
+          return (
+            <div className="flex items-center gap-2 text-xs">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted/50">
+                <BrandLogo brand={brand} size={16} isDarkMode={systemDark} variant="icon" />
+              </span>
+              <div className="min-w-0">
+                <div className="font-medium text-foreground truncate">{booking.vehicle}</div>
+                <div className="text-muted-foreground">{booking.plate}</div>
+              </div>
+            </div>
+          );
+        },
       },
       {
         key: 'period',
@@ -1211,7 +1224,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
         ),
       },
     ],
-    [],
+    [fleetVehicles, systemDark],
   );
 
   const popupBooking = useMemo(() => {
@@ -1600,7 +1613,38 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
                   </div>
                   <div>
                     <label className={`text-xs mb-1 block text-muted-foreground`}>Fahrzeug</label>
-                    <input type="text" value={editForm.vehicle} onChange={(e) => setEditForm(f => ({ ...f, vehicle: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`} />
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted/50">
+                        <BrandLogo
+                          brand={getBrandFromModel(editForm.vehicle)}
+                          size={18}
+                          isDarkMode={systemDark}
+                          variant="icon"
+                        />
+                      </span>
+                      <select
+                        value={editForm.vehicle}
+                        onChange={(e) => {
+                          const selected = vehicleOptions.find((v) => v.name === e.target.value);
+                          setEditForm((f) => ({
+                            ...f,
+                            vehicle: e.target.value,
+                            plate: selected?.plate ?? f.plate,
+                          }));
+                        }}
+                        className={`min-w-0 flex-1 px-3 py-2 rounded-lg text-xs border transition-all border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none`}
+                      >
+                        {vehicleOptions.length === 0 ? (
+                          <option value="">Keine Fahrzeuge verfügbar</option>
+                        ) : (
+                          vehicleOptions.map((v) => (
+                            <option key={v.id} value={v.name}>
+                              {v.name} · {v.plate}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    </div>
                   </div>
                   <div>
                     <label className={`text-xs mb-1 block text-muted-foreground`}>Kennzeichen</label>

@@ -403,7 +403,7 @@ const FRONTEND_FLOWS: FrontendFlowEntry[] = [
   { name: 'BrandLogo — Cardog Icons als primäre OEM-Quelle (V4.9.136)', icon: Car,
     endpoint: 'Keine neue Route. Keine Backend-Änderung.',
     service: '`frontend/src/rental/components/BrandLogo.tsx` rendert Marken über `@cardog-icons/react` (`Icon`/`useIcon`) mit Varianten `icon` | `logo` | `logoHorizontal` | `wordmark` und Tone `auto` | `color` | `dark`. SynqDrive-Brand-Keys (`getBrandFromModel`, `resolveSynqDriveBrandKey`) mappen auf Cardog-Präfixe (z. B. `mercedes-benz` → `MB`, `land-rover` → `Landrover`). Unsupported Marken (Škoda, Opel, Renault, Peugeot, Seat, Citroën, Suzuki) → neutrales SVG-Fallback (`currentColor`).',
-    dataSource: 'Consumer unverändert: `VehicleDetailHeader`, `NewBookingView`, `FleetConditionView` importieren weiter `BrandLogo` + `getBrandFromModel`. Kein externes PNG-CDN mehr für Cardog-unterstützte Marken; kein CSS-Filter/Invert im Dark Mode.' },
+    dataSource: 'Consumer: `VehicleDetailHeader`, `NewBookingView`, `FleetConditionView`, `FleetOperatorRow` (Fleet Command), `StatInlineDetail` (Dashboard Fleet-Popups), `BookingsView` (Tabelle + Edit-Select). Kein externes PNG-CDN mehr für Cardog-unterstützte Marken; kein CSS-Filter/Invert im Dark Mode.' },
   { name: 'BrandLogo + Fleet Condition — Make/Model Resolver + Display Hardening (V4.7.18)', icon: Car,
     endpoint: 'Keine neue Route. Keine Änderung an FleetVehicle-DTOs oder FleetContext.',
     service: '`frontend/src/rental/components/BrandLogo.tsx` erweitert `getBrandFromModel` auf `BrandSource`-Union (`string | {make,model}`) mit `normalizeBrandHaystack`; `BrandLogo` nutzt `useState/useEffect` für `img`-Load-Failure → `<FallbackIcon />`.',

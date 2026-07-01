@@ -76,3 +76,40 @@ describe('buildCardogIconName', () => {
     expect(buildCardogIconName('generic', 'icon', false)).toBeNull();
   });
 });
+
+describe('Cardog acceptance matrix (resolver + icon names)', () => {
+  const cardogBrands = [
+    { label: 'BMW', source: { make: 'BMW', model: '320d' }, key: 'bmw', icon: 'BMWIcon', iconDark: 'BMWIconDark' },
+    { label: 'Audi', source: { make: 'Audi', model: 'A4' }, key: 'audi', icon: 'AudiIcon', iconDark: 'AudiIconDark' },
+    { label: 'Volkswagen', source: 'VW Golf 8', key: 'volkswagen', icon: 'VolkswagenIcon', iconDark: 'VolkswagenIconDark' },
+    { label: 'Mercedes-Benz', source: { make: 'Mercedes-Benz', model: 'C 220' }, key: 'mercedes-benz', icon: 'MBIcon', iconDark: 'MBIconDark' },
+    { label: 'Tesla', source: { make: 'Tesla', model: 'Model 3' }, key: 'tesla', icon: 'TeslaIcon', iconDark: 'TeslaIconDark' },
+  ] as const;
+
+  it.each(cardogBrands)('resolves $label for light and dark Cardog icons', ({ source, key, icon, iconDark }) => {
+    expect(getBrandFromModel(source)).toBe(key);
+    expect(buildCardogIconName(key, 'icon', false)).toBe(icon);
+    expect(buildCardogIconName(key, 'icon', true)).toBe(iconDark);
+  });
+
+  it('uses fallback path for unsupported Škoda', () => {
+    expect(getBrandFromModel({ make: 'Škoda', model: 'Octavia' })).toBe('skoda');
+    expect(buildCardogIconName('skoda', 'icon', false)).toBeNull();
+    expect(buildCardogIconName('skoda', 'icon', true)).toBeNull();
+  });
+
+  it('uses fallback path for unknown Dacia', () => {
+    expect(getBrandFromModel({ make: 'Dacia', model: 'Sandero' })).toBe('generic');
+    expect(buildCardogIconName('generic', 'icon', false)).toBeNull();
+  });
+
+  it('detects brand from model-only string when make is missing', () => {
+    expect(getBrandFromModel({ make: '', model: 'BMW 320d' })).toBe('bmw');
+    expect(getBrandFromModel({ make: null, model: 'Tesla Model Y' })).toBe('tesla');
+  });
+
+  it('detects brand from make + model object', () => {
+    expect(getBrandFromModel({ make: 'Audi', model: 'Q5' })).toBe('audi');
+    expect(getBrandFromModel({ make: 'Volkswagen', model: 'Tiguan' })).toBe('volkswagen');
+  });
+});
