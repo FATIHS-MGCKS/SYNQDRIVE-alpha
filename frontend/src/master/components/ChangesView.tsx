@@ -53,6 +53,24 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-06-30T22:10:00.000Z',
   },
   {
+    id: 'insights-page-kpi-cleanup-v49126-2026-06-30',
+    version: '4.9.126',
+    title: 'V4.9.126 — Insights Page: KPI-Standard & redundante Refresh-Buttons entfernt',
+    summary: [
+      'Insights-KPIs (Business Risks, Finanzrisiko, Forderungen, Kritische Buchungen, Revenue Leakage) im Control-Center-Stil (`InsightKpiCard`).',
+      'Entfernt: Header-Button „Refresh“ und „Insights aktualisieren“ — Initial Load / automatische Insights-Abfrage bleiben unverändert.',
+    ],
+    reason:
+      'KPI-Karten wirkten zu dominant und inkonsistent; doppelte Refresh-Actions machten die Insights Page unruhig.',
+    previousBehavior:
+      'Farbige `sq-card`-KPI-Flächen mit großen Werten; Refresh unter Titel + „Insights aktualisieren“ unter KPIs.',
+    details:
+      'Geändert: `InsightsCockpit.tsx`, `FinancialInsightsView.tsx`. Keine Insights-Berechnung/API-Logik geändert.',
+    affectsArchitecture: false,
+    module: 'Rental Insights',
+    createdAt: '2026-06-30T23:59:59.000Z',
+  },
+  {
     id: 'cloud-agent-no-tailscale-docs-v49128-2026-06-30',
     version: '4.9.128',
     title: 'V4.9.128 — Cloud Agent: Deploy ohne Tailscale (Doku)',
@@ -106,7 +124,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'dimo-agent-error-classification.util.ts, dimo-agents-connectivity.types.ts, dimo-agents-health.controller.ts, DimoAgentsService.checkDimoAgentsConnectivity(), chat.service formatDimoAgentChatError().',
     affectsArchitecture: true,
     module: 'DIMO',
-    createdAt: '2026-06-30T23:59:59.000Z',
+    createdAt: '2026-06-30T19:00:00.000Z',
   },
   {
     id: 'tasks-page-kpi-header-ui-v49125-2026-06-30',
