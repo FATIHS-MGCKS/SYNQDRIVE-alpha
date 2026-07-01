@@ -189,6 +189,44 @@ describe('DimoAgentsService — error handling (mocked DIMO API)', () => {
     expect(mockedAxios.post).not.toHaveBeenCalled();
   });
 
+  it('create agent sends data-sdk compatible body shape', async () => {
+    const svc = makeService({ agentsBaseUrl: 'https://agents.dimo.zone' });
+    mockedAxios.post.mockResolvedValueOnce({ status: 200, data: { agentId: 'agent-sdk-1' } } as any);
+
+    const result = await svc.getOrCreateAgent({ useCase: 'vehicle_specs' });
+
+    expect(result.success).toBe(true);
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      'https://agents.dimo.zone/agents',
+      {
+        type: 'driver_agent_v1',
+        personality: 'master_technician',
+        secrets: { DIMO_API_KEY: 'test-api-key-value' },
+        variables: { USER_WALLET: '0x0000000000000000000000000000000000000001' },
+      },
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer eyJ.test.jwt' }),
+      }),
+    );
+  });
+
+  it('sendMessage includes optional vehicleIds and user in body', async () => {
+    const svc = makeService();
+    mockedAxios.post.mockResolvedValueOnce({ status: 200, data: { response: 'ok' } } as any);
+
+    await svc.sendMessage('agent-1', 'ping', [872, 1234]);
+
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      'https://agents.test/agents/agent-1/message',
+      {
+        message: 'ping',
+        vehicleIds: [872, 1234],
+        user: '0x0000000000000000000000000000000000000001',
+      },
+      expect.any(Object),
+    );
+  });
+
   it('DNS ENOTFOUND is classified and returns actionable user message', async () => {
     const svc = makeService();
     const dnsError = Object.assign(new Error('getaddrinfo ENOTFOUND agents.dimo.zone'), {
@@ -210,6 +248,10 @@ describe('DimoAgentsService — error handling (mocked DIMO API)', () => {
 });
 
 describe('DimoAgentsService — connectivity probe', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   afterEach(() => jest.restoreAllMocks());
 
   it('reports DNS failure without attempting HTTP', async () => {
@@ -223,11 +265,31 @@ describe('DimoAgentsService — connectivity probe', () => {
     const result = await svc.checkDimoAgentsConnectivity();
 
     expect(result.ok).toBe(false);
+    expect(result.baseUrl).toBe('https://agents.test');
     expect(result.hostname).toBe('agents.test');
     expect(result.dns.ok).toBe(false);
     expect(result.dns.errorCode).toBe('ENOTFOUND');
+    expect(result.dns.errorMessage).toContain('ENOTFOUND');
     expect(result.http.skipped).toBe(true);
     expect(result.hint).toContain('cannot be resolved');
+    expect(mockedAxios.get).not.toHaveBeenCalled();
+  });
+
+  it('reports DNS EAI_AGAIN without attempting HTTP', async () => {
+    const svc = makeService({ agentsBaseUrl: 'https://agents.dimo.zone' });
+    jest
+      .spyOn(dns, 'lookup')
+      .mockRejectedValueOnce(
+        Object.assign(new Error('getaddrinfo EAI_AGAIN agents.dimo.zone'), { code: 'EAI_AGAIN' }),
+      );
+
+    const result = await svc.checkDimoAgentsConnectivity();
+
+    expect(result.ok).toBe(false);
+    expect(result.hostname).toBe('agents.dimo.zone');
+    expect(result.dns.ok).toBe(false);
+    expect(result.dns.errorCode).toBe('EAI_AGAIN');
+    expect(result.http.skipped).toBe(true);
     expect(mockedAxios.get).not.toHaveBeenCalled();
   });
 
@@ -244,11 +306,45 @@ describe('DimoAgentsService — connectivity probe', () => {
     expect(result.ok).toBe(true);
     expect(result.dns.ok).toBe(true);
     expect(result.http.ok).toBe(true);
+    expect(result.http.statusCode).toBe(200);
     expect(result.http.service).toBe('agents');
     expect(result.http.status).toBe('healthy');
+    expect(result.http.version).toBe('1.0.0');
     expect(mockedAxios.get).toHaveBeenCalledWith(
       'https://agents.test',
-      expect.objectContaining({ timeout: 15_000 }),
+      expect.objectContaining({ timeout: 15_000, validateStatus: expect.any(Function) }),
     );
+    const getConfig = mockedAxios.get.mock.calls[0]?.[1] as Record<string, unknown> | undefined;
+    expect(getConfig?.headers).toBeUndefined();
+  });
+
+  it('reports HTTP 502 when DNS resolves but health check fails', async () => {
+    const svc = makeService({ agentsBaseUrl: 'https://agents.dimo.zone' });
+    jest.spyOn(dns, 'lookup').mockResolvedValueOnce({ address: '1.2.3.4', family: 4 });
+    mockedAxios.get.mockResolvedValueOnce({ status: 502, data: 'Bad Gateway' } as any);
+
+    const result = await svc.checkDimoAgentsConnectivity();
+
+    expect(result.ok).toBe(false);
+    expect(result.dns.ok).toBe(true);
+    expect(result.http.ok).toBe(false);
+    expect(result.http.statusCode).toBe(502);
+    expect(result.http.errorMessage).toBe('HTTP 502');
+    expect(result.hint).toContain('returned 502');
+  });
+
+  it('reports invalid base URL without DNS or HTTP probes', async () => {
+    const lookupSpy = jest.spyOn(dns, 'lookup');
+    const svc = makeService({ agentsBaseUrl: 'not-a-valid-url' });
+
+    const result = await svc.checkDimoAgentsConnectivity();
+
+    expect(result.ok).toBe(false);
+    expect(result.hostname).toBe('');
+    expect(result.dns.ok).toBe(false);
+    expect(result.dns.errorCode).toBe('INVALID_URL');
+    expect(result.http.skipped).toBe(true);
+    expect(mockedAxios.get).not.toHaveBeenCalled();
+    expect(lookupSpy).not.toHaveBeenCalled();
   });
 });

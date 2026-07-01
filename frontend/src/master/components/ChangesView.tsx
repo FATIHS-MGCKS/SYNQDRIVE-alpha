@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-agents-sdk-alignment-v49135-2026-07-01',
+    version: '4.9.135',
+    title: 'V4.9.135 — DIMO Agents SDK Alignment & Connectivity Health',
+    summary: [
+      'Agents Base URL defaultet auf offizielle Production `https://agents.dimo.zone` (data-sdk); `agents.dev.dimo.zone` entfernt.',
+      'Connectivity-Tests für `checkDimoAgentsConnectivity` erweitert (DNS ENOTFOUND/EAI_AGAIN, HTTP 502, invalid URL).',
+      'SDK-Body-Shape-Tests für createAgent/sendMessage bestätigt (driver_agent_v1, secrets, variables, vehicleIds, user).',
+    ],
+    reason:
+      'Offizielle DIMO data-sdk kennt nur Production Agents URL; Dev-Fallback war nicht belegt. Health-Probe und Tests sollten SDK-kompatibel und vollständig abgesichert sein.',
+    previousBehavior:
+      'DIMO_ENV=dev defaultete auf `https://agents.dev.dimo.zone`; Connectivity-Tests deckten nur ENOTFOUND + HTTP 200 ab.',
+    details:
+      'Geändert: `dimo.config.ts`, `.env.example`, `dimo-agents.service.spec.ts`, `dimo-agents-diagnostics.spec.ts`, `dimo.config.spec.ts`. DimoAuthService/Developer JWT unverändert.',
+    affectsArchitecture: true,
+    module: 'DIMO Integration',
+    createdAt: '2026-07-01T09:30:00.000Z',
+  },
+  {
     id: 'dashboard-notifications-typography-v49134-2026-07-01',
     version: '4.9.134',
     title: 'V4.9.134 — Dashboard Notifications Typografie (Fleet Command Alignment)',
