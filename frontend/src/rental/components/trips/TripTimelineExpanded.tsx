@@ -8,10 +8,7 @@ import { hasNativeBehaviorEvents } from './event-context-ui';
 import { resolveBehaviorEventCount } from './trip-assessment-copy';
 import { TripEvidencePanel } from './TripEvidencePanel';
 import { TripDeviceConnectionEvidence } from './TripDeviceConnectionEvidence';
-import { TripRentalContextPanel } from './TripRentalContextPanel';
-import { TripAssignmentBadge } from './TripAssignmentBadge';
 import { TIMELINE_COPY, RENTAL_COPY, TRIPS_COPY, tv } from './trips-view-ui';
-import { assignmentLabel } from './utils/tripLabels';
 import type { TripRentalContextView } from './utils/tripRentalContext';
 import type { TripBehaviorEvent, TripEnrichment, TripTimelineTrip } from './timeline.types';
 
@@ -54,7 +51,7 @@ function TimelineSection({
 }) {
   return (
     <section className="space-y-2.5">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className={tv.sectionTitle}>{title}</h3>
         {actions}
       </div>
@@ -68,7 +65,6 @@ export function TripTimelineExpanded({
   isDark,
   orgId,
   vehicleId,
-  enrichment,
   enriching,
   detailLoading,
   detailError,
@@ -85,10 +81,6 @@ export function TripTimelineExpanded({
   onReloadRoute,
   onCenterRoute,
   rentalContext,
-  rentalBookingsLoading,
-  rentalDetailLoading,
-  rentalBookingsError,
-  onOpenBooking,
 }: TripTimelineExpandedProps) {
   const stressScore = resolveDrivingStressScore(trip);
   const stressLevel = trip.stressLevel ?? getStressLevel(stressScore);
@@ -116,18 +108,18 @@ export function TripTimelineExpanded({
 
   return (
     <div className="px-4 pb-4 pt-0" onClick={(e) => e.stopPropagation()}>
-      <div className="pt-4 border-t border-border/40 space-y-5">
+      <div className="space-y-5 border-t border-border/40 pt-4">
         {enriching && (
           <div
             className={`flex items-center gap-1.5 text-[11px] font-medium ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}
           >
-            <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" /> {TRIPS_COPY.enrichingInline}
+            <Icon name="loader-2" className="h-3.5 w-3.5 animate-spin" /> {TRIPS_COPY.enrichingInline}
           </div>
         )}
 
         {detailLoading && (
           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />
+            <Icon name="loader-2" className="h-3.5 w-3.5 animate-spin" />
             Fahrtdetails werden geladen…
           </div>
         )}
@@ -142,80 +134,53 @@ export function TripTimelineExpanded({
           <div className="flex flex-wrap gap-2">
             {canReloadRoute && (
               <button type="button" onClick={onReloadRoute} className={actionBtnClass}>
-                <Icon name="refresh-cw" className="w-3.5 h-3.5" />
+                <Icon name="refresh-cw" className="h-3.5 w-3.5" />
                 {TIMELINE_COPY.reloadRoute}
               </button>
             )}
             {canCenterRoute && (
               <button type="button" onClick={onCenterRoute} className={actionBtnClass}>
-                <Icon name="crosshair" className="w-3.5 h-3.5" />
+                <Icon name="crosshair" className="h-3.5 w-3.5" />
                 {TIMELINE_COPY.centerRoute}
               </button>
             )}
             {canAnalyzeBehavior && (
               <button type="button" onClick={onEnrichBehavior} className={primaryActionClass}>
-                <Icon name="activity" className="w-3.5 h-3.5" />
+                <Icon name="activity" className="h-3.5 w-3.5" />
                 {TIMELINE_COPY.analyzeBehavior}
               </button>
             )}
           </div>
         )}
 
-        {/* 1. Beweisübersicht — zentrale Zusammenfassung der Fahrt */}
-        <TripEvidencePanel
-          trip={trip}
-          rentalContext={rentalContext}
-          behaviorEvents={behaviorEvents}
-          enrichment={enrichment}
-          routePointsCount={routePointsCount}
-          routeLoading={routeLoading}
-          routeError={routeError}
-        />
+        <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
+          <TripEvidencePanel
+            trip={trip}
+            rentalContext={rentalContext}
+            behaviorEvents={behaviorEvents}
+            routePointsCount={routePointsCount}
+            routeLoading={routeLoading}
+            routeError={routeError}
+          />
+
+          <VehicleStressPanel
+            stressScore={stressScore}
+            stressLevel={stressLevel}
+            hasEnoughData={stressScore != null}
+            compact={false}
+            stressMissingContext={{
+              behaviorEventCount: resolveBehaviorEventCount(
+                behaviorEvents,
+                trip,
+                behaviorEventsByTripId,
+              ),
+              hasNativeBehaviorEvents: hasNativeBehaviorEvents(behaviorEvents),
+            }}
+          />
+        </div>
 
         <TripDeviceConnectionEvidence vehicleId={vehicleId} tripId={trip.id} />
 
-        {/* 2. Zuordnung & Kontext — Privatfahrt / Buchung / Fahrer / Kunde */}
-        <TimelineSection title={TIMELINE_COPY.sectionAssignment}>
-          <div className="rounded-xl border p-3 bg-card border-border flex items-center gap-2 flex-wrap">
-            <TripAssignmentBadge trip={trip} />
-            <span className="text-[11px] font-medium text-foreground">{assignmentLabel(trip)}</span>
-          </div>
-          {rentalContext && (
-            <TripRentalContextPanel
-              trip={trip}
-              context={rentalContext}
-              loading={rentalBookingsLoading}
-              detailLoading={rentalDetailLoading}
-              bookingsError={rentalBookingsError}
-              onOpenBooking={onOpenBooking}
-              onReview={
-                onOpenBooking && rentalContext.needsReview
-                  ? () => {
-                      if (rentalContext.booking) onOpenBooking(rentalContext.booking.id);
-                    }
-                  : undefined
-              }
-            />
-          )}
-        </TimelineSection>
-
-        {/* 3. Fahrbelastung — eigener Titel in der Komponente */}
-        <VehicleStressPanel
-          stressScore={stressScore}
-          stressLevel={stressLevel}
-          hasEnoughData={stressScore != null}
-          compact={false}
-          stressMissingContext={{
-            behaviorEventCount: resolveBehaviorEventCount(
-              behaviorEvents,
-              trip,
-              behaviorEventsByTripId,
-            ),
-            hasNativeBehaviorEvents: hasNativeBehaviorEvents(behaviorEvents),
-          }}
-        />
-
-        {/* 4. Fahrverhalten — operativ, ohne technische Debug-Details */}
         <TimelineSection title={TIMELINE_COPY.sectionBehavior}>
           <TripBehaviorPanel
             trip={trip}
@@ -229,7 +194,6 @@ export function TripTimelineExpanded({
           />
         </TimelineSection>
 
-        {/* 5. Missbrauchs-/Schadensverdacht — immer sichtbar (eigener Titel im Panel) */}
         {trip.tripStatus === 'COMPLETED' && (
           <MisuseCasesPanel
             orgId={orgId}
@@ -240,6 +204,7 @@ export function TripTimelineExpanded({
             emptyTitle={RENTAL_COPY.misuseEmptyTitle}
             emptyDescription={RENTAL_COPY.misuseEmptySubline}
             compact
+            embedded
             limit={5}
           />
         )}

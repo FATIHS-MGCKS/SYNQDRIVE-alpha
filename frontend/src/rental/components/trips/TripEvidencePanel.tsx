@@ -1,19 +1,26 @@
 import type { ReactNode } from 'react';
-import { Icon } from '../ui/Icon';
-import { useAddress } from '../../../lib/useAddress';
 import { TripStatusBadge } from './TripStatusBadge';
 import { RENTAL_COPY } from './trips-view-ui';
-import { assignmentLabel, routeStatusLabel } from './utils/tripLabels';
+import { assignmentLabel } from './utils/tripLabels';
 import { formatTripDistance, formatTripDuration, formatTripTime } from './utils/tripFormatters';
-import { getOperatorStressLabel, hasAbuseSuspicion } from './utils/tripStatus';
-import type { TripEnrichment, TripBehaviorEvent, TripTimelineTrip } from './timeline.types';
+import { getStressLabel, resolveDrivingStressScore, getStressLevel } from '../../lib/scoreFormat';
+import { deriveBehaviorOverallStatus } from './behavior-ui.utils';
+import {
+  behaviorStatusShortLabel,
+  deriveTripOverallRating,
+  TRIP_OVERALL_RATING_LABEL,
+  tripOverallRatingTone,
+} from './utils/trip-overall-status';
+import { hasAbuseSuspicion } from './utils/tripStatus';
+import type { TripBehaviorEvent, TripTimelineTrip } from './timeline.types';
 import type { TripRentalContextView } from './utils/tripRentalContext';
+import { useAddress } from '../../../lib/useAddress';
+import { Icon } from '../ui/Icon';
 
 interface TripEvidencePanelProps {
   trip: TripTimelineTrip;
   rentalContext?: TripRentalContextView;
   behaviorEvents: TripBehaviorEvent[];
-  enrichment?: TripEnrichment;
   routePointsCount: number;
   routeLoading: boolean;
   routeError: string | null;
@@ -21,74 +28,64 @@ interface TripEvidencePanelProps {
 
 function EvidenceRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-3 text-[11px] py-1 border-b border-border/30 last:border-0">
-      <span className="text-muted-foreground shrink-0">{label}</span>
-      <div className="text-right font-medium text-foreground min-w-0">{children}</div>
+    <div className="flex items-start justify-between gap-3 border-b border-border/30 py-1.5 text-[11px] last:border-0">
+      <span className="shrink-0 text-muted-foreground">{label}</span>
+      <div className="min-w-0 text-right font-medium text-foreground">{children}</div>
     </div>
   );
 }
 
-function LocationValue({
-  lat,
-  lng,
-}: {
-  lat?: number;
-  lng?: number;
-}) {
+function LocationValue({ lat, lng }: { lat?: number; lng?: number }) {
   const { address, loading } = useAddress(lat, lng);
   if (lat == null || lng == null) {
-    return <span className="text-muted-foreground font-normal">{RENTAL_COPY.evidenceUnavailable}</span>;
+    return (
+      <span className="font-normal text-muted-foreground">{RENTAL_COPY.evidenceUnavailable}</span>
+    );
   }
   if (loading) {
-    return <Icon name="loader-2" className="inline-block w-3 h-3 animate-spin text-muted-foreground" />;
+    return (
+      <Icon name="loader-2" className="inline-block h-3 w-3 animate-spin text-muted-foreground" />
+    );
   }
   return (
-    <span className="truncate inline-block max-w-[180px] align-bottom">
+    <span className="inline-block max-w-[200px] truncate align-bottom">
       {address?.formatted ?? `${lat.toFixed(4)}, ${lng.toFixed(4)}`}
     </span>
   );
+}
+
+function bookingRowLabel(rentalContext?: TripRentalContextView): string {
+  if (rentalContext?.booking) {
+    return `${rentalContext.booking.bookingNumber} · ${rentalContext.booking.customerName}`;
+  }
+  return RENTAL_COPY.noBookingLinked;
 }
 
 export function TripEvidencePanel({
   trip,
   rentalContext,
   behaviorEvents,
-  enrichment,
-  routePointsCount,
-  routeLoading,
-  routeError,
 }: TripEvidencePanelProps) {
   const flagged = hasAbuseSuspicion(trip);
-  const gpsEvents = behaviorEvents.filter((e) => e.latitude != null && e.longitude != null).length;
-  const hfLimited =
-    trip.behaviorEnrichmentStatus === 'SKIPPED_NO_HF_DATA' || trip.detailsLimited;
-  const hfReady = trip.behaviorReady === true;
-  const mapMatch = enrichment?.mapMatchConfidence ?? 0;
   const hasStart = trip.startLatitude != null && trip.startLongitude != null;
   const hasEnd = trip.endLatitude != null && trip.endLongitude != null;
+  const overallRating = deriveTripOverallRating(trip, behaviorEvents);
+  const behaviorStatus = deriveBehaviorOverallStatus(trip, behaviorEvents);
+  const stressScore = resolveDrivingStressScore(trip);
+  const stressLabel =
+    stressScore != null
+      ? getStressLabel(trip.stressLevel ?? getStressLevel(stressScore) ?? undefined)
+      : '—';
 
   return (
     <div
-      className={`rounded-xl border p-3.5 space-y-3 ${
+      className={`h-full rounded-xl border p-3.5 ${
         flagged ? 'border-amber-500/20 bg-amber-500/[0.04]' : 'border-border bg-card'
       }`}
     >
-      <div className="flex items-start gap-2">
-        <Icon
-          name={flagged ? 'shield-alert' : 'clipboard-list'}
-          className={`w-4 h-4 shrink-0 mt-0.5 ${
-            flagged ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
-          }`}
-        />
-        <div className="min-w-0">
-          <p className="text-[12px] font-semibold text-foreground">{RENTAL_COPY.evidenceSummaryTitle}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
-            {flagged ? RENTAL_COPY.evidenceNotableHint : RENTAL_COPY.evidenceSummaryHint}
-          </p>
-        </div>
-      </div>
+      <p className="text-[12px] font-semibold text-foreground">{RENTAL_COPY.tripAnalysisTitle}</p>
 
-      <div className="rounded-lg border border-border/40 bg-card/70 px-3 py-2">
+      <div className="mt-3 rounded-lg border border-border/40 bg-card/70 px-3 py-2">
         <EvidenceRow label={RENTAL_COPY.evidenceTime}>
           <span className="tabular-nums">
             {formatTripTime(trip.startTime)}
@@ -108,41 +105,26 @@ export function TripEvidencePanel({
             </EvidenceRow>
           </>
         )}
-        <EvidenceRow label={RENTAL_COPY.evidenceStress}>
+        <EvidenceRow label={RENTAL_COPY.evidenceOverallRating}>
           <TripStatusBadge
-            label={getOperatorStressLabel(trip)}
-            tone={flagged ? 'critical' : 'watch'}
+            label={TRIP_OVERALL_RATING_LABEL[overallRating]}
+            tone={tripOverallRatingTone(overallRating)}
           />
         </EvidenceRow>
-        <EvidenceRow label={RENTAL_COPY.evidenceEvents}>
-          {behaviorEvents.length > 0
-            ? `${behaviorEvents.length} Belastungsereignisse · ${gpsEvents} mit Position`
-            : '—'}
+        <EvidenceRow label={RENTAL_COPY.evidenceVehicleStress}>
+          {stressLabel}
         </EvidenceRow>
-        <EvidenceRow label={RENTAL_COPY.evidenceAssignment}>{assignmentLabel(trip)}</EvidenceRow>
-        {rentalContext?.booking && (
-          <EvidenceRow label={RENTAL_COPY.evidenceBooking}>
-            {rentalContext.booking.bookingNumber} · {rentalContext.booking.customerName}
+        <EvidenceRow label={RENTAL_COPY.evidenceDrivingStyle}>
+          {behaviorStatusShortLabel(behaviorStatus)}
+        </EvidenceRow>
+        {flagged && (
+          <EvidenceRow label={RENTAL_COPY.evidenceMisuseHint}>
+            <span className="text-amber-700 dark:text-amber-400">Verdacht vorhanden</span>
           </EvidenceRow>
         )}
-        <EvidenceRow label={RENTAL_COPY.evidenceRoute}>
-          {routeStatusLabel(routeLoading, routeError, routePointsCount)}
-        </EvidenceRow>
-        <EvidenceRow label={RENTAL_COPY.evidenceDataQuality}>
-          {hfLimited ? RENTAL_COPY.hfLimited : hfReady ? RENTAL_COPY.hfAvailable : RENTAL_COPY.hfPending}
-          {mapMatch > 0 && (
-            <span className="block text-[10px] text-muted-foreground font-normal mt-0.5">
-              {RENTAL_COPY.routeMatch} {Math.round(mapMatch * 100)}%
-            </span>
-          )}
-        </EvidenceRow>
+        <EvidenceRow label={RENTAL_COPY.evidenceAssignment}>{assignmentLabel(trip)}</EvidenceRow>
+        <EvidenceRow label={RENTAL_COPY.evidenceBooking}>{bookingRowLabel(rentalContext)}</EvidenceRow>
       </div>
-
-      {flagged && (
-        <p className="text-[10px] text-muted-foreground leading-relaxed">
-          {RENTAL_COPY.damageNeutralHint}
-        </p>
-      )}
     </div>
   );
 }

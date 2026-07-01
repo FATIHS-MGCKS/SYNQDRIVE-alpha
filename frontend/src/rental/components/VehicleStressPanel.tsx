@@ -15,6 +15,7 @@ import {
   getStressScoreMissingMessage,
   type StressScoreMissingContext,
 } from '../components/trips/trip-assessment-copy';
+import { StressDonut } from './trips/StressDonut';
 
 export interface VehicleStressComponents {
   drivingStressScore?: number | null;
@@ -35,7 +36,6 @@ interface VehicleStressPanelProps {
   dataConfidence?: DataConfidence | string | null;
   compact?: boolean;
   footnote?: string;
-  /** Separates Fahrbelastung from Fahrverhalten when the stress score is missing. */
   stressMissingContext?: StressScoreMissingContext;
 }
 
@@ -95,15 +95,13 @@ export function VehicleStressPanel({
 
   if (display.isMissing) {
     return (
-      <div className="rounded-xl border border-border bg-card p-4">
-        <h4 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">
-          {title}
-        </h4>
+      <div className="h-full rounded-xl border border-border bg-card p-4">
+        <h4 className="mb-2 text-[12px] font-semibold text-foreground">{title}</h4>
         <p className="text-xs text-muted-foreground">
           {getStressScoreMissingMessage(stressMissingContext)}
         </p>
         {dataConfidence && (
-          <p className="text-[10px] text-muted-foreground mt-2">
+          <p className="mt-2 text-[10px] text-muted-foreground">
             Datenbasis: {getDataConfidenceLabel(dataConfidence as DataConfidence)}
           </p>
         )}
@@ -111,32 +109,33 @@ export function VehicleStressPanel({
     );
   }
 
+  const scoreValue = stressScore ?? 0;
+  const levelForDonut = resolvedLevel ?? getStressLevel(scoreValue) ?? 'moderate';
+
   return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h4 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
-            {title}
-          </h4>
+    <div className="flex h-full flex-col rounded-xl border border-border bg-card p-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 flex-1 space-y-2">
+          <h4 className="text-[12px] font-semibold text-foreground">{title}</h4>
           {!compact && (
-            <p className="text-[11px] text-muted-foreground mt-1 max-w-prose">
-              {getStressDescription(resolvedLevel)}
+            <p className="max-w-prose text-[11px] leading-relaxed text-muted-foreground">
+              {getStressDescription(levelForDonut)}
             </p>
           )}
+          <StatusChip tone={stressToneToStatusTone(display.tone)} dot>
+            {display.label}
+          </StatusChip>
         </div>
-        <StatusChip tone={stressToneToStatusTone(display.tone)} dot>
-          {display.label}
-        </StatusChip>
-      </div>
 
-      <div className="flex items-baseline gap-2">
-        <span className="text-2xl font-bold tabular-nums text-foreground">{display.compact}</span>
-        <span className="text-xs text-muted-foreground">/ 100 Belastung</span>
+        <div className="flex shrink-0 flex-col items-center gap-1 self-center sm:self-auto">
+          <StressDonut score={scoreValue} level={levelForDonut} size={88} />
+          <span className="text-[10px] font-medium text-muted-foreground">Belastung</span>
+        </div>
       </div>
 
       {!compact && hasComponentData && components && (
-        <div className="pt-2 border-t border-border/60 space-y-2">
-          <p className="text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">
+        <div className="mt-4 space-y-2 border-t border-border/60 pt-3">
+          <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
             Belastungskomponenten
           </p>
           {COMPONENT_ROWS.map((row) => (
@@ -149,19 +148,13 @@ export function VehicleStressPanel({
         </div>
       )}
 
-      {!compact && !hasComponentData && stressScore != null && (
-        <p className="text-[10px] text-muted-foreground">
-          Einzelne Belastungskomponenten liegen für diese Fahrt nicht vor.
-        </p>
-      )}
-
       {dataConfidence && (
-        <p className="text-[10px] text-muted-foreground">
+        <p className="mt-3 text-[10px] text-muted-foreground">
           Datenbasis: {getDataConfidenceLabel(dataConfidence as DataConfidence)}
         </p>
       )}
 
-      {footnote && <p className="text-[10px] text-muted-foreground">{footnote}</p>}
+      {footnote && <p className="mt-2 text-[10px] text-muted-foreground">{footnote}</p>}
     </div>
   );
 }

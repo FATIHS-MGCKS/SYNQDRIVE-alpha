@@ -12,6 +12,7 @@ import {
   hasNativeBehaviorEvents,
 } from './event-context-ui';
 import { formatBehaviorEventCountLabel } from './trip-assessment-copy';
+import { TripBehaviorCategoryBars } from './TripBehaviorCategoryBars';
 
 interface TripBehaviorSummaryProps {
   trip: TripTimelineTrip;
@@ -47,31 +48,31 @@ export function TripBehaviorSummary({ trip, events }: TripBehaviorSummaryProps) 
 
   return (
     <div
-      className={`rounded-xl border px-3.5 py-3 space-y-1.5 ${
+      className={`rounded-xl border px-3.5 py-3 space-y-3 ${
         isNotAssessable
           ? 'border-amber-500/30 bg-amber-500/5'
           : 'border-border/60 bg-muted/20'
       }`}
     >
-      <p className="text-[13px] font-semibold tracking-[-0.02em] text-foreground">{title}</p>
-      <p className="text-[11px] text-muted-foreground tabular-nums">{metaParts.join(' · ')}</p>
+      <div className="space-y-1">
+        <p className="text-[13px] font-semibold tracking-[-0.02em] text-foreground">{title}</p>
+        <p className="text-[11px] tabular-nums text-muted-foreground">{metaParts.join(' · ')}</p>
 
-      {isNotAssessable ? (
-        <div className="space-y-0.5">
-          <p className="text-[10px] text-amber-700 dark:text-amber-400">
-            {assessability.note}
-          </p>
-          <p className="text-[10px] text-muted-foreground">
-            Native Events: {hasNative ? 'vorhanden' : 'keine'}
-          </p>
-        </div>
-      ) : (
-        showSeverest && (
-          <p className="text-[10px] text-muted-foreground">
-            Schwerstes Ereignis: <span className="font-medium text-foreground">{severestLabel}</span>
-          </p>
-        )
-      )}
+        {isNotAssessable ? (
+          <div className="space-y-0.5">
+            <p className="text-[10px] text-amber-700 dark:text-amber-400">{assessability.note}</p>
+          </div>
+        ) : (
+          showSeverest && (
+            <p className="text-[10px] text-muted-foreground">
+              Schwerstes Ereignis:{' '}
+              <span className="font-medium text-foreground">{severestLabel}</span>
+            </p>
+          )
+        )}
+      </div>
+
+      {events.length > 0 && <TripBehaviorCategoryBars events={events} />}
     </div>
   );
 }
