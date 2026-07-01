@@ -179,18 +179,37 @@ function RunStateBanner({
   return null;
 }
 
-function MisuseAbuseSection({ orgId, isDarkMode }: { orgId: string; isDarkMode: boolean }) {
+function MisuseAbuseSection({
+  orgId,
+  isDarkMode,
+  stationId,
+  vehiclesAtStation,
+}: {
+  orgId: string;
+  isDarkMode: boolean;
+  stationId?: string | null;
+  vehiclesAtStation: Set<string>;
+}) {
   const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
   const [loading, setLoading] = useState(true);
   const [errored, setErrored] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    const fetchLimit = stationId ? 50 : 8;
     api.misuseCases
-      .list(orgId, { limit: 8, page: 1 })
+      .list(orgId, { limit: fetchLimit, page: 1 })
       .then((res) => {
         if (cancelled) return;
-        setRows(Array.isArray(res?.data) ? res.data : []);
+        let data = Array.isArray(res?.data) ? res.data : [];
+        if (stationId) {
+          data = data.filter((row) => {
+            const vehicleId = typeof row.vehicleId === 'string' ? row.vehicleId : null;
+            if (!vehicleId) return false;
+            return vehiclesAtStation.has(vehicleId);
+          });
+        }
+        setRows(data.slice(0, 8));
         setErrored(false);
       })
       .catch(() => {
@@ -205,7 +224,7 @@ function MisuseAbuseSection({ orgId, isDarkMode }: { orgId: string; isDarkMode: 
     return () => {
       cancelled = true;
     };
-  }, [orgId]);
+  }, [orgId, stationId, vehiclesAtStation]);
 
   return (
     <section className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
@@ -260,16 +279,25 @@ export function InsightsCockpit({
   const { fleetVehicles } = useFleetVehicles();
   const { response, loading, error } = useDashboardInsights();
 
-  const vehicleStationById = useMemo(() => {
-    const m = new Map<string, string | null | undefined>();
-    for (const v of fleetVehicles) m.set(v.id, v.stationId);
-    return m;
-  }, [fleetVehicles]);
+  const vehiclesAtStation = useMemo(() => {
+    const set = new Set<string>();
+    if (!stationId) return set;
+    for (const v of fleetVehicles) {
+      if (
+        v.stationId === stationId ||
+        v.homeStationId === stationId ||
+        v.currentStationId === stationId
+      ) {
+        set.add(v.id);
+      }
+    }
+    return set;
+  }, [fleetVehicles, stationId]);
 
   const filteredInsights = useMemo(() => {
     const list = response?.insights ?? [];
-    return list.filter((i) => matchesStationIdFilter(i, stationId, vehicleStationById));
-  }, [response?.insights, stationId, vehicleStationById]);
+    return list.filter((i) => matchesStationIdFilter(i, stationId, vehiclesAtStation));
+  }, [response?.insights, stationId, vehiclesAtStation]);
 
   const { businessRisks, revenueLeakage, recommended } = useMemo(
     () => partitionInsights(filteredInsights),
@@ -363,7 +391,15 @@ export function InsightsCockpit({
         </section>
       </div>
 
-      {orgId && <MisuseAbuseSection key={orgId} orgId={orgId} isDarkMode={isDarkMode} />}
+      {orgId && (
+        <MisuseAbuseSection
+          key={`${orgId}:${stationId ?? 'all'}`}
+          orgId={orgId}
+          isDarkMode={isDarkMode}
+          stationId={stationId}
+          vehiclesAtStation={vehiclesAtStation}
+        />
+      )}
 
       <section className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
         <h3 className="text-[12px] font-semibold mb-3 text-foreground">Empfohlene Maßnahmen</h3>
