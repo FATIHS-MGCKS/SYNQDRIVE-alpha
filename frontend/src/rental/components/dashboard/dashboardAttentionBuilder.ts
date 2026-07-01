@@ -97,7 +97,10 @@ export function buildRuntimeOperationalIssues(
     dashboardInsights: filterInsightsForRuntimeAttention(input.insights, runtime),
     predictiveInsights: filterPredictiveForRuntimeAttention(input.predictiveInsights, runtime),
     vehiclesById: input.fleetById,
-  }).filter((issue) => issue.visibility.dashboardAttention && issue.domain !== 'finance');
+  }).filter(
+    // Finance/revenue/invoices belong to Business Pulse — not operational ActionQueue.
+    (issue) => issue.visibility.dashboardAttention && issue.domain !== 'finance',
+  );
 }
 
 function mergeAttentionItem(existing: ActionQueueItem, incoming: ActionQueueItem): ActionQueueItem {

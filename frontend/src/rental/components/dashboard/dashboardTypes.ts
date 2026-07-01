@@ -216,8 +216,20 @@ export type ActionQueueFilterTab =
   | 'critical'
   | 'operations'
   | 'vehicle'
-  | 'financial'
   | 'notifications';
+
+/**
+ * Filter tabs rendered by the dashboard Notifications / ActionQueue box.
+ * Finance/revenue/invoices are intentionally excluded — see
+ * `buildUnifiedActionQueue` domain contract in `actionQueueBuilder.ts`.
+ */
+export const ACTION_QUEUE_FILTER_TABS: readonly ActionQueueFilterTab[] = [
+  'all',
+  'critical',
+  'operations',
+  'vehicle',
+  'notifications',
+] as const;
 
 export interface ActionQueueEmptySummary {
   title: string;

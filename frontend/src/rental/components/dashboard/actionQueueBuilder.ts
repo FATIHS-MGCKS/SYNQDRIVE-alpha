@@ -354,6 +354,16 @@ export function mapOperationalIssueToActionQueueItem(
 }
 
 export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQueueItem[] {
+  /**
+   * Domain contract — dashboard Notifications / ActionQueue:
+   * - In scope: vehicle health, service, telemetry/OBD, bookings, handovers,
+   *   operational insights, system notifications.
+   * - Out of scope: finance, revenue, invoices — surfaced via Business Pulse
+   *   and Invoices/Billing, not this queue.
+   * Finance-domain operational issues and financial insight types are excluded
+   * below; do not add a Financial filter tab unless finance items are fully
+   * supported end-to-end in this queue.
+   */
   const runtimeBacked = usesRuntimeAttentionSource(input.dashboardRuntime);
   const normalizedIssues = runtimeBacked
     ? buildRuntimeOperationalIssues(input)
@@ -388,9 +398,7 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
         : undefined;
     const createdMs = parseTimeMs(insight.createdAt) ?? Date.now();
     const isOverdue = insight.type === 'PICKUP_OVERDUE' || severity === 'critical';
-    const source: InsightDataSource = FINANCIAL_TYPES.has(insight.type)
-      ? 'financial'
-      : 'dashboard-insights';
+    const source: InsightDataSource = 'dashboard-insights';
 
     const insightCat = insightCategory(insight.type);
     if (insightCat === 'financial') continue;
@@ -405,9 +413,6 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
     } else if (vehicleId) {
       insightGroupKey = `vehicle-ops:${vehicleId}`;
       insightGroupType = 'vehicle-ops';
-    } else if (FINANCIAL_TYPES.has(insight.type)) {
-      insightGroupKey = `finance:${insight.id}`;
-      insightGroupType = 'finance';
     }
 
     items.push({
@@ -639,7 +644,6 @@ export function filterActionQueue(
   if (tab === 'vehicle') {
     return items.filter((i) => i.category === 'vehicle' || i.category === 'health');
   }
-  if (tab === 'financial') return items.filter((i) => i.category === 'financial');
   return items.filter((i) => i.category === 'notification');
 }
 

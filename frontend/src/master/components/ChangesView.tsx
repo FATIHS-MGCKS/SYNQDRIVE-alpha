@@ -119,6 +119,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-06-30T22:10:00.000Z',
   },
   {
+    id: 'actionqueue-finance-tab-cleanup-v49142-2026-07-01',
+    version: '4.9.142',
+    title: 'V4.9.142 — ActionQueue: Financial Tab entfernt, Domain-Vertrag festgezogen',
+    summary: [
+      'Dashboard Notifications / ActionQueue: kein `Financial` Filtertab mehr — Finance läuft über Business Pulse / Invoices.',
+      'Domain-Vertrag in `buildUnifiedActionQueue` dokumentiert; Finance-Issues und `LOW_UTILIZATION` weiterhin ausgeschlossen.',
+      '`ACTION_QUEUE_FILTER_TABS` als Single Source of Truth für unterstützte Tabs.',
+      'Tests: Finance nicht in Queue; Financial Tab nicht in Filterliste.',
+    ],
+    reason:
+      'Financial Tab war sichtbar, obwohl Finance-Issues bewusst aus der ActionQueue gefiltert werden — wirkte tot/inkonsistent.',
+    previousBehavior:
+      'Filtertabs inkl. `Financial`, aber `buildUnifiedActionQueue` schließt `domain === finance` und financial Insights aus.',
+    details:
+      'Geändert: `ActionQueue.tsx`, `actionQueueBuilder.ts`, `actionQueueGrouping.ts`, `dashboardTypes.ts`, `dashboardAttentionBuilder.ts`, Tests. Keine Business-Pulse-/Invoice-Änderung.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-01T16:00:00.000Z',
+  },
+  {
     id: 'insights-page-kpi-cleanup-v49126-2026-06-30',
     version: '4.9.126',
     title: 'V4.9.126 — Insights Page: KPI-Standard & redundante Refresh-Buttons entfernt',

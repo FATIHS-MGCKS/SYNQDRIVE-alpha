@@ -231,7 +231,6 @@ function categoryMatches(
 ): boolean {
   if (tab === 'operations') return category === 'operations' || category === 'handover';
   if (tab === 'vehicle') return category === 'vehicle' || category === 'health';
-  if (tab === 'financial') return category === 'financial';
   if (tab === 'notifications') return category === 'notification';
   return true;
 }
