@@ -1,5 +1,16 @@
 import { useMemo, useState } from 'react';
-import { Calculator, Car, Layers, Package, Plus, RefreshCw, Sparkles } from 'lucide-react';
+import {
+  AlertTriangle,
+  Calculator,
+  Car,
+  Clock,
+  Layers,
+  Package,
+  Plus,
+  Sparkles,
+  TrendingUp,
+  type LucideIcon,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
@@ -7,6 +18,7 @@ import { usePriceTariffs } from '../../hooks/usePriceTariffs';
 import { PageHeader } from '../../../components/patterns';
 import { EmptyState, ErrorState, SkeletonMetricGrid } from '../../../components/patterns/states';
 import { Button } from '../../../components/ui/button';
+import { cn } from '../../../components/ui/utils';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { TariffGroupsTab } from './TariffGroupsTab';
 import { VehicleAssignmentsTab } from './VehicleAssignmentsTab';
@@ -28,6 +40,85 @@ type TabId = 'groups' | 'assignments' | 'extras' | 'simulator' | 'rules';
 
 interface PriceTariffsPageProps {
   isDarkMode: boolean;
+}
+
+interface TariffKpiCardProps {
+  label: string;
+  value: string | number;
+  icon: LucideIcon;
+  tone?: 'critical' | 'watch' | 'success' | 'info';
+  subdued?: boolean;
+  accent?: boolean;
+}
+
+function TariffKpiCard({
+  label,
+  value,
+  icon: MetricIcon,
+  tone,
+  subdued = false,
+  accent,
+}: TariffKpiCardProps) {
+  const hasAccent = accent ?? (typeof value === 'number' ? value > 0 : false);
+  const isCritical = tone === 'critical' && hasAccent;
+  const isWatch = tone === 'watch' && hasAccent;
+  const isSuccess = tone === 'success' && hasAccent;
+  const isInfo = tone === 'info' && hasAccent;
+  const isEmpty = value === '—';
+
+  return (
+    <div
+      className={cn(
+        'relative overflow-hidden border text-left',
+        'min-h-[96px] rounded-lg bg-card/55 px-2.5 py-2',
+        isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
+        isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
+        isSuccess && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
+        isInfo && 'border-border/45 bg-card/55',
+        !isCritical && !isWatch && !isSuccess && !isInfo && 'border-border/45',
+      )}
+      aria-label={`${label}: ${value}`}
+    >
+      <div className="flex h-full items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-[10.5px] font-medium tracking-[-0.01em] text-muted-foreground">
+            {label}
+          </p>
+          <p
+            className={cn(
+              'mt-1 truncate text-[21px] font-semibold tabular-nums leading-none tracking-[-0.03em]',
+              (subdued || isEmpty) && 'text-muted-foreground',
+              isCritical && 'text-[color:var(--status-critical)]',
+              isSuccess && 'text-[color:var(--status-positive)]',
+              isWatch && 'text-[color:var(--status-watch)]',
+              isInfo && 'text-[color:var(--status-info)]',
+              !subdued && !isEmpty && !isCritical && !isSuccess && !isWatch && !isInfo && 'text-foreground',
+            )}
+          >
+            {value}
+          </p>
+        </div>
+        <div
+          className={cn(
+            'flex h-6 w-6 shrink-0 items-center justify-center rounded-md',
+            isCritical && 'sq-tone-critical',
+            isWatch && 'sq-tone-watch',
+            isSuccess && 'sq-tone-success',
+            isInfo && 'sq-tone-info',
+            !isCritical && !isWatch && !isSuccess && !isInfo && 'bg-muted text-muted-foreground',
+          )}
+        >
+          <MetricIcon className="h-3 w-3" />
+        </div>
+      </div>
+      {isWatch ? (
+        <span
+          className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[color:var(--status-watch)]"
+          aria-hidden
+        />
+      ) : null}
+    </div>
+  );
 }
 
 export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
@@ -114,13 +205,10 @@ export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
     <div className="space-y-5">
       <PageHeader
         title={t('priceTariffs.title')}
+        className="mb-4 flex-row items-center justify-between gap-2 sm:mb-5 sm:items-start sm:gap-4"
         actions={(
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="neutral" size="sm" onClick={() => void reload()}>
-              <RefreshCw className="h-3.5 w-3.5" />
-              Refresh
-            </Button>
-            <Button type="button" variant="neutral" size="sm" onClick={() => setTab('simulator')}>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+            <Button type="button" variant="secondary" size="sm" onClick={() => setTab('simulator')}>
               <Calculator className="h-3.5 w-3.5" />
               Simulate
             </Button>
@@ -132,40 +220,44 @@ export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
               onClick={() => void handleCreateGroup()}
             >
               <Plus className="h-3.5 w-3.5" />
-              Create tariff group
+              <span className="hidden min-[440px]:inline">Create tariff group</span>
+              <span className="min-[440px]:hidden">Create</span>
             </Button>
           </div>
         )}
       />
 
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-6">
-        {[
-          { label: 'Active groups', value: kpis.activeGroups },
-          { label: 'Vehicles assigned', value: kpis.assigned },
-          { label: 'Without tariff', value: kpis.unassigned, warn: kpis.unassigned > 0 },
-          {
-            label: 'Avg. daily rate',
-            value: kpis.avgDailyGross > 0 ? formatPriceCents(kpis.avgDailyGross) : '—',
-          },
-          { label: 'Incomplete', value: kpis.incomplete, warn: kpis.incomplete > 0 },
-          {
-            label: 'Last updated',
-            value: kpis.lastUpdated
-              ? new Date(kpis.lastUpdated).toLocaleDateString('de-DE')
-              : '—',
-          },
-        ].map((k) => (
-          <div key={k.label} className="sq-card rounded-2xl border border-border/50 p-3 shadow-[var(--shadow-1)]">
-            <p className="text-[10px] font-semibold text-muted-foreground">{k.label}</p>
-            <p
-              className={`mt-1 text-[18px] font-bold tabular-nums ${
-                k.warn ? 'text-[color:var(--status-warning)]' : 'text-foreground'
-              }`}
-            >
-              {k.value}
-            </p>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-6">
+        <TariffKpiCard label="Active groups" value={kpis.activeGroups} icon={Layers} tone="info" accent={kpis.activeGroups > 0} />
+        <TariffKpiCard label="Vehicles assigned" value={kpis.assigned} icon={Car} tone="success" accent={kpis.assigned > 0} />
+        <TariffKpiCard
+          label="Without tariff"
+          value={kpis.unassigned}
+          icon={AlertTriangle}
+          tone="watch"
+          accent={kpis.unassigned > 0}
+        />
+        <TariffKpiCard
+          label="Avg. daily rate"
+          value={kpis.avgDailyGross > 0 ? formatPriceCents(kpis.avgDailyGross) : '—'}
+          icon={TrendingUp}
+          tone="info"
+          accent={kpis.avgDailyGross > 0}
+          subdued={kpis.avgDailyGross <= 0}
+        />
+        <TariffKpiCard
+          label="Incomplete"
+          value={kpis.incomplete}
+          icon={Sparkles}
+          tone="watch"
+          accent={kpis.incomplete > 0}
+        />
+        <TariffKpiCard
+          label="Last updated"
+          value={kpis.lastUpdated ? new Date(kpis.lastUpdated).toLocaleDateString('de-DE') : '—'}
+          icon={Clock}
+          subdued={!kpis.lastUpdated}
+        />
       </div>
 
       <div className="flex flex-wrap gap-1 border-b border-border/50 pb-1">
