@@ -10,6 +10,8 @@
   `tailscale-daemon.sh`, `cloud-agent-verify-vps.sh`.
 - **Added** `.cursor/scripts/cloud-agent-deploy.sh` — commit/push preflight + SSH deploy
   via `vps-deploy-release.sh` + public health verification (parity with local agent flow).
+- **Added** `.cursor/scripts/cloud-agent-ssh-common.sh` — normalizes Cursor-delivered SSH
+  secrets (bare base64 without PEM headers) and trims whitespace from `CLOUD_AGENT_SSH_USER`.
 - Restored root `AGENTS.md` — dashboard checklist, secret inventory, deploy runbook.
 
 ## Architektur (runtime / data-flow deltas)
@@ -26,6 +28,8 @@
   VPS `vps-deploy-release.sh` → fresh git clone from GitHub `main` → build → PM2.
   Requires `main` pushed before deploy; `frontend.env` symlink on VPS ensures
   Mapbox token at build time.
+- **SSH secret normalization**: `cloud-agent-ssh-common.sh` wraps bare-base64 keys with
+  OpenSSH PEM headers at materialization time; `CLOUD_AGENT_SSH_USER` is trimmed before use.
 - **Network allowlist** (dashboard Security): `mein-vps.internal`, `app.synqdrive.eu`,
   plus required Cursor artifact S3 host; Tailscale ACLs enforce port-level access.
 - **Local infra fallback** remains `backend/docker-compose.yml` inside the agent VM
