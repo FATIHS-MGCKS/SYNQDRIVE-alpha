@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'brandlogo-cardog-migration-v49136-2026-07-01',
+    version: '4.9.136',
+    title: 'V4.9.136 — BrandLogo auf @cardog-icons/react (CDN entfernt)',
+    summary: [
+      '`BrandLogo` rendert OEM-Icons über `@cardog-icons/react` (Color in Light, Dark/Mono in Dark) statt externer PNG-CDN-Requests.',
+      'Neue Props: `variant` (`icon` | `logo` | `logoHorizontal` | `wordmark`), `tone` (`auto` | `color` | `dark`), `className`, `title`; Defaults `size=36`, `variant=icon`, `tone=auto`.',
+      '`getBrandFromModel` + `resolveSynqDriveBrandKey` mit Alias-Map und erweiterten Marken; unsupported Marken (Škoda, Opel, Renault, Peugeot, Seat, Citroën, Suzuki) → neutrales `currentColor`-Fallback.',
+    ],
+    reason:
+      'Cardog Icons als primäre Markenquelle; keine CSS-Filter/Invert mehr, keine jsdelivr car-logos-dataset Abhängigkeit für unterstützte Marken.',
+    previousBehavior:
+      'BrandLogo lud PNGs von cdn.jsdelivr.net (car-logos-dataset) und invertierte sie per CSS-Filter im Dark Mode.',
+    details:
+      'Geändert: `BrandLogo.tsx`, `BrandLogo.test.ts`. API `BrandLogo` + `getBrandFromModel` bleibt kompatibel; `loading`-Prop ist deprecated no-op.',
+    affectsArchitecture: true,
+    module: 'Rental UI',
+    createdAt: '2026-07-01T10:30:00.000Z',
+  },
+  {
     id: 'dimo-agents-sdk-alignment-v49135-2026-07-01',
     version: '4.9.135',
     title: 'V4.9.135 — DIMO Agents SDK Alignment & Connectivity Health',
