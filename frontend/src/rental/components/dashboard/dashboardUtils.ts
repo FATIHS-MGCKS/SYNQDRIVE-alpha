@@ -1,4 +1,9 @@
 import type { StatusTone } from '../../../components/patterns';
+import {
+  dashboardStationIdToFilter,
+  filterFleetVehiclesByStationFilter,
+  vehicleMatchesStationFilter,
+} from '../../lib/fleet-station-filter';
 import type { VehicleData } from '../../data/vehicles';
 import type { DashboardInsight } from '../../DashboardInsightsContext';
 import { countFleetStatusTab } from '../../lib/vehicle-status';
@@ -66,22 +71,11 @@ export function filterFleetByStation(
   vehicles: VehicleData[],
   stationId: string | null,
 ): VehicleData[] {
-  if (!stationId) return vehicles;
-  return vehicles.filter(
-    (v) =>
-      v.stationId === stationId ||
-      v.homeStationId === stationId ||
-      v.currentStationId === stationId,
-  );
+  return filterFleetVehiclesByStationFilter(vehicles, dashboardStationIdToFilter(stationId));
 }
 
 export function countVehiclesAtStation(vehicles: VehicleData[], stationId: string): number {
-  return vehicles.filter(
-    (v) =>
-      v.stationId === stationId ||
-      v.homeStationId === stationId ||
-      v.currentStationId === stationId,
-  ).length;
+  return vehicles.filter((vehicle) => vehicleMatchesStationFilter(vehicle, stationId)).length;
 }
 
 export function buildVehicleLookup(fleetVehicles: VehicleData[]) {
@@ -447,7 +441,7 @@ export function buildControlCenterKpis(input: {
   return [
     {
       id: 'ready-to-rent',
-      label: input.locale === 'de' ? 'Bereit' : 'Ready to Rent',
+      label: input.locale === 'de' ? 'Bereit' : 'Ready',
       displayValue: ready == null ? noData : String(ready),
       numericValue: ready,
       tone: ready != null && ready > 0 ? 'success' : 'neutral',

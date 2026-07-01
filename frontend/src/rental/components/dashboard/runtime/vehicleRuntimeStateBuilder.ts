@@ -548,7 +548,7 @@ function buildReadyReasons(locale: string): RuntimeReason[] {
     createRuntimeReason({
       category: 'rental',
       severity: 'info',
-      title: locale === 'de' ? 'Bereit zur Vermietung' : 'Ready to rent',
+      title: locale === 'de' ? 'Bereit' : 'Ready',
       source: 'vehicle-runtime',
       blocking: false,
     }),

@@ -96,9 +96,7 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
   const selectedVehicleId = useFleetMapStore(selectFleetMapSelectedVehicleId);
   const setStationFilter = useFleetMapStore((state) => state.setStationFilter);
   const setSelectedVehicleId = useFleetMapStore((state) => state.setSelectedVehicleId);
-  const fetchFleetMap = useFleetMapStore((state) => state.fetchFleetMap);
-
-  const { healthMap } = useFleetVehicles();
+  const { healthMap, refresh: refreshFleetMap } = useFleetVehicles();
 
   const [stationsApi, setStationsApi] = useState<Station[]>([]);
   useEffect(() => {
@@ -195,16 +193,9 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
     else rowRefs.current.delete(vehicleId);
   }, []);
 
-  useEffect(() => {
-    if (!orgId) return;
-    fetchFleetMap(orgId);
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        fetchFleetMap(orgId);
-      }
-    }, refreshIntervalMs);
-    return () => clearInterval(interval);
-  }, [orgId, fetchFleetMap, refreshIntervalMs]);
+  const handleRefreshNow = () => {
+    void refreshFleetMap();
+  };
 
   const [countdown, setCountdown] = useState(Math.ceil(refreshIntervalMs / 1000));
   useEffect(() => {
@@ -275,10 +266,6 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
     },
     [baseContexts, selectFleetVehicle],
   );
-
-  const handleRefreshNow = () => {
-    if (orgId) fetchFleetMap(orgId);
-  };
 
   const selectedStation = stationId || ALL_STATIONS_FILTER;
   const selectedStationLabel =

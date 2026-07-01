@@ -6,6 +6,7 @@ import {
   NO_LOCATION_FILTER,
   NO_STATION_FILTER,
 } from '../stores/useFleetMapStore';
+import { filterFleetVehiclesByStationFilter } from './fleet-station-filter';
 import {
   deriveFleetVisualState,
   vehicleHasFleetLocation,
@@ -133,14 +134,7 @@ export function filterFleetByStation(
   vehicles: VehicleData[],
   stationFilter: string,
 ): VehicleData[] {
-  if (stationFilter === ALL_STATIONS_FILTER) return vehicles;
-  if (stationFilter === NO_STATION_FILTER) {
-    return vehicles.filter((v) => !v.stationId);
-  }
-  if (stationFilter === NO_LOCATION_FILTER) {
-    return vehicles.filter((v) => !vehicleHasFleetLocation(v));
-  }
-  return vehicles.filter((v) => v.stationId === stationFilter);
+  return filterFleetVehiclesByStationFilter(vehicles, stationFilter);
 }
 
 function searchableHaystack(ctx: FleetVehicleContext): string {

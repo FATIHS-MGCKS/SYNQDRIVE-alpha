@@ -43,7 +43,7 @@ function telemetryLabel(state: VehicleRuntimeState | undefined, de: boolean): st
 function runtimeStateLabel(state: VehicleRuntimeState | undefined, de: boolean): string | null {
   if (!state) return null;
   const readiness: Record<VehicleRuntimeState['rentalReadiness'], [string, string]> = {
-    ready: ['Ready to rent', 'Mietbereit'],
+    ready: ['Ready', 'Bereit'],
     not_ready: ['Not ready', 'Nicht bereit'],
     blocked: ['Blocked', 'Blockiert'],
   };

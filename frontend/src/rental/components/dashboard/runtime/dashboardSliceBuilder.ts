@@ -297,7 +297,7 @@ function insightVehicleIds(insight: DashboardInsight): string[] {
 
 function buildEmptySlice(id: DashboardSliceId, locale: string): DashboardSlice {
   const titles: Record<DashboardSliceId, string> = {
-    'ready-to-rent': label(locale, 'Bereit zur Vermietung', 'Ready to rent'),
+    'ready-to-rent': label(locale, 'Bereit', 'Ready'),
     'active-rented': label(locale, 'Aktiv vermietet', 'Active rented'),
     'due-soon': label(locale, 'Bald fällig', 'Due soon'),
     'overdue-returns': label(locale, 'Überfällige Rückgaben', 'Overdue returns'),
@@ -333,8 +333,8 @@ function buildReadyToRentSlice(states: VehicleRuntimeState[], locale: string): D
       `${available.length} available · ${notReady.length} not ready`,
     ),
     groups: [
-      group('ready-now', label(locale, 'Jetzt bereit', 'Ready now'), rows),
-      group('available-but-not-ready', label(locale, 'Verfügbar, aber nicht bereit', 'Available but not ready'), secondaryRows),
+      group('ready-now', label(locale, 'Bereit', 'Ready'), rows),
+      group('available-but-not-ready', label(locale, 'Nicht bereit', 'Not ready'), secondaryRows),
       group(
         'blocked-excluded',
         label(locale, 'Blockiert ausgeschlossen', 'Blocked excluded'),

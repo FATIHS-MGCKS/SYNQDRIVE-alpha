@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-canonical-list-v49133-2026-07-01',
+    version: '4.9.133',
+    title: 'V4.9.133 — Kanonische Fleet-Liste & Count-Sync',
+    summary: [
+      'Fleet-Page-Quelle (`GET /fleet-map` via `useFleetMapStore`) ist jetzt die einzige Fleet-Wahrheit für Dashboard, FleetContext und Refresh.',
+      'Station-Filter zwischen Dashboard und Fleet synchronisiert (`homeStationId`/`currentStationId`/`stationId`); KPI-Wortlaut vereinheitlicht: available, ready, not ready.',
+    ],
+    reason:
+      'Parallele Pipelines (`/vehicles` vs `/fleet-map`), unterschiedliche Station-Filter und fehlende Mapper-Felder führten zu abweichenden Fleet-Counts zwischen Dashboard und Fleet-Page.',
+    previousBehavior:
+      'FleetContext polte `/vehicles`; FleetView polte `/fleet-map` separat; Dashboard-Refresh aktualisierte nur `/vehicles`; Station-Filter matchte nur `stationId` auf der Fleet-Page.',
+    details:
+      'Geändert: `FleetContext.tsx`, `useFleetMapStore.ts`, `fleet-station-filter.ts`, `fleet-operator-panel.ts`, `FleetView.tsx`, `useDashboardViewModel.ts`, Dashboard-Runtime-Labels. Keine Backend-Änderung.',
+    affectsArchitecture: true,
+    module: 'Rental Fleet',
+    createdAt: '2026-07-01T07:20:00.000Z',
+  },
+  {
     id: 'fleet-mobile-ui-topbar-v49132-2026-07-01',
     version: '4.9.132',
     title: 'V4.9.132 — Fleet Health Mobile UI & Topbar Login Label',

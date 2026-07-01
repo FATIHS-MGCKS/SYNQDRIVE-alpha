@@ -2,6 +2,11 @@ import { create } from 'zustand';
 import type { Feature, Point } from 'geojson';
 import { api, type FleetMapVehicleResponse } from '../../lib/api';
 import {
+  persistDashboardStationId,
+  stationFilterToDashboardId,
+  vehicleMatchesStationFilter,
+} from '../lib/fleet-station-filter';
+import {
   buildFleetMapGeoJson,
   type FleetMapFeatureVisualProperties,
   type FleetMapVisualGeoJson,
@@ -106,6 +111,21 @@ function normalizeDisplayIgnition(raw: unknown): VehicleDisplayIgnition | undefi
   return undefined;
 }
 
+function normalizeTelemetryFreshness(
+  raw: unknown,
+): VehicleData['telemetryFreshness'] {
+  if (
+    raw === 'live' ||
+    raw === 'standby' ||
+    raw === 'signal_delayed' ||
+    raw === 'offline' ||
+    raw === 'no_signal'
+  ) {
+    return raw;
+  }
+  return undefined;
+}
+
 function mapFleetVehicle(raw: FleetMapVehicleResponse): FleetMapVehicle {
   const fuelType = normalizeFuelType(raw.fuelType);
   const status = normalizeStatus(raw.status);
@@ -130,6 +150,8 @@ function mapFleetVehicle(raw: FleetMapVehicleResponse): FleetMapVehicle {
       ? raw.maintenanceReasonCode
       : null
   ) as FleetMaintenanceReasonCode | null;
+  const homeStationId = raw.homeStationId ?? raw.stationId ?? null;
+  const currentStationId = raw.currentStationId ?? null;
 
   return {
     id: raw.id,
@@ -138,6 +160,9 @@ function mapFleetVehicle(raw: FleetMapVehicleResponse): FleetMapVehicle {
     model: raw.model || raw.make || raw.licensePlate || 'Unknown vehicle',
     year: raw.year ?? 0,
     station: raw.stationName ?? '',
+    homeStationId,
+    currentStationId,
+    expectedStationId: raw.expectedStationId ?? null,
     fuelType,
     status,
     cleaningStatus,
@@ -176,11 +201,12 @@ function mapFleetVehicle(raw: FleetMapVehicleResponse): FleetMapVehicle {
     signalAgeMs: toFiniteNumber(raw.signalAgeMs),
     isFresh: typeof raw.isFresh === 'boolean' ? raw.isFresh : undefined,
     onlineStatus: normalizeOnlineStatus(raw.onlineStatus),
+    telemetryFreshness: normalizeTelemetryFreshness(raw.telemetryFreshness),
     displayState: normalizeDisplayState(raw.displayState),
     displayIgnition: normalizeDisplayIgnition(raw.displayIgnition),
     isLiveTracking:
       typeof raw.isLiveTracking === 'boolean' ? raw.isLiveTracking : undefined,
-    stationId: raw.stationId ?? null,
+    stationId: homeStationId,
     stationName: raw.stationName ?? null,
     heading: toFiniteNumber(raw.heading) ?? null,
     lastSeenAt: raw.lastSeenAt ?? null,
@@ -253,7 +279,13 @@ export const useFleetMapStore = create<FleetMapState>((set) => ({
         )
         .map(mapFleetVehicle);
       const stationIds = new Set(
-        vehicles.map((vehicle) => vehicle.stationId).filter(Boolean),
+        vehicles
+          .flatMap((vehicle) => [
+            vehicle.stationId,
+            vehicle.homeStationId,
+            vehicle.currentStationId,
+          ])
+          .filter((id): id is string => typeof id === 'string' && id.length > 0),
       );
 
       set((state) => {
@@ -285,8 +317,11 @@ export const useFleetMapStore = create<FleetMapState>((set) => ({
       });
     }
   },
-  setStationFilter: (stationId: string) =>
-    set({ filters: { stationId: stationId || ALL_STATIONS_FILTER } }),
+  setStationFilter: (stationId: string) => {
+    const nextFilter = stationId || ALL_STATIONS_FILTER;
+    persistDashboardStationId(stationFilterToDashboardId(nextFilter));
+    set({ filters: { stationId: nextFilter } });
+  },
   setSelectedVehicleId: (selectedVehicleId: string | null) =>
     set({ selectedVehicleId }),
 }));
@@ -321,12 +356,16 @@ export const selectFleetStationOptions = (
 
 export const selectVisibleFleetVehicles = (
   state: FleetMapState,
-): FleetMapVehicle[] => {
-  if (state.filters.stationId === ALL_STATIONS_FILTER) return state.vehicles;
-  return state.vehicles.filter(
-    (vehicle) => vehicle.stationId === state.filters.stationId,
-  );
-};
+): FleetMapVehicle[] =>
+  filterFleetVehiclesByStationFilter(state.vehicles, state.filters.stationId);
+
+function filterFleetVehiclesByStationFilter(
+  vehicles: FleetMapVehicle[],
+  stationFilter: string,
+): FleetMapVehicle[] {
+  if (stationFilter === ALL_STATIONS_FILTER) return vehicles;
+  return vehicles.filter((vehicle) => vehicleMatchesStationFilter(vehicle, stationFilter));
+}
 
 export const selectFleetGeoJson = (state: FleetMapState): FleetMapGeoJson =>
   buildFleetMapGeoJson(selectVisibleFleetVehicles(state));

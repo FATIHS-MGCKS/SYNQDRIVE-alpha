@@ -124,7 +124,7 @@ interface RuntimeBoardSection {
 
 function sectionLabel(sliceId: DashboardSliceId, de: boolean): string {
   const labels: Record<DashboardSliceId, [string, string]> = {
-    'ready-to-rent': ['Ready to Rent', 'Mietbereit'],
+    'ready-to-rent': ['Ready', 'Bereit'],
     'active-rented': ['Active / Rented', 'Aktiv / Vermietet'],
     'due-soon': ['Due Soon', 'Bald fällig'],
     'overdue-returns': ['Overdue Returns', 'Überfällige Rückgaben'],
@@ -159,8 +159,8 @@ function buildSections(runtime: DashboardRuntimeModel, de: boolean): RuntimeBoar
     {
       id: 'available-but-not-ready',
       sliceId: 'ready-to-rent',
-      title: de ? 'Verfügbar, aber nicht bereit' : 'Available but not ready',
-      subtitle: de ? 'Aus dem Ready-Slice erklärt' : 'Explained by the Ready slice',
+      title: de ? 'Nicht bereit' : 'Not ready',
+      subtitle: de ? 'Verfügbar, aber nicht mietbereit' : 'Available but not rent-ready',
       count: notReadyRows.length,
       rows: notReadyRows,
     },

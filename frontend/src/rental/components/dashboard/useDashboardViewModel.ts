@@ -18,7 +18,11 @@ import { useRentalOrg } from '../../RentalContext';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
 import type { DashboardNotificationItem } from '../BusinessInsightsBox';
 import {
-  STATION_FILTER_STORAGE_KEY,
+  dashboardStationIdToFilter,
+  stationFilterToDashboardId,
+} from '../../lib/fleet-station-filter';
+import { useFleetMapStore } from '../../stores/useFleetMapStore';
+import {
   type DashboardInvoice,
   type DashboardViewModel,
   type DashboardViewProps,
@@ -157,13 +161,12 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   const [invoicesLoaded, setInvoicesLoaded] = useState(false);
   const [invoicesError, setInvoicesError] = useState(false);
 
-  const [selectedStationId, setSelectedStationId] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem(STATION_FILTER_STORAGE_KEY);
-    } catch {
-      return null;
-    }
-  });
+  const stationFilter = useFleetMapStore((state) => state.filters.stationId);
+  const setStationFilter = useFleetMapStore((state) => state.setStationFilter);
+  const selectedStationId = useMemo(
+    () => stationFilterToDashboardId(stationFilter),
+    [stationFilter],
+  );
   const [stationsApi, setStationsApi] = useState<Station[]>([]);
   const [isStationDropdownOpen, setIsStationDropdownOpen] = useState(false);
   const stationDropdownRef = useRef<HTMLDivElement | null>(null);
@@ -294,6 +297,11 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     };
   }, [orgId]);
 
+  const applyStationFilter = useCallback((stationId: string | null) => {
+    setStationFilter(dashboardStationIdToFilter(stationId));
+    setIsStationDropdownOpen(false);
+  }, [setStationFilter]);
+
   useEffect(() => {
     if (!selectedStationId) return;
     if (stationsApi.length === 0) return;
@@ -301,32 +309,11 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     if (byId) return;
     const byLegacyName = stationsApi.find((s) => s.name === selectedStationId);
     if (byLegacyName) {
-      setSelectedStationId(byLegacyName.id);
-      try {
-        localStorage.setItem(STATION_FILTER_STORAGE_KEY, byLegacyName.id);
-      } catch {
-        /* ignore */
-      }
+      applyStationFilter(byLegacyName.id);
       return;
     }
-    setSelectedStationId(null);
-    try {
-      localStorage.removeItem(STATION_FILTER_STORAGE_KEY);
-    } catch {
-      /* ignore */
-    }
-  }, [stationsApi, selectedStationId]);
-
-  const applyStationFilter = useCallback((stationId: string | null) => {
-    setSelectedStationId(stationId);
-    setIsStationDropdownOpen(false);
-    try {
-      if (stationId) localStorage.setItem(STATION_FILTER_STORAGE_KEY, stationId);
-      else localStorage.removeItem(STATION_FILTER_STORAGE_KEY);
-    } catch {
-      /* ignore */
-    }
-  }, []);
+    applyStationFilter(null);
+  }, [stationsApi, selectedStationId, applyStationFilter]);
 
   const setOperatorFocusMode = useCallback((enabled: boolean) => {
     setOperatorFocusModeState(enabled);
