@@ -7,6 +7,14 @@ export type InsightDisplayCategory =
   | 'MISUSE_ABUSE'
   | 'OPERATIONAL_RECOMMENDATION';
 
+const KNOWN_CATEGORIES = new Set<InsightDisplayCategory>([
+  'BUSINESS_RISK',
+  'REVENUE_LEAKAGE',
+  'FINANCIAL',
+  'MISUSE_ABUSE',
+  'OPERATIONAL_RECOMMENDATION',
+]);
+
 const RAW_HEALTH_TYPES = new Set<InsightType>([
   'BATTERY_CRITICAL',
   'TIRE_CRITICAL',
@@ -38,7 +46,9 @@ export function isVisibleOnInsightsPage(insight: DashboardInsight): boolean {
 export function resolveInsightCategory(insight: DashboardInsight): InsightDisplayCategory {
   const m = insight.metrics as Record<string, unknown> | null | undefined;
   const cat = m?.category;
-  if (cat === 'BUSINESS_RISK' || cat === 'REVENUE_LEAKAGE') return cat;
+  if (typeof cat === 'string' && KNOWN_CATEGORIES.has(cat as InsightDisplayCategory)) {
+    return cat as InsightDisplayCategory;
+  }
   if (REVENUE_LEAKAGE_TYPES.has(insight.type)) return 'REVENUE_LEAKAGE';
   if (BUSINESS_RISK_TYPES.has(insight.type)) return 'BUSINESS_RISK';
   return 'OPERATIONAL_RECOMMENDATION';
@@ -68,28 +78,81 @@ export function insightRecommendation(insight: DashboardInsight): string {
 
 export function financialImpactEur(insight: DashboardInsight): number | null {
   const m = insight.metrics as Record<string, unknown> | null | undefined;
-  const cents = m?.financialImpactCents ?? m?.lostRevenueEur;
-  if (typeof cents === 'number' && Number.isFinite(cents)) {
-    return cents > 1000 ? Math.round(cents / 100) : Math.round(cents);
+  if (!m) return null;
+
+  // Booking-scoped revenue risk from health gate — always stored in cents.
+  if (typeof m.financialImpactCents === 'number' && Number.isFinite(m.financialImpactCents)) {
+    return Math.round(m.financialImpactCents / 100);
+  }
+
+  // Utilization / leakage detectors publish lost revenue already in euros.
+  if (typeof m.lostRevenueEur === 'number' && Number.isFinite(m.lostRevenueEur)) {
+    return Math.round(m.lostRevenueEur);
+  }
+
+  return null;
+}
+
+function stationIdFromInsightContext(insight: DashboardInsight): string | null {
+  const m = insight.metrics as Record<string, unknown> | null | undefined;
+  const tc = insight.timeContext;
+  const candidates = [
+    m?.stationId,
+    tc?.pickupStationId,
+    tc?.returnStationId,
+    tc?.stationId,
+  ];
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.trim()) return c;
   }
   return null;
 }
 
+function resolveVehicleId(
+  insight: DashboardInsight,
+  vehiclesAtStation: Set<string>,
+): string | null {
+  const ids = insight.entityIds ?? [];
+  return ids.find((id) => vehiclesAtStation.has(id)) ?? null;
+}
+
+/**
+ * Station filter for dashboard insights.
+ * `vehiclesAtStation` must contain vehicle IDs assigned to the active station
+ * (stationId/homeStationId/currentStationId), built from the fleet context.
+ */
 export function matchesStationIdFilter(
   insight: DashboardInsight,
   stationId: string | null,
-  vehicleStationById: Map<string, string | null | undefined>,
+  vehiclesAtStation: Set<string>,
 ): boolean {
   if (!stationId) return true;
-  const ids = insight.entityIds ?? [];
-  if (ids.length === 0) return true;
+
+  if (insight.entityScope === 'FLEET') return true;
+
+  if (insight.entityScope === 'STATION') {
+    const ids = insight.entityIds ?? [];
+    if (ids.length === 0) return false;
+    return ids.includes(stationId);
+  }
+
   const m = insight.metrics as Record<string, unknown> | null | undefined;
-  const vehicleId =
-    (typeof m?.affectedVehicleId === 'string' ? m.affectedVehicleId : null) ??
-    ids.find((id) => vehicleStationById.has(id));
-  if (!vehicleId) return true;
-  const vs = vehicleStationById.get(vehicleId);
-  return vs === stationId;
+  if (typeof m?.affectedVehicleId === 'string' && m.affectedVehicleId) {
+    return vehiclesAtStation.has(m.affectedVehicleId);
+  }
+
+  const vehicleId = resolveVehicleId(insight, vehiclesAtStation);
+  if (vehicleId) return true;
+
+  const contextualStationId = stationIdFromInsightContext(insight);
+  if (contextualStationId) {
+    return contextualStationId === stationId;
+  }
+
+  const ids = insight.entityIds ?? [];
+  if (ids.length === 0) return false;
+
+  return false;
 }
 
 export function partitionInsights(insights: DashboardInsight[]) {
@@ -101,8 +164,11 @@ export function partitionInsights(insights: DashboardInsight[]) {
   for (const i of visible) {
     const cat = resolveInsightCategory(i);
     if (cat === 'BUSINESS_RISK') businessRisks.push(i);
-    else if (cat === 'REVENUE_LEAKAGE') revenueLeakage.push(i);
-    if (i.severity === 'CRITICAL' || i.severity === 'WARNING') {
+    else if (cat === 'REVENUE_LEAKAGE' || cat === 'FINANCIAL') revenueLeakage.push(i);
+
+    if (cat === 'OPERATIONAL_RECOMMENDATION') {
+      recommended.push(i);
+    } else if (cat !== 'MISUSE_ABUSE' && (i.severity === 'CRITICAL' || i.severity === 'WARNING')) {
       recommended.push(i);
     }
   }
