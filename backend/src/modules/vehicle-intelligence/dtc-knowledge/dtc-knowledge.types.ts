@@ -85,8 +85,14 @@ export interface DtcEnrichmentJobData {
   engineCode?: string | null;
 }
 
-/** Statuses that mean "already handled" — must not be re-enqueued. */
-export const NON_REQUEUEABLE_STATUSES: DtcKnowledgeStatus[] = ['QUEUED', 'READY'];
-
 /** PROCESSING rows older than this are treated as stale and may be re-queued. */
 export const DTC_PROCESSING_STALE_MS = 30 * 60 * 1000;
+
+/**
+ * QUEUED rows older than this had their BullMQ job lost or never consumed — allow
+ * re-enqueue so the UI does not spin forever on "AI-Erklärung wird vorbereitet".
+ */
+export const DTC_QUEUED_STALE_MS = 10 * 60 * 1000;
+
+/** FAILED rows older than this may be auto-retried on the next active-fault view. */
+export const DTC_FAILED_AUTO_RETRY_MS = 24 * 60 * 60 * 1000;

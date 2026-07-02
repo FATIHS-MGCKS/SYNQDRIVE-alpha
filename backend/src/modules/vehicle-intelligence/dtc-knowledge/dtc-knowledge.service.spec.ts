@@ -121,15 +121,47 @@ describe('DtcKnowledgeService', () => {
     expect(dto.source).toBe('GENERIC');
   });
 
-  it('does NOT auto-requeue a FAILED code on the active-fault path', async () => {
+  it('does NOT auto-requeue a recent FAILED code on the active-fault path', async () => {
     const { prisma, queue, service } = makeHarness();
-    prisma.dtcKnowledge.findUnique.mockResolvedValue(genericRow({ enrichmentStatus: 'FAILED' }));
+    prisma.dtcKnowledge.findUnique.mockResolvedValue(
+      genericRow({ enrichmentStatus: 'FAILED', updatedAt: new Date() }),
+    );
 
     const dto = await service.getOrQueueForActiveFault('P0675', NO_VEHICLE);
 
     expect(queue.add).not.toHaveBeenCalled();
     expect(dto.status).toBe('FAILED');
     expect(dto.source).toBe('FAILED');
+  });
+
+  it('re-queues a stale QUEUED row when the BullMQ job was lost', async () => {
+    const { prisma, queue, service } = makeHarness();
+    const stale = new Date(Date.now() - 60 * 60 * 1000);
+    prisma.dtcKnowledge.findUnique
+      .mockResolvedValueOnce(genericRow({ enrichmentStatus: 'QUEUED', updatedAt: stale }))
+      .mockResolvedValue(genericRow({ enrichmentStatus: 'QUEUED', updatedAt: stale }));
+    prisma.dtcKnowledge.update.mockResolvedValue(genericRow({ enrichmentStatus: 'QUEUED' }));
+
+    await service.getOrQueueForActiveFault('P0675', NO_VEHICLE);
+
+    expect(prisma.dtcKnowledge.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ enrichmentStatus: 'QUEUED' }) }),
+    );
+    expect(queue.add).toHaveBeenCalledTimes(1);
+  });
+
+  it('auto-retries a stale FAILED code on the active-fault path', async () => {
+    const { prisma, queue, service } = makeHarness();
+    const stale = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    prisma.dtcKnowledge.findUnique
+      .mockResolvedValueOnce(genericRow({ enrichmentStatus: 'FAILED', updatedAt: stale }))
+      .mockResolvedValue(genericRow({ enrichmentStatus: 'QUEUED', updatedAt: new Date() }));
+    prisma.dtcKnowledge.update.mockResolvedValue(genericRow({ enrichmentStatus: 'QUEUED' }));
+
+    await service.getOrQueueForActiveFault('P0675', NO_VEHICLE);
+
+    expect(queue.add).toHaveBeenCalledTimes(1);
+    expect(queue.add.mock.calls[0][0]).toBe('DTC_GENERIC_ENRICHMENT');
   });
 
   it('re-queues a FAILED code on explicit retry', async () => {
