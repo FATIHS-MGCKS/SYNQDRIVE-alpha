@@ -34,6 +34,7 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 | `setup-log-limits.sh` | pm2-logrotate (50M×14, gz) + journald cap (1G/2w) | safe |
 | `pg-fix-app-table-ownership.sql` | Re-assign postgres-owned app tables to `synqdrive` after migrate | safe (run as postgres) |
 | `nginx-csp-didit-frame-src.snippet` | CSP `frame-src` for Didit SDK iframe on app.synqdrive.eu | manual nginx apply |
+| `sync-mistral-env-to-vps.sh` | Copy `AI_*` / `MISTRAL_*` / `DOCUMENT_AI_*` from local `backend/.env` → VPS `backend.env` | secrets — backup remote env first |
 | `partition-time-series.sql` | Reviewed template to RANGE-partition time-series tables | NEEDS APPROVAL — backup + maintenance window |
 
 ### Partitioning (P2)

@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'mistral-ops-probe-sync-v49147-2026-07-02',
+    version: '4.9.147',
+    title: 'V4.9.147 — Mistral Ops: VPS Env-Sync + Connectivity Probe',
+    summary: [
+      '`sync-mistral-env-to-vps.sh` kopiert `AI_*` / `MISTRAL_*` / `DOCUMENT_AI_*` aus lokaler `backend/.env` nach Production `backend.env`.',
+      '`probe-mistral-ai.ts` Smoke-Test gegen Mistral Chat API (lokal/VPS-Debugging).',
+      'Production: Mistral-Secrets auf VPS synchronisiert; Deploy mit Mistral-Migration (V4.9.143–146).',
+    ],
+    reason:
+      'Mistral-Integration war im Code auf Git/VPS, aber Env-Secrets mussten von lokal nach Production und die API-Verbindung verifiziert werden.',
+    previousBehavior:
+      'Kein Mistral-Env-Sync-Script; keine dedizierte Probe — nur manuelle Prüfung.',
+    details:
+      'Neu: `backend/scripts/ops/sync-mistral-env-to-vps.sh`, `backend/scripts/probe-mistral-ai.ts`. Ops README ergänzt.',
+    affectsArchitecture: false,
+    module: 'Automation',
+    createdAt: '2026-07-02T18:10:00.000Z',
+  },
+  {
     id: 'dimo-agents-cleanup-v49146-2026-07-02',
     version: '4.9.146',
     title: 'V4.9.146 — Final DIMO Agents cleanup (Mistral-only LLM)',
