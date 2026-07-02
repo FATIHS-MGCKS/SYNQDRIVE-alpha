@@ -9,7 +9,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { join } from 'path';
 import Redis from 'ioredis';
 
-import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig } from '@config/index';
+import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, aiConfig } from '@config/index';
 
 import { PrismaModule } from '@shared/database/prisma.module';
 import { RedisModule } from '@shared/redis/redis.module';
@@ -27,6 +27,7 @@ import { VehicleIntelligenceModule } from '@modules/vehicle-intelligence/vehicle
 import { ClickHouseModule } from '@modules/clickhouse/clickhouse.module';
 import { ObservabilityModule } from '@modules/observability/observability.module';
 import { DimoModule } from '@modules/dimo/dimo.module';
+import { AiModule } from '@modules/ai/ai.module';
 import { IntegrationsModule } from '@modules/integrations/integrations.module';
 import { BillingModule } from '@modules/billing/billing.module';
 import { ProspectsModule } from '@modules/prospects/prospects.module';
@@ -126,7 +127,7 @@ export class AppModule {
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
-          load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig],
+          load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, aiConfig],
         }),
 
         // Global throttler: 200 requests per minute per IP (normal API usage)
@@ -188,6 +189,7 @@ export class AppModule {
         ObservabilityModule,
         VehicleIntelligenceModule,
         DimoModule,
+        AiModule,
         IntegrationsModule,
         BillingModule,
         ProspectsModule,

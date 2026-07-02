@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'ai-gateway-mistral-v49143-2026-07-02',
+    version: '4.9.143',
+    title: 'V4.9.143 — AI Gateway: provider-neutrale LLM-Schicht (Mistral)',
+    summary: [
+      'Neues Backend-Modul `backend/src/modules/ai` mit provider-neutraler LLM-Abstraktion (`LlmProvider`, `LlmGatewayService`).',
+      'Erster Provider: `MistralLlmService` via `@mistralai/mistralai` — complete, stream, completeJson.',
+      'Konfiguration in `ai.config.ts`: AI_PROVIDER, MISTRAL_* Modelle, AI_STREAMING_ENABLED, AI_EXTERNAL_ACTIONS_REQUIRE_APPROVAL.',
+      '`AiModule` in `app.module.ts` registriert — parallel zur bestehenden DIMO-Agents-Schicht, ohne Chat/Document/Specs-Migration in diesem Schritt.',
+      'DIMO bleibt für Vehicle Identity, Telemetrie, Snapshots, Trips, DTC, Webhooks und Token/Auth; DIMO Agents werden nicht mehr als Ziel-LLM-Provider ausgebaut.',
+    ],
+    reason:
+      'SynqDrive soll LLM-Inferenz provider-neutral betreiben (Mistral zuerst), während DIMO ausschließlich Telematik-/Fahrzeugdaten-Integration bleibt.',
+    previousBehavior:
+      'Fleet Chat, Document Extraction, Vehicle/Tire Specs und DTC Research liefen über DIMO Agents API (agents.dimo.zone) als LLM-Provider.',
+    details:
+      'Neu: ai.module.ts, llm.types.ts, llm-gateway.service.ts, mistral-llm.service.ts, ai.config.ts. Geändert: app.module.ts, config/index.ts, backend/.env.example, package.json.',
+    affectsArchitecture: true,
+    module: 'AI Gateway',
+    createdAt: '2026-07-02T10:00:00.000Z',
+  },
+  {
     id: 'customer-detail-ui-cleanup-v49142-2026-06-30',
     version: '4.9.142',
     title: 'V4.9.142 — Customer Quick View & Full Detail: UI-/UX-Cleanup',

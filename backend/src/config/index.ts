@@ -12,3 +12,5 @@ export { default as whatsappConfig } from './whatsapp.config';
 export { default as diditConfig, DIDIT_WORKFLOWS } from './didit.config';
 export type { DiditWorkflowKind } from './didit.config';
 export { default as stripeConfig } from './stripe.config';
+export { default as aiConfig } from './ai.config';
+export type { AiProviderId } from './ai.config';
