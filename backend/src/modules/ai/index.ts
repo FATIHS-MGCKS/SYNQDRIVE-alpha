@@ -17,6 +17,14 @@ export type {
 } from './llm/llm.types';
 export { MistralLlmService } from './providers/mistral/mistral-llm.service';
 export { DocumentAiExtractionService } from './documents/document-ai-extraction.service';
+export { VehicleSpecAiService } from './vehicle-specs/vehicle-spec-ai.service';
+export { TireSpecAiService } from './vehicle-specs/tire-spec-ai.service';
+export { AiTireSpecJobService } from './vehicle-specs/ai-tire-spec-job.service';
+export type {
+  StartAiTireSpecJobInput,
+  AiTireSpecJobStatus,
+  AiTireSpecApplyResult,
+} from './vehicle-specs/ai-tire-spec-job.service';
 export type {
   DocumentAiExtractInput,
   DocumentAiExtractResult,

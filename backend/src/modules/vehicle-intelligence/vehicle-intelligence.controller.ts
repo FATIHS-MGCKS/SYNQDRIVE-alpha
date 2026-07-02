@@ -64,7 +64,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { Inject, forwardRef, Logger } from '@nestjs/common';
 import { InvoicesService } from '@modules/invoices/invoices.service';
-import { AiTireSpecJobService } from '@modules/dimo/ai-tire-spec-job.service';
+import { AiTireSpecJobService } from '@modules/ai/vehicle-specs/ai-tire-spec-job.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { normalizeAiTireSpecResult, buildPersistedAiTireSpec, validateAiTireSpec } from './tires/ai-tire-spec-normalizer';
 import {

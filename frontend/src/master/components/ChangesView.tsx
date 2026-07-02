@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-tire-specs-mistral-v49145-2026-07-02',
+    version: '4.9.145',
+    title: 'V4.9.145 — Vehicle/Tire Specs: DIMO Agent → Mistral AI Gateway',
+    summary: [
+      'Neue Services `VehicleSpecAiService` und `TireSpecAiService` (`backend/src/modules/ai/vehicle-specs`) nutzen `LlmGatewayService.completeJson` mit JSON Schema.',
+      '`DimoAgentsController` routet ai-specs / ai-specs-stream / ai-tire-specs-stream über Mistral; DIMO tokenId bleibt als Fahrzeug-Kontext (DB-Lookup), nicht als LLM-Agent.',
+      '`AiTireSpecJobService` aus DIMO-Modul nach `ai/vehicle-specs` verschoben; Async-Jobs nutzen `TireSpecAiService` statt `DimoAgentsService.getTireSpecsStream`.',
+      'SSE-Vertrag unverändert (`step`, `progress`, `result`, `error`); `agentId` im Result enthält jetzt den Provider (`mistral`).',
+      'Validierung/Normalisierung/Persistenz über `ai-tire-spec-normalizer.ts` und Job-Apply-Flow unverändert; nur validierte Werte werden gespeichert.',
+    ],
+    reason:
+      'Vehicle- und Tire-Specs sollen wie Document Extraction provider-neutral über das AI Gateway laufen; DIMO bleibt Telematik/Identity.',
+    previousBehavior:
+      'DimoAgentsController → DimoAgentsService (agents.dimo.zone) für getVehicleSpecs/getVehicleSpecsStream/getTireSpecsStream; AiTireSpecJobService im DimoModule.',
+    details:
+      'Neu: vehicle-spec-ai.service.ts, tire-spec-ai.service.ts, tire-spec-ai.schema.util.ts, vehicle-spec-ai.types/schema.util, ai-tire-spec-job.service.ts (ai module). Geändert: dimo-agents.controller.ts, dimo.module.ts, ai.module.ts, vehicle-intelligence.module.ts, vehicle-intelligence.controller.ts. Entfernt: dimo/ai-tire-spec-job.service.ts.',
+    affectsArchitecture: true,
+    module: 'AI Gateway',
+    createdAt: '2026-07-02T11:40:00.000Z',
+  },
+  {
     id: 'document-extraction-mistral-v49144-2026-07-02',
     version: '4.9.144',
     title: 'V4.9.144 — Document Extraction: DIMO Agent → Mistral AI Gateway',

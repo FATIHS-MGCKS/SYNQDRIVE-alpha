@@ -1,13 +1,27 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { DimoAgentsService } from './dimo-agents.service';
-import { AiTireSpec } from '../vehicle-intelligence/tires/tire-health.config';
+import { TireSpecAiService } from './tire-spec-ai.service';
+import { AiTireSpec } from '../../vehicle-intelligence/tires/tire-health.config';
 import {
   normalizeAiTireSpecResult,
   validateAiTireSpec,
   buildPersistedAiTireSpec,
-} from '../vehicle-intelligence/tires/ai-tire-spec-normalizer';
+} from '../../vehicle-intelligence/tires/ai-tire-spec-normalizer';
 import { TireSetupStatus } from '@prisma/client';
+
+function mapTireSpecAliases(
+  raw: Record<string, unknown> | null,
+): Record<string, unknown> | null {
+  if (!raw) return null;
+  return {
+    ...raw,
+    legalMinimumMm: raw.legalMinimumMm ?? raw.legalMinTreadDepthMm,
+    recommendedReplacementDepthMm:
+      raw.recommendedReplacementDepthMm ?? raw.practicalReplacementDepthMm,
+    operationalReplacementDepthMm:
+      raw.operationalReplacementDepthMm ?? raw.winterRecommendedMinDepthMm,
+  };
+}
 
 // ── Input DTO ─────────────────────────────────────────────────────────────────
 export interface StartAiTireSpecJobInput {
@@ -56,7 +70,7 @@ export class AiTireSpecJobService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly agentsService: DimoAgentsService,
+    private readonly tireSpecAi: TireSpecAiService,
   ) {}
 
   // ── Start a new job ─────────────────────────────────────────────────────────
@@ -85,7 +99,6 @@ export class AiTireSpecJobService {
 
     this.logger.log(`[AiTireSpec] Job created: ${job.id} — ${input.brand} ${input.model} ${input.tireSize}`);
 
-    // Fire-and-forget async execution (no await — returns jobId immediately)
     this.executeJob(job.id).catch((err) => {
       this.logger.error(`[AiTireSpec] Unhandled execution error for job ${job.id}: ${err?.message}`);
     });
@@ -142,7 +155,6 @@ export class AiTireSpecJobService {
       return { success: false, message: 'No active tire setup found for this vehicle' };
     }
 
-    // Re-normalize from the stored result to guarantee type safety at apply time
     const normalized = normalizeAiTireSpecResult(job.normalizedResult as Record<string, unknown>);
     const validation = validateAiTireSpec(normalized);
 
@@ -150,7 +162,6 @@ export class AiTireSpecJobService {
       return { success: false, message: 'Stored result has no usable structured data after re-validation' };
     }
 
-    // Build the persisted blob with source metadata (only known fields, no arbitrary pass-through)
     const persisted = buildPersistedAiTireSpec(normalized, {
       jobId: job.id,
       confidenceScore: job.confidenceScore,
@@ -186,7 +197,6 @@ export class AiTireSpecJobService {
     const job = await this.prisma.aiTireSpecJob.findUnique({ where: { id: jobId } });
     if (!job || job.status !== 'queued') return;
 
-    // Mark running
     await this.prisma.aiTireSpecJob.update({
       where: { id: jobId },
       data: { status: 'running', startedAt: new Date() },
@@ -194,38 +204,44 @@ export class AiTireSpecJobService {
     this.logger.log(`[AiTireSpec] Job ${jobId} running`);
 
     try {
-      // Reuse the existing DIMO agent infrastructure
       let rawResponse = '';
-      let normalizedSpecs: Record<string, unknown> | null = null;
+      let rawSpecs: Record<string, unknown> | null = null;
       let agentError: string | null = null;
 
-      // Collect events from the stream orchestrator into a promise
       await new Promise<void>((resolve) => {
         let resolved = false;
-        const finish = () => { if (!resolved) { resolved = true; resolve(); } };
+        const finish = () => {
+          if (!resolved) {
+            resolved = true;
+            resolve();
+          }
+        };
 
-        this.agentsService.getTireSpecsStream(
-          {
-            brand: job.brand,
-            model: job.model,
-            year: job.year,
-            tireSize: job.tireSize,
-            loadIndex: job.loadIndex,
-            speedIndex: job.speedIndex,
-          },
-          (event: string, data: unknown) => {
-            const d = data as Record<string, unknown>;
-            if (event === 'result') {
-              normalizedSpecs = (d.specs as Record<string, unknown>) ?? null;
-              rawResponse = JSON.stringify(d);
-            } else if (event === 'error') {
-              agentError = (d.message as string) ?? 'Unknown agent error';
-            }
-          },
-        ).then(finish).catch((err) => {
-          agentError = err?.message ?? 'Execution failed';
-          finish();
-        });
+        this.tireSpecAi
+          .getTireSpecsStream(
+            {
+              brand: job.brand,
+              model: job.model,
+              year: job.year,
+              tireSize: job.tireSize,
+              loadIndex: job.loadIndex,
+              speedIndex: job.speedIndex,
+            },
+            (event: string, data: unknown) => {
+              const d = data as Record<string, unknown>;
+              if (event === 'result') {
+                rawSpecs = (d.specs as Record<string, unknown>) ?? null;
+                rawResponse = JSON.stringify(d);
+              } else if (event === 'error') {
+                agentError = (d.message as string) ?? 'Unknown AI error';
+              }
+            },
+          )
+          .then(finish)
+          .catch((err) => {
+            agentError = err?.message ?? 'Execution failed';
+            finish();
+          });
       });
 
       if (agentError) {
@@ -242,8 +258,8 @@ export class AiTireSpecJobService {
         return;
       }
 
-      // Normalize raw AI output through the type-safe normalizer
-      const normalized = normalizeAiTireSpecResult(normalizedSpecs);
+      const specsForNormalize = mapTireSpecAliases(rawSpecs);
+      const normalized = normalizeAiTireSpecResult(specsForNormalize);
       const validation = validateAiTireSpec(normalized);
 
       if (validation.warnings.length > 0) {
@@ -259,7 +275,9 @@ export class AiTireSpecJobService {
           normalizedResult: validation.hasStructuredData ? (normalized as any) : null,
           rawResponse: rawResponse || null,
           confidenceScore: confidence,
-          errorMessage: validation.hasStructuredData ? null : 'Agent responded but no structured data was extracted',
+          errorMessage: validation.hasStructuredData
+            ? null
+            : 'AI responded but no structured data was extracted',
           completedAt: new Date(),
         },
       });
@@ -279,5 +297,4 @@ export class AiTireSpecJobService {
       this.logger.error(`[AiTireSpec] Job ${jobId} execution error: ${err?.message}`);
     }
   }
-
 }

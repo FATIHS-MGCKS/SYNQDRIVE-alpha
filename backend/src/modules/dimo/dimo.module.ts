@@ -14,8 +14,8 @@ import { DeviceConnectionWebhookService } from './device-connection-webhook.serv
 import { DeviceConnectionQueryService } from './device-connection-query.service';
 import { DimoAgentsService } from './dimo-agents.service';
 import { DimoDocumentAgentService } from './dimo-document-agent.service';
-import { AiTireSpecJobService } from './ai-tire-spec-job.service';
 import { DimoAgentsController } from './dimo-agents.controller';
+import { AiModule } from '../ai/ai.module';
 import { DimoAgentsAdminController } from './dimo-agents-admin.controller';
 import { DimoAgentsHealthController } from './dimo-agents-health.controller';
 import { ChatService } from './chat.service';
@@ -23,7 +23,7 @@ import { ChatController } from './chat.controller';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 
 @Module({
-  imports: [ConfigModule.forFeature(dimoConfig), forwardRef(() => VehicleIntelligenceModule)],
+  imports: [ConfigModule.forFeature(dimoConfig), AiModule, forwardRef(() => VehicleIntelligenceModule)],
   controllers: [DimoController, DimoWebhookController, DimoAgentsController, DimoAgentsAdminController, DimoAgentsHealthController, ChatController],
   providers: [
     DimoAuthService,
@@ -37,7 +37,6 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionQueryService,
     DimoAgentsService,
     DimoDocumentAgentService,
-    AiTireSpecJobService,
     ChatService,
   ],
   exports: [
@@ -49,7 +48,6 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DimoTriggersService,
     DimoAgentsService,
     DimoDocumentAgentService,
-    AiTireSpecJobService,
     ChatService,
     DeviceConnectionQueryService,
   ],
