@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'didit-db-permissions-hotfix-v49138-2026-07-02',
+    version: '4.9.138',
+    title: 'V4.9.138 — Didit Dokumentenprüfung: DB-Berechtigungen (Production Hotfix)',
+    summary: [
+      'Production-Fehler „Internal Server Error“ bei Dokumentenprüfung behoben: Tabellen `customer_verification_checks` und `didit_webhook_events` gehörten `postgres`, App-User `synqdrive` hatte keine Rechte.',
+      'VPS-Hotfix: `ALTER TABLE … OWNER TO synqdrive` + `GRANT ALL` auf beiden Tabellen.',
+      'Deploy-Skript führt nach `prisma migrate deploy` nun `pg-fix-app-table-ownership.sql` als postgres aus, damit künftige manuelle Migrationen nicht erneut brechen.',
+    ],
+    reason:
+      'Didit-Migration war offenbar einmal als postgres-Superuser angewendet; alle anderen Tabellen gehören synqdrive — nur die zwei Didit-Tabellen blockierten Session-Start, Eligibility und Webhook.',
+    previousBehavior:
+      'POST `/customer-verification/didit/session`, GET eligibility/checks und POST `/webhooks/didit` lieferten 500 mit `permission denied for table customer_verification_checks` / `didit_webhook_events`.',
+    details:
+      'Neu: `backend/scripts/ops/pg-fix-app-table-ownership.sql`. Geändert: `vps-deploy-release.sh`, `scripts/ops/README.md`. Production-Hotfix direkt auf VPS angewendet.',
+    affectsArchitecture: false,
+    module: 'Customer Verification',
+    createdAt: '2026-07-02T06:15:00.000Z',
+  },
+  {
     id: 'brandlogo-consumer-audit-v49137-2026-07-01',
     version: '4.9.137',
     title: 'V4.9.137 — BrandLogo Consumer-Audit: Fleet, Dashboard-Popups, Bookings',

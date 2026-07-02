@@ -32,6 +32,7 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 | `pg-repack.sh` | Online table/index rebuild via `pg_repack` | safe (online), backup first |
 | `pg-reclaim-bloat.sql` | `VACUUM FULL` of the worst tables | locks tables — maintenance window only |
 | `setup-log-limits.sh` | pm2-logrotate (50M×14, gz) + journald cap (1G/2w) | safe |
+| `pg-fix-app-table-ownership.sql` | Re-assign postgres-owned app tables to `synqdrive` after migrate | safe (run as postgres) |
 | `partition-time-series.sql` | Reviewed template to RANGE-partition time-series tables | NEEDS APPROVAL — backup + maintenance window |
 
 ### Partitioning (P2)
