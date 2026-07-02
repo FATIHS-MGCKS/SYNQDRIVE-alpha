@@ -23,6 +23,8 @@ cd "$RELEASE_DIR/backend"
 npm ci
 npx prisma generate
 npm run prisma:migrate:deploy
+sudo -u postgres psql -d synqdrive -v ON_ERROR_STOP=1 \
+  -f "$RELEASE_DIR/backend/scripts/ops/pg-fix-app-table-ownership.sql"
 npm run build
 
 echo "==> Frontend install/build"

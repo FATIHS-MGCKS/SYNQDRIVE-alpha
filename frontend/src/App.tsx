@@ -4,6 +4,7 @@ import MasterApp from './master/App';
 import RentalApp from './rental/App';
 import OperatorApp from './operator/OperatorApp';
 import LoginPage from './pages/LoginPage';
+import VerificationDonePage from './pages/VerificationDonePage';
 
 function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string }) {
   if (!isAuthenticated()) {
@@ -45,6 +46,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginRoute />} />
+        <Route path="/verification/done" element={<VerificationDonePage />} />
         <Route
           path="/master"
           element={

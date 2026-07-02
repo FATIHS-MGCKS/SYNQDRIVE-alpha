@@ -55,6 +55,7 @@ export function useCustomerVerification(
       if (!customerId) return;
       setStartingKind(kind);
       try {
+        toast.info('Didit öffnet sich in einem neuen Fenster…');
         await startDiditVerificationSession(customerId, bookingId, kind, async (status) => {
           toast.info(diditCompleteMessage(status));
           await refresh();

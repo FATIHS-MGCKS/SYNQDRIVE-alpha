@@ -35,9 +35,66 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'didit-customer-create-wizard-v49139-2026-07-01',
+    id: 'didit-popup-flow-v49141-2026-07-02',
+    version: '4.9.141',
+    title: 'V4.9.141 — Didit Prüfung per Popup statt eingebettetem Iframe',
+    summary: [
+      'Didit-Dokumentenprüfung öffnet primär in einem neuen Browser-Fenster (`window.open`) statt im SDK-Iframe-Modal.',
+      'Grund: verify.didit.me setzt COEP/COOP — eingebettetes Iframe blieb nach CSP-Fix dunkel/leer.',
+      'Fallback: Didit-SDK-Modal mit `zIndex: 99999` wenn Popup blockiert. Route `/verification/done` für Didit-Rückleitung.',
+    ],
+    reason:
+      'Trotz frame-src in CSP hing die Prüfung weiter (dunkler Overlay, kein Inhalt). Popup umgeht Cross-Origin-Embed-Probleme zuverlässig.',
+    previousBehavior:
+      'Nur `DiditSdk.startVerification` im Modal — Overlay sichtbar, Didit-UI lud nicht.',
+    details:
+      'Geändert: `diditVerificationFlow.ts`, `VerificationDonePage.tsx`, `App.tsx`, `spa-fallback.controller.ts`, `useCustomerVerification.ts`.',
+    affectsArchitecture: false,
+    module: 'Customer Verification',
+    createdAt: '2026-07-02T06:45:00.000Z',
+  },
+  {
+    id: 'didit-csp-frame-src-v49140-2026-07-02',
+    version: '4.9.140',
+    title: 'V4.9.140 — Didit Modal: CSP frame-src + SDK-Fehlerbehandlung',
+    summary: [
+      'Production-Hänger behoben: Nginx-CSP hatte kein `frame-src` für `verify.didit.me` — Didit-SDK-Overlay verdunkelte die Seite, Iframe blieb leer.',
+      'VPS: `frame-src` um verify.didit.me / verification.didit.me / *.didit.me ergänzt.',
+      '`diditVerificationFlow`: wartet auf SDK-Abschluss, schließt Modal bei Fehler, `closeModalOnComplete`, klare Fehlermeldungen statt stillem Hänger.',
+    ],
+    reason:
+      'Nach DB-Berechtigungsfix startete die Didit-Session erfolgreich, aber das eingebettete Prüf-UI konnte wegen CSP nicht laden.',
+    previousBehavior:
+      'Nach „Weiter zu Didit“ dunkler Backdrop ohne Inhalt; Nutzer musste Seite neu laden.',
+    details:
+      'Ops: `nginx-csp-didit-frame-src.snippet`. Frontend: `diditVerificationFlow.ts`, Tests erweitert. VPS-Nginx direkt angepasst.',
+    affectsArchitecture: false,
+    module: 'Customer Verification',
+    createdAt: '2026-07-02T06:30:00.000Z',
+  },
+  {
+    id: 'didit-db-permissions-hotfix-v49139-2026-07-02',
     version: '4.9.139',
-    title: 'V4.9.139 — Didit-Dokumentenprüfung im Kunde-anlegen-Wizard',
+    title: 'V4.9.139 — Didit Dokumentenprüfung: DB-Berechtigungen (Production Hotfix)',
+    summary: [
+      'Production-Fehler „Internal Server Error“ bei Dokumentenprüfung behoben: Tabellen `customer_verification_checks` und `didit_webhook_events` gehörten `postgres`, App-User `synqdrive` hatte keine Rechte.',
+      'VPS-Hotfix: `ALTER TABLE … OWNER TO synqdrive` + `GRANT ALL` auf beiden Tabellen.',
+      'Deploy-Skript führt nach `prisma migrate deploy` nun `pg-fix-app-table-ownership.sql` als postgres aus, damit künftige manuelle Migrationen nicht erneut brechen.',
+    ],
+    reason:
+      'Didit-Migration war offenbar einmal als postgres-Superuser angewendet; alle anderen Tabellen gehören synqdrive — nur die zwei Didit-Tabellen blockierten Session-Start, Eligibility und Webhook.',
+    previousBehavior:
+      'POST `/customer-verification/didit/session`, GET eligibility/checks und POST `/webhooks/didit` lieferten 500 mit `permission denied for table customer_verification_checks` / `didit_webhook_events`.',
+    details:
+      'Neu: `backend/scripts/ops/pg-fix-app-table-ownership.sql`. Geändert: `vps-deploy-release.sh`, `scripts/ops/README.md`. Production-Hotfix direkt auf VPS angewendet.',
+    affectsArchitecture: false,
+    module: 'Customer Verification',
+    createdAt: '2026-07-02T06:15:00.000Z',
+  },
+  {
+    id: 'didit-customer-create-wizard-v49138-2026-07-01',
+    version: '4.9.138',
+    title: 'V4.9.138 — Didit-Dokumentenprüfung im Kunde-anlegen-Wizard',
     summary: [
       'Schritt „Dokumente“ in CustomersView und NewBookingView: `CustomerVerificationPanel` (Didit) direkt im Wizard.',
       'Nach Schritt „ID & Führerschein“ wird der Kunde als Entwurf angelegt (`ensureWizardDraftCustomer`), damit Didit-Sessions eine `customerId` haben.',
@@ -54,9 +111,9 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-01T18:30:00.000Z',
   },
   {
-    id: 'didit-mcp-setup-v49138-2026-07-01',
-    version: '4.9.138',
-    title: 'V4.9.138 — Didit MCP + Workflow-Env + VPS Env-Sync',
+    id: 'didit-mcp-setup-v49137-2026-07-01',
+    version: '4.9.137',
+    title: 'V4.9.137 — Didit MCP + Workflow-Env + VPS Env-Sync',
     summary: [
       'Didit MCP Server in `.cursor/mcp.json` (hosted https://mcp.didit.me/mcp, OAuth).',
       'Workflow-IDs jetzt per `DIDIT_WORKFLOW_ID_*` env; Runbook `docs/didit-setup.md`.',
@@ -73,8 +130,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-01T17:55:00.000Z',
   },
   {
-    id: 'brandlogo-consumer-audit-v49137-2026-07-01',
-    version: '4.9.137',
+    id: 'brandlogo-consumer-audit-v49136b-2026-07-01',
+    version: '4.9.136',
     title: 'V4.9.137 — BrandLogo Consumer-Audit: Fleet, Dashboard-Popups, Bookings',
     summary: [
       'Fleet Command Rows (`FleetOperatorRow`) und Dashboard Fleet-Status-Popups (`StatInlineDetail`) zeigen OEM-Icons über die zentrale `BrandLogo`-Komponente (Cardog, `variant="icon"`).',
@@ -92,8 +149,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-01T11:30:00.000Z',
   },
   {
-    id: 'brandlogo-cardog-migration-v49136-2026-07-01',
-    version: '4.9.136',
+    id: 'brandlogo-cardog-migration-v49135b-2026-07-01',
+    version: '4.9.135',
     title: 'V4.9.136 — BrandLogo auf @cardog-icons/react (CDN entfernt)',
     summary: [
       '`BrandLogo` rendert OEM-Icons über `@cardog-icons/react` (Color in Light, Dark/Mono in Dark) statt externer PNG-CDN-Requests.',

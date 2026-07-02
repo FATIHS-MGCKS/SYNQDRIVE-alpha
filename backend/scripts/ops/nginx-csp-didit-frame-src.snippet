@@ -1,0 +1,8 @@
+# Add to nginx `add_header Content-Security-Policy` for SynqDrive SPA.
+# Required for @didit-protocol/sdk-web modal iframe (verify.didit.me).
+#
+# Without frame-src, browsers fall back to default-src 'self' and block the Didit overlay iframe
+# (dark backdrop visible, empty modal — appears "hung").
+#
+# Example tail of CSP directive:
+#   ... worker-src 'self' blob:; frame-src 'self' https://verify.didit.me https://verification.didit.me https://*.didit.me;
