@@ -84,10 +84,6 @@ import {
 
   computeBookingRevenueCents,
 
-  overallRentalClearanceLabel,
-
-  overallRentalClearanceTone,
-
   sortBookingsNewestFirst,
 
 } from './customer-detail/customerDetailUtils';
@@ -588,10 +584,6 @@ export function CustomerDetailView({
 
         licenseVerificationUi={licenseVerificationUi}
 
-        eligibilityLabel={eligibility ? overallRentalClearanceLabel(eligibility) : null}
-
-        eligibilityTone={eligibility ? overallRentalClearanceTone(eligibility) : null}
-
         phone={customer.phone}
 
         email={customer.email}
@@ -630,23 +622,17 @@ export function CustomerDetailView({
 
         licenseVerificationStatus={detail?.licenseVerificationStatus}
 
-        idExpiry={detail?.idExpiry}
-
-        licenseExpiry={detail?.licenseExpiry}
-
         onOpenDocuments={() => setActiveTab('documents')}
+
+        onOpenFinances={() => setActiveTab('finances')}
+
+        onOpenDriving={() => setActiveTab('driving')}
 
         openInvoices={openInvoices}
 
         overdueInvoices={overdueInvoices}
 
         openFines={openFines}
-
-        totalRevenueCents={totalRevenueCents}
-
-        totalBookings={bookings.length}
-
-        lastBookingDate={lastBookingDate}
 
         drivingStressScore={drivingStressScore}
 
@@ -688,25 +674,11 @@ export function CustomerDetailView({
 
             detail={detail}
 
-            eligibility={eligibility}
-
-            eligibilityError={eligibilityError}
-
-            onRetryEligibility={refreshEligibility}
-
-            totalRevenueCents={totalRevenueCents}
-
             totalBookings={bookings.length}
-
-            openInvoices={openInvoices}
-
-            openFines={openFines}
 
             lastBookingDate={lastBookingDate}
 
             timelinePreview={timelineEvents}
-
-            onOpenDocuments={() => setActiveTab('documents')}
 
             onOpenTimeline={() => setActiveTab('timeline')}
 

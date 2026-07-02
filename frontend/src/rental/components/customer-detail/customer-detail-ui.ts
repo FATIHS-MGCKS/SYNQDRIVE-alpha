@@ -18,7 +18,6 @@ export const cdv = {
   sectionGrid: 'grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4',
   twoColGrid: 'grid grid-cols-1 gap-3 lg:grid-cols-2',
   summaryGrid: 'grid grid-cols-2 items-start gap-1 sm:gap-1.5 lg:grid-cols-3 xl:grid-cols-6',
-  tabBar: 'flex flex-wrap gap-1 overflow-x-auto pb-0.5',
 } as const;
 
 export function customerDetailTitleClass(): string {

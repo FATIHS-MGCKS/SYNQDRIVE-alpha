@@ -8,7 +8,7 @@ import {
   formatCurrencyCents,
   formatDate,
 } from './customerDetailUtils';
-import { bookingStatusTone } from './CustomerOverviewTab';
+import { bookingStatusTone } from './customerOverviewTabUtils';
 
 interface CustomerBookingsTabProps {
   bookings: BookingRow[];

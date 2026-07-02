@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customer-detail-ui-cleanup-v49142-2026-06-30',
+    version: '4.9.142',
+    title: 'V4.9.142 — Customer Quick View & Full Detail: UI-/UX-Cleanup',
+    summary: [
+      'Customer Detail Tabs auf `sq-tab-bar`-Segmented-Control wie Vehicle Detail Page (Radius, Border, Active-State, horizontal scroll auf Mobile).',
+      'CustomerDecisionCards kompakter: Mietfreigabe/Verifikation/Finanzen/Fahrbelastung nur als Kurz-Summary mit Tab-Links — keine vollständigen Detail-Tabellen mehr.',
+      'Header zeigt nur Identität, Status-Badges und Actions; Mietfreigabe-Badge aus Header entfernt.',
+      'Overview-Tab: doppelte Mietfreigabe- und Business-Zusammenfassung entfernt; Fokus auf Identität/Kontakt, operative Kennzahlen, Timeline-Preview.',
+      'Quick View vereinfacht: keine Profil-/Verifikations-/Bußgeld-Detailtabellen; KPI-Grid, kompakte Mietfreigabe, Kontakt, Finanz-Kurzhinweis bei offenen Posten.',
+      'Quick View Status-Update weiter über `changeCustomerStatus` → `api.customers.updateStatus` (canonical Endpunkt).',
+    ],
+    reason:
+      'Kundenansichten wirkten wie zwei vollständige Detailseiten mit redundanter Mietfreigabe, Verifikation, Finanzen und Fahrbelastung oberhalb der Tabs.',
+    previousBehavior:
+      'Button-basierte Customer Tabs; Decision Cards mit vollen Eligibility-Stufen-Tabellen; Quick View mit Profil-, Verifikations- und Bußgeld-Listen; Mietfreigabe im Header und Overview doppelt.',
+    details:
+      'Geändert: CustomerDetailModal, CustomerDetailView, CustomerDetailTabBar, CustomerDetailHeader, CustomerDecisionCards, CustomerOverviewTab, customer-detail-ui.ts, customerOverviewTabUtils.ts.',
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-06-30T09:30:00.000Z',
+  },
+  {
     id: 'didit-popup-flow-v49141-2026-07-02',
     version: '4.9.141',
     title: 'V4.9.141 — Didit Prüfung per Popup statt eingebettetem Iframe',

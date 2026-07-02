@@ -1,67 +1,27 @@
-import { DataCard, StatusChip, Timeline } from '../../../components/patterns';
-import type { StatusTone } from '../../../components/patterns';
+import { DataCard, Timeline } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
-import type { CustomerDetail, CustomerEligibility, CustomerListRow } from './customerDetailTypes';
-import {
-  customerStatusUiLabelDe,
-  customerRiskUiLabelDe,
-  customerVerificationApiToUi,
-  customerVerificationUiLabelDe,
-} from '../../lib/entityMappers';
-import {
-  EM_DASH,
-  eligibilityStageForConfirm,
-  eligibilityStageForCreate,
-  eligibilityStageForPickup,
-  formatDate,
-  formatCurrencyCents,
-  formatDateTime,
-  overallRentalClearanceLabel,
-  overallRentalClearanceTone,
-} from './customerDetailUtils';
+import type { CustomerDetail, CustomerListRow } from './customerDetailTypes';
+import { formatDate, formatDateTime } from './customerDetailUtils';
 import { CustomerQuickViewDetailRow } from './CustomerQuickViewDetailRow';
-import { cdv, ELIGIBILITY_LOAD_ERROR_USER } from './customer-detail-ui';
+import { cdv } from './customer-detail-ui';
 
 interface CustomerOverviewTabProps {
   customer: CustomerListRow;
   detail: CustomerDetail | null;
-  eligibility: CustomerEligibility | null;
-  eligibilityError?: string | null;
-  onRetryEligibility?: () => void;
-  totalRevenueCents: number;
   totalBookings: number;
-  openInvoices: number;
-  openFines: number;
   lastBookingDate?: string | null;
   timelinePreview: Array<Record<string, unknown>>;
-  onOpenDocuments: () => void;
   onOpenTimeline: () => void;
-}
-
-function stageDe(stage: 'allowed' | 'warning' | 'blocked'): string {
-  if (stage === 'allowed') return 'Erlaubt';
-  if (stage === 'warning') return 'Warnung';
-  return 'Blockiert';
 }
 
 export function CustomerOverviewTab({
   customer,
   detail,
-  eligibility,
-  eligibilityError,
-  onRetryEligibility,
-  totalRevenueCents,
   totalBookings,
-  openInvoices,
-  openFines,
   lastBookingDate,
   timelinePreview,
-  onOpenDocuments,
   onOpenTimeline,
 }: CustomerOverviewTabProps) {
-  const idUi = customerVerificationApiToUi(detail?.idVerificationStatus ?? undefined);
-  const licenseUi = customerVerificationApiToUi(detail?.licenseVerificationStatus ?? undefined);
-
   const timelineItems = timelinePreview.slice(0, 5).map((ev, idx) => ({
     id: String(ev.id ?? `ev-${idx}`),
     title: String(ev.title ?? ev.type ?? 'Ereignis'),
@@ -101,79 +61,15 @@ export function CustomerOverviewTab({
           ) : null}
         </DataCard>
 
-        <DataCard
-          title="Mietfreigabe"
-          actions={
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              className="h-auto px-0 text-xs"
-              onClick={onOpenDocuments}
-            >
-              Dokumente
-            </Button>
-          }
-          bodyClassName="py-2"
-        >
-          {eligibilityError ? (
-            <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2" title={eligibilityError}>
-              <p className="text-[12px] font-medium">{ELIGIBILITY_LOAD_ERROR_USER}</p>
-              {onRetryEligibility ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="neutral"
-                  className="mt-2 h-7"
-                  onClick={onRetryEligibility}
-                >
-                  Erneut laden
-                </Button>
-              ) : null}
-            </div>
-          ) : eligibility ? (
-            <>
-              <StatusChip tone={overallRentalClearanceTone(eligibility)} dot className="mb-2">
-                {overallRentalClearanceLabel(eligibility)}
-              </StatusChip>
-              {[
-                { label: 'Buchung erstellen', stage: eligibilityStageForCreate(eligibility) },
-                { label: 'Bestätigung', stage: eligibilityStageForConfirm(eligibility) },
-                { label: 'Übergabe', stage: eligibilityStageForPickup(eligibility) },
-              ].map((r) => (
-                <CustomerQuickViewDetailRow key={r.label} label={r.label} value={stageDe(r.stage)} />
-              ))}
-            </>
-          ) : (
-            <p className="text-[12px] text-muted-foreground">Freigabedaten nicht verfügbar</p>
-          )}
-        </DataCard>
-      </div>
-
-      <DataCard title="Business-Zusammenfassung" bodyClassName="py-2">
-        <div className="grid grid-cols-1 gap-0 sm:grid-cols-2">
-          <CustomerQuickViewDetailRow
-            label="Status"
-            value={customerStatusUiLabelDe(customer.status)}
-          />
-          <CustomerQuickViewDetailRow label="Risiko" value={customerRiskUiLabelDe(customer.riskLevel)} />
-          <CustomerQuickViewDetailRow
-            label="Verifikation"
-            value={`Ausweis: ${customerVerificationUiLabelDe(idUi)} · FS: ${customerVerificationUiLabelDe(licenseUi)}`}
-          />
-          <CustomerQuickViewDetailRow label="Buchungen" value={String(totalBookings)} />
-          <CustomerQuickViewDetailRow
-            label="Umsatz"
-            value={totalRevenueCents > 0 ? formatCurrencyCents(totalRevenueCents) : EM_DASH}
-          />
-          <CustomerQuickViewDetailRow
-            label="Offene Rechnungen / Bußgelder"
-            value={`${openInvoices} / ${openFines}`}
-          />
+        <DataCard title="Operative Kennzahlen" bodyClassName="py-2">
+          <CustomerQuickViewDetailRow label="Buchungen gesamt" value={String(totalBookings)} />
           <CustomerQuickViewDetailRow label="Letzte Buchung" value={formatDate(lastBookingDate)} />
           <CustomerQuickViewDetailRow label="Kunde seit" value={formatDate(detail?.createdAt)} />
-        </div>
-      </DataCard>
+          {customer.currentVehicle ? (
+            <CustomerQuickViewDetailRow label="Aktuelles Fahrzeug" value={customer.currentVehicle} />
+          ) : null}
+        </DataCard>
+      </div>
 
       <DataCard
         title="Letzte Aktivitäten"
@@ -200,12 +96,4 @@ export function CustomerOverviewTab({
   );
 }
 
-export function bookingStatusTone(status: string): StatusTone {
-  const s = status.toLowerCase();
-  if (s.includes('abgeschlossen') || s === 'completed') return 'info';
-  if (s.includes('aktiv') || s === 'active') return 'success';
-  if (s.includes('bestätigt') || s === 'confirmed') return 'info';
-  if (s.includes('ausstehend') || s === 'pending') return 'warning';
-  if (s.includes('storniert') || s.includes('no-show')) return 'neutral';
-  return 'neutral';
-}
+export { bookingStatusTone } from './customerOverviewTabUtils';

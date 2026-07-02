@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 
 import { StatusChip } from '../../../components/patterns';
-import type { StatusTone } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import {
   customerRiskUiLabelDe,
@@ -37,8 +36,6 @@ interface CustomerDetailHeaderProps {
   displayRisk: CustomerListRow['riskLevel'];
   idVerificationUi: CustomerUiVerification;
   licenseVerificationUi: CustomerUiVerification;
-  eligibilityLabel?: string | null;
-  eligibilityTone?: StatusTone | null;
   phone?: string | null;
   email?: string | null;
   statusShortcutSaving?: boolean;
@@ -60,8 +57,6 @@ export function CustomerDetailHeader({
   displayRisk,
   idVerificationUi,
   licenseVerificationUi,
-  eligibilityLabel,
-  eligibilityTone,
   phone,
   email,
   statusShortcutSaving,
@@ -113,11 +108,6 @@ export function CustomerDetailHeader({
             <StatusChip tone={customerVerificationTone(licenseVerificationUi)} dot>
               FS: {customerVerificationUiLabelDe(licenseVerificationUi)}
             </StatusChip>
-            {eligibilityLabel && eligibilityTone ? (
-              <StatusChip tone={eligibilityTone} dot>
-                Mietfreigabe: {eligibilityLabel}
-              </StatusChip>
-            ) : null}
           </div>
         </div>
 

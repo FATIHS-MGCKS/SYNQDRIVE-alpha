@@ -1,8 +1,8 @@
 import { ExternalLink, Mail, MapPin, Phone, X } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-import { DataCard, StatusChip, Timeline } from '../../components/patterns';
+import { DataCard, StatusChip } from '../../components/patterns';
 import { Button } from '../../components/ui/button';
 import { api, getErrorMessage } from '../../lib/api';
 import {
@@ -27,30 +27,13 @@ import {
 import {
   EM_DASH,
   formatCurrencyCents,
-  formatDate,
-  formatDateTime,
   overallRentalClearanceLabel,
   overallRentalClearanceTone,
 } from './customer-detail/customerDetailUtils';
 import {
   useCustomerEligibility,
   useCustomerInvoices,
-  useCustomerTimeline,
 } from './customer-detail/useCustomerDetailData';
-
-// ---------------------------------------------------------------------------
-// V4.6.66 — Customer Quick View is fully grounded:
-//   - Fabricated driverDOB / driverId / kmDriven / driving & abuse factor
-//     formulas removed. They never reflected real telemetry and were derived
-//     from `parseInt(customer.id)` which silently produced NaN for UUID ids.
-//   - Fines are fetched from /customers/:id/fines (same source as the full
-//     detail page).
-//   - Notes come from `customer.notes`; there is no per-customer notes feed.
-//   - Driving style / safety scores come straight from the API aggregate.
-//   - Booking / KM / revenue stats come from the parent customer record
-//     (which already carries totalRevenueCents + lastBookingDate since
-//     V4.6.66) — no more synthetic "totalBookings * 312 km" multiplier.
-// ---------------------------------------------------------------------------
 
 interface Customer {
   id: string;
@@ -92,16 +75,10 @@ interface CustomerDetailModalProps {
 type ModalDetail = {
   totalRevenueCents?: number | null;
   lastBookingDate?: string | null;
-  dateOfBirth?: string | null;
-  licenseNumber?: string | null;
-  licenseExpiry?: string | null;
-  idNumber?: string | null;
-  idExpiry?: string | null;
   address?: string | null;
   city?: string | null;
   zip?: string | null;
   country?: string | null;
-  notes?: string | null;
   idVerified?: boolean | null;
   licenseVerified?: boolean | null;
   idVerificationStatus?: string | null;
@@ -109,9 +86,6 @@ type ModalDetail = {
   drivingStressScore?: number | null;
   stressLevel?: 'low' | 'moderate' | 'high' | 'critical' | null;
   hasEnoughData?: boolean | null;
-  dataConfidence?: 'none' | 'low' | 'medium' | 'high' | null;
-  scoredTripCount?: number | null;
-  totalDistanceKm?: number | null;
   bookings?: Array<{ kmDriven?: number | null }> | null;
 };
 
@@ -133,7 +107,6 @@ export function CustomerDetailModal({
 }: CustomerDetailModalProps) {
   const { orgId } = useRentalOrg();
   const [statusSaving, setStatusSaving] = useState(false);
-  const [fines, setFines] = useState<Array<Record<string, unknown>>>([]);
   const [detail, setDetail] = useState<ModalDetail | null>(null);
 
   const {
@@ -142,7 +115,6 @@ export function CustomerDetailModal({
     error: eligibilityError,
     refresh: refreshEligibility,
   } = useCustomerEligibility(orgId, customer.id);
-  const { events: timelineEvents } = useCustomerTimeline(orgId, customer.id);
   const { invoices } = useCustomerInvoices(orgId, customer.id);
 
   const reloadDetail = useCallback(() => {
@@ -160,10 +132,6 @@ export function CustomerDetailModal({
       .get(orgId, customer.id)
       .then((row) => setDetail(row as unknown as ModalDetail))
       .catch(() => setDetail(null));
-    api.fines
-      .byCustomer(orgId, customer.id)
-      .then((rows) => setFines(Array.isArray(rows) ? rows : []))
-      .catch(() => setFines([]));
   }, [orgId, customer.id]);
 
   const changeStatus = async (next: Customer['status']) => {
@@ -225,22 +193,7 @@ export function CustomerDetailModal({
 
   const openInvoices = invoices.filter((i) => (i.status ?? '').toUpperCase() !== 'PAID');
   const overdueInvoices = invoices.filter((i) => (i.status ?? '').toUpperCase() === 'OVERDUE');
-  const openFines = fines.filter(
-    (f) => !['RESOLVED', 'CLOSED', 'PAID'].includes(String(f.status ?? '').toUpperCase()),
-  );
-
-  const showFinancialSection = openInvoices.length > 0 || openFines.length > 0;
-  const noteText = detail?.notes || customer.notes;
-  const timelinePreview = useMemo(
-    () =>
-      timelineEvents.slice(0, 3).map((ev, idx) => ({
-        id: String(ev.id ?? `tl-${idx}`),
-        title: String(ev.title ?? ev.type ?? ev.action ?? 'Ereignis'),
-        time: ev.createdAt ? formatDateTime(String(ev.createdAt)) : undefined,
-        description: ev.description ? String(ev.description) : undefined,
-      })),
-    [timelineEvents],
-  );
+  const financeHasIssues = openInvoices.length > 0 || overdueInvoices.length > 0;
 
   const revenueLabel =
     totalRevenueCents != null && totalRevenueCents > 0
@@ -266,7 +219,6 @@ export function CustomerDetailModal({
           opacity: isAnimating ? 1 : 0,
         }}
       >
-        {/* Header */}
         <div className={cqv.header}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 pr-10">
@@ -316,10 +268,8 @@ export function CustomerDetailModal({
           </div>
         </div>
 
-        {/* Body */}
         <div className={cqv.body}>
           <div className="space-y-3">
-            {/* Identity */}
             <div className={cqv.identityCard}>
               <div
                 className={`${cqv.avatar} ${
@@ -355,11 +305,15 @@ export function CustomerDetailModal({
                   <StatusChip tone={customerVerificationTone(licenseUi)} dot>
                     FS: {customerVerificationUiLabelDe(licenseUi)}
                   </StatusChip>
+                  {eligibility && !eligibilityLoading ? (
+                    <StatusChip tone={overallRentalClearanceTone(eligibility)} dot>
+                      Mietfreigabe: {overallRentalClearanceLabel(eligibility)}
+                    </StatusChip>
+                  ) : null}
                 </div>
               </div>
             </div>
 
-            {/* KPI summary */}
             <CustomerQuickViewSummaryGrid
               totalBookings={customer.totalBookings}
               totalKmDriven={totalKmDriven}
@@ -370,7 +324,6 @@ export function CustomerDetailModal({
               stressTone={stressDisplay.isMissing ? undefined : stressToneToStatusTone(stressDisplay.tone)}
             />
 
-            {/* Eligibility */}
             {(eligibilityLoading || eligibilityError || eligibility) && (
               <DataCard title="Mietfreigabe" bodyClassName="py-3">
                 {eligibilityLoading ? (
@@ -383,160 +336,60 @@ export function CustomerDetailModal({
                     </Button>
                   </div>
                 ) : eligibility ? (
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="space-y-1.5">
                     <StatusChip tone={overallRentalClearanceTone(eligibility)} dot>
                       {overallRentalClearanceLabel(eligibility)}
                     </StatusChip>
-                    {eligibility.blockingReasons.length > 0 ? (
-                      <span className="text-[11px] text-muted-foreground">
+                    {eligibility.blockingReasons[0] ? (
+                      <p className="text-[11px] leading-snug text-[color:var(--status-critical)]">
                         {eligibility.blockingReasons[0]}
-                      </span>
+                      </p>
+                    ) : eligibility.warnings[0] ? (
+                      <p className="text-[11px] leading-snug text-[color:var(--status-attention)]">
+                        {eligibility.warnings[0]}
+                      </p>
                     ) : null}
                   </div>
                 ) : null}
               </DataCard>
             )}
 
-            <div className={cqv.sectionGrid}>
-              {/* Verification */}
-              <DataCard
-                title="Verifikation"
-                actions={
-                  <Button type="button" variant="link" size="sm" className="h-auto px-0 text-xs" onClick={openFullDetail}>
-                    Dokumente
-                  </Button>
-                }
-                bodyClassName="py-2"
-              >
-                <CustomerQuickViewDetailRow
-                  label="Personalausweis"
-                  value={
-                    <>
-                      {customerVerificationUiLabelDe(idUi)}
-                      {detail?.idNumber ? (
-                        <span className="block text-[10px] font-normal text-muted-foreground">
-                          Nr. {detail.idNumber}
-                          {detail.idExpiry ? ` · bis ${formatDate(detail.idExpiry)}` : ''}
-                        </span>
-                      ) : null}
-                    </>
-                  }
-                />
-                <CustomerQuickViewDetailRow
-                  label="Führerschein"
-                  value={
-                    <>
-                      {customerVerificationUiLabelDe(licenseUi)}
-                      {detail?.licenseNumber || detail?.licenseExpiry || customer.licenseExpiry ? (
-                        <span className="block text-[10px] font-normal text-muted-foreground">
-                          {detail?.licenseNumber ? `Nr. ${detail.licenseNumber}` : ''}
-                          {(detail?.licenseExpiry || customer.licenseExpiry) &&
-                            ` · bis ${formatDate(detail?.licenseExpiry ?? customer.licenseExpiry)}`}
-                        </span>
-                      ) : null}
-                    </>
-                  }
-                />
+            {financeHasIssues ? (
+              <DataCard title="Finanzen" bodyClassName="py-2.5">
+                <p className="text-[12px] text-muted-foreground">
+                  {openInvoices.length > 0 ? `${openInvoices.length} offene Rechnungen` : null}
+                  {openInvoices.length > 0 && overdueInvoices.length > 0 ? ' · ' : null}
+                  {overdueInvoices.length > 0 ? `${overdueInvoices.length} überfällig` : null}
+                </p>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="mt-1 h-auto px-0 text-xs"
+                  onClick={openFullDetail}
+                >
+                  Details in Vollansicht
+                </Button>
               </DataCard>
+            ) : null}
 
-              {/* Profile */}
-              <DataCard title="Profil" bodyClassName="py-2">
-                <CustomerQuickViewDetailRow label="Name" value={customer.name} />
-                <CustomerQuickViewDetailRow
-                  label="Geburtsdatum"
-                  value={formatDate(detail?.dateOfBirth)}
-                />
-                <CustomerQuickViewDetailRow
-                  label="Führerscheinnummer"
-                  value={detail?.licenseNumber}
-                />
-                <CustomerQuickViewDetailRow
-                  label="Kundentyp"
-                  value={customer.type === 'Corporate' ? 'Firma' : 'Privat'}
-                />
-                <CustomerQuickViewDetailRow
-                  label="FS gültig bis"
-                  value={formatDate(detail?.licenseExpiry ?? customer.licenseExpiry)}
-                />
-              </DataCard>
-
-              {/* Contact */}
-              <DataCard title="Kontakt" bodyClassName="py-2">
-                <CustomerQuickViewDetailRow
-                  label="Telefon"
-                  value={customer.phone}
-                  icon={<Phone />}
-                />
-                <CustomerQuickViewDetailRow
-                  label="E-Mail"
-                  value={customer.email}
-                  icon={<Mail />}
-                />
-                <CustomerQuickViewDetailRow
-                  label="Land"
-                  value={detail?.country || EM_DASH}
-                  icon={<MapPin />}
-                />
-              </DataCard>
-
-              {/* Financial burden */}
-              {showFinancialSection ? (
-                <DataCard title="Finanzielle Belastung" bodyClassName="py-2">
-                  <CustomerQuickViewDetailRow
-                    label="Offene Rechnungen"
-                    value={String(openInvoices.length)}
-                  />
-                  <CustomerQuickViewDetailRow
-                    label="Überfällig"
-                    value={String(overdueInvoices.length)}
-                  />
-                  <CustomerQuickViewDetailRow
-                    label="Offene Bußgelder"
-                    value={String(openFines.length)}
-                  />
-                  {openFines.length > 0 ? (
-                    <div className="mt-2 space-y-1.5 border-t border-border/40 pt-2">
-                      {openFines.slice(0, 2).map((f) => (
-                        <div
-                          key={String(f.id)}
-                          className="flex items-center justify-between gap-2 text-[11px]"
-                        >
-                          <span className="truncate text-muted-foreground">
-                            {String(f.offenseType ?? f.title ?? 'Bußgeld')}
-                          </span>
-                          <span className="shrink-0 font-semibold tabular-nums text-foreground">
-                            {formatCurrencyCents(
-                              f.amountCents as number | null | undefined,
-                              String(f.currency ?? 'EUR'),
-                            )}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </DataCard>
-              ) : null}
-            </div>
-
-            {/* Notes / Timeline */}
-            {(noteText || timelinePreview.length > 0) && (
-              <DataCard
-                title={timelinePreview.length > 0 ? 'Letzte Aktivität' : 'Interne Notiz'}
-                actions={
-                  <Button type="button" variant="link" size="sm" className="h-auto px-0 text-xs" onClick={openFullDetail}>
-                    Vollansicht
-                  </Button>
-                }
-                bodyClassName="py-3"
-              >
-                {noteText ? (
-                  <p className="mb-3 whitespace-pre-wrap text-[12px] text-muted-foreground">{noteText}</p>
-                ) : null}
-                {timelinePreview.length > 0 ? (
-                  <Timeline items={timelinePreview} />
-                ) : null}
-              </DataCard>
-            )}
+            <DataCard title="Kontakt" bodyClassName="py-2">
+              <CustomerQuickViewDetailRow
+                label="Telefon"
+                value={customer.phone}
+                icon={<Phone />}
+              />
+              <CustomerQuickViewDetailRow
+                label="E-Mail"
+                value={customer.email}
+                icon={<Mail />}
+              />
+              <CustomerQuickViewDetailRow
+                label="Ort"
+                value={detail?.city || customer.city || EM_DASH}
+                icon={<MapPin />}
+              />
+            </DataCard>
 
             {customer.riskLevel === 'High Risk' && (
               <div className="sq-card flex items-start gap-2.5 border-[color:var(--status-critical)]/25 bg-[color:var(--status-critical)]/8 p-3">
