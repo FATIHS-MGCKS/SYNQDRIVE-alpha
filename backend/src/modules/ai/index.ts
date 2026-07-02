@@ -16,3 +16,10 @@ export type {
   LlmUsage,
 } from './llm/llm.types';
 export { MistralLlmService } from './providers/mistral/mistral-llm.service';
+export { DocumentAiExtractionService } from './documents/document-ai-extraction.service';
+export type {
+  DocumentAiExtractInput,
+  DocumentAiExtractResult,
+  DocumentAiField,
+  DocumentAiVehicleContext,
+} from './documents/document-ai-extraction.types';

@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-extraction-mistral-v49144-2026-07-02',
+    version: '4.9.144',
+    title: 'V4.9.144 — Document Extraction: DIMO Agent → Mistral AI Gateway',
+    summary: [
+      'Neuer `DocumentAiExtractionService` (`backend/src/modules/ai/documents`) nutzt `LlmGatewayService.completeJson` mit JSON Schema für strukturierte Dokumentenextraktion.',
+      '`DocumentExtractionProcessor` injiziert den Mistral-Service statt `DimoDocumentAgentService`; Queue, Status, Plausibilität, Review/Confirmation und Apply unverändert.',
+      '`DocumentExtractionModule` importiert `AiModule` statt `DimoModule` — keine DIMO-Agent-Abhängigkeit mehr im Document-Flow.',
+      'Fahrzeug-/DIMO-Telemetrie-Kontext (odometer, dimoTokenId) bleibt als Plausibilitäts-Kontext aus der DB; nur die LLM-Inferenz wechselt.',
+      'Env: `DOCUMENT_AI_EXTRACTION_ENABLED` (Fallback `DIMO_DOCUMENT_AGENT_ENABLED`); erfordert `MISTRAL_API_KEY`.',
+    ],
+    reason:
+      'Document Extraction soll provider-neutral über das AI Gateway laufen; DIMO bleibt für Telematik, nicht als LLM-Provider.',
+    previousBehavior:
+      'DocumentExtractionProcessor → DimoDocumentAgentService → DimoAgentsService (agents.dimo.zone) für strukturierte JSON-Extraktion.',
+    details:
+      'Neu: document-ai-extraction.service.ts, document-ai-extraction.schema.util.ts, types + specs. Geändert: document-extraction.processor.ts, document-extraction.module.ts, document-extraction.config.ts, ai.module.ts, .env.example.',
+    affectsArchitecture: true,
+    module: 'AI Gateway',
+    createdAt: '2026-07-02T11:35:00.000Z',
+  },
+  {
     id: 'ai-gateway-mistral-v49143-2026-07-02',
     version: '4.9.143',
     title: 'V4.9.143 — AI Gateway: provider-neutrale LLM-Schicht (Mistral)',

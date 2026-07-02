@@ -3,7 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { VehicleIntelligenceModule } from '@modules/vehicle-intelligence/vehicle-intelligence.module';
 import { InvoicesModule } from '@modules/invoices/invoices.module';
-import { DimoModule } from '@modules/dimo/dimo.module';
+import { AiModule } from '@modules/ai/ai.module';
 import { DocumentExtractionController } from './document-extraction.controller';
 import { DocumentExtractionService } from './document-extraction.service';
 import { DocumentExtractionApplyService } from './document-extraction-apply.service';
@@ -25,7 +25,7 @@ import { DOCUMENT_STORAGE } from './storage/document-storage.interface';
   imports: [
     forwardRef(() => VehicleIntelligenceModule),
     forwardRef(() => InvoicesModule),
-    forwardRef(() => DimoModule),
+    AiModule,
     BullModule.registerQueue({ name: QUEUE_NAMES.DOCUMENT_EXTRACTION }),
   ],
   controllers: [DocumentExtractionController],

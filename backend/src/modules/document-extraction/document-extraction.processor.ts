@@ -10,7 +10,7 @@ import {
 } from './storage/document-storage.interface';
 import { DocumentTextExtractorService } from './document-text-extractor.service';
 import { DocumentExtractionPlausibilityService } from './document-extraction-plausibility.service';
-import { DimoDocumentAgentService } from '@modules/dimo/dimo-document-agent.service';
+import { DocumentAiExtractionService } from '@modules/ai/documents/document-ai-extraction.service';
 import { getFieldSchema, buildEmptyExtractedData } from './document-extraction.schemas';
 import { DocumentExtractionJobData } from './document-extraction.types';
 import {
@@ -22,7 +22,7 @@ import {
  * AI Document Extraction worker.
  *
  * Flow: load record → guard status → PROCESSING → read stored file → extract
- * text → load vehicle/DIMO context → DIMO agent (structured JSON) → server-side
+ * text → load vehicle/DIMO context → Mistral AI gateway (structured JSON) → server-side
  * plausibility → persist extractedData + plausibility → READY_FOR_REVIEW.
  * Any handled failure sets FAILED with a sanitized message (no auto-retry; the
  * user can re-trigger via the retry endpoint). Domain application happens only
@@ -37,7 +37,7 @@ export class DocumentExtractionProcessor extends WorkerHost {
     private readonly prisma: PrismaService,
     @Inject(DOCUMENT_STORAGE) private readonly storage: DocumentStoragePort,
     private readonly textExtractor: DocumentTextExtractorService,
-    private readonly agent: DimoDocumentAgentService,
+    private readonly aiExtraction: DocumentAiExtractionService,
     private readonly plausibility: DocumentExtractionPlausibilityService,
   ) {
     super();
@@ -99,9 +99,9 @@ export class DocumentExtractionProcessor extends WorkerHost {
       const lastKnownOdometerKm = latest?.odometerKm ?? vehicle?.mileageKm ?? null;
       const dimoTokenId = latest?.dimoTokenId ?? undefined;
 
-      // 4) DIMO agent — structured extraction (vehicle-aware)
+      // 4) AI gateway — structured extraction (vehicle context from DB/DIMO telemetry)
       const schema = getFieldSchema(record.documentType);
-      const agentResult = await this.agent.extract({
+      const agentResult = await this.aiExtraction.extract({
         documentType: record.documentType,
         fields: schema.map((f) => ({
           key: f.key,

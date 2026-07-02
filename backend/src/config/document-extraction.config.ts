@@ -16,7 +16,13 @@ export default registerAs('documentExtraction', () => ({
   maxUploadMb: parseInt(process.env.DOCUMENT_UPLOAD_MAX_MB || '10', 10),
   /** When false, uploads are stored + recorded but no extraction job is enqueued. */
   queueEnabled: (process.env.DOCUMENT_EXTRACTION_QUEUE_ENABLED || 'true') === 'true',
-  /** When false, the worker will not call the DIMO Agents API. */
+  /** When false, the worker will not call the AI extraction layer (Mistral gateway). */
+  aiExtractionEnabled: (() => {
+    const raw =
+      process.env.DOCUMENT_AI_EXTRACTION_ENABLED ?? process.env.DIMO_DOCUMENT_AGENT_ENABLED;
+    return (raw ?? 'true') === 'true';
+  })(),
+  /** @deprecated DIMO document agent — superseded by AI gateway document extraction. */
   dimoAgentEnabled: (process.env.DIMO_DOCUMENT_AGENT_ENABLED || 'true') === 'true',
   /** @deprecated Personality is resolved via dimo.config (DIMO_AGENT_PERSONALITY_DOCUMENT). */
   dimoAgentPersonality: process.env.DIMO_DOCUMENT_AGENT_PERSONALITY || 'fleet_manager_pro',
