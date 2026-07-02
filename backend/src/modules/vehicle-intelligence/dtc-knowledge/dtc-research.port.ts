@@ -6,10 +6,8 @@ import {
 } from './dtc-knowledge.types';
 
 /**
- * Adapter token for the DTC research layer. The default binding uses the DIMO
- * Agents API (web/AI JSON extraction). A future provider (different LLM, OEM
- * data source, manual-review pipeline) can implement the same port and be bound
- * to this token without touching callers.
+ * Adapter token for the DTC research layer. The default binding uses the Mistral
+ * AI Gateway (structured JSON). A future provider can implement the same port.
  */
 export const DTC_RESEARCH_PORT = Symbol('DTC_RESEARCH_PORT');
 

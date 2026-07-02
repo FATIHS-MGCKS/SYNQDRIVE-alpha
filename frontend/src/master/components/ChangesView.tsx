@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-agents-cleanup-v49146-2026-07-02',
+    version: '4.9.146',
+    title: 'V4.9.146 — Final DIMO Agents cleanup (Mistral-only LLM)',
+    summary: [
+      'Entfernt: `DimoAgentsService`, alle `dimo-agent-*` Utils/Types, `DimoDocumentAgentService`, Admin/Health-Controller und DIMO-Agents-Env-Variablen.',
+      'Chat (`ChatService` + `ChatController`) nach `backend/src/modules/ai/chat` migriert — Mistral `complete`/`stream` via `LlmGatewayService`.',
+      'DTC Research (`DtcAiResearchService`) auf Mistral `completeJson` umgestellt.',
+      'Vehicle/Tire Specs Controller → `VehicleSpecsController` im `AiModule`; `DimoModule` nur noch Telematik/Identity/Webhooks.',
+      'Neuer `GET /api/v1/ai/health` ersetzt `GET /dimo/agents/health`. `OrganizationChatAgent`-Tabelle bleibt (API-Kompatibilität); DB-Cleanup separat geplant.',
+    ],
+    reason:
+      'Nach vollständiger Mistral-Migration sollen keine DIMO-Agents-LLM-Pfade mehr im aktiven Code liegen — DIMO nur noch für Telematik.',
+    previousBehavior:
+      'DimoModule enthielt DimoAgentsService, ChatController, DimoAgentsController, Admin/Diagnostics/Health; LLM über agents.dimo.zone.',
+    details:
+      'Gelöscht: dimo-agents.service.ts (+ specs), dimo-agents*.controller.ts, dimo-document-agent.service.ts, dimo-agent-*.util.ts/types.ts, dimo/chat.*. Neu: ai/chat/*, vehicle-specs.controller.ts, ai-health.controller.ts, dtc-ai-research.schema.util.ts. Geändert: dimo.module.ts, dimo.config.ts, document-extraction.config.ts, .env.example, dtc-ai-research.service.ts.',
+    affectsArchitecture: true,
+    module: 'AI Gateway',
+    createdAt: '2026-07-02T11:50:00.000Z',
+  },
+  {
     id: 'vehicle-tire-specs-mistral-v49145-2026-07-02',
     version: '4.9.145',
     title: 'V4.9.145 — Vehicle/Tire Specs: DIMO Agent → Mistral AI Gateway',

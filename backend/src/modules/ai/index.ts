@@ -20,6 +20,8 @@ export { DocumentAiExtractionService } from './documents/document-ai-extraction.
 export { VehicleSpecAiService } from './vehicle-specs/vehicle-spec-ai.service';
 export { TireSpecAiService } from './vehicle-specs/tire-spec-ai.service';
 export { AiTireSpecJobService } from './vehicle-specs/ai-tire-spec-job.service';
+export { ChatService } from './chat/chat.service';
+export { AiHealthController } from './ai-health.controller';
 export type {
   StartAiTireSpecJobInput,
   AiTireSpecJobStatus,

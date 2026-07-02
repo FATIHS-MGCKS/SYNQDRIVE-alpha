@@ -35,22 +35,18 @@ export class ChatController {
 
     try {
       return await this.chatService.sendMessage(orgId, body.content.trim());
-    } catch (err: any) {
-      this.logger.error(`[Chat] Unhandled error in sendMessage for org ${orgId}: ${err.message}`, err.stack);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`[Chat] Unhandled error in sendMessage for org ${orgId}: ${message}`);
       return {
         role: 'assistant',
-        content: "I'm sorry, something unexpected happened while processing your request. Please try again in a moment.",
+        content:
+          "I'm sorry, something unexpected happened while processing your request. Please try again in a moment.",
         createdAt: new Date().toISOString(),
       };
     }
   }
 
-  /**
-   * Streaming variant of sendMessage. Returns Server-Sent Events so the agent
-   * can do long-running work (tool calls / telemetry lookups) without hitting
-   * the upstream gateway 504 that the synchronous DIMO /message endpoint returns.
-   * Events: `status`, `progress`, `result`, `error`.
-   */
   @Post('message/stream')
   async streamMessage(
     @Param('orgId') orgId: string,
@@ -64,7 +60,9 @@ export class ChatController {
     res.flushHeaders();
 
     const closed = { value: false };
-    res.on('close', () => { closed.value = true; });
+    res.on('close', () => {
+      closed.value = true;
+    });
 
     const send = (event: string, data: unknown) => {
       if (!closed.value) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -82,10 +80,12 @@ export class ChatController {
 
     try {
       await this.chatService.streamMessage(orgId, body.content.trim(), send, () => closed.value);
-    } catch (err: any) {
-      this.logger.error(`[Chat] Unhandled error in streamMessage for org ${orgId}: ${err.message}`, err.stack);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`[Chat] Unhandled error in streamMessage for org ${orgId}: ${message}`);
       send('error', {
-        message: "I'm sorry, something unexpected happened while processing your request. Please try again in a moment.",
+        message:
+          "I'm sorry, something unexpected happened while processing your request. Please try again in a moment.",
       });
     }
 
@@ -98,11 +98,7 @@ export class ChatController {
     @Query('limit') limit?: string,
     @Query('before') before?: string,
   ) {
-    return this.chatService.getHistory(
-      orgId,
-      limit ? parseInt(limit, 10) : 100,
-      before,
-    );
+    return this.chatService.getHistory(orgId, limit ? parseInt(limit, 10) : 100, before);
   }
 
   @Delete('history')

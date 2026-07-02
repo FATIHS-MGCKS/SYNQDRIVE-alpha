@@ -80,13 +80,11 @@ DOCUMENT_STORAGE_PROVIDER=local            # only 'local' implemented (S3 = TODO
 LOCAL_DOCUMENT_STORAGE_DIR=./storage/documents
 DOCUMENT_UPLOAD_MAX_MB=10                  # max upload size (MB)
 DOCUMENT_EXTRACTION_QUEUE_ENABLED=true     # false → store+record but don't enqueue
-DIMO_DOCUMENT_AGENT_ENABLED=true           # false → extract text only, skip the agent
-DIMO_DOCUMENT_AGENT_PERSONALITY=fleet_manager_pro   # advisory
+DOCUMENT_AI_EXTRACTION_ENABLED=true        # false → extract text only, skip Mistral AI
 ```
 
-The DIMO Agents layer **reuses the existing** `DIMO_API_KEY` and
-`DIMO_AGENT_USER_WALLET` — no new DIMO credentials are introduced, and existing
-DIMO env keys are never overwritten.
+LLM extraction uses **`MISTRAL_API_KEY`** via `backend/src/modules/ai` (see AI Gateway in `.env.example`).
+DIMO credentials are only required for vehicle telemetry context (`dimoTokenId`), not as an LLM provider.
 
 ---
 
@@ -135,28 +133,24 @@ plus `FAILED` (and legacy `REJECTED`). Retry resets a non-confirmed record to
 
 ---
 
-## 6. DIMO Agents API role
+## 6. Mistral AI extraction role
 
-`DimoDocumentAgentService` is built **on top of** the existing
-`DimoAgentsService` (reusing its public `createAgent` / `sendMessageStream` /
-`isConfigured`). It does not change any existing DIMO behaviour and keeps a small
-in-memory `agentId` cache (recreated on 404/410).
+`DocumentAiExtractionService` (`backend/src/modules/ai/documents`) calls
+`LlmGatewayService.completeJson` with a per-document-type JSON schema.
 
-- **DIMO is not used as a raw OCR/parse API.** Text is always extracted first;
-  only text + a structured instruction set is sent to the agent.
-- The agent receives: `documentType`, the expected field shape, the verbatim
-  extracted text (truncated to 12k chars), and vehicle context (VIN, plate,
+- **Mistral is not used as a raw OCR/parse API.** Text is always extracted first;
+  only text + a structured instruction set is sent to the model.
+- The model receives: `documentType`, the expected field shape, the verbatim
+  extracted text (truncated), and vehicle context (VIN, plate,
   make/model/year, fuel, last-known odometer). When a DIMO `tokenId` is
-  available it is passed as `VEHICLE_IDS` for vehicle-aware context; otherwise
+  available it is included for plausibility context; otherwise
   extraction still runs with DB context only and `dimoContextAvailable=false`.
 - Vehicle/telemetry context is used **for plausibility only, never to invent
   document values**.
-- The prompt instructs **JSON only, no markdown, no explanations, no confidence
-  fields, null for missing fields, do not invent values**.
-- Secrets (JWTs, API keys, wallets) and document contents are never logged;
-  errors are sanitized.
+- The prompt instructs **JSON only, null for missing fields, do not invent values**.
+- Secrets and document contents are never logged; errors are sanitized.
 
-Expected agent JSON shape:
+Expected extraction JSON shape:
 
 ```json
 {
@@ -267,10 +261,9 @@ columns nullable, no renames/drops): `objectKey`, `storageProvider`, `mimeType`,
 
 ## 12. Testing locally
 
-1. Configure env (see §3); keep `DOCUMENT_STORAGE_PROVIDER=local`. DIMO agent
-   needs the existing `DIMO_API_KEY` + `DIMO_AGENT_USER_WALLET`; set
-   `DIMO_DOCUMENT_AGENT_ENABLED=false` to test storage/extraction wiring without
-   calling DIMO.
+1. Configure env (see §3); keep `DOCUMENT_STORAGE_PROVIDER=local`. Set
+   `MISTRAL_API_KEY` for AI extraction; set `DOCUMENT_AI_EXTRACTION_ENABLED=false`
+   to test storage/text extraction wiring without calling Mistral.
 2. Run Postgres + Redis, apply migrations (`npm run prisma:migrate:deploy`).
 3. Start the backend (`npm run start:dev`) and frontend; open a vehicle in the
    Rental UI → AI Document Upload.

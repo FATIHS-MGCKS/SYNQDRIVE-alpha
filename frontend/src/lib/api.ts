@@ -30,7 +30,7 @@ export type {
 
 const BASE_URL = '/api/v1';
 
-/** A single step from the DIMO Agent orchestration pipeline. */
+/** A single step from the AI spec extraction pipeline (SSE). */
 export interface AgentStep {
   step: string;
   status: 'done' | 'error' | 'skipped' | 'working';
@@ -352,8 +352,7 @@ export type ChatStreamEvent =
 
 /**
  * Stream a chat message to the AI Assistant via SSE. The backend keeps the
- * connection alive while the DIMO agent works (tool calls / telemetry lookups),
- * avoiding the 504 gateway timeout of the synchronous endpoint.
+ * connection alive while the Mistral gateway streams the response.
  * Returns an AbortController the caller can use to cancel.
  */
 export function streamChatMessage(

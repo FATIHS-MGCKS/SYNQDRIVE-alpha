@@ -52,12 +52,10 @@ holds the in-flight work; the DB only holds the durable status + result.
     endpoint/button.
   - Enqueue is idempotent via a stable `jobId` (`generic:<code>:<lang>` /
     `vehicle:<code>:<make>:<model>:<year>:<fuel>:<lang>`) + status guard.
-- **`DtcAiResearchService`** (implements `DtcResearchPort`) — the web/AI JSON
-  extraction adapter. Reuses the existing `DimoAgentsService`
-  (`createAgent` / `sendMessageStream`) with its own agent cache and 404/410
-  re-create. Strict JSON-only, German-language prompt. **Sanitizes and
-  length-caps** every field before it leaves the service. Bound to the
-  `DTC_RESEARCH_PORT` token so it can be swapped without touching callers.
+- **`DtcAiResearchService`** (implements `DtcResearchPort`) — Mistral JSON
+  extraction via `LlmGatewayService.completeJson`. Strict JSON-only, German-language
+  prompt. **Sanitizes and length-caps** every field before it leaves the service.
+  Bound to the `DTC_RESEARCH_PORT` token so it can be swapped without touching callers.
 - **`DtcKnowledgeEnrichmentService`** — runs research for a queued row, validates
   the result, persists compact data, sets `READY`/`FAILED`, `aiGenerated`,
   `lastVerifiedAt`. Idempotent (skips `READY`); never deletes on failure.

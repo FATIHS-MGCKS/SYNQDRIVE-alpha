@@ -1,4 +1,4 @@
-describe('dimo.config agentsBaseUrl', () => {
+describe('dimo.config', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
@@ -10,23 +10,23 @@ describe('dimo.config agentsBaseUrl', () => {
     process.env = originalEnv;
   });
 
-  it('defaults to production agents.dimo.zone when DIMO_AGENTS_BASE_URL is unset', async () => {
-    delete process.env.DIMO_AGENTS_BASE_URL;
-    process.env.DIMO_ENV = 'dev';
-
-    const dimoConfig = (await import('./dimo.config')).default;
-    const config = dimoConfig();
-
-    expect(config.agentsBaseUrl).toBe('https://agents.dimo.zone');
-  });
-
-  it('uses DIMO_AGENTS_BASE_URL when explicitly set', async () => {
-    process.env.DIMO_AGENTS_BASE_URL = 'https://custom-agents.example';
+  it('defaults telemetry API URL when unset', async () => {
+    delete process.env.DIMO_TELEMETRY_API_URL;
     process.env.DIMO_ENV = 'production';
 
     const dimoConfig = (await import('./dimo.config')).default;
     const config = dimoConfig();
 
-    expect(config.agentsBaseUrl).toBe('https://custom-agents.example');
+    expect(config.telemetryApiUrl).toBe('https://telemetry-api.dimo.zone/query');
+    expect(config.dimoEnv).toBe('production');
+  });
+
+  it('does not expose DIMO Agents LLM configuration fields', async () => {
+    const dimoConfig = (await import('./dimo.config')).default;
+    const config = dimoConfig() as Record<string, unknown>;
+
+    expect(config.agentsBaseUrl).toBeUndefined();
+    expect(config.agentUserWallet).toBeUndefined();
+    expect(config.dimoApiKey).toBeUndefined();
   });
 });
