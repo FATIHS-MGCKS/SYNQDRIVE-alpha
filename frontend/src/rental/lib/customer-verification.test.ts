@@ -21,6 +21,8 @@ import {
 } from './customer-verification';
 
 describe('startDiditVerificationSession', () => {
+  const flushPromises = () => new Promise((resolve) => setTimeout(resolve, 0));
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockStartDiditSession.mockResolvedValue({
@@ -29,29 +31,48 @@ describe('startDiditVerificationSession', () => {
       checkId: 'check-1',
       status: 'PENDING',
     });
-    DiditSdk.shared.startVerification = vi.fn();
+    DiditSdk.shared.startVerification = vi.fn().mockResolvedValue(undefined);
+    DiditSdk.shared.close = vi.fn();
     DiditSdk.shared.onComplete = undefined;
+    DiditSdk.shared.onStateChange = undefined;
   });
 
   it('calls backend and passes only session url to DiditSdk', async () => {
-    await startDiditVerificationSession('cust-1', 'book-1', 'ID_DOCUMENT', vi.fn());
+    const promise = startDiditVerificationSession('cust-1', 'book-1', 'ID_DOCUMENT', vi.fn());
+    await flushPromises();
 
     expect(mockStartDiditSession).toHaveBeenCalledWith('cust-1', 'book-1', 'ID_DOCUMENT');
     expect(DiditSdk.shared.startVerification).toHaveBeenCalledWith({
       url: 'https://verify.didit.me/session/abc',
+      configuration: expect.objectContaining({
+        closeModalOnComplete: true,
+      }),
     });
-    const callArg = (DiditSdk.shared.startVerification as ReturnType<typeof vi.fn>).mock
-      .calls[0][0];
-    expect(Object.keys(callArg)).toEqual(['url']);
+
+    await DiditSdk.shared.onComplete?.({ type: 'completed' });
+    await promise;
   });
 
   it('onComplete triggers callback only — no local verified state', async () => {
     const onComplete = vi.fn();
-    await startDiditVerificationSession('cust-1', undefined, 'DRIVING_LICENSE', onComplete);
+    const promise = startDiditVerificationSession('cust-1', undefined, 'DRIVING_LICENSE', onComplete);
+    await flushPromises();
 
     await DiditSdk.shared.onComplete?.({ type: 'completed' });
+    await promise;
+
     expect(onComplete).toHaveBeenCalledWith('completed');
     expect(onComplete).not.toHaveBeenCalledWith('verified');
+  });
+
+  it('rejects when Didit SDK reports error state', async () => {
+    const promise = startDiditVerificationSession('cust-1', undefined, 'ID_DOCUMENT', vi.fn());
+    await flushPromises();
+
+    DiditSdk.shared.onStateChange?.('error', 'Iframe blocked');
+
+    await expect(promise).rejects.toThrow('Iframe blocked');
+    expect(DiditSdk.shared.close).toHaveBeenCalled();
   });
 });
 

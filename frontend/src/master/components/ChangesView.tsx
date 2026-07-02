@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'didit-csp-frame-src-v49139-2026-07-02',
+    version: '4.9.139',
+    title: 'V4.9.139 — Didit Modal: CSP frame-src + SDK-Fehlerbehandlung',
+    summary: [
+      'Production-Hänger behoben: Nginx-CSP hatte kein `frame-src` für `verify.didit.me` — Didit-SDK-Overlay verdunkelte die Seite, Iframe blieb leer.',
+      'VPS: `frame-src` um verify.didit.me / verification.didit.me / *.didit.me ergänzt.',
+      '`diditVerificationFlow`: wartet auf SDK-Abschluss, schließt Modal bei Fehler, `closeModalOnComplete`, klare Fehlermeldungen statt stillem Hänger.',
+    ],
+    reason:
+      'Nach DB-Berechtigungsfix startete die Didit-Session erfolgreich, aber das eingebettete Prüf-UI konnte wegen CSP nicht laden.',
+    previousBehavior:
+      'Nach „Weiter zu Didit“ dunkler Backdrop ohne Inhalt; Nutzer musste Seite neu laden.',
+    details:
+      'Ops: `nginx-csp-didit-frame-src.snippet`. Frontend: `diditVerificationFlow.ts`, Tests erweitert. VPS-Nginx direkt angepasst.',
+    affectsArchitecture: false,
+    module: 'Customer Verification',
+    createdAt: '2026-07-02T06:30:00.000Z',
+  },
+  {
     id: 'didit-db-permissions-hotfix-v49138-2026-07-02',
     version: '4.9.138',
     title: 'V4.9.138 — Didit Dokumentenprüfung: DB-Berechtigungen (Production Hotfix)',
