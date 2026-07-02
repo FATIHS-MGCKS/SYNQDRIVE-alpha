@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dtc-knowledge-stale-queue-fix-v49148-2026-07-02',
+    version: '4.9.148',
+    title: 'V4.9.148 — DTC AI-Einschätzung: stale QUEUED/FAILED nach Mistral-Migration',
+    summary: [
+      'DTC Knowledge re-enqueued verlorene `QUEUED`-Jobs (>10 min) und stale `FAILED`-Zeilen (>24 h) beim erneuten Öffnen eines aktiven Fehlercodes.',
+      'Behebt endloses „AI-Erklärung wird vorbereitet …“ wenn BullMQ-Jobs fehlen, aber DB-Status noch `QUEUED`/`FAILED` (z. B. alter `agents.dimo.zone`-Fehler).',
+      'Prod-Hotfix: KS MS 661 / P0675 manuell über Mistral re-enriched (`READY` generic + vehicle-specific).',
+    ],
+    reason:
+      'Nach DIMO→Mistral blieben alte Knowledge-Rows hängen; Mistral war konfiguriert, aber keine Jobs liefen — UI wirkte wie „AI defekt“.',
+    previousBehavior:
+      '`QUEUED` war permanent nicht re-enqueueable; `FAILED` nur per Admin-Retry; verwaiste Rows nach Migration blockierten die AI-Einschätzung.',
+    details:
+      'dtc-knowledge.types.ts (DTC_QUEUED_STALE_MS, DTC_FAILED_AUTO_RETRY_MS), dtc-knowledge.service.ts shouldQueue(), dtc-knowledge.service.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-02T18:30:00.000Z',
+  },
+  {
     id: 'mistral-ops-probe-sync-v49147-2026-07-02',
     version: '4.9.147',
     title: 'V4.9.147 — Mistral Ops: VPS Env-Sync + Connectivity Probe',

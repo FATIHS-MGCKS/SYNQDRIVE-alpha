@@ -18,8 +18,9 @@ import {
   DtcUrgency,
   DtcVehicleContext,
   DTC_ENRICHMENT_JOB,
-  NON_REQUEUEABLE_STATUSES,
+  DTC_FAILED_AUTO_RETRY_MS,
   DTC_PROCESSING_STALE_MS,
+  DTC_QUEUED_STALE_MS,
 } from './dtc-knowledge.types';
 
 const PENDING_MESSAGE = 'AI-Erklärung wird vorbereitet.';
@@ -222,7 +223,16 @@ export class DtcKnowledgeService {
     language: string,
     requeueFailed: boolean,
   ): Promise<void> {
-    if (!this.shouldQueue(generic.enrichmentStatus, requeueFailed, generic.lastEnrichmentAttemptAt)) return;
+    if (
+      !this.shouldQueue(
+        generic.enrichmentStatus,
+        requeueFailed,
+        generic.lastEnrichmentAttemptAt,
+        generic.updatedAt,
+      )
+    ) {
+      return;
+    }
 
     await this.prisma.dtcKnowledge.update({
       where: { id: generic.id },
@@ -244,7 +254,16 @@ export class DtcKnowledgeService {
     language: string,
     requeueFailed: boolean,
   ): Promise<void> {
-    if (!this.shouldQueue(vk.enrichmentStatus, requeueFailed, vk.lastEnrichmentAttemptAt)) return;
+    if (
+      !this.shouldQueue(
+        vk.enrichmentStatus,
+        requeueFailed,
+        vk.lastEnrichmentAttemptAt,
+        vk.updatedAt,
+      )
+    ) {
+      return;
+    }
 
     await this.prisma.dtcVehicleKnowledge.update({
       where: { id: vk.id },
@@ -271,15 +290,26 @@ export class DtcKnowledgeService {
     status: string,
     requeueFailed: boolean,
     lastEnrichmentAttemptAt?: Date | null,
+    updatedAt?: Date | null,
   ): boolean {
+    const lastActivityMs = lastEnrichmentAttemptAt?.getTime() ?? updatedAt?.getTime() ?? 0;
+
+    if (status === 'READY') return false;
+
     if (status === 'PROCESSING') {
-      const last = lastEnrichmentAttemptAt?.getTime() ?? 0;
-      const stale = !last || Date.now() - last > DTC_PROCESSING_STALE_MS;
-      return stale;
+      return !lastActivityMs || Date.now() - lastActivityMs > DTC_PROCESSING_STALE_MS;
     }
-    if (NON_REQUEUEABLE_STATUSES.includes(status as any)) return false;
-    if (status === 'FAILED' && !requeueFailed) return false;
-    return true; // MISSING (always) or FAILED (only on explicit retry)
+
+    if (status === 'QUEUED') {
+      return !lastActivityMs || Date.now() - lastActivityMs > DTC_QUEUED_STALE_MS;
+    }
+
+    if (status === 'FAILED') {
+      if (requeueFailed) return true;
+      return !lastActivityMs || Date.now() - lastActivityMs > DTC_FAILED_AUTO_RETRY_MS;
+    }
+
+    return true; // MISSING (always)
   }
 
   private async enqueue(
