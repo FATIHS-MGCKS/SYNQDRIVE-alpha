@@ -4,7 +4,15 @@ import { Car, CheckCircle, IdCard, Upload, User } from 'lucide-react';
 import { Icon } from './ui/Icon';
 import { toast } from 'sonner';
 import { CustomerDetailModal } from './CustomerDetailModal';
-import { CustomerDocumentUploadBox } from './CustomerDocumentUploadBox';
+import { AddCustomerDocumentsStep } from './add-customer/AddCustomerDocumentsStep';
+import { useCustomerVerification } from './customer-verification/useCustomerVerification';
+import {
+  DEFAULT_ADD_CUSTOMER_FORM,
+  ensureWizardDraftCustomer,
+  validateAddCustomerDocumentsStep,
+  addCustomerFormToPayload,
+} from '../lib/add-customer-wizard';
+import { documentEligibilityLabelDe } from '../lib/customer-verification';
 import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
 import {
@@ -312,27 +320,21 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
   const [cardFilter, setCardFilter] = useState<'all' | 'active' | 'suspended' | 'attention'>('all');
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [addStep, setAddStep] = useState(0);
-  const [newCustomer, setNewCustomer] = useState({
-    firstName: '', lastName: '', email: '', phone: '', street: '', zip: '', city: 'Kassel',
-    type: 'Individual' as 'Individual' | 'Corporate', company: '',
-    licenseNumber: '', licenseExpiry: '', licenseClass: 'B',
-    idType: 'Personalausweis' as 'Personalausweis' | 'Reisepass',
-    idNumber: '', idExpiry: '',
-    notes: '',
-  });
+  const [newCustomer, setNewCustomer] = useState(DEFAULT_ADD_CUSTOMER_FORM);
   const [pendingDocFiles, setPendingDocFiles] = useState<PendingCustomerDocumentFiles>({});
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [draftCustomerId, setDraftCustomerId] = useState<string | null>(null);
+  const [isEnsuringDraft, setIsEnsuringDraft] = useState(false);
+  const { eligibility: wizardEligibility, refresh: refreshWizardEligibility } = useCustomerVerification(
+    draftCustomerId ?? undefined,
+  );
 
   const resetAddCustomerForm = () => {
-    setNewCustomer({
-      firstName: '', lastName: '', email: '', phone: '', street: '', zip: '', city: 'Kassel',
-      type: 'Individual', company: '',
-      licenseNumber: '', licenseExpiry: '', licenseClass: 'B',
-      idType: 'Personalausweis', idNumber: '', idExpiry: '',
-      notes: '',
-    });
+    setNewCustomer(DEFAULT_ADD_CUSTOMER_FORM);
     setPendingDocFiles({});
     setFormErrors({});
+    setDraftCustomerId(null);
+    setIsEnsuringDraft(false);
     setAddStep(0);
   };
 
@@ -380,18 +382,44 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       if (!newCustomer.idNumber.trim()) errors.idNumber = 'Ausweisnummer erforderlich';
       if (!newCustomer.idExpiry) errors.idExpiry = 'Ablaufdatum erforderlich';
     } else if (step === 2) {
-      if (!pendingDocFiles.ID_FRONT) errors.idFront = 'Vorderseite des Ausweises erforderlich';
-      if (!pendingDocFiles.ID_BACK) errors.idBack = 'Rückseite des Ausweises erforderlich';
-      if (!pendingDocFiles.LICENSE_FRONT) errors.licenseFront = 'Vorderseite des Führerscheins erforderlich';
+      Object.assign(
+        errors,
+        validateAddCustomerDocumentsStep(pendingDocFiles, wizardEligibility, {
+          idFront: 'Ausweis-Vorderseite oder Didit-Prüfung erforderlich',
+          idBack: 'Ausweis-Rückseite oder Didit-Prüfung erforderlich',
+          licenseFront: 'Führerschein-Vorderseite oder Didit-Prüfung erforderlich',
+        }),
+      );
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const handleNextStep = () => {
-    if (validateStep(addStep)) {
-      if (addStep < 3) setAddStep(addStep + 1);
+  const handleNextStep = async () => {
+    if (!validateStep(addStep)) return;
+    if (addStep === 1) {
+      if (!orgId) {
+        toast.error('Keine Organisation geladen');
+        return;
+      }
+      setIsEnsuringDraft(true);
+      try {
+        const id = await ensureWizardDraftCustomer(orgId, draftCustomerId, newCustomer);
+        setDraftCustomerId(id);
+        setAddStep(2);
+      } catch (err: unknown) {
+        const msg =
+          (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data
+            ?.message ||
+          (err as Error)?.message ||
+          'Kunde konnte nicht vorbereitet werden';
+        toast.error('Didit-Vorbereitung fehlgeschlagen', { description: String(msg), duration: 5000 });
+      } finally {
+        setIsEnsuringDraft(false);
+      }
+      return;
     }
+    if (addStep < 3) setAddStep(addStep + 1);
   };
 
   const handleSubmitCustomer = async () => {
@@ -401,28 +429,17 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
     }
     setIsSavingCustomer(true);
     try {
-      const payload = buildCustomerCreatePayload({
-        firstName: newCustomer.firstName,
-        lastName: newCustomer.lastName,
-        email: newCustomer.email,
-        phone: newCustomer.phone,
-        street: newCustomer.street,
-        zip: newCustomer.zip,
-        city: newCustomer.city || 'Kassel',
-        country: 'DE',
-        type: newCustomer.type,
-        company: newCustomer.type === 'Corporate' ? newCustomer.company : undefined,
-        licenseNumber: newCustomer.licenseNumber,
-        licenseExpiry: newCustomer.licenseExpiry,
-        licenseClass: newCustomer.licenseClass,
-        idType: newCustomer.idType,
-        idNumber: newCustomer.idNumber,
-        idExpiry: newCustomer.idExpiry,
-        notes: newCustomer.notes,
-      });
-      const created: any = await api.customers.create(orgId, payload);
-      await uploadPendingCustomerDocuments(orgId, created.id, pendingDocFiles);
-      const mapped = mapApiCustomer(created);
+      const payload = buildCustomerCreatePayload(addCustomerFormToPayload(newCustomer));
+      let customerId = draftCustomerId;
+      if (customerId) {
+        await api.customers.update(orgId, customerId, payload);
+      } else {
+        const created: { id: string } = await api.customers.create(orgId, payload);
+        customerId = created.id;
+      }
+      await uploadPendingCustomerDocuments(orgId, customerId, pendingDocFiles);
+      const saved = await api.customers.get(orgId, customerId);
+      const mapped = mapApiCustomer(saved);
       setCustomers(prev => [mapped, ...prev.filter(c => c.id !== mapped.id)]);
       toast.success('Kunde angelegt', {
         description: `${mapped.name}${mapped.email ? ' · ' + mapped.email : ''}`,
@@ -843,9 +860,18 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                 </button>
               )}
               {addStep < 3 ? (
-                <button type="button" onClick={handleNextStep} className="sq-cta flex items-center gap-1.5 px-3 py-2 text-xs font-semibold">
-                  Weiter
-                  <Icon name="chevron-right" className="w-3.5 h-3.5" />
+                <button
+                  type="button"
+                  onClick={() => void handleNextStep()}
+                  disabled={isEnsuringDraft}
+                  className="sq-cta flex items-center gap-1.5 px-3 py-2 text-xs font-semibold disabled:opacity-50"
+                >
+                  {isEnsuringDraft ? (
+                    <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Icon name="chevron-right" className="w-3.5 h-3.5" />
+                  )}
+                  {isEnsuringDraft ? 'Vorbereitet…' : 'Weiter'}
                 </button>
               ) : (
                 <button type="button" onClick={handleSubmitCustomer} disabled={isSavingCustomer} className={`sq-cta flex items-center gap-1.5 px-3 py-2 text-xs font-semibold disabled:opacity-50 ${isSavingCustomer ? 'opacity-50' : ''}`}>
@@ -1063,56 +1089,22 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                 )}
 
                 {addStep === 2 && (
-                  <div className="space-y-5">
-                    {sectionTitle(IdCard, `${newCustomer.idType} hochladen`)}
-                    <div className="grid grid-cols-2 gap-3">
-                      <CustomerDocumentUploadBox
-                        label="Vorderseite *"
-                        documentType="ID_FRONT"
-                        orgId={orgId}
-                        pendingFile={pendingDocFiles.ID_FRONT}
-                        errorMessage={formErrors.idFront}
-                        onPendingFileChange={(file) => setPendingDocFiles((prev) => ({ ...prev, ID_FRONT: file ?? undefined }))}
-                      />
-                      <CustomerDocumentUploadBox
-                        label="Rückseite *"
-                        documentType="ID_BACK"
-                        orgId={orgId}
-                        pendingFile={pendingDocFiles.ID_BACK}
-                        errorMessage={formErrors.idBack}
-                        onPendingFileChange={(file) => setPendingDocFiles((prev) => ({ ...prev, ID_BACK: file ?? undefined }))}
-                      />
-                    </div>
-                    <div className="rounded-lg border border-border bg-muted/30 p-4">
-                      <div className="flex items-start gap-2.5">
-                        <Icon name="info" className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          Automatische Ausweis- und Führerscheinprüfung (Didit) steht nach Anlage des Kunden im
-                          Kundenprofil unter „Dokumente & Verifikation“ zur Verfügung.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="h-px my-1 bg-border" />
-                    {sectionTitle(Car, 'Führerschein hochladen')}
-                    <div className="grid grid-cols-2 gap-3">
-                      <CustomerDocumentUploadBox
-                        label="Vorderseite *"
-                        documentType="LICENSE_FRONT"
-                        orgId={orgId}
-                        pendingFile={pendingDocFiles.LICENSE_FRONT}
-                        errorMessage={formErrors.licenseFront}
-                        onPendingFileChange={(file) => setPendingDocFiles((prev) => ({ ...prev, LICENSE_FRONT: file ?? undefined }))}
-                      />
-                      <CustomerDocumentUploadBox
-                        label="Rückseite (optional)"
-                        documentType="LICENSE_BACK"
-                        orgId={orgId}
-                        pendingFile={pendingDocFiles.LICENSE_BACK}
-                        onPendingFileChange={(file) => setPendingDocFiles((prev) => ({ ...prev, LICENSE_BACK: file ?? undefined }))}
-                      />
-                    </div>
-                  </div>
+                  <AddCustomerDocumentsStep
+                    draftCustomerId={draftCustomerId}
+                    isPreparingDraft={isEnsuringDraft}
+                    orgId={orgId}
+                    idType={newCustomer.idType}
+                    pendingDocFiles={pendingDocFiles}
+                    formErrors={formErrors}
+                    onPendingFileChange={(type, file) =>
+                      setPendingDocFiles((prev) => ({
+                        ...prev,
+                        [type]: file ?? undefined,
+                      }))
+                    }
+                    onVerificationUpdated={() => void refreshWizardEligibility()}
+                    sectionTitle={sectionTitle}
+                  />
                 )}
 
                 {addStep === 3 && (
@@ -1133,10 +1125,19 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                       <SummaryRow label="Ausweisnr." value={newCustomer.idNumber} />
                       <SummaryRow label="Ausweis gültig bis" value={newCustomer.idExpiry} />
                       <div className="flex items-center justify-between py-2">
-                        <span className="text-xs text-muted-foreground">Ausweisprüfung</span>
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
-                          <Icon name="shield" className="w-3.5 h-3.5" />
-                          Nach Kundenanlage im Profil
+                        <span className="text-xs text-muted-foreground">Ausweis (Didit)</span>
+                        <span className="text-xs font-medium text-foreground">
+                          {wizardEligibility
+                            ? documentEligibilityLabelDe(wizardEligibility.idDocument)
+                            : '—'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between py-2">
+                        <span className="text-xs text-muted-foreground">Führerschein (Didit)</span>
+                        <span className="text-xs font-medium text-foreground">
+                          {wizardEligibility
+                            ? documentEligibilityLabelDe(wizardEligibility.drivingLicense)
+                            : '—'}
                         </span>
                       </div>
                     </div>

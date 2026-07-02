@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'didit-customer-create-wizard-v49139-2026-07-01',
+    version: '4.9.139',
+    title: 'V4.9.139 — Didit-Dokumentenprüfung im Kunde-anlegen-Wizard',
+    summary: [
+      'Schritt „Dokumente“ in CustomersView und NewBookingView: `CustomerVerificationPanel` (Didit) direkt im Wizard.',
+      'Nach Schritt „ID & Führerschein“ wird der Kunde als Entwurf angelegt (`ensureWizardDraftCustomer`), damit Didit-Sessions eine `customerId` haben.',
+      'Validierung: Didit-Status (verified/pending/review) oder manuelle Uploads; gemeinsame Komponente `AddCustomerDocumentsStep`.',
+    ],
+    reason:
+      'Didit war nur nach Kundenanlage im Profil verfügbar — Nutzer wollten Ausweis/Führerschein bereits während „Kunde anlegen“ prüfen lassen.',
+    previousBehavior:
+      'Wizard Schritt 2 nur manuelle Uploads + Hinweistext „Didit steht nach Anlage im Profil zur Verfügung“; CREATE erst am Ende.',
+    details:
+      'Neu: `add-customer-wizard.ts`, `AddCustomerDocumentsStep.tsx`. Geändert: `CustomersView.tsx`, `NewBookingView.tsx`. Kein Backend-Change.',
+    affectsArchitecture: true,
+    module: 'Rental UI',
+    createdAt: '2026-07-01T18:30:00.000Z',
+  },
+  {
     id: 'didit-mcp-setup-v49138-2026-07-01',
     version: '4.9.138',
     title: 'V4.9.138 — Didit MCP + Workflow-Env + VPS Env-Sync',
