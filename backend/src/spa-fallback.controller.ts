@@ -6,7 +6,7 @@ import { join } from 'path';
 export class SpaFallbackController {
   private readonly indexPath = join(process.cwd(), 'public', 'index.html');
 
-  @Get(['login', 'login/*', 'master', 'master/*', 'rental', 'rental/*'])
+  @Get(['login', 'login/*', 'master', 'master/*', 'rental', 'rental/*', 'verification', 'verification/*'])
   serveSpa(@Res() res: Response) {
     res.sendFile(this.indexPath);
   }

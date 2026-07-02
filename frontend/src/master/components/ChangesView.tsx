@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'didit-popup-flow-v49140-2026-07-02',
+    version: '4.9.140',
+    title: 'V4.9.140 — Didit Prüfung per Popup statt eingebettetem Iframe',
+    summary: [
+      'Didit-Dokumentenprüfung öffnet primär in einem neuen Browser-Fenster (`window.open`) statt im SDK-Iframe-Modal.',
+      'Grund: verify.didit.me setzt COEP/COOP — eingebettetes Iframe blieb nach CSP-Fix dunkel/leer.',
+      'Fallback: Didit-SDK-Modal mit `zIndex: 99999` wenn Popup blockiert. Route `/verification/done` für Didit-Rückleitung.',
+    ],
+    reason:
+      'Trotz frame-src in CSP hing die Prüfung weiter (dunkler Overlay, kein Inhalt). Popup umgeht Cross-Origin-Embed-Probleme zuverlässig.',
+    previousBehavior:
+      'Nur `DiditSdk.startVerification` im Modal — Overlay sichtbar, Didit-UI lud nicht.',
+    details:
+      'Geändert: `diditVerificationFlow.ts`, `VerificationDonePage.tsx`, `App.tsx`, `spa-fallback.controller.ts`, `useCustomerVerification.ts`.',
+    affectsArchitecture: false,
+    module: 'Customer Verification',
+    createdAt: '2026-07-02T06:45:00.000Z',
+  },
+  {
     id: 'didit-csp-frame-src-v49139-2026-07-02',
     version: '4.9.139',
     title: 'V4.9.139 — Didit Modal: CSP frame-src + SDK-Fehlerbehandlung',

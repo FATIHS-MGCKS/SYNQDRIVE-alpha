@@ -9,6 +9,11 @@ import type { CustomerVerificationCheckKind } from './customer-verification';
 
 export type DiditSdkCompleteStatus = VerificationResultType;
 
+const DIDIT_POPUP_NAME = 'synqdrive-didit-verification';
+const DIDIT_POPUP_FEATURES = 'popup=yes,width=520,height=760,menubar=no,toolbar=no,location=yes,status=no,resizable=yes,scrollbars=yes';
+const POPUP_POLL_MS = 500;
+const POPUP_TIMEOUT_MS = 30 * 60 * 1000;
+
 export class DiditVerificationFlowError extends Error {
   constructor(message: string) {
     super(message);
@@ -23,24 +28,34 @@ function mapDiditFailureMessage(result: VerificationResult): string {
   return result.error?.message ?? 'Didit-Prüfung konnte nicht gestartet werden.';
 }
 
-export async function startDiditVerificationSession(
-  customerId: string,
-  bookingId: string | undefined,
-  kind: CustomerVerificationCheckKind,
+function waitForPopupClose(popup: Window): Promise<'closed' | 'timeout'> {
+  const startedAt = Date.now();
+
+  return new Promise((resolve) => {
+    const tick = () => {
+      if (popup.closed) {
+        resolve('closed');
+        return;
+      }
+      if (Date.now() - startedAt > POPUP_TIMEOUT_MS) {
+        try {
+          popup.close();
+        } catch {
+          // ignore
+        }
+        resolve('timeout');
+        return;
+      }
+      window.setTimeout(tick, POPUP_POLL_MS);
+    };
+    tick();
+  });
+}
+
+async function startDiditSdkModal(
+  url: string,
   onComplete: (status: DiditSdkCompleteStatus) => void | Promise<void>,
 ): Promise<void> {
-  const session = await api.customerVerification.startDiditSession(
-    customerId,
-    bookingId,
-    kind,
-  );
-
-  if (!session.url?.trim()) {
-    throw new DiditVerificationFlowError(
-      'Didit-Sitzung ohne gültige URL — bitte erneut versuchen.',
-    );
-  }
-
   const sdk = DiditSdk.shared;
 
   const cleanup = () => {
@@ -85,10 +100,11 @@ export async function startDiditVerificationSession(
 
     void sdk
       .startVerification({
-        url: session.url,
+        url,
         configuration: {
           loggingEnabled: import.meta.env.DEV,
           closeModalOnComplete: true,
+          zIndex: 99999,
         },
       })
       .catch((error: unknown) => {
@@ -102,4 +118,44 @@ export async function startDiditVerificationSession(
         );
       });
   });
+}
+
+export async function startDiditVerificationSession(
+  customerId: string,
+  bookingId: string | undefined,
+  kind: CustomerVerificationCheckKind,
+  onComplete: (status: DiditSdkCompleteStatus) => void | Promise<void>,
+): Promise<void> {
+  const session = await api.customerVerification.startDiditSession(
+    customerId,
+    bookingId,
+    kind,
+  );
+
+  if (!session.url?.trim()) {
+    throw new DiditVerificationFlowError(
+      'Didit-Sitzung ohne gültige URL — bitte erneut versuchen.',
+    );
+  }
+
+  const popup = window.open(session.url, DIDIT_POPUP_NAME, DIDIT_POPUP_FEATURES);
+  if (!popup) {
+    await startDiditSdkModal(session.url, onComplete);
+    return;
+  }
+
+  try {
+    popup.focus();
+  } catch {
+    // ignore
+  }
+
+  const outcome = await waitForPopupClose(popup);
+  if (outcome === 'timeout') {
+    throw new DiditVerificationFlowError(
+      'Didit-Prüfung wurde wegen Zeitüberschreitung geschlossen.',
+    );
+  }
+
+  await onComplete('completed');
 }
