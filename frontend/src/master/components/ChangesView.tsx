@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'administration-tabbar-v49155-2026-07-03',
+    version: '4.9.155',
+    title: 'V4.9.155 — Administration: zentrale Tab-Navigation',
+    summary: [
+      'Neue `AdministrationTabBar` unter dem Seitentitel „Verwaltung/Administration“ in `SettingsView`.',
+      'Acht Tabs (Unternehmen, Konto, Benutzer & Rollen, Fleet Connectivity, Abrechnung, Data Authorization, Legal Documents, Rental Rules) im `sq-tab-bar`-Stil wie Vehicle Detail / Fleet.',
+      'Mobile: horizontal scrollbar; Desktop: eine Zeile. Keine Fachlogik-, Route- oder Sidebar-Änderungen.',
+    ],
+    reason:
+      'Administration-Unterseiten wirkten wie lose Einzelseiten ohne klare In-Page-Navigation.',
+    previousBehavior:
+      'Tab-Wechsel nur über Sidebar; `SettingsView` renderte direkt den aktiven Tab-Inhalt ohne zentrale Tabbar.',
+    details:
+      'settings/AdministrationTabBar.tsx, settings/settingsTypes.ts, SettingsView.tsx, i18n adminTab.* keys (de/en).',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-03T09:35:00.000Z',
+  },
+  {
     id: 'ready-kpi-card-layout-v49154-2026-07-03',
     version: '4.9.154',
     title: 'V4.9.154 — Dashboard Ready KPI: neues Ready-for-Renting Layout',

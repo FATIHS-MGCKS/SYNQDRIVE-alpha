@@ -187,6 +187,16 @@ export const de: Record<TranslationKey, string> = {
   'settingsTab.legalDocuments': 'Rechtliche Dokumente',
   'settingsTab.rentalRules': 'Mietregeln',
 
+  // Administration in-page tab bar (short labels)
+  'adminTab.company': 'Unternehmen',
+  'adminTab.account': 'Konto',
+  'adminTab.users': 'Benutzer & Rollen',
+  'adminTab.fleetConnection': 'Fleet Connectivity',
+  'adminTab.billing': 'Abrechnung',
+  'adminTab.dataAuthorization': 'Data Authorization',
+  'adminTab.legalDocuments': 'Legal Documents',
+  'adminTab.rentalRules': 'Rental Rules',
+
   // ─── Finance Tabs ───
   'financeTab.invoices': 'Rechnungen',
   'financeTab.fines': 'Bussen',
