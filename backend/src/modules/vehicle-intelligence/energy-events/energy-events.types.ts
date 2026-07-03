@@ -29,6 +29,9 @@ export interface EnergyEventDto {
   odometerStartKm: number | null;
   odometerEndKm: number | null;
   confidence: EnergyEventConfidence;
+  locationDisplayName: string | null;
+  locationSource: string | null;
+  locationConfidence: string | null;
 }
 
 export type TimelineItem =
@@ -56,5 +59,8 @@ export function toEnergyEventDto(row: VehicleEnergyEvent): EnergyEventDto {
     odometerStartKm: row.odometerStartKm,
     odometerEndKm: row.odometerEndKm,
     confidence: row.confidence,
+    locationDisplayName: row.locationDisplayName,
+    locationSource: row.locationSource,
+    locationConfidence: row.locationConfidence,
   };
 }

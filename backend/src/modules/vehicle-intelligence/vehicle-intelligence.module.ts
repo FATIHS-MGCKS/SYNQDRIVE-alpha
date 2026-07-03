@@ -51,6 +51,7 @@ import { VehicleFileSummaryService } from './vehicle-file/vehicle-file-summary.s
 import { TasksModule } from '../tasks/tasks.module';
 import { DrivingImpactService } from './driving-impact/driving-impact.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
+import { EnergyEventLocationService } from './energy-events/energy-event-location.service';
 import { DimoModule } from '../dimo/dimo.module';
 import { AiModule } from '../ai/ai.module';
 import { MisuseCasesModule } from './misuse-cases/misuse-cases.module';
@@ -140,6 +141,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     ComplianceTaskMaterializeService,
     VehicleFileSummaryService,
     DrivingImpactService,
+    EnergyEventLocationService,
     EnergyEventsService,
     // ── New refactored providers ──
     TripDecisionEngine,

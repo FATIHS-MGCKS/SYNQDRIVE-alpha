@@ -10,6 +10,7 @@ import {
   type VehicleEnergyEvent,
 } from '@prisma/client';
 import { toEnergyEventDto, type EnergyEventDto } from './energy-events.types';
+import { EnergyEventLocationService } from './energy-event-location.service';
 
 export interface DetectEnergyEventsOptions {
   from: Date;
@@ -74,6 +75,7 @@ export class EnergyEventsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dimoSegments: DimoSegmentsService,
+    private readonly locationService: EnergyEventLocationService,
   ) {}
 
   async listEnergyEvents(
@@ -94,7 +96,10 @@ export class EnergyEventsService {
       },
       orderBy: { startTime: 'asc' },
     });
-    return rows.map(toEnergyEventDto);
+    const enriched = await Promise.all(
+      rows.map((row) => this.ensureLocationEnriched(row)),
+    );
+    return enriched.map(toEnergyEventDto);
   }
 
   /**
@@ -270,6 +275,12 @@ export class EnergyEventsService {
       where: { dimoSegmentId: segment.coalescedSegmentId },
     });
 
+    const location = await this.locationService.resolve(
+      segment.startLatitude,
+      segment.startLongitude,
+      kind,
+    );
+
     const data = {
       vehicleId,
       kind,
@@ -288,6 +299,9 @@ export class EnergyEventsService {
       odometerStartKm: segment.odometerStartKm,
       odometerEndKm: segment.odometerEndKm,
       confidence: this.scoreConfidence(segment),
+      locationDisplayName: location.locationDisplayName,
+      locationSource: location.locationSource,
+      locationConfidence: location.locationConfidence,
       rawDetectionMeta: {
         fuelStartLiters: segment.fuelStartLiters,
         fuelEndLiters: segment.fuelEndLiters,
@@ -505,6 +519,29 @@ export class EnergyEventsService {
       );
     }
     return result.count;
+  }
+
+  private async ensureLocationEnriched(
+    row: VehicleEnergyEvent,
+  ): Promise<VehicleEnergyEvent> {
+    if (row.locationDisplayName) return row;
+    if (row.startLatitude == null || row.startLongitude == null) return row;
+
+    const location = await this.locationService.resolve(
+      row.startLatitude,
+      row.startLongitude,
+      row.kind,
+    );
+    if (!location.locationDisplayName) return row;
+
+    return this.prisma.vehicleEnergyEvent.update({
+      where: { id: row.id },
+      data: {
+        locationDisplayName: location.locationDisplayName,
+        locationSource: location.locationSource,
+        locationConfidence: location.locationConfidence,
+      },
+    });
   }
 
   private scoreConfidence(segment: DimoEnergyEventSegment): EnergyEventConfidence {

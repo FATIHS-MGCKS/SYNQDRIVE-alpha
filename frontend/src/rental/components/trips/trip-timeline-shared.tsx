@@ -1,5 +1,6 @@
 import { Icon } from '../ui/Icon';
 import type { EnergyEvent } from './timeline.types';
+import { formatEnergyEventLocationForDisplay } from './energy-event-location';
 
 export function TripTimelineEnergyCard({ event, isDark }: { event: EnergyEvent; isDark: boolean }) {
   const isRefuel = event.kind === 'REFUEL';
@@ -58,6 +59,9 @@ export function TripTimelineEnergyCard({ event, isDark }: { event: EnergyEvent; 
         ? 'bg-blue-500/10 text-blue-500'
         : 'bg-muted text-muted-foreground';
 
+  const locationLabel = formatEnergyEventLocationForDisplay(event, 'de');
+  const hasCoordinates = event.startLatitude != null && event.startLongitude != null;
+
   return (
     <div className="rounded-xl border border-border bg-card/40 shadow-sm">
       <div className="p-3 sm:p-4 flex items-center gap-3">
@@ -86,10 +90,10 @@ export function TripTimelineEnergyCard({ event, isDark }: { event: EnergyEvent; 
             {event.odometerEndKm != null && (
               <span>@ {Math.round(event.odometerEndKm).toLocaleString()} km</span>
             )}
-            {event.startLatitude != null && event.startLongitude != null && (
-              <span className="inline-flex items-center gap-1">
-                <Icon name="map-pin" className="w-2.5 h-2.5" />
-                {event.startLatitude.toFixed(3)}, {event.startLongitude.toFixed(3)}
+            {(hasCoordinates || locationLabel) && (
+              <span className="inline-flex items-center gap-1 min-w-0">
+                <Icon name="map-pin" className="w-2.5 h-2.5 shrink-0" />
+                <span className="truncate">{locationLabel}</span>
               </span>
             )}
           </div>
