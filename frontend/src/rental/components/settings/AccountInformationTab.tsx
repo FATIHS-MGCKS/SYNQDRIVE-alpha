@@ -287,6 +287,7 @@ export function AccountInformationTab({ onNavigateToUsers }: AccountInformationT
           onRevokeOthers={() => void revokeOtherSessions()}
           onRevokeSession={(id) => void revokeSession(id)}
           onRefreshSessions={() => void loadSessions()}
+          onReloadAccount={() => loadAccount()}
         />
       </div>
 

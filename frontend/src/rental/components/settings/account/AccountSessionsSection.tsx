@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { KeyRound, Loader2, LogOut, MonitorSmartphone, Shield, ShieldOff, Smartphone } from 'lucide-react';
 import type { AccountMeDto, AccountSessionDto } from '../../../../lib/api';
 import { DataCard, EmptyState } from '../../../../components/patterns';
@@ -9,6 +10,9 @@ import {
   formatSessionLastActivity,
   formatSessionIpCompact,
 } from './session-display.utils';
+import { TwoFactorSetupDialog } from './TwoFactorSetupDialog';
+import { TwoFactorDisableDialog } from './TwoFactorDisableDialog';
+import { TwoFactorRegenerateDialog } from './TwoFactorRegenerateDialog';
 
 interface AccountSessionsSectionProps {
   account: AccountMeDto;
@@ -20,6 +24,7 @@ interface AccountSessionsSectionProps {
   onRevokeOthers: () => void;
   onRevokeSession: (sessionId: string) => void;
   onRefreshSessions: () => void;
+  onReloadAccount: () => void | Promise<void>;
 }
 
 function SecurityStatusBadge({
@@ -68,7 +73,12 @@ export function AccountSessionsSection({
   onRevokeOthers,
   onRevokeSession,
   onRefreshSessions,
+  onReloadAccount,
 }: AccountSessionsSectionProps) {
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [disableOpen, setDisableOpen] = useState(false);
+  const [regenerateOpen, setRegenerateOpen] = useState(false);
+
   const { security, user } = account;
   const activeSessions = sessions.filter((session) => session.status === 'active');
   const otherActiveSessions = activeSessions.filter((session) => !session.current);
@@ -142,11 +152,39 @@ export function AccountSessionsSection({
                   </p>
                 )}
               </div>
-              {twoFactorAvailable && !twoFactorEnabled ? (
-                <Button type="button" variant="outline" size="sm" className="shrink-0" disabled>
-                  2FA einrichten
-                </Button>
-              ) : null}
+              <div className="flex flex-col gap-2 sm:flex-row sm:shrink-0">
+                {twoFactorAvailable && !twoFactorEnabled ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => setSetupOpen(true)}
+                  >
+                    2FA einrichten
+                  </Button>
+                ) : null}
+                {twoFactorEnabled ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setRegenerateOpen(true)}
+                    >
+                      Recovery Codes neu generieren
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDisableOpen(true)}
+                    >
+                      2FA deaktivieren
+                    </Button>
+                  </>
+                ) : null}
+              </div>
             </div>
           </div>
 
@@ -301,6 +339,18 @@ export function AccountSessionsSection({
           </ul>
         )}
       </DataCard>
+
+      <TwoFactorSetupDialog
+        open={setupOpen}
+        onOpenChange={setSetupOpen}
+        onCompleted={onReloadAccount}
+      />
+      <TwoFactorDisableDialog
+        open={disableOpen}
+        onOpenChange={setDisableOpen}
+        onCompleted={onReloadAccount}
+      />
+      <TwoFactorRegenerateDialog open={regenerateOpen} onOpenChange={setRegenerateOpen} />
     </div>
   );
 }

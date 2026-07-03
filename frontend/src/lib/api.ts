@@ -1750,7 +1750,7 @@ export interface AuthLoginSuccessResponse {
   refreshToken: string;
   expiresIn: string;
   mustChangePassword: boolean;
-  user: Record<string, unknown>;
+  user: AuthLoginUser;
 }
 
 export interface AuthLoginMfaChallengeResponse {
@@ -1761,6 +1761,24 @@ export interface AuthLoginMfaChallengeResponse {
 
 export type AuthLoginResponse = AuthLoginSuccessResponse | AuthLoginMfaChallengeResponse;
 
+export function isAuthLoginMfaChallenge(
+  response: AuthLoginResponse,
+): response is AuthLoginMfaChallengeResponse {
+  return 'mfaRequired' in response && response.mfaRequired === true;
+}
+
+export function isAuthLoginSuccess(
+  response: AuthLoginResponse,
+): response is AuthLoginSuccessResponse {
+  return 'accessToken' in response;
+}
+
+export interface VerifyMfaLoginPayload {
+  mfaChallengeToken: string;
+  totpCode?: string;
+  recoveryCode?: string;
+}
+
 export interface TotpSetupResponse {
   otpauthUrl: string;
   secretPreview: string;
@@ -1770,6 +1788,28 @@ export interface TotpVerifyResponse {
   enabled: true;
   recoveryCodes: string[];
 }
+
+export interface TotpDisableResponse {
+  disabled: true;
+}
+
+export interface RecoveryCodesResponse {
+  recoveryCodes: string[];
+}
+
+export interface AuthLoginUser {
+  id: string;
+  email: string;
+  name: string | null;
+  platformRole: string;
+  membershipRole: string | null;
+  organizationId: string | null;
+  organizationName: string | null;
+  organizationLogoUrl?: string | null;
+  permissions: Record<string, { read: boolean; write: boolean }> | null;
+}
+
+export interface AccountSessionDto {
   id: string;
   current: boolean;
   userAgent: string | null;
@@ -2027,13 +2067,13 @@ export const api = {
   auth: {
     login: (email: string, password: string) =>
       post<AuthLoginResponse>('/auth/login', { email, password }),
-    verifyMfa: (payload: {
-      mfaChallengeToken: string;
-      totpCode?: string;
-      recoveryCode?: string;
-    }) => post<AuthLoginSuccessResponse>('/auth/2fa/verify', payload),
-    me: () => get<any>('/auth/me'),
-    seedAdmin: () => post<any>('/auth/seed-admin', {}),
+    verify2FA: (payload: VerifyMfaLoginPayload) =>
+      post<AuthLoginSuccessResponse>('/auth/2fa/verify', payload),
+    /** @deprecated Use verify2FA */
+    verifyMfa: (payload: VerifyMfaLoginPayload) =>
+      post<AuthLoginSuccessResponse>('/auth/2fa/verify', payload),
+    me: () => get<AuthLoginUser>('/auth/me'),
+    seedAdmin: () => post<{ message: string; email?: string }>('/auth/seed-admin', {}),
   },
   customerVerification: {
     getEligibility: (customerId: string, bookingId?: string) => {
@@ -2105,13 +2145,21 @@ export const api = {
       ),
     revokeSession: (sessionId: string) =>
       post<{ revoked: boolean }>(`/account/me/sessions/${sessionId}/revoke`, {}),
+    setupTotp2FA: () => post<TotpSetupResponse>('/account/me/2fa/totp/setup', {}),
+    verifyTotp2FA: (payload: { code: string }) =>
+      post<TotpVerifyResponse>('/account/me/2fa/totp/verify', payload),
+    disableTotp2FA: (payload: { currentPassword?: string; totpCode?: string }) =>
+      post<TotpDisableResponse>('/account/me/2fa/totp/disable', payload),
+    regenerateRecoveryCodes: (payload: { totpCode: string }) =>
+      post<RecoveryCodesResponse>('/account/me/2fa/recovery-codes/regenerate', payload),
+    /** @deprecated Use setupTotp2FA */
     setupTotp: () => post<TotpSetupResponse>('/account/me/2fa/totp/setup', {}),
+    /** @deprecated Use verifyTotp2FA */
     verifyTotp: (payload: { code: string }) =>
       post<TotpVerifyResponse>('/account/me/2fa/totp/verify', payload),
+    /** @deprecated Use disableTotp2FA */
     disableTotp: (payload: { currentPassword?: string; totpCode?: string }) =>
-      post<{ disabled: true }>('/account/me/2fa/totp/disable', payload),
-    regenerateRecoveryCodes: (payload: { totpCode: string }) =>
-      post<{ recoveryCodes: string[] }>('/account/me/2fa/recovery-codes/regenerate', payload),
+      post<TotpDisableResponse>('/account/me/2fa/totp/disable', payload),
   },
   admin: {
     dashboard: () => get<any>('/admin/dashboard'),

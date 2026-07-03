@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'frontend-totp-2fa-flow-v49160-2026-07-03',
+    version: '4.9.160',
+    title: 'V4.9.160 — Frontend TOTP 2FA: Setup, Verwaltung, Login Challenge',
+    summary: [
+      'Kontoinformationen → Sicherheit: 2FA einrichten (QR + Verify + Recovery Codes), deaktivieren, Codes neu generieren.',
+      'Login: bei mfaRequired Challenge-Screen mit TOTP oder Recovery Code; kein dauerhaftes Speichern des Challenge Tokens.',
+      'API Client: setupTotp2FA, verifyTotp2FA, disableTotp2FA, regenerateRecoveryCodes, auth.verify2FA mit sauberen Typen.',
+      'Recovery Codes: einmalig anzeigen, kopieren, Download; Bestätigung vor Abschluss.',
+    ],
+    reason: 'Backend 2FA MVP benötigt produktionsnahen Frontend-Flow in Account-Settings und Login.',
+    previousBehavior: '2FA-Button disabled; Login kannte keinen MFA-Challenge-Flow.',
+    details:
+      'TwoFactorSetupDialog, TwoFactorDisableDialog, TwoFactorRegenerateDialog, LoginMfaPanel, totp-utils, api.ts.',
+    affectsArchitecture: false,
+    module: 'Master Admin',
+    createdAt: '2026-07-03T12:00:00.000Z',
+  },
+  {
     id: 'backend-totp-2fa-mvp-v49159-2026-07-03',
     version: '4.9.159',
     title: 'V4.9.159 — Backend TOTP 2FA MVP (Setup, Login Challenge, Recovery Codes)',
