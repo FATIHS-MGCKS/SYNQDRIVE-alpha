@@ -1,7 +1,10 @@
 import type { RentalHealthModule, RentalHealthState, VehicleHealthResponse } from '../../lib/api';
 import type { StatusTone } from '../../components/patterns';
 import { RENTAL_HEALTH_MODULE_LABELS } from '../rental-health-ui';
-import { isOperativeRentalHealthModule } from './operational-issues/operationalIssueTaxonomy';
+import {
+  isOperativeRentalHealthModule,
+} from './operational-issues/operationalIssueTaxonomy';
+import { rentalModuleSeverityDetailLabel } from './operational-issues/operationalHealthModuleSeverity';
 
 export type OperatorStatusFilter =
   | 'all'
@@ -263,7 +266,17 @@ export interface FleetHealthDisplay {
   dataQualityNote: string | null;
 }
 
-function issueStateLabel(key: RentalHealthModuleKey, state: 'critical' | 'warning'): string {
+function issueStateLabel(
+  key: RentalHealthModuleKey,
+  mod: RentalHealthModule,
+  state: 'critical' | 'warning',
+): string {
+  if (key === 'tires') {
+    return rentalModuleSeverityDetailLabel(
+      { moduleKey: 'tires', state: mod.state, reason: mod.reason },
+      'en',
+    );
+  }
   if (state === 'critical') return 'Critical';
   switch (key) {
     case 'service_compliance':
@@ -274,9 +287,8 @@ function issueStateLabel(key: RentalHealthModuleKey, state: 'critical' | 'warnin
       return 'Open';
     case 'vehicle_alerts':
       return 'Alert';
-    case 'tires':
     case 'brakes':
-      return 'Observe';
+      return 'Watch';
     case 'battery':
     default:
       return 'Watch';
@@ -296,7 +308,7 @@ function collectIssueChips(
     out.push({
       key,
       label: RENTAL_HEALTH_MODULE_LABELS[key] ?? key,
-      detail: issueStateLabel(key, mod.state),
+      detail: issueStateLabel(key, mod, mod.state),
       reason: mod.reason,
       state: mod.state,
       tone: mod.state === 'critical' ? 'critical' : 'warning',

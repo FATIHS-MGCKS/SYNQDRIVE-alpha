@@ -8,6 +8,7 @@ import {
   normalizeOperationalIssues,
   OPERATIONAL_ISSUE_SINGLE_SOURCE_CONTRACT,
   sanitizeUserFacingIssueText,
+  shouldShowInDashboardAttention,
 } from './index';
 import type { RuntimeReasonLike, VehicleRuntimeStateLike } from './index';
 
@@ -179,6 +180,29 @@ describe('operational issue taxonomy', () => {
     const tireIssue = issues.find((issue) => issue.issueType === 'tire_monitor');
     expect(tireIssue?.severity).toBe('warning');
     expect(tireIssue?.visibility.dashboardAttention).toBe(true);
+    expect(shouldShowInDashboardAttention(tireIssue!)).toBe(true);
+  });
+
+  it('suppresses forecast-only tire issues from dashboard attention', () => {
+    const issues = normalizeOperationalIssues({
+      vehicleRuntimeStates: [
+        runtimeState({
+          vehicleId: 'v1',
+          warningReasons: [
+            {
+              id: 'tires-forecast',
+              category: 'tires',
+              severity: 'warning',
+              title: 'No action required',
+              source: 'rental-health:tires',
+              blocking: false,
+            },
+          ],
+        }),
+      ],
+    });
+
+    expect(issues.filter((issue) => issue.issueType.includes('tire'))).toHaveLength(0);
   });
 
   it('downgrades HM/OEM no-tracking to data-quality info without dashboard attention', () => {

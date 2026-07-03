@@ -40,7 +40,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'V4.9.151 — Operative Meldungen: kanonische Severity-Taxonomie (Frontend)',
     summary: [
       'Neue zentrale Taxonomie unter `operational-issues/operationalIssueTaxonomy.ts` — OperationalIssue als Single Source of Truth.',
-      'Reifen beobachten / tire_monitor einheitlich `warning` (nicht mehr Notice in Notifications vs. Warning in Fleet/Health).',
+      'Reifen-Taxonomie `operationalIssueTireTaxonomy.ts` + `operationalHealthModuleSeverity.ts`: `Reifen beobachten` / check-soon → `warning` überall; forecast-only / no-action → keine Dashboard-Notification.',
       'HM/OEM Service-Tracking fehlt → `data_quality` / `info`, gruppierte Dashboard-Data-Note statt pro-Fahrzeug Act-Now.',
       'Finance-Tab aus Dashboard ActionQueue entfernt (`ACTION_QUEUE_FILTER_TABS` ohne `financial`); Filterlogik bereinigt.',
       'Fleet Command, Fleet Health, Vehicle Detail und Rental-Health-Reasons nutzen dieselben Taxonomie-Helper.',
@@ -50,7 +50,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     previousBehavior:
       'tire_monitor als `attention`/Notice in ActionQueue, aber Warning in Fleet/Health; HM/OEM No-Tracking wirkte wie operative Warnung; leerer Finance-Filter-Tab.',
     details:
-      'operationalIssueTaxonomy.ts, normalizeOperationalIssues.ts, operationalIssueVisibility.ts, rental-health-ui.ts, fleet-health-control-center.ts, fleetVehicleDisplay.ts, ActionQueue.tsx, actionQueueBuilder.ts, dashboardAttentionBuilder.ts.',
+      'operationalIssueTireTaxonomy.ts, operationalHealthModuleSeverity.ts, operationalIssueTaxonomy.ts, normalizeOperationalIssues.ts, operationalIssueVisibility.ts, rental-health-ui.ts, fleet-health-control-center.ts, fleetVehicleDisplay.ts, ActionQueue.tsx, actionQueueBuilder.ts, dashboardAttentionBuilder.ts, operationalIssueTireTaxonomy.test.ts.',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-07-03T06:00:00.000Z',

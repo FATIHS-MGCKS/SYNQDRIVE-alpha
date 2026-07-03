@@ -23,6 +23,7 @@ import {
   applyCanonicalTaxonomyToIssue,
   isHmOemServiceTrackingMissingText,
 } from './operationalIssueTaxonomy';
+import { mapTireOperationalIssue } from './operationalIssueTireTaxonomy';
 import type {
   DashboardInsightLike,
   OperationalIssue,
@@ -212,11 +213,17 @@ function mapRuntimeReason(
     };
   }
   if (reason.category === 'tires') {
+    const mapped = mapTireOperationalIssue({
+      moduleState: critical ? 'critical' : 'warning',
+      title,
+      reason: reason.description ?? title,
+    });
+    if (!mapped) return null;
     return {
       domain: 'vehicle_health',
-      issueType: critical ? 'tire_critical' : 'tire_monitor',
-      semanticKey: createVehicleIssueKey(vehicleId, 'vehicle_health', critical ? 'tires_critical' : 'tires_monitor'),
-      severity: critical ? 'critical' : 'warning',
+      issueType: mapped.issueType,
+      semanticKey: createVehicleIssueKey(vehicleId, 'vehicle_health', mapped.keyType),
+      severity: mapped.severity,
       title,
     };
   }
@@ -511,13 +518,20 @@ function healthModuleIssue(
         severity: critical ? 'critical' : 'warning',
         title: critical ? 'Batterie kritisch' : 'Batterie pruefen',
       };
-    case 'tires':
+    case 'tires': {
+      const mapped = mapTireOperationalIssue({
+        moduleState: critical ? 'critical' : module.severity ?? 'warning',
+        title: module.reason ?? module.label,
+        reason: module.reason ?? module.label,
+      });
+      if (!mapped) return null;
       return {
-        issueType: critical ? 'tire_critical' : 'tire_monitor',
-        keyType: critical ? 'tires_critical' : 'tires_monitor',
-        severity: critical ? 'critical' : 'warning',
-        title: critical ? 'Reifen kritisch' : 'Reifen beobachten',
+        issueType: mapped.issueType,
+        keyType: mapped.keyType,
+        severity: mapped.severity,
+        title: critical ? 'Reifen kritisch' : module.reason || 'Reifen beobachten',
       };
+    }
     case 'brakes':
       return {
         issueType: critical ? 'brake_critical' : 'brake_warning',

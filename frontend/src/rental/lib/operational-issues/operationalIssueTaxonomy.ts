@@ -6,6 +6,15 @@ import type {
   OperationalIssueVisibility,
 } from './operationalIssueTypes';
 import { getDefaultOperationalIssueVisibility } from './operationalIssueVisibility';
+import {
+  isTireModuleActionable,
+  isTireModuleVisibleInHealth,
+  isTireOperationalIssueType,
+  mapTireOperationalIssue,
+  resolveTireOperationalBand,
+  resolveTireOperationalSeverity,
+  shouldShowTireInDashboardAttention,
+} from './operationalIssueTireTaxonomy';
 
 /**
  * OperationalIssue is the single source of truth for platform-wide operational messages.
@@ -43,7 +52,7 @@ export const HM_OEM_SERVICE_TRACKING_DATA_NOTE_LABEL_EN = 'Service tracking unav
 
 const ISSUE_TYPE_SEVERITY: Record<string, OperationalIssueSeverity> = {
   tire_monitor: 'warning',
-  tire_observe: 'warning',
+  tire_observe: 'attention',
   monitor_tires: 'warning',
   check_soon: 'warning',
   tire_critical: 'critical',
@@ -202,6 +211,27 @@ export function resolveCanonicalIssueType(input: {
   const issueType = input.issueType.toLowerCase();
   const module = (input.module ?? '').toLowerCase();
 
+  if (isTireOperationalIssueType(issueType) || module === 'tires') {
+    const mapped = mapTireOperationalIssue({
+      moduleState: issueType.includes('critical') ? 'critical' : 'warning',
+      issueType,
+      title: input.title,
+      reason: text,
+    });
+    if (mapped) {
+      return {
+        issueType: mapped.issueType,
+        domain: input.domain,
+        severity: mapped.severity,
+      };
+    }
+    return {
+      issueType: input.issueType,
+      domain: input.domain,
+      severity: 'attention',
+    };
+  }
+
   if (
     (issueType.includes('service_tracking') || module === 'service_compliance')
     && isHmOemServiceTrackingMissingText(text)
@@ -290,7 +320,7 @@ export function resolveCanonicalVisibility(
     };
   }
 
-  if (normalizedType === 'tire_monitor' || normalizedType === 'monitor_tires') {
+  if (normalizedType === 'tire_monitor' || normalizedType === 'monitor_tires' || normalizedType === 'tire_critical') {
     return {
       ...visibility,
       dashboardAttention: true,
@@ -300,14 +330,34 @@ export function resolveCanonicalVisibility(
     };
   }
 
+  if (normalizedType === 'tire_observe') {
+    return {
+      ...visibility,
+      dashboardAttention: false,
+      fleetCommand: true,
+      vehicleOverview: true,
+      vehicleHealth: true,
+    };
+  }
+
   return visibility;
 }
 
-export function shouldShowInDashboardAttention(issue: Pick<OperationalIssue, 'issueType' | 'domain' | 'visibility'>): boolean {
+export function shouldShowInDashboardAttention(
+  issue: Pick<OperationalIssue, 'issueType' | 'domain' | 'visibility' | 'title' | 'subtitle'>,
+): boolean {
   if (!issue.visibility.dashboardAttention) return false;
   if (isFinanceIssueType(issue.issueType, issue.domain)) return false;
   if (isDataAvailabilityIssueType(issue.issueType)) return false;
   if (issue.issueType === 'hm_oem_service_tracking_missing') return false;
+  if (isTireOperationalIssueType(issue.issueType)) {
+    const band = resolveTireOperationalBand({
+      issueType: issue.issueType,
+      title: issue.title,
+      reason: issue.subtitle,
+    });
+    return shouldShowTireInDashboardAttention(band);
+  }
   return true;
 }
 
@@ -315,6 +365,15 @@ export function isOperativeRentalHealthModule(
   moduleKey: string,
   module: RentalHealthModuleLike,
 ): boolean {
+  if (moduleKey === 'tires') {
+    if (module.state !== 'critical' && module.state !== 'warning') return false;
+    const band = resolveTireOperationalBand({
+      moduleState: module.state,
+      reason: module.reason,
+    });
+    return isTireModuleActionable(band);
+  }
+
   if (module.state !== 'critical' && module.state !== 'warning') return false;
   const text = `${module.reason ?? ''} ${module.label ?? ''}`;
   if (isHmOemServiceTrackingMissingText(text)) return false;
@@ -332,11 +391,31 @@ export function operativeSeverityFromRentalModule(
   moduleKey: string,
   module: RentalHealthModuleLike,
 ): OperationalIssueSeverity | null {
+  if (moduleKey === 'tires') {
+    return resolveTireOperationalSeverity({
+      moduleState: module.state,
+      reason: module.reason,
+    });
+  }
+
   if (!isOperativeRentalHealthModule(moduleKey, module)) return null;
   if (module.state === 'critical') return 'critical';
-  if (moduleKey === 'tires') return 'warning';
   if (moduleKey === 'service_compliance' && isOverdueIssueText(module.reason ?? '')) return 'critical';
   return 'warning';
+}
+
+export function isRentalHealthModuleVisibleInHealth(
+  moduleKey: string,
+  module: RentalHealthModuleLike,
+): boolean {
+  if (moduleKey === 'tires') {
+    const band = resolveTireOperationalBand({
+      moduleState: module.state,
+      reason: module.reason,
+    });
+    return isTireModuleVisibleInHealth(band);
+  }
+  return module.state === 'critical' || module.state === 'warning';
 }
 
 export function applyCanonicalTaxonomyToDraft(draft: OperationalIssueDraft): OperationalIssueDraft | null {
@@ -359,12 +438,30 @@ export function applyCanonicalTaxonomyToDraft(draft: OperationalIssueDraft): Ope
     draft.visibility,
   );
 
+  let severity = canonical.severity;
+  let nextVisibility = visibility;
+
+  if (isTireOperationalIssueType(canonical.issueType)) {
+    const mapped = mapTireOperationalIssue({
+      moduleState: canonical.issueType.includes('critical') ? 'critical' : 'warning',
+      issueType: canonical.issueType,
+      title: draft.title,
+      reason: [draft.title, draft.subtitle].filter(Boolean).join(' '),
+    });
+    if (!mapped) return null;
+    severity = mapped.severity;
+    nextVisibility = {
+      ...nextVisibility,
+      dashboardAttention: mapped.showInDashboardAttention,
+    };
+  }
+
   if (
     isDataAvailabilityIssueType(canonical.issueType)
-    && !visibility.dashboardAttention
-    && !visibility.vehicleHealth
-    && !visibility.fleetCommand
-    && !visibility.vehicleOverview
+    && !nextVisibility.dashboardAttention
+    && !nextVisibility.vehicleHealth
+    && !nextVisibility.fleetCommand
+    && !nextVisibility.vehicleOverview
   ) {
     return null;
   }
@@ -373,8 +470,8 @@ export function applyCanonicalTaxonomyToDraft(draft: OperationalIssueDraft): Ope
     ...draft,
     issueType: canonical.issueType,
     domain: canonical.domain,
-    severity: canonical.severity,
-    visibility,
+    severity,
+    visibility: nextVisibility,
   };
 }
 

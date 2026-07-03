@@ -1,5 +1,5 @@
 import type { RentalHealthState, VehicleHealthResponse } from '../lib/api';
-import { isOperativeRentalHealthModule } from './lib/operational-issues/operationalIssueTaxonomy';
+import { isRentalHealthModuleVisibleInHealth } from './lib/operational-issues/operationalIssueTaxonomy';
 
 export const RENTAL_HEALTH_MODULE_LABELS: Record<string, string> = {
   battery: 'Battery',
@@ -25,7 +25,7 @@ export function collectRentalHealthReasons(
   if (!health) return [];
   const out: RentalHealthReason[] = [];
   for (const [name, mod] of Object.entries(health.modules)) {
-    if (!isOperativeRentalHealthModule(name, mod)) continue;
+    if (!isRentalHealthModuleVisibleInHealth(name, mod)) continue;
     if (mod.state === 'critical' || mod.state === 'warning') {
       out.push({
         module: name,

@@ -437,6 +437,8 @@ describe('actionQueueBuilder — OperationalIssue normalization', () => {
     });
 
     expect(items.some((item) => item.title === 'Reifen beobachten')).toBe(true);
+    const tireItem = items.find((item) => item.title === 'Reifen beobachten');
+    expect(tireItem?.severity).toBe('warning');
     expect(items.some((item) => /Health review required|Health pruefen/.test(item.title))).toBe(false);
   });
 
