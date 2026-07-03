@@ -128,6 +128,7 @@ function sectionLabel(sliceId: DashboardSliceId, de: boolean): string {
     'active-rented': ['Active / Rented', 'Aktiv / Vermietet'],
     'due-soon': ['Due Soon', 'Bald fällig'],
     'overdue-returns': ['Overdue Returns', 'Überfällige Rückgaben'],
+    'overdue-pickups': ['Overdue Pickups', 'Überfällige Übergaben'],
     'blocked-maintenance': ['Blocked / Maintenance', 'Blockiert / Wartung'],
     'critical-alerts': ['Critical Alerts', 'Kritische Alerts'],
   };

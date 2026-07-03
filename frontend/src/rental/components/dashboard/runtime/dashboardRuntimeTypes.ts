@@ -117,6 +117,7 @@ export type DashboardSliceId =
   | 'active-rented'
   | 'due-soon'
   | 'overdue-returns'
+  | 'overdue-pickups'
   | 'blocked-maintenance'
   | 'critical-alerts';
 

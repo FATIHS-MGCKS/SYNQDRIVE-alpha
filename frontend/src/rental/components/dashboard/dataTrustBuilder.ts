@@ -392,7 +392,7 @@ export function dashboardSliceTrustHint(
   let domain: DataTrustDomainSummary | undefined;
   if (sliceId === 'ready-to-rent' || sliceId === 'active-rented' || sliceId === 'blocked-maintenance') {
     domain = byId.fleet;
-  } else if (sliceId === 'due-soon' || sliceId === 'overdue-returns') {
+  } else if (sliceId === 'due-soon' || sliceId === 'overdue-returns' || sliceId === 'overdue-pickups') {
     domain = byId.booking;
   } else if (sliceId === 'critical-alerts') {
     domain = byId.insights;

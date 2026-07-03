@@ -10,12 +10,22 @@ import { buildDashboardRuntimeModel } from './runtime/dashboardSliceBuilder';
 import type { DashboardSliceId } from './runtime';
 
 const NOW = new Date('2026-06-24T10:00:00.000Z');
-const KPI_ORDER: DashboardSliceId[] = [
+const RUNTIME_SLICE_ORDER: DashboardSliceId[] = [
   'ready-to-rent',
   'active-rented',
   'due-soon',
   'overdue-returns',
+  'overdue-pickups',
   'blocked-maintenance',
+  'critical-alerts',
+];
+
+const VISIBLE_KPI_ORDER: DashboardSliceId[] = [
+  'ready-to-rent',
+  'active-rented',
+  'overdue-returns',
+  'blocked-maintenance',
+  'overdue-pickups',
   'critical-alerts',
 ];
 
@@ -75,7 +85,7 @@ describe('dashboard runtime-only UI contracts', () => {
       now: NOW,
     });
 
-    for (const id of KPI_ORDER) {
+    for (const id of RUNTIME_SLICE_ORDER) {
       const slice = runtime.slices[id];
       expect(slice.count).toBe(slice.rows.length);
     }
@@ -269,5 +279,17 @@ describe('dashboard runtime-only UI contracts', () => {
     const drawerGroups = buildDashboardGroups(slice, 'en');
     expect(drawerGroups.some((group) => group.id === 'pickups-today')).toBe(false);
     expect(drawerGroups.some((group) => group.id === 'returns-today')).toBe(false);
+  });
+
+  it('keeps due-soon out of the visible KPI strip order and includes overdue-pickups', () => {
+    const stripSrc = readFileSync(resolve(testDir, './ControlKpiStrip.tsx'), 'utf8');
+
+    expect(stripSrc).toContain("const TOP_KPI_ORDER: DashboardSliceId[] = ['ready-to-rent', 'active-rented']");
+    expect(stripSrc).toContain("'overdue-pickups'");
+    expect(stripSrc).toMatch(
+      /const LOWER_KPI_ORDER: DashboardSliceId\[\] = \[\s*'overdue-returns',\s*'blocked-maintenance',\s*'overdue-pickups',\s*'critical-alerts',\s*\]/,
+    );
+    expect(stripSrc).not.toMatch(/TOP_KPI_ORDER: DashboardSliceId\[\] = \[[^\]]*'due-soon'/);
+    expect(stripSrc).not.toMatch(/LOWER_KPI_ORDER: DashboardSliceId\[\] = \[[^\]]*'due-soon'/);
   });
 });

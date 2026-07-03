@@ -66,6 +66,7 @@ type RuntimeGroupId =
   | 'pickups-today'
   | 'returns-today'
   | 'overdue-returns'
+  | 'overdue-pickups'
   | 'in-maintenance'
   | 'blocked-by-health'
   | 'blocked-by-compliance'
@@ -193,17 +194,25 @@ function bookingTitle(item: Pick<PickupTileItem | ReturnTileItem, 'plate' | 'veh
   return [item.plate || item.vehicle, item.customer].filter(Boolean).join(' · ') || item.vehicle || item.plate || 'Booking';
 }
 
-function pickupRow(item: PickupTileItem, state: VehicleRuntimeState | undefined, locale: string): DashboardSliceRow {
-  const meta = [item.time, item.station].filter(Boolean).join(' · ') || undefined;
+function pickupRow(
+  item: PickupTileItem,
+  state: VehicleRuntimeState | undefined,
+  locale: string,
+  variant: 'pickup-due-soon' | 'pickup-overdue' = 'pickup-due-soon',
+): DashboardSliceRow {
+  const meta =
+    variant === 'pickup-overdue'
+      ? label(locale, 'Überfällig', 'Overdue')
+      : [item.time, item.station].filter(Boolean).join(' · ') || undefined;
   return {
-    id: `booking:${item.bookingId || stableFallbackId('pickup', item)}:pickup-due-soon`,
+    id: `booking:${item.bookingId || stableFallbackId('pickup', item)}:${variant}`,
     ...(item.vehicleId || state?.vehicleId ? { vehicleId: item.vehicleId || state?.vehicleId } : {}),
     ...(item.bookingId ? { bookingId: item.bookingId } : {}),
     title: bookingTitle(item),
     ...(item.customer ? { subtitle: item.customer } : {}),
     ...(meta ? { meta } : {}),
     stationLabel: item.station || state?.stationLabel || null,
-    severity: 'warning',
+    severity: variant === 'pickup-overdue' ? 'critical' : 'warning',
     primaryActionLabel: label(locale, 'Buchung öffnen', 'Open booking'),
   };
 }
@@ -312,6 +321,7 @@ function buildEmptySlice(id: DashboardSliceId, locale: string): DashboardSlice {
     'active-rented': label(locale, 'Heutige Operationen', "Today's Operations"),
     'due-soon': label(locale, 'Bald fällig', 'Due soon'),
     'overdue-returns': label(locale, 'Überfällige Rückgaben', 'Overdue returns'),
+    'overdue-pickups': label(locale, 'Überfällige Übergaben', 'Overdue pickups'),
     'blocked-maintenance': label(locale, 'Blockiert & Wartung', 'Blocked & maintenance'),
     'critical-alerts': label(locale, 'Kritische Alerts', 'Critical alerts'),
   };
@@ -424,6 +434,25 @@ function buildDueSoonSlice(input: BuildDashboardSlicesInput): DashboardSlice {
   };
 }
 
+function buildOverduePickupsSlice(input: BuildDashboardSlicesInput): DashboardSlice {
+  const rows = dedupeRows(
+    input.pickupItems
+      .filter((item) => item.isOverdue === true && !item.done)
+      .map((item) =>
+        pickupRow(item, findVehicleState(input.vehicleStates, item), input.locale, 'pickup-overdue'),
+      ),
+  );
+
+  return {
+    ...buildEmptySlice('overdue-pickups', input.locale),
+    count: rows.length,
+    tone: rows.length > 0 ? 'critical' : 'success',
+    rows,
+    groups: [group('overdue-pickups', label(input.locale, 'Überfällige Übergaben', 'Overdue pickups'), rows)],
+    emptyTitle: label(input.locale, 'Keine überfälligen Übergaben', 'No overdue pickups'),
+  };
+}
+
 function buildOverdueReturnsSlice(input: BuildDashboardSlicesInput): DashboardSlice {
   const rows = dedupeRows(
     input.returnItems
@@ -533,6 +562,7 @@ function buildCriticalAlertsSlice(input: BuildDashboardSlicesInput): DashboardSl
     'pickups-today': [],
     'returns-today': [],
     'overdue-returns': [],
+    'overdue-pickups': [],
     'in-maintenance': [],
     'blocked-by-health': [],
     'blocked-by-compliance': [],
@@ -684,6 +714,7 @@ function buildDashboardSlices(input: BuildDashboardSlicesInput): Record<Dashboar
     'active-rented': buildActiveRentedSlice(input.vehicleStates, input.locale, input.pickupItems, input.returnItems),
     'due-soon': buildDueSoonSlice(input),
     'overdue-returns': buildOverdueReturnsSlice(input),
+    'overdue-pickups': buildOverduePickupsSlice(input),
     'blocked-maintenance': buildBlockedMaintenanceSlice(input.vehicleStates, input.locale),
     'critical-alerts': buildCriticalAlertsSlice(input),
   };

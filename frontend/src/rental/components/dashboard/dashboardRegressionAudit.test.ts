@@ -15,11 +15,12 @@ import { buildDashboardRuntimeModel } from './runtime/dashboardSliceBuilder';
 import type { DashboardSlice, DashboardSliceId } from './runtime';
 
 const NOW = new Date('2026-06-24T10:00:00.000Z');
-const KPI_ORDER: DashboardSliceId[] = [
+const RUNTIME_SLICE_ORDER: DashboardSliceId[] = [
   'ready-to-rent',
   'active-rented',
   'due-soon',
   'overdue-returns',
+  'overdue-pickups',
   'blocked-maintenance',
   'critical-alerts',
 ];
@@ -210,7 +211,7 @@ describe('dashboard E2E regression audit', () => {
         now: NOW,
       });
 
-      for (const id of KPI_ORDER) {
+      for (const id of RUNTIME_SLICE_ORDER) {
         const slice = runtime.slices[id];
         expect(slice.count).toBe(slice.rows.length);
         expect(drawerHeaderCount(slice)).toBe(slice.count);
@@ -284,7 +285,7 @@ describe('dashboard E2E regression audit', () => {
         now: NOW,
       });
 
-      for (const id of KPI_ORDER) {
+      for (const id of RUNTIME_SLICE_ORDER) {
         const slice = runtime.slices[id];
         expect(String(drawerHeaderCount(slice))).toBe(String(slice.count));
         const groups = buildDashboardGroups(slice, 'de');
@@ -317,6 +318,38 @@ describe('dashboard E2E regression audit', () => {
       const overdueDrawerRows = overdueGroups.flatMap((group) => group.rows);
       expect(overdueDrawerRows).toHaveLength(runtime.slices['overdue-returns'].count);
       expect(overdueDrawerRows.map((row) => row.bookingId)).toContain('overdue-1');
+    });
+
+    it('overdue-pickups drawer uses runtime slice rows only', () => {
+      const runtime = buildDashboardRuntimeModel({
+        locale: 'en',
+        fleetVehicles: [vehicle({ id: 'pickup-v', license: 'PICKUP' })],
+        pickupItems: [
+          {
+            bookingId: 'pickup-overdue-1',
+            time: '09:00',
+            vehicle: 'VW Golf',
+            plate: 'PICKUP',
+            customer: 'A',
+            station: 'Zentrale',
+            done: false,
+            vehicleId: 'pickup-v',
+            needsCleaning: false,
+            hasAlert: false,
+            hasError: false,
+            startDate: minutesFromNowIso(-60),
+            endDate: minutesFromNowIso(120),
+            isOverdue: true,
+            minutesOverdue: 60,
+          },
+        ],
+        now: NOW,
+      });
+
+      const groups = buildDashboardGroups(runtime.slices['overdue-pickups'], 'en');
+      const drawerRows = groups.flatMap((group) => group.rows);
+      expect(drawerRows).toHaveLength(runtime.slices['overdue-pickups'].count);
+      expect(drawerRows.map((row) => row.bookingId)).toContain('pickup-overdue-1');
     });
   });
 

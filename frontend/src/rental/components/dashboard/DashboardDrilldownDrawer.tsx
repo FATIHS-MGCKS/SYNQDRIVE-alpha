@@ -44,6 +44,7 @@ const DASHBOARD_SLICE_IDS = new Set<DashboardSliceId>([
   'active-rented',
   'due-soon',
   'overdue-returns',
+  'overdue-pickups',
   'blocked-maintenance',
   'critical-alerts',
 ]);
@@ -138,6 +139,7 @@ function operativeEyebrow(sliceId: DashboardSliceId, de: boolean): string {
   if (sliceId === 'critical-alerts') return de ? 'Alerts & Probleme' : 'Alerts & issues';
   if (sliceId === 'due-soon') return de ? 'Timeline' : 'Timeline';
   if (sliceId === 'overdue-returns') return de ? 'Rückgaben' : 'Returns';
+  if (sliceId === 'overdue-pickups') return de ? 'Übergaben' : 'Pickups';
   return de ? 'Operativ' : 'Operations';
 }
 

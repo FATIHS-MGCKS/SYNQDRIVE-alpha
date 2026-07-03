@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-kpi-grid-overdue-pickups-v49175-2026-07-03',
+    version: '4.9.175',
+    title: 'V4.9.175 — Dashboard KPI Grid: Due soon ausblenden, Overdue pickups + 2×2 Layout',
+    summary: [
+      'KPI Strip: obere Reihe unverändert (Ready for Renting + Today’s Operations).',
+      'Untere KPI-Reihe neu als symmetrisches 2×2 Grid: Overdue returns, Blocked & maintenance, Overdue pickups, Critical alerts.',
+      'Due soon bleibt in der Runtime, wird aber nicht mehr im sichtbaren KPI Strip gerendert.',
+      'Neuer Runtime-Slice `overdue-pickups` aus `pickupItems` mit `isOverdue && !done`; Drawer/Trust-Hints ergänzt.',
+      'Kompakte untere Cards (min-h 88/80px embedded/standard) ohne Änderung an Twin-Card-Typografie.',
+    ],
+    reason: 'Operatives Dashboard soll überfällige Übergaben separat sichtbar machen und das untere KPI-Raster symmetrisch halten.',
+    previousBehavior:
+      'Sechs KPIs in einer linearen Reihe inkl. Due soon; keine separate overdue-pickups KPI-Box.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-03T20:55:00.000Z',
+  },
+  {
     id: 'kpi-typography-unify-v49174-2026-07-03',
     version: '4.9.174',
     title: 'V4.9.174 — Dashboard KPI: einheitliche Typografie (alle 6 Boxen)',

@@ -112,6 +112,13 @@ export function drawerHeaderHint(slice: DashboardSlice, locale: string): string 
       : `${count} overdue return${count === 1 ? '' : 's'}`;
   }
 
+  if (slice.id === 'overdue-pickups') {
+    const count = slice.count ?? 0;
+    return de
+      ? `${count} überfällige Übergabe${count === 1 ? '' : 'n'}`
+      : `${count} overdue pickup${count === 1 ? '' : 's'}`;
+  }
+
   if (slice.id === 'blocked-maintenance') {
     const count = slice.count ?? 0;
     return de

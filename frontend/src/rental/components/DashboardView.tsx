@@ -48,7 +48,9 @@ export function DashboardView({
   const activeDrawerTargetId = vm.activeDashboardSliceId ?? vm.activeBusinessMetricId;
   const drawerLoading = vm.activeBusinessMetricId
     ? !vm.dataFreshness.invoicesLoaded
-    : vm.activeDashboardSliceId === 'due-soon' || vm.activeDashboardSliceId === 'overdue-returns'
+    : vm.activeDashboardSliceId === 'due-soon' ||
+        vm.activeDashboardSliceId === 'overdue-returns' ||
+        vm.activeDashboardSliceId === 'overdue-pickups'
       ? !vm.dataFreshness.todayBookingsLoaded
       : vm.activeDashboardSliceId === 'critical-alerts'
         ? vm.dataFreshness.insightsLoading

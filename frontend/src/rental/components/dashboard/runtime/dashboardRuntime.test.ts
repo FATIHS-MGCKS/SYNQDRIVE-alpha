@@ -395,6 +395,68 @@ describe('dashboard runtime model', () => {
     expect(model.slices['overdue-returns'].rows.map((row) => row.bookingId)).toContain('booking-overdue');
   });
 
+  it('builds overdue-pickups from overdue pickup items only', () => {
+    const model = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles: [
+        vehicle({ id: 'pickup-overdue', license: 'OVERDUE' }),
+        vehicle({ id: 'pickup-due', license: 'DUE' }),
+        vehicle({ id: 'pickup-done', license: 'DONE' }),
+      ],
+      pickupItems: [
+        pickup({
+          vehicleId: 'pickup-overdue',
+          plate: 'OVERDUE',
+          bookingId: 'pickup-overdue-1',
+          isOverdue: true,
+          startDate: minutesFromNowIso(-60),
+        }),
+        pickup({
+          vehicleId: 'pickup-due',
+          plate: 'DUE',
+          bookingId: 'pickup-due-1',
+          isOverdue: false,
+          startDate: minutesFromNowIso(30),
+        }),
+        pickup({
+          vehicleId: 'pickup-done',
+          plate: 'DONE',
+          bookingId: 'pickup-done-1',
+          isOverdue: true,
+          done: true,
+          startDate: minutesFromNowIso(-90),
+        }),
+      ],
+      now: NOW,
+    });
+
+    const slice = model.slices['overdue-pickups'];
+    expect(slice.count).toBe(1);
+    expect(slice.rows.map((row) => row.bookingId)).toEqual(['pickup-overdue-1']);
+    expect(slice.rows[0]?.severity).toBe('critical');
+    expect(slice.tone).toBe('critical');
+  });
+
+  it('shows calm success tone when there are zero overdue pickups', () => {
+    const model = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles: [vehicle({ id: 'pickup-due', license: 'DUE' })],
+      pickupItems: [
+        pickup({
+          vehicleId: 'pickup-due',
+          plate: 'DUE',
+          bookingId: 'pickup-due-1',
+          isOverdue: false,
+          startDate: minutesFromNowIso(30),
+        }),
+      ],
+      now: NOW,
+    });
+
+    expect(model.slices['overdue-pickups'].count).toBe(0);
+    expect(model.slices['overdue-pickups'].tone).toBe('success');
+  });
+
   it('does not mix overdue returns into due-soon', () => {
     const model = buildDashboardRuntimeModel({
       locale: 'en',
@@ -461,7 +523,7 @@ describe('dashboard runtime model', () => {
     expect(model.slices['critical-alerts'].rows).toHaveLength(1);
   });
 
-  it('keeps the canonical six slice ids and uses blocked-maintenance (not maintenance)', () => {
+  it('keeps the canonical runtime slice ids and uses blocked-maintenance (not maintenance)', () => {
     const model = buildDashboardRuntimeModel({
       locale: 'en',
       fleetVehicles: [vehicle({ id: 'v1' })],
@@ -474,6 +536,7 @@ describe('dashboard runtime model', () => {
         'blocked-maintenance',
         'critical-alerts',
         'due-soon',
+        'overdue-pickups',
         'overdue-returns',
         'ready-to-rent',
       ].sort(),

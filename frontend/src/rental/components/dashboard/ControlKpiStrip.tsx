@@ -15,16 +15,15 @@ interface ControlKpiStripProps {
 }
 
 /**
- * Canonical render order of the six operational KPI boxes. The strip renders
- * strictly from `dashboardRuntime.slices` — no legacy `controlCenterKpis`
- * adapter, no `OperationalKpiTarget`, no `maintenance` KPI id.
+ * Visible KPI order in the dashboard strip. `due-soon` stays in runtime but is
+ * not rendered here.
  */
-const KPI_ORDER: DashboardSliceId[] = [
-  'ready-to-rent',
-  'active-rented',
-  'due-soon',
+const TOP_KPI_ORDER: DashboardSliceId[] = ['ready-to-rent', 'active-rented'];
+
+const LOWER_KPI_ORDER: DashboardSliceId[] = [
   'overdue-returns',
   'blocked-maintenance',
+  'overdue-pickups',
   'critical-alerts',
 ];
 
@@ -33,6 +32,7 @@ const KPI_ICONS: Record<DashboardSliceId, string> = {
   'active-rented': 'car',
   'due-soon': 'clock',
   'overdue-returns': 'alert-triangle',
+  'overdue-pickups': 'alert-triangle',
   'blocked-maintenance': 'wrench',
   'critical-alerts': 'shield-alert',
 };
@@ -40,14 +40,17 @@ const KPI_ICONS: Record<DashboardSliceId, string> = {
 /** Slices where a zero count is the calm, positive state. */
 const ZERO_IS_POSITIVE = new Set<DashboardSliceId>([
   'overdue-returns',
+  'overdue-pickups',
   'blocked-maintenance',
   'critical-alerts',
 ]);
 
-function kpiGridClass(embedded: boolean): string {
-  return embedded
-    ? 'grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 md:grid-cols-3 2xl:grid-cols-6'
-    : 'grid grid-cols-2 items-stretch gap-1.5 md:grid-cols-3 xl:grid-cols-6';
+function kpiStripGapClass(embedded: boolean): string {
+  return embedded ? 'gap-3 sm:gap-3.5' : 'gap-1.5';
+}
+
+function kpiRowGridClass(embedded: boolean): string {
+  return cn('grid grid-cols-2 items-stretch', kpiStripGapClass(embedded));
 }
 
 interface KpiVisualState {
@@ -68,15 +71,31 @@ function kpiVisualState(slice: DashboardSlice): KpiVisualState {
   };
 }
 
-function kpiCardClass(slice: DashboardSlice, embedded: boolean, isActive: boolean): string {
+function kpiCardClass(
+  slice: DashboardSlice,
+  embedded: boolean,
+  isActive: boolean,
+  size: 'twin' | 'compact' | 'standard' = 'standard',
+): string {
   const { isCritical, isWatch, isSuccess, isCalmZero } = kpiVisualState(slice);
+  const sizeClass =
+    size === 'twin'
+      ? embedded
+        ? 'min-h-[120px]'
+        : 'min-h-[108px]'
+      : size === 'compact'
+        ? embedded
+          ? 'min-h-[88px]'
+          : 'min-h-[80px]'
+        : embedded
+          ? 'min-h-[112px]'
+          : 'min-h-[96px]';
 
   return cn(
     'sq-press group relative overflow-hidden border text-left transition-colors duration-200',
     'hover:border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
-    embedded
-      ? 'min-h-[112px] rounded-2xl bg-background/40 px-3 py-3'
-      : 'min-h-[96px] rounded-lg bg-card/55 px-2.5 py-2',
+    embedded ? 'rounded-2xl bg-background/40 px-3 py-3' : 'rounded-lg bg-card/55 px-2.5 py-2',
+    sizeClass,
     isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
     isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
     (isSuccess || isCalmZero) && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
@@ -231,6 +250,119 @@ function TodaysOperationsKpiContent({ slice, disabled, locale }: ReadyForRenting
   );
 }
 
+interface CompactKpiContentProps {
+  slice: DashboardSlice;
+  sliceId: DashboardSliceId;
+  disabled: boolean;
+  displayValue: string;
+  isCritical: boolean;
+  isSuccess: boolean;
+}
+
+function CompactKpiContent({
+  slice,
+  sliceId,
+  disabled,
+  displayValue,
+  isCritical,
+  isSuccess,
+}: CompactKpiContentProps) {
+  return (
+    <div className="flex h-full items-start justify-between gap-2">
+      <div className="min-w-0">
+        <p className={KPI_TITLE_CLASS}>{slice.title}</p>
+        <p
+          className={cn(
+            'mt-1',
+            KPI_NUMBER_CLASS,
+            disabled && 'text-muted-foreground',
+            isCritical && 'text-[color:var(--status-critical)]',
+            isSuccess && 'text-[color:var(--status-positive)]',
+          )}
+        >
+          {displayValue}
+        </p>
+        {slice.hint && (
+          <p className={cn('mt-1 truncate', KPI_SECONDARY_TEXT_CLASS)}>{slice.hint}</p>
+        )}
+      </div>
+      <div
+        className={cn(
+          'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors',
+          kpiIconToneClass(slice),
+        )}
+      >
+        <Icon name={KPI_ICONS[sliceId] as 'car'} className="h-3 w-3" />
+      </div>
+    </div>
+  );
+}
+
+interface KpiStripButtonProps {
+  id: DashboardSliceId;
+  slice: DashboardSlice;
+  embedded: boolean;
+  locale?: string;
+  activeSliceId?: DashboardSliceId | null;
+  onSelectSlice: (sliceId: DashboardSliceId) => void;
+}
+
+function KpiStripButton({ id, slice, embedded, locale, activeSliceId, onSelectSlice }: KpiStripButtonProps) {
+  const disabled = slice.count === null;
+  const displayValue = disabled ? '—' : String(slice.count);
+  const { isCritical, isSuccess } = kpiVisualState(slice);
+  const isActive = activeSliceId === id;
+  const isReadyCard = id === 'ready-to-rent';
+  const isOperationsCard = id === 'active-rented';
+  const isTwinCard = isReadyCard || isOperationsCard;
+  const readyCounts = isReadyCard ? resolveReadyForRentingKpiCounts(slice) : null;
+  const operationsCounts = isOperationsCard ? resolveTodaysOperationsKpiCounts(slice) : null;
+
+  return (
+    <button
+      key={id}
+      type="button"
+      onClick={() => {
+        if (!disabled) onSelectSlice(id);
+      }}
+      disabled={disabled}
+      className={cn(
+        kpiCardClass(slice, embedded, isActive, isTwinCard ? 'twin' : 'compact'),
+        disabled && 'cursor-not-allowed opacity-60',
+      )}
+      aria-label={
+        isReadyCard && readyCounts
+          ? `${slice.title}: ${formatKpiCount(readyCounts.readyCount, disabled)} ready, ${formatKpiCount(readyCounts.availableCount, disabled)} available, ${formatKpiCount(readyCounts.notReadyCount, disabled)} not ready`
+          : isOperationsCard && operationsCounts
+            ? `${slice.title}: ${formatKpiCount(operationsCounts.activeRentalsCount, disabled)} active rentals, ${formatKpiCount(operationsCounts.pickupsToday, disabled)} pickups today, ${formatKpiCount(operationsCounts.returnsToday, disabled)} returns today`
+            : `${slice.title}: ${displayValue}`
+      }
+      aria-pressed={isActive}
+    >
+      {isReadyCard ? (
+        <ReadyForRentingKpiContent slice={slice} disabled={disabled} locale={locale} />
+      ) : isOperationsCard ? (
+        <TodaysOperationsKpiContent slice={slice} disabled={disabled} locale={locale} />
+      ) : (
+        <CompactKpiContent
+          slice={slice}
+          sliceId={id}
+          disabled={disabled}
+          displayValue={displayValue}
+          isCritical={isCritical}
+          isSuccess={isSuccess}
+        />
+      )}
+      {isCritical && (
+        <span
+          className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[color:var(--status-critical)]"
+          aria-hidden
+        />
+      )}
+    </button>
+  );
+}
+
 export function ControlKpiStrip({
   dashboardRuntime,
   activeSliceId,
@@ -244,96 +376,46 @@ export function ControlKpiStrip({
     : false;
 
   if (loading) {
+    const gapClass = kpiStripGapClass(embedded);
+    const rowClass = kpiRowGridClass(embedded);
+    const skeletonCardClass = embedded ? 'min-h-[112px] rounded-2xl bg-background/40 p-3' : undefined;
+
     return (
-      <SkeletonMetricGrid
-        count={6}
-        className={cn(
-          '!grid-cols-2',
-          embedded ? 'gap-3 sm:gap-3.5 md:!grid-cols-3 2xl:!grid-cols-6' : 'md:!grid-cols-3 xl:!grid-cols-6',
-        )}
-        cardClassName={embedded ? 'min-h-[112px] rounded-2xl bg-background/40 p-3' : undefined}
-      />
+      <div className={cn('flex flex-col', gapClass)}>
+        <SkeletonMetricGrid count={2} className={cn(rowClass, '!grid-cols-2')} cardClassName={skeletonCardClass} />
+        <SkeletonMetricGrid count={4} className={cn(rowClass, '!grid-cols-2')} cardClassName={skeletonCardClass} />
+      </div>
     );
   }
 
   return (
-    <div className={kpiGridClass(embedded)}>
-      {KPI_ORDER.map((id) => {
-        const slice = dashboardRuntime.slices[id];
-        const disabled = slice.count === null;
-        const displayValue = disabled ? '—' : String(slice.count);
-        const { isCritical, isSuccess } = kpiVisualState(slice);
-        const isActive = activeSliceId === id;
-        const isReadyCard = id === 'ready-to-rent';
-        const isOperationsCard = id === 'active-rented';
-        const readyCounts = isReadyCard ? resolveReadyForRentingKpiCounts(slice) : null;
-        const operationsCounts = isOperationsCard ? resolveTodaysOperationsKpiCounts(slice) : null;
-
-        return (
-          <button
+    <div className={cn('flex flex-col', kpiStripGapClass(embedded))}>
+      <div className={kpiRowGridClass(embedded)}>
+        {TOP_KPI_ORDER.map((id) => (
+          <KpiStripButton
             key={id}
-            type="button"
-            onClick={() => {
-              if (!disabled) onSelectSlice(id);
-            }}
-            disabled={disabled}
-            className={cn(
-              kpiCardClass(slice, embedded, isActive),
-              (isReadyCard || isOperationsCard) && embedded && 'min-h-[120px]',
-              (isReadyCard || isOperationsCard) && !embedded && 'min-h-[108px]',
-              disabled && 'cursor-not-allowed opacity-60',
-            )}
-            aria-label={
-              isReadyCard && readyCounts
-                ? `${slice.title}: ${formatKpiCount(readyCounts.readyCount, disabled)} ready, ${formatKpiCount(readyCounts.availableCount, disabled)} available, ${formatKpiCount(readyCounts.notReadyCount, disabled)} not ready`
-                : isOperationsCard && operationsCounts
-                  ? `${slice.title}: ${formatKpiCount(operationsCounts.activeRentalsCount, disabled)} active rentals, ${formatKpiCount(operationsCounts.pickupsToday, disabled)} pickups today, ${formatKpiCount(operationsCounts.returnsToday, disabled)} returns today`
-                  : `${slice.title}: ${displayValue}`
-            }
-            aria-pressed={isActive}
-          >
-            {isReadyCard ? (
-              <ReadyForRentingKpiContent slice={slice} disabled={disabled} locale={locale} />
-            ) : isOperationsCard ? (
-              <TodaysOperationsKpiContent slice={slice} disabled={disabled} locale={locale} />
-            ) : (
-              <div className="flex h-full items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className={KPI_TITLE_CLASS}>{slice.title}</p>
-                  <p
-                    className={cn(
-                      'mt-1',
-                      KPI_NUMBER_CLASS,
-                      disabled && 'text-muted-foreground',
-                      isCritical && 'text-[color:var(--status-critical)]',
-                      isSuccess && 'text-[color:var(--status-positive)]',
-                    )}
-                  >
-                    {displayValue}
-                  </p>
-                  {slice.hint && (
-                    <p className={cn('mt-1 truncate', KPI_SECONDARY_TEXT_CLASS)}>{slice.hint}</p>
-                  )}
-                </div>
-                <div
-                  className={cn(
-                    'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors',
-                    kpiIconToneClass(slice),
-                  )}
-                >
-                  <Icon name={KPI_ICONS[id] as 'car'} className="h-3 w-3" />
-                </div>
-              </div>
-            )}
-            {isCritical && (
-              <span
-                className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[color:var(--status-critical)]"
-                aria-hidden
-              />
-            )}
-          </button>
-        );
-      })}
+            id={id}
+            slice={dashboardRuntime.slices[id]}
+            embedded={embedded}
+            locale={locale}
+            activeSliceId={activeSliceId}
+            onSelectSlice={onSelectSlice}
+          />
+        ))}
+      </div>
+      <div className={kpiRowGridClass(embedded)}>
+        {LOWER_KPI_ORDER.map((id) => (
+          <KpiStripButton
+            key={id}
+            id={id}
+            slice={dashboardRuntime.slices[id]}
+            embedded={embedded}
+            locale={locale}
+            activeSliceId={activeSliceId}
+            onSelectSlice={onSelectSlice}
+          />
+        ))}
+      </div>
     </div>
   );
 }
