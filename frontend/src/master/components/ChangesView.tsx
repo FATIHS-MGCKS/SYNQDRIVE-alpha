@@ -56,6 +56,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-03T06:00:00.000Z',
   },
   {
+    id: 'action-queue-render-pipeline-v49152-2026-07-03',
+    version: '4.9.152',
+    title: 'V4.9.152 — Dashboard ActionQueue: stabile Gruppierungs-Pipeline',
+    summary: [
+      'Zentrale Render-Pipeline `prepareActionQueueRenderModel`: dedupe → group → sort → filter → render.',
+      'Vehicle-Health-Gruppen: Parent collapsed, Children nur nach Expand; keine Leaf-Doppelung mehr.',
+      'Header-Counts zählen atomare Meldungen (`3 Meldungen` = 3 Module), nicht sichtbare Parent-Rows.',
+      'Critical-Filter trimmt Notice/Warning-Children aus Health-Gruppen.',
+      'Collapsed Preview nutzt dieselbe Pipeline wie die expandierte Liste (keine rohen Atomic-Leaves).',
+    ],
+    reason:
+      'Notifications wirkten redundant: Gruppen-Parent, Children und Einzelzeilen gleichzeitig; Counts passten nicht zur sichtbaren Zeilenanzahl.',
+    previousBehavior:
+      'Collapsed Preview zeigte ungruppierte Health-Module; Header zählte `actionQueue.length` ohne klare Semantik; Critical-Filter behielt alle Children.',
+    details:
+      'actionQueueGrouping.ts (`prepareActionQueueRenderModel`, `dedupeActionQueueItems`, `ACTION_QUEUE_ATOMIC_COUNT_RULE`), ActionQueue.tsx, actionQueueGrouping.test.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-03T06:18:00.000Z',
+  },
+  {
     id: 'remove-insights-overnight-window-v49149-2026-07-03',
     version: '4.9.149',
     title: 'V4.9.149 — Business Insights: Nachtmodus (23–06 UTC) entfernt',

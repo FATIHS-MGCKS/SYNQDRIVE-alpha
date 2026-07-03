@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { buildUnifiedActionQueue, type BuildActionQueueInput } from './actionQueueBuilder';
 import {
+  ACTION_QUEUE_ATOMIC_COUNT_RULE,
   countAtomicActions,
+  dedupeActionQueueItems,
   filterActionQueueEntries,
   groupActionQueueEntries,
+  groupedChildItemIds,
+  prepareActionQueueRenderModel,
+  visibleSemanticKeys,
 } from './actionQueueGrouping';
 import { ACTION_QUEUE_FILTER_TABS, type ActionQueueGroupItem, type ActionQueueItem } from './dashboardTypes';
 import { HM_OEM_SERVICE_TRACKING_MISSING_ORG_KEY } from '../../lib/operational-issues';
@@ -333,6 +338,21 @@ describe('filterActionQueueEntries', () => {
     expect(critical[0]?.kind).toBe('group');
   });
 
+  it('critical filter trims notice/warning children from health groups', () => {
+    const entries = groupActionQueueEntries(buildHealthOnly(), 'en');
+    const critical = filterActionQueueEntries(entries, 'critical', false);
+    const group = critical.find(
+      (entry): entry is ActionQueueGroupItem => entry.kind === 'group',
+    );
+    expect(group?.children.map((child) => child.module)).toEqual([
+      'battery',
+      'service_compliance',
+    ]);
+    expect(group?.children.every(
+      (child) => child.severity === 'critical' || child.severity === 'overdue' || child.isOverdue,
+    )).toBe(true);
+  });
+
   it('keeps health groups under the vehicle filter', () => {
     const entries = groupActionQueueEntries(buildHealthOnly(), 'en');
     expect(filterActionQueueEntries(entries, 'vehicle')).toHaveLength(1);
@@ -354,6 +374,67 @@ describe('countAtomicActions', () => {
     ];
     const entries = groupActionQueueEntries(items, 'en');
     expect(countAtomicActions(entries)).toBe(5);
+  });
+});
+
+describe('prepareActionQueueRenderModel', () => {
+  it('documents atomic count rule', () => {
+    expect(ACTION_QUEUE_ATOMIC_COUNT_RULE).toContain('Atomic actions');
+  });
+
+  it('counts atomic issues, not parent group rows', () => {
+    const model = prepareActionQueueRenderModel({
+      items: buildHealthOnly(),
+      locale: 'de',
+      tab: 'all',
+    });
+    expect(model.filteredEntries).toHaveLength(1);
+    expect(model.atomicCount).toBe(3);
+    expect(countAtomicActions(model.filteredEntries)).toBe(3);
+  });
+
+  it('does not surface grouped health modules as standalone leaves', () => {
+    const model = prepareActionQueueRenderModel({
+      items: buildHealthOnly(),
+      locale: 'en',
+      tab: 'all',
+    });
+    const groupedIds = groupedChildItemIds(model.entries);
+    const leafIds = model.entries
+      .filter((entry) => entry.kind === 'leaf')
+      .map((entry) => entry.id);
+    for (const leafId of leafIds) {
+      expect(groupedIds.has(leafId)).toBe(false);
+    }
+  });
+
+  it('dedupes duplicate semantic keys before grouping', () => {
+    const base = buildHealthOnly();
+    const tire = base.find((item) => item.module === 'tires');
+    expect(tire).toBeDefined();
+    const withDuplicate = [
+      ...base,
+      {
+        ...tire!,
+        id: 'duplicate-tire-id',
+        title: 'Duplicate tire monitor',
+      },
+    ];
+    const deduped = dedupeActionQueueItems(withDuplicate);
+    const tireKeys = deduped.filter(
+      (item) => item.semanticKey && item.semanticKey === tire!.semanticKey,
+    );
+    expect(tireKeys).toHaveLength(1);
+  });
+
+  it('exposes each semantic key only once in visible keys', () => {
+    const model = prepareActionQueueRenderModel({
+      items: buildHealthOnly(),
+      locale: 'en',
+      tab: 'all',
+    });
+    const keys = visibleSemanticKeys(model.pinnedItems, model.filteredEntries);
+    expect(new Set(keys).size).toBe(keys.length);
   });
 });
 

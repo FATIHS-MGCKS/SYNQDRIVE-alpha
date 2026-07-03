@@ -3,9 +3,7 @@ import { Icon } from '../ui/Icon';
 import { SkeletonRows } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import {
-  countAtomicActions,
-  filterActionQueueEntries,
-  groupActionQueueEntries,
+  prepareActionQueueRenderModel,
   toChildSeverity,
 } from './actionQueueGrouping';
 import { attentionCountLabel } from './dashboardAttentionBuilder';
@@ -29,6 +27,7 @@ import {
   ACTION_QUEUE_FILTER_TABS,
   type ActionQueueChildAction,
   type ActionQueueCta,
+  type ActionQueueEntry,
   type ActionQueueFilterTab,
   type ActionQueueGroupItem,
   type ActionQueueItem,
@@ -278,16 +277,20 @@ function ActionQueueGroupRow({
 }
 
 function ActionQueueCollapsedPreview({
-  items,
-  totalCount,
+  pinnedItems,
+  entries,
+  atomicCount,
+  visibleAtomicCount,
   loading,
   de,
   vm,
   handlers,
   obdPlugByVehicleId,
 }: {
-  items: ActionQueueItem[];
-  totalCount: number;
+  pinnedItems: ActionQueueItem[];
+  entries: ActionQueueEntry[];
+  atomicCount: number;
+  visibleAtomicCount: number;
   loading: boolean;
   de: boolean;
   vm: DashboardViewModel;
@@ -302,7 +305,7 @@ function ActionQueueCollapsedPreview({
     );
   }
 
-  if (items.length === 0) {
+  if (pinnedItems.length === 0 && entries.length === 0) {
     return (
       <div className="px-3.5 py-3 text-[12px] text-muted-foreground">
         {de ? 'Keine offenen Meldungen.' : 'No open alerts.'}
@@ -310,28 +313,54 @@ function ActionQueueCollapsedPreview({
     );
   }
 
-  const hiddenCount = Math.max(0, totalCount - items.length);
+  const hiddenAtomicCount = Math.max(0, atomicCount - visibleAtomicCount);
 
   return (
     <div className="px-1 pb-1.5 sm:px-2">
+      {pinnedItems.length > 0 ? (
+        <ul className="mb-1.5 divide-y divide-border/30 overflow-hidden rounded-lg border border-border/35">
+          {pinnedItems.map((item) => (
+            <ActionQueueLeafRow
+              key={item.id}
+              item={item}
+              de={de}
+              vm={vm}
+              handlers={handlers}
+              pinned
+              obdPlugByVehicleId={obdPlugByVehicleId}
+            />
+          ))}
+        </ul>
+      ) : null}
       <ul className="divide-y divide-border/30 overflow-hidden rounded-lg">
-        {items.map((item) => (
-          <ActionQueueLeafRow
-            key={item.id}
-            item={item}
-            de={de}
-            vm={vm}
-            handlers={handlers}
-            pinned={item.pinned}
-            obdPlugByVehicleId={obdPlugByVehicleId}
-          />
-        ))}
+        {entries.map((entry) =>
+          entry.kind === 'group' ? (
+            <ActionQueueGroupRow
+              key={entry.id}
+              group={entry}
+              de={de}
+              vm={vm}
+              handlers={handlers}
+              obdPlugByVehicleId={obdPlugByVehicleId}
+            />
+          ) : (
+            <ActionQueueLeafRow
+              key={entry.id}
+              item={entry}
+              de={de}
+              vm={vm}
+              handlers={handlers}
+              pinned={entry.pinned}
+              obdPlugByVehicleId={obdPlugByVehicleId}
+            />
+          ),
+        )}
       </ul>
-      {hiddenCount > 0 ? (
+      {hiddenAtomicCount > 0 ? (
         <p className="px-1 text-center text-[11px] text-muted-foreground">
           {de
-            ? `+ ${hiddenCount} weitere Meldungen`
-            : `+ ${hiddenCount} more alerts`}
+            ? `+ ${hiddenAtomicCount} weitere Meldungen`
+            : `+ ${hiddenAtomicCount} more alerts`}
         </p>
       ) : null}
     </div>
@@ -469,48 +498,40 @@ export function ActionQueue({
   const effectiveTab: ActionQueueFilterTab =
     operatorFocusMode || criticalOnly ? 'critical' : filterTab;
 
-  // Pinned "Act now" stays atomic for fast operational triage, but vehicle
-  // health is excluded so a vehicle's modules always stay together in their
-  // group instead of being split across "Act now" and the group below.
-  const pinnedItems = useMemo(
-    () => actionQueue.filter((i) => i.pinned && i.groupType !== 'vehicle-health').slice(0, 5),
-    [actionQueue],
-  );
-
-  const pinnedIds = useMemo(() => new Set(pinnedItems.map((i) => i.id)), [pinnedItems]);
-
-  const groupableItems = useMemo(
-    () => actionQueue.filter((i) => !pinnedIds.has(i.id)),
-    [actionQueue, pinnedIds],
-  );
-
-  const entries = useMemo(
-    () => groupActionQueueEntries(groupableItems, locale),
-    [groupableItems, locale],
-  );
-
-  const filteredEntries = useMemo(
-    () => filterActionQueueEntries(entries, effectiveTab),
-    [entries, effectiveTab],
-  );
-
   const visibleEntryCap = operatorFocusMode ? ACTION_QUEUE_LIST_CAP : STANDARD_VISIBLE_ITEMS;
-  const visibleEntries = useMemo(
-    () => filteredEntries.slice(0, visibleEntryCap),
-    [filteredEntries, visibleEntryCap],
+  const collapsedPreviewCap = operatorFocusMode ? 3 : COLLAPSED_PREVIEW_COUNT;
+
+  const renderModel = useMemo(
+    () => prepareActionQueueRenderModel({
+      items: actionQueue,
+      locale,
+      tab: effectiveTab,
+      visibleEntryCap,
+    }),
+    [actionQueue, locale, effectiveTab, visibleEntryCap],
   );
 
-  const collapsedPreviewItems = useMemo(
-    () => [...pinnedItems, ...groupableItems].slice(0, operatorFocusMode ? 3 : COLLAPSED_PREVIEW_COUNT),
-    [operatorFocusMode, pinnedItems, groupableItems],
+  const collapsedPreviewModel = useMemo(
+    () => prepareActionQueueRenderModel({
+      items: actionQueue,
+      locale,
+      tab: effectiveTab,
+      visibleEntryCap: collapsedPreviewCap,
+    }),
+    [actionQueue, locale, effectiveTab, collapsedPreviewCap],
   );
 
-  const hiddenCount = Math.max(
-    0,
-    countAtomicActions(filteredEntries) - countAtomicActions(visibleEntries),
-  );
+  const {
+    pinnedItems,
+    visibleEntries,
+    filteredEntries,
+    atomicCount,
+    visibleAtomicCount,
+  } = renderModel;
+
+  const hiddenAtomicCount = Math.max(0, atomicCount - visibleAtomicCount);
   const handlers = { onOpenVehicleById, onOpenBookingById, onOpenRentalView };
-  const hasItems = actionQueue.length > 0;
+  const hasItems = atomicCount > 0;
   const showEmpty = !actionQueueLoading && !hasItems;
 
   return (
@@ -530,15 +551,17 @@ export function ActionQueue({
         vm={vm}
         hasItems={hasItems}
         pinnedCount={pinnedItems.length}
-        totalCount={actionQueue.length}
+        totalCount={atomicCount}
         isExpanded={isExpanded}
         onToggle={() => setIsExpanded((current) => !current)}
         controlsId={contentId}
       />
       {!isExpanded && (
         <ActionQueueCollapsedPreview
-          items={collapsedPreviewItems}
-          totalCount={actionQueue.length}
+          pinnedItems={collapsedPreviewModel.pinnedItems}
+          entries={collapsedPreviewModel.visibleEntries}
+          atomicCount={collapsedPreviewModel.atomicCount}
+          visibleAtomicCount={collapsedPreviewModel.visibleAtomicCount}
           loading={actionQueueLoading}
           de={de}
           vm={vm}
@@ -631,11 +654,11 @@ export function ActionQueue({
                   ),
                 )}
               </ul>
-              {hiddenCount > 0 && (
+              {hiddenAtomicCount > 0 && (
                 <p className="border-t border-border/35 px-4 py-2.5 text-center text-[11px] text-muted-foreground">
                   {de
-                    ? `${hiddenCount} weitere Meldungen — Filter eingrenzen oder „Alle anzeigen“ nutzen`
-                    : `${hiddenCount} more alerts — narrow filters or show all`}
+                    ? `${hiddenAtomicCount} weitere Meldungen — Filter eingrenzen oder „Alle anzeigen“ nutzen`
+                    : `${hiddenAtomicCount} more alerts — narrow filters or show all`}
                 </p>
               )}
             </>
