@@ -18,6 +18,12 @@ import {
   uniqueSources,
 } from './operationalIssueSources';
 import { getDefaultOperationalIssueVisibility } from './operationalIssueVisibility';
+import {
+  applyCanonicalTaxonomyToDraft,
+  applyCanonicalTaxonomyToIssue,
+  isHmOemServiceTrackingMissingText,
+} from './operationalIssueTaxonomy';
+import { mapTireOperationalIssue } from './operationalIssueTireTaxonomy';
 import type {
   DashboardInsightLike,
   OperationalIssue,
@@ -87,7 +93,13 @@ export function normalizeOperationalIssues(
   }
 
   return mergeDrafts(
-    suppressHealthWhenServiceOverdue(suppressGenericHealthFallbacks(drafts)),
+    suppressHealthWhenServiceOverdue(
+      suppressGenericHealthFallbacks(
+        drafts
+          .map((draft) => applyCanonicalTaxonomyToDraft(draft))
+          .filter((draft): draft is OperationalIssueDraft => Boolean(draft)),
+      ),
+    ),
     options,
   );
 }
@@ -164,6 +176,15 @@ function mapRuntimeReason(
   const text = `${source} ${title} ${reason.description ?? ''}`.toLowerCase();
   const critical = reason.severity === 'critical' || reason.blocking === true;
 
+  if ((reason.category === 'service' || reason.category === 'compliance') && isHmOemServiceTrackingMissingText(text)) {
+    return {
+      domain: 'data_quality',
+      issueType: 'hm_oem_service_tracking_missing',
+      semanticKey: createVehicleIssueKey(vehicleId, 'data_quality', 'hm_oem_service_tracking_missing'),
+      severity: 'info',
+      title: title || 'Service-Tracking nicht verfuegbar',
+    };
+  }
   if ((reason.category === 'service' || reason.category === 'compliance') && isOverdueText(text)) {
     return {
       domain: 'service_compliance',
@@ -192,11 +213,17 @@ function mapRuntimeReason(
     };
   }
   if (reason.category === 'tires') {
+    const mapped = mapTireOperationalIssue({
+      moduleState: critical ? 'critical' : 'warning',
+      title,
+      reason: reason.description ?? title,
+    });
+    if (!mapped) return null;
     return {
       domain: 'vehicle_health',
-      issueType: critical ? 'tire_critical' : 'tire_monitor',
-      semanticKey: createVehicleIssueKey(vehicleId, 'vehicle_health', critical ? 'tires_critical' : 'tires_monitor'),
-      severity: critical ? 'critical' : 'attention',
+      issueType: mapped.issueType,
+      semanticKey: createVehicleIssueKey(vehicleId, 'vehicle_health', mapped.keyType),
+      severity: mapped.severity,
       title,
     };
   }
@@ -437,6 +464,19 @@ function healthModuleToIssueDraft(
 
   if (module.module === 'service_compliance') {
     const text = `${module.reason ?? ''} ${module.label ?? ''}`.toLowerCase();
+    if (isHmOemServiceTrackingMissingText(text) && !isOverdueText(text)) {
+      return vehicleIssueDraft({
+        semanticKey: createVehicleIssueKey(vehicleId, 'data_quality', 'hm_oem_service_tracking_missing'),
+        domain: 'data_quality',
+        issueType: 'hm_oem_service_tracking_missing',
+        severity: 'info',
+        title: module.reason || 'Service-Tracking nicht verfuegbar',
+        subtitle: module.dataStale ? 'Datenstand verzoegert' : undefined,
+        vehicleId,
+        vehicle,
+        source,
+      });
+    }
     const overdue = critical || isOverdueText(text);
     return vehicleIssueDraft({
       semanticKey: createVehicleIssueKey(vehicleId, 'service_compliance', overdue ? 'overdue' : 'due_soon'),
@@ -478,13 +518,20 @@ function healthModuleIssue(
         severity: critical ? 'critical' : 'warning',
         title: critical ? 'Batterie kritisch' : 'Batterie pruefen',
       };
-    case 'tires':
+    case 'tires': {
+      const mapped = mapTireOperationalIssue({
+        moduleState: critical ? 'critical' : module.severity ?? 'warning',
+        title: module.reason ?? module.label,
+        reason: module.reason ?? module.label,
+      });
+      if (!mapped) return null;
       return {
-        issueType: critical ? 'tire_critical' : 'tire_monitor',
-        keyType: critical ? 'tires_critical' : 'tires_monitor',
-        severity: critical ? 'critical' : 'attention',
-        title: critical ? 'Reifen kritisch' : 'Reifen beobachten',
+        issueType: mapped.issueType,
+        keyType: mapped.keyType,
+        severity: mapped.severity,
+        title: critical ? 'Reifen kritisch' : module.reason || 'Reifen beobachten',
       };
+    }
     case 'brakes':
       return {
         issueType: critical ? 'brake_critical' : 'brake_warning',
@@ -881,13 +928,14 @@ function choosePrimaryDraft(group: OperationalIssueDraft[], primarySource: Opera
 
 function finalizeIssue(issue: OperationalIssue, options: OperationalIssueNormalizerOptions): OperationalIssue {
   void options;
-  const title = formatOperationalIssueTitle(issue);
-  const subtitle = formatOperationalIssueSubtitle(issue);
+  const canonical = applyCanonicalTaxonomyToIssue(issue);
+  const title = formatOperationalIssueTitle(canonical);
+  const subtitle = formatOperationalIssueSubtitle(canonical);
   return {
-    ...issue,
+    ...canonical,
     title,
     subtitle,
-    evidence: issue.evidence?.map((evidence) => ({
+    evidence: canonical.evidence?.map((evidence) => ({
       ...evidence,
       label: sanitizeUserFacingIssueText(evidence.label),
       value: sanitizeUserFacingIssueText(evidence.value),

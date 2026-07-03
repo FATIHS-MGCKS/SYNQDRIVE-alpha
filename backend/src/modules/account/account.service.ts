@@ -306,6 +306,7 @@ export class AccountService {
         userAgent: t.userAgent,
         browser: parsed.browser,
         device: parsed.device,
+        os: parsed.os,
         ipAddress: t.ipAddress,
         createdAt: t.createdAt.toISOString(),
         expiresAt: t.expiresAt.toISOString(),
@@ -499,8 +500,9 @@ export class AccountService {
   }
 
   private assertPasswordPolicy(password: string) {
-    if (!password || password.length < 6) {
-      throw new BadRequestException('Password must be at least 6 characters');
+    const minLength = 10;
+    if (!password || password.length < minLength) {
+      throw new BadRequestException(`Password must be at least ${minLength} characters`);
     }
   }
 
@@ -513,8 +515,13 @@ export class AccountService {
     return 'active';
   }
 
-  private parseUserAgent(ua: string | null): { browser: string; device: string } {
-    if (!ua) return { browser: 'Unknown', device: 'Unknown' };
+  private parseUserAgent(ua: string | null): {
+    browser: string;
+    device: string;
+    os: string | null;
+  } {
+    if (!ua) return { browser: 'Unbekannt', device: 'Desktop', os: null };
+
     let browser = 'Browser';
     if (/Edg\//i.test(ua)) browser = 'Edge';
     else if (/Chrome\//i.test(ua)) browser = 'Chrome';
@@ -522,10 +529,18 @@ export class AccountService {
     else if (/Safari\//i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari';
 
     let device = 'Desktop';
-    if (/Mobile|Android|iPhone/i.test(ua)) device = 'Mobile';
-    else if (/iPad|Tablet/i.test(ua)) device = 'Tablet';
+    if (/iPad|Tablet/i.test(ua)) device = 'Tablet';
+    else if (/Mobile|Android|iPhone/i.test(ua)) device = 'Mobile';
 
-    return { browser, device };
+    let os: string | null = null;
+    if (/Windows NT/i.test(ua)) os = 'Windows';
+    else if (/iPad/i.test(ua)) os = 'iPadOS';
+    else if (/iPhone|iOS/i.test(ua)) os = 'iOS';
+    else if (/Mac OS X|Macintosh/i.test(ua)) os = 'macOS';
+    else if (/Android/i.test(ua)) os = 'Android';
+    else if (/Linux/i.test(ua)) os = 'Linux';
+
+    return { browser, device, os };
   }
 
   private buildViewModel(

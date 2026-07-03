@@ -251,6 +251,25 @@ export function canToggleNotificationChannel(
   return true;
 }
 
+/** Enabled delivery channels on a row (excludes the criticalOnly flag). */
+export function countEnabledNotificationChannels(row: NotificationRow): number {
+  return [row.inApp, row.email, row.push, row.sms].filter(Boolean).length;
+}
+
+export const SECURITY_CHANNEL_REQUIRED_MESSAGE =
+  'Sicherheit benötigt mindestens In-App oder E-Mail.';
+
+export function securityChannelBlockMessage(
+  category: AccountNotificationCategory,
+  channel: keyof NotificationRow,
+  row: NotificationRow,
+  nextValue: boolean,
+): string | null {
+  if (channel !== 'inApp' && channel !== 'email') return null;
+  if (canToggleNotificationChannel(category, channel, row, nextValue)) return null;
+  return SECURITY_CHANNEL_REQUIRED_MESSAGE;
+}
+
 export function validateProfileDraft(draft: ProfileDraft): string | null {
   if (!draft.firstName.trim()) return 'Vorname ist erforderlich';
   if (!draft.lastName.trim()) return 'Nachname ist erforderlich';

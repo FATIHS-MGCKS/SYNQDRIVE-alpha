@@ -25,7 +25,7 @@ import { FleetHealthKpiCard } from './fleet/FleetHealthKpiCard';
 
 import { getShortModel } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
-import { BrandLogo, getBrandFromModel } from './BrandLogo';
+import { BrandLogoMark, getBrandFromModel } from './BrandLogo';
 import type { VehicleHealthResponse } from '../../lib/api';
 import {
   moduleKeyToTab,
@@ -839,9 +839,7 @@ function OperatorVehicleRow({
         selected && 'bg-[color:var(--brand-soft)]/40',
       )}
     >
-      <div className="h-8 w-8 shrink-0 rounded-lg bg-muted/70 flex items-center justify-center">
-        <BrandLogo brand={brand} size={16} isDarkMode={systemDark} variant="icon" />
-      </div>
+      <BrandLogoMark brand={brand} isDarkMode={systemDark} />
 
       <div className="min-w-0 flex-1 space-y-1">
         <button type="button" onClick={onOpen} className="w-full space-y-1 text-left">

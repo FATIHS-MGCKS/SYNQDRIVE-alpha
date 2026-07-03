@@ -93,6 +93,7 @@ export interface AccountSessionDto {
   userAgent: string | null;
   browser: string | null;
   device: string | null;
+  os: string | null;
   ipAddress: string | null;
   createdAt: string;
   expiresAt: string;

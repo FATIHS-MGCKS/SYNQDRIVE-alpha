@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { buildUnifiedActionQueue, type BuildActionQueueInput } from './actionQueueBuilder';
 import {
+  ACTION_QUEUE_ATOMIC_COUNT_RULE,
   countAtomicActions,
+  dedupeActionQueueItems,
   filterActionQueueEntries,
   groupActionQueueEntries,
+  groupedChildItemIds,
+  prepareActionQueueRenderModel,
+  visibleSemanticKeys,
 } from './actionQueueGrouping';
-import type { ActionQueueGroupItem, ActionQueueItem } from './dashboardTypes';
+import { ACTION_QUEUE_FILTER_TABS, type ActionQueueGroupItem, type ActionQueueItem } from './dashboardTypes';
+import { HM_OEM_SERVICE_TRACKING_MISSING_ORG_KEY } from '../../lib/operational-issues';
 import type { DashboardInsight, VehicleHealthAlert } from '../../DashboardInsightsContext';
 import type { VehicleData } from '../../data/vehicles';
 import type { PredictiveOperationsInsight } from './derivePredictiveOperationsInsights';
@@ -61,6 +67,30 @@ function healthAlert(): VehicleHealthAlert {
         label: 'Service & inspection',
         severity: 'critical',
         reason: 'Service überfällig',
+        dataStale: false,
+        lastUpdatedAt: null,
+      },
+    ],
+  };
+}
+
+function hmTrackingAlert(vehicleId: string): VehicleHealthAlert {
+  return {
+    vehicleId,
+    vehicle: null,
+    severity: 'warning',
+    kinds: [],
+    primaryReason: 'Service / TÜV: Kein HM/OEM Service-Tracking verfügbar',
+    secondaryReasons: [],
+    license: vehicleId === 'v1' ? 'KS MX 2024' : 'KS AB 123',
+    model: 'EV',
+    station: 'Kassel',
+    modules: [
+      {
+        module: 'service_compliance',
+        label: 'Service & inspection',
+        severity: 'warning',
+        reason: 'Kein HM/OEM Service-Tracking verfügbar',
         dataStale: false,
         lastUpdatedAt: null,
       },
@@ -273,7 +303,7 @@ describe('groupActionQueueEntries', () => {
     expect(group.children.map((c) => c.severity)).toEqual([
       'critical',
       'overdue',
-      'attention',
+      'warning',
     ]);
   });
 
@@ -287,6 +317,19 @@ describe('groupActionQueueEntries', () => {
   });
 });
 
+describe('ACTION_QUEUE_FILTER_TABS', () => {
+  it('does not include a financial tab while finance is excluded from the queue', () => {
+    expect(ACTION_QUEUE_FILTER_TABS).toEqual([
+      'all',
+      'critical',
+      'operations',
+      'vehicle',
+      'notifications',
+    ]);
+    expect(ACTION_QUEUE_FILTER_TABS).not.toContain('financial');
+  });
+});
+
 describe('filterActionQueueEntries', () => {
   it('keeps a group in the critical filter when a child is critical or overdue', () => {
     const entries = groupActionQueueEntries(buildHealthOnly(), 'en');
@@ -295,10 +338,24 @@ describe('filterActionQueueEntries', () => {
     expect(critical[0]?.kind).toBe('group');
   });
 
+  it('critical filter trims notice/warning children from health groups', () => {
+    const entries = groupActionQueueEntries(buildHealthOnly(), 'en');
+    const critical = filterActionQueueEntries(entries, 'critical', false);
+    const group = critical.find(
+      (entry): entry is ActionQueueGroupItem => entry.kind === 'group',
+    );
+    expect(group?.children.map((child) => child.module)).toEqual([
+      'battery',
+      'service_compliance',
+    ]);
+    expect(group?.children.every(
+      (child) => child.severity === 'critical' || child.severity === 'overdue' || child.isOverdue,
+    )).toBe(true);
+  });
+
   it('keeps health groups under the vehicle filter', () => {
     const entries = groupActionQueueEntries(buildHealthOnly(), 'en');
     expect(filterActionQueueEntries(entries, 'vehicle')).toHaveLength(1);
-    expect(filterActionQueueEntries(entries, 'financial')).toHaveLength(0);
   });
 });
 
@@ -317,6 +374,67 @@ describe('countAtomicActions', () => {
     ];
     const entries = groupActionQueueEntries(items, 'en');
     expect(countAtomicActions(entries)).toBe(5);
+  });
+});
+
+describe('prepareActionQueueRenderModel', () => {
+  it('documents atomic count rule', () => {
+    expect(ACTION_QUEUE_ATOMIC_COUNT_RULE).toContain('Atomic actions');
+  });
+
+  it('counts atomic issues, not parent group rows', () => {
+    const model = prepareActionQueueRenderModel({
+      items: buildHealthOnly(),
+      locale: 'de',
+      tab: 'all',
+    });
+    expect(model.filteredEntries).toHaveLength(1);
+    expect(model.atomicCount).toBe(3);
+    expect(countAtomicActions(model.filteredEntries)).toBe(3);
+  });
+
+  it('does not surface grouped health modules as standalone leaves', () => {
+    const model = prepareActionQueueRenderModel({
+      items: buildHealthOnly(),
+      locale: 'en',
+      tab: 'all',
+    });
+    const groupedIds = groupedChildItemIds(model.entries);
+    const leafIds = model.entries
+      .filter((entry) => entry.kind === 'leaf')
+      .map((entry) => entry.id);
+    for (const leafId of leafIds) {
+      expect(groupedIds.has(leafId)).toBe(false);
+    }
+  });
+
+  it('dedupes duplicate semantic keys before grouping', () => {
+    const base = buildHealthOnly();
+    const tire = base.find((item) => item.module === 'tires');
+    expect(tire).toBeDefined();
+    const withDuplicate = [
+      ...base,
+      {
+        ...tire!,
+        id: 'duplicate-tire-id',
+        title: 'Duplicate tire monitor',
+      },
+    ];
+    const deduped = dedupeActionQueueItems(withDuplicate);
+    const tireKeys = deduped.filter(
+      (item) => item.semanticKey && item.semanticKey === tire!.semanticKey,
+    );
+    expect(tireKeys).toHaveLength(1);
+  });
+
+  it('exposes each semantic key only once in visible keys', () => {
+    const model = prepareActionQueueRenderModel({
+      items: buildHealthOnly(),
+      locale: 'en',
+      tab: 'all',
+    });
+    const keys = visibleSemanticKeys(model.pinnedItems, model.filteredEntries);
+    expect(new Set(keys).size).toBe(keys.length);
   });
 });
 
@@ -400,6 +518,8 @@ describe('actionQueueBuilder — OperationalIssue normalization', () => {
     });
 
     expect(items.some((item) => item.title === 'Reifen beobachten')).toBe(true);
+    const tireItem = items.find((item) => item.title === 'Reifen beobachten');
+    expect(tireItem?.severity).toBe('warning');
     expect(items.some((item) => /Health review required|Health pruefen/.test(item.title))).toBe(false);
   });
 
@@ -475,5 +595,78 @@ describe('actionQueueBuilder — OperationalIssue normalization', () => {
     expect(countAtomicActions(all)).toBe(1);
     expect(countAtomicActions(critical)).toBe(1);
     expect(all[0].id).toBe(critical[0].id);
+  });
+});
+
+describe('HM/OEM service tracking data notes', () => {
+  it('groups two vehicles into one info notification instead of two act-now alerts', () => {
+    const v2 = vehicle({ id: 'v2', license: 'KS AB 123' });
+    const items = buildQueue({
+      locale: 'de',
+      fleetById: new Map<string, VehicleData>([
+        ['v1', vehicle()],
+        ['v2', v2],
+      ]),
+      vehicleHealthAlerts: [hmTrackingAlert('v1'), hmTrackingAlert('v2')],
+    });
+
+    const individualTracking = items.filter(
+      (item) =>
+        item.semanticKey?.includes('hm_oem_service_tracking_missing')
+        && item.semanticKey !== HM_OEM_SERVICE_TRACKING_MISSING_ORG_KEY,
+    );
+    expect(individualTracking).toHaveLength(0);
+
+    const grouped = items.filter(
+      (item) => item.semanticKey === HM_OEM_SERVICE_TRACKING_MISSING_ORG_KEY,
+    );
+    expect(grouped).toHaveLength(1);
+    expect(grouped[0]?.title).toBe('2 Fahrzeuge ohne HM/OEM Service-Tracking');
+    expect(grouped[0]?.severity).toBe('info');
+    expect(grouped[0]?.pinned).toBeFalsy();
+    expect(grouped[0]?.category).toBe('notification');
+
+    const entries = groupActionQueueEntries(items, 'de');
+    expect(filterActionQueueEntries(entries, 'critical')).toHaveLength(0);
+    expect(filterActionQueueEntries(entries, 'notifications')).toHaveLength(1);
+    expect(filterActionQueueEntries(entries, 'vehicle')).toHaveLength(1);
+  });
+
+  it('keeps service overdue critical and suppresses tracking note for the same vehicle', () => {
+    const items = buildQueue({
+      locale: 'de',
+      vehicleHealthAlerts: [
+        {
+          vehicleId: 'v1',
+          vehicle: null,
+          severity: 'critical',
+          kinds: [],
+          primaryReason: 'Service überfällig',
+          secondaryReasons: [],
+          license: 'KS MX 2024',
+          model: 'EV',
+          station: 'Kassel',
+          modules: [
+            {
+              module: 'service_compliance',
+              label: 'Service & inspection',
+              severity: 'critical',
+              reason: 'Service überfällig seit 117 Tagen (HM/OEM)',
+              dataStale: false,
+              lastUpdatedAt: null,
+            },
+          ],
+        },
+        hmTrackingAlert('v1'),
+      ],
+    });
+
+    const overdue = items.find((item) => item.module === 'service_compliance' && item.childSeverity === 'overdue');
+    expect(overdue).toBeTruthy();
+    expect(overdue?.severity).toBe('critical');
+    expect(items.some((item) => item.semanticKey === HM_OEM_SERVICE_TRACKING_MISSING_ORG_KEY)).toBe(false);
+    expect(
+      items.filter((item) => item.semanticKey?.includes('hm_oem_service_tracking_missing')).length,
+    ).toBeLessThanOrEqual(1);
   });
 });
