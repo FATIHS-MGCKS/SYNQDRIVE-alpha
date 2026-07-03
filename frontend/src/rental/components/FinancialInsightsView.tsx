@@ -67,14 +67,15 @@ interface FinancialInsightsViewProps {
   isDarkMode: boolean;
 }
 
-// ─── Constants ─────────────────────────────────────────────────────────
-
-const OUTGOING_TYPES = new Set(['OUTGOING_BOOKING', 'OUTGOING_MANUAL']);
-const INCOMING_TYPES = new Set(['INCOMING_VENDOR', 'INCOMING_UPLOADED']);
+import {
+  isIncomingInvoice,
+  isOutgoingInvoice,
+} from './invoices/invoiceClassification';
 
 const TYPE_META: Record<string, { label: string; icon: typeof ArrowUpRight; tone: 'revenue' | 'expense' }> = {
   OUTGOING_BOOKING: { label: 'Booking invoice', icon: ArrowUpRight, tone: 'revenue' },
   OUTGOING_MANUAL: { label: 'Manual invoice', icon: ArrowUpRight, tone: 'revenue' },
+  OUTGOING_FINAL: { label: 'Final invoice', icon: ArrowUpRight, tone: 'revenue' },
   INCOMING_VENDOR: { label: 'Vendor invoice', icon: ArrowDownLeft, tone: 'expense' },
   INCOMING_UPLOADED: { label: 'Uploaded invoice', icon: ArrowDownLeft, tone: 'expense' },
 };
@@ -122,14 +123,6 @@ function parseDate(iso: string | null | undefined): Date | null {
 
 function effectiveDateOf(inv: InvoiceLite): Date | null {
   return parseDate(inv.invoiceDate) || parseDate(inv.createdAt);
-}
-
-function isOutgoing(type: string): boolean {
-  return OUTGOING_TYPES.has(type);
-}
-
-function isIncoming(type: string): boolean {
-  return INCOMING_TYPES.has(type);
 }
 
 function customerLabel(c: CustomerLite | undefined): string {
@@ -383,7 +376,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
 
   const recentActivity = useMemo(() => {
     return [...invoices]
-      .filter((inv) => isOutgoing(inv.type) || isIncoming(inv.type))
+      .filter((inv) => isOutgoingInvoice(inv.type) || isIncomingInvoice(inv.type))
       .sort((a, b) => {
         const da = effectiveDateOf(a)?.getTime() ?? 0;
         const db = effectiveDateOf(b)?.getTime() ?? 0;

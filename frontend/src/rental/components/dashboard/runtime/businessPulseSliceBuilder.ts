@@ -1,13 +1,17 @@
 import type { DashboardInvoice } from '../dashboardTypes';
+import {
+  isExpenseInvoice,
+  isOutgoingInvoice,
+  isOverdueReceivable,
+  isReceivableInvoice,
+  isRevenueInvoice,
+} from '../../invoices/invoiceClassification';
 import type {
   BusinessDocumentState,
   BusinessMetricId,
   BusinessPulseRow,
   BusinessPulseSlice,
 } from './dashboardRuntimeTypes';
-
-const OUTGOING_INVOICE_TYPES = new Set(['OUTGOING_BOOKING', 'OUTGOING_MANUAL']);
-const INCOMING_INVOICE_TYPES = new Set(['INCOMING_VENDOR', 'INCOMING_UPLOADED']);
 
 export interface BuildBusinessPulseSlicesInput {
   invoices: DashboardInvoice[];
@@ -26,14 +30,6 @@ function label(locale: string, deText: string, enText: string): string {
 
 function normalizeStatus(status: string | undefined): string {
   return (status ?? '').trim().toUpperCase();
-}
-
-function isOutgoingInvoice(inv: DashboardInvoice): boolean {
-  return OUTGOING_INVOICE_TYPES.has(inv.type);
-}
-
-function isIncomingInvoice(inv: DashboardInvoice): boolean {
-  return INCOMING_INVOICE_TYPES.has(inv.type);
 }
 
 function parseDateMs(iso: string | null | undefined): number | null {
@@ -157,13 +153,14 @@ function makeSlice(input: {
   tone?: BusinessPulseSlice['tone'];
   valueCents?: number | null;
   hint?: string;
+  count?: number | null;
 }): BusinessPulseSlice {
   const rows = sortRows(input.rows);
   return {
     id: input.id,
     title: input.title,
     valueCents: input.valueCents ?? sumCents(rows),
-    count: rows.length,
+    count: input.count !== undefined ? input.count : rows.length,
     ...(input.hint ? { hint: input.hint } : {}),
     tone: input.tone ?? (rows.length > 0 ? 'info' : 'neutral'),
     rows,
@@ -189,6 +186,15 @@ function summaryRow(input: {
   };
 }
 
+function rowsForInvoices(
+  invoices: DashboardInvoice[],
+  rowByInvoiceId: Map<string | undefined, BusinessPulseRow>,
+): BusinessPulseRow[] {
+  return invoices
+    .map((inv) => rowByInvoiceId.get(inv.id))
+    .filter((row): row is BusinessPulseRow => !!row);
+}
+
 export function buildBusinessPulseSlices(
   input: BuildBusinessPulseSlicesInput,
 ): Record<BusinessMetricId, BusinessPulseSlice> {
@@ -197,18 +203,17 @@ export function buildBusinessPulseSlices(
   const rows = input.invoices.map((inv) => invoiceRow(inv, input.locale, now, currency));
   const rowByInvoiceId = new Map(rows.map((row) => [row.invoiceId, row]));
 
-  const outgoingRows = input.invoices
-    .filter(isOutgoingInvoice)
-    .map((inv) => rowByInvoiceId.get(inv.id))
-    .filter((row): row is BusinessPulseRow => !!row)
-    .filter((row) => row.state !== 'draft' && row.state !== 'refunded');
-  const incomingRows = input.invoices
-    .filter(isIncomingInvoice)
-    .map((inv) => rowByInvoiceId.get(inv.id))
-    .filter((row): row is BusinessPulseRow => !!row)
-    .filter((row) => row.state !== 'draft' && row.state !== 'refunded');
-  const openReceivables = outgoingRows.filter((row) => row.state === 'open');
-  const overdueReceivables = outgoingRows.filter((row) => row.state === 'overdue');
+  const revenueInvoices = input.invoices.filter(isRevenueInvoice);
+  const expenseInvoices = input.invoices.filter(isExpenseInvoice);
+  const outgoingRows = rowsForInvoices(revenueInvoices, rowByInvoiceId);
+  const incomingRows = rowsForInvoices(expenseInvoices, rowByInvoiceId);
+
+  const receivableInvoices = input.invoices.filter(isReceivableInvoice);
+  const openReceivableInvoices = receivableInvoices.filter((inv) => !isOverdueReceivable(inv, now));
+  const overdueReceivableInvoices = receivableInvoices.filter((inv) => isOverdueReceivable(inv, now));
+  const openReceivables = rowsForInvoices(openReceivableInvoices, rowByInvoiceId);
+  const overdueReceivables = rowsForInvoices(overdueReceivableInvoices, rowByInvoiceId);
+
   const paidInvoices = outgoingRows.filter((row) => row.state === 'paid');
   const draftInvoices = rows.filter((row) => row.state === 'draft');
   const failedPayments = rows.filter((row) => row.state === 'failed' || row.state === 'disputed');
@@ -249,6 +254,7 @@ export function buildBusinessPulseSlices(
       ],
       locale: input.locale,
       valueCents: profitCents,
+      count: null,
       tone: profitCents >= 0 ? 'success' : 'critical',
       hint: label(input.locale, 'Umsatz minus Ausgaben', 'Revenue minus expenses'),
     }),
@@ -302,3 +308,12 @@ export function buildBusinessPulseSlices(
     }),
   };
 }
+
+// Re-export classification helpers for tests and downstream consumers.
+export {
+  isOutgoingInvoice,
+  isRevenueInvoice,
+  isExpenseInvoice,
+  isReceivableInvoice,
+  isOverdueReceivable,
+} from '../../invoices/invoiceClassification';

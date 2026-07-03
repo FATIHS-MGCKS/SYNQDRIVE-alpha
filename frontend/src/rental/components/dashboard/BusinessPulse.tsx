@@ -53,7 +53,11 @@ function metricValue(slice: BusinessPulseSlice | undefined, currency: string, lo
 }
 
 function countHint(slice: BusinessPulseSlice | undefined, locale: string): string | undefined {
-  if (!slice || slice.count == null) return undefined;
+  if (!slice) return undefined;
+  if (slice.id === 'profit') {
+    return slice.hint;
+  }
+  if (slice.count == null) return slice.hint;
   const base = locale === 'de'
     ? `${slice.count} Einträge`
     : `${slice.count} item${slice.count === 1 ? '' : 's'}`;

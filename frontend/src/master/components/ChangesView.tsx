@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'business-pulse-invoice-truth-v49176-2026-07-03',
+    version: '4.9.176',
+    title: 'V4.9.176 — Business Pulse: einheitliche Invoice-Klassifikation',
+    summary: [
+      'Zentrale Frontend-Helfer `invoiceClassification.ts` (Outgoing/Revenue inkl. OUTGOING_FINAL, Incoming/Expenses, Receivables).',
+      'Business Pulse Runtime (`businessPulseSliceBuilder`) nutzt dieselbe Klassifikation wie Backend Invoice Stats.',
+      'Profit: `count = null`, Hint „Umsatz minus Ausgaben“ — kein irreführendes Dokument-Count mehr.',
+      '`financial-insights.logic` und `invoiceUtils.isOutgoing` auf dieselbe Quelle umgestellt.',
+    ],
+    reason: 'Business Pulse zählte OUTGOING_FINAL nicht und hatte verteilte Invoice-Type-Checks.',
+    previousBehavior:
+      'businessPulseSliceBuilder kannte nur OUTGOING_BOOKING/MANUAL; Profit zeigte 2 Einträge/Dokumente.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Rental Dashboard / Invoices',
+    createdAt: '2026-07-03T23:20:00.000Z',
+  },
+  {
     id: 'dashboard-kpi-grid-overdue-pickups-v49175-2026-07-03',
     version: '4.9.175',
     title: 'V4.9.175 — Dashboard KPI Grid: Due soon ausblenden, Overdue pickups + 2×2 Layout',

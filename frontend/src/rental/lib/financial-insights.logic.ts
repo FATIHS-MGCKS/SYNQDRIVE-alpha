@@ -1,5 +1,14 @@
 /** Pure financial aggregation helpers for the Insights cockpit (unit-testable). */
 
+import {
+  isIncomingInvoice,
+  isOutgoingInvoice,
+  isOverdueReceivable,
+  isReceivableInvoice,
+  isRevenueInvoice,
+  isExpenseInvoice,
+} from '../components/invoices/invoiceClassification';
+
 export interface InvoiceSlice {
   id: string;
   type: string;
@@ -14,16 +23,14 @@ export interface InvoiceSlice {
   vehicleId?: string | null;
 }
 
-const OUTGOING = new Set(['OUTGOING_BOOKING', 'OUTGOING_MANUAL']);
-const INCOMING = new Set(['INCOMING_VENDOR', 'INCOMING_UPLOADED']);
-
-export function isOutgoingInvoice(type: string): boolean {
-  return OUTGOING.has(type);
-}
-
-export function isIncomingInvoice(type: string): boolean {
-  return INCOMING.has(type);
-}
+export {
+  isIncomingInvoice,
+  isOutgoingInvoice,
+  isOverdueReceivable,
+  isReceivableInvoice,
+  isRevenueInvoice,
+  isExpenseInvoice,
+};
 
 export function isEurInvoice(inv: InvoiceSlice): boolean {
   const c = (inv.currency ?? 'EUR').toUpperCase();
@@ -41,20 +48,12 @@ export function sumCents<T extends InvoiceSlice>(rows: T[]): number {
   return rows.reduce((acc, r) => acc + (r.totalCents ?? 0), 0);
 }
 
-export function openOutgoingReceivables<T extends InvoiceSlice>(invoices: T[], _now: Date): T[] {
-  return invoices.filter((inv) => {
-    if (!isOutgoingInvoice(inv.type) || !isEurInvoice(inv)) return false;
-    if (inv.status === 'PAID' || inv.status === 'CANCELLED') return false;
-    return true;
-  });
+export function openOutgoingReceivables<T extends InvoiceSlice>(invoices: T[], now: Date): T[] {
+  return invoices.filter((inv) => isReceivableInvoice(inv) && isEurInvoice(inv) && !isOverdueReceivable(inv, now));
 }
 
 export function overdueOutgoingReceivables<T extends InvoiceSlice>(invoices: T[], now: Date): T[] {
-  return openOutgoingReceivables(invoices, now).filter((inv) => {
-    if (!inv.dueDate) return inv.status === 'OVERDUE';
-    const due = new Date(inv.dueDate);
-    return !Number.isNaN(due.getTime()) && due.getTime() < now.getTime();
-  });
+  return invoices.filter((inv) => isReceivableInvoice(inv) && isEurInvoice(inv) && isOverdueReceivable(inv, now));
 }
 
 export function issuedRevenueInRange<T extends InvoiceSlice>(
@@ -63,8 +62,7 @@ export function issuedRevenueInRange<T extends InvoiceSlice>(
   to: Date,
 ): T[] {
   return invoices.filter((inv) => {
-    if (!isOutgoingInvoice(inv.type) || !isEurInvoice(inv)) return false;
-    if (inv.status === 'CANCELLED' || inv.status === 'DRAFT') return false;
+    if (!isRevenueInvoice(inv) || !isEurInvoice(inv)) return false;
     const d = effectiveInvoiceDate(inv);
     return d != null && d >= from && d <= to;
   });
@@ -76,7 +74,7 @@ export function paidRevenueInRange<T extends InvoiceSlice>(
   to: Date,
 ): T[] {
   return invoices.filter((inv) => {
-    if (!isOutgoingInvoice(inv.type) || !isEurInvoice(inv)) return false;
+    if (!isRevenueInvoice(inv) || !isEurInvoice(inv)) return false;
     if (inv.status !== 'PAID' || !inv.paidAt) return false;
     const d = new Date(inv.paidAt);
     return !Number.isNaN(d.getTime()) && d >= from && d <= to;
@@ -89,8 +87,7 @@ export function expensesInRange<T extends InvoiceSlice>(
   to: Date,
 ): T[] {
   return invoices.filter((inv) => {
-    if (!isIncomingInvoice(inv.type) || !isEurInvoice(inv)) return false;
-    if (inv.status === 'CANCELLED' || inv.status === 'DRAFT') return false;
+    if (!isExpenseInvoice(inv) || !isEurInvoice(inv)) return false;
     const d = effectiveInvoiceDate(inv);
     return d != null && d >= from && d <= to;
   });

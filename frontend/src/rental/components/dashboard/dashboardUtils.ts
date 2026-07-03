@@ -22,9 +22,12 @@ import type {
   TodayBookingApiRow,
 } from './dashboardTypes';
 import { computeMonthlyKpisFromInvoices } from './businessPulseBuilder';
+import {
+  INCOMING_INVOICE_TYPES,
+  OUTGOING_INVOICE_TYPES,
+} from '../invoices/invoiceClassification';
 
-export const OUTGOING_INVOICE_TYPES = new Set(['OUTGOING_BOOKING', 'OUTGOING_MANUAL']);
-export const INCOMING_INVOICE_TYPES = new Set(['INCOMING_VENDOR', 'INCOMING_UPLOADED']);
+export { INCOMING_INVOICE_TYPES, OUTGOING_INVOICE_TYPES };
 
 export function effectiveInvoiceDate(inv: DashboardInvoice): Date | null {
   const iso = inv.invoiceDate || inv.createdAt;

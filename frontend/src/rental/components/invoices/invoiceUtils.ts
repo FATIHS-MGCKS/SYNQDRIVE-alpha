@@ -1,4 +1,5 @@
 import type { OrgInvoiceStatus } from './invoiceTypes';
+import { isOutgoingInvoice } from './invoiceClassification';
 
 export const STATUS_MAP: Record<string, { label: string; bg: string; text: string; dot: string }> = {
   DRAFT: { label: 'Entwurf', bg: 'bg-gray-500/15', text: 'text-gray-400', dot: 'bg-gray-400' },
@@ -18,7 +19,7 @@ export const STATUS_MAP: Record<string, { label: string; bg: string; text: strin
 };
 
 export function isOutgoing(type: string) {
-  return type.startsWith('OUTGOING');
+  return isOutgoingInvoice(type);
 }
 
 export function displayNumber(inv: { invoiceNumberDisplay?: string; invoiceNumber?: number | null; status?: string }) {
